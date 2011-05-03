@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <fluidity_options>
   <simulation_name>
-    <string_value lines="1">backward_facing_step_2d-low-coarse</string_value>
+    <string_value lines="1">backward_facing_step_2d-high-fine</string_value>
   </simulation_name>
   <problem_type>
     <string_value lines="1">fluids</string_value>
@@ -11,7 +11,7 @@
       <integer_value rank="0">2</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
-      <from_file file_name="step2d-coarse">
+      <from_file file_name="step2d-fine">
         <format name="triangle"/>
         <stat>
           <include_in_stat/>
@@ -57,7 +57,7 @@
       <real_value rank="0">0.0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">0.05</real_value>
+      <real_value rank="0">0.01</real_value>
     </timestep>
     <finish_time>
       <real_value rank="0">300.0</real_value>
@@ -156,7 +156,7 @@
                 <integer_value shape="2" rank="1">10 12</integer_value>
               </surface_ids>
               <type name="k_epsilon">
-                <string_value>low_Re</string_value>
+                <string_value>high_Re</string_value>
               </type>
             </boundary_conditions>
             <tensor_field name="Diffusivity" rank="2">
@@ -272,7 +272,7 @@
                 <integer_value shape="2" rank="1">10 12</integer_value>
               </surface_ids>
               <type name="k_epsilon">
-                <string_value>low_Re</string_value>
+                <string_value>high_Re</string_value>
               </type>
             </boundary_conditions>
             <tensor_field name="Diffusivity" rank="2">
@@ -325,7 +325,6 @@
               <isotropic>
                 <constant>
                   <real_value rank="0">3.4e-4</real_value>
-                  <comment>Re=4700, same as FLUENT 2D run. Armaly range = [70, 8000]</comment>
                 </constant>
               </isotropic>
             </value>
@@ -333,16 +332,6 @@
           </prescribed>
         </tensor_field>
         <tensor_field name="KEpsEddyViscosity" rank="2">
-          <diagnostic>
-            <algorithm name="Internal" material_phase_support="multiple"/>
-            <mesh name="VelocityMesh"/>
-            <output/>
-            <stat>
-              <exclude_from_stat/>
-            </stat>
-          </diagnostic>
-        </tensor_field>
-        <tensor_field name="KEpsEddyDiffusivity" rank="2">
           <diagnostic>
             <algorithm name="Internal" material_phase_support="multiple"/>
             <mesh name="VelocityMesh"/>
@@ -372,9 +361,6 @@
         <source_absorption>
           <string_value>explicit</string_value>
         </source_absorption>
-        <L_max>
-          <real_value rank="0">1</real_value>
-        </L_max>
         <C_mu>
           <real_value rank="0">.09</real_value>
         </C_mu>
