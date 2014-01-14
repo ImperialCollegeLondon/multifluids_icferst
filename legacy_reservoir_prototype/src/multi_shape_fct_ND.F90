@@ -6785,7 +6785,7 @@
          end do
       end if
 
-      allocate( x_ndgln2( totele * x_nloc ) ) ; x_ndgln2 = 0
+      allocate( x_ndgln2( size(x_ndgln,1) ) ) ; x_ndgln2 = 0
       allocate( loclist( x_nloc ) ) ; loclist = 0
       x_ndgln2 = x_ndgln ; x_ndgln = 0 ; inod = 0 ; jloc = 0
 

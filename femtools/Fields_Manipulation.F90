@@ -144,7 +144,15 @@ implicit none
           scalar_scale_scalar_field, &
           vector_scale_scalar_field, &
           tensor_scale_scalar_field, &
-          vector_scale_vector_field
+          vector_scale_vector_field, &
+          tensor_scale_tensor_field
+  end interface
+  
+  interface power
+     module procedure scalar_power, vector_power, tensor_power, &
+          scalar_power_scalar_field, &
+          vector_power_scalar_field, &
+          tensor_power_scalar_field
   end interface
   
   interface bound
@@ -2427,18 +2435,23 @@ implicit none
 
   end subroutine scalar_scale
 
-  subroutine vector_scale(field, factor)
+  subroutine vector_scale(field, factor, dim)
     !!< Multiply vector field with factor
     type(vector_field), intent(inout) :: field
     real, intent(in) :: factor
+    integer, intent(in), optional :: dim
 
     integer :: i
 
     assert(field%field_type/=FIELD_TYPE_PYTHON)
     
-    do i=1,field%dim
-      field%val(i,:) = field%val(i,:) * factor
-    end do
+    if (present(dim)) then
+      field%val(dim,:) = field%val(dim,:) * factor
+    else
+      do i=1,field%dim
+        field%val(i,:) = field%val(i,:) * factor
+      end do
+    end if
       
   end subroutine vector_scale
 
@@ -2571,6 +2584,154 @@ implicit none
     
   end subroutine vector_scale_vector_field
     
+  subroutine tensor_scale_tensor_field(field, tfield)
+    !!< Multiply tensor field with tensor field. This will only work if the 
+    !!< fields have the same mesh.
+    !!< NOTE that the integral of the resulting field by a weighted sum over its values in gauss points
+    !!< will not be as accurate as multiplying the fields at each gauss point seperately 
+    !!< and then summing over these.
+    type(tensor_field), intent(inout) :: field
+    type(tensor_field), intent(in) :: tfield
+
+    integer :: i,j
+
+    assert(field%mesh%refcount%id==tfield%mesh%refcount%id)
+    assert(field%field_type/=FIELD_TYPE_PYTHON)
+    assert(field%field_type==FIELD_TYPE_NORMAL .or. tfield%field_type==FIELD_TYPE_CONSTANT)
+    
+    select case (tfield%field_type)
+    case (FIELD_TYPE_NORMAL)
+       do i=1,field%dim(1)
+         do j=1,field%dim(2)
+           field%val(i,j,:) = field%val(i,j,:) * tfield%val(i,j,:)
+         end do
+       end do
+    case (FIELD_TYPE_CONSTANT)
+       do i=1,field%dim(1)
+         do j=1,field%dim(2)
+           field%val(i,j,:) = field%val(i,j,:) * tfield%val(i,j,1)
+         end do
+       end do
+    case default
+       ! someone could implement in_field type python
+       FLAbort("Illegal in_field field type in scale()")
+    end select
+    
+  end subroutine tensor_scale_tensor_field
+    
+  subroutine scalar_power(field, power)
+    !!< Raise scalar field to power
+    type(scalar_field), intent(inout) :: field
+    real, intent(in) :: power
+
+    assert(field%field_type/=FIELD_TYPE_PYTHON)
+      
+    field%val = field%val ** power
+
+  end subroutine scalar_power
+
+  subroutine vector_power(field, power, dim)
+    !!< Raise vector field to power
+    type(vector_field), intent(inout) :: field
+    real, intent(in) :: power
+    integer, intent(in), optional :: dim
+
+    assert(field%field_type/=FIELD_TYPE_PYTHON)
+    
+    if (present(dim)) then
+      field%val(dim,:) = field%val(dim,:) ** power
+    else
+      field%val = field%val ** power
+    end if
+      
+  end subroutine vector_power
+
+  subroutine tensor_power(field, power)
+    !!< Raise tensor field to power
+    type(tensor_field), intent(inout) :: field
+    real, intent(in) :: power
+
+    assert(field%field_type/=FIELD_TYPE_PYTHON)
+    
+    field%val = field%val ** power
+      
+  end subroutine tensor_power
+    
+  subroutine scalar_power_scalar_field(field, sfield)
+    !!< Raise scalar field to power based on sfield
+    type(scalar_field), intent(inout) :: field
+    type(scalar_field), intent(in) :: sfield
+
+    assert(field%mesh==sfield%mesh)
+    assert(field%field_type/=FIELD_TYPE_PYTHON)
+    assert(field%field_type==FIELD_TYPE_NORMAL .or. sfield%field_type==FIELD_TYPE_CONSTANT)
+    
+    select case (sfield%field_type)
+    case (FIELD_TYPE_NORMAL)
+       field%val = field%val ** sfield%val
+    case (FIELD_TYPE_CONSTANT)
+       field%val = field%val ** sfield%val(1)
+    case default
+       ! someone could implement in_field type python
+       FLAbort("Illegal in_field field type in power()")
+    end select
+    
+  end subroutine scalar_power_scalar_field
+
+  subroutine vector_power_scalar_field(field, sfield)
+    !!< Raise vector field to power based on sfield
+    type(vector_field), intent(inout) :: field
+    type(scalar_field), intent(in) :: sfield
+
+    integer :: i
+
+    assert(field%mesh==sfield%mesh)
+    assert(field%field_type/=FIELD_TYPE_PYTHON)
+    assert(field%field_type==FIELD_TYPE_NORMAL .or. sfield%field_type==FIELD_TYPE_CONSTANT)
+    
+    select case (sfield%field_type)
+    case (FIELD_TYPE_NORMAL)
+       do i=1,field%dim
+          field%val(i,:) = field%val(i,:) ** sfield%val
+       end do
+    case (FIELD_TYPE_CONSTANT)
+       do i=1,field%dim
+          field%val(i,:) = field%val(i,:) ** sfield%val(1)
+       end do
+    case default
+       ! someone could implement in_field type python
+       FLAbort("Illegal in_field field type in power()")
+    end select
+    
+  end subroutine vector_power_scalar_field
+
+  subroutine tensor_power_scalar_field(field, sfield)
+    !!< Raise tensor field to power based on sfield
+    type(tensor_field), intent(inout) :: field
+    type(scalar_field), intent(in) :: sfield
+
+    integer :: i, j
+
+    assert(field%mesh==sfield%mesh)
+    assert(field%field_type/=FIELD_TYPE_PYTHON)
+    assert(field%field_type==FIELD_TYPE_NORMAL .or. sfield%field_type==FIELD_TYPE_CONSTANT)
+    
+    select case (sfield%field_type)
+    case (FIELD_TYPE_NORMAL)
+       do i=1,field%dim(1)
+          do j=1,field%dim(2)
+             field%val(i,j,:) = field%val(i,j,:) ** sfield%val
+          end do
+       end do
+    case (FIELD_TYPE_CONSTANT)
+       field%val(:,:,:) = field%val(:,:,:) ** sfield%val(1)
+    case default
+       ! someone could implement in_field type python
+       FLAbort("Illegal in_field field type in power()")
+    end select
+    
+  end subroutine tensor_power_scalar_field
+
   subroutine bound_scalar_field(field, lower_bound, upper_bound)
     !!< Bound a field by the lower and upper bounds supplied
     type(scalar_field), intent(inout) :: field

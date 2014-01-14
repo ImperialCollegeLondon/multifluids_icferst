@@ -1,6 +1,5 @@
 #include "confdefs.h"
 #include "fdebug.h"
-#include "petscversion.h"
 !! Little program that reads in a matrix equation from a file called 
 !! 'matrixdump' in the current directory containing a matrix, rhs vector and 
 !! initial guess, written in PETSc binary format. It then subsequently solves 
@@ -46,36 +45,9 @@ use halos_registration
 use parallel_tools
 #ifdef HAVE_PETSC_MODULES
   use petsc 
-#if PETSC_VERSION_MINOR==0
-  use petscvec 
-  use petscmat 
-  use petscksp 
-  use petscpc 
-  use petscis 
-  use petscmg  
-#endif
 #endif
 implicit none
-#ifdef HAVE_PETSC_MODULES
-#include "finclude/petscvecdef.h"
-#include "finclude/petscmatdef.h"
-#include "finclude/petsckspdef.h"
-#include "finclude/petscpcdef.h"
-#include "finclude/petscviewerdef.h"
-#include "finclude/petscisdef.h"
-#else
-#include "finclude/petsc.h"
-#if PETSC_VERSION_MINOR==0
-#include "finclude/petscmat.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscksp.h"
-#include "finclude/petscpc.h"
-#include "finclude/petscmg.h"
-#include "finclude/petscis.h"
-#include "finclude/petscsys.h"
-#endif
-#endif
+#include "petsc_legacy.h"
   ! options read from command-line (-prns_... options)
   character(len=4096) filename, flml, read_solution, write_solution
   character(len=FIELD_NAME_LEN):: field
@@ -96,6 +68,31 @@ implicit none
   ! read in the matrix equation and init. guess:
   call PetscViewerBinaryOpen(MPI_COMM_FEMTOOLS, trim(filename), &
      FILE_MODE_READ, viewer, ierr)
+#if PETSC_VERSION_MINOR>=2
+  ! in petsc 3.2 MatLoad and VecLoad do no longer create a new vector
+  call MatCreate(MPI_COMM_FEMTOOLS, matrix, ierr)
+  call VecCreate(MPI_COMM_FEMTOOLS, rhs, ierr)
+  if (IsParallel()) then
+    call MatSetType(matrix, MATMPIAIJ, ierr)
+    call VecSetType(rhs, VECMPI, ierr)
+  else
+    call MatSetType(matrix, MATSEQAIJ, ierr)
+    call VecSetType(rhs, VECSEQ, ierr)
+  end if
+  call MatLoad(matrix, viewer, ierr)
+  call VecLoad(rhs, viewer, ierr)
+  if (zero_init_guess) then
+    call VecDuplicate(rhs, x, ierr)
+  else 
+    call VecCreate(MPI_COMM_FEMTOOLS, x, ierr)
+    if (IsParallel()) then
+      call VecSetType(x, VECMPI, ierr)
+    else
+      call VecSetType(x, VECSEQ, ierr)
+    end if
+    call VecLoad(x, viewer, ierr)
+  end if
+#else
   if (IsParallel()) then
     call MatLoad(viewer, MATMPIAIJ, matrix, ierr)
     call VecLoad(viewer, VECMPI, rhs, ierr)
@@ -110,6 +107,7 @@ implicit none
   else
     call VecLoad(viewer, VECSEQ, x, ierr)
   end if
+#endif
   call PetscViewerDestroy(viewer, ierr)
   if (random_rhs) then
     call PetscRandomCreate(PETSC_COMM_WORLD, pr, ierr)
@@ -149,7 +147,7 @@ contains
     PC  prec
     Vec y
     PetscViewer viewer
-    PetscTruth flag
+    PetscBool flag
     PetscErrorCode ierr
     KSPConvergedReason reason
     type(petsc_numbering_type) petsc_numbering
@@ -216,8 +214,8 @@ contains
     call PetscOptionsGetString('', "-pc_type", pc_method, flag, ierr)
     call KSPCreate(MPI_COMM_FEMTOOLS, krylov, ierr)
     call KSPSetType(krylov, krylov_method, ierr)
-    call KSPSetOperators(krylov, matrix, matrix, DIFFERENT_NONZERO_PATTERN, ierr)
-    call KSPSetTolerances(krylov, 1.0d-100, 1d-12, PETSC_DEFAULT_DOUBLE_PRECISION, &
+    call KSPSetOperators(krylov, matrix, matrix, ierr)
+    call KSPSetTolerances(krylov, 1.0d-100, 1d-12, PETSC_DEFAULT_REAL, &
       3000, ierr)
     if (zero_init_guess) then
       call KSPSetInitialGuessNonzero(krylov, PETSC_FALSE, ierr)
@@ -331,6 +329,7 @@ contains
   
     type(petsc_numbering_type):: petsc_numbering
     type(element_type):: shape
+    type(quadrature_type):: quad
     type(mesh_type), pointer:: linear_mesh
     type(mesh_type):: mesh
     type(state_type), pointer:: states(:)
@@ -341,8 +340,7 @@ contains
     logical read_state, fail
     integer i, n, istate, stat
     type(halo_type), pointer :: my_halo
-    integer nstates, universal_nodes, components
-    type(ele_numbering_type), pointer :: ele_num
+    integer nstates, universal_nodes, components, dim
 
     ewrite(1,*) "Opening flml file ", trim(flml)
     call load_options(flml)
@@ -443,11 +441,15 @@ contains
       
     else
     
-      ! allocate a dummy shape and mesh:
-       ele_num => find_element_numbering(&
-         &vertices = 1, dimension = 1, degree = 1)
-      call allocate(shape,ele_num,1)
+      ! allocate a dummy quadrature, shape and mesh
+      ! all we need is a mesh with node_count(mesh)=n
+      call get_option('/geometry/dimension/', dim)
+      quad=make_quadrature(vertices=dim+1, dim=dim, degree=1)
+      shape=make_element_shape(vertices=dim+1, dim=dim, degree=1, quad=quad)
+      ! allocate the mesh with n nodes and 1 element
       call allocate(mesh, n, 1, shape, "Mesh")
+      call deallocate(shape)
+      call deallocate(quad)
       
       ! setup trivial petsc numbering
       call allocate(petsc_numbering, n, 1)
@@ -752,33 +754,24 @@ contains
     ncomponents=size(petsc_numbering%gnn2unn, 2)
     allocate(unns(1:n*ncomponents))
     unns=reshape( petsc_numbering%gnn2unn(1:n,:), (/ n*ncomponents /))
+#if PETSC_VERSION_MINOR>=2
+    ! for petsc 3.2 we have an extra PetscCopyMode argument
+    call ISCreateGeneral(MPI_COMM_FEMTOOLS, &
+       size(unns), unns, PETSC_COPY_VALUES, row_indexset, ierr)
+#else
     call ISCreateGeneral(MPI_COMM_FEMTOOLS, &
        size(unns), unns, row_indexset, ierr)
+#endif
        
     m=petsc_numbering%universal_length ! global length
        
-#if PETSC_VERSION_MINOR==0    
-    ! in petsc 3.0 we have to ask for all columns
-    ! so we need to create an index set with all universal node numbers(!)    
-    allocate( allcols(1:m) )
-    allcols=(/ ( i, i=0, m-1) /)
-    call ISCreateGeneral(MPI_COMM_FEMTOOLS, &
-       m, allcols, col_indexset, ierr)
-    call ISSetIdentity(col_indexset, ierr)
-       
-    ! redistribute matrix by asking for owned rows and all columns
-    ! n*components is the number of columns we own
-    call MatGetSubMatrix(matrix, row_indexset, col_indexset, n*ncomponents, &
-       MAT_INITIAL_MATRIX, new_matrix, ierr)
-    call ISDestroy(col_indexset, ierr)
-#else
-    ! in petsc 3.1 we only ask for owned columns (although presumably
+    ! we only ask for owned columns (although presumably
     ! still all columns of owned rows are stored locally)
     ! we only deal with square matrices (same d.o.f. for rows and columns)
     ! in fluidity, so we can simply reuse row_indexset as the col_indexset
     call MatGetSubMatrix(matrix, row_indexset, row_indexset, &
        MAT_INITIAL_MATRIX, new_matrix, ierr)
-#endif
+
     ! destroy the old read-in matrix and replace by the new one
     call MatDestroy(matrix, ierr)
     matrix=new_matrix
@@ -791,7 +784,7 @@ contains
     ! create a Vec according to the proper partioning:
     call VecCreateMPI(MPI_COMM_FEMTOOLS, n*ncomponents, m, new_x, ierr)
     ! fill it with values from the read x by asking for its row numbers
-    call VecScatterCreate(x, row_indexset, new_x, PETSC_NULL, &
+    call VecScatterCreate(x, row_indexset, new_x, PETSC_NULL_OBJECT, &
        scatter, ierr)
     call VecScatterBegin(scatter, x, new_x, INSERT_VALUES, &
        SCATTER_FORWARD, ierr)
@@ -822,7 +815,7 @@ contains
   character(len=*), intent(out):: read_solution, write_solution
   logical, intent(out):: zero_init_guess, scipy, random_rhs
 
-    PetscTruth flag
+    PetscBool flag
     PetscErrorCode ierr
     
     call PetscOptionsGetString('prns_', '-filename', filename, flag, ierr)
