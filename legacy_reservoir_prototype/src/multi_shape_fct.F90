@@ -33,7 +33,7 @@
 !!!!========================================!!!!
 
 
-  module shape_functions
+  module shape_functions_prototype
 
     use fldebug
     use state_module
@@ -42,23 +42,26 @@
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
     use Fields_Allocates, only : allocate
+
+    implicit none
+
   contains
 
 !!!
 !!! SHAPESE AND RELATED SUBRTS & FUNCTIONS
 
-    SUBROUTINE SHAPESE( SELETYP,  SNEILOC,    &
-         SNGI, SNLOC,   &
-         SN, &
-         SNLX, SNLY,  &
-         SWEIGH )
-      !- this subroutine generates the FE basis functions, weights and the
-      !- derivatives of the surface shape functions for a variety of elements. 
+    SUBROUTINE SHAPESE( SELETYP,  SNEILOC, SNGI, SNLOC, SN, SNLX,&
+         & SNLY, SWEIGH )
+      !- this subroutine generates the FE basis functions, weights
+      ! and the
+      !- derivatives of the surface shape functions for a variety of
+      ! elements. 
 
       IMPLICIT NONE
       INTEGER, intent( in ) :: SELETYP, SNGI, SNLOC
       INTEGER, DIMENSION( SNLOC, SNGI ), intent( inout ) :: SNEILOC
-      REAL, DIMENSION( SNLOC, SNGI ), intent( inout ) :: SN, SNLX, SNLY
+      REAL, DIMENSION( SNLOC, SNGI ), intent( inout ) :: SN, SNLX,&
+           & SNLY
       REAL, DIMENSION( SNGI ), intent( inout ) ::  SWEIGH
 
       ewrite(3,*) 'In SHAPESE'
@@ -67,23 +70,15 @@
 
       CASE( 1 ) ; CALL SFELIN( SNGI, SNLOC, SN, SNLX, SWEIGH )
 
-      CASE( 2 ) ; CALL SFEQUAD( SNGI, SNLOC, &
-           SN, SNLX,  &
-           SNLY, SWEIGH )
+      CASE( 2 ) ; CALL SFEQUAD( SNGI, SNLOC, SN, SNLX, SNLY, SWEIGH )
 
-      CASE( 3 ) ; CALL SFETRI( SNGI, SNLOC, &
-           SN, SNLX,  SNLY, &
-           SWEIGH )
+      CASE( 3 ) ; CALL SFETRI( SNGI, SNLOC, SN, SNLX,  SNLY, SWEIGH )
 
       CASE( 4 ) ; CALL SFEQLIN( SNGI, SNLOC, SN, SNLX, SWEIGH )
 
-      CASE( 5 ) ; CALL SFEQQUAD( SNGI, SNLOC, &
-           SN, SNLX, &
-           SNLY, SWEIGH )
+      CASE( 5 ) ; CALL SFEQQUAD( SNGI, SNLOC, SN, SNLX, SNLY, SWEIGH )
 
-      CASE( 6 ) ; CALL SFEQTRI( SNGI, SNLOC, &
-           SN, SNLX, &
-           SNLY, SWEIGH )
+      CASE( 6 ) ; CALL SFEQTRI( SNGI, SNLOC, SN, SNLX, SNLY, SWEIGH )
 
       END SELECT
 
@@ -100,11 +95,15 @@
     SUBROUTINE SURNEI( SNEILOC, SNLOC, SNGI, SELETYP )
       !     ------------------------------------------------
       !     
-      ! - this subroutine calculates SNEILOC which is the array containing
+      ! - this subroutine calculates SNEILOC which is the array
+      !  containing
       ! - information if SGI is in the same CV as SILOC then set
-      ! - SNEILOC(SILOC,SGI) = 1 else SNEILOC(SILOC,SGI) = 0. Note that
-      ! - SNEILOC is related to the FV basis functions M(ILOC,GI) for the
-      ! - 2-D elements but instead of 1.0 and 0.0 we have integer values.
+      ! - SNEILOC(SILOC,SGI) = 1 else SNEILOC(SILOC,SGI) = 0. Note
+      !  that
+      ! - SNEILOC is related to the FV basis functions M(ILOC,GI) for
+      !  the
+      ! - 2-D elements but instead of 1.0 and 0.0 we have integer
+      !  values.
       !     
       !     -------------------------------
       !     - date last modified : 23/10/2006
@@ -128,7 +127,8 @@
 
       SELECT CASE ( SELETYP )
 
-      CASE( 1 : 3 ) ! Linear line (1), quadrilateral (2), triangular (3) surface elements
+      CASE( 1 : 3 ) ! Linear line (1), quadrilateral (2), triangular
+         !  (3) surface elements
 
          COUNT = 1
          DO SILOC = 1, SNLOC
@@ -141,9 +141,12 @@
 
          END DO
          !
-         ! This is a little note for the future if we are: using 16 point quadrature
-         ! for the surface elements then change the loop DO SGI = COUNT, COUNT to 
-         ! DO SGI = COUNT, COUNT + 3. Also change the loop increment to 
+         ! This is a little note for the future if we are: using 16
+         !  point quadrature
+         ! for the surface elements then change the loop DO SGI =
+         !  COUNT, COUNT to 
+         ! DO SGI = COUNT, COUNT + 3. Also change the loop increment
+         !  to 
          ! COUNT = COUNT + 4. This is similar for triangles.
          !
 
@@ -180,7 +183,8 @@
 
          Loop_SNLOC: DO SILOC = 1, SNLOC 
 
-            IF(( SILOC == 1 ) .OR. ( SILOC == 3 ) .OR. ( SILOC == 5 )) THEN
+            IF(( SILOC == 1 ) .OR. ( SILOC == 3 ) .OR. ( SILOC == 5&
+                 & )) THEN
                INC = 3
             ELSE
                INC = 7
@@ -190,7 +194,8 @@
                SNEILOC( SILOC, SGI ) = 1
             END DO
 
-            IF(( SILOC == 1 ) .OR. ( SILOC == 3 ) .OR. ( SILOC == 5 )) THEN
+            IF(( SILOC == 1 ) .OR. ( SILOC == 3 ) .OR. ( SILOC == 5&
+                 & )) THEN
                COUNT = COUNT + 4
             ELSE
                COUNT = COUNT + 8
@@ -252,7 +257,8 @@
       ALLOCATE( XIGP( ONE ))
       ALLOCATE( XI( TWO ))
       !
-      ! - positions of Gauss points associated with CV's in (ETAP) space
+      ! - positions of Gauss points associated with CV's in (ETAP)
+      !  space
       ! 
       XIGP = 0.0
       !
@@ -268,8 +274,8 @@
             do SGJ = 1, 1
 
                SGI = ( SJLOC - 1 ) * ( SNLOC - 1 ) + SGJ
-               SN( SILOC, SGI ) = 0.5 * ( 1. + XI(SILOC) &
-                    * 0.5 * ( XI( SJLOC ) + XIGP( SGJ )))
+               SN( SILOC, SGI ) = 0.5 * ( 1. + XI(SILOC) * 0.5 * (&
+                    & XI( SJLOC ) + XIGP( SGJ )))
             END DO
          END DO
       END DO
@@ -299,10 +305,8 @@
       !
     END SUBROUTINE SFELIN
 
-    SUBROUTINE SFEQUAD( SNGI, SNLOC, &
-                                ! - REALS
-         SN,   SNLX, &
-         SNLY, SWEIGH )
+    SUBROUTINE SFEQUAD( SNGI, SNLOC, & ! - REALS
+         SN,   SNLX, SNLY, SWEIGH )
       !     ---------------------------------
       !
       ! - this subroutine generates the FE volume shape 
@@ -331,8 +335,8 @@
       ! - and SBNGI is the number of local integration points.
       !
       INTEGER, PARAMETER :: NCOORD = 2, SBNLOC = 4, SBNGI = 1 
-      REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIGP, ETAGP, &
-           XI, ETA
+      REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIGP,&
+           & ETAGP, XI, ETA
       REAL, DIMENSION( : , : , : ), allocatable :: CORN
 
       ewrite(3,*) 'In SFEQUAD'
@@ -352,7 +356,8 @@
       ! - SJLOC ranges from 1-4, and ICOORD ranges from 1-2 and SKLOC
       ! - ranges from 1-4. SJLOC signifies the particular subcell
       ! - ICOORD signifies the co-ordinate of the subcell (XI,ETA)
-      ! - and SKLOC signifies the vertex of the subcell (which are quad)
+      ! - and SKLOC signifies the vertex of the subcell (which are
+      !  quad)
       !
       !
       ! - subcell 1
@@ -416,7 +421,8 @@
       XIGP(1)   = 0.0  
       ETAGP(1)  = 0.0
       !
-      ! - define positions of vertices of quadrilateral element in (XIP,ETAP) space.
+      ! - define positions of vertices of quadrilateral element in
+      !  (XIP,ETAP) space.
       !
       XI(1)   = -1.0
       ETA(1)  = -1.0
@@ -430,7 +436,8 @@
       XI(4)   =  1.0
       ETA(4)  =  1.0
       !
-      ! - generate values of the FE basis functions at Gaussian integration points
+      ! - generate values of the FE basis functions at Gaussian
+      !  integration points
       !
       Loop_SILOC: DO SILOC = 1, SNLOC
 
@@ -448,37 +455,32 @@
 
                   Loop_SKLOC: do SKLOC = 1, SBNLOC
 
-                     POS(ICOORD) = POS(ICOORD) &
-                          + CORN(SJLOC,ICOORD,SKLOC)&
-                          *0.25*(1.+XI(SKLOC)*XIGP(SGJ))&
-                          *(1.+ETA(SKLOC)*ETAGP(SGJ))
+                     POS(ICOORD) = POS(ICOORD) + CORN(SJLOC,ICOORD&
+                          &,SKLOC) *0.25*(1.+XI(SKLOC)*XIGP(SGJ)) &
+                          &*(1.+ETA(SKLOC)*ETAGP(SGJ))
 
-                     DPDXI(ICOORD) = DPDXI(ICOORD) &
-                          + CORN(SJLOC,ICOORD,SKLOC)&
-                          *0.25*XI(SKLOC)&
-                          *(1.+ETA(SKLOC)*ETAGP(SGJ))
+                     DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(SJLOC&
+                          &,ICOORD,SKLOC) *0.25*XI(SKLOC) *(1.&
+                          &+ETA(SKLOC)*ETAGP(SGJ))
 
-                     DPDETA(ICOORD) = DPDETA(ICOORD) &
-                          + CORN(SJLOC,ICOORD,SKLOC)&
-                          *0.25*(1.+XI(SKLOC)*XIGP(SGJ))&
-                          *ETA(SKLOC)
+                     DPDETA(ICOORD) = DPDETA(ICOORD) + CORN(SJLOC&
+                          &,ICOORD,SKLOC) *0.25*(1.+XI(SKLOC)&
+                          &*XIGP(SGJ)) *ETA(SKLOC)
 
                   END DO Loop_SKLOC
 
                END DO Loop_ICOORD
                !
-               SN(SILOC,SGI) = 0.25*( 1.0 + XI(SILOC)*POS(1) )&
-                    *( 1.0 + ETA(SILOC)*POS(2) )
+               SN(SILOC,SGI) = 0.25*( 1.0 + XI(SILOC)*POS(1) ) *( 1.0&
+                    & + ETA(SILOC)*POS(2) )
                !
-               SNLX(SILOC,SGI) = 0.25*XI(SILOC)*DPDXI(1)&
-                    *( 1.0 + ETA(SILOC)*POS(2) )&
-                    + 0.25*( 1.0 + XI(SILOC)*POS(1) )&
-                    *ETA(SILOC)*DPDXI(2)
+               SNLX(SILOC,SGI) = 0.25*XI(SILOC)*DPDXI(1) *( 1.0 +&
+                    & ETA(SILOC)*POS(2) ) + 0.25*( 1.0 + XI(SILOC)&
+                    &*POS(1) ) *ETA(SILOC)*DPDXI(2)
                !
-               SNLY(SILOC,SGI) = 0.25*XI(SILOC)*DPDETA(1)&
-                    *( 1.0 + ETA(SILOC)*POS(2) )&
-                    + 0.25*( 1.0 + XI(SILOC)*POS(1) )&
-                    *ETA(SILOC)*DPDETA(2)
+               SNLY(SILOC,SGI) = 0.25*XI(SILOC)*DPDETA(1) *( 1.0 +&
+                    & ETA(SILOC)*POS(2) ) + 0.25*( 1.0 + XI(SILOC)&
+                    &*POS(1) ) *ETA(SILOC)*DPDETA(2)
                !
             END DO Loop_SGJ   ! sjloc
             !
@@ -510,9 +512,7 @@
     END SUBROUTINE SFEQUAD
 
 
-    SUBROUTINE SFETRI( SNGI, SNLOC, &
-         SN,   SNLX, &
-         SNLY, SWEIGH )
+    SUBROUTINE SFETRI( SNGI, SNLOC, SN,   SNLX, SNLY, SWEIGH )
       !     ---------------------------------
       !
       ! - this subroutine generates the FE shape functions 
@@ -542,8 +542,8 @@
       !
       !
       INTEGER, PARAMETER :: NCOORD = 3, SBNLOC = 4, SBNGI = 1 
-      REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIGP, ETAGP, &
-           XI, ETA
+      REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIGP,&
+           & ETAGP, XI, ETA
       REAL, DIMENSION( : , : , : ), allocatable :: CORN
 
       ewrite(3,*) 'In SFETRI'
@@ -563,7 +563,8 @@
       ! - SJLOC ranges from 1-3, and ICOORD ranges from 1-3 and SKLOC
       ! - ranges from 1-4. SJLOC signifies the particular subcell
       ! - SJLOC signifies the co-ordinate of the subcell (L1,L2,L3) 
-      ! - and SKLOC signifies the vertex of the subcell (which are quads)
+      ! - and SKLOC signifies the vertex of the subcell (which are
+      !  quads)
       !
       !
       ! - subcell 1
@@ -639,7 +640,8 @@
       XI(4)  =  1.0
       ETA(4) =  1.0
       !
-      ! - generate values of FE basis functions at Gaussian integration points
+      ! - generate values of FE basis functions at Gaussian
+      !  integration points
       !
       Loop_SNLOCI: DO SILOC = 1, SNLOC
 
@@ -657,21 +659,18 @@
                   !
                   Loop_SNLOCK: DO SKLOC = 1, SBNLOC
                      !
-                     POS(ICOORD) = POS(ICOORD) &
-                          + CORN(SJLOC,ICOORD,SKLOC)*&
-                          0.25*(1.+XI(SKLOC)*XIGP(SGJ))&
-                          *(1.+ETA(SKLOC)*ETAGP(SGJ))
+                     POS(ICOORD) = POS(ICOORD) + CORN(SJLOC,ICOORD&
+                          &,SKLOC)* 0.25*(1.+XI(SKLOC)*XIGP(SGJ)) &
+                          &*(1.+ETA(SKLOC)*ETAGP(SGJ))
 
 
-                     DPDXI(ICOORD) = DPDXI(ICOORD) &
-                          + CORN(SJLOC,ICOORD,SKLOC)&
-                          *0.25*XI(SKLOC)&
-                          *(1.+ETA(SKLOC)*ETAGP(SGJ))
+                     DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(SJLOC&
+                          &,ICOORD,SKLOC) *0.25*XI(SKLOC) *(1.&
+                          &+ETA(SKLOC)*ETAGP(SGJ))
 
-                     DPDETA(ICOORD) = DPDETA(ICOORD) &
-                          + CORN(SJLOC,ICOORD,SKLOC)&
-                          *0.25*(1.+XI(SKLOC)*XIGP(SGJ))&
-                          *ETA(SKLOC)
+                     DPDETA(ICOORD) = DPDETA(ICOORD) + CORN(SJLOC&
+                          &,ICOORD,SKLOC) *0.25*(1.+XI(SKLOC)&
+                          &*XIGP(SGJ)) *ETA(SKLOC)
 
                   END DO Loop_SNLOCK
 
@@ -789,12 +788,10 @@
             !
             do SJLOC = 1, SFNLOC
 
-               POS   = POS &
-                    + CORN(SIFACE,SJLOC)&
-                    *0.5*(1.+XIP(SJLOC)*XIPGP(SGJ))
+               POS   = POS + CORN(SIFACE,SJLOC) *0.5*(1.+XIP(SJLOC)&
+                    &*XIPGP(SGJ))
 
-               DPDXI = DPDXI&
-                    + CORN(SIFACE,SJLOC)*0.5*XIP(SJLOC)
+               DPDXI = DPDXI + CORN(SIFACE,SJLOC)*0.5*XIP(SJLOC)
 
             END DO
 
@@ -834,10 +831,8 @@
       !
     END SUBROUTINE SFEQLIN
 
-    SUBROUTINE SFEQQUAD( SNGI, SNLOC, &
-                                ! - REALS
-         SN,   SNLX, &
-         SNLY, SWEIGH )
+    SUBROUTINE SFEQQUAD( SNGI, SNLOC, & ! - REALS
+         SN,   SNLX, SNLY, SWEIGH )
       !     -----------------------------------
       !
       ! - this subroutine generates the FE surface shape 
@@ -865,9 +860,11 @@
       ! - SBNLOC is the number of local nodes for a subcell
       ! - and SBNGI is the number of local integration points.
       !
-      INTEGER, PARAMETER :: NCOORD = 2, SBNLOC = 4, SBNGI = 4,  NSCV = 9, THREE = 3
-      REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIGP, ETAGP, XIP, ETAP, &
-           LIJXI, LIJETA, DLIJXIDXI, DLIJXIDETA, DLIJETADXI, DLIJETADETA
+      INTEGER, PARAMETER :: NCOORD = 2, SBNLOC = 4, SBNGI = 4,  NSCV &
+           &= 9, THREE = 3
+      REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIGP,&
+           & ETAGP, XIP, ETAP, LIJXI, LIJETA, DLIJXIDXI, DLIJXIDETA,&
+           & DLIJETADXI, DLIJETADETA
       REAL, DIMENSION( : , : , : ), allocatable :: CORN
       REAL :: XI, ETA
       INTEGER ::  I, J
@@ -882,7 +879,8 @@
       ALLOCATE( XIP( SBNLOC ))
       ALLOCATE( ETAP( SBNLOC ))
       ALLOCATE( CORN( NSCV, NCOORD, SBNLOC ))
-      ALLOCATE( LIJXI( THREE )) ! for derivatives wrt the second parametric space.
+      ALLOCATE( LIJXI( THREE )) ! for derivatives wrt the second
+      !  parametric space.
       ALLOCATE( LIJETA( THREE ))
       ALLOCATE( DLIJXIDXI( THREE ))
       ALLOCATE( DLIJXIDETA( THREE ))
@@ -896,7 +894,8 @@
       ! - JLOC ranges from 1-9, and ICOORD ranges from 1-2 and KLOC
       ! - ranges from 1-4. JLOC signifies the particular subcell
       ! - ICOORD signifies the co-ordinate of the subcell (XI,ETA)
-      ! - and KLOC signifies the vertex of the subcell (which are quad)
+      ! - and KLOC signifies the vertex of the subcell (which are
+      !  quad)
       !
       !
       ! - subcell 1
@@ -1039,7 +1038,8 @@
       XIGP(4)   =  1/SQRT(3.0)     
       ETAGP(4)  =  1/SQRT(3.0)   
       !
-      ! - define positions of vertices of quadrilateral element in (XIP,ETAP) space.
+      ! - define positions of vertices of quadrilateral element in
+      !  (XIP,ETAP) space.
       !
       XIP(1)   = -1.0
       ETAP(1)  = -1.0
@@ -1053,7 +1053,8 @@
       XIP(4)   =  1.0
       ETAP(4)  =  1.0
       !
-      ! - generate values of the FE basis functions at Gaussian integration points
+      ! - generate values of the FE basis functions at Gaussian
+      !  integration points
       !
       do SJLOC = 1, NSCV! Was loop 
          !
@@ -1069,20 +1070,17 @@
                !
                do SKLOC = 1, SBNLOC! Was loop 
                   !
-                  POS(ICOORD) = POS(ICOORD) &
-                       + CORN(SJLOC,ICOORD,SKLOC)&
-                       *0.25*(1.+XIP(SKLOC)*XIGP(SGJ))&
-                       *(1.+ETAP(SKLOC)*ETAGP(SGJ))
+                  POS(ICOORD) = POS(ICOORD) + CORN(SJLOC,ICOORD&
+                       &,SKLOC) *0.25*(1.+XIP(SKLOC)*XIGP(SGJ)) *(1.&
+                       &+ETAP(SKLOC)*ETAGP(SGJ))
                   !
-                  DPDXI(ICOORD) = DPDXI(ICOORD) &
-                       + CORN(SJLOC,ICOORD,SKLOC)&
-                       *0.25*XIP(SKLOC)&
-                       *(1.+ETAP(SKLOC)*ETAGP(SGJ))
+                  DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(SJLOC,ICOORD&
+                       &,SKLOC) *0.25*XIP(SKLOC) *(1.+ETAP(SKLOC)&
+                       &*ETAGP(SGJ))
                   !
-                  DPDETA(ICOORD) = DPDETA(ICOORD) &
-                       + CORN(SJLOC,ICOORD,SKLOC)&
-                       *0.25*(1.+XIP(SKLOC)*XIGP(SGJ))&
-                       *ETAP(SKLOC)
+                  DPDETA(ICOORD) = DPDETA(ICOORD) + CORN(SJLOC,ICOORD&
+                       &,SKLOC) *0.25*(1.+XIP(SKLOC)*XIGP(SGJ)) &
+                       &*ETAP(SKLOC)
                   !
                END DO
                !
@@ -1123,11 +1121,11 @@
                   !
                   SN(SILOC,SGI)   = LIJXI(I)*LIJETA(J)
                   !
-                  SNLX(SILOC,SGI) = LIJXI(I)*DLIJETADXI(J)&
-                       + DLIJXIDXI(I)*LIJETA(J)
+                  SNLX(SILOC,SGI) = LIJXI(I)*DLIJETADXI(J) +&
+                       & DLIJXIDXI(I)*LIJETA(J)
                   !
-                  SNLY(SILOC,SGI) = LIJXI(I)*DLIJETADETA(J)&
-                       + DLIJXIDETA(I)*LIJETA(J)
+                  SNLY(SILOC,SGI) = LIJXI(I)*DLIJETADETA(J) +&
+                       & DLIJXIDETA(I)*LIJETA(J)
                   !
                END DO
                !
@@ -1151,7 +1149,8 @@
       DEALLOCATE( XIP )
       DEALLOCATE( ETAP )
       DEALLOCATE( CORN )
-      DEALLOCATE( LIJXI ) ! for derivatives wrt the second parametric space.
+      DEALLOCATE( LIJXI ) ! for derivatives wrt the second parametric
+      !  space.
       DEALLOCATE( LIJETA )
       DEALLOCATE( DLIJXIDXI )
       DEALLOCATE( DLIJXIDETA )
@@ -1167,10 +1166,8 @@
 
 
 
-    SUBROUTINE SFEQTRI( SNGI,   SNLOC, &
-                                ! - REALS
-         SN,     SNLX, &
-         SNLY,   SWEIGH )
+    SUBROUTINE SFEQTRI( SNGI,   SNLOC, & ! - REALS
+         SN,     SNLX, SNLY,   SWEIGH )
       !     ------------------------------------
       !
       ! - this subroutine generates the FE surface shape 
@@ -1198,8 +1195,10 @@
       ! - SBNLOC is the number of local nodes for a subcell
       ! - and SBNGI is the number of local integration points.
       !
-      INTEGER, PARAMETER :: NCOORD = 3, SBNLOC = 4, SBNGI = 4,  NSCV = 9, THREE = 3
-      REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIPGP, ETAPGP, XIP, ETAP
+      INTEGER, PARAMETER :: NCOORD = 3, SBNLOC = 4, SBNGI = 4,  NSCV &
+           &= 9, THREE = 3
+      REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIPGP,&
+           & ETAPGP, XIP, ETAP
       REAL, DIMENSION( : , : , : ), allocatable :: CORN
       REAL ::  L1, L2, L3
 
@@ -1219,7 +1218,8 @@
       ! - JLOC ranges from 1-9, and ICOORD ranges from 1-3 and KLOC
       ! - ranges from 1-4. JLOC signifies the particular subcell
       ! - JLOC signifies the co-ordinate of the subcell (L1,L2,L3) 
-      ! - and KLOC signifies the vertex of the subcell (which are quads)
+      ! - and KLOC signifies the vertex of the subcell (which are
+      !  quads)
       !
       ! - Note that for quadratic triangles the mid-side nodes
       ! - produce pentagonal shaped CVs these are broken into 
@@ -1403,7 +1403,8 @@
       XIPGP(4)  =  1./SQRT(3.0)
       ETAPGP(4) =  1./SQRT(3.0)
       !
-      ! - define postions of quadrilateral element in (XIP,ETAP) space.
+      ! - define postions of quadrilateral element in (XIP,ETAP)
+      !  space.
       !
       XIP(1)  = -1.0
       ETAP(1) = -1.0
@@ -1434,20 +1435,17 @@
                !
                do SKLOC = 1, SBNLOC! Was loop 
                   !
-                  POS(ICOORD) = POS(ICOORD) &
-                       + CORN(SJLOC,ICOORD,SKLOC)*&
-                       0.25*(1.+XIP(SKLOC)*XIPGP(SGJ))&
-                       *(1.+ETAP(SKLOC)*ETAPGP(SGJ))
+                  POS(ICOORD) = POS(ICOORD) + CORN(SJLOC,ICOORD&
+                       &,SKLOC)* 0.25*(1.+XIP(SKLOC)*XIPGP(SGJ)) *(1.&
+                       &+ETAP(SKLOC)*ETAPGP(SGJ))
                   !
-                  DPDXI(ICOORD) = DPDXI(ICOORD) &
-                       + CORN(SJLOC,ICOORD,SKLOC)&
-                       *0.25*XIP(SKLOC)&
-                       *(1.+ETAP(SKLOC)*ETAPGP(SGJ))
+                  DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(SJLOC,ICOORD&
+                       &,SKLOC) *0.25*XIP(SKLOC) *(1.+ETAP(SKLOC)&
+                       &*ETAPGP(SGJ))
                   !
-                  DPDETA(ICOORD) = DPDETA(ICOORD) &
-                       + CORN(SJLOC,ICOORD,SKLOC)&
-                       *0.25*(1.+XIP(SKLOC)*XIPGP(SGJ))&
-                       *ETAP(SKLOC) 
+                  DPDETA(ICOORD) = DPDETA(ICOORD) + CORN(SJLOC,ICOORD&
+                       &,SKLOC) *0.25*(1.+XIP(SKLOC)*XIPGP(SGJ)) &
+                       &*ETAP(SKLOC) 
                   !
                END DO
                !
@@ -1508,39 +1506,43 @@
 !!!   SHAPESV AND RELATED SUBRTS & FUNCTIONS
 !!!
 
-    subroutine shape_cv_n( ndim, cv_ele_type, &
-         cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
-         n, nlx, nly, nlz, &
-         un, unlx, unly, unlz )
-      ! Shape functions associated with volume integration using both CV basis 
-      ! functions CVN as well as FEM basis functions N (and its derivatives NLX, NLY, NLZ)
+    subroutine shape_cv_n( ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc&
+         &, cvn, cvweigh, n, nlx, nly, nlz, un, unlx, unly, unlz )
+      ! Shape functions associated with volume integration using both
+      !  CV basis 
+      ! functions CVN as well as FEM basis functions N (and its
+      !  derivatives NLX, NLY, NLZ)
       ! also for velocity basis functions UN, UNLX, UNLY, UNLZ
       implicit none
-      integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc
+      integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_nloc,&
+           & u_nloc
       real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: cvn
       real, dimension( cv_ngi ), intent( inout ) :: cvweigh
-      real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: n, nlx, nly, nlz
-      real, dimension( u_nloc, cv_ngi ), intent( inout ) :: un, unlx, unly, unlz
+      real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: n, nlx,&
+           & nly, nlz
+      real, dimension( u_nloc, cv_ngi ), intent( inout ) :: un, unlx,&
+           & unly, unlz
 
       ewrite(3,*) 'In SHAPE_CV_N'
 
       Select Case( cv_ele_type )
       case( 1, 2 ) ! 1D
-         call quad_1d_shape( cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, n, nlx, un, unlx ) 
+         call quad_1d_shape( cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, n&
+              &, nlx, un, unlx ) 
          nly = 0. 
          nlz = 0. 
          unly = 0. 
          unlz = 0. 
 
       case( 5, 6, 9, 10 ) ! Quadrilaterals and Hexahedra
-         call quad_nd_shape( ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
-              n, nlx, nly, nlz, &
-              un, unlx, unly, unlz )
+         call quad_nd_shape( ndim, cv_ele_type, cv_ngi, cv_nloc,&
+              & u_nloc, cvn, cvweigh, n, nlx, nly, nlz, un, unlx,&
+              & unly, unlz )
 
       case( 3, 4, 7, 8 ) ! Triangles and Tetrahedra
-         call vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, &
-              cvweigh, n, nlx, nly, nlz, &
-              un, unlx, unly, unlz )
+         call vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi,&
+              & cv_nloc, u_nloc, cvn, cvweigh, n, nlx, nly, nlz, un,&
+              & unlx, unly, unlz )
          !stop 12
       case default; FLExit( "Wrong integer for CV_ELE_TYPE" )
       end Select
@@ -1549,102 +1551,143 @@
 
     end subroutine shape_cv_n
 
-    subroutine cv_fem_shape_funs_plus_storage( &
-         ndim, cv_ele_type, &
-         cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
-                                ! Volume shape functions
-         cvweight, cvfen, cvfenlx_all, &
-         cvweight_short, cvfen_short, cvfenlx_short_all, &
-         ufen, ufenlx_all, &
-                                ! Surface of each CV shape functions
-         scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-         scvfen, scvfenslx, scvfensly, scvfeweigh, &
-         scvfenlx_all, &
-         sufen, sufenslx, sufensly, &
-         sufenlx_all, &
-                                ! Surface element shape funcs
-         u_on_face, ufem_on_face, nface, &
-         sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx_all, &
-         sbufen, sbufenslx, sbufensly, sbufenlx_all, &
-         cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-                                ! Define the gauss points that lie on the surface of the CV
-         findgpts, colgpts, ncolgpts, &
-         sele_overlap_scale, QUAD_OVER_WHOLE_ELE,&
-         state, StorName , indx )
+    subroutine cv_fem_shape_funs_plus_storage(ndim, cv_ele_type,&
+         & cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
+      !  Volume shape functions
+         cvweight, cvfen, cvfenlx_all, cvweight_short, cvfen_short,&
+              & cvfenlx_short_all, ufen, ufenlx_all, &! Surface of
+         !  each CV shape functions
+         scvngi, cv_neiloc, cv_on_face, cvfem_on_face, scvfen,&
+              & scvfenslx, scvfensly, scvfeweigh, scvfenlx_all, sufen&
+              &, sufenslx, sufensly, sufenlx_all, &! Surface element
+         !  shape funcs
+         u_on_face, ufem_on_face, nface, sbcvngi, sbcvn, sbcvfen,&
+              & sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx_all,&
+              & sbufen, sbufenslx, sbufensly, sbufenlx_all,&
+              & cv_sloclist, u_sloclist, cv_snloc, u_snloc, &! Define
+         !  the gauss points that lie on the surface of the CV
+         findgpts, colgpts, ncolgpts, sele_overlap_scale,&
+              & QUAD_OVER_WHOLE_ELE, state, StorName , indx )
       implicit none
-      !This subroutine calls cv_fem_shape_funs only if the shape functions have not been calculated already
-      !If they are in storage, the values are returned without calculations
-      !IMPORTANT: CVN CANNOT BE CALCULATED FOR PnDGPn+1 AND IT WILL JUST RETURN ZEROS!!!!
-      !for Pn+1DGPnDG ONLY THIS SUBROUTINE RETURN VALUES FOR CVN
-      integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_ngi_short, cv_nloc, u_nloc
-      real, dimension( : , : ), pointer,  intent( inout ) :: cvn ! dimension( cv_nloc, cv_ngi )
-      real, dimension(  : , : ),pointer, intent( inout ) :: cvn_short!dimension( cv_nloc, cv_ngi_short )
-      real, dimension( : ), pointer,intent( inout ) :: cvweight!dimension( cv_ngi )
-      real, dimension(  : , : ), pointer,intent( inout ) :: cvfen!dimension( cv_nloc, cv_ngi )
-      real, dimension(  : , : , :), pointer,intent( inout ) ::  cvfenlx_all!dimension( ndim, cv_nloc, cv_ngi )
-      real, dimension( : ), pointer,intent( inout ) :: cvweight_short!dimension( cv_ngi_short )
-      real, dimension(  : , : ),pointer, intent( inout ) :: cvfen_short!dimension( cv_nloc, cv_ngi_short )
-      real, dimension(  : , :,: ),pointer, intent( inout ) :: cvfenlx_short_all!dimension(ndim, cv_nloc, cv_ngi_short )
+      !This subroutine calls cv_fem_shape_funs only if the shape
+      ! functions have not been calculated already
+      !If they are in storage, the values are returned without
+      ! calculations
+      integer, intent( in ) :: ndim, cv_ele_type, cv_ngi,&
+           & cv_ngi_short, cv_nloc, u_nloc
+      real, dimension( : , : ), pointer,  intent( inout ) :: cvn !
+      !  dimension( cv_nloc, cv_ngi )
+      real, dimension(  : , : ),pointer, intent( inout ) ::&
+           & cvn_short!dimension( cv_nloc, cv_ngi_short )
+      real, dimension( : ), pointer,intent( inout ) ::&
+           & cvweight!dimension( cv_ngi )
+      real, dimension(  : , : ), pointer,intent( inout ) ::&
+           & cvfen!dimension( cv_nloc, cv_ngi )
+      real, dimension(  : , : , :), pointer,intent( inout ) :: &
+           & cvfenlx_all!dimension( ndim, cv_nloc, cv_ngi )
+      real, dimension( : ), pointer,intent( inout ) ::&
+           & cvweight_short!dimension( cv_ngi_short )
+      real, dimension(  : , : ),pointer, intent( inout ) ::&
+           & cvfen_short!dimension( cv_nloc, cv_ngi_short )
+      real, dimension(  : , :,: ),pointer, intent( inout ) ::&
+           & cvfenlx_short_all!dimension(ndim, cv_nloc, cv_ngi_short )
 
-      real, dimension(  : , : ), pointer,intent( inout ) :: ufen!dimension( u_nloc, cv_ngi )
-      real, dimension(  : , :,: ), pointer,intent( inout ) :: ufenlx_all!dimension( ndim, u_nloc, cv_ngi )
+      real, dimension(  : , : ), pointer,intent( inout ) ::&
+           & ufen!dimension( u_nloc, cv_ngi )
+      real, dimension(  : , :,: ), pointer,intent( inout ) ::&
+           & ufenlx_all!dimension( ndim, u_nloc, cv_ngi )
 
       integer, intent( in ) :: scvngi
-      integer, dimension(  : , : ), pointer,intent( inout ) :: cv_neiloc!dimension( cv_nloc, scvngi )
-      logical, dimension(  : , : ),intent( inout ) :: cv_on_face, cvfem_on_face!dimension( cv_nloc, scvngi )
-      real, dimension(  : , : ), pointer,intent( inout ) :: scvfen, scvfenslx, scvfensly!dimension( cv_nloc, scvngi )
-      real, dimension( : ), pointer,intent( inout ) :: scvfeweigh!dimension( scvngi )
-      real, dimension(  : , : ,: ),pointer, intent( inout ) :: scvfenlx_all!dimension( ndim, cv_nloc, scvngi )
-      real, dimension(  : , : ),pointer, intent( inout ) :: sufen, sufenslx, sufensly!dimension( u_nloc, scvngi )
-      real, dimension(  : , :, : ),pointer, intent( inout ) :: sufenlx_all !dimension( ndim, u_nloc, scvngi )
-      logical, dimension(  : , : ), intent( inout ) :: u_on_face, ufem_on_face!dimension( u_nloc, scvngi )
+      integer, dimension(  : , : ), pointer,intent( inout ) ::&
+           & cv_neiloc!dimension( cv_nloc, scvngi )
+      logical, dimension(  : , : ),intent( inout ) :: cv_on_face,&
+           & cvfem_on_face!dimension( cv_nloc, scvngi )
+      real, dimension(  : , : ), pointer,intent( inout ) :: scvfen,&
+           & scvfenslx, scvfensly!dimension( cv_nloc, scvngi )
+      real, dimension( : ), pointer,intent( inout ) ::&
+           & scvfeweigh!dimension( scvngi )
+      real, dimension(  : , : ,: ),pointer, intent( inout ) ::&
+           & scvfenlx_all!dimension( ndim, cv_nloc, scvngi )
+      real, dimension(  : , : ),pointer, intent( inout ) :: sufen,&
+           & sufenslx, sufensly!dimension( u_nloc, scvngi )
+      real, dimension(  : , :, : ),pointer, intent( inout ) ::&
+           & sufenlx_all !dimension( ndim, u_nloc, scvngi )
+      logical, dimension(  : , : ), intent( inout ) :: u_on_face,&
+           & ufem_on_face!dimension( u_nloc, scvngi )
       integer, intent( in ) :: nface, sbcvngi
       logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
-      ! if QUAD_OVER_WHOLE_ELE then dont divide element into CV's to form quadrature.
-      real, dimension(  : , : ),pointer, intent( inout ) :: sbcvn!dimension( cv_snloc, sbcvngi )
-      real, dimension(  : , : ),pointer, intent( inout ) :: sbcvfen, sbcvfenslx, sbcvfensly! dimension( cv_snloc, sbcvngi )
-      real, dimension( : ),pointer, intent( inout ) :: sbcvfeweigh!dimension( sbcvngi )
-      real, dimension(  : , :, : ), pointer,intent( inout ) :: sbcvfenlx_all!dimension( ndim, cv_snloc, sbcvngi )
+      ! if QUAD_OVER_WHOLE_ELE then dont divide element into CV's to
+      !  form quadrature.
+      real, dimension(  : , : ),pointer, intent( inout ) ::&
+           & sbcvn!dimension( cv_snloc, sbcvngi )
+      real, dimension(  : , : ),pointer, intent( inout ) :: sbcvfen,&
+           & sbcvfenslx, sbcvfensly! dimension( cv_snloc, sbcvngi )
+      real, dimension( : ),pointer, intent( inout ) ::&
+           & sbcvfeweigh!dimension( sbcvngi )
+      real, dimension(  : , :, : ), pointer,intent( inout ) ::&
+           & sbcvfenlx_all!dimension( ndim, cv_snloc, sbcvngi )
       integer, intent( in ) :: cv_snloc, u_snloc
-      real, dimension(  : , : ),pointer, intent( inout ) :: sbufen, sbufenslx, sbufensly!dimension( u_snloc, sbcvngi )
-      real, dimension(  : , :,: ),pointer, intent( inout ) :: sbufenlx_all !dimension( ndim, u_snloc, sbcvngi )
-      integer, dimension(  : , : ), pointer,intent( inout ) :: cv_sloclist!dimension( nface, cv_snloc )
-      integer, dimension(  : , : ),pointer, intent( inout ) :: u_sloclist!dimension( nface, u_snloc )
-      integer, dimension( : ),pointer, intent( inout ) :: findgpts!dimension( cv_nloc + 1 )
-      integer, dimension( : ), pointer,intent( inout ) :: colgpts!dimension( cv_nloc * scvngi )
+      real, dimension(  : , : ),pointer, intent( inout ) :: sbufen,&
+           & sbufenslx, sbufensly!dimension( u_snloc, sbcvngi )
+      real, dimension(  : , :,: ),pointer, intent( inout ) ::&
+           & sbufenlx_all !dimension( ndim, u_snloc, sbcvngi )
+      integer, dimension(  : , : ), pointer,intent( inout ) ::&
+           & cv_sloclist!dimension( nface, cv_snloc )
+      integer, dimension(  : , : ),pointer, intent( inout ) ::&
+           & u_sloclist!dimension( nface, u_snloc )
+      integer, dimension( : ),pointer, intent( inout ) ::&
+           & findgpts!dimension( cv_nloc + 1 )
+      integer, dimension( : ), pointer,intent( inout ) ::&
+           & colgpts!dimension( cv_nloc * scvngi )
       integer,pointer, intent( inout ) :: ncolgpts
-      real, dimension( : ),pointer, intent( inout ) :: sele_overlap_scale!dimension( cv_nloc )
+      real, dimension( : ),pointer, intent( inout ) ::&
+           & sele_overlap_scale!dimension( cv_nloc )
       type( state_type ), intent( inout ), dimension(:) :: state
       character(len=*), intent(in) :: StorName
       integer, intent(inout) :: indx
 
       ! Local variables
-      real, dimension( : , : ), allocatable :: cvn2 ! dimension( cv_nloc, cv_ngi )
-      real, dimension(  : , : ), allocatable :: cvn_short2!dimension( cv_nloc, cv_ngi_short )
-      real, dimension( : ), allocatable :: cvweight2!dimension( cv_ngi )
-      real, dimension(  : , : ), allocatable :: cvfen2, cvfenlx2, cvfenly2, cvfenlz2!dimension( cv_nloc, cv_ngi )
-      real, dimension( : ), allocatable :: cvweight_short2!dimension( cv_ngi_short )
-      real, dimension(  : , : ), allocatable :: cvfen_short2, cvfenlx_short2, &!dimension( cv_nloc, cv_ngi_short )
-           cvfenly_short2, cvfenlz_short2
-      real, dimension(  : , : ), allocatable :: ufen2, ufenlx2, ufenly2, ufenlz2!dimension( u_nloc, cv_ngi )
-      integer, dimension(  : , : ), allocatable :: cv_neiloc2!dimension( cv_nloc, scvngi )
-      real, dimension(  : , : ), allocatable :: scvfen2, scvfenslx2, scvfensly2!dimension( cv_nloc, scvngi )
-      real, dimension( : ), allocatable :: scvfeweigh2!dimension( scvngi )
-      real, dimension(  : , : ), allocatable :: scvfenlx2, scvfenly2, scvfenlz2!dimension( cv_nloc, scvngi )
-      real, dimension(  : , : ), allocatable :: sufen2, sufenslx2, sufensly2, sufenlx2, &!dimension( u_nloc, scvngi )
-           sufenly2, sufenlz2
-      real, dimension(  : , : ), allocatable :: sbcvn2!dimension( cv_snloc, sbcvngi )
-      real, dimension(  : , : ), allocatable :: sbcvfen2, sbcvfenslx2, sbcvfensly2! dimension( cv_snloc, sbcvngi )
-      real, dimension( : ), allocatable :: sbcvfeweigh2!dimension( sbcvngi )
-      real, dimension(  : , : ), allocatable :: sbcvfenlx2, sbcvfenly2, sbcvfenlz2!dimension( cv_snloc, sbcvngi )
-      real, dimension(  : , : ), allocatable :: sbufen2, sbufenslx2, sbufensly2, &!dimension( u_snloc, sbcvngi )
-           sbufenlx2, sbufenly2, sbufenlz2
-      integer, dimension(  : , : ), allocatable :: cv_sloclist2!dimension( nface, cv_snloc )
-      integer, dimension(  : , : ), allocatable :: u_sloclist2!dimension( nface, u_snloc )
-      integer, dimension( : ), allocatable :: findgpts2!dimension( cv_nloc + 1 )
-      integer, dimension( : ), allocatable :: colgpts2!dimension( cv_nloc * scvngi )
-      integer :: ncolgpts2
-      real, dimension( : ), allocatable :: sele_overlap_scale2!dimension( cv_nloc )
+      real, dimension( : , : ), allocatable :: cvn2 ! dimension(
+      !  cv_nloc, cv_ngi )
+      real, dimension(  : , : ), allocatable :: cvn_short2!dimension(
+      ! cv_nloc, cv_ngi_short )
+      real, dimension( : ), allocatable :: cvweight2!dimension(
+      ! cv_ngi )
+      real, dimension(  : , : ), allocatable :: cvfen2
+      real, dimension(:,:,:), allocatable :: cvfenlx_all2, &
+            cvfenlx_short_all2, ufenlx_all2, scvfenlx_all2,&
+            sufenlx_all2, sbcvfenlx_all2, sbufenlx_all2
+      real, dimension( : ), allocatable :: cvweight_short2!dimension(
+      ! cv_ngi_short )
+      real, dimension(  : , : ), allocatable :: cvfen_short2
+      real, dimension(  : , : ), allocatable :: ufen2
+      integer, dimension(  : , : ), allocatable ::&
+           & cv_neiloc2!dimension( cv_nloc, scvngi )
+      real, dimension(  : , : ), allocatable :: scvfen2, scvfenslx2,&
+           & scvfensly2!dimension( cv_nloc, scvngi )
+      real, dimension( : ), allocatable :: scvfeweigh2!dimension(
+      ! scvngi )
+      real, dimension(  : , : ), allocatable :: sufen2, sufenslx2,&
+           & sufensly2
+      real, dimension(  : , : ), allocatable :: sbcvn2!dimension(
+      ! cv_snloc, sbcvngi )
+      real, dimension(  : , : ), allocatable :: sbcvfen2, sbcvfenslx2&
+           &, sbcvfensly2! dimension( cv_snloc, sbcvngi )
+      real, dimension( : ), allocatable :: sbcvfeweigh2!dimension(
+      ! sbcvngi )
+      real, dimension(  : , : ), allocatable :: sbufen2, sbufenslx2,&
+           & sbufensly2!dimension( u_snloc, sbcvngi )
+      integer, dimension(  : , : ), allocatable ::&
+           & cv_sloclist2!dimension( nface, cv_snloc )
+      integer, dimension(  : , : ), allocatable ::&
+           & u_sloclist2!dimension( nface, u_snloc )
+      integer, dimension( : ), allocatable :: findgpts2!dimension(
+      ! cv_nloc + 1 )
+      integer, dimension( : ), allocatable :: colgpts2!dimension(
+      ! cv_nloc * scvngi )
+      integer :: ncolgpts2, idim
+      real, dimension( : ), allocatable ::&
+           & sele_overlap_scale2!dimension( cv_nloc )
 
       !Variables to store things in state
       type(mesh_type), pointer :: fl_mesh
@@ -1653,355 +1696,587 @@
       type(scalar_field), pointer :: pntr_Storage
       integer :: counter_from, counter_to, siz1,siz2
       logical :: recovering_values
-      integer, dimension(  : , : ),pointer :: ptr_u_on_face, ptr_ufem_on_face!dimension( u_nloc, scvngi )
-      integer, dimension(  : , : ),pointer:: ptr_cv_on_face, ptr_cvfem_on_face!dimension( cv_nloc, scvngi )
+      integer, dimension(  : , : ),pointer :: ptr_u_on_face,&
+           & ptr_ufem_on_face!dimension( u_nloc, scvngi )
+      integer, dimension(  : , : ),pointer:: ptr_cv_on_face,&
+           & ptr_cvfem_on_face!dimension( cv_nloc, scvngi )
       ewrite(3,*) 'in  cv_fem_shape_funs subrt'
+
       !#########Storing area#################################
-      !If new mesh or mesh moved, indx will be zero (set in Multiphase_TimeLoop)
+      !If new mesh or mesh moved indx will be zero (set in
+      ! Multiphase_TimeLoop)
       recovering_values = .false.
-      if (indx>0) recovering_values = .true.!Everything has been calculated already
+      if (indx>0) recovering_values = .true.!Everything has been
+      ! calculated already
 
       !If values not stored then create space in state
       if (indx <=0) then
           if (has_scalar_field(state(1),StorName)) then
-!               !We have to deallocate also the mesh type we are using inside the scalar field?
-!               pntr_Storage => extract_scalar_field(state(1), StorName)
-!               !deallocate mesh
-!               call deallocate(pntr_Storage%mesh)!Can I remove this without incurring in memory leaking?
-
+               !We have to deallocate also the mesh type we are using
+             ! inside the scalar field
+               pntr_Storage => extract_scalar_field(state(1),&
+                    & StorName)
+               !deallocate mesh
+               call deallocate(pntr_Storage%mesh)
               call remove_scalar_field(state(1), StorName)
           end if
-          !Get mesh file just to be able to allocate the fields we want to store
+          !Get mesh file just to be able to allocate the fields we
+          ! want to store
           fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
           Auxmesh = fl_mesh
           !The number of nodes I want does not coincide
-          Auxmesh%nodes = CV_NLOC*CV_NGI*(2+ndim) + CV_NLOC*CV_NGI_SHORT*(2+ndim) + CV_NGI + CV_NGI_SHORT +&
-           SCVNGI + SBCVNGI + U_NLOC*CV_NGI * (1+ndim) + CV_NLOC * SCVNGI * (3+ndim)+ U_NLOC*SCVNGI * (3+ndim) + &
-           CV_SNLOC * SBCVNGI * (4+ndim) + U_SNLOC * SBCVNGI * (3+ndim) + CV_NLOC
+          Auxmesh%nodes = CV_NLOC*CV_NGI*(2+ndim) + CV_NLOC&
+               &*CV_NGI_SHORT*(2+ndim) + CV_NGI + CV_NGI_SHORT +&
+               & SCVNGI + SBCVNGI + U_NLOC*CV_NGI * (1+ndim) +&
+               & CV_NLOC * SCVNGI * (3+ndim)+ U_NLOC*SCVNGI * (3&
+               &+ndim) + CV_SNLOC * SBCVNGI * (4+ndim) + U_SNLOC *&
+               & SBCVNGI * (3+ndim) + CV_NLOC
+
           call allocate (targ_Storage, Auxmesh,name="StorageMesh")
           !Prepare room to store integers and logicals
-          Auxmesh%nodes = nface*cv_snloc + nface * u_snloc + u_nloc*scvngi*2 + cv_nloc*scvngi*2+&
-                ( cv_nloc + 1 ) + cv_nloc * scvngi + (1) + cv_nloc * scvngi
-          Auxmesh%shape%loc =1!nodes times %loc is the size of the array I want to store
-          call allocate (targ_Storage%mesh, Auxmesh%nodes, Auxmesh%nodes,Auxmesh%shape, name="StorageMesh" )
+          Auxmesh%nodes = nface*cv_snloc + nface * u_snloc + u_nloc&
+               &*scvngi*2 + cv_nloc*scvngi*2+ ( cv_nloc + 1 ) +&
+               & cv_nloc * scvngi + (1) + cv_nloc * scvngi
+          Auxmesh%shape%loc =1!nodes times %loc is the size of the
+          ! array I want to store
+          call allocate (targ_Storage%mesh, Auxmesh%nodes, Auxmesh&
+               &%nodes,Auxmesh%shape, name="StorageMesh" )
           !Now we insert them in state and store the index
-!          call insert(state(1), targ_Storage%mesh, "StorageMesh")
+           call insert(state(1), targ_Storage%mesh, "StorageMesh")
           call insert(state(1), targ_Storage, StorName)
           call deallocate (targ_Storage)
-!          call deallocate (Auxmesh)
           indx = size(state(1)%scalar_fields)
-
       end if
-          !Set the pointers to state, indx is an input
+
+
+          if (.not.recovering_values) then
+              !Allocate local variables
+              allocate(cvn2( cv_nloc, cv_ngi ), cvn_short2( cv_nloc, cv_ngi_short ), cvweight2( cv_ngi ), cvfen2( cv_nloc, cv_ngi ),&
+              cvfenlx_all2( 3, cv_nloc, cv_ngi ), cvweight_short2( cv_ngi_short ),&
+              cvfen_short2( cv_nloc, cv_ngi_short ), cvfenlx_short_all2( 3, cv_nloc, cv_ngi_short ), ufen2( u_nloc, cv_ngi ),&
+              ufenlx_all2( 3, u_nloc, cv_ngi ), cv_neiloc2( cv_nloc, scvngi ),scvfen2( cv_nloc, scvngi ), scvfenslx2( cv_nloc, scvngi ), &
+              scvfensly2( cv_nloc, scvngi ), scvfeweigh2( scvngi ),scvfenlx_all2( 3, cv_nloc, scvngi ),  sufen2( u_nloc, scvngi ),&
+              sufenslx2( u_nloc, scvngi ), sufensly2( u_nloc, scvngi ),&
+              sufenlx_all2( 3, u_nloc, scvngi ), sbcvn2( cv_snloc, sbcvngi ),&
+              sbcvfen2( cv_snloc, sbcvngi ), sbcvfenslx2( cv_snloc, sbcvngi ), sbcvfensly2( cv_snloc, sbcvngi ),  sbcvfeweigh2( sbcvngi ),&
+              sbcvfenlx_all2( 3, cv_snloc, sbcvngi ), sbufen2( u_snloc, sbcvngi ),&
+              sbufenslx2( u_snloc, sbcvngi ), sbufensly2( u_snloc, sbcvngi ), sbufenlx_all2(3, u_snloc, sbcvngi ),&
+              cv_sloclist2( nface, cv_snloc ),  u_sloclist2( nface, u_snloc ), findgpts2( cv_nloc + 1 ),&
+              colgpts2( cv_nloc * scvngi ), sele_overlap_scale2( cv_nloc ))
+          
+              findgpts2 = 0; colgpts2= 0; ncolgpts2 = 0
+          
+              call cv_fem_shape_funs( &
+              ndim, cv_ele_type, &
+              cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn2, cvn_short2, &
+                                     ! Volume shape functions
+              cvweight2, cvfen2, cvfenlx_all2(1,:,:), cvfenlx_all2(2,:,:), cvfenlx_all2(3,:,:), &
+              cvweight_short2, cvfen_short2, cvfenlx_short_all2(1,:,:), cvfenlx_short_all2(2,:,:), cvfenlx_short_all2(3,:,:), &
+              ufen2, ufenlx_all2(1,:,:), ufenlx_all2(2,:,:), ufenlx_all2(3,:,:), &
+                                     ! Surface of each CV shape functions
+              scvngi, cv_neiloc2, cv_on_face, cvfem_on_face, &
+              scvfen2, scvfenslx2, scvfensly2, scvfeweigh2, &
+              scvfenlx_all2(1,:,:), scvfenlx_all2(2,:,:), scvfenlx_all2(3,:,:), &
+              sufen2, sufenslx2, sufensly2, &
+              sufenlx_all2(1,:,:), sufenlx_all2(2,:,:), sufenlx_all2(3,:,:), &
+                                     ! Surface element shape funcs
+              u_on_face, ufem_on_face, nface, &
+              sbcvngi, sbcvn2, sbcvfen2, sbcvfenslx2, sbcvfensly2, sbcvfeweigh2, sbcvfenlx_all2(1,:,:),&
+              sbcvfenlx_all2(2,:,:), sbcvfenlx_all2(3,:,:), &
+              sbufen2, sbufenslx2, sbufensly2, sbufenlx_all2(1,:,:), sbufenlx_all2(2,:,:), sbufenlx_all2(3,:,:), &
+              cv_sloclist2, u_sloclist2, cv_snloc, u_snloc, &
+                                     ! Define the gauss points that lie on the surface of the CV
+              findgpts2, colgpts2, ncolgpts2, &
+              sele_overlap_scale2, QUAD_OVER_WHOLE_ELE)
+              !Calculate the CVN shape functions manually as for 
+              !compact_overlapping is not calculated by the previous subroutine   
+              !This should not affect the usual calculation of cvn           
+              call get_CVN_compact_overlapping( CV_ELE_TYPE, NDIM, CV_NGI,&
+              &CV_NLOC, cvn2, cvweight2)
+              cvn_short2 = cvn2
+
+             !Store calculated data into state, indx is an input
+              !###cv_nloc*cv_ngi section###
+              siz1 = cv_nloc;  siz2 = cv_ngi
+              counter_from = 1; counter_to = siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvn2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfen2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+              !###cv_nloc*cv_ngi_short section###
+              siz1 = cv_nloc;  siz2 = cv_ngi_short
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvn_short2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfen_short2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfenlx_short_all2(1:ndim,:,:),[ndim*siz1*siz2])
+              !###u_nloc*cv_ngi section###
+              siz1 = u_nloc;  siz2 = cv_ngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(ufen2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(ufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+
+              !###cv_nloc*scvngi section###
+              siz1 = cv_nloc;  siz2 = scvngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfen2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfenslx2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfensly2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+
+              !###u_nloc*scvngi section###
+              siz1 = u_nloc;  siz2 = scvngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufen2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufenslx2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufensly2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+
+              !###cv_snloc*sbcvngi section###
+              siz1 = cv_snloc;  siz2 = sbcvngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvn2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfen2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfenslx2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfensly2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+
+              !###u_snloc*sbcvngi section###
+              siz1 = u_snloc;  siz2 = sbcvngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufen2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufenslx2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufensly2,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+
+              !###cv_ngi###
+              siz1 = cv_ngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = cvweight2(1:siz1)
+              !###cv_ngi_short###
+              siz1 = cv_ngi_short
+              counter_from = counter_to + 1; counter_to = counter_to + siz1
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = cvweight_short2(1:siz1)
+
+              !###scvngi###
+              siz1 = scvngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = scvfeweigh2(1:siz1)
+
+              !###sbcvngi###
+              siz1 = sbcvngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = sbcvfeweigh2(1:siz1)
+
+              !###cv_nloc###
+              siz1 = cv_nloc
+              counter_from = counter_to + 1; counter_to = counter_to + siz1
+              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = sele_overlap_scale2(1:siz1)
+
+              !###STORE INTEGERS###
+              !###cv_nloc + 1###
+              siz1 = cv_nloc + 1
+              counter_from = 1; counter_to = siz1
+              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = findgpts2(1:siz1)
+              !###cv_nloc * scvngi###
+              siz1 = cv_nloc * scvngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1
+              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = colgpts2(1:siz1)
+              !###cv_nloc*scvngi section###
+              siz1 = cv_nloc;  siz2 = scvngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_neiloc2,[siz1*siz2])
+              !###nface*cv_snloc section###
+              siz1 = nface;  siz2 = cv_snloc
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_sloclist2,[siz1*siz2])
+              !###nface*u_snloc section###
+              siz1 = nface;  siz2 = u_snloc
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(u_sloclist2,[siz1*siz2])
+              !###1###
+              siz1 = 1
+              counter_from = counter_to + 1; counter_to = counter_to + siz1
+              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from) = ncolgpts2
+              !Store logicals as integer since there are no data types to store logicals in state
+              !###u_nloc*scvngi section###
+              siz1 = u_nloc;  siz2 = scvngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(u_on_face,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(ufem_on_face,[siz1*siz2])
+
+              !###cv_nloc*scvngi section###
+              siz1 = cv_nloc;  siz2 = scvngi
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_on_face,[siz1*siz2])
+              counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cvfem_on_face,[siz1*siz2])
+
+
+              !deallocate local variables
+              deallocate(cvn2, cvn_short2, cvweight2, cvfen2,&
+              cvfenlx_all2, cvweight_short2,&
+              cvfen_short2, cvfenlx_short_all2,&
+              ufen2, ufenlx_all2, cv_neiloc2,scvfen2, scvfenslx2, &
+              scvfensly2, scvfeweigh2, scvfenlx_all2,  sufen2, sufenslx2, sufensly2, &
+              sufenlx_all2, sbcvn2,&
+              sbcvfen2, sbcvfenslx2, sbcvfensly2,  sbcvfeweigh2,&
+              sbcvfenlx_all2, sbufen2,&
+              sbufenslx2, sbufensly2, sbufenlx_all2, cv_sloclist2,  u_sloclist2, findgpts2,&
+              colgpts2, sele_overlap_scale2)
+
+          end if
+
+          !Get data from state, indx is an input
           !###cv_nloc*cv_ngi section###
           siz1 = cv_nloc;  siz2 = cv_ngi
           counter_from = 1; counter_to = siz1*siz2
-          cvn(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          cvfen(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-          cvfenlx_all(1:ndim,1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), cvn, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), cvfen, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2*ndim
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), cvfenlx_all,&
+          &ndim, siz1,siz2)
           !###cv_nloc*cv_ngi_short section###
           siz1 = cv_nloc;  siz2 = cv_ngi_short
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          cvn_short(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          cvfen_short(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-          cvfenlx_short_all(1:ndim,1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), cvn_short, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), cvfen_short, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2*ndim
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), cvfenlx_short_all,&
+          &ndim, siz1,siz2)
+
           !###u_nloc*cv_ngi section###
           siz1 = u_nloc;  siz2 = cv_ngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          ufen(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-          ufenlx_all(1:ndim, 1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), ufen, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2*ndim
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), ufenlx_all,&
+          & ndim, siz1,siz2)
 
           !###cv_nloc*scvngi section###
           siz1 = cv_nloc;  siz2 = scvngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          scvfen(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          scvfenslx(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          scvfensly(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-          scvfenlx_all(1:ndim,1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), scvfen, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), scvfenslx, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), scvfensly, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2*ndim
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), scvfenlx_all,&
+          & ndim, siz1,siz2)
 
           !###u_nloc*scvngi section###
           siz1 = u_nloc;  siz2 = scvngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          sufen(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          sufenslx(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          sufensly(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-          sufenlx_all(1:ndim,1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sufen, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sufenslx, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sufensly, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2*ndim
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sufenlx_all,&
+          & ndim, siz1,siz2)
 
           !###cv_snloc*sbcvngi section###
           siz1 = cv_snloc;  siz2 = sbcvngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          sbcvn(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          sbcvfen(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          sbcvfenslx(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          sbcvfensly(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-          sbcvfenlx_all(1:ndim,1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sbcvn, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sbcvfen, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sbcvfenslx, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sbcvfensly, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2*ndim
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sbcvfenlx_all,&
+          & ndim, siz1,siz2)
 
           !###u_snloc*sbcvngi section###
           siz1 = u_snloc;  siz2 = sbcvngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          sbufen(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          sbufenslx(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          sbufensly(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-          sbufenlx_all(1:ndim,1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sbufen, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sbufenslx, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sbufensly, siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2*ndim
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%val(counter_from:counter_to), sbufenlx_all,&
+          & ndim, siz1,siz2)
 
           !###cv_ngi###
           siz1 = cv_ngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1
-          cvweight(1:siz1) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1
+          cvweight => state(1)%scalar_fields(indx)%ptr&
+               &%val(counter_from:counter_to)
           !###cv_ngi_short###
           siz1 = cv_ngi_short
-          counter_from = counter_to + 1; counter_to = counter_to + siz1
-          cvweight_short(1:siz1) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1
+          cvweight_short=> state(1)%scalar_fields(indx)%ptr&
+               &%val(counter_from:counter_to)
 
           !###scvngi###
           siz1 = scvngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1
-          scvfeweigh(1:siz1) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1
+          scvfeweigh => state(1)%scalar_fields(indx)%ptr&
+               &%val(counter_from:counter_to)
 
           !###sbcvngi###
           siz1 = sbcvngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1
-          sbcvfeweigh(1:siz1) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1
+          sbcvfeweigh => state(1)%scalar_fields(indx)%ptr&
+               &%val(counter_from:counter_to)
 
           !###cv_nloc###
           siz1 = cv_nloc
-          counter_from = counter_to + 1; counter_to = counter_to + siz1
-          sele_overlap_scale(1:siz1) => state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1
+          sele_overlap_scale => state(1)%scalar_fields(indx)&
+               &%ptr%val(counter_from:counter_to)
 
           !###STORE INTEGERS###
           !###cv_nloc + 1###
           siz1 = cv_nloc + 1
           counter_from = 1; counter_to = siz1
-          findgpts(1:siz1) => state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to)
+          findgpts => state(1)%scalar_fields(indx)%ptr%mesh&
+               &%ndglno(counter_from:counter_to)
           !###cv_nloc * scvngi###
           siz1 = cv_nloc * scvngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1
-          colgpts(1:siz1) => state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1
+          colgpts => state(1)%scalar_fields(indx)%ptr%mesh&
+               &%ndglno(counter_from:counter_to)
           !###cv_nloc*scvngi section###
           siz1 = cv_nloc;  siz2 = scvngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          cv_neiloc(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%mesh%ndglno(counter_from:counter_to), cv_neiloc,&
+          & siz1,siz2)
           !###nface*cv_snloc section###
           siz1 = nface;  siz2 = cv_snloc
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          cv_sloclist(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%mesh%ndglno(counter_from:counter_to), cv_sloclist,&
+          & siz1,siz2)
           !###nface*u_snloc section###
           siz1 = nface;  siz2 = u_snloc
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          u_sloclist(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%mesh%ndglno(counter_from:counter_to), u_sloclist,&
+          & siz1,siz2)
           !###1###
           siz1 = 1
-          counter_from = counter_to + 1; counter_to = counter_to + siz1
-          ncolgpts => state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from)
-          !Store logicals as integer since there are no data types to store logicals in state
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1
+          ncolgpts => state(1)%scalar_fields(indx)%ptr%mesh&
+               &%ndglno(counter_from)
+          !Store logicals as integer since there are no data types to
+          ! store logicals in state
           !###u_nloc*scvngi section###
           siz1 = u_nloc;  siz2 = scvngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          ptr_u_on_face(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          ptr_ufem_on_face(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%mesh%ndglno(counter_from:counter_to), ptr_u_on_face,&
+          & siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%mesh%ndglno(counter_from:counter_to),ptr_ufem_on_face,&
+          & siz1,siz2)
 
           !###cv_nloc*scvngi section###
           siz1 = cv_nloc;  siz2 = scvngi
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          ptr_cv_on_face(1:siz1,1:siz2) => state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to)
-          counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-          ptr_cvfem_on_face(1:siz1,1:siz2) =>state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to)
-          if (recovering_values) then
-              !Recover logical values from integer storage...not the best way to store logicals...
-              !but in theory they take the same space
-              u_on_face = ptr_u_on_face
-              ufem_on_face = ptr_ufem_on_face
-              cv_on_face = ptr_cv_on_face
-              cvfem_on_face = ptr_cvfem_on_face
-          else
-              !Allocate local variables
-              allocate(cvn2( cv_nloc, cv_ngi ), cvn_short2( cv_nloc, cv_ngi_short ), cvweight2( cv_ngi ), cvfen2( cv_nloc, cv_ngi ),&
-              cvfenlx2( cv_nloc, cv_ngi ), cvfenly2( cv_nloc, cv_ngi ), cvfenlz2( cv_nloc, cv_ngi ), cvweight_short2( cv_ngi_short ),&
-              cvfen_short2( cv_nloc, cv_ngi_short ), cvfenlx_short2( cv_nloc, cv_ngi_short ),cvfenly_short2( cv_nloc, cv_ngi_short ), &
-              cvfenlz_short2( cv_nloc, cv_ngi_short ), ufen2( u_nloc, cv_ngi ), ufenlx2( u_nloc, cv_ngi ), ufenly2( u_nloc, cv_ngi ), &
-              ufenlz2( u_nloc, cv_ngi ), cv_neiloc2( cv_nloc, scvngi ),scvfen2( cv_nloc, scvngi ), scvfenslx2( cv_nloc, scvngi ), &
-              scvfensly2( cv_nloc, scvngi ), scvfeweigh2( scvngi ),scvfenlx2( cv_nloc, scvngi ), scvfenly2( cv_nloc, scvngi ),&
-              scvfenlz2( cv_nloc, scvngi ),  sufen2( u_nloc, scvngi ),sufenslx2( u_nloc, scvngi ), sufensly2( u_nloc, scvngi ),&
-              sufenlx2( u_nloc, scvngi ), sufenly2( u_nloc, scvngi ), sufenlz2( u_nloc, scvngi ), sbcvn2( cv_snloc, sbcvngi ),&
-              sbcvfen2( cv_snloc, sbcvngi ), sbcvfenslx2( cv_snloc, sbcvngi ), sbcvfensly2( cv_snloc, sbcvngi ),  sbcvfeweigh2( sbcvngi ),&
-              sbcvfenlx2( cv_snloc, sbcvngi ), sbcvfenly2( cv_snloc, sbcvngi ), sbcvfenlz2( cv_snloc, sbcvngi ), sbufen2( u_snloc, sbcvngi ),&
-              sbufenslx2( u_snloc, sbcvngi ), sbufensly2( u_snloc, sbcvngi ), sbufenlx2( u_snloc, sbcvngi ), sbufenly2( u_snloc, sbcvngi ), &
-              sbufenlz2( u_snloc, sbcvngi ), cv_sloclist2( nface, cv_snloc ),  u_sloclist2( nface, u_snloc ), findgpts2( cv_nloc + 1 ),&
-              colgpts2( cv_nloc * scvngi ), sele_overlap_scale2( cv_nloc ))
-          
-              findgpts2 = 0; colgpts2= 0; ncolgpts2 = 0
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%mesh%ndglno(counter_from:counter_to), ptr_cv_on_face,&
+          & siz1,siz2)
+          counter_from = counter_to + 1; counter_to = counter_to +&
+               & siz1*siz2
+          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          &%ptr%mesh%ndglno(counter_from:counter_to),ptr_cvfem_on_face,&
+          & siz1,siz2)
 
-              call cv_fem_shape_funs( &
-              ndim, cv_ele_type, &
-              cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn2, cvn_short2, &
-                                     ! Volume shape functions
-              cvweight2, cvfen2, cvfenlx2, cvfenly2, cvfenlz2, &
-              cvweight_short2, cvfen_short2, cvfenlx_short2, cvfenly_short2, cvfenlz_short2, &
-              ufen2, ufenlx2, ufenly2, ufenlz2, &
-                                     ! Surface of each CV shape functions
-              scvngi, cv_neiloc2, cv_on_face, cvfem_on_face, &
-              scvfen2, scvfenslx2, scvfensly2, scvfeweigh2, &
-              scvfenlx2, scvfenly2, scvfenlz2, &
-              sufen2, sufenslx2, sufensly2, &
-              sufenlx2, sufenly2, sufenlz2, &
-                                     ! Surface element shape funcs
-              u_on_face, ufem_on_face, nface, &
-              sbcvngi, sbcvn2, sbcvfen2, sbcvfenslx2, sbcvfensly2, sbcvfeweigh2, sbcvfenlx2, sbcvfenly2, sbcvfenlz2, &
-              sbufen2, sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, sbufenlz2, &
-              cv_sloclist2, u_sloclist2, cv_snloc, u_snloc, &
-                                     ! Define the gauss points that lie on the surface of the CV
-              findgpts2, colgpts2, ncolgpts2, &
-              sele_overlap_scale2, QUAD_OVER_WHOLE_ELE)
-
-              !Calculate the CVN shape functions manually as for compact_overlapping is not calculated by the previous subroutine
-              if (is_compact_overlapping)  then
-                call get_CVN_compact_overlapping( CV_ELE_TYPE, NDIM, CV_NGI, CV_NLOC, cvn2, cvweight2)
-                cvn_short2 = cvn2
-              end if
-              !Store data into state
-              cvn = cvn2; cvn_short = cvn_short2; cvweight = cvweight2; cvfen = cvfen2;
-              cvweight_short = cvweight_short2; cvfen_short = cvfen_short2; ufen = ufen2;
-              cv_neiloc = cv_neiloc2; scvfen = scvfen2; scvfenslx = scvfenslx2; scvfensly = scvfensly2
-              scvfeweigh = scvfeweigh2; sufen = sufen2; sufenslx = sufenslx2;  sufensly = sufensly2;
-              sbcvn = sbcvn2; sbcvfen = sbcvfen2; sbcvfenslx = sbcvfenslx2; sbcvfensly = sbcvfensly2;
-              sbcvfeweigh = sbcvfeweigh2; sbufen = sbufen2; sbufenslx = sbufenslx2;
-              sbufensly = sbufensly2; cv_sloclist = cv_sloclist2; u_sloclist = u_sloclist2;
-              findgpts = findgpts2; colgpts = colgpts2; ncolgpts = ncolgpts2;
-              sele_overlap_scale = sele_overlap_scale2
-
-              !Store only the necessary dimensions
-              cvfenlx_all(1,:,:) = cvfenlx2; cvfenlx_short_all(1,:,:) = cvfenlx_short2
-              ufenlx_all(1,:,:) = ufenlx2; scvfenlx_all(1,:,:) = scvfenlx2;
-              sufenlx_all(1,:,:) = sufenlx2;  sbcvfenlx_all(1,:,:) = sbcvfenlx2
-              sbufenlx_all(1,:,:) = sbufenlx2
-              if (ndim >=2) then
-                  cvfenlx_all(2,:,:) = cvfenly2; cvfenlx_short_all(2,:,:) = cvfenly_short2
-                  ufenlx_all(2,:,:) = ufenly2; scvfenlx_all(2,:,:) = scvfenly2
-                  sufenlx_all(2,:,:) = sufenly2; sbcvfenlx_all(2,:,:) = sbcvfenly2
-                  sbufenlx_all(2,:,:) = sbufenly2
-              end if
-
-              if (ndim ==3) then
-                  cvfenlx_all(3,:,:) = cvfenlz2; cvfenlx_short_all(3,:,:) = cvfenlz_short2
-                  ufenlx_all(3,:,:) = ufenlz2; scvfenlx_all(3,:,:) = scvfenlz2
-                  sufenlx_all(3,:,:) = sufenlz2;  sbcvfenlx_all(3,:,:) = sbcvfenlz2
-                  sbufenlx_all(3,:,:) = sbufenlz2
-              end if
+          !Recover logical values from integer storage...not the
+          !best way to store logicals...
+          !but in theory they take the same space
+          u_on_face = ptr_u_on_face
+          ufem_on_face = ptr_ufem_on_face
+          cv_on_face = ptr_cv_on_face
+          cvfem_on_face = ptr_cvfem_on_face
 
 
-              !Store logicals as integers into state
-              ptr_u_on_face = u_on_face
-              ptr_ufem_on_face = ufem_on_face
-              ptr_cv_on_face = cv_on_face
-              ptr_cvfem_on_face = cvfem_on_face
-
-              !deallocate local variables
-              deallocate(cvn2, cvn_short2, cvweight2, cvfen2,&
-              cvfenlx2, cvfenly2, cvfenlz2, cvweight_short2,&
-              cvfen_short2, cvfenlx_short2,cvfenly_short2, &
-              cvfenlz_short2, ufen2, ufenlx2, ufenly2, &
-              ufenlz2, cv_neiloc2,scvfen2, scvfenslx2, &
-              scvfensly2, scvfeweigh2, scvfenlx2, scvfenly2, &
-              scvfenlz2,  sufen2, sufenslx2, sufensly2, &
-              sufenlx2, sufenly2, sufenlz2, sbcvn2,&
-              sbcvfen2, sbcvfenslx2, sbcvfensly2,  sbcvfeweigh2,&
-              sbcvfenlx2, sbcvfenly2, sbcvfenlz2, sbufen2,&
-              sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, &
-              sbufenlz2, cv_sloclist2,  u_sloclist2, findgpts2,&
-              colgpts2, sele_overlap_scale2)
-
-          end if
     end subroutine
 
 
-    subroutine cv_fem_shape_funs( &
-         ndim, cv_ele_type, &
-         cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
-                                ! Volume shape functions
-         cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
-         cvweight_short, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
-         ufen, ufenlx, ufenly, ufenlz, &
-                                ! Surface of each CV shape functions
-         scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-         scvfen, scvfenslx, scvfensly, scvfeweigh, &
-         scvfenlx, scvfenly, scvfenlz, &
-         sufen, sufenslx, sufensly, &
-         sufenlx, sufenly, sufenlz, &
-                                ! Surface element shape funcs
-         u_on_face, ufem_on_face, nface, &
-         sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx, sbcvfenly, sbcvfenlz, &
-         sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz, &
-         cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-                                ! Define the gauss points that lie on the surface of the CV
-         findgpts, colgpts, ncolgpts, &
-         sele_overlap_scale, QUAD_OVER_WHOLE_ELE )
-      ! This subrt defines the sub-control volume and FEM shape functions.
-      ! Shape functions associated with volume integration using both CV basis
-      ! functions CVN as well as FEM basis functions CVFEN (and its derivatives
+    subroutine cv_fem_shape_funs(ndim, cv_ele_type, cv_ngi,&
+         & cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, & ! Volume
+      !  shape functions
+         cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, cvweight_short,&
+              & cvfen_short, cvfenlx_short, cvfenly_short,&
+              & cvfenlz_short, ufen, ufenlx, ufenly, ufenlz, &!
+         !  Surface of each CV shape functions
+         scvngi, cv_neiloc, cv_on_face, cvfem_on_face, scvfen,&
+              & scvfenslx, scvfensly, scvfeweigh, scvfenlx, scvfenly,&
+              & scvfenlz, sufen, sufenslx, sufensly, sufenlx, sufenly&
+              &, sufenlz, & ! Surface element shape funcs
+         u_on_face, ufem_on_face, nface, sbcvngi, sbcvn, sbcvfen,&
+              & sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx,&
+              & sbcvfenly, sbcvfenlz, sbufen, sbufenslx, sbufensly,&
+              & sbufenlx, sbufenly, sbufenlz, cv_sloclist, u_sloclist&
+              &, cv_snloc, u_snloc, & ! Define the gauss points that
+         !  lie on the surface of the CV
+         findgpts, colgpts, ncolgpts, sele_overlap_scale,&
+              & QUAD_OVER_WHOLE_ELE )
+      ! This subrt defines the sub-control volume and FEM shape
+         !  functions.
+      ! Shape functions associated with volume integration using both
+         !  CV basis
+      ! functions CVN as well as FEM basis functions CVFEN (and its
+         !  derivatives
       ! CVFENLX, CVFENLY, CVFENLZ)
       implicit none
-      integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_ngi_short, cv_nloc, u_nloc
-      real, dimension( :, : ), intent( inout ) :: cvn
-      real, dimension( :, : ), intent( inout ) :: cvn_short
-      real, dimension( : ), intent( inout ) :: cvweight
-      real, dimension( :, : ), intent( inout ) :: cvfen, cvfenlx, cvfenly, cvfenlz
-      real, dimension( : ), intent( inout ) :: cvweight_short
-      real, dimension( :, : ), intent( inout ) :: cvfen_short, cvfenlx_short, &
-           cvfenly_short, cvfenlz_short
-      real, dimension( :, : ), intent( inout ) :: ufen, ufenlx, ufenly, ufenlz
+      integer, intent( in ) :: ndim, cv_ele_type, cv_ngi,&
+           & cv_ngi_short, cv_nloc, u_nloc
+      integer, intent( in ) :: cv_snloc, u_snloc
+      real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: cvn
+      real, dimension( cv_nloc, cv_ngi_short ), intent( inout ) ::&
+           & cvn_short
+      real, dimension( cv_ngi ), intent( inout ) :: cvweight
+      real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: cvfen,&
+           & cvfenlx, cvfenly, cvfenlz
+      real, dimension( cv_ngi_short ), intent( inout ) ::&
+           & cvweight_short
+      real, dimension( cv_nloc, cv_ngi_short ), intent( inout ) ::&
+           & cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short
+      real, dimension( u_nloc, cv_ngi ), intent( inout ) :: ufen,&
+           & ufenlx, ufenly, ufenlz
       integer, intent( in ) :: scvngi
-      integer, dimension( :, : ), intent( inout ) :: cv_neiloc
-      logical, dimension( :, : ), intent( inout ) :: cv_on_face, cvfem_on_face
-      real, dimension( :, : ), intent( inout ) :: scvfen, scvfenslx, scvfensly
-      real, dimension( : ), intent( inout ) :: scvfeweigh
-      real, dimension( :, : ), intent( inout ) :: scvfenlx, scvfenly, scvfenlz
-      real, dimension( :, : ), intent( inout ) :: sufen, sufenslx, sufensly, sufenlx, &
-           sufenly, sufenlz
-      logical, dimension( :, : ), intent( inout ) :: u_on_face, ufem_on_face
+      integer, dimension( cv_nloc, scvngi ), intent( inout ) ::&
+           & cv_neiloc
+      logical, dimension( cv_nloc, scvngi ), intent( inout ) ::&
+           & cv_on_face, cvfem_on_face
+      real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfen,&
+           & scvfenslx, scvfensly
+      real, dimension( scvngi ), intent( inout ) :: scvfeweigh
+      real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfenlx&
+           &, scvfenly, scvfenlz
+      real, dimension( u_nloc, scvngi ), intent( inout ) :: sufen,&
+           & sufenslx, sufensly, sufenlx, sufenly, sufenlz
+      logical, dimension( u_nloc, scvngi ), intent( inout ) ::&
+           & u_on_face, ufem_on_face
       integer, intent( in ) :: nface, sbcvngi
       logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
-      ! if QUAD_OVER_WHOLE_ELE then dont divide element into CV's to form quadrature.
-      real, dimension( :, : ), intent( inout ) :: sbcvn
-      real, dimension( :, : ), intent( inout ) :: sbcvfen, sbcvfenslx, sbcvfensly
-      real, dimension( : ), intent( inout ) :: sbcvfeweigh
-      real, dimension( :, : ), intent( inout ) :: sbcvfenlx, sbcvfenly, sbcvfenlz
-      integer, intent( in ) :: cv_snloc, u_snloc
-      real, dimension( :, : ), intent( inout ) :: sbufen, sbufenslx, sbufensly, &
-           sbufenlx, sbufenly, sbufenlz
-      integer, dimension( :, : ), intent( inout ) :: cv_sloclist
-      integer, dimension( :, : ), intent( inout ) :: u_sloclist
-      integer, dimension( : ), intent( inout ) :: findgpts
-      integer, dimension( : ), intent( inout ) :: colgpts
+      ! if QUAD_OVER_WHOLE_ELE then dont divide element into CV's to
+      !  form quadrature.
+      real, dimension( cv_snloc, sbcvngi ), intent( inout ) :: sbcvn
+      real, dimension( cv_snloc, sbcvngi ), intent( inout ) ::&
+           & sbcvfen, sbcvfenslx, sbcvfensly
+      real, dimension( sbcvngi ), intent( inout ) :: sbcvfeweigh
+      real, dimension( cv_snloc, sbcvngi ), intent( inout ) ::&
+           & sbcvfenlx, sbcvfenly, sbcvfenlz
+      real, dimension( u_snloc, sbcvngi ), intent( inout ) :: sbufen,&
+           & sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz
+      integer, dimension( nface, cv_snloc ), intent( inout ) ::&
+           & cv_sloclist
+      integer, dimension( nface, u_snloc ), intent( inout ) ::&
+           & u_sloclist
+      integer, dimension( cv_nloc + 1 ), intent( inout ) :: findgpts
+      integer, dimension( cv_nloc * scvngi ), intent( inout ) ::&
+           & colgpts
       integer, intent( inout ) :: ncolgpts
-      real, dimension( : ), intent( inout ) :: sele_overlap_scale
+      real, dimension( cv_nloc ), intent( inout ) ::&
+           & sele_overlap_scale
       ! Local variables
-      logical, dimension( :, : ), allocatable :: ufem_on_face2
+      logical, dimension( :, : ), allocatable :: u_on_face2,&
+           & ufem_on_face2
       integer, dimension( :, : ), allocatable :: u_sloclist2
-      real, dimension( :, : ), allocatable :: ufen2, ufenlx2, ufenly2, ufenlz2, &
-           sufen2, sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2, &
-           sbufen2, sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, sbufenlz2
-      real, dimension( :, : ), allocatable :: M,MLX,MLY,MLZ, sm,SMLX,SMLY
-      character( len = option_path_len ) :: overlapping_path, dummy_path, dummypath2
-      integer :: u_nloc2, ilev, ilev2, u_snloc2, u_ele_type2, gi, MLOC, SMLOC
+      real, dimension( :, : ), allocatable :: ufen2, ufenlx2, ufenly2&
+           &, ufenlz2, sufen2, sufenslx2, sufensly2, sufenlx2,&
+           & sufenly2, sufenlz2, sbufen2, sbufenslx2, sbufensly2,&
+           & sbufenlx2, sbufenly2, sbufenlz2
+      real, dimension( :, : ), allocatable :: M,MLX,MLY,MLZ, sm,SMLX&
+           &,SMLY
+      character( len = option_path_len ) :: overlapping_path,&
+           & dummy_path, dummypath2
+      logical :: is_overlapping
+      integer :: u_nloc2, ilev, ilev2, u_snloc2, u_ele_type2, gi,&
+           & MLOC, SMLOC
       integer :: sgi, cv_siloc, cv_skloc
       real :: rmax
 
@@ -2020,6 +2295,15 @@
 ewrite(3,*)'lll:', option_path_len
 
 
+      dummy_path = '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape&
+           &/element_type'
+      is_overlapping = .false.
+      !call get_option( trim( dummy_path ), overlapping_path )
+      call get_option( trim( dummy_path ), dummypath2 )
+      if( trim( dummypath2 ) == 'overlapping' ) is_overlapping =&
+           & .true.
+     ! if( trim( overlapping_path ) == 'overlapping' ) is_overlapping
+      !  = .true.
 
       if( is_overlapping ) then
          ! Define basis functions (overlapping) for porous media flow
@@ -2054,7 +2338,8 @@ ewrite(3,*)'lll:', option_path_len
          allocate( sbufenlz2( u_snloc2, sbcvngi ) )
       endif
 
-      ! Sele_Overlap_Scale is the scaling needed to convert to overlapping element surfaces
+      ! Sele_Overlap_Scale is the scaling needed to convert to
+      !  overlapping element surfaces
       if( is_overlapping ) then
          Select Case( cv_nloc )
          case( 3 :  )
@@ -2084,91 +2369,83 @@ ewrite(3,*)'lll:', option_path_len
          if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
 
             ewrite(3,*)'1 going into SHAPE_one_ele'
-            call SHAPE_one_ele2(&
-                 ndim, cv_ele_type, &
-                 cv_ngi_short, cv_nloc, u_nloc2,  &
-                                ! Volume shape functions
-                 cvweight_short, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
-                 ufen2, ufenlx2, ufenly2, ufenlz2, &
-                                ! Surface of each CV shape functions
-                 sbcvngi,  &
-                 sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
-                 sbufen2, sbufenslx2, sbufensly2, &
-                                ! Surface element shape funcs
-                 nface, &
-                 cv_sloclist, u_sloclist2, cv_snloc, u_snloc2 )
+            call SHAPE_one_ele2(ndim, cv_ele_type, cv_ngi_short,&
+                 & cv_nloc, u_nloc2,& ! Volume shape functions
+                 cvweight_short, cvfen_short, cvfenlx_short,&
+                      & cvfenly_short, cvfenlz_short, ufen2, ufenlx2,&
+                      & ufenly2, ufenlz2,&  ! Surface of each CV shape
+                 !  functions
+                 sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly,&
+                      & sbcvfeweigh, sbufen2, sbufenslx2, sbufensly2,&
+                       ! Surface element shape funcs
+                 nface, cv_sloclist, u_sloclist2, cv_snloc, u_snloc2 )
             ewrite(3,*)'1 just out of SHAPE_one_ele'
  
             if(sbcvngi/=scvngi) FLAbort("sbcvngi/=scvngi")
 
          else
-            call shape_cv_n( ndim, cv_ele_type, &
-                 cv_ngi_short, cv_nloc, u_nloc2, cvn_short, cvweight_short, &
-                 cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
-                 ufen2, ufenlx2, ufenly2, ufenlz2 )
+            call shape_cv_n( ndim, cv_ele_type, cv_ngi_short, cv_nloc&
+                 &, u_nloc2, cvn_short, cvweight_short, cvfen_short,&
+                 & cvfenlx_short, cvfenly_short, cvfenlz_short, ufen2&
+                 &, ufenlx2, ufenly2, ufenlz2 )
          endif
 
          ! Defining the base functions for each level
-         ufen = 0. ; ufenlx = 0. ; ufenly = 0. ; ufenlz = 0. ; cvn = 0.
+         ufen = 0. ; ufenlx = 0. ; ufenly = 0. ; ufenlz = 0. ; cvn =&
+              & 0.
          Loop_ILEV1: do ilev = 1, cv_nloc
-            ufen( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 ufen2( 1 : u_nloc2, 1 : cv_ngi_short )
-            ufenlx( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 ufenlx2( 1 : u_nloc2, 1 : cv_ngi_short )
-            ufenly( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 ufenly2( 1 : u_nloc2, 1 : cv_ngi_short )
-            ufenlz( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 ufenlz2( 1 : u_nloc2, 1 : cv_ngi_short )
+            ufen( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, 1 + (&
+                 & ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) &
+                 &= ufen2( 1 : u_nloc2, 1 : cv_ngi_short )
+            ufenlx( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, 1 + (&
+                 & ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) &
+                 &= ufenlx2( 1 : u_nloc2, 1 : cv_ngi_short )
+            ufenly( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, 1 + (&
+                 & ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) &
+                 &= ufenly2( 1 : u_nloc2, 1 : cv_ngi_short )
+            ufenlz( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, 1 + (&
+                 & ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) &
+                 &= ufenlz2( 1 : u_nloc2, 1 : cv_ngi_short )
 
-            cvfen( 1 : cv_nloc, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 cvfen_short( 1 : cv_nloc, 1 : cv_ngi_short )
-            cvfenlx( 1 : cv_nloc, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 cvfenlx_short( 1 : cv_nloc, 1 : cv_ngi_short )
-            cvfenly( 1 : cv_nloc, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 cvfenly_short( 1 : cv_nloc, 1 : cv_ngi_short )
-            cvfenlz( 1 : cv_nloc, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 cvfenlz_short( 1 : cv_nloc, 1 : cv_ngi_short )
+            cvfen( 1 : cv_nloc, 1 + ( ilev - 1 ) * cv_ngi_short :&
+                 & ilev * cv_ngi_short ) = cvfen_short( 1 : cv_nloc,&
+                 & 1 : cv_ngi_short )
+            cvfenlx( 1 : cv_nloc, 1 + ( ilev - 1 ) * cv_ngi_short :&
+                 & ilev * cv_ngi_short ) = cvfenlx_short( 1 : cv_nloc&
+                 &, 1 : cv_ngi_short )
+            cvfenly( 1 : cv_nloc, 1 + ( ilev - 1 ) * cv_ngi_short :&
+                 & ilev * cv_ngi_short ) = cvfenly_short( 1 : cv_nloc&
+                 &, 1 : cv_ngi_short )
+            cvfenlz( 1 : cv_nloc, 1 + ( ilev - 1 ) * cv_ngi_short :&
+                 & ilev * cv_ngi_short ) = cvfenlz_short( 1 : cv_nloc&
+                 &, 1 : cv_ngi_short )
 
-            cvweight( 1 + ( ilev - 1 ) * cv_ngi_short : &
-                 ilev * cv_ngi_short ) = &
-                 cvweight_short( 1 : cv_ngi_short )
-            cvn( ilev, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = 1.
+            cvweight( 1 + ( ilev - 1 ) * cv_ngi_short : ilev *&
+                 & cv_ngi_short ) = cvweight_short( 1 : cv_ngi_short )
+            cvn( ilev, 1 + ( ilev - 1 ) * cv_ngi_short : ilev *&
+                 & cv_ngi_short ) = 1.
 
          end do Loop_ILEV1
 
       else ! if it is not overlapping formulation
          if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
             ewrite(3,*)'2 going into SHAPE_one_ele' 
-            call SHAPE_one_ele2(&
-                 ndim, cv_ele_type, &
-                 cv_ngi, cv_nloc, u_nloc,  &
-                                ! Volume shape functions
-                 cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
-                 ufen, ufenlx, ufenly, ufenlz, &
-                                ! Surface of each CV shape functions
-                 sbcvngi,  &
-                 sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
-                 sbufen, sbufenslx, sbufensly, &
-                                ! Surface element shape funcs
-                 nface, &
-                 cv_sloclist, u_sloclist, cv_snloc, u_snloc ) 
+            call SHAPE_one_ele2(ndim, cv_ele_type, cv_ngi, cv_nloc,&
+                 & u_nloc, & ! Volume shape functions
+                 cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, ufen,&
+                      & ufenlx, ufenly, ufenlz, & ! Surface of each CV
+                 !  shape functions
+                 sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly,&
+                      & sbcvfeweigh, sbufen, sbufenslx, sbufensly, & !
+                 !  Surface element shape funcs
+                 nface, cv_sloclist, u_sloclist, cv_snloc, u_snloc ) 
 
             if(scvngi/=sbcvngi) FLAbort("scvngi/=sbcvngi")
 
          else
-            call shape_cv_n( ndim, cv_ele_type, &
-                 cv_ngi, cv_nloc, u_nloc, cvn, cvweight, &
-                 cvfen, cvfenlx, cvfenly, cvfenlz, &
-                 ufen, ufenlx, ufenly, ufenlz )
+            call shape_cv_n( ndim, cv_ele_type, cv_ngi, cv_nloc,&
+                 & u_nloc, cvn, cvweight, cvfen, cvfenlx, cvfenly,&
+                 & cvfenlz, ufen, ufenlx, ufenly, ufenlz )
          endif
          cvn_short = cvn
          cvfen_short = cvfen
@@ -2181,99 +2458,102 @@ ewrite(3,*)'lll:', option_path_len
       !ewrite(3,*) 'out of shape_cv_n - CVWEIGHT', CVWEIGHT
 
       !
-      !(a) scvfen( cv_nloc, scvngi ): the shape function evaluated for each node 
+      !(a) scvfen( cv_nloc, scvngi ): the shape function evaluated
+      ! for each node 
       !          at each surface gauss point
-      !(b) scvfenslx[y/z]( cv_nloc, scvngi ): the surface derivatives of the shape 
-      !          function for each node at those same points, and the derivatives 
+      !(b) scvfenslx[y/z]( cv_nloc, scvngi ): the surface derivatives
+      ! of the shape 
+      !          function for each node at those same points, and the
+      !           derivatives 
       !          of the shape
-      !(c) scvfeweigh( scvngi ): the Gauss weights to use when integrating around 
+      !(c) scvfeweigh( scvngi ): the Gauss weights to use when
+      ! integrating around 
       !          the control volume surface
-      !(d) cv_neiloc( cv_nloc, scvngi ): neighbour node for a given node/gauss-point
-      !          pair. This also include quadature points around the element. 
+      !(d) cv_neiloc( cv_nloc, scvngi ): neighbour node for a given
+      ! node/gauss-point
+      !          pair. This also include quadature points around the
+      !           element. 
       !
 
       Conditional_OverlappingMethod2: if( is_overlapping ) then
          u_ele_type2 = 1
-         !ewrite(3,*)'cv_nloc, cv_ngi, scvngi:', cv_nloc, cv_ngi, scvngi
+         !ewrite(3,*)'cv_nloc, cv_ngi, scvngi:', cv_nloc, cv_ngi,
+         ! scvngi
          !ewrite(3,*)'u_nloc, u_nloc2:', u_nloc, u_nloc2
 
 
-         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element 
-            call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-                 ufem_on_face2, &
-                 cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-                 scvfenlx, scvfenly, scvfenlz, &
-                 u_nloc2, sufen2, sufenslx2, sufensly2, &
-                 sufenlx2, sufenly2, sufenlz2, &
-                 ndim )
+         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole
+            !  element 
+            call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face,&
+                 & cvfem_on_face, ufem_on_face2, cv_ele_type, cv_nloc&
+                 &, scvfen, scvfenslx, scvfensly, scvfeweigh,&
+                 & scvfenlx, scvfenly, scvfenlz, u_nloc2, sufen2,&
+                 & sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2&
+                 &, ndim )
 
-         !call U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi, &
-         !     cv_neiloc,   &
-         !     u_on_face )
+         !call U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi,
+            ! cv_neiloc, u_on_face )
 
          !         do ilev = 1, u_nloc
-         !            ewrite(3,*)'**u_on_face**:', ( u_on_face( ilev, gi ), gi = 1, scvngi )
+         !            ewrite(3,*)'**u_on_face**:', ( u_on_face( ilev,
+            !             gi ), gi = 1, scvngi )
          !         end do
          !         do ilev = 1, cv_nloc
-         !            ewrite(3,*)'**cvfem_on_face**:', ( cvfem_on_face( ilev, gi ), gi = 1, scvngi )
+         !            ewrite(3,*)'**cvfem_on_face**:', (
+            !             cvfem_on_face( ilev, gi ), gi = 1, scvngi )
          !         end do
 
          sufen = 0. ; sufenslx = 0. ; sufensly = 0. 
          sufenlx = 0. ; sufenly = 0. ; sufenlz = 0.
          Loop_ILEV2: do ilev = 1, cv_nloc
-            !==  u_on_face( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-            !==       1 : scvngi ) = &
-            !==       u_on_face2( 1 : u_nloc2, 1 : scvngi )
-            !            u_on_face2( 1 : u_nloc2, 1 : scvngi ) = &
-            !                 u_on_face( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-            !                 1 : scvngi ) 
-            !            ufem_on_face2( 1 : u_nloc2, 1 : scvngi ) = &
-            !                 ufem_on_face( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-            !                 1 : scvngi ) 
-            sufen( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufen2( 1 : u_nloc2, 1 : scvngi )
-            sufenslx( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufenslx2( 1 : u_nloc2, 1 : scvngi )
-            sufensly( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufensly2( 1 : u_nloc2, 1 : scvngi )
-            sufenlx( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufenlx2( 1 : u_nloc2, 1 : scvngi )
-            sufenly( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufenly2( 1 : u_nloc2, 1 : scvngi )
-            sufenlz( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufenlz2( 1 : u_nloc2, 1 : scvngi )
-            ufem_on_face( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = ufem_on_face2( 1 : u_nloc2, 1 : scvngi )
+            !==  u_on_face( 1 + ( ilev - 1 ) * u_nloc2 : ilev *
+            ! u_nloc2, ==       1 : scvngi ) = ==       u_on_face2( 1
+            !  : u_nloc2, 1 : scvngi )
+            !            u_on_face2( 1 : u_nloc2, 1 : scvngi ) =
+            !             u_on_face( 1 + ( ilev - 1 ) * u_nloc2 :
+            !              ilev * u_nloc2, 1 : scvngi ) 
+            !            ufem_on_face2( 1 : u_nloc2, 1 : scvngi ) =
+            !             ufem_on_face( 1 + ( ilev - 1 ) * u_nloc2 :
+            !              ilev * u_nloc2, 1 : scvngi ) 
+            sufen( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, 1 :&
+                 & scvngi ) = sufen2( 1 : u_nloc2, 1 : scvngi )
+            sufenslx( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, 1&
+                 & : scvngi ) = sufenslx2( 1 : u_nloc2, 1 : scvngi )
+            sufensly( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, 1&
+                 & : scvngi ) = sufensly2( 1 : u_nloc2, 1 : scvngi )
+            sufenlx( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, 1 :&
+                 & scvngi ) = sufenlx2( 1 : u_nloc2, 1 : scvngi )
+            sufenly( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, 1 :&
+                 & scvngi ) = sufenly2( 1 : u_nloc2, 1 : scvngi )
+            sufenlz( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, 1 :&
+                 & scvngi ) = sufenlz2( 1 : u_nloc2, 1 : scvngi )
+            ufem_on_face( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2&
+                 &, 1 : scvngi ) = ufem_on_face2( 1 : u_nloc2, 1 :&
+                 & scvngi )
          end do Loop_ILEV2
 ! end of if(.not.QUAD_OVER_WHOLE_ELE) then
          endif  
 
       else
-         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element 
-            call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-                 ufem_on_face, &
-                 cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-                 scvfenlx, scvfenly, scvfenlz, &
-                 u_nloc, sufen, sufenslx, sufensly, &
-                 sufenlx, sufenly, sufenlz, &
-                 ndim )
+         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole
+            !  element 
+            call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face,&
+                 & cvfem_on_face, ufem_on_face, cv_ele_type, cv_nloc,&
+                 & scvfen, scvfenslx, scvfensly, scvfeweigh, scvfenlx&
+                 &, scvfenly, scvfenlz, u_nloc, sufen, sufenslx,&
+                 & sufensly, sufenlx, sufenly, sufenlz, ndim )
          endif
-         !call U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi, &
-         !     cv_neiloc,   &
-         !     u_on_face )
+         !call U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi,
+         ! cv_neiloc, u_on_face )
       end if Conditional_OverlappingMethod2
 
       ! Determine the surface element shape functions from those 
-      ! calculated in SHAPESV_FEM_PLUS and also CV_SLOCLIST( NFACE,CV_SNLOC )
+      ! calculated in SHAPESV_FEM_PLUS and also CV_SLOCLIST( NFACE
+      ! ,CV_SNLOC )
       !ewrite(3,*)'u_on_face2( u_iloc, i_scvngi):'
       !do ilev = 1, u_nloc2
-      !   ewrite(3,*) ilev, ( u_on_face2( ilev, ilev2 ), ilev2 = 1, scvngi )
+      !   ewrite(3,*) ilev, ( u_on_face2( ilev, ilev2 ), ilev2 = 1,
+      !    scvngi )
       !end do
 
       Conditional_OverlappingMethod3: if( is_overlapping ) then
@@ -2284,19 +2564,17 @@ ewrite(3,*)'lll:', option_path_len
          !ewrite(3,*) 'U_NLOC  , U_SNLOC  ', u_nloc  , u_snloc
          !ewrite(3,*) 'U_NLOC2, U_SNLOC2', u_nloc2, u_snloc2
 
-         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element 
-            call det_suf_ele_shape( scvngi, nface, &
-                 cvfem_on_face, &
-                 cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-                 scvfenlx, scvfenly, scvfenlz, &
-                 u_nloc2, sufen2, sufenslx2, sufensly2, &
-                 sufenlx2, sufenly2, sufenlz2, &
-                 sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
-                 sbcvfenlx, sbcvfenly, sbcvfenlz, &
-                 sbufen2, sbufenslx2, sbufensly2, &
-                 sbufenlx2, sbufenly2, sbufenlz2, &
-                 cv_sloclist, u_sloclist2, cv_snloc, u_snloc2, &
-                 ndim, cv_ele_type )
+         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole
+            !  element 
+            call det_suf_ele_shape( scvngi, nface, cvfem_on_face,&
+                 & cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh,&
+                 & scvfenlx, scvfenly, scvfenlz, u_nloc2, sufen2,&
+                 & sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2&
+                 &, sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly,&
+                 & sbcvfeweigh, sbcvfenlx, sbcvfenly, sbcvfenlz,&
+                 & sbufen2, sbufenslx2, sbufensly2, sbufenlx2,&
+                 & sbufenly2, sbufenlz2, cv_sloclist, u_sloclist2,&
+                 & cv_snloc, u_snloc2, ndim, cv_ele_type )
          endif
          !ewrite(3,*) 'sbufen2:', sbufen2
          !ewrite(3,*) 'sbcvfen:', sbcvfen
@@ -2305,53 +2583,50 @@ ewrite(3,*)'lll:', option_path_len
 
          Loop_ILEV3: do ilev = 1, cv_nloc
 
-            sbufen( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufen2( 1 : u_snloc2, 1 : sbcvngi )
-            sbufenslx( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufenslx2( 1 : u_snloc2, 1 : sbcvngi )
-            sbufensly( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufensly2( 1 : u_snloc2, 1 : sbcvngi )
-            sbufenlx( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufenlx2( 1 : u_snloc2, 1 : sbcvngi )
-            sbufenly( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufenly2( 1 : u_snloc2, 1 : sbcvngi )
-            sbufenlz( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufenlz2( 1 : u_snloc2, 1 : sbcvngi )
-            u_sloclist( 1 : nface, &
-                 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2 ) = &
-                 u_sloclist2( 1 : nface, 1 : u_snloc2 ) + &
-                 ( ilev - 1 ) * u_nloc2
+            sbufen( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, 1&
+                 & : sbcvngi ) = sbufen2( 1 : u_snloc2, 1 : sbcvngi )
+            sbufenslx( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2,&
+                 & 1 : sbcvngi ) = sbufenslx2( 1 : u_snloc2, 1 :&
+                 & sbcvngi )
+            sbufensly( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2,&
+                 & 1 : sbcvngi ) = sbufensly2( 1 : u_snloc2, 1 :&
+                 & sbcvngi )
+            sbufenlx( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2,&
+                 & 1 : sbcvngi ) = sbufenlx2( 1 : u_snloc2, 1 :&
+                 & sbcvngi )
+            sbufenly( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2,&
+                 & 1 : sbcvngi ) = sbufenly2( 1 : u_snloc2, 1 :&
+                 & sbcvngi )
+            sbufenlz( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2,&
+                 & 1 : sbcvngi ) = sbufenlz2( 1 : u_snloc2, 1 :&
+                 & sbcvngi )
+            u_sloclist( 1 : nface, 1 + ( ilev - 1 ) * u_snloc2 : ilev&
+                 & * u_snloc2 ) = u_sloclist2( 1 : nface, 1 :&
+                 & u_snloc2 ) + ( ilev - 1 ) * u_nloc2
          end do Loop_ILEV3
 
       else
-         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element 
-            call det_suf_ele_shape( scvngi, nface, &
-                 cvfem_on_face, &
-                 cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-                 scvfenlx, scvfenly, scvfenlz, &
-                 u_nloc, sufen, sufenslx, sufensly, &
-                 sufenlx, sufenly, sufenlz, &
-                 sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
-                 sbcvfenlx, sbcvfenly, sbcvfenlz,  &
-                 sbufen, sbufenslx, sbufensly, &
-                 sbufenlx, sbufenly, sbufenlz, &
-                 cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-                 ndim, cv_ele_type )
+         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole
+            !  element 
+            call det_suf_ele_shape( scvngi, nface, cvfem_on_face,&
+                 & cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh,&
+                 & scvfenlx, scvfenly, scvfenlz, u_nloc, sufen,&
+                 & sufenslx, sufensly, sufenlx, sufenly, sufenlz,&
+                 & sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly,&
+                 & sbcvfeweigh, sbcvfenlx, sbcvfenly, sbcvfenlz,&
+                 & sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly,&
+                 & sbufenlz, cv_sloclist, u_sloclist, cv_snloc,&
+                 & u_snloc, ndim, cv_ele_type )
          endif
       end if Conditional_OverlappingMethod3
 
-      if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element 
+      if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole
+         !  element 
          ! Define the gauss points that lie on the surface of the
          ! control volume surrounding a given local node (iloc)
          ! that is FINDGPTS, COLGPTS, NCOLGPTS
-         call gaussiloc( findgpts, colgpts, ncolgpts, &
-              cv_neiloc, cv_nloc, scvngi )  
+         call gaussiloc( findgpts, colgpts, ncolgpts, cv_neiloc,&
+              & cv_nloc, scvngi )  
       endif
 
       if( is_overlapping ) then
@@ -2375,20 +2650,26 @@ ewrite(3,*)'lll:', option_path_len
          deallocate( u_sloclist2 )
       end if
 
-      ! Set to zero anything that should be zero in case it was not pre-defined
+      ! Set to zero anything that should be zero in case it was not
+      !  pre-defined
       if( ndim < 2 ) then
-         cvfenly = 0.0 ; cvfenly_short = 0.0 ; ufenly = 0.0 ; scvfenslx = 0.0 ; & 
-              scvfenly = 0.0 ; sufenslx = 0.0 ; sufenly = 0.0 ; sbcvfenslx = 0.0 ;  &
-              sbcvfenly = 0.0 ; sbufenslx = 0.0 ; sbufenly = 0.0 
+         cvfenly = 0.0 ; cvfenly_short = 0.0 ; ufenly = 0.0 ;&
+              & scvfenslx = 0.0 ; 
+         scvfenly = 0.0 ; sufenslx = 0.0 ; sufenly = 0.0 ; sbcvfenslx&
+              & = 0.0 ;
+         sbcvfenly = 0.0 ; sbufenslx = 0.0 ; sbufenly = 0.0 
 
       elseif( ndim < 3 ) then
-         cvfenlz = 0.0 ; cvfenlz_short = 0.0 ; ufenlz = 0.0 ; scvfensly = 0.0 ; &
-              scvfenlz = 0.0 ; sufensly = 0.0 ; sufenlz = 0.0 ; sbcvfensly = 0.0 ; &
-              sbcvfenlz = 0.0 ; sbufensly = 0.0 ;sbufenlz = 0.0
+         cvfenlz = 0.0 ; cvfenlz_short = 0.0 ; ufenlz = 0.0 ;&
+              & scvfensly = 0.0 ; 
+         scvfenlz = 0.0 ; sufensly = 0.0 ; sufenlz = 0.0 ; sbcvfensly&
+              & = 0.0 ;
+         sbcvfenlz = 0.0 ; sbufensly = 0.0 ;sbufenlz = 0.0
 
       end if
 
-! calculate sbcvn from sbcvfen - Use the max scvfen at a quadrature pt and set to 1: 
+! calculate sbcvn from sbcvfen - Use the max scvfen at a quadrature
+      !  pt and set to 1: 
       SBCVN=0.0
       DO SGI=1,SBCVNGI
          RMAX=-100.0 ! Find max value of sbcvfen...
@@ -2406,7 +2687,8 @@ ewrite(3,*)'lll:', option_path_len
       !ewrite(3,*) 'u_on_face: ', u_on_face
       !ewrite(3,*) 'cv_sloclist: ', cv_sloclist
       !ewrite(3,*) 'u_sloclist: ', u_sloclist
-      !ewrite(3,*) 'leaving cv_fem_shape_funs subrt, ncolgpts', ncolgpts
+      !ewrite(3,*) 'leaving cv_fem_shape_funs subrt, ncolgpts',
+      ! ncolgpts
       !ewrite(3,*) '----sum(cvweight):',sum(cvweight)
 
 
@@ -2419,46 +2701,51 @@ ewrite(3,*)'lll:', option_path_len
 
 
 
-    SUBROUTINE DET_SUF_ELE_SHAPE( SCVNGI, NFACE, &  
-         CVFEM_ON_FACE, &
-         CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
-         SCVFENLX, SCVFENLY, SCVFENLZ,  &
-         U_NLOC,  SUFEN, SUFENSLX, SUFENSLY,  &
-         SUFENLX, SUFENLY, SUFENLZ,  &
-         SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-         SBCVFENLX, SBCVFENLY, SBCVFENLZ, &
-         SBUFEN, SBUFENSLX, SBUFENSLY, &
-         SBUFENLX, SBUFENLY, SBUFENLZ, &
-         CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
-         NDIM, CV_ELE_TYPE )
+    SUBROUTINE DET_SUF_ELE_SHAPE( SCVNGI, NFACE, CVFEM_ON_FACE,&
+         & CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH,&
+         & SCVFENLX, SCVFENLY, SCVFENLZ, U_NLOC,  SUFEN, SUFENSLX,&
+         & SUFENSLY, SUFENLX, SUFENLY, SUFENLZ, SBCVNGI, SBCVFEN,&
+         & SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX, SBCVFENLY,&
+         & SBCVFENLZ, SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX,&
+         & SBUFENLY, SBUFENLZ, CV_SLOCLIST, U_SLOCLIST, CV_SNLOC,&
+         & U_SNLOC, NDIM, CV_ELE_TYPE )
       !     
-      !     - this subroutine generates the FE basis functions, weights and the
-      !     - derivatives of the shape functions for a variety of elements on the 
+      !     - this subroutine generates the FE basis functions,
+      !      weights and the
+      !     - derivatives of the shape functions for a variety of
+      !      elements on the 
       !     - control volume boundaries.  
-      !     - The routine also generates the shape functions and derivatives 
-      !     - associated with the CV surfaces and also the FV basis functions.
+      !     - The routine also generates the shape functions and
+      !      derivatives 
+      !     - associated with the CV surfaces and also the FV basis
+      !      functions.
       !     -------------------------------
       !     - date last modified : 21/02/2012
       !     -------------------------------
  
       IMPLICIT NONE
 
-      INTEGER, intent( in ) :: SCVNGI, CV_NLOC, U_NLOC, NFACE, &
-           SBCVNGI, CV_SNLOC, U_SNLOC
-      LOGICAL, DIMENSION( CV_NLOC, SCVNGI ), intent( in ) :: CVFEM_ON_FACE
-      ! CV_ON_FACE(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
-      REAL, DIMENSION( CV_NLOC, SCVNGI ), intent( in ) :: SCVFEN, SCVFENSLX, SCVFENSLY, &       
-           SCVFENLX, SCVFENLY, SCVFENLZ
+      INTEGER, intent( in ) :: SCVNGI, CV_NLOC, U_NLOC, NFACE,&
+           & SBCVNGI, CV_SNLOC, U_SNLOC
+      LOGICAL, DIMENSION( CV_NLOC, SCVNGI ), intent( in ) ::&
+           & CVFEM_ON_FACE
+      ! CV_ON_FACE(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that
+      !  GI is centred on.
+      REAL, DIMENSION( CV_NLOC, SCVNGI ), intent( in ) :: SCVFEN,&
+           & SCVFENSLX, SCVFENSLY, SCVFENLX, SCVFENLY, SCVFENLZ
       REAL, DIMENSION( SCVNGI ), intent( inout ) :: SCVFEWEIGH
-      REAL, DIMENSION( U_NLOC, SCVNGI ), intent( in ) :: SUFEN, SUFENSLX, SUFENSLY, &       
-           SUFENLX, SUFENLY, SUFENLZ
-      REAL, DIMENSION( CV_SNLOC, SBCVNGI ), intent( inout ) :: SBCVFEN, SBCVFENSLX, &
-           SBCVFENSLY, SBCVFENLX, SBCVFENLY, SBCVFENLZ
+      REAL, DIMENSION( U_NLOC, SCVNGI ), intent( in ) :: SUFEN,&
+           & SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ
+      REAL, DIMENSION( CV_SNLOC, SBCVNGI ), intent( inout ) ::&
+           & SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFENLX, SBCVFENLY,&
+           & SBCVFENLZ
       REAL, DIMENSION( SBCVNGI ), intent( inout ) :: SBCVFEWEIGH
-      REAL, DIMENSION( U_SNLOC, SBCVNGI ), intent( inout ) :: SBUFEN, SBUFENSLX, SBUFENSLY, &
-           SBUFENLX, SBUFENLY, SBUFENLZ
-      INTEGER, DIMENSION( NFACE, CV_SNLOC ), intent( inout ) ::  CV_SLOCLIST
-      INTEGER, DIMENSION( NFACE, U_SNLOC ), intent( inout ) ::  U_SLOCLIST
+      REAL, DIMENSION( U_SNLOC, SBCVNGI ), intent( inout ) :: SBUFEN,&
+           & SBUFENSLX, SBUFENSLY, SBUFENLX, SBUFENLY, SBUFENLZ
+      INTEGER, DIMENSION( NFACE, CV_SNLOC ), intent( inout ) :: &
+           & CV_SLOCLIST
+      INTEGER, DIMENSION( NFACE, U_SNLOC ), intent( inout ) :: &
+           & U_SLOCLIST
       INTEGER, intent( in ) :: NDIM, CV_ELE_TYPE
       ! Local variables
       INTEGER :: CV_KLOC, CV_SKLOC, U_KLOC, U_SKLOC, CV_BSNGI
@@ -2467,33 +2754,37 @@ ewrite(3,*)'lll:', option_path_len
     
       ! Obtain SBCVFEN from SCVFEN: 
       !ewrite(3,*)'for cv:'
-      CALL SCVFEN_2_SBCVFEN( CV_NLOC, CV_SNLOC, SCVNGI, SBCVNGI, &
-           CV_NLOC, CV_SNLOC, CVFEM_ON_FACE, &
-           SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFENLX, SBCVFENLY, SBCVFENLZ, SBCVFEWEIGH, &
-           SCVFEN, SCVFENSLX, SCVFENSLY, SCVFENLX, SCVFENLY, SCVFENLZ, SCVFEWEIGH )
+      CALL SCVFEN_2_SBCVFEN( CV_NLOC, CV_SNLOC, SCVNGI, SBCVNGI,&
+           & CV_NLOC, CV_SNLOC, CVFEM_ON_FACE, SBCVFEN, SBCVFENSLX,&
+           & SBCVFENSLY, SBCVFENLX, SBCVFENLY, SBCVFENLZ, SBCVFEWEIGH&
+           &, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFENLX, SCVFENLY,&
+           & SCVFENLZ, SCVFEWEIGH )
 
-      !ewrite(3,*)'U_NLOC, U_SNLOC, SCVNGI, SBCVNGI, CV_NLOC, CV_SNLOC:', &
-      !         U_NLOC, U_SNLOC, SCVNGI, SBCVNGI, CV_NLOC, CV_SNLOC
+      !ewrite(3,*)'U_NLOC, U_SNLOC, SCVNGI, SBCVNGI, CV_NLOC,
+      ! CV_SNLOC:', U_NLOC, U_SNLOC, SCVNGI, SBCVNGI, CV_NLOC,
+      !  CV_SNLOC
       !ewrite(3,*)'for u:'
       ! Obtain SBUFEN from SUFEN: 
-      CALL SCVFEN_2_SBCVFEN( U_NLOC, U_SNLOC, SCVNGI, SBCVNGI, &
-           CV_NLOC, CV_SNLOC, CVFEM_ON_FACE, &
-           SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX, SBUFENLY, SBUFENLZ, SBCVFEWEIGH, &
-           SUFEN, SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ, SCVFEWEIGH )
+      CALL SCVFEN_2_SBCVFEN( U_NLOC, U_SNLOC, SCVNGI, SBCVNGI,&
+           & CV_NLOC, CV_SNLOC, CVFEM_ON_FACE, SBUFEN, SBUFENSLX,&
+           & SBUFENSLY, SBUFENLX, SBUFENLY, SBUFENLZ, SBCVFEWEIGH,&
+           & SUFEN, SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ,&
+           & SCVFEWEIGH )
        !ewrite(3,*)'SBUFEN:',SBUFEN
        !ewrite(3,*)'SUFEN:',SUFEN
 
       ! Determine CV_SLOCLIST & U_SLOCLIST
-      CALL DETERMIN_SLOCLIST( CV_SLOCLIST, CV_NLOC, CV_SNLOC, NFACE, &
-           NDIM, CV_ELE_TYPE )
+      CALL DETERMIN_SLOCLIST( CV_SLOCLIST, CV_NLOC, CV_SNLOC, NFACE,&
+           & NDIM, CV_ELE_TYPE )
       IF( U_SNLOC == 1 ) THEN
          U_SLOCLIST( 1, 1 ) = 1
          U_SLOCLIST( 2, 1 ) = U_NLOC
       ELSE
-         CALL DETERMIN_SLOCLIST( U_SLOCLIST, U_NLOC, U_SNLOC, NFACE, &
-              NDIM, CV_ELE_TYPE )
+         CALL DETERMIN_SLOCLIST( U_SLOCLIST, U_NLOC, U_SNLOC, NFACE,&
+              & NDIM, CV_ELE_TYPE )
       ENDIF
-      !ewrite(3,*)'CV_SNLOC, U_SNLOC, SCVNGI:', CV_SNLOC, U_SNLOC, SCVNGI
+      !ewrite(3,*)'CV_SNLOC, U_SNLOC, SCVNGI:', CV_SNLOC, U_SNLOC,
+      ! SCVNGI
       !ewrite(3,*)'CV_SLOCLIST:', CV_SLOCLIST
       !ewrite(3,*)'U_SLOCLIST:', U_SLOCLIST
 
@@ -2501,41 +2792,49 @@ ewrite(3,*)'lll:', option_path_len
     END SUBROUTINE DET_SUF_ELE_SHAPE
 
 
-    subroutine scvfen_2_sbcvfen( cv_nloc, cv_snloc, scvngi, sbcvngi, &
-         cv_nloc_cells, cv_snloc_cells, cvfem_on_face, &
-         sbcvfen, sbcvfenslx, sbcvfensly, sbcvfenlx, sbcvfenly, sbcvfenlz, sbcvfeweigh, &
-         scvfen, scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz, scvfeweigh )
+    subroutine scvfen_2_sbcvfen( cv_nloc, cv_snloc, scvngi, sbcvngi,&
+         & cv_nloc_cells, cv_snloc_cells, cvfem_on_face, sbcvfen,&
+         & sbcvfenslx, sbcvfensly, sbcvfenlx, sbcvfenly, sbcvfenlz,&
+         & sbcvfeweigh, scvfen, scvfenslx, scvfensly, scvfenlx,&
+         & scvfenly, scvfenlz, scvfeweigh )
       ! Compute SBCVFEN from SCVFEN
       implicit none
       integer, intent( in ) :: cv_nloc, cv_snloc, scvngi, sbcvngi
       integer, intent( in ) :: cv_nloc_cells, cv_snloc_cells
-      logical, dimension( cv_nloc_cells, scvngi ), intent( in ) :: cvfem_on_face
-      real, dimension( cv_snloc, sbcvngi ), intent( inout ) :: sbcvfen, sbcvfenslx, &
-           sbcvfensly, sbcvfenlx, sbcvfenly, sbcvfenlz
+      logical, dimension( cv_nloc_cells, scvngi ), intent( in ) ::&
+           & cvfem_on_face
+      real, dimension( cv_snloc, sbcvngi ), intent( inout ) ::&
+           & sbcvfen, sbcvfenslx, sbcvfensly, sbcvfenlx, sbcvfenly,&
+           & sbcvfenlz
       real, dimension( sbcvngi ), intent( inout ) :: sbcvfeweigh
-      real, dimension( cv_nloc, scvngi ), intent( in ) ::  scvfen, &
-           scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz
+      real, dimension( cv_nloc, scvngi ), intent( in ) ::  scvfen,&
+           & scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz
       real, dimension( scvngi ), intent( in ) :: scvfeweigh
       ! Local variables
-      logical, dimension( : ), allocatable :: candidate_gi,candidate_gi2
+      logical, dimension( : ), allocatable :: candidate_gi&
+           &,candidate_gi2
       integer :: cv_siloc, cv_iloc, cv_bsgi, cv_sgi, cv_iloc_cells
       real :: r_prodt
 
       !ewrite(3,*) ' In scvfen_2_sbcvfen'
-      !ewrite(3,*) ' cv_nloc, cv_snloc, scvngi, sbcvngi, cv_nloc_cells, cv_snloc_cells:', &
-      !     cv_nloc, cv_snloc, scvngi, sbcvngi, cv_nloc_cells, cv_snloc_cells
+      !ewrite(3,*) ' cv_nloc, cv_snloc, scvngi, sbcvngi,
+      ! cv_nloc_cells, cv_snloc_cells:', cv_nloc, cv_snloc, scvngi,
+      !  sbcvngi, cv_nloc_cells, cv_snloc_cells
 
       allocate( candidate_gi( scvngi ) )
       allocate( candidate_gi2( scvngi ) )
 
-      ! The CV_SNLOC surface nodes are the only nodes that are candidates.
+      ! The CV_SNLOC surface nodes are the only nodes that are
+      !  candidates.
 
       do cv_sgi = 1, scvngi
          candidate_gi2( cv_sgi ) = .true.
          do cv_iloc_cells = 1, cv_snloc_cells
-            if( .not.cvfem_on_face(cv_iloc_cells,cv_sgi) ) candidate_gi2( cv_sgi ) = .false.
-            !ewrite(3,*)'cv_iloc_cells, cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi):', &
-            !     cv_iloc_cells,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
+            if( .not.cvfem_on_face(cv_iloc_cells,cv_sgi) )&
+                 & candidate_gi2( cv_sgi ) = .false.
+            !ewrite(3,*)'cv_iloc_cells, cv_sgi,
+            ! cvfem_on_face(cv_iloc_cells,cv_sgi):', cv_iloc_cells
+            ! ,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
          end do
       end do
 
@@ -2545,15 +2844,22 @@ ewrite(3,*)'lll:', option_path_len
          Loop_SGI2: do cv_sgi = 1, scvngi
                Conditional_2: if( candidate_gi2( cv_sgi ) ) then
                   cv_bsgi = cv_bsgi + 1
-                  !ewrite(3,*) 'cv_siloc, cv_bsgi,cv_iloc, cv_sgi:', &
-                  !     cv_siloc, cv_bsgi,cv_iloc, cv_sgi
-                  !ewrite(3,*) 'scvfen( cv_iloc, cv_sgi ):', scvfen( cv_iloc, cv_sgi )
-                  sbcvfen( cv_siloc, cv_bsgi ) = scvfen( cv_iloc, cv_sgi )
-                  sbcvfenslx( cv_siloc, cv_bsgi ) = scvfenslx( cv_iloc, cv_sgi )
-                  sbcvfensly( cv_siloc, cv_bsgi ) = scvfensly( cv_iloc, cv_sgi )
-                  sbcvfenlx( cv_siloc, cv_bsgi ) = scvfenlx( cv_iloc, cv_sgi )
-                  sbcvfenly( cv_siloc, cv_bsgi ) = scvfenly( cv_iloc, cv_sgi )
-                  sbcvfenlz( cv_siloc, cv_bsgi ) = scvfenlz( cv_iloc, cv_sgi )
+                  !ewrite(3,*) 'cv_siloc, cv_bsgi,cv_iloc, cv_sgi:',
+                  ! cv_siloc, cv_bsgi,cv_iloc, cv_sgi
+                  !ewrite(3,*) 'scvfen( cv_iloc, cv_sgi ):', scvfen(
+                  ! cv_iloc, cv_sgi )
+                  sbcvfen( cv_siloc, cv_bsgi ) = scvfen( cv_iloc,&
+                       & cv_sgi )
+                  sbcvfenslx( cv_siloc, cv_bsgi ) = scvfenslx(&
+                       & cv_iloc, cv_sgi )
+                  sbcvfensly( cv_siloc, cv_bsgi ) = scvfensly(&
+                       & cv_iloc, cv_sgi )
+                  sbcvfenlx( cv_siloc, cv_bsgi ) = scvfenlx( cv_iloc,&
+                       & cv_sgi )
+                  sbcvfenly( cv_siloc, cv_bsgi ) = scvfenly( cv_iloc,&
+                       & cv_sgi )
+                  sbcvfenlz( cv_siloc, cv_bsgi ) = scvfenlz( cv_iloc,&
+                       & cv_sgi )
                   sbcvfeweigh( cv_bsgi ) = scvfeweigh( cv_sgi )
                end if Conditional_2
          end do Loop_SGI2
@@ -2572,39 +2878,47 @@ ewrite(3,*)'lll:', option_path_len
 
 
 
-    subroutine shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-         ufem_on_face, &
-         cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-         scvfenlx, scvfenly, scvfenlz, &
-         u_nloc, sufen, sufenslx, sufensly, &
-         sufenlx, sufenly, sufenlz, &
-         ndim )  
+    subroutine shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face,&
+         & cvfem_on_face, ufem_on_face, cv_ele_type, cv_nloc, scvfen,&
+         & scvfenslx, scvfensly, scvfeweigh, scvfenlx, scvfenly,&
+         & scvfenlz, u_nloc, sufen, sufenslx, sufensly, sufenlx,&
+         & sufenly, sufenlz, ndim )  
       implicit none
       !-     
-      !- This subroutine generates the FE basis functions, weights and the
-      !- derivatives of the shape functions for a variety of elements on the 
+      !- This subroutine generates the FE basis functions, weights
+      ! and the
+      !- derivatives of the shape functions for a variety of elements
+      ! on the 
       !- control volume boundaries.  
-      !- The routine also generates the shape functions and derivatives 
-      !- associated with the CV surfaces and also the FV basis functions.
+      !- The routine also generates the shape functions and
+      ! derivatives 
+      !- associated with the CV surfaces and also the FV basis
+      ! functions.
       !-
       !- date last modified : 29/11/2011
       !-
       integer, intent( in ) :: scvngi, cv_nloc
-      integer, dimension( cv_nloc, scvngi ), intent( inout ) :: cv_neiloc
-      logical, dimension( cv_nloc, scvngi ), intent( inout ) :: cv_on_face, cvfem_on_face
-      logical, dimension( u_nloc, scvngi ), intent( inout ) :: ufem_on_face
-      integer, intent( in ) :: cv_ele_type
-      real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfen, scvfenslx, scvfensly
-      real, dimension( scvngi ), intent( inout ) :: scvfeweigh
-      real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfenlx, scvfenly, scvfenlz
       integer, intent( in ) :: u_nloc
-      real, dimension( u_nloc, scvngi ), intent( inout ) :: sufen, sufenslx, sufensly, &
-           sufenlx, sufenly, sufenlz
+      integer, dimension( cv_nloc, scvngi ), intent( inout ) ::&
+           & cv_neiloc
+      logical, dimension( cv_nloc, scvngi ), intent( inout ) ::&
+           & cv_on_face, cvfem_on_face
+      logical, dimension( u_nloc, scvngi ), intent( inout ) ::&
+           & ufem_on_face
+      integer, intent( in ) :: cv_ele_type
+      real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfen,&
+           & scvfenslx, scvfensly
+      real, dimension( scvngi ), intent( inout ) :: scvfeweigh
+      real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfenlx&
+           &, scvfenly, scvfenlz
+      real, dimension( u_nloc, scvngi ), intent( inout ) :: sufen,&
+           & sufenslx, sufensly, sufenlx, sufenly, sufenlz
       integer, intent( in ) :: ndim
       ! Local variables
       integer :: iloc, gi
       logical :: tri_tet
-      integer, dimension( :, : ), allocatable :: cvfem_neiloc, ufem_neiloc
+      integer, dimension( :, : ), allocatable :: cvfem_neiloc,&
+           & ufem_neiloc
       real, dimension( :, : ), allocatable :: m, mu, cvn_dummy
       real, dimension( : ), allocatable :: cvweigh_dummy
 
@@ -2622,60 +2936,54 @@ ewrite(3,*)'lll:', option_path_len
 
       Cond_ShapeType: Select Case( cv_ele_type )
       case( 1, 2 ) ! 1D
-         call fv_1d_quad( scvngi, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-              scvfenlx, scvfenly, scvfenlz ) ! For scalar fields
-         call fv_1d_quad( scvngi, u_nloc, sufen, sufenslx, sufensly, scvfeweigh, &
-              sufenlx, sufenly, sufenlz ) ! For U fields
+         call fv_1d_quad( scvngi, cv_nloc, scvfen, scvfenslx,&
+              & scvfensly, scvfeweigh, scvfenlx, scvfenly, scvfenlz )&
+              & ! For scalar fields
+         call fv_1d_quad( scvngi, u_nloc, sufen, sufenslx, sufensly,&
+         & scvfeweigh, sufenlx, sufenly, sufenlz ) ! For U fields
 
       case( 3, 4, 7, 8 ) ! Triangle and Tetrahedra 
          tri_tet=.true.
-         call suf_cv_tri_tet_shape( cv_ele_type, ndim, scvngi, cv_nloc, u_nloc, scvfeweigh, &
-              scvfen, scvfenlx, scvfenly, scvfenlz, scvfenslx, scvfensly,  &
-              sufen, sufenlx, sufenly, sufenlz, sufenslx, sufensly, &
-              cv_neiloc, cvfem_neiloc, ufem_neiloc )
+         call suf_cv_tri_tet_shape( cv_ele_type, ndim, scvngi,&
+              & cv_nloc, u_nloc, scvfeweigh, scvfen, scvfenlx,&
+              & scvfenly, scvfenlz, scvfenslx, scvfensly, sufen,&
+              & sufenlx, sufenly, sufenlz, sufenslx, sufensly,&
+              & cv_neiloc, cvfem_neiloc, ufem_neiloc )
       case( 5 ) ! Bi-linear Quadrilateral
-         call fvquad( scvngi, cv_nloc, scvngi, &
-              m, scvfen, scvfenslx, & 
-              scvfeweigh )
-         call fvquad( scvngi, u_nloc, scvngi, &
-              mu, sufen, sufenslx, & 
-              scvfeweigh ) 
-         call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
-              scvfen, scvfenlx, scvfenly, scvfenlz, &
-              sufen, sufenlx, sufenly, sufenlz )
+         call fvquad( scvngi, cv_nloc, scvngi, m, scvfen, scvfenslx,&
+              & scvfeweigh )
+         call fvquad( scvngi, u_nloc, scvngi, mu, sufen, sufenslx,&
+              & scvfeweigh ) 
+         call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc,&
+              & u_nloc, cvn_dummy, cvweigh_dummy, scvfen, scvfenlx,&
+              & scvfenly, scvfenlz, sufen, sufenlx, sufenly, sufenlz )
 
       case( 6 ) ! Tri-linear Quadrilateral
-         call fvqquad( scvngi, cv_nloc, scvngi, &
-              m, scvfen, scvfenslx, & 
-              scvfeweigh )
-         call fvqquad( scvngi, u_nloc, scvngi, &
-              mu, sufen, sufenslx, & 
-              scvfeweigh )
-         call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
-              scvfen, scvfenlx, scvfenly, scvfenlz, &
-              sufen, sufenlx, sufenly, sufenlz )
+         call fvqquad( scvngi, cv_nloc, scvngi, m, scvfen, scvfenslx,&
+              & scvfeweigh )
+         call fvqquad( scvngi, u_nloc, scvngi, mu, sufen, sufenslx,&
+              & scvfeweigh )
+         call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc,&
+              & u_nloc, cvn_dummy, cvweigh_dummy, scvfen, scvfenlx,&
+              & scvfenly, scvfenlz, sufen, sufenlx, sufenly, sufenlz )
 
       case( 9 ) ! Tri-linear Hexahedron
-         call fvhex( scvngi, cv_nloc, scvngi, &
-              m, scvfen, scvfenslx, & 
-              scvfensly, scvfeweigh )
-         call fvhex( scvngi, u_nloc, scvngi, &
-              mu, sufen, sufenslx, & 
-              sufensly, scvfeweigh )
-         call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
-              scvfen, scvfenlx, scvfenly, scvfenlz, &
-              sufen, sufenlx, sufenly, sufenlz )
+         call fvhex( scvngi, cv_nloc, scvngi, m, scvfen, scvfenslx,&
+              & scvfensly, scvfeweigh )
+         call fvhex( scvngi, u_nloc, scvngi, mu, sufen, sufenslx,&
+              & sufensly, scvfeweigh )
+         call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc,&
+              & u_nloc, cvn_dummy, cvweigh_dummy, scvfen, scvfenlx,&
+              & scvfenly, scvfenlz, sufen, sufenlx, sufenly, sufenlz )
 
       case( 10 ) ! Tri-linear Hexahedron
-         call fvqhex( scvngi, cv_nloc, scvngi, &
-              m, scvfen, scvfenslx, & 
-              scvfensly, scvfeweigh )
-         call fvqhex( scvngi, u_nloc, scvngi, &
-              mu, sufen, sufenslx, & 
-              sufensly, scvfeweigh )
-         call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
-              scvfen, scvfenlx, scvfenly, scvfenlz, &
-              sufen, sufenlx, sufenly, sufenlz )
+         call fvqhex( scvngi, cv_nloc, scvngi, m, scvfen, scvfenslx,&
+              & scvfensly, scvfeweigh )
+         call fvqhex( scvngi, u_nloc, scvngi, mu, sufen, sufenslx,&
+              & sufensly, scvfeweigh )
+         call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc,&
+              & u_nloc, cvn_dummy, cvweigh_dummy, scvfen, scvfenlx,&
+              & scvfenly, scvfenlz, sufen, sufenlx, sufenly, sufenlz )
 
       case default; FLExit( "Wrong integer for CV_ELE_TYPE" )
 
@@ -2683,7 +2991,8 @@ ewrite(3,*)'lll:', option_path_len
 
 
       if(.not.tri_tet) then
-         call volnei( cv_neiloc, cvfem_neiloc, cv_nloc, scvngi, cv_ele_type )
+         call volnei( cv_neiloc, cvfem_neiloc, cv_nloc, scvngi,&
+              & cv_ele_type )
       end if
 
       ewrite(3,*)'cv_ele_type:', cv_ele_type
@@ -2699,12 +3008,12 @@ ewrite(3,*)'lll:', option_path_len
       else
          do iloc = 1, cv_nloc
             do gi = 1, scvngi 
-               ! ewrite(3,*)'cv_neiloc, cvfem_on_face:', iloc, gi, &
-               !      cv_neiloc( iloc, gi ), cvfem_neiloc( iloc, gi ) 
-               if ( cv_neiloc( iloc, gi ) == -1 ) &
-                    cv_on_face( iloc, gi ) = .true.
-               if ( cvfem_neiloc( iloc, gi ) == -1 ) &
-                    cvfem_on_face( iloc, gi ) = .true. 
+               ! ewrite(3,*)'cv_neiloc, cvfem_on_face:', iloc, gi,
+               !  cv_neiloc( iloc, gi ), cvfem_neiloc( iloc, gi ) 
+               if ( cv_neiloc( iloc, gi ) == -1 ) cv_on_face( iloc,&
+                    & gi ) = .true.
+               if ( cvfem_neiloc( iloc, gi ) == -1 ) cvfem_on_face(&
+                    & iloc, gi ) = .true. 
             end do
          end do
 
@@ -2712,14 +3021,18 @@ ewrite(3,*)'lll:', option_path_len
 
       do iloc = 1, u_nloc
          do gi = 1, scvngi 
-            ufem_on_face( iloc, gi ) = ( ufem_neiloc( iloc, gi ) == -1 )
+            ufem_on_face( iloc, gi ) = ( ufem_neiloc( iloc, gi ) == &
+                 &-1 )
          end do
       end do
 
       !do iloc = 1, cv_nloc
-      !   ewrite(3,*)'iloc, cv_on_face:', iloc, ( cv_on_face( iloc, gi ), gi = 1, scvngi )
-      !   ewrite(3,*)'iloc, cvfem_neiloc:', iloc, ( cvfem_neiloc( iloc, gi ), gi = 1, scvngi )
-      !   ewrite(3,*)'iloc, cvfem_on_face:', iloc, ( cvfem_on_face( iloc, gi ), gi = 1, scvngi )
+      !   ewrite(3,*)'iloc, cv_on_face:', iloc, ( cv_on_face( iloc,
+      !    gi ), gi = 1, scvngi )
+      !   ewrite(3,*)'iloc, cvfem_neiloc:', iloc, ( cvfem_neiloc(
+      !    iloc, gi ), gi = 1, scvngi )
+      !   ewrite(3,*)'iloc, cvfem_on_face:', iloc, ( cvfem_on_face(
+      !    iloc, gi ), gi = 1, scvngi )
       !end do
 
       deallocate( m )
@@ -2732,13 +3045,17 @@ ewrite(3,*)'lll:', option_path_len
     end subroutine shapesv_fem_plus
 
 
-    SUBROUTINE FV_1D_QUAD( SCVNGI, CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
-         SCVFENLX, SCVFENLY, SCVFENLZ )
+    SUBROUTINE FV_1D_QUAD( SCVNGI, CV_NLOC, SCVFEN, SCVFENSLX,&
+         & SCVFENSLY, SCVFEWEIGH, SCVFENLX, SCVFENLY, SCVFENLZ )
       !     
-      !     - this subroutine generates the FE basis functions, weights and the
-      !     - derivatives of the shape functions for a variety of elements. 
-      !     - The routine also generates the shape functions and derivatives 
-      !     - associated with the CV surfaces and also the FV basis functions.
+      !     - this subroutine generates the FE basis functions,
+      !      weights and the
+      !     - derivatives of the shape functions for a variety of
+      !      elements. 
+      !     - The routine also generates the shape functions and
+      !      derivatives 
+      !     - associated with the CV surfaces and also the FV basis
+      !      functions.
       !     -------------------------------
       !     - date last modified : 24/05/2003
       !     -------------------------------
@@ -2746,8 +3063,8 @@ ewrite(3,*)'lll:', option_path_len
       IMPLICIT NONE
 
       INTEGER, intent( in ) :: SCVNGI, CV_NLOC
-      REAL, DIMENSION( CV_NLOC, SCVNGI ), intent( inout ) :: SCVFEN, SCVFENSLX, SCVFENSLY, &  
-           SCVFENLX, SCVFENLY, SCVFENLZ
+      REAL, DIMENSION( CV_NLOC, SCVNGI ), intent( inout ) :: SCVFEN,&
+           & SCVFENSLX, SCVFENSLY, SCVFENLX, SCVFENLY, SCVFENLZ
       REAL, DIMENSION( SCVNGI ), intent( inout ) :: SCVFEWEIGH
       ! Local variables
       INTEGER, PARAMETER :: TWO = 2, THREE = 3, FOUR = 4
@@ -2785,7 +3102,8 @@ ewrite(3,*)'lll:', option_path_len
          LX(4) = +1.0 - 1./3.
          LX(5) = +1.0
       ELSE
-         FLAbort(" Wrong number of computed surface quadrature points for CV ")
+         FLAbort(" Wrong number of computed surface quadrature points&
+              & for CV ")
       ENDIF
 
       DIFF=.TRUE.
@@ -2799,10 +3117,12 @@ ewrite(3,*)'lll:', option_path_len
       Loop_P2: DO GPOI = 1, NCV_BOU
 
          Loop_ILX2: DO  ILOC = 1, CV_NLOC 
-            SCVFEN( ILOC, GPOI )  = LAGRAN( NDIFF, LX( GPOI ), ILOC, CV_NLOC, CV_NODPOS )
+            SCVFEN( ILOC, GPOI )  = LAGRAN( NDIFF, LX( GPOI ), ILOC,&
+                 & CV_NLOC, CV_NODPOS )
             SCVFENSLX( ILOC, GPOI ) = 1.0
             SCVFENSLY( ILOC, GPOI ) = 0.0
-            SCVFENLX( ILOC, GPOI ) = LAGRAN( DIFF, LX( GPOI ), ILOC, CV_NLOC, CV_NODPOS )
+            SCVFENLX( ILOC, GPOI ) = LAGRAN( DIFF, LX( GPOI ), ILOC,&
+                 & CV_NLOC, CV_NODPOS )
             SCVFENLY( ILOC, GPOI ) = 0.0
             SCVFENLZ( ILOC, GPOI ) = 0.0
          END DO Loop_ILX2
@@ -2818,18 +3138,17 @@ ewrite(3,*)'lll:', option_path_len
 
 
 
-    SUBROUTINE SHAPESV( ELETYP, NEILOC, FEM_NEILOC,  &
-         NGI, NLOC,   &
-         SVNGI, &
-         SVN, &
-         SVNLX, SVNLY,  &
-         SVWEIGH,    &
-         M, D1 )
+    SUBROUTINE SHAPESV( ELETYP, NEILOC, FEM_NEILOC, NGI, NLOC, SVNGI,&
+         & SVN, SVNLX, SVNLY, SVWEIGH, M, D1 )
       !     
-      !     - this subroutine generates the FE basis functions, weights and the
-      !     - derivatives of the shape functions for a variety of elements. 
-      !     - The routine also generates the shape functions and derivatives 
-      !     - associated with the CV surfaces and also the FV basis functions.
+      !     - this subroutine generates the FE basis functions,
+      !      weights and the
+      !     - derivatives of the shape functions for a variety of
+      !      elements. 
+      !     - The routine also generates the shape functions and
+      !      derivatives 
+      !     - associated with the CV surfaces and also the FV basis
+      !      functions.
       !     -------------------------------
       !     - date last modified : 24/05/2003
       !     -------------------------------
@@ -2838,8 +3157,10 @@ ewrite(3,*)'lll:', option_path_len
 
       INTEGER, intent( in ) :: ELETYP
       INTEGER, intent( in ) :: NGI, NLOC, SVNGI
-      INTEGER, DIMENSION( NLOC, SVNGI ), intent( inout ) :: NEILOC, FEM_NEILOC
-      REAL, DIMENSION( NLOC, SVNGI ), intent( inout ) :: SVN, SVNLX, SVNLY
+      INTEGER, DIMENSION( NLOC, SVNGI ), intent( inout ) :: NEILOC,&
+           & FEM_NEILOC
+      REAL, DIMENSION( NLOC, SVNGI ), intent( inout ) :: SVN, SVNLX,&
+           & SVNLY
       REAL, DIMENSION( SVNGI ), intent( inout ) :: SVWEIGH
       REAL, DIMENSION( NLOC, NGI ), intent( inout ) :: M
       LOGICAL, intent( in ) :: D1
@@ -2853,7 +3174,8 @@ ewrite(3,*)'lll:', option_path_len
       ALLOCATE( DXN( THREE ))
       !     
       !     
-      Cond_ShapeType: IF(ELETYP == 1) THEN ! calculate the shape functions on the control volume boundaries
+      Cond_ShapeType: IF(ELETYP == 1) THEN ! calculate the shape
+         !  functions on the control volume boundaries
 
          Cond_Dimension: IF( D1 ) THEN
 
@@ -2885,51 +3207,43 @@ ewrite(3,*)'lll:', option_path_len
 
             IF(ELETYP == 1) THEN
 
-               CALL FVQUAD( NGI,    NLOC, SVNGI,&
-                    M,      SVN,  SVNLX,&
-                    SVWEIGH              )
+               CALL FVQUAD( NGI,    NLOC, SVNGI, M,      SVN,  SVNLX,&
+                    & SVWEIGH              )
 
             ELSE IF(ELETYP == 2) THEN
 
-               CALL FVTRI( NGI,    NLOC, SVNGI,&
-                    M,      SVN,  SVNLX,&
-                    SVWEIGH              )
+               CALL FVTRI( NGI,    NLOC, SVNGI, M,      SVN,  SVNLX,&
+                    & SVWEIGH              )
 
             ELSE IF(ELETYP == 3) THEN
 
-               CALL FVHEX( NGI,    NLOC,    SVNGI,&
-                    M,      SVN,     SVNLX, &
-                    SVNLY,  SVWEIGH         )
+               CALL FVHEX( NGI,    NLOC,    SVNGI, M,      SVN,    &
+                    & SVNLX, SVNLY,  SVWEIGH         )
 
             ELSE IF(ELETYP == 4) THEN
 
-               CALL FVTET( NGI,    NLOC,    SVNGI,&
-                    M,      SVN,     SVNLX, &
-                    SVNLY,  SVWEIGH         )
+               CALL FVTET( NGI,    NLOC,    SVNGI, M,      SVN,    &
+                    & SVNLX, SVNLY,  SVWEIGH         )
 
             ELSE IF(ELETYP == 5) THEN
 
-               CALL FVQQUAD(  NGI,    NLOC,    SVNGI,&
-                    M,      SVN,     SVNLX, &
-                    SVWEIGH                 )
+               CALL FVQQUAD(  NGI,    NLOC,    SVNGI, M,      SVN,   &
+                    &  SVNLX, SVWEIGH                 )
 
             ELSE IF(ELETYP == 6) THEN
 
-               CALL FVQHEX( NGI,   NLOC,   SVNGI,&
-                    M,     SVN,    SVNLX,&
-                    SVNLY, SVWEIGH        )
+               CALL FVQHEX( NGI,   NLOC,   SVNGI, M,     SVN,   &
+                    & SVNLX, SVNLY, SVWEIGH        )
 
             ELSE IF(ELETYP == 7) THEN ! quadratic triangles
 
-               CALL FVQTRI( NGI,    NLOC, SVNGI,&
-                    M,      SVN,  SVNLX,  &
-                    SVWEIGH              )
+               CALL FVQTRI( NGI,    NLOC, SVNGI, M,      SVN,  SVNLX,&
+                    & SVWEIGH              )
 
             ELSE IF(ELETYP == 8) THEN
 
-               CALL FVQTET( NGI,   NLOC,   SVNGI,&
-                    M,     SVN,    SVNLX,&
-                    SVNLY, SVWEIGH        )
+               CALL FVQTET( NGI,   NLOC,   SVNGI, M,     SVN,   &
+                    & SVNLX, SVNLY, SVWEIGH        )
 
             END IF
 
@@ -2953,15 +3267,15 @@ ewrite(3,*)'lll:', option_path_len
 
 
 
-    SUBROUTINE FVQUAD( NGI,    NLOC,    SVNGI,&
-         M,      SVN,     SVNLX, &
-         SVWEIGH                 )
+    SUBROUTINE FVQUAD( NGI,    NLOC,    SVNGI, M,      SVN,     SVNLX&
+         &, SVWEIGH                 )
       !     --------------------------------------------
       !     
       !     - this routine generates the shape functions associated
       !     - with the FV's i.e. their surfaces and volume shape 
       !     - functions and derivatives. The surface shape functions
-      !     - are the values of the FE volume shape functions evaluated
+      !     - are the values of the FE volume shape functions
+      !      evaluated
       !     - on the surfaces of the CV's.
       !     
       !     -------------------------------
@@ -3003,7 +3317,8 @@ ewrite(3,*)'lll:', option_path_len
       !     
       REAL CORN(NFACE,NCOORD,FNLOC)
       !     
-      !     - FV basis functions for use in calculating the integral of the
+      !     - FV basis functions for use in calculating the integral
+      !      of the
       !     - shape functions over a subcell of a CV.
       !     
       M = 0.0
@@ -3022,11 +3337,16 @@ ewrite(3,*)'lll:', option_path_len
       !     
       !     END DO
       !     
-      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the positions
-      !     - of the corners (vertices) of the faces of a subcell in volume 
-      !     - co-ordinates. Note also that IFACE ranges from 1-4, ICOORD
-      !     - ranges from 1-2 and JLOC ranges from 1-2. IFACE signifies 
-      !     - the particular subcell face, ICOORD signfies the co-ordinates
+      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the
+      !      positions
+      !     - of the corners (vertices) of the faces of a subcell in
+      !      volume 
+      !     - co-ordinates. Note also that IFACE ranges from 1-4,
+      !      ICOORD
+      !     - ranges from 1-2 and JLOC ranges from 1-2. IFACE
+      !      signifies 
+      !     - the particular subcell face, ICOORD signfies the co
+      !     -ordinates
       !     - of the vertices of the face in (XI,ETA) co-ordinates
       !     - and JLOC signifies the vertex of the face of the subcell
       !     - which are straight lines.
@@ -3073,7 +3393,8 @@ ewrite(3,*)'lll:', option_path_len
       XIP(1) = -1.0
       XIP(2) =  1.0
       !     
-      !     - define positions of vertices of quadrilateral element in 
+      !     - define positions of vertices of quadrilateral element
+      !      in 
       !     - (XI,ETA) space.
       !     
       XI(1)  = -1.0
@@ -3088,7 +3409,8 @@ ewrite(3,*)'lll:', option_path_len
       XI(4)  =  1.0
       ETA(4) =  1.0
       !     
-      !     - generate values of the FE basis functions at the quadrature
+      !     - generate values of the FE basis functions at the
+      !      quadrature
       !     - points on the faces of the subcells.
       !     
       do ILOC = 1, NLOC! Was loop 
@@ -3107,25 +3429,22 @@ ewrite(3,*)'lll:', option_path_len
                   !     
                   do JLOC = 1, FNLOC! Was loop 
                      !     
-                     POS(ICOORD) = POS(ICOORD)&
-                          &                    + CORN(IFACE,ICOORD,JLOC)&
-                          &                    *0.5*(1.+XIP(JLOC)*XIGP(GJ))
+                     POS(ICOORD) = POS(ICOORD) + CORN(IFACE,ICOORD&
+                          &,JLOC) *0.5*(1.+XIP(JLOC)*XIGP(GJ))
                      !     
-                     DPDXI(ICOORD) = DPDXI(ICOORD)&
-                          &                    + CORN(IFACE,ICOORD,JLOC)&
-                          &                    *0.5*XIP(JLOC)
+                     DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(IFACE&
+                          &,ICOORD,JLOC) *0.5*XIP(JLOC)
                      !     
                   END DO
                   !     
                END DO
                !     
-               SVN(ILOC,GI) = 0.25*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )
+               SVN(ILOC,GI) = 0.25*( 1.0 + XI(ILOC)*POS(1) ) *( 1.0 +&
+                    & ETA(ILOC)*POS(2) )
                !     
-               SVNLX(ILOC,GI) = 0.25*XI(ILOC)*DPDXI(1)&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              + 0.25*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *ETA(ILOC)*DPDXI(2)
+               SVNLX(ILOC,GI) = 0.25*XI(ILOC)*DPDXI(1) *( 1.0 +&
+                    & ETA(ILOC)*POS(2) ) + 0.25*( 1.0 + XI(ILOC)&
+                    &*POS(1) ) *ETA(ILOC)*DPDXI(2)
                !     
             END DO
             !     
@@ -3146,9 +3465,8 @@ ewrite(3,*)'lll:', option_path_len
     !     
     !     
     !     
-    SUBROUTINE FVTRI( NGI,    NLOC, SVNGI,&
-         M,      SVN,  SVNLX,  &
-         SVWEIGH              )
+    SUBROUTINE FVTRI( NGI,    NLOC, SVNGI, M,      SVN,  SVNLX,&
+         & SVWEIGH              )
       !     ----------------------------------------
       !     
       !     - this routine generates the shape functions associated
@@ -3190,7 +3508,8 @@ ewrite(3,*)'lll:', option_path_len
       !     
       REAL CORN(NFACE,NCOORD,FNLOC)
       !     
-      !     - FV basis functions for use in calculating the integral of the
+      !     - FV basis functions for use in calculating the integral
+      !      of the
       !     - shape functions over a subcell of a CV.
       !     
       M = 0.0
@@ -3209,12 +3528,18 @@ ewrite(3,*)'lll:', option_path_len
       !     
       !     END DO      
       !     
-      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the positions
-      !     - of the corners (vertices) of the faces of a subcell in volume 
-      !     - co-ordinates. Note also that IFACE ranges from 1-3, ICOORD
-      !     - ranges from 1-3 and JLOC ranges from 1-2. IFACE signifies 
-      !     - the particular subcell face, ICOORD signfies the co-ordinates
-      !     - of the vertices of the face in volume co-ordinates (L1,L2,L3)
+      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the
+      !      positions
+      !     - of the corners (vertices) of the faces of a subcell in
+      !      volume 
+      !     - co-ordinates. Note also that IFACE ranges from 1-3,
+      !      ICOORD
+      !     - ranges from 1-3 and JLOC ranges from 1-2. IFACE
+      !      signifies 
+      !     - the particular subcell face, ICOORD signfies the co
+      !     -ordinates
+      !     - of the vertices of the face in volume co-ordinates (L1
+      !     ,L2,L3)
       !     - and JLOC signifies the vertex of the face of the subcell
       !     - which are straight lines.
       !     
@@ -3258,7 +3583,8 @@ ewrite(3,*)'lll:', option_path_len
       XI(1) = -1.0
       XI(2) =  1.0
       !     
-      !     - generate values of the FE basis functions at the quadrature
+      !     - generate values of the FE basis functions at the
+      !      quadrature
       !     - points on the faces of the subcells.
       !     
       do ILOC = 1, NLOC! Was loop 
@@ -3276,13 +3602,11 @@ ewrite(3,*)'lll:', option_path_len
                   !     
                   do JLOC = 1, FNLOC! Was loop 
                      !     
-                     POS(ICOORD) = POS(ICOORD)&
-                          + CORN(IFACE,ICOORD,JLOC)&
-                          *0.5*(1.+XI(JLOC)*XIGP(GJ))
+                     POS(ICOORD) = POS(ICOORD) + CORN(IFACE,ICOORD&
+                          &,JLOC) *0.5*(1.+XI(JLOC)*XIGP(GJ))
                      !     
-                     DPDXI(ICOORD) = DPDXI(ICOORD)&
-                          + CORN(IFACE,ICOORD,JLOC)&
-                          *0.5*XI(JLOC)
+                     DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(IFACE&
+                          &,ICOORD,JLOC) *0.5*XI(JLOC)
                      !     
                   END DO
                   !     
@@ -3307,10 +3631,8 @@ ewrite(3,*)'lll:', option_path_len
       !     
     END SUBROUTINE FVTRI
 
-    SUBROUTINE FVHEX( NGI,    NLOC,    SVNGI,&
-                                !     - REALS
-         &     M,      SVN,     SVNLX, &
-         &     SVNLY,  SVWEIGH          )
+    SUBROUTINE FVHEX( NGI,    NLOC,    SVNGI, & !     - REALS
+         &     M,      SVN,     SVNLX, SVNLY,  SVWEIGH          )
       !     --------------------------------------------
       !     
       !     - this routine generates the shape functions associated
@@ -3357,7 +3679,8 @@ ewrite(3,*)'lll:', option_path_len
       !     
       REAL CORN(NFACE,NCOORD,FNLOC)
       !     
-      !     - FV basis functions for use in calculating the integral of the
+      !     - FV basis functions for use in calculating the integral
+      !      of the
       !     - shape functions over a subcell of a CV.
       !     
       M = 0.0
@@ -3376,12 +3699,18 @@ ewrite(3,*)'lll:', option_path_len
       !     
       !     END DO    
       !     
-      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the positions
-      !     - of the corners (vertices) of the faces of a subcell in volume 
-      !     - co-ordinates. Note also that IFACE ranges from 1-12, ICOORD
-      !     - ranges from 1-3 and JLOC ranges from 1-4. IFACE signifies 
-      !     - the particular subcell face, ICOORD signfies the co-ordinates
-      !     - of the vertices of the face in (XI,ETA,ZETA) co-ordinates
+      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the
+      !      positions
+      !     - of the corners (vertices) of the faces of a subcell in
+      !      volume 
+      !     - co-ordinates. Note also that IFACE ranges from 1-12,
+      !      ICOORD
+      !     - ranges from 1-3 and JLOC ranges from 1-4. IFACE
+      !      signifies 
+      !     - the particular subcell face, ICOORD signfies the co
+      !     -ordinates
+      !     - of the vertices of the face in (XI,ETA,ZETA) co
+      !     -ordinates
       !     - and JLOC signifies the vertex of the face of the subcell
       !     - which are quadrilaterals.
       !     
@@ -3601,7 +3930,8 @@ ewrite(3,*)'lll:', option_path_len
       CORN(12,2,4) = 1.0
       CORN(12,3,4) = 1.0
       !     
-      !     - define the Gaussian integration points in (XIP,ETAP) space.
+      !     - define the Gaussian integration points in (XIP,ETAP)
+      !      space.
       !     
       XIGP(1)  = 0.0
       ETAGP(1) = 0.0
@@ -3656,7 +3986,8 @@ ewrite(3,*)'lll:', option_path_len
       ETA(8)  =  1.0
       ZETA(8) =  1.0
       !     
-      !     - generate values of the FE basis functions at the quadrature
+      !     - generate values of the FE basis functions at the
+      !      quadrature
       !     - points on the faces of the subcells.
       !     
       do ILOC = 1, NLOC! Was loop 
@@ -3675,48 +4006,38 @@ ewrite(3,*)'lll:', option_path_len
                   !     
                   do JLOC = 1, FNLOC! Was loop 
                      !     
-                     POS(ICOORD) = POS(ICOORD)&
-                          &                    + CORN(IFACE,ICOORD,JLOC)&
-                          &                    *0.25*(1.+XIP(JLOC)*XIGP(GJ))&
-                          &                    *(1.+ETAP(JLOC)*ETAGP(GJ))
+                     POS(ICOORD) = POS(ICOORD) + CORN(IFACE,ICOORD&
+                          &,JLOC) *0.25*(1.+XIP(JLOC)*XIGP(GJ)) *(1.&
+                          &+ETAP(JLOC)*ETAGP(GJ))
                      !     
-                     DPDXI(ICOORD) = DPDXI(ICOORD)&
-                          &                    + CORN(IFACE,ICOORD,JLOC)&
-                          &                    *0.25*XIP(JLOC)&
-                          &                    *(1.+ETAP(JLOC)*ETAGP(GJ))
+                     DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(IFACE&
+                          &,ICOORD,JLOC) *0.25*XIP(JLOC) *(1.&
+                          &+ETAP(JLOC)*ETAGP(GJ))
                      !     
-                     DPDETA(ICOORD) = DPDETA(ICOORD)&
-                          &                    + CORN(IFACE,ICOORD,JLOC)&
-                          &                    *0.25*(1.+XIP(JLOC)*XIGP(GJ))&
-                          &                    *ETAP(JLOC)
+                     DPDETA(ICOORD) = DPDETA(ICOORD) + CORN(IFACE&
+                          &,ICOORD,JLOC) *0.25*(1.+XIP(JLOC)&
+                          &*XIGP(GJ)) *ETAP(JLOC)
                      !     
                   END DO
                   !     
                END DO
                !     
-               SVN(ILOC,GI) = 0.125*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              *( 1.0 + ZETA(ILOC)*POS(3) )
+               SVN(ILOC,GI) = 0.125*( 1.0 + XI(ILOC)*POS(1) ) *( 1.0 &
+                    &+ ETA(ILOC)*POS(2) ) *( 1.0 + ZETA(ILOC)*POS(3) )
                !     
-               SVNLX(ILOC,GI) = 0.125*XI(ILOC)*DPDXI(1)&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              *( 1.0 + ZETA(ILOC)*POS(3) )&
-                    &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *ETA(ILOC)*DPDXI(2)&
-                    &              *( 1.0 + ZETA(ILOC)*POS(3) )&
-                    &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              *ZETA(ILOC)*DPDXI(3)
+               SVNLX(ILOC,GI) = 0.125*XI(ILOC)*DPDXI(1) *( 1.0 +&
+                    & ETA(ILOC)*POS(2) ) *( 1.0 + ZETA(ILOC)*POS(3) )&
+                    & + 0.125*( 1.0 + XI(ILOC)*POS(1) ) *ETA(ILOC)&
+                    &*DPDXI(2) *( 1.0 + ZETA(ILOC)*POS(3) ) + 0.125*(&
+                    & 1.0 + XI(ILOC)*POS(1) ) *( 1.0 + ETA(ILOC)&
+                    &*POS(2) ) *ZETA(ILOC)*DPDXI(3)
                !     
-               SVNLY(ILOC,GI) = 0.125*XI(ILOC)*DPDETA(1)&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              *( 1.0 + ZETA(ILOC)*POS(3) )&
-                    &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *ETA(ILOC)*DPDETA(2)&
-                    &              *( 1.0 + ZETA(ILOC)*POS(3) )&
-                    &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              *ZETA(ILOC)*DPDETA(3)
+               SVNLY(ILOC,GI) = 0.125*XI(ILOC)*DPDETA(1) *( 1.0 +&
+                    & ETA(ILOC)*POS(2) ) *( 1.0 + ZETA(ILOC)*POS(3) )&
+                    & + 0.125*( 1.0 + XI(ILOC)*POS(1) ) *ETA(ILOC)&
+                    &*DPDETA(2) *( 1.0 + ZETA(ILOC)*POS(3) ) + 0.125&
+                    &*( 1.0 + XI(ILOC)*POS(1) ) *( 1.0 + ETA(ILOC)&
+                    &*POS(2) ) *ZETA(ILOC)*DPDETA(3)
                !     
             END DO
             !     
@@ -3724,9 +4045,11 @@ ewrite(3,*)'lll:', option_path_len
          !     
       END DO
       !     
-      !     - set the weights for the surface integration note that this
+      !     - set the weights for the surface integration note that
+      !      this
       !     - is 2*2.0 = 4.0 for the weight because it is a product of
-      !     - two 1-D weights for integration over a 2-D quadrilateral.
+      !     - two 1-D weights for integration over a 2-D
+      !      quadrilateral.
       !     
       do GI = 1, SVNGI! Was loop 
          !     
@@ -3736,15 +4059,15 @@ ewrite(3,*)'lll:', option_path_len
       !     
     END SUBROUTINE FVHEX
     !     
-    SUBROUTINE FVTET( NGI,   NLOC, SVNGI,&
-         M,     SVN,  SVNLX,&
-         SVNLY, SVWEIGH      )
+    SUBROUTINE FVTET( NGI,   NLOC, SVNGI, M,     SVN,  SVNLX, SVNLY,&
+         & SVWEIGH      )
       !     ---------------------------------------
       !     
       !     - this routine generates the shape functions associated
       !     - with the FV's i.e. their surfaces and volume shape 
       !     - functions and derivatives. The surface shape functions
-      !     - are the values of the FE volume shape functions evaluated
+      !     - are the values of the FE volume shape functions
+      !      evaluated
       !     - on the surfaces of the CV's.
       !     
       !     -------------------------------
@@ -3787,7 +4110,8 @@ ewrite(3,*)'lll:', option_path_len
       !     
       INTEGER COUNT
       !
-      !     - FV basis functions for use in calculating the integral of the
+      !     - FV basis functions for use in calculating the integral
+      !      of the
       !     - shape functions over a subcell of a CV.
       !     
       !      ewrite(2,*) 'SUBROUTINE FVTET()'
@@ -3802,12 +4126,18 @@ ewrite(3,*)'lll:', option_path_len
       END DO
 
       !     
-      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the positions
-      !     - of the corners (vertices) of the faces of a subcell in volume 
-      !     - co-ordinates. Note also that IFACE ranges from 1-6, ICOORD
-      !     - ranges from 1-4 and JLOC ranges from 1-4. IFACE signifies 
-      !     - the particular subcell face, ICOORD signfies the co-ordinates
-      !     - of the vertices of the face in volume co-ordinates (L1,L2,L3,L4)
+      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the
+      !      positions
+      !     - of the corners (vertices) of the faces of a subcell in
+      !      volume 
+      !     - co-ordinates. Note also that IFACE ranges from 1-6,
+      !      ICOORD
+      !     - ranges from 1-4 and JLOC ranges from 1-4. IFACE
+      !      signifies 
+      !     - the particular subcell face, ICOORD signfies the co
+      !     -ordinates
+      !     - of the vertices of the face in volume co-ordinates (L1
+      !     ,L2,L3,L4)
       !     - and JLOC signifies the vertex of the face of the subcell
       !     - which are quadrilaterals.
       !     
@@ -3943,7 +4273,8 @@ ewrite(3,*)'lll:', option_path_len
       CORN(6,3,4) = 0.5
       CORN(6,4,4) = 0.5
       !     
-      !     - define the Gaussian integration points in (XI,ETA) space.
+      !     - define the Gaussian integration points in (XI,ETA)
+      !      space.
       !     
       XIGP(1)  = 0.0
       ETAGP(1) = 0.0
@@ -3963,7 +4294,8 @@ ewrite(3,*)'lll:', option_path_len
       XI(4)  =  1.0
       ETA(4) =  1.0
       !     
-      !     - generate values of the FE basis functions at the quadrature
+      !     - generate values of the FE basis functions at the
+      !      quadrature
       !     - points on the faces of the subcells.
       !     
       do ILOC = 1, NLOC! Was loop 
@@ -3982,20 +4314,17 @@ ewrite(3,*)'lll:', option_path_len
                   !     
                   do JLOC = 1, FNLOC! Was loop 
                      !     
-                     POS(ICOORD) = POS(ICOORD)&
-                          &                    + CORN(IFACE,ICOORD,JLOC)&
-                          &                    *0.25*(1.+XI(JLOC)*XIGP(GJ))&
-                          &                    *(1.+ETA(JLOC)*ETAGP(GJ))
+                     POS(ICOORD) = POS(ICOORD) + CORN(IFACE,ICOORD&
+                          &,JLOC) *0.25*(1.+XI(JLOC)*XIGP(GJ)) *(1.&
+                          &+ETA(JLOC)*ETAGP(GJ))
                      !     
-                     DPDXI(ICOORD) = DPDXI(ICOORD)&
-                          &                    + CORN(IFACE,ICOORD,JLOC)&
-                          &                    *0.25*XI(JLOC)&
-                          &                    *(1.+ETA(JLOC)*ETAGP(GJ))
+                     DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(IFACE&
+                          &,ICOORD,JLOC) *0.25*XI(JLOC) *(1.&
+                          &+ETA(JLOC)*ETAGP(GJ))
                      !     
-                     DPDETA(ICOORD) = DPDETA(ICOORD)&
-                          &                    + CORN(IFACE,ICOORD,JLOC)&
-                          &                    *0.25*(1.+XI(JLOC)*XIGP(GJ))&
-                          &                    *ETA(JLOC)
+                     DPDETA(ICOORD) = DPDETA(ICOORD) + CORN(IFACE&
+                          &,ICOORD,JLOC) *0.25*(1.+XI(JLOC)*XIGP(GJ))&
+                          & *ETA(JLOC)
                      !     
                   END DO
                   !     
@@ -4022,16 +4351,15 @@ ewrite(3,*)'lll:', option_path_len
     END SUBROUTINE FVTET
     !     
     !     
-    SUBROUTINE FVQQUAD( NGI,    NLOC,    SVNGI,&
-                                !     - REALS
-         M,      SVN,     SVNLX, &
-         SVWEIGH                 )
+    SUBROUTINE FVQQUAD( NGI,    NLOC,    SVNGI, &!     - REALS
+         M,      SVN,     SVNLX, SVWEIGH                 )
       !     ---------------------------------------------
       !     
       !     - this routine generates the shape functions associated
       !     - with the FV's i.e. their surfaces and volume shape 
       !     - functions and derivatives. The surface shape functions
-      !     - are the values of the FE volume shape functions evaluated
+      !     - are the values of the FE volume shape functions
+         !      evaluated
       !     - on the surfaces of the CV's.
       !     
       IMPLICIT NONE
@@ -4074,7 +4402,8 @@ ewrite(3,*)'lll:', option_path_len
       !     
       INTEGER I, J
       !     
-      !     - FV basis functions for use in calculating the integral of the
+      !     - FV basis functions for use in calculating the integral
+      !      of the
       !     - shape functions over a subcell of a CV.
       !     
       M = 0.0
@@ -4093,11 +4422,16 @@ ewrite(3,*)'lll:', option_path_len
          !     
       END DO
       !     
-      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the positions
-      !     - of the corners (vertices) of the faces of a subcell in volume 
-      !     - co-ordinates. Note also that IFACE ranges from 1-4, ICOORD
-      !     - ranges from 1-2 and JLOC ranges from 1-2. IFACE signifies 
-      !     - the particular subcell face, ICOORD signfies the co-ordinates
+      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the
+      !      positions
+      !     - of the corners (vertices) of the faces of a subcell in
+      !      volume 
+      !     - co-ordinates. Note also that IFACE ranges from 1-4,
+      !      ICOORD
+      !     - ranges from 1-2 and JLOC ranges from 1-2. IFACE
+      !      signifies 
+      !     - the particular subcell face, ICOORD signfies the co
+      !     -ordinates
       !     - of the vertices of the face in (XI,ETA) co-ordinates
       !     - and JLOC signifies the vertex of the face of the subcell
       !     - which are straight lines.
@@ -4209,7 +4543,8 @@ ewrite(3,*)'lll:', option_path_len
       XIP(1) = -1.0
       XIP(2) =  1.0
       !     
-      !     - generate values of the FE basis functions at the quadrature
+      !     - generate values of the FE basis functions at the
+      !      quadrature
       !     - points on the faces of the subcells.
       !     
       do IFACE = 1, NFACE! Was loop 
@@ -4226,13 +4561,11 @@ ewrite(3,*)'lll:', option_path_len
                !     
                do JLOC = 1, FNLOC! Was loop 
                   !     
-                  POS(ICOORD) = POS(ICOORD)&
-                       &                 + CORN(IFACE,ICOORD,JLOC)&
-                       &                 *0.5*(1.+XIP(JLOC)*XIGP(GJ))
+                  POS(ICOORD) = POS(ICOORD) + CORN(IFACE,ICOORD,JLOC)&
+                       & *0.5*(1.+XIP(JLOC)*XIGP(GJ))
                   !     
-                  DPDXI(ICOORD) = DPDXI(ICOORD)&
-                       &                 + CORN(IFACE,ICOORD,JLOC)&
-                       &                 *0.5*XIP(JLOC)
+                  DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(IFACE,ICOORD&
+                       &,JLOC) *0.5*XIP(JLOC)
                   !     
                END DO
                !     
@@ -4265,8 +4598,8 @@ ewrite(3,*)'lll:', option_path_len
                   !     
                   SVN(ILOC,GI) = LIJXI(I)*LIJETA(J)
                   !     
-                  SVNLX(ILOC,GI) = LIJXI(I)*DLIJETADXI(J)&
-                       &                 + LIJETA(J)*DLIJXIDXI(I)
+                  SVNLX(ILOC,GI) = LIJXI(I)*DLIJETADXI(J) + LIJETA(J)&
+                       &*DLIJXIDXI(I)
                   !     
                END DO
                !     
@@ -4286,16 +4619,15 @@ ewrite(3,*)'lll:', option_path_len
       !     
     END SUBROUTINE FVQQUAD
 
-    SUBROUTINE FVQHEX( NGI,   NLOC,   SVNGI,&
-                                !     - REALS            
-         M,     SVN,    SVNLX,&
-         SVNLY, SVWEIGH        )
+    SUBROUTINE FVQHEX( NGI,   NLOC,   SVNGI, & !     - REALS            
+         M,     SVN,    SVNLX, SVNLY, SVWEIGH        )
       !     ------------------------------------------
       !     
       !     - this routine generates the shape functions associated
       !     - with the FV's i.e. their surfaces and volume shape 
       !     - functions and derivatives. The surface shape functions
-      !     - are the values of the FE volume shape functions evaluated
+      !     - are the values of the FE volume shape functions
+         !      evaluated
       !     - on the surfaces of the CV's.
       !     
       !     -------------------------------
@@ -4345,7 +4677,8 @@ ewrite(3,*)'lll:', option_path_len
       !     
       INTEGER I, J, K 
       !     
-      !     - FV basis functions for use in calculating the integral of the
+      !     - FV basis functions for use in calculating the integral
+      !      of the
       !     - shape functions over a subcell of a CV.
       !     
       M = 0.0
@@ -4364,11 +4697,16 @@ ewrite(3,*)'lll:', option_path_len
       !     
       !     END DO     
       !     
-      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the positions
-      !     - of the corners (vertices) of the faces of a subcell in volume 
-      !     - co-ordinates. Note also that IFACE ranges from 1-54, ICOORD
-      !     - ranges from 1-3 and JLOC ranges from 1-4. IFACE signifies 
-      !     - the particular subcell face, ICOORD signfies the co-ordinates
+      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the
+      !      positions
+      !     - of the corners (vertices) of the faces of a subcell in
+      !      volume 
+      !     - co-ordinates. Note also that IFACE ranges from 1-54,
+      !      ICOORD
+      !     - ranges from 1-3 and JLOC ranges from 1-4. IFACE
+      !      signifies 
+      !     - the particular subcell face, ICOORD signfies the co
+      !     -ordinates
       !     - of the vertices of the face in (XI,ETA) co-ordinates
       !     - and JLOC signifies the vertex of the face of the subcell
       !     - which are straight lines.
@@ -5374,7 +5712,8 @@ ewrite(3,*)'lll:', option_path_len
       XIP(4)  =  1.0
       ETAP(4) =  1.0
       !     
-      !     - generate values of the FE basis functions at the quadrature
+      !     - generate values of the FE basis functions at the
+      !      quadrature
       !     - points on the faces of the subcells.
       !     
       do IFACE = 1, NFACE! Was loop 
@@ -5391,20 +5730,17 @@ ewrite(3,*)'lll:', option_path_len
                !     
                do JLOC = 1, FNLOC! Was loop 
                   !     
-                  POS(ICOORD) = POS(ICOORD)&
-                       &                 + CORN(IFACE,ICOORD,JLOC)&
-                       &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
-                       &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
+                  POS(ICOORD) = POS(ICOORD) + CORN(IFACE,ICOORD,JLOC)&
+                       & *0.25*(1.+XIP(JLOC)*XIPGP(GJ)) *(1.&
+                       &+ETAP(JLOC)*ETAPGP(GJ))
                   !     
-                  DPDXI(ICOORD) = DPDXI(ICOORD)&
-                       &                 + CORN(IFACE,ICOORD,JLOC)&
-                       &                 *0.25*XIP(JLOC)&
-                       &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
+                  DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(IFACE,ICOORD&
+                       &,JLOC) *0.25*XIP(JLOC) *(1.+ETAP(JLOC)&
+                       &*ETAPGP(GJ))
                   !     
-                  DPDETA(ICOORD) = DPDETA(ICOORD)&
-                       &                 + CORN(IFACE,ICOORD,JLOC)&
-                       &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
-                       &                 *ETAP(JLOC)
+                  DPDETA(ICOORD) = DPDETA(ICOORD) + CORN(IFACE,ICOORD&
+                       &,JLOC) *0.25*(1.+XIP(JLOC)*XIPGP(GJ)) &
+                       &*ETAP(JLOC)
                   !     
                END DO
                !     
@@ -5460,13 +5796,15 @@ ewrite(3,*)'lll:', option_path_len
                      !     
                      SVN(ILOC,GI)   = LIJXI(I)*LIJETA(J)*LIJZETA(K)
                      !     
-                     SVNLX(ILOC,GI) = LIJXI(I)*LIJETA(J)*DLIJZETADXI(K)&
-                          &                    + LIJXI(I)*DLIJETADXI(J)*LIJZETA(K)&
-                          &                    + DLIJXIDXI(I)*LIJETA(J)*LIJZETA(K)
+                     SVNLX(ILOC,GI) = LIJXI(I)*LIJETA(J)&
+                          &*DLIJZETADXI(K) + LIJXI(I)*DLIJETADXI(J)&
+                          &*LIJZETA(K) + DLIJXIDXI(I)*LIJETA(J)&
+                          &*LIJZETA(K)
                      !     
-                     SVNLY(ILOC,GI) = LIJXI(I)*LIJETA(J)*DLIJZETADETA(K)&
-                          &                    + LIJXI(I)*DLIJETADETA(J)*LIJZETA(K)&
-                          &                    + DLIJXIDETA(I)*LIJETA(J)*LIJZETA(K)
+                     SVNLY(ILOC,GI) = LIJXI(I)*LIJETA(J)&
+                          &*DLIJZETADETA(K) + LIJXI(I)*DLIJETADETA(J)&
+                          &*LIJZETA(K) + DLIJXIDETA(I)*LIJETA(J)&
+                          &*LIJZETA(K)
                      !     
                   END DO
                   !     
@@ -5489,9 +5827,8 @@ ewrite(3,*)'lll:', option_path_len
       !     stop 11
     END SUBROUTINE FVQHEX
 
-    SUBROUTINE FVQTRI( NGI,    NLOC, SVNGI,&
-         M,      SVN,  SVNLX,  &
-         SVWEIGH              )
+    SUBROUTINE FVQTRI( NGI,    NLOC, SVNGI, M,      SVN,  SVNLX,&
+         & SVWEIGH              )
       !     ----------------------------------------
       !     
       !     - this routine generates the shape functions associated
@@ -5535,7 +5872,8 @@ ewrite(3,*)'lll:', option_path_len
       !     
       REAL L1, L2, L3
       !     
-      !     - FV basis functions for use in calculating the integral of the
+      !     - FV basis functions for use in calculating the integral
+      !      of the
       !     - shape functions over a subcell of a CV.
       !     
       M = 0.0
@@ -5564,12 +5902,18 @@ ewrite(3,*)'lll:', option_path_len
          !     
       END DO
       !     
-      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the positions
-      !     - of the corners (vertices) of the faces of a subcell in volume 
-      !     - co-ordinates. Note also that IFACE ranges from 1-3, ICOORD
-      !     - ranges from 1-3 and JLOC ranges from 1-2. IFACE signifies 
-      !     - the particular subcell face, ICOORD signfies the co-ordinates
-      !     - of the vertices of the face in volume co-ordinates (L1,L2,L3)
+      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the
+      !      positions
+      !     - of the corners (vertices) of the faces of a subcell in
+      !      volume 
+      !     - co-ordinates. Note also that IFACE ranges from 1-3,
+      !      ICOORD
+      !     - ranges from 1-3 and JLOC ranges from 1-2. IFACE
+      !      signifies 
+      !     - the particular subcell face, ICOORD signfies the co
+      !     -ordinates
+      !     - of the vertices of the face in volume co-ordinates (L1
+      !     ,L2,L3)
       !     - and JLOC signifies the vertex of the face of the subcell
       !     - which are straight lines.
       !     
@@ -5674,7 +6018,8 @@ ewrite(3,*)'lll:', option_path_len
       XIP(1) = -1.0
       XIP(2) =  1.0
       !     
-      !     - generate values of the FE basis functions at the quadrature
+      !     - generate values of the FE basis functions at the
+      !      quadrature
       !     - points on the faces of the subcells.
       !     
       do IFACE = 1, NFACE! Was loop 
@@ -5690,13 +6035,11 @@ ewrite(3,*)'lll:', option_path_len
                !     
                do JLOC = 1, FNLOC! Was loop 
                   !     
-                  POS(ICOORD) = POS(ICOORD)&
-                       &                 + CORN(IFACE,ICOORD,JLOC)&
-                       &                 *0.5*(1.+XIP(JLOC)*XIPGP(GJ))
+                  POS(ICOORD) = POS(ICOORD) + CORN(IFACE,ICOORD,JLOC)&
+                       & *0.5*(1.+XIP(JLOC)*XIPGP(GJ))
                   !     
-                  DPDXI(ICOORD) = DPDXI(ICOORD)&
-                       &                 + CORN(IFACE,ICOORD,JLOC)&
-                       &                 *0.5*XIP(JLOC)
+                  DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(IFACE,ICOORD&
+                       &,JLOC) *0.5*XIP(JLOC)
                   !     
                END DO
                !     
@@ -5732,16 +6075,15 @@ ewrite(3,*)'lll:', option_path_len
       !     
     END SUBROUTINE FVQTRI
 
-    SUBROUTINE FVQTET( NGI,   NLOC,   SVNGI,&
-                                !     - REALS            
-         M,     SVN,    SVNLX,&
-         SVNLY, SVWEIGH        )
+    SUBROUTINE FVQTET( NGI,   NLOC,   SVNGI, & !     - REALS            
+         M,     SVN,    SVNLX, SVNLY, SVWEIGH        )
       !     ------------------------------------------
       !     
       !     - this routine generates the shape functions associated
       !     - with the FV's i.e. their surfaces and volume shape 
       !     - functions and derivatives. The surface shape functions
-      !     - are the values of the FE volume shape functions evaluated
+      !     - are the values of the FE volume shape functions
+         !      evaluated
       !     - on the surfaces of the CV's.
       !     
       !     -------------------------------
@@ -5787,7 +6129,8 @@ ewrite(3,*)'lll:', option_path_len
       !     
       INTEGER INC
       !     
-      !     - FV basis functions for use in calculating the integral of the
+      !     - FV basis functions for use in calculating the integral
+      !      of the
       !     - shape functions over a subcell of a CV.
       !     
       M = 0.0
@@ -5796,8 +6139,8 @@ ewrite(3,*)'lll:', option_path_len
       !     
       do ILOC = 1, NLOC! Was loop 
          !     
-         IF((ILOC == 1).OR.(ILOC == 3).OR.&
-              &        (ILOC == 5).OR.(ILOC == 10)) THEN
+         IF((ILOC == 1).OR.(ILOC == 3).OR. (ILOC == 5).OR.(ILOC ==&
+              & 10)) THEN
             INC = 7
          ELSE
             INC = 15
@@ -5809,8 +6152,8 @@ ewrite(3,*)'lll:', option_path_len
             !     
          END DO
          !     
-         IF((ILOC == 1).OR.(ILOC == 3).OR.&
-              &        (ILOC == 5).OR.(ILOC == 10)) THEN
+         IF((ILOC == 1).OR.(ILOC == 3).OR. (ILOC == 5).OR.(ILOC ==&
+              & 10)) THEN
             COUNT = COUNT + 8
          ELSE
             COUNT = COUNT + 16
@@ -5818,12 +6161,18 @@ ewrite(3,*)'lll:', option_path_len
          !     
       END DO
       !     
-      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the positions
-      !     - of the corners (vertices) of the faces of a subcell in volume 
-      !     - co-ordinates. Note also that IFACE ranges from 1-24, ICOORD
-      !     - ranges from 1-4 and JLOC ranges from 1-4. IFACE signifies 
-      !     - the particular subcell face, ICOORD signfies the co-ordinates
-      !     - of the vertices of the face in volume co-ordinates (L1,L2,L3,L4)
+      !     - Note that CORN(IFACE,ICOORD,JLOC) tabulates the
+      !      positions
+      !     - of the corners (vertices) of the faces of a subcell in
+      !      volume 
+      !     - co-ordinates. Note also that IFACE ranges from 1-24,
+      !      ICOORD
+      !     - ranges from 1-4 and JLOC ranges from 1-4. IFACE
+      !      signifies 
+      !     - the particular subcell face, ICOORD signfies the co
+      !     -ordinates
+      !     - of the vertices of the face in volume co-ordinates (L1
+      !     ,L2,L3,L4)
       !     - and JLOC signifies the vertex of the face of the subcell
       !     - which are straight lines.
       !     
@@ -6384,7 +6733,8 @@ ewrite(3,*)'lll:', option_path_len
       XIP(4)  =  1.0
       ETAP(4) =  1.0
       !     
-      !     - generate values of the FE basis functions at the quadrature
+      !     - generate values of the FE basis functions at the
+      !      quadrature
       !     - points on the faces of the subcells.
       !     
       do IFACE = 1, NFACE! Was loop 
@@ -6401,20 +6751,17 @@ ewrite(3,*)'lll:', option_path_len
                !     
                do JLOC = 1, FNLOC! Was loop 
                   !     
-                  POS(ICOORD) = POS(ICOORD)&
-                       &                 + CORN(IFACE,ICOORD,JLOC)&
-                       &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
-                       &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
+                  POS(ICOORD) = POS(ICOORD) + CORN(IFACE,ICOORD,JLOC)&
+                       & *0.25*(1.+XIP(JLOC)*XIPGP(GJ)) *(1.&
+                       &+ETAP(JLOC)*ETAPGP(GJ))
                   !     
-                  DPDXI(ICOORD) = DPDXI(ICOORD)&
-                       &                 + CORN(IFACE,ICOORD,JLOC)&
-                       &                 *0.25*XIP(JLOC)&
-                       &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
+                  DPDXI(ICOORD) = DPDXI(ICOORD) + CORN(IFACE,ICOORD&
+                       &,JLOC) *0.25*XIP(JLOC) *(1.+ETAP(JLOC)&
+                       &*ETAPGP(GJ))
                   !     
-                  DPDETA(ICOORD) = DPDETA(ICOORD)&
-                       &                 + CORN(IFACE,ICOORD,JLOC)&
-                       &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
-                       &                 *ETAP(JLOC)
+                  DPDETA(ICOORD) = DPDETA(ICOORD) + CORN(IFACE,ICOORD&
+                       &,JLOC) *0.25*(1.+XIP(JLOC)*XIPGP(GJ)) &
+                       &*ETAP(JLOC)
                   !     
                END DO
                !     
@@ -7797,17 +8144,21 @@ ewrite(3,*)'lll:', option_path_len
       RETURN     
     END SUBROUTINE VOLNEI
 
-    subroutine U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi, &
-         cv_neiloc,   &
-         u_on_face )
-      !-----------------------------------------------------------------!
-      !- This subroutine calculates U_ON_FACE, a logical that works    -!
-      !- in a similar way of CV_ON_FACE.                               -!
-      !-----------------------------------------------------------------!
+    subroutine U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi,&
+         & cv_neiloc, u_on_face )
+      !--------------------------------------------------------------
+      !---!
+      !- This subroutine calculates U_ON_FACE, a logical that works
+      !  -!
+      !- in a similar way of CV_ON_FACE.
+      !  -!
+      !--------------------------------------------------------------
+      !---!
       implicit none
       integer, intent( in ) :: cv_ele_type, cv_nloc, u_nloc, scvngi
       integer, dimension( cv_nloc, scvngi ), intent( in ) :: cv_neiloc
-      logical, dimension( u_nloc, scvngi ), intent( inout ) :: u_on_face
+      logical, dimension( u_nloc, scvngi ), intent( inout ) ::&
+           & u_on_face
       ! Local variables
       integer :: cv_iloc, u_iloc, gi, u_jloc, u_nloc2
 
@@ -7818,7 +8169,8 @@ ewrite(3,*)'lll:', option_path_len
       do cv_iloc = 1, cv_nloc
          do gi = 1, scvngi
             ! if ( cv_neiloc( cv_iloc, gi ) == -1 ) then
-            !ewrite(3,*)'cv_neiloc:', u_nloc2, cv_iloc, gi, cv_neiloc( cv_iloc, gi )
+            !ewrite(3,*)'cv_neiloc:', u_nloc2, cv_iloc, gi,
+            ! cv_neiloc( cv_iloc, gi )
             !  endif
          end do
       end do
@@ -7855,8 +8207,8 @@ ewrite(3,*)'lll:', option_path_len
 
 
 
-    SUBROUTINE GAUSSILOC( FINDGPTS, COLGPTS, NCOLGPTS,&
-         NEILOC, NLOC, SVNGI )
+    SUBROUTINE GAUSSILOC( FINDGPTS, COLGPTS, NCOLGPTS, NEILOC, NLOC,&
+         & SVNGI )
       !     ----------------------------------------------------    
       !     
       ! This subroutine calculates FINDGPTS,COLGPTS,NCOLGPTS 
@@ -7890,7 +8242,8 @@ ewrite(3,*)'lll:', option_path_len
                COUNT = COUNT + 1
                COLGPTS( COUNT ) = GI
             END IF
-            !ewrite(3,*)'iloc,gi,NEILOC( ILOC, GI ):',iloc,gi,NEILOC( ILOC, GI )
+            !ewrite(3,*)'iloc,gi,NEILOC( ILOC, GI ):',iloc,gi,NEILOC(
+            ! ILOC, GI )
 
          END DO
 
@@ -7905,12 +8258,13 @@ ewrite(3,*)'lll:', option_path_len
 
 
 
-    SUBROUTINE DETNLXMAI( ELE, X,Y,Z, XONDGL, TOTELE, XNONODS, NLOC, MLOC, NGI, &
-         NLX, NLY, NLZ, MLX, MLY, MLZ, WEIGHT, DETWEI, &
-         NX, NY, NZ,  MX, MY, MZ,&
-         A11, A12, A13, A21, A22, A23, A31, A32, A33 )
+    SUBROUTINE DETNLXMAI( ELE, X,Y,Z, XONDGL, TOTELE, XNONODS, NLOC,&
+         & MLOC, NGI, NLX, NLY, NLZ, MLX, MLY, MLZ, WEIGHT, DETWEI,&
+         & NX, NY, NZ,  MX, MY, MZ, A11, A12, A13, A21, A22, A23, A31&
+         &, A32, A33 )
       implicit none
-      ! Calculate DETWEI,NX,NY,NZ, MX,MY,MZ for element ELE. For coefficient in 
+      ! Calculate DETWEI,NX,NY,NZ, MX,MY,MZ for element ELE. For
+      !  coefficient in 
       ! the inverse mat of the Jacobian.
       INTEGER, intent( in ):: ELE, TOTELE, XNONODS, NLOC, MLOC, NGI
       REAL, DIMENSION( XNONODS ), intent( in ) :: X, Y, Z
@@ -7922,10 +8276,11 @@ ewrite(3,*)'lll:', option_path_len
       REAL, DIMENSION( NGI ), intent( inout ) :: DETWEI
       REAL, DIMENSION( NLOC, NGI ), intent( inout ) :: NX, NY, NZ
       REAL, DIMENSION( MLOC, NGI ), intent( inout ) :: MX, MY, MZ
-      REAL, DIMENSION( NGI ), intent( inout ):: A11, A12, A13, A21, A22, A23, &
-           A31, A32, A33
+      REAL, DIMENSION( NGI ), intent( inout ):: A11, A12, A13, A21,&
+           & A22, A23, A31, A32, A33
       ! Local variables
-      REAL :: AGI, BGI, CGI, DGI, EGI, FGI, GGI, HGI, KGI, DETJ, VOLUME
+      REAL :: AGI, BGI, CGI, DGI, EGI, FGI, GGI, HGI, KGI, DETJ,&
+           & VOLUME
       INTEGER :: GI, L, IGLX
 
       VOLUME = 0.
@@ -7957,9 +8312,8 @@ ewrite(3,*)'lll:', option_path_len
 
          END DO Loop_NLOC
 
-         DETJ = AGI * ( EGI * KGI - FGI * HGI) &
-              -BGI * ( DGI * KGI - FGI * GGI ) &
-              +CGI * ( DGI * HGI - EGI *GGI)
+         DETJ = AGI * ( EGI * KGI - FGI * HGI) -BGI * ( DGI * KGI -&
+              & FGI * GGI ) +CGI * ( DGI * HGI - EGI *GGI)
 
          DETWEI( GI ) = ABS( DETJ ) * WEIGHT( GI )
          VOLUME = VOLUME + DETWEI( GI )
@@ -7977,15 +8331,21 @@ ewrite(3,*)'lll:', option_path_len
          A33( GI )= ( AGI * EGI-BGI * DGI ) / DETJ
 
          DO L=1,NLOC
-            NX( L, GI )= A11( GI ) * NLX( L, GI ) + A12( GI ) * NLY( L, GI ) + A13( GI ) * NLZ( L, GI )
-            NY( L, GI )= A21( GI ) * NLX( L, GI ) + A22( GI ) * NLY( L, GI ) + A23( GI ) * NLZ( L, GI )
-            NZ( L, GI )= A31( GI ) * NLX( L, GI ) + A32( GI ) * NLY( L, GI ) + A33( GI ) * NLZ( L, GI )
+            NX( L, GI )= A11( GI ) * NLX( L, GI ) + A12( GI ) * NLY(&
+                 & L, GI ) + A13( GI ) * NLZ( L, GI )
+            NY( L, GI )= A21( GI ) * NLX( L, GI ) + A22( GI ) * NLY(&
+                 & L, GI ) + A23( GI ) * NLZ( L, GI )
+            NZ( L, GI )= A31( GI ) * NLX( L, GI ) + A32( GI ) * NLY(&
+                 & L, GI ) + A33( GI ) * NLZ( L, GI )
          END DO
 
          DO L=1,MLOC
-            MX( L, GI )= A11( GI ) * MLX( L, GI ) + A12( GI ) * MLY( L, GI ) + A13( GI ) * MLZ( L, GI )
-            MY( L, GI )= A21( GI ) * MLX( L, GI ) + A22( GI ) * MLY( L, GI ) + A23( GI ) * MLZ( L, GI )
-            MZ( L, GI )= A31( GI ) * MLX( L, GI ) + A32( GI ) * MLY( L, GI ) + A33( GI ) * MLZ( L, GI )
+            MX( L, GI )= A11( GI ) * MLX( L, GI ) + A12( GI ) * MLY(&
+                 & L, GI ) + A13( GI ) * MLZ( L, GI )
+            MY( L, GI )= A21( GI ) * MLX( L, GI ) + A22( GI ) * MLY(&
+                 & L, GI ) + A23( GI ) * MLZ( L, GI )
+            MZ( L, GI )= A31( GI ) * MLX( L, GI ) + A32( GI ) * MLY(&
+                 & L, GI ) + A33( GI ) * MLZ( L, GI )
          END DO
 
       END DO Loop_NGI
@@ -8054,34 +8414,34 @@ ewrite(3,*)'lll:', option_path_len
 
       if (btest(cache_level,0)) then
          from = 1+NDIM*X_NLOC*NGI*(ELE-1); to = NDIM*X_NLOC*NGI*ELE
-         NX_ALL(1:NDIM,1:X_NLOC,1:NGI) => &
-              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         NX_ALL, NDIM, X_NLOC, NGI)
          jump = NDIM*X_NLOC*NGI*totele
          from = jump + 1+NDIM*U_NLOC*NGI*(ELE-1); to = jump + NDIM*U_NLOC*NGI*ELE
-         UNX_ALL(1:NDIM,1:U_NLOC,1:NGI)  => &
-              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         UNX_ALL, NDIM, U_NLOC, NGI)
          jump = jump + NDIM*U_NLOC*NGI*totele
          from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-         DETWEI(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI*totele
          from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-         RA(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         RA => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI*totele
          VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(jump + ELE)
       else
          from = 1; to = NDIM*X_NLOC*NGI
-         NX_ALL(1:NDIM,1:X_NLOC,1:NGI) => &
-              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         NX_ALL, NDIM, X_NLOC, NGI)
          jump = NDIM*X_NLOC*NGI
          from = jump + 1; to = jump + NDIM*U_NLOC*NGI
-         UNX_ALL(1:NDIM,1:U_NLOC,1:NGI)  => &
-              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         UNX_ALL, NDIM, U_NLOC, NGI)
          jump = jump + NDIM*U_NLOC*NGI
          from = jump + 1; to = jump + NGI
-         DETWEI(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI
          from = jump + 1; to = jump + NGI
-         RA(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         RA => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI
          VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(jump + ELE)
       end if
@@ -8097,6 +8457,25 @@ ewrite(3,*)'lll:', option_path_len
          N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
          NX_ALL, &
          U_NLOC, UNLX, UNLY, UNLZ, UNX_ALL)
+
+      !Store data
+      if (btest(cache_level,0)) then
+         from = 1+NDIM*X_NLOC*NGI*(ELE-1); to = NDIM*X_NLOC*NGI*ELE
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
+         & reshape(NX_ALL(1:NDIM,1:X_NLOC,1:NGI), [NDIM*X_NLOC*NGI])
+         jump = NDIM*X_NLOC*NGI*totele
+         from = jump + 1+NDIM*U_NLOC*NGI*(ELE-1); to = jump + NDIM*U_NLOC*NGI*ELE
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
+         reshape(UNX_ALL(1:NDIM,1:U_NLOC,1:NGI), [NDIM*U_NLOC*NGI])
+      else
+         from = 1; to = NDIM*X_NLOC*NGI
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
+         & reshape(NX_ALL(1:NDIM,1:X_NLOC,1:NGI), [NDIM*X_NLOC*NGI])
+         jump = NDIM*X_NLOC*NGI
+         from = jump + 1; to = jump + NDIM*U_NLOC*NGI
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
+         reshape(UNX_ALL(1:NDIM,1:U_NLOC,1:NGI), [NDIM*U_NLOC*NGI])
+      end if
 
       RETURN
     END SUBROUTINE DETNLXR_PLUS_U_WITH_STORAGE
@@ -8171,6 +8550,9 @@ ewrite(3,*)'lll:', option_path_len
                       CGI = CGI + NLY( L, GI ) * X( IGLX )
                       DGI = DGI + NLY( L, GI ) * Y( IGLX )
                       RGI = RGI + N( L, GI ) * Y( IGLX )
+                     !  print *,'l,gi,IGLX,X( IGLX ),Y( IGLX ):',l,gi,IGLX,X( IGLX ),Y( IGLX )
+                     !  print *,'agi,bgi,cgi,dgi,rgi:',agi,bgi,cgi,dgi,rgi
+                     !  print *,'NLX( L, GI ),NLY( L, GI ):',NLX( L, GI ),NLY( L, GI )
                   END DO Loop_L4
 
                   IF( .NOT. DCYL ) RGI = 1.0
@@ -8430,5 +8812,5 @@ ewrite(3,*)'lll:', option_path_len
 
     end subroutine detnlxmsup
 
-  end module shape_functions
+  end module shape_functions_prototype
 

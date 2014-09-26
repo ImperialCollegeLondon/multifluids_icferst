@@ -26,7 +26,8 @@
 !    USA
 #include "fdebug.h"
 module fields_allocates
-use elements
+use quadrature
+!use elements
 use spud
 use fields_data_types
 use fields_base

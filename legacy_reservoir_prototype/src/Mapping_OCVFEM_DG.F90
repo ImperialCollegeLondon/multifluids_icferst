@@ -32,7 +32,9 @@
 module mapping_for_ocvfem
 
  use fldebug
- use shape_functions
+ use shape_functions_prototype
+ use matrix_operations
+ use printout
  use vector_tools
 
 
@@ -58,10 +60,6 @@ module mapping_for_ocvfem
        cv_snloc, u_snloc, stotel, cv_sndgln, u_sndgln, &
        x, y, z, &
        u, v, w, uold, vold, wold,velocity_dg, ndim, p_ele_type )
-
-    use shape_functions
-    use matrix_operations
-    use printout
 
     implicit none
 
@@ -479,10 +477,6 @@ module mapping_for_ocvfem
        cv_snloc, u_snloc, stotel, cv_sndgln, u_sndgln, &
        x, y, z, &
        u, v, w, uold, vold, wold,velocity_dg, ndim, p_ele_type )
-
-    use shape_functions
-    use matrix_operations
-    use printout
 
     implicit none
 

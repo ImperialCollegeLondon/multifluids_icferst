@@ -30,12 +30,12 @@
 module solvers_module
 
   use fldebug
+  use fields
+  use Petsc_tools
   use sparse_tools_petsc
   use solvers
-  use fields
   use global_parameters, only: OPTION_PATH_LEN
   use spud
-  use Petsc_tools
 
 #ifdef HAVE_PETSC_MODULES
   use petsc 
@@ -145,8 +145,8 @@ contains
     integer, intent(in) :: rows
     character( len=* ), intent(in) :: option_path
 
-    type(KSP):: ksp
-    type(Vec) :: y, b
+    KSP :: ksp
+    Vec :: y, b
 
     character(len=OPTION_PATH_LEN) :: solver_option_path
     integer :: ierr

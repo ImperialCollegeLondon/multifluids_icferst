@@ -26,16 +26,19 @@
   !    USA
 #include "fdebug.h"
 
-
-
 module multiphase_caching
 
   use spud
+  use fldebug
 
 
   implicit none
 
-  integer :: cache_level=0
+  private 
+  
+  public  :: set_caching_level, get_caching_level, test_caching_level, reshape_vector2pointer
+  
+  integer, public :: cache_level=0
 
   interface reshape_vector2pointer
       module procedure reshape_vector2pointer_A
@@ -59,6 +62,21 @@ contains
 
   end subroutine set_caching_level
 
+  subroutine get_caching_level
+    integer :: i
+    
+    do i=1,bit_size(cache_level)
+       ewrite(3,*) btest(cache_level,i)
+    end do
+
+  end subroutine get_caching_level
+
+ logical pure function test_caching_level(i)
+   integer, intent(in) :: i
+    
+       test_caching_level=btest(cache_level,i)
+
+  end function test_caching_level
 
 #ifdef USING_GFORTRAN
     !These subroutines are used to avoid problems with the reshaping under intel compilers.

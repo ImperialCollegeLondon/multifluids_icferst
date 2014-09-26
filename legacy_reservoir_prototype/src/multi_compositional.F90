@@ -29,8 +29,10 @@
 
   module Compositional_Terms
     use fldebug
-    use shape_functions
+    use futils
+    use shape_functions_prototype
     use shape_functions_linear_quadratic
+    use matrix_operations
     use Copy_Outof_State
     use futils, only: int2str
     use global_parameters, only: is_overlapping, is_compact_overlapping
@@ -313,8 +315,7 @@
          U_ELE_TYPE, P_ELE_TYPE, &
          MAT_U,  state, StorageIndexes )
       ! Determine MAT_U from NU,NV,NW which are variables mapped to material mesh. 
-      use shape_functions
-      use matrix_operations
+ 
 
       implicit none
       INTEGER, intent( in ) :: NDIM, NPHASE, NCOMP_DIFF_COEF, &
@@ -803,7 +804,6 @@
     SUBROUTINE CAL_COMP_SUM2ONE_SOU( packed_state, V_SOURCE_COMP, CV_NONODS, NPHASE, NCOMP2, DT, ITS, NITS, &
          MEAN_PORE_CV )
       ! make sure the composition sums to 1.0 
-      use futils
       implicit none
       type( state_type ) :: packed_state
       integer, intent( in ) :: cv_nonods, nphase, ncomp2, its, nits

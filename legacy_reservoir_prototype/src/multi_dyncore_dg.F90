@@ -29,26 +29,28 @@
 
 module multiphase_1D_engine
 
-    use state_module 
+    use elements
     use fields
     use field_options
+    use state_module
     use spud
     use global_parameters, only: option_path_len, is_overlapping, is_compact_overlapping
     use futils, only: int2str
 
-    use Fields_Allocates, only : allocate
 
     use solvers_module
     use mapping_for_ocvfem
     use cv_advection  
     use matrix_operations
-    use shape_functions
+    use shape_functions_NDim
+    use shape_functions_prototype
+    use matrix_operations
     use spact
-    use Copy_Outof_State
     use multiphase_EOS
     use Copy_Outof_State, only: as_vector
     use fldebug
     use solvers
+    use printout
     use multiphase_caching, only: reshape_vector2pointer
 
     implicit none
@@ -169,7 +171,8 @@ contains
         integer :: nits_flux_lim, its_flux_lim
         logical :: lump_eqns
         REAL, DIMENSION( : ), allocatable :: CV_RHS, DIAG_SCALE_PRES, CT_RHS
-        REAL, DIMENSION( : ), allocatable :: block_acv, mass_mn_pres
+        REAL, DIMENSION( my_size(block_to_global_acv) ) :: block_acv
+        real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
         REAL, DIMENSION( : , : , : ), allocatable :: dense_block_matrix, CT
         REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all
         REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB, ACV_SUB
@@ -196,8 +199,6 @@ contains
         call allocate(rhs_field,nphase,tracer%mesh,"RHS")
 
 !        ALLOCATE( ACV( NCOLACV ) )
-        ALLOCATE( mass_mn_pres( size(small_COLACV ) ))
-        allocate( block_acv(size(block_to_global_acv) ) )
         allocate( dense_block_matrix (nphase,nphase,cv_nonods) ); dense_block_matrix=0;
         ALLOCATE( CV_RHS( CV_NONODS * NPHASE ) )
 
@@ -387,8 +388,7 @@ contains
 
         END DO Loop_NonLinearFlux
 
-        deALLOCATE( mass_mn_pres )
-        deallocate( block_acv, dense_block_matrix )
+        deallocate( dense_block_matrix )
         DEALLOCATE( CV_RHS )
         call deallocate(RHS_FIELD)
 
@@ -616,7 +616,6 @@ contains
     XU_NLOC, XU_NDGLN, &
     option_path,&
     StorageIndexes )
-        use shape_functions_NDim
         implicit none
 
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1054,6 +1053,7 @@ contains
             SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
             mass_ele_transp,&
             StorageIndexes, 3 )
+
 !            satura=0.0 !saturaold([([(i+(j-1)*cv_nonods,j=1,nphase)],i=1,cv_nonods)])
 
             call assemble_global_multiphase_petsc_csr(petsc_acv,&
@@ -1071,6 +1071,7 @@ contains
             call deallocate(petsc_acv)
 
             satura(:,:)=tracer%val(1,:,:)
+
         END DO Loop_NonLinearFlux
 
         !Set saturation to be between bounds
@@ -1752,6 +1753,11 @@ contains
         DEALLOCATE( UP_VEL )
         DEALLOCATE( PIVIT_MAT )
 
+#ifdef USING_GFORTRAN
+!Nothing to do
+#else!deallocate the C matrix
+DEALLOCATE( C )
+#endif
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
 
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
@@ -1921,7 +1927,6 @@ contains
     NOIT_DIM, RETRIEVE_SOLID_CTY, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL ,scale_momentum_by_volume_fraction,&
     StorageIndexes)
-        use printout
         implicit none
 
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
@@ -2881,16 +2886,9 @@ contains
         ewrite(3,*) 'RESID_BASED_STAB_DIF, U_NONLIN_SHOCK_COEF, RNO_P_IN_A_DOT:', &
         RESID_BASED_STAB_DIF, U_NONLIN_SHOCK_COEF, RNO_P_IN_A_DOT
 
-
-        !For Porous media to make QUAD_OVER_WHOLE_ELE = .false. to work, the element pair
-        !has to be of the type PnDGPnDG
         ! Do NOT divide element into CV's to form quadrature.
         QUAD_OVER_WHOLE_ELE = is_overlapping.OR.is_compact_overlapping
-        !Don't use QUAD_OVER_WHOLE_ELE if it is not necessary
-!        if (QUAD_OVER_WHOLE_ELE) then
-!            !if PnDGPnDG are in use we can disable the quadrature over the whole element - Pablo not sure this is true...
-!            QUAD_OVER_WHOLE_ELE = (U_NLOC/=CV_NLOC)
-!        end if
+
 
         call retrieve_ngi( ndim, u_ele_type, cv_nloc, u_nloc, &
         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE)
@@ -2918,7 +2916,6 @@ contains
         if ( have_option( &
         '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/nonlinear_flux') &
         ) NON_LIN_DGFLUX = .TRUE.
-
 
         ALLOCATE( UD( NDIM_VEL, NPHASE, CV_NGI ))
         ALLOCATE( UDOLD( NDIM_VEL, NPHASE, CV_NGI ))
@@ -2970,7 +2967,6 @@ contains
         ALLOCATE( CV_SLOC2LOC( CV_SNLOC ))
         ALLOCATE( U_SLOC2LOC( U_SNLOC ))
         ALLOCATE( U_ILOC_OTHER_SIDE(U_SNLOC))
-        ALLOCATE( CV_ILOC_OTHER_SIDE(CV_SNLOC))
 
         ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ))
         ALLOCATE( CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
@@ -3220,8 +3216,10 @@ contains
         END IF
 
         !======= DEFINE THE SUB-CONTROL VOLUME SHAPE FUNCTIONS, ETC ========
+
         ! Shape functions associated with volume integration using both CV basis
         ! functions CVN as well as FEM basis functions CVFEN (and its derivatives CVFENLX, CVFENLY, CVFENLZ)
+
         !======= DEFINE THE SUB-CONTROL VOLUME & FEM SHAPE FUNCTIONS ========
         CALL cv_fem_shape_funs_plus_storage( &
                              ! Volume shape functions...
@@ -3257,9 +3255,11 @@ contains
 
         ALLOCATE( FACE_ELE( NFACE, TOTELE ) )
         ! Calculate FACE_ELE
+
         CALL CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, NFACE, &
         NCOLELE, FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN, CV_SNDGLN, &
         CV_SLOCLIST, X_NLOC, X_NDGLN )
+
         IF( GOT_DIFFUS ) THEN
             CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &
             DUX_ELE_ALL, DUOLDX_ELE_ALL, &
@@ -3562,7 +3562,6 @@ contains
             END DO
 
 
-
             ! Start filtering density
             !FILT_DEN = 1
             !FILT_DEN = 2 ! best option to use
@@ -3856,6 +3855,8 @@ contains
 
                         ENDIF ! ENDOF IF ( LUMP_MASS .AND. ( CV_NLOC==6 .OR. (CV_NLOC==10 .AND. NDIM==3) ) ) THEN ! Quadratice
 
+
+
                     Loop_DGNods2: DO U_JLOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
 
                         NN = 0.0
@@ -4117,6 +4118,7 @@ contains
                 END DO Loop_U_ILOC1
             END DO Loop_ILEV1
             !ewrite(3,*)'just after Loop_U_ILOC1'
+
             ! **********REVIEWER 2-END**********************
 
 
@@ -4201,6 +4203,7 @@ contains
 
                         IF ( IPLIKE_GRAD_SOU == 1 ) THEN ! Pressure like terms...
                             DO IPHASE = 1, NPHASE
+
                                 R = GRAD_SOU_GI( IPHASE, GI ) * LOC_PLIKE_GRAD_SOU_GRAD( IPHASE, P_ILOC )
                                 DO IDIM = 1, NDIM_VEL
                                     RESID_U( IDIM, IPHASE, GI ) = RESID_U( IDIM, IPHASE, GI ) + R * CVFENX_ALL( IDIM, P_ILOC, GI )
@@ -4368,6 +4371,8 @@ contains
 
 
 
+
+
               ! Place the diffusion term into matrix for between element diffusion stabilization...
               IF ( BETWEEN_ELE_STAB ) THEN
                  ! we store these vectors in order to try and work out the between element
@@ -4510,6 +4515,7 @@ contains
             end if
          end if
                 
+
             ! for copy local memory copying...
             LOC_U_RHS = 0.0
 
@@ -4755,6 +4761,7 @@ contains
                     END IF
                     ! for normal calc...
                     DO IPHASE = 1, NPHASE
+
                         IF ( GOT_DIFFUS ) THEN
                             SLOC_DUX_ELE_ALL( 1:NDIM_VEL, 1:NDIM, IPHASE, U_SILOC ) = DUX_ELE_ALL( 1:NDIM_VEL, 1:NDIM, IPHASE, U_ILOC, ELE )
                             SLOC_DUOLDX_ELE_ALL( 1:NDIM_VEL, 1:NDIM, IPHASE, U_SILOC ) = DUOLDX_ELE_ALL( 1:NDIM_VEL, 1:NDIM, IPHASE, U_ILOC, ELE )
@@ -4858,6 +4865,7 @@ contains
                     ! ***********SUBROUTINE DETERMINE_SUF_PRES - START************
                     ! Put the surface integrals in for pressure b.c.'s
                     ! that is add into C matrix and U_RHS. (DG velocities)
+
                     U_NLOC2 = MAX( 1, U_NLOC/CV_NLOC )
                     Loop_ILOC2: DO U_SILOC = 1, U_SNLOC
                         U_ILOC = U_SLOC2LOC( U_SILOC )
@@ -4869,6 +4877,8 @@ contains
 
                         Loop_JLOC2: DO P_SJLOC = 1, P_SNLOC
                             P_JLOC = CV_SLOC2LOC( P_SJLOC )
+
+
                             if( ( .not. is_overlapping ) .or. ( p_jloc == ilev ) ) then
                                 if(.not.got_c_matrix) JCV_NOD = P_SNDGLN(( SELE - 1 ) * P_SNLOC + P_SJLOC )
 
@@ -4892,6 +4902,7 @@ contains
 
                                 Loop_Phase2: DO IPHASE = 1, NPHASE
                                     IF( WIC_P_BC_ALL( SELE ) == WIC_P_BC_DIRICHLET ) THEN
+
                                         DO IDIM = 1, NDIM_VEL
                                             IF(IGOT_VOL_X_PRESSURE==1) THEN
                                                IF ( .NOT.GOT_C_MATRIX ) THEN
@@ -4909,13 +4920,22 @@ contains
                                                - NMX_ALL( IDIM ) * SUF_P_BC_ALL( P_SJLOC + P_SNLOC* ( SELE - 1 ) ) * SELE_OVERLAP_SCALE( P_JLOC )
                                             ENDIF
                                         END DO
+
                                     END IF
+
                                 END DO Loop_Phase2
                             ENDIF
+
+
+
                         END DO Loop_JLOC2
+
                     END DO Loop_ILOC2
                    ! ***********SUBROUTINE DETERMINE_SUF_PRES - END************
                 ENDIF If_on_boundary_domain
+
+
+
 
 
                 If_ele2_notzero: IF(ELE2 /= 0) THEN
@@ -5092,9 +5112,10 @@ contains
                             DO IPHASE=1,NPHASE
                                 DO IDIM_VEL=1,NDIM_VEL
                                     DO IDIM=1,NDIM
-                                        UDIFF_SUF_STAB(IDIM_VEL,IDIM,IDIM,IPHASE,: ) = UDIFF_SUF_STAB(IDIM_VEL,IDIM,IDIM,IPHASE,: )  &
-                                        +SBUFEN(U_SILOC,:)*0.5*(  SLOC_DIFF_FOR_BETWEEN_U(IDIM_VEL, IPHASE, U_SILOC) &
-                                        + SLOC2_DIFF_FOR_BETWEEN_U(IDIM_VEL, IPHASE, U_SILOC)  )
+                                        UDIFF_SUF_STAB(IDIM_VEL,IDIM,IDIM,IPHASE,: ) = &
+                                             UDIFF_SUF_STAB(IDIM_VEL,IDIM,IDIM,IPHASE,: )  &
+                                             +SBUFEN(U_SILOC,:)*0.5*(  SLOC_DIFF_FOR_BETWEEN_U(IDIM_VEL, IPHASE, U_SILOC) &
+                                             + SLOC2_DIFF_FOR_BETWEEN_U(IDIM_VEL, IPHASE, U_SILOC)  )
 
                                     END DO
                                 END DO
@@ -5539,6 +5560,7 @@ contains
 
 
                                         IF( WIC_U_BC_ALL_VISC( IDIM, IPHASE, SELE2 ) == WIC_U_BC_DIRICHLET ) THEN
+
                                            IF(NO_MATRIX_STORE) THEN
                                               LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
                                               =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) - VLM_NEW * SLOC_U( IDIM,IPHASE,U_SJLOC ) 
@@ -5593,6 +5615,7 @@ contains
                                         ENDIF
                                         ! BC for incoming momentum...
                                         IF( WIC_MOMU_BC_ALL( IDIM, IPHASE, SELE2 ) == WIC_U_BC_DIRICHLET ) THEN
+
                                             IF(MOM_CONSERV) THEN
 
                                                 IF(.NOT.NO_MATRIX_STORE) THEN
@@ -5740,7 +5763,6 @@ contains
         DEALLOCATE(SDETWE)
 
         DEALLOCATE( U_ILOC_OTHER_SIDE )
-        DEALLOCATE( CV_ILOC_OTHER_SIDE )
 
         DEALLOCATE(STORED_U_ILOC_OTHER_SIDE)
         DEALLOCATE(STORED_U_OTHER_LOC)
@@ -5837,8 +5859,26 @@ contains
 
         ewrite(3,*)'Leaving assemb_force_cty'
 
-        RETURN
 
+#ifdef USING_GFORTRAN
+!Nothing to do here
+#else
+!Make sure we store the C matrix into state
+if (.not.got_c_matrix) state(1)%scalar_fields(&
+        StorageIndexes(12))%ptr%val(1:NDIM*NPHASE*NCOLC) =&
+reshape(C,[NDIM*NPHASE*NCOLC])
+!Variables from cv_fem_shape_funs_plus_storage
+deallocate(CVN, CVN_SHORT,CVFEN, CVFENLX_ALL,CVFEN_SHORT, CVFENLX_SHORT_ALL, &
+UFEN, UFENLX_ALL,CV_NEILOC, &
+SCVFEN, SCVFENSLX, SCVFENSLY,SCVFENLX_ALL,SUFEN, SUFENSLX, SUFENSLY,  &
+SUFENLX_ALL,SBCVN, SBCVFEN,SBCVFENSLX,&
+SBCVFENSLY, SBCVFENLX_ALL,SBUFEN, SBUFENSLX,&
+SBUFENSLY, SBUFENLX_ALL, CV_SLOCLIST, U_SLOCLIST)
+!Variables from DETNLXR_PLUS_U_WITH_STORAGE
+deallocate(CVFENX_ALL, UFENX_ALL)
+#endif
+
+        RETURN
     END SUBROUTINE ASSEMB_FORCE_CTY
 
 
@@ -5904,11 +5944,15 @@ contains
                      DO IDIM=1,NDIM 
                         R_SUF_SUM=SUM( SNORMXN_ALL(IDIM,:)*SBUFEN(U_SILOC,:)*SBUFEN(U_SJLOC,:)*SDETWE(:) )  
 ! ELEside of the element face...
-                        NNX_MAT12(IDIM,U_ILOC,U_JLOC)         = NNX_MAT12(IDIM,U_ILOC,U_JLOC)          -  0.5* R_SUF_SUM ! we have*2 the contribution
-                        NNX_MAT12(IDIM,U_ILOC,U_JLOC2+U_NLOC) = NNX_MAT12(IDIM,U_ILOC,U_JLOC2+U_NLOC)  +  0.5* R_SUF_SUM ! to take into account both sides of shared ele face
+                        NNX_MAT12(IDIM,U_ILOC,U_JLOC)         = &
+                        &NNX_MAT12(IDIM,U_ILOC,U_JLOC)          -  0.5* R_SUF_SUM ! we have*2 the contribution
+                        NNX_MAT12(IDIM,U_ILOC,U_JLOC2+U_NLOC) = &
+                        &NNX_MAT12(IDIM,U_ILOC,U_JLOC2+U_NLOC)  +  0.5* R_SUF_SUM ! to take into account both sides of shared ele face
 
-                        NNX_MAT12(IDIM,U_ILOC2+U_NLOC,U_JLOC2+U_NLOC) = NNX_MAT12(IDIM,U_ILOC2+U_NLOC,U_JLOC2+U_NLOC)  +  0.5* R_SUF_SUM ! we have*2 the contribution
-                        NNX_MAT12(IDIM,U_ILOC2+U_NLOC,U_JLOC)         = NNX_MAT12(IDIM,U_ILOC2+U_NLOC,U_JLOC)          -  0.5* R_SUF_SUM ! to take into account both sides of shared ele face
+                        NNX_MAT12(IDIM,U_ILOC2+U_NLOC,U_JLOC2+U_NLOC) = &
+                        &NNX_MAT12(IDIM,U_ILOC2+U_NLOC,U_JLOC2+U_NLOC)  +  0.5* R_SUF_SUM ! we have*2 the contribution
+                        NNX_MAT12(IDIM,U_ILOC2+U_NLOC,U_JLOC)         = &
+                        &NNX_MAT12(IDIM,U_ILOC2+U_NLOC,U_JLOC)          -  0.5* R_SUF_SUM ! to take into account both sides of shared ele face
                      END DO
                   END DO
                END DO
@@ -6503,7 +6547,7 @@ contains
           END DO
 !
           RETURN
-          END
+        END SUBROUTINE JACDIA
 !
 !
 !
@@ -6530,7 +6574,7 @@ contains
               A(P,I)=P1I 
             END DO
           RETURN
-          END    
+        END SUBROUTINE JACPRE
 !
 !
 !
@@ -6557,7 +6601,7 @@ contains
             END DO
 !
           RETURN
-          END    
+        END SUBROUTINE JACPOS
 !
 ! 
 
@@ -7132,6 +7176,11 @@ contains
 
         IMPLICIT NONE
 
+        integer, intent( in ) :: nphase, ncomp, cv_nonods, U_NONODS, X_NONODS, MAT_NONODS, &
+        NCOLACV, NCOLCT, TOTELE, CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
+        CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, CV_SNLOC, U_SNLOC, NDIM, &
+        NCOLM, XU_NLOC, NCOLELE, STOTEL
+
         real, dimension( cv_nonods * nphase ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         integer, intent( inout ) :: IPLIKE_GRAD_SOU
         real, dimension( cv_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE_CV
@@ -7139,10 +7188,7 @@ contains
 
         type(state_type), dimension( : ), intent( inout ) :: state
         type(state_type), intent( inout ) :: packed_state
-        integer, intent( in ) :: nphase, ncomp, cv_nonods, U_NONODS, X_NONODS, MAT_NONODS, &
-        NCOLACV, NCOLCT, TOTELE, CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
-        CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, CV_SNLOC, U_SNLOC, NDIM, &
-        NCOLM, XU_NLOC, NCOLELE, STOTEL
+
         integer, dimension( : ), intent( in ) :: CV_NDGLN
         integer, dimension( :), intent( in )  :: CV_SNDGLN
         integer, dimension( : ), intent( in ) ::  X_NDGLN
@@ -7432,9 +7478,6 @@ contains
         !
         !
         !***********************************************************************
-        use shape_functions
-        use matrix_operations
-        use printout
         ! Inputs/Outputs
         IMPLICIT NONE
         type(state_type), dimension( : ), intent( inout ) :: state
@@ -7847,6 +7890,7 @@ contains
                 FEMTOLD=0.0
             END DO
         endif
+
 
         ALLOCATE( FACE_ELE( NFACE, TOTELE ) ) ; FACE_ELE = 0
         ! Calculate FACE_ELE

@@ -26,6 +26,7 @@
 !    USA
 #include "fdebug.h"
 module fields_manipulation
+use quadrature
 use elements
 use element_set
 use embed_python

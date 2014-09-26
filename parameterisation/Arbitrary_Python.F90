@@ -28,12 +28,15 @@
 
 module arbitrary_function
   !! This module implements evaluating an arbitrary python function at various points
+ 
   use spud
-  use state_module
+  use state_module, only: state_type, extract_v_field => extract_vector_field,&
+    & extract_s_field => extract_scalar_field,extract_t_field=>extract_tensor_field,&
+    & insert, deallocate
   use fields
   use sparse_tools
   use fefields
-  use fetools
+  use fetools 
   use boundary_conditions
   use global_parameters, only:FIELD_NAME_LEN,OPTION_PATH_LEN,&
        PYTHON_FUNC_LEN, CURRENT_DEBUG_LEVEL
@@ -42,8 +45,6 @@ module arbitrary_function
   use sparsity_patterns_meshes
   use equation_of_state
   use quadrature
-
-  implicit none 
 
   integer, parameter :: SCALAR_FIELD_TYPE=1,VECTOR_FIELD_TYPE=2,&
        TENSOR_FIELD_TYPE=3
@@ -69,7 +70,7 @@ contains
     character (len=*), intent(in) :: option_path
     type(function_data) :: fun_data
 
-    integer no_scalars,no_vectors,no_tensors
+    integer no_scalars,no_vectors,no_tensors, i
     integer :: argument,scalar_it,vector_it,tensor_it
     character (len=FIELD_NAME_LEN) :: field_name, field_type, phase
     logical :: is_multiphase
@@ -108,28 +109,36 @@ contains
           fun_data%argument_type(argument)=SCALAR_FIELD_TYPE
           if (is_multiphase) then
              field_name=trim(field_name(index(field_name,':',back=.true.)+1:len(field_name)))
-             fun_data%scalars(scalar_it)%ptr=>&
-               extract_scalar_field(state,trim(field_name),state_name=trim(phase))
+             do i=1,size(state)
+                 if (trim(state(i)%name)==trim(phase)) then
+                     fun_data%scalars(scalar_it)%ptr=>&
+                       extract_s_field(state(i),trim(field_name))
+                 end if
+             end do
           else
           fun_data%scalars(scalar_it)%ptr=>&
-               extract_scalar_field(state,field_name)
+               extract_s_field(state,field_name)
           end if
           scalar_it=scalar_it+1
        case("vector_field")
           fun_data%argument_type(argument)=VECTOR_FIELD_TYPE
           if (is_multiphase) then
              field_name=trim(field_name(index(field_name,':',back=.true.)+1:len(field_name)))
-             fun_data%vectors(vector_it)%ptr=>&
-               extract_vector_field(state,field_name,state_name=trim(phase))
+             do i=1,size(state)
+                 if (trim(state(i)%name)==trim(phase)) then
+                     fun_data%vectors(vector_it)%ptr=>&
+                       extract_v_field(state(i),field_name)
+                 end if
+             end do
           else
              fun_data%vectors(vector_it)%ptr=>&
-                  extract_vector_field(state,field_name)
+                  extract_v_field(state,field_name)
           end if
           vector_it=vector_it+1
        case("tensor_field")
           fun_data%argument_type(argument)=TENSOR_FIELD_TYPE
           fun_data%tensors(tensor_it)%ptr=>&
-               extract_tensor_field(state(1),field_name)
+               extract_t_field(state(1),field_name)
           tensor_it=tensor_it+1
        end select
     end do
@@ -225,7 +234,7 @@ contains
 
   call python_reset()
 
-  call set(fun_result,extract_scalar_field(local_state,"result"))
+  call set(fun_result,extract_s_field(local_state,"result"))
   
   call deallocate(local_state)
  

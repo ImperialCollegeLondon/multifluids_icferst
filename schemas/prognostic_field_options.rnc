@@ -779,7 +779,7 @@ prognostic_velocity_field =
                      }|
                      ## Linear scheme
                      element linear_scheme {
-                         element high_order { empty } ?
+                        empty
                      }
                   ),
                   ## defaults to 0.

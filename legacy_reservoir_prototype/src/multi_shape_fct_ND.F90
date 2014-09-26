@@ -1228,22 +1228,24 @@
           LELE=merge(ele,1,btest(cache_level,0))
           !Get from state, indx is an input
           Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
-          NX_ALL(1:NDIM,1:NLOC,1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
+          call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2),&
+          NX_ALL, NDIM, NLOC, NGI)
           Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-          DETWEI(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
+          DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
           Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-          RA(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
+          RA => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
           Pos1 = Pos2 + 1
           VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1)
       else  !If the index is bigger than zero then everything is in storage
           !Get from state, indx is an input
           LELE=merge(ele,1,btest(cache_level,0))
           Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
-          NX_ALL(1:NDIM,1:NLOC,1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
+          call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2),&
+          NX_ALL, NDIM, NLOC, NGI)
           Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-          DETWEI(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
+          DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
           Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-          RA(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
+          RA => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
           Pos1 = Pos2 + 1
           VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1)
           return
@@ -1256,6 +1258,13 @@
          call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, TOTELE, NONODS, NLOC, NGI, &
          N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
          NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
+
+      !Store data into state
+      LELE=merge(ele,1,btest(cache_level,0))
+      !Get from state, indx is an input
+      Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
+      state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)=&
+      reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI), [NDIM*NLOC*NGI])
 
       end subroutine DETNLXR_plus_storage
 
@@ -1476,34 +1485,32 @@
          from = 1+NDIM*NLOC*NGI*(ELE-1); to = NDIM*NLOC*NGI*ELE
          call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
          NX_ALL, NDIM, NLOC, NGI)
-!         NX_ALL(1:NDIM,1:NLOC,1:NGI) => &
-!              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = NDIM*NLOC*NGI*totele
          from = jump + 1+(ELE-1)*(NGI+NDIM*NDIM); to = jump + ELE*(NGI*NDIM*NDIM)
-         INV_JAC(1:NDIM,1:NDIM,1:NGI)  => &
-              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         INV_JAC, NDIM, NDIM, NGI)
          jump = jump + totele*(NGI*NDIM*NDIM)
          from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-         DETWEI(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI*totele
          from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-         RA(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         RA => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI*totele
          VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(jump + ELE)
       else
          from = 1; to = NDIM*NLOC*NGI
-         NX_ALL(1:NDIM,1:NLOC,1:NGI) => &
-              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         NX_ALL, NDIM, NLOC, NGI)
          jump = NDIM*NLOC*NGI
          from = jump + 1; to = jump + NGI*NDIM*NDIM
-         INV_JAC(1:NDIM,1:NDIM,1:NGI)  => &
-              state(1)%scalar_fields(abs(indx))%ptr%val
+         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         INV_JAC, NDIM, NDIM, NGI)
          jump = jump + NGI*NDIM*NDIM
          from = jump + 1; to = jump + NGI
-         DETWEI(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI
          from = jump + 1; to = jump + NGI
-         RA(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         RA => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI
          VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(jump + ELE)
       end if
@@ -1519,6 +1526,24 @@
          NX_ALL(1,:,:),NX_ALL(2,:,:),NX_ALL(3,:,:),&
          NDIM, INV_JAC)
 
+        !Store data
+       if (btest(cache_level,0)) then
+         from = 1+NDIM*NLOC*NGI*(ELE-1); to = NDIM*NLOC*NGI*ELE
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI),[NDIM*NLOC*NGI])
+         jump = NDIM*NLOC*NGI*totele
+         from = jump + 1+(ELE-1)*(NGI+NDIM*NDIM); to = jump + ELE*(NGI*NDIM*NDIM)
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         reshape(INV_JAC(1:NDIM,1:NDIM,1:NGI),[NDIM*NDIM*NGI])
+      else
+         from = 1; to = NDIM*NLOC*NGI
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI),[NDIM*NLOC*NGI])
+         jump = NDIM*NLOC*NGI
+         from = jump + 1; to = jump + NGI*NDIM*NDIM
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         reshape(INV_JAC(1:NDIM,1:NDIM,1:NGI),[NDIM*NDIM*NGI])
+      end if
 
     END SUBROUTINE DETNLXR_INVJAC_plus_storage
 
@@ -3274,7 +3299,7 @@
       !ewrite(3,*)'scvngi,quad_cv_sngi=',scvngi,quad_cv_sngi
 
       ! Work out local coords of the nodes
-      loc_coord_nod_l1 = 0. ; loc_coord_nod_l2 = 0. ; loc_coord_nod_l3 = 0. ; &
+      loc_coord_nod_l1 = 0. ; loc_coord_nod_l2 = 0. ; loc_coord_nod_l3 = 0.
            loc_coord_nod_l4 = 0.
       do xnod = 1, x_nonods
          if( d3 ) then 
@@ -5078,7 +5103,6 @@
          weight, n, nlx, nly, nlz, &
          sweigh, sn, snlx, snly, sm, smlx, smly, &
          nwicel, d3 )  
-      use shape_functions_Linear_Quadratic
       ! This subrt computes shape functions. For now, let's just 
       ! define for one element type.
       ! NB: N may overwrite M if we are not solving for pressure.
@@ -7036,7 +7060,7 @@
       logical :: LOWQUA,d3
       REAL :: RUB(1000)
 
-      ewrite(3,*)'just inside SHAPE_one_ele' 
+      !ewrite(3,*)'just inside SHAPE_one_ele' 
 !      stop 7299
 
       LOWQUA=.false.
@@ -7194,6 +7218,7 @@
      LOGICAL, INTENT(IN)::D3
      
      INTEGER IPOLY,IQADRA,gi,gj,ggi,i,j,ii
+     
      !ewrite(3,*)'inside shape LOWQUA,NGI,NLOC,MLOC, SNGI,SNLOC,SMLOC:', &
      !                      LOWQUA,NGI,NLOC,MLOC, SNGI,SNLOC,SMLOC
      !ewrite(3,*)'NWICEL,d3:',NWICEL,d3
@@ -7482,7 +7507,7 @@
       !ewrite(3,*) 'HERE 2'
 
       IF((NLOC.NE.3).OR.(NGI.NE.3)) THEN
-          ewrite(3,*)'PROBLEM IN TR2D NLOC,NGI:',NLOC,NGI
+          !ewrite(3,*)'PROBLEM IN TR2D NLOC,NGI:',NLOC,NGI
           stop 282
       ENDIF
 

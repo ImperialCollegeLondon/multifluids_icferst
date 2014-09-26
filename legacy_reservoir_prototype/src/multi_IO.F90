@@ -643,8 +643,7 @@ contains
 
              ewrite(3,*) 'SUF_P_BC, SUF_VOL_BC, SUF_D_BC:', &
                   SUF_P_BC(CV_SNOD_PHAS), SUF_VOL_BC(CV_SNOD_PHAS), SUF_D_BC(CV_SNOD_PHAS)
-             ewrite(3,*) 'SUF_VOL_BC_ROB1(CV_SNOD_PHAS), SUF_VOL_BC_ROB2(CV_SNOD_PHAS):', &
-                  SUF_VOL_BC_ROB1(CV_SNOD_PHAS), SUF_VOL_BC_ROB2(CV_SNOD_PHAS)
+             ewrite(3,*) 'SUF_VOL_BC_ROB1(CV_SNOD_PHAS), SUF_VOL_BC_ROB2(CV_SNOD_PHAS):',  SUF_VOL_BC_ROB1(CV_SNOD_PHAS), SUF_VOL_BC_ROB2(CV_SNOD_PHAS)
           END DO
 
        END DO

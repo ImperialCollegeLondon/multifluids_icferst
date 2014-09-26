@@ -39,13 +39,20 @@
     use fields, only : node_count
     use state_module
     use sparse_tools
-    use sparse_tools_petsc
+    use sparse_tools_petsc, only : petsc_csr_matrix, petsc_csr_matrix_pointer, &
+     allocate, deallocate, &
+     entries, &
+     zero, addto, addto_diag, scale, &
+     extract_diagonal, assemble, incref_petsc_csr_matrix, &
+     addref_petsc_csr_matrix, &
+     mult_T, dump_matrix, &
+     csr2petsc_csr, dump_petsc_csr_matrix
     use parallel_tools
     use parallel_fields
     use halos
     use petsc_tools
     use petsc
-    use multiphase_caching, only : cache_level
+    use multiphase_caching, only : get_caching_level, test_caching_level
 
     implicit none
 
@@ -448,7 +455,7 @@
            'prognostic/reference_node', ndpset, default = 0 )
 
 
-      IF ( btest(cache_level,6) ) THEN
+      IF ( test_caching_level(6) ) THEN
          ! Fast but memory intensive...
          CALL COLOR_GET_CMC_PHA_FAST( CV_NONODS, U_NONODS, NDIM, NPHASE, &
               NCOLC, FINDC, COLC, &
@@ -1001,7 +1008,7 @@
     SUBROUTINE PHA_BLOCK_INV( PIVIT_MAT, TOTELE, NBLOCK )
       implicit none
       INTEGER, intent( in ) :: TOTELE, NBLOCK
-      REAL, DIMENSION( : , : , : ), intent( inout ), CONTIGUOUS :: PIVIT_MAT
+      REAL, DIMENSION( : , : , : ), intent( inout ) :: PIVIT_MAT
       ! Local variables
       INTEGER :: ELE
 
@@ -1266,13 +1273,13 @@
       ! U = BLOCK_MAT * CDP
       INTEGER, intent( in )  :: U_NONODS, NDIM, NPHASE, TOTELE, U_NLOC, NBLOCK
       INTEGER, DIMENSION( : ), intent( in ) ::  U_NDGLN
-      REAL, DIMENSION( :, :, :, : ), intent( inout ), contiguous, target :: U
-      REAL, DIMENSION( :, : , : ), intent( in ), contiguous :: BLOCK_MAT
-      REAL, DIMENSION( :, : , :, : ), intent( in ), contiguous, target :: CDP
+      REAL, DIMENSION( :, :, :, : ), intent( inout ), target :: U
+      REAL, DIMENSION( :, : , : ), intent( in ) :: BLOCK_MAT
+      REAL, DIMENSION( :, : , :, : ), intent( in ), target :: CDP
       ! Local
       INTEGER :: ELE, U_ILOC, U_INOD, IDIM, IPHASE, I, J, U_JLOC, U_JNOD, JDIM, JPHASE, II, JJ, IORIG
 
-      real, dimension(:,:,:,:), pointer, contiguous :: lcdp, lu
+      real, dimension(:,:,:,:), pointer :: lcdp, lu
       integer :: N
        
        interface 

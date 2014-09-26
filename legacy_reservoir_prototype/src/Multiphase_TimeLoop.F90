@@ -27,22 +27,18 @@
 !    USA
 #include "fdebug.h"
 
-  module multiphase_time_loop
+   module multiphase_time_loop
 
+    use fields
+    use field_options
     use write_state_module
     use diagnostic_variables
     use diagnostic_fields_wrapper
     use diagnostic_fields_new, only : &
          calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
          check_diagnostic_dependencies
-    use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
-                               simulation_start_wall_time, &
-                               topology_mesh_name, current_time, is_overlapping, is_compact_overlapping
-    use fldebug
+
     use state_module
-    use fields
-    use field_options
-    use fields_allocates
     use spud
     use signal_vars
     use populate_state_module
@@ -56,22 +52,24 @@
     use populate_sub_state_module
     use fluids_module!, only: pre_adapt_tasks, update_state_post_adapt
     use parallel_tools
-
-!!$ Modules indigenous to the prototype Code
-    use cv_advection, only : cv_count_faces
-    use multiphase_1D_engine
-    use spact
-    use multiphase_EOS
-    use multiphase_caching, only: set_caching_level, cache_level
-    use shape_functions_Linear_Quadratic
-    use Compositional_Terms
-    use Copy_Outof_State
-    use Copy_BackTo_State
     use checkpoint
     use boundary_conditions
 
+!!$ Modules indigenous to the prototype Code
+    use shape_functions_Linear_Quadratic
+    use spact
+    use Compositional_Terms
+    use multiphase_EOS
     use multiphase_fractures
-    use boundary_conditions_from_options
+    use multiphase_caching, only: set_caching_level, cache_level
+    use Copy_Outof_State
+    use Copy_BackTo_State
+    use cv_advection, only : cv_count_faces
+    use multiphase_1D_engine 
+
+#ifdef HAVE_ZOLTAN
+  use zoltan
+#endif
 
 
 #ifdef HAVE_ZOLTAN
@@ -1439,10 +1437,28 @@
                  findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
 
             allocate( global_dense_block_acv (nphase,cv_nonods) )
-                 finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; finele = 0 ; &
-                 colele = 0 ; midele = 0 ; findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
-                 colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0 ; &
-                 colm = 0 ; midm = 0
+                 finacv = 0 ; 
+                 colacv = 0 ; 
+                 midacv = 0 ; 
+                 finmcy = 0 ; 
+                 colmcy = 0 ; 
+                 midmcy = 0 ; 
+                 finele = 0 ;
+                 colele = 0 ;
+                 midele = 0 ; 
+                 findgm_pha = 0 ; 
+                 coldgm_pha = 0 ; 
+                 middgm_pha = 0 ; 
+                 findct = 0 ;
+                 colct = 0 ; 
+                 findc = 0 ; 
+                 colc = 0 ; 
+                 findcmc = 0 ; 
+                 colcmc = 0 ; 
+                 midcmc = 0 ; 
+                 findm = 0 ;
+                 colm = 0 ; 
+                 midm = 0
 
 !!$ Defining element-pair type 
             call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &

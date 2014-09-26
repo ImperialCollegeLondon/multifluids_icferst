@@ -5,6 +5,7 @@ module metric_assemble
   use VTK_interfaces
   use surfacelabels
 !  use fields
+  use elements
   use field_derivatives
   use form_metric_field
   use merge_tensors

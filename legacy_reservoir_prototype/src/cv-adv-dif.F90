@@ -38,13 +38,18 @@ module cv_advection
   use global_parameters, only: option_path_len, field_name_len, timestep, is_overlapping, is_compact_overlapping
   use futils, only: int2str
   use adapt_state_prescribed_module
-  use sparse_tools
+!  use sparse_tools
   use sparsity_patterns
 
-  use shape_functions
+
+  use shape_functions_Linear_Quadratic
+  use shape_functions_NDim
+  use shape_functions_prototype
   use matrix_operations
   use Copy_Outof_State
   use boundary_conditions
+
+  implicit none
 
   INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1, WIC_T_BC_ROBIN = 2, &
        WIC_T_BC_DIRI_ADV_AND_ROBIN = 3, WIC_D_BC_DIRICHLET = 1, &
@@ -54,7 +59,33 @@ module cv_advection
        WIC_U_BC_DIRICHLET_INOUT = 2, &
        WIC_P_BC_DIRICHLET = 1
 
+  interface my_size
+     module procedure my_size_integer, my_size_real
+  end interface
+
 contains
+
+  integer pure  function my_size_integer(A,n)
+    integer, dimension(:), intent(in) :: A
+    integer, optional, intent(in) :: n
+
+    if (present(n)) then
+       my_size_integer=size(A,n)
+    else
+       my_size_integer=size(A)
+    end if
+  end function my_size_integer
+
+  integer pure  function my_size_real(A,n)
+    real, dimension(:), intent(in) :: A
+    integer, optional, intent(in) :: n
+
+    if (present(n)) then
+       my_size_real=size(A,n)
+    else
+       my_size_real=size(A)
+    end if
+  end function my_size_real
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
          tracer, velocity, density, &
@@ -1041,7 +1072,8 @@ contains
       ALLOCATE( NUOLDGI_ALL( NDIM, NPHASE ), NUGI_ALL( NDIM, NPHASE ),  NU_LEV_GI( NDIM, NPHASE ) )
 ! 
       IF(THERMAL.AND.GOT_VIS) THEN
-         ALLOCATE( VECS_STRESS( NDIM, NDIM, NPHASE, CV_NONODS ), VECS_GRAD_U( NDIM, NDIM, NPHASE, CV_NONODS ) ) ; VECS_STRESS=0. ; VECS_GRAD_U=0.
+         ALLOCATE( VECS_STRESS( NDIM, NDIM, NPHASE, CV_NONODS ) ); VECS_STRESS=0. 
+         ALLOCATE( VECS_GRAD_U( NDIM, NDIM, NPHASE, CV_NONODS ) ) ; VECS_GRAD_U=0.
          ALLOCATE( STRESS_IJ_THERM( NDIM, NDIM, NPHASE ), STRESS_IJ_THERM_J( NDIM, NDIM, NPHASE ) ) ; STRESS_IJ_THERM=0. ; STRESS_IJ_THERM_J=0.
       ENDIF
 
@@ -1171,6 +1203,38 @@ contains
       deallocate(psi_ave(1)%ptr)
 
 
+      !###FEM VALUES###
+! ***********LOOK AT T_FEMT,DEN_FEMT WITH A VIEW TO DELETING EVENTUALLY
+!      DO CV_INOD = 1, CV_NONODS
+!          DO IPHASE = 1, NPHASE
+!              T_FEMT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS ) = FEMT_ALL( IPHASE, CV_INOD)
+!              DEN_FEMT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS ) = FEMDEN_ALL( IPHASE, CV_INOD)
+!          END DO
+!      END DO
+!      DO CV_INOD = 1, CV_NONODS
+!          DO IPHASE = 1, NPHASE
+!              FEMT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS ) = FEMT_ALL( IPHASE, CV_INOD)
+!              FEMTOLD( CV_INOD + ( IPHASE - 1 ) * CV_NONODS ) = FEMTOLD_ALL( IPHASE, CV_INOD)
+!              FEMDEN( CV_INOD + ( IPHASE - 1 ) * CV_NONODS ) = FEMDEN_ALL( IPHASE, CV_INOD)
+!              FEMDENOLD( CV_INOD + ( IPHASE - 1 ) * CV_NONODS ) = FEMDENOLD_ALL( IPHASE, CV_INOD)
+!          END DO
+!      END DO
+!      if (IGOT_T2>0) then
+!          DO CV_INOD = 1, CV_NONODS
+!              DO IPHASE = 1, NPHASE
+!                  FEMT2( CV_INOD + ( IPHASE - 1 ) * CV_NONODS ) = FEMT2_ALL( IPHASE, CV_INOD)
+!                  FEMT2OLD( CV_INOD + ( IPHASE - 1 ) * CV_NONODS ) = FEMT2OLD_ALL( IPHASE, CV_INOD)
+!              END DO
+!          END DO
+!      end if
+
+!      XC_CV_ALL(1,:)=XC_CV(:)
+!      IF(NDIM.GE.2) XC_CV_ALL(2,:)=YC_CV(:)
+!      IF(NDIM.GE.3) XC_CV_ALL(3,:)=ZC_CV(:)
+
+
+
+
       MASS_ELE_TRANSP = MASS_ELE
 
       NORMALISE = .FALSE.
@@ -1238,6 +1302,7 @@ contains
       END IF ! endof IF ( IANISOLIM == 0 ) THEN ELSE
 
       ALLOCATE( FACE_ELE( NFACE, TOTELE ) ) ; FACE_ELE = 0
+
       CALL CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, NFACE, &
            NCOLELE, FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN, CV_SNDGLN, &
            CV_SLOCLIST, X_NLOC, X_NDGLN )
@@ -1529,6 +1594,7 @@ contains
            if((CV_NODJ.ge.CV_NODI).or.(.not.integrate_other_side)) then 
 
                   integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
+
                   GLOBAL_FACE = GLOBAL_FACE + 1
                   JMID = SMALL_CENTRM(CV_NODJ)
 
@@ -1637,7 +1703,6 @@ contains
 ! Generate some local F variables ***************
 
 ! local surface information***********
-
 
           IF( (ELE2 > 0) .OR. (SELE > 0) ) THEN
 !          IF( (ELE2 > 0) .and. (SELE > 0) ) THEN
@@ -1846,7 +1911,8 @@ contains
                             DO JDIM=1,NDIM
                                IJ=(IPHASE-1)*MAT_NONODS*NDIM*NDIM + (MAT_NODJ-1)*NDIM*NDIM + (IDIM-1)*NDIM +JDIM
                                VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ) 
-                               GJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ+NPHASE*MAT_NONODS*NDIM*NDIM) 
+                               GJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = &
+                                    OPT_VEL_UPWIND_COEFS(IJ+NPHASE*MAT_NONODS*NDIM*NDIM) 
                             END DO
                          END DO
                       END DO
@@ -2122,7 +2188,8 @@ contains
                              SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
                              UGI_COEF_ELE_ALL,  &
                              UGI_COEF_ELE2_ALL,  &
-                             NDOTQNEW(IPHASE), NDOTQOLD(IPHASE), NDOTQ_HAT, LIMD(IPHASE), LIMT(IPHASE), LIMTOLD(IPHASE), LIMDT(IPHASE), LIMDTOLD(IPHASE), LIMT_HAT(IPHASE), &
+                             NDOTQNEW(IPHASE), NDOTQOLD(IPHASE), NDOTQ_HAT, LIMD(IPHASE), &
+                             LIMT(IPHASE), LIMTOLD(IPHASE), LIMDT(IPHASE), LIMDTOLD(IPHASE), LIMT_HAT(IPHASE), &
                              FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                              RETRIEVE_SOLID_CTY,theta_cty_solid)
                      ENDIF Conditional_GETCT2
@@ -2311,7 +2378,8 @@ contains
 
                            IF ( GOT_VIS ) THEN
                               ! stress form of viscosity...
-                              NU_LEV_GI(:, IPHASE) =  (1.-THERM_FTHETA) * NUOLDGI_ALL(:,IPHASE) + THERM_FTHETA * NUGI_ALL(:,IPHASE) 
+                              NU_LEV_GI(:, IPHASE) =  (1.-THERM_FTHETA) * NUOLDGI_ALL(:,IPHASE) &
+                                   + THERM_FTHETA * NUGI_ALL(:,IPHASE) 
 
                               STRESS_IJ_THERM(:,:,IPHASE) = 0.0 
 
@@ -2623,7 +2691,19 @@ end if
 
 
       ewrite(3,*) 'Leaving CV_ASSEMB'
-
+#ifdef USING_GFORTRAN
+!Nothing to do here
+#else
+!Variables from cv_fem_shape_funs_plus_storage
+deallocate(CVN, CVN_SHORT,CVFEN, CVFENLX_ALL,CVFEN_SHORT, CVFENLX_SHORT_ALL, &
+UFEN, UFENLX_ALL,CV_NEILOC, &
+SCVFEN, SCVFENSLX, SCVFENSLY,SCVFENLX_ALL,SUFEN, SUFENSLX, SUFENSLY,  &
+SUFENLX_ALL,SBCVN, SBCVFEN,SBCVFENSLX,&
+SBCVFENSLY, SBCVFENLX_ALL,SBUFEN, SBUFENSLX,&
+SBUFENSLY, SBUFENLX_ALL, CV_SLOCLIST, U_SLOCLIST)
+!Variables from DETNLXR_INVJAC
+deallocate(SCVFENX_ALL, INV_JAC)
+#endif
       RETURN
 
     END SUBROUTINE CV_ASSEMB
@@ -2803,7 +2883,7 @@ end if
                  ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
                  LOGICAL, intent( in ) :: STORE, PACK
                  INTEGER, intent( in ) :: NPHASE, IGOT_T
-                 INTEGER, intent( in ) :: GLOBAL_FACE
+                 INTEGER, intent( in ) :: GLOBAL_FACE, NFIELD
                  ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
                  INTEGER, intent( inout ) :: IPT
                  REAL, DIMENSION(NPHASE), intent( inout ) :: T_ALL
@@ -3595,10 +3675,7 @@ end if
 
     ! Determine FEMT (finite element wise) etc from T (control volume wise)
     ! Also integrate PSI_INT over each CV and average PSI_AVE over each CV. 
-    use shape_functions 
-    use shape_functions_Linear_Quadratic
-    use solvers_module
-    use matrix_operations
+
     IMPLICIT NONE
     INTEGER, intent( in ) :: NTSOL, NTSOL_AVE, NTSOL_INT, NDIM, CV_NONODS, TOTELE, &
          X_NLOC, CV_NGI, CV_NLOC, X_NONODS, NCOLM, IGETCT, NCOLCMC
@@ -4014,8 +4091,6 @@ end if
        SBCVFEN, SBCVFENSLX, SBCVFENSLY, state, StorName, Indexes)
 
     ! determine FEMT (finite element wise) etc from T (control volume wise)
-    use shape_functions 
-    use matrix_operations
     IMPLICIT NONE
     INTEGER, intent( in ) :: NDIM, NDIM_VEL, NPHASE, &
          U_NONODS, TOTELE, X_NLOC, CV_NGI, U_NLOC, &
@@ -4058,6 +4133,7 @@ end if
          WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, & 
          SBCVFEN, SBCVFENSLX, SBCVFENSLY,&
          state, StorName//"U", Indexes(1))
+
     IF(NDIM_VEL.GE.2) THEN
        CALL DG_DERIVS( V, VOLD, &
             DVX_ELE, DVY_ELE, DVZ_ELE, DVOLDX_ELE, DVOLDY_ELE, DVOLDZ_ELE, &
@@ -4110,9 +4186,6 @@ end if
         state, StorName,indx )
 
     ! determine FEMT (finite element wise) etc from T (control volume wise)
-    use shape_functions 
-    use shape_functions_NDim
-    use matrix_operations 
     IMPLICIT NONE
     INTEGER, intent( in ) :: NDIM, NPHASE, CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
          X_NONODS, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC_DIRICHLET, SBCVNGI, NFACE
@@ -4545,9 +4618,6 @@ end if
       state, StorName, indx  )
 
     ! determine FEMT (finite element wise) etc from T (control volume wise)
-    use shape_functions
-    use shape_functions_NDim
-    use matrix_operations
     IMPLICIT NONE
 
     INTEGER, intent( in ) :: NDIM, NPHASE, NCOMP,CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
@@ -4801,9 +4871,6 @@ end if
        state, StorName, StorageIndexes  )
 
     ! determine FEMT (finite element wise) etc from T (control volume wise)
-    use shape_functions
-    use shape_functions_NDim
-    use matrix_operations
     IMPLICIT NONE
 
     INTEGER, intent( in ) :: NDIM, NPHASE, CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
@@ -5028,7 +5095,11 @@ end if
     DEALLOCATE( MASELE, VTX_ELE, VTOLDX_ELE )
 
     ewrite(3,*)'about to leave DG_DERIVS'
-
+#ifdef USING_GFORTRAN
+!nothing to do
+#else
+deallocate(NX_ALL, X_NX_ALL)
+#endif
     RETURN
 
   END SUBROUTINE DG_DERIVS_ALL2
@@ -5921,7 +5992,6 @@ end if
        X_ALL,        &
                                 !     - LOGICALS
        D1,       D3,       DCYL )
-    use shape_functions_NDim
     !     --------------------------------------------------
     !     
     !     - this subroutine calculates the control volume (CV) 
@@ -6240,7 +6310,6 @@ end if
        SBUFEN, SBUFENSLX, SBUFENSLY,  &
        SAREA, SNORMXN, SNORMYN, SNORMZN, SNORMX, SNORMY, SNORMZ )
     ! use AdvectionDiffusion
-    use shape_functions_NDim
     IMPLICIT NONE
     INTEGER, intent( in ) :: SELE, STOTEL, X_NONODS, CV_SNLOC, SBNGI, NDIM
     INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
@@ -6363,7 +6432,6 @@ end if
        NORMXN, NORMYN, NORMZN, &
        NORMX, NORMY, NORMZ ) 
     ! use AdvectionDiffusion
-    use shape_functions_NDim
     IMPLICIT NONE
     INTEGER, intent( in ) :: ELE, STOTEL, X_NONODS, SNLOC, SNGI
     INTEGER, DIMENSION( : ), intent( in ) :: SNDGLN
@@ -6569,7 +6637,6 @@ end if
        MAT_ELE, MAT_ELE2, U_SLOC2LOC,U_ILOC_OTHER_SIDE,  &
        SBUFEN,SBCVNGI,U_NLOC,U_SNLOC,NDIM,NPHASE,GOT_OTHER_ELE) 
     ! Calculate the between element diffusion coefficients for stabaization scheme UDIFF_SUF_STAB.
-    use matrix_operations
     implicit none     
     !  FAST_AND_SIMP is a good option and is accurate...
     LOGICAL, PARAMETER :: FAST_AND_SIMP=.TRUE.
@@ -7395,8 +7462,8 @@ end if
                    DO I=1,U_SNLOC
                        DO IPHASE=1,NPHASE
                        DO IDIM=1,NDIM 
-                          STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) = STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) &
-                            + SUM(  MAT_SUFXX(IDIM,:,IPHASE, U_SILOC, I) *  S_INV_NNX_MAT12( :, I, U_JLOC12 )  )
+                          STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) =&
+                           & STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) + SUM(  MAT_SUFXX(IDIM,:,IPHASE, U_SILOC, I) *  S_INV_NNX_MAT12( :, I, U_JLOC12 )  )
                        END DO
                        END DO
                     END DO
@@ -10674,6 +10741,7 @@ end if
              END DO
         ENDIF ! ENDOF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN ELSE
 
+
    if(NEW_LIMITER) then
     CALL ONVDLIM_ANO_MANY( NFIELD, &
        LIMF(:), FEMFGI(:), F_INCOME(:), & 
@@ -11075,13 +11143,14 @@ CONTAINS
 
 
   SUBROUTINE CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, NFACE, &
-       NCOLELE, FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN, CV_SNDGLN, &
-       CV_SLOCLIST, X_NLOC, X_NDGLN)
+      NCOLELE, FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN,&
+        CV_SNDGLN, CV_SLOCLIST, X_NLOC, X_NDGLN)
     ! Calculate FACE_ELE - the list of elements surrounding an 
-    ! element and referenced with a face -ve values correspond to surface elements. 
+    ! element and referenced with a face -ve values correspond to surface
+    ! elements. 
     IMPLICIT NONE
-    INTEGER, intent( in ) :: TOTELE, STOTEL, NFACE, NCOLELE, CV_NLOC, CV_SNLOC, CV_NONODS, &
-         X_NLOC
+    INTEGER, intent( in ) :: TOTELE, STOTEL, NFACE, NCOLELE, CV_NLOC, CV_SNLOC,&
+    &CV_NONODS,  X_NLOC
     INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
@@ -11091,9 +11160,10 @@ CONTAINS
     INTEGER, DIMENSION( : ), intent( in ) :: COLELE
     ! Local variables
     LOGICAL, DIMENSION( : ), allocatable :: NOD_BELONG_ELE
-    INTEGER, DIMENSION( : ), allocatable :: NOD_COUNT_SELE, FIN_ND_SELE, COL_ND_SELE, ELE_ROW
+    INTEGER, DIMENSION( : ), allocatable :: NOD_COUNT_SELE, FIN_ND_SELE,&
+    & COL_ND_SELE, ELE_ROW
     LOGICAL, DIMENSION( : ), allocatable :: NOD_ON_BOUNDARY
-    INTEGER :: ELE, ELE2, SELE, CV_ILOC, CV_INOD, COUNT, IFACE, CV_SILOC, JFACE, &
+    INTEGER :: ELE, ELE2, SELE, CV_ILOC, CV_INOD, COUNT, IFACE, CV_SILOC, JFACE,&
          CV_ILOC2, CV_INOD2, CV_SILOC2, IFACE2, SELE2 
     LOGICAL :: FOUND, SELE_FOUND, GOT_ALL
 
@@ -11180,7 +11250,8 @@ CONTAINS
     END DO
 
     !do ele=1,totele
-    !   ewrite(3,*)'ele',ele,' FACE_ELE(IFACE,ELE):',(FACE_ELE(IFACE,ELE),iface=1,nface) 
+    !   ewrite(3,*)'ele',ele,'
+    !   FACE_ELE(IFACE,ELE):',(FACE_ELE(IFACE,ELE),iface=1,nface) 
     !end do
 
     ! ***********************************************************    
@@ -11221,7 +11292,8 @@ CONTAINS
     END DO
 
     !do ele=1,totele
-    !   ewrite(3,*)'ele',ele,' FACE_ELE(IFACE,ELE):',(FACE_ELE(IFACE,ELE),iface=1,nface) 
+    !   ewrite(3,*)'ele',ele,'
+    !   FACE_ELE(IFACE,ELE):',(FACE_ELE(IFACE,ELE),iface=1,nface) 
     !end do
     !stop 2982
 
@@ -11235,8 +11307,6 @@ CONTAINS
     RETURN
 
   END SUBROUTINE CALC_FACE_ELE
-
-
 
 
 
@@ -11684,8 +11754,8 @@ CONTAINS
     LOGICAL :: FOUND
     INTEGER, DIMENSION( CV_SNLOC ) :: LOG_ON_BOUND
 
+    log_on_bound= -66666
     !ewrite(3,*)'In Calc_Sele'
-    log_on_bound=-66666
     I = 1
     DO CV_JLOC = 1, CV_NLOC  
        CV_JNOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
@@ -12328,7 +12398,8 @@ CONTAINS
              ABSC=a+b*0.5*(SAT_CV_NODJ+SAT_CV_NODI)
              ewrite(3,*)'guessed valueS ABSC,ABS_CV_NODi=',ABSC,ABS_CV_NODi
              ewrite(3,*)'SAT_CV_NODI,SAT_CV_NODj:',SAT_CV_NODI,SAT_CV_NODj
-             ewrite(3,*)'SAT_CV_NODI_ipha,SAT_CV_NODj_ipha:',SAT_CV_NODI_ipha,SAT_CV_NODj_ipha 
+             ewrite(3,*) 'SAT_CV_NODI_ipha,SAT_CV_NODj_ipha:', SAT_CV_NODI_ipha,&
+                  SAT_CV_NODj_ipha 
              W=(ABS_CV_NODJ-ABSC)/tolfun(ABS_CV_NODJ-ABS_CV_NODI)
              SATC=W*SAT_CV_NODI + (1.-W)*SAT_CV_NODJ 
              ! W=the upwind parameter (how much upwind fraction to use)
@@ -13543,7 +13614,11 @@ CONTAINS
        END DO ! Was loop 20
     END DO ! Was loop 10
 !    stop 67
-
+#ifdef USING_GFORTRAN
+!nothing to do
+#else
+deallocate(NX_ALL)
+#endif
     RETURN
 
     end subroutine finptsstore
@@ -14158,8 +14233,10 @@ CONTAINS
             SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
             SUF_SIG_DIAGTEN_BC, &
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-            VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
-            VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+            VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_SLOC2LOC,&
+            CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+            VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
+            VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
             MASS_CV_I, MASS_CV_J, NDIM, MAT_NLOC, MAT_NONODS, &
             IN_ELE_UPWIND, DG_ELE_UPWIND, &
             IANISOTROPIC, &
@@ -14176,8 +14253,10 @@ CONTAINS
             SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
             SUF_SIG_DIAGTEN_BC, &
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-            VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
-            VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+            VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_SLOC2LOC,&
+            CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+            VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
+            VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
        INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
        NUGI_ALL, &
             MASS_CV_I, MASS_CV_J, NDIM, MAT_NLOC, MAT_NONODS, &
@@ -17034,7 +17113,6 @@ CONTAINS
 
   end function vtolfun
 
-
     real function get_relperm_epsilon(sat,iphase, Sr1, Sr2, kr_exp, krmax)
         Implicit none
         real, intent( in ) :: Sat, Sr1, Sr2, kr_exp, krmax
@@ -17045,8 +17123,6 @@ CONTAINS
             !Lower value just to make sure we do not divide by zero.
 
     end function get_relperm_epsilon
-
-
     real function inv_get_relperm_epsilon(sat,iphase, Sr1, Sr2, kr_exp, krmax)
         Implicit none
         real, intent( in ) :: Sat, Sr1, Sr2, kr_exp, krmax

@@ -294,6 +294,9 @@
   module sparsity_ND
     use fldebug
     use sparsity_1D
+    use shape_functions_prototype
+    use shape_functions_Linear_Quadratic
+    use cv_advection
 
   contains
 
@@ -1244,9 +1247,6 @@
          ncolele, finele, colele, &
          ncolm, mxnacv_loc, findm, colm, &
          ncolacv_loc, finacv_loc, colacv_loc, midacv_loc )
-      use shape_functions
-      use shape_functions_Linear_Quadratic
-      use cv_advection
       implicit none
       integer, intent( in ) :: ndim, nphase, cv_ele_type, totele, cv_nloc, &
            u_nloc, x_nloc, xu_nloc, mat_nloc, cv_snloc, u_snloc, cv_nonods, &
@@ -1525,7 +1525,7 @@
     use futils, only: int2str
     use sparsity_1D
     use sparsity_ND
-    use shape_functions
+    use shape_functions_prototype
     use Copy_Outof_State
 
   contains

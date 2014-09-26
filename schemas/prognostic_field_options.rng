@@ -946,11 +946,7 @@ Int grad u.kappa.grad v dV</a:documentation>
               </element>
               <element name="linear_scheme">
                 <a:documentation>Linear scheme</a:documentation>
-                <optional>
-                  <element name="high_order">
-                    <empty/>
-                  </element>
-                </optional>
+                <empty/>
               </element>
             </choice>
             <optional>

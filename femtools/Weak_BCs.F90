@@ -29,17 +29,16 @@
 
   module Weak_BCs
 
+
     use FLDebug
     use spud
-    use state_module
-    use global_parameters, only: option_path_len, dt
-    use fields
-    use elements
-    use parallel_tools
-    use transform_elements
-    use boundary_conditions
-    use elements
     use sparse_tools_petsc
+    use fields
+    use state_module
+    use transform_elements	
+    use global_parameters, only: option_path_len, dt
+    use parallel_tools
+    use boundary_conditions
 
     implicit none
 
