@@ -2776,7 +2776,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
              INTEGER, intent( inout ) :: IPT
              LOGICAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_PACK
              INTEGER, DIMENSION(NPHASE), intent( in ) :: T_ALL
-             INTEGER, DIMENSION(NFIELD), intent( inout ) :: LOC_F
+             INTEGER, DIMENSION(:), intent( inout ) :: LOC_F
 ! local variables...
              INTEGER :: IPHASE
 
@@ -2803,7 +2803,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
              LOGICAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_PACK, IGOT_T_CONST
              REAL, DIMENSION(NPHASE), intent( inout ) :: T_ALL
              REAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_CONST_VALUE
-             REAL, DIMENSION(NFIELD), intent( inout ) :: LOC_F
+             REAL, DIMENSION(:), intent( inout ) :: LOC_F
              type( state_type ), intent( inout ), dimension(:) :: state
              character(len=*), intent(in) :: StorName
              integer, intent(inout) :: indx
