@@ -118,7 +118,13 @@ contains
     real, dimension(:,:), pointer, intent(inout) :: pointr
     real, dimension(:), intent(in) :: vector
     integer, intent(in) :: dim1, dim2
-        if (.not. associated(pointr)) allocate(pointr(dim1,dim2))
+
+        if (.not. associated(pointr)) then
+            allocate(pointr(dim1,dim2))
+        else if (size(pointr,1)/=dim1 .or. size(pointr,2)/=dim2) then
+            deallocate(pointr)
+            allocate(pointr(dim1,dim2))
+        end if
         pointr(1:dim1,1:dim2) = reshape(vector,[dim1,dim2])
     end subroutine reshape_vector2pointer_A
 
@@ -127,7 +133,14 @@ contains
     real, dimension(:,:,:), pointer, intent(inout) :: pointr
     real, dimension(:), intent(in) :: vector
     integer, intent(in) :: dim1, dim2, dim3
-        if (.not. associated(pointr)) allocate(pointr(dim1,dim2,dim3))
+        if (.not. associated(pointr)) then
+            allocate(pointr(dim1,dim2,dim3))
+        else if (size(pointr,1)/=dim1 .or. size(pointr,2)/=dim2&
+          .or. size(pointr,3)/=dim3) then
+            deallocate(pointr)
+            allocate(pointr(dim1,dim2,dim3))
+        end if
+
         pointr(1:dim1,1:dim2,1:dim3) = reshape(vector,[dim1,dim2,dim3])
     end subroutine reshape_vector2pointer_B
 
@@ -136,7 +149,12 @@ contains
     integer, dimension(:,:), pointer, intent(inout) :: pointr
     integer, dimension(:), intent(in) :: vector
     integer, intent(in) :: dim1, dim2
-        if (.not. associated(pointr)) allocate(pointr(dim1,dim2))
+        if (.not. associated(pointr)) then
+            allocate(pointr(dim1,dim2))
+        else if (size(pointr,1)/=dim1 .or. size(pointr,2)/=dim2) then
+            deallocate(pointr)
+            allocate(pointr(dim1,dim2))
+        end if
         pointr(1:dim1,1:dim2) = reshape(vector,[dim1,dim2])
     end subroutine reshape_vector2pointer_C
 
@@ -145,7 +163,13 @@ contains
     integer, dimension(:,:,:), pointer, intent(inout) :: pointr
     integer, dimension(:), intent(in) :: vector
     integer, intent(in) :: dim1, dim2, dim3
-        if (.not. associated(pointr)) allocate(pointr(dim1,dim2,dim3))
+        if (.not. associated(pointr)) then
+            allocate(pointr(dim1,dim2,dim3))
+        else if (size(pointr,1)/=dim1 .or. size(pointr,2)/=dim2&
+          .or. size(pointr,3)/=dim3) then
+            deallocate(pointr)
+            allocate(pointr(dim1,dim2,dim3))
+        end if
         pointr(1:dim1,1:dim2,1:dim3) = reshape(vector,[dim1,dim2,dim3])
     end subroutine reshape_vector2pointer_D
 
