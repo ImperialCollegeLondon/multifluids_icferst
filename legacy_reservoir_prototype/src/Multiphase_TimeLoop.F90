@@ -54,6 +54,7 @@
     use parallel_tools
     use checkpoint
     use boundary_conditions
+    use boundary_conditions_from_options
 
 !!$ Modules indigenous to the prototype Code
     use shape_functions_Linear_Quadratic
