@@ -2982,7 +2982,7 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
         vfield%option_path=tfield%option_path
         vfield%dim=product(tfield%dim)
 
-#ifdef HAVE_GFORTRAN
+#ifdef USING_GFORTRAN
          vfield%val(1:vfield%dim,1:node_count(vfield))=>tfield%contiguous_val
 #else
         allocate(vfield%val(1:vfield%dim,1:node_count(vfield)))

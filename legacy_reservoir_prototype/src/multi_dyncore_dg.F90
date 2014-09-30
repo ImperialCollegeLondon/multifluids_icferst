@@ -1555,6 +1555,11 @@ contains
 !                option_path = '/material_phase[0]/vector_field::Velocity', &
 !                block_size = NDIM*NPHASE*U_NLOC )
 
+#ifndef USING_GFORTRAN
+                velocity%val(:,:,:)=reshape(packed_vel%val,[size(velocity%val,1),size(velocity%val,2),size(velocity%val,3)])
+#endif
+
+
                 U_ALL2 % VAL=velocity%val
 
 !                print*,  sum(abs(UP_VEL-[velocity%val]))
