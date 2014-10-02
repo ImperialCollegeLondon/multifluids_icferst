@@ -454,6 +454,10 @@
       if (ndpset<0) call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
            'prognostic/reference_node', ndpset, default = 0 )
 
+      if (isparallel()) then
+            if (GetProcNo()>1) ndpset=0
+      end if
+
 
       IF ( test_caching_level(6) ) THEN
          ! Fast but memory intensive...

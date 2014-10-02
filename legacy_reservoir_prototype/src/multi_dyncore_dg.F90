@@ -1607,6 +1607,11 @@ contains
 
             call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
             'prognostic/reference_node', ndpset, default = 0 )
+
+            if (isparallel()) then
+               if (GetProcNo()>1) ndpset=0
+            end if
+
             if ( ndpset /= 0 ) p_rhs( ndpset ) = 0.0
 
             !ewrite(3,*) 'P_RHS2::', p_rhs
