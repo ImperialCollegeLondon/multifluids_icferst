@@ -3604,8 +3604,8 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
             !This loop is the most robust, so by default we still use this one
             do while (maxval(abs(StorageIndexes)) > 0)
                 maxpos = maxloc(StorageIndexes, dim =1)
-                StorName = trim(state(1)%scalar_names(StorageIndexes(maxpos)))!This lines is
-                call remove_scalar_field(state(1), trim(StorName))           !failing for Xie when using adaptive meshing
+                StorName = trim(state(1)%scalar_names(StorageIndexes(maxpos)))
+                call remove_scalar_field(state(1), trim(StorName))
                 StorageIndexes(maxpos) = 0
             end do
             !Just in case

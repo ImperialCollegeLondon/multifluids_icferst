@@ -964,6 +964,21 @@ contains
         type(vector_field)  :: vtracer
         type(vector_field) :: rhs_field
 
+        !Variables for capillary pressure
+        type(corey_options) :: options
+        character(len=250) :: option_dir
+        real :: Pe, Cap_exp
+
+        !Get information for capillary pressure to be use in CV_ASSEMB
+        !CHECK THAT THE 1 IS CORRECT
+        if (have_option("/material_phase[0]/multiphase_properties/capillary_pressure/type_Brookes_Corey") ) then
+            option_dir = "/material_phase["//int2str(1)//"]/multiphase_properties/capillary_pressure/type_Brookes_Corey"
+            call get_option(trim(option_dir)//"/phase["//int2str(1)//"]/c", Pe)
+            call get_option(trim(option_dir)//"/phase["//int2str(1)//"]/a", Cap_exp)
+        end if
+        !We consider only the corey options
+        call get_corey_options(options)
+
         call get_var_from_packed_state(packed_state,FEPressure = P,&
         PhaseVolumeFraction = satura,OldPhaseVolumeFraction = saturaold)
         GET_THETA_FLUX = .FALSE.
@@ -1053,7 +1068,8 @@ contains
             MEAN_PORE_CV, &
             SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
             mass_ele_transp,&
-            StorageIndexes, 3 )
+            StorageIndexes, 3 ,&
+            Pe = Pe , Cap_exp = Cap_exp, Swirr = options%S_gc, Sor= options%S_or)!Capillary variables
 !            satura=0.0 !saturaold([([(i+(j-1)*cv_nonods,j=1,nphase)],i=1,cv_nonods)])
 
             call assemble_global_multiphase_petsc_csr(petsc_acv,&
@@ -2970,7 +2986,6 @@ contains
         ALLOCATE( CV_SLOC2LOC( CV_SNLOC ))
         ALLOCATE( U_SLOC2LOC( U_SNLOC ))
         ALLOCATE( U_ILOC_OTHER_SIDE(U_SNLOC))
-        ALLOCATE( CV_ILOC_OTHER_SIDE(CV_SNLOC))
 
         ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ))
         ALLOCATE( CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
@@ -5740,7 +5755,6 @@ contains
         DEALLOCATE(SDETWE)
 
         DEALLOCATE( U_ILOC_OTHER_SIDE )
-        DEALLOCATE( CV_ILOC_OTHER_SIDE )
 
         DEALLOCATE(STORED_U_ILOC_OTHER_SIDE)
         DEALLOCATE(STORED_U_OTHER_LOC)
@@ -5836,6 +5850,14 @@ contains
         call deallocate(pressure_BCs)
 
         ewrite(3,*)'Leaving assemb_force_cty'
+
+#ifdef USING_GFORTRAN
+!Nothing to do
+#else
+!Make sure we store the C matrix into state
+if (.not.got_c_matrix) StorageIndexes(12))%ptr%val =&
+reshape(C,[NDIM*NPHASE*NCOLC])
+#endif
 
         RETURN
 
@@ -8875,6 +8897,5 @@ contains
             !Deallocate auxiliar variables
             deallocate(cv_on_face, cvfem_on_face, u_on_face, ufem_on_face, NMX_ALL)
     end subroutine Introduce_Cap_press_term
-
 
 end module multiphase_1D_engine

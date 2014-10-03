@@ -88,7 +88,7 @@ contains
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
          option_path_spatial_discretisation,T_input,TOLD_input, FEMT_input,&
-         saturation)
+         saturation, Pe, Cap_exp, Swirr, Sor)
 
       !  =====================================================================
       !     In this subroutine the advection terms in the advection-diffusion
@@ -279,8 +279,10 @@ contains
       character( len = * ), intent( in ), optional :: option_path_spatial_discretisation
       integer, dimension(:), intent(in) :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
       integer, dimension(:), intent(inout) :: StorageIndexes
-     integer, optional, intent(in) :: icomp
-     type(tensor_field), intent(in), optional, target :: saturation
+      integer, optional, intent(in) :: icomp
+      type(tensor_field), intent(in), optional, target :: saturation
+      !Variables for Capillary pressure
+      real, optional, intent(in) :: Pe, Cap_exp, Swirr, Sor
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
 
@@ -479,7 +481,13 @@ contains
 
       type( scalar_field ), pointer :: sfield
 
+      !Variables for Capillary pressure
+      logical :: capillary_pressure_activated
 
+
+      !Get Capillary pressure options
+      capillary_pressure_activated = have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) .or.&
+            have_option( '/material_phase[1]/multiphase_properties/capillary_pressure' )
 
       !#################SET WORKING VARIABLES#################
       call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
@@ -1833,8 +1841,22 @@ contains
                DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
                SELE, STOTEL, LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC )
        ELSE
-          DIFF_COEF_DIVDX = 0.0
-          DIFF_COEFOLD_DIVDX = 0.0
+          !We will need to add another option, unless we decide that this will be the default
+          !method to implement capillary pressure
+          if (capillary_pressure_activated.and..FALSE..and.&!DEACTIVATED FOR THE TIME BEING
+            (present(Pe) .and. present(Cap_exp).and. present(Swirr).and. present(Sor))) then
+                !For the time being we consider that phase1 has the Pc
+                do IPHASE = 1, NPHASE
+                    DIFF_COEF_DIVDX(IPHASE) = Get_DevCapPressure(LOC_T_I(IPHASE),&
+                        Pe, Cap_Exp, Swirr, Sor)
+                    DIFF_COEFOLD_DIVDX(IPHASE) = Get_DevCapPressure(LOC_TOLD_I(IPHASE),&
+                        Pe, Cap_Exp, Swirr, Sor)
+                end do
+          else
+              DIFF_COEF_DIVDX = 0.0
+              DIFF_COEFOLD_DIVDX = 0.0
+          end if
+
        END IF If_GOT_DIFFUS2
 
 
@@ -4827,7 +4849,6 @@ end if
     REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
     type( state_type ), dimension( : ), intent( inout ) :: state
     character(len=*), intent(in) :: StorName
-    !integer, dimension(:), intent(inout) :: StorageIndexes
     integer, intent(inout) :: StorageIndexes
 
     ! Local variables
@@ -17035,7 +17056,7 @@ CONTAINS
   end function vtolfun
 
 
-    real function get_relperm_epsilon(sat,iphase, Sr1, Sr2, kr_exp, krmax)
+    real function get_relperm_epsilon(sat,iphase, Sr1, Sr2, kr_exp, krmax)!Sub not in use
         Implicit none
         real, intent( in ) :: Sat, Sr1, Sr2, kr_exp, krmax
         integer, intent(in) :: iphase
@@ -17047,7 +17068,7 @@ CONTAINS
     end function get_relperm_epsilon
 
 
-    real function inv_get_relperm_epsilon(sat,iphase, Sr1, Sr2, kr_exp, krmax)
+    real function inv_get_relperm_epsilon(sat,iphase, Sr1, Sr2, kr_exp, krmax)!Sub not in use
         Implicit none
         real, intent( in ) :: Sat, Sr1, Sr2, kr_exp, krmax
         integer, intent(in) :: iphase
@@ -17057,6 +17078,23 @@ CONTAINS
             !Lower value just to make sure we do not divide by zero.
 
     end function inv_get_relperm_epsilon
+
+    pure real function Get_DevCapPressure(sat, Pe, a, Own_irr, Other_irr)
+        !This functions returns the derivative of the capillary pressure with regard of the saturation
+        Implicit none
+        real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
+        !Local
+        real, parameter :: tol = 1d-2
+        real :: aux
+
+        aux = (1.0 - Own_irr - Other_irr)
+
+        Get_DevCapPressure = &
+        Pe * (-a) / aux * max(min((sat - Own_irr) / aux, 1.0), tol) ** (-a-1)
+
+    end function Get_DevCapPressure
+
+
 ! -----------------------------------------------------------------------------
 
 ! 

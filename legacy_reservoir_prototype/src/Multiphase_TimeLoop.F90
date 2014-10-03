@@ -289,10 +289,6 @@
       Repeat_time_step = .false.!Initially has to be false
       nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear')
 
-!     !If adaptive time_stepping then we need to create backup_state
-!    if (nonLinearAdaptTs)  call pack_multistate(state,backup_state,multiphase_state,&
-!           multicomponent_state)
-
 !!$ Compute primary scalars used in most of the code
       call Get_Primary_Scalars( state, &         
            nphase, nstate, ncomp, totele, ndim, stotel, &
@@ -1352,14 +1348,6 @@
             call deallocate(multicomponent_state)
             call pack_multistate(state,packed_state,&
                  multiphase_state,multicomponent_state)
-
-!        !If we are using adaptive time stepping, backup_state needs also to be redone
-!        if (nonLinearAdaptTs) then
-!            call deallocate(backup_state)
-!            call pack_multistate(state,backup_state,&
-!                 multiphase_state,multicomponent_state)
-!        end if
-
 
 
 !!$ Deallocating array variables:

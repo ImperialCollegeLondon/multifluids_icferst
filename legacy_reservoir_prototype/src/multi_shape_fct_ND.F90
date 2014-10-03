@@ -1252,10 +1252,18 @@
       if (ELE == totele) indx = abs(indx)
       !#########Storing area finished########################
 
-         D1 = (NDIM == 1); D3 = (NDIM == 3)
-         call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, TOTELE, NONODS, NLOC, NGI, &
-         N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-         NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
+      D1 = (NDIM == 1); D3 = (NDIM == 3)
+      call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, TOTELE, NONODS, NLOC, NGI, &
+      N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+      NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
+
+      !Store data into state
+      LELE=merge(ele,1,btest(cache_level,0))
+      !Get from state, indx is an input
+      Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
+      state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)=&
+      reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI), [NDIM*NLOC*NGI])
+
 
       end subroutine DETNLXR_plus_storage
 
@@ -1476,8 +1484,6 @@
          from = 1+NDIM*NLOC*NGI*(ELE-1); to = NDIM*NLOC*NGI*ELE
          call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
          NX_ALL, NDIM, NLOC, NGI)
-!         NX_ALL(1:NDIM,1:NLOC,1:NGI) => &
-!              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = NDIM*NLOC*NGI*totele
          from = jump + 1+(ELE-1)*(NGI+NDIM*NDIM); to = jump + ELE*(NGI*NDIM*NDIM)
          INV_JAC(1:NDIM,1:NDIM,1:NGI)  => &
@@ -1497,7 +1503,7 @@
          jump = NDIM*NLOC*NGI
          from = jump + 1; to = jump + NGI*NDIM*NDIM
          INV_JAC(1:NDIM,1:NDIM,1:NGI)  => &
-              state(1)%scalar_fields(abs(indx))%ptr%val
+              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI*NDIM*NDIM
          from = jump + 1; to = jump + NGI
          DETWEI(1:NGI) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
@@ -1518,6 +1524,25 @@
          N, NLX_ALL(1,:,:),NLX_ALL(2,:,:),NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, NDIM ==1, NDIM ==3, DCYL, &
          NX_ALL(1,:,:),NX_ALL(2,:,:),NX_ALL(3,:,:),&
          NDIM, INV_JAC)
+
+        !Store data
+       if (btest(cache_level,0)) then
+         from = 1+NDIM*NLOC*NGI*(ELE-1); to = NDIM*NLOC*NGI*ELE
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI),[NDIM*NLOC*NGI])
+         jump = NDIM*NLOC*NGI*totele
+         from = jump + 1+(ELE-1)*(NGI+NDIM*NDIM); to = jump + ELE*(NGI*NDIM*NDIM)
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         reshape(INV_JAC(1:NDIM,1:NDIM,1:NGI),[NDIM*NDIM*NGI])
+      else
+         from = 1; to = NDIM*NLOC*NGI
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI),[NDIM*NLOC*NGI])
+         jump = NDIM*NLOC*NGI
+         from = jump + 1; to = jump + NGI*NDIM*NDIM
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         reshape(INV_JAC(1:NDIM,1:NDIM,1:NGI),[NDIM*NDIM*NGI])
+      end if
 
 
     END SUBROUTINE DETNLXR_INVJAC_plus_storage

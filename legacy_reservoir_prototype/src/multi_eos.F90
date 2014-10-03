@@ -692,12 +692,13 @@
 !      real, dimension( : ), allocatable :: satura2
         real, dimension( :, : ), allocatable :: satura2
       !Working pointers
-      real, dimension(:,:), pointer :: Satura
+      real, dimension(:,:), pointer :: Satura, SaturaOld
 
       type( tensor_field ), pointer :: perm
 
     !Get from packed_state
     call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
+    call get_var_from_packed_state(packed_state,OldPhaseVolumeFraction = SaturaOld)
 
     perm=>extract_tensor_field(packed_state,"Permeability")
 
@@ -729,7 +730,7 @@
 
       CALL calculate_absorption2( MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
            CV_NDGLN, MAT_NDGLN, &
-           U_ABSORB, PERM%val, MOBILITY)
+           U_ABSORB, PERM%val, MOBILITY, SaturaOld)
 
       PERT = 0.0001
 !      SATURA2( 1 : CV_NONODS ) = SATURA( 1 : CV_NONODS ) + PERT
@@ -776,7 +777,7 @@
 
     SUBROUTINE calculate_absorption2( MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
          CV_NDGLN, MAT_NDGLN, &
-         U_ABSORB, PERM2, MOBILITY) 
+         U_ABSORB, PERM2, MOBILITY, SaturaOld)
       ! Calculate absorption for momentum eqns
       use matrix_operations
       !    use cv_advection
@@ -787,13 +788,14 @@
       INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
       REAL, DIMENSION( :, :, : ), intent( inout ) :: U_ABSORB
       REAL, DIMENSION( :, :, : ), intent( in ) :: PERM2
+      REAL, DIMENSION( :, : ), optional, intent( in ) :: SaturaOld
       REAL, intent( in ) :: MOBILITY
       ! Local variable
       REAL, PARAMETER :: TOLER = 1.E-10
       INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
            IPHA_IDIM, IDIM, JDIM, IPHASE, jphase
       !    integer :: ii
-      REAL :: SATURATION
+      REAL :: SATURATION, SATURATIONOLD
       !    real :: abs_sum
       REAL, DIMENSION( :, :, :), allocatable :: INV_PERM, PERM
       type(corey_options) :: options
@@ -846,6 +848,11 @@
 
                      CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * CV_NONODS
                      SATURATION = SATURA( IPHASE,CV_NOD )
+                     if (present(SATURAOLD)) then
+                        SATURATIONOLD = SATURAOLD( IPHASE,CV_NOD )
+                     else
+                        SATURATIONOLD = SATURATION
+                     end if
                      IPHA_IDIM = ( IPHASE - 1 ) * NDIM + IDIM 
                      JPHA_JDIM = ( IPHASE - 1 ) * NDIM + JDIM 
 
@@ -854,7 +861,7 @@
                           if (options%is_Corey_epsilon_method) then
                              CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), MOBILITY, &
                                  INV_PERM( IDIM, JDIM, ELE ), min(1.0,max(0.0,SATURA(1,CV_NOD))), IPHASE,&
-                                 options)!Second phase is considered inside the subroutine
+                                 options, SATURATIONOLD)!Second phase is considered inside the subroutine
                           else
                                 CALL relperm_corey( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), MOBILITY, &
                                      INV_PERM( IDIM, JDIM, ELE ), min(1.0,max(0.0,SATURA(1,CV_NOD))), IPHASE,&
@@ -1646,7 +1653,7 @@
            options%kr2_exp, default=2.0)
     end subroutine get_land_options
 
-    SUBROUTINE relperm_corey_epsilon( ABSP, MOBILITY, INV_PERM, SAT, IPHASE,opt )
+    SUBROUTINE relperm_corey_epsilon( ABSP, MOBILITY, INV_PERM, SAT, IPHASE,opt, SATOLD )
           !This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
           !when dividing it to obtain the sigma.
         IMPLICIT NONE
@@ -1654,6 +1661,7 @@
         REAL, intent( in ) :: MOBILITY, SAT, INV_PERM
         INTEGER, intent( in ) :: IPHASE
         type(corey_options), intent(in) :: opt
+        real, optional, intent(in) :: satOLD
         ! Local variables...
         REAL :: KR, VISC, SATURATION, Krmax
         real, parameter :: epsilon = 1d-5
@@ -1661,16 +1669,23 @@
         !however as we do not know if it is phase 1 or 2, we let the decision to the user
         !and we multiply both phases by kr_max. By default kr_max= 1
 
-        IF( IPHASE == 1 ) THEN
-            Krmax = opt%kr1_max
-            KR = Krmax*( ( SAT - opt%s_gc) / ( 1. - opt%s_gc - opt%s_or )) ** opt%kr1_exp
-            Visc = 1.0
-            SATURATION = SAT
+!        IF( IPHASE == 1 ) THEN
+!            Krmax = opt%kr1_max
+!            KR = Krmax*( ( SAT - opt%s_gc) / ( 1. - opt%s_gc - opt%s_or )) ** opt%kr1_exp
+!            Visc = 1.0
+!            SATURATION = SAT
+!        else
+!            SATURATION = 1.0 - SAT
+!            Krmax = opt%kr2_max
+!            KR = Krmax * ( ( SATURATION - opt%s_or ) / ( 1. - opt%s_gc - opt%s_or )) ** opt%kr2_exp
+!            VISC = MOBILITY
+!        end if
+
+        SATURATION = sat
+        if (present(SATOLD)) then
+            KR = get_relperm_Brooks_Corey(SATURATION, iphase, opt, mobility, visc, krmax,  satOLD)
         else
-            SATURATION = 1.0 - SAT
-            Krmax = opt%kr2_max
-            KR = Krmax * ( ( SATURATION - opt%s_or ) / ( 1. - opt%s_gc - opt%s_or )) ** opt%kr2_exp
-            VISC = MOBILITY
+            KR = get_relperm_Brooks_Corey(SATURATION, iphase, opt, mobility, visc, krmax)
         end if
 
         !Make sure that the relperm is between bounds
@@ -1680,6 +1695,62 @@
 
       RETURN
     END SUBROUTINE relperm_corey_epsilon
+
+    real function get_relperm_Brooks_Corey(sat, iphase, opt, mobility, visc, krmax, oldSAT)
+        !Calculates the Brooks-Corey relperm. If optional oldSAT
+        !is introduced, the new relperm is calculated using:
+        !Kr = Kr(SwNew) + dKr/dS(SwNew-SwOld)
+        implicit none
+        real, intent(inout) :: sat, visc, krmax
+        real, intent(in) :: mobility
+        integer, intent(in) :: iphase
+        type(corey_options), intent(in) :: opt
+        real, optional, intent(in) :: oldSAT
+        !Local variables
+        real :: derivative, aux
+
+
+        aux = 1. - opt%s_gc - opt%s_or
+
+        IF( IPHASE == 1 ) THEN
+            krmax = opt%kr1_max
+            get_relperm_Brooks_Corey = krmax*( ( sat - opt%s_gc) /&
+                 ( aux )) ** opt%kr1_exp
+            Visc = 1.0
+            if (present(oldSAT)) then
+            !FORMULA
+!                derivative = krmax* (opt%kr1_exp)/( aux )&
+!                 * ( ( sat - opt%s_gc) / ( aux ) -&
+!                  ( oldsat - opt%s_gc) / ( aux )) ** (opt%kr1_exp-1.0)
+            !USING TAYLOR EXPANSION SERIES
+!                derivative = krmax* (opt%kr1_exp)/( aux )&
+!                 * (( oldsat - opt%s_gc) / ( aux )) ** (opt%kr1_exp-1.0) *&
+!                  ( ( sat - opt%s_gc) / ( aux ) - ( oldsat - opt%s_gc) / ( aux ))
+
+                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative
+            end if
+        else
+            sat = 1.0 - SAT
+            krmax = opt%kr2_max
+            get_relperm_Brooks_Corey = krmax * ( ( sat - opt%s_or ) /&
+                 ( aux )) ** opt%kr2_exp
+            VISC = MOBILITY
+            if (present(oldSAT)) then
+            !FORMULA
+!                derivative = krmax* (opt%kr2_exp)/( aux )&
+!                 * ( ( sat - opt%s_or) / ( aux ) -&
+!                  ( (1.0-oldsat) - opt%s_or) / ( aux )) ** (opt%kr2_exp-1.0)
+!            !USING TAYLOR EXPANSION SERIES
+!                derivative = krmax* (opt%kr2_exp)/( aux )&
+!                 * ( (1.0-oldsat - opt%s_or) / ( aux )) ** (opt%kr2_exp-1.0) *&
+!                 ( ( sat - opt%s_gc) / ( aux ) - ( 1.0 - oldsat - opt%s_gc) / ( aux ))
+
+                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative
+            end if
+        end if
+
+    end function get_relperm_Brooks_Corey
+
 
 
     SUBROUTINE relperm_corey( ABSP, MOBILITY, INV_PERM, SAT, IPHASE,options )
@@ -2003,7 +2074,6 @@
         Pe * max(min((sat - Own_irr) / (1.0 - Own_irr - Other_irr), 1.0), tol) ** (-a)
 
     end function Get_capPressure
-
 
     subroutine calculate_u_source(state, Density_FEMT, u_source)
       !u_source has to be initialized before calling this subroutine
