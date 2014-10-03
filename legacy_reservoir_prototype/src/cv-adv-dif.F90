@@ -17090,7 +17090,7 @@ CONTAINS
         aux = (1.0 - Own_irr - Other_irr)
 
         Get_DevCapPressure = &
-        Pe * (-a) / aux * max(min((sat - Own_irr) / aux, 1.0), tol) ** (-a-1)
+        Pe * (-a) / aux**(-a) * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
 
     end function Get_DevCapPressure
 
