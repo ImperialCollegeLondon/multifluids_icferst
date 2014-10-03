@@ -1719,15 +1719,10 @@
             Visc = 1.0
             if (present(oldSAT)) then
             !FORMULA
-!                derivative = krmax* (opt%kr1_exp)/( aux )&
-!                 * ( ( sat - opt%s_gc) / ( aux ) -&
-!                  ( oldsat - opt%s_gc) / ( aux )) ** (opt%kr1_exp-1.0)
-            !USING TAYLOR EXPANSION SERIES
-!                derivative = krmax* (opt%kr1_exp)/( aux )&
-!                 * (( oldsat - opt%s_gc) / ( aux )) ** (opt%kr1_exp-1.0) *&
-!                  ( ( sat - opt%s_gc) / ( aux ) - ( oldsat - opt%s_gc) / ( aux ))
-
-                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative
+!                derivative = krmax* (opt%kr1_exp)/( aux**opt%kr1_exp )&
+!                 * ( sat - oldsat - opt%s_gc) ** (opt%kr1_exp-1.0)
+!
+!                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative
             end if
         else
             sat = 1.0 - SAT
@@ -1736,16 +1731,9 @@
                  ( aux )) ** opt%kr2_exp
             VISC = MOBILITY
             if (present(oldSAT)) then
-            !FORMULA
-!                derivative = krmax* (opt%kr2_exp)/( aux )&
-!                 * ( ( sat - opt%s_or) / ( aux ) -&
-!                  ( (1.0-oldsat) - opt%s_or) / ( aux )) ** (opt%kr2_exp-1.0)
-!            !USING TAYLOR EXPANSION SERIES
-!                derivative = krmax* (opt%kr2_exp)/( aux )&
-!                 * ( (1.0-oldsat - opt%s_or) / ( aux )) ** (opt%kr2_exp-1.0) *&
-!                 ( ( sat - opt%s_gc) / ( aux ) - ( 1.0 - oldsat - opt%s_gc) / ( aux ))
-
-                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative
+!                derivative = krmax* (opt%kr2_exp)/( aux**opt%kr2_exp )&
+!                 * ( oldsat - sat - opt%s_gc) ** (opt%kr2_exp-1.0)!Comes from (1-Sat) - (1-SatOld)
+!                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative
             end if
         end if
 
