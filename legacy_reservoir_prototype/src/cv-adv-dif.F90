@@ -293,7 +293,7 @@ contains
 ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
       logical, PARAMETER :: correct_method_petrov_method= .true.
 ! IF GOT_CAPDIFFUS then add a diffusion term to treat capailary pressure term implicitly
-      logical, PARAMETER :: GOT_CAPDIFFUS = .FALSE.
+      logical, PARAMETER :: GOT_CAPDIFFUS = .true.
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
            CVFEM_ON_FACE, UFEM_ON_FACE
@@ -1069,17 +1069,19 @@ contains
       LIMT_HAT=0.0
       ALLOCATE(INCOME_J(NPHASE),INCOMEold_J(NPHASE)) 
 
-      IF ( capillary_pressure_activated ) THEN
+      IF ( capillary_pressure_activated) THEN
          ALLOCATE( CAP_DIFFUSION( NPHASE, MAT_NONODS ) )
          !Introduce the information in CAP_DIFFUSION
          if (present(Pe).and. present(Cap_Exp) .and. present(Swirr) .and. present(Sor)) then
             CAP_DIFFUSION(2,:) = 0.!We set Phase2 coefficient to zero for the time being
              do ele = 1, totele
                  do CV_ILOC = 1, CV_NLOC
-                     CV_KLOC = cv_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
+                     CV_NODI = cv_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
+                     MAT_NODI = MAT_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
                      !For the time being we fix the phase with no cap pressure
-                     CAP_DIFFUSION(1, CV_ILOC + (ele-1) * CV_NLOC) = TOLD_ALL(1, CV_KLOC) *&
-                      Get_DevCapPressure(T_ALL(1, CV_KLOC),Pe, Cap_Exp, Swirr, Sor)
+!                     CAP_DIFFUSION(1, MAT_NODI) = TOLD_ALL(1, CV_NODI) *&
+                     CAP_DIFFUSION(1, MAT_NODI) = T_ALL(1, CV_NODI) *&
+                      Get_DevCapPressure(T_ALL(1, CV_NODI),Pe, Cap_Exp, Swirr, Sor)
                  end do
              end do
           else
@@ -17118,7 +17120,7 @@ CONTAINS
         aux = (1.0 - Own_irr - Other_irr)
 
         Get_DevCapPressure = &
-        Pe * (-a) / aux**(-a) * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
+        -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
 
     end function Get_DevCapPressure
 
