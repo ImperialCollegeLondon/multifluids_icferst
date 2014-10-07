@@ -38,6 +38,7 @@
     use timeloop_utilities
     use timers
     use parallel_tools
+    use reference_counting
     use global_parameters, only: current_time, dt, timestep, option_path_len, &
          simulation_start_time, &
          simulation_start_cpu_time, &
@@ -195,11 +196,16 @@
        call write_state(dump_no, state)
     end if
 
+    call tag_references()
+
     ! Deallocate state
     do i = 1, size(state)
        call deallocate(state(i))
     end do
     deallocate(state)
+
+    ewrite(2, *) "Tagged references remaining:"
+    call print_tagged_references(0)
 
     call toc(TICTOC_ID_SIMULATION)
     call tictoc_report(2, TICTOC_ID_SIMULATION)

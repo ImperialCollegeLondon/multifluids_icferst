@@ -39,6 +39,7 @@
                                simulation_start_wall_time, &
                                topology_mesh_name, current_time, is_overlapping, is_compact_overlapping
     use fldebug
+    use reference_counting
     use state_module
     use fields
     use field_options
@@ -1655,6 +1656,14 @@ if (have_component_field) then
            Component_Diffusion, &
            theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
            sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
+
+      print*, 'cleanup'
+
+      call nullify( packed_state )
+      call deallocate(packed_state)
+      call nullify( multicomponent_state )
+      call deallocate(multicomponent_state )
+
 
       return
 

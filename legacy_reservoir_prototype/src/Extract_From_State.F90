@@ -1986,7 +1986,8 @@
       type(scalar_field) :: porosity
       type(vector_field) :: p_position, u_position, m_position
       type(tensor_field) :: permeability, ten_field
-      type(mesh_type) :: ovmesh,lmesh,nvmesh, element_mesh
+      type(mesh_type) :: ovmesh,lmesh,nvmesh 
+      type(mesh_type), pointer :: element_mesh
       type(element_type) :: overlapping_shape, vel_shape, element_shape
       character( len = option_path_len ) :: vel_element_type
 
@@ -2026,11 +2027,16 @@
 
       if (has_scalar_field(state(1),"Porosity")) then
          sfield=>extract_scalar_field(state(1),"Porosity")
-         element_mesh=sfield%mesh
+         element_mesh=>sfield%mesh
       else
          element_shape=make_element_shape(position%mesh%shape,degree=0)
+         allocate(element_mesh)
          element_mesh=make_mesh(position%mesh,element_shape,&
               continuity=-1,name="ElementMesh")
+         call insert(packed_state,element_mesh,'P0DG')
+         call deallocate(element_mesh)
+         deallocate(element_mesh)
+         element_mesh=>extract_mesh(packed_state,'P0DG')
       end if
 
       call get_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/element_type', &
@@ -2331,7 +2337,8 @@
          call insert(packed_state,Permeability,"Permeability")
          call deallocate(permeability)
       else
-         call allocate(permeability,element_mesh,"Permeability")
+         call allocate(permeability,element_mesh,"Permeability",&
+              dim=[mesh_dim(position),mesh_dim(position)])
          call zero(permeability)
          call insert(packed_state,permeability,"Permeability")
          call deallocate(permeability)
