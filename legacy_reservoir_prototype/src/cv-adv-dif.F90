@@ -293,7 +293,7 @@ contains
 ! if .not.correct_method_petrov_method then we can compare our results directly with previous code...
       logical, PARAMETER :: correct_method_petrov_method= .true.
 ! IF GOT_CAPDIFFUS then add a diffusion term to treat capailary pressure term implicitly
-      logical, PARAMETER :: GOT_CAPDIFFUS = .FALSE.
+      logical, PARAMETER :: GOT_CAPDIFFUS = .true.
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
            CVFEM_ON_FACE, UFEM_ON_FACE
@@ -488,9 +488,11 @@ contains
       logical :: capillary_pressure_activated
 
 
-      !Get Capillary pressure options
-      capillary_pressure_activated = have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) .or.&
-            have_option( '/material_phase[1]/multiphase_properties/capillary_pressure' )
+      !capillary_pressure_activated includes GOT_CAPDIFFUS
+      capillary_pressure_activated = .false.
+      if (GOT_CAPDIFFUS) capillary_pressure_activated = &
+        have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) .or.&
+        have_option( '/material_phase[1]/multiphase_properties/capillary_pressure' )
 
       !#################SET WORKING VARIABLES#################
       call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
@@ -1067,11 +1069,25 @@ contains
       LIMT_HAT=0.0
       ALLOCATE(INCOME_J(NPHASE),INCOMEold_J(NPHASE)) 
 
-
-      IF ( GOT_CAPDIFFUS ) THEN
+      IF ( capillary_pressure_activated) THEN
          ALLOCATE( CAP_DIFFUSION( NPHASE, MAT_NONODS ) )
+         !Introduce the information in CAP_DIFFUSION
+         if (present(Pe).and. present(Cap_Exp) .and. present(Swirr) .and. present(Sor)) then
+            CAP_DIFFUSION(2,:) = 0.!We set Phase2 coefficient to zero for the time being
+             do ele = 1, totele
+                 do CV_ILOC = 1, CV_NLOC
+                     CV_NODI = cv_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
+                     MAT_NODI = MAT_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
+                     !For the time being we fix the phase with no cap pressure
+!                     CAP_DIFFUSION(1, MAT_NODI) = TOLD_ALL(1, CV_NODI) *&
+                     CAP_DIFFUSION(1, MAT_NODI) = T_ALL(1, CV_NODI) *&
+                      Get_DevCapPressure(T_ALL(1, CV_NODI),Pe, Cap_Exp, Swirr, Sor)
+                 end do
+             end do
+          else
+            CAP_DIFFUSION = 0.
+          end if
       ENDIF
-
       ndotq = 0. ; ndotqold = 0.
 
 ! variables for get_int_tden********************
@@ -1823,7 +1839,7 @@ contains
           LOC_T2OLD_J( : ) = T2OLD_ALL(:, CV_NODJ)
        END IF
 !------------------
-       If_GOT_CAPDIFFUS: IF ( GOT_CAPDIFFUS ) THEN
+       If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
           IF(SELE.EQ.0) THEN
 !             CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )+CAP_DIFFUSION( :, MAT_NODJ )) * SUM( CVNORMX_ALL(:, GI)**2 ) /HDC
              CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )+CAP_DIFFUSION( :, MAT_NODJ )) /HDC
@@ -1861,22 +1877,8 @@ contains
                DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
                SELE, STOTEL, LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC )
        ELSE
-          !We will need to add another option, unless we decide that this will be the default
-          !method to implement capillary pressure
-          if (capillary_pressure_activated.and..FALSE..and.&!DEACTIVATED FOR THE TIME BEING
-            (present(Pe) .and. present(Cap_exp).and. present(Swirr).and. present(Sor))) then
-                !For the time being we consider that phase1 has the Pc
-                do IPHASE = 1, NPHASE
-                    DIFF_COEF_DIVDX(IPHASE) = Get_DevCapPressure(LOC_T_I(IPHASE),&
-                        Pe, Cap_Exp, Swirr, Sor)
-                    DIFF_COEFOLD_DIVDX(IPHASE) = Get_DevCapPressure(LOC_TOLD_I(IPHASE),&
-                        Pe, Cap_Exp, Swirr, Sor)
-                end do
-          else
-              DIFF_COEF_DIVDX = 0.0
-              DIFF_COEFOLD_DIVDX = 0.0
-          end if
-
+          DIFF_COEF_DIVDX = 0.0
+          DIFF_COEFOLD_DIVDX = 0.0
        END IF If_GOT_DIFFUS2
 
 
@@ -17118,7 +17120,7 @@ CONTAINS
         aux = (1.0 - Own_irr - Other_irr)
 
         Get_DevCapPressure = &
-        Pe * (-a) / aux**(-a) * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
+        -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
 
     end function Get_DevCapPressure
 
