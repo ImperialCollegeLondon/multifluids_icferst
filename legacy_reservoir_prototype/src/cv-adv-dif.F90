@@ -296,7 +296,7 @@ contains
       logical, PARAMETER :: GOT_CAPDIFFUS = .true.
 ! If UPWIND_CAP_DIFFUSION then when calculating capillary pressure diffusion coefficient use the 
 ! upwind value
-      logical, PARAMETER :: UPWIND_CAP_DIFFUSION = .false.
+      logical, PARAMETER :: UPWIND_CAP_DIFFUSION = .true.
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
            CVFEM_ON_FACE, UFEM_ON_FACE
