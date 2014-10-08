@@ -1718,7 +1718,6 @@
                  ( aux )) ** opt%kr1_exp
             Visc = 1.0
             if (present(oldSAT)) then
-            !FORMULA
 !                derivative = krmax* (opt%kr1_exp)/( aux**opt%kr1_exp )&
 !                 * ( sat - oldsat - opt%s_gc) ** (opt%kr1_exp-1.0)
 !
@@ -1885,23 +1884,39 @@
     end subroutine get_InvRelperm_with_saturation
 
 
-!    SUBROUTINE calculate_capillary_pressure( state, CV_NONODS, NPHASE, capillary_pressure, SATURA )
-!   Previous method to calculate the capillary pressure.
+!   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM )
 !
 !      ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
 !      ! CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE, NPHASE ) are the coefficients
 !      ! Capillary pressure coefs have the dims CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE,NPHASE )
-!      ! used to calulcate the capillary pressure.
+!      ! used to calculate the capillary pressure.
 !
 !      IMPLICIT NONE
-!      type(state_type), dimension(:) :: state
-!      INTEGER, intent( in ) :: CV_NONODS, NPHASE
-!      REAL, DIMENSION( CV_NONODS * NPHASE ), intent( inout ) :: capillary_pressure
-!      REAL, DIMENSION( CV_NONODS * NPHASE ), intent( in ) :: SATURA
+!      type(state_type), dimension(:), intent(in) :: state
+!      type(state_type), intent(inout) :: packed_state
+!      logical, intent(in) :: Sat_in_FEM
 !      ! Local Variables
-!      INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j
-!      real c, a
+!      INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase
+!      real c, a, S_OR, S_GC, auxO, auxW
 !      character(len=OPTION_PATH_LEN) option_path, phase_name
+!      !Corey options
+!      type(corey_options) :: options
+!      !Working pointers
+!      real, dimension(:,:), pointer :: Satura, CapPressure
+!
+!      !Get from packed_state
+!      if (Sat_in_FEM) then
+!          call get_var_from_packed_state(packed_state,FEPhaseVolumeFraction = Satura)
+!      else
+!          call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
+!      end if
+!      call get_var_from_packed_state(packed_state,CapPressure = CapPressure)
+!      !Get corey options
+!      call get_corey_options(options)
+!      s_gc=options%s_gc
+!      s_or=options%s_or
+!
+!      nphase =size(Satura,1)
 !
 !      ewrite(3,*) 'In calc_capil_pres'
 !
@@ -1914,13 +1929,13 @@
 !      end do
 !      nphases=nstates-ncomps
 !
-!      if (have_option("/material_phase[0]/multiphase_properties/capillary_pressure/type_Brookes_Corey") ) then
 !
-!         capillary_pressure = 0.0
+!      if (have_option("/material_phase[0]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
+!         CapPressure = 0.
 !
 !         DO IPHASE = 1, NPHASE
 !
-!            option_path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_Brookes_Corey"
+!            option_path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
 !            DO JPHASE = 1, NPHASE
 !
 !               if (iphase/=jphase) then
@@ -1935,27 +1950,34 @@
 !                  enddo
 !                  if (j<0) FLAbort('Capillary pressure phase pair not found')
 !
+!                    if (JPHASE==1) then
+!                        auxW = S_GC
+!                        auxO = S_OR
+!                    else
+!                        auxW = S_OR
+!                        auxO = S_GC
+!                    end if
+!
 !                  call get_option(trim(option_path)//"/phase["//int2str(j)//"]/c", c)
 !                  call get_option(trim(option_path)//"/phase["//int2str(j)//"]/a", a)
-!
-!                  capillary_pressure( 1 + ( IPHASE - 1 ) * CV_NONODS : IPHASE * CV_NONODS ) = &
-!                       capillary_pressure( 1 + ( IPHASE - 1 ) * CV_NONODS : IPHASE * CV_NONODS ) + &
-!                       c * &
-!                       MAX( SATURA( 1 + ( JPHASE - 1 ) * CV_NONODS : JPHASE * CV_NONODS ), 0.0 ) &
-!                       ** a
+!                  !Apply Brooks-Corey model
+!                  forall (k = 1:size(CapPressure,2))
+!                      CapPressure( iphase, k ) = CapPressure( iphase, k ) + &
+!                        Get_capPressure(satura(jphase,k), c, a, auxW, auxO)
+!                  end forall
 !               endif
 !
 !            END DO
 !
 !         END DO
-!
 !      else
 !         FLAbort('Unknown capillary pressure type')
 !      endif
 !
 !      RETURN
 !    END SUBROUTINE calculate_capillary_pressure
-!
+
+
    SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM )
 
       ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
@@ -1990,65 +2012,33 @@
 
       nphase =size(Satura,1)
 
-      ewrite(3,*) 'In calc_capil_pres'
+      CapPressure = 0.
+      DO IPHASE = 1, NPHASE
+          if (have_option("/material_phase["//int2str(iphase-1)//&
+            "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
+              option_path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
 
-      nstates = option_count("/material_phase")
-      ncomps=0
-      do i=1,nstates
-         if (have_option("/material_phase[" // int2str(i-1) // "]/is_multiphase_component")) then
-            ncomps=ncomps+1
-         end if
-      end do
-      nphases=nstates-ncomps
+              if (IPHASE==1) then
+                  auxW = S_GC
+                  auxO = S_OR
+              else
+                  auxW = S_OR
+                  auxO = S_GC
+              end if
+              call get_option(trim(option_path)//"/c", c)
+              call get_option(trim(option_path)//"/a", a)
+              !Apply Brooks-Corey model
+              forall (k = 1:size(CapPressure,2))
+                  CapPressure( iphase, k ) = CapPressure( iphase, k ) + &
+                  Get_capPressure(satura(iphase,k), c, a, auxW, auxO)
+              end forall
+          end if
+      END DO
 
-
-      if (have_option("/material_phase[0]/multiphase_properties/capillary_pressure/type_Brookes_Corey") ) then
-         CapPressure = 0.
-
-         DO IPHASE = 1, NPHASE
-
-            option_path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_Brookes_Corey"
-            DO JPHASE = 1, NPHASE
-
-               if (iphase/=jphase) then
-
-                  ! Make sure we're pairing the right fields
-                  j=-1
-                  do i=0, option_count(trim(option_path)//"/phase")-1
-                     call get_option(trim(option_path)//"/phase["//int2str(i)//"]/material_phase_name", phase_name)
-                     if (trim(state(jphase)%name) == trim(phase_name)) then
-                        j=i
-                     endif
-                  enddo
-                  if (j<0) FLAbort('Capillary pressure phase pair not found')
-
-                    if (JPHASE==1) then
-                        auxW = S_GC
-                        auxO = S_OR
-                    else
-                        auxW = S_OR
-                        auxO = S_GC
-                    end if
-
-                  call get_option(trim(option_path)//"/phase["//int2str(j)//"]/c", c)
-                  call get_option(trim(option_path)//"/phase["//int2str(j)//"]/a", a)
-                  !Apply Brooks-Corey model
-                  forall (k = 1:size(CapPressure,2))
-                      CapPressure( iphase, k ) = CapPressure( iphase, k ) + &
-                        Get_capPressure(satura(jphase,k), c, a, auxW, auxO)
-                  end forall
-               endif
-
-            END DO
-
-         END DO
-      else
-         FLAbort('Unknown capillary pressure type')
-      endif
 
       RETURN
     END SUBROUTINE calculate_capillary_pressure
-
 
 
     pure real function Get_capPressure(sat, Pe, a, Own_irr, Other_irr)
