@@ -970,7 +970,7 @@ contains
         real :: Pe, Cap_exp, aux
 
         !Get information for capillary pressure to be use in CV_ASSEMB
-        Pe = 0.
+        Pe = 0.; Cap_exp = 1.
         do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
             if (have_option("/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
@@ -981,6 +981,7 @@ contains
                 call get_option(trim(option_dir)//"/a", Cap_exp)
             end if
         end do
+
         !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
         do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
             if (have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab") ) then
@@ -989,7 +990,7 @@ contains
             end if
         end do
 
-        !We consider only the corey options
+        !We consider only the corey options, for capillary pressure
         call get_corey_options(options)
 
         call get_var_from_packed_state(packed_state,FEPressure = P,&

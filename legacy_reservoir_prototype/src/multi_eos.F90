@@ -1717,23 +1717,22 @@
             get_relperm_Brooks_Corey = krmax*( ( sat - opt%s_gc) /&
                  ( aux )) ** opt%kr1_exp
             Visc = 1.0
-            if (present(oldSAT)) then
+!            if (present(oldSAT)) then
 !                derivative = krmax* (opt%kr1_exp)/( aux**opt%kr1_exp )&
 !                 * ( sat - oldsat - opt%s_gc) ** (opt%kr1_exp-1.0)
-!
 !                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative
-            end if
+!            end if
         else
             sat = 1.0 - SAT
             krmax = opt%kr2_max
             get_relperm_Brooks_Corey = krmax * ( ( sat - opt%s_or ) /&
                  ( aux )) ** opt%kr2_exp
             VISC = MOBILITY
-            if (present(oldSAT)) then
+!            if (present(oldSAT)) then
 !                derivative = krmax* (opt%kr2_exp)/( aux**opt%kr2_exp )&
 !                 * ( oldsat - sat - opt%s_gc) ** (opt%kr2_exp-1.0)!Comes from (1-Sat) - (1-SatOld)
 !                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative
-            end if
+!            end if
         end if
 
     end function get_relperm_Brooks_Corey
@@ -1930,12 +1929,12 @@
 !      nphases=nstates-ncomps
 !
 !
-!      if (have_option("/material_phase[0]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
+!      if (have_option("/material_phase[0]/multiphase_properties/capillary_pressure/type_Brookes_Corey") ) then
 !         CapPressure = 0.
 !
 !         DO IPHASE = 1, NPHASE
 !
-!            option_path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
+!            option_path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_Brookes_Corey"
 !            DO JPHASE = 1, NPHASE
 !
 !               if (iphase/=jphase) then
@@ -1973,7 +1972,6 @@
 !      else
 !         FLAbort('Unknown capillary pressure type')
 !      endif
-!
 !      RETURN
 !    END SUBROUTINE calculate_capillary_pressure
 
@@ -2029,13 +2027,16 @@
               call get_option(trim(option_path)//"/c", c)
               call get_option(trim(option_path)//"/a", a)
               !Apply Brooks-Corey model
-              forall (k = 1:size(CapPressure,2))
-                  CapPressure( iphase, k ) = CapPressure( iphase, k ) + &
-                  Get_capPressure(satura(iphase,k), c, a, auxW, auxO)
-              end forall
+              do jphase =1, nphase
+                if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
+                  forall (k = 1:size(CapPressure,2))
+                      CapPressure( jphase, k ) = CapPressure( jphase, k ) + &
+                      Get_capPressure(satura(iphase,k), c, a, auxW, auxO)
+                  end forall
+                end if
+              end do
           end if
       END DO
-
 
       RETURN
     END SUBROUTINE calculate_capillary_pressure
