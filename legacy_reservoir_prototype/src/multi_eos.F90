@@ -698,7 +698,8 @@
 
     !Get from packed_state
     call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
-    call get_var_from_packed_state(packed_state,OldPhaseVolumeFraction = SaturaOld)
+!    call get_var_from_packed_state(packed_state,OldPhaseVolumeFraction = SaturaOld)
+    call get_var_from_packed_state(packed_state,IteratedPhaseVolumeFraction = SaturaOld)
 
     perm=>extract_tensor_field(packed_state,"Permeability")
 
@@ -1717,26 +1718,22 @@
             get_relperm_Brooks_Corey = krmax*( ( sat - opt%s_gc) /&
                  ( aux )) ** opt%kr1_exp
             Visc = 1.0
-            if (present(oldSAT)) then
+!            if (present(oldSAT)) then
 !                derivative = krmax* (opt%kr1_exp)/( aux**opt%kr1_exp )&
-!                 * ( sat - oldsat - opt%s_gc) ** (opt%kr1_exp-1.0)
-                derivative = krmax* (opt%kr1_exp)/( aux**opt%kr1_exp )&
-                 * ( sat - opt%s_gc) ** (opt%kr1_exp-1.0)
-                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative * (sat - oldsat)
-            end if
+!                 * ( sat - opt%s_gc) ** (opt%kr1_exp-1.0)
+!                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative * (sat - oldsat)
+!            end if
         else
             sat = 1.0 - SAT
             krmax = opt%kr2_max
             get_relperm_Brooks_Corey = krmax * ( ( sat - opt%s_or ) /&
                  ( aux )) ** opt%kr2_exp
             VISC = MOBILITY
-            if (present(oldSAT)) then
+!            if (present(oldSAT)) then
 !                derivative = krmax* (opt%kr2_exp)/( aux**opt%kr2_exp )&
-!                 * ( oldsat - sat - opt%s_gc) ** (opt%kr2_exp-1.0)!Comes from (1-Sat) - (1-SatOld)
-                derivative = krmax* (opt%kr2_exp)/( aux**opt%kr2_exp )&
-                 * ( 1.0 - sat - opt%s_gc) ** (opt%kr2_exp-1.0)
-                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative * (oldsat - sat)
-            end if
+!                 * ( 1.0 - sat - opt%s_gc) ** (opt%kr2_exp-1.0)
+!                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative * (oldsat - sat)
+!            end if
         end if
 
     end function get_relperm_Brooks_Corey
