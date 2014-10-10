@@ -294,6 +294,7 @@
   module sparsity_ND
     use fldebug
     use sparsity_1D
+    use shape_functions_prototype
 
   contains
 

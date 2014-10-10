@@ -41,7 +41,7 @@
     use state_module
     use spud
     use global_parameters, only: option_path_len, is_overlapping
-    use Fields_Allocates, only : allocate
+    use Fields_Allocates, only : allocate, make_mesh
     use fields_data_types, only: mesh_type, scalar_field
     use multiphase_caching, only: cache_level, reshape_vector2pointer
 
@@ -1216,7 +1216,7 @@
               Auxmesh = fl_mesh
               !The number of nodes I want does not coincide
               Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*(NLOC*NGI*NDIM + NGI*2 + 1)
-              call allocate (targ_Store, Auxmesh)
+              call allocate (targ_Store, Auxmesh, StorName)
               !Now we insert them in state and store the indexes
               call insert(state(1), targ_Store, StorName)
               call deallocate (targ_Store)
@@ -1462,13 +1462,13 @@
          end if
          !Get mesh file just to be able to allocate the fields we want to store
          fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
-         Auxmesh = fl_mesh
+         Auxmesh = make_mesh(fl_mesh,name='StorageMesh')
          !The number of nodes I want does not coincide
          Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*NLOC*NGI*NDIM &
          +merge(totele,1,btest(cache_level,1))*NDIM*NDIM*NGI &
          +merge(totele,1,btest(cache_level,2))*NGI*2 + totele
 
-         call allocate (Targ_NX_ALL, Auxmesh)
+         call allocate (Targ_NX_ALL, Auxmesh, StorName)
          
          !Now we insert them in state and store the indexes
          call insert(state(1), Targ_NX_ALL, StorName)
@@ -1478,6 +1478,7 @@
          indx = -size(state(1)%scalar_fields)
 
          call deallocate (Targ_NX_ALL)
+         call deallocate (Auxmesh)
       end if
        !Get from state, indx is an input
        if (btest(cache_level,0)) then

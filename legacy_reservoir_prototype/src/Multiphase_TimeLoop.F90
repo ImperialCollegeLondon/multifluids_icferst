@@ -49,6 +49,7 @@
     use populate_state_module
     use vector_tools
     use global_parameters
+    use memory_diagnostics
 
 !!$ Modules required by adaptivity
     use qmesh_module
@@ -73,6 +74,7 @@
 
     use multiphase_fractures
     use boundary_conditions_from_options
+    USE multiphase_rheology
 
 
 #ifdef HAVE_ZOLTAN
@@ -85,7 +87,10 @@
 
     implicit none
     private
-    public :: MultiFluids_SolveTimeLoop
+    public :: MultiFluids_SolveTimeLoop, rheology
+
+
+    type(rheology_type), dimension(:), allocatable :: rheology 
 
   contains
 
@@ -266,11 +271,19 @@
 
       !Read info for adaptive timestep based on non_linear_iterations
 
+
+      if(use_sub_state()) then
+         call populate_sub_state(state,sub_state)
+      end if
+
     !! JRP changes to make a multiphasic state
       call pack_multistate(state,packed_state,multiphase_state,&
            multicomponent_state)
+      call set_boundary_conditions_values(state, shift_time=.true.)
 
       call set_caching_level()
+
+!      call initialize_rheologies(state,rheology)
 
     !Get from packed_state
     call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
@@ -599,6 +612,18 @@
 
 !print *, '    NEW DT', itime+1
 
+
+         sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
+
+         if (do_checkpoint_simulation(dtime)) then
+            call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                 protect_simulation_name=.true.,file_type='.mpml')
+            checkpoint_number=checkpoint_number+1
+         end if
+         dtime=dtime+1
+
+
+
          itime = itime + 1
          timestep = itime
          call get_option( '/timestepping/timestep', dt )
@@ -682,6 +707,7 @@
 
 !print *, '  NEW ITS', its
 
+          call calculate_rheologies(state,rheology)
         !To force the recalculation of all the stored variables uncomment the following line:
 !        call Clean_Storage(state, StorageIndexes)
 
@@ -1339,14 +1365,14 @@
 
                end if Conditional_Adapt_by_Time
 
-               not_to_move_det_yet = .false.
+               not_to_move_det_yet = .false.         
 
             end if Conditional_Adaptivity
 
             call nullify( packed_state )
             call deallocate(packed_state)
-            call nullify( multicomponent_state )
-            call deallocate(multicomponent_state)
+            call deallocate(multiphase_state)
+            call deallocate(multicomponent_state )
             call pack_multistate(state,packed_state,&
                  multiphase_state,multicomponent_state)
 
@@ -1371,7 +1397,7 @@
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                  plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
-                 Temperature, PhaseVolumeFraction, SAT_s,oldsat_s, &
+                 Temperature, PhaseVolumeFraction, &
                  Component, &
                  Temperature_Old, &
                  PhaseVolumeFraction_Old, Component_Old, &
@@ -1620,6 +1646,8 @@ if (have_component_field) then
 
       end do Loop_Time
 
+      if (has_references(metric_tensor)) call deallocate(metric_tensor)
+
 !!$ Now deallocating arrays:
       deallocate( &
 !!$ Node glabal numbers
@@ -1657,13 +1685,17 @@ if (have_component_field) then
            theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
            sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
 
-      print*, 'cleanup'
+ ! Dump at end, unless explicitly disabled
+      if(.not. have_option("/io/disable_dump_at_end")) then
+         call write_state(dump_no, state)
+      end if
 
-      call nullify( packed_state )
+
+      call tag_references()
+
       call deallocate(packed_state)
-      call nullify( multicomponent_state )
+      call deallocate(multiphase_state)
       call deallocate(multicomponent_state )
-
 
       return
 
@@ -1676,35 +1708,47 @@ if (have_component_field) then
 
           use sparse_tools
           
-          type(csr_sparsity) :: sparsity
+          type(csr_sparsity), pointer :: sparsity
           type(scalar_field), pointer :: sfield
 
           integer ic
 
+          allocate(sparsity)
+
           sparsity=wrap(finele,midele,colm=colele,name='ElementConnectivity')
           call insert(packed_state,sparsity,'ElementConnectivity')
-
+          call deallocate(sparsity)
           sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name='SinglePhaseAdvectionSparsity')
           call insert(packed_state,sparsity,'SinglePhaseAdvectionSparsity')
+          call deallocate(sparsity)
           sparsity=wrap(finacv,midacv,colm=colacv,name='PackedAdvectionSparsity')
           call insert(packed_state,sparsity,'PackedAdvectionSparsity')
+          call deallocate(sparsity)
           sparsity=wrap(findc,colm=colc,name='CMatrixSparsity')
           call insert(packed_state,sparsity,'CMatrixSparsity')
+          call deallocate(sparsity)
           sparsity=wrap(findct,colm=colct,name='CTMatrixSparsity')
           call insert(packed_state,sparsity,'CTMatrixSparsity')
+          call deallocate(sparsity)
           sparsity=wrap(findcmc,colm=colcmc,name='CMCMatrixSparsity')
           call insert(packed_state,sparsity,'CMCMatrixSparsity')
+          call deallocate(sparsity)
           sparsity=wrap(findm,midm,colm=colm,name='CVFEMSparsity')
           call insert(packed_state,sparsity,'CVFEMSparsity')
-          
+          call deallocate(sparsity)
+
           sfield=>extract_scalar_field(packed_state,"Pressure")
           sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
                "PressureMassMatrixSparsity")
           call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
+          call deallocate(sparsity)
+          deallocate(sparsity)
+          sparsity=> extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
           do ic=1,size(multicomponent_state)
              call insert(multicomponent_state(ic),sparsity,"PressureMassMatrixSparsity")
           end do 
-          call deallocate(sparsity)
+
+
 
         end subroutine temp_mem_hacks
 

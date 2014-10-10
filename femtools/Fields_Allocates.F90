@@ -758,6 +758,10 @@ contains
     if (associated(field%dependant_scalar_field)) field%dependant_scalar_field=> null()
     if (associated(field%dependant_vector_field)) field%dependant_vector_field=> null()
     if (associated(field%dependant_tensor_field)) field%dependant_tensor_field=> null()
+
+
+    if (associated(field%updated)) deallocate(field%updated)
+
   end subroutine deallocate_tensor_field
 
   subroutine remove_boundary_conditions_tensor(field)
@@ -913,13 +917,18 @@ contains
       do i=1, size(bc%surface_fields)
         call deallocate(bc%surface_fields(i))
       end do
-      deallocate(bc%surface_fields)
+      if (.not. has_references(bc%surface_fields(1)))&
+           deallocate(bc%surface_fields)
     end if
     
     call deallocate(bc%surface_mesh)
-    deallocate(bc%surface_mesh)
+
+    if (.not. has_references(bc%surface_mesh)) then
+       deallocate(bc%surface_mesh)
     
-    deallocate(bc%surface_element_list, bc%surface_node_list)
+       deallocate(bc%surface_element_list, bc%surface_node_list)
+    end if
+
 
   end subroutine deallocate_scalar_boundary_condition
   
@@ -933,20 +942,26 @@ contains
       do i=1, size(bc%surface_fields)
         call deallocate(bc%surface_fields(i))
       end do
-      deallocate(bc%surface_fields)
+      if (.not. has_references(bc%surface_fields(1)))&
+           deallocate(bc%surface_fields)
     end if
     
     if (associated(bc%scalar_surface_fields)) then
       do i=1, size(bc%scalar_surface_fields)
         call deallocate(bc%scalar_surface_fields(i))
       end do
-      deallocate(bc%scalar_surface_fields)
+      if (.not. has_references(bc%scalar_surface_fields(1)))&
+           deallocate(bc%scalar_surface_fields)
     end if
     
     call deallocate(bc%surface_mesh)
-    deallocate(bc%surface_mesh)
+
+    if (.not. has_references(bc%surface_mesh)) then
+       deallocate(bc%surface_mesh)
     
-    deallocate(bc%surface_element_list, bc%surface_node_list)
+       deallocate(bc%surface_element_list, bc%surface_node_list)
+    end if
+
   end subroutine deallocate_vector_boundary_condition
 
  subroutine deallocate_tensor_boundary_condition(bc)
@@ -959,27 +974,31 @@ contains
       do i=1, size(bc%surface_fields)
         call deallocate(bc%surface_fields(i))
       end do
-      deallocate(bc%surface_fields)
+      if (.not. has_references(bc%surface_fields(1)))&
+           deallocate(bc%surface_fields)
     end if
     
     if (associated(bc%vector_surface_fields)) then
        do i=1, size(bc%vector_surface_fields)
           call deallocate(bc%vector_surface_fields(i))
        end do
-       deallocate(bc%vector_surface_fields)
+       if (.not. has_references(bc%vector_surface_fields(1)))&
+            deallocate(bc%vector_surface_fields)
     end if
 
     if (associated(bc%scalar_surface_fields)) then
       do i=1, size(bc%scalar_surface_fields)
         call deallocate(bc%scalar_surface_fields(i))
       end do
-      deallocate(bc%scalar_surface_fields)
+      if (.not. has_references(bc%scalar_surface_fields(1)))&
+           deallocate(bc%scalar_surface_fields)
     end if
     
     call deallocate(bc%surface_mesh)
-    deallocate(bc%surface_mesh)
-    
-    deallocate(bc%surface_element_list, bc%surface_node_list)
+    if (.not. has_references(bc%surface_mesh)) then
+       deallocate(bc%surface_mesh)
+       deallocate(bc%surface_element_list, bc%surface_node_list)
+    end if
 
     if (associated(bc%applies)) then
        deallocate(bc%applies)

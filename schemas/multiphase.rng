@@ -802,7 +802,7 @@ via a compressible equation of state.</a:documentation>
               <a:documentation>Field type</a:documentation>
               <element name="prognostic">
                 <ref name="velocity_mesh_choice"/>
-                <ref name="prognostic_multifluids_velocity_field"/>
+                <ref name="prognostic_velocity_field"/>
               </element>
               <element name="prescribed">
                 <ref name="velocity_mesh_choice"/>

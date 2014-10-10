@@ -628,7 +628,7 @@ start =
                (
                   element prognostic {
                      velocity_mesh_choice,
-                     prognostic_multifluids_velocity_field
+                     prognostic_velocity_field
                   }|
                   element prescribed {
                      velocity_mesh_choice,

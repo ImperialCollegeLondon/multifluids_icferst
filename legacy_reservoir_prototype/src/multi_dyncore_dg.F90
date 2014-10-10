@@ -32,17 +32,22 @@ module multiphase_1D_engine
     use state_module 
     use fields
     use field_options
+    use memory_diagnostics
+    use reference_counting
     use spud
     use global_parameters, only: option_path_len, is_overlapping, is_compact_overlapping
     use futils, only: int2str
 
     use Fields_Allocates, only : allocate
+    use petsc
+    use sparse_tools_petsc
 
     use solvers_module
     use mapping_for_ocvfem
     use cv_advection  
     use matrix_operations
     use shape_functions
+    use shape_functions_prototype
     use spact
     use Copy_Outof_State
     use multiphase_EOS
@@ -1258,6 +1263,7 @@ contains
         type( scalar_field ) :: deltap, rhs_p
         type( petsc_csr_matrix ) :: mat, mat2
         type(tensor_field) :: cdp_tensor
+        type(csr_matrix) :: cmat
         type( csr_sparsity ) :: sparsity
         type(halo_type), pointer :: halo
 
@@ -1660,13 +1666,15 @@ contains
             call allocate(rhs_p,pressure%mesh,"PressureCorrectionRHS")
             
             if (associated(pressure%mesh%halos)) then
-               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity',&
+               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB',&
                     row_halo=pressure%mesh%halos(2),column_halo=pressure%mesh%halos(2))
             else
-               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity')
+               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB')
             end if
             
-            mat2=csr2petsc_csr(wrap(sparsity,val=cmc,name="CMCMatrix"))
+            cmat=wrap(sparsity,val=cmc,name="CMCMatrix_BOB")
+            mat2=csr2petsc_csr(cmat)
+            call deallocate(cmat)
 
             call zero(deltaP)
             rhs_p%val(:)= P_RHS
@@ -2792,7 +2800,7 @@ contains
             Auxmesh = fl_mesh
             !The number of nodes I want does not coincide
             Auxmesh%nodes = NDIM * NPHASE * NCOLC
-            call allocate (Targ_C_Mat, Auxmesh)
+            call allocate (Targ_C_Mat, Auxmesh,'CMatrixAsScalar')
 
             !Now we insert them in state and store the index
             call insert(state(1), Targ_C_Mat, "C_MAT")
@@ -3157,6 +3165,10 @@ contains
         ALLOCATE( UOLD_NODJ_SGI_IPHASE_ALL(NDIM_VEL,NPHASE,SBCVNGI) )
 
         ALLOCATE( X(X_NONODS), Y(X_NONODS), Z(X_NONODS) ) !; X=0. ; Y=0. ; Z=0.
+        IF (NDIM<3) THEN
+           z=0
+           IF (NDIM<2) y=0
+        END IF
 
         IF(IDIVID_BY_VOL_FRAC+IGOT_VOL_X_PRESSURE.GE.1) THEN
             ALLOCATE( VOL_FRA_GI(NPHASE, CV_NGI_SHORT), VOL_FRA_GI_DX_ALL( NDIM, NPHASE, CV_NGI_SHORT) )

@@ -823,12 +823,13 @@ implicit none
     
   end subroutine tensor_field_addto_field_dim_dim
 
-  subroutine tensor_field_addto_tensor_field(field1, field2, scale)
+  subroutine tensor_field_addto_tensor_field(field1, field2, scale,sscale)
     !!< Compute field1(dim1,dim2)=field1(dim1,dim2)+scale*field2.
     !!< Works for constant and space varying fields.
     type(tensor_field), intent(inout) :: field1
     type(tensor_field), intent(in) :: field2
     real, intent(in), optional :: scale
+    type(scalar_field), intent(in), optional :: sscale
     integer :: i
     
     type(tensor_field) lfield2
@@ -858,6 +859,10 @@ implicit none
           forall(i=1:size(field1%val, 3))
             field1%val(:, :, i)=field1%val(:, :, i)+scale*field2%val(:, :, 1)
           end forall
+       else if (present(sscale)) then
+           forall(i=1:size(field1%val, 3))
+              field1%val(:, :, i)=field1%val(:, :, i)+sscale%val(i)*field2%val(:, :, 1)
+           end forall
        else
           forall(i=1:size(field1%val, 3))
             field1%val(:, :, i)=field1%val(:, :, i)+field2%val(:, :, 1)

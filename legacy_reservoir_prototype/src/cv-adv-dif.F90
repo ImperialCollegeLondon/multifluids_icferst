@@ -33,6 +33,9 @@ module cv_advection
   use fields
   use solvers
 
+  use reference_counting
+  use memory_diagnostics
+
   use solvers_module
   use spud
   use global_parameters, only: option_path_len, field_name_len, timestep, is_overlapping, is_compact_overlapping
@@ -42,6 +45,7 @@ module cv_advection
   use sparsity_patterns
 
   use shape_functions
+  use shape_functions_prototype
   use matrix_operations
   use Copy_Outof_State
   use boundary_conditions
@@ -2654,6 +2658,9 @@ contains
       DEALLOCATE(DENOLDUPWIND_MAT_ALL)
       DEALLOCATE(T2UPWIND_MAT_ALL)
       DEALLOCATE(T2OLDUPWIND_MAT_ALL)
+      
+      DEALLOCATE( DUMMY_ZERO_NDIM_NDIM_NPHASE )
+      DEALLOCATE( DUMMY_ZERO_NDIM_NDIM )
 
       call deallocate(tracer_BCs)
       call deallocate(tracer_BCs_robin2)
@@ -2822,7 +2829,7 @@ end if
                                  !############################################################################
                                  Auxmesh%nodes = TOTAL_GLOBAL_FACE*NPHASE+1!(+1 to store the last input index)
                                  allocate(targ_fieldToStore)
-                                 call allocate (targ_fieldToStore, Auxmesh)
+                                 call allocate (targ_fieldToStore, Auxmesh,'UnpackLoc')
 
                                  !Now we insert them in state and store the indexes
                                  call insert(state(1), targ_fieldToStore, "Fld"//StorName)
@@ -3869,7 +3876,7 @@ end if
     ewrite(3,*) 'In PROJ_CV_TO_FEM_state'
 
     tfield=>psi(1)%ptr
-    call allocate(cv_mass,psi(1)%ptr%mesh)
+    call allocate(cv_mass,psi(1)%ptr%mesh,'CV_mass')
     call zero(cv_mass)
 
     if (.not.present(state) .or. .not.present(StorageIndexes)) then

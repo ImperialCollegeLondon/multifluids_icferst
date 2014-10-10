@@ -2409,10 +2409,9 @@
 
             end if
 
+            deallocate( component_tmp, mu_tmp )
+
          end if
-    
-	 if (allocated(component_tmp)) deallocate( component_tmp )
-         if (allocated(mu_tmp)) deallocate( mu_tmp )
 
       end if
 

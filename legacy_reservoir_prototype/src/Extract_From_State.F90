@@ -1986,8 +1986,8 @@
       type(scalar_field) :: porosity
       type(vector_field) :: p_position, u_position, m_position
       type(tensor_field) :: permeability, ten_field
-      type(mesh_type) :: ovmesh,lmesh,nvmesh 
-      type(mesh_type), pointer :: element_mesh
+      type(mesh_type) :: lmesh,nvmesh 
+      type(mesh_type), pointer :: ovmesh, element_mesh
       type(element_type) :: overlapping_shape, vel_shape, element_shape
       character( len = option_path_len ) :: vel_element_type
 
@@ -2036,6 +2036,7 @@
          call insert(packed_state,element_mesh,'P0DG')
          call deallocate(element_mesh)
          deallocate(element_mesh)
+         call deallocate(element_shape)
          element_mesh=>extract_mesh(packed_state,'P0DG')
       end if
 
@@ -2090,29 +2091,56 @@
 
       velocity=>extract_vector_field(state(1),"Velocity")
       call insert(packed_state,velocity%mesh,"VelocityMesh")
-      ovmesh=make_mesh(position%mesh,&
-           shape=velocity%mesh%shape,&
-           continuity=0,name="VelocityMesh_Continuous")
-      call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
-      if ( .not. has_mesh(state(1),"VelocityMesh_Continuous") ) &
-           call insert(state(1),ovmesh,"VelocityMesh_Continuous")
+      if ( .not. has_mesh(state(1),"VelocityMesh_Continuous") ) then
+         nullify(ovmesh)
+         allocate(ovmesh)
+         ovmesh=make_mesh(position%mesh,&
+              shape=velocity%mesh%shape,&
+              continuity=0,name="VelocityMesh_Continuous")
+         call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
+         call insert(state(1),ovmesh,"VelocityMesh_Continuous")
+         call deallocate(ovmesh)
+         deallocate(ovmesh)
+      else
+         ovmesh=>extract_mesh(state(1),"VelocityMesh_Continuous")
+         call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
+      end if
       call allocate(u_position,ndim,ovmesh,"VelocityCoordinate")
-      ovmesh=make_mesh(position%mesh,&
-           shape=pressure%mesh%shape,&
-           continuity=0,name="PressureMesh_Continuous")
-      call insert(packed_state,ovmesh,"PressureMesh_Continuous")
-      if ( .not. has_mesh(state(1),"PressureMesh_Continuous") ) &
-           call insert(state(1),ovmesh,"PressureMesh_Continuous")
+
+      if ( .not. has_mesh(state(1),"PressureMesh_Continuous") ) then
+         nullify(ovmesh)
+         allocate(ovmesh)
+         ovmesh=make_mesh(position%mesh,&
+              shape=pressure%mesh%shape,&
+              continuity=0,name="PressureMesh_Continuous")
+         call insert(packed_state,ovmesh,"PressureMesh_Continuous")
+         call deallocate(ovmesh)
+         deallocate(ovmesh)
+         ovmesh=>extract_mesh(packed_state,"PressureMesh_Continuous")
+         call insert(state(1),ovmesh,"PressureMesh_Continuous")
+      else
+         ovmesh=>extract_mesh(state(1),"PressureMesh_Continuous")
+         call insert(packed_state,ovmesh,"PressureMesh_Continuous")
+      end if
 
       call allocate(p_position,ndim,ovmesh,"PressureCoordinate")
-      ovmesh=make_mesh(position%mesh,&
-           shape=pressure%mesh%shape,&
-           continuity=-1,name="PressureMesh_Discontinuous")
-      call insert(packed_state,ovmesh,"PressureMesh_Discontinuous")
-      if ( .not. has_mesh(state(1),"PressureMesh_Discontinuous") ) &
-           call insert(state(1),ovmesh,"PressureMesh_Discontinuous")
+
+      if ( .not. has_mesh(state(1),"PressureMesh_Discontinuous") ) then
+         nullify(ovmesh)
+         allocate(ovmesh)
+         ovmesh=make_mesh(position%mesh,&
+              shape=pressure%mesh%shape,&
+              continuity=-1,name="PressureMesh_Discontinuous")
+         call insert(packed_state,ovmesh,"PressureMesh_Discontinuous")
+         call insert(state(1),ovmesh,"PressureMesh_Discontinuous")
+         call deallocate(ovmesh)
+         deallocate(ovmesh)
+      else
+         ovmesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
+         call insert(packed_state,ovmesh,"PressureMesh_Discontinuous")
+      end if
       call allocate(m_position,ndim,ovmesh,"MaterialCoordinate")  
-          call deallocate(ovmesh)
+
 
       call remap_field( position, u_position )
       call remap_field( position, p_position )
@@ -2131,6 +2159,7 @@
 
       if (trim(vel_element_type)=='overlapping') then
          !overlapping
+         allocate(ovmesh)
          ovmesh=make_mesh(position%mesh,&
               shape=velocity%mesh%shape,& 
               continuity=velocity%mesh%continuity,&
@@ -2151,6 +2180,7 @@
          call insert(state(1),ovmesh,"InternalVelocityMesh")
          call insert(packed_state,ovmesh,"InternalVelocityMesh")
          call deallocate(ovmesh)
+         deallocate(ovmesh)
       else
          call insert(packed_state,velocity%mesh,"InternalVelocityMesh")
          call insert_vfield(packed_state,"Velocity",add_source=.true.)
@@ -2177,6 +2207,8 @@
             velocity=>extract_vector_field(state(i),"Velocity",stat)
             if (stat==0) velocity%wrapped=.true.
             velocity=>extract_vector_field(state(i),"OldVelocity",stat)
+            if (stat==0) velocity%wrapped=.true.
+            velocity=>extract_vector_field(state(i),"NonlinearVelocity",stat)
             if (stat==0) velocity%wrapped=.true.
             velocity=>extract_vector_field(state(i),"IteratedVelocity",stat)
             if (stat==0) velocity%wrapped=.true.
@@ -2244,6 +2276,9 @@
             call unpack_vfield(state(i),packed_state,"OldVelocity",iphase,&
                  check_vpaired(extract_vector_field(state(i),"Velocity"),&
                  extract_vector_field(state(i),"OldVelocity")))
+            call unpack_vfield(state(i),packed_state,"NonlinearVelocity",iphase,& 
+                 check_vpaired(extract_vector_field(state(i),"Velocity"),&
+                 extract_vector_field(state(i),"NonlinearVelocity")))
             call unpack_vfield(state(i),packed_state,"Velocity",iphase)
             call insert(multi_state(1,iphase), extract_vector_field(state(i),"Velocity"),"Velocity")
 
@@ -2287,6 +2322,7 @@
       if (present(pmulti_state)) then
          pmulti_state=>multi_state
       else
+         call deallocate(multi_state)
          deallocate(multi_state)
       end if
 
@@ -2447,7 +2483,6 @@
              if (tfield%name(:6)=="Packed") then
                 do iphase=1,nphase
                    call allocate(mp_tfield,tfield%mesh,tfield%name(7:),field_type=FiELD_TYPE_DEFERRED,dim=[tfield%dim(1),1])
-
                    mp_tfield%val=>tfield%val(:,iphase:iphase,:)
                    mp_tfield%updated=>tfield%updated
                    mp_tfield%wrapped=.true.
@@ -2581,12 +2616,14 @@
 
           call insert(mstate,mfield,"Packed"//name)
           call deallocate(mfield)
+
           call allocate(mfield,lmesh,"PackedOld"//name,dim=[ndim,nphase])
           if (lzero) then
              call zero(mfield)
           end if
           call insert(mstate,mfield,"PackedOld"//name)
           call deallocate(mfield)
+
           call allocate(mfield,lmesh,"PackedIterated"//name,dim=[ndim,nphase])
           if (lzero) then
              call zero(mfield)
@@ -2642,7 +2679,13 @@
              if (icomp==1 .and. iphase == 1) then
                 mfield%option_path=nfield%option_path
              end if
-             if(lfree .and. associated(nfield%val)) deallocate(nfield%val)
+             if(lfree .and. associated(nfield%val)) then
+#ifdef HAVE_MEMORY_STATS
+                call register_deallocation("scalar_field", "real", &
+                     size(nfield%val), nfield%name)
+#endif
+                deallocate(nfield%val)
+             end if
              nfield%val=>mfield%val(icomp,iphase,:)
              nfield%val_stride=ncomp*nphase
              nfield%wrapped=.true.
@@ -2722,7 +2765,13 @@
                 if (ic==1 .and. ip==1) then
                    mfield%option_path=nfield%option_path
                 end if
-                if (free) deallocate(nfield%val)
+                if (free) then
+#ifdef HAVE_MEMORY_STATS
+                   call register_deallocation("scalar_field", "real", &
+                        size(nfield%val), name=nfield%name)
+#endif
+                   deallocate(nfield%val)
+                end if
                 nfield%val=>mfield%val(ic,ip,:)
                 nfield%val_stride=ncomp*nphase
                 nfield%wrapped=.true.
@@ -2743,7 +2792,7 @@
           type(scalar_boundary_condition), pointer ::  bc
           type(tensor_boundary_condition), dimension(:), pointer :: temp
 
-          integer :: iphase,icomp,stat, n, nbc
+          integer :: iphase,icomp,stat, n, nbc, j
 
           nbc=0
           mfield=>extract_tensor_field(s,"Packed"//name)
@@ -2773,6 +2822,9 @@
                   tbc%surface_mesh=>bc%surface_mesh
                   call incref(tbc%surface_mesh)
                   tbc%scalar_surface_fields=>bc%surface_fields
+                  do j=1,size(tbc%scalar_surface_fields)
+                     call incref(tbc%scalar_surface_fields(j))
+                  end do
                   
                   nbc=nbc+1
                   if (nbc>1) then
@@ -2805,7 +2857,7 @@
           type(vector_boundary_condition), pointer ::  bc
           type(tensor_boundary_condition), dimension(:), pointer :: temp
 
-          integer :: iphase, stat, n, nbc
+          integer :: iphase, stat, n, nbc, j
 
           nbc=0
           mfield=>extract_tensor_field(s,"Packed"//name)
@@ -2827,6 +2879,9 @@
                 tbc%surface_mesh=>bc%surface_mesh
                 call incref(tbc%surface_mesh)
                 tbc%vector_surface_fields=>bc%surface_fields
+                do j=1,size(tbc%vector_surface_fields)
+                   call incref(tbc%vector_surface_fields(j))
+                end do
                   
 
                 nullify(tbc%applies)
@@ -2863,7 +2918,7 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
           type(scalar_boundary_condition), pointer ::  bc
           type(tensor_boundary_condition), dimension(:), pointer :: temp
 
-          integer :: iphase,icomp,stat, n, nbc
+          integer :: iphase,icomp,stat, n, nbc, j
 
 
           do icomp=1,size(s)
@@ -2876,7 +2931,7 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
 
                 if (stat/= 0 ) cycle
 
-                allocate(tbc%applies(mfield%dim(1),mfield%dim(2)))
+                allocate(tbc%applies(1,mfield%dim(2)))
                 tbc%applies= .false.
                 tbc%applies(1,iphase)=.true.
                 
@@ -2891,6 +2946,9 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
                   tbc%surface_mesh=>bc%surface_mesh
                   call incref(tbc%surface_mesh)
                   tbc%scalar_surface_fields=>bc%surface_fields
+                  do j=1,size(tbc%scalar_surface_fields)
+                     call incref(tbc%scalar_surface_fields(j))
+                  end do
                   
                   nbc=nbc+1
                   if (nbc>1) then

@@ -267,6 +267,7 @@
             name="FEM"//trim(velocity%mesh%name))
             mesh%option_path="/geometry/mesh::FEM"//trim(velocity%mesh%name)
             call insert(state,mesh,"FEM"//trim(velocity%mesh%name))
+            call deallocate(mesh)
          end if
 
          call add_option(trim(complete_field_path(velocity%option_path))&

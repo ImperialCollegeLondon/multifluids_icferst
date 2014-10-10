@@ -33,15 +33,17 @@
 !!!!========================================!!!!
 
 
-  module shape_functions
+  module shape_functions_prototype
 
     use fldebug
+    use element_numbering
+    use shape_functions
     use state_module
     use spud
     use global_parameters, only: option_path_len, is_compact_overlapping, is_overlapping
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
-    use Fields_Allocates, only : allocate
+    use Fields_Allocates, only : allocate, make_mesh
   contains
 
 !!!
@@ -1645,8 +1647,9 @@
       !Variables to store things in state
       type(mesh_type), pointer :: fl_mesh
       type(mesh_type) :: Auxmesh
+      type(element_type) :: Aux_shape
       type(scalar_field), target :: targ_Storage
-      integer :: counter_from, counter_to, siz1,siz2
+      integer :: counter_from, counter_to, siz1,siz2, auxmesh_nodes
       logical :: recovering_values
       integer, dimension(  : , : ),pointer :: ptr_u_on_face, ptr_ufem_on_face!dimension( u_nloc, scvngi )
       integer, dimension(  : , : ),pointer:: ptr_cv_on_face, ptr_cvfem_on_face!dimension( cv_nloc, scvngi )
@@ -1666,24 +1669,27 @@
 
               call remove_scalar_field(state(1), StorName)
           end if
-          !Get mesh file just to be able to allocate the fields we want to store
+          !Get mesh file just to be able to allocate the fields we want to store       
           fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
-          Auxmesh = fl_mesh
+          aux_shape=make_element_shape(fl_mesh%shape,degree=0)
+
           !The number of nodes I want does not coincide
-          Auxmesh%nodes = CV_NLOC*CV_NGI*(2+ndim) + CV_NLOC*CV_NGI_SHORT*(2+ndim) + CV_NGI + CV_NGI_SHORT +&
+          Auxmesh_nodes = CV_NLOC*CV_NGI*(2+ndim) + CV_NLOC*CV_NGI_SHORT*(2+ndim) + CV_NGI + CV_NGI_SHORT +&
            SCVNGI + SBCVNGI + U_NLOC*CV_NGI * (1+ndim) + CV_NLOC * SCVNGI * (3+ndim)+ U_NLOC*SCVNGI * (3+ndim) + &
            CV_SNLOC * SBCVNGI * (4+ndim) + U_SNLOC * SBCVNGI * (3+ndim) + CV_NLOC
-          call allocate (targ_Storage, Auxmesh,name="StorageMesh")
-          !Prepare room to store integers and logicals
-          Auxmesh%nodes = nface*cv_snloc + nface * u_snloc + u_nloc*scvngi*2 + cv_nloc*scvngi*2+&
-                ( cv_nloc + 1 ) + cv_nloc * scvngi + (1) + cv_nloc * scvngi
-          Auxmesh%shape%loc =1!nodes times %loc is the size of the array I want to store
-          call allocate (targ_Storage%mesh, Auxmesh%nodes, Auxmesh%nodes,Auxmesh%shape, name="StorageMesh" )
+
+          call allocate ( Auxmesh ,auxmesh_nodes,auxmesh_nodes ,aux_shape, name="StorageMesh" )
+          !The number of nodes I want does not coincide
+        
+          call allocate (targ_Storage, Auxmesh,name=StorName)
+        
           !Now we insert them in state and store the index
-!          call insert(state(1), targ_Storage%mesh, "StorageMesh")
+
           call insert(state(1), targ_Storage, StorName)
           call deallocate (targ_Storage)
-!          call deallocate (Auxmesh)
+          call deallocate( AuxMesh)
+          call deallocate(aux_shape)
+
           indx = size(state(1)%scalar_fields)
 
       end if
@@ -8132,7 +8138,7 @@ ewrite(3,*)'lll:', option_path_len
          Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*X_NLOC*NGI*NDIM&
          +merge(totele,1,btest(cache_level,1))*U_NLOC*NDIM*NGI&
          +merge(totele,1,btest(cache_level,2))*NGI*2 + totele
-         call allocate (Targ_NX_ALL, Auxmesh)
+         call allocate (Targ_NX_ALL, Auxmesh,'NX_ALL')
 
          !Now we insert them in state and store the indexes
          call insert(state(1), Targ_NX_ALL, StorName)
@@ -8543,5 +8549,5 @@ ewrite(3,*)'lll:', option_path_len
 
     end subroutine detnlxmsup
 
-  end module shape_functions
+  end module shape_functions_prototype
 

@@ -70,6 +70,7 @@ module populate_state_module
        initialise_prognostic_fields, set_prescribed_field_values, &
        alias_fields, mesh_name, &
        allocate_and_insert_auxilliary_fields, &
+       allocate_and_insert_tensor_field, &
        initialise_field, allocate_metric_limits, &
        make_mesh_periodic_from_options, make_mesh_unperiodic_from_options, &
        compute_domain_statistics

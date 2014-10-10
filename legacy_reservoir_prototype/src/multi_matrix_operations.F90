@@ -35,8 +35,8 @@
     use fldebug
     use spud
     use Fields_Allocates, only : allocate
-    use fields_data_types, only: mesh_type, scalar_field, tensor_field
-    use fields, only : node_count
+    use fields_data_types, only: mesh_type, scalar_field, vector_field, tensor_field
+    use fields, only : node_count, set
     use state_module
     use sparse_tools
     use sparse_tools_petsc
@@ -46,6 +46,8 @@
     use petsc_tools
     use petsc
     use multiphase_caching, only : cache_level
+    use global_parameters, only : FIELD_NAME_LEN
+    use boundary_conditions
 
     implicit none
 
@@ -1828,6 +1830,7 @@
 
       ewrite(3,*), "Leaving assemble_global_multiphase_petsc_csr"
 
+      call deallocate(sparsity)
 
     end subroutine assemble_global_multiphase_petsc_csr
 
@@ -1905,6 +1908,48 @@
     call deallocate(sparsity)
     
   end function wrap_momentum_matrix
+
+
+  subroutine apply_strong_bcs_multiphase(A , x , b)
+
+    type(petsc_csr_matrix) :: a
+    type(tensor_field)     :: x
+    type(vector_field)     :: b
+
+    type(tensor_field)     ::  x_bcs
+
+    character(len=FIELD_NAME_LEN)  :: bc_type
+    logical, dimension(x%dim(1),x%dim(2)) :: applies
+    integer, dimension(:), pointer:: surface_node_list
+    integer :: i,j,k,t
+    type(vector_field), pointer:: vector_surface_field
+
+    real, parameter :: diag=1.0e6
+
+    call assemble(A)
+
+    do t=1, get_boundary_condition_count(x)
+          call get_boundary_condition(x, t, type=bc_type, &
+               surface_node_list=surface_node_list,&
+               applies=applies)
+
+          if (bc_type=="dirichlet") then
+
+             vector_surface_field => x%bc%boundary_condition(t)%vector_surface_fields(1)
+
+             do j=1,x%dim(2)
+                do i=1,x%dim(1)
+                   if (.not. applies(i,j)) cycle
+                   k=i + x%dim(1)*(j-1)
+                   call zero_rows(A,k,surface_node_list,diag)
+                   call set(x,i,j,surface_node_list,vector_surface_field%val(i,:))
+                   call set(b,k,surface_node_list,diag*vector_surface_field%val(i,:))
+                end do
+             end do
+          end if
+       end do
+
+  end subroutine apply_strong_bcs_multiphase
 
   end module matrix_operations
 
