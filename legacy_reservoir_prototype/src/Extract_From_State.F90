@@ -2082,12 +2082,15 @@
       call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
 
       !If we have capillary pressure we create a field in packed_state
-      if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) ) then
-          call allocate(ten_field,pressure%mesh,"PackedCapPressure",dim=[1,nphase])
-          call insert(packed_state,ten_field,"PackedCapPressure")
-          call deallocate(ten_field)
-      end if
-
+      do iphase = 1, nphase
+          if( have_option( '/material_phase['//int2str(iphase-1)//&
+                ']/multiphase_properties/capillary_pressure' ) ) then
+              call allocate(ten_field,pressure%mesh,"PackedCapPressure",dim=[1,nphase])
+              call insert(packed_state,ten_field,"PackedCapPressure")
+              call deallocate(ten_field)
+              exit!Just once
+          end if
+      end do
 
       velocity=>extract_vector_field(state(1),"Velocity")
       call insert(packed_state,velocity%mesh,"VelocityMesh")
