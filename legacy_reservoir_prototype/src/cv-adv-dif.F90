@@ -298,6 +298,9 @@ contains
       logical, PARAMETER :: correct_method_petrov_method= .true.
 ! IF GOT_CAPDIFFUS then add a diffusion term to treat capailary pressure term implicitly
       logical, PARAMETER :: GOT_CAPDIFFUS = .true.
+! If UPWIND_CAP_DIFFUSION then when calculating capillary pressure diffusion coefficient use the 
+! upwind value
+      logical, PARAMETER :: UPWIND_CAP_DIFFUSION = .true.
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
            CVFEM_ON_FACE, UFEM_ON_FACE
@@ -490,13 +493,29 @@ contains
 
       !Variables for Capillary pressure
       logical :: capillary_pressure_activated
-
-
+      real, dimension(nphase):: rsum_nodi, rsum_nodj
+      integer :: Phase_with_Pc
       !capillary_pressure_activated includes GOT_CAPDIFFUS
       capillary_pressure_activated = .false.
-      if (GOT_CAPDIFFUS) capillary_pressure_activated = &
-        have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) .or.&
-        have_option( '/material_phase[1]/multiphase_properties/capillary_pressure' )
+
+      !Check capillary pressure options
+      Phase_with_Pc = 1
+      if (GOT_CAPDIFFUS) then
+        if (present(Pe).and. present(Cap_Exp) .and. present(Swirr) .and. present(Sor)) then
+            do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
+            !this way we try to avoid problems if someone introduces 0 capillary pressure in the second phase
+                if (have_option( "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/capillary_pressure" ) .or.&
+                have_option("/material_phase[["//int2str(iphase-1)//&
+                "]/multiphase_properties/Pe_stab")) then
+                    capillary_pressure_activated = .true.
+                    Phase_with_Pc = iphase
+                end if
+            end do
+        else
+            capillary_pressure_activated = .false.
+        end if
+      end if
 
       !#################SET WORKING VARIABLES#################
       call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
@@ -1076,21 +1095,18 @@ contains
       IF ( capillary_pressure_activated) THEN
          ALLOCATE( CAP_DIFFUSION( NPHASE, MAT_NONODS ) )
          !Introduce the information in CAP_DIFFUSION
-         if (present(Pe).and. present(Cap_Exp) .and. present(Swirr) .and. present(Sor)) then
-            CAP_DIFFUSION(2,:) = 0.!We set Phase2 coefficient to zero for the time being
-             do ele = 1, totele
-                 do CV_ILOC = 1, CV_NLOC
-                     CV_NODI = cv_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
-                     MAT_NODI = MAT_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
-                     !For the time being we fix the phase with no cap pressure
-!                     CAP_DIFFUSION(1, MAT_NODI) = TOLD_ALL(1, CV_NODI) *&
-                     CAP_DIFFUSION(1, MAT_NODI) = T_ALL(1, CV_NODI) *&
-                      Get_DevCapPressure(T_ALL(1, CV_NODI),Pe, Cap_Exp, Swirr, Sor)
-                 end do
+         CAP_DIFFUSION = 0.!Initialize to zero just in case
+!         if (present(Pe).and. present(Cap_Exp) .and. present(Swirr) .and. present(Sor)) then
+         do ele = 1, totele
+             do CV_ILOC = 1, CV_NLOC
+                 CV_NODI = cv_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
+                 MAT_NODI = MAT_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
+                 !For the time being we fix the phase with no cap pressure
+                 CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
+                  - T_ALL(Phase_with_Pc, CV_NODI) * Get_DevCapPressure(T_ALL(Phase_with_Pc, CV_NODI),Pe, Cap_Exp, Swirr, Sor)
              end do
-          else
-            CAP_DIFFUSION = 0.
-          end if
+         end do
+!          end if
       ENDIF
       ndotq = 0. ; ndotqold = 0.
 
@@ -1843,17 +1859,6 @@ contains
           LOC_T2OLD_J( : ) = T2OLD_ALL(:, CV_NODJ)
        END IF
 !------------------
-       If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
-          IF(SELE.EQ.0) THEN
-!             CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )+CAP_DIFFUSION( :, MAT_NODJ )) * SUM( CVNORMX_ALL(:, GI)**2 ) /HDC
-             CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )+CAP_DIFFUSION( :, MAT_NODJ )) /HDC
-          ELSE
-             CAP_DIFF_COEF_DIVDX( : ) = 0.0
-          ENDIF
-       ELSE
-          CAP_DIFF_COEF_DIVDX( : ) = 0.0
-       END IF If_GOT_CAPDIFFUS
-      
 
 
        If_GOT_DIFFUS2: IF ( GOT_DIFFUS ) THEN
@@ -1979,6 +1984,36 @@ contains
 
                      INCOME_J=1.-INCOME
                      INCOMEold_J=1.-INCOMEold
+
+
+       If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
+          IF(SELE.EQ.0) THEN
+          CAP_DIFF_COEF_DIVDX = 0.
+            do iphase =1, nphase
+                rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(INV_V_OPT_VEL_UPWIND_COEFS(:,:,iphase,MAT_NODI),&
+                 CVNORMX_ALL(:, GI)))
+                rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(INV_V_OPT_VEL_UPWIND_COEFS(:,:,iphase,MAT_NODJ),&
+                 CVNORMX_ALL(:, GI) ))
+             end do
+!             CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )+CAP_DIFFUSION( :, MAT_NODJ )) * SUM( CVNORMX_ALL(:, GI)**2 ) /HDC
+             IF(UPWIND_CAP_DIFFUSION) THEN
+                CAP_DIFF_COEF_DIVDX( : ) = (CAP_DIFFUSION( :, MAT_NODI )&
+                    * rsum_nodi(:)*(1.-INCOME(:))  +&
+                   CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) * INCOME(:)) /HDC
+!
+!                 CAP_DIFF_COEF_DIVDX( : ) = 0.25*(1./(rsum_nodi(:)+rsum_nodj(:)))*(CAP_DIFFUSION( :, MAT_NODI )  + &
+!                                                                             CAP_DIFFUSION( :, MAT_NODJ ) ) /HDC
+             ELSE ! Central difference...
+                CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )&
+                * rsum_nodi(:) + CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) ) /HDC
+             ENDIF
+          ELSE
+             CAP_DIFF_COEF_DIVDX( : ) = 0.0
+          ENDIF
+       ELSE
+          CAP_DIFF_COEF_DIVDX( : ) = 0.0
+       END IF If_GOT_CAPDIFFUS
+      
 
 
 !          if(.true.) then
@@ -2186,13 +2221,13 @@ contains
                                 CSR_ACV( IPHASE+(JCOUNT_IPHA-1)*NPHASE ) =  CSR_ACV( IPHASE+(JCOUNT_IPHA-1)*NPHASE ) &
                                 + SECOND_THETA * FTHETA_T2 * SCVDETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME(IPHASE) * LIMD(IPHASE) & ! Advection
                                 - FTHETA * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) & ! Diffusion contribution
-                                - SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE) ! Stabilization of capilary diffusion contribution
+                                - SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE) ! Stabilization of capillary diffusion contribution
                                 ! integrate the other CV side contribution (the sign is changed)...
                                 if(integrate_other_side_and_not_boundary) then
                                     CSR_ACV( IPHASE+(ICOUNT_IPHA-1)*NPHASE ) =  CSR_ACV( IPHASE+(ICOUNT_IPHA-1)*NPHASE ) &
                                     - SECOND_THETA * FTHETA_T2_J * SCVDETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME_J(IPHASE) * LIMD(IPHASE) & ! Advection
                                     - FTHETA * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) & ! Diffusion contribution
-                                    - SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE) ! Stabilization of capilary diffusion contribution
+                                    - SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE) ! Stabilization of capillary diffusion contribution
                                 endif
 
                                 IF ( GET_GTHETA ) THEN
@@ -2299,16 +2334,16 @@ contains
                         CV_RHS( RHS_NODI_IPHA ) =  CV_RHS( RHS_NODI_IPHA ) &
                              + (1.-FTHETA) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(IPHASE) &
                              * ( TOLD_ALL( IPHASE, CV_NODJ ) - TOLD_ALL( IPHASE, CV_NODI ) ) &
-                             - SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(IPHASE) &  ! capilary pressure stabilization term..
+                             - SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(IPHASE) &  ! capillary pressure stabilization term..
                              * ( T_ALL( IPHASE, CV_NODJ ) - T_ALL( IPHASE, CV_NODI ) ) &
-                                ! Robin bc
+!                                ! Robin bc
                              + SCVDETWEI( GI ) * ROBIN2
                         if(integrate_other_side_and_not_boundary) then
                         CV_RHS( RHS_NODJ_IPHA ) =  CV_RHS( RHS_NODJ_IPHA ) &
                              + (1.-FTHETA) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(IPHASE) &
                              * ( TOLD_ALL( IPHASE, CV_NODI ) - TOLD_ALL( IPHASE, CV_NODJ ) ) &
                              - SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(IPHASE) & ! capilary pressure stabilization term..
-                             * ( T_ALL( IPHASE, CV_NODI ) - T_ALL( IPHASE, CV_NODJ ) ) 
+                             * ( T_ALL( IPHASE, CV_NODI ) - T_ALL( IPHASE, CV_NODJ ) )
                         endif
                         IF ( GET_GTHETA ) THEN
                            THETA_GDIFF( IPHASE, CV_NODI ) =  THETA_GDIFF( IPHASE, CV_NODI ) &
@@ -2319,7 +2354,7 @@ contains
                         if(integrate_other_side_and_not_boundary) then
                            THETA_GDIFF( IPHASE, CV_NODJ ) =  THETA_GDIFF( IPHASE, CV_NODJ ) &
                                 + (1.-FTHETA) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(IPHASE) &
-                                * ( TOLD_ALL( IPHASE, CV_NODI ) - TOLD_ALL( IPHASE, CV_NODJ ) ) 
+                                * ( TOLD_ALL( IPHASE, CV_NODI ) - TOLD_ALL( IPHASE, CV_NODJ ) )
                         endif
                         END IF
 
@@ -2679,7 +2714,7 @@ end if
       if ( Field_selector == 1 ) then ! Temperature
          deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
       end if
-
+      if (capillary_pressure_activated) deallocate(CAP_DIFFUSION)
 
       ewrite(3,*) 'Leaving CV_ASSEMB'
 
@@ -17128,6 +17163,8 @@ CONTAINS
 
         Get_DevCapPressure = &
         -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
+
+
 
     end function Get_DevCapPressure
 

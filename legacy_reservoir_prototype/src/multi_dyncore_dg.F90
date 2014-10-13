@@ -954,7 +954,7 @@ contains
         REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
         LOGICAL :: GET_THETA_FLUX
         REAL :: SECOND_THETA
-        INTEGER :: STAT, i,j, IGOT_THERM_VIS
+        INTEGER :: STAT, i,j, IGOT_THERM_VIS, iphase
         character( len = option_path_len ) :: path
         LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
         real, dimension(:), allocatable :: X
@@ -972,16 +972,30 @@ contains
         !Variables for capillary pressure
         type(corey_options) :: options
         character(len=250) :: option_dir
-        real :: Pe, Cap_exp
+        real :: Pe, Cap_exp, aux
 
         !Get information for capillary pressure to be use in CV_ASSEMB
-        !CHECK THAT THE 1 IS CORRECT
-        if (have_option("/material_phase[0]/multiphase_properties/capillary_pressure/type_Brookes_Corey") ) then
-            option_dir = "/material_phase["//int2str(1)//"]/multiphase_properties/capillary_pressure/type_Brookes_Corey"
-            call get_option(trim(option_dir)//"/phase["//int2str(1)//"]/c", Pe)
-            call get_option(trim(option_dir)//"/phase["//int2str(1)//"]/a", Cap_exp)
-        end if
-        !We consider only the corey options
+        Pe = 0.; Cap_exp = 1.
+        do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
+            if (have_option("/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
+                option_dir = "/material_phase["//int2str(iphase-1)//&
+                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
+                call get_option(trim(option_dir)//"/c", aux)
+                if (aux > 0.) Pe = aux
+                call get_option(trim(option_dir)//"/a", Cap_exp)
+            end if
+        end do
+
+        !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
+        do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
+            if (have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab") ) then
+                call get_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab", Pe)
+                Cap_exp = 1.!Linear exponent
+            end if
+        end do
+
+        !We consider only the corey options, for capillary pressure
         call get_corey_options(options)
 
         call get_var_from_packed_state(packed_state,FEPressure = P,&
@@ -4081,10 +4095,6 @@ contains
             ! Find diffusion contributions at the surface
             !CALL DG_DIFFUSION( ELE, U_NLOC, U_NONODS, TOTELE, LMMAT1, LMMAT, LNXNMAT1, LNNXMAT, LINVMMAT1, &
             !LINVMNXNMAT1, AMAT )
-
-!            !For capillary pressure there is no coefficient multiplying
-!            !so we set it to 1
-!            if ( capillary_pressure_activated ) GRAD_SOU_GI = 1.0
 
             ! Add in C matrix contribution: (DG velocities)
             Loop_ILEV1: DO ILEV = 1, NLEV

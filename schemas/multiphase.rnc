@@ -766,22 +766,24 @@ start =
 	       element coarse_graining {integer}?,	      
                ## Option for capillary pressure				 
                element capillary_pressure {
-                  ## Brookes-Corey equation
+                  ## Brooks-Corey equation
                   ##
                   ## Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a
-                  element type_Brookes_Corey {
-                     element phase {
-                        ## Specify the phase to which these values relate
-                        attribute material_phase_name { xsd:string },
-                        ## multiplier c
-                        element c {real},
-                        ## exponent a
-                        element a {real}
-                     }+
+                  ## You should specify this ONLY for the wetting phase
+                  element type_Brooks_Corey {
+                    ## Entry pressure of the formula
+                    element c {real},
+                    ## exponent -a
+                    element a {real}
                   }
                }?,
                ## Immobile volume of fluid phase
-               element immobile_fraction {real}?
+               element immobile_fraction {real}?,
+               ## Introduce artificial diffusion in the transport equation. 
+               ## It is treated as a Capillary pressure term. The input value is the entry pressure.
+               ## Recommended value: Two orders of magnitude smaller that the Pressure of the system.
+               ## You should specify this ONLY for the wetting phase
+               element Pe_stab {real}?
             }?
          }+,
          mesh_adaptivity_options?,
