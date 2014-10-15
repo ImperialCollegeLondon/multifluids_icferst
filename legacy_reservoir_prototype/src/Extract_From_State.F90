@@ -2135,9 +2135,10 @@
               shape=pressure%mesh%shape,&
               continuity=-1,name="PressureMesh_Discontinuous")
          call insert(packed_state,ovmesh,"PressureMesh_Discontinuous")
-         call insert(state(1),ovmesh,"PressureMesh_Discontinuous")
          call deallocate(ovmesh)
          deallocate(ovmesh)
+         ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
+         call insert(state(1),ovmesh,"PressureMesh_Discontinuous")
       else
          ovmesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
          call insert(packed_state,ovmesh,"PressureMesh_Discontinuous")
