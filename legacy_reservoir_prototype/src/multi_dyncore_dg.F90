@@ -8692,6 +8692,7 @@ reshape(C,[NDIM*NPHASE*NCOLC])
 
             totele = field_in%mesh%elements
             cv_nloc = field_in%mesh%shape%loc
+            cv_nonods =  field_in%mesh%nodes
 
             ncomp = size( field_in%val, 1 )
             nphase = size( field_in%val, 2 )
