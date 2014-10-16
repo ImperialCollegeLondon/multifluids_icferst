@@ -47,7 +47,8 @@
     use sparsity_patterns_meshes, only : get_csr_sparsity_firstorder
     use arbitrary_function
 
-
+    use Field_Options, only: get_external_coordinate_field
+    use initialise_fields_module, only: initialise_field_over_regions
     type corey_options
        REAL :: S_GC
        real :: S_OR
@@ -1977,7 +1978,7 @@
 !    END SUBROUTINE calculate_capillary_pressure
 
 
-   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM )
+   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM, StorageIndexes)
 
       ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
       ! CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE, NPHASE ) are the coefficients
@@ -1985,17 +1986,21 @@
       ! used to calculate the capillary pressure.
 
       IMPLICIT NONE
-      type(state_type), dimension(:), intent(in) :: state
+      type(state_type), dimension(:), intent(inout) :: state
       type(state_type), intent(inout) :: packed_state
+      integer, dimension(:), intent(inout) :: StorageIndexes
       logical, intent(in) :: Sat_in_FEM
       ! Local Variables
       INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase
-      real c, a, S_OR, S_GC, auxO, auxW
-      character(len=OPTION_PATH_LEN) option_path, phase_name
+      real ::  S_OR, S_GC, auxO, auxW!c, a,
+      character(len=OPTION_PATH_LEN):: option_path, phase_name, cap_path
       !Corey options
       type(corey_options) :: options
       !Working pointers
       real, dimension(:,:), pointer :: Satura, CapPressure
+      type (scalar_field), pointer :: sfield
+      real, pointer, dimension(:) :: C_regions, a_regions
+      type(vector_field), pointer :: position
 
       !Get from packed_state
       if (Sat_in_FEM) then
@@ -2008,15 +2013,25 @@
       call get_corey_options(options)
       s_gc=options%s_gc
       s_or=options%s_or
-
       nphase =size(Satura,1)
 
       CapPressure = 0.
       DO IPHASE = 1, NPHASE
+
+
           if (have_option("/material_phase["//int2str(iphase-1)//&
             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
               option_path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
+
+            !Get C
+            cap_path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
+            call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32))
+            !Get a
+            cap_path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
+            call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33))
 
               if (IPHASE==1) then
                   auxW = S_GC
@@ -2025,14 +2040,16 @@
                   auxW = S_OR
                   auxO = S_GC
               end if
-              call get_option(trim(option_path)//"/c", c)
-              call get_option(trim(option_path)//"/a", a)
+!              call get_option(trim(option_path)//"/c", c)
+!              call get_option(trim(option_path)//"/a", a)
               !Apply Brooks-Corey model
               do jphase =1, nphase
                 if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
                   forall (k = 1:size(CapPressure,2))
+!                      CapPressure( jphase, k ) = CapPressure( jphase, k ) + &
+!                      Get_capPressure(satura(iphase,k), c, a, auxW, auxO)
                       CapPressure( jphase, k ) = CapPressure( jphase, k ) + &
-                      Get_capPressure(satura(iphase,k), c, a, auxW, auxO)
+                      Get_capPressure(satura(iphase,k), c_regions(k), a_regions(k), auxW, auxO)
                   end forall
                 end if
               end do
@@ -2699,5 +2716,52 @@
 
       return
     end subroutine update_velocity_absorption
+
+
+    subroutine extract_scalar_from_diamond(state, field_values, path, StorName, indx, time)
+    !Gets a scalar field directly from Diamond
+    !Path have to end in /prescribed/value
+    !Indx is for the cashing
+    !Time is passed down to the subroutine to extract the data from diamond
+    !This was initially done for capillary pressure with regions
+        implicit none
+        type(state_type), dimension(:), intent(inout) :: state
+        real, dimension(:), pointer, intent(inout) :: field_values
+        character(len=*), intent(in) :: path, StorName
+        integer, intent(inout) :: indx
+        real, optional, intent(in) :: time
+        !Working pointers
+        real :: auxTime
+        type (scalar_field), pointer :: Sfield
+        type(vector_field), pointer :: position
+        !Cashing
+        type(scalar_field), target :: targ_Store
+
+
+         if (indx<=0) then!Everything needs to be calculated
+              if (has_scalar_field(state(1), StorName)) then
+                  !If we are recalculating due to a mesh modification then
+                  !we return to the original situation
+                  call remove_scalar_field(state(1), StorName)
+              end if
+
+            auxTime= 0.
+            if (present(time)) auxTime = time
+
+            !By default I use the Pressure mesh (Number 1)
+            Sfield => extract_scalar_field(state(1),1)
+            position => get_external_coordinate_field(state(1), Sfield%mesh)
+            call allocate(targ_Store, Sfield%mesh)
+            call initialise_field_over_regions(targ_Store, path, position, time = auxTime)
+            !Now we insert them in state and store the indexes
+            call insert(state(1), targ_Store, StorName)
+            call deallocate (targ_Store)
+            indx = size(state(1)%scalar_fields)
+          end if
+          !Get the data
+          field_values => state(1)%scalar_fields(abs(indx))%ptr%val(:)
+
+    end subroutine extract_scalar_from_diamond
+
 
   end module multiphase_EOS

@@ -971,19 +971,33 @@ contains
 
         !Variables for capillary pressure
         type(corey_options) :: options
-        character(len=250) :: option_dir
+        character(len=250) :: cap_path!,option_dir
         real :: Pe, Cap_exp, aux
+        real, dimension(:), pointer ::c_regions, a_regions
 
         !Get information for capillary pressure to be use in CV_ASSEMB
         Pe = 0.; Cap_exp = 1.
         do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
             if (have_option("/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
-                option_dir = "/material_phase["//int2str(iphase-1)//&
-                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
-                call get_option(trim(option_dir)//"/c", aux)
-                if (aux > 0.) Pe = aux
-                call get_option(trim(option_dir)//"/a", Cap_exp)
+
+                !Get C
+                cap_path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::CS/prescribed/value"
+                call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32))
+                !We use an average for the time being
+                Pe = sum(c_regions)/size(c_regions)
+                !Get a
+                cap_path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
+                call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33))
+                !We use an average for the time being
+                Cap_exp = sum(a_regions)/size(a_regions)
+!                option_dir = "/material_phase["//int2str(iphase-1)//&
+!                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
+!                call get_option(trim(option_dir)//"/c", aux)
+!                if (aux > 0.) Pe = aux
+!                call get_option(trim(option_dir)//"/a", Cap_exp)
             end if
         end do
 

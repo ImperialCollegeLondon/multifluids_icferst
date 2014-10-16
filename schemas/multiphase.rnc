@@ -772,10 +772,31 @@ start =
                   ## You should specify this ONLY for the wetting phase
                   element type_Brooks_Corey {
                     ## Entry pressure of the formula
-                    element c {real},
+                    element scalar_field {
+                       attribute name { "C" },
+                       (
+                          element prescribed {
+                             velocity_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    },
                     ## exponent -a
-                    element a {real}
-                  }
+                    element scalar_field {
+                       attribute name { "a" },
+                       (
+                          element prescribed {
+                             velocity_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    }}
                }?,
                ## Immobile volume of fluid phase
                element immobile_fraction {real}?,
