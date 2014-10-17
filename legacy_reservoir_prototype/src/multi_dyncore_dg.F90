@@ -984,13 +984,13 @@ contains
                 !Get C
                 cap_path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::CS/prescribed/value"
-                call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32))
+                call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32), iphase, nphase)
                 !We use an average for the time being
                 Pe = sum(c_regions)/size(c_regions)
                 !Get a
                 cap_path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-                call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33))
+                call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), iphase, nphase)
                 !We use an average for the time being
                 Cap_exp = sum(a_regions)/size(a_regions)
 !                option_dir = "/material_phase["//int2str(iphase-1)//&

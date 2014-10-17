@@ -1991,7 +1991,7 @@
       integer, dimension(:), intent(inout) :: StorageIndexes
       logical, intent(in) :: Sat_in_FEM
       ! Local Variables
-      INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase
+      INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase, useful_phases
       real ::  S_OR, S_GC, auxO, auxW!c, a,
       character(len=OPTION_PATH_LEN):: option_path, phase_name, cap_path
       !Corey options
@@ -2016,6 +2016,7 @@
       nphase =size(Satura,1)
 
       CapPressure = 0.
+
       DO IPHASE = 1, NPHASE
 
 
@@ -2027,11 +2028,11 @@
             !Get C
             cap_path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-            call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32))
+            call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32), iphase, nphase)
             !Get a
             cap_path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-            call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33))
+            call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), iphase, nphase)
 
               if (IPHASE==1) then
                   auxW = S_GC
@@ -2718,26 +2719,25 @@
     end subroutine update_velocity_absorption
 
 
-    subroutine extract_scalar_from_diamond(state, field_values, path, StorName, indx, time)
+    subroutine extract_scalar_from_diamond(state, field_values, path, StorName, indx, iphase, nphase)
     !Gets a scalar field directly from Diamond
     !Path have to end in /prescribed/value
     !Indx is for the cashing
-    !Time is passed down to the subroutine to extract the data from diamond
-    !This was initially done for capillary pressure with regions
+    !If no phases, then pass iphase = nphase = 1
+    !NOTE: This was initially done for capillary pressure with regions
         implicit none
         type(state_type), dimension(:), intent(inout) :: state
         real, dimension(:), pointer, intent(inout) :: field_values
         character(len=*), intent(in) :: path, StorName
         integer, intent(inout) :: indx
-        real, optional, intent(in) :: time
+        integer, intent(in) :: iphase, nphase
         !Working pointers
-        real :: auxTime
         type (scalar_field), pointer :: Sfield
         type(vector_field), pointer :: position
-        !Cashing
         type(scalar_field), target :: targ_Store
-
-
+        type(mesh_type), pointer :: fl_mesh
+        type(mesh_type) :: Auxmesh
+        integer :: siz
          if (indx<=0) then!Everything needs to be calculated
               if (has_scalar_field(state(1), StorName)) then
                   !If we are recalculating due to a mesh modification then
@@ -2745,21 +2745,27 @@
                   call remove_scalar_field(state(1), StorName)
               end if
 
-            auxTime= 0.
-            if (present(time)) auxTime = time
 
             !By default I use the Pressure mesh (Number 1)
             Sfield => extract_scalar_field(state(1),1)
             position => get_external_coordinate_field(state(1), Sfield%mesh)
-            call allocate(targ_Store, Sfield%mesh)
-            call initialise_field_over_regions(targ_Store, path, position, time = auxTime)
+            fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+            Auxmesh = fl_mesh
+            !The number of nodes I want does not coincide
+            Auxmesh%nodes = size(Sfield%val,1) * nphase
+            call allocate (targ_Store, Auxmesh, StorName)
+
+!            call allocate(targ_Store, Sfield%mesh)
+            call initialise_field_over_regions(targ_Store, path, position)
             !Now we insert them in state and store the indexes
             call insert(state(1), targ_Store, StorName)
             call deallocate (targ_Store)
             indx = size(state(1)%scalar_fields)
           end if
           !Get the data
-          field_values => state(1)%scalar_fields(abs(indx))%ptr%val(:)
+          siz = size(state(1)%scalar_fields(indx)%ptr%val(:),1)/nphase
+          field_values => state(1)%scalar_fields(indx)%ptr%val((iphase-1)*siz + 1: siz * iphase )
+
 
     end subroutine extract_scalar_from_diamond
 
