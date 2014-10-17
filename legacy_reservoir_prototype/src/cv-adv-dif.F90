@@ -494,6 +494,7 @@ contains
       !Variables for Capillary pressure
       logical :: capillary_pressure_activated
       real, dimension(nphase):: rsum_nodi, rsum_nodj
+      real :: aux_Sr
       integer :: Phase_with_Pc
       !capillary_pressure_activated includes GOT_CAPDIFFUS
       capillary_pressure_activated = .false.
@@ -1101,9 +1102,14 @@ contains
              do CV_ILOC = 1, CV_NLOC
                  CV_NODI = cv_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
                  MAT_NODI = MAT_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
-                 !For the time being we fix the phase with no cap pressure
+                 select case (Phase_with_Pc)
+                     case (2)
+                         aux_Sr = Sor
+                     case default
+                         aux_Sr = Swirr
+                 end select
                  CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
-                  - T_ALL(Phase_with_Pc, CV_NODI) * Get_DevCapPressure(T_ALL(Phase_with_Pc, CV_NODI),Pe, Cap_Exp, Swirr, Sor)
+                  - T_ALL(Phase_with_Pc, CV_NODI) * Get_DevCapPressure(T_ALL(Phase_with_Pc, CV_NODI),Pe, Cap_Exp, aux_Sr)
              end do
          end do
 !          end if
@@ -17151,15 +17157,15 @@ CONTAINS
 
     end function inv_get_relperm_epsilon
 
-    pure real function Get_DevCapPressure(sat, Pe, a, Own_irr, Other_irr)
+    pure real function Get_DevCapPressure(sat, Pe, a, Own_irr)
         !This functions returns the derivative of the capillary pressure with regard of the saturation
         Implicit none
-        real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
+        real, intent(in) :: sat, Pe, a, Own_irr
         !Local
         real, parameter :: tol = 1d-2
         real :: aux
 
-        aux = (1.0 - Own_irr - Other_irr)
+        aux = (1.0 - Own_irr)
 
         Get_DevCapPressure = &
         -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)

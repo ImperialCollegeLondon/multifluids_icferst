@@ -2063,13 +2063,14 @@
 
     pure real function Get_capPressure(sat, Pe, a, Own_irr, Other_irr)
         !This functions returns the capillary pressure for a certain input saturation
+        !There is another function, its derivative in cv-adv-diff called Get_DevCapPressure
         Implicit none
         real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
         !Local
         real, parameter :: tol = 1d-2
 
         Get_capPressure = &
-        Pe * max(min((sat - Own_irr) / (1.0 - Own_irr - Other_irr), 1.0), tol) ** (-a)
+        Pe * max(min((sat - Own_irr) / (1.0 - Own_irr), 1.0), tol) ** (-a)
 
     end function Get_capPressure
 
