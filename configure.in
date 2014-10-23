@@ -1558,4 +1558,5 @@ AC_OUTPUT(Makefile
           qg_strat/Makefile qg_strat/unittests/Makefile
           tests/lauwerier/Makefile
 	  reduced_modelling/Makefile
-          legacy_reservoir_prototype/Makefile)
+          legacy_reservoir_prototype/Makefile
+	   legacy_reservoir_prototype/unittest/Makefile)
