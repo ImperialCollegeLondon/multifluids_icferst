@@ -2387,7 +2387,7 @@ contains
     END SUBROUTINE PUT_CT_IN_GLOB_MAT
 
 
-
+ 
 
 
     SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state,&
@@ -2590,6 +2590,8 @@ contains
 ! If PIVIT_ON_VISC then place the block diaongal viscocity into the pivit matrix used in the projection method...
 ! PIVIT_ON_VISC is the only thing that could make highly viscouse flows stabe when using projection methods...
             LOGICAL, PARAMETER :: PIVIT_ON_VISC = .false. !.FALSE.
+! GOT_VIRTUAL_MASS ! do we have virtual mass terms for multi-phase flows...
+            LOGICAL, PARAMETER :: GOT_VIRTUAL_MASS = .false.
             real :: w
             real, parameter :: wv=1.0, ws=1.0 ! volume off-diagonal and surface weights, respectively
 ! LINEAR_HIGHORDER_DIFFUSION is the switch for the high-order linear scheme...
@@ -2606,6 +2608,21 @@ contains
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U_ABSORB, LOC_U_ABS_STAB
         REAL, DIMENSION ( :, :, :, : ), allocatable :: LOC_UDIFFUSION, U_DX_ALL, UOLD_DX_ALL, DIFF_FOR_BETWEEN_U
         REAL, DIMENSION ( :, : ), allocatable :: LOC_UDIFFUSION_VOL
+!  tHE VIRTUAL MASS COEFFICIENT :VIRTUAL_MASS
+! VIRTUAL_MASS_ADV_CURR =1. if advect with the velocity of current phase else =0 then use the coln phase...
+        REAL, DIMENSION ( :, :, : ), allocatable :: VIRTUAL_MASS, VIRTUAL_MASS_OLD
+        REAL, DIMENSION ( :, : ), allocatable :: VIRTUAL_MASS_ADV_CUR
+        REAL, DIMENSION ( :, :, : ), allocatable :: LOC_VIRTUAL_MASS, LOC_VIRTUAL_MASS_OLD
+        REAL, DIMENSION ( :, :, : ), allocatable :: VIRTUAL_MASS_GI, VIRTUAL_MASS_OLD_GI
+        REAL, DIMENSION ( :, : ), allocatable :: VLN_CVM, VLN_OLD_CVM
+        REAL, DIMENSION ( :, :, :, : ), allocatable :: CVM_SNDOTQ_IN, CVM_SNDOTQ_OUT, CVM_SNDOTQOLD_IN, CVM_SNDOTQOLD_OUT
+        REAL, DIMENSION ( : ), allocatable :: CVM_NN_SNDOTQ_IN, CVM_NN_SNDOTQ_OUT, CVM_NN_SNDOTQOLD_IN, CVM_NN_SNDOTQOLD_OUT
+        REAL, DIMENSION ( :, :, : ), allocatable :: SVIRTUAL_MASS_GI, SVIRTUAL_MASS_OLD_GI
+        REAL, DIMENSION ( :, :, : ), allocatable :: SVIRTUAL_MASS_GI_KEEP, SVIRTUAL_MASS_GI2_KEEP
+        REAL, DIMENSION ( :, :, : ), allocatable :: SVIRTUAL_MASS_OLD_GI_KEEP, SVIRTUAL_MASS_OLD_GI2_KEEP
+        REAL, DIMENSION ( :, :, : ), allocatable :: SLOC_VIRTUAL_MASS, SLOC2_VIRTUAL_MASS
+        REAL, DIMENSION ( :, :, : ), allocatable :: SLOC_VIRTUAL_MASS_OLD, SLOC2_VIRTUAL_MASS_OLD
+        REAL :: WITH_NONLIN_CVM, CVM_BETA
 
 ! For q-scheme etc...
         REAL, DIMENSION ( :, : ), allocatable :: MAT_ELE_CV_LOC, INV_MAT_ELE_CV_LOC
@@ -2644,13 +2661,14 @@ contains
         REAL, DIMENSION ( :, :, : ), allocatable :: SLOC_DIFF_FOR_BETWEEN_U, SLOC2_DIFF_FOR_BETWEEN_U
 
         REAL, DIMENSION ( :, :, : ), allocatable :: U_NODI_SGI_IPHASE_ALL, U_NODJ_SGI_IPHASE_ALL, UOLD_NODI_SGI_IPHASE_ALL, UOLD_NODJ_SGI_IPHASE_ALL
+        REAL, DIMENSION ( :, :, : ), allocatable :: CENT_RELAX, CENT_RELAX_OLD
         ! For derivatives...
         REAL, DIMENSION ( : ), allocatable :: NMX_ALL, VNMX_ALL,  RNMX_ALL
 
         LOGICAL :: D1, D3, DCYL, GOT_DIFFUS, GOT_UDEN, DISC_PRES, QUAD_OVER_WHOLE_ELE, &
         have_oscillation, have_oscillation_old
         INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, NFACE
-        INTEGER :: IPHASE, ELE, GI, ILOC, GLOBI, GLOBJ, U_NOD, IU_NOD, JCV_NOD, &
+        INTEGER :: IPHASE, KPHASE, ELE, GI, ILOC, GLOBI, GLOBJ, U_NOD, IU_NOD, JCV_NOD, &
         COUNT, COUNT2, IPHA_IDIM, JPHA_JDIM, COUNT_PHA, IU_PHA_NOD, MAT_NOD, SGI, SELE, &
         U_INOD_IDIM_IPHA, U_JNOD_JDIM_IPHA, U_JNOD_JDIM_JPHA, U_SILOC, P_SJLOC, SUF_P_SJ_IPHA, &
         ICV_NOD, IFACE, U_ILOC, U_JLOC, I, J, MAT_ILOC, MAT_NODI, &
@@ -2673,7 +2691,6 @@ contains
         REAL :: JTT_INV
         REAL :: VLKNN, U_N, zero_or_two_thirds
 
-        REAL :: CENT_RELAX,CENT_RELAX_OLD
         INTEGER :: P_INOD, U_INOD_IPHA, U_JNOD, U_KLOC2, U_NODK2, U_NODK2_PHA, GLOBJ_IPHA, IDIM_VEL
         logical firstst,NO_MATRIX_STORE
         character( len = 100 ) :: name
@@ -3005,15 +3022,42 @@ contains
         ALLOCATE( STRESS_IJ_ELE( NDIM, NDIM, NPHASE, U_NLOC,U_NLOC ))
         ALLOCATE( VLK_ELE( NPHASE, U_NLOC, U_NLOC ))
 
+        ALLOCATE( CENT_RELAX(NDIM,NPHASE,SBCVNGI) ,CENT_RELAX_OLD(NDIM,NPHASE,SBCVNGI) )
+
 
         IF(RETRIEVE_SOLID_CTY) THEN
            ALLOCATE( SIGMAGI_STAB_SOLID_RHS( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, CV_NGI ))
            ALLOCATE(NN_SIGMAGI_STAB_SOLID_RHS_ELE( NDIM_VEL * NPHASE, U_NLOC, NDIM_VEL * NPHASE,U_NLOC ))
            IF( GOT_DIFFUS .AND. include_viscous_solid_fluid_drag_force ) THEN  ! include_viscous_solid_fluid_drag_force taken from diamond
               ALLOCATE(ABS_SOLID_FLUID_COUP(NDIM, NDIM, NPHASE, CV_NONODS))
-              ALLOCATE(FOURCE_SOLID_FLUID_COUP(NDIM, NPHASE, CV_NONODS))
+              ALLOCATE(FOURCE_SOLID_FLUID_COUP(NDIM, NPHASE, CV_NONODS)) 
            ENDIF
         ENDIF
+
+        IF(GOT_VIRTUAL_MASS) THEN
+! GOT_VIRTUAL_MASS ! do we have virtual mass terms for multi-phase flows...
+! VIRTUAL_MASS_ADV_CUR DEFINES THE VELOCITY IN THE TOTAL DERIVATIVE = 1 and use the velocity that 
+! one is advecting, else use the velocity of the current phase. 
+           ALLOCATE( VIRTUAL_MASS( NPHASE, NPHASE, MAT_NONODS), VIRTUAL_MASS_OLD( NPHASE, NPHASE, MAT_NONODS), VIRTUAL_MASS_ADV_CUR( NPHASE, NPHASE) )
+! For the time being VIRTUAL_MASS & VIRTUAL_MASS_OLD can be the same. 
+
+           ALLOCATE( LOC_VIRTUAL_MASS( NPHASE, NPHASE, MAT_NLOC), LOC_VIRTUAL_MASS_OLD( NPHASE, NPHASE, MAT_NLOC) )
+           ALLOCATE( VIRTUAL_MASS_GI( NPHASE, NPHASE, CV_NGI_SHORT), VIRTUAL_MASS_OLD_GI( NPHASE, NPHASE, CV_NGI_SHORT))
+           ALLOCATE( VLN_CVM( NPHASE,NPHASE ), VLN_OLD_CVM( NPHASE,NPHASE ) )
+           ALLOCATE( CVM_SNDOTQ_IN(NDIM,NPHASE,NPHASE,SBCVNGI), CVM_SNDOTQ_OUT(NDIM,NPHASE,NPHASE,SBCVNGI) )
+           ALLOCATE( CVM_SNDOTQOLD_IN(NDIM,NPHASE,NPHASE,SBCVNGI), CVM_SNDOTQOLD_OUT(NDIM,NPHASE,NPHASE,SBCVNGI) )
+           ALLOCATE( CVM_NN_SNDOTQ_IN(NPHASE), CVM_NN_SNDOTQ_OUT(NPHASE), CVM_NN_SNDOTQOLD_IN(NPHASE), CVM_NN_SNDOTQOLD_OUT(NPHASE) )
+           ALLOCATE( SVIRTUAL_MASS_GI(NPHASE,NPHASE,SBCVNGI) , SVIRTUAL_MASS_OLD_GI(NPHASE,NPHASE,SBCVNGI) )
+           ALLOCATE( SVIRTUAL_MASS_GI_KEEP(NPHASE,NPHASE,SBCVNGI), SVIRTUAL_MASS_GI2_KEEP(NPHASE,NPHASE,SBCVNGI) )
+           ALLOCATE( SVIRTUAL_MASS_OLD_GI_KEEP(NPHASE,NPHASE,SBCVNGI), SVIRTUAL_MASS_OLD_GI2_KEEP(NPHASE,NPHASE,SBCVNGI) )
+           ALLOCATE( SLOC_VIRTUAL_MASS( NPHASE, NPHASE, CV_SNLOC ), SLOC2_VIRTUAL_MASS( NPHASE, NPHASE, CV_SNLOC ) )
+           ALLOCATE( SLOC_VIRTUAL_MASS_OLD( NPHASE, NPHASE, CV_SNLOC ), SLOC2_VIRTUAL_MASS_OLD( NPHASE, NPHASE, CV_SNLOC ) )
+           WITH_NONLIN_CVM=1.0
+! CVM_BETA=0.0 (nonconservative virtual mass- standard),  =1. (conservative virtual mass)
+           CVM_BETA=0.0
+        ENDIF
+
+
 
         ALLOCATE( NXUDN( SCVNGI ))
 
@@ -3464,6 +3508,11 @@ contains
                    LOC_UDENOLD( :, CV_ILOC) = UDENOLD( :, CV_INOD )
                 ENDIF
 
+                IF(GOT_VIRTUAL_MASS) THEN
+                   LOC_VIRTUAL_MASS( :,:, CV_ILOC )         = VIRTUAL_MASS( :,:, CV_INOD )
+                   LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )     = VIRTUAL_MASS_OLD( :,:, CV_INOD )
+                ENDIF
+
                 DO IPHASE = 1, NPHASE
                     IF ( IPLIKE_GRAD_SOU /= 0) THEN
                         LOC_PLIKE_GRAD_SOU_COEF( IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_COEF( IPHASE, CV_INOD )
@@ -3597,6 +3646,11 @@ contains
 
             DENGI = 0.0 ; DENGIOLD = 0.0
             GRAD_SOU_GI = 0.0
+            IF(GOT_VIRTUAL_MASS) THEN
+               VIRTUAL_MASS_GI         = 0.0 
+               VIRTUAL_MASS_OLD_GI         = 0.0 
+            ENDIF
+
 
             DO CV_ILOC = 1, CV_NLOC
                 DO GI = 1, CV_NGI_SHORT
@@ -3609,6 +3663,13 @@ contains
                         DENGIOLD( :, GI ) = DENGIOLD( :, GI ) &
                         + CVN_SHORT( CV_ILOC, GI ) * LOC_UDENOLD( :, CV_ILOC )
                     END IF
+
+
+                    IF(GOT_VIRTUAL_MASS) THEN
+                        VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
+                        VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
+                    ENDIF
+
                     IF ( IPLIKE_GRAD_SOU == 1 ) THEN
                         GRAD_SOU_GI( :, GI ) = GRAD_SOU_GI( :, GI ) &
                         + CVFEN_SHORT( CV_ILOC, GI ) * LOC_PLIKE_GRAD_SOU_COEF( :, CV_ILOC )
@@ -3786,6 +3847,16 @@ contains
                                     NN_MASSOLD_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASSOLD_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
                                     + DENGIOLD(JPHASE, GI_SHORT) * RNN
 
+                                    IF(GOT_VIRTUAL_MASS) THEN
+                                       DO IPHASE = 1, NPHASE
+                                          IPHA_IDIM = JDIM + (IPHASE-1)*NDIM
+                                          NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                           + VIRTUAL_MASS_GI(IPHASE,JPHASE,GI_SHORT) * RNN
+                                          NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                           + VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE, GI_SHORT) * RNN
+                                       END DO 
+                                    ENDIF
+
                                     ! Stabilization for viscosity...
                                     IF ( STAB_VISC_WITH_ABS ) THEN
                                         IF ( STRESS_FORM ) THEN
@@ -3917,6 +3988,10 @@ contains
                         VLN = 0.0
                         VLN_OLD = 0.0
 !                        VLK = 0.0
+                        IF(GOT_VIRTUAL_MASS) THEN
+                           VLN_CVM=0.0 
+                           VLN_OLD_CVM=0.0 
+                        ENDIF
 
                         Loop_Gauss2: DO GI = 1 + (ILEV-1)*CV_NGI_SHORT, ILEV*CV_NGI_SHORT
 
@@ -3933,6 +4008,7 @@ contains
                                     VLN_OLD( IPHASE ) = VLN_OLD( IPHASE ) - &
                                     DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
                                     * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN
+
                                 ELSE
                                     VLN( IPHASE ) = VLN( IPHASE ) + &
                                     UFEN( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL(1:NDIM, U_JLOC, GI ) ) &
@@ -3941,7 +4017,30 @@ contains
                                     VLN_OLD( IPHASE ) = VLN_OLD( IPHASE ) + &
                                     UFEN( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) ) &
                                     * DETWEI( GI ) * WITH_NONLIN
+
                                 END IF
+
+
+                                    IF(GOT_VIRTUAL_MASS) THEN
+                                       DO JPHASE = 1, NPHASE 
+                                         VLN_CVM( IPHASE,JPHASE ) = VLN_CVM( IPHASE,JPHASE )  &
+! conservative discretization
+                                       - CVM_BETA*VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, IPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, JPHASE, GI ))* UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
+                                         * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN_CVM &
+! non-conservative discretization
+                                       + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, IPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, JPHASE, GI ))* UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
+                                         *  DETWEI( GI ) * WITH_NONLIN_CVM
+
+                                         VLN_OLD_CVM( IPHASE,JPHASE ) = VLN_OLD_CVM( IPHASE,JPHASE )  &
+! conservative discretization
+                                       - CVM_BETA*VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, IPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, JPHASE, GI )) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
+                                         * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN_CVM &
+! non-conservative discretization
+                                       + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, IPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, JPHASE, GI )) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
+                                         *  DETWEI( GI ) * WITH_NONLIN_CVM
+                                       END DO
+                                    ENDIF
+
 
 !                                DO IDIM = 1, NDIM
 !                                   VLK( IPHASE ) = VLK( IPHASE ) + &
@@ -3970,7 +4069,7 @@ contains
                                                 + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )     &
                                                 + ( NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_ILOC )
                                                 IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )    
+                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )  
                                             ELSE
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                 + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
@@ -4040,9 +4139,21 @@ contains
                                     IF ( NO_MATRIX_STORE ) THEN
                                         LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC )  &
                                         - VLN( IPHASE ) * LOC_U( IDIM, IPHASE, U_JLOC )
+                                        IF(GOT_VIRTUAL_MASS) THEN
+                                           DO KPHASE = 1, NPHASE
+                                              LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC )  &
+                                              - VLN_CVM( IPHASE,KPHASE ) * LOC_U( IDIM, KPHASE, U_JLOC )
+                                           END DO
+                                        ENDIF
                                     ELSE
                                         DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
                                         = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLN( IPHASE )
+                                        IF(GOT_VIRTUAL_MASS) THEN
+                                           DO KPHASE = 1, NPHASE
+                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) &
+                                               = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) + VLN_CVM( IPHASE,KPHASE )
+                                           END DO
+                                        ENDIF
                                     END IF
 
                                     IF ( .NOT.STRESS_FORM ) THEN
@@ -4109,6 +4220,10 @@ contains
             ! Find diffusion contributions at the surface
             !CALL DG_DIFFUSION( ELE, U_NLOC, U_NONODS, TOTELE, LMMAT1, LMMAT, LNXNMAT1, LNNXMAT, LINVMMAT1, &
             !LINVMNXNMAT1, AMAT )
+
+!            !For capillary pressure there is no coefficient multiplying
+!            !so we set it to 1
+!            if ( capillary_pressure_activated ) GRAD_SOU_GI = 1.0
 
             ! Add in C matrix contribution: (DG velocities)
             Loop_ILEV1: DO ILEV = 1, NLEV
@@ -4273,6 +4388,13 @@ contains
                             * WITH_NONLIN &
                             + DENGI( IPHASE, GI ) * U_DT( IDIM, IPHASE, GI )   &
                             - SOUGI_X( IDIM, IPHASE, GI ) - DIFFGI_U( IDIM, IPHASE, GI ) + P_DX( IDIM, GI )
+                            IF(GOT_VIRTUAL_MASS) THEN
+                               DO JPHASE=1,NPHASE
+                                  RESID_U( IDIM, IPHASE, GI ) = RESID_U( IDIM, IPHASE, GI ) + &
+                                    VIRTUAL_MASS_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, IPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, JPHASE, GI )) * U_DX_ALL( :, IDIM, JPHASE, GI ) ) &
+                                    * WITH_NONLIN_CVM 
+                               END DO
+                            ENDIF
 
                             U_GRAD_NORM2( IDIM, IPHASE, GI ) = U_DT( IDIM, IPHASE, GI )**2 + SUM( U_DX_ALL( :, IDIM, IPHASE, GI )**2 )
                             U_GRAD_NORM( IDIM, IPHASE, GI ) = MAX( TOLER, SQRT( U_GRAD_NORM2( IDIM, IPHASE, GI ) ) )
@@ -4745,6 +4867,13 @@ contains
                        SLOC2_UDENOLD( :, CV_SILOC ) = UDENOLD( :, CV_INOD2 )
                     ENDIF
 
+                    IF(GOT_VIRTUAL_MASS) THEN
+                       SLOC_VIRTUAL_MASS( :,:, CV_SILOC )   = VIRTUAL_MASS( :,:, CV_INOD )
+                       SLOC2_VIRTUAL_MASS( :,:, CV_SILOC )  = VIRTUAL_MASS( :,:, CV_INOD2 )
+                       SLOC_VIRTUAL_MASS_OLD( :,:, CV_SILOC )   = VIRTUAL_MASS_OLD( :,:, CV_INOD )
+                       SLOC2_VIRTUAL_MASS_OLD( :,:, CV_SILOC )  = VIRTUAL_MASS_OLD( :,:, CV_INOD2 )
+                    ENDIF
+
                     IF(IDIVID_BY_VOL_FRAC+IGOT_VOL_X_PRESSURE.GE.1) THEN
                        SLOC_VOL_FRA( :, CV_SILOC )  = FEM_VOL_FRAC( :, CV_INOD )
                        SLOC2_VOL_FRA( :, CV_SILOC ) = FEM_VOL_FRAC( :, CV_INOD2 )
@@ -4859,6 +4988,17 @@ contains
                        SVOL_FRA =0.0
                        SVOL_FRA2=0.0
                     ENDIF
+                    IF(GOT_VIRTUAL_MASS) THEN
+                       SVIRTUAL_MASS_GI=0.0 
+                       SVIRTUAL_MASS_OLD_GI=0.0 
+
+                       SVIRTUAL_MASS_GI_KEEP=0.0 
+                       SVIRTUAL_MASS_GI2_KEEP=0.0 
+
+                       SVIRTUAL_MASS_OLD_GI_KEEP=0.0 
+                       SVIRTUAL_MASS_OLD_GI2_KEEP=0.0 
+                    ENDIF
+
                     DO CV_SILOC=1,CV_SNLOC
                         DO SGI=1,SBCVNGI
                             DO IPHASE=1, NPHASE
@@ -4880,6 +5020,24 @@ contains
                                    SVOL_FRA(IPHASE,SGI) =SVOL_FRA(IPHASE,SGI) + SBCVFEN(CV_SILOC,SGI) *SLOC_VOL_FRA(IPHASE,CV_SILOC)
                                    SVOL_FRA2(IPHASE,SGI)=SVOL_FRA2(IPHASE,SGI)+ SBCVFEN(CV_SILOC,SGI) *SLOC2_VOL_FRA(IPHASE,CV_SILOC)
                                 ENDIF
+
+                                IF(GOT_VIRTUAL_MASS) THEN
+                                      SVIRTUAL_MASS_GI(IPHASE,:,SGI)=SVIRTUAL_MASS_GI(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      *0.5*(SLOC_VIRTUAL_MASS(IPHASE,:,CV_SILOC)+SLOC2_VIRTUAL_MASS(IPHASE,:,CV_SILOC)) *WITH_NONLIN_CVM
+                                      SVIRTUAL_MASS_OLD_GI(IPHASE,:,SGI)=SVIRTUAL_MASS_OLD_GI(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      *0.5*(SLOC_VIRTUAL_MASS_OLD(IPHASE,:,CV_SILOC)+SLOC2_VIRTUAL_MASS_OLD(IPHASE,:,CV_SILOC)) *WITH_NONLIN_CVM
+
+                                      SVIRTUAL_MASS_GI_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_GI_KEEP(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      *SLOC_VIRTUAL_MASS(IPHASE,:,CV_SILOC) *WITH_NONLIN_CVM
+                                      SVIRTUAL_MASS_GI2_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_GI2_KEEP(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      *SLOC2_VIRTUAL_MASS(IPHASE,:,CV_SILOC) *WITH_NONLIN_CVM
+
+                                      SVIRTUAL_MASS_OLD_GI_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_OLD_GI_KEEP(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      *SLOC_VIRTUAL_MASS_OLD(IPHASE,:,CV_SILOC) *WITH_NONLIN_CVM
+                                      SVIRTUAL_MASS_OLD_GI2_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_OLD_GI2_KEEP(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      *SLOC2_VIRTUAL_MASS_OLD(IPHASE,:,CV_SILOC) *WITH_NONLIN_CVM
+                                ENDIF
+
                             END DO
                         END DO
                     END DO
@@ -5313,6 +5471,13 @@ contains
                     SNDOTQ_OUT = 0.0
                     SNDOTQOLD_IN  = 0.0
                     SNDOTQOLD_OUT = 0.0
+                    IF(GOT_VIRTUAL_MASS) THEN
+                       CVM_SNDOTQ_IN = 0.0 
+                       CVM_SNDOTQ_OUT = 0.0 
+
+                       CVM_SNDOTQOLD_IN = 0.0 
+                       CVM_SNDOTQOLD_OUT = 0.0 
+                    ENDIF
 
                     DO SGI=1,SBCVNGI
                         DO IPHASE=1, NPHASE
@@ -5324,36 +5489,78 @@ contains
                                 ! CENT_RELAX=1.0 (central scheme) =0.0 (upwind scheme).
                                 IF( NON_LIN_DGFLUX ) THEN
                                     ! non-linear DG flux - if we have an oscillation use upwinding else use central scheme.
-                                    CENT_RELAX = dg_oscilat_detect( SNDOTQ_KEEP(IPHASE,SGI), SNDOTQ2_KEEP(IPHASE,SGI), &
-                                    N_DOT_DU(IPHASE,SGI), N_DOT_DU2(IPHASE,SGI), SINCOME(IPHASE,SGI), MASS_ELE(ELE), MASS_ELE(ELE2) )
-                                    CENT_RELAX_OLD = dg_oscilat_detect( SNDOTQOLD_KEEP(IPHASE,SGI), SNDOTQOLD2_KEEP(IPHASE,SGI), &
-                                    N_DOT_DUOLD(IPHASE,SGI), N_DOT_DUOLD2(IPHASE,SGI), SINCOMEOLD(IPHASE,SGI), MASS_ELE(ELE), MASS_ELE(ELE2) )
+                                    CENT_RELAX( IDIM,IPHASE,SGI ) = dg_oscilat_detect( SNDOTQ_KEEP(IPHASE,SGI), SNDOTQ2_KEEP(IPHASE,SGI), &
+                                       N_DOT_DU(IPHASE,SGI), N_DOT_DU2(IPHASE,SGI), SINCOME(IPHASE,SGI), MASS_ELE(ELE), MASS_ELE(ELE2) )
+                                    CENT_RELAX_OLD( IDIM,IPHASE,SGI )= dg_oscilat_detect( SNDOTQOLD_KEEP(IPHASE,SGI), SNDOTQOLD2_KEEP(IPHASE,SGI), &
+                                       N_DOT_DUOLD(IPHASE,SGI), N_DOT_DUOLD2(IPHASE,SGI), SINCOMEOLD(IPHASE,SGI), MASS_ELE(ELE), MASS_ELE(ELE2) )
                                 ELSE
                                     IF( UPWIND_DGFLUX ) THEN
                                         ! Upwind DG flux...
-                                        CENT_RELAX    =0.0
-                                        CENT_RELAX_OLD=0.0
+                                        CENT_RELAX( IDIM,IPHASE,SGI )    =0.0
+                                        CENT_RELAX_OLD( IDIM,IPHASE,SGI )=0.0
                                     ELSE
                                         ! Central diff DG flux...
-                                        CENT_RELAX    =1.0
-                                        CENT_RELAX_OLD=1.0
+                                        CENT_RELAX( IDIM,IPHASE,SGI )    =1.0
+                                        CENT_RELAX_OLD( IDIM,IPHASE,SGI )=1.0
                                     ENDIF
                                 ENDIF
+                                ! CENT_RELAX=1.0 (central scheme) =0.0 (upwind scheme).
+                             END DO
+                         END DO
+                     END DO
+
+                    DO SGI=1,SBCVNGI
+                        DO IPHASE=1, NPHASE
+                            DO IDIM=1, NDIM_VEL
+
                                 ! CENT_RELAX=1.0 (central scheme) =0.0 (upwind scheme).
 
                                 SNDOTQ_IN(IDIM,IPHASE,SGI)    =SNDOTQ_IN(IDIM,IPHASE,SGI)  &
                                 +FTHETA(IDIM,IPHASE,SGI)*SDEN(IPHASE,SGI)*SNDOTQ(IPHASE,SGI)  &
-                                * (0.5 * CENT_RELAX + SINCOME(IPHASE,SGI)*(1.-CENT_RELAX))
+                                * (0.5 * CENT_RELAX( IDIM,IPHASE,SGI ) + SINCOME(IPHASE,SGI)*(1.-CENT_RELAX( IDIM,IPHASE,SGI )))
                                 SNDOTQ_OUT(IDIM,IPHASE,SGI)   =SNDOTQ_OUT(IDIM,IPHASE,SGI)  &
                                 +FTHETA(IDIM,IPHASE,SGI)*SDEN(IPHASE,SGI)*SNDOTQ(IPHASE,SGI) &
-                                * (0.5* CENT_RELAX + (1.-SINCOME(IPHASE,SGI))*(1.-CENT_RELAX))
+                                * (0.5* CENT_RELAX( IDIM,IPHASE,SGI ) + (1.-SINCOME(IPHASE,SGI))*(1.-CENT_RELAX( IDIM,IPHASE,SGI )))
 
                                 SNDOTQOLD_IN(IDIM,IPHASE,SGI) =SNDOTQOLD_IN(IDIM,IPHASE,SGI)  &
                                 +(1.-FTHETA(IDIM,IPHASE,SGI))*SDEN(IPHASE,SGI)*SNDOTQOLD(IPHASE,SGI)  &
-                                * (0.5* CENT_RELAX_OLD + SINCOMEOLD(IPHASE,SGI)*(1.-CENT_RELAX_OLD))
+                                * (0.5* CENT_RELAX_OLD( IDIM,IPHASE,SGI ) + SINCOMEOLD(IPHASE,SGI)*(1.-CENT_RELAX_OLD( IDIM,IPHASE,SGI )))
                                 SNDOTQOLD_OUT(IDIM,IPHASE,SGI)=SNDOTQOLD_OUT(IDIM,IPHASE,SGI)  &
                                 +(1.-FTHETA(IDIM,IPHASE,SGI))*SDEN(IPHASE,SGI)*SNDOTQOLD(IPHASE,SGI) &
-                                * (0.5* CENT_RELAX_OLD + (1.-SINCOMEOLD(IPHASE,SGI))*(1.-CENT_RELAX_OLD))
+                                * (0.5* CENT_RELAX_OLD( IDIM,IPHASE,SGI ) + (1.-SINCOMEOLD(IPHASE,SGI))*(1.-CENT_RELAX_OLD( IDIM,IPHASE,SGI )))
+
+                                IF(GOT_VIRTUAL_MASS) THEN
+                                   DO KPHASE=1,NPHASE
+                                      CVM_SNDOTQ_IN(IDIM,IPHASE,KPHASE,SGI)    =CVM_SNDOTQ_IN(IDIM,IPHASE,KPHASE,SGI)  &
+                                      +SVIRTUAL_MASS_GI(IPHASE,KPHASE,GI)  &
+                                  *(      FTHETA(IDIM,KPHASE,SGI)*VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE)*SNDOTQ(KPHASE,SGI)  &
+                                      * ( 0.5 * CENT_RELAX( IDIM,KPHASE,SGI ) + SINCOME(KPHASE,SGI)*(1.-CENT_RELAX( IDIM,KPHASE,SGI )) ) &
+                                         +FTHETA(IDIM,IPHASE,SGI)*(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE))*SNDOTQ(IPHASE,SGI)  &
+                                      * ( 0.5 * CENT_RELAX( IDIM,IPHASE,SGI ) + SINCOME(IPHASE,SGI)*(1.-CENT_RELAX( IDIM,IPHASE,SGI )) )    )
+
+                                      CVM_SNDOTQ_OUT(IDIM,IPHASE,KPHASE,SGI)   =CVM_SNDOTQ_OUT(IDIM,IPHASE,KPHASE,SGI)  &
+                                      +SVIRTUAL_MASS_GI(IPHASE,KPHASE,GI)  &
+                                  *(     FTHETA(IDIM,KPHASE,SGI)*VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE)*SNDOTQ(KPHASE,SGI) &
+                                      * ( 0.5* CENT_RELAX( IDIM,KPHASE,SGI ) + (1.-SINCOME(KPHASE,SGI))*(1.-CENT_RELAX( IDIM,KPHASE,SGI )) ) &
+                                        +FTHETA(IDIM,IPHASE,SGI)*(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE))*SNDOTQ(IPHASE,SGI) &
+                                      * ( 0.5* CENT_RELAX( IDIM,IPHASE,SGI ) + (1.-SINCOME(IPHASE,SGI))*(1.-CENT_RELAX( IDIM,IPHASE,SGI )) )    )
+
+
+                                      CVM_SNDOTQOLD_IN(IDIM,IPHASE,KPHASE,SGI)    =CVM_SNDOTQOLD_IN(IDIM,IPHASE,KPHASE,SGI)  &
+                                      +SVIRTUAL_MASS_OLD_GI(IPHASE,KPHASE,GI)  &
+                                  *(      (1.-FTHETA(IDIM,KPHASE,SGI))*VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE)*SNDOTQOLD(KPHASE,SGI)  &
+                                      * (0.5 * CENT_RELAX_OLD( IDIM,KPHASE,SGI ) + SINCOMEOLD(KPHASE,SGI)*(1.-CENT_RELAX_OLD( IDIM,KPHASE,SGI ))) &
+                                         +(1.-FTHETA(IDIM,IPHASE,SGI))*(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE))*SNDOTQOLD(IPHASE,SGI)  &
+                                      * (0.5 * CENT_RELAX_OLD( IDIM,IPHASE,SGI ) + SINCOMEOLD(IPHASE,SGI)*(1.-CENT_RELAX_OLD( IDIM,IPHASE,SGI )))  )
+
+                                      CVM_SNDOTQOLD_OUT(IDIM,IPHASE,KPHASE,SGI)   =CVM_SNDOTQOLD_OUT(IDIM,IPHASE,KPHASE,SGI)  &
+                                      +SVIRTUAL_MASS_OLD_GI(IPHASE,KPHASE,GI)  &
+                                  *(     (1.-FTHETA(IDIM,IPHASE,SGI))*VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE)*SNDOTQOLD(KPHASE,SGI) &
+                                      * (0.5* CENT_RELAX_OLD( IDIM,KPHASE,SGI ) + (1.-SINCOMEOLD(KPHASE,SGI))*(1.-CENT_RELAX_OLD( IDIM,KPHASE,SGI ))) &
+                                        +(1.-FTHETA(IDIM,IPHASE,SGI))*(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE))*SNDOTQOLD(IPHASE,SGI) &
+                                      * (0.5* CENT_RELAX_OLD( IDIM,IPHASE,SGI ) + (1.-SINCOMEOLD(IPHASE,SGI))*(1.-CENT_RELAX_OLD( IDIM,IPHASE,SGI )))    )
+                                   END DO
+                                ENDIF
 
 
                             END DO
@@ -5497,6 +5704,12 @@ contains
                                     NN_SNDOTQ_OUT   = 0.0
                                     NN_SNDOTQOLD_IN = 0.0
                                     NN_SNDOTQOLD_OUT= 0.0
+                                    IF(GOT_VIRTUAL_MASS) THEN
+                                       CVM_NN_SNDOTQ_IN     = 0.0 
+                                       CVM_NN_SNDOTQ_OUT    = 0.0 
+                                       CVM_NN_SNDOTQOLD_IN  = 0.0 
+                                       CVM_NN_SNDOTQOLD_OUT = 0.0
+                                    ENDIF
                                     ! Have a surface integral on element boundary...
                                     DO SGI=1,SBCVNGI
 
@@ -5521,6 +5734,15 @@ contains
                                         NN_SNDOTQOLD_IN = NN_SNDOTQOLD_IN  + SNDOTQOLD_IN(IDIM,IPHASE,SGI) *RNN
                                         NN_SNDOTQOLD_OUT= NN_SNDOTQOLD_OUT + SNDOTQOLD_OUT(IDIM,IPHASE,SGI)*RNN
 
+                                        IF(GOT_VIRTUAL_MASS) THEN
+                                           DO KPHASE=1,NPHASE
+                                              CVM_NN_SNDOTQ_IN(KPHASE)    = CVM_NN_SNDOTQ_IN(KPHASE)     + CVM_SNDOTQ_IN(IDIM,IPHASE,KPHASE,SGI)    *RNN
+                                              CVM_NN_SNDOTQ_OUT(KPHASE)   = CVM_NN_SNDOTQ_OUT(KPHASE)    + CVM_SNDOTQ_OUT(IDIM,IPHASE,KPHASE,SGI)   *RNN
+                                              CVM_NN_SNDOTQOLD_IN(KPHASE) = CVM_NN_SNDOTQOLD_IN(KPHASE)  + CVM_SNDOTQOLD_IN(IDIM,IPHASE,KPHASE,SGI) *RNN
+                                              CVM_NN_SNDOTQOLD_OUT(KPHASE)= CVM_NN_SNDOTQOLD_OUT(KPHASE) + CVM_SNDOTQOLD_OUT(IDIM,IPHASE,KPHASE,SGI)*RNN
+                                           END DO
+                                        ENDIF
+
                                     END DO
 
 
@@ -5537,6 +5759,9 @@ contains
                                             ! viscosity...
                                             LOC_U_RHS( IDIM,IPHASE,U_ILOC ) = LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
                                             - VLM_NEW*SLOC_U( IDIM,IPHASE,U_SJLOC )    +  VLM_NEW*SLOC2_U(IDIM,IPHASE,U_SJLOC)
+                                            IF(GOT_VIRTUAL_MASS) THEN ! NO matrix free virtual mass term.
+                                               STOP 1811
+                                            ENDIF
                                         ELSE
 
                                             IF(MOM_CONSERV) THEN
@@ -5554,6 +5779,19 @@ contains
                                !DGM_PHA( COUNT )  =  DGM_PHA( COUNT )  - NN_SNDOTQ_IN
                                !DGM_PHA( COUNT2 )  =  DGM_PHA( COUNT2 )  +NN_SNDOTQ_IN
                                             ENDIF
+
+                                            IF(GOT_VIRTUAL_MASS) THEN
+                                               DO KPHASE=1,NPHASE
+                                                  DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE)  &
+                                                  =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE)       + CVM_BETA*CVM_NN_SNDOTQ_OUT(KPHASE) &
+                                                                                                                - (1.-CVM_BETA)*CVM_NN_SNDOTQ_IN(KPHASE)
+
+                                                  BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC2,COUNT_ELE)  &
+                                                  =BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC2,COUNT_ELE)     + CVM_BETA*CVM_NN_SNDOTQ_IN(KPHASE) &
+                                                                                                                + (1.-CVM_BETA)*CVM_NN_SNDOTQ_IN(KPHASE)
+                                               END DO
+                                            ENDIF
+
                                             ! viscosity...
                                             DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
                                             =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)       + VLM_NEW
@@ -5582,6 +5820,16 @@ contains
                                             LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
                                             -(-NN_SNDOTQOLD_IN) * SLOC_UOLD( IDIM,IPHASE,U_SJLOC )  -(+NN_SNDOTQOLD_IN) * SLOC2_UOLD( IDIM,IPHASE,U_SJLOC )
                                         ENDIF
+
+                                        IF(GOT_VIRTUAL_MASS) THEN
+                                           DO KPHASE=1,NPHASE
+                                               LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
+                                               -CVM_BETA*(+CVM_NN_SNDOTQOLD_OUT(KPHASE)) * SLOC_UOLD( IDIM,KPHASE,U_SJLOC )   -CVM_BETA*(+CVM_NN_SNDOTQOLD_IN(KPHASE)) * SLOC2_UOLD( IDIM,KPHASE,U_SJLOC )  &
+! non-conservative contribution...
+                                               -(1.-CVM_BETA)*(-CVM_NN_SNDOTQOLD_IN(KPHASE)) * SLOC_UOLD( IDIM,KPHASE,U_SJLOC )  -(1.-CVM_BETA)*(+CVM_NN_SNDOTQOLD_IN(KPHASE)) * SLOC2_UOLD( IDIM,KPHASE,U_SJLOC )
+                                           END DO
+                                        ENDIF
+
                                         ! Viscosity...
                                         LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) -VLM_OLD * SLOC_UOLD( IDIM,IPHASE,U_SJLOC )  &
                                                                                                            +VLM_OLD * SLOC2_UOLD( IDIM,IPHASE,U_SJLOC )
@@ -5703,6 +5951,43 @@ contains
                                             ENDIF
                                            ! END OF IF( WIC_MOMU_BC(SELE2+(IPHASE-1)*STOTEL) == WIC_U_BC_DIRICHLET) THEN ELSE...
                                         ENDIF
+
+
+                                        IF(GOT_VIRTUAL_MASS) THEN
+                                     DO KPHASE=1,NPHASE
+                                         IF( WIC_MOMU_BC_ALL( IDIM, KPHASE, SELE2 ) == WIC_U_BC_DIRICHLET ) THEN
+
+                                                    DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE) &
+                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE)+ CVM_BETA*CVM_NN_SNDOTQ_OUT(KPHASE) &
+                                                                                                             - (1.-CVM_BETA)*CVM_NN_SNDOTQ_IN(KPHASE)
+
+                                                LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
+                                                - CVM_BETA*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) )*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + U_SNLOC * ( SELE2 - 1 ) ) &
+                                                - CVM_BETA*CVM_NN_SNDOTQOLD_OUT(KPHASE) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC) &
+! non-conservative form...
+                                                - (1.-CVM_BETA)*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) )*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + U_SNLOC * ( SELE2 - 1 ) ) &
+                                                + (1.-CVM_BETA)*CVM_NN_SNDOTQOLD_IN(KPHASE) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC)
+
+                                           ! BC for incoming and outgoing momentum (NO leaking of momentum into or out of domain for example)...
+                                        ELSE IF( WIC_MOMU_BC_ALL( IDIM, KPHASE, SELE2 ) == WIC_U_BC_DIRICHLET_INOUT ) THEN
+
+
+                                                LOC_U_RHS( IDIM,IPHASE,U_ILOC ) =  LOC_U_RHS( IDIM,IPHASE,U_ILOC ) &
+                                                - CVM_BETA*( CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE))*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + U_SNLOC * ( SELE2 - 1 ) )  &
+! non-conservative form...
+                                                - (1.-CVM_BETA)*(CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE))*SUF_MOMU_BC_ALL( IDIM,KPHASE,U_SJLOC + U_SNLOC * ( SELE2 - 1 ) ) &
+                                                + (1.-CVM_BETA)*(CVM_NN_SNDOTQOLD_IN(KPHASE) + CVM_NN_SNDOTQOLD_OUT(KPHASE)) * SLOC_UOLD(IDIM,KPHASE,U_SJLOC)
+
+
+                                                DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE) &
+                                                    =DIAG_BIGM_CON(IDIM,JDIM,IPHASE,KPHASE,U_ILOC,U_JLOC,ELE) - (1.-CVM_BETA)*(CVM_NN_SNDOTQ_IN(KPHASE) + CVM_NN_SNDOTQ_OUT(KPHASE))
+
+
+                                           ! END OF IF( WIC_MOMU_BC(SELE2+(KPHASE-1)*STOTEL) == WIC_U_BC_DIRICHLET) THEN ELSE...
+                                        ENDIF
+                                     END DO ! ENDOF DO KPHASE=1,NPHASE
+                                       ENDIF ! ENDOF IF(GOT_VIRTUAL_MASS) THEN
+
 
                                     ENDIF
 
@@ -5898,6 +6183,7 @@ reshape(C,[NDIM*NPHASE*NCOLC])
         RETURN
 
     END SUBROUTINE ASSEMB_FORCE_CTY
+
 
 
 
