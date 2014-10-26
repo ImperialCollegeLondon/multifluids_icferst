@@ -2395,13 +2395,13 @@ contains
 
                               CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
                                    - CV_P( CV_NODI ) * SCVDETWEI( GI ) * ( &
-                                   THERM_FTHETA * NDOTQNEW( IPHASE ) &
-                                   + ( 1. - THERM_FTHETA ) * NDOTQOLD(IPHASE) )*VOL_FRA_FLUID_I
+                                   THERM_FTHETA * NDOTQNEW( IPHASE )* LIMT( IPHASE ) &
+                                   + ( 1. - THERM_FTHETA ) * NDOTQOLD(IPHASE)* LIMTOLD( IPHASE ) )*VOL_FRA_FLUID_I
                               if ( integrate_other_side_and_not_boundary ) then
                                  CV_RHS( RHS_NODJ_IPHA ) = CV_RHS( RHS_NODJ_IPHA ) &
                                       + CV_P( CV_NODJ ) * SCVDETWEI( GI ) * ( &
-                                      THERM_FTHETA * NDOTQNEW( IPHASE ) &
-                                      + ( 1. - THERM_FTHETA ) * NDOTQOLD( IPHASE ) )*VOL_FRA_FLUID_J
+                                      THERM_FTHETA * NDOTQNEW( IPHASE )* LIMT( IPHASE ) &
+                                      + ( 1. - THERM_FTHETA ) * NDOTQOLD( IPHASE )* LIMTOLD( IPHASE ) )*VOL_FRA_FLUID_J
                               end if
                            
                            END IF !IGOT_T2 
@@ -2491,6 +2491,17 @@ contains
                          + SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV(CV_NODI) 
                      endif
                   ENDIF
+                           IF ( IGOT_T2 /= 0 ) THEN
+
+                              CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
+                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T2_ALL( IPHASE, CV_NODI )- T2OLD_ALL( IPHASE, CV_NODI ))  
+
+                           ELSE
+
+                              CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
+                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T_ALL( IPHASE, CV_NODI )- TOLD_ALL( IPHASE, CV_NODI ))  
+                           
+                           END IF !IGOT_T2 
                ENDIF
 
                IF ( IGOT_T2 == 1 ) THEN
