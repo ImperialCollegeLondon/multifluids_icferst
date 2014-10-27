@@ -3037,8 +3037,12 @@ contains
         IF(GOT_VIRTUAL_MASS) THEN
 ! GOT_VIRTUAL_MASS ! do we have virtual mass terms for multi-phase flows...
 ! VIRTUAL_MASS_ADV_CUR DEFINES THE VELOCITY IN THE TOTAL DERIVATIVE = 1 and use the velocity that 
-! one is advecting, else use the velocity of the current phase. 
+! one is advecting, else =0 use the velocity of the current phase. 
            ALLOCATE( VIRTUAL_MASS( NPHASE, NPHASE, MAT_NONODS), VIRTUAL_MASS_OLD( NPHASE, NPHASE, MAT_NONODS), VIRTUAL_MASS_ADV_CUR( NPHASE, NPHASE) )
+!           VIRTUAL_MASS(2,1,:) = -UDEN(1,:)*0.5
+!           VIRTUAL_MASS(2,2,:) =  UDEN(1,:)*0.5
+!           VIRTUAL_MASS_OLD=VIRTUAL_MASS
+!           VIRTUAL_MASS_ADV_CUR=1.0
 ! For the time being VIRTUAL_MASS & VIRTUAL_MASS_OLD can be the same. 
 
            ALLOCATE( LOC_VIRTUAL_MASS( NPHASE, NPHASE, MAT_NLOC), LOC_VIRTUAL_MASS_OLD( NPHASE, NPHASE, MAT_NLOC) )
@@ -4025,18 +4029,18 @@ contains
                                        DO JPHASE = 1, NPHASE 
                                          VLN_CVM( IPHASE,JPHASE ) = VLN_CVM( IPHASE,JPHASE )  &
 ! conservative discretization
-                                       - CVM_BETA*VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, IPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, JPHASE, GI ))* UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
+                                       - CVM_BETA*VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
                                          * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN_CVM &
 ! non-conservative discretization
-                                       + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, IPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, JPHASE, GI ))* UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
+                                       + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
                                          *  DETWEI( GI ) * WITH_NONLIN_CVM
 
                                          VLN_OLD_CVM( IPHASE,JPHASE ) = VLN_OLD_CVM( IPHASE,JPHASE )  &
 ! conservative discretization
-                                       - CVM_BETA*VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, IPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, JPHASE, GI )) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
+                                       - CVM_BETA*VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
                                          * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN_CVM &
 ! non-conservative discretization
-                                       + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, IPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, JPHASE, GI )) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
+                                       + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
                                          *  DETWEI( GI ) * WITH_NONLIN_CVM
                                        END DO
                                     ENDIF
@@ -4391,7 +4395,7 @@ contains
                             IF(GOT_VIRTUAL_MASS) THEN
                                DO JPHASE=1,NPHASE
                                   RESID_U( IDIM, IPHASE, GI ) = RESID_U( IDIM, IPHASE, GI ) + &
-                                    VIRTUAL_MASS_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, IPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, JPHASE, GI )) * U_DX_ALL( :, IDIM, JPHASE, GI ) ) &
+                                    VIRTUAL_MASS_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI )) * U_DX_ALL( :, IDIM, JPHASE, GI ) ) &
                                     * WITH_NONLIN_CVM 
                                END DO
                             ENDIF
