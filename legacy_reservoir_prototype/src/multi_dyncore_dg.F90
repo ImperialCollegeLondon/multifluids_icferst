@@ -3038,7 +3038,8 @@ contains
 ! GOT_VIRTUAL_MASS ! do we have virtual mass terms for multi-phase flows...
 ! VIRTUAL_MASS_ADV_CUR DEFINES THE VELOCITY IN THE TOTAL DERIVATIVE = 1 and use the velocity that 
 ! one is advecting, else =0 use the velocity of the current phase. 
-           ALLOCATE( VIRTUAL_MASS( NPHASE, NPHASE, MAT_NONODS), VIRTUAL_MASS_OLD( NPHASE, NPHASE, MAT_NONODS), VIRTUAL_MASS_ADV_CUR( NPHASE, NPHASE) )
+           ALLOCATE( VIRTUAL_MASS( NPHASE, NPHASE, CV_NONODS), VIRTUAL_MASS_OLD( NPHASE, NPHASE, CV_NONODS), VIRTUAL_MASS_ADV_CUR( NPHASE, NPHASE) )
+!           VIRTUAL_MASS=0.0
 !           VIRTUAL_MASS(2,1,:) = -UDEN(1,:)*0.5
 !           VIRTUAL_MASS(2,2,:) =  UDEN(1,:)*0.5
 !           VIRTUAL_MASS_OLD=VIRTUAL_MASS
