@@ -5537,14 +5537,14 @@ contains
                                 IF(GOT_VIRTUAL_MASS) THEN
                                    DO KPHASE=1,NPHASE
                                       CVM_SNDOTQ_IN(IDIM,IPHASE,KPHASE,SGI)    =CVM_SNDOTQ_IN(IDIM,IPHASE,KPHASE,SGI)  &
-                                      +SVIRTUAL_MASS_GI(IPHASE,KPHASE,GI)  &
+                                      +SVIRTUAL_MASS_GI(IPHASE,KPHASE,SGI)  &
                                   *(      FTHETA(IDIM,KPHASE,SGI)*VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE)*SNDOTQ(KPHASE,SGI)  &
                                       * ( 0.5 * CENT_RELAX( IDIM,KPHASE,SGI ) + SINCOME(KPHASE,SGI)*(1.-CENT_RELAX( IDIM,KPHASE,SGI )) ) &
                                          +FTHETA(IDIM,IPHASE,SGI)*(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE))*SNDOTQ(IPHASE,SGI)  &
                                       * ( 0.5 * CENT_RELAX( IDIM,IPHASE,SGI ) + SINCOME(IPHASE,SGI)*(1.-CENT_RELAX( IDIM,IPHASE,SGI )) )    )
 
                                       CVM_SNDOTQ_OUT(IDIM,IPHASE,KPHASE,SGI)   =CVM_SNDOTQ_OUT(IDIM,IPHASE,KPHASE,SGI)  &
-                                      +SVIRTUAL_MASS_GI(IPHASE,KPHASE,GI)  &
+                                      +SVIRTUAL_MASS_GI(IPHASE,KPHASE,SGI)  &
                                   *(     FTHETA(IDIM,KPHASE,SGI)*VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE)*SNDOTQ(KPHASE,SGI) &
                                       * ( 0.5* CENT_RELAX( IDIM,KPHASE,SGI ) + (1.-SINCOME(KPHASE,SGI))*(1.-CENT_RELAX( IDIM,KPHASE,SGI )) ) &
                                         +FTHETA(IDIM,IPHASE,SGI)*(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE))*SNDOTQ(IPHASE,SGI) &
@@ -5552,14 +5552,14 @@ contains
 
 
                                       CVM_SNDOTQOLD_IN(IDIM,IPHASE,KPHASE,SGI)    =CVM_SNDOTQOLD_IN(IDIM,IPHASE,KPHASE,SGI)  &
-                                      +SVIRTUAL_MASS_OLD_GI(IPHASE,KPHASE,GI)  &
+                                      +SVIRTUAL_MASS_OLD_GI(IPHASE,KPHASE,SGI)  &
                                   *(      (1.-FTHETA(IDIM,KPHASE,SGI))*VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE)*SNDOTQOLD(KPHASE,SGI)  &
                                       * (0.5 * CENT_RELAX_OLD( IDIM,KPHASE,SGI ) + SINCOMEOLD(KPHASE,SGI)*(1.-CENT_RELAX_OLD( IDIM,KPHASE,SGI ))) &
                                          +(1.-FTHETA(IDIM,IPHASE,SGI))*(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE))*SNDOTQOLD(IPHASE,SGI)  &
                                       * (0.5 * CENT_RELAX_OLD( IDIM,IPHASE,SGI ) + SINCOMEOLD(IPHASE,SGI)*(1.-CENT_RELAX_OLD( IDIM,IPHASE,SGI )))  )
 
                                       CVM_SNDOTQOLD_OUT(IDIM,IPHASE,KPHASE,SGI)   =CVM_SNDOTQOLD_OUT(IDIM,IPHASE,KPHASE,SGI)  &
-                                      +SVIRTUAL_MASS_OLD_GI(IPHASE,KPHASE,GI)  &
+                                      +SVIRTUAL_MASS_OLD_GI(IPHASE,KPHASE,SGI)  &
                                   *(     (1.-FTHETA(IDIM,IPHASE,SGI))*VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE)*SNDOTQOLD(KPHASE,SGI) &
                                       * (0.5* CENT_RELAX_OLD( IDIM,KPHASE,SGI ) + (1.-SINCOMEOLD(KPHASE,SGI))*(1.-CENT_RELAX_OLD( IDIM,KPHASE,SGI ))) &
                                         +(1.-FTHETA(IDIM,IPHASE,SGI))*(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,KPHASE))*SNDOTQOLD(IPHASE,SGI) &
