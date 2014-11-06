@@ -2592,6 +2592,8 @@ contains
             LOGICAL, PARAMETER :: PIVIT_ON_VISC = .false. !.FALSE.
 ! GOT_VIRTUAL_MASS ! do we have virtual mass terms for multi-phase flows...
             LOGICAL, PARAMETER :: GOT_VIRTUAL_MASS = .false.
+! If FEM_DEN then use an FEM representation of density - only used within an element (default is FEM for between elements and on boundary). 
+            LOGICAL, PARAMETER :: FEM_DEN = .false.
             real :: w
             real, parameter :: wv=1.0, ws=1.0 ! volume off-diagonal and surface weights, respectively
 ! LINEAR_HIGHORDER_DIFFUSION is the switch for the high-order linear scheme...
@@ -3659,7 +3661,8 @@ contains
 
             DO CV_ILOC = 1, CV_NLOC
                 DO GI = 1, CV_NGI_SHORT
-                    IF ( .FALSE. ) then ! FEM DEN...
+!                    IF ( .FALSE. ) then ! FEM DEN...
+                    IF ( FEM_DEN ) then ! FEM DEN...
                         DENGI( :, GI ) = DENGI( :, GI ) + CVFEN_SHORT( CV_ILOC, GI ) * LOC_UDEN( :, CV_ILOC )
                         DENGIOLD( :, GI ) = DENGIOLD( :, GI ) &
                         + CVFEN_SHORT( CV_ILOC, GI ) * LOC_UDENOLD( :, CV_ILOC )
@@ -3671,8 +3674,13 @@ contains
 
 
                     IF(GOT_VIRTUAL_MASS) THEN
-                        VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
-                        VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
+                        IF ( FEM_DEN ) then ! FEM DEN...
+                           VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVFEN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
+                           VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVFEN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
+                        ELSE
+                           VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
+                           VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
+                        ENDIF
                     ENDIF
 
                     IF ( IPLIKE_GRAD_SOU == 1 ) THEN

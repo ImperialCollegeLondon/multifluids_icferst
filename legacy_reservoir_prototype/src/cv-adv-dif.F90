@@ -2213,7 +2213,8 @@ contains
                              UGI_COEF_ELE2_ALL,  &
                              NDOTQNEW(IPHASE), NDOTQOLD(IPHASE), NDOTQ_HAT, LIMD(IPHASE), LIMT(IPHASE), LIMTOLD(IPHASE), LIMDT(IPHASE), LIMDTOLD(IPHASE), LIMT_HAT(IPHASE), &
                              FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
-                             RETRIEVE_SOLID_CTY,theta_cty_solid)
+                             RETRIEVE_SOLID_CTY,theta_cty_solid, &
+                             loc_u, loc2_u )
                      ENDIF Conditional_GETCT2
 
                      Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
@@ -2537,7 +2538,7 @@ contains
                Conditional_GETMAT2: IF ( GETMAT ) THEN
 
                   DO JPHASE = 1, NPHASE
-                     DENSE_ACV( JPHASE, IPHASE, CV_NODI )  = DENSE_ACV( JPHASE, IPHASE, CV_NODI ) &
+                     DENSE_ACV( IPHASE, JPHASE, CV_NODI )  = DENSE_ACV( IPHASE, JPHASE, CV_NODI ) &
                           + MASS_CV( CV_NODI ) * ABSORBT_ALL( IPHASE, JPHASE, CV_NODI )
                   END DO
 
@@ -11939,12 +11940,16 @@ CONTAINS
        UGI_COEF_ELE2_ALL,  &
        NDOTQ, NDOTQOLD, NDOTQ_HAT, LIMD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, &
        FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
-       RETRIEVE_SOLID_CTY,theta_cty_solid)
+       RETRIEVE_SOLID_CTY,theta_cty_solid, &
+       loc_u, loc2_u )
     ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
     IMPLICIT NONE
+! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO CT MATRIX
+    LOGICAL, PARAMETER :: more_in_ct=.false.
     INTEGER, intent( in ) :: U_NLOC, SCVNGI, GI, NCOLCT, NDIM, &
          CV_NONODS, U_NONODS, NPHASE, IPHASE, TOTELE,  ELE, ELE2, SELE, &
          CV_NODI, CV_NODJ
+    REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: loc_u, loc2_u
     LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY
     INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
@@ -11963,8 +11968,11 @@ CONTAINS
     ! Local variables...
     INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
          U_KLOC_LEV, U_NLOC_LEV
-    REAL :: RCON,RCON_J, UDGI_IMP_ALL(NDIM), NDOTQ_IMP
+    REAL :: RCON,RCON_J, UDGI_IMP_ALL(NDIM), NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct
     REAL :: UDGI_ALL(NDIM), UOLDDGI_ALL(NDIM), UDGI_HAT_ALL(NDIM)
+    integer ncomp
+    
+    ncomp=nphase
 
     IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
        ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the CT matrix and add what we really want)
@@ -11990,25 +11998,55 @@ CONTAINS
                * SUFEN( U_KLOC, GI )
        END IF ! For solid modelling...
 
+     if(more_in_ct) then
+       rcon_in_ct=SCVDETWEI( GI ) &               
+            * SUFEN( U_KLOC, GI ) / real(ncomp)
+     else
+       rcon_in_ct=rcon
+     endif
+
        DO IDIM = 1, NDIM
           CT( IDIM, IPHASE, JCOUNT_KLOC( U_KLOC ) ) &
                = CT( IDIM, IPHASE, JCOUNT_KLOC( U_KLOC ) ) &
-               + RCON * UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC ) * CVNORMX_ALL( IDIM, GI )
+               + rcon_in_ct * UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC ) * CVNORMX_ALL( IDIM, GI )
        END DO
+     if(more_in_ct) then
+       DO IDIM = 1, NDIM
+          CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) + (rcon_in_ct-rcon)* UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC ) * CVNORMX_ALL( IDIM, GI )*LOC_U(IDIM,IPHASE, U_KLOC )
+       END DO
+     endif
+
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
+
           RCON_J = SCVDETWEI( GI ) * FTHETA_T2_J * LIMDT &
                * SUFEN( U_KLOC, GI ) / DEN_ALL( IPHASE, CV_NODJ )
+
+
           IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
              RCON_J = RCON_J  + SCVDETWEI( GI ) * (LIMT_HAT - LIMT) &
                   * SUFEN( U_KLOC, GI ) 
           END IF ! For solid modelling...
 
+     if(more_in_ct) then
+       rcon_j_in_ct=SCVDETWEI( GI ) &               
+            * SUFEN( U_KLOC, GI ) / real(ncomp)
+     else
+       rcon_j_in_ct=rcon_j
+     endif
+
+
           DO IDIM = 1, NDIM
              CT( IDIM, IPHASE, ICOUNT_KLOC( U_KLOC ) ) &
                   = CT( IDIM, IPHASE, ICOUNT_KLOC( U_KLOC ) ) &
-                  - RCON_J * UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC ) * CVNORMX_ALL( IDIM, GI )
+                  - RCON_J_in_ct * UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC ) * CVNORMX_ALL( IDIM, GI )
           END DO
+
+     if(more_in_ct) then
+       DO IDIM = 1, NDIM
+          CT_RHS( CV_NODJ ) = CT_RHS( CV_NODJ ) - (rcon_J_in_ct-rcon_J)* UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC ) * CVNORMX_ALL( IDIM, GI )*LOC_U(IDIM,IPHASE, U_KLOC )
+       END DO
+     endif
        end if
 
     END DO
@@ -12055,11 +12093,23 @@ CONTAINS
                      * SUFEN( U_KLOC, GI ) 
              END IF ! For solid modelling...
 
+     if(more_in_ct) then
+       rcon_in_ct=SCVDETWEI( GI ) &               
+            * SUFEN( U_KLOC, GI ) / real(ncomp)
+     else
+       rcon_in_ct=rcon
+     endif
+
              DO IDIM = 1, NDIM
                 CT( IDIM, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
                      = CT( IDIM, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
-                     + RCON * UGI_COEF_ELE2_ALL( IDIM, IPHASE, U_KLOC2 ) * CVNORMX_ALL( IDIM, GI )
+                     + RCON_IN_CT * UGI_COEF_ELE2_ALL( IDIM, IPHASE, U_KLOC2 ) * CVNORMX_ALL( IDIM, GI )
              END DO
+     if(more_in_ct) then
+       DO IDIM = 1, NDIM
+          CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) + (rcon_in_ct-rcon)* UGI_COEF_ELE2_ALL( IDIM, IPHASE, U_KLOC2 ) * CVNORMX_ALL( IDIM, GI )*LOC2_U(IDIM,IPHASE, U_KLOC2 )
+       END DO
+     endif
              ! flux from the other side (change of sign because normal is -ve)...
              if ( integrate_other_side_and_not_boundary ) then
                 RCON_J = SCVDETWEI( GI ) * FTHETA_T2_J * LIMDT  &
@@ -12068,12 +12118,23 @@ CONTAINS
                    RCON_J    = RCON_J  + SCVDETWEI( GI ) * (LIMT_HAT - LIMT)  &
                         * SUFEN( U_KLOC, GI ) 
                 END IF ! For solid modelling...
+     if(more_in_ct) then
+       rcon_j_in_ct=SCVDETWEI( GI ) &               
+            * SUFEN( U_KLOC, GI ) / real(ncomp)
+     else
+       rcon_j_in_ct=rcon_j
+     endif
 
                 DO IDIM = 1, NDIM
                    CT( IDIM, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
                         = CT( IDIM, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
                         - RCON_J * UGI_COEF_ELE2_ALL( IDIM, IPHASE, U_KLOC2 ) * CVNORMX_ALL( IDIM, GI )
                 END DO
+     if(more_in_ct) then
+       DO IDIM = 1, NDIM
+          CT_RHS( CV_NODJ ) = CT_RHS( CV_NODJ ) - (rcon_J_in_ct-rcon_J)* UGI_COEF_ELE2_ALL( IDIM, IPHASE, U_KLOC2 ) * CVNORMX_ALL( IDIM, GI )*LOC2_U(IDIM,IPHASE, U_KLOC2 )
+       END DO
+     endif
              end if
 
           END IF
