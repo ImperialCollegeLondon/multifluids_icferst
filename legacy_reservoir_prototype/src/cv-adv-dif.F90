@@ -1336,6 +1336,7 @@ contains
          CV_RHS = 0.0
          IF ( GETMAT ) THEN
             CSR_ACV = 0.0
+            dense_acv=0.0
          END IF
       END IF
 
