@@ -838,6 +838,9 @@
       !      integer, PARAMETER :: whole_ele_surface_order=1
       !      integer, PARAMETER :: whole_ele_surface_order=2
 
+! new quadratic element quadrature by James and Zhi and Chris:
+      logical, PARAMETER :: NEW_QUADRATIC_ELE_QUADRATURE = .FALSE.
+
       integer :: U_NLOC2
       character( len = option_path_len ) :: overlapping_path
 
@@ -1045,6 +1048,14 @@
                if (surface_order==1) sbcvngi = 12 ! 1x12 (sngi x cv_faces)
                if (surface_order==2) scvngi = 48*4 ! 6x8x4 (cv_faces x hexs x sngi)
                if (surface_order==2) sbcvngi = 12*4 ! 4x12 (sngi x cv_faces)
+
+               if( NEW_QUADRATIC_ELE_QUADRATURE ) then
+! new 1 pt quadrature...
+                  cv_ngi=10
+                  scvngi = 19 
+!                  if (surface_order==1) sbcvngi = 12
+                  sbcvngi = 6
+               endif
 
             endif
          case default; FLExit(" Invalid integer for cv_nloc ")
