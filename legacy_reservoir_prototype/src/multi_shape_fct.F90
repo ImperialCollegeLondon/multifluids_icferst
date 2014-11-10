@@ -1524,6 +1524,10 @@
       real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: n, nlx, nly, nlz
       real, dimension( u_nloc, cv_ngi ), intent( inout ) :: un, unlx, unly, unlz
 
+! new quadratic element quadrature by James and Zhi and Chris:
+      logical, PARAMETER :: NEW_QUADRATIC_ELE_QUADRATURE = .FALSE.
+      
+
       ewrite(3,*) 'In SHAPE_CV_N'
 
       Select Case( cv_ele_type )
@@ -1540,9 +1544,15 @@
               un, unlx, unly, unlz )
 
       case( 3, 4, 7, 8 ) ! Triangles and Tetrahedra
+        if( new_quadratic_ele_quadrature ) then
+         call new_pt_qua_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, &
+              cvweigh, n, nlx, nly, nlz, &
+              un, unlx, unly, unlz )
+        else
          call vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, &
               cvweigh, n, nlx, nly, nlz, &
               un, unlx, unly, unlz )
+        endif
          !stop 12
       case default; FLExit( "Wrong integer for CV_ELE_TYPE" )
       end Select

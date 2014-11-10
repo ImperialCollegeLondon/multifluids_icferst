@@ -2462,6 +2462,131 @@
 
 
 
+    subroutine new_pt_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
+         n, nlx, nly, nlz, &
+         un, unlx, unly, unlz )
+! new 1 pt quadrature set for quadratic tetrahedra .....
+      ! Compute shape functions N, UN etc for linear trianles. Shape functions 
+      ! associated with volume integration using both CV basis functions CVN, as 
+      ! well as FEM basis functions N (and its derivatives NLX, NLY, NLZ). Also 
+      ! for velocity basis functions UN, UNLX, UNLY, UNLZ.
+      implicit none
+      integer, intent( in ) :: cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc
+      real, dimension( :, : ), intent( inout ) :: cvn
+      real, dimension( : ), intent( inout ) :: cvweigh
+      real, dimension( :, : ), intent( inout ) :: n, nlx, nly, nlz
+      real, dimension( :, : ), intent( inout ) :: un, unlx, unly, unlz
+      ! Local variables
+      integer, dimension( : ), allocatable :: x_ndgln, fem_nod, x_ndgln_ideal
+      real, dimension( : ), allocatable :: lx, ly, lz, x, y, z, cvweigh_dummy, &
+           x_ideal, y_ideal, z_ideal
+      real, dimension( : ), allocatable :: quad_l1, quad_l2, quad_l3, quad_l4, &
+           rdummy
+      integer, parameter :: max_totele = 10000, max_x_nonods = 10000
+      logical :: d1, dcyl, d3
+      integer :: ele, quad_cv_ngi, quad_cv_nloc, totele, x_nonods, &
+           cv_gj, cv_gk, cv_iloc, cv_gi, totele_sub, gi_max, gi
+      real :: rsum, rmax
+
+      !ewrite(3,*)'In vol_cv_tri_tet_shape'
+
+      if(cv_ngi.ne.10) then
+         print *,'the wrong number of quadrature points'
+      endif
+
+      d1 = ( ndim == 1 )
+      dcyl = .false.
+      d3 = ( ndim == 3 )
+
+      if( d3 ) then
+         Select Case( cv_nloc )
+         case( 4 ) ;  quad_cv_nloc = 8  ! Linear tetrahedron
+         case( 10 ) ; quad_cv_nloc = 27 ! Quadratic tetrahedron
+         case default; FLExit( "Wrong integer for CV_NLOC" )
+         end Select
+      else
+         Select Case( cv_nloc )
+         case( 3 ) ;  quad_cv_nloc = 4  ! Linear triangle
+         case( 6 ) ; quad_cv_nloc = 9 ! Quadratic triangle
+         case default; FLExit( "Wrong integer for CV_NLOC" )
+         end Select
+      endif
+
+      ! Allocating memory
+      allocate( quad_l1( cv_ngi ) ) ; quad_l1 = 0.
+      allocate( quad_l2( cv_ngi ) ) ; quad_l2 = 0.
+      allocate( quad_l3( cv_ngi ) ) ; quad_l3 = 0.
+      allocate( quad_l4( cv_ngi ) ) ; quad_l4 = 0.
+      allocate( rdummy( cv_ngi ) ) ; rdummy = 0.
+
+!
+!Volumetric points
+!Node :  quadrature point  :   volume
+!A: : [ 0.07986111  0.07986111  0.07986111  0.76041667] 0.005208
+!B: : [ 0.38839286  0.11160714  0.11160714  0.38839286] 0.024306
+!C: : [ 0.76041667  0.07986111  0.07986111  0.07986111] 0.005208
+!D: : [ 0.11160714  0.38839286  0.11160714  0.38839286] 0.024306
+!E: : [ 0.38839286  0.38839286  0.11160714  0.11160714] 0.024306
+!F: : [ 0.07986111  0.76041667  0.07986111  0.07986111] 0.005208
+!G: : [ 0.11160714  0.11160714  0.38839286  0.38839286] 0.024306
+!H: : [ 0.38839286  0.11160714  0.38839286  0.11160714] 0.024306
+!I: : [ 0.11160714  0.38839286  0.38839286  0.11160714] 0.024306
+!J: : [ 0.07986111  0.07986111  0.76041667  0.07986111] 0.005208
+
+  quad_l1(1) = 0.07986111;  quad_l2(1) = 0.07986111;  quad_l3(1) = 0.07986111;  quad_l4(1) = 0.76041667
+  quad_l1(2) = 0.38839286;  quad_l2(2) = 0.11160714;  quad_l3(2) = 0.11160714;  quad_l4(2) = 0.38839286
+  quad_l1(3) = 0.76041667;  quad_l2(3) = 0.07986111;  quad_l3(3) = 0.07986111;  quad_l4(3) = 0.07986111
+  quad_l1(4) = 0.11160714;  quad_l2(4) = 0.38839286;  quad_l3(4) = 0.11160714;  quad_l4(4) = 0.38839286
+  quad_l1(5) = 0.38839286;  quad_l2(5) = 0.38839286;  quad_l3(5) = 0.11160714;  quad_l4(5) = 0.11160714
+  quad_l1(6) = 0.07986111;  quad_l2(6) = 0.76041667;  quad_l3(6) = 0.07986111;  quad_l4(6) = 0.07986111
+  quad_l1(7) = 0.11160714;  quad_l2(7) = 0.11160714;  quad_l3(7) = 0.38839286;  quad_l4(7) = 0.38839286 
+  quad_l1(8) = 0.38839286;  quad_l2(8) = 0.11160714;  quad_l3(8) = 0.38839286;  quad_l4(8) = 0.11160714
+  quad_l1(9) = 0.11160714;  quad_l2(9) = 0.38839286;  quad_l3(9) = 0.38839286;  quad_l4(9) = 0.11160714
+  quad_l1(10)= 0.07986111;  quad_l2(10)= 0.07986111;  quad_l3(10)= 0.76041667;  quad_l4(10)= 0.07986111
+
+  cvweigh(1) = 0.005208
+  cvweigh(2) = 0.024306
+  cvweigh(3) = 0.005208
+  cvweigh(4) = 0.024306
+  cvweigh(5) = 0.024306
+  cvweigh(6) = 0.005208
+  cvweigh(7) = 0.024306
+  cvweigh(8) = 0.024306
+  cvweigh(9) = 0.024306
+  cvweigh(10)= 0.005208
+
+
+      ! Now determine the basis functions and derivatives at the 
+      ! quadrature pts quad_L1, quad_L2, quad_L3, quad_L4, etc
+      call shatri_hex( quad_l1, quad_l2, quad_l3, quad_l4, rdummy, d3, &
+           cv_nloc, cv_ngi, n, nlx, nly, nlz, &
+           .true. )
+
+! calculate cvn based on maximum value of n: 
+      cvn=0.0 
+      do cv_iloc=1,cv_nloc
+         rmax=-1.e+10
+         gi_max=0
+         do gi=1,cv_ngi
+            if(n(cv_iloc,gi).gt.rmax) then
+               rmax=n(cv_iloc,gi)
+               gi_max=gi
+            endif
+         end do
+         cvn(cv_iloc,gi_max)=1.0
+      end do
+
+      ! Now determine the basis functions and derivatives at the 
+      ! quadrature pts quad_L1, quad_L2, quad_L3, quad_L4, etc
+      call shatri_hex( quad_l1, quad_l2, quad_l3, quad_l4, rdummy, d3, &
+           u_nloc, cv_ngi, un, unlx, unly, unlz, &
+           .true. )
+
+      return
+    end subroutine new_pt_vol_cv_tri_tet_shape
+
+
+
     subroutine test_quad_tet( cv_nloc, cv_ngi, cvn, n, nlx, nly, nlz, &
                        cvweight, x, y, z, x_nonods, x_ndgln2, totele )
 ! test the volumes of idealised triangle 
