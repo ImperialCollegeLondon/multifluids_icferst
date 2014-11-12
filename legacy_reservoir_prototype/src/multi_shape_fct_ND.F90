@@ -1052,7 +1052,7 @@
                if( NEW_QUADRATIC_ELE_QUADRATURE ) then
 ! new 1 pt quadrature...
                   cv_ngi=10
-                  scvngi = 19 
+                  scvngi = 60
 !                  if (surface_order==1) sbcvngi = 12
                   sbcvngi = 6
                endif
@@ -3136,10 +3136,100 @@
       integer, dimension( :,: ), allocatable :: cv_neiloc_cells_dummy
       real, dimension( : ), allocatable :: lx, ly, lz, x, y, z, scvfeweigh_dummy, &
            x_ideal, y_ideal, z_ideal
+      real, dimension( : ), allocatable :: l1, l2, l3, l4,  rdummy, normx, normy, normz, sarea, X_LOC, Y_LOC, Z_LOC
+      real, dimension( : ), allocatable :: T1X, T1Y, T1Z,   T2X, T2Y, T2Z, SCVDET
       logical :: d1, dcyl, d3
-      integer :: x_nonods, totele, ele, cv_iloc, quad_cv_ngi, quad_cv_nloc, inod
+      integer :: x_nonods, totele, ele, cv_iloc, quad_cv_ngi, quad_cv_nloc, inod, sgi
+      real, dimension( : ), allocatable ::  BI_NORMAL, TANGENT_VEC
+! new quadratic element quadrature by James and Zhi and Chris:
+      logical, PARAMETER :: NEW_QUADRATIC_ELE_QUADRATURE = .FALSE.
+      real :: DXDLX,DXDLY, DYDLX,DYDLY, DZDLX,DZDLY 
+      real :: A,B,C
 
       !ewrite(3,*)' In vol_cv_tri_shape'
+
+
+      if( (ndim==3).and.(cv_nloc==10).and.NEW_QUADRATIC_ELE_QUADRATURE) then
+
+         ALLOCATE( NORMX(scvngi), NORMY(scvngi), NORMZ(scvngi))
+         ALLOCATE( T1X(scvngi), T1Y(scvngi), T1Z(scvngi))
+         ALLOCATE( T2X(scvngi), T2Y(scvngi), T2Z(scvngi))
+         ALLOCATE( SCVDET(scvngi))
+
+         ALLOCATE( l1(scvngi), l2(scvngi), l3(scvngi), l4(scvngi) )
+         ALLOCATE( rdummy(scvngi), normx(scvngi), normy(scvngi), normz(scvngi) )
+         ALLOCATE( X_LOC(CV_NLOC), Y_LOC(CV_NLOC), Z_LOC(CV_NLOC) )
+
+         call james_quadrature_quad_tet(l1, l2, l3, l4,  normx, normy, normz, sarea, &
+                                        X_LOC, Y_LOC, Z_LOC, CV_NEILOC, cv_nloc, scvngi)
+
+! determine th tangent and bi-normal vectors from the normal NormX,NormY,NormZ: 
+       CALL GET_TANG_BINORM(NormX,NormY,NormZ, T1X,T1Y,T1Z, T2X,T2Y,T2Z, scvngi)
+
+! Determin the shape function derivatives at the quadrature points: scvfenlx, scvfenly, scvfenlz. 
+
+      call shatri_hex( l1, l2, l3, l4, rdummy, d3, &
+           cv_nloc, scvngi, scvfen, scvfenlx, scvfenly, scvfenlz, &
+           .true. )
+
+      call shatri_hex( l1, l2, l3, l4, rdummy, d3, &
+           u_nloc, scvngi, sufen, sufenlx, sufenly, sufenlz, &
+           .true. )
+
+
+! find the BI_NORMAL, TANGENT_VEC to the surface at the quadrature points. 
+      do sgi=1,scvngi
+         scvfenslx(:,sgi) = T1X(sgi)*scvfenlx(:,sgi) + T1Y(sgi)*scvfenly(:,sgi) + T1Z(sgi)*scvfenlz(:,sgi)
+         scvfensly(:,sgi) = T2X(sgi)*scvfenlx(:,sgi) + T2Y(sgi)*scvfenly(:,sgi) + T2Z(sgi)*scvfenlz(:,sgi)
+
+         sufenslx(:,sgi) = T1X(sgi)*sufenlx(:,sgi) + T1Y(sgi)*sufenly(:,sgi) + T1Z(sgi)*sufenlz(:,sgi)
+         sufensly(:,sgi) = T2X(sgi)*sufenlx(:,sgi) + T2Y(sgi)*sufenly(:,sgi) + T2Z(sgi)*sufenlz(:,sgi)
+      end do
+
+! calculate the determinant so we can re-scale the weights to get the right surface area
+     
+      do sgi=1,scvngi
+         DXDLX = 0.0; DXDLY = 0.0
+         DYDLX = 0.0; DYDLY = 0.0
+         DZDLX = 0.0; DZDLY = 0.0
+
+         do CV_ILOC = 1, CV_NLOC
+            DXDLX = DXDLX + scvfenslx(CV_ILOC,SGI)*X_LOC(CV_ILOC)
+            DXDLY = DXDLY + scvfenslY(CV_ILOC,SGI)*X_LOC(CV_ILOC) 
+            DYDLX = DYDLX + scvfenslx(CV_ILOC,SGI)*Y_LOC(CV_ILOC) 
+            DYDLY = DYDLY + scvfenslY(CV_ILOC,SGI)*Y_LOC(CV_ILOC) 
+            DZDLX = DZDLX + scvfenslx(CV_ILOC,SGI)*Z_LOC(CV_ILOC) 
+            DZDLY = DZDLY + scvfenslY(CV_ILOC,SGI)*Z_LOC(CV_ILOC) 
+         end do
+
+         A = DYDLX*DZDLY - DYDLY*DZDLX
+         B = DXDLX*DZDLY - DXDLY*DZDLX
+         C = DXDLX*DYDLY - DXDLY*DYDLX
+
+       !
+       !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
+       !     
+
+         SCVDET(SGI) = SQRT( A**2 + B**2 + C**2 )
+       END DO
+
+! re-scale the weight so that we get the correct aurface area. 
+!         SCVFEWEIGH(:) = SAREA(:) /  SCVDET(:) 
+         SCVFEWEIGH(:) = SAREA(:)
+
+! re-scale the derivatives so that we get the correct aurface area. 
+      do sgi=1,scvngi
+         scvfenslx(:,sgi) = scvfenslx(:,sgi) / SCVDET(sgi) 
+         scvfensly(:,sgi) = scvfensly(:,sgi) / SCVDET(sgi) 
+
+         sufenslx(:,sgi) = sufenslx(:,sgi) / SCVDET(sgi) 
+         sufensly(:,sgi) = sufensly(:,sgi) / SCVDET(sgi) 
+      end do
+
+          
+! finished quadratic tet. 
+         return
+      endif
 
       d1 = ( ndim == 1 )
       dcyl = .false.
@@ -3265,6 +3355,80 @@
 
       return
     end subroutine suf_cv_tri_tet_shape
+
+
+
+       subroutine james_quadrature_quad_tet(l1, l2, l3, l4,  normx, normy, normz, sarea, &
+                                            X_LOC, Y_LOC, Z_LOC, CV_NEILOC, cv_nloc, scvngi)
+       implicit none
+       integer, intent( in ) :: scvngi, cv_nloc
+       real, intent( inout ) :: l1( scvngi ), l2( scvngi ), l3( scvngi ), l4( scvngi ),  & 
+                                normx( scvngi ), normy( scvngi ), normz( scvngi ), sarea( scvngi )
+       real, intent( inout ) :: X_LOC( cv_nloc ), Y_LOC( cv_nloc ), Z_LOC( cv_nloc )
+       integer, dimension( cv_nloc, scvngi ), intent( inout ) :: CV_NEILOC
+! the surface quadrature pts in local coord are l1, l2, l3, l4,  
+! and the associated normals normx, normy, normz  and the surface area is sarea
+! The position of the nodes of the tet are: (X_LOC, Y_LOC, Z_LOC)
+! Calculate cv_neiloc:
+! To get the neighbouring node for node ILOC and surface quadrature point SGI
+!               CV_JLOC = CV_NEILOC( CV_ILOC, SGI )
+! The number of quadrature points is 24 = 4 x 6 exterior faces (and quadrature points) and  36 = 4x6 + 6x4/2  = 60 pts. 
+       return
+       end subroutine james_quadrature_quad_tet
+
+
+
+       SUBROUTINE GET_TANG_BINORM(NX,NY,NZ, T1X,T1Y,T1Z, T2X,T2Y,T2Z, NNODRO)
+       implicit none
+       INTEGER, intent( in ) ::  NNODRO
+       REAL, intent( in ) :: NX( NNODRO ),NY( NNODRO ),NZ( NNODRO )
+       REAL, intent( inout ) :: T1X( NNODRO ),T1Y( NNODRO ),T1Z( NNODRO ), &
+                                T2X( NNODRO ),T2Y( NNODRO ),T2Z( NNODRO )
+
+       INTEGER :: II
+       REAL :: RN1, RN2, RN3, RN
+
+       do  II=1,NNODRO! Was loop 20
+            RN1=SQRT(NX(II)**2 + NY(II)**2)
+            RN2=SQRT(NY(II)**2 + NZ(II)**2)
+            RN3=SQRT(NX(II)**2 + NZ(II)**2)
+
+            IF(RN1.GE.MAX(RN2,RN3)) THEN
+               RN=SQRT(NX(II)**2 + NY(II)**2)
+               T1X(II)=NY(II)/RN
+               T1Y(II)=-NX(II)/RN
+               T1Z(II)=0.
+!
+               T2X(II)=NX(II)*NZ(II)/RN
+               T2Y(II)=NY(II)*NZ(II)/RN
+               T2Z(II)=-RN
+! Normal approx alighned with z-axis
+            ELSE IF(RN2.GE.MAX(RN1,RN3)) THEN
+               RN=SQRT(NY(II)**2 + NZ(II)**2)
+               T1X(II)=0.
+               T1Y(II)= NZ(II)/RN
+               T1Z(II)=-NY(II)/RN
+!
+               T2X(II)=-RN
+               T2Y(II)=NX(II)*NY(II)/RN
+               T2Z(II)=NX(II)*NZ(II)/RN
+            ELSE
+! Normal approx alighned with x-axis as well
+! the thing to use here...
+                RN=SQRT(NX(II)**2 + NZ(II)**2)
+                T1X(II)=-NZ(II)/RN
+                T1Y(II)=0.
+                T1Z(II)= NX(II)/RN
+
+                T2X(II)= NX(II)*NY(II)/RN
+                T2Y(II)=-RN
+                T2Z(II)= NY(II)*NZ(II)/RN
+             ENDIF
+       end do ! Was loop 20
+       return
+       END subroutine GET_TANG_BINORM
+
+
 
 
     subroutine Compute_SurfaceShapeFunctions_Triangle_Tetrahedron( &
