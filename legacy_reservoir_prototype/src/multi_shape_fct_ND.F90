@@ -2555,6 +2555,9 @@
   cvweigh(9) = 0.024306
   cvweigh(10)= 0.005208
 
+! scale taking into account we have a volume of 1./6. of the tet
+  cvweigh(:) = cvweigh(:) / ( 1./6. )  
+
 
       ! Now determine the basis functions and derivatives at the 
       ! quadrature pts quad_L1, quad_L2, quad_L3, quad_L4, etc
@@ -3162,6 +3165,8 @@
 
          call james_quadrature_quad_tet(l1, l2, l3, l4,  normx, normy, normz, sarea, &
                                         X_LOC, Y_LOC, Z_LOC, CV_NEILOC, cv_nloc, scvngi)
+! scale taking into account we have a volume of 1./6. of the tet
+         sarea=sarea/ (  (1./6.)*0.6666666666  )
 
 ! determine th tangent and bi-normal vectors from the normal NormX,NormY,NormZ: 
        CALL GET_TANG_BINORM(NormX,NormY,NormZ, T1X,T1Y,T1Z, T2X,T2Y,T2Z, scvngi)
@@ -3375,6 +3380,11 @@
 ! The number of quadrature points is 24 = 4 x 6 exterior faces (and quadrature points) and  36 = 4x6 + 6x4/2  = 60 pts. 
        return
        end subroutine james_quadrature_quad_tet
+
+
+
+
+
 
 
 
