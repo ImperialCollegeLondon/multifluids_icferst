@@ -6624,7 +6624,7 @@
       !ewrite(3,*)' In Make_QTets'
 
 !!!
-!!! Setting up unity area quadratic tetrahedron
+!!! Setting up unity volume quadratic tetrahedron
 !!!
       ! Level 2 (basis of the tetrahedron )
       lx( 1 ) = 0.
