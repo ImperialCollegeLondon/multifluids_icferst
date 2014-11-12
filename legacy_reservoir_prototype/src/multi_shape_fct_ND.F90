@@ -2462,7 +2462,7 @@
 
 
 
-    subroutine new_pt_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
+    subroutine new_pt_qua_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
          n, nlx, nly, nlz, &
          un, unlx, unly, unlz )
 ! new 1 pt quadrature set for quadratic tetrahedra .....
@@ -2583,7 +2583,7 @@
            .true. )
 
       return
-    end subroutine new_pt_vol_cv_tri_tet_shape
+    end subroutine new_pt_qua_vol_cv_tri_tet_shape
 
 
 
