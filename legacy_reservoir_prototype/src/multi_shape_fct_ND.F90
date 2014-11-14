@@ -1052,7 +1052,8 @@
                if( NEW_QUADRATIC_ELE_QUADRATURE ) then
 ! new 1 pt quadrature...
                   cv_ngi=10
-                  scvngi = 60
+                  scvngi = 60 - 24
+!                  scvngi = 60
 !                  if (surface_order==1) sbcvngi = 12
                   sbcvngi = 6
                endif
