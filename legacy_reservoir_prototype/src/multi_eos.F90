@@ -1666,7 +1666,7 @@
         real, optional, intent(in) :: satOLD
         ! Local variables...
         REAL :: KR, VISC, SATURATION, Krmax
-        real, parameter :: epsilon = 1d-5
+        real, parameter :: epsilon = 1d-10
         !Kr_max should only multiply the wetting phase,
         !however as we do not know if it is phase 1 or 2, we let the decision to the user
         !and we multiply both phases by kr_max. By default kr_max= 1
@@ -2067,7 +2067,7 @@
         Implicit none
         real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
         !Local
-        real, parameter :: tol = 1d-2
+        real, parameter :: tol = 1d-5
 
         Get_capPressure = &
         Pe * max(min((sat - Own_irr) / (1.0 - Own_irr), 1.0), tol) ** (-a)
