@@ -868,7 +868,6 @@
          call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
               dummy)
       end do Loop_Density
-
 !!$
 !!$ Extracting Components Field:
 !!$
@@ -1560,9 +1559,10 @@
 
             elseif( have_option( trim( option_path ) // '/python' ) )then
                tensorfield => extract_tensor_field( state( istate ), trim( field_name ) )
-               element_nodes => ele_nodes( tensorfield, ele )
+              ! element_nodes => ele_nodes( tensorfield, ele )
                do idim = 1, ndim
                   do ele = 1, element_count( tensorfield )
+                     element_nodes => ele_nodes( tensorfield, ele )
                      if( compute_permeability ) then
                         field_prot_tensor( ele, idim, idim ) = tensorfield % val( idim, idim,  ele )
                      elseif( compute_viscosity ) then
