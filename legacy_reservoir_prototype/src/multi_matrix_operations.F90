@@ -670,17 +670,15 @@
             RSUM = 0.0
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
-               DO KVEC = 1, NCOLOR
-                  CMC_COLOR_VEC_MANY( KVEC, CV_NOD ) = CMC_COLOR_VEC_MANY( KVEC, CV_NOD ) &
-                       +  DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( KVEC, CV_JNOD )
-               END DO
+
+               CMC_COLOR_VEC_MANY( :, CV_NOD ) = CMC_COLOR_VEC_MANY( :, CV_NOD ) +&
+                 DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+
                RSUM = RSUM + MASS_MN_PRES( COUNT )
             END DO
             IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES...
-               DO KVEC = 1, NCOLOR
-                  CMC_COLOR_VEC2_MANY( KVEC, CV_NOD ) = CMC_COLOR_VEC2_MANY( KVEC, CV_NOD ) &
-                       +  DIAG_SCALE_PRES( CV_NOD ) * RSUM * COLOR_VEC_MANY( KVEC, CV_NOD )
-               END DO
+              CMC_COLOR_VEC2_MANY( :, CV_NOD ) = CMC_COLOR_VEC2_MANY( :, CV_NOD ) &
+                   +  DIAG_SCALE_PRES( CV_NOD ) * RSUM * COLOR_VEC_MANY( :, CV_NOD )
             END IF
          END DO
 
@@ -688,11 +686,9 @@
          DO CV_NOD = 1, CV_NONODS 
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
-               DO KVEC = 1, NCOLOR
-                  CMC( COUNT ) = CMC( COUNT ) + CMC_COLOR_VEC_MANY( KVEC, CV_NOD ) * COLOR_VEC_MANY( KVEC, CV_JNOD )
-                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = CMC_PRECON( COUNT ) + &
-                       CMC_COLOR_VEC2_MANY( KVEC, CV_NOD ) * COLOR_VEC_MANY( KVEC, CV_JNOD )
-               END DO
+               CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+               IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = CMC_PRECON( COUNT ) + &
+                   sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
             END DO
          END DO
 
@@ -1011,7 +1007,7 @@
       REAL, DIMENSION( NBLOCK ) :: X, B
 
       DO ELE = 1, TOTELE
-         !CALL MATINV( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK )
+!         CALL MATINV( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK )
          CALL MATINVold( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK, MAT, MAT2, X, B )
       END DO
 

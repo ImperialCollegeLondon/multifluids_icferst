@@ -1512,7 +1512,6 @@ contains
             ! form pres eqn.
 
             CALL PHA_BLOCK_INV( PIVIT_MAT, TOTELE, U_NLOC * NPHASE * NDIM )
-
             CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, &
             NCOLC, FINDC, COLC, &
             PIVIT_MAT, &
@@ -3851,6 +3850,16 @@ contains
 
                             RNN = UFEN( U_ILOC, GI ) * UFEN( U_JLOC,  GI ) * DETWEI( GI )
 
+                            NN_SIGMAGI_ELE(:, U_ILOC, :, U_JLOC ) = &
+                            NN_SIGMAGI_ELE(:, U_ILOC, :, U_JLOC ) + RNN *SIGMAGI( :, :, GI )
+
+                            NN_SIGMAGI_STAB_ELE(:, U_ILOC, :, U_JLOC ) = &
+                            NN_SIGMAGI_STAB_ELE(:, U_ILOC, :, U_JLOC ) + RNN *SIGMAGI_STAB( :, :, GI )
+
+                            IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, U_ILOC, :, U_JLOC ) =&
+                                NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, U_ILOC, :, U_JLOC ) + RNN *  &
+                                    SIGMAGI_STAB_SOLID_RHS( :, :, GI )
+
                             DO JPHASE = 1, NPHASE
                                 DO JDIM = 1, NDIM_VEL
                                     JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
@@ -3882,28 +3891,7 @@ contains
                                             + MAX( 0.0, VLK_ELE( JPHASE, U_ILOC, U_JLOC ) )
                                         END IF
                                     END IF
-
-
-                                    DO IPHASE = 1, NPHASE
-                                        DO IDIM = 1, NDIM_VEL
-                                            IPHA_IDIM = IDIM + (IPHASE-1)*NDIM
-
-                                            NN_SIGMAGI_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            = NN_SIGMAGI_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) + RNN *  &
-                                            SIGMAGI( IPHA_IDIM, JPHA_JDIM, GI )
-
-                                            NN_SIGMAGI_STAB_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            = NN_SIGMAGI_STAB_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) + RNN *  &
-                                            SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI )
-                   IF(RETRIEVE_SOLID_CTY) THEN
-                                            NN_SIGMAGI_STAB_SOLID_RHS_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            = NN_SIGMAGI_STAB_SOLID_RHS_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) + RNN *  &
-                                            SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, JPHA_JDIM, GI )
-                   ENDIF
-                                        END DO
-                                    END DO
                                 END DO
-
                             END DO
                         END DO
                     END DO
