@@ -433,9 +433,9 @@ contains
     select case(lfield_type)
     case(FIELD_TYPE_NORMAL)
        if (field%contiguous) then
-          allocate(field%contiguous_val(field%dim(1), field%dim(2),&
-               node_count(mesh)))
-          field%val=>field%contiguous_val
+          !allocate(field%contiguous_val(field%dim(1), field%dim(2),&
+          !     node_count(mesh)))
+          !field%val=>field%contiguous_val
        else
           allocate(field%val(field%dim(1), field%dim(2), node_count(mesh)))
        end if

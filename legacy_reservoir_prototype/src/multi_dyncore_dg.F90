@@ -304,6 +304,7 @@ contains
             mass_ele_transp,&
             StorageIndexes, Field_selector, T_input = T, TOLD_input=TOLD, FEMT_input =  T_FEMT ,&
             saturation=saturation)
+
             t=0.
 
             Conditional_Lumping: IF ( LUMP_EQNS ) THEN
@@ -392,9 +393,9 @@ contains
 
         END DO Loop_NonLinearFlux
 
-        deALLOCATE( mass_mn_pres )
+        deallocate( mass_mn_pres )
         deallocate( block_acv, dense_block_matrix )
-        DEALLOCATE( CV_RHS )
+        deallocate( CV_RHS )
         call deallocate(RHS_FIELD)
 
         !ewrite(3,*)'t:', t

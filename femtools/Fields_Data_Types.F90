@@ -204,8 +204,8 @@ module fields_data_types
 
   type tensor_field
      !! ndim x ndim x nonods
-     real, dimension(:,:,:), pointer, contiguous :: contiguous_val
-     real, dimension(:,:,:), pointer :: val
+     !!real, dimension(:,:,:), pointer, contiguous :: contiguous_val
+     real, dimension(:,:,:), pointer, contiguous :: val
      !! Flag for whether val is allocated
      logical :: wrapped=.true.
      !! Flag for whether val is contiguoua

@@ -2613,7 +2613,7 @@
              ladd_absorption=.false.
           end if
 
-          call allocate(mfield,lmesh,"Packed"//name,dim=[ndim,nphase],contiguous=.true.)
+          call allocate(mfield,lmesh,"Packed"//name,dim=[ndim,nphase]) !!,contiguous=.true.)
           if (lzero) then
              call zero(mfield)
           end if
@@ -3051,7 +3051,7 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
         vfield%option_path=tfield%option_path
         vfield%dim=product(tfield%dim)
 
-        vfield%val(1:vfield%dim,1:node_count(vfield))=>tfield%contiguous_val
+        vfield%val(1:vfield%dim,1:node_count(vfield))=>tfield%val !%contiguous_val
 
       end function as_packed_vector
 
