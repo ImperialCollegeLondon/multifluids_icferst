@@ -286,7 +286,8 @@ contains
       integer, optional, intent(in) :: icomp
       type(tensor_field), intent(in), optional, target :: saturation
       !Variables for Capillary pressure
-      real, optional, intent(in) :: Pe, Cap_exp, Swirr, Sor
+      real, optional, dimension(:), intent(in) :: Pe, Cap_exp
+      real, optional, intent(in) ::  Swirr, Sor
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
 
@@ -1111,7 +1112,8 @@ contains
                          aux_Sr = Swirr
                  end select
                  CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
-                  - T_ALL(Phase_with_Pc, CV_NODI) * Get_DevCapPressure(T_ALL(Phase_with_Pc, CV_NODI),Pe, Cap_Exp, aux_Sr)
+                  - T_ALL(Phase_with_Pc, CV_NODI) * Get_DevCapPressure(T_ALL(Phase_with_Pc, CV_NODI),&
+                    Pe(CV_NODI), Cap_Exp(CV_NODI), aux_Sr)
              end do
          end do
 !          end if

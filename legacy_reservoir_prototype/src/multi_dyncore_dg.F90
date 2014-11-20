@@ -973,43 +973,38 @@ contains
         !Variables for capillary pressure
         type(corey_options) :: options
         character(len=250) :: cap_path!,option_dir
-        real :: Pe, Cap_exp, aux
-        real, dimension(:), pointer ::c_regions, a_regions
-
+        real :: aux, Pe_aux
+        real, dimension(:), pointer ::c_regions, a_regions, Pe, Cap_exp
+        logical :: Artificial_Pe
         !Get information for capillary pressure to be use in CV_ASSEMB
-        Pe = 0.; Cap_exp = 1.
-        do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
+        Artificial_Pe = .false.
+        do iphase = Nphase, 1, -1!Loop backwards since the wetting phase should be phase 1
             if (have_option("/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
-
                 !Get C
                 cap_path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::CS/prescribed/value"
                 call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32), iphase, nphase)
-                !We use an average for the time being
-                Pe = sum(c_regions)/size(c_regions)
+                !We point to the field
+                Pe => c_regions
                 !Get a
                 cap_path = "/material_phase["//int2str(iphase-1)//&
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
                 call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), iphase, nphase)
-                !We use an average for the time being
-                Cap_exp = sum(a_regions)/size(a_regions)
-!                option_dir = "/material_phase["//int2str(iphase-1)//&
-!                    "]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
-!                call get_option(trim(option_dir)//"/c", aux)
-!                if (aux > 0.) Pe = aux
-!                call get_option(trim(option_dir)//"/a", Cap_exp)
+                !We point to the field
+                Cap_exp => a_regions
             end if
         end do
-
         !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
-        do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
+        do iphase = Nphase, 1, -1!Loop backwards since the wetting phase should be phase 1
             if (have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab") ) then
-                call get_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab", Pe)
+                allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
+                Artificial_Pe = .true.
+                call get_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
+                Pe = Pe_aux
                 Cap_exp = 1.!Linear exponent
             end if
         end do
-
         !We consider only the corey options, for capillary pressure
         call get_corey_options(options)
 
@@ -1140,6 +1135,16 @@ contains
         DEALLOCATE( THETA_GDIFF )
         call deallocate(rhs_field)
 
+
+        !Only if the the artificial over-relaxation is not
+        !associated to the actual values of capillary pressure
+        !we deallocate it, otherwise it is just a simple pointer
+        if (Artificial_Pe) then
+            deallocate(Pe)
+            nullify(Pe)
+            deallocate(Cap_exp)
+            nullify(Cap_exp)
+        end if
 
         ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
@@ -1290,7 +1295,7 @@ contains
 
         type( vector_field ) :: packed_vel, rhs
         type( scalar_field ) :: deltap, rhs_p
-        type( petsc_csr_matrix ) :: mat, mat2
+        type( petsc_csr_matrix ) :: mat, mat2, C_petsc
         type(tensor_field) :: cdp_tensor
         type(csr_matrix) :: cmat
         type( csr_sparsity ) :: sparsity
@@ -1511,7 +1516,6 @@ contains
 
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
-
             CALL PHA_BLOCK_INV( PIVIT_MAT, TOTELE, U_NLOC * NPHASE * NDIM )
             CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, &
             NCOLC, FINDC, COLC, &
@@ -1544,8 +1548,13 @@ contains
 
         ELSE ! solve using a projection method
 
+
+
             ! Put pressure in rhs of force balance eqn: CDP = C * P
-            CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC) 
+            CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC)
+!
+!            call mult(CDP_TENSOR, C_petsc, P_ALL)
+
 
 !            call halo_update(cdp_tensor)
 
@@ -1695,7 +1704,7 @@ contains
             
             if (associated(pressure%mesh%halos)) then
                sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB',&
-                    row_halo=pressure%mesh%halos(2),column_halo=pressure%mesh%halos(2))
+               row_halo=pressure%mesh%halos(2),column_halo=pressure%mesh%halos(2))
             else
                sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB')
             end if
@@ -1745,6 +1754,8 @@ contains
 !!
 !!         end if
               !!dp=0.5*dp
+
+
 
 
             ! Use a projection method

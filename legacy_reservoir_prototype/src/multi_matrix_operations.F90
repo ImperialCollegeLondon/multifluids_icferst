@@ -199,9 +199,7 @@
 
       CALL SMLINNGOT( MAT, X, B, N, N,IPIV, .FALSE. ) ! X contains the column ICOL of inverse
 
-      DO IM = 1, N
-         MAT2( IM, ICOL ) = X( IM )
-      END DO
+      A( :, ICOL ) = X( : )
 
       DO ICOL = 2, N ! Form column ICOL of the inverse. 
          B = 0.
@@ -209,18 +207,8 @@
 
          CALL SMLINNGOT( MAT, X, B, N, N,IPIV, .TRUE. ) ! X contains the column ICOL of inverse
 
-         DO IM = 1, N
-            MAT2( IM, ICOL ) = X( IM )
-         END DO
+         A( :, ICOL ) = X( : )
       END DO
-
-      !
-      ! Set A to MAT2
-      Loop_IM2: DO IM = 1, N
-         Loop_JM2: DO JM = 1, N
-            A( IM, JM ) = MAT2( IM, JM )
-         END DO Loop_JM2
-      END DO Loop_IM2
 
       RETURN
     END SUBROUTINE MATINVold
@@ -1896,7 +1884,6 @@
              call addto(mat,k,mod(row(j)-1,nfields)+1,&
                    n,(row(j)-1)/nfields+1,dgm_pha(next))
              next=next+1
-             
           end do
        end do
     end do    
