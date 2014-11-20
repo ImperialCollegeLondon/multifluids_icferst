@@ -1271,7 +1271,7 @@ contains
 
         REAL, DIMENSION( : ), allocatable :: CT_RHS, DIAG_SCALE_PRES, &
         MCY_RHS, MCY, &
-        CMC, CMC_PRECON, MASS_MN_PRES, MASS_CV, P_RHS, UP, U_RHS_CDP, DP, &
+        CMC_PRECON, MASS_MN_PRES, MASS_CV, UP, U_RHS_CDP, &
         UP_VEL, DGM_PHA, DIAG_P_SQRT, ACV
         REAL, DIMENSION( :, :, : ), allocatable :: PIVIT_MAT, CDP, CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C
@@ -1281,6 +1281,9 @@ contains
         LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, SCALE_P_MATRIX, LINEARISE_DENSITY
 
         INTEGER :: I, J, IDIM, U_INOD
+
+        !CMC using petsc format
+        type(petsc_csr_matrix)::  CMC_petsc
 
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: U_NLOC2, ILEV, NLEV, X_ILOC, X_INOD, MAT_INOD, S, E, sele, p_sjloc, u_siloc
@@ -1295,9 +1298,8 @@ contains
 
         type( vector_field ) :: packed_vel, rhs
         type( scalar_field ) :: deltap, rhs_p
-        type( petsc_csr_matrix ) :: mat, mat2, C_petsc
+        type( petsc_csr_matrix ) :: mat, C_petsc
         type(tensor_field) :: cdp_tensor
-        type(csr_matrix) :: cmat
         type( csr_sparsity ) :: sparsity
         type(halo_type), pointer :: halo
 
@@ -1318,17 +1320,13 @@ contains
         ALLOCATE( MCY_RHS( NDIM * NPHASE * U_NONODS + CV_NONODS )) ; MCY_RHS=0.
 !        ALLOCATE( C( NDIM, NPHASE, NCOLC )) ; C=0.
         ALLOCATE( MCY( NCOLMCY )) ; MCY=0.
-        ALLOCATE( CMC( NCOLCMC )) ; CMC=0.
         ALLOCATE( CMC_PRECON( NCOLCMC*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
         ALLOCATE( MASS_MN_PRES( NCOLCMC )) ;MASS_MN_PRES=0.
         ALLOCATE( MASS_CV( CV_NONODS )) ; MASS_CV=0.
-        ALLOCATE( P_RHS( CV_NONODS )) ; P_RHS=0.
         ALLOCATE( UP( NLENMCY )) ; UP=0.
         ALLOCATE( U_RHS_CDP( NDIM * NPHASE * U_NONODS )) ; U_RHS_CDP=0.
         ALLOCATE( U_RHS_CDP2( NDIM, NPHASE, U_NONODS )) ; U_RHS_CDP2=0.
 
-        ALLOCATE( DP( CV_NONODS )) ; DP = 0.
-        
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim)
         call zero(cdp_tensor)
 
@@ -1344,8 +1342,6 @@ contains
 
         !################TEMPORARY ADAPT FROM OLD VARIABLES TO NEW###############
     
-
-
         U_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
         U_ALL = U_ALL2%VAL
 
@@ -1365,6 +1361,10 @@ contains
 
         DEN_ALL = DEN_ALL2%VAL( 1, :, : )
         DENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
+
+        call allocate(deltaP,pressure%mesh,"DeltaP")
+        call allocate(rhs_p,pressure%mesh,"PressureCorrectionRHS")
+
 
         !Calculate gravity source terms
         if ( have_option ( '/material_phase[0]/multiphase_properties/relperm_type' ) )then
@@ -1517,12 +1517,13 @@ contains
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
             CALL PHA_BLOCK_INV( PIVIT_MAT, TOTELE, U_NLOC * NPHASE * NDIM )
+
             CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, &
             NCOLC, FINDC, COLC, &
             PIVIT_MAT, &
             TOTELE, U_NLOC, U_NDGLN, &
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
-            CMC, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+            CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
             C, CT, state, StorageIndexes(11) )
 
         END IF
@@ -1638,69 +1639,49 @@ contains
 
             ! put on rhs the cty eqn; put most recent pressure in RHS of momentum eqn
             ! NB. P_RHS = -CT * U + CT_RHS
-            CALL CT_MULT2( P_RHS, UP_VEL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
+            CALL CT_MULT2( rhs_p%val, UP_VEL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
             CT, NCOLCT, FINDCT, COLCT )
 
-            P_RHS = -P_RHS + CT_RHS
+            rhs_p%val = -rhs_p%val + CT_RHS
 
             ! Matrix vector involving the mass diagonal term
             DO CV_NOD = 1, CV_NONODS
                 DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                     CV_JNOD = COLCMC( COUNT )
-                    P_RHS( CV_NOD ) = P_RHS( CV_NOD ) &
+                    rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
                     -DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( CV_JNOD )
                 END DO
             END DO
-
+            call zero_non_owned(rhs_p)
 
            ! Sf => extract_scalar_field( packed_state, "SolidConcentration" )
-           !p_rhs = p_rhs * ( 1. - sf%val )
-           !p_rhs = p_rhs * ( 0.5 )
+           !rhs_p%val = rhs_p%val * ( 1. - sf%val )
+           !rhs_p%val = rhs_p%val * ( 0.5 )
 
 
             call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
             'prognostic/reference_node', ndpset, default = 0 )
-            if ( ndpset /= 0 ) p_rhs( ndpset ) = 0.0
+            if ( ndpset /= 0 ) rhs_p%val( ndpset ) = 0.0
 
-            !ewrite(3,*) 'P_RHS2::', p_rhs
+            !ewrite(3,*) 'P_RHS2::', rhs_p%val
             !ewrite(3,*) 'CT_RHS::', ct_rhs
 
             ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
             ewrite(3,*)'about to solve for pressure'
 
-            ! Print cmc
-            if( .false. ) then
-                DO CV_NOD = 1, CV_NONODS
-                    ewrite(2,*) 'cv_nod=',cv_nod, &
-                    'findcmc=', FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1, &
-                    node_owned(pressure,CV_NOD)
-                    rsum = 0.0
-                    DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
-                        CV_JNOD = COLCMC( COUNT )
-                        ewrite(2,*) 'count,CV_JNOD,cmc(count):', count, CV_JNOD, cmc( count )
-                        if ( cv_nod /= cv_jnod ) rsum = rsum + abs( cmc( count ) )
-                    END DO
-                    ewrite(2,*) 'off_diag, diag=',rsum,cmc(midcmc(cv_nod))
-                END DO
-               !stop 1244
-            end if
-
-            ewrite(3,*)'b4 pressure solve P_RHS:' !, P_RHS
-            DP = 0.
-
+!            ewrite(3,*)'b4 pressure solve P_RHS:' !, P_RHS
             ! Add diffusion to DG version of CMC to try and encourage a continuous formulation...
             ! the idea is to stabilize pressure without effecting the soln i.e. the rhs of the eqns as
             ! pressure may have some singularities associated with it.
-            if ( cv_nonods/=x_nonods .and. .false. ) then !DG only...
-                CALL ADD_DIFF_CMC(CMC, &
-                NCOLCMC, cv_NONODS, FINDCMC, COLCMC, MIDCMC, &
-                totele, cv_nloc, x_nonods, cv_ndgln, x_ndgln, p_all%val )
-            end if
+!            if ( cv_nonods/=x_nonods .and. .false. ) then !DG only...
+!                CALL ADD_DIFF_CMC(CMC, &
+!                NCOLCMC, cv_NONODS, FINDCMC, COLCMC, MIDCMC, &
+!                totele, cv_nloc, x_nonods, cv_ndgln, x_ndgln, p_all%val )
+!            end if
 
 !            if( cv_nonods == x_nonods .or. .true. ) then ! a continuous pressure
 
-            call allocate(deltaP,pressure%mesh,"DeltaP")
-            call allocate(rhs_p,pressure%mesh,"PressureCorrectionRHS")
+
             
             if (associated(pressure%mesh%halos)) then
                sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB',&
@@ -1709,32 +1690,22 @@ contains
                sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB')
             end if
             
-            cmat=wrap(sparsity,val=cmc,name="CMCMatrix_BOB")
-            mat2=csr2petsc_csr(cmat)
-            call deallocate(cmat)
+!            cmat=wrap(sparsity,val=cmc,name="CMCMatrix_BOB")
+!            mat2=csr2petsc_csr(cmat)
+!            call deallocate(cmat)
 
             call zero(deltaP)
-            rhs_p%val(:)= P_RHS
-            call zero_non_owned(rhs_p)
 
-            call petsc_solve(deltap,mat2,rhs_p,trim(pressure%option_path))
+            call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
             
             P_all % val = P_all % val + deltap%val
 
             call halo_update(p_all)
-            !lets take a look at dp
-            dp= deltap%val
 
-            ewrite(3,*) 'after pressure solve DP:', minval(DP), maxval(DP)
-
-            call deallocate(deltaP)
             call deallocate(rhs_p)
-
-            call deallocate(mat2)
             call deallocate(sparsity)
-
-
-!               CALL SOLVER( CMC, DP, P_RHS, &
+            call deallocate(cmc_petsc)
+!               CALL SOLVER( CMC, DP, rhs_p%val, &
 !                    FINDCMC, COLCMC, &
 !                    option_path = '/material_phase[0]/scalar_field::Pressure' )
 !            else ! a discontinuous pressure multi-grid solver
@@ -1760,8 +1731,9 @@ contains
 
             ! Use a projection method
             ! CDP = C * DP
-            CALL C_MULT2( CDP_tensor%val, DP, CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC )
-           
+            CALL C_MULT2( CDP_tensor%val, deltap%val, CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC )
+
+            call deallocate(deltaP)
             call halo_update(cdp_tensor)
             
 
@@ -1804,12 +1776,9 @@ contains
         DEALLOCATE( MCY_RHS )
 !        DEALLOCATE( C )
         DEALLOCATE( MCY )
-        DEALLOCATE( CMC )
         DEALLOCATE( MASS_MN_PRES )
-        DEALLOCATE( P_RHS )
         DEALLOCATE( UP )
         DEALLOCATE( U_RHS_CDP )
-        DEALLOCATE( DP )
         call DEALLOCATE( CDP_tensor )
         DEALLOCATE( DU_VEL )
         DEALLOCATE( UP_VEL )

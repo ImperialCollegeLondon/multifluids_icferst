@@ -394,10 +394,10 @@
          INV_PIVIT_MAT,  &
          TOTELE, U_NLOC, U_NDGLN, &
          NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
-         CMC, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
          C, CT, state, indx )
       !use multiphase_1D_engine
-
+      !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
       implicit none
       ! form pressure matrix CMC using a colouring approach
       INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC, &
@@ -409,7 +409,7 @@
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
       REAL, DIMENSION( : ), intent( in ) :: DIAG_SCALE_PRES
-      REAL, DIMENSION( : ), intent( inout ) :: CMC
+      type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       REAL, DIMENSION( : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
@@ -432,7 +432,23 @@
       INTEGER :: I, ELE,u_inod,u_nod
       integer, save :: ndpset=-1
       REAL :: RSUM
+      !Variables for CMC_petsc
+      integer, dimension( : ), allocatable :: dnnz
+      integer :: cmc_rows
 
+
+      !Initialize CMC_petsc
+       cmc_rows = size( FINDCMC ) - 1
+
+       allocate( dnnz( cmc_rows ) )
+
+       ! find the number of non zeros per row
+       do i = 1, size( dnnz )
+           dnnz( i ) =(FINDCMC( i+1 ) - FINDCMC( i ))
+       end do
+       call allocate( CMC_petsc, cmc_rows, cmc_rows, dnnz, dnnz,(/1, 1/), name = 'CMC_petsc')
+
+       call zero( CMC_petsc )
 
       if (ndpset<0) call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
            'prognostic/reference_node', ndpset, default = 0 )
@@ -445,7 +461,7 @@
               INV_PIVIT_MAT,  &
               TOTELE, U_NLOC, U_NDGLN, &
               NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
-              CMC, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+              CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
               C, CT, ndpset, state, indx)
       ELSE
          ! Slow but memory efficient...
@@ -454,9 +470,13 @@
               INV_PIVIT_MAT,  &
               TOTELE, U_NLOC, U_NDGLN, &
               NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
-              CMC, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+              CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
               C, CT, ndpset)
       END IF
+
+      !Final step to prepare the CMC_petsc
+      call assemble( CMC_petsc )
+      deallocate(dnnz)
 
     END SUBROUTINE COLOR_GET_CMC_PHA
 
@@ -469,7 +489,7 @@
             INV_PIVIT_MAT,  &
             TOTELE, U_NLOC, U_NDGLN, &
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
-            CMC, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+            CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
             C, CT, ndpset, state, indx )
 
          implicit none
@@ -484,7 +504,7 @@
          INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
          INTEGER, DIMENSION( : ), intent( in ) :: COLCT
          REAL, DIMENSION( : ), intent( in ) :: DIAG_SCALE_PRES
-         REAL, DIMENSION( : ), intent( inout ) :: CMC
+         type(petsc_csr_matrix), intent(inout)::  CMC_petsc
          REAL, DIMENSION( : ), intent( inout ) :: CMC_PRECON
          REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
          INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
@@ -513,7 +533,6 @@
          type(scalar_field), target :: targ_icolor
          real, pointer, dimension(:) :: pointer_icolor
 
-         CMC = 0.0
          IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
 
          MAX_COLOR_IN_ROW = 0
@@ -674,7 +693,9 @@
          DO CV_NOD = 1, CV_NONODS 
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
-               CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+               call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
+                val = sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ) ))
+!               CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = CMC_PRECON( COUNT ) + &
                    sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
             END DO
@@ -685,11 +706,11 @@
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
                IF ( CV_JNOD /= CV_NOD ) THEN
-                  CMC( COUNT ) = 0.0 ! not the diagonal
+!                  CMC( COUNT ) = 0.0 ! not the diagonal!Maybe we don't need to zeroed since it is initialized as zero
                   IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = 0.0
                   DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
                      CV_JNOD2 = COLCMC( COUNT2 )
-                     IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
+!                     IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal!Maybe we don't need to zeroed since it is initialized as zero
                      IF ( IGOT_CMC_PRECON/=0 ) THEN
                         IF ( CV_JNOD2 == CV_NOD ) CMC_PRECON( COUNT2 ) = 0.0
                      END IF
@@ -810,7 +831,7 @@
          INV_PIVIT_MAT,  &
          TOTELE, U_NLOC, U_NDGLN, &
          NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
-         CMC, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
          C, CT, ndpset )
       !use multiphase_1D_engine
 
@@ -826,7 +847,7 @@
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
       REAL, DIMENSION( : ), intent( in ) :: DIAG_SCALE_PRES
-      REAL, DIMENSION( : ), intent( inout ) :: CMC
+      type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       REAL, DIMENSION( : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
@@ -857,7 +878,6 @@
       ALLOCATE( CMC_COLOR_VEC( CV_NONODS ) ) 
       ALLOCATE( CMC_COLOR_VEC2( CV_NONODS ) ) 
 
-      CMC = 0.0
       IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
 
       NEED_COLOR = .TRUE.
@@ -938,7 +958,8 @@
          DO CV_NOD = 1, CV_NONODS 
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
-               CMC( COUNT ) = CMC( COUNT ) + CMC_COLOR_VEC( CV_NOD ) * COLOR_VEC( CV_JNOD )
+               call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
+                val = CMC_COLOR_VEC( CV_NOD ) * COLOR_VEC( CV_JNOD ))
                IF ( IGOT_CMC_PRECON /= 0 ) THEN 
                   CMC_PRECON( COUNT ) = CMC_PRECON( COUNT ) + CMC_COLOR_VEC2( CV_NOD ) * COLOR_VEC( CV_JNOD )
                END IF
@@ -957,11 +978,11 @@
          DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
             CV_JNOD = COLCMC( COUNT )
             IF ( CV_JNOD /= CV_NOD ) THEN
-               CMC ( COUNT ) = 0.0 ! not the diagonal
+!               CMC ( COUNT ) = 0.0 ! not the diagonal
                IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = 0.0
                DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
                   CV_JNOD2 = COLCMC( COUNT2 )
-                  IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
+!                  IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
                   IF ( IGOT_CMC_PRECON /= 0 ) THEN
                      IF( CV_JNOD2 == CV_NOD) CMC_PRECON( COUNT2 ) = 0.0
                   END IF
