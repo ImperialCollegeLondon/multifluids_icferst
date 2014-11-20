@@ -869,7 +869,7 @@
       REAL, DIMENSION( : ), allocatable :: DU, DV, DW, DU_LONG
       REAL, DIMENSION( :, :, : ), allocatable :: CDP
       INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
-      INTEGER :: I, ELE,u_inod,u_nod
+      INTEGER :: I, ELE,u_inod,u_nod, ierr
       REAL :: RSUM
 
       ALLOCATE( NEED_COLOR( CV_NONODS ) )
