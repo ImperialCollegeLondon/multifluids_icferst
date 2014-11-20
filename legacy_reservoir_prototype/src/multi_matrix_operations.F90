@@ -395,7 +395,7 @@
          TOTELE, U_NLOC, U_NDGLN, &
          NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
-         C, CT, state, indx )
+         C, CT, state, indx, halos)
       !use multiphase_1D_engine
       !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
       implicit none
@@ -418,6 +418,7 @@
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
       type( state_type ), intent( inout ), dimension(:) :: state
       integer, intent(inout) :: indx
+      type(halo_type), pointer :: halos
       ! Local variables
       REAL, PARAMETER :: INFINY = 1.0E+10
       LOGICAL :: UNDONE, LCOL
@@ -446,7 +447,8 @@
        do i = 1, size( dnnz )
            dnnz( i ) =(FINDCMC( i+1 ) - FINDCMC( i ))
        end do
-       call allocate( CMC_petsc, cmc_rows, cmc_rows, dnnz, dnnz,(/1, 1/), name = 'CMC_petsc')
+       call allocate( CMC_petsc, cmc_rows, cmc_rows, dnnz, dnnz,(/1, 1/)&
+        ,name = 'CMC_petsc', halo = halos)
 
        call zero( CMC_petsc )
 

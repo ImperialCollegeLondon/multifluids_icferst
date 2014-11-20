@@ -1517,14 +1517,19 @@ contains
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
             CALL PHA_BLOCK_INV( PIVIT_MAT, TOTELE, U_NLOC * NPHASE * NDIM )
-
+            !Prepare halos for the CMC matrix
+            if (associated(pressure%mesh%halos)) then
+                halo => pressure%mesh%halos(2)
+            else
+                nullify(halo)
+            end if
             CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, &
             NCOLC, FINDC, COLC, &
             PIVIT_MAT, &
             TOTELE, U_NLOC, U_NDGLN, &
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
-            C, CT, state, StorageIndexes(11) )
+            C, CT, state, StorageIndexes(11), halo )
 
         END IF
 
