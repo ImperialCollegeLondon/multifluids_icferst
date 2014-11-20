@@ -527,7 +527,7 @@
          REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC_MANY, CMC_COLOR_VEC2_MANY
          INTEGER :: CV_NOD, CV_JNOD, COUNT, COUNT2, COUNT3, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
          INTEGER :: MAX_COLOR_IN_ROW, ICHOOSE, KVEC, I, ELE, U_INOD, U_NOD, ICAN_COLOR, MX_COLOR, NOD_COLOR
-         INTEGER :: NCOLOR
+         INTEGER :: NCOLOR, ierr
          REAL :: RSUM
          !Variables to store things in state
          type(mesh_type), pointer :: fl_mesh
@@ -708,11 +708,13 @@
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
                IF ( CV_JNOD /= CV_NOD ) THEN
-!                  CMC( COUNT ) = 0.0 ! not the diagonal!Maybe we don't need to zeroed since it is initialized as zero
+                  call MatSetValue(CMC_petsc%M, cv_nod, cv_jnod,0.,INSERT_VALUES, ierr)! not the diagonal
+!                  CMC( COUNT ) = 0.0 ! not the diagonal
                   IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = 0.0
                   DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
                      CV_JNOD2 = COLCMC( COUNT2 )
-!                     IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal!Maybe we don't need to zeroed since it is initialized as zero
+                     IF ( CV_JNOD2 == CV_NOD ) call MatSetValue(CMC_petsc%M, cv_nod, CV_JNOD2, 0.,INSERT_VALUES, ierr)! not the diagonal
+!                     IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
                      IF ( IGOT_CMC_PRECON/=0 ) THEN
                         IF ( CV_JNOD2 == CV_NOD ) CMC_PRECON( COUNT2 ) = 0.0
                      END IF
@@ -980,10 +982,12 @@
          DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
             CV_JNOD = COLCMC( COUNT )
             IF ( CV_JNOD /= CV_NOD ) THEN
+                call MatSetValue(CMC_petsc%M, cv_nod, cv_jnod,0.,INSERT_VALUES, ierr)! not the diagonal
 !               CMC ( COUNT ) = 0.0 ! not the diagonal
                IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = 0.0
                DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
                   CV_JNOD2 = COLCMC( COUNT2 )
+                  IF ( CV_JNOD2 == CV_NOD ) call MatSetValue(CMC_petsc%M, cv_nod, cv_jnod2,0.,INSERT_VALUES, ierr)! not the diagonal
 !                  IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
                   IF ( IGOT_CMC_PRECON /= 0 ) THEN
                      IF( CV_JNOD2 == CV_NOD) CMC_PRECON( COUNT2 ) = 0.0
