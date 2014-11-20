@@ -30,7 +30,7 @@ AutomaticLine = 1
 
 
 AutomaticFile = 'QuickTest_DG'
-AutomaticVTU_Number = 20
+AutomaticVTU_Number = 32
 
 #Plot the results in 2d?
 showPlot = True
@@ -210,14 +210,11 @@ for i in range(len(Experimental_X)):
         
 L1_norm= L1_sum / len(Experimental_X) 
 L2_norm = L2_sum**0.5 / len(Experimental_X)    
-print L1_norm, L2_norm
+
 Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
-
-print L1_norm
-print L2_norm
 
 if (Passed): 
     print ''
