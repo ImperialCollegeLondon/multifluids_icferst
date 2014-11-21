@@ -16,7 +16,6 @@ import os
 
 print 'Running the model'
 os.system("../../../../bin/multiphase_prototype BL_grav_fast.mpml")
-print 'Running complete, proceeding to compare against the analytical solution'
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 
 #A STRUCTURED MESH OF 30 ELEMENTS IN THE X-DIRECTION
 #IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
@@ -217,7 +216,6 @@ if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
 
 if (Passed): 
-    print ''
     print 'BL with gravity works OK'
 else:
     print 'BL with gravity does NOT work'

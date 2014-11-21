@@ -1687,14 +1687,15 @@ contains
 !            if( cv_nonods == x_nonods .or. .true. ) then ! a continuous pressure
 
 
-            
-            if (associated(pressure%mesh%halos)) then
-               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB',&
-               row_halo=pressure%mesh%halos(2),column_halo=pressure%mesh%halos(2))
-            else
-               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB')
-            end if
-            
+            !Old method to include the halos in CMC
+!            if (associated(pressure%mesh%halos)) then
+!               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB',&
+!               row_halo=pressure%mesh%halos(2),column_halo=pressure%mesh%halos(2))
+!            else
+!               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB')
+!            end if
+
+!call MatView(cmc_petsc%M,PETSC_VIEWER_STDOUT_SELF)
 !            cmat=wrap(sparsity,val=cmc,name="CMCMatrix_BOB")
 !            mat2=csr2petsc_csr(cmat)
 !            call deallocate(cmat)
@@ -1708,7 +1709,7 @@ contains
             call halo_update(p_all)
 
             call deallocate(rhs_p)
-            call deallocate(sparsity)
+!            call deallocate(sparsity)
             call deallocate(cmc_petsc)
 !               CALL SOLVER( CMC, DP, rhs_p%val, &
 !                    FINDCMC, COLCMC, &

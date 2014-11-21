@@ -16,7 +16,6 @@ import os
 
 print 'Running the model'
 os.system("../../../../bin/multiphase_prototype Grav_cap.mpml")
-print 'Running complete, proceeding to compare against the analytical solution'
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 
 #A STRUCTURED MESH OF 30 ELEMENTS IN THE X-DIRECTION
 #IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
@@ -218,7 +217,6 @@ if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
 
 if (Passed): 
-    print ''
     print 'Grav-cap works OK'
 else:
     print 'Grav-cap does NOT work'
