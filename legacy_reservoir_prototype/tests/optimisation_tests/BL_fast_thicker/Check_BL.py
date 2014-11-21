@@ -15,7 +15,9 @@ import os
 
 
 print 'Running the model'
-os.system("../../../../bin/multiphase_prototype BL_fast.mpml")
+path = os.getcwd()
+binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
+os.system(binpath + ' ' + path + '/*mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 
 #A STRUCTURED MESH OF 30 ELEMENTS IN THE X-DIRECTION
 #IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION

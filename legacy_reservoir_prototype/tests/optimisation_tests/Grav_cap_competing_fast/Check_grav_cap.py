@@ -13,12 +13,14 @@ from scipy import interpolate
 from scipy.interpolate import interp1d
 import os
 
-
+#THIS TEST MAY FAIL IF WE IMPROVE THE TIME-STEPPING ALGORITHM OR
+#THE MAXIMUM COURANT NUMBER
 print 'Running the model'
-os.system("../../../../bin/multiphase_prototype Grav_cap.mpml")
-#THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 
-#A STRUCTURED MESH OF 30 ELEMENTS IN THE X-DIRECTION
-#IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
+path = os.getcwd()
+binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
+os.system(binpath + ' ' + path + '/*mpml')
+#THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P1DGP1 AND 
+#TESTING GRAVITY AND CAPILLARY FORCES
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
