@@ -30,12 +30,15 @@
   module Compositional_Terms
     use fldebug
     use futils
+    use shape_functions
     use shape_functions_prototype
     use shape_functions_linear_quadratic
     use matrix_operations
     use Copy_Outof_State
     use futils, only: int2str
     use global_parameters, only: is_overlapping, is_compact_overlapping
+
+    implicit none
 
   contains
 

@@ -1,4 +1,8 @@
-prefix=/work/psalinas/MultiFluids_Dev/spatialindex-1.8.0/..
+<<<<<<< Updated upstream
+prefix=/home/chris01/multiphase-fluidity/fluidity-git/MultiFluids_Dev/spatialindex-1.8.0/..
+=======
+prefix=/home/pablo/Documents/workspace/MultiFluids_Dev/spatialindex-1.8.0/..
+>>>>>>> Stashed changes
 exec_prefix=${prefix}
 libdir=${exec_prefix}/lib
 includedir=${prefix}/include

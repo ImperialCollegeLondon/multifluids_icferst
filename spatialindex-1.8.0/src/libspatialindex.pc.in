@@ -1,12 +1,16 @@
-prefix=@prefix@
-exec_prefix=@exec_prefix@
-libdir=@libdir@
-includedir=@includedir@
+<<<<<<< Updated upstream
+prefix=/home/chris01/multiphase-fluidity/fluidity-git/MultiFluids_Dev/spatialindex-1.8.0/..
+=======
+prefix=/home/pablo/Documents/workspace/MultiFluids_Dev/spatialindex-1.8.0/..
+>>>>>>> Stashed changes
+exec_prefix=${prefix}
+libdir=${exec_prefix}/lib
+includedir=${prefix}/include
 
 Name: libspatialindex 
 Description: Generic C/C++ library for spatial indexing
 Requires: 
-Version: @PACKAGE_VERSION@
-Libs: -L@libdir@ @LDFLAGS@
-Cflags: -I${includedir}/spatialindex @CFLAGS@ @CPPFLAGS@
+Version: 1.8.0
+Libs: -L${exec_prefix}/lib 
+Cflags: -I${includedir}/spatialindex -Wall -Wno-long-long -pedantic  -D_GNU_SOURCE
 

@@ -563,8 +563,12 @@ start =
             element linearise_viscosity{ empty }?,
             ## linearise component for the bulk density calculation used in the momentum equation
             element linearise_component{ empty }?,
+            ## (Debug) Impose low order discretisation for everything
+            element Impose_first_order { comment }?,
             ## The equation of state
             equation_of_state?,
+	    ## The material rheological model
+	    rheology?,
             ## Pressure
             element scalar_field {
                attribute rank { "0" },
@@ -666,27 +670,141 @@ start =
                      ## (Recommended)
                      element Use_epsilon_method { comment }?
                   }
-                },
-               ## Option for capillary pressure
+                }?,
+		## Mark phase as being the continuous phase in dispersed fluid-fluid flow
+		element continuous_phase {
+		     comment
+		}?,
+		(
+		   element drag {
+		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
+			 attribute name { "Linear" },
+			 element diameter {real},
+			 element coefficient{real},
+			 comment
+		   }|
+		    element drag {
+		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
+			 attribute name { "Bilinear" },
+			 element diameter {real},
+			 element coefficient{real},
+			 comment
+		   }|
+		   element drag {
+		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
+			 attribute name { "Quadratic" },
+			 element diameter {real},
+			 element coefficient{real},
+			 comment
+		   }|element drag {
+		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
+			 attribute name { "Wen&Yu" },
+			 element diameter {real},
+			 element specified_continuum_viscosity{
+			 ## Specify a value for the continuum_phase_viscosity to be used in calculating the drag term. If this is not set, the code defaaults to using the actual viscosity field specfied in the description continuum phase
+			 real
+			 }?,
+			 comment
+		   }|element drag {
+		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
+			 attribute name { "Gidaspow" },
+			 element diameter {real},
+			 element coefficient{real},
+			 comment
+			  }|element drag {
+		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
+			 attribute name { "SmoothedGidaspow" },
+			 element diameter {real},
+			 element specified_continuum_viscosity{
+			 ## Specify a value for the continuum_phase_viscosity to be used in calculating the drag term. If this is not set, the code defaaults to using the actual viscosity field specfied in the description continuum phase
+			 real
+			 }?,
+			 comment
+		   }|element drag {
+		        ## Options controlling form of drag terms for dispersed fluid-particle interactions
+			 attribute name { "python_function" },
+			 element function {
+	 		 	  python_code
+		         },	  			  
+			element argument {
+			    attribute name { xsd:string },
+	    		(
+	    		element type {
+	      	   	    attribute name { "scalar_field"}
+	    		}|
+	    		element type {
+	      	   	    attribute name { "vector_field"}
+            		}|
+            		element type {	
+                   	    attribute name { "tensor_field"}
+	    		}),
+	    		element material_phase {
+		   	   attribute name {xsd:string}
+			}?
+	    		}+,
+			comment
+			}
+	       )?,
+	       ## apply fluidic drag to polydispersed phase interactions
+	       element polydispersive_drag {
+	       	  element lubrication_distace {real} ,
+		  comment
+	       }?,
+	       ## Apply additional solid-solid interactions in polydispersed solid-fluid flow
+	       element solid_solid_interactions {
+	            ## Turns on Syamlal (1987) closure 	 	  			 
+	            element closure {
+		        attribute name {"Syamlal"},
+		        element coefficient_of_friction {real},
+			element radial_distribution_function {
+			     attribute name {"Lebowitz"},
+			     comment
+			},	
+		    	comment}?,
+		    comment
+	       }?,
+	       element coarse_graining {integer}?,	      
+               ## Option for capillary pressure				 
                element capillary_pressure {
-                  ## Brookes-Corey equation
+                  ## Brooks-Corey equation
                   ##
                   ## Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a
-                  element type_Brookes_Corey {
-                     element phase {
-                        ## Specify the phase to which these values relate
-                        attribute material_phase_name { xsd:string },
-                        ## multiplier c
-                        element c {real},
-                        ## exponent a
-                        element a {real}
-                     }+
-                  },
-                   ## Project the capillary pressure (CV) to FEM.
-                     element Proj_capi_to_FEM { comment }?
+                  ## You should specify this ONLY for the wetting phase
+                  element type_Brooks_Corey {
+                    ## Entry pressure of the formula
+                    element scalar_field {
+                       attribute name { "C" },
+                       (
+                          element prescribed {
+                             velocity_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    },
+                    ## exponent -a
+                    element scalar_field {
+                       attribute name { "a" },
+                       (
+                          element prescribed {
+                             velocity_mesh_choice,
+                             prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
+                          }
+                       )
+                    }}
                }?,
                ## Immobile volume of fluid phase
-               element immobile_fraction {real}?
+               element immobile_fraction {real}?,
+               ## Introduce artificial diffusion in the transport equation. 
+               ## It is treated as a Capillary pressure term. The input value is the entry pressure.
+               ## Recommended value: Two orders of magnitude smaller that the Pressure of the system.
+               ## You should specify this ONLY for the wetting phase
+               element Pe_stab {real}?
             }?
          }+,
          mesh_adaptivity_options?,
@@ -2802,6 +2920,20 @@ scalar_field_choice =
                    generic_aliased_field
                 }
              )
+         }|
+         element scalar_field {
+             attribute rank { "0" },
+             attribute name { "DummyT" },
+             (
+                element diagnostic {
+                   internal_algorithm,
+                   velocity_mesh_choice,
+                   diagnostic_scalar_field
+                }|
+                element aliased {
+                   generic_aliased_field
+                }
+             )
          }
 # Insert new diagnostic scalar fields here using the template:
 #        element scalar_field {
@@ -3964,3 +4096,47 @@ element equation_of_state{
 }
                   )
                )
+
+rheology =
+   (
+      (
+         ## Specify rheologival model for this materal
+         element rheology{
+	    (
+	       ## Newtonian material with single coefficient of viscosity
+               element newtonian {
+		  element tensor_field {
+		     attribute name { "Viscosity" },
+		      element prescribed {
+		        velocity_mesh_choice,
+			prescribed_values_tensor_field,
+		        prescribed_output_options
+                     }
+                  }
+	       }  |
+	       	  ## Models including power law and Herschel-Bulkley	
+               element non_newtonian {
+    	          attribute name { "ShearDependent"},
+		  element yield_stress { real }?,
+		  element exponent { real },
+		  element consistency_index { real },
+		  element tolerance { real }?,
+		  element lower_bound { real }?,
+		  element upper_bound { real }?,
+		  element tensor_field {
+		     attribute name { "Viscosity" },
+		     element diagnostic {
+		        velocity_mesh_choice,
+		        prescribed_output_options
+                     }
+                  }
+               } 
+             )
+         }
+)
+)
+
+		  
+
+	         
+	 

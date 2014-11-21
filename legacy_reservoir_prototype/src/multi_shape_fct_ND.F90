@@ -41,7 +41,7 @@
     use state_module
     use spud
     use global_parameters, only: option_path_len, is_overlapping
-    use Fields_Allocates, only : allocate
+    use Fields_Allocates, only : allocate, make_mesh
     use fields_data_types, only: mesh_type, scalar_field
     use multiphase_caching, only: cache_level, reshape_vector2pointer
 
@@ -838,6 +838,9 @@
       !      integer, PARAMETER :: whole_ele_surface_order=1
       !      integer, PARAMETER :: whole_ele_surface_order=2
 
+! new quadratic element quadrature by James and Zhi and Chris:
+      logical, PARAMETER :: NEW_QUADRATIC_ELE_QUADRATURE = .FALSE.
+
       integer :: U_NLOC2
       character( len = option_path_len ) :: overlapping_path
 
@@ -1045,6 +1048,15 @@
                if (surface_order==1) sbcvngi = 12 ! 1x12 (sngi x cv_faces)
                if (surface_order==2) scvngi = 48*4 ! 6x8x4 (cv_faces x hexs x sngi)
                if (surface_order==2) sbcvngi = 12*4 ! 4x12 (sngi x cv_faces)
+
+               if( NEW_QUADRATIC_ELE_QUADRATURE ) then
+! new 1 pt quadrature...
+                  cv_ngi=10
+                  scvngi = 60 - 24
+!                  scvngi = 60
+!                  if (surface_order==1) sbcvngi = 12
+                  sbcvngi = 6
+               endif
 
             endif
          case default; FLExit(" Invalid integer for cv_nloc ")
@@ -1254,10 +1266,10 @@
       if (ELE == totele) indx = abs(indx)
       !#########Storing area finished########################
 
-         D1 = (NDIM == 1); D3 = (NDIM == 3)
-         call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, TOTELE, NONODS, NLOC, NGI, &
-         N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-         NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
+      D1 = (NDIM == 1); D3 = (NDIM == 3)
+      call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, TOTELE, NONODS, NLOC, NGI, &
+      N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+      NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
 
       !Store data into state
       LELE=merge(ele,1,btest(cache_level,0))
@@ -1265,6 +1277,7 @@
       Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
       state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)=&
       reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI), [NDIM*NLOC*NGI])
+
 
       end subroutine DETNLXR_plus_storage
 
@@ -1463,13 +1476,13 @@
          end if
          !Get mesh file just to be able to allocate the fields we want to store
          fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
-         Auxmesh = fl_mesh
+         Auxmesh = make_mesh(fl_mesh,name='StorageMesh')
          !The number of nodes I want does not coincide
          Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*NLOC*NGI*NDIM &
          +merge(totele,1,btest(cache_level,1))*NDIM*NDIM*NGI &
          +merge(totele,1,btest(cache_level,2))*NGI*2 + totele
 
-         call allocate (Targ_NX_ALL, Auxmesh)
+         call allocate (Targ_NX_ALL, Auxmesh, StorName)
          
          !Now we insert them in state and store the indexes
          call insert(state(1), Targ_NX_ALL, StorName)
@@ -1479,12 +1492,15 @@
          indx = -size(state(1)%scalar_fields)
 
          call deallocate (Targ_NX_ALL)
+         call deallocate (Auxmesh)
       end if
        !Get from state, indx is an input
        if (btest(cache_level,0)) then
          from = 1+NDIM*NLOC*NGI*(ELE-1); to = NDIM*NLOC*NGI*ELE
          call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
          NX_ALL, NDIM, NLOC, NGI)
+!         NX_ALL(1:NDIM,1:NLOC,1:NGI) => &
+!              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = NDIM*NLOC*NGI*totele
          from = jump + 1+(ELE-1)*(NGI+NDIM*NDIM); to = jump + ELE*(NGI*NDIM*NDIM)
          call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
@@ -1545,6 +1561,7 @@
          reshape(INV_JAC(1:NDIM,1:NDIM,1:NGI),[NDIM*NDIM*NGI])
       end if
 
+
     END SUBROUTINE DETNLXR_INVJAC_plus_storage
 
 
@@ -1596,8 +1613,8 @@
             !
             do  L=1,NLOC! Was loop 79
                IGLX=XONDGL((ELE-1)*NLOC+L)
-               ewrite(3,*)'xndgln, x, nl:', &
-                    iglx, l, x(iglx), y(iglx), z(iglx), NLX(L,GI), NLY(L,GI), NLZ(L,GI)
+               !ewrite(3,*)'xndgln, x, nl:', &
+               !     iglx, l, x(iglx), y(iglx), z(iglx), NLX(L,GI), NLY(L,GI), NLZ(L,GI)
                ! NB R0 does not appear here although the z-coord might be Z+R0.
                AGI=AGI+NLX(L,GI)*X(IGLX)
                BGI=BGI+NLX(L,GI)*Y(IGLX)
@@ -1618,7 +1635,7 @@
             DETWEI(GI)=ABS(DETJ)*WEIGHT(GI)
             RA(GI)=1.0
             VOLUME=VOLUME+DETWEI(GI)
-            ewrite(3,*)'gi, detj, weight(gi)', gi, detj, weight(gi)
+            !ewrite(3,*)'gi, detj, weight(gi)', gi, detj, weight(gi)
             rsum = rsum + detj
             rsumabs = rsumabs + abs( detj )
             ! For coefficient in the inverse mat of the jacobian.
@@ -2450,6 +2467,134 @@
 
 
 
+    subroutine new_pt_qua_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
+         n, nlx, nly, nlz, &
+         un, unlx, unly, unlz )
+! new 1 pt quadrature set for quadratic tetrahedra .....
+      ! Compute shape functions N, UN etc for linear trianles. Shape functions 
+      ! associated with volume integration using both CV basis functions CVN, as 
+      ! well as FEM basis functions N (and its derivatives NLX, NLY, NLZ). Also 
+      ! for velocity basis functions UN, UNLX, UNLY, UNLZ.
+      implicit none
+      integer, intent( in ) :: cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc
+      real, dimension( :, : ), intent( inout ) :: cvn
+      real, dimension( : ), intent( inout ) :: cvweigh
+      real, dimension( :, : ), intent( inout ) :: n, nlx, nly, nlz
+      real, dimension( :, : ), intent( inout ) :: un, unlx, unly, unlz
+      ! Local variables
+      integer, dimension( : ), allocatable :: x_ndgln, fem_nod, x_ndgln_ideal
+      real, dimension( : ), allocatable :: lx, ly, lz, x, y, z, cvweigh_dummy, &
+           x_ideal, y_ideal, z_ideal
+      real, dimension( : ), allocatable :: quad_l1, quad_l2, quad_l3, quad_l4, &
+           rdummy
+      integer, parameter :: max_totele = 10000, max_x_nonods = 10000
+      logical :: d1, dcyl, d3
+      integer :: ele, quad_cv_ngi, quad_cv_nloc, totele, x_nonods, &
+           cv_gj, cv_gk, cv_iloc, cv_gi, totele_sub, gi_max, gi
+      real :: rsum, rmax
+
+      !ewrite(3,*)'In vol_cv_tri_tet_shape'
+
+      if(cv_ngi.ne.10) then
+         print *,'the wrong number of quadrature points'
+      endif
+
+      d1 = ( ndim == 1 )
+      dcyl = .false.
+      d3 = ( ndim == 3 )
+
+      if( d3 ) then
+         Select Case( cv_nloc )
+         case( 4 ) ;  quad_cv_nloc = 8  ! Linear tetrahedron
+         case( 10 ) ; quad_cv_nloc = 27 ! Quadratic tetrahedron
+         case default; FLExit( "Wrong integer for CV_NLOC" )
+         end Select
+      else
+         Select Case( cv_nloc )
+         case( 3 ) ;  quad_cv_nloc = 4  ! Linear triangle
+         case( 6 ) ; quad_cv_nloc = 9 ! Quadratic triangle
+         case default; FLExit( "Wrong integer for CV_NLOC" )
+         end Select
+      endif
+
+      ! Allocating memory
+      allocate( quad_l1( cv_ngi ) ) ; quad_l1 = 0.
+      allocate( quad_l2( cv_ngi ) ) ; quad_l2 = 0.
+      allocate( quad_l3( cv_ngi ) ) ; quad_l3 = 0.
+      allocate( quad_l4( cv_ngi ) ) ; quad_l4 = 0.
+      allocate( rdummy( cv_ngi ) ) ; rdummy = 0.
+
+!
+!Volumetric points
+!Node :  quadrature point  :   volume
+!A: : [ 0.07986111  0.07986111  0.07986111  0.76041667] 0.005208
+!B: : [ 0.38839286  0.11160714  0.11160714  0.38839286] 0.024306
+!C: : [ 0.76041667  0.07986111  0.07986111  0.07986111] 0.005208
+!D: : [ 0.11160714  0.38839286  0.11160714  0.38839286] 0.024306
+!E: : [ 0.38839286  0.38839286  0.11160714  0.11160714] 0.024306
+!F: : [ 0.07986111  0.76041667  0.07986111  0.07986111] 0.005208
+!G: : [ 0.11160714  0.11160714  0.38839286  0.38839286] 0.024306
+!H: : [ 0.38839286  0.11160714  0.38839286  0.11160714] 0.024306
+!I: : [ 0.11160714  0.38839286  0.38839286  0.11160714] 0.024306
+!J: : [ 0.07986111  0.07986111  0.76041667  0.07986111] 0.005208
+
+  quad_l1(1) = 0.07986111;  quad_l2(1) = 0.07986111;  quad_l3(1) = 0.07986111;  quad_l4(1) = 0.76041667
+  quad_l1(2) = 0.38839286;  quad_l2(2) = 0.11160714;  quad_l3(2) = 0.11160714;  quad_l4(2) = 0.38839286
+  quad_l1(3) = 0.76041667;  quad_l2(3) = 0.07986111;  quad_l3(3) = 0.07986111;  quad_l4(3) = 0.07986111
+  quad_l1(4) = 0.11160714;  quad_l2(4) = 0.38839286;  quad_l3(4) = 0.11160714;  quad_l4(4) = 0.38839286
+  quad_l1(5) = 0.38839286;  quad_l2(5) = 0.38839286;  quad_l3(5) = 0.11160714;  quad_l4(5) = 0.11160714
+  quad_l1(6) = 0.07986111;  quad_l2(6) = 0.76041667;  quad_l3(6) = 0.07986111;  quad_l4(6) = 0.07986111
+  quad_l1(7) = 0.11160714;  quad_l2(7) = 0.11160714;  quad_l3(7) = 0.38839286;  quad_l4(7) = 0.38839286 
+  quad_l1(8) = 0.38839286;  quad_l2(8) = 0.11160714;  quad_l3(8) = 0.38839286;  quad_l4(8) = 0.11160714
+  quad_l1(9) = 0.11160714;  quad_l2(9) = 0.38839286;  quad_l3(9) = 0.38839286;  quad_l4(9) = 0.11160714
+  quad_l1(10)= 0.07986111;  quad_l2(10)= 0.07986111;  quad_l3(10)= 0.76041667;  quad_l4(10)= 0.07986111
+
+  cvweigh(1) = 0.005208
+  cvweigh(2) = 0.024306
+  cvweigh(3) = 0.005208
+  cvweigh(4) = 0.024306
+  cvweigh(5) = 0.024306
+  cvweigh(6) = 0.005208
+  cvweigh(7) = 0.024306
+  cvweigh(8) = 0.024306
+  cvweigh(9) = 0.024306
+  cvweigh(10)= 0.005208
+
+! scale taking into account we have a volume of 1./6. of the tet
+  cvweigh(:) = cvweigh(:) / ( 1./6. )  
+
+
+      ! Now determine the basis functions and derivatives at the 
+      ! quadrature pts quad_L1, quad_L2, quad_L3, quad_L4, etc
+      call shatri_hex( quad_l1, quad_l2, quad_l3, quad_l4, rdummy, d3, &
+           cv_nloc, cv_ngi, n, nlx, nly, nlz, &
+           .true. )
+
+! calculate cvn based on maximum value of n: 
+      cvn=0.0 
+      do cv_iloc=1,cv_nloc
+         rmax=-1.e+10
+         gi_max=0
+         do gi=1,cv_ngi
+            if(n(cv_iloc,gi).gt.rmax) then
+               rmax=n(cv_iloc,gi)
+               gi_max=gi
+            endif
+         end do
+         cvn(cv_iloc,gi_max)=1.0
+      end do
+
+      ! Now determine the basis functions and derivatives at the 
+      ! quadrature pts quad_L1, quad_L2, quad_L3, quad_L4, etc
+      call shatri_hex( quad_l1, quad_l2, quad_l3, quad_l4, rdummy, d3, &
+           u_nloc, cv_ngi, un, unlx, unly, unlz, &
+           .true. )
+
+      return
+    end subroutine new_pt_qua_vol_cv_tri_tet_shape
+
+
+
     subroutine test_quad_tet( cv_nloc, cv_ngi, cvn, n, nlx, nly, nlz, &
                        cvweight, x, y, z, x_nonods, x_ndgln2, totele )
 ! test the volumes of idealised triangle 
@@ -2999,10 +3144,102 @@
       integer, dimension( :,: ), allocatable :: cv_neiloc_cells_dummy
       real, dimension( : ), allocatable :: lx, ly, lz, x, y, z, scvfeweigh_dummy, &
            x_ideal, y_ideal, z_ideal
+      real, dimension( : ), allocatable :: l1, l2, l3, l4,  rdummy, normx, normy, normz, sarea, X_LOC, Y_LOC, Z_LOC
+      real, dimension( : ), allocatable :: T1X, T1Y, T1Z,   T2X, T2Y, T2Z, SCVDET
       logical :: d1, dcyl, d3
-      integer :: x_nonods, totele, ele, cv_iloc, quad_cv_ngi, quad_cv_nloc, inod
+      integer :: x_nonods, totele, ele, cv_iloc, quad_cv_ngi, quad_cv_nloc, inod, sgi
+      real, dimension( : ), allocatable ::  BI_NORMAL, TANGENT_VEC
+! new quadratic element quadrature by James and Zhi and Chris:
+      logical, PARAMETER :: NEW_QUADRATIC_ELE_QUADRATURE = .FALSE.
+      real :: DXDLX,DXDLY, DYDLX,DYDLY, DZDLX,DZDLY 
+      real :: A,B,C
 
       !ewrite(3,*)' In vol_cv_tri_shape'
+
+
+      if( (ndim==3).and.(cv_nloc==10).and.NEW_QUADRATIC_ELE_QUADRATURE) then
+
+         ALLOCATE( NORMX(scvngi), NORMY(scvngi), NORMZ(scvngi))
+         ALLOCATE( T1X(scvngi), T1Y(scvngi), T1Z(scvngi))
+         ALLOCATE( T2X(scvngi), T2Y(scvngi), T2Z(scvngi))
+         ALLOCATE( SCVDET(scvngi))
+
+         ALLOCATE( l1(scvngi), l2(scvngi), l3(scvngi), l4(scvngi) )
+         ALLOCATE( rdummy(scvngi), normx(scvngi), normy(scvngi), normz(scvngi) )
+         ALLOCATE( X_LOC(CV_NLOC), Y_LOC(CV_NLOC), Z_LOC(CV_NLOC) )
+
+         call james_quadrature_quad_tet(l1, l2, l3, l4,  normx, normy, normz, sarea, &
+                                        X_LOC, Y_LOC, Z_LOC, CV_NEILOC, cv_nloc, scvngi)
+! scale taking into account we have a volume of 1./6. of the tet
+         sarea=sarea/ (  (1./6.)*0.6666666666  )
+
+! determine th tangent and bi-normal vectors from the normal NormX,NormY,NormZ: 
+       CALL GET_TANG_BINORM(NormX,NormY,NormZ, T1X,T1Y,T1Z, T2X,T2Y,T2Z, scvngi)
+
+! Determin the shape function derivatives at the quadrature points: scvfenlx, scvfenly, scvfenlz. 
+
+      call shatri_hex( l1, l2, l3, l4, rdummy, d3, &
+           cv_nloc, scvngi, scvfen, scvfenlx, scvfenly, scvfenlz, &
+           .true. )
+
+      call shatri_hex( l1, l2, l3, l4, rdummy, d3, &
+           u_nloc, scvngi, sufen, sufenlx, sufenly, sufenlz, &
+           .true. )
+
+
+! find the BI_NORMAL, TANGENT_VEC to the surface at the quadrature points. 
+      do sgi=1,scvngi
+         scvfenslx(:,sgi) = T1X(sgi)*scvfenlx(:,sgi) + T1Y(sgi)*scvfenly(:,sgi) + T1Z(sgi)*scvfenlz(:,sgi)
+         scvfensly(:,sgi) = T2X(sgi)*scvfenlx(:,sgi) + T2Y(sgi)*scvfenly(:,sgi) + T2Z(sgi)*scvfenlz(:,sgi)
+
+         sufenslx(:,sgi) = T1X(sgi)*sufenlx(:,sgi) + T1Y(sgi)*sufenly(:,sgi) + T1Z(sgi)*sufenlz(:,sgi)
+         sufensly(:,sgi) = T2X(sgi)*sufenlx(:,sgi) + T2Y(sgi)*sufenly(:,sgi) + T2Z(sgi)*sufenlz(:,sgi)
+      end do
+
+! calculate the determinant so we can re-scale the weights to get the right surface area
+     
+      do sgi=1,scvngi
+         DXDLX = 0.0; DXDLY = 0.0
+         DYDLX = 0.0; DYDLY = 0.0
+         DZDLX = 0.0; DZDLY = 0.0
+
+         do CV_ILOC = 1, CV_NLOC
+            DXDLX = DXDLX + scvfenslx(CV_ILOC,SGI)*X_LOC(CV_ILOC)
+            DXDLY = DXDLY + scvfenslY(CV_ILOC,SGI)*X_LOC(CV_ILOC) 
+            DYDLX = DYDLX + scvfenslx(CV_ILOC,SGI)*Y_LOC(CV_ILOC) 
+            DYDLY = DYDLY + scvfenslY(CV_ILOC,SGI)*Y_LOC(CV_ILOC) 
+            DZDLX = DZDLX + scvfenslx(CV_ILOC,SGI)*Z_LOC(CV_ILOC) 
+            DZDLY = DZDLY + scvfenslY(CV_ILOC,SGI)*Z_LOC(CV_ILOC) 
+         end do
+
+         A = DYDLX*DZDLY - DYDLY*DZDLX
+         B = DXDLX*DZDLY - DXDLY*DZDLX
+         C = DXDLX*DYDLY - DXDLY*DYDLX
+
+       !
+       !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
+       !     
+
+         SCVDET(SGI) = SQRT( A**2 + B**2 + C**2 )
+       END DO
+
+! re-scale the weight so that we get the correct aurface area. 
+!         SCVFEWEIGH(:) = SAREA(:) /  SCVDET(:) 
+         SCVFEWEIGH(:) = SAREA(:)
+
+! re-scale the derivatives so that we get the correct aurface area. 
+      do sgi=1,scvngi
+         scvfenslx(:,sgi) = scvfenslx(:,sgi) / SCVDET(sgi) 
+         scvfensly(:,sgi) = scvfensly(:,sgi) / SCVDET(sgi) 
+
+         sufenslx(:,sgi) = sufenslx(:,sgi) / SCVDET(sgi) 
+         sufensly(:,sgi) = sufensly(:,sgi) / SCVDET(sgi) 
+      end do
+
+          
+! finished quadratic tet. 
+         return
+      endif
 
       d1 = ( ndim == 1 )
       dcyl = .false.
@@ -3128,6 +3365,85 @@
 
       return
     end subroutine suf_cv_tri_tet_shape
+
+
+
+       subroutine james_quadrature_quad_tet(l1, l2, l3, l4,  normx, normy, normz, sarea, &
+                                            X_LOC, Y_LOC, Z_LOC, CV_NEILOC, cv_nloc, scvngi)
+       implicit none
+       integer, intent( in ) :: scvngi, cv_nloc
+       real, intent( inout ) :: l1( scvngi ), l2( scvngi ), l3( scvngi ), l4( scvngi ),  & 
+                                normx( scvngi ), normy( scvngi ), normz( scvngi ), sarea( scvngi )
+       real, intent( inout ) :: X_LOC( cv_nloc ), Y_LOC( cv_nloc ), Z_LOC( cv_nloc )
+       integer, dimension( cv_nloc, scvngi ), intent( inout ) :: CV_NEILOC
+! the surface quadrature pts in local coord are l1, l2, l3, l4,  
+! and the associated normals normx, normy, normz  and the surface area is sarea
+! The position of the nodes of the tet are: (X_LOC, Y_LOC, Z_LOC)
+! Calculate cv_neiloc:
+! To get the neighbouring node for node ILOC and surface quadrature point SGI
+!               CV_JLOC = CV_NEILOC( CV_ILOC, SGI )
+! The number of quadrature points is 24 = 4 x 6 exterior faces (and quadrature points) and  36 = 4x6 + 6x4/2  = 60 pts. 
+       return
+       end subroutine james_quadrature_quad_tet
+
+
+
+
+
+
+
+
+       SUBROUTINE GET_TANG_BINORM(NX,NY,NZ, T1X,T1Y,T1Z, T2X,T2Y,T2Z, NNODRO)
+       implicit none
+       INTEGER, intent( in ) ::  NNODRO
+       REAL, intent( in ) :: NX( NNODRO ),NY( NNODRO ),NZ( NNODRO )
+       REAL, intent( inout ) :: T1X( NNODRO ),T1Y( NNODRO ),T1Z( NNODRO ), &
+                                T2X( NNODRO ),T2Y( NNODRO ),T2Z( NNODRO )
+
+       INTEGER :: II
+       REAL :: RN1, RN2, RN3, RN
+
+       do  II=1,NNODRO! Was loop 20
+            RN1=SQRT(NX(II)**2 + NY(II)**2)
+            RN2=SQRT(NY(II)**2 + NZ(II)**2)
+            RN3=SQRT(NX(II)**2 + NZ(II)**2)
+
+            IF(RN1.GE.MAX(RN2,RN3)) THEN
+               RN=SQRT(NX(II)**2 + NY(II)**2)
+               T1X(II)=NY(II)/RN
+               T1Y(II)=-NX(II)/RN
+               T1Z(II)=0.
+!
+               T2X(II)=NX(II)*NZ(II)/RN
+               T2Y(II)=NY(II)*NZ(II)/RN
+               T2Z(II)=-RN
+! Normal approx alighned with z-axis
+            ELSE IF(RN2.GE.MAX(RN1,RN3)) THEN
+               RN=SQRT(NY(II)**2 + NZ(II)**2)
+               T1X(II)=0.
+               T1Y(II)= NZ(II)/RN
+               T1Z(II)=-NY(II)/RN
+!
+               T2X(II)=-RN
+               T2Y(II)=NX(II)*NY(II)/RN
+               T2Z(II)=NX(II)*NZ(II)/RN
+            ELSE
+! Normal approx alighned with x-axis as well
+! the thing to use here...
+                RN=SQRT(NX(II)**2 + NZ(II)**2)
+                T1X(II)=-NZ(II)/RN
+                T1Y(II)=0.
+                T1Z(II)= NX(II)/RN
+
+                T2X(II)= NX(II)*NY(II)/RN
+                T2Y(II)=-RN
+                T2Z(II)= NY(II)*NZ(II)/RN
+             ENDIF
+       end do ! Was loop 20
+       return
+       END subroutine GET_TANG_BINORM
+
+
 
 
     subroutine Compute_SurfaceShapeFunctions_Triangle_Tetrahedron( &
@@ -6322,7 +6638,7 @@
       !ewrite(3,*)' In Make_QTets'
 
 !!!
-!!! Setting up unity area quadratic tetrahedron
+!!! Setting up unity volume quadratic tetrahedron
 !!!
       ! Level 2 (basis of the tetrahedron )
       lx( 1 ) = 0.
@@ -7060,7 +7376,7 @@
       logical :: LOWQUA,d3
       REAL :: RUB(1000)
 
-      !ewrite(3,*)'just inside SHAPE_one_ele' 
+      ewrite(3,*)'just inside SHAPE_one_ele' 
 !      stop 7299
 
       LOWQUA=.false.
@@ -7218,7 +7534,6 @@
      LOGICAL, INTENT(IN)::D3
      
      INTEGER IPOLY,IQADRA,gi,gj,ggi,i,j,ii
-     
      !ewrite(3,*)'inside shape LOWQUA,NGI,NLOC,MLOC, SNGI,SNLOC,SMLOC:', &
      !                      LOWQUA,NGI,NLOC,MLOC, SNGI,SNLOC,SMLOC
      !ewrite(3,*)'NWICEL,d3:',NWICEL,d3
@@ -7507,7 +7822,7 @@
       !ewrite(3,*) 'HERE 2'
 
       IF((NLOC.NE.3).OR.(NGI.NE.3)) THEN
-          !ewrite(3,*)'PROBLEM IN TR2D NLOC,NGI:',NLOC,NGI
+          ewrite(3,*)'PROBLEM IN TR2D NLOC,NGI:',NLOC,NGI
           stop 282
       ENDIF
 

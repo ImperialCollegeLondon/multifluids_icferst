@@ -37,13 +37,21 @@
     use diagnostic_fields_new, only : &
          calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
          check_diagnostic_dependencies
-
+    use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
+                               simulation_start_wall_time, &
+                               topology_mesh_name, current_time, is_overlapping, is_compact_overlapping
+    use fldebug
+    use reference_counting
     use state_module
+    use fields
+    use field_options
+    use fields_allocates
     use spud
     use signal_vars
     use populate_state_module
     use vector_tools
     use global_parameters
+    use memory_diagnostics
 
 !!$ Modules required by adaptivity
     use qmesh_module
@@ -63,14 +71,16 @@
     use multiphase_EOS
     use multiphase_fractures
     use multiphase_caching, only: set_caching_level, cache_level
+    use shape_functions_Linear_Quadratic
+    use Compositional_Terms
     use Copy_Outof_State
     use Copy_BackTo_State
     use cv_advection, only : cv_count_faces
     use multiphase_1D_engine 
 
-#ifdef HAVE_ZOLTAN
-  use zoltan
-#endif
+    use multiphase_fractures
+    use boundary_conditions_from_options
+    USE multiphase_rheology
 
 
 #ifdef HAVE_ZOLTAN
@@ -83,7 +93,10 @@
 
     implicit none
     private
-    public :: MultiFluids_SolveTimeLoop
+    public :: MultiFluids_SolveTimeLoop, rheology
+
+
+    type(rheology_type), dimension(:), allocatable :: rheology 
 
   contains
 
@@ -225,7 +238,7 @@
       integer :: checkpoint_number
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-      integer, dimension (31) :: StorageIndexes
+      integer, dimension (33) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
       !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
       !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
@@ -238,6 +251,7 @@
       !DETNLXR_PLUS_U_WITH_STORAGE   : 14
       !Indexes used in SURFACE_TENSION_WRAPPER (deprecated and will be removed):[15,30]
       !PROJ_CV_TO_FEM_state          : 31 (disabled)
+      !Capillary pressure            : 32 (Pe), 33 (exponent a)
 
       !Working pointers
       real, dimension(:,:), pointer :: SAT_s, OldSAT_s, FESAT_s
@@ -264,11 +278,19 @@
 
       !Read info for adaptive timestep based on non_linear_iterations
 
+
+      if(use_sub_state()) then
+         call populate_sub_state(state,sub_state)
+      end if
+
     !! JRP changes to make a multiphasic state
       call pack_multistate(state,packed_state,multiphase_state,&
            multicomponent_state)
+      call set_boundary_conditions_values(state, shift_time=.true.)
 
       call set_caching_level()
+
+!      call initialize_rheologies(state,rheology)
 
     !Get from packed_state
     call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
@@ -287,10 +309,6 @@
 
       Repeat_time_step = .false.!Initially has to be false
       nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear')
-
-!     !If adaptive time_stepping then we need to create backup_state
-!    if (nonLinearAdaptTs)  call pack_multistate(state,backup_state,multiphase_state,&
-!           multicomponent_state)
 
 !!$ Compute primary scalars used in most of the code
       call Get_Primary_Scalars( state, &         
@@ -554,10 +572,8 @@
          if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
               have_component_field = .true.
 !!$
- if( have_temperature_field ) then
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
-      end if
 
          if( have_component_field ) then
             call get_option( '/material_phase[' // int2str( istate - 1 ) // 'scalar_field::' // &
@@ -599,7 +615,19 @@
       Loop_Time: do
 !!$
 
-!print *, '    NEW DT', itime+1
+         ewrite(2,*) '    NEW DT', itime+1
+
+
+         sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
+
+         if (do_checkpoint_simulation(dtime)) then
+            call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                 protect_simulation_name=.true.,file_type='.mpml')
+            checkpoint_number=checkpoint_number+1
+         end if
+         dtime=dtime+1
+
+
 
          itime = itime + 1
          timestep = itime
@@ -650,18 +678,6 @@
 
          porosity_field=>extract_scalar_field(packed_state,"Porosity")
 
-!! Temporal working array:
-         DO CV_INOD = 1, CV_NONODS
-            DO IPHASE = 1, NPHASE
-               DO ICOMP = 1, NCOMP
-                  MFC_s%val(ICOMP, IPHASE, CV_INOD) = &
-                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS )
-                  MFCOLD_s%val(ICOMP, IPHASE, CV_INOD) = &         
-                      COMPONENT_OLD( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS )
-               END DO
-            END DO
-         END DO
-
          ! evaluate prescribed fields at time = current_time+dt
          call set_prescribed_field_values( state, exclude_interpolated = .true., &
               exclude_nonreprescribed = .true., time = acctim )
@@ -682,8 +698,9 @@
 !!$ Start non-linear loop
          Loop_NonLinearIteration: do  its = 1, NonLinearIteration
 
-!print *, '  NEW ITS', its
+         ewrite(2,*) '  NEW ITS', its
 
+          call calculate_rheologies(state,rheology)
         !To force the recalculation of all the stored variables uncomment the following line:
 !        call Clean_Storage(state, StorageIndexes)
 
@@ -705,16 +722,6 @@
 
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
-
-
-            if( its == 1 ) then
-               DOLD_s%val = D_s%val
-               if( have_component_field ) then
-                  DCOLD_s%val = DC_s%val
-                  MFCOLD_s%val = MFC_s%val
-               end if
-
-            end if
 
             if( solve_force_balance ) then
                call Calculate_AbsorptionTerm( state, packed_state,&
@@ -840,7 +847,7 @@
                     StorageIndexes=StorageIndexes )
 
                if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) )then
-                  call calculate_capillary_pressure( state, packed_state, .true.)
+                  call calculate_capillary_pressure( state, packed_state, .true., StorageIndexes)
                end if
 
 
@@ -1038,10 +1045,6 @@
                           theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                           StorageIndexes=StorageIndexes, icomp=icomp, saturation=saturation_field )
 
-                   Component( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods )  &
-!                       =min(  max(Component( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ),0.0), 0.95) 
-                       =min(  max(Component( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ),0.0), 1.0) 
-
                   end do Loop_NonLinearIteration_Components
 
                   sum_theta_flux = sum_theta_flux + theta_flux
@@ -1061,40 +1064,29 @@
                end do Loop_Components
 
 !! Temporal working array:
-         DO CV_INOD = 1, CV_NONODS
-            DO IPHASE = 1, NPHASE
-               DO ICOMP = 1, NCOMP
-                  MFC_s%val(ICOMP, IPHASE, CV_INOD) = &
-                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS )
-               END DO
-            END DO
-         END DO
+!         DO CV_INOD = 1, CV_NONODS
+!            DO IPHASE = 1, NPHASE
+!               DO ICOMP = 1, NCOMP
+!                  MFC_s%val(ICOMP, IPHASE, CV_INOD) = &
+!                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS )
+!               END DO
+!            END DO
+!         END DO
 
 
                if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // & 
                     ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
                   ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
-!                  DO I = 1, CV_NONODS * NPHASE * NCOMP
-!                     COMPONENT( I ) = MIN( MAX( COMPONENT( I ), 0. ), 1. )
-!                  END DO
-                   MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
+                  MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
 
                   ALLOCATE( RSUM( NPHASE ) )
                   DO CV_INOD = 1, CV_NONODS
                      RSUM = 0.0
                      DO IPHASE = 1, NPHASE
                         RSUM( IPHASE ) = SUM (MFC_s % val (:, IPHASE, CV_INOD) )
-!                        DO ICOMP = 1, NCOMP
-!                           RSUM( IPHASE ) = RSUM( IPHASE ) + &
-!                                COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS )
-!                        END DO
                      END DO
                      DO IPHASE = 1, NPHASE
                         MFC_s % val (:, IPHASE, CV_INOD) = MFC_s % val (:, IPHASE, CV_INOD) / RSUM( IPHASE )
-!                        DO ICOMP = 1, NCOMP
-!                           COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS ) = &
-!                                COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS ) / RSUM( IPHASE )
-!                        END DO
                      END DO
                   END DO
                   DEALLOCATE( RSUM )
@@ -1128,7 +1120,6 @@
                            ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = &
                                 ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) - &
                                 Component_Absorption( CV_NODI, IPHASE, JPHASE ) * &
-!                                Component( CV_NODI + ( JPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS ) / &
                                 MFC_s%val(ICOMP, JPHASE, CV_NODI) / &
                                 DC_s%val( icomp, iphase, cv_nodi  )
                         END DO
@@ -1140,7 +1131,6 @@
                      DO CV_NODI = 1, CV_NONODS
                         ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = &
                              ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) &
-!                             + Mean_Pore_CV( CV_NODI ) * Component_Old( CV_NODI + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS ) &
                              + Mean_Pore_CV( CV_NODI ) * MFCOLD_s%val(ICOMP, IPHASE, CV_NODI) &
                              * ( DCOLD_s%val( ICOMP, IPHASE, CV_NODI ) - DC_s%val( ICOMP, IPHASE, CV_NODI) ) &
                              * OldSAT_s( IPHASE, CV_NONODS ) &
@@ -1158,14 +1148,14 @@
                end if
 
 !! Temporal working array:
-               DO CV_INOD = 1, CV_NONODS
-                  DO IPHASE = 1, NPHASE
-                     DO ICOMP = 1, NCOMP
-                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS ) = &
-                           MFC_s%val(ICOMP, IPHASE, CV_INOD)
-                     END DO
-                  END DO
-               END DO
+!               DO CV_INOD = 1, CV_NONODS
+!                  DO IPHASE = 1, NPHASE
+!                     DO ICOMP = 1, NCOMP
+!                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS ) = &
+!                           MFC_s%val(ICOMP, IPHASE, CV_INOD)
+!                     END DO
+!                  END DO
+!               END DO
 
 !!$               ! Update state memory
 !!$               do icomp = 1, ncomp
@@ -1341,24 +1331,16 @@
 
                end if Conditional_Adapt_by_Time
 
-               not_to_move_det_yet = .false.
+               not_to_move_det_yet = .false.         
 
             end if Conditional_Adaptivity
 
             call nullify( packed_state )
             call deallocate(packed_state)
-            call nullify( multicomponent_state )
-            call deallocate(multicomponent_state)
+            call deallocate(multiphase_state)
+            call deallocate(multicomponent_state )
             call pack_multistate(state,packed_state,&
                  multiphase_state,multicomponent_state)
-
-!        !If we are using adaptive time stepping, backup_state needs also to be redone
-!        if (nonLinearAdaptTs) then
-!            call deallocate(backup_state)
-!            call pack_multistate(state,backup_state,&
-!                 multiphase_state,multicomponent_state)
-!        end if
-
 
 
 !!$ Deallocating array variables:
@@ -1381,7 +1363,7 @@
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                  plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
-                 Temperature, PhaseVolumeFraction, SAT_s,oldsat_s, &
+                 Temperature, PhaseVolumeFraction, &
                  Component, &
                  Temperature_Old, &
                  PhaseVolumeFraction_Old, Component_Old, &
@@ -1438,28 +1420,10 @@
                  findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
 
             allocate( global_dense_block_acv (nphase,cv_nonods) )
-                 finacv = 0 ; 
-                 colacv = 0 ; 
-                 midacv = 0 ; 
-                 finmcy = 0 ; 
-                 colmcy = 0 ; 
-                 midmcy = 0 ; 
-                 finele = 0 ;
-                 colele = 0 ;
-                 midele = 0 ; 
-                 findgm_pha = 0 ; 
-                 coldgm_pha = 0 ; 
-                 middgm_pha = 0 ; 
-                 findct = 0 ;
-                 colct = 0 ; 
-                 findc = 0 ; 
-                 colc = 0 ; 
-                 findcmc = 0 ; 
-                 colcmc = 0 ; 
-                 midcmc = 0 ; 
-                 findm = 0 ;
-                 colm = 0 ; 
-                 midm = 0
+                 finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; finele = 0 ; &
+                 colele = 0 ; midele = 0 ; findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
+                 colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0 ; &
+                 colm = 0 ; midm = 0
 
 !!$ Defining element-pair type 
             call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
@@ -1648,6 +1612,8 @@ if (have_component_field) then
 
       end do Loop_Time
 
+      if (has_references(metric_tensor)) call deallocate(metric_tensor)
+
 !!$ Now deallocating arrays:
       deallocate( &
 !!$ Node glabal numbers
@@ -1685,6 +1651,18 @@ if (have_component_field) then
            theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
            sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
 
+ ! Dump at end, unless explicitly disabled
+      if(.not. have_option("/io/disable_dump_at_end")) then
+         call write_state(dump_no, state)
+      end if
+
+
+      call tag_references()
+
+      call deallocate(packed_state)
+      call deallocate(multiphase_state)
+      call deallocate(multicomponent_state )
+
       return
 
       contains 
@@ -1696,35 +1674,47 @@ if (have_component_field) then
 
           use sparse_tools
           
-          type(csr_sparsity) :: sparsity
+          type(csr_sparsity), pointer :: sparsity
           type(scalar_field), pointer :: sfield
 
           integer ic
 
+          allocate(sparsity)
+
           sparsity=wrap(finele,midele,colm=colele,name='ElementConnectivity')
           call insert(packed_state,sparsity,'ElementConnectivity')
-
+          call deallocate(sparsity)
           sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name='SinglePhaseAdvectionSparsity')
           call insert(packed_state,sparsity,'SinglePhaseAdvectionSparsity')
+          call deallocate(sparsity)
           sparsity=wrap(finacv,midacv,colm=colacv,name='PackedAdvectionSparsity')
           call insert(packed_state,sparsity,'PackedAdvectionSparsity')
+          call deallocate(sparsity)
           sparsity=wrap(findc,colm=colc,name='CMatrixSparsity')
           call insert(packed_state,sparsity,'CMatrixSparsity')
+          call deallocate(sparsity)
           sparsity=wrap(findct,colm=colct,name='CTMatrixSparsity')
           call insert(packed_state,sparsity,'CTMatrixSparsity')
+          call deallocate(sparsity)
           sparsity=wrap(findcmc,colm=colcmc,name='CMCMatrixSparsity')
           call insert(packed_state,sparsity,'CMCMatrixSparsity')
+          call deallocate(sparsity)
           sparsity=wrap(findm,midm,colm=colm,name='CVFEMSparsity')
           call insert(packed_state,sparsity,'CVFEMSparsity')
-          
+          call deallocate(sparsity)
+
           sfield=>extract_scalar_field(packed_state,"Pressure")
           sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
                "PressureMassMatrixSparsity")
           call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
+          call deallocate(sparsity)
+          deallocate(sparsity)
+          sparsity=> extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
           do ic=1,size(multicomponent_state)
              call insert(multicomponent_state(ic),sparsity,"PressureMassMatrixSparsity")
           end do 
-          call deallocate(sparsity)
+
+
 
         end subroutine temp_mem_hacks
 

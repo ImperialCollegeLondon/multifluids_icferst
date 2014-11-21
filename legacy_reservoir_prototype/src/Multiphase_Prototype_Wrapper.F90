@@ -30,14 +30,18 @@
   subroutine multiphase_prototype_wrapper() bind(C)
 
     use fldebug
+    use elements
+    use fields
     use state_module
     use populate_state_module
+    use reserve_state_module
     use diagnostic_variables
     use diagnostic_fields_wrapper
     use write_state_module
     use timeloop_utilities
     use timers
     use parallel_tools
+    use reference_counting
     use global_parameters, only: current_time, dt, timestep, option_path_len, &
          simulation_start_time, &
          simulation_start_cpu_time, &
@@ -55,6 +59,8 @@
     use field_equations_cv, only: initialise_advection_convergence
     use memory_diagnostics
     use multiphase_time_loop
+    use multiphase_rheology
+    use MeshDiagnostics
     !use mp_prototype
     use tictoc
     implicit none
@@ -90,6 +96,10 @@
 
     ! Check the diagnostic field dependencies for circular dependencies
     call check_diagnostic_dependencies(state)
+
+    allocate(rheology(size(state)))
+    call initialize_rheologies(state,rheology)
+    call calculate_rheologies(state,rheology)
 
     !--------------------------------------------------------------------------------------------------------
     ! This should be read by the Copy_Outof_Into_State subrts
@@ -183,6 +193,8 @@
             exclude_interpolated=.true., &
             exclude_nonreprescribed=.true.)
 
+       call print_tagged_references(0)
+
        ! Call the multiphase_prototype code  
        !call multiphase_prototype(state, dt, &
        !                          nonlinear_iterations, nonlinear_iteration_tolerance, &
@@ -190,16 +202,31 @@
        call MultiFluids_SolveTimeLoop( state, &
          dt, nonlinear_iterations, dump_no )
 
-    ! Dump at end, unless explicitly disabled
-    if(.not. have_option("/io/disable_dump_at_end")) then
-       call write_state(dump_no, state)
-    end if
+   
+
+
+    call close_diagnostic_files()
 
     ! Deallocate state
     do i = 1, size(state)
        call deallocate(state(i))
     end do
     deallocate(state)
+
+    call deallocate_reserve_state()
+
+    ! Clean up registered diagnostics
+    call destroy_registered_diagnostics() 
+
+    ! Delete the transform_elements cache.
+    call deallocate_transform_cache()
+
+    ewrite(2, *) "Tagged references remaining:"
+    call print_tagged_references(0)
+
+#ifdef HAVE_MEMORY_STATS
+    call print_current_memory_stats(0)
+#endif
 
     call toc(TICTOC_ID_SIMULATION)
     call tictoc_report(2, TICTOC_ID_SIMULATION)

@@ -28,7 +28,6 @@
 
 module arbitrary_function
   !! This module implements evaluating an arbitrary python function at various points
- 
   use spud
   use state_module, only: state_type, extract_v_field => extract_vector_field,&
     & extract_s_field => extract_scalar_field,extract_t_field=>extract_tensor_field,&
@@ -36,7 +35,7 @@ module arbitrary_function
   use fields
   use sparse_tools
   use fefields
-  use fetools 
+  use fetools
   use boundary_conditions
   use global_parameters, only:FIELD_NAME_LEN,OPTION_PATH_LEN,&
        PYTHON_FUNC_LEN, CURRENT_DEBUG_LEVEL
@@ -45,6 +44,8 @@ module arbitrary_function
   use sparsity_patterns_meshes
   use equation_of_state
   use quadrature
+
+  implicit none 
 
   integer, parameter :: SCALAR_FIELD_TYPE=1,VECTOR_FIELD_TYPE=2,&
        TENSOR_FIELD_TYPE=3
