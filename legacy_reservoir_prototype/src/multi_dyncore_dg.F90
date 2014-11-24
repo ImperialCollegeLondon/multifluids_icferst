@@ -42,7 +42,6 @@ module multiphase_1D_engine
     use sparse_tools_petsc
 
     use solvers_module
-    use mapping_for_ocvfem
     use cv_advection  
     use matrix_operations
     use shape_functions

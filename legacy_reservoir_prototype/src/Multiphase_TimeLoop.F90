@@ -86,7 +86,6 @@
 #ifdef HAVE_ZOLTAN
   use zoltan
 #endif
-    !use mapping_for_ocvfem
     !use matrix_operations
     !use shape_functions
     !use printout
