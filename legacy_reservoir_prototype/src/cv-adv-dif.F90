@@ -8619,7 +8619,7 @@ deallocate(NX_ALL, X_NX_ALL)
     NOLIMI = ( INT( CV_DISOPT / 2 ) == 3 )
 
     ! Make a guess at the CV face value of advected field variable and density
-    ! (Depends on discetisation option, CV_DISOPT)
+    ! (Depends on discretisation option, CV_DISOPT)
     SELECT CASE( CV_DISOPT / 2 )
 
     CASE( 0 ) ! First-order upwinding
