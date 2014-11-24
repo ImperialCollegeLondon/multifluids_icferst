@@ -40,7 +40,7 @@
     use fldebug
     use state_module
     use spud
-    use global_parameters, only: option_path_len, is_overlapping
+    use global_parameters, only: option_path_len
     use Fields_Allocates, only : allocate, make_mesh
     use fields_data_types, only: mesh_type, scalar_field
     use multiphase_caching, only: cache_level, reshape_vector2pointer
@@ -841,16 +841,8 @@
 ! new quadratic element quadrature by James and Zhi and Chris:
       logical, PARAMETER :: NEW_QUADRATIC_ELE_QUADRATURE = .FALSE.
 
-      integer :: U_NLOC2
-      character( len = option_path_len ) :: overlapping_path
 
     !  print *,'1=cv_ele_type, cv_ngi, :',cv_ele_type, cv_ngi
-
-      if(is_overlapping) then
-         U_NLOC2=max(1,U_NLOC/CV_NLOC)
-      else
-         U_NLOC2=U_NLOC
-      endif
 
       Conditional_EleType: Select Case( cv_ele_type )
 
@@ -880,12 +872,12 @@
                cv_ngi = 3
                sbcvngi = 2 
                scvngi = 2
-               if(u_nloc2==6) then ! use a quadratic interpolation pt set...
+               if(u_nloc==6) then ! use a quadratic interpolation pt set...
                   cv_ngi = 7
                   sbcvngi = 3
                   scvngi = 3
                endif
-               if(u_nloc2==10) then ! use a quadratic interpolation pt set...
+               if(u_nloc==10) then ! use a quadratic interpolation pt set...
                   cv_ngi = 14
                   sbcvngi = 4
                   scvngi = 4
@@ -910,7 +902,7 @@
                cv_ngi = 7
                sbcvngi = 3
                scvngi = 3
-               if(u_nloc2==10) then ! use a quadratic interpolation pt set...
+               if(u_nloc==10) then ! use a quadratic interpolation pt set...
                   cv_ngi = 14
                   sbcvngi = 4
                   scvngi = 4
@@ -1000,7 +992,7 @@
                cv_ngi = 4
                sbcvngi = 3
                scvngi = 3
-               if(u_nloc2==10) then ! use a quadratic interpolation pt set...
+               if(u_nloc==10) then ! use a quadratic interpolation pt set...
                   cv_ngi = 11
                   sbcvngi = 7
                   scvngi = 7
@@ -1122,21 +1114,12 @@
 
       end Select Conditional_EleType
 
-    !    print *,'here2  cv_ngi, scvngi,nface,sbcvngi:',cv_ngi, scvngi,nface,sbcvngi
 
       if(.not.QUAD_OVER_WHOLE_ELE) then
          if( cv_ele_type > 2 ) scvngi = scvngi + nface * sbcvngi
       endif
       cv_ngi_short = cv_ngi
 
-      if( is_overlapping) cv_ngi = cv_ngi * cv_nloc
-
-     !   print *,'here3  cv_ngi, scvngi,nface,sbcvngi:',cv_ngi, scvngi,nface,sbcvngi
-
-      !         ewrite(3,*)'cv_ele_type,cv_ngicv_ngi_short=', &
-      !                  cv_ele_type,cv_ngi,cv_ngi_short
-      !         ewrite(3,*)'scvngi,sbcvngi=',scvngi,sbcvngi
-      !         stop 393
       return
     end subroutine retrieve_ngi
 

@@ -27,7 +27,7 @@ path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
 
 
-print 'Running the BL with gravity test case (in parallel)'
+print 'Running the BL with gravity test case (in a second cpu)'
 #os.chdir(path + '/BL_with_gravity/')
 #os.system('python' +' *.py > log')
 #We run in parallel this experiment because it is slower than the sum of the other three

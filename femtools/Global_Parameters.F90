@@ -160,9 +160,6 @@ module global_parameters
   logical :: new_lim = .false.
 
   !! Overlapping method
-  logical :: is_overlapping = .false.
-
-  !! Overlapping method
   logical :: is_compact_overlapping = .false.
 
 end module global_parameters

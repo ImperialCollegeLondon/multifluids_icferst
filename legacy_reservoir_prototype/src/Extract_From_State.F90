@@ -40,7 +40,7 @@
     use diagnostic_variables
     use diagnostic_fields
     use diagnostic_fields_wrapper
-    use global_parameters, only: option_path_len, is_overlapping, is_compact_overlapping
+    use global_parameters, only: option_path_len, is_compact_overlapping
     use diagnostic_fields_wrapper_new
     use element_numbering
     use shape_functions
@@ -120,15 +120,10 @@
 !!$ Get the vel element type.
       call get_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/element_type', &
            vel_element_type )
-      is_overlapping = .false.
-      if ( trim( vel_element_type ) == 'overlapping' ) is_overlapping = .true.
 
       is_compact_overlapping = .false.
       if (trim(vel_element_type)=='lagrangian') &
         is_compact_overlapping = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Compact_overlapping')
-
-!      print *,'is_overlapping,is_compact_overlapping:',is_overlapping,is_compact_overlapping
-!      stop 81
 
       positions => extract_vector_field( state, 'Coordinate' )
       pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -166,13 +161,6 @@
       if( present( xu_nloc ) ) xu_nloc = ele_loc( velocity_cg_mesh, 1 )
       if( present( xu_nonods ) ) xu_nonods = max(( xu_nloc - 1 ) * totele + 1, totele )
 
-!!$ Take care of overlapping elements
-      if( present( u_nonods ) ) then
-         if( ( is_overlapping ) .and. ( ndim > 1 ) ) u_nonods = u_nonods * cv_nloc
-         if( ( is_overlapping ) .and. ( ndim > 1 ) ) u_nloc = u_nloc * cv_nloc
-         if( is_overlapping ) u_snloc = u_snloc * cv_nloc 
-      end if
-
 !!$ Used just for 1D:
       if( present( dx ) ) dx = maxval( positions % val( 1, : ) ) - minval( positions % val( 1, : ) )
 
@@ -203,8 +191,7 @@
       integer, dimension( : ), pointer  :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln
       integer, dimension( : ) ::  cv_sndgln, p_sndgln, u_sndgln
 !!$ Local variables 
-      integer, dimension( : ), allocatable :: u_sndgln2
-      integer :: u_nloc2, u_snloc2, sele, u_siloc2, ilev, u_siloc, ele, inod_remain, i
+      integer :: sele, u_siloc, ele, inod_remain, i
 
       x_ndgln_p1=>get_ndglno(extract_mesh(state(1),"CoordinateMesh"))
       x_ndgln=>get_ndglno(extract_mesh(state(1),"PressureMesh_Continuous"))
@@ -241,37 +228,8 @@
       p_sndgln = cv_sndgln
 
 !!$ Velocities
-      if ( is_overlapping ) then
-         u_snloc2 = u_snloc / cv_nloc
-         u_nloc2 = u_nloc / cv_nloc
-      else
-         u_snloc2 = u_snloc
-         u_nloc2 = u_nloc
-      end if
 
-      allocate( u_sndgln2( stotel * u_snloc2 ) ) ; u_sndgln2 = 0
-      call Get_SNdgln( u_sndgln2, velocity )
-
-      if ( is_overlapping ) then ! Convert u_sndgln2 to overlapping u_sndgln
-         do sele = 1, stotel
-            do u_siloc2 = 1, u_snloc2
-               do ilev = 1, cv_nloc
-                  u_siloc = ( ilev - 1 ) * u_snloc2 + u_siloc2
-                  ele = int( ( u_sndgln2 ( ( sele - 1 ) * u_snloc2 + &
-                       u_siloc2 ) - 1 ) / u_nloc2) + 1
-                  inod_remain = u_sndgln2( ( sele - 1 ) * u_snloc2 + &
-                       u_siloc2 ) - ( ele - 1 ) * u_nloc2
-                  u_sndgln( ( sele - 1 ) * u_snloc + u_siloc ) = &
-                       ( ele - 1 ) * u_nloc + inod_remain + &
-                       ( ilev - 1 ) * u_nloc2
-               end do
-            end do
-         end do
-      else
-         u_sndgln = u_sndgln2
-      end if
-
-      deallocate( u_sndgln2 )
+      call Get_SNdgln( u_sndgln, velocity )
 
       return
     end subroutine Compute_Node_Global_Numbers
@@ -529,13 +487,13 @@
 
 !!$ Options below are hardcoded and need to be added into the schema
       t_dg_vel_int_opt = 1 ; u_dg_vel_int_opt = 4 ; v_dg_vel_int_opt = 4 ; w_dg_vel_int_opt = 0
-      if( .not. (is_overlapping .or. is_compact_overlapping)) v_dg_vel_int_opt = 1
+      if( .not. is_compact_overlapping) v_dg_vel_int_opt = 1
       comp_diffusion_opt = 0 ; ncomp_diff_coef = 0
       volfra_use_theta_flux = .false. ; volfra_get_theta_flux = .true.
       comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
       t_use_theta_flux = .false. ; t_get_theta_flux = .false.
 
-!!$ IN/DG_ELE_UPWIND are options for optimisation of upwinding across faces in the overlapping
+!!$ IN/DG_ELE_UPWIND are options for optimisation of upwinding across faces in the compact_overlapping
 !!$ formulation. The data structure and options for this formulation need to be added later. 
       in_ele_upwind = 3 ; dg_ele_upwind = 3
 
@@ -792,7 +750,7 @@
       integer, dimension( : ), pointer :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, &
            xu_ndgln, mat_ndgln, cv_sndgln, p_sndgln, u_sndgln
       real :: dx
-      logical :: is_overlapping, is_isotropic, is_diagonal, is_symmetric, have_gravity
+      logical :: is_isotropic, is_diagonal, is_symmetric, have_gravity
       real, dimension( :, : ), allocatable :: constant
       real, dimension( : ), allocatable :: x, y, z, dummy
 
@@ -1283,7 +1241,7 @@
       integer, dimension(:), allocatable :: sufid_bc, face_nodes
       character( len = option_path_len ) :: option_path, option_path2, field_name, bct
       integer :: ndim, stotel, snloc, snloc2, nonods, nobcs, bc_type, i,j, k, kk, l, &
-           shape_option( 2 ), count, u_nonods, idim, stat,nlev,nloc, ele
+           shape_option( 2 ), count, u_nonods, idim, stat,nloc, ele
       real, dimension( : ), allocatable :: initial_constant
       integer, dimension(:), allocatable :: order
       logical :: have_source, have_absorption
@@ -1297,16 +1255,9 @@
       stotel = surface_element_count( cmesh )
       snloc2 = face_loc( field, 1)
       snloc = snloc2
-      if ( is_overlapping ) snloc = snloc2 * ele_loc( pmesh, 1)
       nonods = node_count( field )
       field_name = trim( field % name )
       u_nonods = nonods
-      nlev=1
-      if ( is_overlapping ) then
-         u_nonods = nonods * ele_loc( pmesh, 1)
-         nlev=ele_loc( pmesh, 1)
-      end if
-      
 
 
       have_absorption = .false.
@@ -1677,22 +1628,11 @@
       call get_option( '/geometry/dimension', ndim )
       cv_nloc2 = 1
 
-      if ( trim( field % name ) == 'Velocity' ) then
-         if ( is_overlapping .and. ( ndim > 1 ) ) cv_nloc2 = cv_nloc
-      end if
-
       count = 0
       do ele = 1, ele_count( field )
          nloc => ele_nodes( field, ele )
          do iloc = 1, ele_loc( field, 1 ) * cv_nloc2
-            if( is_overlapping ) then
-               count = count + 1
-               ndgln( ( ele - 1 ) * ele_loc( field, 1 ) * cv_nloc2 + iloc ) = count
-            else
-               ndgln( ( ele - 1 ) * ele_loc( field, 1 ) * cv_nloc2  + iloc ) =  nloc( iloc )
-            end if
-!!$            ewrite(3,*)'ele, iloc, ndgln:', ele, iloc, &
-!!$                 ndgln( ( ele - 1 ) * ele_loc( field, 1 ) * cv_nloc2  + iloc )
+           ndgln( ( ele - 1 ) * ele_loc( field, 1 ) * cv_nloc2  + iloc ) =  nloc( iloc )
          end do
       end do
 
@@ -1989,7 +1929,7 @@
       type(tensor_field) :: permeability, ten_field
       type(mesh_type) :: lmesh,nvmesh 
       type(mesh_type), pointer :: ovmesh, element_mesh
-      type(element_type) :: overlapping_shape, vel_shape, element_shape
+      type(element_type) :: vel_shape, element_shape
       character( len = option_path_len ) :: vel_element_type
 
       integer, dimension( : ), pointer :: element_nodes
@@ -2162,36 +2102,10 @@
       has_density=has_scalar_field(state(1),"Density")
       has_phase_volume_fraction=has_scalar_field(state(1),"PhaseVolumeFraction")
 
-      if (trim(vel_element_type)=='overlapping') then
-         !overlapping
-         allocate(ovmesh)
-         ovmesh=make_mesh(position%mesh,&
-              shape=velocity%mesh%shape,& 
-              continuity=velocity%mesh%continuity,&
-              overlapping_shape=pressure%mesh%shape)
-         overlapping_shape=pressure%mesh%shape
-
-         do i=1,size(state)
-            if (has_vector_field(state(i),"Velocity")) then
-
-               velocity=>extract_vector_field(state(i),"Velocity",stat)
-               velocity%mesh%shape%numbering=>&
-                    get_overlapping_version(velocity%mesh%shape%numbering)
-               velocity%mesh%overlapping_shape=overlapping_shape
-            end if
-         end do
-         call insert_vfield(packed_state,"Velocity",ovmesh,add_source=.true.)
-         call insert_vfield(packed_state,"NonlinearVelocity",ovmesh)
-         call insert(state(1),ovmesh,"InternalVelocityMesh")
-         call insert(packed_state,ovmesh,"InternalVelocityMesh")
-         call deallocate(ovmesh)
-         deallocate(ovmesh)
-      else
-         call insert(packed_state,velocity%mesh,"InternalVelocityMesh")
-         call insert_vfield(packed_state,"Velocity",add_source=.true.)
-         call insert_vfield(packed_state,"NonlinearVelocity",zerod=.true.)
-         call insert(state(1),velocity%mesh,"InternalVelocityMesh")
-      end if
+      call insert(packed_state,velocity%mesh,"InternalVelocityMesh")
+      call insert_vfield(packed_state,"Velocity",add_source=.true.)
+      call insert_vfield(packed_state,"NonlinearVelocity",zerod=.true.)
+      call insert(state(1),velocity%mesh,"InternalVelocityMesh")
 
       call unpack_multiphase(packed_state,multiphase_state)  
       if (ncomp>0) then

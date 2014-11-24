@@ -34,7 +34,7 @@ module multiphase_1D_engine
     use field_options
     use state_module
     use spud
-    use global_parameters, only: option_path_len, is_overlapping, is_compact_overlapping
+    use global_parameters, only: option_path_len, is_compact_overlapping
     use futils, only: int2str
 
     use Fields_Allocates, only : allocate
@@ -672,7 +672,7 @@ contains
         INTEGER :: IPLIKE_GRAD_SOU, NDIM_IN, NPHASE_IN, X_ILOC, X_INOD, MAT_INOD, S, E
         LOGICAL :: JUST_BL_DIAG_MAT
 
-        INTEGER :: U_NLOC2, ILEV, NLEV, ELE, U_ILOC, U_INOD, IPHASE, IDIM, I, SELE, U_SILOC
+        INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM, I, SELE, U_SILOC
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, T_SOURCE_ALL, T_ABSORB_ALL
         REAL, DIMENSION( :, : ), allocatable :: X_ALL
         REAL, DIMENSION( :, : ), allocatable :: TDIFFUSION_VOL
@@ -704,30 +704,21 @@ contains
 
         IPLIKE_GRAD_SOU=0
 
-        IF ( IS_OVERLAPPING ) THEN
-            NLEV = CV_NLOC
-            U_NLOC2 = MAX( 1, U_NLOC / CV_NLOC )
-        ELSE
-            NLEV = 1
-            U_NLOC2 = U_NLOC
-        END IF
         DO ELE = 1, TOTELE
-            DO ILEV = 1, NLEV
-                DO U_ILOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-                    U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                    DO IPHASE = 1, NPHASE
-                        DO IDIM = 1, NDIM
-                            IF ( IDIM==1 ) THEN
-                                U_ALL( IDIM, IPHASE, U_INOD ) = U( U_INOD + (IPHASE-1)*U_NONODS )
-                                UOLD_ALL( IDIM, IPHASE, U_INOD ) = UOLD( U_INOD + (IPHASE-1)*U_NONODS )
-                            ELSE IF ( IDIM==2 ) THEN
-                                U_ALL( IDIM, IPHASE, U_INOD ) = V( U_INOD + (IPHASE-1)*U_NONODS )
-                                UOLD_ALL( IDIM, IPHASE, U_INOD ) = VOLD( U_INOD + (IPHASE-1)*U_NONODS )
-                            ELSE
-                                U_ALL( IDIM, IPHASE, U_INOD ) = W( U_INOD + (IPHASE-1)*U_NONODS )
-                                UOLD_ALL( IDIM, IPHASE, U_INOD ) = WOLD( U_INOD + (IPHASE-1)*U_NONODS )
-                            END IF
-                        END DO
+            DO U_ILOC = 1 , U_NLOC
+                U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+                DO IPHASE = 1, NPHASE
+                    DO IDIM = 1, NDIM
+                        IF ( IDIM==1 ) THEN
+                            U_ALL( IDIM, IPHASE, U_INOD ) = U( U_INOD + (IPHASE-1)*U_NONODS )
+                            UOLD_ALL( IDIM, IPHASE, U_INOD ) = UOLD( U_INOD + (IPHASE-1)*U_NONODS )
+                        ELSE IF ( IDIM==2 ) THEN
+                            U_ALL( IDIM, IPHASE, U_INOD ) = V( U_INOD + (IPHASE-1)*U_NONODS )
+                            UOLD_ALL( IDIM, IPHASE, U_INOD ) = VOLD( U_INOD + (IPHASE-1)*U_NONODS )
+                        ELSE
+                            U_ALL( IDIM, IPHASE, U_INOD ) = W( U_INOD + (IPHASE-1)*U_NONODS )
+                            UOLD_ALL( IDIM, IPHASE, U_INOD ) = WOLD( U_INOD + (IPHASE-1)*U_NONODS )
+                        END IF
                     END DO
                 END DO
             END DO
@@ -1287,7 +1278,7 @@ contains
         type(petsc_csr_matrix)::  CMC_petsc
 
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
-        INTEGER :: U_NLOC2, ILEV, NLEV, X_ILOC, X_INOD, MAT_INOD, S, E, sele, p_sjloc, u_siloc
+        INTEGER :: X_ILOC, X_INOD, MAT_INOD, S, E, sele, p_sjloc, u_siloc
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
         REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, DEN_ALL, DENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL
         REAL, DIMENSION( :, :, :, : ), allocatable :: UDIFFUSION_ALL
@@ -1370,10 +1361,6 @@ contains
         !Calculate gravity source terms
         if ( have_option ( '/material_phase[0]/multiphase_properties/relperm_type' ) )then
            UDEN_ALL=0.0; UDENOLD_ALL=0.0
-           !Calculate gravity effects for porous media
-           !Compact overlapping calculation is after the conversion from old to new
-           if (is_overlapping) &
-                call calculate_u_source_cv( state, cv_nonods, ndim, nphase, DEN_ALL, U_Source_CV )
         else
            if ( linearise_density ) then
               call linearise_field( DEN_ALL2, UDEN_ALL )
@@ -2069,7 +2056,7 @@ DEALLOCATE( C )
         LOGICAL :: GET_THETA_FLUX, Q_SCHEME
         INTEGER :: IGOT_T2, I, P_SJLOC, SELE, U_SILOC, IGOT_THERM_VIS
 
-        INTEGER :: U_NLOC2, ILEV, NLEV, ELE, U_ILOC, U_INOD, IPHASE, IDIM, X_ILOC, X_INOD, MAT_INOD, S, E
+        INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM, X_ILOC, X_INOD, MAT_INOD, S, E
 
 
         type(tensor_field), pointer :: tracer, density
@@ -2675,7 +2662,7 @@ DEALLOCATE( C )
         IU_NOD_PHA, IU_NOD_DIM_PHA, U_NODI_IPHA, U_NODK, U_NODK_PHA, U_SKLOC, X_INOD, X_INOD2, &
         U_NODJ, U_NODJ2, U_NODJ_IPHA, U_SJLOC, X_ILOC, MAT_ILOC2, MAT_INOD, MAT_INOD2, MAT_SILOC, &
         CV_ILOC, CV_JLOC, CV_NOD, CV_NOD_PHA, U_JNOD_IDIM_IPHA, COUNT_PHA2, P_JLOC2, P_JNOD, P_JNOD2, &
-        CV_SILOC, JDIM, JPHASE, ILEV, U_NLOC2, CV_KLOC2, CV_NODK2, CV_NODK2_PHA, GI_SHORT, NLEV, STAT, &
+        CV_SILOC, JDIM, JPHASE, CV_KLOC2, CV_NODK2, CV_NODK2_PHA, GI_SHORT, STAT, &
         GLOBI_CV, U_INOD_jDIM_jPHA, u_nod2, u_nod2_pha, cv_inod, COUNT_ELE, CV_ILOC2, CV_INOD2
         REAL    :: NN, NXN, NNX, NXNX, NMX, NMY, NMZ, SAREA, &
         VNMX, VNMY, VNMZ, NM, R
@@ -2693,7 +2680,6 @@ DEALLOCATE( C )
         logical firstst,NO_MATRIX_STORE
         character( len = 100 ) :: name
 
-        character( len = option_path_len ) :: overlapping_path
         logical :: mom_conserv, lump_mass, GOT_OTHER_ELE, BETWEEN_ELE_STAB
         real :: beta, therm_ftheta
 
@@ -2952,19 +2938,11 @@ DEALLOCATE( C )
         !For Porous media to make QUAD_OVER_WHOLE_ELE = .false. to work, the element pair
         !has to be of the type PnDGPnDG
         ! Do NOT divide element into CV's to form quadrature.
-        QUAD_OVER_WHOLE_ELE = is_overlapping.OR.is_compact_overlapping
+        QUAD_OVER_WHOLE_ELE = is_compact_overlapping
 
 
         call retrieve_ngi( ndim, u_ele_type, cv_nloc, u_nloc, &
         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE)
-
-        if ( is_overlapping ) then
-            nlev = cv_nloc
-            U_NLOC2 = max( 1, U_NLOC/CV_NLOC )
-        else
-            nlev = 1
-            U_NLOC2 = U_NLOC
-        end if
 
         GOT_DIFFUS = .FALSE.
 
@@ -3440,7 +3418,6 @@ DEALLOCATE( C )
 
 
             ! Adjust the volume according to the number of levels.
-            VOLUME = VOLUME / REAL( NLEV )
             MASS_ELE( ELE ) = VOLUME
 
             if (IsParallel()) then
@@ -3469,30 +3446,26 @@ DEALLOCATE( C )
 
             LOC_U_RHS = 0.0
 
-            DO ILEV = 1, NLEV
-                DO U_ILOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-                    U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                    DO IPHASE = 1, NPHASE
-                        DO IDIM = 1, NDIM_VEL
-                            LOC_U( IDIM, IPHASE, U_ILOC ) = U_ALL( IDIM, IPHASE, U_INOD )
-                            LOC_UOLD( IDIM, IPHASE, U_ILOC ) = UOLD_ALL( IDIM, IPHASE, U_INOD )
-                            LOC_U_SOURCE( IDIM, IPHASE, U_ILOC ) = U_SOURCE( IDIM, IPHASE, U_INOD )
-                            IF(RETRIEVE_SOLID_CTY) THEN
-                               LOC_US( IDIM, IPHASE, U_ILOC ) = us_all%val( IDIM, U_INOD )
-                            ENDIF
-                        END DO
+            DO U_ILOC = 1, U_NLOC
+                U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+                DO IPHASE = 1, NPHASE
+                    DO IDIM = 1, NDIM_VEL
+                        LOC_U( IDIM, IPHASE, U_ILOC ) = U_ALL( IDIM, IPHASE, U_INOD )
+                        LOC_UOLD( IDIM, IPHASE, U_ILOC ) = UOLD_ALL( IDIM, IPHASE, U_INOD )
+                        LOC_U_SOURCE( IDIM, IPHASE, U_ILOC ) = U_SOURCE( IDIM, IPHASE, U_INOD )
+                        IF(RETRIEVE_SOLID_CTY) THEN
+                           LOC_US( IDIM, IPHASE, U_ILOC ) = us_all%val( IDIM, U_INOD )
+                        ENDIF
                     END DO
                 END DO
             END DO
 
-            DO ILEV = 1, NLEV
-                DO U_ILOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-                    U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                    DO IPHASE = 1, NPHASE
-                        DO IDIM = 1, NDIM
-                            LOC_NU( IDIM, IPHASE, U_ILOC ) = NU_ALL( IDIM, IPHASE, U_INOD )
-                            LOC_NUOLD( IDIM, IPHASE, U_ILOC ) = NUOLD_ALL( IDIM, IPHASE, U_INOD )
-                        END DO
+            DO U_ILOC = 1, U_NLOC
+                U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+                DO IPHASE = 1, NPHASE
+                    DO IDIM = 1, NDIM
+                        LOC_NU( IDIM, IPHASE, U_ILOC ) = NU_ALL( IDIM, IPHASE, U_INOD )
+                        LOC_NUOLD( IDIM, IPHASE, U_ILOC ) = NUOLD_ALL( IDIM, IPHASE, U_INOD )
                     END DO
                 END DO
             END DO
@@ -3613,12 +3586,10 @@ DEALLOCATE( C )
             UD = 0.0 ; UDOLD = 0.0
             UD_ND = 0.0 ; UDOLD_ND = 0.0
 
-            DO ILEV = 1, NLEV
-                DO U_ILOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-                    DO GI = 1 + (ILEV-1)*CV_NGI_SHORT, ILEV*CV_NGI_SHORT
-                        UD( :, :, GI ) = UD( :, :, GI ) + UFEN( U_ILOC, GI ) * LOC_NU( :, :, U_ILOC )
-                        UDOLD( :, :, GI ) = UDOLD( :, :, GI ) + UFEN( U_ILOC, GI ) * LOC_NUOLD( :, :, U_ILOC )
-                    END DO
+            DO U_ILOC = 1, U_NLOC
+                DO GI = 1, CV_NGI_SHORT
+                    UD( :, :, GI ) = UD( :, :, GI ) + UFEN( U_ILOC, GI ) * LOC_NU( :, :, U_ILOC )
+                    UDOLD( :, :, GI ) = UDOLD( :, :, GI ) + UFEN( U_ILOC, GI ) * LOC_NUOLD( :, :, U_ILOC )
                 END DO
             END DO
             UD_ND( 1:NDIM_VEL, :, : ) = UD
@@ -3799,241 +3770,237 @@ DEALLOCATE( C )
 
             RHS_DIFF_U=0.0
 
-            Loop_ilev_DGNods1: DO ILEV = 1, NLEV
-                NN_SIGMAGI_ELE = 0.0
-                NN_SIGMAGI_STAB_ELE = 0.0
-                IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE = 0.0
-                NN_MASS_ELE = 0.0
-                NN_MASSOLD_ELE = 0.0
-                VLK_ELE = 0.0
-                STRESS_IJ_ELE = 0.0
-                !Prepare data
-                DO U_JLOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
+            NN_SIGMAGI_ELE = 0.0
+            NN_SIGMAGI_STAB_ELE = 0.0
+            IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE = 0.0
+            NN_MASS_ELE = 0.0
+            NN_MASSOLD_ELE = 0.0
+            VLK_ELE = 0.0
+            STRESS_IJ_ELE = 0.0
+            !Prepare data
+            DO U_JLOC = 1, U_NLOC
 
 !                    IF ( STAB_VISC_WITH_ABS ) THEN
-                    IF ( GOT_DIFFUS ) THEN
+                IF ( GOT_DIFFUS ) THEN
 
-                        DO U_ILOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-                            DO GI = 1 + (ILEV-1)*CV_NGI_SHORT, ILEV*CV_NGI_SHORT
-                                DO IPHASE = 1, NPHASE
-                                    IF ( STRESS_FORM ) THEN ! stress form of viscosity...
-                                        IF(IDIVID_BY_VOL_FRAC==1) THEN
-                                           CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, NDIM, &
-        ( -UFEN( U_ILOC, GI )*VOL_FRA_GI_DX_ALL(1:NDIM,IPHASE,GI) + UFENX_ALL( 1:NDIM, U_ILOC, GI )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
-                                        ELSE
-                                           CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, NDIM, &
-                                           UFENX_ALL( 1:NDIM, U_ILOC, GI ), UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
-                                        ENDIF
+                    DO U_ILOC = 1, U_NLOC
+                        DO GI = 1, CV_NGI_SHORT
+                            DO IPHASE = 1, NPHASE
+                                IF ( STRESS_FORM ) THEN ! stress form of viscosity...
+                                    IF(IDIVID_BY_VOL_FRAC==1) THEN
+                                        CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, NDIM, &
+                                        ( -UFEN( U_ILOC, GI )*VOL_FRA_GI_DX_ALL(1:NDIM,IPHASE,GI) + UFENX_ALL( 1:NDIM, U_ILOC, GI )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
                                     ELSE
-                                        DO IDIM = 1, NDIM
-                                            VLK_ELE( IPHASE, U_ILOC, U_JLOC ) = VLK_ELE( IPHASE, U_ILOC, U_JLOC ) + &
-                                            UFENX_ALL( IDIM, U_ILOC, GI ) * SUM( UFENX_ALL( 1:NDIM, U_JLOC, GI ) * TEN_XX( IDIM, :, IPHASE, GI ) ) * DETWEI( GI )
-                                        END DO
-                                    END IF
-                                END DO
-                            END DO
-                        END DO
-                    END IF
-
-
-                    DO U_ILOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-                        DO GI = 1 + (ILEV-1)*CV_NGI_SHORT, ILEV*CV_NGI_SHORT
-
-                            GI_SHORT = GI - (ILEV-1)*CV_NGI_SHORT
-
-                            RNN = UFEN( U_ILOC, GI ) * UFEN( U_JLOC,  GI ) * DETWEI( GI )
-
-                            NN_SIGMAGI_ELE(:, U_ILOC, :, U_JLOC ) = &
-                            NN_SIGMAGI_ELE(:, U_ILOC, :, U_JLOC ) + RNN *SIGMAGI( :, :, GI )
-
-                            NN_SIGMAGI_STAB_ELE(:, U_ILOC, :, U_JLOC ) = &
-                            NN_SIGMAGI_STAB_ELE(:, U_ILOC, :, U_JLOC ) + RNN *SIGMAGI_STAB( :, :, GI )
-
-                            IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, U_ILOC, :, U_JLOC ) =&
-                                NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, U_ILOC, :, U_JLOC ) + RNN *  &
-                                    SIGMAGI_STAB_SOLID_RHS( :, :, GI )
-
-                            DO JPHASE = 1, NPHASE
-                                DO JDIM = 1, NDIM_VEL
-                                    JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
-
-                                    NN_MASS_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASS_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                    + DENGI(JPHASE,GI_SHORT) * RNN
-                                    NN_MASSOLD_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASSOLD_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                    + DENGIOLD(JPHASE, GI_SHORT) * RNN
-
-                                    IF(GOT_VIRTUAL_MASS) THEN
-                                       DO IPHASE = 1, NPHASE
-                                          IPHA_IDIM = JDIM + (IPHASE-1)*NDIM
-                                          NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                           + VIRTUAL_MASS_GI(IPHASE,JPHASE,GI_SHORT) * RNN
-                                          NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                           + VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE, GI_SHORT) * RNN
-                                       END DO 
+                                        CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, NDIM, &
+                                        UFENX_ALL( 1:NDIM, U_ILOC, GI ), UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
                                     ENDIF
-
-                                    ! Stabilization for viscosity...
-                                    IF ( STAB_VISC_WITH_ABS ) THEN
-                                        IF ( STRESS_FORM ) THEN
-                                            NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + MAX( 0.0, STRESS_IJ_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) )
-                                        ELSE
-                                            NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + MAX( 0.0, VLK_ELE( JPHASE, U_ILOC, U_JLOC ) )
-                                        END IF
-                                    END IF
-                                END DO
+                                ELSE
+                                    DO IDIM = 1, NDIM
+                                        VLK_ELE( IPHASE, U_ILOC, U_JLOC ) = VLK_ELE( IPHASE, U_ILOC, U_JLOC ) + &
+                                        UFENX_ALL( IDIM, U_ILOC, GI ) * SUM( UFENX_ALL( 1:NDIM, U_JLOC, GI ) * TEN_XX( IDIM, :, IPHASE, GI ) ) * DETWEI( GI )
+                                    END DO
+                                END IF
                             END DO
                         END DO
                     END DO
+                END IF
 
+
+                DO U_ILOC = 1, U_NLOC
+                    DO GI = 1, CV_NGI_SHORT
+
+                        GI_SHORT = GI
+
+                        RNN = UFEN( U_ILOC, GI ) * UFEN( U_JLOC,  GI ) * DETWEI( GI )
+
+                        NN_SIGMAGI_ELE(:, U_ILOC, :, U_JLOC ) = &
+                        NN_SIGMAGI_ELE(:, U_ILOC, :, U_JLOC ) + RNN *SIGMAGI( :, :, GI )
+
+                        NN_SIGMAGI_STAB_ELE(:, U_ILOC, :, U_JLOC ) = &
+                        NN_SIGMAGI_STAB_ELE(:, U_ILOC, :, U_JLOC ) + RNN *SIGMAGI_STAB( :, :, GI )
+
+                        IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, U_ILOC, :, U_JLOC ) =&
+                        NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, U_ILOC, :, U_JLOC ) + RNN *  &
+                        SIGMAGI_STAB_SOLID_RHS( :, :, GI )
+
+                        DO JPHASE = 1, NPHASE
+                            DO JDIM = 1, NDIM_VEL
+                                JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
+
+                                NN_MASS_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASS_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                + DENGI(JPHASE,GI_SHORT) * RNN
+                                NN_MASSOLD_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASSOLD_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                + DENGIOLD(JPHASE, GI_SHORT) * RNN
+
+                                IF(GOT_VIRTUAL_MASS) THEN
+                                    DO IPHASE = 1, NPHASE
+                                        IPHA_IDIM = JDIM + (IPHASE-1)*NDIM
+                                        NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                        + VIRTUAL_MASS_GI(IPHASE,JPHASE,GI_SHORT) * RNN
+                                        NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                        + VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE, GI_SHORT) * RNN
+                                    END DO
+                                ENDIF
+
+                                ! Stabilization for viscosity...
+                                IF ( STAB_VISC_WITH_ABS ) THEN
+                                    IF ( STRESS_FORM ) THEN
+                                        NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                        = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                        + MAX( 0.0, STRESS_IJ_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) )
+                                    ELSE
+                                        NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                        = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                        + MAX( 0.0, VLK_ELE( JPHASE, U_ILOC, U_JLOC ) )
+                                    END IF
+                                END IF
+                            END DO
+                        END DO
+                    END DO
                 END DO
 
-                DO U_JLOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-                    DO JPHASE = 1, NPHASE
-                        DO JDIM = 1, NDIM_VEL
-                            JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
-                            J = JDIM+(JPHASE-1)*NDIM_VEL+(U_JLOC-1)*NDIM_VEL*NPHASE
-                            DO U_ILOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-                                DO IPHASE = 1, NPHASE
-                                    DO IDIM = 1, NDIM_VEL
-                                        IPHA_IDIM = IDIM + (IPHASE-1)*NDIM
-                                        I = IDIM+(IPHASE-1)*NDIM_VEL+(U_ILOC-1)*NDIM_VEL*NPHASE
-                                        !Assemble
-                                        IF ( LUMP_MASS ) THEN
-                                            PIVIT_MAT( I, I, ELE ) =   &
-                                            NN_SIGMAGI_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + NN_MASS_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC )/DT
+            END DO
 
-                                        ELSE
-                                            PIVIT_MAT( I, J, ELE ) =  &
-                                            NN_SIGMAGI_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + NN_MASS_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC )/DT
-                                        END IF
+            DO U_JLOC = 1, U_NLOC
+                DO JPHASE = 1, NPHASE
+                    DO JDIM = 1, NDIM_VEL
+                        JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
+                        J = JDIM+(JPHASE-1)*NDIM_VEL+(U_JLOC-1)*NDIM_VEL*NPHASE
+                        DO U_ILOC = 1, U_NLOC
+                            DO IPHASE = 1, NPHASE
+                                DO IDIM = 1, NDIM_VEL
+                                    IPHA_IDIM = IDIM + (IPHASE-1)*NDIM
+                                    I = IDIM+(IPHASE-1)*NDIM_VEL+(U_ILOC-1)*NDIM_VEL*NPHASE
+                                    !Assemble
+                                    IF ( LUMP_MASS ) THEN
+                                        PIVIT_MAT( I, I, ELE ) =   &
+                                        NN_SIGMAGI_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                        + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                        + NN_MASS_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC )/DT
 
-                                        IF ( .NOT.NO_MATRIX_STORE ) THEN
-                                            IF ( .NOT.JUST_BL_DIAG_MAT ) THEN
-                                                IF ( LUMP_MASS ) THEN
-                                                    DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
-                                                    DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  &
-                                                    + NN_SIGMAGI_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                                    + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                                    + NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT
-                                                ELSE
-                                                    DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) = &
-                                                    DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
-                                                    + NN_SIGMAGI_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                                    + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                                    + NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT
-                                                END IF
+                                    ELSE
+                                        PIVIT_MAT( I, J, ELE ) =  &
+                                        NN_SIGMAGI_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                        + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                        + NN_MASS_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC )/DT
+                                    END IF
+
+                                    IF ( .NOT.NO_MATRIX_STORE ) THEN
+                                        IF ( .NOT.JUST_BL_DIAG_MAT ) THEN
+                                            IF ( LUMP_MASS ) THEN
+                                                DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
+                                                DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  &
+                                                + NN_SIGMAGI_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                                + NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT
+                                            ELSE
+                                                DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) = &
+                                                DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                                                + NN_SIGMAGI_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
+                                                + NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT
                                             END IF
                                         END IF
+                                    END IF
 
-                                    END DO
                                 END DO
                             END DO
                         END DO
                     END DO
                 END DO
+            END DO
 
 
-                Loop_DGNods1: DO U_ILOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-                    !GLOBI = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                    !IF ( NLEV==1 .AND. LUMP_MASS ) GLOBI_CV = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + U_ILOC )
-                    ! put CV source in...
+            Loop_DGNods1: DO U_ILOC = 1, U_NLOC
+                !GLOBI = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+                !IF ( NLEV==1 .AND. LUMP_MASS ) GLOBI_CV = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + U_ILOC )
+                ! put CV source in...
 
+                IF ( LUMP_MASS .AND. ( CV_NLOC==6 .OR. (CV_NLOC==10 .AND. NDIM==3) ) ) THEN ! Quadratice
+                    IF(U_NLOC.GE.CV_NLOC) STOP 28211 ! Code not ready yet for this.
+                    Loop_CVNods21: DO U_JLOC = 1, U_NLOC
+                        CV_JLOC = ELEMENT_CORNERS( U_JLOC )
+                        ! Miss out the mid side nodes...
+                        NM = SUM( UFEN( U_ILOC, : ) * UFEN( U_JLOC,  : ) * DETWEI( : ) )
+                        LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_JLOC )
 
+                    END DO LOOP_CVNODS21
+                ELSE ! ENDOF IF ( LUMP_MASS .AND. ( CV_NLOC==6 .OR. (CV_NLOC==10 .AND. NDIM==3) ) ) THEN ! Quadratice
 
-
-                        IF ( LUMP_MASS .AND. ( CV_NLOC==6 .OR. (CV_NLOC==10 .AND. NDIM==3) ) ) THEN ! Quadratice
-                           IF(U_NLOC.GE.CV_NLOC) STOP 28211 ! Code not ready yet for this.
-                           Loop_CVNods21: DO U_JLOC = 1, U_NLOC
-                              CV_JLOC = ELEMENT_CORNERS( U_JLOC )
-! Miss out the mid side nodes...
-                              NM = SUM( UFEN( U_ILOC, : ) * UFEN( U_JLOC,  : ) * DETWEI( : ) )
-                              LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_JLOC )
-
-                           END DO LOOP_CVNODS21
-                        ELSE ! ENDOF IF ( LUMP_MASS .AND. ( CV_NLOC==6 .OR. (CV_NLOC==10 .AND. NDIM==3) ) ) THEN ! Quadratice
-
-                           Loop_CVNods2: DO CV_JLOC = 1, CV_NLOC
-                              IF(RETRIEVE_SOLID_CTY) THEN
-                                 NM = SUM( UFEN( U_ILOC, : ) * CVFEN( CV_JLOC,  : ) * DETWEI( : ) )
-                              ELSE
-                                 NM = SUM( UFEN( U_ILOC, : ) * CVN( CV_JLOC,  : ) * DETWEI( : ) )
-                              ENDIF
-                              IF ( LUMP_MASS ) THEN
-                                 CV_ILOC = U_ILOC
-                                 LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_ILOC )
-                              ELSE
-                                 LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_JLOC )
-                              END IF
-                           END DO LOOP_CVNODS2
-
-                        ENDIF ! ENDOF IF ( LUMP_MASS .AND. ( CV_NLOC==6 .OR. (CV_NLOC==10 .AND. NDIM==3) ) ) THEN ! Quadratice
-
-                    Loop_DGNods2: DO U_JLOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-
-                        NN = 0.0
-                        VLN = 0.0
-                        VLN_OLD = 0.0
-!                        VLK = 0.0
-                        IF(GOT_VIRTUAL_MASS) THEN
-                           VLN_CVM=0.0 
-                           VLN_OLD_CVM=0.0 
+                    Loop_CVNods2: DO CV_JLOC = 1, CV_NLOC
+                        IF(RETRIEVE_SOLID_CTY) THEN
+                            NM = SUM( UFEN( U_ILOC, : ) * CVFEN( CV_JLOC,  : ) * DETWEI( : ) )
+                        ELSE
+                            NM = SUM( UFEN( U_ILOC, : ) * CVN( CV_JLOC,  : ) * DETWEI( : ) )
                         ENDIF
+                        IF ( LUMP_MASS ) THEN
+                            CV_ILOC = U_ILOC
+                            LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_ILOC )
+                        ELSE
+                            LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_JLOC )
+                        END IF
+                    END DO LOOP_CVNODS2
 
-                        Loop_Gauss2: DO GI = 1 + (ILEV-1)*CV_NGI_SHORT, ILEV*CV_NGI_SHORT
+                ENDIF ! ENDOF IF ( LUMP_MASS .AND. ( CV_NLOC==6 .OR. (CV_NLOC==10 .AND. NDIM==3) ) ) THEN ! Quadratice
 
-                            RNN = UFEN( U_ILOC, GI ) * UFEN( U_JLOC,  GI ) * DETWEI( GI )
-                            NN = NN + RNN
+                Loop_DGNods2: DO U_JLOC = 1, U_NLOC
 
-                            Loop_IPHASE: DO IPHASE = 1, NPHASE ! Diffusion tensor
+                    NN = 0.0
+                    VLN = 0.0
+                    VLN_OLD = 0.0
+                    !                        VLK = 0.0
+                    IF(GOT_VIRTUAL_MASS) THEN
+                        VLN_CVM=0.0
+                        VLN_OLD_CVM=0.0
+                    ENDIF
 
-                                IF ( MOM_CONSERV ) THEN
-                                    VLN( IPHASE ) = VLN( IPHASE ) - &
-                                    DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
-                                    * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN
+                    Loop_Gauss2: DO GI = 1, CV_NGI_SHORT
 
-                                    VLN_OLD( IPHASE ) = VLN_OLD( IPHASE ) - &
-                                    DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
-                                    * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN
+                        RNN = UFEN( U_ILOC, GI ) * UFEN( U_JLOC,  GI ) * DETWEI( GI )
+                        NN = NN + RNN
 
-                                ELSE
-                                    VLN( IPHASE ) = VLN( IPHASE ) + &
-                                    UFEN( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL(1:NDIM, U_JLOC, GI ) ) &
-                                    * DETWEI( GI ) * WITH_NONLIN
+                        Loop_IPHASE: DO IPHASE = 1, NPHASE ! Diffusion tensor
 
-                                    VLN_OLD( IPHASE ) = VLN_OLD( IPHASE ) + &
-                                    UFEN( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) ) &
-                                    * DETWEI( GI ) * WITH_NONLIN
+                            IF ( MOM_CONSERV ) THEN
+                                VLN( IPHASE ) = VLN( IPHASE ) - &
+                                DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
+                                * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN
 
-                                END IF
+                                VLN_OLD( IPHASE ) = VLN_OLD( IPHASE ) - &
+                                DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
+                                * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN
+
+                            ELSE
+                                VLN( IPHASE ) = VLN( IPHASE ) + &
+                                UFEN( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL(1:NDIM, U_JLOC, GI ) ) &
+                                * DETWEI( GI ) * WITH_NONLIN
+
+                                VLN_OLD( IPHASE ) = VLN_OLD( IPHASE ) + &
+                                UFEN( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) ) &
+                                * DETWEI( GI ) * WITH_NONLIN
+
+                            END IF
 
 
-                                    IF(GOT_VIRTUAL_MASS) THEN
-                                       DO JPHASE = 1, NPHASE 
-                                         VLN_CVM( IPHASE,JPHASE ) = VLN_CVM( IPHASE,JPHASE )  &
-! conservative discretization
-                                       - CVM_BETA*VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
-                                         * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN_CVM &
-! non-conservative discretization
-                                       + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
-                                         *  DETWEI( GI ) * WITH_NONLIN_CVM
+                            IF(GOT_VIRTUAL_MASS) THEN
+                                DO JPHASE = 1, NPHASE
+                                    VLN_CVM( IPHASE,JPHASE ) = VLN_CVM( IPHASE,JPHASE )  &
+                                    ! conservative discretization
+                                    - CVM_BETA*VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
+                                    * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN_CVM &
+                                    ! non-conservative discretization
+                                    + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
+                                    *  DETWEI( GI ) * WITH_NONLIN_CVM
 
-                                         VLN_OLD_CVM( IPHASE,JPHASE ) = VLN_OLD_CVM( IPHASE,JPHASE )  &
-! conservative discretization
-                                       - CVM_BETA*VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
-                                         * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN_CVM &
-! non-conservative discretization
-                                       + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
-                                         *  DETWEI( GI ) * WITH_NONLIN_CVM
-                                       END DO
-                                    ENDIF
+                                    VLN_OLD_CVM( IPHASE,JPHASE ) = VLN_OLD_CVM( IPHASE,JPHASE )  &
+                                    ! conservative discretization
+                                    - CVM_BETA*VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
+                                    * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN_CVM &
+                                    ! non-conservative discretization
+                                    + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
+                                    *  DETWEI( GI ) * WITH_NONLIN_CVM
+                                END DO
+                            ENDIF
 
 
 !                                DO IDIM = 1, NDIM
@@ -4041,152 +4008,151 @@ DEALLOCATE( C )
 !                                            UFENX_ALL( IDIM, U_ILOC, GI ) * SUM( UFENX_ALL( 1:NDIM, U_JLOC, GI ) * TEN_XX( IDIM, :, IPHASE, GI ) ) * DETWEI( GI )
 !                                END DO
 
-                            END DO Loop_IPHASE
+                        END DO Loop_IPHASE
 
-                        END DO Loop_Gauss2
+                    END DO Loop_Gauss2
 
-                        LOC_U_RHS( :, :, U_ILOC ) =  LOC_U_RHS( :, :, U_ILOC ) + NN * LOC_U_SOURCE( :, :, U_JLOC  )
+                    LOC_U_RHS( :, :, U_ILOC ) =  LOC_U_RHS( :, :, U_ILOC ) + NN * LOC_U_SOURCE( :, :, U_JLOC  )
 
-                        DO JPHASE = 1, NPHASE
-                            DO JDIM = 1, NDIM_VEL
+                    DO JPHASE = 1, NPHASE
+                        DO JDIM = 1, NDIM_VEL
 
-                                JPHA_JDIM = (JPHASE-1)*NDIM_VEL + JDIM
+                            JPHA_JDIM = (JPHASE-1)*NDIM_VEL + JDIM
 
-                                DO IPHASE = 1, NPHASE
-                                    DO IDIM = 1, NDIM_VEL
+                            DO IPHASE = 1, NPHASE
+                                DO IDIM = 1, NDIM_VEL
 
-                                        IPHA_IDIM = (IPHASE-1)*NDIM_VEL + IDIM
+                                    IPHA_IDIM = (IPHASE-1)*NDIM_VEL + IDIM
 
-                                        IF ( MOM_CONSERV ) THEN
-                                            IF ( LUMP_MASS ) THEN
-                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )     &
-                                                + ( NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_ILOC )
-                                                IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )  
-                                            ELSE
-                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
-                                                + ( NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_JLOC )
-                                                IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )  
-                                            END IF
+                                    IF ( MOM_CONSERV ) THEN
+                                        IF ( LUMP_MASS ) THEN
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )     &
+                                            + ( NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_ILOC )
+                                            IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
                                         ELSE
-                                            IF ( LUMP_MASS ) THEN
-                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
-                                                + ( NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_ILOC )
-                                                IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC ) 
-                                            ELSE
-                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
-                                                + ( NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_JLOC )
-                                                IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )  
-                                            END IF
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
+                                            + ( NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_JLOC )
+                                            IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
                                         END IF
+                                    ELSE
+                                        IF ( LUMP_MASS ) THEN
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
+                                            + ( NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_ILOC )
+                                            IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
+                                        ELSE
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
+                                            + ( NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_JLOC )
+                                            IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
+                                        END IF
+                                    END IF
 
-                                    END DO
                                 END DO
                             END DO
                         END DO
+                    END DO
 
-                        IF ( .NOT.JUST_BL_DIAG_MAT ) THEN
-                            IF ( STRESS_FORM ) THEN
-                                DO IPHASE = 1, NPHASE
-                                    JPHASE = IPHASE
-                                    DO IDIM = 1, NDIM_VEL
-                                        DO JDIM = 1, NDIM_VEL
+                    IF ( .NOT.JUST_BL_DIAG_MAT ) THEN
+                        IF ( STRESS_FORM ) THEN
+                            DO IPHASE = 1, NPHASE
+                                JPHASE = IPHASE
+                                DO IDIM = 1, NDIM_VEL
+                                    DO JDIM = 1, NDIM_VEL
 
-                                            IF ( NO_MATRIX_STORE ) THEN
-                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                - STRESS_IJ_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
-                                            ELSE
-                                                DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
-                                                = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                                + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
-                                            END IF
-                                            IF(PIVIT_ON_VISC) THEN
-                                                I = IDIM+(IPHASE-1)*NDIM_VEL+(U_ILOC-1)*NDIM_VEL*NPHASE
-                                                J = JDIM+(JPHASE-1)*NDIM_VEL+(U_JLOC-1)*NDIM_VEL*NPHASE
-                                                w=1.0
-!                                                if (i/=j) w = wv
-                                                PIVIT_MAT( I,J, ELE ) &
-                                                = PIVIT_MAT( I,J, ELE ) &
-                                                +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
-                                            END IF
-
-                                            RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
-                                            STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
-                                        END DO
-                                    END DO
-
-                                END DO
-                            END IF
-
-                            DO IDIM = 1, NDIM_VEL
-                                DO IPHASE = 1, NPHASE
-                                    JDIM = IDIM
-                                    JPHASE = IPHASE
-
-                                    IF ( NO_MATRIX_STORE ) THEN
-                                        LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC )  &
-                                        - VLN( IPHASE ) * LOC_U( IDIM, IPHASE, U_JLOC )
-                                        IF(GOT_VIRTUAL_MASS) THEN
-                                           DO KPHASE = 1, NPHASE
-                                              LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC )  &
-                                              - VLN_CVM( IPHASE,KPHASE ) * LOC_U( IDIM, KPHASE, U_JLOC )
-                                           END DO
-                                        ENDIF
-                                    ELSE
-                                        DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                        = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLN( IPHASE )
-                                        IF(GOT_VIRTUAL_MASS) THEN
-                                           DO KPHASE = 1, NPHASE
-                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) &
-                                               = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) + VLN_CVM( IPHASE,KPHASE )
-                                           END DO
-                                        ENDIF
-                                    END IF
-
-                                    IF ( .NOT.STRESS_FORM ) THEN
                                         IF ( NO_MATRIX_STORE ) THEN
                                             LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                            - VLK_ELE( IPHASE, U_ILOC, U_JLOC ) * LOC_U( IDIM, IPHASE, U_JLOC )
-!                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-!                                            - VLK( IPHASE ) * LOC_U( IDIM, IPHASE, U_JLOC )
+                                            - STRESS_IJ_ELE( IDIM, JDIM,  IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
                                         ELSE
-                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLK_ELE( IPHASE, U_ILOC, U_JLOC )
-!                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-!                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLK( IPHASE )
-
+                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
+                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                            + STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
                                         END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*NDIM_VEL+(U_ILOC-1)*NDIM_VEL*NPHASE
                                             J = JDIM+(JPHASE-1)*NDIM_VEL+(U_JLOC-1)*NDIM_VEL*NPHASE
                                             w=1.0
-!                                            if (i/=j) w = wv
+                                            !                                                if (i/=j) w = wv
                                             PIVIT_MAT( I,J, ELE ) &
-                                            = PIVIT_MAT( I,J, ELE ) + w * VLK_ELE( IPHASE, U_ILOC, U_JLOC )
+                                            = PIVIT_MAT( I,J, ELE ) &
+                                            +  w * STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC )
                                         END IF
 
                                         RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
-                                        VLK_ELE( IPHASE, U_ILOC, U_JLOC ) * LOC_U( IDIM, IPHASE, U_JLOC )
-!                                        RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
-!                                        VLK( IPHASE ) * LOC_U( IDIM, IPHASE, U_JLOC )
+                                        STRESS_IJ_ELE( IDIM, JDIM, IPHASE, U_ILOC, U_JLOC ) * LOC_U( JDIM, IPHASE, U_JLOC )
+                                    END DO
+                                END DO
+
+                            END DO
+                        END IF
+
+                        DO IDIM = 1, NDIM_VEL
+                            DO IPHASE = 1, NPHASE
+                                JDIM = IDIM
+                                JPHASE = IPHASE
+
+                                IF ( NO_MATRIX_STORE ) THEN
+                                    LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC )  &
+                                    - VLN( IPHASE ) * LOC_U( IDIM, IPHASE, U_JLOC )
+                                    IF(GOT_VIRTUAL_MASS) THEN
+                                        DO KPHASE = 1, NPHASE
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC )  &
+                                            - VLN_CVM( IPHASE,KPHASE ) * LOC_U( IDIM, KPHASE, U_JLOC )
+                                        END DO
+                                    ENDIF
+                                ELSE
+                                    DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                    = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLN( IPHASE )
+                                    IF(GOT_VIRTUAL_MASS) THEN
+                                        DO KPHASE = 1, NPHASE
+                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) &
+                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) + VLN_CVM( IPHASE,KPHASE )
+                                        END DO
+                                    ENDIF
+                                END IF
+
+                                IF ( .NOT.STRESS_FORM ) THEN
+                                    IF ( NO_MATRIX_STORE ) THEN
+                                        LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                        - VLK_ELE( IPHASE, U_ILOC, U_JLOC ) * LOC_U( IDIM, IPHASE, U_JLOC )
+!                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+!                                            - VLK( IPHASE ) * LOC_U( IDIM, IPHASE, U_JLOC )
+                                    ELSE
+                                        DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+                                        = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLK_ELE( IPHASE, U_ILOC, U_JLOC )
+!                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
+!                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLK( IPHASE )
+
+                                    END IF
+                                    IF(PIVIT_ON_VISC) THEN
+                                        I = IDIM+(IPHASE-1)*NDIM_VEL+(U_ILOC-1)*NDIM_VEL*NPHASE
+                                        J = JDIM+(JPHASE-1)*NDIM_VEL+(U_JLOC-1)*NDIM_VEL*NPHASE
+                                        w=1.0
+!                                            if (i/=j) w = wv
+                                        PIVIT_MAT( I,J, ELE ) &
+                                        = PIVIT_MAT( I,J, ELE ) + w * VLK_ELE( IPHASE, U_ILOC, U_JLOC )
                                     END IF
 
-                                END DO
+                                    RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
+                                    VLK_ELE( IPHASE, U_ILOC, U_JLOC ) * LOC_U( IDIM, IPHASE, U_JLOC )
+!                                        RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
+!                                        VLK( IPHASE ) * LOC_U( IDIM, IPHASE, U_JLOC )
+                                END IF
+
                             END DO
+                        END DO
 
-                        END IF ! .NOT.JUST_BL_DIAG_MAT
+                    END IF ! .NOT.JUST_BL_DIAG_MAT
 
-                    END DO Loop_DGNods2
+                END DO Loop_DGNods2
 
-                END DO Loop_DGNods1
-            END DO Loop_ilev_DGNods1
+            END DO Loop_DGNods1
             ! **********REVIEWER 1-END**********************
 
 
@@ -4220,62 +4186,60 @@ DEALLOCATE( C )
 !            if ( capillary_pressure_activated ) GRAD_SOU_GI = 1.0
 
             ! Add in C matrix contribution: (DG velocities)
-            Loop_ILEV1: DO ILEV = 1, NLEV
-                Loop_U_ILOC1: DO U_ILOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-                    if(.not.got_c_matrix) IU_NOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+            Loop_U_ILOC1: DO U_ILOC = 1, U_NLOC
+                if(.not.got_c_matrix) IU_NOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
 
-                    Loop_P_JLOC1: DO P_JLOC = 1, P_NLOC
-                        if(.not.got_c_matrix) JCV_NOD = P_NDGLN( ( ELE - 1 ) * P_NLOC + P_JLOC )
-                        !In this section we multiply the shape functions over the GI points. I.E: We perform the integration
-                        !over the element of the pressure like source term.
-                        if ( IPLIKE_GRAD_SOU == 1) then
-                            !In this section of the assembly we add the volumetric part.
-                            ! Coeff * Integral(N grad CVFEN PLIKE_GRAD_SOU dV)
-                            GRAD_SOU_GI_NMX( :, :) = matmul(CVFENX_ALL(:,P_JLOC,:),&
+                Loop_P_JLOC1: DO P_JLOC = 1, P_NLOC
+                    if(.not.got_c_matrix) JCV_NOD = P_NDGLN( ( ELE - 1 ) * P_NLOC + P_JLOC )
+                    !In this section we multiply the shape functions over the GI points. I.E: We perform the integration
+                    !over the element of the pressure like source term.
+                    if ( IPLIKE_GRAD_SOU == 1) then
+                        !In this section of the assembly we add the volumetric part.
+                        ! Coeff * Integral(N grad CVFEN PLIKE_GRAD_SOU dV)
+                        GRAD_SOU_GI_NMX( :, :) = matmul(CVFENX_ALL(:,P_JLOC,:),&
+                        SPREAD(DETWEI( : ) *UFEN( U_ILOC, : ), DIM=2, NCOPIES=NPHASE)*&
+                        transpose(GRAD_SOU_GI(:, :)))
+                    end if
+                    ! Coeff * Integral(N grad CVFEN VOL_FRA dV)
+                    IF(IGOT_VOL_X_PRESSURE==1) THEN
+                          VOL_FRA_NMX_ALL( :, : ) = matmul(CVFENX_ALL(:,P_JLOC,:),&
                             SPREAD(DETWEI( : ) *UFEN( U_ILOC, : ), DIM=2, NCOPIES=NPHASE)*&
-                            transpose(GRAD_SOU_GI(:, :)))
-                        end if
-                        ! Coeff * Integral(N grad CVFEN VOL_FRA dV)
-                        IF(IGOT_VOL_X_PRESSURE==1) THEN
-                              VOL_FRA_NMX_ALL( :, : ) = matmul(CVFENX_ALL(:,P_JLOC,:),&
-                                SPREAD(DETWEI( : ) *UFEN( U_ILOC, : ), DIM=2, NCOPIES=NPHASE)*&
-                                transpose(VOL_FRA_GI(:, :)))
-                        ENDIF
+                            transpose(VOL_FRA_GI(:, :)))
+                    ENDIF
+
+                    ! Put into matrix
+                    IF ( .NOT.GOT_C_MATRIX ) THEN
+                        CALL USE_POSINMAT_C_STORE( COUNT, IU_NOD, JCV_NOD,  &
+                        U_NONODS, FINDC, COLC, NCOLC, &
+                        IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE, ELE, U_ILOC, P_JLOC, &
+                        TOTELE, U_NLOC, P_NLOC )
+                    END IF
+
+                    !Prepare aid variable NMX_ALL to improve the speed of the calculations
+                    NMX_ALL( : ) = matmul(CVFENX_ALL(:,P_JLOC,:),&
+                       DETWEI( : ) *UFEN( U_ILOC, : ))
+                    Loop_Phase1: DO IPHASE = 1, NPHASE
 
                         ! Put into matrix
                         IF ( .NOT.GOT_C_MATRIX ) THEN
-                            CALL USE_POSINMAT_C_STORE( COUNT, IU_NOD, JCV_NOD,  &
-                            U_NONODS, FINDC, COLC, NCOLC, &
-                            IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE, ELE, U_ILOC, P_JLOC, &
-                            TOTELE, U_NLOC, P_NLOC )
+                            DO IDIM = 1, NDIM_VEL
+                                IF(IGOT_VOL_X_PRESSURE==1) THEN
+                                   C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) - VOL_FRA_NMX_ALL( IDIM, IPHASE )
+                                ELSE
+                                   C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) - NMX_ALL( IDIM )
+                                ENDIF
+                            END DO
                         END IF
+                        IF ( IPLIKE_GRAD_SOU == 1) THEN ! Pressure like term
+                            DO IDIM = 1, NDIM_VEL
+                                LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                - GRAD_SOU_GI_NMX( IDIM, IPHASE ) * LOC_PLIKE_GRAD_SOU_GRAD( IPHASE, P_JLOC )
+                            END DO
+                        END IF
+                    END DO Loop_Phase1
+                END DO Loop_P_JLOC1
 
-                        !Prepare aid variable NMX_ALL to improve the speed of the calculations
-                        NMX_ALL( : ) = matmul(CVFENX_ALL(:,P_JLOC,:),&
-                           DETWEI( : ) *UFEN( U_ILOC, : ))
-                        Loop_Phase1: DO IPHASE = 1, NPHASE
-
-                            ! Put into matrix
-                            IF ( .NOT.GOT_C_MATRIX ) THEN
-                                DO IDIM = 1, NDIM_VEL
-                                    IF(IGOT_VOL_X_PRESSURE==1) THEN
-                                       C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) - VOL_FRA_NMX_ALL( IDIM, IPHASE )
-                                    ELSE
-                                       C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) - NMX_ALL( IDIM )
-                                    ENDIF
-                                END DO
-                            END IF
-                            IF ( IPLIKE_GRAD_SOU == 1) THEN ! Pressure like term
-                                DO IDIM = 1, NDIM_VEL
-                                    LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                    - GRAD_SOU_GI_NMX( IDIM, IPHASE ) * LOC_PLIKE_GRAD_SOU_GRAD( IPHASE, P_JLOC )
-                                END DO
-                            END IF
-                        END DO Loop_Phase1
-                    END DO Loop_P_JLOC1
-
-                END DO Loop_U_ILOC1
-            END DO Loop_ILEV1
+            END DO Loop_U_ILOC1
             !ewrite(3,*)'just after Loop_U_ILOC1'
             ! **********REVIEWER 2-END**********************
 
@@ -4731,53 +4695,24 @@ DEALLOCATE( C )
 
                     ELSE If_stored
 
-                        IF ( IS_OVERLAPPING ) THEN
-                            U_OTHER_LOC=0
-                            U_ILOC_OTHER_SIDE=0
-                            IF( XU_NLOC == 1 ) THEN ! For constant vel basis functions...
-                                DO ILEV = 1, CV_NLOC
-                                    U_ILOC_OTHER_SIDE( 1 +(ILEV-1)*U_SNLOC/CV_NLOC) &
-                                    = 1 + (ILEV-1)*U_NLOC/CV_NLOC
-                                    U_OTHER_LOC( 1 + (ILEV-1)*U_NLOC/CV_NLOC) &
-                                    = 1 + (ILEV-1)*U_NLOC/CV_NLOC
+                        U_OTHER_LOC=0
+                        U_ILOC_OTHER_SIDE=0
+                        IF( XU_NLOC == 1 ) THEN ! For constant vel basis functions...
+                            U_ILOC_OTHER_SIDE( 1 ) = 1
+                            U_OTHER_LOC( 1 )= 1
+                        ELSE
+                            DO U_SILOC = 1, U_SNLOC
+                                U_ILOC = U_SLOC2LOC( U_SILOC )
+                                U_INOD = XU_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+                                DO U_ILOC2 = 1, U_NLOC
+                                    U_INOD2 = XU_NDGLN(( ELE2 - 1 ) * U_NLOC + U_ILOC2 )
+                                    IF ( U_INOD2 == U_INOD ) THEN
+                                        U_ILOC_OTHER_SIDE( U_SILOC ) = U_ILOC2
+                                        U_OTHER_LOC( U_ILOC )=U_ILOC2
+                                        exit
+                                    END IF
                                 END DO
-                            ELSE
-                                DO U_SILOC = 1, U_SNLOC/CV_NLOC
-                                    U_ILOC = U_SLOC2LOC( U_SILOC )
-                                    U_INOD = XU_NDGLN(( ELE - 1 ) * XU_NLOC + U_ILOC )
-                                    DO U_ILOC2 = 1, U_NLOC/CV_NLOC
-                                        U_INOD2 = XU_NDGLN(( ELE2 - 1 ) * XU_NLOC + U_ILOC2 )
-                                        IF ( U_INOD2 == U_INOD ) THEN
-                                            DO ILEV = 1, CV_NLOC
-                                                U_ILOC_OTHER_SIDE( U_SILOC +(ILEV-1)*U_SNLOC/CV_NLOC) &
-                                                = U_ILOC2 + (ILEV-1)*U_NLOC/CV_NLOC
-                                                U_OTHER_LOC( U_ILOC + (ILEV-1)*U_NLOC/CV_NLOC) &
-                                                = U_ILOC2 + (ILEV-1)*U_NLOC/CV_NLOC
-                                            END DO
-                                        END IF
-                                    END DO
-                                END DO
-                            END IF
-                        ELSE ! Not overlapping...
-                            U_OTHER_LOC=0
-                            U_ILOC_OTHER_SIDE=0
-                            IF( XU_NLOC == 1 ) THEN ! For constant vel basis functions...
-                                U_ILOC_OTHER_SIDE( 1 ) = 1
-                                U_OTHER_LOC( 1 )= 1
-                            ELSE
-                                DO U_SILOC = 1, U_SNLOC
-                                    U_ILOC = U_SLOC2LOC( U_SILOC )
-                                    U_INOD = XU_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                                    DO U_ILOC2 = 1, U_NLOC
-                                        U_INOD2 = XU_NDGLN(( ELE2 - 1 ) * U_NLOC + U_ILOC2 )
-                                        IF ( U_INOD2 == U_INOD ) THEN
-                                            U_ILOC_OTHER_SIDE( U_SILOC ) = U_ILOC2
-                                            U_OTHER_LOC( U_ILOC )=U_ILOC2
-                                            exit
-                                        END IF
-                                    END DO
-                                END DO
-                            ENDIF
+                            END DO
                         ENDIF
 
                         MAT_OTHER_LOC=0
@@ -5061,60 +4996,54 @@ DEALLOCATE( C )
                     ! ***********SUBROUTINE DETERMINE_SUF_PRES - START************
                     ! Put the surface integrals in for pressure b.c.'s
                     ! that is add into C matrix and U_RHS. (DG velocities)
-                    U_NLOC2 = MAX( 1, U_NLOC/CV_NLOC )
                     Loop_ILOC2: DO U_SILOC = 1, U_SNLOC
                         U_ILOC = U_SLOC2LOC( U_SILOC )
-                        ILEV = (U_ILOC-1)/U_NLOC2 + 1
-
-                        if( .not. is_overlapping ) ilev = 1
 
                         if(.not.got_c_matrix) IU_NOD = U_SNDGLN(( SELE - 1 ) * U_SNLOC + U_SILOC )
 
                         Loop_JLOC2: DO P_SJLOC = 1, P_SNLOC
                             P_JLOC = CV_SLOC2LOC( P_SJLOC )
-                            if( ( .not. is_overlapping ) .or. ( p_jloc == ilev ) ) then
-                                if(.not.got_c_matrix) JCV_NOD = P_SNDGLN(( SELE - 1 ) * P_SNLOC + P_SJLOC )
+                            if(.not.got_c_matrix) JCV_NOD = P_SNDGLN(( SELE - 1 ) * P_SNLOC + P_SJLOC )
 
-                                !Calculate aid variable NMX_ALL
-                                NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN( U_SILOC, : ) * SBCVFEN( P_SJLOC, : ) * SDETWE( : ))
-                                IF(IGOT_VOL_X_PRESSURE==1) THEN
-                                    DO IPHASE = 1, NPHASE
-                                        VOL_FRA_NMX_ALL( :, IPHASE ) = VOL_FRA_NMX_ALL( :, IPHASE ) + sum(SVOL_FRA( IPHASE, : )) * NMX_ALL( : )
+                            !Calculate aid variable NMX_ALL
+                            NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN( U_SILOC, : ) * SBCVFEN( P_SJLOC, : ) * SDETWE( : ))
+                            IF(IGOT_VOL_X_PRESSURE==1) THEN
+                                DO IPHASE = 1, NPHASE
+                                    VOL_FRA_NMX_ALL( :, IPHASE ) = VOL_FRA_NMX_ALL( :, IPHASE ) + sum(SVOL_FRA( IPHASE, : )) * NMX_ALL( : )
+                                END DO
+                            END IF
+
+                            ! Put into matrix
+
+                            ! Find COUNT - position in matrix : FINMCY, COLMCY
+                            IF ( .NOT.GOT_C_MATRIX ) THEN
+                                CALL USE_POSINMAT_C_STORE( COUNT, IU_NOD, JCV_NOD, &
+                                U_NONODS, FINDC, COLC, NCOLC, &
+                                IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE, ELE, U_ILOC, P_JLOC, &
+                                TOTELE, U_NLOC, P_NLOC )
+                            END IF
+
+                            Loop_Phase2: DO IPHASE = 1, NPHASE
+                                IF( WIC_P_BC_ALL( SELE ) == WIC_P_BC_DIRICHLET ) THEN
+                                    DO IDIM = 1, NDIM_VEL
+                                        IF(IGOT_VOL_X_PRESSURE==1) THEN
+                                            IF ( .NOT.GOT_C_MATRIX ) THEN
+                                                C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                + VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                            END IF
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            - VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SUF_P_BC_ALL( P_SJLOC + P_SNLOC * ( SELE - 1) ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                        ELSE
+                                            IF ( .NOT.GOT_C_MATRIX ) THEN
+                                                C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                + NMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                            END IF
+                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                            - NMX_ALL( IDIM ) * SUF_P_BC_ALL( P_SJLOC + P_SNLOC* ( SELE - 1 ) ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                        ENDIF
                                     END DO
                                 END IF
-
-                                ! Put into matrix
-
-                                ! Find COUNT - position in matrix : FINMCY, COLMCY
-                                IF ( .NOT.GOT_C_MATRIX ) THEN
-                                    CALL USE_POSINMAT_C_STORE( COUNT, IU_NOD, JCV_NOD, &
-                                    U_NONODS, FINDC, COLC, NCOLC, &
-                                    IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE, ELE, U_ILOC, P_JLOC, &
-                                    TOTELE, U_NLOC, P_NLOC )
-                                END IF
-
-                                Loop_Phase2: DO IPHASE = 1, NPHASE
-                                    IF( WIC_P_BC_ALL( SELE ) == WIC_P_BC_DIRICHLET ) THEN
-                                        DO IDIM = 1, NDIM_VEL
-                                            IF(IGOT_VOL_X_PRESSURE==1) THEN
-                                               IF ( .NOT.GOT_C_MATRIX ) THEN
-                                                   C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-                                                   + VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                               END IF
-                                               LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                               - VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SUF_P_BC_ALL( P_SJLOC + P_SNLOC * ( SELE - 1) ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                            ELSE
-                                               IF ( .NOT.GOT_C_MATRIX ) THEN
-                                                   C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-                                                   + NMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                               END IF
-                                               LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                               - NMX_ALL( IDIM ) * SUF_P_BC_ALL( P_SJLOC + P_SNLOC* ( SELE - 1 ) ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                            ENDIF
-                                        END DO
-                                    END IF
-                                END DO Loop_Phase2
-                            ENDIF
+                            END DO Loop_Phase2
                         END DO Loop_JLOC2
                     END DO Loop_ILOC2
                    ! ***********SUBROUTINE DETERMINE_SUF_PRES - END************
@@ -5133,54 +5062,48 @@ DEALLOCATE( C )
                                 P_JNOD2 = P_NDGLN(( ELE2 - 1 ) * P_NLOC + P_JLOC2 )
                                 DO U_SILOC = 1, U_SNLOC
                                     U_ILOC = U_SLOC2LOC( U_SILOC )
-                                    U_NLOC2 = MAX(1,U_NLOC/CV_NLOC)
-                                    ILEV = (U_ILOC-1)/U_NLOC2 + 1
-                                    IF( .NOT. IS_OVERLAPPING ) ILEV = 1
 
-                                    IF( ( .NOT. IS_OVERLAPPING ) .OR. &
-                                    (( MAT_OTHER_LOC( ILEV ) /= 0 )) ) THEN
-                                        U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                                        VNMX_ALL = 0.0
-                                        DO SGI = 1, SBCVNGI
-                                            RNN = SDETWE( SGI ) * SBUFEN( U_SILOC, SGI ) * SBCVFEN( P_SJLOC, SGI )
-                                            VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
-                                        END DO
+                                    U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+                                    VNMX_ALL = 0.0
+                                    DO SGI = 1, SBCVNGI
+                                        RNN = SDETWE( SGI ) * SBUFEN( U_SILOC, SGI ) * SBCVFEN( P_SJLOC, SGI )
+                                        VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
+                                    END DO
 
-                                        CALL USE_POSINMAT_C_STORE( COUNT, U_INOD, P_JNOD,  &
-                                        U_NONODS, FINDC, COLC, NCOLC, &
-                                        IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE, ELE, U_ILOC, P_JLOC, &
-                                        TOTELE, U_NLOC, P_NLOC )
+                                    CALL USE_POSINMAT_C_STORE( COUNT, U_INOD, P_JNOD,  &
+                                    U_NONODS, FINDC, COLC, NCOLC, &
+                                    IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE, ELE, U_ILOC, P_JLOC, &
+                                    TOTELE, U_NLOC, P_NLOC )
 
-                                        CALL USE_POSINMAT_C_STORE_SUF_DG( COUNT2, U_INOD, P_JNOD2,  &
-                                        U_NONODS, FINDC, COLC, NCOLC, &
-                                        IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE_SUF_DG, ELE, IFACE, U_SILOC, P_SJLOC,  &
-                                        TOTELE, NFACE, U_SNLOC, P_SNLOC )
+                                    CALL USE_POSINMAT_C_STORE_SUF_DG( COUNT2, U_INOD, P_JNOD2,  &
+                                    U_NONODS, FINDC, COLC, NCOLC, &
+                                    IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE_SUF_DG, ELE, IFACE, U_SILOC, P_SJLOC,  &
+                                    TOTELE, NFACE, U_SNLOC, P_SNLOC )
 
-                                        Loop_Phase5: DO IPHASE = 1, NPHASE
-                                            COUNT_PHA  = COUNT  + ( IPHASE - 1 ) * NDIM_VEL * NCOLC
-                                            COUNT_PHA2 = COUNT2 + ( IPHASE - 1 ) * NDIM_VEL * NCOLC
-                                            ! weight integral according to non-uniform mesh spacing otherwise it will go unstable.
-                                            IF( VOL_ELE_INT_PRES ) THEN
-                                                ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
-                                                MASSE = MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 )
-                                                MASSE2 = MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE )
-                                            ELSE ! Simple average (works well with IN_ELE_UPWIND=DG_ELE_UPWIND=2)...
-                                                MASSE = 1.0
-                                                MASSE2 = 1.0
-                                            END IF
+                                    Loop_Phase5: DO IPHASE = 1, NPHASE
+                                        COUNT_PHA  = COUNT  + ( IPHASE - 1 ) * NDIM_VEL * NCOLC
+                                        COUNT_PHA2 = COUNT2 + ( IPHASE - 1 ) * NDIM_VEL * NCOLC
+                                        ! weight integral according to non-uniform mesh spacing otherwise it will go unstable.
+                                        IF( VOL_ELE_INT_PRES ) THEN
+                                            ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
+                                            MASSE = MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 )
+                                            MASSE2 = MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE )
+                                        ELSE ! Simple average (works well with IN_ELE_UPWIND=DG_ELE_UPWIND=2)...
+                                            MASSE = 1.0
+                                            MASSE2 = 1.0
+                                        END IF
 
-                                            ! SELE_OVERLAP_SCALE(P_JNOD) is the scaling needed to convert to overlapping element surfaces.
-                                            IF ( .NOT.GOT_C_MATRIX ) THEN
-                                                DO IDIM = 1, NDIM_VEL
-                                                    C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-                                                    + VNMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC ) * MASSE / ( MASSE + MASSE2 )
+                                        ! SELE_OVERLAP_SCALE(P_JNOD) is the scaling needed to convert to overlapping element surfaces.
+                                        IF ( .NOT.GOT_C_MATRIX ) THEN
+                                            DO IDIM = 1, NDIM_VEL
+                                                C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                + VNMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC ) * MASSE / ( MASSE + MASSE2 )
 
-                                                    C( IDIM, IPHASE, COUNT2 ) = C( IDIM, IPHASE, COUNT2 ) &
-                                                    - VNMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC ) * MASSE / ( MASSE + MASSE2 )
-                                                END DO
-                                            END IF
-                                        END DO Loop_Phase5
-                                    ENDIF
+                                                C( IDIM, IPHASE, COUNT2 ) = C( IDIM, IPHASE, COUNT2 ) &
+                                                - VNMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC ) * MASSE / ( MASSE + MASSE2 )
+                                            END DO
+                                        END IF
+                                    END DO Loop_Phase5
                                 END DO
                             END DO
                            !STOP 383

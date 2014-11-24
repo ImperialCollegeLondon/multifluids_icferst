@@ -36,7 +36,7 @@
     use matrix_operations
     use Copy_Outof_State
     use futils, only: int2str
-    use global_parameters, only: is_overlapping, is_compact_overlapping
+    use global_parameters, only: is_compact_overlapping
 
     implicit none
 
@@ -207,7 +207,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, x_snloc, cv_snloc, u_snloc, &
            p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-           ele, cv_nod, mat_nod, iphase, idim, ilev, nlev, u_iloc, u_inod, u_nloc2
+           ele, cv_nod, mat_nod, iphase, idim, u_iloc, u_inod
       real :: diff_molecular, diff_longitudinal, diff_transverse
       real, dimension( : ), allocatable :: ud, mat_u, x, y, z, nu, nv, nw
       type( vector_field ), pointer :: x_all
@@ -246,30 +246,21 @@
 
         nu_all => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
 
-      IF ( IS_OVERLAPPING ) THEN
-         NLEV = CV_NLOC
-         U_NLOC2 = MAX( 1, U_NLOC / CV_NLOC )
-      ELSE
-         NLEV = 1
-         U_NLOC2 = U_NLOC
-      END IF
       DO ELE = 1, TOTELE
-         DO ILEV = 1, NLEV
-            DO U_ILOC = 1 + (ILEV-1)*U_NLOC2, ILEV*U_NLOC2
-               U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-               DO IPHASE = 1, NPHASE
-                  DO IDIM = 1, NDIM
-                     IF ( IDIM==1 ) THEN
-                        NU( U_INOD + (IPHASE-1)*U_NONODS ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
-                     ELSE IF ( IDIM==2 ) THEN
-                        NV( U_INOD + (IPHASE-1)*U_NONODS ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
-                     ELSE
-                        NW( U_INOD + (IPHASE-1)*U_NONODS ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
-                     END IF
-                  END DO
-               END DO
-            END DO
-         END DO
+        DO U_ILOC = 1, U_NLOC
+           U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+           DO IPHASE = 1, NPHASE
+              DO IDIM = 1, NDIM
+                 IF ( IDIM==1 ) THEN
+                    NU( U_INOD + (IPHASE-1)*U_NONODS ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
+                 ELSE IF ( IDIM==2 ) THEN
+                    NV( U_INOD + (IPHASE-1)*U_NONODS ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
+                 ELSE
+                    NW( U_INOD + (IPHASE-1)*U_NONODS ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
+                 END IF
+              END DO
+           END DO
+        END DO
       END DO
 
 

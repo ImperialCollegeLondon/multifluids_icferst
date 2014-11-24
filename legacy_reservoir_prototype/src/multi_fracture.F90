@@ -37,7 +37,7 @@ module multiphase_fractures
   use state_module
   use copy_outof_state
   use spud
-  use global_parameters, only: option_path_len, field_name_len, is_overlapping, is_compact_overlapping
+  use global_parameters, only: option_path_len, field_name_len, is_compact_overlapping
   use futils, only: int2str
   use solvers
   use implicit_solids
@@ -698,8 +698,7 @@ contains
     u_nloc = ele_loc( velocity, 1 )
 
     allocate( u_tmp( ndim, nphase, u_nonods ) )
-    u_tmp = velocity % val ! not true for overlapping elements, need
-                           ! to take an average of the verious levels 
+    u_tmp = velocity % val
 
     u_mesh => extract_mesh( packed_state, "VelocityMesh" )
 
@@ -832,8 +831,7 @@ contains
     u_nonods = node_count( velocity )
 
     allocate( u_tmp( ndim, nphase, u_nonods ) )
-    u_tmp = velocity % val ! not true for overlapping elements, need
-                           ! to take an average of the verious levels 
+    u_tmp = velocity % val
 
     u_mesh => extract_mesh( packed_state, "VelocityMesh" )
 

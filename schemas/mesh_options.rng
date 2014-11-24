@@ -65,7 +65,6 @@ enforcing continuity by Lagrange multipliers).</a:documentation>
                     <value>lagrangian</value>
                     <value>bubble</value>
                     <value>trace</value>
-                    <value>overlapping</value>
                   </choice>
                 </element>
               </element>

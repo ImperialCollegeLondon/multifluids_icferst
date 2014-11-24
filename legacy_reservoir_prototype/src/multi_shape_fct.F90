@@ -40,7 +40,7 @@
     use shape_functions
     use state_module
     use spud
-    use global_parameters, only: option_path_len, is_compact_overlapping, is_overlapping
+    use global_parameters, only: option_path_len, is_compact_overlapping
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
     use Fields_Allocates, only : allocate, make_mesh
@@ -2210,8 +2210,8 @@
            sufen2, sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2, &
            sbufen2, sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, sbufenlz2
       real, dimension( :, : ), allocatable :: M,MLX,MLY,MLZ, sm,SMLX,SMLY
-      character( len = option_path_len ) :: overlapping_path, dummy_path, dummypath2
-      integer :: u_nloc2, ilev, ilev2, u_snloc2, u_ele_type2, gi, MLOC, SMLOC
+      character( len = option_path_len ) :: dummy_path, dummypath2
+      integer :: u_ele_type2, gi, MLOC, SMLOC
       integer :: sgi, cv_siloc, cv_skloc
       real :: rmax
 
@@ -2231,359 +2231,82 @@ ewrite(3,*)'lll:', option_path_len
 
 
 
-      if( is_overlapping ) then
-         ! Define basis functions (overlapping) for porous media flow
-         u_nloc2 = u_nloc / cv_nloc
 
-         allocate( ufen2( u_nloc2, cv_ngi_short ) )
-         allocate( ufenlx2( u_nloc2, cv_ngi_short ) )
-         allocate( ufenly2( u_nloc2, cv_ngi_short ) )
-         allocate( ufenlz2( u_nloc2, cv_ngi_short ) )
+      sele_overlap_scale = 1.
 
-         u_nloc2 = u_nloc / cv_nloc
-         allocate( ufem_on_face2( u_nloc2, scvngi ) )
-         allocate( sufen2( u_nloc2, scvngi ) )
-         allocate( sufenslx2( u_nloc2, scvngi ) )
-         allocate( sufensly2( u_nloc2, scvngi ) )
-         allocate( sufenlx2( u_nloc2, scvngi ) )
-         allocate( sufenly2( u_nloc2, scvngi ) )
-         allocate( sufenlz2( u_nloc2, scvngi ) )
+      if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
+          ewrite(3,*)'2 going into SHAPE_one_ele'
+          call SHAPE_one_ele2(&
+          ndim, cv_ele_type, &
+          cv_ngi, cv_nloc, u_nloc,  &
+                         ! Volume shape functions
+          cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
+          ufen, ufenlx, ufenly, ufenlz, &
+                         ! Surface of each CV shape functions
+          sbcvngi,  &
+          sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
+          sbufen, sbufenslx, sbufensly, &
+                         ! Surface element shape funcs
+          nface, &
+          cv_sloclist, u_sloclist, cv_snloc, u_snloc )
 
-         u_nloc2 = u_nloc / cv_nloc
-         u_snloc2 = u_snloc / cv_nloc
+          if(scvngi/=sbcvngi) FLAbort("scvngi/=sbcvngi")
 
-         ewrite(3,*) 'U_NLOC  , U_SNLOC  ', u_nloc  , u_snloc
-         ewrite(3,*) 'U_NLOC2, U_SNLOC2', u_nloc2, u_snloc2
-
-         allocate( u_sloclist2( 1 : nface, u_snloc2 ) )
-         allocate( sbufen2( u_snloc2, sbcvngi ) )
-         allocate( sbufenslx2( u_snloc2, sbcvngi ) )
-         allocate( sbufensly2( u_snloc2, sbcvngi ) )
-         allocate( sbufenlx2( u_snloc2, sbcvngi ) )
-         allocate( sbufenly2( u_snloc2, sbcvngi ) )
-         allocate( sbufenlz2( u_snloc2, sbcvngi ) )
-      endif
-
-      ! Sele_Overlap_Scale is the scaling needed to convert to overlapping element surfaces
-      if( is_overlapping ) then
-         Select Case( cv_nloc )
-         case( 3 :  )
-            sele_overlap_scale = 4. 
-         case( 2 )
-            sele_overlap_scale = 2.
-         case default
-            sele_overlap_scale = 1.
-         end Select
-! correct scaling...
-         sele_overlap_scale = real(cv_nloc)/real(cv_snloc)
-    !     if(ndim==2) then
-    !        if(cv_nloc==3) sele_overlap_scale =3.
-    !        if(cv_nloc==6) sele_overlap_scale = 6.
-    !     else if(ndim==3) then
-    !        if(cv_nloc==4) sele_overlap_scale = 2.
-    !        if(cv_nloc==10) sele_overlap_scale = 4.
-    !     endif
-     !       sele_overlap_scale = 0.33
       else
-         sele_overlap_scale = 1.
-      end if
+          call shape_cv_n( ndim, cv_ele_type, &
+          cv_ngi, cv_nloc, u_nloc, cvn, cvweight, &
+          cvfen, cvfenlx, cvfenly, cvfenlz, &
+          ufen, ufenlx, ufenly, ufenlz )
+      endif
+      cvn_short = cvn
+      cvfen_short = cvfen
+      cvfenlx_short = cvfenlx
+      cvfenly_short = cvfenly
+      cvfenlz_short = cvfenlz
+      cvweight_short = cvweight
 
-      Conditional_OverlappingMethod1: if( is_overlapping ) then
-         ! Define basis functions (overlapping) for porous media flow
-
-         if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
-
-            ewrite(3,*)'1 going into SHAPE_one_ele'
-            call SHAPE_one_ele2(&
-                 ndim, cv_ele_type, &
-                 cv_ngi_short, cv_nloc, u_nloc2,  &
-                                ! Volume shape functions
-                 cvweight_short, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
-                 ufen2, ufenlx2, ufenly2, ufenlz2, &
-                                ! Surface of each CV shape functions
-                 sbcvngi,  &
-                 sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
-                 sbufen2, sbufenslx2, sbufensly2, &
-                                ! Surface element shape funcs
-                 nface, &
-                 cv_sloclist, u_sloclist2, cv_snloc, u_snloc2 )
-            ewrite(3,*)'1 just out of SHAPE_one_ele'
- 
-            if(sbcvngi/=scvngi) FLAbort("sbcvngi/=scvngi")
-
-         else
-            call shape_cv_n( ndim, cv_ele_type, &
-                 cv_ngi_short, cv_nloc, u_nloc2, cvn_short, cvweight_short, &
-                 cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
-                 ufen2, ufenlx2, ufenly2, ufenlz2 )
-         endif
-
-         ! Defining the base functions for each level
-         ufen = 0. ; ufenlx = 0. ; ufenly = 0. ; ufenlz = 0. ; cvn = 0.
-         Loop_ILEV1: do ilev = 1, cv_nloc
-            ufen( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 ufen2( 1 : u_nloc2, 1 : cv_ngi_short )
-            ufenlx( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 ufenlx2( 1 : u_nloc2, 1 : cv_ngi_short )
-            ufenly( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 ufenly2( 1 : u_nloc2, 1 : cv_ngi_short )
-            ufenlz( 1 + ( ilev - 1) * u_nloc2 : ilev * u_nloc2, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 ufenlz2( 1 : u_nloc2, 1 : cv_ngi_short )
-
-            cvfen( 1 : cv_nloc, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 cvfen_short( 1 : cv_nloc, 1 : cv_ngi_short )
-            cvfenlx( 1 : cv_nloc, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 cvfenlx_short( 1 : cv_nloc, 1 : cv_ngi_short )
-            cvfenly( 1 : cv_nloc, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 cvfenly_short( 1 : cv_nloc, 1 : cv_ngi_short )
-            cvfenlz( 1 : cv_nloc, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = &
-                 cvfenlz_short( 1 : cv_nloc, 1 : cv_ngi_short )
-
-            cvweight( 1 + ( ilev - 1 ) * cv_ngi_short : &
-                 ilev * cv_ngi_short ) = &
-                 cvweight_short( 1 : cv_ngi_short )
-            cvn( ilev, &
-                 1 + ( ilev - 1 ) * cv_ngi_short : ilev * cv_ngi_short ) = 1.
-
-         end do Loop_ILEV1
-
-      else ! if it is not overlapping formulation
-         if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
-            ewrite(3,*)'2 going into SHAPE_one_ele' 
-            call SHAPE_one_ele2(&
-                 ndim, cv_ele_type, &
-                 cv_ngi, cv_nloc, u_nloc,  &
-                                ! Volume shape functions
-                 cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
-                 ufen, ufenlx, ufenly, ufenlz, &
-                                ! Surface of each CV shape functions
-                 sbcvngi,  &
-                 sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
-                 sbufen, sbufenslx, sbufensly, &
-                                ! Surface element shape funcs
-                 nface, &
-                 cv_sloclist, u_sloclist, cv_snloc, u_snloc ) 
-
-            if(scvngi/=sbcvngi) FLAbort("scvngi/=sbcvngi")
-
-         else
-            call shape_cv_n( ndim, cv_ele_type, &
-                 cv_ngi, cv_nloc, u_nloc, cvn, cvweight, &
-                 cvfen, cvfenlx, cvfenly, cvfenlz, &
-                 ufen, ufenlx, ufenly, ufenlz )
-         endif
-         cvn_short = cvn
-         cvfen_short = cvfen
-         cvfenlx_short = cvfenlx
-         cvfenly_short = cvfenly
-         cvfenlz_short = cvfenlz
-         cvweight_short = cvweight       
-
-      end if Conditional_OverlappingMethod1
-      !ewrite(3,*) 'out of shape_cv_n - CVWEIGHT', CVWEIGHT
 
       !
-      !(a) scvfen( cv_nloc, scvngi ): the shape function evaluated for each node 
+      !(a) scvfen( cv_nloc, scvngi ): the shape function evaluated for each node
       !          at each surface gauss point
-      !(b) scvfenslx[y/z]( cv_nloc, scvngi ): the surface derivatives of the shape 
-      !          function for each node at those same points, and the derivatives 
+      !(b) scvfenslx[y/z]( cv_nloc, scvngi ): the surface derivatives of the shape
+      !          function for each node at those same points, and the derivatives
       !          of the shape
-      !(c) scvfeweigh( scvngi ): the Gauss weights to use when integrating around 
+      !(c) scvfeweigh( scvngi ): the Gauss weights to use when integrating around
       !          the control volume surface
       !(d) cv_neiloc( cv_nloc, scvngi ): neighbour node for a given node/gauss-point
-      !          pair. This also include quadature points around the element. 
+      !          pair. This also include quadature points around the element.
       !
 
-      Conditional_OverlappingMethod2: if( is_overlapping ) then
-         u_ele_type2 = 1
-         !ewrite(3,*)'cv_nloc, cv_ngi, scvngi:', cv_nloc, cv_ngi, scvngi
-         !ewrite(3,*)'u_nloc, u_nloc2:', u_nloc, u_nloc2
+     if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element
+        call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
+             ufem_on_face, &
+             cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
+             scvfenlx, scvfenly, scvfenlz, &
+             u_nloc, sufen, sufenslx, sufensly, &
+             sufenlx, sufenly, sufenlz, &
+             ndim )
 
-
-         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element 
-            call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-                 ufem_on_face2, &
-                 cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-                 scvfenlx, scvfenly, scvfenlz, &
-                 u_nloc2, sufen2, sufenslx2, sufensly2, &
-                 sufenlx2, sufenly2, sufenlz2, &
-                 ndim )
-
-         !call U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi, &
-         !     cv_neiloc,   &
-         !     u_on_face )
-
-         !         do ilev = 1, u_nloc
-         !            ewrite(3,*)'**u_on_face**:', ( u_on_face( ilev, gi ), gi = 1, scvngi )
-         !         end do
-         !         do ilev = 1, cv_nloc
-         !            ewrite(3,*)'**cvfem_on_face**:', ( cvfem_on_face( ilev, gi ), gi = 1, scvngi )
-         !         end do
-
-         sufen = 0. ; sufenslx = 0. ; sufensly = 0. 
-         sufenlx = 0. ; sufenly = 0. ; sufenlz = 0.
-         Loop_ILEV2: do ilev = 1, cv_nloc
-            !==  u_on_face( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-            !==       1 : scvngi ) = &
-            !==       u_on_face2( 1 : u_nloc2, 1 : scvngi )
-            !            u_on_face2( 1 : u_nloc2, 1 : scvngi ) = &
-            !                 u_on_face( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-            !                 1 : scvngi ) 
-            !            ufem_on_face2( 1 : u_nloc2, 1 : scvngi ) = &
-            !                 ufem_on_face( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-            !                 1 : scvngi ) 
-            sufen( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufen2( 1 : u_nloc2, 1 : scvngi )
-            sufenslx( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufenslx2( 1 : u_nloc2, 1 : scvngi )
-            sufensly( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufensly2( 1 : u_nloc2, 1 : scvngi )
-            sufenlx( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufenlx2( 1 : u_nloc2, 1 : scvngi )
-            sufenly( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufenly2( 1 : u_nloc2, 1 : scvngi )
-            sufenlz( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = &
-                 sufenlz2( 1 : u_nloc2, 1 : scvngi )
-            ufem_on_face( 1 + ( ilev - 1 ) * u_nloc2 : ilev * u_nloc2, &
-                 1 : scvngi ) = ufem_on_face2( 1 : u_nloc2, 1 : scvngi )
-         end do Loop_ILEV2
-! end of if(.not.QUAD_OVER_WHOLE_ELE) then
-         endif  
-
-      else
-         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element 
-            call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-                 ufem_on_face, &
-                 cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-                 scvfenlx, scvfenly, scvfenlz, &
-                 u_nloc, sufen, sufenslx, sufensly, &
-                 sufenlx, sufenly, sufenlz, &
-                 ndim )
-         endif
-         !call U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi, &
-         !     cv_neiloc,   &
-         !     u_on_face )
-      end if Conditional_OverlappingMethod2
-
-      ! Determine the surface element shape functions from those 
+      ! Determine the surface element shape functions from those
       ! calculated in SHAPESV_FEM_PLUS and also CV_SLOCLIST( NFACE,CV_SNLOC )
-      !ewrite(3,*)'u_on_face2( u_iloc, i_scvngi):'
-      !do ilev = 1, u_nloc2
-      !   ewrite(3,*) ilev, ( u_on_face2( ilev, ilev2 ), ilev2 = 1, scvngi )
-      !end do
-
-      Conditional_OverlappingMethod3: if( is_overlapping ) then
-         u_ele_type2 = 1
-         u_nloc2 = u_nloc / cv_nloc
-         u_snloc2 = u_snloc / cv_nloc
-
-         !ewrite(3,*) 'U_NLOC  , U_SNLOC  ', u_nloc  , u_snloc
-         !ewrite(3,*) 'U_NLOC2, U_SNLOC2', u_nloc2, u_snloc2
-
-         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element 
-            call det_suf_ele_shape( scvngi, nface, &
-                 cvfem_on_face, &
-                 cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-                 scvfenlx, scvfenly, scvfenlz, &
-                 u_nloc2, sufen2, sufenslx2, sufensly2, &
-                 sufenlx2, sufenly2, sufenlz2, &
-                 sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
-                 sbcvfenlx, sbcvfenly, sbcvfenlz, &
-                 sbufen2, sbufenslx2, sbufensly2, &
-                 sbufenlx2, sbufenly2, sbufenlz2, &
-                 cv_sloclist, u_sloclist2, cv_snloc, u_snloc2, &
-                 ndim, cv_ele_type )
-         endif
-         !ewrite(3,*) 'sbufen2:', sbufen2
-         !ewrite(3,*) 'sbcvfen:', sbcvfen
-         !ewrite(3,*) 'sufen2:', sufen2
-         !ewrite(3,*) 'scvfen:', scvfen
-
-         Loop_ILEV3: do ilev = 1, cv_nloc
-
-            sbufen( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufen2( 1 : u_snloc2, 1 : sbcvngi )
-            sbufenslx( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufenslx2( 1 : u_snloc2, 1 : sbcvngi )
-            sbufensly( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufensly2( 1 : u_snloc2, 1 : sbcvngi )
-            sbufenlx( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufenlx2( 1 : u_snloc2, 1 : sbcvngi )
-            sbufenly( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufenly2( 1 : u_snloc2, 1 : sbcvngi )
-            sbufenlz( 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2, &
-                 1 : sbcvngi ) = &
-                 sbufenlz2( 1 : u_snloc2, 1 : sbcvngi )
-            u_sloclist( 1 : nface, &
-                 1 + ( ilev - 1 ) * u_snloc2 : ilev * u_snloc2 ) = &
-                 u_sloclist2( 1 : nface, 1 : u_snloc2 ) + &
-                 ( ilev - 1 ) * u_nloc2
-         end do Loop_ILEV3
-
-      else
-         if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element 
-            call det_suf_ele_shape( scvngi, nface, &
-                 cvfem_on_face, &
-                 cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-                 scvfenlx, scvfenly, scvfenlz, &
-                 u_nloc, sufen, sufenslx, sufensly, &
-                 sufenlx, sufenly, sufenlz, &
-                 sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
-                 sbcvfenlx, sbcvfenly, sbcvfenlz,  &
-                 sbufen, sbufenslx, sbufensly, &
-                 sbufenlx, sbufenly, sbufenlz, &
-                 cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-                 ndim, cv_ele_type )
-         endif
-      end if Conditional_OverlappingMethod3
-
-      if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element 
+         call det_suf_ele_shape( scvngi, nface, &
+             cvfem_on_face, &
+             cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
+             scvfenlx, scvfenly, scvfenlz, &
+             u_nloc, sufen, sufenslx, sufensly, &
+             sufenlx, sufenly, sufenlz, &
+             sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
+             sbcvfenlx, sbcvfenly, sbcvfenlz,  &
+             sbufen, sbufenslx, sbufensly, &
+             sbufenlx, sbufenly, sbufenlz, &
+             cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
+             ndim, cv_ele_type )
          ! Define the gauss points that lie on the surface of the
          ! control volume surrounding a given local node (iloc)
          ! that is FINDGPTS, COLGPTS, NCOLGPTS
          call gaussiloc( findgpts, colgpts, ncolgpts, &
               cv_neiloc, cv_nloc, scvngi )  
-      endif
-
-      if( is_overlapping ) then
-         deallocate( ufen2 )
-         deallocate( ufenlx2 )
-         deallocate( ufenly2 )
-         deallocate( ufenlz2 )
-         deallocate( ufem_on_face2 )
-         deallocate( sufen2 )
-         deallocate( sufenslx2 )
-         deallocate( sufensly2 )
-         deallocate( sufenlx2 )
-         deallocate( sufenly2 )
-         deallocate( sufenlz2 )
-         deallocate( sbufen2 )
-         deallocate( sbufenslx2 )
-         deallocate( sbufensly2 )
-         deallocate( sbufenlx2 )
-         deallocate( sbufenly2 )
-         deallocate( sbufenlz2 )
-         deallocate( u_sloclist2 )
-      end if
+     endif
 
       ! Set to zero anything that should be zero in case it was not pre-defined
       if( ndim < 2 ) then
@@ -2610,15 +2333,6 @@ ewrite(3,*)'lll:', option_path_len
          END DO
          SBCVN(CV_SKLOC,SGI)=1.0
       END DO
-
-
-      !ewrite(3,*) 'cv_on_face: ', cv_on_face
-      !ewrite(3,*) 'u_on_face: ', u_on_face
-      !ewrite(3,*) 'cv_sloclist: ', cv_sloclist
-      !ewrite(3,*) 'u_sloclist: ', u_sloclist
-      !ewrite(3,*) 'leaving cv_fem_shape_funs subrt, ncolgpts', ncolgpts
-      !ewrite(3,*) '----sum(cvweight):',sum(cvweight)
-
 
       deallocate( m, mlx, mly, mlz, sm, smlx, smly )
 
@@ -8019,27 +7733,18 @@ ewrite(3,*)'lll:', option_path_len
       integer, dimension( cv_nloc, scvngi ), intent( in ) :: cv_neiloc
       logical, dimension( u_nloc, scvngi ), intent( inout ) :: u_on_face
       ! Local variables
-      integer :: cv_iloc, u_iloc, gi, u_jloc, u_nloc2
+      integer :: cv_iloc, u_iloc, gi, u_jloc
 
       u_on_face = .false.
-      u_nloc2 = u_nloc / cv_nloc
-      !ewrite(3,*)u_nloc, cv_nloc, u_nloc2
 
-      do cv_iloc = 1, cv_nloc
-         do gi = 1, scvngi
-            ! if ( cv_neiloc( cv_iloc, gi ) == -1 ) then
-            !ewrite(3,*)'cv_neiloc:', u_nloc2, cv_iloc, gi, cv_neiloc( cv_iloc, gi )
-            !  endif
-         end do
-      end do
 
       Conditional_ElementType: if( cv_ele_type <= 2 ) then
          u_jloc = 0
          Loop_CV: do cv_iloc = 1, cv_nloc
-            Loop_U: do u_iloc = 1, u_nloc2
+            Loop_U: do u_iloc = 1, u_nloc
                Loop_GI: do gi = 1, scvngi
                   if (  cv_neiloc( cv_iloc, gi ) == -1 ) then
-                     u_jloc = ( cv_iloc - 1 ) * u_nloc2 + u_iloc
+                     u_jloc = ( cv_iloc - 1 ) * u_nloc + u_iloc
                      u_on_face( u_jloc, gi ) = .true.
                      if( u_iloc == 1 ) cycle Loop_CV
                   end if
@@ -8049,10 +7754,10 @@ ewrite(3,*)'lll:', option_path_len
       else
          u_jloc = 0
          do cv_iloc = 1, cv_nloc
-            do u_iloc = 1, u_nloc2
+            do u_iloc = 1, u_nloc
                do gi = 1, scvngi 
                   if ( cv_neiloc( cv_iloc, gi ) == -1 ) then
-                     u_jloc = ( cv_iloc - 1 ) * u_nloc2 + u_iloc
+                     u_jloc = ( cv_iloc - 1 ) * u_nloc + u_iloc
                      u_on_face( u_jloc, gi ) = .true.
                   end if
                end do

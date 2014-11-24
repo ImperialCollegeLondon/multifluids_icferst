@@ -2463,7 +2463,7 @@
       integer, dimension( :, :, :),  allocatable :: wic_u_bc, wic_vol_bc
 
       integer, parameter :: WIC_BC_DIRICHLET = 1
-!!$ for the pressure b.c. and overlapping method 
+!!$ for the pressure b.c. and compact_overlapping method
 !!$ make the material property change just inside the domain else on the surface only...
 !      logical, parameter :: mat_change_inside = .true.
       logical, parameter :: mat_change_inside = .false.

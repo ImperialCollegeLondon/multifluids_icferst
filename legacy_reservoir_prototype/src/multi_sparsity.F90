@@ -32,7 +32,7 @@
     use fldebug
 
     use spud
-    use global_parameters, only: option_path_len, is_overlapping, is_compact_overlapping
+    use global_parameters, only: option_path_len, is_compact_overlapping
 
   contains
 
@@ -116,7 +116,7 @@
       INTEGER, DIMENSION ( U_NLOC * TOTELE ), intent( in ) :: U_NDGLN
       integer, dimension (cv_nloc * totele ), intent( in ) :: cv_ndgln
       ! Local variables...
-      INTEGER :: CV_NOD, U_NOD, JLOC, COUNT, ELE, ELE1, ELE2, CV_NODI, CV_ILOC, ILEV, count2, rep
+      INTEGER :: CV_NOD, U_NOD, JLOC, COUNT, ELE, ELE1, ELE2, CV_NODI, CV_ILOC, count2, rep
       integer, dimension(cv_nonods) :: cv_ndgln_small
       logical :: repeated, finished_colct
 
@@ -182,68 +182,40 @@
             count2 = count2+1
          end do
       ELSE
-         ! Have a discontinuous CV_NOD
-         loop_elements2: DO ELE = 1,TOTELE 
-            loop_cviloc: DO CV_ILOC = 1, CV_NLOC
+          ! Have a discontinuous CV_NOD
+          loop_elements2: DO ELE = 1,TOTELE
+              loop_cviloc: DO CV_ILOC = 1, CV_NLOC
 
-               CV_NOD=(ELE-1)*CV_NLOC+CV_ILOC
+                  CV_NOD=(ELE-1)*CV_NLOC+CV_ILOC
 
-               FINDCT( CV_NOD ) = COUNT + 1
+                  FINDCT( CV_NOD ) = COUNT + 1
 
-               ! IF(U_ELE_TYPE==2) THEN
-               if ( is_overlapping ) then
+                  ! IF(U_ELE_TYPE==2) THEN
                   IF((CV_ILOC==1).AND.(ELE /= 1)) THEN
-                     ELE2=ELE-1
-                     JLOC=U_NLOC/CV_NLOC
-                     DO ILEV=1,CV_NLOC
-                        U_NOD = U_NDGLN(( ELE2 - 1 ) * U_NLOC + JLOC + (ILEV-1)*U_NLOC/CV_NLOC)
-                        COUNT = COUNT + 1
-                        COLCT( COUNT ) = U_NOD
-                     END DO
+                      ELE2=ELE-1
+                      JLOC=U_NLOC
+                      U_NOD = U_NDGLN(( ELE2 - 1 ) * U_NLOC + JLOC )
+                      COUNT = COUNT + 1
+                      COLCT( COUNT ) = U_NOD
                   ENDIF
 
                   DO JLOC = 1 ,U_NLOC
-                     U_NOD = U_NDGLN(( ELE - 1 ) * U_NLOC + JLOC )
-                     COUNT = COUNT + 1
-                     COLCT( COUNT ) = U_NOD
+                      U_NOD = U_NDGLN(( ELE - 1 ) * U_NLOC + JLOC )
+                      COUNT = COUNT + 1
+                      COLCT( COUNT ) = U_NOD
                   END DO
 
                   IF((CV_ILOC==CV_NLOC).AND.(ELE /= TOTELE)) THEN
-                     ELE2=ELE+1
-                     JLOC=1
-                     DO ILEV=1,CV_NLOC
-                        U_NOD = U_NDGLN(( ELE2 - 1 ) * U_NLOC + JLOC + (ILEV-1)*U_NLOC/CV_NLOC)
-                        COUNT = COUNT + 1
-                        COLCT( COUNT ) = U_NOD
-                     END DO
-                  ENDIF
-               ELSE
-                  IF((CV_ILOC==1).AND.(ELE /= 1)) THEN
-                     ELE2=ELE-1
-                     JLOC=U_NLOC
-                     U_NOD = U_NDGLN(( ELE2 - 1 ) * U_NLOC + JLOC )
-                     COUNT = COUNT + 1
-                     COLCT( COUNT ) = U_NOD
+                      ELE2=ELE+1
+                      JLOC=1
+                      U_NOD = U_NDGLN(( ELE2 - 1 ) * U_NLOC + JLOC )
+                      COUNT = COUNT + 1
+                      COLCT( COUNT ) = U_NOD
                   ENDIF
 
-                  DO JLOC = 1 ,U_NLOC
-                     U_NOD = U_NDGLN(( ELE - 1 ) * U_NLOC + JLOC )
-                     COUNT = COUNT + 1
-                     COLCT( COUNT ) = U_NOD
-                  END DO
+              END DO loop_cviloc
 
-                  IF((CV_ILOC==CV_NLOC).AND.(ELE /= TOTELE)) THEN
-                     ELE2=ELE+1
-                     JLOC=1
-                     U_NOD = U_NDGLN(( ELE2 - 1 ) * U_NLOC + JLOC )
-                     COUNT = COUNT + 1
-                     COLCT( COUNT ) = U_NOD
-                  ENDIF
-               ENDIF
-
-            END DO loop_cviloc
-
-         END DO loop_elements2
+          END DO loop_elements2
       ENDIF
 
       FINDCT( CV_NONODS + 1) = COUNT + 1
@@ -1552,12 +1524,11 @@
          mx_nct = mx_nct * mx_nface_p1 
          mx_ncolm = mx_ncolm * 3
       end if
-!      if(is_overlapping) mx_ncolm = 1
       mx_nc = mx_nct
 
 !!$ Assuming the DG representation requires the more storage space
       mx_ncolcmc = mx_nface_p1 **3 * cv_nloc * cv_nloc * totele 
-      if(is_overlapping .or. is_compact_overlapping) then
+      if(is_compact_overlapping) then
          mx_ncoldgm_pha = 1
          mx_ncolmcy     = 1
       !   mx_ncolm = 1
@@ -1668,8 +1639,7 @@ integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha
 !!$      ewrite(3,*)'colele: ', size( colele ), ncolele, '==>', colele( 1 : ncolele )
 !!$      ewrite(3,*)'midele: ', size( midele ), '==>', midele( 1 : totele )
 
-!      if ( .not. is_overlapping ) then
-      if(.not.(is_overlapping .or. is_compact_overlapping)) then
+      if(.not.(is_compact_overlapping)) then
       !-
       !- Computing sparsity for force balance
       !-
@@ -1687,12 +1657,6 @@ integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha
 !!$      ewrite(3,*)'colele_pha: ', colele_pha( 1 : mx_ncolele_pha )
 !!$      ewrite(3,*)'midele_pha: ', midele_pha( 1 : totele * nphase )
 
-!!$      is_overlapping = .false.
-!!$      if (have_option( &
-!!$           '/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/element_type/overlapping')) &
-!!$           is_overlapping = .true.
-
-!      if ( .not. is_overlapping ) then
          findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0
          call form_dgm_pha_sparsity( totele, nphase, u_nloc, nphase * u_nonods * ndim, &
               ndim, mx_ncoldgm_pha, ncoldgm_pha, &
@@ -1710,7 +1674,6 @@ integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha
 !!$      ewrite(3,*)'findgm_pha: ', findgm_pha( 1 : nphase * u_nonods * ndim + 1 )
 !!$      ewrite(3,*)'coldgm_pha: ', coldgm_pha( 1 : ncoldgm_pha )
 !!$      ewrite(3,*)'middgm_pha: ', middgm_pha( 1 : nphase * u_nonods * ndim )
-!!$      ewrite(3,*)'overlapping??', is_overlapping
 
       !-
       !- Now form the global matrix: FINMCY, COLMCY and MIDMCY for the 
@@ -1781,7 +1744,7 @@ integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha
       !-
       !- Computing the sparsity for the force balance plus cty multi-phase eqns
       !- 
-    if(.not.(is_overlapping .or. is_compact_overlapping .or. mx_ncolmcy==0)) then
+    if(.not.(is_compact_overlapping .or. mx_ncolmcy==0)) then
       finmcy = 0 ; colmcy = 0 ; midmcy = 0
       call exten_sparse_mom_cty( ndim, findgm_pha, coldgm_pha, nphase * u_nonods * ndim, ncoldgm_pha, ncolct, &
            cv_nonods, findct, colct, &
