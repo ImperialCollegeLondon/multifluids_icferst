@@ -34,7 +34,7 @@
 
     use fldebug
     use spud
-    use Fields_Allocates, only : allocate
+    use Fields_Allocates, only : allocate, make_mesh
     use fields_data_types, only: mesh_type, scalar_field, vector_field, tensor_field
     use fields, only : node_count, set
     use state_module
@@ -52,7 +52,7 @@
     use halos
     use petsc_tools
     use petsc
-    use multiphase_caching, only : get_caching_level, test_caching_level
+    use multiphase_caching, only : get_caching_level, test_caching_level, reshape_vector2pointer
     use global_parameters, only : FIELD_NAME_LEN
     use boundary_conditions
     implicit none
@@ -1047,6 +1047,71 @@
 
       RETURN
     END SUBROUTINE PHA_BLOCK_INV
+
+
+    SUBROUTINE PHA_BLOCK_INV_plus_storage( PIVIT_MAT, TOTELE, &
+         NBLOCK, state, StorName, indx)
+        !Retrieves the inverse of the PIVIT_MAT fron the storage
+      implicit none
+      INTEGER, intent( in ) :: TOTELE, NBLOCK
+      REAL, DIMENSION( : , : , : ), intent( inout ), pointer :: PIVIT_MAT
+      type( state_type ), intent( inout ), dimension(:) :: state
+      character(len=*), intent(in) :: StorName
+      integer, intent(inout) :: indx
+      ! Local variables
+      integer :: from, to
+      type(mesh_type), pointer :: fl_mesh
+      type(mesh_type) :: Auxmesh
+      type(scalar_field), target :: targ_NX_ALL
+      REAL, DIMENSION( :, :, : ), allocatable :: PIVIT_MAT2
+
+      if (indx==0) then !The first time we need to introduce the targets in state
+         if (has_scalar_field(state(1), StorName)) then
+            !If we are recalculating due to a mesh modification then
+            !we return to the original situation
+            call remove_scalar_field(state(1), StorName)
+         end if
+         !Get mesh file just to be able to allocate the fields we want to store
+         fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+         Auxmesh = make_mesh(fl_mesh,name='StorageMesh')
+         !The number of nodes I want does not coincide
+         Auxmesh%nodes = NBLOCK * NBLOCK * TOTELE
+
+         call allocate (Targ_NX_ALL, Auxmesh, StorName)
+
+         !Now we insert them in state and store the indexes
+         call insert(state(1), Targ_NX_ALL, StorName)
+         !Store index
+         indx = -size(state(1)%scalar_fields)
+
+         call deallocate (Targ_NX_ALL)
+         call deallocate (Auxmesh)
+      end if
+
+      IF (indx<=0) then
+          !We have to calculate and store the inverse
+          ALLOCATE( PIVIT_MAT2( NBLOCK, NBLOCK, TOTELE ))
+
+          PIVIT_MAT2 = PIVIT_MAT!Very slow, but necessary because CX1 cannot reshape pointers...
+
+          call PHA_BLOCK_INV( PIVIT_MAT2, TOTELE, NBLOCK )
+
+          !Store data
+          from = 1; to = NBLOCK * NBLOCK * TOTELE
+          state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
+          reshape(PIVIT_MAT2,[NBLOCK * NBLOCK * TOTELE])
+          deallocate(PIVIT_MAT2)
+          indx = abs(indx)
+     end if
+
+      !Set the pointer to the  solution
+      from = 1; to = NBLOCK * NBLOCK * TOTELE
+      call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+      PIVIT_MAT, NBLOCK, NBLOCK, TOTELE)
+
+
+    END SUBROUTINE PHA_BLOCK_INV_plus_storage
+
 
     SUBROUTINE PHA_BLOCK_MAT_VEC_old( U, BLOCK_MAT, CDP, U_NONODS, NDIM, NPHASE, &
          TOTELE, U_NLOC, U_NDGLN ) 

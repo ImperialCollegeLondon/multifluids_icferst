@@ -237,7 +237,7 @@
       integer :: checkpoint_number
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-      integer, dimension (33) :: StorageIndexes
+      integer, dimension (34) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
       !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
       !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
@@ -251,6 +251,7 @@
       !Indexes used in SURFACE_TENSION_WRAPPER (deprecated and will be removed):[15,30]
       !PROJ_CV_TO_FEM_state          : 31 (disabled)
       !Capillary pressure            : 32 (Pe), 33 (exponent a)
+      !PIVIT_MAT (inverted)          : 34
 
       !Working pointers
       real, dimension(:,:), pointer :: SAT_s, OldSAT_s, FESAT_s
