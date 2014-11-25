@@ -3445,6 +3445,7 @@ DEALLOCATE( C )
 
             LOC_U_RHS = 0.0
 
+!! -Asiri note order of variables being assigned in DO loop below 
             DO U_ILOC = 1, U_NLOC
                 U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
                 DO IPHASE = 1, NPHASE
