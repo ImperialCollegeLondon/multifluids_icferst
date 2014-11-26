@@ -33,7 +33,7 @@
     use state_module
     use fields
     use state_module
-    use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI
+    use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI, is_compact_overlapping
     use spud
     use futils, only: int2str
     use vector_tools
@@ -688,7 +688,7 @@
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, x_snloc, cv_snloc, u_snloc, &
            p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
            ele, imat, icv, iphase, cv_iloc, idim, jdim, ij,i
-      real :: Mobility, pert
+      real :: Mobility, visc_phase1, visc_phase2, pert
       real, dimension( :, :, : ), allocatable :: u_absorb2
 !      real, dimension( : ), allocatable :: satura2
         real, dimension( :, : ), allocatable :: satura2
@@ -717,14 +717,18 @@
       ewrite(3,*) 'In calculate_absorption'
 
       if( have_option( '/physical_parameters/mobility' ) )then
-         call get_option( '/physical_parameters/mobility', Mobility )
+         call get_option( '/physical_parameters/mobility', mobility )
+         visc_phase1 = 1
+         visc_phase2 = mobility
       elseif( have_option( '/material_phase[1]/vector_field::Velocity/prognostic/tensor_field::Viscosity' // &
            '/prescribed/value::WholeMesh/isotropic' ) ) then
          viscosity_ph1 => extract_tensor_field( state( 1 ), 'Viscosity' )
          viscosity_ph2 => extract_tensor_field( state( 2 ), 'Viscosity' )
-         Mobility =  viscosity_ph2%val( 1, 1, 1 ) / viscosity_ph1%val( 1, 1, 1 )
+         visc_phase1 = viscosity_ph1%val( 1, 1, 1 )
+         visc_phase2 = viscosity_ph2%val( 1, 1, 1 )
+         mobility = visc_phase2 / visc_phase1
       elseif( nphase == 1 ) then
-         Mobility = 0.
+         mobility = 0.
       end if
 
       allocate( u_absorb2( mat_nonods, nphase * ndim, nphase * ndim ), satura2( size(SATURA,1), size(SATURA,2) ) )
@@ -732,7 +736,7 @@
 
       CALL calculate_absorption2( MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
            CV_NDGLN, MAT_NDGLN, &
-           U_ABSORB, PERM%val, MOBILITY, SaturaOld)
+           U_ABSORB, PERM%val, MOBILITY, visc_phase1, visc_phase2, SaturaOld)
 
       PERT = 0.0001
 !      SATURA2( 1 : CV_NONODS ) = SATURA( 1 : CV_NONODS ) + PERT
@@ -743,7 +747,7 @@
 
       CALL calculate_absorption2( MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
            CV_NDGLN, MAT_NDGLN, &
-           U_ABSORB2, PERM%val, MOBILITY)
+           U_ABSORB2, PERM%val, MOBILITY, visc_phase1, visc_phase2)
 
       DO ELE = 1, TOTELE
          DO CV_ILOC = 1, CV_NLOC
@@ -779,7 +783,7 @@
 
     SUBROUTINE calculate_absorption2( MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
          CV_NDGLN, MAT_NDGLN, &
-         U_ABSORB, PERM2, MOBILITY, SaturaOld)
+         U_ABSORB, PERM2, MOBILITY, visc_phase1, visc_phase2, SaturaOld)
       ! Calculate absorption for momentum eqns
       use matrix_operations
       !    use cv_advection
@@ -791,7 +795,7 @@
       REAL, DIMENSION( :, :, : ), intent( inout ) :: U_ABSORB
       REAL, DIMENSION( :, :, : ), intent( in ) :: PERM2
       REAL, DIMENSION( :, : ), optional, intent( in ) :: SaturaOld
-      REAL, intent( in ) :: MOBILITY
+      REAL, intent( in ) :: MOBILITY, visc_phase1, visc_phase2
       ! Local variable
       REAL, PARAMETER :: TOLER = 1.E-10
       INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
@@ -861,7 +865,7 @@
 
                      if (is_corey) then
                           if (options%is_Corey_epsilon_method) then
-                             CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), MOBILITY, &
+                             CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), visc_phase1, visc_phase2, &
                                  INV_PERM( IDIM, JDIM, ELE ), min(1.0,max(0.0,SATURA(1,CV_NOD))), IPHASE,&
                                  options, SATURATIONOLD)!Second phase is considered inside the subroutine
                           else
@@ -1655,12 +1659,12 @@
            options%kr2_exp, default=2.0)
     end subroutine get_land_options
 
-    SUBROUTINE relperm_corey_epsilon( ABSP, MOBILITY, INV_PERM, SAT, IPHASE,opt, SATOLD )
+    SUBROUTINE relperm_corey_epsilon( ABSP, visc_phase1, visc_phase2, INV_PERM, SAT, IPHASE,opt, SATOLD )
           !This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
           !when dividing it to obtain the sigma.
         IMPLICIT NONE
         REAL, intent( inout ) :: ABSP
-        REAL, intent( in ) :: MOBILITY, SAT, INV_PERM
+        REAL, intent( in ) :: visc_phase1, visc_phase2, SAT, INV_PERM
         INTEGER, intent( in ) :: IPHASE
         type(corey_options), intent(in) :: opt
         real, optional, intent(in) :: satOLD
@@ -1671,23 +1675,11 @@
         !however as we do not know if it is phase 1 or 2, we let the decision to the user
         !and we multiply both phases by kr_max. By default kr_max= 1
 
-!        IF( IPHASE == 1 ) THEN
-!            Krmax = opt%kr1_max
-!            KR = Krmax*( ( SAT - opt%s_gc) / ( 1. - opt%s_gc - opt%s_or )) ** opt%kr1_exp
-!            Visc = 1.0
-!            SATURATION = SAT
-!        else
-!            SATURATION = 1.0 - SAT
-!            Krmax = opt%kr2_max
-!            KR = Krmax * ( ( SATURATION - opt%s_or ) / ( 1. - opt%s_gc - opt%s_or )) ** opt%kr2_exp
-!            VISC = MOBILITY
-!        end if
-
         SATURATION = sat
         if (present(SATOLD)) then
-            KR = get_relperm_Brooks_Corey(SATURATION, iphase, opt, mobility, visc, krmax,  satOLD)
+            KR = get_relperm_Brooks_Corey(SATURATION, iphase, opt, visc_phase1, visc_phase2, visc, krmax,  satOLD)
         else
-            KR = get_relperm_Brooks_Corey(SATURATION, iphase, opt, mobility, visc, krmax)
+            KR = get_relperm_Brooks_Corey(SATURATION, iphase, opt, visc_phase1, visc_phase2, visc, krmax)
         end if
 
         !Make sure that the relperm is between bounds
@@ -1698,13 +1690,13 @@
       RETURN
     END SUBROUTINE relperm_corey_epsilon
 
-    real function get_relperm_Brooks_Corey(sat, iphase, opt, mobility, visc, krmax, oldSAT)
+    real function get_relperm_Brooks_Corey(sat, iphase, opt, visc_phase1, visc_phase2, visc, krmax, oldSAT)
         !Calculates the Brooks-Corey relperm. If optional oldSAT
         !is introduced, the new relperm is calculated using:
         !Kr = Kr(SwNew) + dKr/dS(SwNew-SwOld)
         implicit none
-        real, intent(inout) :: sat, visc, krmax
-        real, intent(in) :: mobility
+        real, intent(inout) :: sat, krmax, visc
+        real, intent(in) :: visc_phase1, visc_phase2
         integer, intent(in) :: iphase
         type(corey_options), intent(in) :: opt
         real, optional, intent(in) :: oldSAT
@@ -1718,7 +1710,7 @@
             krmax = opt%kr1_max
             get_relperm_Brooks_Corey = krmax*( ( sat - opt%s_gc) /&
                  ( aux )) ** opt%kr1_exp
-            Visc = 1.0
+            Visc = visc_phase1
 !            if (present(oldSAT)) then
 !                derivative = krmax* (opt%kr1_exp)/( aux**opt%kr1_exp )&
 !                 * ( sat - opt%s_gc) ** (opt%kr1_exp-1.0)
@@ -1729,7 +1721,7 @@
             krmax = opt%kr2_max
             get_relperm_Brooks_Corey = krmax * ( ( sat - opt%s_or ) /&
                  ( aux )) ** opt%kr2_exp
-            VISC = MOBILITY
+            VISC = visc_phase2
 !            if (present(oldSAT)) then
 !                derivative = krmax* (opt%kr2_exp)/( aux**opt%kr2_exp )&
 !                 * ( 1.0 - sat - opt%s_gc) ** (opt%kr2_exp-1.0)
@@ -1845,45 +1837,6 @@
 
       RETURN
     END SUBROUTINE relperm_land
-
-
-    subroutine get_InvRelperm_with_saturation(packed_state, relperm, OldPhaseVolumeFraction)
-        !Returns the inverse of the relative permeability values in relperm
-        !Only works for Brooks-Corey
-        Implicit none
-        type( state_type ), intent( inout ) :: packed_state
-        real, dimension(:, :), intent(inout) :: relperm!dim(Nphase, cv_nonods)
-        logical, intent(in) :: OldPhaseVolumeFraction
-        !Local variables
-        integer :: k,iphase
-        type(corey_options) :: options
-        real, dimension(:,:), pointer :: Satura
-
-
-        !Check that we are using Brooks-Corey
-        if (.not.have_option("/material_phase["// int2str(0) //&
-        "]/multiphase_properties/relperm_type/Corey")) return
-        call get_corey_options(options)
-
-        !Assign pointers
-        if (OldPhaseVolumeFraction) then
-            call get_var_from_packed_state(packed_state, OldPhaseVolumeFraction = Satura)
-        else
-            call get_var_from_packed_state(packed_state, PhaseVolumeFraction = Satura)
-        end if
-       do k = 1, size(Satura,2)
-           do iphase = 1, size(Satura,1)
-               if (options%is_Corey_epsilon_method) then
-                   call relperm_corey_epsilon( Relperm(iphase,k), 1.0, &
-                   1.0, Satura(1, k), iphase,options)!Second phase is considered inside the subroutine
-               else
-                   call relperm_corey(Relperm(iphase,k), 1.0, &
-                   1.0, Satura(1, k), iphase,options)!Second phase is considered inside the subroutine
-               end if
-           end do
-       end do
-    end subroutine get_InvRelperm_with_saturation
-
 
 !   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM )
 !
@@ -2243,9 +2196,7 @@
 
 
 
-
-
-      if ( have_option( '/physical_parameters/mobility' ) ) then
+      if ( have_option( '/physical_parameters/mobility' ) .or. is_compact_overlapping ) then
 
          ! if solving for porous media and mobility is calculated
          ! through the viscosity ratio this code will fail
@@ -2453,7 +2404,7 @@
       type(tensor_field), pointer :: viscosity_ph1, viscosity_ph2
       integer :: iphase, ele, sele, cv_siloc, cv_snodi, cv_snodi_ipha, iface, s, e, &
            ele2, sele2, cv_iloc, idim, jdim, i, mat_nod, cv_nodi
-      real :: mobility, satura_bc
+      real :: mobility, satura_bc, visc_phase1, visc_phase2
       real, dimension( ndim, ndim ) :: inv_perm, sigma_out, sigma_in, mat, mat_inv
       integer, dimension( nface, totele) :: face_ele
       integer, dimension( mat_nonods*nphase ) :: idone
@@ -2492,11 +2443,15 @@
 
       if( have_option( '/physical_parameters/mobility' ) )then
          call get_option( '/physical_parameters/mobility', mobility )
+         visc_phase1 = 1
+         visc_phase2 = mobility
       elseif( have_option( '/material_phase[1]/vector_field::Velocity/prognostic/tensor_field::Viscosity' // &
            '/prescribed/value::WholeMesh/isotropic' ) ) then
          viscosity_ph1 => extract_tensor_field( state( 1 ), 'Viscosity' )
          viscosity_ph2 => extract_tensor_field( state( 2 ), 'Viscosity' )
-         mobility = viscosity_ph2%val( 1, 1, 1 ) / viscosity_ph1%val( 1, 1, 1 )
+         visc_phase1 = viscosity_ph1%val( 1, 1, 1 )
+         visc_phase2 = viscosity_ph2%val( 1, 1, 1 )
+         mobility = visc_phase2 / visc_phase1
       elseif( nphase == 1 ) then
          mobility = 0.
       end if
@@ -2561,7 +2516,7 @@
                            do jdim = 1, ndim
                               if (is_corey) then
                                 if (options%is_Corey_epsilon_method) then
-                                     call relperm_corey_epsilon( sigma_out( idim, jdim ), mobility, &
+                                     call relperm_corey_epsilon( sigma_out( idim, jdim ), visc_phase1, visc_phase2, &
                                           inv_perm( idim, jdim ), satura_bc, iphase,options)
                                  else
                                      call relperm_corey( sigma_out( idim, jdim ), mobility, &
