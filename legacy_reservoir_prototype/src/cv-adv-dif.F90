@@ -13797,20 +13797,20 @@ end SUBROUTINE GET_INT_VEL_NEW
 
              abs_tilde    = min(abs_max, max(abs_min,  abs_tilde ))
 
-           if(.false.) then ! new rel perm function
-!             NDOTQ_KEEP_IN(1)    =  0.5*( NDOTQ(1)*get_relperm_epsilon(LOC_T_I(1),1, 0.2, 0.3, 2., 1.) + NDOTQ2(1)*get_relperm_epsilon(LOC_T_J(1),1, 0.2, 0.3, 2., 1.) ) &
-!               / get_relperm_epsilon(LIMT3(1),1, 0.2, 0.3, 2., 1.)
-!             NDOTQ_KEEP_IN(2)    =  0.5*( NDOTQ(2)*get_relperm_epsilon(LOC_T_I(2),2, 0.3, 0.2, 2., 1.) + NDOTQ2(2)*get_relperm_epsilon(LOC_T_J(2),2, 0.3, 0.2, 2., 1.) ) &
-!               / get_relperm_epsilon(LIMT3(2),2, 0.3, 0.2, 2., 1.)
-                                                                        !VALUES FOR RELPERM ARE HARD CODED!!
-             NDOTQ_KEEP_IN(1)    =  0.5*( NDOTQ(1)*inv_get_relperm_epsilon(LOC_T_I(1),1, 0.2, 0.3, 2., 1.) + NDOTQ2(1)*inv_get_relperm_epsilon(LOC_T_J(1),1, 0.2, 0.3, 2., 1.) ) &
-               / inv_get_relperm_epsilon(LIMT3(1),1, 0.2, 0.3, 2., 1.)
-             NDOTQ_KEEP_IN(2)    =  0.5*( NDOTQ(2)*inv_get_relperm_epsilon(LOC_T_I(2),2, 0.3, 0.2, 2., 1.) + NDOTQ2(2)*inv_get_relperm_epsilon(LOC_T_J(2),2, 0.3, 0.2, 2., 1.) ) &
-               / inv_get_relperm_epsilon(LIMT3(2),2, 0.3, 0.2, 2., 1.)
-           else
+!           if(.false.) then ! new rel perm function
+!             !NDOTQ_KEEP_IN(1)    =  0.5*( NDOTQ(1)*get_relperm_epsilon(LOC_T_I(1),1, 0.2, 0.3, 2., 1.) + NDOTQ2(1)*get_relperm_epsilon(LOC_T_J(1),1, 0.2, 0.3, 2., 1.) ) &
+!             !  / get_relperm_epsilon(LIMT3(1),1, 0.2, 0.3, 2., 1.)
+!             !NDOTQ_KEEP_IN(2)    =  0.5*( NDOTQ(2)*get_relperm_epsilon(LOC_T_I(2),2, 0.3, 0.2, 2., 1.) + NDOTQ2(2)*get_relperm_epsilon(LOC_T_J(2),2, 0.3, 0.2, 2., 1.) ) &
+!             !  / get_relperm_epsilon(LIMT3(2),2, 0.3, 0.2, 2., 1.)
+!                                                                        !VALUES FOR RELPERM ARE HARD CODED!!
+!             NDOTQ_KEEP_IN(1)    =  0.5*( NDOTQ(1)*inv_get_relperm_epsilon(LOC_T_I(1),1, 0.2, 0.3, 2., 1.) + NDOTQ2(1)*inv_get_relperm_epsilon(LOC_T_J(1),1, 0.2, 0.3, 2., 1.) ) &
+!               / inv_get_relperm_epsilon(LIMT3(1),1, 0.2, 0.3, 2., 1.)
+!             NDOTQ_KEEP_IN(2)    =  0.5*( NDOTQ(2)*inv_get_relperm_epsilon(LOC_T_I(2),2, 0.3, 0.2, 2., 1.) + NDOTQ2(2)*inv_get_relperm_epsilon(LOC_T_J(2),2, 0.3, 0.2, 2., 1.) ) &
+!               / inv_get_relperm_epsilon(LIMT3(2),2, 0.3, 0.2, 2., 1.)
+!           else
 
              NDOTQ_KEEP_IN    =  0.5*( NDOTQ*ABS_CV_NODI_IPHA    + NDOTQ2*ABS_CV_NODJ_IPHA )    /abs_tilde
-           endif
+!           endif
 
 
            INCOME    = MIN(1.0, MAX(0.0,  (NDOTQ_KEEP_IN - NDOTQ)/VTOLFUN( NDOTQ2 - NDOTQ ) ))
@@ -13916,30 +13916,13 @@ end SUBROUTINE GET_INT_VEL_NEW
              ! DG_ELE_UPWIND==3: the best optimal upwind frac.
 
 
-             !NVEC(1)=CVNORMX(GI)
-             !NVEC(2)=CVNORMY(GI)
-             !NVEC(3)=CVNORMZ(GI)
-             NVEC=CVNORMX_ALL(:, GI)
-             ABS_CV_NODI_IPHA      = 0.0
-             GRAD_ABS_CV_NODI_IPHA = 0.0
-             ABS_CV_NODJ_IPHA      = 0.0
-             GRAD_ABS_CV_NODJ_IPHA = 0.0
+             !We perform: n' * sigma * n
              DO IPHASE = 1, NPHASE
-                 DO IDIM=1,NDIM
-                     V_NODI=0.0; G_NODI=0.0
-                     V_NODJ=0.0; G_NODJ=0.0
-                     V_NODI = V_NODI + dot_product(VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE), NVEC(:))
-                     G_NODI = G_NODI + dot_product(GI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE), NVEC(:))
-
-                     V_NODJ = V_NODJ + dot_product(VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE), NVEC(:))
-                     G_NODJ = G_NODJ + dot_product(GJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE), NVEC(:))
-
-                     ABS_CV_NODI_IPHA(IPHASE)      = ABS_CV_NODI_IPHA(IPHASE) + NVEC(IDIM)*V_NODI
-                     GRAD_ABS_CV_NODI_IPHA(IPHASE) = GRAD_ABS_CV_NODI_IPHA(IPHASE) + NVEC(IDIM)*G_NODI
-                     ABS_CV_NODJ_IPHA(IPHASE)      = ABS_CV_NODJ_IPHA(IPHASE) + NVEC(IDIM)*V_NODJ
-                     GRAD_ABS_CV_NODJ_IPHA(IPHASE) = GRAD_ABS_CV_NODJ_IPHA(IPHASE) + NVEC(IDIM)*G_NODJ
-                 END DO
-             END DO ! PHASE LOOP
+                 ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                 GRAD_ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(GI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                 ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                 GRAD_ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(GJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+             END DO
 
 
              ! Make sure we have some sort of velocity (only needed between elements)...
