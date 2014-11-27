@@ -979,8 +979,8 @@ contains
 
 ! Determine IGOT_T_PACK(IPHASE,:): 
           IGOT_T_PACK=.FALSE.
-          DO IPHASE=1,NPHASE
-             DO ILOOP=1,6
+          DO ILOOP=1,6
+             DO IPHASE=1,NPHASE
                 IF(.NOT.IGOT_T_CONST(IPHASE,ILOOP)) THEN
 ! here we might check to see if we have this in the local storage...
                    IGOT_T_PACK(IPHASE,ILOOP)=.TRUE.
@@ -1021,8 +1021,8 @@ contains
 
               DO MAT_NODI=1,MAT_NONODS
                  DO IPHASE=1,NPHASE
-                    DO IDIM=1,NDIM
-                       DO JDIM=1,NDIM
+                    DO JDIM=1,NDIM
+                       DO IDIM=1,NDIM
                           IJ=(IPHASE-1)*MAT_NONODS*NDIM*NDIM + (MAT_NODI-1)*NDIM*NDIM + (IDIM-1)*NDIM +JDIM
                           INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ)
                        END DO
