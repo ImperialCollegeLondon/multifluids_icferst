@@ -1505,8 +1505,8 @@ contains
             IF ( is_compact_overlapping ) THEN
 
                DO IPHASE=1,NPHASE
-                  DO IDIM=1,NDIM
-                     DO JDIM=1,NDIM
+                  DO JDIM=1,NDIM
+                     DO IDIM=1,NDIM
                         IJ=(IPHASE-1)*MAT_NONODS*NDIM*NDIM + (MAT_NODI-1)*NDIM*NDIM + (IDIM-1)*NDIM +JDIM
                         VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ) 
                         GI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ+NPHASE*MAT_NONODS*NDIM*NDIM) 
@@ -1913,8 +1913,8 @@ contains
                    IF ( is_compact_overlapping ) THEN
 
                       DO IPHASE=1,NPHASE
-                         DO IDIM=1,NDIM
-                            DO JDIM=1,NDIM
+                         DO JDIM=1,NDIM
+                            DO IDIM=1,NDIM
                                IJ=(IPHASE-1)*MAT_NONODS*NDIM*NDIM + (MAT_NODJ-1)*NDIM*NDIM + (IDIM-1)*NDIM +JDIM
                                VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ) 
                                GJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ+NPHASE*MAT_NONODS*NDIM*NDIM) 
@@ -2434,8 +2434,8 @@ contains
                                    !UFENX_ALL(1:NDIM,U_ILOC,GI), UFENX_ALL(1:NDIM,U_JLOC,GI) * DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,CV_NODJ), THERM_U_DIFFUSION_VOL(IPHASE,CV_NODJ) )
                               end if
 
-                              DO IDIM = 1, NDIM
-                                 DO JDIM = 1, NDIM
+                              DO JDIM = 1, NDIM
+                                 DO IDIM = 1, NDIM
                                     VECS_STRESS(IDIM,JDIM,IPHASE,CV_NODI) = VECS_STRESS(IDIM,JDIM,IPHASE,CV_NODI) + STRESS_IJ_THERM(IDIM,JDIM,IPHASE)
                                     VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODI) = VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODI) + NU_LEV_GI(IDIM,IPHASE) * CVNORMX_ALL(JDIM,GI) * SCVDETWEI(GI)
                                     if ( integrate_other_side_and_not_boundary ) then
