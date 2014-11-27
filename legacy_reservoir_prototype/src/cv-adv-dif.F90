@@ -2074,6 +2074,7 @@ contains
                              F_CV_NODI, F_CV_NODJ) 
 
                   ENDIF
+
 ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
                         FVT(:)=T_ALL(:,CV_NODI)*(1.0-INCOME(:)) + T_ALL(:,CV_NODJ)*INCOME(:) 
 !                        FVD(:)=DEN_ALL(:,CV_NODI)*(1.0-INCOME(:)) + DEN_ALL(:,CV_NODJ)*INCOME(:) 
@@ -13847,21 +13848,14 @@ end SUBROUTINE GET_INT_VEL_NEW
 
           DO IPHASE = 1, NPHASE
 
-              UDGI_ALL(:, IPHASE) = 0.0
-              UDGI_ALL_OTHER(:, IPHASE) = 0.0
+              !Temporary storage
+              UDGI_ALL(:, IPHASE) = matmul(LOC_NU( :, IPHASE, :  ),SUFEN( :,  GI ) )
+              !Calculate contributions from each side
+              UDGI_ALL_OTHER(:, IPHASE) = UDGI_ALL(:, IPHASE) * INCOME(IPHASE)
+              UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) * (1.0-INCOME(IPHASE))
 
-              UGI_COEF_ELE_ALL(:, IPHASE, :) = 0.0
-              DO U_KLOC = 1, U_NLOC
-
-                  UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) &
-                  + SUFEN( U_KLOC,  GI ) * LOC_NU( :, IPHASE, U_KLOC  ) * (1.0-INCOME(IPHASE))
-                  UDGI_ALL_OTHER(:, IPHASE) = UDGI_ALL_OTHER(:, IPHASE) &
-                  + SUFEN( U_KLOC, GI ) * LOC_NU( :, IPHASE, U_KLOC ) * INCOME(IPHASE)
-
-                  UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=ROW_SUM_INV_VI(:,IPHASE)* (1.0-INCOME(IPHASE)) &
-                  +ROW_SUM_INV_VJ(:,IPHASE)* INCOME(IPHASE)
-
-              END DO
+              UGI_COEF_ELE_ALL(:, IPHASE, :)=SPREAD(ROW_SUM_INV_VI(:,IPHASE)* (1.0-INCOME(IPHASE)) &
+                  +ROW_SUM_INV_VJ(:,IPHASE)* INCOME(IPHASE), DIM=2, NCOPIES=U_NLOC)
 
               UDGI_ALL(:, IPHASE) = matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),UDGI_ALL(:, IPHASE)) &
               + matmul(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),UDGI_ALL_OTHER(:, IPHASE))

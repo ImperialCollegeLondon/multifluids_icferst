@@ -1110,7 +1110,12 @@ contains
         END DO Loop_NonLinearFlux
 
         !Set saturation to be between bounds
-        satura = min(max(satura,0.0), 1.0)
+        call Set_Saturation_between_bounds(packed_state)
+!        satura = min(max(satura,0.0), 1.0)
+
+
+
+
 
         DEALLOCATE( ACV )
         DEALLOCATE( mass_mn_pres )
@@ -3517,7 +3522,6 @@ DEALLOCATE( PIVIT_MAT )
 
             LOC_U_RHS = 0.0
 
-!! -Asiri note order of variables being assigned in DO loop below
             DO U_ILOC = 1, U_NLOC
                 U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
                 DO IPHASE = 1, NPHASE
@@ -3605,6 +3609,7 @@ DEALLOCATE( PIVIT_MAT )
 ! Add in the viscocity contribution...
                       IF( GOT_DIFFUS .AND. include_viscous_solid_fluid_drag_force ) THEN  
 ! Assume visc. is isotropic (can be variable)...
+
                          DO IDIM=1,NDIM
                             DO IPHASE=1,NPHASE
                                I=IDIM + (IPHASE-1)*NDIM
@@ -3860,8 +3865,8 @@ DEALLOCATE( PIVIT_MAT )
                     !IF ( STAB_VISC_WITH_ABS ) THEN
                 IF ( GOT_DIFFUS ) THEN
 
-                    DO U_ILOC = 1, U_NLOC
                     DO U_JLOC = 1, U_NLOC
+                    DO U_ILOC = 1, U_NLOC
                         DO GI = 1, CV_NGI
                             DO IPHASE = 1, NPHASE
                                 IF ( STRESS_FORM ) THEN ! stress form of viscosity...
