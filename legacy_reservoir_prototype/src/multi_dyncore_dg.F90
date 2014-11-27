@@ -5588,9 +5588,9 @@ DEALLOCATE( PIVIT_MAT )
                  IF(GOT_DIFFUS .AND. LINEAR_HIGHORDER_DIFFUSION) THEN
 
                  IF(ELE2.GT.0) THEN ! Internal to domain
-			DO U_JLOC=1,U_NLOC
-                            U_JLOC2 = U_JLOC 
-                    	    DO U_SILOC=1,U_SNLOC
+                    DO U_JLOC=1,U_NLOC
+                        U_JLOC2 = U_JLOC 
+                    	DO U_SILOC=1,U_SNLOC
                        	    U_ILOC =U_SLOC2LOC(U_SILOC) !! -Asiri (changed order of nested loop here)
                             DO IPHASE = 1, NPHASE
                                 JPHASE = IPHASE
