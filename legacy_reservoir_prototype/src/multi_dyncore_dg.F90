@@ -1110,7 +1110,12 @@ contains
         END DO Loop_NonLinearFlux
 
         !Set saturation to be between bounds
-        satura = min(max(satura,0.0), 1.0)
+        call Set_Saturation_between_bounds(packed_state)
+!        satura = min(max(satura,0.0), 1.0)
+
+
+
+
 
         DEALLOCATE( ACV )
         DEALLOCATE( mass_mn_pres )

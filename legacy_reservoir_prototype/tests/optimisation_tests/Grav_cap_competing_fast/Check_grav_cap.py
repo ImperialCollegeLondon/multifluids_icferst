@@ -18,6 +18,7 @@ import os
 print 'Running the model'
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
+os.system('rm -f ' + path+ '/*.vtu')
 os.system(binpath + ' ' + path + '/*mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P1DGP1 AND 
 #TESTING GRAVITY AND CAPILLARY FORCES
