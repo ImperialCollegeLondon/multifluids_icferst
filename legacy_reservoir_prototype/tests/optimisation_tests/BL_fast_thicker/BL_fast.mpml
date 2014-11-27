@@ -154,7 +154,6 @@
     </mobility>
   </physical_parameters>
   <material_phase name="phase1">
-    <Impose_first_order/>
     <equation_of_state>
       <incompressible>
         <linear>
