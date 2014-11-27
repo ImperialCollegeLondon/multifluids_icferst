@@ -2736,6 +2736,10 @@ DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION ( :, : ), allocatable :: VOL_FRA_GI, CV_DENGI
         REAL, DIMENSION ( :, :, : ), allocatable :: VOL_FRA_GI_DX_ALL
         REAL, DIMENSION ( :, : ), allocatable :: SLOC_VOL_FRA, SLOC2_VOL_FRA,  SVOL_FRA, SVOL_FRA2, VOL_FRA_NMX_ALL
+! revere ordering of shape functions used to get optimized code...
+        REAL, DIMENSION ( :, :, : ), allocatable ::  CVFENX_ALL_REVERSED, UFENX_ALL_REVERSED
+        REAL, DIMENSION ( :, : ), allocatable ::  UFEN_REVERSED, CVFEN_SHORT_REVERSED, CVN_SHORT_REVERSED, CVN_REVERSED, CVFEN_REVERSED
+        REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
 
         !Variables to store things in state
         type(mesh_type), pointer :: fl_mesh
@@ -3017,10 +3021,10 @@ DEALLOCATE( PIVIT_MAT )
 
         !Variables to improve PIVIT_MAT creation speed
         !Initialization to zero is necesary for porous media, since the majority of the time they will be zero for all the elements
-        ALLOCATE(NN_SIGMAGI_ELE( NDIM_VEL * NPHASE, U_NLOC, NDIM_VEL * NPHASE,U_NLOC )); NN_SIGMAGI_ELE = 0.
-        ALLOCATE(NN_SIGMAGI_STAB_ELE( NDIM_VEL * NPHASE, U_NLOC, NDIM_VEL * NPHASE,U_NLOC )); NN_SIGMAGI_STAB_ELE = 0.
-        ALLOCATE(NN_MASS_ELE( NDIM_VEL * NPHASE, U_NLOC, NDIM_VEL * NPHASE,U_NLOC )); NN_MASS_ELE = 0.
-        ALLOCATE(NN_MASSOLD_ELE( NDIM_VEL * NPHASE, U_NLOC, NDIM_VEL * NPHASE,U_NLOC )); NN_MASSOLD_ELE = 0.
+        ALLOCATE(NN_SIGMAGI_ELE( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, U_NLOC, U_NLOC )); NN_SIGMAGI_ELE = 0.
+        ALLOCATE(NN_SIGMAGI_STAB_ELE( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, U_NLOC, U_NLOC )); NN_SIGMAGI_STAB_ELE = 0.
+        ALLOCATE(NN_MASS_ELE( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, U_NLOC, U_NLOC )); NN_MASS_ELE = 0.
+        ALLOCATE(NN_MASSOLD_ELE( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, U_NLOC, U_NLOC )); NN_MASSOLD_ELE = 0.
         ALLOCATE( STRESS_IJ_ELE( NDIM, NDIM, NPHASE, U_NLOC,U_NLOC )); STRESS_IJ_ELE = 0.
         ALLOCATE( VLK_ELE( NPHASE, U_NLOC, U_NLOC )); VLK_ELE = 0.
 
@@ -3029,7 +3033,7 @@ DEALLOCATE( PIVIT_MAT )
 
         IF(RETRIEVE_SOLID_CTY) THEN
            ALLOCATE( SIGMAGI_STAB_SOLID_RHS( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, CV_NGI ))
-           ALLOCATE(NN_SIGMAGI_STAB_SOLID_RHS_ELE( NDIM_VEL * NPHASE, U_NLOC, NDIM_VEL * NPHASE,U_NLOC ))
+           ALLOCATE(NN_SIGMAGI_STAB_SOLID_RHS_ELE( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, U_NLOC, U_NLOC ))
            IF( GOT_DIFFUS .AND. include_viscous_solid_fluid_drag_force ) THEN  ! include_viscous_solid_fluid_drag_force taken from diamond
               ALLOCATE(ABS_SOLID_FLUID_COUP(NDIM, NDIM, NPHASE, CV_NONODS))
               ALLOCATE(FOURCE_SOLID_FLUID_COUP(NDIM, NPHASE, CV_NONODS)) 
@@ -3352,6 +3356,41 @@ DEALLOCATE( PIVIT_MAT )
            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
            state, 'Vel_mesh', StorageIndexes(13))
 
+! ALLOCATE reversed ordering for computational speed****************
+           ALLOCATE( CVFENX_ALL_REVERSED(NDIM,CV_NGI,CV_NLOC), UFENX_ALL_REVERSED(NDIM,CV_NGI,U_NLOC) ) ! NOT CALCULATED IN SUB cv_fem_shape_funs_plus_storage
+
+           ALLOCATE( UFEN_REVERSED(CV_NGI,U_NLOC), CVFEN_SHORT_REVERSED(CV_NGI,CV_NLOC) )
+           ALLOCATE( CVN_SHORT_REVERSED(CV_NGI,CV_NLOC), CVN_REVERSED(CV_NGI,CV_NLOC), CVFEN_REVERSED(CV_NGI,CV_NLOC) )
+           ALLOCATE( SBCVFEN_REVERSED(SBCVNGI,CV_SNLOC), SBUFEN_REVERSED(SBCVNGI,U_SNLOC) )
+
+           DO U_ILOC=1,U_NLOC
+              DO GI=1,CV_NGI
+                 UFEN_REVERSED(GI,U_ILOC) = UFEN(U_ILOC,GI)
+              END DO
+           END DO
+           DO CV_ILOC=1,CV_NLOC
+              DO GI=1,CV_NGI
+                 CVFEN_SHORT_REVERSED(GI,CV_ILOC)    = CVFEN_SHORT(CV_ILOC,GI)
+                 CVN_SHORT_REVERSED(GI,CV_ILOC) = CVN_SHORT(CV_ILOC,GI)
+                 CVN_REVERSED(GI,CV_ILOC)       = CVN(CV_ILOC,GI)
+                 CVFEN_REVERSED(GI,CV_ILOC)     = CVFEN(CV_ILOC,GI)
+              END DO
+           END DO
+
+           DO U_SILOC=1,U_SNLOC
+              DO SGI=1,SBCVNGI
+                 SBUFEN_REVERSED(SGI,U_SILOC) = SBUFEN(U_SILOC,SGI)
+              END DO
+           END DO
+           DO CV_SILOC=1,CV_SNLOC
+              DO SGI=1,SBCVNGI
+                 SBCVFEN_REVERSED(SGI,CV_SILOC) = SBCVFEN(CV_SILOC,SGI)
+              END DO
+           END DO
+! ALLOCATE reversed ordering for computational speed****************
+       
+
+
         ! Memory for rapid retreval...
         ! Storage for pointers to the other side of the element.
         ALLOCATE( STORED_U_ILOC_OTHER_SIDE( U_SNLOC, NFACE, TOTELE*ISTORED_OTHER_SIDE ) )
@@ -3445,6 +3484,11 @@ DEALLOCATE( PIVIT_MAT )
             CVFENX_ALL, &
             U_NLOC, UFENLX_ALL(1,:,:), UFENLX_ALL(2,:,:), UFENLX_ALL(3,:,:), UFENX_ALL , &
             state ,"C_1", StorageIndexes(14))
+
+            DO GI = 1, CV_NGI_SHORT
+               CVFENX_ALL_REVERSED(:,GI,:)=CVFENX_ALL(:,:,GI)
+               UFENX_ALL_REVERSED(:,GI,:) =UFENX_ALL(:,:,GI)
+            END DO
 
 
             ! Adjust the volume according to the number of levels.
@@ -3621,8 +3665,8 @@ DEALLOCATE( PIVIT_MAT )
 
             DO U_ILOC = 1, U_NLOC
                 DO GI = 1, CV_NGI_SHORT
-                    UD( :, :, GI ) = UD( :, :, GI ) + UFEN( U_ILOC, GI ) * LOC_NU( :, :, U_ILOC )
-                    UDOLD( :, :, GI ) = UDOLD( :, :, GI ) + UFEN( U_ILOC, GI ) * LOC_NUOLD( :, :, U_ILOC )
+                    UD( :, :, GI ) = UD( :, :, GI ) + UFEN_REVERSED( GI, U_ILOC ) * LOC_NU( :, :, U_ILOC )
+                    UDOLD( :, :, GI ) = UDOLD( :, :, GI ) + UFEN_REVERSED( GI, U_ILOC ) * LOC_NUOLD( :, :, U_ILOC )
                 END DO
             END DO
             UD_ND( 1:NDIM_VEL, :, : ) = UD
@@ -3637,8 +3681,8 @@ DEALLOCATE( PIVIT_MAT )
                   CV_INOD = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC ) 
                   DO GI = 1, CV_NGI_SHORT
                      DO IPHASE=1,NPHASE
-                        VOL_FRA_GI( IPHASE, GI )           = VOL_FRA_GI( IPHASE,GI )            + CVFEN_SHORT( CV_ILOC, GI )       * FEM_VOL_FRAC( IPHASE, CV_INOD )
-                        VOL_FRA_GI_DX_ALL( :, IPHASE, GI ) = VOL_FRA_GI_DX_ALL( :, IPHASE, GI ) + CVFENX_ALL( 1:NDIM, CV_ILOC, GI )* FEM_VOL_FRAC( IPHASE, CV_INOD )
+                        VOL_FRA_GI( IPHASE, GI )           = VOL_FRA_GI( IPHASE,GI )            + CVFEN_SHORT_REVERSED( GI, CV_ILOC )       * FEM_VOL_FRAC( IPHASE, CV_INOD )
+                        VOL_FRA_GI_DX_ALL( :, IPHASE, GI ) = VOL_FRA_GI_DX_ALL( :, IPHASE, GI ) + CVFENX_ALL_REVERSED( 1:NDIM, GI, CV_ILOC )* FEM_VOL_FRAC( IPHASE, CV_INOD )
                      END DO
                   END DO
                END DO
@@ -3659,29 +3703,29 @@ DEALLOCATE( PIVIT_MAT )
                 DO GI = 1, CV_NGI_SHORT
 !                    IF ( .FALSE. ) then ! FEM DEN...
                     IF ( FEM_DEN ) then ! FEM DEN...
-                        DENGI( :, GI ) = DENGI( :, GI ) + CVFEN_SHORT( CV_ILOC, GI ) * LOC_UDEN( :, CV_ILOC )
+                        DENGI( :, GI ) = DENGI( :, GI ) + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_UDEN( :, CV_ILOC )
                         DENGIOLD( :, GI ) = DENGIOLD( :, GI ) &
-                        + CVFEN_SHORT( CV_ILOC, GI ) * LOC_UDENOLD( :, CV_ILOC )
+                        + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_UDENOLD( :, CV_ILOC )
                     ELSE ! CV DEN...
-                        DENGI( :, GI ) = DENGI( :, GI ) + CVN_SHORT( CV_ILOC, GI ) * LOC_UDEN( :, CV_ILOC )
+                        DENGI( :, GI ) = DENGI( :, GI ) + CVN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_UDEN( :, CV_ILOC )
                         DENGIOLD( :, GI ) = DENGIOLD( :, GI ) &
-                        + CVN_SHORT( CV_ILOC, GI ) * LOC_UDENOLD( :, CV_ILOC )
+                        + CVN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_UDENOLD( :, CV_ILOC )
                     END IF
 
 
                     IF(GOT_VIRTUAL_MASS) THEN
                         IF ( FEM_DEN ) then ! FEM DEN...
-                           VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVFEN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
-                           VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVFEN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
+                           VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
+                           VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
                         ELSE
-                           VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
-                           VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVN_SHORT( CV_ILOC, GI ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
+                           VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
+                           VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
                         ENDIF
                     ENDIF
 
                     IF ( IPLIKE_GRAD_SOU == 1 ) THEN
                         GRAD_SOU_GI( :, GI ) = GRAD_SOU_GI( :, GI ) &
-                        + CVFEN_SHORT( CV_ILOC, GI ) * LOC_PLIKE_GRAD_SOU_COEF( :, CV_ILOC )
+                        + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_COEF( :, CV_ILOC )
                     END IF
                 END DO
             END DO
@@ -3760,16 +3804,16 @@ DEALLOCATE( PIVIT_MAT )
 
                                 SIGMAGI( IPHA_IDIM, JPHA_JDIM, GI ) = SIGMAGI( IPHA_IDIM, JPHA_JDIM, GI ) &
                                 !+ CVFEN( MAT_ILOC, GI ) * LOC_U_ABSORB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
-                                + CVN( MAT_ILOC, GI ) * LOC_U_ABSORB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
+                                + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABSORB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
 
                                 SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI ) = SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI ) &
                                 !+ CVFEN( MAT_ILOC, GI ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
-                                + CVN( MAT_ILOC, GI ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
+                                + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
 
                             END DO
                         END DO
-                        TEN_XX( :, :, :, GI ) = TEN_XX( :, :, :, GI ) + CVFEN( MAT_ILOC, GI ) * LOC_UDIFFUSION( :, :, :, MAT_ILOC )
-                        TEN_VOL( :, GI ) = TEN_VOL(  :, GI ) + CVFEN( MAT_ILOC, GI ) * LOC_UDIFFUSION_VOL( :, MAT_ILOC )
+                        TEN_XX( :, :, :, GI ) = TEN_XX( :, :, :, GI ) + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION( :, :, :, MAT_ILOC )
+                        TEN_VOL( :, GI )      = TEN_VOL(  :, GI )     + CVFEN_REVERSED( GI, MAT_ILOC ) * LOC_UDIFFUSION_VOL( :, MAT_ILOC )
                     END DO
                 END DO
 
@@ -3779,9 +3823,9 @@ DEALLOCATE( PIVIT_MAT )
                    DO CV_ILOC = 1, CV_NLOC
                       CV_INOD = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
                       DO GI = 1, CV_NGI_SHORT
-                         !VOL_S_GI( GI ) = VOL_S_GI( GI ) + CVFEN_SHORT( CV_ILOC, GI ) * sf%val( cv_inod )
-                         VOL_S_GI( GI ) = VOL_S_GI( GI ) + CVN( CV_ILOC, GI ) * sf%val( cv_inod )
-                         CV_DENGI(:, GI ) = CV_DENGI(:, GI ) + CVN( CV_ILOC, GI ) * den_all( :, cv_inod )
+                         !VOL_S_GI( GI ) = VOL_S_GI( GI ) + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * sf%val( cv_inod )
+                         VOL_S_GI( GI ) = VOL_S_GI( GI ) + CVN_REVERSED( GI, CV_ILOC ) * sf%val( cv_inod )
+                         CV_DENGI(:, GI ) = CV_DENGI(:, GI ) + CVN_REVERSED( GI, CV_ILOC ) * den_all( :, cv_inod )
                       END DO
                    END DO
                    VOL_S_GI = MIN( MAX( VOL_S_GI, 0.0 ), 1.0 )
@@ -3817,127 +3861,143 @@ DEALLOCATE( PIVIT_MAT )
             VLK_ELE = 0.0
             STRESS_IJ_ELE = 0.0
             !Prepare data
-            DO U_JLOC = 1, U_NLOC
 
                     !IF ( STAB_VISC_WITH_ABS ) THEN
                 IF ( GOT_DIFFUS ) THEN
 
                     DO U_ILOC = 1, U_NLOC
-                        DO GI = 1, CV_NGI_SHORT
+                    DO U_JLOC = 1, U_NLOC
+                        DO GI = 1, CV_NGI
                             DO IPHASE = 1, NPHASE
                                 IF ( STRESS_FORM ) THEN ! stress form of viscosity...
                                     IF(IDIVID_BY_VOL_FRAC==1) THEN
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, NDIM, &
-                                        ( -UFEN( U_ILOC, GI )*VOL_FRA_GI_DX_ALL(1:NDIM,IPHASE,GI) + UFENX_ALL( 1:NDIM, U_ILOC, GI )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
+                                        ( -UFEN_REVERSED( GI, U_ILOC )*VOL_FRA_GI_DX_ALL(1:NDIM,IPHASE,GI) + UFENX_ALL_REVERSED( 1:NDIM, GI, U_ILOC )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL_REVERSED( 1:NDIM, GI, U_JLOC )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
                                     ELSE
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, NDIM, &
-                                        UFENX_ALL( 1:NDIM, U_ILOC, GI ), UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
+                                        UFENX_ALL_REVERSED( 1:NDIM, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:NDIM, GI, U_JLOC )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
                                     ENDIF
                                 ELSE
                                     DO IDIM = 1, NDIM
                                         VLK_ELE( IPHASE, U_ILOC, U_JLOC ) = VLK_ELE( IPHASE, U_ILOC, U_JLOC ) + &
-                                        UFENX_ALL( IDIM, U_ILOC, GI ) * SUM( UFENX_ALL( 1:NDIM, U_JLOC, GI ) * TEN_XX( IDIM, :, IPHASE, GI ) ) * DETWEI( GI )
+                                        UFENX_ALL_REVERSED( IDIM, GI, U_ILOC ) * SUM( UFENX_ALL_REVERSED( 1:NDIM, GI, U_JLOC ) * TEN_XX( IDIM, :, IPHASE, GI ) ) * DETWEI( GI )
                                     END DO
                                 END IF
                             END DO
                         END DO
                     END DO
+                    END DO
                 END IF
 
                 if (Porous_media_PIVIT_not_stored_yet) then
+                    DO U_JLOC = 1, U_NLOC
                     DO U_ILOC = 1, U_NLOC
-                        DO GI = 1, CV_NGI_SHORT
+                        DO GI = 1, CV_NGI
 
-                            GI_SHORT = GI
+                            RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI )
 
-                            RNN = UFEN( U_ILOC, GI ) * UFEN( U_JLOC,  GI ) * DETWEI( GI )
+                            NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) = &
+                            NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) + RNN *SIGMAGI( :, :, GI )
 
-                            NN_SIGMAGI_ELE(:, U_ILOC, :, U_JLOC ) = &
-                            NN_SIGMAGI_ELE(:, U_ILOC, :, U_JLOC ) + RNN *SIGMAGI( :, :, GI )
+                            NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) = &
+                            NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) + RNN *SIGMAGI_STAB( :, :, GI )
 
-                            NN_SIGMAGI_STAB_ELE(:, U_ILOC, :, U_JLOC ) = &
-                            NN_SIGMAGI_STAB_ELE(:, U_ILOC, :, U_JLOC ) + RNN *SIGMAGI_STAB( :, :, GI )
-
-                            IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, U_ILOC, :, U_JLOC ) =&
-                            NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, U_ILOC, :, U_JLOC ) + RNN *  &
-                            SIGMAGI_STAB_SOLID_RHS( :, :, GI )
+! Chris change ordering of NN_SIGMAGI_STAB_SOLID_RHS_ELE
+                            IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, :, U_ILOC, U_JLOC ) =&
+                                                   NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, :, U_ILOC, U_JLOC ) + RNN * SIGMAGI_STAB_SOLID_RHS( :, :, GI )
 
                             DO JPHASE = 1, NPHASE
                                 DO JDIM = 1, NDIM_VEL
                                     JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
 
-                                    NN_MASS_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASS_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                    + DENGI(JPHASE,GI_SHORT) * RNN
-                                    NN_MASSOLD_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASSOLD_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                    + DENGIOLD(JPHASE, GI_SHORT) * RNN
+                                    NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) = NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                    + DENGI(JPHASE,GI) * RNN
+                                    NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) = NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                    + DENGIOLD(JPHASE, GI) * RNN
 
                                     IF(GOT_VIRTUAL_MASS) THEN
                                         DO IPHASE = 1, NPHASE
                                             IPHA_IDIM = JDIM + (IPHASE-1)*NDIM
-                                            NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + VIRTUAL_MASS_GI(IPHASE,JPHASE,GI_SHORT) * RNN
-                                            NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) = NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE, GI_SHORT) * RNN
+! Chris re-order NN_MASS_ELE & NN_MASSOLD_ELE...
+                                            NN_MASS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) = NN_MASS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            + VIRTUAL_MASS_GI(IPHASE,JPHASE,GI) * RNN
+                                            NN_MASSOLD_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) = NN_MASSOLD_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            + VIRTUAL_MASS_OLD_GI(IPHASE, JPHASE, GI) * RNN
                                         END DO
                                     ENDIF
 
-                                    ! Stabilization for viscosity...
-                                    IF ( STAB_VISC_WITH_ABS ) THEN
-                                        IF ( STRESS_FORM ) THEN
-                                            NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + MAX( 0.0, STRESS_IJ_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) )
-                                        ELSE
-                                            NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + MAX( 0.0, VLK_ELE( JPHASE, U_ILOC, U_JLOC ) )
-                                        END IF
-                                    END IF
                                 END DO
                             END DO
                         END DO
-                    END DO
-                end if
-            END DO
 
-            if (Porous_media_PIVIT_not_stored_yet) then
+
+                    END DO
+                    END DO
+
+                                    ! Stabilization for viscosity...
+! Chris re-order NN_SIGMAGI_STAB_ELE...
+                    IF ( STAB_VISC_WITH_ABS ) THEN
+                       DO U_JLOC = 1, U_NLOC
+                       DO U_ILOC = 1, U_NLOC
+                           DO IPHASE = 1, NPHASE
+                              IPHA_IDIM = JDIM + (IPHASE-1)*NDIM
+                              DO JPHASE = 1, NPHASE
+                                  DO JDIM = 1, NDIM_VEL
+                                     JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
+                                        IF ( STRESS_FORM ) THEN
+                                            NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            + MAX( 0.0, STRESS_IJ_ELE( JDIM, JDIM, JPHASE, U_ILOC, U_JLOC ) )
+                                        ELSE
+                                            NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            = NN_SIGMAGI_STAB_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            + MAX( 0.0, VLK_ELE( JPHASE, U_ILOC, U_JLOC ) )
+                                        END IF
+                                  END DO
+                              END DO
+                           END DO
+                       END DO
+                       END DO
+                    END IF
+
                 DO U_JLOC = 1, U_NLOC
-                    DO JPHASE = 1, NPHASE
-                        DO JDIM = 1, NDIM_VEL
-                            JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
-                            J = JDIM+(JPHASE-1)*NDIM_VEL+(U_JLOC-1)*NDIM_VEL*NPHASE
-                            DO U_ILOC = 1, U_NLOC
+                    DO U_ILOC = 1, U_NLOC 
+                       DO JPHASE = 1, NPHASE
+                           DO JDIM = 1, NDIM_VEL
+                               JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
+                               J = JDIM+(JPHASE-1)*NDIM_VEL+(U_JLOC-1)*NDIM_VEL*NPHASE
                                 DO IPHASE = 1, NPHASE
                                     DO IDIM = 1, NDIM_VEL
                                         IPHA_IDIM = IDIM + (IPHASE-1)*NDIM
                                         I = IDIM+(IPHASE-1)*NDIM_VEL+(U_ILOC-1)*NDIM_VEL*NPHASE
                                         !Assemble
                                         IF ( LUMP_MASS ) THEN
+! Chris re-order NN_SIGMAGI_ELE also
                                             PIVIT_MAT( I, I, ELE ) =   &
-                                            NN_SIGMAGI_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + NN_MASS_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC )/DT
+                                            NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
 
                                         ELSE
                                             PIVIT_MAT( I, J, ELE ) =  &
-                                            NN_SIGMAGI_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                            + NN_MASS_ELE(IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC )/DT
+                                            NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
                                         END IF
                                         IF ( .NOT.NO_MATRIX_STORE ) THEN
                                             IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
                                                 IF ( LUMP_MASS ) THEN
                                                     DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE ) =  &
                                                     DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_ILOC, ELE )  &
-                                                    + NN_SIGMAGI_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                                    + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                                    + NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT
+                                                    + NN_SIGMAGI_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                    + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                    + NN_MASS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT
                                                 ELSE
                                                     DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) = &
                                                     DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE )  &
-                                                    + NN_SIGMAGI_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                                    + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) &
-                                                    + NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT
+                                                    + NN_SIGMAGI_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                    + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                                    + NN_MASS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT
                                                 END IF
                                             END IF
                                         END IF
@@ -3948,7 +4008,7 @@ DEALLOCATE( PIVIT_MAT )
                         END DO
                     END DO
                 END DO
-            end if
+            end if ! endof if (Porous_media_PIVIT_not_stored_yet) then
 
             if (.not.is_compact_overlapping) then
                 !###LOOP Loop_DGNods1 IS NOT NECESSARY FOR POROUS MEDIA###
@@ -3962,7 +4022,7 @@ DEALLOCATE( PIVIT_MAT )
                         Loop_CVNods21: DO U_JLOC = 1, U_NLOC
                             CV_JLOC = ELEMENT_CORNERS( U_JLOC )
                             ! Miss out the mid side nodes...
-                            NM = SUM( UFEN( U_ILOC, : ) * UFEN( U_JLOC,  : ) * DETWEI( : ) )
+                            NM = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
                             LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_JLOC )
 
                         END DO LOOP_CVNODS21
@@ -3970,9 +4030,9 @@ DEALLOCATE( PIVIT_MAT )
 
                         Loop_CVNods2: DO CV_JLOC = 1, CV_NLOC
                             IF(RETRIEVE_SOLID_CTY) THEN
-                                NM = SUM( UFEN( U_ILOC, : ) * CVFEN( CV_JLOC,  : ) * DETWEI( : ) )
+                                NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
                             ELSE
-                                NM = SUM( UFEN( U_ILOC, : ) * CVN( CV_JLOC,  : ) * DETWEI( : ) )
+                                NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
                             ENDIF
                             IF ( LUMP_MASS ) THEN
                                 CV_ILOC = U_ILOC
@@ -3986,7 +4046,6 @@ DEALLOCATE( PIVIT_MAT )
 
                     Loop_DGNods2: DO U_JLOC = 1, U_NLOC
 
-                        NN = 0.0
                         VLN = 0.0
                         VLN_OLD = 0.0
                         !                        VLK = 0.0
@@ -3997,26 +4056,23 @@ DEALLOCATE( PIVIT_MAT )
 
                         Loop_Gauss2: DO GI = 1, CV_NGI_SHORT
 
-                            RNN = UFEN( U_ILOC, GI ) * UFEN( U_JLOC,  GI ) * DETWEI( GI )
-                            NN = NN + RNN
-
                             Loop_IPHASE: DO IPHASE = 1, NPHASE ! Diffusion tensor
 
                                 IF ( MOM_CONSERV ) THEN
                                     VLN( IPHASE ) = VLN( IPHASE ) - &
-                                    DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
-                                    * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN
+                                    DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL_REVERSED( 1:NDIM, GI, U_ILOC ) )  &
+                                    * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI ) * WITH_NONLIN
                                     VLN_OLD( IPHASE ) = VLN_OLD( IPHASE ) - &
-                                    DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
-                                    * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN
+                                    DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL_REVERSED( 1:NDIM, GI, U_ILOC ) )  &
+                                    * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI ) * WITH_NONLIN
 
                                 ELSE
                                     VLN( IPHASE ) = VLN( IPHASE ) + &
-                                    UFEN( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL(1:NDIM, U_JLOC, GI ) ) &
+                                    UFEN( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL_REVERSED(1:NDIM, GI, U_JLOC ) ) &
                                     * DETWEI( GI ) * WITH_NONLIN
 
                                     VLN_OLD( IPHASE ) = VLN_OLD( IPHASE ) + &
-                                    UFEN( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) ) &
+                                    UFEN( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL_REVERSED( 1:NDIM, GI, U_JLOC ) ) &
                                     * DETWEI( GI ) * WITH_NONLIN
 
                                 END IF
@@ -4026,18 +4082,18 @@ DEALLOCATE( PIVIT_MAT )
                                     DO JPHASE = 1, NPHASE
                                         VLN_CVM( IPHASE,JPHASE ) = VLN_CVM( IPHASE,JPHASE )  &
                                         ! conservative discretization
-                                        - CVM_BETA*VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
-                                        * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN_CVM &
+                                        - CVM_BETA*VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL_REVERSED( 1:NDIM, GI, U_ILOC ) )  &
+                                        * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI ) * WITH_NONLIN_CVM &
                                         ! non-conservative discretization
-                                        + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
+                                        + (1.-CVM_BETA)*UFEN_REVERSED( GI, U_ILOC ) *VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL_REVERSED( 1:NDIM, GI, U_JLOC ) )  &
                                         *  DETWEI( GI ) * WITH_NONLIN_CVM
 
                                         VLN_OLD_CVM( IPHASE,JPHASE ) = VLN_OLD_CVM( IPHASE,JPHASE )  &
                                         ! conservative discretization
-                                        - CVM_BETA*VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL( 1:NDIM, U_ILOC, GI ) )  &
-                                        * UFEN( U_JLOC, GI ) * DETWEI( GI ) * WITH_NONLIN_CVM &
+                                        - CVM_BETA*VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL_REVERSED( 1:NDIM, GI, U_ILOC ) )  &
+                                        * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI ) * WITH_NONLIN_CVM &
                                         ! non-conservative discretization
-                                        + (1.-CVM_BETA)*UFEN( U_ILOC, GI ) *VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) )  &
+                                        + (1.-CVM_BETA)*UFEN_REVERSED( GI, U_ILOC ) *VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL_REVERSED( 1:NDIM, GI, U_JLOC ) )  &
                                         *  DETWEI( GI ) * WITH_NONLIN_CVM
                                     END DO
                                 ENDIF
@@ -4051,6 +4107,9 @@ DEALLOCATE( PIVIT_MAT )
                             END DO Loop_IPHASE
 
                         END DO Loop_Gauss2
+
+
+                        NN = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
 
                         LOC_U_RHS( :, :, U_ILOC ) =  LOC_U_RHS( :, :, U_ILOC ) + NN * LOC_U_SOURCE( :, :, U_JLOC  )
 
@@ -4067,30 +4126,30 @@ DEALLOCATE( PIVIT_MAT )
                                         IF ( MOM_CONSERV ) THEN
                                             IF ( LUMP_MASS ) THEN
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )     &
-                                                + ( NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_ILOC )
+                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )     &
+                                                + ( NN_MASSOLD_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_ILOC )
                                                 IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
+                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
                                             ELSE
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
-                                                + ( NN_MASSOLD_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_JLOC )
+                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
+                                                + ( NN_MASSOLD_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_JLOC )
                                                 IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
+                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
                                             END IF
                                         ELSE
                                             IF ( LUMP_MASS ) THEN
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
-                                                + ( NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_ILOC )
+                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
+                                                + ( NN_MASS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_ILOC )
                                                 IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
+                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
                                             ELSE
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
-                                                + ( NN_MASS_ELE( IPHA_IDIM, U_ILOC, JPHA_JDIM, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_JLOC )
+                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
+                                                + ( NN_MASS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_JLOC )
                                                 IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, U_ILOC,JPHA_JDIM, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
+                                                + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
                                             END IF
                                         END IF
 
@@ -4103,8 +4162,8 @@ DEALLOCATE( PIVIT_MAT )
                             IF ( STRESS_FORM ) THEN
                                 DO IPHASE = 1, NPHASE
                                     JPHASE = IPHASE
-                                    DO IDIM = 1, NDIM_VEL
-                                        DO JDIM = 1, NDIM_VEL
+                                    DO JDIM = 1, NDIM_VEL    !! -Asiri changing order of nested loops 
+                                        DO IDIM = 1, NDIM_VEL
 
                                             IF ( NO_MATRIX_STORE ) THEN
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
@@ -4132,6 +4191,8 @@ DEALLOCATE( PIVIT_MAT )
                                 END DO
                             END IF
 
+!! - Asiri to change nested loop order here 
+
                             DO IDIM = 1, NDIM_VEL
                                 DO IPHASE = 1, NPHASE
                                     JDIM = IDIM
@@ -4152,7 +4213,7 @@ DEALLOCATE( PIVIT_MAT )
                                         IF(GOT_VIRTUAL_MASS) THEN
                                             DO KPHASE = 1, NPHASE
                                                 DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) &
-                                                = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) + VLN_CVM( IPHASE,KPHASE )
+                                                = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, KPHASE, U_ILOC, U_JLOC, ELE ) + VLN_CVM( IPHASE, KPHASE )
                                             END DO
                                         ENDIF
                                     END IF
@@ -4180,7 +4241,7 @@ DEALLOCATE( PIVIT_MAT )
                                         END IF
 
                                         RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
-                                        VLK_ELE( IPHASE, U_ILOC, U_JLOC ) * LOC_U( IDIM, IPHASE, U_JLOC )
+                                             VLK_ELE( IPHASE, U_ILOC, U_JLOC ) * LOC_U( IDIM, IPHASE, U_JLOC )
 !                                        RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
 !                                        VLK( IPHASE ) * LOC_U( IDIM, IPHASE, U_JLOC )
                                     END IF
@@ -4194,13 +4255,14 @@ DEALLOCATE( PIVIT_MAT )
 
                 END DO Loop_DGNods1
             else !Adding sources to the RHS for porous media
+
                 DO U_ILOC = 1, U_NLOC
                     DO CV_JLOC = 1, CV_NLOC
-                        NM = dot_product( UFEN( U_ILOC, : ), CVN( CV_JLOC,  : ) * DETWEI( : ) )
+                        NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
                         LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_JLOC )
                     end do
                     DO U_JLOC = 1, U_NLOC
-                        NN = dot_product(UFEN( U_ILOC, : ), UFEN( U_JLOC,  : ) * DETWEI( : ))
+                        NN = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
                         LOC_U_RHS( :, :, U_ILOC ) =  LOC_U_RHS( :, :, U_ILOC ) + NN * LOC_U_SOURCE( :, :, U_JLOC  )
                     end do
                 end do
@@ -4214,10 +4276,10 @@ DEALLOCATE( PIVIT_MAT )
                 DO U_ILOC = 1, U_NLOC
                     DO U_JLOC = 1, U_NLOC
                         NN_MAT_ELE( U_ILOC, U_JLOC, ELE ) = NN_MAT_ELE( U_ILOC, U_JLOC, ELE ) + &
-                        SUM( UFEN( U_ILOC, : ) * UFEN( U_JLOC,  : ) * DETWEI( : ) )
+                        SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
                         DO IDIM=1,NDIM
                             NNX_MAT_ELE( IDIM, U_ILOC, U_JLOC, ELE ) = NNX_MAT_ELE( IDIM, U_ILOC, U_JLOC, ELE ) + &
-                            SUM( UFEN( U_ILOC, : ) * UFENX_ALL( IDIM, U_JLOC,  : ) * DETWEI( : ) )
+                            SUM( UFEN_REVERSED( :, U_ILOC ) * UFENX_ALL_REVERSED( IDIM, :, U_JLOC ) * DETWEI( : ) )
                         END DO
                     END DO
                 END DO
@@ -4244,14 +4306,14 @@ DEALLOCATE( PIVIT_MAT )
                     if ( IPLIKE_GRAD_SOU == 1) then
                         !In this section of the assembly we add the volumetric part.
                         ! Coeff * Integral(N grad CVFEN PLIKE_GRAD_SOU dV)
-                        GRAD_SOU_GI_NMX( :, :) = matmul(CVFENX_ALL(:,P_JLOC,:),&
-                        SPREAD(DETWEI( : ) *UFEN( U_ILOC, : ), DIM=2, NCOPIES=NPHASE)*&
+                        GRAD_SOU_GI_NMX( :, :) = matmul(CVFENX_ALL_REVERSED(:, :, P_JLOC),&
+                        SPREAD(DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ), DIM=2, NCOPIES=NPHASE)*&
                         transpose(GRAD_SOU_GI(:, :)))
                     end if
                     ! Coeff * Integral(N grad CVFEN VOL_FRA dV)
                     IF(IGOT_VOL_X_PRESSURE==1) THEN
-                          VOL_FRA_NMX_ALL( :, : ) = matmul(CVFENX_ALL(:,P_JLOC,:),&
-                            SPREAD(DETWEI( : ) *UFEN( U_ILOC, : ), DIM=2, NCOPIES=NPHASE)*&
+                          VOL_FRA_NMX_ALL( :, : ) = matmul(CVFENX_ALL_REVERSED(:, :, P_JLOC),&
+                            SPREAD(DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ), DIM=2, NCOPIES=NPHASE)*&
                             transpose(VOL_FRA_GI(:, :)))
                     ENDIF
 
@@ -4264,8 +4326,7 @@ DEALLOCATE( PIVIT_MAT )
                     END IF
 
                     !Prepare aid variable NMX_ALL to improve the speed of the calculations
-                    NMX_ALL( : ) = matmul(CVFENX_ALL(:,P_JLOC,:),&
-                       DETWEI( : ) *UFEN( U_ILOC, : ))
+                    NMX_ALL( : ) = matmul(CVFENX_ALL_REVERSED(:,:,P_JLOC),  DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ))
                     Loop_Phase1: DO IPHASE = 1, NPHASE
 
                         ! Put into matrix
@@ -4301,7 +4362,7 @@ DEALLOCATE( PIVIT_MAT )
                 DO U_ILOC = 1, U_NLOC
                     DO U_JLOC = 1, U_NLOC
                         ! Sum over quadrature pts...
-                        LOC_MASS( U_ILOC, U_JLOC ) = SUM( UFEN( U_ILOC, : ) * UFEN( U_JLOC,  : ) * DETWEI( : ) )
+                        LOC_MASS( U_ILOC, U_JLOC ) = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
                     END DO
                 END DO
 
@@ -4327,17 +4388,17 @@ DEALLOCATE( PIVIT_MAT )
                         DO IPHASE = 1, NPHASE
 
                             DIFFGI_U( :, IPHASE, GI ) = DIFFGI_U( :, IPHASE, GI ) + &
-                            UFEN( U_ILOC, GI ) * DIFF_VEC_U( :, IPHASE, U_ILOC )
+                            UFEN_REVERSED( GI, U_ILOC ) * DIFF_VEC_U( :, IPHASE, U_ILOC )
 
                             SOUGI_X( :, IPHASE, GI ) = SOUGI_X( :, IPHASE, GI ) + &
-                            UFEN( U_ILOC, GI ) * LOC_U_SOURCE( :, IPHASE, U_ILOC )
+                            UFEN_REVERSED( GI, U_ILOC ) * LOC_U_SOURCE( :, IPHASE, U_ILOC )
 
                             DO JDIM = 1, NDIM_VEL
                                 DO IDIM = 1, NDIM
                                     U_DX_ALL( IDIM, JDIM, IPHASE, GI ) = U_DX_ALL( IDIM, JDIM, IPHASE, GI ) + &
-                                    LOC_U( JDIM, IPHASE, U_ILOC ) * UFENX_ALL( IDIM, U_ILOC, GI )
+                                    LOC_U( JDIM, IPHASE, U_ILOC ) * UFENX_ALL_REVERSED( IDIM, GI, U_ILOC )
                                     UOLD_DX_ALL( IDIM, JDIM, IPHASE, GI ) = UOLD_DX_ALL( IDIM, JDIM, IPHASE, GI ) + &
-                                    LOC_UOLD( JDIM, IPHASE, U_ILOC ) * UFENX_ALL( IDIM, U_ILOC, GI )
+                                    LOC_UOLD( JDIM, IPHASE, U_ILOC ) * UFENX_ALL_REVERSED( IDIM, GI, U_ILOC )
                                 END DO
                             END DO
 
@@ -4369,13 +4430,13 @@ DEALLOCATE( PIVIT_MAT )
                 DO P_ILOC = 1, P_NLOC
                     DO GI = 1, CV_NGI
 
-                        P_DX( :, GI ) = P_DX( :, GI ) + CVFENX_ALL(1:NDIM, P_ILOC, GI ) * LOC_P( P_ILOC )
+                        P_DX( :, GI ) = P_DX( :, GI ) + CVFENX_ALL_REVERSED(1:NDIM, GI, P_ILOC ) * LOC_P( P_ILOC )
 
                         IF ( IPLIKE_GRAD_SOU == 1 ) THEN ! Pressure like terms...
                             DO IPHASE = 1, NPHASE
                                 R = GRAD_SOU_GI( IPHASE, GI ) * LOC_PLIKE_GRAD_SOU_GRAD( IPHASE, P_ILOC )
                                 DO IDIM = 1, NDIM_VEL
-                                    RESID_U( IDIM, IPHASE, GI ) = RESID_U( IDIM, IPHASE, GI ) + R * CVFENX_ALL( IDIM, P_ILOC, GI )
+                                    RESID_U( IDIM, IPHASE, GI ) = RESID_U( IDIM, IPHASE, GI ) + R * CVFENX_ALL_REVERSED( IDIM, GI, P_ILOC )
                                 END DO
 
                             END DO
@@ -4470,10 +4531,10 @@ DEALLOCATE( PIVIT_MAT )
                                 DO IPHASE = 1, NPHASE
                                         IF(IDIVID_BY_VOL_FRAC==1) THEN
                                            CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, NDIM, &
-        ( -UFEN( U_ILOC, GI )*VOL_FRA_GI_DX_ALL(1:NDIM,IPHASE,GI) + UFENX_ALL( 1:NDIM, U_ILOC, GI )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
+        ( -UFEN_REVERSED( GI, U_ILOC )*VOL_FRA_GI_DX_ALL(1:NDIM,IPHASE,GI) + UFENX_ALL_REVERSED( 1:NDIM, GI, U_ILOC )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL_REVERSED( 1:NDIM, GI, U_JLOC )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
                                         ELSE
                                            CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, NDIM, &
-                                           UFENX_ALL( 1:NDIM, U_ILOC, GI ), UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
+                                           UFENX_ALL_REVERSED( 1:NDIM, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:NDIM, GI, U_JLOC )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
                                         ENDIF
                                 END DO
                             END DO
@@ -4513,7 +4574,7 @@ DEALLOCATE( PIVIT_MAT )
 
                             VLK_UVW = 0.0
                             DO GI = 1, CV_NGI
-                                VLKNN = SUM( UFENX_ALL( 1:NDIM, U_ILOC, GI ) * UFENX_ALL( 1:NDIM, U_JLOC, GI ) ) * DETWEI( GI )
+                                VLKNN = SUM( UFENX_ALL_REVERSED( 1:NDIM, GI, U_ILOC ) * UFENX_ALL_REVERSED( 1:NDIM, GI, U_JLOC ) ) * DETWEI( GI )
                                 VLK_UVW( : ) = VLK_UVW( : ) + DIF_STAB_U( :, IPHASE, GI ) * VLKNN
                             END DO
 
@@ -4534,8 +4595,7 @@ DEALLOCATE( PIVIT_MAT )
 !                                        if (i/=j) w = wv
 !                                        PIVIT_MAT( I,J, ELE )  &
 !                                        = PIVIT_MAT( I,J, ELE ) + w * VLK_UVW( IDIM )
-                                        PIVIT_MAT( I,J, ELE )  &
-                                        = PIVIT_MAT( I,J, ELE ) + VLK_UVW( IDIM )
+                                        PIVIT_MAT( I,J, ELE ) = PIVIT_MAT( I,J, ELE ) + VLK_UVW( IDIM )
                                     ENDIF
                                 END IF
                             END DO
@@ -4554,7 +4614,7 @@ DEALLOCATE( PIVIT_MAT )
                  DO U_ILOC = 1, U_NLOC
                     DO U_JLOC = 1, U_NLOC
                        MAT_ELE( U_ILOC, U_JLOC, ELE ) = MAT_ELE( U_ILOC, U_JLOC, ELE ) + &
-                            SUM( UFEN( U_ILOC, : ) * UFEN( U_JLOC,  : ) * DETWEI( : ) )
+                            SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
                     END DO
                  END DO
 
@@ -4564,7 +4624,7 @@ DEALLOCATE( PIVIT_MAT )
                           ! we store these vectors in order to try and work out the between element
                           ! diffusion/viscocity.
                           DIFF_FOR_BETWEEN_U( :, IPHASE, U_ILOC, ELE ) = DIFF_FOR_BETWEEN_U( :, IPHASE, U_ILOC, ELE ) &
-                               + UFEN( U_ILOC, GI ) * DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
+                               + UFEN_REVERSED( GI, U_ILOC ) * DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
                        END DO
                     END DO
                  END DO
@@ -4579,8 +4639,8 @@ DEALLOCATE( PIVIT_MAT )
                  DO CV_ILOC = 1, CV_NLOC
                     DO CV_JLOC = 1, CV_NLOC
                        MAT_ELE_CV_LOC( CV_ILOC, CV_JLOC ) = &
-                            !SUM( CVFEN( CV_ILOC, : ) * CVFEN( CV_JLOC,  : ) * DETWEI( : ) )
-                            SUM( CVN( CV_ILOC, : ) * CVFEN( CV_JLOC,  : ) * DETWEI( : ) )
+                            !SUM( CVFEN_REVERSED( :, CV_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
+                            SUM( CVN_REVERSED( :, CV_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
                     END DO
                  END DO
                  
@@ -4592,8 +4652,8 @@ DEALLOCATE( PIVIT_MAT )
                           ! we store these vectors in order to try and work out the between element
                           ! diffusion/viscocity.
                           DIFF_FOR_BETWEEN_CV( :, IPHASE, CV_ILOC ) = DIFF_FOR_BETWEEN_CV( :, IPHASE, CV_ILOC ) &
-                               !+ CVFEN( CV_ILOC, GI ) * DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
-                               + CVN( CV_ILOC, GI ) * DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
+                               !+ CVFEN_REVERSED( GI, CV_ILOC ) * DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
+                               + CVN_REVERSED( GI, CV_ILOC ) * DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
                        END DO
                     END DO
                  END DO
@@ -4979,39 +5039,39 @@ DEALLOCATE( PIVIT_MAT )
                     DO CV_SILOC=1,CV_SNLOC
                         DO SGI=1,SBCVNGI
                             DO IPHASE=1, NPHASE
-                                SDEN(IPHASE,SGI)=SDEN(IPHASE,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                SDEN(IPHASE,SGI)=SDEN(IPHASE,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                 *0.5*(SLOC_UDEN(IPHASE,CV_SILOC)+SLOC2_UDEN(IPHASE,CV_SILOC)) *WITH_NONLIN
-                                SDENOLD(IPHASE,SGI)=SDENOLD(IPHASE,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                SDENOLD(IPHASE,SGI)=SDENOLD(IPHASE,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                 *0.5*(SLOC_UDENOLD(IPHASE,CV_SILOC)+SLOC2_UDENOLD(IPHASE,CV_SILOC)) *WITH_NONLIN
 
-                                SDEN_KEEP(IPHASE,SGI)=SDEN_KEEP(IPHASE,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                SDEN_KEEP(IPHASE,SGI)=SDEN_KEEP(IPHASE,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                 *SLOC_UDEN(IPHASE,CV_SILOC)*WITH_NONLIN
-                                SDEN2_KEEP(IPHASE,SGI)=SDEN2_KEEP(IPHASE,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                SDEN2_KEEP(IPHASE,SGI)=SDEN2_KEEP(IPHASE,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                 *SLOC2_UDEN(IPHASE,CV_SILOC)*WITH_NONLIN
 
-                                SDENOLD_KEEP(IPHASE,SGI)=SDENOLD_KEEP(IPHASE,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                SDENOLD_KEEP(IPHASE,SGI)=SDENOLD_KEEP(IPHASE,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                 *SLOC_UDENOLD(IPHASE,CV_SILOC)*WITH_NONLIN
-                                SDENOLD2_KEEP(IPHASE,SGI)=SDENOLD2_KEEP(IPHASE,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                SDENOLD2_KEEP(IPHASE,SGI)=SDENOLD2_KEEP(IPHASE,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                 *SLOC2_UDENOLD(IPHASE,CV_SILOC)*WITH_NONLIN
                                 IF(IDIVID_BY_VOL_FRAC+IGOT_VOL_X_PRESSURE.GE.1) THEN
-                                   SVOL_FRA(IPHASE,SGI) =SVOL_FRA(IPHASE,SGI) + SBCVFEN(CV_SILOC,SGI) *SLOC_VOL_FRA(IPHASE,CV_SILOC)
-                                   SVOL_FRA2(IPHASE,SGI)=SVOL_FRA2(IPHASE,SGI)+ SBCVFEN(CV_SILOC,SGI) *SLOC2_VOL_FRA(IPHASE,CV_SILOC)
+                                   SVOL_FRA(IPHASE,SGI) =SVOL_FRA(IPHASE,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) *SLOC_VOL_FRA(IPHASE,CV_SILOC)
+                                   SVOL_FRA2(IPHASE,SGI)=SVOL_FRA2(IPHASE,SGI)+ SBCVFEN_REVERSED(SGI,CV_SILOC) *SLOC2_VOL_FRA(IPHASE,CV_SILOC)
                                 ENDIF
 
                                 IF(GOT_VIRTUAL_MASS) THEN
-                                      SVIRTUAL_MASS_GI(IPHASE,:,SGI)=SVIRTUAL_MASS_GI(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      SVIRTUAL_MASS_GI(IPHASE,:,SGI)=SVIRTUAL_MASS_GI(IPHASE,:,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                       *0.5*(SLOC_VIRTUAL_MASS(IPHASE,:,CV_SILOC)+SLOC2_VIRTUAL_MASS(IPHASE,:,CV_SILOC)) *WITH_NONLIN_CVM
-                                      SVIRTUAL_MASS_OLD_GI(IPHASE,:,SGI)=SVIRTUAL_MASS_OLD_GI(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      SVIRTUAL_MASS_OLD_GI(IPHASE,:,SGI)=SVIRTUAL_MASS_OLD_GI(IPHASE,:,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                       *0.5*(SLOC_VIRTUAL_MASS_OLD(IPHASE,:,CV_SILOC)+SLOC2_VIRTUAL_MASS_OLD(IPHASE,:,CV_SILOC)) *WITH_NONLIN_CVM
 
-                                      SVIRTUAL_MASS_GI_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_GI_KEEP(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      SVIRTUAL_MASS_GI_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_GI_KEEP(IPHASE,:,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                       *SLOC_VIRTUAL_MASS(IPHASE,:,CV_SILOC) *WITH_NONLIN_CVM
-                                      SVIRTUAL_MASS_GI2_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_GI2_KEEP(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      SVIRTUAL_MASS_GI2_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_GI2_KEEP(IPHASE,:,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                       *SLOC2_VIRTUAL_MASS(IPHASE,:,CV_SILOC) *WITH_NONLIN_CVM
 
-                                      SVIRTUAL_MASS_OLD_GI_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_OLD_GI_KEEP(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      SVIRTUAL_MASS_OLD_GI_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_OLD_GI_KEEP(IPHASE,:,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                       *SLOC_VIRTUAL_MASS_OLD(IPHASE,:,CV_SILOC) *WITH_NONLIN_CVM
-                                      SVIRTUAL_MASS_OLD_GI2_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_OLD_GI2_KEEP(IPHASE,:,SGI) + SBCVFEN(CV_SILOC,SGI) &
+                                      SVIRTUAL_MASS_OLD_GI2_KEEP(IPHASE,:,SGI)=SVIRTUAL_MASS_OLD_GI2_KEEP(IPHASE,:,SGI) + SBCVFEN_REVERSED(SGI,CV_SILOC) &
                                       *SLOC2_VIRTUAL_MASS_OLD(IPHASE,:,CV_SILOC) *WITH_NONLIN_CVM
                                 ENDIF
 
@@ -5024,8 +5084,8 @@ DEALLOCATE( PIVIT_MAT )
                     DO U_SILOC=1,U_SNLOC
                         DO SGI=1,SBCVNGI
                             DO IPHASE=1, NPHASE
-                                SUD_ALL(:,IPHASE,SGI)   =SUD_ALL(:,IPHASE,SGI)    + SBUFEN(U_SILOC,SGI)*SLOC_NU(:,IPHASE,U_SILOC)
-                                SUDOLD_ALL(:,IPHASE,SGI)=SUDOLD_ALL(:,IPHASE,SGI) + SBUFEN(U_SILOC,SGI)*SLOC_NUOLD(:,IPHASE,U_SILOC)
+                                SUD_ALL(:,IPHASE,SGI)   =SUD_ALL(:,IPHASE,SGI)    + SBUFEN_REVERSED(SGI,U_SILOC)*SLOC_NU(:,IPHASE,U_SILOC)
+                                SUDOLD_ALL(:,IPHASE,SGI)=SUDOLD_ALL(:,IPHASE,SGI) + SBUFEN_REVERSED(SGI,U_SILOC)*SLOC_NUOLD(:,IPHASE,U_SILOC)
                             END DO
                         END DO
                     END DO
@@ -5054,7 +5114,7 @@ DEALLOCATE( PIVIT_MAT )
                             if(.not.got_c_matrix) JCV_NOD = P_SNDGLN(( SELE - 1 ) * P_SNLOC + P_SJLOC )
 
                             !Calculate aid variable NMX_ALL
-                            NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN( U_SILOC, : ) * SBCVFEN( P_SJLOC, : ) * SDETWE( : ))
+                            NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * SBCVFEN_REVERSED( :, P_SJLOC ) * SDETWE( : ))
                             IF(IGOT_VOL_X_PRESSURE==1) THEN
                                 DO IPHASE = 1, NPHASE
                                     VOL_FRA_NMX_ALL( :, IPHASE ) = VOL_FRA_NMX_ALL( :, IPHASE ) + sum(SVOL_FRA( IPHASE, : )) * NMX_ALL( : )
@@ -5103,6 +5163,15 @@ DEALLOCATE( PIVIT_MAT )
                     got_c_matrix1: if(.not.got_c_matrix) then
                         discontinuous_pres: IF(DISC_PRES) THEN
 
+                            IF( VOL_ELE_INT_PRES ) THEN
+                                            ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
+                                            MASSE = MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 )
+                                            MASSE2 = MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE )
+                            ELSE ! Simple average (works well with IN_ELE_UPWIND=DG_ELE_UPWIND=2)...
+                                            MASSE = 1.0
+                                            MASSE2 = 1.0
+                            END IF
+
                             DO P_SJLOC = 1, CV_SNLOC
                                 P_JLOC = CV_SLOC2LOC( P_SJLOC )
                                 P_JNOD = P_NDGLN(( ELE - 1 ) * P_NLOC + P_JLOC )
@@ -5114,7 +5183,7 @@ DEALLOCATE( PIVIT_MAT )
                                     U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
                                     VNMX_ALL = 0.0
                                     DO SGI = 1, SBCVNGI
-                                        RNN = SDETWE( SGI ) * SBUFEN( U_SILOC, SGI ) * SBCVFEN( P_SJLOC, SGI )
+                                        RNN = SDETWE( SGI ) * SBUFEN_REVERSED( SGI, U_SILOC ) * SBCVFEN_REVERSED( SGI, P_SJLOC )
                                         VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
                                     END DO
 
@@ -5129,17 +5198,7 @@ DEALLOCATE( PIVIT_MAT )
                                     TOTELE, NFACE, U_SNLOC, P_SNLOC )
 
                                     Loop_Phase5: DO IPHASE = 1, NPHASE
-                                        COUNT_PHA  = COUNT  + ( IPHASE - 1 ) * NDIM_VEL * NCOLC
-                                        COUNT_PHA2 = COUNT2 + ( IPHASE - 1 ) * NDIM_VEL * NCOLC
                                         ! weight integral according to non-uniform mesh spacing otherwise it will go unstable.
-                                        IF( VOL_ELE_INT_PRES ) THEN
-                                            ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
-                                            MASSE = MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 )
-                                            MASSE2 = MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE )
-                                        ELSE ! Simple average (works well with IN_ELE_UPWIND=DG_ELE_UPWIND=2)...
-                                            MASSE = 1.0
-                                            MASSE2 = 1.0
-                                        END IF
 
                                         ! SELE_OVERLAP_SCALE(P_JNOD) is the scaling needed to convert to overlapping element surfaces.
                                         IF ( .NOT.GOT_C_MATRIX ) THEN
@@ -5174,10 +5233,10 @@ DEALLOCATE( PIVIT_MAT )
                         SUD2_ALL=0.0
                         SUDOLD2_ALL=0.0
                         DO U_SILOC=1,U_SNLOC
-                            DO IPHASE=1, NPHASE
-                                DO SGI=1,SBCVNGI
-                                    SUD2_ALL(:,IPHASE,SGI)=SUD2_ALL(:,IPHASE,SGI) + SBUFEN(U_SILOC,SGI)*SLOC_NU(:,IPHASE,U_SILOC)
-                                    SUDOLD2_ALL(:,IPHASE,SGI)=SUDOLD2_ALL(:,IPHASE,SGI) + SBUFEN(U_SILOC,SGI)*SLOC_NUOLD(:,IPHASE,U_SILOC)
+                            DO SGI=1,SBCVNGI
+                                DO IPHASE=1, NPHASE
+                                    SUD2_ALL(:,IPHASE,SGI)   =SUD2_ALL(:,IPHASE,SGI)    + SBUFEN_REVERSED(SGI,U_SILOC)*SLOC_NU(:,IPHASE,U_SILOC)
+                                    SUDOLD2_ALL(:,IPHASE,SGI)=SUDOLD2_ALL(:,IPHASE,SGI) + SBUFEN_REVERSED(SGI,U_SILOC)*SLOC_NUOLD(:,IPHASE,U_SILOC)
                                 END DO
                             END DO
                         END DO
@@ -5219,9 +5278,9 @@ DEALLOCATE( PIVIT_MAT )
                                   DO U_SILOC = 1, U_SNLOC
                                      DO SGI = 1, SBCVNGI
                                         SUD2_ALL(IDIM,IPHASE,SGI) = SUD2_ALL(IDIM,IPHASE,SGI) + &
-                                             SBUFEN(U_SILOC,SGI) * suf_nu_bc_all( idim,iphase,u_siloc + u_SNLOC * ( sele2 - 1 ) )
+                                             SBUFEN_REVERSED(SGI,U_SILOC) * suf_nu_bc_all( idim,iphase,u_siloc + u_SNLOC * ( sele2 - 1 ) )
                                         SUDOLD2_ALL(IDIM,IPHASE,SGI) = SUDOLD2_ALL(IDIM,IPHASE,SGI) + &
-                                             SBUFEN(U_SILOC,SGI) * suf_nu_bc_all( idim,iphase,u_siloc + u_SNLOC * ( sele2 - 1 ) )
+                                             SBUFEN_REVERSED(SGI,U_SILOC) * suf_nu_bc_all( idim,iphase,u_siloc + u_SNLOC * ( sele2 - 1 ) )
                                      END DO
                                   END DO
                                END IF
@@ -5332,6 +5391,7 @@ DEALLOCATE( PIVIT_MAT )
                         N_DOT_DUOLD=0.0
                         N_DOT_DUOLD2=0.0
                         DO U_SILOC = 1, U_SNLOC
+                            U_ILOC = U_SLOC2LOC( U_SILOC )
 
                             DO IPHASE = 1, NPHASE
 
@@ -5342,7 +5402,6 @@ DEALLOCATE( PIVIT_MAT )
 
                                     velold_dot(sgi)  = sum( SUDOLD_ALL(:,IPHASE,SGI) *snormxn_all(:,sgi) )
                                     velold_dot2(sgi) = sum( SUDOLD2_ALL(:,IPHASE,SGI) *snormxn_all(:,sgi) )
-
                                     grad_fact(sgi) = sum( UFENX_ALL(1:NDIM,U_ILOC,1)*snormxn_ALL(:,SGI) )
                                 end do
 
@@ -5364,10 +5423,10 @@ DEALLOCATE( PIVIT_MAT )
                     DO U_SILOC = 1, U_SNLOC
                         DO SGI=1,SBCVNGI
                             DO IPHASE=1, NPHASE
-                                U_NODI_SGI_IPHASE_ALL(:,IPHASE,SGI) = U_NODI_SGI_IPHASE_ALL(:,IPHASE,SGI) + SBUFEN(U_SILOC,SGI) * SLOC_U(:,IPHASE,U_SILOC)
-                                U_NODJ_SGI_IPHASE_ALL(:,IPHASE,SGI) = U_NODJ_SGI_IPHASE_ALL(:,IPHASE,SGI) + SBUFEN(U_SILOC,SGI) * SLOC2_U(:,IPHASE,U_SILOC)
-                                UOLD_NODI_SGI_IPHASE_ALL(:,IPHASE,SGI) = UOLD_NODI_SGI_IPHASE_ALL(:,IPHASE,SGI) + SBUFEN(U_SILOC,SGI) * SLOC_UOLD(:,IPHASE,U_SILOC)
-                                UOLD_NODJ_SGI_IPHASE_ALL(:,IPHASE,SGI) = UOLD_NODJ_SGI_IPHASE_ALL(:,IPHASE,SGI) + SBUFEN(U_SILOC,SGI) * SLOC2_UOLD(:,IPHASE,U_SILOC)
+                                U_NODI_SGI_IPHASE_ALL(:,IPHASE,SGI) = U_NODI_SGI_IPHASE_ALL(:,IPHASE,SGI) + SBUFEN_REVERSED(SGI,U_SILOC) * SLOC_U(:,IPHASE,U_SILOC)
+                                U_NODJ_SGI_IPHASE_ALL(:,IPHASE,SGI) = U_NODJ_SGI_IPHASE_ALL(:,IPHASE,SGI) + SBUFEN_REVERSED(SGI,U_SILOC) * SLOC2_U(:,IPHASE,U_SILOC)
+                                UOLD_NODI_SGI_IPHASE_ALL(:,IPHASE,SGI) = UOLD_NODI_SGI_IPHASE_ALL(:,IPHASE,SGI) + SBUFEN_REVERSED(SGI,U_SILOC) * SLOC_UOLD(:,IPHASE,U_SILOC)
+                                UOLD_NODJ_SGI_IPHASE_ALL(:,IPHASE,SGI) = UOLD_NODJ_SGI_IPHASE_ALL(:,IPHASE,SGI) + SBUFEN_REVERSED(SGI,U_SILOC) * SLOC2_UOLD(:,IPHASE,U_SILOC)
                             END DO
                         END DO
                     END DO
@@ -5382,9 +5441,9 @@ DEALLOCATE( PIVIT_MAT )
                                 DO U_SILOC = 1, U_SNLOC
                                    DO SGI = 1, SBCVNGI
                                       U_NODJ_SGI_IPHASE_ALL(IDIM,IPHASE,SGI) = U_NODJ_SGI_IPHASE_ALL(IDIM,IPHASE,SGI) + &
-                                           SBUFEN(U_SILOC,SGI) * SUF_U_BC_ALL_VISC( IDIM,IPHASE,U_SILOC + U_SNLOC*(SELE2-1) )
+                                           SBUFEN_REVERSED(SGI,U_SILOC) * SUF_U_BC_ALL_VISC( IDIM,IPHASE,U_SILOC + U_SNLOC*(SELE2-1) )
                                       UOLD_NODJ_SGI_IPHASE_ALL(IDIM,IPHASE,SGI) = UOLD_NODJ_SGI_IPHASE_ALL(IDIM,IPHASE,SGI) + &
-                                           SBUFEN(U_SILOC,SGI) * SUF_U_BC_ALL_VISC( IDIM,IPHASE,U_SILOC + U_SNLOC*(SELE2-1) )
+                                           SBUFEN_REVERSED(SGI,U_SILOC) * SUF_U_BC_ALL_VISC( IDIM,IPHASE,U_SILOC + U_SNLOC*(SELE2-1) )
                                    END DO
                                 END DO
                              ENDIF
@@ -5544,7 +5603,6 @@ DEALLOCATE( PIVIT_MAT )
                             DO IPHASE = 1, NPHASE
                                 JPHASE = IPHASE
 
-
                                    DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)  &
                                    =DIAG_BIGM_CON(:,:,IPHASE,JPHASE,U_ILOC,U_JLOC,ELE)       + STRESS_IJ_ELE_EXT( :,:, IPHASE, U_SILOC, U_JLOC )
                                    IF(PIVIT_ON_VISC) THEN
@@ -5678,7 +5736,7 @@ DEALLOCATE( PIVIT_MAT )
                                     ! Have a surface integral on element boundary...
                                     DO SGI=1,SBCVNGI
 
-                                        RNN=SDETWE(SGI)*SBUFEN(U_SILOC,SGI)*SBUFEN(U_SJLOC,SGI)
+                                        RNN=SDETWE(SGI)*SBUFEN_REVERSED(SGI,U_SILOC)*SBUFEN_REVERSED(SGI,U_SJLOC)
 
                                         VLM=VLM+RNN
 
@@ -6138,8 +6196,8 @@ DEALLOCATE( PIVIT_MAT )
         ewrite(3,*)'Leaving assemb_force_cty'
 
 
-#ifdef USING_GFORTRAN
-!Nothing to do
+#ifdef USING_GFORTRAN  
+!Nothing to do  - THIS SEEMS ODD? (Chris comment)
 #else
 !Make sure we store the C matrix into state
 if (.not.got_c_matrix) state(1)%scalar_fields(&
