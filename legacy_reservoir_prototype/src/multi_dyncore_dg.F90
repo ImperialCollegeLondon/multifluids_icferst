@@ -3481,8 +3481,8 @@ DEALLOCATE( PIVIT_MAT )
             state ,"C_1", StorageIndexes(14))
 
             DO GI = 1, CV_NGI_SHORT
-               CVFENX_ALL_REVERSED(:,:,GI)=CVFENX_ALL(:,GI,:)
-               UFENX_ALL_REVERSED(:,:,GI) =UFENX_ALL(:,GI,:)
+               CVFENX_ALL_REVERSED(:,GI,:)=CVFENX_ALL(:,:,GI)
+               UFENX_ALL_REVERSED(:,GI,:) =UFENX_ALL(:,:,GI)
             END DO
 
 
