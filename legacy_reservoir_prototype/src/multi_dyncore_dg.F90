@@ -4143,8 +4143,8 @@ DEALLOCATE( PIVIT_MAT )
                             IF ( STRESS_FORM ) THEN
                                 DO IPHASE = 1, NPHASE
                                     JPHASE = IPHASE
-                                    DO IDIM = 1, NDIM_VEL
-                                        DO JDIM = 1, NDIM_VEL
+                                    DO JDIM = 1, NDIM_VEL    !! -Asiri changing order of nested loops 
+                                        DO IDIM = 1, NDIM_VEL
 
                                             IF ( NO_MATRIX_STORE ) THEN
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
@@ -4171,6 +4171,8 @@ DEALLOCATE( PIVIT_MAT )
 
                                 END DO
                             END IF
+
+!! - Asiri to change nested loop order here 
 
                             DO IDIM = 1, NDIM_VEL
                                 DO IPHASE = 1, NPHASE
@@ -4234,6 +4236,7 @@ DEALLOCATE( PIVIT_MAT )
 
                 END DO Loop_DGNods1
             else !Adding sources to the RHS for porous media
+
                 DO U_ILOC = 1, U_NLOC
                     DO CV_JLOC = 1, CV_NLOC
                         NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
