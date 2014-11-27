@@ -127,7 +127,7 @@
     </dump_format>
     <dump_period_in_timesteps>
       <constant>
-        <integer_value rank="0">32</integer_value>
+        <integer_value rank="0">10</integer_value>
       </constant>
     </dump_period_in_timesteps>
     <output_mesh name="PressureMesh"/>
@@ -138,7 +138,7 @@
       <real_value rank="0">0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">0.2e-3</real_value>
+      <real_value rank="0">1e-3</real_value>
     </timestep>
     <finish_time>
       <real_value rank="0">0.2</real_value>
@@ -541,6 +541,9 @@
       <immobile_fraction>
         <real_value rank="0">0.2</real_value>
       </immobile_fraction>
+      <Pe_stab>
+        <real_value rank="0">2e-2</real_value>
+      </Pe_stab>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">

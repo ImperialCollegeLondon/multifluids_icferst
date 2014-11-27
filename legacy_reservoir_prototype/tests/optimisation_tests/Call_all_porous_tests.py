@@ -43,9 +43,10 @@ print 'Running the thicker BL test case'
 os.chdir(path + '/BL_fast_thicker/')
 os.system('python' +' *.py > log')
 
-print 'Running the gravity-capillarity test case'
-os.chdir(path + '/Grav_cap_competing_fast/')
-os.system('python' +' *.py > log')
+print 'Running the gravity-capillarity test case (in a second cpu)'
+#os.chdir(path + '/Grav_cap_competing_fast/')
+#os.system('python' +' *.py > log')
+p =subprocess.Popen('python' +' *.py > log', shell=True, cwd=path + '/Grav_cap_competing_fast/')
 
 
 #Wait until the BL with gravity finish

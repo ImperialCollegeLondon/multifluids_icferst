@@ -13194,7 +13194,7 @@ deallocate(NX_ALL)
     IF( is_compact_overlapping ) THEN
        ! For reduced variable porous media treatment.
        CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQ, INCOME, &
-            HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS,  &
+            GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS,  &
             LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
             LOC_NU, LOC2_NU, SLOC_NU, &
             CV_NODI, CV_NODJ, CVNORMX_ALL,  &
@@ -13202,14 +13202,14 @@ deallocate(NX_ALL)
             SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
             SUF_SIG_DIAGTEN_BC, &
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-            VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_SLOC2LOC,&
-            CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+            VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_SLOC2LOC,&
+            CV_NLOC, CV_SNLOC, CV_ILOC, SCVFEN, CV_OTHER_LOC, &
             VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
             VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
        INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
        NUGI_ALL, &
-            MASS_CV_I, MASS_CV_J, NDIM, MAT_NLOC, MAT_NONODS, &
-            IN_ELE_UPWIND, DG_ELE_UPWIND, &
+            MASS_CV_I, MASS_CV_J, NDIM, &
+            IN_ELE_UPWIND, &
             IANISOTROPIC, &
             TUPWIND_IN, TUPWIND_OUT)
     ELSE
@@ -13227,23 +13227,21 @@ deallocate(NX_ALL)
     END IF
 
 
-    ! Calculate NDOTQNEW from NDOTQ
-    NDOTQNEW = NDOTQ ! initialize it like this so that it contains the b.c's
 
-!  IF(.NOT. is_compact_overlapping ) THEN
-!  IF(.false.) THEN
     NUGI_ALL=0.0
+
+    ! Calculate NDOTQNEW from NDOTQ
+    do iphase = 1, nphase
+        NDOTQNEW(iphase) = NDOTQ(iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iphase,:)*&
+         ( LOC_U(:,iphase,:)-LOC_NU(:,iphase,:))), SUFEN( :, GI ))
+    end do
+
     DO U_KLOC = 1, U_NLOC
-       DO IDIM = 1, NDIM
-          NDOTQNEW=NDOTQNEW + SUFEN( U_KLOC, GI ) * UGI_COEF_ELE_ALL(IDIM, :,U_KLOC) &
-                           * ( LOC_U(IDIM,:, U_KLOC ) - LOC_NU(IDIM,:,U_KLOC ) ) * CVNORMX_ALL(IDIM, GI)
-       END DO
        NUGI_ALL(:, :) = NUGI_ALL(:, :) + SUFEN( U_KLOC, GI )*LOC_NU(:, :, U_KLOC)
     END DO
 
     IF( (ELE2 /= 0) .AND. (ELE2 /= ELE) ) THEN
        ALLOCATE(NUGI_ALL_OTHER(NDIM,NPHASE))
-       NUGI_ALL(:, :) = 0.5*NUGI_ALL(:, :) ! Reduce by half and take the other half from the other side of element...
        NUGI_ALL_OTHER(:, :) = 0.0
        ! We have a discontinuity between elements so integrate along the face...
        DO U_KLOC = 1, U_NLOC
@@ -13256,7 +13254,9 @@ deallocate(NX_ALL)
              NUGI_ALL_OTHER(:, :) = NUGI_ALL_OTHER(:, :) + 0.5*SUFEN( U_KLOC, GI )*LOC2_NU(:, :, U_KLOC)
           END IF
        END DO
-       NUGI_ALL(:, :) = NUGI_ALL(:, :) +  NUGI_ALL_OTHER(:, :)
+       ! Reduce by half and take the other half from the other side of element...
+       NUGI_ALL(:, :) = 0.5*NUGI_ALL(:, :) +  NUGI_ALL_OTHER(:, :)
+       deallocate(NUGI_ALL_OTHER)
     END IF
 
 !  ENDIF
@@ -13434,7 +13434,7 @@ end SUBROUTINE GET_INT_VEL_NEW
 
 
       SUBROUTINE GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQ,INCOME, &
-       HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
+       GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
        LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
        LOC_NU, LOC2_NU, SLOC_NU, &
        CV_NODI, CV_NODJ, CVNORMX_ALL,  &
@@ -13442,12 +13442,12 @@ end SUBROUTINE GET_INT_VEL_NEW
        SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
        SUF_SIG_DIAGTEN_BC, &
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-       VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+       VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, SCVFEN, CV_OTHER_LOC, &
        VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
        INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
        UDGI_ALL, &
-       MASS_CV_I, MASS_CV_J, NDIM, MAT_NLOC, MAT_NONODS, &
-       IN_ELE_UPWIND, DG_ELE_UPWIND, &
+       MASS_CV_I, MASS_CV_J, NDIM, &
+       IN_ELE_UPWIND, &
        IANISOTROPIC,  &
        TUPWIND_IN, TUPWIND_OUT)
     !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===
@@ -13456,10 +13456,10 @@ end SUBROUTINE GET_INT_VEL_NEW
     IMPLICIT NONE
     INTEGER, intent( in ) :: NPHASE, GI, U_NLOC, CV_SNLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
          CV_NODJ, CV_NODI, CV_DG_VEL_INT_OPT, ELE, ELE2, &
-         SELE, U_SNLOC, STOTEL, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, &
-         NDIM, MAT_NLOC, MAT_NONODS,  &
-         IN_ELE_UPWIND, DG_ELE_UPWIND
-    REAL, intent( in ) :: HDC, MASS_CV_I, MASS_CV_J, VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2
+         SELE, U_SNLOC, STOTEL, CV_NLOC, CV_ILOC, &
+         NDIM,  &
+         IN_ELE_UPWIND
+    REAL, intent( in ) :: MASS_CV_I, MASS_CV_J, VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2
     REAL, DIMENSION( : ), intent( inout ) :: NDOTQ, INCOME
     REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
     INTEGER, DIMENSION( : ), intent( in ) :: U_OTHER_LOC
@@ -13480,8 +13480,8 @@ end SUBROUTINE GET_INT_VEL_NEW
                                                 VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
     REAL, DIMENSION( :, :, : ), intent( in ) :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
 
-      INTEGER, intent( in ) :: IANISOTROPIC
-      REAL, DIMENSION( NPHASE ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT
+    INTEGER, intent( in ) :: IANISOTROPIC
+    REAL, DIMENSION( NPHASE ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT
 
     ! Local variables
     REAL :: UDGI,VDGI,WDGI,  &
@@ -13495,7 +13495,7 @@ end SUBROUTINE GET_INT_VEL_NEW
                                GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA, &
                                DT_I,DT_J, INCOME3
     REAL :: LIMT3(NPHASE) 
-    REAL :: NVEC(NDIM),SUF_SIG_DIAGTEN_BC_GI(NDIM), UGI_TMP(NDIM)
+    REAL :: SUF_SIG_DIAGTEN_BC_GI(NDIM)
     INTEGER :: U_KLOC,U_NODK,U_NODK2,U_NODK2_IPHA,U_NODK_IPHA,U_KLOC2,U_SKLOC, &
          U_SNODK,U_SNODK_IPHA, II,  COUNT, &
          CV_KLOC, CV_KNOD, &
@@ -13506,9 +13506,6 @@ end SUBROUTINE GET_INT_VEL_NEW
     ! IN_ELE_UPWIND=1 switches on upwinding within and element (=3 recommended).
     !    INTEGER, PARAMETER :: IN_ELE_UPWIND = 3
     !    INTEGER, PARAMETER :: IN_ELE_UPWIND = 2
-    ! DG_ELE_UPWIND=1 switches on upwinding between elements (=3 recommended).
-    !    INTEGER, PARAMETER :: DG_ELE_UPWIND = 3
-    !    INTEGER, PARAMETER :: DG_ELE_UPWIND = 2
     ! FORCE_UPWIND_VEL forces the use of upwinding for velocity - good for testing as high order can be complex. 
     ! FORCE_UPWIND_VEL_DG_ELE forces upwind vel between elements
     LOGICAL, PARAMETER :: FORCE_UPWIND_VEL = .false.
@@ -13533,25 +13530,20 @@ end SUBROUTINE GET_INT_VEL_NEW
 !    LOGICAL, PARAMETER :: NEW_LIMITER = .true.
     LOGICAL, PARAMETER :: NEW_LIMITER = .false.
     REAL :: TMIN_STORE, TMAX_STORE
-    REAL, DIMENSION(NPHASE) :: PERM_TILDE,NDOTQ_TILDE, NDOTQ2_TILDE, NDOTQOLD_TILDE, NDOTQOLD2_TILDE, rden_ave, Q_UNDERLY
-    REAL, DIMENSION(NPHASE) :: NDOTQ_KEEP_IN,  NDOTQ_KEEP, NDOTQ2_KEEP
     ! coefficients for this element ELE
     real :: gamma,  grad2nd
     real :: abs_tilde_2nd, abs_tildeold_2nd, max_nodtq_keep, min_nodtq_keep
     real :: w_weight, relax
-
-    real, DIMENSION(NPHASE) :: DT_I_upwind, DT_J_upwind
     real :: dt_max, dt_min
-    real, DIMENSION(NPHASE) :: abs_tilde1, abs_tilde2, abs_tilde, abs_max, abs_min, w_relax
-    real, DIMENSION(NPHASE) :: wrelax, wrelax1, wrelax2
     real :: T_PELE, T_PELEOT, TMIN_PELE, TMAX_PELE, TMIN_PELEOT, TMAX_PELEOT
     logical :: Incomming_flow
+    real, DIMENSION(NPHASE) :: abs_tilde1, abs_tilde2, abs_tilde, abs_max, abs_min,&
+        DT_I_upwind, DT_J_upwind, courant_or_minus_one_new, XI_LIMIT, wrelax, wrelax1, wrelax2,&
+        NDOTQ_TILDE, NDOTQ2_TILDE, Q_UNDERLY, NDOTQ_KEEP_IN,  NDOTQ_KEEP, NDOTQ2_KEEP
     ! Local variable for indirect addressing
-    REAL, DIMENSION ( NDIM, NPHASE ) :: UDGI2_ALL, UDGI_INT_ALL, UDGI_ALL_FOR_INV, ROW_SUM_INV_VI, ROW_SUM_INV_VJ
-!    REAL, DIMENSION ( NDIM, NPHASE ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, UDGI_ALL_FOR_INV, ROW_SUM_INV_VI, ROW_SUM_INV_VJ
-!    REAL, DIMENSION ( NDIM, NDIM, NPHASE ) :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
-    real :: courant_or_minus_one_new(Nphase),XI_LIMIT(Nphase), VEC_NDIM(NDIM), VEC2_NDIM(NDIm), UDGI_ALL_OTHER(NDIM, NPHASE)
-    INTEGER :: IPHASE, CV_NODI_IPHA, CV_NODJ_IPHA
+    REAL, DIMENSION ( NDIM, NPHASE ) :: UDGI2_ALL, UDGI_INT_ALL, &
+        UDGI_ALL_FOR_INV, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_OTHER
+    INTEGER :: IPHASE
 
 
     ! coefficients for this element ELE
@@ -13561,12 +13553,10 @@ end SUBROUTINE GET_INT_VEL_NEW
     UGI_COEF_ELE2_ALL=0.0
 
 
-     DO IPHASE=1,NPHASE
-        DO IDIM=1,NDIM
-           ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
-           ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
-        END DO
-     END DO
+    forall (iphase = 1:nphase, idim = 1:ndim)
+       ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+       ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+    end forall
 
 
     got_dt_ij=.false.
@@ -13695,8 +13685,6 @@ end SUBROUTINE GET_INT_VEL_NEW
              FEMTGI_IPHA = matmul(LOC_FEMT, SCVFEN(:,GI) )
 
              ! Central is fine as its within an element with equally spaced nodes. 
-             !FEMTGI_IPHA = 0.5*( t(cv_nodi_ipha)+t(cv_nodj_ipha) )
-             !FEMTOLDGI_IPHA = 0.5*( told(cv_nodi_ipha)+told(cv_nodj_ipha) )
              if(IANISOTROPIC==0) then ! this is the only needed for isotropic limiting for velocity...
                 FEMTGI_IPHA = ( MASS_CV_J * LOC_T_I + &
                      MASS_CV_I * LOC_T_J ) / (MASS_CV_I+MASS_CV_J)
@@ -13711,17 +13699,6 @@ end SUBROUTINE GET_INT_VEL_NEW
                  ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
                  GRAD_ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(GJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
              END DO
-
-
-             ! Make sure we have some sort of velocity (only needed between elements)...
-             ! take the mean of the underlying velocity...
-             !                        Q_UNDERLY=0.5*( NDOTQ*ABS_CV_NODI_IPHA + NDOTQ2*ABS_CV_NODJ_IPHA )
-             !                        NDOTQ_TILDE =Q_UNDERLY/ABS_CV_NODI_IPHA
-             !                        NDOTQ2_TILDE=Q_UNDERLY/ABS_CV_NODJ_IPHA
-             !
-             !                        QOLD_UNDERLY=0.5*( NDOTQOLD*ABS_CV_NODI_IPHA + NDOTQOLD2*ABS_CV_NODJ_IPHA )
-             !                        NDOTQOLD_TILDE =QOLD_UNDERLY/ABS_CV_NODI_IPHA
-             !                        NDOTQOLD2_TILDE=QOLD_UNDERLY/ABS_CV_NODJ_IPHA
 
              ! These are the new limits of the velocities...
              NDOTQ_KEEP  = NDOTQ   ! this is associated with saturation at NODI
@@ -13829,7 +13806,7 @@ end SUBROUTINE GET_INT_VEL_NEW
                    WHERE (0.5*(NDOTQ+NDOTQ2) < 0.0) 
                        INCOME=1.0
                    ELSE WHERE
-                   INCOME=0.0
+                       INCOME=0.0
                    END WHERE
                END WHERE
            endif
@@ -13867,11 +13844,7 @@ end SUBROUTINE GET_INT_VEL_NEW
           UDGI_ALL(:, :) = 0.0
           UDGI2_ALL(:, :) = 0.0
 
-          UGI_COEF_ELE_ALL(:, :, :) = 0.0
-          UGI_COEF_ELE2_ALL(:, :, :) = 0.0
 
-!          print *,'U_OTHER_LOC:', U_OTHER_LOC
-!          stop 811
           DO U_KLOC = 1, U_NLOC
              U_KLOC2 = U_OTHER_LOC( U_KLOC )
              IF( U_KLOC2 /= 0 ) THEN
@@ -13906,8 +13879,6 @@ end SUBROUTINE GET_INT_VEL_NEW
           ELSE IF( ABS(CV_DG_VEL_INT_OPT ) == 4) THEN
 
 
-             ! DG_ELE_UPWIND==1: the upwind method. 
-             ! DG_ELE_UPWIND==3: the best optimal upwind frac.
 
 
              !We perform: n' * sigma * n
@@ -14039,62 +14010,62 @@ end SUBROUTINE GET_INT_VEL_NEW
                           DT_J = (1.-wrelax2)*1.0  + wrelax2*0.5
                        END WHERE
 
-                    case (2)
-                       ! no 4 (more stable than 2 and 3) (also make sure we dont violate bounds):
-                       WHERE ( income3 < 0.5 )  ! upwind
-                          DT_I = (1.-wrelax1)*1.0  + wrelax1*0.5
-                          DT_J = (1.-wrelax2)*0.0  + wrelax2*0.5
-                          !              IF(T(CV_NODI_IPHA).LT.0.2) THEN
-                          WHERE (ABS_CV_NODI_IPHA.GT.1.0E+10)
-                             DT_I = 0.0
-                             DT_J = 0.0
-                          END WHERE
-                       ELSE WHERE
-                          DT_I = (1.-wrelax1)*0.0  + wrelax1*0.5
-                          DT_J = (1.-wrelax2)*1.0  + wrelax2*0.5
-                          !               IF(T(CV_NODJ_IPHA).LT.0.2) THEN
-                          WHERE (ABS_CV_NODJ_IPHA.GT.1.0E+10)
-                             DT_I = 0.0
-                             DT_J = 0.0
-                          END WHERE
-                       END WHERE
-
-                       ! no 2(again):
-                    case (3)
-                       WHERE ( income3 < 0.5 ) ! upwind
-                          DT_I = (1.-wrelax1)*1.0  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                          DT_J = (1.-wrelax2)*0.0  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                       ELSE WHERE
-                          DT_I = (1.-wrelax1)*0.0  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                          DT_J = (1.-wrelax2)*1.0  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                       END WHERE
-
-
-                       ! no 2(again):
-                    case (4)
-                       WHERE ( income3 < 0.5 ) ! upwind
-                          DT_I = ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                          DT_J = ABS_CV_NODI_IPHA*MASS_CV_I  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                          WHERE (ABS_CV_NODI_IPHA.GT.1.0E+10)
-                             DT_I = 0.0
-                             DT_J = 0.0
-                          END WHERE
-                       ELSE WHERE
-                          DT_I = ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                          DT_J = ABS_CV_NODI_IPHA*MASS_CV_I  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                          WHERE (ABS_CV_NODJ_IPHA.GT.1.0E+10)
-                             DT_I = 0.0
-                             DT_J = 0.0
-                          END WHERE
-                       END WHERE
+!                    case (2)
+!                       ! no 4 (more stable than 2 and 3) (also make sure we dont violate bounds):
+!                       WHERE ( income3 < 0.5 )  ! upwind
+!                          DT_I = (1.-wrelax1)*1.0  + wrelax1*0.5
+!                          DT_J = (1.-wrelax2)*0.0  + wrelax2*0.5
+!                          !              IF(T(CV_NODI_IPHA).LT.0.2) THEN
+!                          WHERE (ABS_CV_NODI_IPHA.GT.1.0E+10)
+!                             DT_I = 0.0
+!                             DT_J = 0.0
+!                          END WHERE
+!                       ELSE WHERE
+!                          DT_I = (1.-wrelax1)*0.0  + wrelax1*0.5
+!                          DT_J = (1.-wrelax2)*1.0  + wrelax2*0.5
+!                          !               IF(T(CV_NODJ_IPHA).LT.0.2) THEN
+!                          WHERE (ABS_CV_NODJ_IPHA.GT.1.0E+10)
+!                             DT_I = 0.0
+!                             DT_J = 0.0
+!                          END WHERE
+!                       END WHERE
+!
+!                       ! no 2(again):
+!                    case (3)
+!                       WHERE ( income3 < 0.5 ) ! upwind
+!                          DT_I = (1.-wrelax1)*1.0  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                          DT_J = (1.-wrelax2)*0.0  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                       ELSE WHERE
+!                          DT_I = (1.-wrelax1)*0.0  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                          DT_J = (1.-wrelax2)*1.0  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                       END WHERE
+!
+!
+!                       ! no 2(again):
+!                    case (4)
+!                       WHERE ( income3 < 0.5 ) ! upwind
+!                          DT_I = ABS_CV_NODJ_IPHA*MASS_CV_J  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                          DT_J = ABS_CV_NODI_IPHA*MASS_CV_I  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                          WHERE (ABS_CV_NODI_IPHA.GT.1.0E+10)
+!                             DT_I = 0.0
+!                             DT_J = 0.0
+!                          END WHERE
+!                       ELSE WHERE
+!                          DT_I = ABS_CV_NODJ_IPHA*MASS_CV_J  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                          DT_J = ABS_CV_NODI_IPHA*MASS_CV_I  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                          WHERE (ABS_CV_NODJ_IPHA.GT.1.0E+10)
+!                             DT_I = 0.0
+!                             DT_J = 0.0
+!                          END WHERE
+!                       END WHERE
 
                        ! no 2(again):
                     case (5)
@@ -14118,69 +14089,56 @@ end SUBROUTINE GET_INT_VEL_NEW
                           END WHERE
                        END WHERE
 
-                       ! no 3(again): XXX failed gravity problem...
-                    case (6)
-                       WHERE ( income3 < 0.5 ) ! upwind
-                          DT_I = (1.-wrelax1)*min(1.0,ABS_CV_NODI_IPHA/abs_tilde1)  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                          DT_J = (1.-wrelax2)*min(1.0,ABS_CV_NODJ_IPHA/abs_tilde1)  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                       ELSE WHERE
-                          DT_I = (1.-wrelax1)*min(1.0,ABS_CV_NODI_IPHA/abs_tilde2)  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                          DT_J = (1.-wrelax2)*min(1.0,ABS_CV_NODJ_IPHA/abs_tilde2)  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                       END WHERE
-
-                       ! no 2(again,again) XXXXfor the gravity problem:
-                    case (7)
-                       WHERE ( income3 < 0.5 )  ! upwind
-                          DT_I = (1.-wrelax1)*(1.-min(1.0,ABS_CV_NODJ_IPHA/abs_tilde1))  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                          DT_J = (1.-wrelax2)*min(1.0,ABS_CV_NODJ_IPHA/abs_tilde1)  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                       ELSE WHERE
-                          DT_I = (1.-wrelax1)*min(1.0,ABS_CV_NODI_IPHA/abs_tilde2)  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                          DT_J = (1.-wrelax2)*(1.-min(1.0,ABS_CV_NODI_IPHA/abs_tilde2))  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
-                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                       END WHERE
-
-                       ! no 3 soln...
-                    case (8)
-                       DT_I = ( (1.-wrelax1)*ABS_CV_NODI_IPHA  ) &
-                            /(ABS_CV_NODI_IPHA+ABS_CV_NODJ_IPHA)   + wrelax1*0.5
-                       DT_J = ( (1.-wrelax2)*ABS_CV_NODJ_IPHA  ) &
-                            /(ABS_CV_NODI_IPHA+ABS_CV_NODJ_IPHA)   + wrelax2*0.5
-
-                       ! no 2 soln...
-                       !        DT_I = ( (1.-wrelax1)*ABS_CV_NODI_IPHA*MASS_CV_I  ) &
-                       !             /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)   + wrelax1*0.5
-                       !        DT_J = ( (1.-wrelax2)*ABS_CV_NODJ_IPHA*MASS_CV_J  ) &
-                       !             /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)   + wrelax2*0.5
-
-                       !        DTOLD_I = ( (1.-wrelaxold1)*ABS_CV_NODI_IPHA*MASS_CV_I  ) &
-                       !                /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)  + wrelaxold1*0.5
-                       !        DTOLD_J = ( (1.-wrelaxold2)*ABS_CV_NODJ_IPHA*MASS_CV_J  ) &
-                       !                /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)  + wrelaxold2*0.5
-
-                    case (9)
-                       ! no 0 soln (more stable than 2 & 3)...
-                       DT_I = ( (1.-wrelax1)*ABS_CV_NODI_IPHA*MASS_CV_I + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J ) &
-                            /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                       DT_J = ( (1.-wrelax2)*ABS_CV_NODJ_IPHA*MASS_CV_J + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I ) &
-                            /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                       ! no 0 soln (more stable than 2 & 3)...
-                    case (10)
-                       DT_I = ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                            /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-                       DT_J = ABS_CV_NODI_IPHA*MASS_CV_I  &
-                            /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                       ! no 3(again): XXX failed gravity problem...
+!                    case (6)
+!                       WHERE ( income3 < 0.5 ) ! upwind
+!                          DT_I = (1.-wrelax1)*min(1.0,ABS_CV_NODI_IPHA/abs_tilde1)  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                          DT_J = (1.-wrelax2)*min(1.0,ABS_CV_NODJ_IPHA/abs_tilde1)  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                       ELSE WHERE
+!                          DT_I = (1.-wrelax1)*min(1.0,ABS_CV_NODI_IPHA/abs_tilde2)  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                          DT_J = (1.-wrelax2)*min(1.0,ABS_CV_NODJ_IPHA/abs_tilde2)  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                       END WHERE
+!
+!                       ! no 2(again,again) XXXXfor the gravity problem:
+!                    case (7)
+!                       WHERE ( income3 < 0.5 )  ! upwind
+!                          DT_I = (1.-wrelax1)*(1.-min(1.0,ABS_CV_NODJ_IPHA/abs_tilde1))  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                          DT_J = (1.-wrelax2)*min(1.0,ABS_CV_NODJ_IPHA/abs_tilde1)  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                       ELSE WHERE
+!                          DT_I = (1.-wrelax1)*min(1.0,ABS_CV_NODI_IPHA/abs_tilde2)  + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                          DT_J = (1.-wrelax2)*(1.-min(1.0,ABS_CV_NODI_IPHA/abs_tilde2))  + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I  &
+!                               /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                       END WHERE
+!
+!                       ! no 3 soln...
+!                    case (8)
+!                       DT_I = ( (1.-wrelax1)*ABS_CV_NODI_IPHA  ) &
+!                            /(ABS_CV_NODI_IPHA+ABS_CV_NODJ_IPHA)   + wrelax1*0.5
+!                       DT_J = ( (1.-wrelax2)*ABS_CV_NODJ_IPHA  ) &
+!                            /(ABS_CV_NODI_IPHA+ABS_CV_NODJ_IPHA)   + wrelax2*0.5
+!
+!                    case (9)
+!                       ! no 0 soln (more stable than 2 & 3)...
+!                       DT_I = ( (1.-wrelax1)*ABS_CV_NODI_IPHA*MASS_CV_I + wrelax1*ABS_CV_NODJ_IPHA*MASS_CV_J ) &
+!                            /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                       DT_J = ( (1.-wrelax2)*ABS_CV_NODJ_IPHA*MASS_CV_J + wrelax2*ABS_CV_NODI_IPHA*MASS_CV_I ) &
+!                            /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                       ! no 0 soln (more stable than 2 & 3)...
+!                    case (10)
+!                       DT_I = ABS_CV_NODJ_IPHA*MASS_CV_J  &
+!                            /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+!                       DT_J = ABS_CV_NODI_IPHA*MASS_CV_I  &
+!                            /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
                 end select
 
-                ! END OF IF ( DG_ELE_UPWIND==3 ) THEN ...
              ELSE  ! Low order...
-                !if ( abs(T(CV_NODI_IPHA)-T(CV_NODJ_IPHA)).lt.1.e-4 ) then ! low order
 
 
                 INCOME =0.5*ABS_CV_NODI_IPHA* MASS_CV_I /(0.5*(ABS_CV_NODI_IPHA*MASS_CV_I +ABS_CV_NODJ_IPHA*MASS_CV_J ))

@@ -2736,7 +2736,7 @@
         real :: top_limit
         real, dimension(:,:), pointer :: satura
         real, dimension(:), allocatable :: immobile_fractions
-        real, parameter :: tolerance = 5d-2
+        real, parameter :: tolerance = 5d-3
 
         call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
 
@@ -2748,7 +2748,6 @@
           call get_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/immobile_fraction", &
                immobile_fractions(iphase), default=0.0)
         end do
-
         !Set saturation to be between bounds
         do iphase = 1, nphase
             top_limit = 0.
@@ -2760,7 +2759,6 @@
             !Limit the saturation, allowing small oscillations
             satura(iphase,:) =  min(max(immobile_fractions(iphase)-tolerance, satura(iphase,:)),top_limit)
         end do
-
         deallocate(immobile_fractions)
     end subroutine Set_Saturation_between_bounds
 
