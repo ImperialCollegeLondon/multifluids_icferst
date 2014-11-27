@@ -4094,11 +4094,6 @@ DEALLOCATE( PIVIT_MAT )
                                 ENDIF
 
 
-!                                DO IDIM = 1, NDIM
-!                                   VLK( IPHASE ) = VLK( IPHASE ) + &
-!                                            UFENX_ALL( IDIM, U_ILOC, GI ) * SUM( UFENX_ALL( 1:NDIM, U_JLOC, GI ) * TEN_XX( IDIM, :, IPHASE, GI ) ) * DETWEI( GI )
-!                                END DO
-
                             END DO Loop_IPHASE
 
                         END DO Loop_Gauss2
