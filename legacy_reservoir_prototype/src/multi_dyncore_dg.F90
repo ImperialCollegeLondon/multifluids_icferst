@@ -3956,7 +3956,7 @@ DEALLOCATE( PIVIT_MAT )
                     END IF
 
                 DO U_JLOC = 1, U_NLOC
-                    DO U_ILOC = 1, U_NLOC
+                    DO U_ILOC = 1, U_NLOC 
                        DO JPHASE = 1, NPHASE
                            DO JDIM = 1, NDIM_VEL
                                JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
