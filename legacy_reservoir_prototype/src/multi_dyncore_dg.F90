@@ -3885,8 +3885,8 @@ DEALLOCATE( PIVIT_MAT )
                 END IF
 
                 if (Porous_media_PIVIT_not_stored_yet) then
-                    DO U_ILOC = 1, U_NLOC
                     DO U_JLOC = 1, U_NLOC
+                    DO U_ILOC = 1, U_NLOC
                         DO GI = 1, CV_NGI
 
                             RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI )
@@ -3932,8 +3932,8 @@ DEALLOCATE( PIVIT_MAT )
                                     ! Stabilization for viscosity...
 ! Chris re-order NN_SIGMAGI_STAB_ELE...
                     IF ( STAB_VISC_WITH_ABS ) THEN
-                       DO U_ILOC = 1, U_NLOC
                        DO U_JLOC = 1, U_NLOC
+                       DO U_ILOC = 1, U_NLOC
                            DO IPHASE = 1, NPHASE
                               IPHA_IDIM = JDIM + (IPHASE-1)*NDIM
                               DO JPHASE = 1, NPHASE
