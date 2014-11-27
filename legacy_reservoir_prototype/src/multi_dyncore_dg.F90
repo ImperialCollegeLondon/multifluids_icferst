@@ -3939,8 +3939,6 @@ DEALLOCATE( PIVIT_MAT )
                     IF ( STAB_VISC_WITH_ABS ) THEN
                        DO U_JLOC = 1, U_NLOC
                        DO U_ILOC = 1, U_NLOC
-                           DO IPHASE = 1, NPHASE
-                              IPHA_IDIM = JDIM + (IPHASE-1)*NDIM
                               DO JPHASE = 1, NPHASE
                                   DO JDIM = 1, NDIM_VEL
                                      JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
@@ -3955,7 +3953,6 @@ DEALLOCATE( PIVIT_MAT )
                                         END IF
                                   END DO
                               END DO
-                           END DO
                        END DO
                        END DO
                     END IF
