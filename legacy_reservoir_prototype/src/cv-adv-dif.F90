@@ -3478,8 +3478,8 @@ deallocate(SCVFENX_ALL, INV_JAC)
 !       PSI( 1 + 5 * NL : NL + 5 * NL )  =   T2OLD( 1 : NL )
 !    ENDIF
          k = 1
-         DO IPHASE = 1, NPHASE
-             DO CV_INOD = 1, CV_NONODS
+         DO CV_INOD = 1, CV_NONODS
+             DO IPHASE = 1, NPHASE
                  PSI( k ) = T_ALL( IPHASE, CV_INOD) 
                  PSI( k + NL ) = TOLD_ALL( IPHASE, CV_INOD) 
                  PSI( k + 2*NL ) = DEN_ALL( IPHASE, CV_INOD) 
@@ -3489,8 +3489,8 @@ deallocate(SCVFENX_ALL, INV_JAC)
          END DO
          if (IGOT_T2>0) then
              k = 1
-             DO IPHASE = 1, NPHASE
-                 DO CV_INOD = 1, CV_NONODS
+             DO CV_INOD = 1, CV_NONODS
+                 DO IPHASE = 1, NPHASE
                      PSI( k + 4*NL ) = T2_ALL( IPHASE, CV_INOD) 
                      PSI( k + 5*NL ) = T2OLD_ALL( IPHASE, CV_INOD) 
                      k = k + 1
@@ -3533,8 +3533,8 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
 
          k = 1
-         DO IPHASE = 1, NPHASE
-             DO CV_INOD = 1, CV_NONODS
+         DO CV_INOD = 1, CV_NONODS
+             DO IPHASE = 1, NPHASE
                  FEMT_ALL( IPHASE, CV_INOD) = FEMPSI( k )
                  FEMTOLD_ALL( IPHASE, CV_INOD) = FEMPSI( k + NL )
                  FEMDEN_ALL( IPHASE, CV_INOD) = FEMPSI( k + 2*NL )
@@ -3544,8 +3544,8 @@ deallocate(SCVFENX_ALL, INV_JAC)
          END DO
          if (IGOT_T2>0) then
              k = 1
-             DO IPHASE = 1, NPHASE
-                 DO CV_INOD = 1, CV_NONODS
+             DO CV_INOD = 1, CV_NONODS
+                 DO IPHASE = 1, NPHASE
                      FEMT2_ALL( IPHASE, CV_INOD) = FEMPSI( k + 4*NL )
                      FEMT2OLD_ALL( IPHASE, CV_INOD) = FEMPSI( k + 5*NL )
                      k = k + 1
