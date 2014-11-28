@@ -139,12 +139,12 @@
 !!$ Defining element-pair type and discretisation options and coefficients
       integer :: cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type, &
            t_disopt, v_disopt, t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-           comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, nopt_vel_upwind_coefs, &
+           comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
            nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp,  IDIVID_BY_VOL_FRAC
       logical :: volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, comp_get_theta_flux, &
            t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction, q_scheme
       real :: t_beta, v_beta, t_theta, v_theta, u_theta
-      real, dimension( : ), allocatable :: opt_vel_upwind_coefs
+      real, dimension(:,:,:,:), allocatable, target :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
 
 !!$ Defining time- and nonlinear interations-loops variables
       integer :: itime, dump_period_in_timesteps, final_timestep, &
@@ -544,8 +544,9 @@
 
 !!$ Option not currently set up in the schema and zeroed from the begining. It is used to control 
 !!$ the upwinding rate (in the absorption term) during advection/assembling.
-      nopt_vel_upwind_coefs = mat_nonods * nphase * ndim * ndim * 2
-      allocate( opt_vel_upwind_coefs( nopt_vel_upwind_coefs ) ) ; opt_vel_upwind_coefs = 0.
+
+    allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
+    allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
 
 !!$ Defining problem to be solved:
       call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &
@@ -726,7 +727,7 @@
             if( solve_force_balance ) then
                call Calculate_AbsorptionTerm( state, packed_state,&
                     cv_ndgln, mat_ndgln, &
-                    nopt_vel_upwind_coefs, opt_vel_upwind_coefs, Material_Absorption )
+                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption )
 
                ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
                ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
@@ -780,7 +781,7 @@
 !!$
                     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
-                    opt_vel_upwind_coefs, nopt_vel_upwind_coefs, &
+                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                     Temperature_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
                     0,Temperature, Temperature_Old,igot_theta_flux, scvngi_theta, &
                     t_get_theta_flux, t_use_theta_flux, &
@@ -887,7 +888,7 @@
                     XU_NLOC, XU_NDGLN, &
 !!$
                     Momentum_Diffusion, Momentum_Diffusion_Vol, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-                    opt_vel_upwind_coefs, nopt_vel_upwind_coefs, &
+                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                     igot_theta_flux, scvngi_theta, volfra_use_theta_flux, &
                     sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
                     in_ele_upwind, dg_ele_upwind, &
@@ -928,7 +929,7 @@
                     NCOLM, FINDM, COLM, MIDM, &
                     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
-                    opt_vel_upwind_coefs, nopt_vel_upwind_coefs, &
+                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                     Density_FEMT, &
                     igot_theta_flux,scvngi_theta, volfra_use_theta_flux, &
                     in_ele_upwind, dg_ele_upwind, &
@@ -1029,7 +1030,7 @@
                           NCOLM, FINDM, COLM, MIDM, &
                           XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
-                          opt_vel_upwind_coefs, nopt_vel_upwind_coefs, &
+                          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                           Component_FEMT( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
                           Density_FEMT, &
                           igot_t2, PhaseVolumeFraction, PhaseVolumeFraction_Old, igot_theta_flux, scvngi_theta, &
@@ -1356,7 +1357,7 @@
                  colct, findc, colc, findcmc, colcmc, midcmc, findm, &
                  colm, midm, &
 !!$ Defining element-pair type and discretisation options and coefficients
-                 opt_vel_upwind_coefs, &
+                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
 !!$ For output:
                  PhaseVolumeFraction_FEMT, Temperature_FEMT, Density_FEMT, &
                  Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
@@ -1580,8 +1581,8 @@ if (have_component_field) then
             ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
 
             allocate( Component_Diffusion_Operator_Coefficient( ncomp, ncomp_diff_coef, nphase ) )  
-            nopt_vel_upwind_coefs = mat_nonods * nphase * ndim * ndim * 2
-            allocate( opt_vel_upwind_coefs( nopt_vel_upwind_coefs ) ) ; opt_vel_upwind_coefs = 0.
+            allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
+            allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
 
          end if Conditional_ReallocatingFields
 
@@ -1627,7 +1628,7 @@ if (have_component_field) then
            colct, findc, colc, findcmc, colcmc, midcmc, findm, &
            colm, midm, &
 !!$ Defining element-pair type and discretisation options and coefficients
-           opt_vel_upwind_coefs, &
+           opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
 !!$ For output:
            PhaseVolumeFraction_FEMT, Temperature_FEMT, Density_FEMT, &
            Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT, &

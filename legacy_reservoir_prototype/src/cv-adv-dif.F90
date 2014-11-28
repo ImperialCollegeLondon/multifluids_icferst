@@ -111,7 +111,7 @@ contains
          NDIM, GETCV_DISC, GETCT, &
          NCOLM, FINDM, COLM, MIDM, &
          XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-         OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
          DEN_FEMT, &
          IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -255,7 +255,7 @@ contains
            CV_ELE_TYPE, &
            NPHASE, CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, &
            CV_SNLOC, U_SNLOC, STOTEL, CV_DISOPT, CV_DG_VEL_INT_OPT, NDIM, &
-           NCOLM, XU_NLOC, NCOLELE, NOPT_VEL_UPWIND_COEFS, &
+           NCOLM, XU_NLOC, NCOLELE, &
            IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
            NCOLCMC, Field_selector
       INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
@@ -306,7 +306,7 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINELE
       INTEGER, DIMENSION( : ), intent( in ) :: COLELE
       REAL, DIMENSION( : ), intent( inout ) :: DEN_FEMT!, T_FEMT
-      REAL, DIMENSION( : ), intent( in ) :: OPT_VEL_UPWIND_COEFS
+      REAL, DIMENSION( :, :, :, : ), target, intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
       INTEGER, INTENT( IN ) :: NOIT_DIM
       REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
       REAL, DIMENSION( : ), intent( inout ) :: MASS_ELE_TRANSP
@@ -462,11 +462,9 @@ contains
       REAL , DIMENSION( :, : ), ALLOCATABLE :: NUOLDGI_ALL, NUGI_ALL, NU_LEV_GI
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
       REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
-      REAL , DIMENSION( :, :, : ), ALLOCATABLE :: VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-                                                  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
-                                                  !, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE, target :: INV_V_OPT_VEL_UPWIND_COEFS
-      real, dimension(:,:,:), pointer :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS
+      real, dimension(:,:,:), pointer :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, VI_LOC_OPT_VEL_UPWIND_COEFS,&
+                    GI_LOC_OPT_VEL_UPWIND_COEFS,VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
       REAL :: BCZERO(NPHASE),  T_ALL_J( NPHASE ), TOLD_ALL_J( NPHASE )
       INTEGER :: LOC_WIC_T_BC_ALL(NPHASE)
 
@@ -1015,29 +1013,19 @@ contains
 
            IF ( is_compact_overlapping ) THEN
 
-              ALLOCATE( VI_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE),  GI_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE),  &
-                         VJ_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE),  GJ_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE) )
               ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE,MAT_NONODS) )
-!              ALLOCATE( INV_VI_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE))!, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE) )
-
+              !Calculate inverse of sigma
+              INV_V_OPT_VEL_UPWIND_COEFS = opt_vel_upwind_coefs_new
               DO MAT_NODI=1,MAT_NONODS
                  DO IPHASE=1,NPHASE
-                    DO JDIM=1,NDIM
-                       DO IDIM=1,NDIM
-                          IJ=(IPHASE-1)*MAT_NONODS*NDIM*NDIM + (MAT_NODI-1)*NDIM*NDIM + (IDIM-1)*NDIM +JDIM
-                          INV_V_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE,MAT_NODI)= OPT_VEL_UPWIND_COEFS(IJ)
-!                          INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ)
-                       END DO
-                    END DO
                     call invert(INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI))
                  END DO
-!                 INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI)=INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,:)
               END DO
-            else
-               ALLOCATE( VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  &
-                    VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
-               ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(0,0,0,0) )
-               ALLOCATE( INV_VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0))!, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
+!            else
+!               ALLOCATE( VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  &
+!                    VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
+!               ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(0,0,0,0) )
+!               ALLOCATE( INV_VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0))!, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
            ENDIF
 
 
@@ -1504,15 +1492,9 @@ contains
 ! Generate some local F variables ***************
             F_CV_NODI(:)= LOC_F(:, CV_ILOC)
             IF ( is_compact_overlapping ) THEN
-               DO IPHASE=1,NPHASE
-                  DO JDIM=1,NDIM
-                     DO IDIM=1,NDIM
-                        IJ=(IPHASE-1)*MAT_NONODS*NDIM*NDIM + (MAT_NODI-1)*NDIM*NDIM + (IDIM-1)*NDIM +JDIM
-                        VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ)
-                        GI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ+NPHASE*MAT_NONODS*NDIM*NDIM)
-                     END DO
-                  END DO
-               END DO
+                !Set pointers to coeficients, gradients and inverse of sigmas
+                VI_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_coefs_new(:,:,:, MAT_NODI)
+                GI_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_grad_new(:,:,:, MAT_NODI)
                INV_VI_LOC_OPT_VEL_UPWIND_COEFS(1:NDIM,1:NDIM,1:NPHASE) => INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI)
             ENDIF
 ! Generate some local F variables ***************
@@ -1876,129 +1858,122 @@ contains
           LOC_T2OLD_I( : ) = T2OLD_ALL(:, CV_NODI)
           LOC_T2OLD_J( : ) = T2OLD_ALL(:, CV_NODJ)
        END IF
-!------------------
+       !------------------
 
        If_GOT_DIFFUS2: IF ( GOT_DIFFUS ) THEN
-          ! This sub caculates the effective diffusion
-          ! coefficient DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-          T_ALL_J( : )   =LOC_T_J( : )
-          TOLD_ALL_J( : )=LOC_TOLD_J( : )
-          LOC_WIC_T_BC_ALL(:)=0
-          IF(SELE.NE.0) THEN
-             DO IPHASE=1,NPHASE
-                LOC_WIC_T_BC_ALL(IPHASE)=WIC_T_BC_ALL(1, IPHASE, SELE)
-                IF(LOC_WIC_T_BC_ALL(IPHASE)==WIC_T_BC_DIRICHLET) THEN
-                   T_ALL_J( IPHASE ) = SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + CV_SNLOC*( SELE- 1) )
-                   TOLD_ALL_J( IPHASE )=SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + CV_SNLOC*( SELE- 1) )
-                ENDIF 
-             END DO
-          ENDIF
-          CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
-               CV_NLOC, MAT_NLOC, CV_NONODS, NPHASE, TOTELE, MAT_NONODS, MAT_NDGLN, &
-               SCVFEN, SCVFEN, SCVNGI, GI, NDIM, TDIFFUSION, DUMMY_ZERO_NDIM_NDIM_NPHASE, &
-               HDC, &
-               T_ALL_J( : ), LOC_T_I( : ), &
-               TOLD_ALL_J( : ), LOC_TOLD_I( : ), &
-               ELE, ELE2, CVNORMX_ALL( :, GI ), &
-               DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
-               SELE, STOTEL, LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC )
+           ! This sub caculates the effective diffusion
+           ! coefficient DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
+           T_ALL_J( : )   =LOC_T_J( : )
+           TOLD_ALL_J( : )=LOC_TOLD_J( : )
+           LOC_WIC_T_BC_ALL(:)=0
+           IF(SELE.NE.0) THEN
+               DO IPHASE=1,NPHASE
+                   LOC_WIC_T_BC_ALL(IPHASE)=WIC_T_BC_ALL(1, IPHASE, SELE)
+                   IF(LOC_WIC_T_BC_ALL(IPHASE)==WIC_T_BC_DIRICHLET) THEN
+                       T_ALL_J( IPHASE ) = SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + CV_SNLOC*( SELE- 1) )
+                       TOLD_ALL_J( IPHASE )=SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + CV_SNLOC*( SELE- 1) )
+                   ENDIF
+               END DO
+           ENDIF
+           CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
+           CV_NLOC, MAT_NLOC, CV_NONODS, NPHASE, TOTELE, MAT_NONODS, MAT_NDGLN, &
+           SCVFEN, SCVFEN, SCVNGI, GI, NDIM, TDIFFUSION, DUMMY_ZERO_NDIM_NDIM_NPHASE, &
+           HDC, &
+           T_ALL_J( : ), LOC_T_I( : ), &
+           TOLD_ALL_J( : ), LOC_TOLD_I( : ), &
+           ELE, ELE2, CVNORMX_ALL( :, GI ), &
+           DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
+           SELE, STOTEL, LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC )
        ELSE
-          DIFF_COEF_DIVDX = 0.0
-          DIFF_COEFOLD_DIVDX = 0.0
+           DIFF_COEF_DIVDX = 0.0
+           DIFF_COEFOLD_DIVDX = 0.0
        END IF If_GOT_DIFFUS2
 
 
 
-                   IF ( is_compact_overlapping ) THEN
+       IF ( is_compact_overlapping ) THEN
+           !Set pointers to coeficients, gradients and inverse of sigmas
+           VJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ)
+           GJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_grad_new(:,:,:, MAT_NODJ)
+           INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ)
+       ENDIF
 
-                      DO IPHASE=1,NPHASE
-                         DO JDIM=1,NDIM
-                            DO IDIM=1,NDIM
-                               IJ=(IPHASE-1)*MAT_NONODS*NDIM*NDIM + (MAT_NODJ-1)*NDIM*NDIM + (IDIM-1)*NDIM +JDIM
-                               VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ) 
-                               GJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ+NPHASE*MAT_NONODS*NDIM*NDIM) 
-                            END DO
-                         END DO
-                      END DO
-                      INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ)
+       NFACE_ITS = 1
+       FACE_ITS = 1
+       !                     DO FACE_ITS = 1, NFACE_ITS
+       ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
+       IF(IGOT_T2==1) THEN
+           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW,  NDOTQOLD, INCOMEOLD, &
+           HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS,  &
+           LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD,LOC2_FEMT2OLD, LOC_DENOLD_I, LOC_DENOLD_J, &
+           LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
+           CV_NODI, CV_NODJ, CVNORMX_ALL, &
+           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+           SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+           SUF_SIG_DIAGTEN_BC, &
+           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+           VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+           INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+           MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
+           IN_ELE_UPWIND, DG_ELE_UPWIND, &
+           IANISOLIM,  &
+           NUOLDGI_ALL, T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT) )
 
-                   ENDIF
+           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
+           HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
+           LOC_T2_I, LOC_T2_J, LOC_FEMT2, LOC2_FEMT2, LOC_DEN_I, LOC_DEN_J, &
+           LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
+           CV_NODI, CV_NODJ, CVNORMX_ALL, &
+           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+           SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+           SUF_SIG_DIAGTEN_BC, &
+           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+           VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+           INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+           MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
+           IN_ELE_UPWIND, DG_ELE_UPWIND, &
+           IANISOLIM,  &
+           NUGI_ALL, T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT) )
+       ELSE
+           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+           HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
+           LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_DENOLD_I, LOC_DENOLD_J, &
+           LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
+           CV_NODI, CV_NODJ, CVNORMX_ALL, &
+           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+           SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+           SUF_SIG_DIAGTEN_BC, &
+           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+           VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+           INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+           MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
+           IN_ELE_UPWIND, DG_ELE_UPWIND, &
+           IANISOLIM,  &
+           NUOLDGI_ALL, TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT) )
 
-                     NFACE_ITS = 1
-                     FACE_ITS = 1
-!                     DO FACE_ITS = 1, NFACE_ITS
-                        ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
-                        IF(IGOT_T2==1) THEN
-                           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW,  NDOTQOLD, INCOMEOLD, &
-                                HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS,  &
-                                LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD,LOC2_FEMT2OLD, LOC_DENOLD_I, LOC_DENOLD_J, &
-                                LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
-                                CV_NODI, CV_NODJ, CVNORMX_ALL, &
-                                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
-                                SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-                                SUF_SIG_DIAGTEN_BC, &
-                                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
-       VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-       INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
-       MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
-                                IN_ELE_UPWIND, DG_ELE_UPWIND, &
-                                IANISOLIM,  &
-                                NUOLDGI_ALL, T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT) ) 
-                            CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
-                                HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
-                                LOC_T2_I, LOC_T2_J, LOC_FEMT2, LOC2_FEMT2, LOC_DEN_I, LOC_DEN_J, &
-                                LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
-                                CV_NODI, CV_NODJ, CVNORMX_ALL, &
-                                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
-                                SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-                                SUF_SIG_DIAGTEN_BC, &
-                                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
-       VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-       INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
-       MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
-                                IN_ELE_UPWIND, DG_ELE_UPWIND, &
-                                IANISOLIM,  &
-                                NUGI_ALL, T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT) )
-                        ELSE
-                           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-                                HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
-                                LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_DENOLD_I, LOC_DENOLD_J, &
-                                LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
-                                CV_NODI, CV_NODJ, CVNORMX_ALL, &
-                                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
-                                SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-                                SUF_SIG_DIAGTEN_BC, &
-                                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
-       VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-       INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
-       MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
-                                IN_ELE_UPWIND, DG_ELE_UPWIND, &
-                                IANISOLIM,  &
-                                NUOLDGI_ALL, TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT) ) 
+           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
+           HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
+           LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
+           LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
+           CV_NODI, CV_NODJ, CVNORMX_ALL, &
+           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+           SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+           SUF_SIG_DIAGTEN_BC, &
+           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+           VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+           INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+           MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
+           IN_ELE_UPWIND, DG_ELE_UPWIND, &
+           IANISOLIM, &
+           NUGI_ALL, TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT) )
+       ENDIF
 
-                           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
-                                HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
-                                LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
-                                LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
-                                CV_NODI, CV_NODJ, CVNORMX_ALL, &
-                                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
-                                SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-                                SUF_SIG_DIAGTEN_BC, &
-                                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
-       VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-       INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
-       MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
-                                IN_ELE_UPWIND, DG_ELE_UPWIND, &
-                                IANISOLIM, &
-                                NUGI_ALL, TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT) )
-                        ENDIF
-
-                     INCOME_J=1.-INCOME
-                     INCOMEold_J=1.-INCOMEold
+       INCOME_J=1.-INCOME
+       INCOMEold_J=1.-INCOMEold
 
 
        If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
@@ -8053,7 +8028,7 @@ deallocate(NX_ALL, X_NX_ALL)
        SUF_SIG_DIAGTEN_BC, WIC_U_BC_DIRICHLET, &
        UGI_COEF_ELE, VGI_COEF_ELE, WGI_COEF_ELE, UGI_COEF_ELE2, VGI_COEF_ELE2, WGI_COEF_ELE2, &
        VOLFRA_PORE, CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_NDGLN, CV_OTHER_LOC, &
-       MASS_CV, OPT_VEL_UPWIND_COEFS,NOPT_VEL_UPWIND_COEFS, NDIM, MAT_NLOC, MAT_NDGLN, MAT_NONODS, &
+       MASS_CV, opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, NDIM, MAT_NLOC, MAT_NDGLN, MAT_NONODS, &
        FACE_ITS, LIMT, FEMDGI, FEMTGI, UP_WIND_NOD, &
        TMIN, TMAX, TMIN_NOD, TMAX_NOD, &
        IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -8065,7 +8040,7 @@ deallocate(NX_ALL, X_NX_ALL)
     INTEGER, intent( in ) :: NPHASE, GI, IPHASE, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
          CV_NODJ_IPHA, CV_NODI_IPHA, CV_DG_VEL_INT_OPT, ELE, ELE2, &
          SELE, U_SNLOC, STOTEL, WIC_U_BC_DIRICHLET, CV_ELE_TYPE, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, &
-         NOPT_VEL_UPWIND_COEFS, NDIM, MAT_NLOC, MAT_NONODS, FACE_ITS, &
+         NDIM, MAT_NLOC, MAT_NONODS, FACE_ITS, &
          IN_ELE_UPWIND, DG_ELE_UPWIND
     REAL, intent( in ) :: HDC, LIMT, FEMDGI, FEMTGI
     REAL, intent( inout ) :: NDOTQNEW,NDOTQ, INCOME
@@ -8088,7 +8063,7 @@ deallocate(NX_ALL, X_NX_ALL)
     INTEGER, DIMENSION( : ), intent( in ) :: CV_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: CV_SLOC2LOC
     REAL, DIMENSION( :  ), intent( in ) :: MASS_CV
-    REAL, DIMENSION( : ), intent( in ) :: OPT_VEL_UPWIND_COEFS
+    REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
     INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
     REAL, DIMENSION( :  ), intent( inout ) :: UP_WIND_NOD
     REAL, DIMENSION( :  ), intent( inout ) :: TMIN, TMAX
@@ -8114,7 +8089,7 @@ deallocate(NX_ALL, X_NX_ALL)
         WIC_U_BC_DIRICHLET, &
         UGI_COEF_ELE, VGI_COEF_ELE, WGI_COEF_ELE, UGI_COEF_ELE2, VGI_COEF_ELE2, WGI_COEF_ELE2, &
         VOLFRA_PORE, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_NDGLN, CV_OTHER_LOC, &
-        MASS_CV,OPT_VEL_UPWIND_COEFS,NOPT_VEL_UPWIND_COEFS, NDIM, MAT_NLOC, MAT_NDGLN, MAT_NONODS, &
+        MASS_CV,opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, NDIM, MAT_NLOC, MAT_NDGLN, MAT_NONODS, &
         FACE_ITS, LIMT, FEMDGI, FEMTGI, UP_WIND_NOD, &
         TMIN, TMAX, TMIN_NOD, TMAX_NOD, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -8165,7 +8140,7 @@ deallocate(NX_ALL, X_NX_ALL)
        WIC_U_BC_DIRICHLET, &
        UGI_COEF_ELE, VGI_COEF_ELE, WGI_COEF_ELE, UGI_COEF_ELE2, VGI_COEF_ELE2, WGI_COEF_ELE2, &
        VOLFRA_PORE, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_NDGLN, CV_OTHER_LOC, &
-       MASS_CV,OPT_VEL_UPWIND_COEFS,NOPT_VEL_UPWIND_COEFS, NDIM, MAT_NLOC, MAT_NDGLN, MAT_NONODS, &
+       MASS_CV,opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, NDIM, MAT_NLOC, MAT_NDGLN, MAT_NONODS, &
        FACE_ITS, LIMT, FEMDGI, FEMTGI, UP_WIND_NOD, &
        TMIN, TMAX, TMIN_NOD, TMAX_NOD,&
        IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -8176,7 +8151,7 @@ deallocate(NX_ALL, X_NX_ALL)
     INTEGER, intent( in ) :: NPHASE, GI, IPHASE, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
          CV_NODJ_IPHA, CV_NODI_IPHA, CV_DG_VEL_INT_OPT, ELE, ELE2, &
          SELE, U_SNLOC, STOTEL, WIC_U_BC_DIRICHLET, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, &
-         NOPT_VEL_UPWIND_COEFS, NDIM, MAT_NLOC, MAT_NONODS, FACE_ITS, &
+         NDIM, MAT_NLOC, MAT_NONODS, FACE_ITS, &
          IN_ELE_UPWIND, DG_ELE_UPWIND
     REAL, intent( in ) :: HDC, LIMT, FEMDGI, FEMTGI
     REAL, intent( inout ) :: NDOTQ, INCOME
@@ -8197,7 +8172,7 @@ deallocate(NX_ALL, X_NX_ALL)
     INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: CV_OTHER_LOC
     REAL, DIMENSION( :  ), intent( in ) :: MASS_CV
-    REAL, DIMENSION( : ), intent( in ) :: OPT_VEL_UPWIND_COEFS
+    REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
     INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
     REAL, DIMENSION( :  ), intent( inout ) :: UP_WIND_NOD
     REAL, DIMENSION( :  ), intent( inout ) :: TMIN, TMAX
@@ -11093,7 +11068,7 @@ CONTAINS
     REAL, intent( inout ) :: ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA
     REAL, intent( in ) :: GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA
     ! If OVER_RELAX >1 then over relax the upwinding e.g.1 or 2 might be used.
-    ! OPT_VEL_UPWIND_COEFS contains the coefficients
+    ! OPT_VEL_UPWIND_COEFS_NEW contains the coefficients
     LOGICAL, intent( in ) ::  CONSERV,MAX_OPER,SAT_BASED
     ! local variables...
     LOGICAL, PARAMETER :: VEL_BASE_INT = .true.
