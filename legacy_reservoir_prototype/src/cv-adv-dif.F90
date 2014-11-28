@@ -5919,8 +5919,13 @@ deallocate(NX_ALL, X_NX_ALL)
     REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
     real, dimension(size(uc)) :: nvd_limit
 
-
-    nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC) 
+    ! For the region 0 < UC < 1 on the NVD, define the limiter
+    where( ( UC > 0.0 ) .AND. ( UC < 1.0 ) )
+       nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( 0.0, UF ) )
+    ELSE where ! Outside the region 0<UC<1 on the NVD, use first-order upwinding
+       nvd_limit = UC
+    END where
+!    nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
 
   end function nvdfunnew_many
 
@@ -9420,8 +9425,8 @@ deallocate(NX_ALL, X_NX_ALL)
     ! Scaling to reduce the downwind bias(=1downwind, =0central)
     LOGICAL, PARAMETER :: SCALE_DOWN_WIND = .true.
 ! The new simple limiter NEW_LIMITER can produce very slightly different results
-!    LOGICAL, PARAMETER :: NEW_LIMITER = .true.
-    LOGICAL, PARAMETER :: NEW_LIMITER = .false.
+    LOGICAL, PARAMETER :: NEW_LIMITER = .true.
+!    LOGICAL, PARAMETER :: NEW_LIMITER = .false.
     ! Non-linear Petrov-Galerkin option for interface tracking...
     ! =4 is anisotropic downwind diffusion based on a projected 1D system (1st recommend)
     ! =0 is anisotropic downwind diffusion based on a velocity projection like SUPG
@@ -9692,26 +9697,26 @@ CONTAINS
     REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
     REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
     ! Local variables
-    REAL :: UCIN(NFIELD), UCOU(NFIELD), TDELE(NFIELD), DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
+    REAL, PARAMETER :: TOLER=1.0E-10
+    REAL :: DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
          CTILOU(NFIELD), FTILIN(NFIELD), FTILOU(NFIELD)
 
 
        ! Calculate normalisation parameters for incomming velocities
-       TDELE = ETDNEW_PELE
 
-       DENOIN = TOLFUN_MANY( TDELE - TUPWIN )
-
-       UCIN = ETDNEW_PELEOT
-       CTILIN = ( UCIN - TUPWIN ) / DENOIN
+       DENOIN = ( ETDNEW_PELE - TUPWIN )
+       where( ABS( DENOIN ) < TOLER )
+            DENOIN = SIGN( TOLER, DENOIN )
+       end where
+       CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
 
        ! Calculate normalisation parameters for out going velocities
-       TDELE = ETDNEW_PELEOT
 
-       DENOOU = TOLFUN_MANY( TDELE - TUPWI2 )
-       UCOU = ETDNEW_PELE
-       CTILOU = ( UCOU - TUPWI2 ) / DENOOU
-
-
+       DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
+       where( ABS( DENOOU ) < TOLER )
+            DENOOU = SIGN( TOLER, DENOOU )
+       end where
+       CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
 
        FTILIN = ( TDCEN - TUPWIN ) / DENOIN
        FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
@@ -9721,8 +9726,6 @@ CONTAINS
             + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
 
        TDLIM = MAX( TDLIM, 0.0 )
-
-
 
     RETURN
 
@@ -13501,8 +13504,8 @@ end SUBROUTINE GET_INT_VEL_NEW
     LOGICAL, PARAMETER :: high_order_upwind_vel_for_dg = .true.
     LOGICAL :: RESET_STORE, LIM_VOL_ADJUST, enforce_abs
 ! The new simple limiter NEW_LIMITER can produce very slightly different results 
-!    LOGICAL, PARAMETER :: NEW_LIMITER = .true.
-    LOGICAL, PARAMETER :: NEW_LIMITER = .false.
+    LOGICAL, PARAMETER :: NEW_LIMITER = .true.
+!    LOGICAL, PARAMETER :: NEW_LIMITER = .false.
     REAL :: TMIN_STORE, TMAX_STORE
     ! coefficients for this element ELE
     real :: gamma,  grad2nd
@@ -13689,7 +13692,6 @@ end SUBROUTINE GET_INT_VEL_NEW
 ! limiter *************
 
 ! ************NEW LIMITER**************************
-
              courant_or_minus_one_new(:) = -1.0
              XI_LIMIT(:) = 2.0
 
@@ -14278,26 +14280,27 @@ CONTAINS
     REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2 
     REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
     ! Local variables   
-    REAL :: UCIN(NFIELD), UCOU(NFIELD), TDELE(NFIELD), DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
+    REAL :: DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
          CTILOU(NFIELD), FTILIN(NFIELD), FTILOU(NFIELD)
+    REAL, PARAMETER :: TOLER=1.0E-10
 
 
        ! Calculate normalisation parameters for incomming velocities 
-       TDELE = ETDNEW_PELE 
+       DENOIN = ( ETDNEW_PELE - TUPWIN )
 
-       DENOIN = TOLFUN_MANY( TDELE - TUPWIN )
+       where( ABS( DENOIN ) < TOLER )
+            DENOIN = SIGN( TOLER, DENOIN )
+       end where
 
-       UCIN = ETDNEW_PELEOT 
-       CTILIN = ( UCIN - TUPWIN ) / DENOIN
+       CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
 
        ! Calculate normalisation parameters for out going velocities 
-       TDELE = ETDNEW_PELEOT
 
-       DENOOU = TOLFUN_MANY( TDELE - TUPWI2 )
-       UCOU = ETDNEW_PELE 
-       CTILOU = ( UCOU - TUPWI2 ) / DENOOU
-
-
+       DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
+       where( ABS( DENOOU ) < TOLER )
+            DENOOU = SIGN( TOLER, DENOOU )
+       end where
+       CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
 
        FTILIN = ( TDCEN - TUPWIN ) / DENOIN
        FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
