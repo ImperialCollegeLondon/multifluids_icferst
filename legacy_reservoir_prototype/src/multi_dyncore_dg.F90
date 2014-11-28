@@ -6175,6 +6175,11 @@ DEALLOCATE( PIVIT_MAT )
 
         DEALLOCATE( VLK_UVW )
 
+! reversed indicies for shape functions...
+        DEALLOCATE( CVFENX_ALL_REVERSED, UFENX_ALL_REVERSED )
+        DEALLOCATE( UFEN_REVERSED, CVFEN_SHORT_REVERSED, CVN_SHORT_REVERSED, CVN_REVERSED, CVFEN_REVERSED )
+        DEALLOCATE( SBCVFEN_REVERSED, SBUFEN_REVERSED )
+
 
         call deallocate(velocity_BCs)
         call deallocate(velocity_BCs_visc)
