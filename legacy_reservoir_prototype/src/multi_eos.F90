@@ -672,15 +672,14 @@
 
     subroutine Calculate_AbsorptionTerm( state, packed_state,&
          cv_ndgln, mat_ndgln, &
-         nopt_vel_upwind_coefs, opt_vel_upwind_coefs, u_absorb )
+         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, u_absorb )
       ! Calculate absorption for momentum eqns
       use matrix_operations
       implicit none
       type( state_type ), dimension( : ), intent( in ) :: state
       type( state_type ), intent( inout ) :: packed_state
       integer, dimension( : ), intent( in ) :: cv_ndgln, mat_ndgln
-      integer, intent( in ) :: nopt_vel_upwind_coefs
-      real, dimension( : ), intent( inout ) :: opt_vel_upwind_coefs
+      real, dimension( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
       real, dimension( :, :, : ), intent( inout ) :: u_absorb
 !!$ Local variables:
       type( tensor_field ), pointer :: viscosity_ph1, viscosity_ph2
@@ -694,7 +693,6 @@
         real, dimension( :, : ), allocatable :: satura2
       !Working pointers
       real, dimension(:,:), pointer :: Satura, SaturaOld
-
       type( tensor_field ), pointer :: perm
 
     !Get from packed_state
@@ -754,17 +752,19 @@
             IMAT = MAT_NDGLN(( ELE - 1 ) * MAT_NLOC +CV_ILOC )
             ICV = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
             DO IPHASE = 1, NPHASE
-               DO IDIM = 1, NDIM
-                  DO JDIM = 1, NDIM
+              DO JDIM = 1, NDIM
+                DO IDIM = 1, NDIM
                      IJ = ( IPHASE - 1 ) * MAT_NONODS * NDIM * NDIM + ( IMAT - 1 ) * NDIM * NDIM + &
                           ( IDIM - 1 ) * NDIM + JDIM
-                     OPT_VEL_UPWIND_COEFS( IJ ) &
-                          = U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )
+                     opt_vel_upwind_coefs_new(IDIM, JDIM, IPHASE, IMAT) = &
+                        U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )
+
 !                     ! This is the gradient...
-                     OPT_VEL_UPWIND_COEFS( IJ + NPHASE * MAT_NONODS * NDIM * NDIM ) &
-                          = (U_ABSORB2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
+                     opt_vel_upwind_grad_new(IDIM, JDIM, IPHASE, IMAT) = &
+                        (U_ABSORB2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
                         U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ))&
                          / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
+
                   END DO
                END DO
             END DO
@@ -2574,13 +2574,13 @@
 
 
     subroutine calculate_u_abs_stab( Material_Absorption_Stab, Material_Absorption, &
-         opt_vel_upwind_coefs, nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods, mat_ndgln )
+         opt_vel_upwind_coefs_new, nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods, mat_ndgln )
 
       implicit none
 
       real, dimension( :, :, : ), intent( inout ) :: Material_Absorption_Stab
       real, dimension( :, :, : ), intent( in ) :: Material_Absorption
-      real, dimension( : ), intent( in ) :: opt_vel_upwind_coefs
+      real, dimension( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new
       integer, intent( in ) :: nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods
       integer, dimension( : ), intent( in ) :: mat_ndgln
 
@@ -2619,11 +2619,9 @@
                      do idim = 1, ndim
                         do jdim = 1, ndim
                            if ( idim == apply_dim .and. jdim == apply_dim ) then
-                              ij = ( iphase - 1 ) * mat_nonods * ndim * ndim + ( imat - 1 ) * ndim * ndim + &
-                                   ( idim - 1 ) * ndim + jdim
                               ipha_idim = ( iphase - 1 ) * ndim + idim
                               Material_Absorption_Stab( imat, ipha_idim, ipha_idim ) = &
-                                   abs( opt_vel_upwind_coefs( ij + nphase * mat_nonods * ndim * ndim ) )
+                                   abs( opt_vel_upwind_coefs_new( idim, jdim, iphase, imat ) )
                            end if
                         end do
                      end do
@@ -2736,7 +2734,7 @@
         real :: top_limit
         real, dimension(:,:), pointer :: satura
         real, dimension(:), allocatable :: immobile_fractions
-        real, parameter :: tolerance = 5d-2
+        real, parameter :: tolerance = 5d-3
 
         call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
 
@@ -2748,7 +2746,6 @@
           call get_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/immobile_fraction", &
                immobile_fractions(iphase), default=0.0)
         end do
-
         !Set saturation to be between bounds
         do iphase = 1, nphase
             top_limit = 0.
@@ -2760,7 +2757,6 @@
             !Limit the saturation, allowing small oscillations
             satura(iphase,:) =  min(max(immobile_fractions(iphase)-tolerance, satura(iphase,:)),top_limit)
         end do
-
         deallocate(immobile_fractions)
     end subroutine Set_Saturation_between_bounds
 

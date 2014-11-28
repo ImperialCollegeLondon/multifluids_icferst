@@ -25,14 +25,14 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.006
+Tolerance_L1_NORM = 0.007
 Tolerance_L2_NORM = 0.0012
 
 AutomaticLine = 1
 
 
 AutomaticFile = 'QuickTest_DG'
-AutomaticVTU_Number = 32
+AutomaticVTU_Number = 20
 
 #Plot the results in 2d?
 showPlot = True

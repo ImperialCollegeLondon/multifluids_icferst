@@ -98,7 +98,7 @@ contains
     NDIM, &
     NCOLM, FINDM, COLM, MIDM, &
     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-    OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
     T_FEMT, DEN_FEMT, &
     IGOT_T2, T2, T2OLD, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
     THETA_GDIFF, &
@@ -121,7 +121,6 @@ contains
         INTEGER, intent( in ) :: NCOLACV, NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
         U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, NPHASE, CV_NLOC, U_NLOC, X_NLOC,  MAT_NLOC, &
         CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, NCOLM, NCOLELE, &
-        NOPT_VEL_UPWIND_COEFS, &
         IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux
         LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
         LOGICAL, intent( in ), optional ::THERMAL
@@ -162,7 +161,7 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: MIDM
         INTEGER, DIMENSION( : ), intent( in ) :: FINELE
         INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-        REAL, DIMENSION( : ), intent( in ) :: OPT_VEL_UPWIND_COEFS
+        REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         INTEGER, INTENT(IN) :: NOIT_DIM
         REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
         character( len = * ), intent( in ), optional :: option_path
@@ -296,7 +295,7 @@ contains
             NDIM, GETCV_DISC, GETCT, &
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-            OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+            opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
             DEN_FEMT, &
             IGOT_T2, T2, T2OLD,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -436,7 +435,7 @@ contains
     NDIM, &
     NCOLM, FINDM, COLM, MIDM, &
     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-    OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
     DEN_FEMT, &
     IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -459,7 +458,6 @@ contains
         INTEGER, intent( in ) :: NCOLACV, NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
         CV_ELE_TYPE, NPHASE, CV_NLOC, U_NLOC, X_NLOC,  MAT_NLOC, &
         CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, NCOLM, NCOLELE, &
-        NOPT_VEL_UPWIND_COEFS, &
         IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, IDIVID_BY_VOL_FRAC, Field_selector
 
         LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX, THERMAL
@@ -506,7 +504,7 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: MIDM
         INTEGER, DIMENSION( : ), intent( in ) :: FINELE
         INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-        REAL, DIMENSION( : ), intent( in ) :: OPT_VEL_UPWIND_COEFS
+        REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         INTEGER, INTENT( IN ) :: NOIT_DIM
         REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
         real, dimension( : ), intent( inout ) :: mass_ele_transp
@@ -560,7 +558,7 @@ contains
             NDIM, GETCV_DISC, GETCT, &
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-            OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+            opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
             DEN_FEMT, &
             IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -877,7 +875,7 @@ contains
     NDIM, &
     NCOLM, FINDM, COLM, MIDM, &
     XU_NLOC, XU_NDGLN ,FINELE, COLELE, NCOLELE, &
-    OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
     DEN_FEMT, &
     igot_theta_flux, SCVNGI_THETA, USE_THETA_FLUX, &
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -895,7 +893,7 @@ contains
         CV_ELE_TYPE, &
         NPHASE, CV_NLOC, U_NLOC, X_NLOC, &
         CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, &
-        NCOLM, NCOLELE, NOPT_VEL_UPWIND_COEFS, &
+        NCOLM, NCOLELE, &
         MAT_NLOC, MAT_NONODS, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND,igot_theta_flux
         LOGICAL, intent( in ) :: USE_THETA_FLUX
         INTEGER, DIMENSION(: ), intent( in ) :: CV_NDGLN
@@ -928,7 +926,7 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: MIDM
         INTEGER, DIMENSION( : ), intent( in ) :: FINELE
         INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-        REAL, DIMENSION( : ), intent( in ) :: OPT_VEL_UPWIND_COEFS
+        REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         INTEGER, INTENT( IN ) :: NOIT_DIM
         character(len= * ), intent(in), optional :: option_path
         real, dimension( : ), intent( inout ) :: mass_ele_transp
@@ -1079,7 +1077,7 @@ contains
             NDIM, GETCV_DISC, GETCT, &
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-            OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+            opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
             DEN_FEMT, &
             IGOT_T2, T2, T2OLD, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -1174,7 +1172,7 @@ contains
     NCOLM, FINDM, COLM, MIDM, & ! Sparsity for the CV-FEM
     XU_NLOC, XU_NDGLN, &
     UDIFFUSION, UDIFFUSION_VOL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-    OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
     IGOT_THETA_FLUX, SCVNGI_THETA, USE_THETA_FLUX, &
     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -1195,7 +1193,7 @@ contains
         CV_SNLOC, &
         NCOLC, NCOLDGM_PHA, NCOLELE, NCOLCMC, NCOLACV, ncolsmall, NLENMCY, NCOLMCY, NCOLCT, &
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, XU_NLOC, &
-        NOPT_VEL_UPWIND_COEFS, IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
+        IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
         IPLIKE_GRAD_SOU, IDIVID_BY_VOL_FRAC
         LOGICAL, intent( in ) :: USE_THETA_FLUX, scale_momentum_by_volume_fraction
         INTEGER, DIMENSION(  :  ), intent( in ) :: U_NDGLN
@@ -1249,7 +1247,7 @@ contains
         INTEGER, DIMENSION(  :  ), intent( in ) :: MIDM
         REAL, DIMENSION(  : ,  : ,  : ,  :  ), intent( inout ) :: UDIFFUSION, THERM_U_DIFFUSION
         REAL, DIMENSION(  : ,  :  ), intent( inout ) :: UDIFFUSION_VOL, THERM_U_DIFFUSION_VOL
-        REAL, DIMENSION(  :  ), intent( in ) :: OPT_VEL_UPWIND_COEFS
+        REAL, DIMENSION(  :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         INTEGER, INTENT( IN ) :: NOIT_DIM
@@ -1421,7 +1419,7 @@ contains
 
         ! stabilisation for high aspect ratio problems - switched off
         call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
-           opt_vel_upwind_coefs, nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods, mat_ndgln )
+           opt_vel_upwind_coefs_new, nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods, mat_ndgln )
 
         allocate( U_ABSORB( mat_nonods, ndim * nphase, ndim * nphase ) )
 
@@ -1500,7 +1498,7 @@ contains
         U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, GLOBAL_SOLVE, &
         NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-        OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         IGOT_THETA_FLUX, SCVNGI_THETA, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -1970,7 +1968,7 @@ DEALLOCATE( PIVIT_MAT )
     U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, GLOBAL_SOLVE, &
     NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
     UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-    OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
     IGOT_THETA_FLUX, SCVNGI_THETA, USE_THETA_FLUX, &
     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -1993,7 +1991,7 @@ DEALLOCATE( PIVIT_MAT )
         CV_SNLOC, &
         NCOLC, NCOLDGM_PHA, NCOLELE, NCOLCMC, NCOLACV, NCOLCT, &
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, XU_NLOC, &
-        NLENMCY, NCOLMCY, NOPT_VEL_UPWIND_COEFS, IGOT_THETA_FLUX, SCVNGI_THETA, &
+        NLENMCY, NCOLMCY, IGOT_THETA_FLUX, SCVNGI_THETA, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, IPLIKE_GRAD_SOU,  IDIVID_BY_VOL_FRAC
         LOGICAL, intent( in ) :: USE_THETA_FLUX,scale_momentum_by_volume_fraction, RETRIEVE_SOLID_CTY
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
@@ -2057,7 +2055,7 @@ DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, : ), intent( inout ) :: UDIFFUSION_VOL_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
-        REAL, DIMENSION( : ), intent( in ) :: OPT_VEL_UPWIND_COEFS
+        REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         INTEGER, INTENT( IN ) :: NOIT_DIM
         REAL, DIMENSION( :, :), intent( in ) :: PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL
         integer, dimension(:), intent(inout) :: StorageIndexes
@@ -2199,7 +2197,7 @@ DEALLOCATE( PIVIT_MAT )
         NDIM, GETCV_DISC, GETCT, &
         NCOLM, FINDM, COLM, MIDM, &
         XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-        OPT_VEL_UPWIND_COEFS, NOPT_VEL_UPWIND_COEFS, &
+        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         DEN_FEMT, &
         IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -7925,7 +7923,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         NFACE, X_NODI,  U_INOD, U_NOD, &
         CV_INOD, CV_JNOD, MAT_NODI, FACE_ITS, NFACE_ITS, &
         CVNOD, XNOD, CV_NOD, DG_CV_NOD, IDIM, IGOT_T2, &
-        nopt_vel_upwind_coefs, DG_CV_NONODS, IGOT_THERM_VIS
+        DG_CV_NONODS, IGOT_THERM_VIS
         !        ===>  REALS  <===
         REAL :: NDOTQ, NDOTQOLD,  &
         INCOME, INCOMEOLD, HDC, FVT, FVTOLD, FVT2, FVT2OLD, &
@@ -7959,7 +7957,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         CHARACTER(LEN=OPTION_PATH_LEN) :: OPTION_PATH
         REAL, allocatable, DIMENSION(:) :: DUMMY_ELE
 
-        real, dimension(0,0,0,0):: tflux
+        real, dimension(0,0,0,0):: tflux, rdum4
         real, allocatable, dimension(:,:,:) :: T_ABSORB
         real, allocatable, dimension(:,:,:,:) :: tdiffusion
         real, dimension(0,0) :: ALIMTOLD,ALIMT2OLD,ALIMDOLD,ALIMDTOLD,ALIMDTT2OLD,ANDOTQOLD
@@ -7994,7 +7992,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         ALLOCATE(IZERO(MAX(U_NLOC,CV_NLOC)*TOTELE))  ; IZERO=0
         ALLOCATE(CV_ONE(CV_NONODS)) ; CV_ONE=1.0
         ALLOCATE(CURVATURE(CV_NONODS))
-        NOPT_VEL_UPWIND_COEFS=0
 
         ndotq = 0. ; ndotqold = 0.
 
@@ -8706,7 +8703,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             NDIM,  &
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-            RDUM, NOPT_VEL_UPWIND_COEFS, &
+            RDUM4, RDUM4, &
             RDUM, CV_ONE, &
             IGOT_T2, CURVATURE, VOLUME_FRAC,IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             DUMMY_THETA_GDIFF, &
