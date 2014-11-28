@@ -4152,7 +4152,7 @@ DEALLOCATE( PIVIT_MAT )
                             IF ( STRESS_FORM ) THEN
                                 DO IPHASE = 1, NPHASE
                                     JPHASE = IPHASE
-                                    DO JDIM = 1, NDIM_VEL    !! -Asiri changing order of nested loops 
+                                    DO JDIM = 1, NDIM_VEL
                                         DO IDIM = 1, NDIM_VEL
 
                                             IF ( NO_MATRIX_STORE ) THEN
@@ -4263,7 +4263,7 @@ DEALLOCATE( PIVIT_MAT )
             IF(GOT_DIFFUS.AND.LINEAR_HIGHORDER_DIFFUSION) THEN
                 NN_MAT_ELE( :, :, ELE ) = 0.0
                 NNX_MAT_ELE( :, :, :, ELE ) = 0.0
-                DO U_ILOC = 1, U_NLOC !! -Asiri to change nested loop order here
+                DO U_ILOC = 1, U_NLOC
                     DO U_JLOC = 1, U_NLOC
                         NN_MAT_ELE( U_ILOC, U_JLOC, ELE ) = NN_MAT_ELE( U_ILOC, U_JLOC, ELE ) + &
                         SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
@@ -4349,7 +4349,7 @@ DEALLOCATE( PIVIT_MAT )
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 !! *************************INNER ELEMENT STABILIZATION****************************************
 
-                DO U_JLOC = 1, U_NLOC   !! -Asiri to change nested loop order here 
+                DO U_JLOC = 1, U_NLOC
                     DO U_ILOC = 1, U_NLOC
                         ! Sum over quadrature pts...
                         LOC_MASS( U_ILOC, U_JLOC ) = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
@@ -4557,7 +4557,7 @@ DEALLOCATE( PIVIT_MAT )
 
                 ELSE ! endof IF ( STRESS_FORM_STAB ) THEN ELSE - stress form of viscosity...
                 ! Place the diffusion term into matrix...
-                   DO U_JLOC = 1, U_NLOC  !! -Asiri to change nested loop order here 
+                   DO U_JLOC = 1, U_NLOC
                       DO U_ILOC = 1, U_NLOC
                          DO IPHASE = 1, NPHASE
                             JPHASE = IPHASE
@@ -4601,7 +4601,7 @@ DEALLOCATE( PIVIT_MAT )
               IF ( BETWEEN_ELE_STAB ) THEN
                  ! we store these vectors in order to try and work out the between element
                  ! diffusion/viscocity.
-                 DO U_JLOC = 1, U_NLOC !! -Asiri to changed nested loop order here 
+                 DO U_JLOC = 1, U_NLOC
                     DO U_ILOC = 1, U_NLOC
                        MAT_ELE( U_ILOC, U_JLOC, ELE ) = MAT_ELE( U_ILOC, U_JLOC, ELE ) + &
                             SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
@@ -5589,7 +5589,7 @@ DEALLOCATE( PIVIT_MAT )
                     DO U_JLOC=1,U_NLOC
                         U_JLOC2 = U_JLOC 
                     	DO U_SILOC=1,U_SNLOC
-                       	    U_ILOC =U_SLOC2LOC(U_SILOC) !! -Asiri (changed order of nested loop here)
+                       	    U_ILOC =U_SLOC2LOC(U_SILOC)
                             DO IPHASE = 1, NPHASE
                                 JPHASE = IPHASE
 
