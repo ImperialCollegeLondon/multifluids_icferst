@@ -463,9 +463,10 @@ contains
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
       REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
       REAL , DIMENSION( :, :, : ), ALLOCATABLE :: VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-                                                  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-                                                  INV_VI_LOC_OPT_VEL_UPWIND_COEFS!, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
+                                                  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
+                                                  !, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE, target :: INV_V_OPT_VEL_UPWIND_COEFS
+      real, dimension(:,:,:), pointer :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS
       REAL :: BCZERO(NPHASE),  T_ALL_J( NPHASE ), TOLD_ALL_J( NPHASE )
       INTEGER :: LOC_WIC_T_BC_ALL(NPHASE)
 
@@ -1017,26 +1018,26 @@ contains
               ALLOCATE( VI_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE),  GI_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE),  &
                          VJ_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE),  GJ_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE) )
               ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE,MAT_NONODS) )
-              ALLOCATE( INV_VI_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE))!, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE) )
+!              ALLOCATE( INV_VI_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE))!, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE) )
 
               DO MAT_NODI=1,MAT_NONODS
                  DO IPHASE=1,NPHASE
                     DO JDIM=1,NDIM
                        DO IDIM=1,NDIM
                           IJ=(IPHASE-1)*MAT_NONODS*NDIM*NDIM + (MAT_NODI-1)*NDIM*NDIM + (IDIM-1)*NDIM +JDIM
-                          INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ)
+                          INV_V_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE,MAT_NODI)= OPT_VEL_UPWIND_COEFS(IJ)
+!                          INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ)
                        END DO
                     END DO
-                    call invert(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE))
+                    call invert(INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI))
                  END DO
-                 INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI)=INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,:)
+!                 INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI)=INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,:)
               END DO
             else
                ALLOCATE( VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  &
                     VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
                ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(0,0,0,0) )
                ALLOCATE( INV_VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0))!, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
-
            ENDIF
 
 
@@ -1503,18 +1504,16 @@ contains
 ! Generate some local F variables ***************
             F_CV_NODI(:)= LOC_F(:, CV_ILOC)
             IF ( is_compact_overlapping ) THEN
-
                DO IPHASE=1,NPHASE
                   DO JDIM=1,NDIM
                      DO IDIM=1,NDIM
                         IJ=(IPHASE-1)*MAT_NONODS*NDIM*NDIM + (MAT_NODI-1)*NDIM*NDIM + (IDIM-1)*NDIM +JDIM
-                        VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ) 
-                        GI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ+NPHASE*MAT_NONODS*NDIM*NDIM) 
+                        VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ)
+                        GI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ+NPHASE*MAT_NONODS*NDIM*NDIM)
                      END DO
                   END DO
                END DO
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,:) = INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI)
-
+               INV_VI_LOC_OPT_VEL_UPWIND_COEFS(1:NDIM,1:NDIM,1:NPHASE) => INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI)
             ENDIF
 ! Generate some local F variables ***************
 
