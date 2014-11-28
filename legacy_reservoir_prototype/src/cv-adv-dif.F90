@@ -1509,7 +1509,7 @@ contains
                      DO IDIM=1,NDIM
                         IJ=(IPHASE-1)*MAT_NONODS*NDIM*NDIM + (MAT_NODI-1)*NDIM*NDIM + (IDIM-1)*NDIM +JDIM
                         VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ) 
-                        GI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ+NPHASE*MAT_NONODS*NDIM*NDIM) 
+                        GI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,JDIM,IPHASE) = OPT_VEL_UPWIND_COEFS(IJ + NPHASE*MAT_NONODS*NDIM*NDIM) 
                      END DO
                   END DO
                END DO
@@ -1561,7 +1561,7 @@ contains
 !                      if(
                   END IF
 
-                  IF(INTEGRAT_AT_GI)  THEN 
+                  IF(INTEGRAT_AT_GI) THEN 
 ! this is for DG and boundaries of the domain
                      IF(SELE.LE.0) THEN ! this is for DG
 ! Calculate U_SLOC2LOC, CV_SLOC2LOC: 
@@ -9617,10 +9617,10 @@ deallocate(NX_ALL, X_NX_ALL)
           END IF ! SCALE_DOWN_WIND
 
           FEMFGI=0.0
-          DO CV_KLOC = 1, CV_NLOC
-             DO IFIELD=1,NFIELD ! Only perform this loop for the 1st field which is the interface tracking field...
+          DO IFIELD=1,NFIELD ! Only perform this loop for the 1st field which is the interface tracking field...
 
-                IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN ! Extrapolate to the downwind value...
+             IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN ! Extrapolate to the downwind value...
+                DO CV_KLOC = 1, CV_NLOC
 
                    IF ( NON_LIN_PETROV_INTERFACE.NE.0 ) THEN
                       IF ( NON_LIN_PETROV_INTERFACE == 4 ) THEN ! anisotropic diffusion...
@@ -9632,17 +9632,16 @@ deallocate(NX_ALL, X_NX_ALL)
                       RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
                    END IF
 
-                   RSHAPE(IFIELD)    = SCVFEN( CV_KLOC, GI ) + RGRAY(IFIELD)
-                   FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  RSHAPE(IFIELD)     * LOC_FEMF( IFIELD, CV_KLOC)
-                ELSE
+                   FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (SCVFEN( CV_KLOC, GI ) + RGRAY(IFIELD))   * LOC_FEMF( IFIELD, CV_KLOC)
+                END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
+             ELSE
 
+                DO CV_KLOC = 1, CV_NLOC
                    FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  SCVFEN( CV_KLOC, GI ) * LOC_FEMF( IFIELD, CV_KLOC)
-                END IF
-             END DO ! ENDOF DO IFIELD=1,NPHASE
+                END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
+             END IF
 
-
-
-          END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
+          END DO ! ENDOF DO IFIELD=1,NPHASE
 
        ELSE  ! END OF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN  ---DG saturation across elements
 
