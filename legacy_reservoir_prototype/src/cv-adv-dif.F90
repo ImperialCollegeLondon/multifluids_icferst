@@ -1597,6 +1597,7 @@ contains
                !   IF(NDIM.GE.3) CVNORMZ(GI) =CVNORMX_ALL(3,GI)
 
                   
+! Pablo could store the outcomes of this:
                   IF( GETCT ) THEN
 ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
                      DO U_KLOC = 1, U_NLOC
@@ -5912,14 +5913,20 @@ deallocate(NX_ALL, X_NX_ALL)
     ! 
     REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
     real, dimension(size(uc)) :: nvd_limit
+    logical, PARAMETER :: orig_limit=.false.
 
     ! For the region 0 < UC < 1 on the NVD, define the limiter
-    where( ( UC > 0.0 ) .AND. ( UC < 1.0 ) )
-       nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( 0.0, UF ) )
-    ELSE where ! Outside the region 0<UC<1 on the NVD, use first-order upwinding
-       nvd_limit = UC
-    END where
-!    nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
+    if(orig_limit) then
+       where( ( UC > 0.0 ) .AND. ( UC < 1.0 ) )
+          nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( 0.0, UF ) )
+!       nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( UC, UF ) )
+!      nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
+       ELSE where ! Outside the region 0<UC<1 on the NVD, use first-order upwinding
+          nvd_limit = UC
+       END where
+    else
+       nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
+    endif
 
   end function nvdfunnew_many
 
