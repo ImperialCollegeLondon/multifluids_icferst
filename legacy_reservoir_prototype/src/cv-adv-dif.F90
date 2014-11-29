@@ -1401,9 +1401,9 @@ contains
 
 ! Generate some local F variables ***************
 
-! loc_f
           DO CV_KLOC = 1, CV_NLOC
              CV_NODK = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_KLOC ) 
+! loc_f
              IPT=1
              CALL PACK_LOC( LOC_F(:, CV_KLOC), T_ALL( :, CV_NODK ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,1) )
              CALL PACK_LOC( LOC_F(:, CV_KLOC), TOLD_ALL( :, CV_NODK ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,2) )
@@ -1419,12 +1419,22 @@ contains
              CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMDENOLD_ALL( :, CV_NODK ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,4) )
              CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT2_ALL( :, CV_NODK ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,5) )
              CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT2OLD_ALL( :, CV_NODK ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,6) )
+
+! loc_femt: 
+             LOC_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_NODK)
+             LOC_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_NODK)
+
+             IF ( IGOT_T2 == 1 ) THEN
+                LOC_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_NODK)
+                LOC_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_NODK)
+             END IF
           END DO
+
     
-! LOC_UF
           DO U_KLOC = 1, U_NLOC
              U_NODK = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_KLOC )
 
+! LOC_UF
              IPT=1
              IFI=1
              DO ILOOP=1,3
@@ -1450,29 +1460,11 @@ contains
 
              END DO
 
-          END DO
-
 ! LOC_U, LOC_NU: 
-
-        DO U_ILOC = 1 , U_NLOC
-           U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-
-           LOC_U( :, :, U_ILOC)=U_ALL( :, :, U_INOD)
-           LOC_NU( :, :, U_ILOC)=NU_ALL( :, :, U_INOD)
-           LOC_NUOLD( :, :, U_ILOC)=NUOLD_ALL( :, :, U_INOD)
-           IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC_U_HAT( :, U_ILOC)=U_HAT_ALL( :, U_INOD)
-        END DO
-
-         DO CV_KLOC=1,CV_NLOC
-            CV_KNOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_KLOC)
- 
-            LOC_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_KNOD)
-            LOC_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_KNOD)
-
-            IF ( IGOT_T2 == 1 ) THEN
-               LOC_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_KNOD)
-               LOC_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_KNOD)
-            END IF
+             LOC_U( :, :, U_KLOC)=U_ALL( :, :, U_NODK)
+             LOC_NU( :, :, U_KLOC)=NU_ALL( :, :, U_NODK)
+             LOC_NUOLD( :, :, U_KLOC)=NUOLD_ALL( :, :, U_NODK)
+             IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC_U_HAT( :, U_KLOC)=U_HAT_ALL( :, U_NODK)
 
           END DO
 
@@ -1523,6 +1515,7 @@ contains
                        CV_SNLOC, CVFEM_ON_FACE( :, GI ), X_SHARE, X_NONODS, ELE, ELE2,  &
                        FINELE, COLELE, NCOLELE, DISTCONTINUOUS_METHOD )
 
+
                   IF ( INTEGRAT_AT_GI ) THEN
                      CV_JLOC = CV_OTHER_LOC( CV_ILOC )
                      SELE = 0
@@ -1539,30 +1532,9 @@ contains
 
                      INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
 !                     INTEGRAT_AT_GI = .NOT.( (ELE3==0) .AND. (SELE==0) )
-!                      if(
                   END IF
 
-                  IF(INTEGRAT_AT_GI) THEN 
-! this is for DG and boundaries of the domain
-                     IF(SELE.LE.0) THEN ! this is for DG
-! Calculate U_SLOC2LOC, CV_SLOC2LOC: 
-                        CV_SKLOC=0
-                        DO CV_KLOC=1,CV_NLOC
-                           CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                           IF(CV_KLOC2.NE.0) THEN
-                              CV_SKLOC=CV_SKLOC+1
-                              CV_SLOC2LOC(CV_SKLOC)=CV_KLOC
-                              SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
-                           ENDIF
-                        END DO
-                     ENDIF ! ENDOF IF(SELE.LE.0) THEN
 
-                     DO CV_SKLOC=1,CV_SNLOC
-                        CV_KLOC = CV_SLOC2LOC(CV_SKLOC)
-                        SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
-                     END DO
-
-                  ENDIF
 
                END IF Conditional_CheckingNeighbourhood
                ! Avoid integrating across the middle of a CV on the boundaries of elements
@@ -1578,7 +1550,29 @@ contains
                      MAT_NODJ = MAT_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_JLOC )
                   END IF
 
-           if((CV_NODJ.ge.CV_NODI).or.(.not.integrate_other_side)) then 
+           if((.not.integrate_other_side).or.(CV_NODJ.ge.CV_NODI)) then 
+
+
+! this is for DG and boundaries of the domain
+                  IF(SELE.LE.0) THEN ! this is for DG
+! Calculate U_SLOC2LOC, CV_SLOC2LOC: 
+                     CV_SKLOC=0
+                     DO CV_KLOC=1,CV_NLOC
+                        CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
+                        IF(CV_KLOC2.NE.0) THEN
+                           CV_SKLOC=CV_SKLOC+1
+                           CV_SLOC2LOC(CV_SKLOC)=CV_KLOC
+!                           SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
+                        ENDIF
+                     END DO
+                  ENDIF ! ENDOF IF(SELE.LE.0) THEN
+
+                  DO CV_SKLOC=1,CV_SNLOC
+                     CV_KLOC = CV_SLOC2LOC(CV_SKLOC)
+                     SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
+                  END DO
+
+
 
                   integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
                   GLOBAL_FACE = GLOBAL_FACE + 1

@@ -3028,16 +3028,6 @@ DEALLOCATE( PIVIT_MAT )
 
         ALLOCATE( CENT_RELAX(NDIM,NPHASE,SBCVNGI) ,CENT_RELAX_OLD(NDIM,NPHASE,SBCVNGI) )
 
-
-        IF(RETRIEVE_SOLID_CTY) THEN
-           ALLOCATE( SIGMAGI_STAB_SOLID_RHS( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, CV_NGI ))
-           ALLOCATE(NN_SIGMAGI_STAB_SOLID_RHS_ELE( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, U_NLOC, U_NLOC ))
-           IF( GOT_DIFFUS .AND. include_viscous_solid_fluid_drag_force ) THEN  ! include_viscous_solid_fluid_drag_force taken from diamond
-              ALLOCATE(ABS_SOLID_FLUID_COUP(NDIM, NDIM, NPHASE, CV_NONODS))
-              ALLOCATE(FOURCE_SOLID_FLUID_COUP(NDIM, NPHASE, CV_NONODS)) 
-           ENDIF
-        ENDIF
-
         IF(GOT_VIRTUAL_MASS) THEN
 ! GOT_VIRTUAL_MASS ! do we have virtual mass terms for multi-phase flows...
 ! VIRTUAL_MASS_ADV_CUR DEFINES THE VELOCITY IN THE TOTAL DERIVATIVE = 1 and use the velocity that 
@@ -3279,6 +3269,14 @@ DEALLOCATE( PIVIT_MAT )
            ALLOCATE( NNX_MAT_ELE(NDIM, U_NLOC, U_NLOC, TOTELE), NN_MAT_ELE(U_NLOC, U_NLOC, TOTELE) )
         ENDIF
 
+        IF(RETRIEVE_SOLID_CTY) THEN
+           ALLOCATE( SIGMAGI_STAB_SOLID_RHS( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, CV_NGI ))
+           ALLOCATE(NN_SIGMAGI_STAB_SOLID_RHS_ELE( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, U_NLOC, U_NLOC ))
+           IF( GOT_DIFFUS .AND. include_viscous_solid_fluid_drag_force ) THEN  ! include_viscous_solid_fluid_drag_force taken from diamond
+              ALLOCATE(ABS_SOLID_FLUID_COUP(NDIM, NDIM, NPHASE, CV_NONODS))
+              ALLOCATE(FOURCE_SOLID_FLUID_COUP(NDIM, NPHASE, CV_NONODS)) 
+           ENDIF
+        ENDIF
 
         GOT_UDEN = .FALSE.
         DO IPHASE = 1, NPHASE
