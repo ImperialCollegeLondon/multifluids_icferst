@@ -5913,7 +5913,7 @@ deallocate(NX_ALL, X_NX_ALL)
     ! 
     REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
     real, dimension(size(uc)) :: nvd_limit
-    logical, PARAMETER :: orig_limit=.false.
+    logical, PARAMETER :: orig_limit=.false. ! original limiter is less invasive. 
 
     ! For the region 0 < UC < 1 on the NVD, define the limiter
     if(orig_limit) then
