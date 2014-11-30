@@ -2212,13 +2212,14 @@ contains
 
 
 
-                  Loop_IPHASE: DO IPHASE = 1, NPHASE
 
-                     RHS_NODI_IPHA = IPHASE +  (CV_NODI - 1 ) * NPHASE
-                     RHS_NODJ_IPHA = IPHASE +  (CV_NODJ - 1 ) * NPHASE
-
-                     Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
+                  Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                         ! Obtain the CV discretised advection/diffusion equations
+
+                     Loop_IPHASE: DO IPHASE = 1, NPHASE
+
+                        RHS_NODI_IPHA = IPHASE +  (CV_NODI - 1 ) * NPHASE
+                        RHS_NODJ_IPHA = IPHASE +  (CV_NODJ - 1 ) * NPHASE
 
                         ROBIN1=0.0
                         ROBIN2=0.0
@@ -2450,9 +2451,11 @@ contains
 
                         END IF ! THERMAL
 
-                     ENDIF Conditional_GETCV_DISC
 
-                  END DO Loop_IPHASE
+                     END DO Loop_IPHASE
+
+                  ENDIF Conditional_GETCV_DISC
+
 
            endif ! if(CV_NODJ.ge.CV_NODI) then
 
