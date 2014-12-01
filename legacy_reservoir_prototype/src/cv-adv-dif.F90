@@ -10631,7 +10631,7 @@ CONTAINS
     IMPLICIT NONE
     INTEGER, intent( in ) :: ELE, CV_NONODS, CV_NLOC, U_NLOC, &
          CV_SNLOC, U_SNLOC, NFACE, CV_ILOC
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN ! (CV_NLOC*TOTELE) 
     INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
