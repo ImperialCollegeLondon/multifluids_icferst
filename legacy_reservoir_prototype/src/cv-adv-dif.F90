@@ -10637,13 +10637,13 @@ CONTAINS
     INTEGER, intent( in ) :: ELE, CV_NONODS, CV_NLOC, U_NLOC, &
          CV_SNLOC, U_SNLOC, NFACE, CV_ILOC
     INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN ! (CV_NLOC*TOTELE) 
-    INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
-    INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
-    INTEGER, DIMENSION( :, : ), intent( in ) :: FACE_ELE
-    LOGICAL, DIMENSION( : ), intent( in )  :: CVFEM_ON_FACE
+    INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN  ! (U_NLOC*TOTELE)
+    INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN ! (CV_SNLOC*TOTELE)
+    INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN  ! (U_SNLOC*TOTELE)
+    INTEGER, DIMENSION( :, : ), intent( in ) :: FACE_ELE !(TOTELE*IFACE)
+    LOGICAL, DIMENSION( : ), intent( in )  :: CVFEM_ON_FACE !(CV_JLOC)
     INTEGER, intent( inout ) :: SELE, ELE3, CV_SILOC
-    INTEGER, DIMENSION( : ), intent( inout ) :: U_SLOC2LOC
+    INTEGER, DIMENSION( : ), intent( inout ) :: U_SLOC2LOC !(CV_SKLOC)
     INTEGER, DIMENSION( : ), intent( inout ) :: CV_SLOC2LOC
     ! local variables
     INTEGER :: IFACE, ELE2, SELE2, CV_JLOC, CV_JNOD, &
