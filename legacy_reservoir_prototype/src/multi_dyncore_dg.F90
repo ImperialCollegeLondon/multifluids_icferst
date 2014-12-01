@@ -227,7 +227,7 @@ contains
            den_all = den_all2 % val ( 1, :, : )
            denold_all = denold_all2 % val ( 1,  :, : )
         else
-           p => extract_scalar_field( packed_state, "Pressure" )
+           p => extract_scalar_field( packed_state, "FEPressure" )
            den_all=1.0
            denold_all=1.0
         end if
@@ -1775,8 +1775,7 @@ contains
 
         call halo_update(CVP_all)
 
-               Pressure_State => extract_scalar_field( state( 1 ), 'Pressure' )
-               Pressure_State % val = CVP_all%val
+        pressure % val = CVP_all % val
 
 
 

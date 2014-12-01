@@ -50,9 +50,6 @@ multi_shape_fct_ND.o multi_shape_fct.o multi_sparsity.o multi_eos.o cv-adv-dif.o
 multi_compositional.o multi_dyncore_dg.o Multiphase_TimeLoop.o \
 Multiphase_Prototype_Wrapper.o multi_IO.o multi_fracture.o multi_caching.o multi_rheology.o
 
-#Multiphase_Mom_Press_Volf.o Multiphase_Prototype.o Multiphase_Prototype_Wrapper.o \
-#Copy_Outof_Into_State.o
-
 .SUFFIXES: .f90 .F90 .c .cpp .o .a
 
 .f90.o:
@@ -89,11 +86,6 @@ Multiphase_TimeLoop.o: multi_caching.o multi_dyncore_dg.o multi_eos.o multi_IO.o
 multi_sparsity.o multi_compositional.o multi_shape_fct_ND.o multi_fracture.o 
 Multiphase_Prototype_Wrapper.o: multi_rheology.o Multiphase_TimeLoop.o
 multi_matrix_operations.o: multi_caching.o
-
-
-#Multiphase_Mom_Press_Volf.o: multi_dyncore_dg.o multi_eos.o multi_IO.o Copy_Outof_Into_State.o 
-#Multiphase_Prototype.o: multi_IO.o multi_sparsity.o Multiphase_Mom_Press_Volf.o Copy_Outof_Into_State.o
-#Multiphase_Prototype_Wrapper.o: Multiphase_Prototype.o
 
 clean:
 	@rm -f *.o *.d *.mod $(PROG_EXEC)
