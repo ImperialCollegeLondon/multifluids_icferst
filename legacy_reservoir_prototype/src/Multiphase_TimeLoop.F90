@@ -1704,7 +1704,7 @@ if (have_component_field) then
           call insert(packed_state,sparsity,'CVFEMSparsity')
           call deallocate(sparsity)
 
-          sfield=>extract_scalar_field(packed_state,"Pressure")
+          sfield=>extract_scalar_field(packed_state,"FEPressure")
           sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
                "PressureMassMatrixSparsity")
           call insert(packed_state,sparsity,"PressureMassMatrixSparsity")

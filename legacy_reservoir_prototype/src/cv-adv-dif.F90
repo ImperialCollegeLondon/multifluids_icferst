@@ -3235,7 +3235,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
     nfields = tensor_field_count( packed_state )
 
-    pressure => extract_scalar_field( packed_state, "Pressure" )
+    pressure => extract_scalar_field( packed_state, "FEPressure" )
     
     cv_nloc = ele_loc( pressure, 1 )
 

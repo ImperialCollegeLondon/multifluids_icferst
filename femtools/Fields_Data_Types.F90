@@ -205,12 +205,12 @@ module fields_data_types
   type tensor_field
      !! ndim x ndim x nonods
  
-#ifdef USING_GFORTRAN     
-     real, dimension(:,:,:), pointer, contiguous :: contiguous_val
-#else
-     real, dimension(:,:,:), pointer :: contiguous_val
-#endif
-     real, dimension(:,:,:), pointer :: val
+!#ifdef USING_GFORTRAN
+!     real, dimension(:,:,:), pointer, contiguous :: contiguous_val
+!#else
+!     real, dimension(:,:,:), pointer :: contiguous_val
+!#endif
+     real, dimension(:,:,:), pointer, contiguous :: val
      !! Flag for whether val is allocated
      logical :: wrapped=.true.
      !! Flag for whether val is contiguoua
