@@ -1989,7 +1989,6 @@
       allocate(multi_state(max(1,ncomp),nphase))
 
       pressure=>extract_scalar_field(state(1),"Pressure")
-      call insert(packed_state,pressure,"Pressure")
       call insert(packed_state,pressure%mesh,"PressureMesh")
 
       call add_new_memory(packed_state,pressure,"FEPressure")
@@ -2412,7 +2411,7 @@
              end if
           end do
 
-        END subroutine unpack_multiphase
+        end subroutine unpack_multiphase
         
 
         subroutine add_new_memory(mstate,sfield,name)
@@ -2966,10 +2965,11 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
         vfield%dim=product(tfield%dim)
 
 #ifdef USING_GFORTRAN
-         vfield%val(1:vfield%dim,1:node_count(vfield))=>tfield%contiguous_val
+        vfield%val(1:vfield%dim,1:node_count(vfield)) => tfield%val !%contiguous_val
 #else
         allocate(vfield%val(1:vfield%dim,1:node_count(vfield)))
-        vfield%val=reshape(tfield%contiguous_val,[vfield%dim,&
+        !vfield%val=reshape(tfield%contiguous_val,[vfield%dim,&!
+        vfield%val=reshape(tfield%val,[vfield%dim,&
              node_count(vfield)])
 #endif
 
@@ -3294,10 +3294,6 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
         type(tensor_field), pointer :: tfield
 
         !Scalar stored
-        if (present(Pressure)) then
-            sfield => extract_scalar_field( packed_state, "Pressure" )
-            Pressure =>  sfield%val(:)
-        end if
         if (present(FEPressure)) then
             sfield => extract_scalar_field( packed_state, "FEPressure" )
             FEPressure =>  sfield%val(:)

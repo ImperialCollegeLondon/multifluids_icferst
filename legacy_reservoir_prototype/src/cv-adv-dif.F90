@@ -3240,7 +3240,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
     nfields = tensor_field_count( packed_state )
 
-    pressure => extract_scalar_field( packed_state, "Pressure" )
+    pressure => extract_scalar_field( packed_state, "FEPressure" )
     
     cv_nloc = ele_loc( pressure, 1 )
 
@@ -7271,7 +7271,7 @@ deallocate(NX_ALL, X_NX_ALL)
   SUBROUTINE LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_ELE_EXT,  S_INV_NNX_MAT12,  &
        STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, & 
        U_SNLOC, U_NLOC, CV_SNLOC, CV_NLOC, MAT_NLOC, NPHASE,  &
-       SBUFEN,SBCVFEN, SDETWEI, SBCVNGI, NDIM, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, DIFF_GI_ADDED, &
+       SBUFEN_REVERSED,SBCVFEN_REVERSED, SDETWEI, SBCVNGI, NDIM, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, DIFF_GI_ADDED, &
        ON_BOUNDARY, SNORMXN_ALL  )
     ! This sub calculates the effective diffusion coefficientd STRESS_IJ_ELE_EXT
     ! it only works for between element contributions. 
@@ -7288,8 +7288,8 @@ deallocate(NX_ALL, X_NX_ALL)
     REAL, intent( in ) :: ZERO_OR_TWO_THIRDS
     REAL, DIMENSION( NDIM, NDIM, NPHASE, U_SNLOC, 2*U_NLOC ), intent( inout ) :: STRESS_IJ_ELE_EXT
     REAL, DIMENSION( NDIM, U_SNLOC, 2*U_NLOC ), intent( inout ) :: S_INV_NNX_MAT12
-    REAL, DIMENSION( CV_SNLOC, SBCVNGI  ), intent( in ) :: SBCVFEN
-    REAL, DIMENSION( U_SNLOC, SBCVNGI  ), intent( in ) :: SBUFEN
+    REAL, DIMENSION( SBCVNGI, CV_SNLOC ), intent( in ) :: SBCVFEN_REVERSED
+    REAL, DIMENSION( SBCVNGI, U_SNLOC  ), intent( in ) :: SBUFEN_REVERSED
     REAL, DIMENSION( SBCVNGI ), intent( in ) :: SDETWEI
     REAL, DIMENSION( NDIM,NDIM,NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION, SLOC2_UDIFFUSION
     REAL, DIMENSION( NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION_VOL
@@ -7323,14 +7323,14 @@ deallocate(NX_ALL, X_NX_ALL)
 
           DIFF_GI = 0.0
           DIFF_VOL_GI = 0.0
-          DO SGI=1,SBCVNGI
-             DO CV_SKLOC = 1, CV_SNLOC
+          DO CV_SKLOC = 1, CV_SNLOC
+             DO SGI=1,SBCVNGI
                 DO IPHASE=1, NPHASE
                    DIFF_GI( 1:NDIM , 1:NDIM, IPHASE, SGI ) = DIFF_GI( 1:NDIM , 1:NDIM, IPHASE, SGI ) &
-                     + SBCVFEN(CV_SKLOC,SGI) * SLOC_UDIFFUSION( 1:NDIM , 1:NDIM , IPHASE, CV_SKLOC )
+                     + SBCVFEN_REVERSED(SGI,CV_SKLOC) * SLOC_UDIFFUSION( 1:NDIM , 1:NDIM , IPHASE, CV_SKLOC )
 
                    DIFF_VOL_GI( IPHASE, SGI ) = DIFF_VOL_GI( IPHASE, SGI ) &
-                     + SBCVFEN(CV_SKLOC,SGI) * SLOC_UDIFFUSION_VOL( IPHASE, CV_SKLOC )
+                     + SBCVFEN_REVERSED(SGI,CV_SKLOC) * SLOC_UDIFFUSION_VOL( IPHASE, CV_SKLOC )
                 END DO
              END DO
           END DO
@@ -7341,13 +7341,13 @@ deallocate(NX_ALL, X_NX_ALL)
 ! neighbouring element...
              DIFF_GI2 = 0.0
              DIFF_VOL_GI2 = 0.0
-             DO SGI=1,SBCVNGI
-                DO CV_SKLOC = 1, CV_SNLOC
+             DO CV_SKLOC = 1, CV_SNLOC
+                DO SGI=1,SBCVNGI
                    DO IPHASE=1, NPHASE
-                      DIFF_GI2( 1:NDIM, 1:NDIM, IPHASE, SGI )= DIFF_GI2( 1:NDIM, 1:NDIM, IPHASE, SGI ) +SBCVFEN(CV_SKLOC,SGI) &
+                      DIFF_GI2( 1:NDIM, 1:NDIM, IPHASE, SGI )= DIFF_GI2( 1:NDIM, 1:NDIM, IPHASE, SGI ) +SBCVFEN_REVERSED(SGI,CV_SKLOC) &
                         *SLOC2_UDIFFUSION(1:NDIM, 1:NDIM ,IPHASE, CV_SKLOC)
 
-                      DIFF_VOL_GI2( IPHASE, SGI )= DIFF_VOL_GI2( IPHASE, SGI ) +SBCVFEN(CV_SKLOC,SGI) &
+                      DIFF_VOL_GI2( IPHASE, SGI )= DIFF_VOL_GI2( IPHASE, SGI ) +SBCVFEN_REVERSED(SGI,CV_SKLOC) &
                         *SLOC2_UDIFFUSION_VOL(IPHASE, CV_SKLOC)
                    END DO
                 END DO
@@ -7387,18 +7387,18 @@ deallocate(NX_ALL, X_NX_ALL)
              MAT_SUFXX=0.0
              MAT_SUFVOL=0.0
 
-             DO SGI=1,SBCVNGI
              DO U_SILOC=1,U_SNLOC
-                DO U_SJLOC=1,U_SNLOC
-                   DO jDIM=1,NDIM 
-                      RDUM = SNORMXN_ALL(jDIM,SGI)*SBUFEN(U_SILOC,SGI)*SBUFEN(U_SJLOC,SGI)*SDETWEI( SGI ) 
+             DO U_SJLOC=1,U_SNLOC
+                DO SGI=1,SBCVNGI
+                   DO JDIM=1,NDIM 
+                      RDUM = SNORMXN_ALL(JDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)*SBUFEN_REVERSED(SGI,U_SJLOC)*SDETWEI( SGI ) 
                       DO IPHASE=1,NPHASE
-                         DO iDIM=1,NDIM 
+                         DO IDIM=1,NDIM 
 ! take -ve as its a surface integral...
        MAT_SUFXX(IDIM,JDIM,IPHASE,U_SILOC,U_SJLOC) = MAT_SUFXX(IDIM,JDIM,IPHASE,U_SILOC,U_SJLOC) &
                        -  RDUM*DIFF_GI( IDIM, JDIM, IPHASE, SGI )
                          END DO
-       MAT_SUFVOL(jDIM,IPHASE,U_SILOC,U_SJLOC) = MAT_SUFVOL(jDIM,IPHASE,U_SILOC,U_SJLOC) &
+       MAT_SUFVOL(JDIM,IPHASE,U_SILOC,U_SJLOC) = MAT_SUFVOL(JDIM,IPHASE,U_SILOC,U_SJLOC) &
                        -  RDUM*DIFF_VOL_GI( IPHASE, SGI )
                       END DO
                    END DO
@@ -7421,15 +7421,15 @@ deallocate(NX_ALL, X_NX_ALL)
                 
              END DO
           ELSE ! less rapid version...
-             DO SGI=1,SBCVNGI
-                DO U_SILOC=1,U_SNLOC
-                   DO U_JLOC12=1,U_NLOC*2
+             DO U_SILOC=1,U_SNLOC
+                DO U_JLOC12=1,U_NLOC*2
 
-                       DO I=1,U_SNLOC
+                    DO I=1,U_SNLOC
+                       DO SGI=1,SBCVNGI
                           DO IPHASE=1,NPHASE
 ! take -ve as its a surface integral...
           CALL CALC_STRESS_TEN( STRESS_IJ_ELE_EXT( :, :, IPHASE, U_SILOC, U_JLOC12 ), ZERO_OR_TWO_THIRDS, NDIM, &
-             - SNORMXN_ALL(:,SGI)*SBUFEN(U_SILOC,SGI)* SBUFEN(I,SGI)*SDETWEI( SGI ), S_INV_NNX_MAT12( 1:NDIM, I, U_JLOC12 ), DIFF_GI( :, :, IPHASE, SGI ), DIFF_VOL_GI( IPHASE, SGI) ) 
+             - SNORMXN_ALL(:,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)* SBUFEN_REVERSED(SGI,I)*SDETWEI( SGI ), S_INV_NNX_MAT12( 1:NDIM, I, U_JLOC12 ), DIFF_GI( :, :, IPHASE, SGI ), DIFF_VOL_GI( IPHASE, SGI) ) 
                           END DO
                        END DO
                    END DO
@@ -7443,11 +7443,11 @@ deallocate(NX_ALL, X_NX_ALL)
 
              MAT_SUFXX=0.0
 
-             DO SGI=1,SBCVNGI
              DO U_SILOC=1,U_SNLOC
-                DO U_SJLOC=1,U_SNLOC
+             DO U_SJLOC=1,U_SNLOC
+                DO SGI=1,SBCVNGI
                    DO IDIM=1,NDIM 
-                      RDUM = SNORMXN_ALL(IDIM,SGI)*SBUFEN(U_SILOC,SGI)*SBUFEN(U_SJLOC,SGI)*SDETWEI( SGI ) 
+                      RDUM = SNORMXN_ALL(IDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)*SBUFEN_REVERSED(SGI,U_SJLOC)*SDETWEI( SGI ) 
                       DO IPHASE=1,NPHASE
                          DO JDIM=1,NDIM 
 ! take -ve as its a surface integral...
@@ -7487,7 +7487,7 @@ deallocate(NX_ALL, X_NX_ALL)
 !                            print *,'IDIM, IPHASE, U_SILOC, U_JLOC12:',IDIM, IPHASE, U_SILOC, U_JLOC12
 !                          STRESS_IJ_ELE_EXT( IDIM, IDIM, IPHASE, U_SILOC, U_JLOC12 ) = STRESS_IJ_ELE_EXT( IDIM, IDIM, IPHASE, U_SILOC, U_JLOC12 ) &
                              STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) = STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) &
-                               - SNORMXN_ALL(IDIM,SGI)*SBUFEN(U_SILOC,SGI)* SBUFEN(I,SGI)*SDETWEI( SGI )  &
+                               - SNORMXN_ALL(IDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)* SBUFEN_REVERSED(SGI,I)*SDETWEI( SGI )  &
                                     * SUM( DIFF_GI( IDIM, :, IPHASE, SGI ) *  S_INV_NNX_MAT12( :, I, U_JLOC12 ) )
 !                                 * DIFF_GI( IDIM, idim, IPHASE, SGI ) *  S_INV_NNX_MAT12( idim, I, U_JLOC12 ) 
                           END DO
@@ -10636,7 +10636,7 @@ CONTAINS
     IMPLICIT NONE
     INTEGER, intent( in ) :: ELE, CV_NONODS, CV_NLOC, U_NLOC, &
          CV_SNLOC, U_SNLOC, NFACE, CV_ILOC
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN ! (CV_NLOC*TOTELE) 
     INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN

@@ -227,7 +227,7 @@ contains
            den_all = den_all2 % val ( 1, :, : )
            denold_all = denold_all2 % val ( 1,  :, : )
         else
-           p => extract_scalar_field( packed_state, "Pressure" )
+           p => extract_scalar_field( packed_state, "FEPressure" )
            den_all=1.0
            denold_all=1.0
         end if
@@ -1775,8 +1775,7 @@ contains
 
         call halo_update(CVP_all)
 
-               Pressure_State => extract_scalar_field( state( 1 ), 'Pressure' )
-               Pressure_State % val = CVP_all%val
+        pressure % val = CVP_all % val
 
 
 
@@ -4845,12 +4844,12 @@ DEALLOCATE( PIVIT_MAT )
                  IF(GOT_DIFFUS .AND. LINEAR_HIGHORDER_DIFFUSION) THEN
                     IF(ELE2.GT.0) THEN
                        CALL DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT_ELE(:,:,:,ELE), NNX_MAT_ELE(:,:,:,ELE2), NN_MAT_ELE(:,:,ELE), NN_MAT_ELE(:,:,ELE2),  & 
-                               U_SNLOC, U_NLOC, SBUFEN, SDETWE, SBCVNGI, SNORMXN_ALL, NDIM, &
+                               U_SNLOC, U_NLOC, SBUFEN_REVERSED, SDETWE, SBCVNGI, SNORMXN_ALL, NDIM, &
                                U_SLOC2LOC, U_OTHER_LOC, 2*U_NLOC , .FALSE. )
                     ELSE
  
                        CALL DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT_ELE(:,:,:,ELE), NNX_MAT_ELE(:,:,:,ELE), NN_MAT_ELE(:,:,ELE), NN_MAT_ELE(:,:,ELE),  & 
-                               U_SNLOC, U_NLOC, SBUFEN, SDETWE, SBCVNGI, SNORMXN_ALL, NDIM, &
+                               U_SNLOC, U_NLOC, SBUFEN_REVERSED, SDETWE, SBCVNGI, SNORMXN_ALL, NDIM, &
                                U_SLOC2LOC, U_OTHER_LOC, 2*U_NLOC , .TRUE.)
                     ENDIF
                  ENDIF
@@ -5449,7 +5448,7 @@ DEALLOCATE( PIVIT_MAT )
                         CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_ELE_EXT, S_INV_NNX_MAT12,  &
                         STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
                         U_SNLOC, U_NLOC, CV_SNLOC, CV_NLOC, MAT_NLOC, NPHASE, &
-                        SBUFEN,SBCVFEN,SDETWE, SBCVNGI, NDIM, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, UDIFF_SUF_STAB, &
+                        SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, SBCVNGI, NDIM, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, UDIFF_SUF_STAB, &
                         (ELE2.LE.0), SNORMXN_ALL  )
 
 !                        STRESS_IJ_ELE_EXT=0.0
@@ -6216,7 +6215,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
           SUBROUTINE DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT, NNX_MAT2, NN_MAT, NN_MAT2,  & 
-               U_SNLOC, U_NLOC, SBUFEN, SDETWE, SBCVNGI, SNORMXN_ALL, NDIM, &
+               U_SNLOC, U_NLOC, SBUFEN_REVERSED, SDETWE, SBCVNGI, SNORMXN_ALL, NDIM, &
                U_SLOC2LOC, U_OTHER_LOC, U_NLOC_EXT, ON_BOUNDARY )
 
 ! This sub calculates S_INV_NNX_MAT12 which contains NDIM matricies that are used to form the 
@@ -6233,7 +6232,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
           REAL, DIMENSION( NDIM, U_NLOC, U_NLOC  ), intent( in ) :: NNX_MAT, NNX_MAT2
           REAL, DIMENSION( U_NLOC, U_NLOC  ), intent( in ) :: NN_MAT, NN_MAT2
 
-          REAL, DIMENSION( U_SNLOC, SBCVNGI  ), intent( in ) :: SBUFEN
+          REAL, DIMENSION( SBCVNGI,  U_SNLOC ), intent( in ) :: SBUFEN_REVERSED
           REAL, DIMENSION( NDIM, SBCVNGI  ), intent( in ) :: SNORMXN_ALL
           REAL, DIMENSION( SBCVNGI ), intent( in ) :: SDETWE
           INTEGER, DIMENSION( U_SNLOC ), intent( in ) :: U_SLOC2LOC
@@ -6272,7 +6271,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                      U_JLOC=U_SLOC2LOC(U_SJLOC) 
                      U_JLOC2=U_OTHER_LOC(U_JLOC)
                      DO IDIM=1,NDIM 
-                        R_SUF_SUM=SUM( SNORMXN_ALL(IDIM,:)*SBUFEN(U_SILOC,:)*SBUFEN(U_SJLOC,:)*SDETWE(:) )  
+                        R_SUF_SUM=SUM( SNORMXN_ALL(IDIM,:)*SBUFEN_REVERSED(:,U_SILOC)*SBUFEN_REVERSED(:,U_SJLOC)*SDETWE(:) )  
 ! ELEside of the element face...
                         NNX_MAT12(IDIM,U_ILOC,U_JLOC)         = &
                         &NNX_MAT12(IDIM,U_ILOC,U_JLOC)          -  0.5* R_SUF_SUM ! we have*2 the contribution
@@ -6306,7 +6305,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                   DO U_SJLOC=1,U_SNLOC
                      U_JLOC=U_SLOC2LOC(U_SJLOC) 
                      DO IDIM=1,NDIM 
-                        R_SUF_SUM=SUM( SNORMXN_ALL(IDIM,:)*SBUFEN(U_SILOC,:)*SBUFEN(U_SJLOC,:)*SDETWE(:) )  
+                        R_SUF_SUM=SUM( SNORMXN_ALL(IDIM,:)*SBUFEN_REVERSED(:,U_SILOC)*SBUFEN_REVERSED(:,U_SJLOC)*SDETWE(:) )  
                         NNX_MAT12(IDIM,U_ILOC,U_JLOC)          = NNX_MAT12(IDIM,U_ILOC,U_JLOC)           -  0.5 * R_SUF_SUM
                         NNX_MAT12(IDIM,U_ILOC,U_JLOC+U_NLOC)   = NNX_MAT12(IDIM,U_ILOC,U_JLOC+U_NLOC)    +  0.5 * R_SUF_SUM
 !                        NNX_MAT12(IDIM,U_ILOC,U_JLOC)          = NNX_MAT12(IDIM,U_ILOC,U_JLOC)           -  1.0 * R_SUF_SUM
