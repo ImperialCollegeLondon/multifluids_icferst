@@ -1926,7 +1926,7 @@ contains
            LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD,LOC2_FEMT2OLD, LOC_DENOLD_I, LOC_DENOLD_J, &
            LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
            CV_NODI, CV_NODJ, CVNORMX_ALL, &
-           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
            SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
            SUF_SIG_DIAGTEN_BC, &
            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
@@ -1943,7 +1943,7 @@ contains
            LOC_T2_I, LOC_T2_J, LOC_FEMT2, LOC2_FEMT2, LOC_DEN_I, LOC_DEN_J, &
            LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
            CV_NODI, CV_NODJ, CVNORMX_ALL, &
-           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
            SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
            SUF_SIG_DIAGTEN_BC, &
            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
@@ -1960,7 +1960,7 @@ contains
            LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_DENOLD_I, LOC_DENOLD_J, &
            LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
            CV_NODI, CV_NODJ, CVNORMX_ALL, &
-           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
            SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
            SUF_SIG_DIAGTEN_BC, &
            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
@@ -1977,7 +1977,7 @@ contains
            LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
            LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
            CV_NODI, CV_NODJ, CVNORMX_ALL, &
-           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
            SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
            SUF_SIG_DIAGTEN_BC, &
            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
@@ -2047,6 +2047,7 @@ contains
                   IF(NFIELD.GT.0) THEN
                         CALL GET_INT_T_DEN_new( LIMF(:), & 
                              CV_DISOPT, CV_NONODS, NPHASE, NFIELD, CV_NODI, CV_NODJ, CV_ILOC, CV_JLOC, CV_SILOC, ELE, ELE2, GI,   &
+                             between_elements, on_domain_boundary, &
                              CV_NLOC, TOTELE, CV_OTHER_LOC, SCVNGI, SCVFEN, F_INCOME, F_NDOTQ, &
                              LOC_F, LOC_FEMF, SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF, &
                              SELE, CV_SNLOC,  U_SNLOC,  STOTEL, CV_SLOC2LOC, SLOC_SUF_F_BC, &
@@ -9359,6 +9360,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
   SUBROUTINE GET_INT_T_DEN_new(LIMF, &
        CV_DISOPT, CV_NONODS, NPHASE, NFIELD, CV_NODI, CV_NODJ, CV_ILOC, CV_JLOC, CV_SILOC, ELE, ELE2, GI, &
+       between_elements, on_domain_boundary, &
        CV_NLOC, TOTELE, CV_OTHER_LOC, SCVNGI, SCVFEN, F_INCOME, F_NDOTQ, &
        LOC_F, LOC_FEMF, SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF,  &
        SELE, CV_SNLOC,   U_SNLOC,     STOTEL, CV_SLOC2LOC, SLOC_SUF_F_BC, &
@@ -9378,6 +9380,7 @@ deallocate(NX_ALL, X_NX_ALL)
     INTEGER, intent( in ) :: CV_DISOPT,CV_NONODS,NPHASE,NFIELD,CV_NODI,CV_NODJ,CV_ILOC,CV_JLOC,CV_SILOC,ELE,ELE2,  &
          CV_NLOC,TOTELE,SCVNGI,GI,SELE,CV_SNLOC,U_SNLOC,STOTEL, &
          WIC_T_BC_DIRICHLET,WIC_D_BC_DIRICHLET, U_NLOC,U_NONODS,NDIM
+    LOGICAL, intent( in ) :: between_elements, on_domain_boundary
     LOGICAL, DIMENSION( NFIELD ), intent( in ) :: DOWNWIND_EXTRAP_INDIVIDUAL
     LOGICAL, intent( in ) :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS
     INTEGER, DIMENSION( : ), intent( in ) :: CV_OTHER_LOC
@@ -9478,7 +9481,8 @@ deallocate(NX_ALL, X_NX_ALL)
     CASE DEFAULT ! Finite element approximation (4 OR 5)(6 or 7)(8 or 9)
        FEMFGI(:)    = 0.0
 
-       Conditional_CV_DISOPT_ELE2: IF ( SELE /= 0 ) THEN
+!       Conditional_CV_DISOPT_ELE2: IF ( SELE /= 0 ) THEN
+       Conditional_CV_DISOPT_ELE2: IF ( on_domain_boundary ) THEN
           ! Is on boundary of the domain
 
           DO IFIELD=1,NFIELD
@@ -9504,7 +9508,8 @@ deallocate(NX_ALL, X_NX_ALL)
              end if
           END DO
 
-         IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN
+!         IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN
+         IF( .not. between_elements ) THEN
 
           RSCALE(:) = 1.0 ! Scaling to reduce the downwind bias(=1downwind, =0central)
           IF ( SCALE_DOWN_WIND ) THEN
@@ -9612,7 +9617,8 @@ deallocate(NX_ALL, X_NX_ALL)
 
           END DO ! ENDOF DO IFIELD=1,NPHASE
 
-       ELSE  ! END OF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN  ---DG saturation across elements
+!       ELSE  ! END OF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN  ---DG saturation across elements
+       ELSE  ! END OF IF( .not. between_elements ) THEN  ---DG saturation across elements
 
              FEMFGI_CENT(:) = 0.0
              FEMFGI_UP(:)   = 0.0
@@ -13104,7 +13110,7 @@ deallocate(NX_ALL)
        LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
        LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
        CV_NODI, CV_NODJ, CVNORMX_ALL,  &
-       CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+       CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
        SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
        SUF_SIG_DIAGTEN_BC,  &
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
@@ -13122,6 +13128,7 @@ deallocate(NX_ALL)
          SELE, U_SNLOC, STOTEL, CV_ELE_TYPE, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, &
          NDIM, MAT_NLOC, MAT_NONODS,  &
          IN_ELE_UPWIND, DG_ELE_UPWIND
+    LOGICAL, intent( in ) :: between_elements, on_domain_boundary
     REAL, intent( in ) :: HDC, MASS_CV_I, MASS_CV_J, VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2
     REAL, DIMENSION( : ), intent( inout ) :: NDOTQNEW,NDOTQ, INCOME
     INTEGER, DIMENSION( : ), intent( in ) :: U_OTHER_LOC
@@ -13163,7 +13170,7 @@ deallocate(NX_ALL)
             LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
             LOC_NU, LOC2_NU, SLOC_NU, &
             CV_NODI, CV_NODJ, CVNORMX_ALL,  &
-            CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+            CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
             SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
             SUF_SIG_DIAGTEN_BC, &
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
@@ -13183,7 +13190,7 @@ deallocate(NX_ALL)
             LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
             LOC_NU, LOC2_NU, SLOC_NU, &
             CV_NODI, CV_NODJ, CVNORMX_ALL,  &
-            CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+            CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
             SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
             VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
@@ -13241,7 +13248,7 @@ contains
        LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
        LOC_NU, LOC2_NU, SLOC_NU, &
        CV_NODI, CV_NODJ, CVNORMX_ALL,  &
-       CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+       CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
        SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
        VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
@@ -13255,6 +13262,7 @@ contains
          SELE, U_SNLOC, STOTEL, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, &
          NDIM, MAT_NLOC, MAT_NONODS,  &
          IN_ELE_UPWIND, DG_ELE_UPWIND
+    LOGICAL, intent( in ) :: between_elements, on_domain_boundary
     REAL, intent( in ) :: HDC, VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2
     REAL, DIMENSION( : ), intent( inout ) :: NDOTQ, INCOME
     INTEGER, DIMENSION( : ), intent( in ) :: U_OTHER_LOC
@@ -13294,7 +13302,8 @@ contains
     UGI_COEF_ELE2_ALL = 0.0
 
 
-    Conditional_SELE: IF( SELE /= 0 ) THEN ! On the boundary of the domain.
+!    Conditional_SELE: IF( SELE /= 0 ) THEN ! On the boundary of the domain.
+    Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
        DO IPHASE = 1, NPHASE
           IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
              UDGI_ALL(:, IPHASE) = 0.0
@@ -13320,7 +13329,8 @@ contains
           UGI_COEF_ELE_ALL(:, :, U_KLOC) = 1.0
        END DO
 
-       Conditional_ELE2: IF( ELE2 /= 0 ) THEN
+!       Conditional_ELE2: IF( ELE2 /= 0 ) THEN
+       Conditional_ELE2: IF( between_elements ) THEN
           UDGI2_ALL = 0.0
           DO U_KLOC = 1, U_NLOC
              U_KLOC2 = U_OTHER_LOC( U_KLOC )
@@ -13406,7 +13416,7 @@ end SUBROUTINE GET_INT_VEL_NEW
        LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
        LOC_NU, LOC2_NU, SLOC_NU, &
        CV_NODI, CV_NODJ, CVNORMX_ALL,  &
-       CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, &
+       CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
        SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
        SUF_SIG_DIAGTEN_BC, &
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
@@ -13427,6 +13437,7 @@ end SUBROUTINE GET_INT_VEL_NEW
          SELE, U_SNLOC, STOTEL, CV_NLOC, CV_ILOC, &
          NDIM,  &
          IN_ELE_UPWIND
+    LOGICAL, intent( in ) :: between_elements, on_domain_boundary
     REAL, intent( in ) :: MASS_CV_I, MASS_CV_J, VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2
     REAL, DIMENSION( : ), intent( inout ) :: NDOTQ, INCOME
     REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
@@ -13530,7 +13541,8 @@ end SUBROUTINE GET_INT_VEL_NEW
     got_dt_ij=.false.
 
 
-    Conditional_SELE: IF( SELE /= 0 ) THEN ! On the boundary of the domain. 
+!    Conditional_SELE: IF( SELE /= 0 ) THEN ! On the boundary of the domain. 
+    Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain. 
      DO IPHASE = 1, NPHASE
        IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
           !(vel * shape_functions)/sigma
@@ -13596,7 +13608,8 @@ end SUBROUTINE GET_INT_VEL_NEW
      END DO ! PHASE LOOP
 
     ELSE ! Conditional_SELE. Not on the boundary of the domain.
-       Conditional_ELE2: IF(( ELE2 == 0 ).OR.( ELE2 == ELE)) THEN!same element
+!       Conditional_ELE2: IF(( ELE2 == 0 ).OR.( ELE2 == ELE)) THEN!same element
+       Conditional_ELE2: IF( .not. between_elements ) THEN!same element
 
           UDGI_ALL(:, :) = 0.0
           UDGI2_ALL(:, :) = 0.0
@@ -13806,7 +13819,8 @@ end SUBROUTINE GET_INT_VEL_NEW
           END DO ! PHASE LOOP
 
 
-       ELSE ! Conditional_ELE2: IF( ELE2 /= 0 ) THEN
+!       ELSE ! Conditional_ELE2: IF( ELE2 /= 0 ) THEN
+       ELSE ! Conditional_ELE2: IF( between_elements ) THEN
 
           UDGI_ALL(:, :) = 0.0
           UDGI2_ALL(:, :) = 0.0
