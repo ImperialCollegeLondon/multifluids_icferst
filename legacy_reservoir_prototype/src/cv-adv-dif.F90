@@ -5070,7 +5070,9 @@ deallocate(SCVFENX_ALL, INV_JAC)
     Loop_Elements3: DO ELE = 1, TOTELE
 
        MASS( :, : ) = MASELE( :, :, ELE )
-       CALL MATDMATINV( MASS, INV_MASS, CV_NLOC )
+       INV_MASS=MASS
+!       CALL MATDMATINV( MASS, INV_MASS, CV_NLOC )
+       CALL INVERT( INV_MASS )
 
        FORALL ( IDIM = 1:NDIM, IPHASE = 1:NPHASE )
 
