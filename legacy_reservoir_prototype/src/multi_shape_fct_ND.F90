@@ -45,6 +45,8 @@
     use fields_data_types, only: mesh_type, scalar_field
     use multiphase_caching, only: cache_level, reshape_vector2pointer
 
+    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
+
  contains
 
 
@@ -839,7 +841,6 @@
       !      integer, PARAMETER :: whole_ele_surface_order=2
 
 ! new quadratic element quadrature by James and Zhi and Chris:
-      logical, PARAMETER :: NEW_QUADRATIC_ELE_QUADRATURE = .FALSE.
 
 
     !  print *,'1=cv_ele_type, cv_ngi, :',cv_ele_type, cv_ngi
@@ -2476,6 +2477,16 @@
            cv_gj, cv_gk, cv_iloc, cv_gi, totele_sub, gi_max, gi
       real :: rsum, rmax
 
+      REAL, PARAMETER :: Pi=atan(1.0)*4.0
+
+      real, parameter :: pt1=23./288., pt2=75./288., pt3=167./288., pt4=219./288.
+      real, parameter :: pt5=35./96., pt6=13./96.
+
+      real, parameter :: w1=1./192., w2=7./288., w3=1.0/72.0
+
+      real, parameter :: ptA=((pt2+pt3)*w1+pt5*w3)/w2
+      real, parameter :: ptB=(2.0*pt1*w1+pt6*w3)/w2
+
       !ewrite(3,*)'In vol_cv_tri_tet_shape'
 
       if(cv_ngi.ne.10) then
@@ -2521,51 +2532,61 @@
 !I: : [ 0.11160714  0.38839286  0.38839286  0.11160714] 0.024306
 !J: : [ 0.07986111  0.07986111  0.76041667  0.07986111] 0.005208
 
-  quad_l1(1) = 0.07986111;  quad_l2(1) = 0.07986111;  quad_l3(1) = 0.07986111;  quad_l4(1) = 0.76041667
-  quad_l1(2) = 0.38839286;  quad_l2(2) = 0.11160714;  quad_l3(2) = 0.11160714;  quad_l4(2) = 0.38839286
-  quad_l1(3) = 0.76041667;  quad_l2(3) = 0.07986111;  quad_l3(3) = 0.07986111;  quad_l4(3) = 0.07986111
-  quad_l1(4) = 0.11160714;  quad_l2(4) = 0.38839286;  quad_l3(4) = 0.11160714;  quad_l4(4) = 0.38839286
-  quad_l1(5) = 0.38839286;  quad_l2(5) = 0.38839286;  quad_l3(5) = 0.11160714;  quad_l4(5) = 0.11160714
-  quad_l1(6) = 0.07986111;  quad_l2(6) = 0.76041667;  quad_l3(6) = 0.07986111;  quad_l4(6) = 0.07986111
-  quad_l1(7) = 0.11160714;  quad_l2(7) = 0.11160714;  quad_l3(7) = 0.38839286;  quad_l4(7) = 0.38839286 
-  quad_l1(8) = 0.38839286;  quad_l2(8) = 0.11160714;  quad_l3(8) = 0.38839286;  quad_l4(8) = 0.11160714
-  quad_l1(9) = 0.11160714;  quad_l2(9) = 0.38839286;  quad_l3(9) = 0.38839286;  quad_l4(9) = 0.11160714
-  quad_l1(10)= 0.07986111;  quad_l2(10)= 0.07986111;  quad_l3(10)= 0.76041667;  quad_l4(10)= 0.07986111
+  quad_l1(1) = pt4;         quad_l2(1) = pt1;         quad_l3(1) = pt1;         quad_l4(1) = pt1
+  quad_l1(2) = ptA;         quad_l2(2) = ptA;         quad_l3(2) = ptB;         quad_l4(2) = ptB
+  quad_l1(3) = pt1;         quad_l2(3) = pt4;         quad_l3(3) = pt1;         quad_l4(3) = pt1
+  quad_l1(4) = ptA;         quad_l2(4) = ptB;         quad_l3(4) = ptA;         quad_l4(4) = ptB
+  quad_l1(5) = ptB;         quad_l2(5) = ptA;         quad_l3(5) = ptA;         quad_l4(5) = ptB
+  quad_l1(6) = pt1;         quad_l2(6) = pt1;         quad_l3(6) = pt4;         quad_l4(6) = pt1
+  quad_l1(7) = ptA;         quad_l2(7) = ptB;         quad_l3(7) = ptB;         quad_l4(7) = ptA 
+  quad_l1(8) = ptB;         quad_l2(8) = ptA;         quad_l3(8) = ptB;         quad_l4(8) = ptA
+  quad_l1(9) = ptB;         quad_l2(9) = ptB;         quad_l3(9) = ptA;         quad_l4(9) = ptA
+  quad_l1(10)= pt1;         quad_l2(10)= pt1;         quad_l3(10)= pt1;         quad_l4(10)= pt4
 
-  cvweigh(1) = 0.005208
-  cvweigh(2) = 0.024306
-  cvweigh(3) = 0.005208
-  cvweigh(4) = 0.024306
-  cvweigh(5) = 0.024306
-  cvweigh(6) = 0.005208
-  cvweigh(7) = 0.024306
-  cvweigh(8) = 0.024306
-  cvweigh(9) = 0.024306
-  cvweigh(10)= 0.005208
+  cvweigh(1) = w1
+  cvweigh(2) = w2
+  cvweigh(3) = w1
+  cvweigh(4) = w2
+  cvweigh(5) = w2
+  cvweigh(6) = w1
+  cvweigh(7) = w2
+  cvweigh(8) = w2
+  cvweigh(9) = w2
+  cvweigh(10)= w1
 
 ! scale taking into account we have a volume of 1./6. of the tet
-  cvweigh(:) = cvweigh(:) / ( 1./6. )  
+!  cvweigh(:) = cvweigh(:) * 6.0
 
 
       ! Now determine the basis functions and derivatives at the 
       ! quadrature pts quad_L1, quad_L2, quad_L3, quad_L4, etc
-      call shatri_hex( quad_l1, quad_l2, quad_l3, quad_l4, rdummy, d3, &
+
+!  call SHATRIold(quad_L4, quad_L1,quad_L2, quad_L3, rdummy, .true. , &
+!        CV_NLOC,cv_NGI, N,NLX,NLY,NLZ) 
+
+      call shatri_hex( quad_l1, quad_l2, quad_l3, quad_l4, rdummy, .true., &
            cv_nloc, cv_ngi, n, nlx, nly, nlz, &
            .true. )
 
 ! calculate cvn based on maximum value of n: 
-      cvn=0.0 
+!      cvn=0.0 
+!      do cv_iloc=1,cv_nloc
+!         rmax=-1.e+10
+!         gi_max=0
+!         do gi=1,cv_ngi
+!            if(n(cv_iloc,gi).gt.rmax) then
+!               rmax=n(cv_iloc,gi)
+!               gi_max=gi
+!            endif
+!         end do
+!         cvn(cv_iloc,gi_max)=1.0
+!      end do
+      cvn=0.0
       do cv_iloc=1,cv_nloc
-         rmax=-1.e+10
-         gi_max=0
-         do gi=1,cv_ngi
-            if(n(cv_iloc,gi).gt.rmax) then
-               rmax=n(cv_iloc,gi)
-               gi_max=gi
-            endif
-         end do
-         cvn(cv_iloc,gi_max)=1.0
+         cvn(cv_iloc,cv_iloc)=1.0
       end do
+      
+      
 
       ! Now determine the basis functions and derivatives at the 
       ! quadrature pts quad_L1, quad_L2, quad_L3, quad_L4, etc
@@ -3132,8 +3153,6 @@
       logical :: d1, dcyl, d3
       integer :: x_nonods, totele, ele, cv_iloc, quad_cv_ngi, quad_cv_nloc, inod, sgi
       real, dimension( : ), allocatable ::  BI_NORMAL, TANGENT_VEC
-! new quadratic element quadrature by James and Zhi and Chris:
-      logical, PARAMETER :: NEW_QUADRATIC_ELE_QUADRATURE = .FALSE.
       real :: DXDLX,DXDLY, DYDLX,DYDLY, DZDLX,DZDLY 
       real :: A,B,C
 
@@ -3148,24 +3167,27 @@
          ALLOCATE( SCVDET(scvngi))
 
          ALLOCATE( l1(scvngi), l2(scvngi), l3(scvngi), l4(scvngi) )
-         ALLOCATE( rdummy(scvngi), normx(scvngi), normy(scvngi), normz(scvngi) )
+         ALLOCATE( rdummy(scvngi),sarea(scvngi))
          ALLOCATE( X_LOC(CV_NLOC), Y_LOC(CV_NLOC), Z_LOC(CV_NLOC) )
 
-         call james_quadrature_quad_tet(l1, l2, l3, l4,  normx, normy, normz, sarea, &
+         call james_quadrature_quad_tet(l1, l2, l3,l4,  normx, normy, normz, sarea, &
                                         X_LOC, Y_LOC, Z_LOC, CV_NEILOC, cv_nloc, scvngi)
+
+         d3=.true.
+
 ! scale taking into account we have a volume of 1./6. of the tet
-         sarea=sarea/ (  (1./6.)*0.6666666666  )
+!         sarea=sarea/ (  (1./6.)*0.6666666666  )
 
 ! determine th tangent and bi-normal vectors from the normal NormX,NormY,NormZ: 
        CALL GET_TANG_BINORM(NormX,NormY,NormZ, T1X,T1Y,T1Z, T2X,T2Y,T2Z, scvngi)
 
 ! Determin the shape function derivatives at the quadrature points: scvfenlx, scvfenly, scvfenlz. 
 
-      call shatri_hex( l1, l2, l3, l4, rdummy, d3, &
+      call shatri_hex( l1, l2,l3, l4, rdummy, d3, &
            cv_nloc, scvngi, scvfen, scvfenlx, scvfenly, scvfenlz, &
            .true. )
 
-      call shatri_hex( l1, l2, l3, l4, rdummy, d3, &
+      call shatri_hex( l1, l2,l3, l4, rdummy, d3, &
            u_nloc, scvngi, sufen, sufenlx, sufenly, sufenlz, &
            .true. )
 
@@ -3218,6 +3240,8 @@
          sufenslx(:,sgi) = sufenslx(:,sgi) / SCVDET(sgi) 
          sufensly(:,sgi) = sufensly(:,sgi) / SCVDET(sgi) 
       end do
+
+      cvfem_neiloc=cv_neiloc
 
           
 ! finished quadratic tet. 
@@ -3366,7 +3390,323 @@
 ! To get the neighbouring node for node ILOC and surface quadrature point SGI
 !               CV_JLOC = CV_NEILOC( CV_ILOC, SGI )
 ! The number of quadrature points is 24 = 4 x 6 exterior faces (and quadrature points) and  36 = 4x6 + 6x4/2  = 60 pts. 
+
+       real, parameter :: haf=1.0/2.0
+       real, dimension(4,10) :: xi 
+       real, dimension(3,60) :: norm
+       real, dimension(4,60) :: li
+
+       type quad_data
+          real, dimension(4) :: l
+          real :: weight
+          real, dimension(3) :: normal
+       end type quad_data
+
+! Use right angled reference triangle
+      
+!!$       xi(:, 1)=[0.0,0.0,0.0,1.0]
+!!$       xi(:, 2)=[haf,0.0,0.0,haf]
+!!$       xi(:, 3)=[1.0,0.0,0.0,0.0]
+!!$       xi(:, 4)=[0.0,haf,0.0,haf]
+!!$       xi(:, 5)=[haf,haf,0.0,0.0]
+!!$       xi(:, 6)=[0.0,1.0,0.0,0.0]
+!!$       xi(:, 7)=[0.0,0.0,haf,haf]
+!!$       xi(:, 8)=[haf,0.0,haf,0.0]
+!!$       xi(:, 9)=[0.0,haf,haf,0.0]
+!!$       xi(:,10)=[0.0,0.0,1.0,0.0]
+
+
+       xi(:, 1)=[1.0,0.0,0.0,0.0]
+       xi(:, 2)=[haf,haf,0.0,0.0]
+       xi(:, 3)=[0.0,1.0,0.0,0.0]
+       xi(:, 4)=[haf,0.0,haf,0.0]
+       xi(:, 5)=[0.0,haf,haf,0.0]
+       xi(:, 6)=[0.0,0.0,1.0,0.0]
+       xi(:, 7)=[haf,0.0,0.0,haf]
+       xi(:, 8)=[0.0,haf,0.0,haf]
+       xi(:, 9)=[0.0,0.0,haf,haf]
+       xi(:,10)=[0.0,0.0,0.0,1.0]
+
+       cv_neiloc=0
+
+! Exterior faces :  1,3,6  ----James is this face the face with the 1st 6 surface quadrature points and the 1st 6 CV's.
+!                     This is only the exterior surface faces on the triangle with 1,2,3,4,5,6 
+       
+       cv_neiloc([1,2,3,4,5,6],1:6)=-1
+
+      call set_quad(li(:,1),sarea(1),norm(:,1),quad_gp(1,2,4))
+      call set_quad(li(:,2),sarea(2),norm(:,2),&
+           sum_gp(quad_gp(2,1,4),quad_gp(2,4,5),quad_gp(2,3,5)))
+      call set_quad(li(:,3),sarea(3),norm(:,3),quad_gp(3,2,5))
+      call set_quad(li(:,4),sarea(4),norm(:,4),&
+           sum_gp(quad_gp(4,1,2),quad_gp(4,2,5),quad_gp(4,5,6)))
+      call set_quad(li(:,5),sarea(5),norm(:,5),&
+           sum_gp(quad_gp(5,2,3),quad_gp(5,2,4),quad_gp(5,4,6)))
+      call set_quad(li(:,6),sarea(6),norm(:,6),quad_gp(6,4,5))
+
+
+! Exterior faces :  1,3,10
+
+      cv_neiloc([1,2,3,7,8,10],7:12)=-1
+
+      call set_quad(li(:,7),sarea(7),norm(:,7),quad_gp(1,2,7))
+      call set_quad(li(:,8),sarea(8),norm(:,8),&
+           sum_gp(quad_gp(2,1,7),quad_gp(2,7,8),quad_gp(2,3,8)))
+      call set_quad(li(:,9),sarea(9),norm(:,9),quad_gp(3,2,8))
+      call set_quad(li(:,10),sarea(10),norm(:,10),&
+           sum_gp(quad_gp(7,1,2),quad_gp(7,2,8),quad_gp(7,8,10)))
+      call set_quad(li(:,11),sarea(11),norm(:,11),&
+           sum_gp(quad_gp(8,2,3),quad_gp(8,2,7),quad_gp(8,7,10)))
+      call set_quad(li(:,12),sarea(12),norm(:,12),quad_gp(10,7,8))
+
+! Exterior faces :  1,6,10
+
+       cv_neiloc([1,4,6,7,9,10],13:18)=-1
+
+      call set_quad(li(:,13),sarea(13),norm(:,13),quad_gp(1,4,7))
+      call set_quad(li(:,14),sarea(14),norm(:,14),&
+           sum_gp(quad_gp(4,1,7),quad_gp(4,7,9),quad_gp(4,6,9)))
+      call set_quad(li(:,15),sarea(15),norm(:,15),quad_gp(6,4,9))
+      call set_quad(li(:,16),sarea(16),norm(:,16),&
+           sum_gp(quad_gp(7,1,4),quad_gp(7,4,9),quad_gp(7,9,10)))
+      call set_quad(li(:,17),sarea(17),norm(:,17),&
+           sum_gp(quad_gp(9,4,6),quad_gp(9,4,7),quad_gp(9,7,10)))
+      call set_quad(li(:,18),sarea(18),norm(:,18),quad_gp(10,7,9))
+
+! Exterior faces :  3,6,10
+
+       cv_neiloc([3,5,6,8,9,10],19:24)=-1
+
+      call set_quad(li(:,19),sarea(19),norm(:,19),quad_gp(3,5,8))
+      call set_quad(li(:,20),sarea(20),norm(:,20),&
+           sum_gp(quad_gp(5,3,8),quad_gp(5,8,9),quad_gp(5,6,9)))
+      call set_quad(li(:,21),sarea(21),norm(:,21),quad_gp(6,5,9))
+      call set_quad(li(:,22),sarea(22),norm(:,22),&
+           sum_gp(quad_gp(8,3,5),quad_gp(8,5,9),quad_gp(8,9,10)))
+      call set_quad(li(:,23),sarea(23),norm(:,23),&
+           sum_gp(quad_gp(9,5,6),quad_gp(9,5,8),quad_gp(9,8,10)))
+      call set_quad(li(:,24),sarea(24),norm(:,24),quad_gp(10,8,9))
+
+
+! interior faces: sub-tet 1,2,4,7
+
+      call set_neiloc_tet(cv_neiloc(:,25:30),[1,2,4,7])
+
+      call set_quad(li(:,25),sarea(25),norm(:,25),quad4_gp(1,2,4,7))
+      call set_quad(li(:,26),sarea(26),norm(:,26),quad4_gp(1,4,2,7))
+      call set_quad(li(:,27),sarea(27),norm(:,27),quad4_gp(1,7,2,4))
+      call set_quad(li(:,28),sarea(28),norm(:,28),quad4_gp(2,4,1,7))
+      call set_quad(li(:,29),sarea(29),norm(:,29),quad4_gp(2,7,1,4))
+      call set_quad(li(:,30),sarea(30),norm(:,30),quad4_gp(4,7,1,2))
+
+
+! interior faces: sub-tet 2,3,5,8
+      call set_neiloc_tet(cv_neiloc(:,31:36),[2,3,5,8])
+
+      call set_quad(li(:,31),sarea(31),norm(:,31),quad4_gp(2,3,5,8))
+      call set_quad(li(:,32),sarea(32),norm(:,32),quad4_gp(2,5,3,8))
+      call set_quad(li(:,33),sarea(33),norm(:,33),quad4_gp(2,8,3,5))
+      call set_quad(li(:,34),sarea(34),norm(:,34),quad4_gp(3,5,2,8))
+      call set_quad(li(:,35),sarea(35),norm(:,35),quad4_gp(3,8,2,5))
+      call set_quad(li(:,36),sarea(36),norm(:,36),quad4_gp(5,8,2,3))
+
+! interior faces: sub-tet 4,5,6,9
+      call set_neiloc_tet(cv_neiloc(:,37:42),[4,5,6,9])
+
+      call set_quad(li(:,37),sarea(37),norm(:,37),quad4_gp(4,5,6,9))
+      call set_quad(li(:,38),sarea(38),norm(:,38),quad4_gp(4,6,5,9))
+      call set_quad(li(:,39),sarea(39),norm(:,39),quad4_gp(4,9,5,6))
+      call set_quad(li(:,40),sarea(40),norm(:,40),quad4_gp(5,6,4,9))
+      call set_quad(li(:,41),sarea(41),norm(:,41),quad4_gp(5,9,4,6))
+      call set_quad(li(:,42),sarea(42),norm(:,42),quad4_gp(6,9,4,5))
+
+! interior faces: sub-tet 7,8,9,10
+      call set_neiloc_tet(cv_neiloc(:,43:48),[7,8,9,10])
+
+      call set_quad(li(:,43),sarea(43),norm(:,43),quad4_gp(7,8,9,10))
+      call set_quad(li(:,44),sarea(44),norm(:,44),quad4_gp(7,9,8,10))
+      call set_quad(li(:,45),sarea(45),norm(:,45),quad4_gp(7,10,8,9))
+      call set_quad(li(:,46),sarea(46),norm(:,46),quad4_gp(8,9,7,10))
+      call set_quad(li(:,47),sarea(47),norm(:,47),quad4_gp(8,10,7,9))
+      call set_quad(li(:,48),sarea(48),norm(:,48),quad4_gp(9,10,7,8))
+
+! interior faces octohedron 2,4,5,7,8,9
+
+      call set_quad(li(:,49),sarea(49),norm(:,49),quad6_gp(2,4,5,8,7,9))
+      call set_quad(li(:,50),sarea(50),norm(:,50),quad6_gp(2,5,8,7,4,9))
+      call set_quad(li(:,51),sarea(51),norm(:,51),quad6_gp(2,8,7,4,5,9))
+      call set_quad(li(:,52),sarea(52),norm(:,52),quad6_gp(2,7,4,5,8,9))
+      call set_quad(li(:,53),sarea(53),norm(:,53),quad6_gp(4,2,7,9,5,8))
+      call set_quad(li(:,54),sarea(54),norm(:,54),quad6_gp(4,2,5,9,7,8))
+      call set_quad(li(:,55),sarea(55),norm(:,55),quad6_gp(4,5,9,7,2,8))
+      call set_quad(li(:,56),sarea(56),norm(:,56),quad6_gp(5,2,8,9,4,7))
+      call set_quad(li(:,57),sarea(57),norm(:,57),quad6_gp(5,4,9,8,2,7))
+      call set_quad(li(:,58),sarea(58),norm(:,58),quad6_gp(7,2,8,9,4,5))
+      call set_quad(li(:,59),sarea(59),norm(:,59),quad6_gp(7,4,9,8,2,5))
+      call set_quad(li(:,60),sarea(60),norm(:,60),quad6_gp(8,5,9,7,2,4))
+
+
+
+      ! node pairs are 1st and 3rd entries in the quad6_gp function calls above.
+
+      cv_neiloc(2,49)=5; cv_neiloc(5,49)=2;
+      cv_neiloc(2,50)=8; cv_neiloc(8,50)=2;
+      cv_neiloc(2,51)=7; cv_neiloc(7,51)=2;
+      cv_neiloc(2,52)=4; cv_neiloc(4,52)=2;
+      cv_neiloc(4,53)=7; cv_neiloc(7,53)=4;
+      cv_neiloc(4,54)=5; cv_neiloc(5,54)=4;
+      cv_neiloc(4,55)=9; cv_neiloc(9,55)=4;
+      cv_neiloc(5,56)=8; cv_neiloc(8,56)=5;
+      cv_neiloc(5,57)=9; cv_neiloc(9,57)=5;
+      cv_neiloc(7,58)=8; cv_neiloc(8,58)=7;
+      cv_neiloc(7,59)=9; cv_neiloc(9,59)=7;
+      cv_neiloc(8,60)=9; cv_neiloc(9,60)=8;
+
+
+!      copy to 1d arrays
+
+      l1=li(1,:); l2=li(2,:) ; l3=li(3,:); l4=li(4,:)
+      normx=norm(1,:) ; normy =norm(2,:); normz=norm(3,:) 
+
+      x_loc=xi(1,:);y_loc=xi(2,:);z_loc=xi(3,:)
+
        return
+      contains 
+
+        subroutine set_quad(l,area,normal,quad)
+
+          real, dimension(:), intent(out) :: l
+          real, intent(out) :: area
+          real, dimension(:), intent(out) :: normal
+          type(quad_data), intent(in) :: quad
+
+          l=quad%l
+          area=quad%weight
+          normal=quad%normal/sqrt(sum(quad%normal**2))
+        end subroutine set_quad
+
+        function sum_gp(q1,q2,q3) result(q)
+          type(quad_data), intent(in) :: q1,q2,q3
+          type(quad_data)  :: q
+
+          q%weight=q1%weight+q2%weight+q3%weight
+          q%l=(q1%l*q1%weight+q2%l*q2%weight+q3%l*q3%weight)/q%weight
+          q%normal=q1%normal
+
+        end function sum_gp
+
+        function quad_gp(i1,i2,i3) result(quad)
+          integer, intent(in) :: i1,i2,i3
+          type(quad_data) :: quad
+          
+          real w1,w2
+          real, dimension(4) :: p1,p2,p3,p4,c1,c2
+
+          ! define the points of the quadrilateral on the exterior surface
+
+          p1=xi(:,i1)
+          p2=(xi(:,i1)+xi(:,i2))/2.0
+          p3=(xi(:,i1)+xi(:,i2)+xi(:,i3))/3.0
+          p4=(xi(:,i1)+xi(:,i3))/2.0
+
+          w1=triangle_area(p3-p1,p2-p1)
+          c1=(p1+p2+p3)/3.0
+          w2=triangle_area(p3-p1,p4-p1)
+          c2=(p1+p4+p3)/3.0
+
+          quad%weight=w1+w2
+          quad%l=(w1*c1+w2*c2)/quad%weight
+          quad%normal=cross4(p3-p1,p4-p2)
+
+        end function quad_gp
+
+        function quad4_gp(i1,i2,i3,i4) result(quad)
+          integer, intent(in) :: i1,i2,i3,i4
+          type(quad_data) :: quad
+          
+          real w1,w2
+          real, dimension(4) :: p1,p2,p3,p4,c1,c2
+
+          ! define the points of the quadrilateral on the interior of a tetrahedron
+
+          p1=(xi(:,i1)+xi(:,i2))/2.0
+          p2=(xi(:,i1)+xi(:,i2)+xi(:,i3))/3.0
+          p3=(xi(:,i1)+xi(:,i2)+xi(:,i3)+xi(:,i4))/4.0
+          p4=(xi(:,i1)+xi(:,i2)+xi(:,i4))/3.0
+ 
+
+          w1=triangle_area(p3-p1,p2-p1)
+          c1=(p1+p2+p3)/3.0
+          w2=triangle_area(p3-p1,p4-p1)
+          c2=(p1+p4+p3)/3.0
+
+          quad%weight=w1+w2
+          quad%l=(w1*c1+w2*c2)/quad%weight
+          quad%normal=cross4(p3-p1,p4-p2)
+
+        end function quad4_gp
+
+        function quad6_gp(i1,i2,i3,i4,i5,i6) result(quad)
+          integer, intent(in) :: i1,i2,i3,i4,i5,i6
+          type(quad_data)  :: quad
+          
+          real w1,w2
+          real, dimension(4) :: p1,p2,p3,p4,c1,c2
+
+          ! define the points of the quadrilateral on the interior of a octohedron
+
+          p1=(xi(:,i1)+xi(:,i3))/2.0
+          p2=(xi(:,i1)+xi(:,i2)+xi(:,i3))/3.0
+          p3=(xi(:,i1)+xi(:,i2)+xi(:,i3)+xi(:,i4)+xi(:,i5)+xi(:,i6))/6.0
+          p4=(xi(:,i1)+xi(:,i3)+xi(:,i4))/3.0
+
+          w1=triangle_area(p3-p1,p2-p1)
+          c1=(p1+p2+p3)/3.0
+          w2=triangle_area(p3-p1,p4-p1)
+          c2=(p1+p4+p3)/3.0
+
+          quad%weight=w1+w2
+          quad%l=(w1*c1+w2*c2)/quad%weight
+          quad%normal=cross4(p3-p1,p4-p2)
+
+        end function quad6_gp
+
+        function cross4(v1,v2) result(vo)
+          real, dimension(4), intent(in) :: v1,v2
+          real, dimension(3) :: vo
+
+          vo(1)=v1(2)*v2(3)-v2(2)*v1(3)
+          vo(2)=v1(3)*v2(1)-v2(3)*v1(1)
+          vo(3)=v1(1)*v2(2)-v2(1)*v1(2)          
+        end function cross4
+
+        function triangle_area(v1,v2) result(area)
+          real, dimension(4), intent(in) :: v1,v2
+          real :: area
+
+          area=sqrt(sum(cross4(v1,v2)**2))/2.0
+        end function triangle_area
+
+        subroutine set_neiloc_tet(neighbour_list,vertices)
+          integer, dimension(:,:), intent(inout) :: neighbour_list
+          integer, dimension(4), intent(in) :: vertices
+
+          neighbour_list(vertices(1),1)=vertices(2) 
+          neighbour_list(vertices(2),1)=vertices(1)
+          neighbour_list(vertices(1),2)=vertices(3) 
+          neighbour_list(vertices(3),2)=vertices(1)
+          neighbour_list(vertices(1),3)=vertices(4) 
+          neighbour_list(vertices(4),3)=vertices(1)
+          neighbour_list(vertices(2),4)=vertices(3) 
+          neighbour_list(vertices(3),4)=vertices(2)
+          neighbour_list(vertices(2),5)=vertices(4) 
+          neighbour_list(vertices(4),5)=vertices(2)
+          neighbour_list(vertices(3),6)=vertices(4) 
+          neighbour_list(vertices(4),6)=vertices(3)
+
+        end subroutine set_neiloc_tet
+
+
        end subroutine james_quadrature_quad_tet
 
 
@@ -9204,7 +9544,7 @@
                STOP 4337
             END IF
 
-            if (AlternativeOrdering) then
+            if (AlternativeOrdering.AND.(.NOT.NEW_QUADRATIC_ELE_QUADRATURE)) then
 
                 CV_SLOCLIST(1,1)=2
                 CV_SLOCLIST(1,2)=1
@@ -9223,14 +9563,18 @@
                 CV_SLOCLIST(4,3)=4
 
             else
-
+! Chris and James check these...
                 CV_SLOCLIST(1,1)=1
                 CV_SLOCLIST(1,2)=2
                 CV_SLOCLIST(1,3)=3
 
-                CV_SLOCLIST(2,1)=1
-                CV_SLOCLIST(2,2)=4
-                CV_SLOCLIST(2,3)=2
+!                CV_SLOCLIST(2,1)=1
+!                CV_SLOCLIST(2,2)=4
+!                CV_SLOCLIST(2,3)=2
+
+                CV_SLOCLIST(2,1)=2
+                CV_SLOCLIST(2,2)=1
+                CV_SLOCLIST(2,3)=4
 
                 CV_SLOCLIST(3,1)=1
                 CV_SLOCLIST(3,2)=3
@@ -9247,7 +9591,7 @@
                STOP 4338
             END IF
 
-            if (AlternativeOrdering) then
+            if (AlternativeOrdering.AND.(.NOT.NEW_QUADRATIC_ELE_QUADRATURE)) then
                 CV_SLOCLIST(1,1)=3
                 CV_SLOCLIST(1,2)=2
                 CV_SLOCLIST(1,3)=1
