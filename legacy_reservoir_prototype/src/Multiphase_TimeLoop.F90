@@ -203,9 +203,9 @@
       real, dimension( :, :, :, : ), allocatable :: Momentum_Diffusion, ScalarAdvectionField_Diffusion, &
            Component_Diffusion
       real, dimension( :, : ), allocatable :: Momentum_Diffusion_Vol
-           
+
       real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
-                               sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
+           sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
 
 !!$ Material_Absorption_Stab = u_abs_stab; Material_Absorption = u_absorb; ScalarField_Absorption = v_absorb
 !!$ Component_Absorption = comp_absorb; ScalarAdvectionField_Absorption = t_absorb
@@ -267,7 +267,7 @@
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
-      
+
       ierr = Zoltan_Initialize(ver)  
       assert(ierr == ZOLTAN_OK)
 #endif
@@ -283,18 +283,18 @@
          call populate_sub_state(state,sub_state)
       end if
 
-    !! JRP changes to make a multiphasic state
+      !! JRP changes to make a multiphasic state
       call pack_multistate(state,packed_state,multiphase_state,&
            multicomponent_state)
       call set_boundary_conditions_values(state, shift_time=.true.)
 
       call set_caching_level()
 
-!      call initialize_rheologies(state,rheology)
+      !      call initialize_rheologies(state,rheology)
 
-    !Get from packed_state
-    call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
-    OldPhaseVolumeFraction=OldSAT_s,FEPhaseVolumeFraction = FESAT_s )
+      !Get from packed_state
+      call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
+           OldPhaseVolumeFraction=OldSAT_s,FEPhaseVolumeFraction = FESAT_s )
       IDIVID_BY_VOL_FRAC=0
       !call print_state( packed_state )
       !stop 78
@@ -322,8 +322,8 @@
            u_sndgln( stotel * u_snloc ) )
 
 
-!      x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
-           cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
+      !      x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
+      cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
 
       call Compute_Node_Global_Numbers( state, &
            totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
@@ -382,7 +382,7 @@
 !!$ CV-FEM matrix
            mx_ncolm, ncolm, findm, colm, midm, mx_nface_p1 )
 
-    call temp_mem_hacks()
+      call temp_mem_hacks()
 
       Q_SCHEME = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/spatial_discretisation/control_volumes/q_scheme' )
       IGOT_THERM_VIS = 0
@@ -424,7 +424,7 @@
            plike_grad_sou_grad( cv_nonods * nphase ), &
            plike_grad_sou_coef( cv_nonods * nphase ), &
            THERM_U_DIFFUSION(NDIM,NDIM,NPHASE,MAT_NONODS*IGOT_THERM_VIS ), THERM_U_DIFFUSION_VOL(NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
- 
+
       ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln)
 
 !!$
@@ -545,8 +545,8 @@
 !!$ Option not currently set up in the schema and zeroed from the begining. It is used to control 
 !!$ the upwinding rate (in the absorption term) during advection/assembling.
 
-    allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
-    allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
+      allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
+      allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
 
 !!$ Defining problem to be solved:
       call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &
@@ -564,7 +564,7 @@
       call get_option( '/timestepping/finish_time', finish_time )
       call get_option( '/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1 )
       call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
-!      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic', tolerance_between_non_linear, default = -1. )
+      !      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic', tolerance_between_non_linear, default = -1. )
 !!$
       have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
       do istate = 1, nstate
@@ -573,8 +573,8 @@
          if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
               have_component_field = .true.
 !!$
-            call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
-                 cv_ndgln, DRhoDPressure )
+         call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
+              cv_ndgln, DRhoDPressure )
 
          if( have_component_field ) then
             call get_option( '/material_phase[' // int2str( istate - 1 ) // 'scalar_field::' // &
@@ -591,24 +591,24 @@
       end if
 
 
-   !   print *,'u_nonods, cv_nonods, totele:',u_nonods, cv_nonods, totele
-   !   print *,'mx_ncolacv, ncolacv:',mx_ncolacv, ncolacv
-   !   print *,'nlenmcy, mx_ncolmcy, ncolmcy,mxnele, ncolele:',nlenmcy, mx_ncolmcy, ncolmcy,mxnele, ncolele
-   !   print *,'mx_ncoldgm_pha, ncoldgm_pha:',mx_ncoldgm_pha, ncoldgm_pha
-   !   print *,'mx_nct, ncolct,mx_nc, ncolc, mx_ncolcmc, ncolcmc:',mx_nct, ncolct,mx_nc, ncolc, mx_ncolcmc, ncolcmc
-   !   print *,'mx_ncolm, ncolm:',mx_ncolm, ncolm
-   !   stop 282
+      !   print *,'u_nonods, cv_nonods, totele:',u_nonods, cv_nonods, totele
+      !   print *,'mx_ncolacv, ncolacv:',mx_ncolacv, ncolacv
+      !   print *,'nlenmcy, mx_ncolmcy, ncolmcy,mxnele, ncolele:',nlenmcy, mx_ncolmcy, ncolmcy,mxnele, ncolele
+      !   print *,'mx_ncoldgm_pha, ncoldgm_pha:',mx_ncoldgm_pha, ncoldgm_pha
+      !   print *,'mx_nct, ncolct,mx_nc, ncolc, mx_ncolcmc, ncolcmc:',mx_nct, ncolct,mx_nc, ncolc, mx_ncolcmc, ncolcmc
+      !   print *,'mx_ncolm, ncolm:',mx_ncolm, ncolm
+      !   stop 282
 
-    if (have_component_field) then
-        !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
-        do cv_inod = 1, size(SAT_s,2)
+      if (have_component_field) then
+         !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
+         do cv_inod = 1, size(SAT_s,2)
             do iphase = 1, size(SAT_s,1)
-                phaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
-                PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
+               PhaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
+               PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
             end do
-        end do
-        !#############################################################
-    end if
+         end do
+         !#############################################################
+      end if
 !!$ Starting Time Loop
       itime = 0
       dtime = 0
@@ -652,10 +652,10 @@
             end if
          end if
 
-        ExitNonLinearLoop = .false.
-        !Store backup to be able to repeat a timestep
+         ExitNonLinearLoop = .false.
+         !Store backup to be able to repeat a timestep
          if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
-        Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
+              Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
 
 
 !!$ Update all fields from time-step 'N - 1'
@@ -682,7 +682,7 @@
          ! evaluate prescribed fields at time = current_time+dt
          call set_prescribed_field_values( state, exclude_interpolated = .true., &
               exclude_nonreprescribed = .true., time = acctim )
-        !! Update all fields from time-step 'N - 1'
+         !! Update all fields from time-step 'N - 1'
          call copy_packed_new_to_old( packed_state )
 
          ! update velocity absorption
@@ -699,27 +699,27 @@
 !!$ Start non-linear loop
          Loop_NonLinearIteration: do  its = 1, NonLinearIteration
 
-         ewrite(2,*) '  NEW ITS', its
+            ewrite(2,*) '  NEW ITS', its
 
-          call calculate_rheologies(state,rheology)
-        !To force the recalculation of all the stored variables uncomment the following line:
-!        call Clean_Storage(state, StorageIndexes)
+            call calculate_rheologies(state,rheology)
+            !To force the recalculation of all the stored variables uncomment the following line:
+            !        call Clean_Storage(state, StorageIndexes)
 
 
-         if( have_temperature_field .and. &
-              have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-            call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation' // &
-              '/control_volumes/second_theta', second_theta, default=1. )
-         end if
+            if( have_temperature_field .and. &
+                 have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
+               call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation' // &
+                    '/control_volumes/second_theta', second_theta, default=1. )
+            end if
 
-         if( have_component_field ) then
-            call get_option( '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
-              'prognostic/temporal_discretisation/control_volumes/second_theta', second_theta, default=1. )
-         end if
+            if( have_component_field ) then
+               call get_option( '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
+                    'prognostic/temporal_discretisation/control_volumes/second_theta', second_theta, default=1. )
+            end if
 
             !Store the field we want to compare with to check how are the computations going
             call Adaptive_NonLinear(packed_state, reference_field, its, &
-            Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
+                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
 
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
@@ -748,7 +748,7 @@
                NUOLD_s % val = UOLD_s % val
 
                call calculate_diffusivity( state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
-                                           mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
+                    mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
 
 
                tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
@@ -948,7 +948,7 @@
             velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
             saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             old_saturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
-               
+
 
             Conditional_Components:if( have_component_field ) then
 
@@ -976,15 +976,15 @@
                            end do
                         end if
 
-                    !    if( PhaseVolumeFraction( cv_nodi ) > 0.90 ) then
-                    !       do iphase = 1, nphase
-                    !          do jphase = min( iphase + 1, nphase ), nphase
-                    !             Component_Absorption( cv_nodi, iphase, jphase ) = &
-                    !                  Component_Absorption( cv_nodi, iphase, jphase ) * max( 0.00001, &
-                    !                  20. * ( 1. - (PhaseVolumeFraction( cv_nodi )-0.05)  ) )
-                    !          end do
-                    !       end do
-                    !    end if
+                        !    if( PhaseVolumeFraction( cv_nodi ) > 0.90 ) then
+                        !       do iphase = 1, nphase
+                        !          do jphase = min( iphase + 1, nphase ), nphase
+                        !             Component_Absorption( cv_nodi, iphase, jphase ) = &
+                        !                  Component_Absorption( cv_nodi, iphase, jphase ) * max( 0.00001, &
+                        !                  20. * ( 1. - (PhaseVolumeFraction( cv_nodi )-0.05)  ) )
+                        !          end do
+                        !       end do
+                        !    end if
 
                      end do
                   end if Conditional_SmoothAbsorption
@@ -1055,21 +1055,21 @@
                   ! We have divided through by density 
                   do cv_inod=1,cv_nonods
                      do iphase=1,nphase
-                  ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) = ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) + THETA_GDIFF(iphase,cv_inod)
+                        ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) = ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) + THETA_GDIFF(iphase,cv_inod)
                      end do
                   end do
 
                end do Loop_Components
 
-!! Temporal working array:
-!         DO CV_INOD = 1, CV_NONODS
-!            DO IPHASE = 1, NPHASE
-!               DO ICOMP = 1, NCOMP
-!                  MFC_s%val(ICOMP, IPHASE, CV_INOD) = &
-!                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS )
-!               END DO
-!            END DO
-!         END DO
+               !! Temporal working array:
+               !         DO CV_INOD = 1, CV_NONODS
+               !            DO IPHASE = 1, NPHASE
+               !               DO ICOMP = 1, NCOMP
+               !                  MFC_s%val(ICOMP, IPHASE, CV_INOD) = &
+               !                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS )
+               !               END DO
+               !            END DO
+               !         END DO
 
 
                if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // & 
@@ -1145,15 +1145,15 @@
                        Mean_Pore_CV )
                end if
 
-!! Temporal working array:
-!               DO CV_INOD = 1, CV_NONODS
-!                  DO IPHASE = 1, NPHASE
-!                     DO ICOMP = 1, NCOMP
-!                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS ) = &
-!                           MFC_s%val(ICOMP, IPHASE, CV_INOD)
-!                     END DO
-!                  END DO
-!               END DO
+               !! Temporal working array:
+               !               DO CV_INOD = 1, CV_NONODS
+               !                  DO IPHASE = 1, NPHASE
+               !                     DO ICOMP = 1, NCOMP
+               !                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS ) = &
+               !                           MFC_s%val(ICOMP, IPHASE, CV_INOD)
+               !                     END DO
+               !                  END DO
+               !               END DO
 
 !!$               ! Update state memory
 !!$               do icomp = 1, ncomp
@@ -1169,22 +1169,22 @@
 
             !Check if the results are good so far and act in consequence, only does something if requested by the user
             call Adaptive_NonLinear(packed_state, reference_field, its,&
-            Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3)
+                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3)
             if (ExitNonLinearLoop) exit Loop_NonLinearIteration
 
          end do Loop_NonLinearIteration
 
-        if (nonLinearAdaptTs) then
+         if (nonLinearAdaptTs) then
             !As the value of dt and acctim may have changed we retrieve their values
             !to make sure that everything is coherent
             call get_option( '/timestepping/current_time', acctim )
             call get_option( '/timestepping/timestep', dt)
             !If repeat timestep we don't want to adapt mesh or dump results
             if ( Repeat_time_step ) then
-                itime = itime - 1
-                cycle Loop_Time
+               itime = itime - 1
+               cycle Loop_Time
             end if
-        end if
+         end if
 
          call set_option( '/timestepping/current_time', acctim )
          call set_option( '/timestepping/timestep', dt)
@@ -1192,9 +1192,9 @@
          current_time = acctim
 
 !!$ Copying fields back to state:
-!         call copy_into_state( state, & ! Copying main fields into state
-!              PhaseVolumeFraction, Temperature, &
-!              Component, ncomp, nphase, cv_ndgln )
+         !         call copy_into_state( state, & ! Copying main fields into state
+         !              PhaseVolumeFraction, Temperature, &
+         !              Component, ncomp, nphase, cv_ndgln )
 
 !!$ Calculate diagnostic fields
          call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
@@ -1213,12 +1213,12 @@
             end if
 
             if ( have_option( "/io/output_scalars_fem" ) ) then
-                 !As SAT_s is pointing into state, we need to use a backup to print the FE saturation.
-                 allocate(dummy_to_print_FEM(size(SAT_s,1),size(SAT_s,2)))
-                 dummy_to_print_FEM = SAT_s!<=create backup
-                 call copy_into_state( state, & ! Copying main fields into state
-                 FESAT_s, Temperature_FEMT, &
-                 Component_FEMT, ncomp, nphase, cv_ndgln )
+               !As SAT_s is pointing into state, we need to use a backup to print the FE saturation.
+               allocate(dummy_to_print_FEM(size(SAT_s,1),size(SAT_s,2)))
+               dummy_to_print_FEM = SAT_s!<=create backup
+               call copy_into_state( state, & ! Copying main fields into state
+                    FESAT_s, Temperature_FEMT, &
+                    Component_FEMT, ncomp, nphase, cv_ndgln )
             end if
 
             call get_option( '/timestepping/current_time', current_time ) ! Find the current time 
@@ -1226,14 +1226,14 @@
             if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
             not_to_move_det_yet = .false. ; dump_no = itime/dump_period_in_timesteps ! Sync dump_no with itime
             call write_state( dump_no, state ) ! Now writing into the vtu files
-           
-            if ( have_option( "/io/output_scalars_fem" ) ) then
-                 SAT_s = dummy_to_print_FEM!<= retrieve backup
-                 deallocate(dummy_to_print_FEM)
 
-                 call copy_into_state( state, & ! Copying main fields into state
-                 SAT_s, Temperature, &
-                 Component, ncomp, nphase, cv_ndgln )
+            if ( have_option( "/io/output_scalars_fem" ) ) then
+               SAT_s = dummy_to_print_FEM!<= retrieve backup
+               deallocate(dummy_to_print_FEM)
+
+               call copy_into_state( state, & ! Copying main fields into state
+                    SAT_s, Temperature, &
+                    Component, ncomp, nphase, cv_ndgln )
             end if
          end if Conditional_TimeDump
 
@@ -1272,11 +1272,11 @@
                            if (.not. have_option(trim(Component_State%option_path)//"/prognostic/consistent_interpolation")) then
 
                               call Updating_Linearised_Components( totele, ndim, cv_nloc, cv_nonods, cv_ndgln,& 
-                           component ( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
-                                nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods ) )
-                           Component_State % val = component( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
-                                nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods )
-                        end if
+                                   component ( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
+                                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods ) )
+                              Component_State % val = component( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
+                                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods )
+                           end if
                         end do
                      end do
                   end if Conditional_Components_Linearisation2
@@ -1390,8 +1390,8 @@
             allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
                  u_sndgln( stotel * u_snloc ) )
 
-  !          x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
-                 cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
+            !          x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
+            cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
 
             call Compute_Node_Global_Numbers( state, &
                  totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
@@ -1418,7 +1418,7 @@
                  findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
 
             allocate( global_dense_block_acv (nphase,cv_nonods) )
-                 finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; finele = 0 ; &
+            finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; finele = 0 ; &
                  colele = 0 ; midele = 0 ; findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
                  colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0 ; &
                  colm = 0 ; midm = 0
@@ -1526,16 +1526,16 @@
             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
                  OldPhaseVolumeFraction=OldSAT_s,FEPhaseVolumeFraction = FESAT_s )
 
-if (have_component_field) then
-        !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
-        do cv_inod = 1, size(SAT_s,2)
-            do iphase = 1, size(SAT_s,1)
-                phaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
-                PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
-            end do
-        end do
-        !#############################################################
-    end if
+            if (have_component_field) then
+               !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
+               do cv_inod = 1, size(SAT_s,2)
+                  do iphase = 1, size(SAT_s,1)
+                     phaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
+                     PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
+                  end do
+               end do
+               !#############################################################
+            end if
 
 
 !!$ Dummy field used in the scalar advection option:
@@ -1649,7 +1649,7 @@ if (have_component_field) then
            theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
            sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
 
- ! Dump at end, unless explicitly disabled
+      ! Dump at end, unless explicitly disabled
       if(.not. have_option("/io/disable_dump_at_end")) then
          call write_state(dump_no, state)
       end if
@@ -1663,58 +1663,58 @@ if (have_component_field) then
 
       return
 
-      contains 
+    contains 
 
-        
-        subroutine temp_mem_hacks()
-          
+
+      subroutine temp_mem_hacks()
+
 !!! routine puts various CSR sparsities into packed_state
 
-          use sparse_tools
-          
-          type(csr_sparsity), pointer :: sparsity
-          type(scalar_field), pointer :: sfield
+        use sparse_tools
 
-          integer ic
+        type(csr_sparsity), pointer :: sparsity
+        type(scalar_field), pointer :: sfield
 
-          allocate(sparsity)
+        integer ic
 
-          sparsity=wrap(finele,midele,colm=colele,name='ElementConnectivity')
-          call insert(packed_state,sparsity,'ElementConnectivity')
-          call deallocate(sparsity)
-          sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name='SinglePhaseAdvectionSparsity')
-          call insert(packed_state,sparsity,'SinglePhaseAdvectionSparsity')
-          call deallocate(sparsity)
-          sparsity=wrap(finacv,midacv,colm=colacv,name='PackedAdvectionSparsity')
-          call insert(packed_state,sparsity,'PackedAdvectionSparsity')
-          call deallocate(sparsity)
-          sparsity=wrap(findc,colm=colc,name='CMatrixSparsity')
-          call insert(packed_state,sparsity,'CMatrixSparsity')
-          call deallocate(sparsity)
-          sparsity=wrap(findct,colm=colct,name='CTMatrixSparsity')
-          call insert(packed_state,sparsity,'CTMatrixSparsity')
-          call deallocate(sparsity)
-          sparsity=wrap(findcmc,colm=colcmc,name='CMCMatrixSparsity')
-          call insert(packed_state,sparsity,'CMCMatrixSparsity')
-          call deallocate(sparsity)
-          sparsity=wrap(findm,midm,colm=colm,name='CVFEMSparsity')
-          call insert(packed_state,sparsity,'CVFEMSparsity')
-          call deallocate(sparsity)
+        allocate(sparsity)
 
-          sfield=>extract_scalar_field(packed_state,"FEPressure")
-          sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
-               "PressureMassMatrixSparsity")
-          call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
-          call deallocate(sparsity)
-          deallocate(sparsity)
-          sparsity=> extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
-          do ic=1,size(multicomponent_state)
-             call insert(multicomponent_state(ic),sparsity,"PressureMassMatrixSparsity")
-          end do 
+        sparsity=wrap(finele,midele,colm=colele,name='ElementConnectivity')
+        call insert(packed_state,sparsity,'ElementConnectivity')
+        call deallocate(sparsity)
+        sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name='SinglePhaseAdvectionSparsity')
+        call insert(packed_state,sparsity,'SinglePhaseAdvectionSparsity')
+        call deallocate(sparsity)
+        sparsity=wrap(finacv,midacv,colm=colacv,name='PackedAdvectionSparsity')
+        call insert(packed_state,sparsity,'PackedAdvectionSparsity')
+        call deallocate(sparsity)
+        sparsity=wrap(findc,colm=colc,name='CMatrixSparsity')
+        call insert(packed_state,sparsity,'CMatrixSparsity')
+        call deallocate(sparsity)
+        sparsity=wrap(findct,colm=colct,name='CTMatrixSparsity')
+        call insert(packed_state,sparsity,'CTMatrixSparsity')
+        call deallocate(sparsity)
+        sparsity=wrap(findcmc,colm=colcmc,name='CMCMatrixSparsity')
+        call insert(packed_state,sparsity,'CMCMatrixSparsity')
+        call deallocate(sparsity)
+        sparsity=wrap(findm,midm,colm=colm,name='CVFEMSparsity')
+        call insert(packed_state,sparsity,'CVFEMSparsity')
+        call deallocate(sparsity)
+
+        sfield=>extract_scalar_field(packed_state,"FEPressure")
+        sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
+             "PressureMassMatrixSparsity")
+        call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
+        call deallocate(sparsity)
+        deallocate(sparsity)
+        sparsity=> extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
+        do ic=1,size(multicomponent_state)
+           call insert(multicomponent_state(ic),sparsity,"PressureMassMatrixSparsity")
+        end do
 
 
 
-        end subroutine temp_mem_hacks
+      end subroutine temp_mem_hacks
 
 
     end subroutine MultiFluids_SolveTimeLoop
