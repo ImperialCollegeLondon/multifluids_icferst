@@ -1288,7 +1288,7 @@ contains
 
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2
         type( vector_field ), pointer :: x_all2
-        type( scalar_field ), pointer :: p_all, cvp_all, Pressure_State, sf, soldf
+        type( scalar_field ), pointer :: p_all, cvp_all, pressure_state, sf, soldf
 
         type( vector_field ) :: packed_vel, rhs
         type( scalar_field ) :: deltap, rhs_p
@@ -1775,8 +1775,9 @@ contains
 
         call halo_update(CVP_all)
 
-        pressure % val = CVP_all % val
-
+        ! update prssure field in trunk state
+        pressure_state => extract_scalar_field(state(1),"Pressure")
+        pressure_state % val = CVP_all % val
 
 
         DEALLOCATE( CT )
@@ -5585,8 +5586,8 @@ DEALLOCATE( PIVIT_MAT )
                  IF(ELE2.GT.0) THEN ! Internal to domain
                     DO U_JLOC=1,U_NLOC
                         U_JLOC2 = U_JLOC 
-                    	DO U_SILOC=1,U_SNLOC
-                       	    U_ILOC =U_SLOC2LOC(U_SILOC)
+                        DO U_SILOC=1,U_SNLOC
+                            U_ILOC =U_SLOC2LOC(U_SILOC)
                             DO IPHASE = 1, NPHASE
                                 JPHASE = IPHASE
 

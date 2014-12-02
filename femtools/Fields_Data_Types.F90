@@ -213,7 +213,7 @@ module fields_data_types
      real, dimension(:,:,:), pointer, contiguous :: val
      !! Flag for whether val is allocated
      logical :: wrapped=.true.
-     !! Flag for whether val is contiguoua
+     !! Flag for whether val is contiguous
      logical :: contiguous=.false.
      !! The data source to be used
      integer :: field_type = FIELD_TYPE_NORMAL

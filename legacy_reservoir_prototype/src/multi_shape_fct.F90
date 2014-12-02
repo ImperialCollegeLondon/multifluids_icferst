@@ -1528,7 +1528,6 @@
       real, dimension( u_nloc, cv_ngi ), intent( inout ) :: un, unlx, unly, unlz
 
 ! new quadratic element quadrature by James and Zhi and Chris:
-      logical, PARAMETER :: NEW_QUADRATIC_ELE_QUADRATURE = .FALSE.
       
 
       ewrite(3,*) 'In SHAPE_CV_N'

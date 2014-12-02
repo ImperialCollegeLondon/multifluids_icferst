@@ -1549,6 +1549,7 @@ end if
                SELE = 0
                CV_SILOC=0
                INTEGRAT_AT_GI = .TRUE.
+               CV_OTHER_LOC=0
 
                Conditional_CheckingNeighbourhood: IF ( CV_JLOC == -1 ) THEN
 
@@ -1617,22 +1618,24 @@ end if
 ! this is for DG and boundaries of the domain
 !                  IF(SELE.LE.0) THEN ! this is for DG
                   IF(.not.on_domain_boundary) THEN ! this is for DG
-! Calculate U_SLOC2LOC, CV_SLOC2LOC: 
+! Calculate U_SLOC2LOC, CV_SLOC2LOC:
+!       print *,' sele,ele2,ele,CV_ILOC,CV_jLOC,on_domain_boundary:',sele,ele2,ele,CV_ILOC,CV_jLOC,on_domain_boundary
+!       print *,'CV_OTHER_LOC:',CV_OTHER_LOC
                      CV_SKLOC=0
                      DO CV_KLOC=1,CV_NLOC
                         CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
                         IF(CV_KLOC2.NE.0) THEN
                            CV_SKLOC=CV_SKLOC+1
                            CV_SLOC2LOC(CV_SKLOC)=CV_KLOC
-!                           SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
+                           SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
                         ENDIF
                      END DO
                   ENDIF ! ENDOF IF(SELE.LE.0) THEN
 
-                  DO CV_SKLOC=1,CV_SNLOC
-                     CV_KLOC = CV_SLOC2LOC(CV_SKLOC)
-                     SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
-                  END DO
+!                  DO CV_SKLOC=1,CV_SNLOC
+!                     CV_KLOC = CV_SLOC2LOC(CV_SKLOC)
+!                     SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
+!                  END DO
 
 
 

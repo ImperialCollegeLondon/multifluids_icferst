@@ -851,11 +851,8 @@
                   call calculate_capillary_pressure( state, packed_state, .true., StorageIndexes)
                end if
 
-
                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-               pressure_field=>extract_scalar_field(state(1),"Pressure")
-
-
+               pressure_field=>extract_scalar_field(packed_state,"FEPressure")
 
                CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                     velocity_field, pressure_field, &
