@@ -1547,7 +1547,7 @@
               un, unlx, unly, unlz )
 
       case( 3, 4, 7, 8 ) ! Triangles and Tetrahedra
-        if( new_quadratic_ele_quadrature ) then
+        if( new_quadratic_ele_quadrature .and. cv_ele_type==8) then
          call new_pt_qua_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, &
               cvweigh, n, nlx, nly, nlz, &
               un, unlx, unly, unlz )
@@ -2462,7 +2462,22 @@ ewrite(3,*)'lll:', option_path_len
             !     cv_iloc_cells,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
          end do
       end do
-
+! 
+! the below does not seem correct - Chris look at **************
+   if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc==6).and.(cv_nloc==10)) then ! make sure its a quadratic tet...
+!   if(.false.) then
+             sbcvfen( 1:cv_snloc, 1:sbcvngi ) = scvfen( 1:cv_snloc, 1:sbcvngi )
+             sbcvfenslx( 1:cv_snloc, 1:sbcvngi ) = scvfenslx( 1:cv_snloc, 1:sbcvngi )
+             sbcvfensly( 1:cv_snloc, 1:sbcvngi ) = scvfensly( 1:cv_snloc, 1:sbcvngi )
+             sbcvfenlx( 1:cv_snloc, 1:sbcvngi ) = scvfenlx( 1:cv_snloc, 1:sbcvngi )
+             sbcvfenly( 1:cv_snloc, 1:sbcvngi ) = scvfenly( 1:cv_snloc, 1:sbcvngi )
+             sbcvfenlz( 1:cv_snloc, 1:sbcvngi ) = scvfenlz( 1:cv_snloc, 1:sbcvngi )
+             sbcvfeweigh( 1:sbcvngi ) = scvfeweigh( 1:sbcvngi )
+             if(sbcvngi.ne.6) then
+               ewrite(3,*)'sbcvngi:',sbcvngi
+               FLAbort("sbcvngi should be 6")
+             endif
+   else
       Loop_SNLOC: do cv_siloc = 1, cv_snloc
          cv_iloc = cv_siloc
          cv_bsgi = 0
@@ -2487,6 +2502,8 @@ ewrite(3,*)'lll:', option_path_len
          ewrite(3,*)'cv_bsgi,sbcvngi:',cv_bsgi,sbcvngi
          FLAbort("cv_bsgi/=sbcvngi")
       endif
+   endif
+
 
       deallocate( candidate_gi )
       deallocate( candidate_gi2 )
