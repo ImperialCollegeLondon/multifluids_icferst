@@ -10225,7 +10225,10 @@ CONTAINS
                    CV_INOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
                    DO CV_SILOC2=1,CV_SNLOC
                       CV_INOD2=CV_SNDGLN((SELE2-1)*CV_SNLOC+CV_SILOC2)
-                      IF(CV_INOD == CV_INOD2) FOUND=.TRUE.
+                      IF(CV_INOD == CV_INOD2) THEN
+                         FOUND=.TRUE.
+                         EXIT
+                      ENDIF
                    END DO
                 ENDIF
                 IF(.NOT.FOUND) THEN
