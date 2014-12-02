@@ -10168,13 +10168,19 @@ CONTAINS
                    SELE=COL_ND_SELE(COUNT)
                    FOUND=.FALSE.
                    DO JFACE=1,IFACE-1
-                      IF(SELE == - FACE_ELE(JFACE,ELE)) FOUND=.TRUE.
+                      IF(SELE == - FACE_ELE(JFACE,ELE)) THEN
+                         FOUND=.TRUE.
+                         EXIT
+                      ENDIF
                    END DO
                    IF(.NOT.FOUND) THEN ! SELE is a candidate.
                       SELE_FOUND=.TRUE.
                       DO CV_SILOC=1,CV_SNLOC
                          CV_INOD=CV_SNDGLN((SELE-1)*CV_SNLOC+CV_SILOC)
-                         IF(.NOT.NOD_BELONG_ELE(CV_INOD)) SELE_FOUND=.FALSE.
+                         IF(.NOT.NOD_BELONG_ELE(CV_INOD)) THEN
+                             SELE_FOUND=.FALSE.
+                             EXIT
+                         ENDIF
                       END DO
                       IF(SELE_FOUND) FACE_ELE(IFACE,ELE)= - SELE
                    ENDIF
@@ -10210,7 +10216,10 @@ CONTAINS
                    CV_INOD=X_NDGLN((ELE-1)*X_NLOC+CV_ILOC)
                    DO CV_ILOC2=1,CV_NLOC
                       CV_INOD2=X_NDGLN((ELE2-1)*X_NLOC+CV_ILOC2)
-                      IF(CV_INOD == CV_INOD2) FOUND=.TRUE.
+                      IF(CV_INOD == CV_INOD2) THEN
+                         FOUND=.TRUE.
+                         EXIT
+                      ENDIF
                    END DO
                 ELSE if (sele2>0) then ! is a surface element
                    CV_INOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
@@ -10219,7 +10228,10 @@ CONTAINS
                       IF(CV_INOD == CV_INOD2) FOUND=.TRUE.
                    END DO
                 ENDIF
-                IF(.NOT.FOUND) GOT_ALL=.FALSE.
+                IF(.NOT.FOUND) THEN
+                   GOT_ALL=.FALSE.
+                   EXIT
+                ENDIF
              END DO
              IF(GOT_ALL) ELE_ROW(IFACE)=FACE_ELE(IFACE2,ELE)
           END DO
