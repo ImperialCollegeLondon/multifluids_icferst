@@ -10714,8 +10714,12 @@ CONTAINS
           DO CV_SKLOC = 1, CV_SNLOC
              CV_SKNOD = CV_SNDGLN( ( SELE2 - 1 ) * CV_SNLOC + CV_SKLOC )
              DO CV_SKLOC2 = 1, CV_SNLOC
-                IF ( CV_SKNOD == LOG_ON_BOUND( CV_SKLOC2 ) ) FOUND = .FALSE.
+                IF ( CV_SKNOD == LOG_ON_BOUND( CV_SKLOC2 ) ) THEN
+                   FOUND = .FALSE.
+                   EXIT
+                ENDIF
              END DO
+             IF(.NOT.FOUND) EXIT
           END DO
           IF( FOUND ) THEN
              SELE = SELE2
