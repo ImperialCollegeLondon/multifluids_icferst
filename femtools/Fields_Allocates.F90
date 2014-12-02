@@ -655,7 +655,8 @@ contains
         do i=1, size(field%bc%boundary_condition)
            call deallocate(field%bc%boundary_condition(i))
         end do
-       deallocate(field%bc%boundary_condition)
+        if (.not. associated(field%bc%boundary_condition(1)%surface_fields)) &
+             deallocate(field%bc%boundary_condition)
      end if
     
   end subroutine remove_boundary_conditions_scalar
@@ -918,15 +919,16 @@ contains
       do i=1, size(bc%surface_fields)
         call deallocate(bc%surface_fields(i))
       end do
-      if (.not. has_references(bc%surface_fields(1)))&
-           deallocate(bc%surface_fields)
+      if (.not. has_references(bc%surface_fields(1))) then
+         deallocate(bc%surface_fields)
+         nullify(bc%surface_fields)
+      end if
     end if
     
     call deallocate(bc%surface_mesh)
 
     if (.not. has_references(bc%surface_mesh)) then
        deallocate(bc%surface_mesh)
-    
        deallocate(bc%surface_element_list, bc%surface_node_list)
     end if
 
