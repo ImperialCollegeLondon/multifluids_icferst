@@ -340,8 +340,7 @@ contains
            JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, CV_SLOC2LOC, U_SLOC2LOC
       INTEGER, DIMENSION( : , : ), allocatable :: FACE_ELE
       REAL, DIMENSION( : ), allocatable ::  &
-           CVNORMX, &
-           CVNORMY, CVNORMZ, MASS_CV, MASS_ELE, SNDOTQ, SNDOTQOLD,  &
+           MASS_CV, MASS_ELE, SNDOTQ, SNDOTQOLD,  &
            SRA,   &
            SUM_CV, ONE_PORE, &
            DU, DV, DW, PERM_ELE
@@ -765,10 +764,6 @@ contains
     QUAD_ELEMENTS = ( ((NDIM==2).AND.(CV_NLOC==6)).or.((NDIM==3).AND.(CV_NLOC==10)) ) 
 
 
-!         print *,'just entered sub -2'
-      ALLOCATE( CVNORMX( SCVNGI ))
-      ALLOCATE( CVNORMY( SCVNGI ))
-      ALLOCATE( CVNORMZ( SCVNGI ))
       ALLOCATE( CVNORMX_ALL( NDIM, SCVNGI )) ; CVNORMX_ALL=0.0 
 
       ALLOCATE( SNDOTQ( SCVNGI ))
@@ -1600,15 +1595,15 @@ contains
                   CALL SCVDETNX_new( ELE, GI, &
                        X_NLOC, SCVNGI, TOTELE, NDIM, &
                        X_NDGLN, X_NONODS, &
-                       SCVDETWEI, CVNORMX, CVNORMY, &
-                       CVNORMZ, SCVFEN, SCVFENSLX, &
+                       SCVDETWEI, CVNORMX_ALL,  &
+                       SCVFEN, SCVFENSLX, &
                        SCVFENSLY, SCVFEWEIGH, XC_CV_ALL( 1:NDIM, CV_NODI ), &
                        X_ALL(1:NDIM,:),  &
                        D1, D3, DCYL )
 
-                  CVNORMX_ALL(1,GI)=CVNORMX(GI)
-                  IF(NDIM.GE.2) CVNORMX_ALL(2,GI)=CVNORMY(GI)
-                  IF(NDIM.GE.3) CVNORMX_ALL(3,GI)=CVNORMZ(GI)
+               !   CVNORMX_ALL(1,GI)=CVNORMX(GI)
+               !   IF(NDIM.GE.2) CVNORMX_ALL(2,GI)=CVNORMY(GI)
+               !   IF(NDIM.GE.3) CVNORMX_ALL(3,GI)=CVNORMZ(GI)
                !   CVNORMX(GI) = CVNORMX_ALL(1,GI)
                !   IF(NDIM.GE.2) CVNORMY(GI) =CVNORMX_ALL(2,GI)
                !   IF(NDIM.GE.3) CVNORMZ(GI) =CVNORMX_ALL(3,GI)
@@ -2653,9 +2648,9 @@ contains
       IF(GETCT) THEN
          DEALLOCATE( JCOUNT_KLOC )
       ENDIF
-      DEALLOCATE( CVNORMX )
-      DEALLOCATE( CVNORMY )
-      DEALLOCATE( CVNORMZ )
+!      DEALLOCATE( CVNORMX )
+!      DEALLOCATE( CVNORMY )
+!      DEALLOCATE( CVNORMZ )
       DEALLOCATE( SNDOTQ )
       DEALLOCATE( SNDOTQOLD )
       DEALLOCATE( CV_ON_FACE )
@@ -5985,8 +5980,8 @@ deallocate(NX_ALL, X_NX_ALL)
        NLOC,     SVNGI,   TOTELE, NDIM,  &
        XNDGLN,   XNONOD,&
                                 !     - REALS
-       CVDETWEI, CVNORMX, CVNORMy,&
-       CVNORMz,SVN,     SVNLX,    &
+       CVDETWEI, CVNORMX_ALL, &
+       SVN,     SVNLX,    &
        SVNLY,    SVWEIGH, XC_ALL,     &
        X_ALL,        &
                                 !     - LOGICALS
@@ -6009,7 +6004,7 @@ deallocate(NX_ALL, X_NX_ALL)
     INTEGER, intent( in ) ::   XNONOD     
     REAL, DIMENSION( NDIM ), intent( in ) ::   XC_ALL
     INTEGER, DIMENSION( : ), intent( in ) :: XNDGLN
-    REAL, DIMENSION( SVNGI ), intent( inout ) :: CVNORMX, CVNORMy, CVNORMz
+    REAL, DIMENSION( NDIM, SVNGI ), intent( inout ) :: CVNORMX_ALL
     REAL, DIMENSION( : ), intent( inout ) :: CVDETWEI
     REAL, DIMENSION( :, : ), intent( in ) :: SVN, SVNLX, SVNLY
     REAL, DIMENSION( : ), intent( in ) :: SVWEIGH
@@ -6085,8 +6080,8 @@ deallocate(NX_ALL, X_NX_ALL)
        !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
        !     - Perform cross-product. N = T1 x T2
        !     
-       CALL NORMGI( CVNORMX(GI), CVNORMY(GI), CVNORMZ(GI),&
-!       CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
+!       CALL NORMGI( CVNORMX(GI), CVNORMY(GI), CVNORMZ(GI),&
+       CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
             DXDLX,       DYDLX,       DZDLX, &
             DXDLY,       DYDLY,       DZDLY,&
             POSVGIX,     POSVGIY,     POSVGIZ ) 
@@ -6147,8 +6142,8 @@ deallocate(NX_ALL, X_NX_ALL)
        !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
        !     - Perform cross-product. N = T1 x T2
        !     
-       CALL NORMGI( CVNORMX(GI), CVNORMY(GI), CVNORMZ(GI),&
-!       CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
+!       CALL NORMGI( CVNORMX(GI), CVNORMY(GI), CVNORMZ(GI),&
+       CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
             DXDLX,       DYDLX,       DZDLX, &
             DXDLY,       DYDLY,       DZDLY,&
             POSVGIX,     POSVGIY,     POSVGIZ )
@@ -6180,8 +6175,8 @@ deallocate(NX_ALL, X_NX_ALL)
        !          EWRITE(3,*)'POSVGIX, XC,POSVGIX - XC:',POSVGIX, XC,POSVGIX - XC
        POSVGIX = POSVGIX - XC_ALL(1)
 ! SIGN(A,B) sign of B times A. 
-       CVNORMX(GI) = SIGN( 1.0, POSVGIX )
-!       CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGIX )
+!       CVNORMX(GI) = SIGN( 1.0, POSVGIX )
+       CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGIX )
 
 !       IF(POSVGIX > 0 ) THEN
 !          CVNORMX_ALL(1,GI) = +1.0
@@ -6965,7 +6960,7 @@ deallocate(NX_ALL, X_NX_ALL)
   SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( DIFF_COEF_DIVDX, &
        DIFF_COEFOLD_DIVDX, STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
        U_SNLOC, U_NLOC, CV_SNLOC, CV_NLOC, MAT_NLOC, NPHASE,  &
-       SBUFEN,SBCVFEN,SBCVNGI, NDIM_VEL, NDIM, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, DIFF_GI_ADDED, &
+       SBUFEN_REVERSED,SBCVFEN_REVERSED,SBCVNGI, NDIM_VEL, NDIM, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, DIFF_GI_ADDED, &
        HDC, &
        U_CV_NODJ_IPHA_ALL, U_CV_NODI_IPHA_ALL, &
        UOLD_CV_NODJ_IPHA_ALL, UOLD_CV_NODI_IPHA_ALL, &
@@ -6989,8 +6984,8 @@ deallocate(NX_ALL, X_NX_ALL)
     REAL, intent( in ) :: ZERO_OR_TWO_THIRDS
     REAL, DIMENSION( NDIM,NPHASE,SBCVNGI ), intent( inout ) :: DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
     INTEGER, DIMENSION( NDIM,NPHASE,STOTEL ), intent( in ) ::WIC_U_BC
-    REAL, DIMENSION( CV_SNLOC, SBCVNGI  ), intent( in ) :: SBCVFEN
-    REAL, DIMENSION( U_SNLOC, SBCVNGI  ), intent( in ) :: SBUFEN
+    REAL, DIMENSION(  SBCVNGI, CV_SNLOC ), intent( in ) :: SBCVFEN_REVERSED
+    REAL, DIMENSION( SBCVNGI, U_SNLOC ), intent( in ) :: SBUFEN_REVERSED
     REAL, DIMENSION( NDIM,NDIM,NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION, SLOC2_UDIFFUSION
     REAL, DIMENSION( NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION_VOL
     ! DIFF_GI_ADDED( IDIM, :,:) is for dimension IDIM e.g IDIM=1 corresponds to U 
@@ -7102,10 +7097,10 @@ deallocate(NX_ALL, X_NX_ALL)
              DO SGI=1,SBCVNGI
                 DO IPHASE=1, NPHASE
                    DIFF_GI( 1:NDIM , 1:NDIM, IPHASE, SGI ) = DIFF_GI( 1:NDIM , 1:NDIM, IPHASE, SGI ) &
-                     + SBCVFEN(CV_SKLOC,SGI) * SLOC_UDIFFUSION( 1:NDIM , 1:NDIM , IPHASE, CV_SKLOC )
+                     + SBCVFEN_REVERSED(SGI,CV_SKLOC) * SLOC_UDIFFUSION( 1:NDIM , 1:NDIM , IPHASE, CV_SKLOC )
 
                    DIFF_VOL_GI( IPHASE, SGI ) = DIFF_VOL_GI( IPHASE, SGI ) &
-                     + SBCVFEN(CV_SKLOC,SGI) * SLOC_UDIFFUSION_VOL( IPHASE, CV_SKLOC )
+                     + SBCVFEN_REVERSED(SGI,CV_SKLOC) * SLOC_UDIFFUSION_VOL( IPHASE, CV_SKLOC )
                 END DO
              END DO
           END DO
@@ -7118,10 +7113,10 @@ deallocate(NX_ALL, X_NX_ALL)
              DO CV_SKLOC = 1, CV_SNLOC
                 DO SGI=1,SBCVNGI
                    DO IPHASE=1, NPHASE
-                      DIFF_GI2( 1:NDIM, 1:NDIM, IPHASE, SGI )= DIFF_GI2( 1:NDIM, 1:NDIM, IPHASE, SGI ) +SBCVFEN(CV_SKLOC,SGI) &
+                      DIFF_GI2( 1:NDIM, 1:NDIM, IPHASE, SGI )= DIFF_GI2( 1:NDIM, 1:NDIM, IPHASE, SGI ) +SBCVFEN_REVERSED(SGI,CV_SKLOC) &
                         *SLOC2_UDIFFUSION(1:NDIM, 1:NDIM ,IPHASE, CV_SKLOC)
 
-                      DIFF_VOL_GI2( IPHASE, SGI )= DIFF_VOL_GI2( IPHASE, SGI ) +SBCVFEN(CV_SKLOC,SGI) &
+                      DIFF_VOL_GI2( IPHASE, SGI )= DIFF_VOL_GI2( IPHASE, SGI ) +SBCVFEN_REVERSED(SGI,CV_SKLOC) &
                         *SLOC2_UDIFFUSION_VOL(IPHASE, CV_SKLOC)
                    END DO
                 END DO
@@ -7187,7 +7182,7 @@ deallocate(NX_ALL, X_NX_ALL)
           CALL FOR_TENS_DERIVS_NDOTS(DIFF_STAND_DIVDX_U, N_DOT_DKDU, N_DOT_DKDUOLD,  &
                  DIFF_GI_ADDED, SLOC_DUX_ELE_ALL, SLOC_DUOLDX_ELE_ALL, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, &
                !  NDIM_VEL, NDIM, NPHASE, U_SNLOC, SBCVNGI, SBCVFEN, SNORMXN_ALL, HDC, ZERO_OR_TWO_THIRDS, STRESS_FORM )
-                 NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI, SBUFEN, SBCVFEN, SNORMXN_ALL, HDC, ZERO_OR_TWO_THIRDS, &
+                 NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI, SBUFEN_REVERSED, SBCVFEN_REVERSED, SNORMXN_ALL, HDC, ZERO_OR_TWO_THIRDS, &
                  STRESS_FORM, STRESS_FORM_STAB )
 
 
@@ -7199,7 +7194,7 @@ deallocate(NX_ALL, X_NX_ALL)
 ! Calculate DIFF_COEF_DIVDX, N_DOT_DKDU, N_DOT_DKDUOLD
              CALL FOR_TENS_DERIVS_NDOTS(DIFF_STAND_DIVDX2_U, N_DOT_DKDU2, N_DOT_DKDUOLD2,  &  
                     DIFF_GI_ADDED, SLOC2_DUX_ELE_ALL, SLOC2_DUOLDX_ELE_ALL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, &
-                    NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI, SBUFEN, SBCVFEN, SNORMXN_ALL, HDC, ZERO_OR_TWO_THIRDS, &
+                    NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI, SBUFEN_REVERSED, SBCVFEN_REVERSED, SNORMXN_ALL, HDC, ZERO_OR_TWO_THIRDS, &
                     STRESS_FORM, STRESS_FORM_STAB )
 
 
@@ -7514,7 +7509,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
         SUBROUTINE FOR_TENS_DERIVS_NDOTS( DIFF_STAND_DIVDX_U, N_DOT_DKDU, N_DOT_DKDUOLD,  &
                  DIFF_GI_ADDED, SLOC_DUX_ELE_ALL, SLOC_DUOLDX_ELE_ALL, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, &
-                 NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI, SBUFEN, SBCVFEN, SNORMXN_ALL, HDC, ZERO_OR_TWO_THIRDS, &
+                 NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI, SBUFEN_REVERSED, SBCVFEN_REVERSED, SNORMXN_ALL, HDC, ZERO_OR_TWO_THIRDS, &
                  STRESS_FORM, STRESS_FORM_STAB )
 
 ! Calculate DIFF_STAND_DIVDX_U, N_DOT_DKDU, N_DOT_DKDUOLD
@@ -7532,8 +7527,8 @@ deallocate(NX_ALL, X_NX_ALL)
     ! the rest is for the diffusion tensor. 
     REAL, DIMENSION( NDIM_VEL, NDIM,NDIM, NPHASE, SBCVNGI), intent( in ) :: DIFF_GI_ADDED
     REAL, DIMENSION( NDIM_VEL, NDIM , NPHASE, U_SNLOC ), intent( in ) :: SLOC_DUX_ELE_ALL, SLOC_DUOLDX_ELE_ALL 
-    REAL, DIMENSION( U_SNLOC, SBCVNGI  ), intent( in ) :: SBUFEN
-    REAL, DIMENSION( CV_SNLOC, SBCVNGI  ), intent( in ) :: SBCVFEN
+    REAL, DIMENSION( SBCVNGI, U_SNLOC ), intent( in ) :: SBUFEN_REVERSED
+    REAL, DIMENSION( SBCVNGI, CV_SNLOC ), intent( in ) :: SBCVFEN_REVERSED
     REAL, DIMENSION( NDIM,NDIM,NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION
     REAL, DIMENSION( NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION_VOL
     REAL, DIMENSION( NDIM, SBCVNGI ), intent( in ) :: SNORMXN_ALL
@@ -7577,8 +7572,8 @@ deallocate(NX_ALL, X_NX_ALL)
           DO U_SKLOC = 1, U_SNLOC
              DO SGI=1,SBCVNGI
              ! U, V & W: 
-                   DUDX_ALL_GI(:,:,:,SGI)    = DUDX_ALL_GI(:,:,:,SGI)    + SBUFEN(U_SKLOC,SGI) * SLOC_DUX_ELE_ALL(:,:,:,U_SKLOC)
-                   DUOLDDX_ALL_GI(:,:,:,SGI) = DUOLDDX_ALL_GI(:,:,:,SGI) + SBUFEN(U_SKLOC,SGI) * SLOC_DUOLDX_ELE_ALL(:,:,:,U_SKLOC)
+                   DUDX_ALL_GI(:,:,:,SGI)    = DUDX_ALL_GI(:,:,:,SGI)    + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUX_ELE_ALL(:,:,:,U_SKLOC)
+                   DUOLDDX_ALL_GI(:,:,:,SGI) = DUOLDDX_ALL_GI(:,:,:,SGI) + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUOLDX_ELE_ALL(:,:,:,U_SKLOC)
              END DO
           END DO
 
@@ -7588,25 +7583,15 @@ deallocate(NX_ALL, X_NX_ALL)
              DO SGI=1,SBCVNGI
                 DO IPHASE=1, NPHASE
                    DIFF_GI( 1:NDIM , 1:NDIM, IPHASE,SGI ) = DIFF_GI( 1:NDIM , 1:NDIM, IPHASE,SGI ) &
-                  + SBCVFEN(CV_SKLOC,SGI) * SLOC_UDIFFUSION( 1:NDIM , 1:NDIM , IPHASE, CV_SKLOC )
+                  + SBCVFEN_REVERSED(SGI,CV_SKLOC) * SLOC_UDIFFUSION( 1:NDIM , 1:NDIM , IPHASE, CV_SKLOC )
 
                    DIFF_VOL_GI( IPHASE,SGI ) = DIFF_VOL_GI( IPHASE,SGI ) &
-                  + SBCVFEN(CV_SKLOC,SGI) * SLOC_UDIFFUSION_VOL( IPHASE, CV_SKLOC )
+                  + SBCVFEN_REVERSED(SGI,CV_SKLOC) * SLOC_UDIFFUSION_VOL( IPHASE, CV_SKLOC )
                 END DO
              END DO
           END DO
           DIFF_GI=MAX(0.0, DIFF_GI) 
           DIFF_VOL_GI=MAX(0.0, DIFF_VOL_GI) 
-
-
-          ! U:
-!          DIFF_GI_BOTH=DIFF_GI_ADDED
-!          IF(.NOT.STRESS_FORM) THEN
-!             DO IDIM=1,NDIM_VEL
-!                DIFF_GI_BOTH(IDIM,:,:,:,:) = DIFF_GI_BOTH(IDIM,:,:,:,:) + DIFF_GI(:,:,:,:)
-!             END DO
-!          ENDIF
-
 
 
           IF(STRESS_FORM) THEN 
