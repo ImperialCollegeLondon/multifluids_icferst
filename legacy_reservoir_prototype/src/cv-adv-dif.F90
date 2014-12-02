@@ -505,6 +505,10 @@ contains
       REAL, DIMENSION( :,:,: ), allocatable, target :: SUF_T_BC,&
            SUF_T_BC_ROB1, SUF_T_BC_ROB2
 
+      real :: rdum_ndim_nphase_1(NDIM,NPHASE)
+      real :: rdum_nphase_1(NPHASE), rdum_nphase_2(NPHASE), rdum_nphase_3(NPHASE), rdum_nphase_4(NPHASE), rdum_nphase_5(NPHASE)
+      real :: rdum_ndim_1(NDIM), rdum_ndim_2(NDIM), rdum_ndim_3(NDIM)
+
 !! femdem
       type( vector_field ), pointer :: delta_u_all, us_all
       type( scalar_field ), pointer :: solid_vol_fra
@@ -1617,7 +1621,7 @@ end if
 
 ! this is for DG and boundaries of the domain
 !                  IF(SELE.LE.0) THEN ! this is for DG
-                  IF(.not.on_domain_boundary) THEN ! this is for DG
+                  IF( .not. on_domain_boundary) THEN ! this is for DG
 ! Calculate U_SLOC2LOC, CV_SLOC2LOC:
 !       print *,' sele,ele2,ele,CV_ILOC,CV_jLOC,on_domain_boundary:',sele,ele2,ele,CV_ILOC,CV_jLOC,on_domain_boundary
 !       print *,'CV_OTHER_LOC:',CV_OTHER_LOC
@@ -1631,11 +1635,6 @@ end if
                         ENDIF
                      END DO
                   ENDIF ! ENDOF IF(SELE.LE.0) THEN
-
-!                  DO CV_SKLOC=1,CV_SNLOC
-!                     CV_KLOC = CV_SLOC2LOC(CV_SKLOC)
-!                     SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
-!                  END DO
 
 
 
@@ -2260,7 +2259,8 @@ end if
                              NDOTQ_HAT, &
                              FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                              RETRIEVE_SOLID_CTY,theta_cty_solid, &
-                             loc_u, loc2_u )
+                             loc_u, loc2_u, & 
+                             rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3 ) 
                      ENDIF Conditional_GETCT2
 
 
@@ -10836,7 +10836,9 @@ CONTAINS
        NDOTQ_HAT, &
        FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
        RETRIEVE_SOLID_CTY,theta_cty_solid, &
-       loc_u, loc2_u )
+       loc_u, loc2_u, &
+! local memory sent down for speed...
+       UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL) 
     ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
     IMPLICIT NONE
 ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO CT MATRIX
@@ -10858,12 +10860,17 @@ CONTAINS
     ! LIMT_HAT is the normalised voln fraction
     REAL, intent( in ) :: theta_cty_solid
     REAL,  DIMENSION( NPHASE ), intent( in ) :: FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J
+! local memory sent down for speed...
+    REAL,  DIMENSION( NDIM, NPHASE ), intent( inout ) :: UDGI_IMP_ALL
+    REAL,  DIMENSION( NPHASE ), intent( inout ) :: RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct
+    REAL,  DIMENSION( NDIM ), intent( inout ) :: UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL
 
     ! Local variables...
     INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
          U_KLOC_LEV, U_NLOC_LEV, IPHASE
-    REAL :: RCON(NPHASE),RCON_J(NPHASE), UDGI_IMP_ALL(NDIM,NPHASE), NDOTQ_IMP(NPHASE), rcon_in_ct(NPHASE), rcon_j_in_ct(NPHASE)
-    REAL :: UDGI_ALL(NDIM), UOLDDGI_ALL(NDIM), UDGI_HAT_ALL(NDIM)
+!    REAL :: UDGI_IMP_ALL(NDIM,NPHASE)
+!    REAL :: RCON(NPHASE),RCON_J(NPHASE), NDOTQ_IMP(NPHASE), rcon_in_ct(NPHASE), rcon_j_in_ct(NPHASE)
+!    REAL :: UDGI_ALL(NDIM), UOLDDGI_ALL(NDIM), UDGI_HAT_ALL(NDIM)
 
 
     IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
