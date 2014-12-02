@@ -258,6 +258,7 @@
 
       type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field
       type(scalar_field), pointer :: pressure_field, porosity_field, tracer_field2
+      type(vector_field), pointer :: positions
 
       !Dummy to print FEM saturation
       real, dimension(:,:), allocatable :: dummy_to_print_FEM
@@ -768,7 +769,7 @@
                     CV_NDGLN, X_NDGLN, U_NDGLN, &
                     CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
 !!$
-                    Temperature, Temperature_Old, &
+!                    Temperature, Temperature_Old, &
 !!$
                     MAT_NLOC, MAT_NDGLN, MAT_NONODS, ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                     t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
@@ -1014,8 +1015,8 @@
                           CV_NDGLN, X_NDGLN, U_NDGLN, &
                           CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
 !!$
-                          Component( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
-                          Component_Old( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
+!                          Component( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
+!                          Component_Old( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
 !!$
                           MAT_NLOC, MAT_NDGLN, MAT_NONODS, Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                           v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
@@ -1248,6 +1249,12 @@
                     adapt_time_steps, default=5 )
             end if
             if( mod( itime, adapt_time_steps ) == 0 ) do_reallocate_fields = .true.
+         elseif (have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric') ) then
+            if( have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric/period_in_timesteps') ) then
+               call get_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric/period_in_timesteps', &
+                    adapt_time_steps, default=5 )
+            end if
+            if( mod( itime, adapt_time_steps ) == 0 ) do_reallocate_fields = .true.
          elseif( have_option( '/mesh_adaptivity/prescribed_adaptivity' ) ) then
             if( do_adapt_state_prescribed( current_time ) ) do_reallocate_fields = .true.
          end if Conditional_Adaptivity_ReallocatingFields
@@ -1257,7 +1264,7 @@
          Conditional_ReallocatingFields: if( do_reallocate_fields ) then
             !The storaged variables must be recalculated
             call Clean_Storage(state, StorageIndexes)
-            Conditional_Adaptivity: if( have_option( '/mesh_adaptivity/hr_adaptivity ') ) then
+            Conditional_Adaptivity: if( have_option( '/mesh_adaptivity/hr_adaptivity ') .or. have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric')) then
 
                Conditional_Adapt_by_TimeStep: if( mod( itime, adapt_time_steps ) == 0 ) then
 
@@ -1284,7 +1291,15 @@
 
                   call pre_adapt_tasks( sub_state )
 
-                  call qmesh( state, metric_tensor )
+
+                  if (have_option('/mesh_adaptivity/hr_adaptivity_prescribed_metric')) then
+                     positions=>extract_vector_field(state(1),"Coordinate")
+                     call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'MetricTensor' )
+                     call initialise_field(metric_tensor,'/mesh_adaptivity/hr_adaptivity_prescribed_metric/tensor_field::MetricTensor',positions)
+                     nullify(positions)
+                  else
+                     call qmesh( state, metric_tensor )
+                  end if
 
                   if( have_option( '/io/stat/output_before_adapts' ) ) call write_diagnostics( state, current_time, dt, &
                        itime, not_to_move_det_yet = .true. )
