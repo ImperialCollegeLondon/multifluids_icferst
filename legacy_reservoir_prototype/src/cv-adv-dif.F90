@@ -12300,6 +12300,12 @@ CONTAINS
                adapt_time_steps )
        end if
        if( mod( timestep, adapt_time_steps ) == 0 ) store_ele = .true.
+    elseif( have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric') ) then
+       if( have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric/period_in_timesteps') ) then
+          call get_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric/period_in_timesteps', &
+               adapt_time_steps )
+       end if
+       if( mod( timestep, adapt_time_steps ) == 0 ) store_ele = .true.
     elseif( have_option( '/mesh_adaptivity/prescribed_adaptivity' ) ) then
        call get_option( '/timestepping/current_time', current_time )
        if( do_adapt_state_prescribed( current_time ) ) store_ele = .true.
