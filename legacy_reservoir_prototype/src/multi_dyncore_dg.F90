@@ -89,7 +89,7 @@ contains
     CV_NLOC, U_NLOC, X_NLOC,  &
     CV_NDGLN, X_NDGLN, U_NDGLN, &
     CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-    T, TOLD, &
+!    T, TOLD, &!
     MAT_NLOC,MAT_NDGLN,MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
     T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
     SUF_SIG_DIAGTEN_BC, &
@@ -139,8 +139,10 @@ contains
         integer, dimension (:,:) :: global_dense_block_acv
         INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
         INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-        REAL, DIMENSION( : ), intent( inout ) :: T, T_FEMT, DEN_FEMT
-        REAL, DIMENSION( : ), intent( in ) :: TOLD
+!        REAL, DIMENSION( : ), intent( inout ) :: T, T_FEMT, DEN_FEMT
+        REAL, DIMENSION( : ), intent( inout ) :: T_FEMT, DEN_FEMT
+
+!        REAL, DIMENSION( : ), intent( in ) :: TOLD
         REAL, DIMENSION( : ), intent( in ) :: T2, T2OLD
         REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
         REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -304,9 +306,10 @@ contains
             MEAN_PORE_CV, &
             SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
             mass_ele_transp,&
-            StorageIndexes, Field_selector, T_input = T, TOLD_input=TOLD, FEMT_input =  T_FEMT ,&
+!            StorageIndexes, Field_selector, T_input = T, TOLD_input=TOLD, FEMT_input =  T_FEMT ,&!
+            StorageIndexes, Field_selector, FEMT_input =  T_FEMT ,&
             saturation=saturation)
-            t=0.
+            !t=0.
 
             Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                 ! Lump the multi-phase flow eqns together
@@ -325,16 +328,16 @@ contains
                 ALLOCATE( FINACV_SUB( CV_NONODS + 1 ))
                 ALLOCATE( MIDACV_SUB( CV_NONODS ))
 
-                CALL LUMP_ENERGY_EQNS( CV_NONODS, NPHASE, &
-                NCOLACV, NCOLACV_SUB, &
-                FINACV, COLACV, COLACV_SUB, FINACV_SUB, ACV_SUB )
-                CALL SOLVER( ACV_SUB, T, CV_RHS_SUB, &
-                FINACV_SUB, COLACV_SUB, &
-                trim(option_path))
+                !CALL LUMP_ENERGY_EQNS( CV_NONODS, NPHASE, &
+                !NCOLACV, NCOLACV_SUB, &
+                !FINACV, COLACV, COLACV_SUB, FINACV_SUB, ACV_SUB )
+                !CALL SOLVER( ACV_SUB, T, CV_RHS_SUB, &
+                !FINACV_SUB, COLACV_SUB, &
+                !trim(option_path))
 
-                DO IPHASE = 2, NPHASE
-                   T( 1 + ( IPHASE - 1 ) * CV_NONODS : IPHASE * CV_NONODS ) = T ( 1 : CV_NONODS )
-                END DO
+                !DO IPHASE = 2, NPHASE
+                !   T( 1 + ( IPHASE - 1 ) * CV_NONODS : IPHASE * CV_NONODS ) = T ( 1 : CV_NONODS )
+                !END DO
 
              ELSE
 
@@ -362,7 +365,7 @@ contains
 
 
 
-                   T([([(i+(j-1)*cv_nonods,j=1,nphase)],i=1,cv_nonods)]) = [vtracer%val]
+                   !T([([(i+(j-1)*cv_nonods,j=1,nphase)],i=1,cv_nonods)]) = [vtracer%val]
 
                 ELSE
                    vtracer=as_vector(tracer,dim=2)
@@ -375,7 +378,7 @@ contains
 !                        FINACV, COLACV, &
 !                        trim(option_path) )
 
-                   T([([(i+(j-1)*cv_nonods,j=1,nphase)],i=1,cv_nonods)]) = [tracer%val]
+                   !T([([(i+(j-1)*cv_nonods,j=1,nphase)],i=1,cv_nonods)]) = [tracer%val]
 
                 END IF
 
@@ -8692,7 +8695,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             CV_NLOC, U_NLOC, X_NLOC,  &
             CV_NDGLN, X_NDGLN, U_NDGLN, &
             CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-            CURVATURE, VOLUME_FRAC, &
+!            CURVATURE, VOLUME_FRAC, &!
             MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
             CV_DISOPT, CV_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
             RZERO_DIAGTEN, &

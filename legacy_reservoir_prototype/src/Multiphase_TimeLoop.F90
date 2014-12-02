@@ -768,7 +768,7 @@
                     CV_NDGLN, X_NDGLN, U_NDGLN, &
                     CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
 !!$
-                    Temperature, Temperature_Old, &
+!                    Temperature, Temperature_Old, &
 !!$
                     MAT_NLOC, MAT_NDGLN, MAT_NONODS, ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                     t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
@@ -1014,8 +1014,8 @@
                           CV_NDGLN, X_NDGLN, U_NDGLN, &
                           CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
 !!$
-                          Component( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
-                          Component_Old( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
+!                          Component( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
+!                          Component_Old( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
 !!$
                           MAT_NLOC, MAT_NDGLN, MAT_NONODS, Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                           v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
