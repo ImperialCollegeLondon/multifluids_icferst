@@ -2419,10 +2419,17 @@
           type(scalar_field) :: sfield
           character (len=*) :: name
           type(scalar_field) :: sfield2
+          integer :: i,j
 
           call allocate(sfield2,sfield%mesh,name)
           sfield2%option_path=sfield%option_path
           sfield2%bc=sfield%bc
+          do i=1,size(sfield2%bc%boundary_condition)
+             do j=1, size(sfield2%bc%boundary_condition(i)%surface_fields)
+                call incref(sfield2%bc%boundary_condition(i)%surface_fields(j))
+             end do
+             call incref(sfield2%bc%boundary_condition(i)%surface_mesh)
+          end do
           call insert(mstate,sfield2,name)
           call deallocate(sfield2)
 
