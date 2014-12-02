@@ -373,7 +373,7 @@
 !!$ Den = Den0 * exp[ c0 * ( P - P0 ) ] :: Exponential_1 EOS
 !!$ Den = c0 * P** c1                   :: Exponential_2 EOS
 
-      pressure => extract_scalar_field( state( 1 ), 'Pressure' )
+      pressure => extract_scalar_field( packed_state, 'CVPressure' )
       temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
       have_temperature_field = ( stat == 0 )
 

@@ -2421,6 +2421,8 @@
           type(scalar_field) :: sfield2
 
           call allocate(sfield2,sfield%mesh,name)
+          sfield2%option_path=sfield%option_path
+          sfield2%bc=sfield%bc
           call insert(mstate,sfield2,name)
           call deallocate(sfield2)
 
