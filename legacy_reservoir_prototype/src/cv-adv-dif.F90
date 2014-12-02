@@ -565,7 +565,56 @@ contains
               GetOldName(saturation))
       end if
 
+if (.true.) then ! new modification for the input
+      T_ALL =>tracer%val(1,:,:)
+      TOLD_ALL =>old_tracer%val(1,:,:)
 
+      if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
+
+      T_ALL_KEEP = T_ALL
+            
+      IF( GETCT ) THEN
+         IF( RETRIEVE_SOLID_CTY ) THEN
+            ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
+            ALLOCATE(U_HAT_ALL(NDIM,U_NONODS))
+                  
+            delta_u_all => extract_vector_field( packed_state, "delta_U" )
+            u_hat_all = delta_u_all%val + u_all( :, 1, :) ! ndim, u_nonods
+                  
+            us_all => extract_vector_field( packed_state, "solid_U" )
+                  
+            Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
+            VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! cv_nonods
+                  
+                  
+            ALLOCATE(T_TEMP(NPHASE,CV_NONODS), TOLD_TEMP(NPHASE,CV_NONODS))
+                  
+            IF(NPHASE==1) THEN
+               T_ALL_KEEP = 1.0 
+               do cv_inod = 1, cv_nonods
+                  do iphase = 1, nphase
+                     ! Amend the saturations to produce the real voln fractions -only is we have just one phase.
+                     T_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
+                     TOLD_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
+                  end do
+               end do
+            ELSE
+               T_TEMP= T_ALL
+               TOLD_TEMP=TOLD_ALL
+            ENDIF
+
+            ! switch off caching of CV face values as this will be wrong.
+            T_ALL=>T_TEMP
+            TOLD_ALL=>TOLD_TEMP
+            ! CONV = A*B ! conV is an allocatable target
+            ! T_ALL=>CONV ! conV is an allocatable target
+                  
+            call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
+                  
+         ENDIF
+      ENDIF
+
+else
       if (.not.present(T_input)) then!<==TEMPORARY
          select case (Field_selector)
          case (1)!Temperature
@@ -657,7 +706,7 @@ contains
          
          T_ALL_KEEP = T_ALL
       end if
-
+end if
      !##################END OF SET VARIABLES##################
 
 
@@ -691,7 +740,8 @@ contains
       end if
 
 
-      if ( Field_selector == 1 ) then ! Temperature
+!      if ( Field_selector == 1 ) then ! Temperature
+      if (tracer%name == "PackedTemperature")  then
          allocate( suf_t_bc( 1,nphase,cv_snloc*stotel ), suf_t_bc_rob1( 1,nphase,cv_snloc*stotel ), &
                    suf_t_bc_rob2( 1,nphase,cv_snloc*stotel ) )
          call update_boundary_conditions( state, stotel, cv_snloc, nphase, &
@@ -886,7 +936,7 @@ contains
 
       ALLOCATE( T2_ALL( NPHASE, CV_NONODS ), T2OLD_ALL( NPHASE, CV_NONODS ) )
 
-!      ALLOCATE( FEMT_ALL( NPHASE, CV_NONODS ), FEMTOLD_ALL( NPHASE, CV_NONODS ) )
+      ALLOCATE( FEMT_ALL( NPHASE, CV_NONODS ), FEMTOLD_ALL( NPHASE, CV_NONODS ) )
       ALLOCATE( FEMDEN_ALL( NPHASE, CV_NONODS ), FEMDENOLD_ALL( NPHASE, CV_NONODS ) )
       ALLOCATE( FEMT2_ALL( NPHASE, CV_NONODS ), FEMT2OLD_ALL( NPHASE, CV_NONODS ) )
 
@@ -2694,12 +2744,13 @@ contains
          call deallocate(saturation_BCs_robin2)
       end if
 
-if (present(T_input)) then!<==TEMPORARY
-      deallocate( T_ALL_TARGET, TOLD_ALL_TARGET, FEMT_ALL_TARGET, FEMTOLD_ALL_TARGET)
-end if
+!if (present(T_input)) then!<==TEMPORARY
+!      deallocate( T_ALL_TARGET, TOLD_ALL_TARGET, FEMT_ALL_TARGET, FEMTOLD_ALL_TARGET)
+!end if
 
 
-      if ( Field_selector == 1 ) then ! Temperature
+!      if ( Field_selector == 1 ) then ! Temperature
+      if (tracer%name == "PackedTemperature")  then
          deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
       end if
       if (capillary_pressure_activated) deallocate(CAP_DIFFUSION)
