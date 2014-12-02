@@ -1212,8 +1212,8 @@ contains
 
 !        REAL, DIMENSION(  :  ), intent( in ) :: SATURAOLD
 !        REAL, DIMENSION(  :  ), intent( inout ) :: SATURA
-        REAL, DIMENSION(  NPHASE, CV_NONODS ), intent( in ) :: DERIV
-        REAL, DIMENSION(  NPHASE*IDIVID_BY_VOL_FRAC, CV_NONODS *IDIVID_BY_VOL_FRAC ), intent( in ) :: FEM_VOL_FRAC
+        REAL, DIMENSION( : , : ), intent( in ) :: DERIV
+        REAL, DIMENSION( : , : ), intent( in ) :: FEM_VOL_FRAC
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDC
