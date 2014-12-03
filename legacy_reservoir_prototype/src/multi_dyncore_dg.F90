@@ -266,14 +266,12 @@ contains
         'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
 
 ! let the coupling work
-
          if ( have_option( '/blasting' ) ) then
             RETRIEVE_SOLID_CTY = .true.
          else
             RETRIEVE_SOLID_CTY = .false.
          end if
 
-            !RETRIEVE_SOLID_CTY = .false.
 
         Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
