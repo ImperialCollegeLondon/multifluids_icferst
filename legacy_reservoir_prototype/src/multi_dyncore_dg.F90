@@ -1714,8 +1714,8 @@ contains
                 call MatGetValues(cmc_petsc%M, 1, (/ i-1 /), 1, (/ i-1 /),  aij, ierr)
                  rescaleVal = rescaleVal + abs(aij(1))
             end do
-            !If the value is below 1d-10 PETSc is not happy with it for some reason.
-            rescaleVal = max(rescaleVal, 1d-10)
+            !Make average
+            rescaleVal = max(rescaleVal/size(rhs_p%val), 1d-30)
             call MatScale(cmc_petsc%M,1.0/rescaleVal, ierr)
             rhs_p%val = rhs_p%val / rescaleVal
             !End of re-scaling
