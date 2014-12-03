@@ -72,26 +72,30 @@ module multiphase_fractures
      end subroutine y2d_populate_femdem
   end interface
 
-!  interface
-!     subroutine y2dfemdem( string, dt, p, uf_r, vf_r, uf_v, vf_v, du_s, dv_s, u_s, v_s, &
-!          &                 mu_f, f_x, f_y, a_xx, a_xy, a_yy )
-!       character( len = * ), intent( in ) :: string
-!       real, intent( in ) :: dt
-!       real, dimension( * ), intent( in ) :: p, uf_r, vf_r, uf_v, vf_v, mu_f
-!       real, dimension( * ), intent( out ) :: du_s, dv_s, u_s, v_s, f_x, f_y, a_xx, a_xy, a_yy
-!     end subroutine y2dfemdem
-!  end interface
-!#endif
 
+
+! the one with viscosity
   interface
-     subroutine y2dfemdem( string, dt, p, uf_r, vf_r, uf_v, vf_v, du_s, dv_s, u_s, v_s )
+     subroutine y2dfemdem( string, dt, p, uf_r, vf_r, uf_v, vf_v, du_s, dv_s, u_s, v_s, &
+         mu_f, f_x, f_y, usl, uvl, a_xx, a_xy, a_yy )  
        character( len = * ), intent( in ) :: string
        real, intent( in ) :: dt
-       real, dimension( * ), intent( in ) :: p, uf_r, vf_r, uf_v, vf_v
-       real, dimension( * ), intent( out ) :: du_s, dv_s, u_s, v_s
+       real, dimension( * ), intent( in ) :: p, uf_r, vf_r, uf_v, vf_v, mu_f
+       real, dimension( * ), intent( out ) :: du_s, dv_s, u_s, v_s, f_x, f_y, usl, uvl, a_xx, a_xy, a_yy
      end subroutine y2dfemdem
   end interface
 #endif
+
+! the one without viscosity
+!  interface
+!     subroutine y2dfemdem( string, dt, p, uf_r, vf_r, uf_v, vf_v, du_s, dv_s, u_s, v_s )
+!       character( len = * ), intent( in ) :: string
+!       real, intent( in ) :: dt
+!       real, dimension( * ), intent( in ) :: p, uf_r, vf_r, uf_v, vf_v
+!       real, dimension( * ), intent( out ) :: du_s, dv_s, u_s, v_s
+!     end subroutine y2dfemdem
+!  end interface
+!#endif
 
 
 
@@ -116,7 +120,7 @@ contains
     type( state_type ), intent( in ) :: packed_state
 
     real, dimension( : ), allocatable :: p_r, muf_r
-    real, dimension( :, : ), allocatable :: uf_r, uf_v, du_s, u_s, f
+    real, dimension( :, : ), allocatable :: uf_r, uf_v, du_s, u_s, f ,u
     real, dimension( :, :, : ), allocatable :: a
     integer :: r_nonods, v_nonods
     real :: dt
@@ -130,8 +134,10 @@ contains
     v_nonods = node_count( positions_v )
 
     allocate( p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
-               f( ndim, r_nonods ), a( ndim, ndim, r_nonods), &
-               uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ) )
+               f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
+               uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ))
+             
+
     p_r=0. ; uf_r=0. ; muf_r=0. ; f=0. ; a=0. ; uf_v=0. ; du_s=0. ; u_s=0.
 
     call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r )
@@ -139,16 +145,16 @@ contains
     call get_option( "/timestepping/timestep", dt )
 
     call y2dfemdem( trim( femdem_mesh_name ) // char( 0 ), dt, p_r, uf_r( 1, : ), uf_r( 2, : ), &
-                     uf_v( 1, : ), uf_v( 2, : ), du_s( 1, : ), du_s( 2, : ), u_s( 1, : ), u_s( 2, : ) ) !, &
-                     !muf_r, f( 1, : ), f( 2, : ), a( 1, 1, : ), a( 1, 2, : ), a( 2 ,2 , : ) )
+                     uf_v( 1, : ), uf_v( 2, : ), du_s( 1, : ), du_s( 2, : ), u_s( 1, : ), u_s( 2, : ), &
+                     muf_r, f( 1, : ), f( 2, : ), u(1, : ), u(2, : ), a( 1, 1, : ), a( 1, 2, : ), a( 2 ,2 , : ) )
 
     call interpolate_fields_in_v( packed_state, du_s, u_s )
-    !call interpolate_fields_in_r( packed_state, f, a )
+    call interpolate_fields_in_r( packed_state, f, a )
 
 
     ! deallocate
     call deallocate_femdem
-    deallocate( p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a )
+    deallocate( p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u)
 
     return
   end subroutine blasting
@@ -479,7 +485,7 @@ contains
     call insert( alg_fl, fl_positions, "Coordinate" )
 
     call set_solver_options( path, &
-         ksptype = "cg", &
+         ksptype = "gmres", &
          pctype = "hypre", &
          rtol = 1.e-10, &
          atol = 0., &
@@ -623,7 +629,7 @@ contains
          &                  u_dg, v_dg
     type( scalar_field ), pointer :: pressure
     type( vector_field ), pointer :: fl_positions
-    type( tensor_field ), pointer :: velocity
+    type( tensor_field ), pointer :: velocity, viscosity
     type( state_type ) :: alg_ext, alg_fl
     real, dimension( :, :, : ), allocatable :: u_tmp
     integer, dimension( : ), pointer :: fl_ele_nodes, cv_ndgln
@@ -641,13 +647,17 @@ contains
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
     fl_positions => extract_vector_field( packed_state, "Coordinate" )
 
-    !viscosity => extract_tensor_field( packed_state, "Viscosity", stat )
+  
+    
+        
+    viscosity => extract_tensor_field( packed_state, "Viscosity", stat )
+   
     !have_viscosity = ( stat == 0 )
 
     totele = ele_count( fl_mesh )
 
     call set_solver_options( path, &
-         ksptype = "cg", &
+         ksptype = "gmres", &
          pctype = "hypre", &
          rtol = 1.e-10, &
          atol = 0., &
@@ -668,8 +678,14 @@ contains
     call allocate( field_fl_v, fl_mesh, "Velocity2" )
     call zero( field_fl_v )
 
-    !call allocate( field_fl_mu, fl_mesh, "Viscosity" )
-    !call zero( field_fl_mu )
+    call allocate( field_fl_mu, fl_mesh, "Viscosity" )
+    call zero( field_fl_mu )
+
+   !this part need to be changed, take the value from state
+    viscosity % val(1, 1, :)=0.1
+    viscosity % val(1, 2, :)=0.1
+    viscosity % val(2, 1, :)=0.1
+    viscosity % val(2, 2, :)=0.1
 
 
     ! deal with pressure
@@ -682,14 +698,14 @@ contains
           field_fl_p % val( fl_ele_nodes( 3 ) ) = pressure % val( cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
 
           ! this is only valid for continuous simulations, i.e. when \mu lives on the pressure mesh...
-          !field_fl_mu % val( fl_ele_nodes( 1 ) ) = viscosity % val( cv_ndgln( ( ele - 1 ) * cv_nloc + 1 ) )
-          !field_fl_mu % val( fl_ele_nodes( 2 ) ) = viscosity % val( cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
-          !field_fl_mu % val( fl_ele_nodes( 3 ) ) = viscosity % val( cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
+          field_fl_mu % val(fl_ele_nodes( 1 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 1 ) )
+          field_fl_mu % val(fl_ele_nodes( 2 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
+          field_fl_mu % val(fl_ele_nodes( 3 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
        end do
     else
        ! just copy memory for p1
        field_fl_p % val = pressure % val
-       !field_fl_mu % val = viscosity % val( 1, 1, : )
+       field_fl_mu % val = viscosity % val( 1, 1, : )
     end if
 
     ! deal with velocity - this part needs optimisation...
@@ -718,7 +734,7 @@ contains
     call insert( alg_fl, field_fl_p, "Pressure" )
     call insert( alg_fl, field_fl_u, "Velocity1" )
     call insert( alg_fl, field_fl_v, "Velocity2" )
-    !call insert( alg_fl, field_fl_mu, "Viscosity" )
+    call insert( alg_fl, field_fl_mu, "Viscosity" )
 
 
     ! ring state
@@ -740,10 +756,10 @@ contains
     field_ext_v % option_path = path
     call insert( alg_ext, field_ext_v, "Velocity2" )
 
-    !call allocate( field_ext_mu, positions_r%mesh, "Viscosity" )
-    !call zero( field_ext_mu )
-    !field_ext_mu % option_path = path
-    !call insert( alg_ext, field_ext_mu, "Viscosity" )
+    call allocate( field_ext_mu, positions_r%mesh, "Viscosity" )
+    call zero( field_ext_mu )
+    field_ext_mu % option_path = path
+    call insert( alg_ext, field_ext_mu, "Viscosity" )
 
     ewrite(3,*) "...interpolating"
 
@@ -754,19 +770,19 @@ contains
     p_r = field_ext_p % val
     u_r( 1, : ) = field_ext_u % val
     u_r( 2, : ) = field_ext_v % val
-    !mu_r = field_ext_mu % val
+    mu_r = field_ext_mu % val
 
     ! deallocate
     call deallocate( field_fl_p )
     call deallocate( field_fl_u )
     call deallocate( field_fl_v )
-    !call deallocate( field_fl_mu )
+    call deallocate( field_fl_mu )
 
 
     call deallocate( field_ext_p )
     call deallocate( field_ext_u )
     call deallocate( field_ext_v )
-    !call deallocate( field_ext_mu )
+    call deallocate( field_ext_mu )
 
 
     call deallocate( alg_fl )
@@ -808,7 +824,7 @@ contains
     fl_positions => extract_vector_field( packed_state, "Coordinate" )
 
     call set_solver_options( path, &
-         ksptype = "cg", &
+         ksptype = "gmres", &
          pctype = "hypre", &
          rtol = 1.e-10, &
          atol = 0., &
@@ -914,7 +930,7 @@ contains
     character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
 
     call set_solver_options( path, &
-         ksptype = "cg", &
+         ksptype = "gmres", &
          pctype = "hypre", &
          rtol = 1.e-10, &
          atol = 0., &
@@ -1037,7 +1053,7 @@ contains
     real, dimension( :, :, : ), intent( in ) :: ain
 
     !Local variables
-    type( mesh_type ), pointer :: fl_mesh, u_mesh
+    type( mesh_type ), pointer :: fl_mesh, p_mesh
     type( scalar_field ), pointer :: f
     type( scalar_field ) :: field_fl_f1, field_fl_f2, &
          &                  field_fl_a11, field_fl_a12, field_fl_a22, &
@@ -1050,7 +1066,7 @@ contains
     character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
 
     call set_solver_options( path, &
-         ksptype = "cg", &
+         ksptype = "gmres", &
          pctype = "hypre", &
          rtol = 1.e-10, &
          atol = 0., &
@@ -1125,25 +1141,26 @@ contains
     call interpolation_galerkin_femdem( alg_ext, alg_fl, field = dummy )
 
 
-    u_mesh => extract_mesh( packed_state, "VelocityMesh" )
-    call allocate( f2, u_mesh, "dummy" )
+    p_mesh => extract_mesh( packed_state, "PressureMesh" ) 
+    call allocate( f2, p_mesh, "dummy" )
 
     f_x => extract_vector_field( packed_state, "f_x" )
     do idim = 1, ndim
-       f => extract_scalar_field( alg_fl, "f" // int2str( idim ) )
-       call project_field( f, f2, fl_positions )
+       f => extract_scalar_field( alg_fl, "f" // int2str( idim ) )       
+       call linear2quadratic_field(f, f2)       
        f_x % val( idim, : ) = f2 % val
     end do
 
     a_xx => extract_tensor_field( packed_state, "a_xx" )
     do idim = 1, ndim
-       f => extract_scalar_field( alg_fl, "a1" // int2str( idim ) )
-       call project_field( f, f2, fl_positions )
+       f => extract_scalar_field( alg_fl, "a1" // int2str( idim ) )         
+       call linear2quadratic_field(f, f2)       
        a_xx % val( 1, idim, : ) = f2 % val
     end do
     f => extract_scalar_field( alg_fl, "a22" )
-    call project_field( f, f2, fl_positions )
+    call linear2quadratic_field(f, f2)    
     a_xx % val( 2, 2, : ) = f2 % val
+    a_xx % val( 2, 1, :)=a_xx % val(1, 2, :)
 
 
     ! deallocate
@@ -1580,5 +1597,75 @@ contains
 
     return
   end function triangle_area
+
+
+!from p1 to p
+    subroutine linear2quadratic_field( field_in, field_out )
+        implicit none
+        type( scalar_field ), intent( in ) :: field_in
+        type( scalar_field ), intent( inout ) :: field_out
+        
+
+        integer, dimension( : ), pointer :: p1_ndglno, p2_ndglno,  p1_nods
+        integer :: n1, n2,  totele, p1_nloc, p2_nloc, p1_nonods, p2_nonods, ele, p2_iloc, p2_nod
+        real, dimension( : ), allocatable :: field_p1_loc, field_p2_loc
+
+        ! This sub will linearise a p2 field
+
+
+
+        n1 = field_in%mesh%shape%degree
+        n2 = field_out%mesh%shape%degree
+
+        if ( n1==1 .AND. n2==2) then
+
+            p1_ndglno => get_ndglno( field_in%mesh )
+            p2_ndglno => get_ndglno( field_out%mesh )
+
+            totele = field_in%mesh%elements
+            p1_nloc = field_in%mesh%shape%loc
+            p2_nloc = field_out%mesh%shape%loc
+
+            allocate( field_p1_loc( p1_nloc) ) 
+            allocate( field_p2_loc( p2_nloc ) ) 
+
+            do ele = 1, totele
+
+                p1_nods => p1_ndglno( ( ele - 1 ) * p1_nloc + 1 : ele * p1_nloc )
+                field_p1_loc =  field_in % val( p1_nods )
+
+
+                field_p2_loc(  1 ) =field_p1_loc(  1 ) !!!nedit 
+                field_p2_loc( 3 ) =field_p1_loc(  2 ) 
+                field_p2_loc(  6 ) =field_p1_loc(  3 ) 
+
+                field_p2_loc(  2 ) = 0.5 * ( field_p1_loc(  1 ) + field_p1_loc( 2) )
+                field_p2_loc(  4 ) = 0.5 * ( field_p1_loc(  1 ) + field_p1_loc(  3 ) )
+                field_p2_loc(  5 ) = 0.5 * ( field_p1_loc( 2) + field_p1_loc(  3 ) )
+
+                if ( p2_nloc == 10 ) then
+                    field_p2_loc(  7 ) = 0.5 * ( field_p1_loc(  1 ) + field_p1_loc(  4 ) )
+                    field_p2_loc(  8 ) = 0.5 * ( field_p1_loc(  2 ) + field_p1_loc(  4 ) )
+                    field_p2_loc(  9 ) = 0.5 * ( field_p1_loc(  3 ) + field_p1_loc(  4 ) )
+                    field_p2_loc(  10 ) =field_p1_loc(  4 ) 
+                end if
+
+                do p2_iloc = 1, p2_nloc
+                    p2_nod = p2_ndglno( ( ele - 1 ) * p2_nloc + p2_iloc )
+                    field_out % val( p2_nod ) = field_p2_loc( p2_iloc )
+                end do
+
+            end do
+
+            deallocate( field_p1_loc, field_p2_loc)
+       else 
+! we have not called this routine with a p2 field
+            stop 28289
+
+        end if
+
+        return
+    end subroutine linear2quadratic_field
+
 
 end module multiphase_fractures

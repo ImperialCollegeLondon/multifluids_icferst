@@ -1955,6 +1955,16 @@
 
          vfield => extract_vector_field( state(1), "solid_U" )
          call insert( packed_state, vfield, "solid_U" )
+
+         vfield => extract_vector_field( state(1), "f_x" )
+         call insert( packed_state, vfield, "f_x" )         
+
+         tfield => extract_tensor_field( state(1), "a_xx" )
+         call insert( packed_state, tfield, "a_xx" )
+         
+         tfield => extract_tensor_field( state(1), "Viscosity" )
+         call insert( packed_state, tfield, "Viscosity" )          
+
       end if
 #endif
 

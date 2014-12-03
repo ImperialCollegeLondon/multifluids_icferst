@@ -265,13 +265,15 @@ contains
         lump_eqns = have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/' // &
         'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
 
-!         if ( have_option( '/blasting' ) ) then
-!            RETRIEVE_SOLID_CTY = .true.
-!         else
-!            RETRIEVE_SOLID_CTY = .false.
-!         end if
+! let the coupling work
 
+         if ( have_option( '/blasting' ) ) then
+            RETRIEVE_SOLID_CTY = .true.
+         else
             RETRIEVE_SOLID_CTY = .false.
+         end if
+
+            !RETRIEVE_SOLID_CTY = .false.
 
         Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
@@ -2685,7 +2687,7 @@ DEALLOCATE( PIVIT_MAT )
         U_NODJ, U_NODJ2, U_NODJ_IPHA, U_SJLOC, X_ILOC, MAT_ILOC2, MAT_INOD, MAT_INOD2, MAT_SILOC, &
         CV_ILOC, CV_JLOC, CV_NOD, CV_NOD_PHA, U_JNOD_IDIM_IPHA, COUNT_PHA2, P_JLOC2, P_JNOD, P_JNOD2, &
         CV_SILOC, JDIM, JPHASE, CV_KLOC2, CV_NODK2, CV_NODK2_PHA, GI_SHORT, STAT, &
-        GLOBI_CV, U_INOD_jDIM_jPHA, u_nod2, u_nod2_pha, cv_inod, COUNT_ELE, CV_ILOC2, CV_INOD2
+        GLOBI_CV, U_INOD_jDIM_jPHA, u_nod2, u_nod2_pha, cv_inod, COUNT_ELE, CV_ILOC2, CV_INOD2, IDIMSF,JDIMSF
         REAL    :: NN, NXN, NNX, NXNX, NMX, NMY, NMZ, SAREA, &
         VNMX, VNMY, VNMZ, NM, R
         REAL    :: MN, XC, YC, ZC, XC2, YC2, ZC2, HDC, VLM, VLM_NEW,VLM_OLD, NN_SNDOTQ_IN,NN_SNDOTQ_OUT, &
@@ -2732,6 +2734,9 @@ DEALLOCATE( PIVIT_MAT )
 ! solid fluid coupling visc. bc contribution...
         REAL, DIMENSION ( :, :, :, : ), allocatable :: ABS_SOLID_FLUID_COUP
         REAL, DIMENSION ( :, :, : ), allocatable :: FOURCE_SOLID_FLUID_COUP
+
+        type( vector_field ), pointer :: f_x
+        type( tensor_field ), pointer :: a_xx
 
 ! for the option where we divid by voln fraction...
         REAL, DIMENSION ( :, : ), allocatable :: VOL_FRA_GI, CV_DENGI
@@ -3277,7 +3282,21 @@ DEALLOCATE( PIVIT_MAT )
            ALLOCATE(NN_SIGMAGI_STAB_SOLID_RHS_ELE( NDIM_VEL * NPHASE, NDIM_VEL * NPHASE, U_NLOC, U_NLOC ))
            IF( GOT_DIFFUS .AND. include_viscous_solid_fluid_drag_force ) THEN  ! include_viscous_solid_fluid_drag_force taken from diamond
               ALLOCATE(ABS_SOLID_FLUID_COUP(NDIM, NDIM, NPHASE, CV_NONODS))
-              ALLOCATE(FOURCE_SOLID_FLUID_COUP(NDIM, NPHASE, CV_NONODS)) 
+              ALLOCATE(FOURCE_SOLID_FLUID_COUP(NDIM, NPHASE, CV_NONODS))
+
+
+              f_x => extract_vector_field( packed_state, "f_x" )
+              do IDIMSF= 1, NDIM
+                  FOURCE_SOLID_FLUID_COUP( IDIMSF, 1, : ) = f_x%val(IDIMSF, : ) !f_x do not include NPHASE
+              end do
+                          
+              a_xx => extract_tensor_field( packed_state, "a_xx")
+              do IDIMSF=1, NDIM
+                 do JDIMSF=1, NDIM
+                     ABS_SOLID_FLUID_COUP(IDIMSF, JDIMSF, 1, :)=a_xx%val(IDIMSF, JDIMSF, :) ! a_xx do not include NPHASE
+                 end do
+              end do
+
            ENDIF
         ENDIF
 
@@ -3593,18 +3612,23 @@ DEALLOCATE( PIVIT_MAT )
 ! Switch on for solid fluid-coupling...
                    IF(RETRIEVE_SOLID_CTY) THEN
                       CV_INOD = CV_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_ILOC )
-!                      DO IDIM=1,NDIM
-!                         DO IPHASE=1,NPHASE
-!                            I=IDIM + (IPHASE-1)*NDIM
-!                            LOC_U_ABSORB( I, I, MAT_ILOC ) = LOC_U_ABSORB( I, I, MAT_ILOC ) + &
-!                                 !COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
-!                                 COEFF_SOLID_FLUID * ( max( 1.0, DEN_ALL( IPHASE, cv_inod )) / dt ) * sf%val( cv_inod )
-!
-!                            LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) &
-!                                 !+ COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt )
-!                                 + COEFF_SOLID_FLUID * ( max( 1.0, DEN_ALL( IPHASE, cv_inod ) ) / dt )
-!                         END DO
-!                      END DO
+
+
+                      DO IDIM=1,NDIM
+                         DO IPHASE=1,NPHASE
+                            I=IDIM + (IPHASE-1)*NDIM
+                           LOC_U_ABSORB( I, I, MAT_ILOC ) = LOC_U_ABSORB( I, I, MAT_ILOC ) + &
+                                 !COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
+                                 COEFF_SOLID_FLUID * ( max( 1.0, DEN_ALL( IPHASE, cv_inod )) / dt ) * sf%val( cv_inod )
+
+                            LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) &
+                                 !+ COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt )
+                                 + COEFF_SOLID_FLUID * ( max( 1.0, DEN_ALL( IPHASE, cv_inod ) ) / dt )
+                         END DO
+                      END DO
+
+
+
 ! Add in the viscocity contribution...
                       IF( GOT_DIFFUS .AND. include_viscous_solid_fluid_drag_force ) THEN  
 ! Assume visc. is isotropic (can be variable)...
@@ -3632,20 +3656,24 @@ DEALLOCATE( PIVIT_MAT )
                 LOC_U_ABS_STAB( :, :, MAT_ILOC ) = U_ABS_STAB( :, :, MAT_INOD )
 
 ! Switch on for solid fluid-coupling apply stabilization term...
-!                   IF(RETRIEVE_SOLID_CTY) THEN
-!                      CV_INOD = CV_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_ILOC )
-!                      DO IDIM=1,NDIM
-!                         DO IPHASE=1,NPHASE
-!                            I=IDIM + (IPHASE-1)*NDIM
-!                            LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
-!                                   COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
-!   
-!                            LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC )  &
-!                                  + COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) 
-!                         END DO
-!                      END DO
-!                        
-!                   ENDIF
+
+
+
+                   IF(RETRIEVE_SOLID_CTY) THEN
+                     CV_INOD = CV_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_ILOC )
+                     DO IDIM=1,NDIM
+                        DO IPHASE=1,NPHASE
+                            I=IDIM + (IPHASE-1)*NDIM
+                            LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
+                                   COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
+  
+                            LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC )  &
+                                  + COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) 
+                        END DO
+                      END DO
+                       
+                   ENDIF
+
 
 
                 IF ( GOT_DIFFUS ) THEN

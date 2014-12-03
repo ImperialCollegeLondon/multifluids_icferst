@@ -3274,6 +3274,20 @@ vector_field_choice =
                    generic_aliased_field
                 }
              )
+         }|
+         element vector_field {
+             attribute rank { "1" },
+             attribute name { "f_x" },
+             (
+                element diagnostic {
+                   internal_algorithm,
+                   mesh_choice,
+                   diagnostic_vector_field
+                }|
+                element aliased {
+                   generic_aliased_field
+                }
+             )
          }
 # Insert new diagnostic vector field here using the template:
 #        element vector_field {
@@ -3366,7 +3380,34 @@ tensor_field_choice =
                   generic_aliased_field
                }
             )
-        }
+        }|
+        element tensor_field {
+            attribute name { "a_xx" },
+            (
+               element diagnostic {
+                  internal_algorithm,
+                  mesh_choice,
+                  diagnostic_tensor_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
+        }|
+        element tensor_field {
+            attribute name { "Viscosity" },
+            (
+               element diagnostic {
+                  internal_algorithm,
+                  mesh_choice,
+                  diagnostic_tensor_field
+               }|
+               element aliased {
+                  generic_aliased_field
+               }
+            )
+        }     
+
 # Insert new diagnostic tensor field here using the template:
 #        element tensor_field {
 #            attribute name { "NewFieldName" },
