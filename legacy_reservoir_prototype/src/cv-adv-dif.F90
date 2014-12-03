@@ -1623,20 +1623,28 @@ end if
 
 ! this is for DG and boundaries of the domain
 !                  IF(SELE.LE.0) THEN ! this is for DG
-                  IF( .not. on_domain_boundary) THEN ! this is for DG
+                  IF( between_elements .OR. on_domain_boundary) THEN ! this is for DG
 ! Calculate U_SLOC2LOC, CV_SLOC2LOC:
-!       print *,' sele,ele2,ele,CV_ILOC,CV_jLOC,on_domain_boundary:',sele,ele2,ele,CV_ILOC,CV_jLOC,on_domain_boundary
-!       print *,'CV_OTHER_LOC:',CV_OTHER_LOC
                      CV_SKLOC=0
                      DO CV_KLOC=1,CV_NLOC
                         CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
                         IF(CV_KLOC2.NE.0) THEN
                            CV_SKLOC=CV_SKLOC+1
+!           if( (CV_SLOC2LOC(CV_SKLOC)-CV_KLOC).ne.0) then
+!              print *,'CV_SLOC2LOC(CV_SKLOC),CV_SKLOC,CV_KLOC:',CV_SLOC2LOC(CV_SKLOC),CV_SKLOC,CV_KLOC
+!              stop 7755
+!           endif
                            CV_SLOC2LOC(CV_SKLOC)=CV_KLOC
                            SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
                         ENDIF
                      END DO
-                  ENDIF ! ENDOF IF(SELE.LE.0) THEN
+
+!                     DO CV_SKLOC=1,CV_SNLOC
+!                           CV_KLOC = CV_SLOC2LOC(CV_SKLOC) 
+!                           SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
+!                     END DO
+
+                  ENDIF ! ENDOF IF( between_elements ) THEN
 
 
 
@@ -1654,13 +1662,6 @@ end if
                        SCVFENSLY, SCVFEWEIGH, XC_CV_ALL( 1:NDIM, CV_NODI ), &
                        X_ALL(1:NDIM,:),  &
                        D1, D3, DCYL )
-
-               !   CVNORMX_ALL(1,GI)=CVNORMX(GI)
-               !   IF(NDIM.GE.2) CVNORMX_ALL(2,GI)=CVNORMY(GI)
-               !   IF(NDIM.GE.3) CVNORMX_ALL(3,GI)=CVNORMZ(GI)
-               !   CVNORMX(GI) = CVNORMX_ALL(1,GI)
-               !   IF(NDIM.GE.2) CVNORMY(GI) =CVNORMX_ALL(2,GI)
-               !   IF(NDIM.GE.3) CVNORMZ(GI) =CVNORMX_ALL(3,GI)
 
                   
 ! Pablo could store the outcomes of this:
@@ -1718,7 +1719,6 @@ end if
                   ! Compute the distance HDC between the nodes either side of the CV face
                   ! (this is needed to compute the local courant number and the non-linear theta)
                   
-!                  IF ( SELE == 0 ) THEN
                   IF ( on_domain_boundary) THEN
                      HDC = SQRT( SUM( (XC_CV_ALL(1:NDIM,CV_NODI)-X_ALL(1:NDIM,X_NODI))**2) )
                   ELSE
