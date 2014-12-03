@@ -20,7 +20,6 @@ print 'Running the model'
 
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
-print 'rm -f ' + path+ '/*.vtu'
 os.system('rm -f ' + path+ '/*.vtu')
 os.system(binpath + ' ' + path + '/*mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 
@@ -29,14 +28,14 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.012
-Tolerance_L2_NORM = 0.001
+Tolerance_L1_NORM = 0.026
+Tolerance_L2_NORM = 0.0021
 
 AutomaticLine = 1
 
 
 AutomaticFile = 'QuickTest_DG'
-AutomaticVTU_Number = 20
+AutomaticVTU_Number = 10
 
 #Plot the results in 2d?
 showPlot = False
@@ -221,7 +220,7 @@ Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
-
+#print L1_norm, L2_norm
 if (Passed): 
     print 'BL works OK'
 else:

@@ -26,13 +26,10 @@ start = time.time()
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
 
-
-print 'Running the BL with gravity test case (in a second cpu)'
-#os.chdir(path + '/BL_with_gravity/')
+print 'Running the gravity-capillarity test case (in a second cpu)'
+#os.chdir(path + '/Grav_cap_competing_fast/')
 #os.system('python' +' *.py > log')
-#We run in parallel this experiment because it is slower than the sum of the other three
-p =subprocess.Popen('python' +' *.py > log', shell=True, cwd=path + '/BL_with_gravity/')
-
+p =subprocess.Popen('python' +' *.py > log', shell=True, cwd=path + '/Grav_cap_competing_fast/')
 
 print 'Running the BL test case'
 os.chdir(path + '/BL_fast/')
@@ -43,13 +40,13 @@ print 'Running the thicker BL test case'
 os.chdir(path + '/BL_fast_thicker/')
 os.system('python' +' *.py > log')
 
-print 'Running the gravity-capillarity test case (in a second cpu)'
-#os.chdir(path + '/Grav_cap_competing_fast/')
-#os.system('python' +' *.py > log')
-p =subprocess.Popen('python' +' *.py > log', shell=True, cwd=path + '/Grav_cap_competing_fast/')
+print 'Running the BL with gravity test case'
+os.chdir(path + '/BL_with_gravity/')
+os.system('python' +' *.py > log')
+#p =subprocess.Popen('python' +' *.py > log', shell=True, cwd=path + '/BL_with_gravity/')
 
 
-#Wait until the BL with gravity finish
+#Wait until all the experiments have finished
 p.communicate()
 
 #Now we show the results
