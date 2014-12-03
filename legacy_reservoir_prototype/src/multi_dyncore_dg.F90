@@ -1269,7 +1269,7 @@ contains
         REAL, DIMENSION( : ), allocatable :: CT_RHS, DIAG_SCALE_PRES, &
         MCY_RHS, MCY, &
         CMC_PRECON, MASS_MN_PRES, MASS_CV, UP, U_RHS_CDP, &
-        UP_VEL, DGM_PHA, DIAG_P_SQRT, ACV
+        UP_VEL, DGM_PHA, DIAG_P_SQRT
         REAL, DIMENSION( :, :, : ), allocatable :: CDP, CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ele, x_nod1, x_nod2, x_nod3, cv_iloc, &
@@ -1337,7 +1337,6 @@ contains
             ALLOCATE( PIVIT_MAT( NDIM * NPHASE * U_NLOC, NDIM * NPHASE * U_NLOC, TOTELE )) ; PIVIT_MAT=0.0
         end if
         ALLOCATE( DGM_PHA( NCOLDGM_PHA )) ; DGM_PHA=0.
-        ALLOCATE( ACV( NCOLACV )) ; ACV = 0.
 
         !################TEMPORARY ADAPT FROM OLD VARIABLES TO NEW###############
     
@@ -1538,7 +1537,6 @@ contains
 
         END IF
 
-        DEALLOCATE( ACV )
         NO_MATRIX_STORE = ( NCOLDGM_PHA <= 1 )
 
         IF ( GLOBAL_SOLVE ) THEN
