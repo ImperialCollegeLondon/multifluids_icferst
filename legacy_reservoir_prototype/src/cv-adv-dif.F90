@@ -9955,10 +9955,10 @@ CONTAINS
          NDOTQOLD, LIMDTOLD, DIFF_COEFOLD_DIVDX, TOLD_NODJ_IPHA, TOLD_NODI_IPHA
     LOGICAL, intent(in) :: INTERFACE_TRACK
     ! Local variables
-    REAL :: FTHETA, HF, HFOLD, GF, PINVTH, QINVTH
+    REAL :: HF, HFOLD, GF, PINVTH, QINVTH
 
     IF( CV_THETA >= 0.0) THEN ! Specified
-       FTHETA = CV_THETA
+       FACE_THETA = CV_THETA
     ELSE ! Non-linear
        HF    = NDOTQ * LIMDT + DIFF_COEF_DIVDX * ( T_NODI_IPHA - T_NODJ_IPHA )
        HFOLD = NDOTQOLD * LIMDTOLD + DIFF_COEFOLD_DIVDX * ( TOLD_NODI_IPHA - TOLD_NODJ_IPHA )
@@ -9970,13 +9970,11 @@ CONTAINS
        !       FTHETA = MAX( 0.5, 1. - 0.25 * MIN( ABS( PINVTH ), ABS( QINVTH )))
        IF(INTERFACE_TRACK) THEN ! For interface tracking use forward Euler as much as possible...
           !            FTHETA = MAX( 0.0, 1. - 0.125 * MIN( ABS( PINVTH ), ABS( QINVTH )))
-          FTHETA = MAX( 0.0, 1. - 0.5 * MIN( ABS( PINVTH ), ABS( QINVTH )))
+          FACE_THETA = MAX( 0.0, 1. - 0.5 * MIN( ABS( PINVTH ), ABS( QINVTH )))
        ELSE ! for Crank Nickolson time stepping base scheme...
-          FTHETA = MAX( 0.5, 1. - 0.125 * MIN( ABS( PINVTH ), ABS( QINVTH )))
+          FACE_THETA = MAX( 0.5, 1. - 0.125 * MIN( ABS( PINVTH ), ABS( QINVTH )))
        ENDIF
     ENDIF
-
-    FACE_THETA = FTHETA
 
     RETURN
 
@@ -14110,36 +14108,12 @@ CONTAINS
 
   end function vtolfun
 
-
-    real function get_relperm_epsilon(sat,iphase, Sr1, Sr2, kr_exp, krmax)!Sub not in use
-        Implicit none
-        real, intent( in ) :: Sat, Sr1, Sr2, kr_exp, krmax
-        integer, intent(in) :: iphase
-
-            get_relperm_epsilon = min(max(1d-20, Krmax*( ( Sat - Sr1) / ( 1. - Sr1 - Sr2 ) ** kr_exp)), Krmax)
-            !Make sure that the relperm is between bounds
-            !Lower value just to make sure we do not divide by zero.
-
-    end function get_relperm_epsilon
-
-
-    real function inv_get_relperm_epsilon(sat,iphase, Sr1, Sr2, kr_exp, krmax)!Sub not in use
-        Implicit none
-        real, intent( in ) :: Sat, Sr1, Sr2, kr_exp, krmax
-        integer, intent(in) :: iphase
-
-            inv_get_relperm_epsilon =  1.0/ min(max(1d-20, Krmax*( ( Sat - Sr1) / ( 1. - Sr1 - Sr2 ) ** kr_exp)), Krmax)
-            !Make sure that the relperm is between bounds
-            !Lower value just to make sure we do not divide by zero.
-
-    end function inv_get_relperm_epsilon
-
     pure real function Get_DevCapPressure(sat, Pe, a, Own_irr)
         !This functions returns the derivative of the capillary pressure with regard of the saturation
         Implicit none
         real, intent(in) :: sat, Pe, a, Own_irr
         !Local
-        real, parameter :: tol = 1d-2
+        real, parameter :: tol = 1d-5
         real :: aux
 
         aux = (1.0 - Own_irr)
