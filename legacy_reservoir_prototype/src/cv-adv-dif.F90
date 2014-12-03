@@ -14113,7 +14113,7 @@ CONTAINS
         Implicit none
         real, intent(in) :: sat, Pe, a, Own_irr
         !Local
-        real, parameter :: tol = 1d-5
+        real, parameter :: tol = 1d-2
         real :: aux
 
         aux = (1.0 - Own_irr)
