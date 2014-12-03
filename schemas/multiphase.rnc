@@ -803,7 +803,8 @@ start =
                ## Introduce artificial diffusion in the transport equation. 
                ## It is treated as a Capillary pressure term. The input value is the entry pressure.
                ## Recommended value: Two orders of magnitude smaller that the Pressure of the system.
-               ## You should specify this ONLY for the wetting phase
+               ## You should specify this ONLY for the wetting phase. 
+               ## <b>Disable this option if the capillary pressure is enabled.</b>
                element Pe_stab {real}?
             }?
          }+,
