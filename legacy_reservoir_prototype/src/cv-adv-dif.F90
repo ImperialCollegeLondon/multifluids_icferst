@@ -531,9 +531,10 @@ contains
 
       !Variables for Capillary pressure
       logical :: capillary_pressure_activated, between_elements, on_domain_boundary
+      logical :: found
       real, dimension(nphase):: rsum_nodi, rsum_nodj
       real :: aux_Sr
-      integer :: Phase_with_Pc
+      integer :: Phase_with_Pc, x_nod
       !capillary_pressure_activated includes GOT_CAPDIFFUS
       capillary_pressure_activated = .false.
 
@@ -843,6 +844,7 @@ end if
       DUMMY_ZERO_NDIM_NDIM_NPHASE=0.0
 
       ALLOCATE( CV_SLOC2LOC( CV_SNLOC ))
+!      ALLOCATE( temp_CV_SLOC2LOC( CV_SNLOC ))
       ALLOCATE( U_SLOC2LOC( U_SNLOC ))
 
       ALLOCATE( UGI_COEF_ELE_ALL(NDIM,NPHASE,U_NLOC) )
@@ -1555,6 +1557,7 @@ end if
                SELE = 0
                CV_SILOC=0
                INTEGRAT_AT_GI = .TRUE.
+               U_OTHER_LOC=0
                CV_OTHER_LOC=0
 
                Conditional_CheckingNeighbourhood: IF ( CV_JLOC == -1 ) THEN
@@ -1601,15 +1604,6 @@ end if
                on_domain_boundary = ( SELE /= 0 ) 
 
 
-                  ! Find its global node number
-!                  IF ( ELE2 == 0 ) THEN
-!                     CV_NODJ = CV_NDGLN( ( ELE - 1 )  * CV_NLOC + CV_JLOC )
-!                     MAT_NODJ = MAT_NDGLN( ( ELE - 1 )  * CV_NLOC + CV_JLOC )
-!                  ELSE
-!                     CV_NODJ = CV_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_JLOC )
-!                     MAT_NODJ = MAT_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_JLOC )
-!                  END IF
-
                   IF ( between_elements ) THEN
                      CV_NODJ = CV_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_JLOC )
                      MAT_NODJ = MAT_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_JLOC )
@@ -1623,26 +1617,29 @@ end if
 
 ! this is for DG and boundaries of the domain
 !                  IF(SELE.LE.0) THEN ! this is for DG
-                  IF( between_elements .OR. on_domain_boundary) THEN ! this is for DG
+!                  IF( between_elements .OR. on_domain_boundary) THEN ! this is for DG
+                  IF( between_elements ) THEN ! this is for DG
 ! Calculate U_SLOC2LOC, CV_SLOC2LOC:
+
                      CV_SKLOC=0
                      DO CV_KLOC=1,CV_NLOC
                         CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
                         IF(CV_KLOC2.NE.0) THEN
                            CV_SKLOC=CV_SKLOC+1
-!           if( (CV_SLOC2LOC(CV_SKLOC)-CV_KLOC).ne.0) then
-!              print *,'CV_SLOC2LOC(CV_SKLOC),CV_SKLOC,CV_KLOC:',CV_SLOC2LOC(CV_SKLOC),CV_SKLOC,CV_KLOC
-!              stop 7755
-!           endif
                            CV_SLOC2LOC(CV_SKLOC)=CV_KLOC
                            SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
                         ENDIF
                      END DO
 
-!                     DO CV_SKLOC=1,CV_SNLOC
-!                           CV_KLOC = CV_SLOC2LOC(CV_SKLOC) 
-!                           SHAPE_CV_SNL(CV_SKLOC) = SCVFEN(CV_KLOC,GI) 
-!                     END DO
+                     U_SKLOC=0
+                     DO U_KLOC=1,U_NLOC
+                        U_KLOC2 = U_OTHER_LOC( U_KLOC )
+                        IF(U_KLOC2.NE.0) THEN
+                           U_SKLOC=U_SKLOC+1
+                           U_SLOC2LOC(U_SKLOC)=U_KLOC
+                        ENDIF
+                     END DO
+
 
                   ENDIF ! ENDOF IF( between_elements ) THEN
 
@@ -1868,29 +1865,30 @@ end if
 
 ! LOC2_U, LOC2_NU for GET_INT_VEL_NEW
 !       IF (ELE2/=0) THEN
-       IF (between_elements) THEN
-          DO U_KLOC = 1, U_NLOC
+       IF (between_elements) THEN 
+
+
+          LOC2_U = 0.
+          LOC2_NU = 0.
+          LOC2_NUOLD = 0.
+          
+          DO U_SKLOC = 1, U_SNLOC
+             U_KLOC = U_SLOC2LOC(U_SKLOC)
              U_KLOC2 = U_OTHER_LOC( U_KLOC )
-             IF ( U_KLOC2 /= 0 ) THEN
                 U_NODK2 = U_NDGLN((ELE2-1)*U_NLOC+U_KLOC2)
 
                 LOC2_U(:, :, U_KLOC) = U_ALL(:, :, U_NODK2)
                 LOC2_NU(:, :, U_KLOC) = NU_ALL(:, :, U_NODK2)
                 LOC2_NUOLD(:, :, U_KLOC) = NUOLD_ALL(:, :, U_NODK2)
                 IF(GETCT.AND.RETRIEVE_SOLID_CTY) LOC2_U_HAT(:, U_KLOC) = U_HAT_ALL(:, U_NODK2)
-             else!This give us flexibility later on to iterate through the variables
-                !without if statements
-                LOC2_U(:, :, U_KLOC) = 0.
-                LOC2_NU(:, :, U_KLOC) = 0.
-                LOC2_NUOLD(:, :, U_KLOC) = 0.
-             END IF
           END DO
 
-         DO CV_KLOC=1,CV_NLOC
-            CV_KNOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_KLOC)
+
+         DO CV_SKLOC=1,CV_SNLOC
+
+            CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
  
             CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-            IF (CV_KLOC2 /= 0 ) THEN
                CV_KNOD2 = CV_NDGLN((ELE2-1)*CV_NLOC+CV_KLOC2)
                LOC2_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_KNOD2)
                LOC2_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_KNOD2)
@@ -1898,7 +1896,6 @@ end if
                   LOC2_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_KNOD2)
                   LOC2_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_KNOD2)
                END IF
-            END IF
          END DO
 
        END IF ! ENDOF IF (between_elements) THEN
@@ -1984,7 +1981,7 @@ end if
            SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
            SUF_SIG_DIAGTEN_BC, &
            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
            VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
            INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
            MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
@@ -2001,7 +1998,7 @@ end if
            SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
            SUF_SIG_DIAGTEN_BC, &
            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
            VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
            INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
            MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
@@ -2018,7 +2015,7 @@ end if
            SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
            SUF_SIG_DIAGTEN_BC, &
            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
            VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
            INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
            MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
@@ -2035,7 +2032,7 @@ end if
            SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
            SUF_SIG_DIAGTEN_BC, &
            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
            VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
            INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
            MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
@@ -2149,7 +2146,8 @@ end if
                 IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
                    NDOTQ_HAT = 0.0
                    DO U_KLOC = 1, U_NLOC
-                      IF (ELE2/=0) THEN ! Between elements...
+!                      IF (ELE2/=0) THEN ! Between elements...
+                      IF (between_elements) THEN ! Between elements...
                          NDOTQ_HAT =  NDOTQ_HAT + SUFEN( U_KLOC, GI ) * 0.5 * SUM( CVNORMX_ALL(:, GI) * (LOC_U_HAT( :, U_KLOC ) + LOC2_U_HAT( :, U_KLOC )) )
                       ELSE
                          NDOTQ_HAT =  NDOTQ_HAT + SUFEN( U_KLOC, GI ) * SUM( CVNORMX_ALL(:, GI) * LOC_U_HAT( :, U_KLOC ) )
@@ -2166,7 +2164,8 @@ end if
                    R=SUM(LIMT_HAT(:))
                    LIMT_HAT(:)=LIMT_HAT(:)/R
 
-                   if(sele.ne.0) then ! effectively apply the bcs to NDOTQ_HAT
+!                   if(sele.ne.0) then ! effectively apply the bcs to NDOTQ_HAT
+                   if(on_domain_boundary) then ! effectively apply the bcs to NDOTQ_HAT
                      NDOTQ_HAT =SUM(LIMT_HAT(:)*NDOTQNEW(:))
                    endif
                 ENDIF
@@ -13173,7 +13172,7 @@ deallocate(NX_ALL)
        SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
        SUF_SIG_DIAGTEN_BC,  &
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-       VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+       VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
        VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
        INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
        MASS_CV_I, MASS_CV_J, NDIM, MAT_NLOC, MAT_NONODS, &
@@ -13203,7 +13202,6 @@ deallocate(NX_ALL)
     REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
     REAL, DIMENSION( :, : ), intent( inout ) :: NUGI_ALL
     REAL, DIMENSION( :, :  ), intent( in ) :: SCVFEN
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: CV_SLOC2LOC
     REAL, DIMENSION( :, :, : ), intent( in ) :: VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
     REAL, DIMENSION( :, :, : ), intent( in ) :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
@@ -13212,7 +13210,7 @@ deallocate(NX_ALL)
     REAL, DIMENSION( NPHASE ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT
     ! local variables
 !    LOGICAL, PARAMETER :: POROUS_VEL = .false. ! For reduced variable porous media treatment.
-    INTEGER :: U_NLOC_LEV,U_KLOC_LEV,U_KLOC,U_NODK_IPHA, U_KLOC2, U_NODK2_IPHA, IPHASE
+    INTEGER :: U_NLOC_LEV,U_KLOC_LEV,U_KLOC,U_NODK_IPHA, U_KLOC2, U_NODK2_IPHA, IPHASE, U_SKLOC
 !    REAL, ALLOCATABLE, DIMENSION(:,:,:) :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
 
     logical, parameter :: LIMIT_USE_2ND=.false.
@@ -13249,7 +13247,7 @@ deallocate(NX_ALL)
             CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
             SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-            VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+            VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
             NDIM, MAT_NLOC, MAT_NONODS, &
             IN_ELE_UPWIND, DG_ELE_UPWIND )
 
@@ -13277,14 +13275,17 @@ deallocate(NX_ALL)
 
     IF( between_elements ) THEN
        ! We have a discontinuity between elements so integrate along the face...
-       DO U_KLOC = 1, U_NLOC
-          U_KLOC2 = U_OTHER_LOC( U_KLOC )
-          IF( U_KLOC2 /= 0 ) THEN
+          DO U_SKLOC = 1, U_SNLOC
+             U_KLOC = U_SLOC2LOC(U_SKLOC)
+             U_KLOC2 = U_OTHER_LOC( U_KLOC )
+!       DO U_KLOC = 1, U_NLOC
+!          U_KLOC2 = U_OTHER_LOC( U_KLOC )
+!          IF( U_KLOC2 /= 0 ) THEN
              DO IDIM = 1, NDIM
                 NDOTQNEW=NDOTQNEW + SUFEN( U_KLOC, GI ) * UGI_COEF_ELE2_ALL(IDIM, :,U_KLOC2) &
                            * ( LOC2_U(IDIM,:, U_KLOC ) - LOC2_NU(IDIM,:,U_KLOC ) ) * CVNORMX_ALL(IDIM, GI)
              END DO
-          END IF
+!          END IF
        END DO
     END IF
 
@@ -13302,7 +13303,7 @@ contains
        CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
        SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-       VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN, CV_OTHER_LOC, &
+       VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
        NDIM, MAT_NLOC, MAT_NONODS, &
        IN_ELE_UPWIND, DG_ELE_UPWIND )
 
@@ -13328,7 +13329,6 @@ contains
     REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, &
                                              UGI_COEF_ELE2_ALL
     REAL, DIMENSION( :, :  ), intent( in ) :: SCVFEN
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_OTHER_LOC
 
     ! Local variables
     REAL :: UDGI,VDGI,WDGI,  &
@@ -13383,12 +13383,15 @@ contains
 !       Conditional_ELE2: IF( ELE2 /= 0 ) THEN
        Conditional_ELE2: IF( between_elements ) THEN
           UDGI2_ALL = 0.0
-          DO U_KLOC = 1, U_NLOC
+          DO U_SKLOC = 1, U_SNLOC
+             U_KLOC = U_SLOC2LOC(U_SKLOC)
              U_KLOC2 = U_OTHER_LOC( U_KLOC )
-             IF ( U_KLOC2 /= 0 ) THEN ! MAKE SURE WE DONT NEED THIS...
+!          DO U_KLOC = 1, U_NLOC
+!             U_KLOC2 = U_OTHER_LOC( U_KLOC )
+!             IF ( U_KLOC2 /= 0 ) THEN ! MAKE SURE WE DONT NEED THIS...
                 UDGI2_ALL = UDGI2_ALL + SUFEN( U_KLOC, GI ) * LOC2_NU(:, :, U_KLOC)
                 UGI_COEF_ELE2_ALL( :, :, U_KLOC2) = 1.0
-             ENDIF
+!             ENDIF
           END DO
 
           IF( ABS( CV_DG_VEL_INT_OPT ) == 1 ) THEN
@@ -14107,6 +14110,7 @@ CONTAINS
     return
 
   end function vtolfun
+
 
     pure real function Get_DevCapPressure(sat, Pe, a, Own_irr)
         !This functions returns the derivative of the capillary pressure with regard of the saturation
