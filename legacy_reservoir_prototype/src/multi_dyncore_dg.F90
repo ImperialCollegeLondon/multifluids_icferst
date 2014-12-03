@@ -1273,15 +1273,15 @@ contains
         REAL, DIMENSION( :, :, : ), allocatable :: CDP, CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ele, x_nod1, x_nod2, x_nod3, cv_iloc, &
-        cv_nod1, cv_nod2, cv_nod3, mat_nod1, u_iloc, u_nod, u_nod_pha, ndpset
-        REAL :: der1, der2, der3, uabs, rsum, xc, yc
+        cv_nod1, cv_nod2, cv_nod3, mat_nod1, u_iloc, u_nod, u_nod_pha, ndpset, ierr
+        REAL :: der1, der2, der3, uabs, rsum, xc, yc, rescaleVal
         LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, SCALE_P_MATRIX, LINEARISE_DENSITY
 
         INTEGER :: I, J, IDIM, U_INOD
 
         !CMC using petsc format
         type(petsc_csr_matrix)::  CMC_petsc
-
+        real, dimension(1):: aij
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: X_ILOC, X_INOD, MAT_INOD, S, E, sele, p_sjloc, u_siloc
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
@@ -1708,8 +1708,20 @@ contains
 !            mat2=csr2petsc_csr(cmat)
 !            call deallocate(cmat)
 
-            call zero(deltaP)
+            !Re-scale of the matrix to allow working with small values of sigma
+            rescaleVal = 0.0
+            do i = 1, size(rhs_p%val)!Get minvalue to re-scale
+                call MatGetValues(cmc_petsc%M, 1, (/ i-1 /), 1, (/ i-1 /),  aij, ierr)
+                 rescaleVal = rescaleVal + abs(aij(1))
+            end do
+            !If the value is below 1d-10 PETSc is not happy with it for some reason.
+            rescaleVal = max(rescaleVal, 1d-10)
+            call MatScale(cmc_petsc%M,1.0/rescaleVal, ierr)
+            rhs_p%val = rhs_p%val / rescaleVal
+            !End of re-scaling
 
+            !Solve the system
+            call zero(deltaP)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
             
             P_all % val = P_all % val + deltap%val
