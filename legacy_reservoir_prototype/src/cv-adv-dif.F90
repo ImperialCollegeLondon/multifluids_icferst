@@ -506,9 +506,10 @@ contains
       REAL, DIMENSION(:,:,: ), pointer :: SUF_U_BC_ALL
       REAL, DIMENSION( :,:,: ), allocatable, target :: SUF_T_BC,&
            SUF_T_BC_ROB1, SUF_T_BC_ROB2
-
-      real :: rdum_ndim_nphase_1(NDIM,NPHASE)
-      real :: rdum_nphase_1(NPHASE), rdum_nphase_2(NPHASE), rdum_nphase_3(NPHASE), rdum_nphase_4(NPHASE), rdum_nphase_5(NPHASE)
+      !Working variables for subroutines that are called several times
+      real, dimension(NDIM,NPHASE) :: rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4
+      real, dimension(NPHASE) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+            rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, rdum_nphase_13
       real :: rdum_ndim_1(NDIM), rdum_ndim_2(NDIM), rdum_ndim_3(NDIM)
 
 !! femdem
@@ -1987,7 +1988,11 @@ end if
            MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
            IN_ELE_UPWIND, DG_ELE_UPWIND, &
            IANISOLIM,  &
-           NUOLDGI_ALL, T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT) )
+           NUOLDGI_ALL, T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),&
+           !Working variables, to avoid having to allocate them every time we call this subroutine
+           rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+           rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
+           rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
 
            CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
            HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
@@ -2004,7 +2009,11 @@ end if
            MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
            IN_ELE_UPWIND, DG_ELE_UPWIND, &
            IANISOLIM,  &
-           NUGI_ALL, T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT) )
+           NUGI_ALL, T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT),&
+           !Working variables, to avoid having to allocate them every time we call this subroutine
+           rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+           rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
+           rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
        ELSE
            CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
            HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
@@ -2021,7 +2030,11 @@ end if
            MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
            IN_ELE_UPWIND, DG_ELE_UPWIND, &
            IANISOLIM,  &
-           NUOLDGI_ALL, TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT) )
+           NUOLDGI_ALL, TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),&
+           !Working variables, to avoid having to allocate them every time we call this subroutine
+           rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+           rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
+           rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
 
            CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
            HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
@@ -2038,7 +2051,11 @@ end if
            MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
            IN_ELE_UPWIND, DG_ELE_UPWIND, &
            IANISOLIM, &
-           NUGI_ALL, TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT) )
+           NUGI_ALL, TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT) ,&
+           !Working variables, to avoid having to allocate them every time we call this subroutine
+           rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+           rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
+           rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
        ENDIF
 
        INCOME_J=1.-INCOME
@@ -10868,13 +10885,10 @@ CONTAINS
     REAL,  DIMENSION( NPHASE ), intent( inout ) :: RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct
     REAL,  DIMENSION( NDIM ), intent( inout ) :: UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL
 
+
     ! Local variables...
     INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
          U_KLOC_LEV, U_NLOC_LEV, IPHASE
-!    REAL :: UDGI_IMP_ALL(NDIM,NPHASE)
-!    REAL :: RCON(NPHASE),RCON_J(NPHASE), NDOTQ_IMP(NPHASE), rcon_in_ct(NPHASE), rcon_j_in_ct(NPHASE)
-!    REAL :: UDGI_ALL(NDIM), UOLDDGI_ALL(NDIM), UDGI_HAT_ALL(NDIM)
-
 
     IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
        ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the CT matrix and add what we really want)
@@ -13178,7 +13192,11 @@ deallocate(NX_ALL)
        MASS_CV_I, MASS_CV_J, NDIM, MAT_NLOC, MAT_NONODS, &
        IN_ELE_UPWIND, DG_ELE_UPWIND, &
        IANISOTROPIC, &
-       NUGI_ALL, TUPWIND_IN, TUPWIND_OUT)
+       NUGI_ALL, TUPWIND_IN, TUPWIND_OUT,&
+       !Working variables, to avoid having to allocate them every time we call this subroutine
+       rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+       rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
+       rdum_nphase_13,rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
     ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
     IMPLICIT NONE
     INTEGER, intent( in ) :: NPHASE, GI, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
@@ -13207,7 +13225,12 @@ deallocate(NX_ALL)
     REAL, DIMENSION( :, :, : ), intent( in ) :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
 
     INTEGER, intent( in ) :: IANISOTROPIC
-    REAL, DIMENSION( NPHASE ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT
+    REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT
+    REAL, DIMENSION(:), intent( inout ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+            rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, rdum_nphase_13!NPHASE
+    REAL, DIMENSION ( :, : ), intent( inout ) :: rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4!(NDIM, NPHASE)
+
+
     ! local variables
 !    LOGICAL, PARAMETER :: POROUS_VEL = .false. ! For reduced variable porous media treatment.
     INTEGER :: U_NLOC_LEV,U_KLOC_LEV,U_KLOC,U_NODK_IPHA, U_KLOC2, U_NODK2_IPHA, IPHASE, U_SKLOC
@@ -13237,7 +13260,11 @@ deallocate(NX_ALL)
             NUGI_ALL, &
             MASS_CV_I, MASS_CV_J, NDIM, &
             IN_ELE_UPWIND, &
-            TUPWIND_IN, TUPWIND_OUT)
+            TUPWIND_IN, TUPWIND_OUT,&
+            !Working variables, to avoid having to allocate them every time we call this subroutine
+            rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+            rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
+            rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
     ELSE
        CALL GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQ, INCOME, &
             HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS,  &
@@ -13249,7 +13276,10 @@ deallocate(NX_ALL)
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
             VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
             NDIM, MAT_NLOC, MAT_NONODS, &
-            IN_ELE_UPWIND, DG_ELE_UPWIND )
+            IN_ELE_UPWIND, DG_ELE_UPWIND,&
+            !Working variables, to avoid having to allocate them every time we call this subroutine
+            rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
+            rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3 )
 
         !Calculate velocity velocity
         do iphase = 1, nphase
@@ -13305,7 +13335,8 @@ contains
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
        VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
        NDIM, MAT_NLOC, MAT_NONODS, &
-       IN_ELE_UPWIND, DG_ELE_UPWIND )
+       IN_ELE_UPWIND, DG_ELE_UPWIND,&
+       DT_I,DT_J,NDOTQ_INT,UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL)
 
     ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
     IMPLICIT NONE
@@ -13329,20 +13360,14 @@ contains
     REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, &
                                              UGI_COEF_ELE2_ALL
     REAL, DIMENSION( :, :  ), intent( in ) :: SCVFEN
+    !Working variables, to avoid having to allocate them every time we call this subroutine
+    REAL, DIMENSION(:), intent( inout ) :: DT_I,DT_J,NDOTQ_INT!NPHASE
+    REAL, DIMENSION (:, :), intent( inout ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL!NDIM, NPHASE
 
     ! Local variables
-    REAL :: UDGI,VDGI,WDGI,  &
-         UDGI2,VDGI2,WDGI2,  &
-         UDGI_INT,VDGI_INT,WDGI_INT
-    INTEGER :: U_KLOC,U_NODK,U_NODK2_IPHA,U_NODK_IPHA,U_KLOC2,U_NODK2,U_SKLOC, &
-         U_SNODK,U_SNODK_IPHA, II, IDIM
-    integer, dimension(U_SNLOC) ::  U_NODK_IPHA_V, U_SNODK_IPHA_V
-    !REAL, DIMENSION(NDIM) :: CVNORMX_ALL
-
+    INTEGER :: U_KLOC,U_KLOC2,U_SKLOC
     ! Local variable for indirect addressing
-    REAL, DIMENSION ( NDIM, NPHASE ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL
-    INTEGER :: IPHASE, CV_NODI_IPHA, CV_NODJ_IPHA
-    REAL, DIMENSION(NPHASE) :: DT_I,DT_J,NDOTQ_INT
+    INTEGER :: IPHASE
 
 
 !          stop 2928
@@ -13478,7 +13503,11 @@ end SUBROUTINE GET_INT_VEL_NEW
        VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
        INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
        UDGI_ALL,MASS_CV_I, MASS_CV_J, NDIM, &
-       IN_ELE_UPWIND, TUPWIND_IN, TUPWIND_OUT)
+       IN_ELE_UPWIND, TUPWIND_IN, TUPWIND_OUT,&
+       !Working variables, to avoid having to allocate them every time we call this subroutine
+       ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA,&
+       wrelax,XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE,DT_J, abs_tilde,NDOTQ2, DT_I, LIMT3,&
+       UDGI2_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV)
     !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===
     ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI. 
     ! it assumes a compact_overlapping decomposition approach for velocity.
@@ -13504,19 +13533,18 @@ end SUBROUTINE GET_INT_VEL_NEW
     REAL, DIMENSION( :, :, : ), intent( in ) :: VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
                                                 VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
     REAL, DIMENSION( :, :, : ), intent( in ) :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
-
-    REAL, DIMENSION( NPHASE ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT
+    REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(NPHASE)
+    !Working variables, to avoid having to allocate them every time we call this subroutine
+    REAL, DIMENSION(:), intent(inout)::ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA,&!(NPHASE)
+                    wrelax,XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
+    REAL, DIMENSION ( :, : ), intent(inout):: UDGI2_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV!(NDIM, NPHASE)
 
     ! Local variables
     logical :: Incomming_flow
-    REAL, DIMENSION(NPHASE) :: NDOTQ2, DT_I, DT_J,abs_tilde, &
-                   ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA
     REAL, DIMENSION(:), allocatable :: SUF_SIG_DIAGTEN_BC_GI
     INTEGER :: u_kloc, u_skloc, cv_kloc, idim, CV_SKLOC, CV_SNODK, CV_SNODK_IPHA, IPHASE
     ! Local variable for indirect addressing
-    REAL, DIMENSION ( NDIM, NPHASE ) :: UDGI2_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ
     !Last commit with all the functionalities of the subroutine: 65274db742e27de60dad7a1036c72f708e87e0d1
-
 
     !Initialize variables
     forall (iphase = 1:nphase, idim = 1:ndim)
@@ -13563,9 +13591,7 @@ end SUBROUTINE GET_INT_VEL_NEW
        ELSE ! Specified vel bc.
 
           UDGI_ALL(:, IPHASE) = 0.0
-          UDGI2_ALL(:, IPHASE) = 0.0!We use UDGI2_ALL as an auxiliar variable to avoid creating a variable only for this
-                                    !previously it was UDGI_ALL_FOR_INV
-          UGI_COEF_ELE_ALL(:, IPHASE, :) = 0.0 
+          UDGI_ALL_FOR_INV(:, IPHASE) = 0.0
           DO U_SKLOC = 1, U_SNLOC
              U_KLOC = U_SLOC2LOC( U_SKLOC )
 
@@ -13573,7 +13599,7 @@ end SUBROUTINE GET_INT_VEL_NEW
                 UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) + SUFEN( U_KLOC, GI ) * 0.5 * &
                                       SUF_U_BC_ALL(:, IPHASE, U_SNLOC* (SELE-1) +U_SKLOC)
 
-                UDGI2_ALL(:, IPHASE) = UDGI2_ALL(:, IPHASE) + SUFEN( U_KLOC, GI ) * 0.5 * &
+                UDGI_ALL_FOR_INV(:, IPHASE) = UDGI_ALL_FOR_INV(:, IPHASE) + SUFEN( U_KLOC, GI ) * 0.5 * &
                                       SLOC_NU(:, IPHASE, U_SKLOC)
 
                 UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=0.5*ROW_SUM_INV_VI(:,IPHASE) 
@@ -13582,7 +13608,7 @@ end SUBROUTINE GET_INT_VEL_NEW
                 UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) + SUFEN( U_KLOC, GI )*SUF_U_BC_ALL(:, IPHASE, U_SNLOC* (SELE-1) +U_SKLOC)
              END IF
           END DO
-          UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE)  + matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),UDGI2_ALL(:, IPHASE))
+          UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE)  + matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),UDGI_ALL_FOR_INV(:, IPHASE))
 
 
        END IF
@@ -13609,13 +13635,13 @@ end SUBROUTINE GET_INT_VEL_NEW
       !Calculate velocity on the interface, either using upwinding of high order methods
       if (IN_ELE_UPWIND /= 1) then !high order
           !Calculate saturation at GI, necessary for the limiter
-          NDOTQ2 = matmul(LOC_FEMT, SCVFEN(:,GI) )!Re-use of NDOTQ2 as FEMT value at GI
+          FEMTGI_IPHA = matmul(LOC_FEMT, SCVFEN(:,GI) )
 
           ! ************NEW LIMITER**************************
-          DT_J = 2.0!DT_J is re used as the XI_LIMIT for the limiter
+          XI_LIMIT = 2.0
            !Call the limiter to obtain the limited saturation value at the interface
-          CALL ONVDLIM_ANO_MANY( NPHASE, DT_I(:), NDOTQ2(:), INCOME(:), & !Last point where we use NDOTQ2 as FEMT value at GI
-          LOC_T_I(:), LOC_T_J(:),DT_J(:), TUPWIND_IN(:), TUPWIND_OUT(:) )!DT_I is re-used as the limited FEMT value
+          CALL ONVDLIM_ANO_MANY( NPHASE, LIMT3(:), FEMTGI_IPHA(:), INCOME(:), &
+          LOC_T_I(:), LOC_T_J(:),XI_LIMIT(:), TUPWIND_IN(:), TUPWIND_OUT(:) )
 
           !We perform: n' * sigma * n
           DO IPHASE = 1, NPHASE
@@ -13625,8 +13651,8 @@ end SUBROUTINE GET_INT_VEL_NEW
               GRAD_ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(GJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
           END DO
           !Calculation of sigma at the interface by using second order taylor series
-          abs_tilde(:) = 0.5*(ABS_CV_NODI_IPHA(:) + ( DT_I(:) - LOC_T_I(:) ) * GRAD_ABS_CV_NODI_IPHA(:)+&!DT_I is re-used as the limited value
-          ABS_CV_NODJ_IPHA(:) + ( DT_I(:) - LOC_T_J(:) ) * GRAD_ABS_CV_NODJ_IPHA(:) )!DT_I is re-used as the limited value
+          abs_tilde(:) = 0.5*(ABS_CV_NODI_IPHA(:) + ( LIMT3(:) - LOC_T_I(:) ) * GRAD_ABS_CV_NODI_IPHA(:)+&
+          ABS_CV_NODJ_IPHA(:) + ( LIMT3 - LOC_T_J(:) ) * GRAD_ABS_CV_NODJ_IPHA(:) )
 
           !Make sure the value of sigma is between bounds
           abs_tilde = min(max(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), &
@@ -13634,10 +13660,9 @@ end SUBROUTINE GET_INT_VEL_NEW
           !We need the projected velocity from the other node
           NDOTQ2 = MATMUL( CVNORMX_ALL(:, GI), UDGI2_ALL )
           !Calculation of the velocity at the interface using the sigma at the interface
-          abs_tilde = 0.5*( NDOTQ*ABS_CV_NODI_IPHA + NDOTQ2*ABS_CV_NODJ_IPHA ) /abs_tilde!Re-use of abs_tilde
-                                                                                         !to save time
+          NDOTQ_TILDE = 0.5*( NDOTQ*ABS_CV_NODI_IPHA + NDOTQ2*ABS_CV_NODJ_IPHA ) /abs_tilde
           !Calculate the contribution of each side
-          INCOME = MIN(1.0, MAX(0.0, (abs_tilde - NDOTQ)/VTOLFUN( NDOTQ2 - NDOTQ ) ))
+          INCOME = MIN(1.0, MAX(0.0, (NDOTQ_TILDE - NDOTQ)/VTOLFUN( NDOTQ2 - NDOTQ ) ))
         end if
 
       !Finally we calculate the velocity at the interface
@@ -13686,12 +13711,12 @@ end SUBROUTINE GET_INT_VEL_NEW
                !We limit the value
                abs_tilde = min(1000.*max(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), &
                   max(0.001*min(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), abs_tilde ))
-               abs_tilde= min( 1.0, abs_tilde/ABS_CV_NODI_IPHA )!We re-use the variable abs_tilde
+               wrelax= min( 1.0, abs_tilde/ABS_CV_NODI_IPHA )!We re-use the variable abs_tilde
 
                !Calculate importance of each side
-               DT_I = (1.-abs_tilde) + abs_tilde*ABS_CV_NODJ_IPHA*MASS_CV_J  &
+               DT_I = (1.-wrelax) + wrelax*ABS_CV_NODJ_IPHA*MASS_CV_J  &
                    /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-               DT_J = abs_tilde*ABS_CV_NODI_IPHA*MASS_CV_I  &
+               DT_J = wrelax*ABS_CV_NODI_IPHA*MASS_CV_I  &
                    /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
             ELSE WHERE
                !We redefine sigma so that it detects oscillations using first order taylor series
@@ -13699,12 +13724,12 @@ end SUBROUTINE GET_INT_VEL_NEW
                !We limit the value
                abs_tilde = min(1000.*max(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), &
                   max(0.001*min(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), abs_tilde ))
-               abs_tilde= min( 1.0, abs_tilde/ABS_CV_NODJ_IPHA  )!We re-use the variable abs_tilde
+               wrelax= min( 1.0, abs_tilde/ABS_CV_NODJ_IPHA  )!We re-use the variable abs_tilde
 
                !Calculate importance of each side
-               DT_I = abs_tilde*ABS_CV_NODJ_IPHA*MASS_CV_J  &
+               DT_I = wrelax*ABS_CV_NODJ_IPHA*MASS_CV_J  &
                    /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-               DT_J = (1.-abs_tilde) + abs_tilde*ABS_CV_NODI_IPHA*MASS_CV_I  &
+               DT_J = (1.-wrelax) + wrelax*ABS_CV_NODI_IPHA*MASS_CV_I  &
                    /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
             END WHERE
 
