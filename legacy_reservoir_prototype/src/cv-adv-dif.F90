@@ -112,7 +112,7 @@ contains
          NCOLM, FINDM, COLM, MIDM, &
          XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-         DEN_FEMT, &
+!         DEN_FEMT, &
          IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
          IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -307,7 +307,6 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: MIDM
       INTEGER, DIMENSION( : ), intent( in ) :: FINELE
       INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-      REAL, DIMENSION( : ), intent( inout ) :: DEN_FEMT!, T_FEMT
       REAL, DIMENSION( :, :, :, : ), target, intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
       INTEGER, INTENT( IN ) :: NOIT_DIM
       REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
@@ -558,164 +557,164 @@ contains
         end if
       end if
 
-      !#################SET WORKING VARIABLES#################
-      call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
-           OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL)
-      !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
-      U_ALL => NU_ALL
-      
-      allocate( t_all_keep( nphase, cv_nonods ) )
+    !#################SET WORKING VARIABLES#################
+    call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&
+         OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL)
+    !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
+    U_ALL => NU_ALL
 
-      old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
-      old_density=>extract_tensor_field(packed_state,GetOldName(density))
-      if (present(saturation)) then
-         old_saturation=>extract_tensor_field(packed_state,&
-              GetOldName(saturation))
-      end if
+    allocate( t_all_keep( nphase, cv_nonods ) )
 
-if (.true.) then ! new modification for the input
-      T_ALL =>tracer%val(1,:,:)
-      TOLD_ALL =>old_tracer%val(1,:,:)
+    old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
+    old_density=>extract_tensor_field(packed_state,GetOldName(density))
+    if (present(saturation)) then
+       old_saturation=>extract_tensor_field(packed_state,&
+            GetOldName(saturation))
+    end if
 
-      if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
+    if (.true.) then ! new modification for the input
+       T_ALL =>tracer%val(1,:,:)
+       TOLD_ALL =>old_tracer%val(1,:,:)
 
-      T_ALL_KEEP = T_ALL
-            
-      IF( GETCT ) THEN
-         IF( RETRIEVE_SOLID_CTY ) THEN
-            ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
-            ALLOCATE(U_HAT_ALL(NDIM,U_NONODS))
-                  
-            delta_u_all => extract_vector_field( packed_state, "delta_U" )
-            u_hat_all = delta_u_all%val + u_all( :, 1, :) ! ndim, u_nonods
-                  
-            us_all => extract_vector_field( packed_state, "solid_U" )
-                  
-            Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
-            VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! cv_nonods
-                  
-                  
-            ALLOCATE(T_TEMP(NPHASE,CV_NONODS), TOLD_TEMP(NPHASE,CV_NONODS))
-                  
-            IF(NPHASE==1) THEN
-               T_ALL_KEEP = 1.0 
-               do cv_inod = 1, cv_nonods
-                  do iphase = 1, nphase
-                     ! Amend the saturations to produce the real voln fractions -only is we have just one phase.
-                     T_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
-                     TOLD_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
-                  end do
-               end do
-            ELSE
-               T_TEMP= T_ALL
-               TOLD_TEMP=TOLD_ALL
-            ENDIF
+       if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
 
-            ! switch off caching of CV face values as this will be wrong.
-            T_ALL=>T_TEMP
-            TOLD_ALL=>TOLD_TEMP
-            ! CONV = A*B ! conV is an allocatable target
-            ! T_ALL=>CONV ! conV is an allocatable target
-                  
-            call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
-                  
-         ENDIF
-      ENDIF
+       T_ALL_KEEP = T_ALL
 
-else
-!      if (.not.present(T_input)) then!<==TEMPORARY
-         select case (Field_selector)
-         case (1)!Temperature
-            call get_var_from_packed_state(packed_state,Temperature = T_ALL,&
-                 OldTemperature = TOLD_ALL, FETemperature =FEMT_ALL,OldFETemperature = FEMTOLD_ALL)
-            T_ALL_KEEP = T_ALL
-         case (2)!Component mass fraction
-            if (present(icomp)) then
-               call get_var_from_packed_state(packed_state,ComponentMassFraction = comp, &
-                    OldComponentMassFraction = comp_old, FEComponentMassFraction = fecomp, &
-                    OldFEComponentMassFraction = fecomp_old )
-               T_ALL => comp(icomp,:,:)
-               TOLD_ALL => comp_old(icomp,:,:)
-               FEMT_ALL => fecomp(icomp,:,:)
-               FEMTOLD_ALL => fecomp_old(icomp,:,:)
-               T_ALL_KEEP = T_ALL
-            else
-               FLAbort('Component field require to introduce icomp')
-            end if
-         case (3)!Saturation
-            call get_var_from_packed_state(packed_state,PhaseVolumeFraction = T_ALL,&
-                 OldPhaseVolumeFraction = TOLD_ALL, Velocity = U_ALL,&
-                 FEPhaseVolumeFraction = FEMT_ALL, OldFEPhaseVolumeFraction = FEMTOLD_ALL)
+       IF( GETCT ) THEN
+          IF( RETRIEVE_SOLID_CTY ) THEN
+             ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
+             ALLOCATE(U_HAT_ALL(NDIM,U_NONODS))
 
-            !If getting pressure matrix then U_ALL has to be set to be NU_ALL
-            if (GETCT) call get_var_from_packed_state(packed_state,NonlinearVelocity = U_ALL)
+             delta_u_all => extract_vector_field( packed_state, "delta_U" )
+             u_hat_all = delta_u_all%val + u_all( :, 1, :) ! ndim, u_nonods
 
-            T_ALL_KEEP = T_ALL
-            
-            IF( GETCT ) THEN
-               IF( RETRIEVE_SOLID_CTY ) THEN
-                  ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
-                  ALLOCATE(U_HAT_ALL(NDIM,U_NONODS))
-                  
-                  delta_u_all => extract_vector_field( packed_state, "delta_U" )
-                  u_hat_all = delta_u_all%val + u_all( :, 1, :) ! ndim, u_nonods
-                  
-                  us_all => extract_vector_field( packed_state, "solid_U" )
-                  
-                  Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
-                  VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! cv_nonods
-                  
-                  
-                  ALLOCATE(T_TEMP(NPHASE,CV_NONODS), TOLD_TEMP(NPHASE,CV_NONODS))
-                  
-                  IF(NPHASE==1) THEN
-                     T_ALL_KEEP = 1.0 
-                     do cv_inod = 1, cv_nonods
-                        do iphase = 1, nphase
-                           ! Amend the saturations to produce the real voln fractions -only is we have just one phase.
-                           T_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
-                           TOLD_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
-                        end do
-                     end do
-                  ELSE
-                     T_TEMP= T_ALL
-                     TOLD_TEMP=TOLD_ALL
-                  ENDIF
+             us_all => extract_vector_field( packed_state, "solid_U" )
 
-                  ! switch off caching of CV face values as this will be wrong.
-                  T_ALL=>T_TEMP
-                  TOLD_ALL=>TOLD_TEMP
-                  ! CONV = A*B ! conV is an allocatable target
-                  ! T_ALL=>CONV ! conV is an allocatable target
-                  
-                  call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
-                  
-               ENDIF
-            ENDIF
-         case default
-            FLAbort('Invalid field_selector value')
-         end select
+             Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
+             VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! cv_nonods
 
-!      else
-!         ALLOCATE( T_ALL_TARGET( NPHASE, CV_NONODS ), TOLD_ALL_TARGET( NPHASE, CV_NONODS ), FEMT_ALL_TARGET(NPHASE, CV_NONODS) )
-!         do cv_inod = 1, cv_nonods
-!            do iphase = 1, nphase
-!               T_ALL_TARGET(iphase, cv_inod) = T_input(cv_inod+(iphase-1)*cv_nonods)
-!               TOLD_ALL_TARGET(iphase, cv_inod) = TOLD_input(cv_inod+(iphase-1)*cv_nonods)
-!               FEMT_ALL_TARGET(iphase, cv_inod) = FEMT_input(cv_inod+(iphase-1)*cv_nonods)
-!            end do
-!         end do
-!         T_ALL => T_ALL_TARGET
-!         TOLD_ALL => TOLD_ALL_TARGET
-!         FEMT_ALL => FEMT_ALL_TARGET
-!         allocate (FEMTOLD_ALL_TARGET(NPHASE, CV_NONODS))
-!         FEMTOLD_ALL_TARGET = 0.
-!         FEMTOLD_ALL => FEMTOLD_ALL_TARGET
-!
-!         T_ALL_KEEP = T_ALL
-!      end if
-end if
-     !##################END OF SET VARIABLES##################
+
+             ALLOCATE(T_TEMP(NPHASE,CV_NONODS), TOLD_TEMP(NPHASE,CV_NONODS))
+
+             IF(NPHASE==1) THEN
+                T_ALL_KEEP = 1.0 
+                do cv_inod = 1, cv_nonods
+                   do iphase = 1, nphase
+                      ! Amend the saturations to produce the real voln fractions -only is we have just one phase.
+                      T_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
+                      TOLD_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
+                   end do
+                end do
+             ELSE
+                T_TEMP= T_ALL
+                TOLD_TEMP=TOLD_ALL
+             ENDIF
+
+             ! switch off caching of CV face values as this will be wrong.
+             T_ALL=>T_TEMP
+             TOLD_ALL=>TOLD_TEMP
+             ! CONV = A*B ! conV is an allocatable target
+             ! T_ALL=>CONV ! conV is an allocatable target
+
+             call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
+
+          ENDIF
+       ENDIF
+
+    else
+       !      if (.not.present(T_input)) then!<==TEMPORARY
+       select case (Field_selector)
+       case (1)!Temperature
+          call get_var_from_packed_state(packed_state,Temperature = T_ALL,&
+               OldTemperature = TOLD_ALL, FETemperature =FEMT_ALL,OldFETemperature = FEMTOLD_ALL)
+          T_ALL_KEEP = T_ALL
+       case (2)!Component mass fraction
+          if (present(icomp)) then
+             call get_var_from_packed_state(packed_state,ComponentMassFraction = comp, &
+                  OldComponentMassFraction = comp_old, FEComponentMassFraction = fecomp, &
+                  OldFEComponentMassFraction = fecomp_old )
+             T_ALL => comp(icomp,:,:)
+             TOLD_ALL => comp_old(icomp,:,:)
+             FEMT_ALL => fecomp(icomp,:,:)
+             FEMTOLD_ALL => fecomp_old(icomp,:,:)
+             T_ALL_KEEP = T_ALL
+          else
+             FLAbort('Component field require to introduce icomp')
+          end if
+       case (3)!Saturation
+          call get_var_from_packed_state(packed_state,PhaseVolumeFraction = T_ALL,&
+               OldPhaseVolumeFraction = TOLD_ALL, Velocity = U_ALL,&
+               FEPhaseVolumeFraction = FEMT_ALL, OldFEPhaseVolumeFraction = FEMTOLD_ALL)
+
+          !If getting pressure matrix then U_ALL has to be set to be NU_ALL
+          if (GETCT) call get_var_from_packed_state(packed_state,NonlinearVelocity = U_ALL)
+
+          T_ALL_KEEP = T_ALL
+
+          IF( GETCT ) THEN
+             IF( RETRIEVE_SOLID_CTY ) THEN
+                ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
+                ALLOCATE(U_HAT_ALL(NDIM,U_NONODS))
+
+                delta_u_all => extract_vector_field( packed_state, "delta_U" )
+                u_hat_all = delta_u_all%val + u_all( :, 1, :) ! ndim, u_nonods
+
+                us_all => extract_vector_field( packed_state, "solid_U" )
+
+                Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
+                VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! cv_nonods
+
+
+                ALLOCATE(T_TEMP(NPHASE,CV_NONODS), TOLD_TEMP(NPHASE,CV_NONODS))
+
+                IF(NPHASE==1) THEN
+                   T_ALL_KEEP = 1.0 
+                   do cv_inod = 1, cv_nonods
+                      do iphase = 1, nphase
+                         ! Amend the saturations to produce the real voln fractions -only is we have just one phase.
+                         T_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
+                         TOLD_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
+                      end do
+                   end do
+                ELSE
+                   T_TEMP= T_ALL
+                   TOLD_TEMP=TOLD_ALL
+                ENDIF
+
+                ! switch off caching of CV face values as this will be wrong.
+                T_ALL=>T_TEMP
+                TOLD_ALL=>TOLD_TEMP
+                ! CONV = A*B ! conV is an allocatable target
+                ! T_ALL=>CONV ! conV is an allocatable target
+
+                call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
+
+             ENDIF
+          ENDIF
+       case default
+          FLAbort('Invalid field_selector value')
+       end select
+
+       !      else
+       !         ALLOCATE( T_ALL_TARGET( NPHASE, CV_NONODS ), TOLD_ALL_TARGET( NPHASE, CV_NONODS ), FEMT_ALL_TARGET(NPHASE, CV_NONODS) )
+       !         do cv_inod = 1, cv_nonods
+       !            do iphase = 1, nphase
+       !               T_ALL_TARGET(iphase, cv_inod) = T_input(cv_inod+(iphase-1)*cv_nonods)
+       !               TOLD_ALL_TARGET(iphase, cv_inod) = TOLD_input(cv_inod+(iphase-1)*cv_nonods)
+       !               FEMT_ALL_TARGET(iphase, cv_inod) = FEMT_input(cv_inod+(iphase-1)*cv_nonods)
+       !            end do
+       !         end do
+       !         T_ALL => T_ALL_TARGET
+       !         TOLD_ALL => TOLD_ALL_TARGET
+       !         FEMT_ALL => FEMT_ALL_TARGET
+       !         allocate (FEMTOLD_ALL_TARGET(NPHASE, CV_NONODS))
+       !         FEMTOLD_ALL_TARGET = 0.
+       !         FEMTOLD_ALL => FEMTOLD_ALL_TARGET
+       !
+       !         T_ALL_KEEP = T_ALL
+       !      end if
+    end if
+    !##################END OF SET VARIABLES##################
 
 
       !! Get boundary conditions from field

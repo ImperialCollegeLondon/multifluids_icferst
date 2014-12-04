@@ -77,38 +77,39 @@ module multiphase_1D_engine
 
 contains
 
-    SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
-         tracer, velocity, density, &
-    NCOLACV, FINACV, COLACV, MIDACV, &
-    SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-    block_to_global_acv, global_dense_block_acv, &
-    NCOLCT, FINDCT, COLCT, &
-    CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-    U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, &
-    NPHASE,  &
-    CV_NLOC, U_NLOC, X_NLOC,  &
-    CV_NDGLN, X_NDGLN, U_NDGLN, &
-    CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-!    T, TOLD, &!
-    MAT_NLOC,MAT_NDGLN,MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-    T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
-    SUF_SIG_DIAGTEN_BC, &
-    DERIV, &
-    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
-    NDIM, &
-    NCOLM, FINDM, COLM, MIDM, &
-    XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-    T_FEMT, DEN_FEMT, &
-    IGOT_T2, T2, T2OLD, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
-    THETA_GDIFF, &
-    IN_ELE_UPWIND, DG_ELE_UPWIND, &
-    NOIT_DIM, &
-    MEAN_PORE_CV, &
-    option_path, &
-    mass_ele_transp, &
-    thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-    StorageIndexes, icomp, saturation )
+  SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
+       tracer, velocity, density, &
+       NCOLACV, FINACV, COLACV, MIDACV, &
+       SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
+       block_to_global_acv, global_dense_block_acv, &
+       NCOLCT, FINDCT, COLCT, &
+       CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
+       U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, &
+       NPHASE,  &
+       CV_NLOC, U_NLOC, X_NLOC,  &
+       CV_NDGLN, X_NDGLN, U_NDGLN, &
+       CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
+                                !    T, TOLD, &!
+       MAT_NLOC,MAT_NDGLN,MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+       T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
+       SUF_SIG_DIAGTEN_BC, &
+       DERIV, &
+       T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+       NDIM, &
+       NCOLM, FINDM, COLM, MIDM, &
+       XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+       opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+       T_FEMT, &
+!!$       T_FEMT, DEN_FEMT, &
+       IGOT_T2, T2, T2OLD, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+       THETA_GDIFF, &
+       IN_ELE_UPWIND, DG_ELE_UPWIND, &
+       NOIT_DIM, &
+       MEAN_PORE_CV, &
+       option_path, &
+       mass_ele_transp, &
+       thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
+       StorageIndexes, icomp, saturation )
 
         ! Solve for internal energy using a control volume method.
 
@@ -118,103 +119,103 @@ contains
         type(tensor_field), intent(inout) :: tracer
         type(tensor_field), intent(in) :: velocity, density
 
-        INTEGER, intent( in ) :: NCOLACV, NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
-        U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, NPHASE, CV_NLOC, U_NLOC, X_NLOC,  MAT_NLOC, &
-        CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, NCOLM, NCOLELE, &
-        IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux
-        LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
-        LOGICAL, intent( in ), optional ::THERMAL
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: FINACV
-        INTEGER, DIMENSION( : ), intent( in ) :: COLACV
-        INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
-        INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV
-        integer, dimension(:)    :: block_to_global_acv
-        integer, dimension (:,:) :: global_dense_block_acv
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-!        REAL, DIMENSION( : ), intent( inout ) :: T, T_FEMT, DEN_FEMT
-        REAL, DIMENSION( : ), intent( inout ) :: T_FEMT, DEN_FEMT
+    INTEGER, intent( in ) :: NCOLACV, NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
+         U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, NPHASE, CV_NLOC, U_NLOC, X_NLOC,  MAT_NLOC, &
+         CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, NCOLM, NCOLELE, &
+         IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux
+    LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
+    LOGICAL, intent( in ), optional ::THERMAL
+    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+    INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
+    INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
+    INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
+    INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
+    INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
+    INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
+    INTEGER, DIMENSION( : ), intent( in ) :: FINACV
+    INTEGER, DIMENSION( : ), intent( in ) :: COLACV
+    INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
+    INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV
+    integer, dimension(:)    :: block_to_global_acv
+    integer, dimension (:,:) :: global_dense_block_acv
+    INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
+    INTEGER, DIMENSION( : ), intent( in ) :: COLCT
+    !        REAL, DIMENSION( : ), intent( inout ) :: T, T_FEMT, DEN_FEMT
+    REAL, DIMENSION( : ), intent( inout ) :: T_FEMT
+!!$    REAL, DIMENSION( : ), intent( inout ) :: T_FEMT, DEN_FEMT
 
-!        REAL, DIMENSION( : ), intent( in ) :: TOLD
-        REAL, DIMENSION( : ), intent( in ) :: T2, T2OLD
-        REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
-        REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-        REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
-        INTEGER, intent( in ) :: IGOT_THERM_VIS
-        REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
-        REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
-        INTEGER, intent( in ) :: T_DISOPT, T_DG_VEL_INT_OPT
-        REAL, intent( in ) :: DT, T_THETA
-        REAL, intent( in ) :: T_BETA
-        REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-        REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DERIV
-        REAL, DIMENSION( : ), intent( in ) :: T_SOURCE
-        REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
-        REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-        INTEGER, DIMENSION( : ), intent( in ) :: COLM
-        INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-        INTEGER, DIMENSION( : ), intent( in ) :: FINELE
-        INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-        REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-        INTEGER, INTENT(IN) :: NOIT_DIM
-        REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
-        character( len = * ), intent( in ), optional :: option_path
-        real, dimension( : ), intent( inout ), optional :: mass_ele_transp
-        integer, dimension(:), intent(inout) :: StorageIndexes
-        type(tensor_field), intent(in), optional :: saturation
-        
-        integer, optional :: icomp
-        ! Local variables
-        LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE. 
-        integer :: nits_flux_lim, its_flux_lim
-        logical :: lump_eqns
-        REAL, DIMENSION( : ), allocatable :: CV_RHS, DIAG_SCALE_PRES, CT_RHS
-        REAL, DIMENSION( my_size(block_to_global_acv) ) :: block_acv
-        real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
-        REAL, DIMENSION( : , : , : ), allocatable :: dense_block_matrix, CT
-        REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all
-        REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB, ACV_SUB
-        type( scalar_field ), pointer :: P
-        INTEGER, DIMENSION( : ), allocatable :: COLACV_SUB, FINACV_SUB, MIDACV_SUB
-        INTEGER :: NCOLACV_SUB, IPHASE, I, J
-        REAL :: SECOND_THETA
-        LOGICAL :: RETRIEVE_SOLID_CTY
-        INTEGER :: STAT
-        character( len = option_path_len ) :: path
-        type(vector_field) :: rhs_field
-        type( tensor_field ), pointer :: den_all2, denold_all2
-        integer :: lcomp, Field_selector
+    !        REAL, DIMENSION( : ), intent( in ) :: TOLD
+    REAL, DIMENSION( : ), intent( in ) :: T2, T2OLD
+    REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
+    REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+    REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
+    INTEGER, intent( in ) :: IGOT_THERM_VIS
+    REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
+    REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
+    INTEGER, intent( in ) :: T_DISOPT, T_DG_VEL_INT_OPT
+    REAL, intent( in ) :: DT, T_THETA
+    REAL, intent( in ) :: T_BETA
+    REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
+    REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DERIV
+    REAL, DIMENSION( : ), intent( in ) :: T_SOURCE
+    REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
+    REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
+    INTEGER, DIMENSION( : ), intent( in ) :: FINDM
+    INTEGER, DIMENSION( : ), intent( in ) :: COLM
+    INTEGER, DIMENSION( : ), intent( in ) :: MIDM
+    INTEGER, DIMENSION( : ), intent( in ) :: FINELE
+    INTEGER, DIMENSION( : ), intent( in ) :: COLELE
+    REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
+    INTEGER, INTENT(IN) :: NOIT_DIM
+    REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
+    character( len = * ), intent( in ), optional :: option_path
+    real, dimension( : ), intent( inout ), optional :: mass_ele_transp
+    integer, dimension(:), intent(inout) :: StorageIndexes
+    type(tensor_field), intent(in), optional :: saturation
 
-        type(petsc_csr_matrix) :: petsc_acv
-        type(vector_field)  :: vtracer
+    integer, optional :: icomp
+    ! Local variables
+    LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE. 
+    integer :: nits_flux_lim, its_flux_lim
+    logical :: lump_eqns
+    REAL, DIMENSION( : ), allocatable :: CV_RHS, DIAG_SCALE_PRES, CT_RHS
+    REAL, DIMENSION( my_size(block_to_global_acv) ) :: block_acv
+    real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
+    REAL, DIMENSION( : , : , : ), allocatable :: dense_block_matrix, CT
+    REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all
+    REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB, ACV_SUB
+    type( scalar_field ), pointer :: P
+    INTEGER, DIMENSION( : ), allocatable :: COLACV_SUB, FINACV_SUB, MIDACV_SUB
+    INTEGER :: NCOLACV_SUB, IPHASE, I, J
+    REAL :: SECOND_THETA
+    LOGICAL :: RETRIEVE_SOLID_CTY
+    INTEGER :: STAT
+    character( len = option_path_len ) :: path
+    type(vector_field) :: rhs_field
+    type( tensor_field ), pointer :: den_all2, denold_all2
+    integer :: lcomp, Field_selector
 
-        if (present(icomp)) then
-           lcomp=icomp
-        else
-           lcomp=0
-        end if
+    type(petsc_csr_matrix) :: petsc_acv
+    type(vector_field)  :: vtracer
 
-        call allocate(rhs_field,nphase,tracer%mesh,"RHS")
+    if (present(icomp)) then
+       lcomp=icomp
+    else
+       lcomp=0
+    end if
 
-!        ALLOCATE( ACV( NCOLACV ) )
-!        ALLOCATE( mass_mn_pres( size(small_COLACV ) ))
-!        allocate( block_acv(size(block_to_global_acv) ) )
-        allocate( dense_block_matrix (nphase,nphase,cv_nonods) ); dense_block_matrix=0;
-        ALLOCATE( CV_RHS( CV_NONODS * NPHASE ) )
+    call allocate(rhs_field,nphase,tracer%mesh,"RHS")
+
+    !        ALLOCATE( ACV( NCOLACV ) )
+    !        ALLOCATE( mass_mn_pres( size(small_COLACV ) ))
+    !        allocate( block_acv(size(block_to_global_acv) ) )
+    allocate( dense_block_matrix (nphase,nphase,cv_nonods) ); dense_block_matrix=0;
+    ALLOCATE( CV_RHS( CV_NONODS * NPHASE ) )
 
 
-        allocate( den_all( nphase, cv_nonods ), denold_all( nphase, cv_nonods ) )
+    allocate( den_all( nphase, cv_nonods ), denold_all( nphase, cv_nonods ) )
 
-        allocate(Ct(0,0,0),ct_rhs(0),DIAG_SCALE_PRES(0))
-
+    allocate(Ct(0,0,0),ct_rhs(0),DIAG_SCALE_PRES(0))
 
         if ( thermal ) then
            p => extract_scalar_field( packed_state, "CVPressure" )
@@ -298,7 +299,7 @@ contains
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-            DEN_FEMT, &
+!!$            DEN_FEMT, &
             IGOT_T2, T2, T2OLD,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
             IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -439,7 +440,7 @@ contains
     NCOLM, FINDM, COLM, MIDM, &
     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-    DEN_FEMT, &
+!    DEN_FEMT, &
     IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -485,7 +486,7 @@ contains
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: CT
         REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
         REAL, DIMENSION( : ), intent( in ) :: NU, NV, NW, NUOLD, NVOLD, NWOLD, UG, VG, WG
-        REAL, DIMENSION( : ), intent( inout ) :: T, DEN_FEMT
+        REAL, DIMENSION( : ), intent( inout ) :: T
         REAL, DIMENSION( :), intent( in ) :: TOLD
         REAL, DIMENSION( :, : ), intent( in ) :: DEN, DENOLD
         REAL, DIMENSION( :, : ), intent( in ) :: FEM_VOL_FRAC
@@ -562,7 +563,7 @@ contains
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-            DEN_FEMT, &
+!            DEN_FEMT, &
             IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
             IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -879,7 +880,7 @@ contains
          NCOLM, FINDM, COLM, MIDM, &
          XU_NLOC, XU_NDGLN ,FINELE, COLELE, NCOLELE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-         DEN_FEMT, &
+         DEN_FEMT, &!Unused
          igot_theta_flux, SCVNGI_THETA, USE_THETA_FLUX, &
          IN_ELE_UPWIND, DG_ELE_UPWIND, &
          NOIT_DIM, &
@@ -1081,7 +1082,7 @@ contains
               NCOLM, FINDM, COLM, MIDM, &
               XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
               opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-              DEN_FEMT, &
+!              DEN_FEMT, &
               IGOT_T2, T2, T2OLD, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
               THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
               IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -2214,7 +2215,7 @@ DEALLOCATE( PIVIT_MAT )
         NCOLM, FINDM, COLM, MIDM, &
         XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-        DEN_FEMT, &
+!        DEN_FEMT, &
         IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -2254,6 +2255,41 @@ DEALLOCATE( PIVIT_MAT )
         ewrite(3,*) 'Leaving CV_ASSEMB_FORCE_CTY'
 
     END SUBROUTINE CV_ASSEMB_FORCE_CTY
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     SUBROUTINE PUT_MOM_C_IN_GLOB_MAT( NPHASE, NDIM, &
     NCOLDGM_PHA, DGM_PHA, FINDGM_PHA, &
@@ -3244,7 +3280,8 @@ DEALLOCATE( PIVIT_MAT )
 
         GOT_DIFFUS = ( R2NORM( UDIFFUSION, MAT_NONODS * NDIM * NDIM * NPHASE ) /= 0.0 )  &
                 .OR. ( R2NORM( UDIFFUSION_VOL, MAT_NONODS * NPHASE ) /= 0.0 ) .OR. BETWEEN_ELE_STAB
-        IF(LES_DISOPT.NE.0.) GOT_DIFFUS=.TRUE.
+        IF(LES_DISOPT.NE.0) GOT_DIFFUS=.TRUE.
+
 
         IF(GOT_DIFFUS.AND.LINEAR_HIGHORDER_DIFFUSION) THEN
            ALLOCATE( STRESS_IJ_ELE_EXT( NDIM, NDIM, NPHASE, U_SNLOC, 2*U_NLOC ) ) 
@@ -6474,6 +6511,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             do MAT_iloc = 1, MAT_nloc
                MAT_Inod = MAT_ndgln( ( ele - 1 ) * MAT_nloc + MAT_iloc )
                CV_Inod = CV_ndgln( ( ele - 1 ) * MAT_nloc + MAT_iloc )
+
                do iphase = 1, nphase
                   LES_UDIFFUSION(:,:,iphase,MAT_Inod) = LES_UDIFFUSION(:,:,iphase,MAT_Inod) + &
                              LES_MAT_UDIFFUSION(:,:,iphase,MAT_ILOC,ELE) * UDEN( iphase, CV_Inod )
@@ -8707,7 +8745,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
             RDUM4, RDUM4, &
-            RDUM, CV_ONE, &
+            RDUM, &
             IGOT_T2, CURVATURE, VOLUME_FRAC,IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             DUMMY_THETA_GDIFF, &
             IN_ELE_UPWIND, DG_ELE_UPWIND, &

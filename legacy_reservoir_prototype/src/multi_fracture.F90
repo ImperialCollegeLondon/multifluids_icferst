@@ -74,7 +74,7 @@ module multiphase_fractures
 
 
 
-! the one with viscosity
+! Subroutine for coupling with viscosity (drag force, slip velocity, viscosity)
   interface
      subroutine y2dfemdem( string, dt, p, uf_r, vf_r, uf_v, vf_v, du_s, dv_s, u_s, v_s, &
          mu_f, f_x, f_y, usl, uvl, a_xx, a_xy, a_yy )  
@@ -86,7 +86,7 @@ module multiphase_fractures
   end interface
 #endif
 
-! the one without viscosity
+! Soubroutine for coupling without viscosity
 !  interface
 !     subroutine y2dfemdem( string, dt, p, uf_r, vf_r, uf_v, vf_v, du_s, dv_s, u_s, v_s )
 !       character( len = * ), intent( in ) :: string
