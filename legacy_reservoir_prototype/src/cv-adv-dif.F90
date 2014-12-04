@@ -13276,10 +13276,7 @@ deallocate(NX_ALL)
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
             VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
             NDIM, MAT_NLOC, MAT_NONODS, &
-            IN_ELE_UPWIND, DG_ELE_UPWIND,&
-            !Working variables, to avoid having to allocate them every time we call this subroutine
-            rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
-            rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3 )
+            IN_ELE_UPWIND, DG_ELE_UPWIND )
 
         !Calculate velocity velocity
         do iphase = 1, nphase
@@ -13335,8 +13332,7 @@ contains
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
        VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
        NDIM, MAT_NLOC, MAT_NONODS, &
-       IN_ELE_UPWIND, DG_ELE_UPWIND,&
-       DT_I,DT_J,NDOTQ_INT,UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL)
+       IN_ELE_UPWIND, DG_ELE_UPWIND )
 
     ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
     IMPLICIT NONE
@@ -13360,14 +13356,20 @@ contains
     REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, &
                                              UGI_COEF_ELE2_ALL
     REAL, DIMENSION( :, :  ), intent( in ) :: SCVFEN
-    !Working variables, to avoid having to allocate them every time we call this subroutine
-    REAL, DIMENSION(:), intent( inout ) :: DT_I,DT_J,NDOTQ_INT!NPHASE
-    REAL, DIMENSION (:, :), intent( inout ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL!NDIM, NPHASE
 
     ! Local variables
-    INTEGER :: U_KLOC,U_KLOC2,U_SKLOC
+    REAL :: UDGI,VDGI,WDGI,  &
+         UDGI2,VDGI2,WDGI2,  &
+         UDGI_INT,VDGI_INT,WDGI_INT
+    INTEGER :: U_KLOC,U_NODK,U_NODK2_IPHA,U_NODK_IPHA,U_KLOC2,U_NODK2,U_SKLOC, &
+         U_SNODK,U_SNODK_IPHA, II, IDIM
+    integer, dimension(U_SNLOC) ::  U_NODK_IPHA_V, U_SNODK_IPHA_V
+    !REAL, DIMENSION(NDIM) :: CVNORMX_ALL
+
     ! Local variable for indirect addressing
-    INTEGER :: IPHASE
+    REAL, DIMENSION ( NDIM, NPHASE ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL
+    INTEGER :: IPHASE, CV_NODI_IPHA, CV_NODJ_IPHA
+    REAL, DIMENSION(NPHASE) :: DT_I,DT_J,NDOTQ_INT
 
 
 !          stop 2928
@@ -13546,6 +13548,7 @@ end SUBROUTINE GET_INT_VEL_NEW
     ! Local variable for indirect addressing
     !Last commit with all the functionalities of the subroutine: 65274db742e27de60dad7a1036c72f708e87e0d1
 
+
     !Initialize variables
     forall (iphase = 1:nphase, idim = 1:ndim)
        ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
@@ -13592,6 +13595,7 @@ end SUBROUTINE GET_INT_VEL_NEW
 
           UDGI_ALL(:, IPHASE) = 0.0
           UDGI_ALL_FOR_INV(:, IPHASE) = 0.0
+          UGI_COEF_ELE_ALL(:, IPHASE, :) = 0.0
           DO U_SKLOC = 1, U_SNLOC
              U_KLOC = U_SLOC2LOC( U_SKLOC )
 
