@@ -163,7 +163,8 @@
 
 !!$ For output:
       real, dimension( : ), allocatable :: PhaseVolumeFraction_FEMT, Temperature_FEMT, Density_FEMT, &
-           Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT
+           Component_FEMT, Mean_Pore_CV, SumConc_FEMT
+!!$           Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT
       type( scalar_field ), pointer :: Component_State
 
 !!$ Variables that can be effectively deleted as they are not used anymore:
@@ -403,7 +404,8 @@
            PhaseVolumeFraction_FEMT( cv_nonods * nphase ), Temperature_FEMT( cv_nonods * nphase ), &
            Density_FEMT( cv_nonods * nphase ), Component_FEMT( cv_nonods * nphase * ncomp ), &
            Mean_Pore_CV( cv_nonods ),  SumConc_FEMT( cv_nonods * ncomp ), &
-           Dummy_PhaseVolumeFraction_FEMT( cv_nonods * nphase ), dummy_ele( totele ), mass_ele( totele ), &
+           dummy_ele( totele ), mass_ele( totele ), &
+!!$           Dummy_PhaseVolumeFraction_FEMT( cv_nonods * nphase ), dummy_ele( totele ), mass_ele( totele ), &
 !!$
            Temperature_Source( nphase * cv_nonods ), &
            PhaseVolumeFraction_Source( cv_nonods * nphase ), Velocity_U_Source( u_nonods * nphase * ndim ), &
@@ -442,7 +444,8 @@
       PhaseVolumeFraction_FEMT=0. ; Temperature_FEMT=0.
       Density_FEMT=1. ; Component_FEMT=0.
       Mean_Pore_CV=0. ; SumConc_FEMT=0.
-      Dummy_PhaseVolumeFraction_FEMT=0. ; dummy_ele=0. ; mass_ele=0.
+      dummy_ele=0. ; mass_ele=0.
+!!$      Dummy_PhaseVolumeFraction_FEMT=0. ; dummy_ele=0. ; mass_ele=0.
 !!$
       PhaseVolumeFraction_Source=0. ; Velocity_U_Source=0.
       Velocity_U_Source_CV=0. ; Component_Source=0.
@@ -493,7 +496,7 @@
       call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
 
 !!$ Dummy field used in the scalar advection option:
-      Dummy_PhaseVolumeFraction_FEMT = 1.
+!!$      Dummy_PhaseVolumeFraction_FEMT = 1.
 
 !!$
 !!$ Initialising Robin boundary conditions --  this still need to be defined in the schema:
@@ -783,7 +786,8 @@
                     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                    Temperature_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
+                    Temperature_FEMT,  &
+!!$                    Temperature_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
                     0,Temperature, Temperature_Old,igot_theta_flux, scvngi_theta, &
                     t_get_theta_flux, t_use_theta_flux, &
                     THETA_GDIFF, &
@@ -1030,7 +1034,7 @@
 !!$
                           opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                           Component_FEMT( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
-                          Density_FEMT, &
+!!$                          Density_FEMT, &
                           igot_t2, PhaseVolumeFraction, PhaseVolumeFraction_Old, igot_theta_flux, scvngi_theta, &
                           comp_get_theta_flux, comp_use_theta_flux, &
                           theta_gdiff, &
@@ -1372,7 +1376,8 @@
                  opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
 !!$ For output:
                  PhaseVolumeFraction_FEMT, Temperature_FEMT, Density_FEMT, &
-                 Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
+                 Component_FEMT, Mean_Pore_CV, SumConc_FEMT, &
+!!$                 Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                  plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
@@ -1480,7 +1485,8 @@
                  PhaseVolumeFraction_FEMT( cv_nonods * nphase ), Temperature_FEMT( cv_nonods * nphase ), &
                  Density_FEMT( cv_nonods * nphase ), Component_FEMT( cv_nonods * nphase * ncomp ), &
                  Mean_Pore_CV( cv_nonods ), SumConc_FEMT( cv_nonods * ncomp ), &
-                 Dummy_PhaseVolumeFraction_FEMT( cv_nonods * nphase ), dummy_ele( totele ), mass_ele( totele ), &
+                 dummy_ele( totele ), mass_ele( totele ), &
+!!$                 Dummy_PhaseVolumeFraction_FEMT( cv_nonods * nphase ), dummy_ele( totele ), mass_ele( totele ), &
 !!$
                  Temperature_Source( cv_nonods * nphase ), &
                  PhaseVolumeFraction_Source( cv_nonods * nphase ), Velocity_U_Source( u_nonods * nphase * ndim ), &
@@ -1516,7 +1522,8 @@
 !!$
 !!$
             PhaseVolumeFraction=0. ; PhaseVolumeFraction_Old=0. ; PhaseVolumeFraction_Source=0.
-            PhaseVolumeFraction_FEMT=0. ; Dummy_PhaseVolumeFraction_FEMT=0.
+            PhaseVolumeFraction_FEMT=0. 
+!!$            PhaseVolumeFraction_FEMT=0. ; Dummy_PhaseVolumeFraction_FEMT=0.
 !!$
             ScalarAdvectionField_Diffusion=0. ; ScalarField_Absorption=0.
             ScalarField_Source=0. ; ScalarAdvectionField_Source=0.
@@ -1554,7 +1561,7 @@
 
 
 !!$ Dummy field used in the scalar advection option:
-            Dummy_PhaseVolumeFraction_FEMT = 1.
+!!$            Dummy_PhaseVolumeFraction_FEMT = 1.
 
             ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
 
@@ -1643,7 +1650,8 @@
            opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
 !!$ For output:
            PhaseVolumeFraction_FEMT, Temperature_FEMT, Density_FEMT, &
-           Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
+           Component_FEMT, Mean_Pore_CV, SumConc_FEMT, &
+!!$           Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
            plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
