@@ -2255,41 +2255,6 @@ DEALLOCATE( PIVIT_MAT )
 
     END SUBROUTINE CV_ASSEMB_FORCE_CTY
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     SUBROUTINE PUT_MOM_C_IN_GLOB_MAT( NPHASE, NDIM, &
     NCOLDGM_PHA, DGM_PHA, FINDGM_PHA, &
     NLENMCY, NCOLMCY, MCY, FINMCY, &
@@ -3279,8 +3244,7 @@ DEALLOCATE( PIVIT_MAT )
 
         GOT_DIFFUS = ( R2NORM( UDIFFUSION, MAT_NONODS * NDIM * NDIM * NPHASE ) /= 0.0 )  &
                 .OR. ( R2NORM( UDIFFUSION_VOL, MAT_NONODS * NPHASE ) /= 0.0 ) .OR. BETWEEN_ELE_STAB
-        IF(LES_DISOPT.NE.0) GOT_DIFFUS=.TRUE.
-
+        IF(LES_DISOPT.NE.0.) GOT_DIFFUS=.TRUE.
 
         IF(GOT_DIFFUS.AND.LINEAR_HIGHORDER_DIFFUSION) THEN
            ALLOCATE( STRESS_IJ_ELE_EXT( NDIM, NDIM, NPHASE, U_SNLOC, 2*U_NLOC ) ) 
@@ -6510,7 +6474,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             do MAT_iloc = 1, MAT_nloc
                MAT_Inod = MAT_ndgln( ( ele - 1 ) * MAT_nloc + MAT_iloc )
                CV_Inod = CV_ndgln( ( ele - 1 ) * MAT_nloc + MAT_iloc )
-
                do iphase = 1, nphase
                   LES_UDIFFUSION(:,:,iphase,MAT_Inod) = LES_UDIFFUSION(:,:,iphase,MAT_Inod) + &
                              LES_MAT_UDIFFUSION(:,:,iphase,MAT_ILOC,ELE) * UDEN( iphase, CV_Inod )

@@ -68,7 +68,7 @@ module cv_advection
 
 contains
 
-  integer pure  function my_size_integer(A,n)
+  integer PURE  function my_size_integer(A,n)
     integer, dimension(:), intent(in) :: A
     integer, optional, intent(in) :: n
 
@@ -79,7 +79,7 @@ contains
     end if
   end function my_size_integer
 
-  integer pure  function my_size_real(A,n)
+  integer PURE  function my_size_real(A,n)
     real, dimension(:), intent(in) :: A
     integer, optional, intent(in) :: n
 
@@ -398,7 +398,7 @@ contains
 
 ! NPHASE Variables: 
       REAL, DIMENSION( : ), allocatable :: CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, &
-               NDOTQNEW,  NDOTQOLD, INCOMEOLD,  INCOME_J, INCOMEOLD_J, LIMT2OLD, LIMDTOLD, &
+               NDOTQNEW,  NDOTQOLD, INCOMEOLD,  INCOME_J, LIMT2OLD, LIMDTOLD, &
                NDOTQ, INCOME, LIMT2, LIMTOLD, LIMT, LIMT_HAT, &
                FVTOLD, FVT2OLD, FVDOLD, &
                LIMDOLD, LIMDTT2OLD,&
@@ -1157,7 +1157,7 @@ end if
                FVT(NPHASE), FVT2(NPHASE), FVD(NPHASE), LIMD(NPHASE),  &
                LIMDT(NPHASE), LIMDTT2(NPHASE), SUM_LIMT(NPHASE), SUM_LIMTOLD(NPHASE)  )
       LIMT_HAT=0.0
-      ALLOCATE(INCOME_J(NPHASE),INCOMEold_J(NPHASE)) 
+      ALLOCATE(INCOME_J(NPHASE))
 
       IF ( capillary_pressure_activated) THEN
          ALLOCATE( CAP_DIFFUSION( NPHASE, MAT_NONODS ) )
@@ -1972,94 +1972,167 @@ end if
        FACE_ITS = 1
        !                     DO FACE_ITS = 1, NFACE_ITS
        ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
+       !Calling the functions directly instead inside a wrapper saves a around a 5%
        IF(IGOT_T2==1) THEN
-           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW,  NDOTQOLD, INCOMEOLD, &
-           HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS,  &
-           LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD,LOC2_FEMT2OLD, LOC_DENOLD_I, LOC_DENOLD_J, &
-           LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
-           CV_NODI, CV_NODJ, CVNORMX_ALL, &
-           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
-           SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-           SUF_SIG_DIAGTEN_BC, &
-           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
-           VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-           INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
-           MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
-           IN_ELE_UPWIND, DG_ELE_UPWIND, &
-           IANISOLIM,  &
-           NUOLDGI_ALL, T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),&
-           !Working variables, to avoid having to allocate them every time we call this subroutine
-           rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
-           rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
-           rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
 
-           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
-           HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
-           LOC_T2_I, LOC_T2_J, LOC_FEMT2, LOC2_FEMT2, LOC_DEN_I, LOC_DEN_J, &
-           LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
-           CV_NODI, CV_NODJ, CVNORMX_ALL, &
-           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
-           SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-           SUF_SIG_DIAGTEN_BC, &
-           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
-           VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-           INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
-           MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
-           IN_ELE_UPWIND, DG_ELE_UPWIND, &
-           IANISOLIM,  &
-           NUGI_ALL, T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT),&
-           !Working variables, to avoid having to allocate them every time we call this subroutine
-           rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
-           rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
-           rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
+           IF( is_compact_overlapping ) THEN
+               CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+               GI, SUFEN, U_NLOC,&
+               LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD,&
+               LOC_U,LOC2_U,LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
+               CVNORMX_ALL,  &
+               CV_DG_VEL_INT_OPT, between_elements, on_domain_boundary, &
+               SELE, U_SNLOC,STOTEL, U_SLOC2LOC,u_other_loc, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+               SUF_SIG_DIAGTEN_BC, &
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+               CV_SLOC2LOC,&
+               CV_SNLOC, CV_ILOC, SCVFEN, &
+               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
+               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               NUOLDGI_ALL, &
+               MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
+               IN_ELE_UPWIND, T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),&
+               !Working variables, to avoid having to allocate them every time we call this subroutine
+               rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+               rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
+               rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4,&
+               .false.)
+
+               CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
+               GI, SUFEN, U_NLOC,&
+               LOC_T2_I, LOC_T2_J, LOC_FEMT2,&
+               LOC_U,LOC2_U,LOC_NU, LOC2_NU, SLOC_NU, &
+               CVNORMX_ALL,  &
+               CV_DG_VEL_INT_OPT, between_elements, on_domain_boundary, &
+               SELE, U_SNLOC,STOTEL, U_SLOC2LOC,u_other_loc, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+               SUF_SIG_DIAGTEN_BC, &
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+               CV_SLOC2LOC,&
+               CV_SNLOC, CV_ILOC, SCVFEN, &
+               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
+               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               NUGI_ALL, &
+               MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
+               IN_ELE_UPWIND, T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT),&
+               !Working variables, to avoid having to allocate them every time we call this subroutine
+               rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+               rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
+               rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4,&
+               .true.)
+           else
+
+               call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+               GI, SUFEN, U_NLOC,&
+               LOC_T2OLD_I, LOC_T2OLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
+               LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
+               CVNORMX_ALL, &
+               CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
+               SELE, U_SNLOC, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+               ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)),&
+               NDIM,&
+               !Working variables, to avoid having to allocate them every time we call this subroutine
+               rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
+               rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .false. )
+
+               call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
+               GI, SUFEN, U_NLOC,&
+               LOC_T2_I, LOC_T2_J, LOC_DEN_I, LOC_DEN_J, &
+               LOC_U,LOC2_U, LOC_NU, LOC2_NU, NUGI_ALL, &
+               CVNORMX_ALL, &
+               CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
+               SELE, U_SNLOC, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+               ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)),&
+               NDIM,&
+               !Working variables, to avoid having to allocate them every time we call this subroutine
+               rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
+               rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .true. )
+           end if
+
        ELSE
-           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
-           HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
-           LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD, LOC2_FEMTOLD, LOC_DENOLD_I, LOC_DENOLD_J, &
-           LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
-           CV_NODI, CV_NODJ, CVNORMX_ALL, &
-           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
-           SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-           SUF_SIG_DIAGTEN_BC, &
-           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
-           VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-           INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
-           MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
-           IN_ELE_UPWIND, DG_ELE_UPWIND, &
-           IANISOLIM,  &
-           NUOLDGI_ALL, TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),&
-           !Working variables, to avoid having to allocate them every time we call this subroutine
-           rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
-           rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
-           rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
 
-           CALL GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
-           HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
-           LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
-           LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
-           CV_NODI, CV_NODJ, CVNORMX_ALL, &
-           CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
-           SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-           SUF_SIG_DIAGTEN_BC, &
-           UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-           ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)), CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
-           VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-           INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
-           MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, MAT_NLOC, MAT_NONODS, &
-           IN_ELE_UPWIND, DG_ELE_UPWIND, &
-           IANISOLIM, &
-           NUGI_ALL, TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT) ,&
-           !Working variables, to avoid having to allocate them every time we call this subroutine
-           rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
-           rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
-           rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
+           IF( is_compact_overlapping ) THEN
+               CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+               GI, SUFEN, U_NLOC,&
+               LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD,&
+               LOC_U,LOC2_U,LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
+               CVNORMX_ALL,  &
+               CV_DG_VEL_INT_OPT, between_elements, on_domain_boundary, &
+               SELE, U_SNLOC,STOTEL, U_SLOC2LOC,u_other_loc, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+               SUF_SIG_DIAGTEN_BC, &
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+               CV_SLOC2LOC,&
+               CV_SNLOC, CV_ILOC, SCVFEN, &
+               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
+               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               NUOLDGI_ALL, &
+               MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
+               IN_ELE_UPWIND, TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),&
+               !Working variables, to avoid having to allocate them every time we call this subroutine
+               rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+               rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
+               rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4,&
+               .false.)
+
+               CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
+               GI, SUFEN, U_NLOC,&
+               LOC_T_I, LOC_T_J, LOC_FEMT,&
+               LOC_U,LOC2_U,LOC_NU, LOC2_NU, SLOC_NU, &
+               CVNORMX_ALL,  &
+               CV_DG_VEL_INT_OPT, between_elements, on_domain_boundary, &
+               SELE, U_SNLOC,STOTEL, U_SLOC2LOC,u_other_loc, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+               SUF_SIG_DIAGTEN_BC, &
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+               CV_SLOC2LOC,&
+               CV_SNLOC, CV_ILOC, SCVFEN, &
+               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
+               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               NUGI_ALL, &
+               MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
+               IN_ELE_UPWIND, TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT),&
+               !Working variables, to avoid having to allocate them every time we call this subroutine
+               rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+               rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
+               rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4,&
+               .true.)
+           else
+
+               call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+               GI, SUFEN, U_NLOC,&
+               LOC_TOLD_I, LOC_TOLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
+               LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
+               CVNORMX_ALL, &
+               CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
+               SELE, U_SNLOC, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+               ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)),&
+               NDIM,&
+               !Working variables, to avoid having to allocate them every time we call this subroutine
+               rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
+               rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .false. )
+
+               call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
+               GI, SUFEN, U_NLOC,&
+               LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J, &
+               LOC_U,LOC2_U, LOC_NU, LOC2_NU, NUGI_ALL, &
+               CVNORMX_ALL, &
+               CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
+               SELE, U_SNLOC, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
+               ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)),&
+               NDIM,&
+               !Working variables, to avoid having to allocate them every time we call this subroutine
+               rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
+               rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .true. )
+           end if
        ENDIF
 
        INCOME_J=1.-INCOME
-       INCOMEold_J=1.-INCOMEold
 
 
        If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
@@ -2817,19 +2890,19 @@ deallocate(SCVFENX_ALL, INV_JAC)
              END DO
 
              PERCENT = ABS(RMAX-RMIN)/MAX(ABS(RMIN),ABS(RMAX),tolerance)
-             
+
              IGOT_T_CONST=PERCENT < tolerance2
 
              IGOT_T_CONST_VALUE = RMAX
              RETURN
              END SUBROUTINE IS_FIELD_CONSTANT
-             
 
 
 
 
-             SUBROUTINE PACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, IGOT_T_PACK ) 
-! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage. 
+
+             SUBROUTINE PACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, IGOT_T_PACK )
+! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
              IMPLICIT NONE
              INTEGER, intent( in ) :: NPHASE, NFIELD
 ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
@@ -2854,8 +2927,8 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
 
 
-             SUBROUTINE I_PACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, IGOT_T_PACK ) 
-! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage. 
+             SUBROUTINE I_PACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, IGOT_T_PACK )
+! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
              IMPLICIT NONE
              INTEGER, intent( in ) :: NPHASE, NFIELD
 ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
@@ -2982,7 +3055,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
                      ! IF STORE then look to see if in storage
                      IN_STORAGE = .FALSE.
                  ENDIF
-             
+
                  IF(IGOT_T==1) THEN
                      IF(PACK) THEN
                          ! Pack solution into LOC_F
@@ -3003,7 +3076,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
                              T_ALL(:) = LOC_F(IPT:IPT-1+NPHASE)
                              IPT=IPT+NPHASE
                          ENDIF
-               
+
                      ENDIF ! ENDOF IF(PACK) THEN ELSE
                  ENDIF ! END OF IF(IGOT_T==1) THEN
                  RETURN
@@ -3096,7 +3169,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
     type(mesh_type), pointer :: cv_mesh, x_mesh, xu_mesh, u_mesh, mat_mesh
 
     type(csr_sparsity), intent(out), optional :: face_sparsity
-    type(ilist), dimension(:), allocatable :: face_list 
+    type(ilist), dimension(:), allocatable :: face_list
 
     GLOBAL_FACE=0
 
@@ -3122,7 +3195,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
     u_snloc=face_loc(u_mesh,1)
 
     mat_mesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
-    mat_nloc=ele_loc(mat_mesh,1) 
+    mat_nloc=ele_loc(mat_mesh,1)
 
     allocate( face_list( totele ) )
 
@@ -3137,7 +3210,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
                   return
 
 
-     
+
       return
     end function CV_COUNT_FACES
 
@@ -3149,16 +3222,16 @@ deallocate(SCVFENX_ALL, INV_JAC)
          MAT_OTHER_LOC, MAT_NLOC, INTEGRAT_AT_GI, &
          X_NLOC, XU_NLOC, X_NDGLN, CV_NDGLN, XU_NDGLN, &
          CV_SNLOC, CVFEM_ON_FACE, X_SHARE, X_NONODS, ELE, ELE2,  &
-         FINELE, COLELE, NCOLELE, DISTCONTINUOUS_METHOD ) 
+         FINELE, COLELE, NCOLELE, DISTCONTINUOUS_METHOD )
       ! We are on the boundary or next to another element. Determine CV_OTHER_LOC,
-      ! U_OTHER_LOC. 
+      ! U_OTHER_LOC.
       ! CVFEM_ON_FACE(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
-      ! Look for these nodes on the other elements. 
-      ! ELE2=0 also when we are between elements but are trying to integrate across 
-      ! the middle of a CV. 
+      ! Look for these nodes on the other elements.
+      ! ELE2=0 also when we are between elements but are trying to integrate across
+      ! the middle of a CV.
       IMPLICIT NONE
       INTEGER, intent( in ) :: CV_NLOC, CV_NODI, U_NLOC, X_NONODS, X_NLOC, XU_NLOC, &
-           &                   CV_SNLOC, MAT_NLOC, ELE, NCOLELE 
+           &                   CV_SNLOC, MAT_NLOC, ELE, NCOLELE
       INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN, CV_NDGLN, XU_NDGLN
       LOGICAL, DIMENSION( : ), intent( in ) :: CVFEM_ON_FACE
       INTEGER, DIMENSION( : ), intent( in ) :: FINELE
@@ -3211,12 +3284,12 @@ deallocate(SCVFENX_ALL, INV_JAC)
             INTEGRAT_AT_GI=.FALSE.
             RETURN
          ENDIF
-      ENDIF 
- 
+      ENDIF
 
-!      IF ( ELE2 /= 0 ) THEN 
-!         ! Is CV_NODI in element ELE2 if yes set ELE2=0 as we don't want to integrate in 
-!         ! the middle of a CV. 
+
+!      IF ( ELE2 /= 0 ) THEN
+!         ! Is CV_NODI in element ELE2 if yes set ELE2=0 as we don't want to integrate in
+!         ! the middle of a CV.
 !         DO CV_KLOC = 1, CV_NLOC
 !            CV_NODK = CV_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_KLOC )
 !            !ewrite(3,*)'cv_nodi, cv_nodk:', cv_nodi, cv_nodk, ele, ele2
@@ -3275,7 +3348,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
     implicit none
 
-   
+
     ! DO NOT CALL THIS SUB...NOT FINISHED..
 
     integer, intent( in ) :: cv_ngi, ncolm
@@ -3303,12 +3376,12 @@ deallocate(SCVFENX_ALL, INV_JAC)
     character( len = field_name_len ) :: fe_name
 
 
-    path = "/material_phase[0]/scalar_field::Pressure" 
+    path = "/material_phase[0]/scalar_field::Pressure"
 
     nfields = tensor_field_count( packed_state )
 
     pressure => extract_scalar_field( packed_state, "FEPressure" )
-    
+
     cv_nloc = ele_loc( pressure, 1 )
 
 
@@ -3331,7 +3404,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
     cv_nonods = node_count( pressure )
     totele = ele_count( pressure )
-    
+
     allocate( cv_name( nfields ) )
 
 
@@ -3359,7 +3432,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
           do cv_jloc = 1, cv_nloc
              cv_nodj = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_jloc )
-       
+
              nn = dot_product( n( cv_iloc, : ), n(   cv_jloc,: ) * detwei )
              nm = dot_product( n( cv_iloc, : ), cvn( cv_jloc, : ) * detwei )
 
@@ -3511,10 +3584,10 @@ deallocate(SCVFENX_ALL, INV_JAC)
          k = 1
          DO CV_INOD = 1, CV_NONODS
              DO IPHASE = 1, NPHASE
-                 PSI( k ) = T_ALL( IPHASE, CV_INOD) 
-                 PSI( k + NL ) = TOLD_ALL( IPHASE, CV_INOD) 
-                 PSI( k + 2*NL ) = DEN_ALL( IPHASE, CV_INOD) 
-                 PSI( k + 3*NL ) = DENOLD_ALL( IPHASE, CV_INOD) 
+                 PSI( k ) = T_ALL( IPHASE, CV_INOD)
+                 PSI( k + NL ) = TOLD_ALL( IPHASE, CV_INOD)
+                 PSI( k + 2*NL ) = DEN_ALL( IPHASE, CV_INOD)
+                 PSI( k + 3*NL ) = DENOLD_ALL( IPHASE, CV_INOD)
                  k = k + 1
              END DO
          END DO
@@ -3522,8 +3595,8 @@ deallocate(SCVFENX_ALL, INV_JAC)
              k = 1
              DO CV_INOD = 1, CV_NONODS
                  DO IPHASE = 1, NPHASE
-                     PSI( k + 4*NL ) = T2_ALL( IPHASE, CV_INOD) 
-                     PSI( k + 5*NL ) = T2OLD_ALL( IPHASE, CV_INOD) 
+                     PSI( k + 4*NL ) = T2_ALL( IPHASE, CV_INOD)
+                     PSI( k + 5*NL ) = T2OLD_ALL( IPHASE, CV_INOD)
                      k = k + 1
                  END DO
              END DO
@@ -3614,7 +3687,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
        X_NONODS, X, Y, Z, NCOLM, FINDM, COLM, MIDM, &
        IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC )
 
-    ! determine FEMT (finite element wise) etc from T (control volume wise) 
+    ! determine FEMT (finite element wise) etc from T (control volume wise)
     IMPLICIT NONE
     type( state_type ), dimension( : ), intent( in ) :: state
     INTEGER, intent( in ) :: NDIM, NPHASE, CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
@@ -3662,9 +3735,9 @@ deallocate(SCVFENX_ALL, INV_JAC)
     if( velocity_max_iterations /= 0 ) solve_force_balance = .true.
 
     if ( solve_force_balance .or. have_component ) then
-       path = '/material_phase[0]/scalar_field::Pressure' 
+       path = '/material_phase[0]/scalar_field::Pressure'
     else
-       path = '/material_phase[0]/scalar_field::Temperature' 
+       path = '/material_phase[0]/scalar_field::Temperature'
     end if
 
     NFIELD=2 + IGOT_T2
@@ -3678,10 +3751,10 @@ deallocate(SCVFENX_ALL, INV_JAC)
     NTSOL_INT = 1
 
     NL=CV_NONODS*NPHASE
-    PSI( 1 + 0 * NL : NL + 0 * NL )  =      T( 1 : NL )  
-    PSI( 1 + 1 * NL : NL + 1 * NL )  =    DEN( 1 : NL ) 
+    PSI( 1 + 0 * NL : NL + 0 * NL )  =      T( 1 : NL )
+    PSI( 1 + 1 * NL : NL + 1 * NL )  =    DEN( 1 : NL )
     IF(IGOT_T2==1) THEN
-       PSI( 1 + 2 * NL : NL + 2 * NL )  =      T2( 1 : NL )  
+       PSI( 1 + 2 * NL : NL + 2 * NL )  =      T2( 1 : NL )
     ENDIF
 
     DO ELE=1,TOTELE
@@ -3705,10 +3778,10 @@ deallocate(SCVFENX_ALL, INV_JAC)
          IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC, PATH )
 
     NL=CV_NONODS*NPHASE
-    FEMT( 1 : NL ) = FEMPSI( 1 + 0 * NL : NL + 0 * NL ) 
-    FEMDEN( 1 : NL ) = FEMPSI( 1 + 1 * NL : NL + 1 * NL ) 
-    IF(IGOT_T2==1) THEN 
-       FEMT2( 1 : NL ) = FEMPSI( 1 + 2 * NL : NL + 2 * NL ) 
+    FEMT( 1 : NL ) = FEMPSI( 1 + 0 * NL : NL + 0 * NL )
+    FEMDEN( 1 : NL ) = FEMPSI( 1 + 1 * NL : NL + 1 * NL )
+    IF(IGOT_T2==1) THEN
+       FEMT2( 1 : NL ) = FEMPSI( 1 + 2 * NL : NL + 2 * NL )
     ENDIF
 
     XC_CV( 1 : CV_NONODS ) = PSI_AVE( 1 : CV_NONODS )
@@ -3736,7 +3809,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
        IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC, PATH )
 
     ! Determine FEMT (finite element wise) etc from T (control volume wise)
-    ! Also integrate PSI_INT over each CV and average PSI_AVE over each CV. 
+    ! Also integrate PSI_INT over each CV and average PSI_AVE over each CV.
 
     IMPLICIT NONE
     INTEGER, intent( in ) :: NTSOL, NTSOL_AVE, NTSOL_INT, NDIM, CV_NONODS, TOTELE, &
@@ -3770,12 +3843,12 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
     ewrite(3,*) 'In PROJ_CV_TO_FEM'
 
-    ALLOCATE( MASS_CV( CV_NONODS )) 
-    ALLOCATE( FEMPSI_RHS( CV_NONODS * NTSOL )) 
-    ALLOCATE( PSI_AVE2( CV_NONODS * NTSOL_AVE )) 
-    ALLOCATE( PSI_INT2( CV_NONODS * NTSOL_INT )) 
+    ALLOCATE( MASS_CV( CV_NONODS ))
+    ALLOCATE( FEMPSI_RHS( CV_NONODS * NTSOL ))
+    ALLOCATE( PSI_AVE2( CV_NONODS * NTSOL_AVE ))
+    ALLOCATE( PSI_INT2( CV_NONODS * NTSOL_INT ))
     ALLOCATE( MAT( NCOLM ))
-    ALLOCATE( DETWEI( CV_NGI )) 
+    ALLOCATE( DETWEI( CV_NGI ))
     ALLOCATE( RA( CV_NGI ))
     ALLOCATE( NX( CV_NLOC, CV_NGI ))
     ALLOCATE( NY( CV_NLOC, CV_NGI ))
@@ -3795,14 +3868,14 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
     D1 = ( NDIM == 1 )
     D3 = ( NDIM == 3 )
-    DCYL = .FALSE. 
+    DCYL = .FALSE.
 
     Loop_Elements: DO ELE = 1, TOTELE
 
        ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
        CALL DETNLXR( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, CV_NLOC, CV_NGI, &
             N, NLX, NLY, NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-            NX, NY, NZ ) 
+            NX, NY, NZ )
        MASS_ELE( ELE ) = VOLUME
 
        Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
@@ -3901,8 +3974,8 @@ deallocate(SCVFENX_ALL, INV_JAC)
        state, StorageIndexes )
 
     ! Determine FEMT (finite element wise) etc from T (control volume wise)
-    ! Also integrate PSI_INT over each CV and average PSI_AVE over each CV. 
-    use shape_functions 
+    ! Also integrate PSI_INT over each CV and average PSI_AVE over each CV.
+    use shape_functions
     use shape_functions_Linear_Quadratic
     use solvers_module
     use matrix_operations
@@ -3997,12 +4070,12 @@ deallocate(SCVFENX_ALL, INV_JAC)
     call allocate(pmat,sparsity,[1,1],name="ProjectionMatrix")
     call zero(mat)
 
-    
+
     IF(IGETCT.NE.0) MASS_MN_PRES=0.0
 
     D1 = ( NDIM == 1 )
     D3 = ( NDIM == 3 )
-    DCYL = .FALSE. 
+    DCYL = .FALSE.
 
     Loop_Elements: DO ELE = 1, TOTELE
        if (isParallel()) then
@@ -4051,7 +4124,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
              call addto(mat,cv_nodi,cv_nodj,NN)
 
              call addto(CV_MASS, CV_NODI,  MM )
-             
+
 
 
              DO IT = 1, size(fempsi_rhs)
@@ -4083,7 +4156,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
     DO IT= 1, size(psi_int)
        call halo_update(PSI_int(it)%PTR)
     end do
-    
+
     ! Solve...
 
     call get_option( trim(PSI(1)%ptr%option_path)//"/prognostic/solver/max_iterations", &
@@ -4149,7 +4222,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
        X_NONODS, X, Y, Z, &
        NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC,  &
        SUF_U_BC,SUF_V_BC,SUF_W_BC, &
-       WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, & 
+       WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
        SBCVFEN, SBCVFENSLX, SBCVFENSLY, state, StorName, Indexes)
 
     ! determine FEMT (finite element wise) etc from T (control volume wise)
@@ -4192,7 +4265,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
          CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
          X_NONODS, X, Y, Z, &
          NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_U_BC, &
-         WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, & 
+         WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
          SBCVFEN, SBCVFENSLX, SBCVFENSLY,&
          state, StorName//"U", Indexes(1))
     IF(NDIM_VEL.GE.2) THEN
@@ -4205,7 +4278,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
             CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
             X_NONODS, X, Y, Z, &
             NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_V_BC, &
-            WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, & 
+            WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
             SBCVFEN, SBCVFENSLX, SBCVFENSLY,&
             state, StorName//"V", Indexes(2))
     ELSE
@@ -4222,7 +4295,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
             CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
             X_NONODS, X, Y, Z, &
             NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_W_BC, &
-            WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, & 
+            WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
             SBCVFEN, SBCVFENSLX, SBCVFENSLY,&
             state,StorName//"W", Indexes(3))
     ELSE
@@ -4332,7 +4405,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
     D1 = ( NDIM == 1 )
     D3 = ( NDIM == 3 )
-    DCYL = .FALSE. 
+    DCYL = .FALSE.
     ! ewrite(3,*)'****X_NLX:',X_NLX
     ! ewrite(3,*)'****X_NLY:',X_NLY
 
@@ -4342,7 +4415,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
        !CALL DETNLXR_SUPER( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, X_NLOC, CV_NLOC, CV_NGI, &
        !     X_N, X_NLX, X_NLY, X_NLZ, N, NLX, NLY, NLZ, &
        !     CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-       !     NX, NY, NZ ) 
+       !     NX, NY, NZ )
        ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
        CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
             X_NLOC, X_NLOC, CV_NGI, &
@@ -4419,7 +4492,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
     !         CV_SLOCLIST(IFACE,3)=4
 
     ! Loop over surface elements
-    ! EWRITE(3,*)'VTX_ELE(1,1,1 ):',VTX_ELE(1,1,1)   
+    ! EWRITE(3,*)'VTX_ELE(1,1,1 ):',VTX_ELE(1,1,1)
 
     ! ewrite(3,*)'totele=',totele
 
@@ -4432,7 +4505,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
           ELE2 = MAX( 0, + ELE2 )
           !ewrite(3,*)'FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE ):',FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE )
 
-          ! The surface nodes on element face IFACE.  
+          ! The surface nodes on element face IFACE.
           SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
           X_SLOC2LOC( : ) = X_SLOCLIST( IFACE, : )
 
@@ -4493,7 +4566,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
                    IF(SELE2 /= 0) THEN
                       CV_JLOC2=CV_JLOC
                       CV_NODJ2=CV_NODJ
-                      SUF_CV_SJ2 = CV_SJLOC + CV_SNLOC * ( SELE2 - 1 ) 
+                      SUF_CV_SJ2 = CV_SJLOC + CV_SNLOC * ( SELE2 - 1 )
                       NRBC=0.0
                    ELSE
                       CV_JLOC2=ILOC_OTHER_SIDE(CV_SJLOC)
@@ -4507,7 +4580,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
                    VLM_NORX=0.0
                    VLM_NORY=0.0
                    VLM_NORZ=0.0
-                   ! Have a surface integral on element boundary...  
+                   ! Have a surface integral on element boundary...
                    DO SGI=1,SBCVNGI
                       RNN=SDETWE(SGI)*SBCVFEN(CV_SILOC,SGI)*SBCVFEN(CV_SJLOC,SGI)
                       VLM_NORX=VLM_NORX+SNORMXN(SGI)*RNN
@@ -4566,8 +4639,8 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
 
     ! Solve local system for the gradients DTX_ELE etc:
-    !        ewrite(3,*)'masele:', masele   
-    !        ewrite(3,*)'ndim=',ndim 
+    !        ewrite(3,*)'masele:', masele
+    !        ewrite(3,*)'ndim=',ndim
 
     Loop_Elements3: DO ELE=1,TOTELE
        ! ewrite(3,*)'ele=',ele
@@ -4788,7 +4861,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
           ELE2 = MAX( 0, + ELE2 )
           !ewrite(3,*)'FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE ):',FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE )
 
-          ! The surface nodes on element face IFACE. 
+          ! The surface nodes on element face IFACE.
           SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
           X_SLOC2LOC( : ) = X_SLOCLIST( IFACE, : )
 
@@ -4849,7 +4922,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
                    NRBC = 1.0
                 END IF
 
-                ! Have a surface integral on element boundary... 
+                ! Have a surface integral on element boundary...
                 VLM_NORX(:) = MATMUL( SNORMXN( 1:NDIM, : ), &
                      SDETWE(:) * SBCVFEN( CV_SILOC, : ) * SBCVFEN( CV_SJLOC, : ) )
 
@@ -4857,7 +4930,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
                 DO IPHASE = 1, NPHASE
                    DO ICOMP = 1, NCOMP
                       IF ( APPLYBC( ICOMP, IPHASE ) ) THEN
-                  
+
                          IF ( SELE2 /= 0 ) THEN
                             IF ( WIC_T_BC( ICOMP, IPHASE, SELE2 ) == WIC_T_BC_DIRICHLET ) THEN
 
@@ -5036,7 +5109,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
           ELE2 = MAX( 0, + ELE2 )
           !ewrite(3,*)'FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE ):',FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE )
 
-          ! The surface nodes on element face IFACE. 
+          ! The surface nodes on element face IFACE.
           SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
           X_SLOC2LOC( : ) = X_SLOCLIST( IFACE, : )
 
@@ -5066,7 +5139,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
              DO CV_SILOC = 1, CV_SNLOC
                 CV_ILOC = SLOC2LOC( CV_SILOC )
                 CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
-                
+
                 DO CV_ILOC2 = 1, CV_NLOC
                    CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
 
@@ -5099,7 +5172,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
                    NRBC = 1.0
                 END IF
 
-                ! Have a surface integral on element boundary... 
+                ! Have a surface integral on element boundary...
                 VLM_NORX(:) = MATMUL( SNORMXN( :, : ), &
                      SDETWE(:) * SBCVFEN( CV_SILOC, : ) * SBCVFEN( CV_SJLOC, : ) )
 
@@ -5171,38 +5244,38 @@ deallocate(NX_ALL, X_NX_ALL)
        ETDNEW, TDMIN, TDMAX, &
        TDMIN_2nd_mc, TDMAX_2nd_mc, FIRORD, NOLIMI, LIMIT_USE_2ND, COURANT_OR_MINUS_ONE, &
        IANISOTROPIC, TUPWIN, TUPWI2 )
-    implicit none 
-    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central 
-    ! difference face values TDCEN(1...SNGI) using a NVD shceme.  
-    ! The method is based on a new approach to limiting based on applying 
+    implicit none
+    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
+    ! The method is based on a new approach to limiting based on applying
     ! limiting only when we have a local min or max.
     ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    ! LIBETA is the flux limiting parameter. 
+    ! LIBETA is the flux limiting parameter.
     ! TDMAX(PELE)=maximum of the surrounding element values of element PELE.
     ! TDMIN(PELE)=minimum of the surrounding element values of element PELE.
-    ! TDMIN_2nd_mc(PELE), TDMAX_2nd_mc(PELE) are the second minima and max 
-    ! excluding (minus c) these values surrounding them. 
-    ! PELEOT=element at other side of current face. 
-    ! ELEOT2=element at other side of the element ELEOTH. 
-    ! ELESID=element next to oposing current face. 
-    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID. 
-    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE. 
+    ! TDMIN_2nd_mc(PELE), TDMAX_2nd_mc(PELE) are the second minima and max
+    ! excluding (minus c) these values surrounding them.
+    ! PELEOT=element at other side of current face.
+    ! ELEOT2=element at other side of the element ELEOTH.
+    ! ELESID=element next to oposing current face.
+    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
     !---------------------------------------------------
-    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |  
-    !--------------------------------------------------- 
+    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !---------------------------------------------------
     ! TAIN         THALF       TAOUT
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     !>TEXTIN
     !TEXOUT<
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     INTEGER, intent( in ) :: TOTELE, IANISOTROPIC
-    REAL, intent( inout ) :: TDLIM  
-    REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN, TUPWI2 
+    REAL, intent( inout ) :: TDLIM
+    REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN, TUPWI2
     INTEGER, intent( in ) :: PELE, PELEOT
     REAL, DIMENSION( : ), intent( in ) :: ETDNEW, TDMIN, TDMAX, TDMIN_2nd_mc, TDMAX_2nd_mc
     LOGICAL, intent( in ) :: FIRORD, NOLIMI, LIMIT_USE_2ND
     REAL :: ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT, &
-         &  TDMIN_2ND_MC_PELE, TDMAX_2ND_MC_PELE, TDMIN_2ND_MC_PELEOT, TDMAX_2ND_MC_PELEOT  
+         &  TDMIN_2ND_MC_PELE, TDMAX_2ND_MC_PELE, TDMIN_2ND_MC_PELEOT, TDMAX_2ND_MC_PELEOT
 
     ETDNEW_PELE = ETDNEW( PELE )
     ETDNEW_PELEOT = ETDNEW( PELEOT )
@@ -5241,39 +5314,39 @@ deallocate(NX_ALL, X_NX_ALL)
 
     RETURN
 
-    contains 
+    contains
 
         SUBROUTINE ONVDLIM_ANO( TOTELE, &
        TDLIM, TDCEN, INCOME, PELE, PELEOT, &
        ETDNEW_PELE, ETDNEW_PELEOT, FIRORD, NOLIMI, COURANT_OR_MINUS_ONE, &
        TUPWIN2, TUPWI22 )
-    implicit none 
-    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central 
-    ! difference face values TDCEN(1...SNGI) using a NVD shceme.  
+    implicit none
+    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
     ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    ! LIBETA is the flux limiting parameter. 
+    ! LIBETA is the flux limiting parameter.
     ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
     ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-    ! PELEOT=element at other side of current face. 
-    ! ELEOT2=element at other side of the element ELEOTH. 
-    ! ELESID=element next to oposing current face. 
-    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID. 
-    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE. 
+    ! PELEOT=element at other side of current face.
+    ! ELEOT2=element at other side of the element ELEOTH.
+    ! ELESID=element next to oposing current face.
+    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
     !---------------------------------------------------
-    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |  
-    !--------------------------------------------------- 
+    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !---------------------------------------------------
     ! TAIN         THALF       TAOUT
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     !>TEXTIN
     !TEXOUT<
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     INTEGER, intent( in ) :: TOTELE
-    REAL, intent( inout ) :: TDLIM  
-    REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN2, TUPWI22 
+    REAL, intent( inout ) :: TDLIM
+    REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN2, TUPWI22
     INTEGER, intent( in ) :: PELE, PELEOT
     REAL, intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
     LOGICAL, intent( in ) :: FIRORD, NOLIMI
-    ! Local variables   
+    ! Local variables
     REAL, PARAMETER :: TOLER=1.0E-10
     INTEGER, PARAMETER :: POWER=1
     REAL :: UCIN, UCOU, TDELE, DENOIN, CTILIN, DENOOU, &
@@ -5290,7 +5363,7 @@ deallocate(NX_ALL, X_NX_ALL)
        TUPWIN = TUPWIN2 ** POWER
        TUPWI2 = TUPWI22 ** POWER
 
-       ! Calculate normalisation parameters for incomming velocities 
+       ! Calculate normalisation parameters for incomming velocities
        TDELE = ETDNEW_PELE ** POWER
        DENOIN = TDELE - TUPWIN
 
@@ -5299,7 +5372,7 @@ deallocate(NX_ALL, X_NX_ALL)
        UCIN = ETDNEW_PELEOT ** POWER
        CTILIN = ( UCIN - TUPWIN ) / DENOIN
 
-       ! Calculate normalisation parameters for out going velocities 
+       ! Calculate normalisation parameters for out going velocities
        TDELE = ETDNEW_PELEOT ** POWER
        DENOOU = TDELE - TUPWI2
 
@@ -5309,15 +5382,15 @@ deallocate(NX_ALL, X_NX_ALL)
 
     ELSE
 
-       ! Calculate normalisation parameters for incomming velocities 
-       TUPWIN = ETDNEW_PELE 
-       UCIN = ETDNEW_PELE 
+       ! Calculate normalisation parameters for incomming velocities
+       TUPWIN = ETDNEW_PELE
+       UCIN = ETDNEW_PELE
        DENOIN = 1.
        CTILIN = 0.
 
-       ! Calculate normalisation parameters for out going velocities 
-       TUPWI2 = ETDNEW_PELE 
-       UCOU = ETDNEW_PELE 
+       ! Calculate normalisation parameters for out going velocities
+       TUPWI2 = ETDNEW_PELE
+       UCOU = ETDNEW_PELE
        DENOOU = 1.
        CTILOU = 0.
 
@@ -5326,7 +5399,7 @@ deallocate(NX_ALL, X_NX_ALL)
     Conditional_FIRORD: IF( FIRORD ) THEN ! Velocity is pointing into element
 
        ! Velocity is going out of element
-       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU 
+       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
 
     ELSE
 
@@ -5357,38 +5430,38 @@ deallocate(NX_ALL, X_NX_ALL)
        ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT, &
        TDMIN_2ND_MC_PELE, TDMAX_2ND_MC_PELE, TDMIN_2ND_MC_PELEOT, TDMAX_2ND_MC_PELEOT, &
        FIRORD, NOLIMI )
-    implicit none 
-    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central 
-    ! difference face values TDCEN(1...SNGI) using a NVD shceme.  
-    ! The method is based on a new approach to limiting based on applying 
+    implicit none
+    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
+    ! The method is based on a new approach to limiting based on applying
     ! limiting only when we have a local min or max.
     ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    ! LIBETA is the flux limiting parameter. 
+    ! LIBETA is the flux limiting parameter.
     ! TDMAX(PELE)=maximum of the surrounding element values of element PELE.
     ! TDMIN(PELE)=minimum of the surrounding element values of element PELE.
-    ! TDMIN_2nd_mc(PELE), TDMAX_2nd_mc(PELE) are the second minima and max 
-    ! excluding (minus c) these values surrounding them. 
-    ! PELEOT=element at other side of current face. 
-    ! ELEOT2=element at other side of the element ELEOTH. 
-    ! ELESID=element next to oposing current face. 
-    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID. 
-    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE. 
+    ! TDMIN_2nd_mc(PELE), TDMAX_2nd_mc(PELE) are the second minima and max
+    ! excluding (minus c) these values surrounding them.
+    ! PELEOT=element at other side of current face.
+    ! ELEOT2=element at other side of the element ELEOTH.
+    ! ELESID=element next to oposing current face.
+    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
     !---------------------------------------------------
-    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |  
-    !--------------------------------------------------- 
+    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !---------------------------------------------------
     ! TAIN         THALF       TAOUT
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     !>TEXTIN
     !TEXOUT<
-    !--------------------------------------------------- 
-    INTEGER, intent( in ) :: TOTELE 
-    REAL, intent( inout ) :: TDLIM  
+    !---------------------------------------------------
+    INTEGER, intent( in ) :: TOTELE
+    REAL, intent( inout ) :: TDLIM
     REAL, intent( in ) :: TDCEN, INCOME, ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, &
          &                TDMIN_PELEOT, TDMAX_PELEOT, TDMIN_2ND_MC_PELE, TDMAX_2ND_MC_PELE, &
          &                TDMIN_2ND_MC_PELEOT, TDMAX_2ND_MC_PELEOT
     INTEGER, intent( in ) :: PELE, PELEOT
     LOGICAL, intent( in ) :: FIRORD, NOLIMI
-    ! Local variables   
+    ! Local variables
     REAL, PARAMETER :: TOLER=1.0E-10
     REAL :: TC_in, TD_in, TC_out, TD_out
     REAL :: TUPWIN_in, TUPWIN_out, TD_MAX_in, TD_MAX_out, TD_MIN_in, TD_MIN_out
@@ -5457,33 +5530,33 @@ deallocate(NX_ALL, X_NX_ALL)
        TDLIM, TDCEN, INCOME, PELE, PELEOT, &
        ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, &
        TDMIN_PELEOT, TDMAX_PELEOT, FIRORD, NOLIMI, COURANT_OR_MINUS_ONE )
-    implicit none 
-    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central 
-    ! difference face values TDCEN(1...SNGI) using a NVD shceme.  
+    implicit none
+    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
     ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    ! LIBETA is the flux limiting parameter. 
+    ! LIBETA is the flux limiting parameter.
     ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
     ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-    ! PELEOT=element at other side of current face. 
-    ! ELEOT2=element at other side of the element ELEOTH. 
-    ! ELESID=element next to oposing current face. 
-    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID. 
-    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE. 
+    ! PELEOT=element at other side of current face.
+    ! ELEOT2=element at other side of the element ELEOTH.
+    ! ELESID=element next to oposing current face.
+    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
     !---------------------------------------------------
-    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |  
-    !--------------------------------------------------- 
+    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !---------------------------------------------------
     ! TAIN         THALF       TAOUT
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     !>TEXTIN
     !TEXOUT<
-    !--------------------------------------------------- 
-    INTEGER, intent( in ) :: TOTELE 
-    REAL, intent( inout ) :: TDLIM  
+    !---------------------------------------------------
+    INTEGER, intent( in ) :: TOTELE
+    REAL, intent( inout ) :: TDLIM
     REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, ETDNEW_PELE, ETDNEW_PELEOT, &
          &                TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT
     INTEGER, intent( in ) :: PELE, PELEOT
     LOGICAL, intent( in ) :: FIRORD, NOLIMI
-    ! Local variables   
+    ! Local variables
     REAL, PARAMETER :: TOLER=1.0E-10
     REAL :: UCIN, UCOU, TUPWIN, TUPWI2, TDELE, DENOIN, CTILIN, DENOOU, &
          CTILOU, FTILIN, FTILOU
@@ -5500,19 +5573,19 @@ deallocate(NX_ALL, X_NX_ALL)
           TUPWI2 = TDMIN_PELE
        ELSE
           TUPWIN = TDMIN_PELEOT
-          TUPWI2 = TDMAX_PELE 
+          TUPWI2 = TDMAX_PELE
        END IF
 
-       ! Calculate normalisation parameters for incomming velocities 
+       ! Calculate normalisation parameters for incomming velocities
        TDELE = ETDNEW_PELE
-       DENOIN = TDELE - TUPWIN 
+       DENOIN = TDELE - TUPWIN
 
        IF( ABS( DENOIN ) < TOLER ) DENOIN = SIGN( TOLER, DENOIN )
 
        UCIN = ETDNEW_PELEOT
        CTILIN = ( UCIN - TUPWIN ) / DENOIN
 
-       ! Calculate normalisation parameters for out going velocities 
+       ! Calculate normalisation parameters for out going velocities
        TDELE = ETDNEW_PELEOT
        DENOOU = TDELE - TUPWI2
 
@@ -5522,13 +5595,13 @@ deallocate(NX_ALL, X_NX_ALL)
 
     ELSE
 
-       ! Calculate normalisation parameters for incomming velocities 
+       ! Calculate normalisation parameters for incomming velocities
        TUPWIN = ETDNEW_PELE
        UCIN = ETDNEW_PELE
        DENOIN = 1.
        CTILIN = 0.
 
-       ! Calculate normalisation parameters for out going velocities 
+       ! Calculate normalisation parameters for out going velocities
        TUPWI2 = ETDNEW_PELE
        UCOU = ETDNEW_PELE
        DENOOU = 1.
@@ -5539,7 +5612,7 @@ deallocate(NX_ALL, X_NX_ALL)
     Conditional_FIRORD: IF( FIRORD ) THEN ! Velocity is pointing into element
 
        ! Velocity is going out of element
-       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU 
+       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
 
     ELSE
 
@@ -5563,16 +5636,16 @@ deallocate(NX_ALL, X_NX_ALL)
 
 
 
- SUBROUTINE LIM_TC_2MAX2MIN(TDLIM, TC,TD, TUPWIN, TDCEN, TD_MIN,TD_MAX)  
-    ! Calculate normalisation parameters to obtain a 
+ SUBROUTINE LIM_TC_2MAX2MIN(TDLIM, TC,TD, TUPWIN, TDCEN, TD_MIN,TD_MAX)
+    ! Calculate normalisation parameters to obtain a
     ! limited value of the face variable TDLIM based on out going velocities *******
     ! TC=value of the upwind cell.
     ! TD=value of the downwind cell.
     ! TUPWIN=value of the far field upwind cell.
-    ! tdcen=central diff value (suggested) of the face value. 
-    ! This sub calculates the downwind cell value TDELE_int and limits 
+    ! tdcen=central diff value (suggested) of the face value.
+    ! This sub calculates the downwind cell value TDELE_int and limits
     ! it between [TD_MIN,TD_MAX].
-    REAL, intent( inout ) :: TDLIM  
+    REAL, intent( inout ) :: TDLIM
     REAL, intent( in ) :: TC,TD, TUPWIN, TDCEN, TD_MIN,TD_MAX
     ! local variables...
     REAL :: TDELE_int,tdcen_w,DENOOU,FTILOU,CTILOU,TDLIM_w,w
@@ -5602,33 +5675,33 @@ deallocate(NX_ALL, X_NX_ALL)
    SUBROUTINE ONVDLIMsqrt( TOTELE, &
        TDLIM, TDCEN, INCOME, PELE, PELEOT, &
        ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT, FIRORD, NOLIMI )
-    implicit none 
-    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central 
-    ! difference face values TDCEN(1...SNGI) using a NVD shceme.  
+    implicit none
+    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
     ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    ! LIBETA is the flux limiting parameter. 
+    ! LIBETA is the flux limiting parameter.
     ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
     ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-    ! PELEOT=element at other side of current face. 
-    ! ELEOT2=element at other side of the element ELEOTH. 
-    ! ELESID=element next to oposing current face. 
-    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID. 
-    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE. 
+    ! PELEOT=element at other side of current face.
+    ! ELEOT2=element at other side of the element ELEOTH.
+    ! ELESID=element next to oposing current face.
+    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
     !---------------------------------------------------
-    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |  
-    !--------------------------------------------------- 
+    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !---------------------------------------------------
     ! TAIN         THALF       TAOUT
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     !>TEXTIN
     !TEXOUT<
-    !--------------------------------------------------- 
-    INTEGER, intent( in ) :: TOTELE 
-    REAL, intent( inout ) :: TDLIM  
+    !---------------------------------------------------
+    INTEGER, intent( in ) :: TOTELE
+    REAL, intent( inout ) :: TDLIM
     REAL, intent( in ) :: TDCEN, INCOME, ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, &
          &                TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT
     INTEGER, intent( in ) :: PELE, PELEOT
     LOGICAL, intent( in ) :: FIRORD, NOLIMI
-    ! Local variables   
+    ! Local variables
     REAL, PARAMETER :: TOLER=1.0E-10
     INTEGER, PARAMETER :: POWER=2
     REAL :: UCIN, UCOU, TUPWIN, TUPWI2, TDELE, DENOIN, CTILIN, DENOOU, &
@@ -5649,7 +5722,7 @@ deallocate(NX_ALL, X_NX_ALL)
           TUPWI2 = TDMAX_PELE ** POWER
        ENDIF
 
-       ! Calculate normalisation parameters for incomming velocities 
+       ! Calculate normalisation parameters for incomming velocities
        TDELE = ETDNEW_PELE ** POWER
        DENOIN = TDELE - TUPWIN
 
@@ -5658,7 +5731,7 @@ deallocate(NX_ALL, X_NX_ALL)
        UCIN = ETDNEW_PELEOT ** POWER
        CTILIN = ( UCIN - TUPWIN ) / DENOIN
 
-       ! Calculate normalisation parameters for out going velocities 
+       ! Calculate normalisation parameters for out going velocities
        TDELE = ETDNEW_PELEOT ** POWER
        DENOOU = TDELE - TUPWI2
 
@@ -5668,13 +5741,13 @@ deallocate(NX_ALL, X_NX_ALL)
 
     ELSE
 
-       ! Calculate normalisation parameters for incomming velocities 
+       ! Calculate normalisation parameters for incomming velocities
        TUPWIN = ETDNEW_PELE ** POWER
        UCIN = ETDNEW_PELE ** POWER
        DENOIN = 1.
        CTILIN = 0.
 
-       ! Calculate normalisation parameters for out going velocities 
+       ! Calculate normalisation parameters for out going velocities
        TUPWI2 = ETDNEW_PELE ** POWER
        UCOU = ETDNEW_PELE ** POWER
        DENOOU = 1.
@@ -5686,7 +5759,7 @@ deallocate(NX_ALL, X_NX_ALL)
        !     Conditional_FIRORD: IF( .TRUE. ) THEN ! Velocity is pointing into element
 
        ! Velocity is going out of element
-       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU 
+       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
        TDLIM = MAX(TDLIM,0.0) ** (1.0/POWER)
 
     ELSE
@@ -5711,14 +5784,14 @@ deallocate(NX_ALL, X_NX_ALL)
 
    REAL FUNCTION NVDFUNNEWsqrt( UF, UC, COURAT )
     implicit none
-    ! The function computes NVDFUNNEW, the normalised value of the 
-    ! advected variable on the face of the control volume, based on 
+    ! The function computes NVDFUNNEW, the normalised value of the
+    ! advected variable on the face of the control volume, based on
     ! the normalised value of the advected variable in the donor CV,
-    ! UC, and the high-order estimate of the face value UF. 
-    ! NVDFUNNEW is limited so that it is in the non-oscillatory 
+    ! UC, and the high-order estimate of the face value UF.
+    ! NVDFUNNEW is limited so that it is in the non-oscillatory
     ! region of normalised variable diagram (NVD).
     !
-    ! This version can also use an extremely compressive advection 
+    ! This version can also use an extremely compressive advection
     ! scheme, appropriate for advecting volume/mass fractions in
     ! multi-material problems.  This scheme is applied if the courant
     ! number (COURAT) is positive.  IF YOU DO NOT WANT COMPRESSIVE
@@ -5733,11 +5806,11 @@ deallocate(NX_ALL, X_NX_ALL)
     ! # OUTPUTS:
     ! NVDFUNNEW - Limited normalised advected field value at CV face
     !
-    ! The function is based on the flux limiting function in the paper: Riemann 
-    ! solvers on 3-D unstructured meshes for radiation transport, written by 
-    ! Dr C.C. Pain et al. See also the paper: The ULTIMATE conservative 
-    ! difference scheme applied to unsteady 1D advection, 
-    ! Leonard B. P., 1991, Computer Methods in Applied Mechanics and 
+    ! The function is based on the flux limiting function in the paper: Riemann
+    ! solvers on 3-D unstructured meshes for radiation transport, written by
+    ! Dr C.C. Pain et al. See also the paper: The ULTIMATE conservative
+    ! difference scheme applied to unsteady 1D advection,
+    ! Leonard B. P., 1991, Computer Methods in Applied Mechanics and
     ! Engineering, 88, 17-74.
     !
     ! Description                                   Programmer      Date
@@ -5747,9 +5820,9 @@ deallocate(NX_ALL, X_NX_ALL)
     ! ==================================================================
     !
     ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-    ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI 
+    ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
     ! equal to 3 has been recommended elsewhere
-    ! 
+    !
     REAL, intent(in) :: UC, UF, COURAT
     ! Local variables
     REAL, PARAMETER :: XI = 2. ! XI = 1.
@@ -5781,16 +5854,16 @@ deallocate(NX_ALL, X_NX_ALL)
   end function nvdfunnewsqrt
 
 
-   REAL FUNCTION NVDFUNNEW( UF, UC, COURAT )
+   PURE REAL FUNCTION NVDFUNNEW( UF, UC, COURAT )
     implicit none
-    ! The function computes NVDFUNNEW, the normalised value of the 
-    ! advected variable on the face of the control volume, based on 
+    ! The function computes NVDFUNNEW, the normalised value of the
+    ! advected variable on the face of the control volume, based on
     ! the normalised value of the advected variable in the donor CV,
-    ! UC, and the high-order estimate of the face value UF. 
-    ! NVDFUNNEW is limited so that it is in the non-oscillatory 
+    ! UC, and the high-order estimate of the face value UF.
+    ! NVDFUNNEW is limited so that it is in the non-oscillatory
     ! region of normalised variable diagram (NVD).
     !
-    ! This version can also use an extremely compressive advection 
+    ! This version can also use an extremely compressive advection
     ! scheme, appropriate for advecting volume/mass fractions in
     ! multi-material problems.  This scheme is applied if the courant
     ! number (COURAT) is positive.  IF YOU DO NOT WANT COMPRESSIVE
@@ -5805,11 +5878,11 @@ deallocate(NX_ALL, X_NX_ALL)
     ! # OUTPUTS:
     ! NVDFUNNEW - Limited normalised advected field value at CV face
     !
-    ! The function is based on the flux limiting function in the paper: Riemann 
-    ! solvers on 3-D unstructured meshes for radiation transport, written by 
-    ! Dr C.C. Pain et al. See also the paper: The ULTIMATE conservative 
-    ! difference scheme applied to unsteady 1D advection, 
-    ! Leonard B. P., 1991, Computer Methods in Applied Mechanics and 
+    ! The function is based on the flux limiting function in the paper: Riemann
+    ! solvers on 3-D unstructured meshes for radiation transport, written by
+    ! Dr C.C. Pain et al. See also the paper: The ULTIMATE conservative
+    ! difference scheme applied to unsteady 1D advection,
+    ! Leonard B. P., 1991, Computer Methods in Applied Mechanics and
     ! Engineering, 88, 17-74.
     !
     ! Description                                   Programmer      Date
@@ -5819,9 +5892,9 @@ deallocate(NX_ALL, X_NX_ALL)
     ! ==================================================================
     !
     ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-    ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI 
+    ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
     ! equal to 3 has been recommended elsewhere
-    ! 
+    !
     REAL, intent(in)  :: UC, UF, COURAT
     ! Local variables
     REAL, PARAMETER :: XI = 2., TOLER=1.0E-10
@@ -5873,14 +5946,14 @@ deallocate(NX_ALL, X_NX_ALL)
 
    REAL FUNCTION NVDFUNNEW_sqrt( UF, UC, COURAT )
     implicit none
-    ! The function computes NVDFUNNEW, the normalised value of the 
-    ! advected variable on the face of the control volume, based on 
+    ! The function computes NVDFUNNEW, the normalised value of the
+    ! advected variable on the face of the control volume, based on
     ! the normalised value of the advected variable in the donor CV,
-    ! UC, and the high-order estimate of the face value UF. 
-    ! NVDFUNNEW is limited so that it is in the non-oscillatory 
+    ! UC, and the high-order estimate of the face value UF.
+    ! NVDFUNNEW is limited so that it is in the non-oscillatory
     ! region of normalised variable diagram (NVD).
     !
-    ! This version can also use an extremely compressive advection 
+    ! This version can also use an extremely compressive advection
     ! scheme, appropriate for advecting volume/mass fractions in
     ! multi-material problems.  This scheme is applied if the courant
     ! number (COURAT) is positive.  IF YOU DO NOT WANT COMPRESSIVE
@@ -5895,11 +5968,11 @@ deallocate(NX_ALL, X_NX_ALL)
     ! # OUTPUTS:
     ! NVDFUNNEW - Limited normalised advected field value at CV face
     !
-    ! The function is based on the flux limiting function in the paper: Riemann 
-    ! solvers on 3-D unstructured meshes for radiation transport, written by 
-    ! Dr C.C. Pain et al. See also the paper: The ULTIMATE conservative 
-    ! difference scheme applied to unsteady 1D advection, 
-    ! Leonard B. P., 1991, Computer Methods in Applied Mechanics and 
+    ! The function is based on the flux limiting function in the paper: Riemann
+    ! solvers on 3-D unstructured meshes for radiation transport, written by
+    ! Dr C.C. Pain et al. See also the paper: The ULTIMATE conservative
+    ! difference scheme applied to unsteady 1D advection,
+    ! Leonard B. P., 1991, Computer Methods in Applied Mechanics and
     ! Engineering, 88, 17-74.
     !
     ! Description                                   Programmer      Date
@@ -5909,9 +5982,9 @@ deallocate(NX_ALL, X_NX_ALL)
     ! ==================================================================
     !
     ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-    ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI 
+    ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
     ! equal to 3 has been recommended elsewhere
-    ! 
+    !
     REAL, intent(in)  :: UC, UF, COURAT
     ! Local variables
     REAL, PARAMETER :: XI = 2., TOLER=1.0E-10
@@ -5962,22 +6035,22 @@ deallocate(NX_ALL, X_NX_ALL)
 
 
 
-  FUNCTION NVDFUNNEW_MANY( UF, UC, XI_LIMIT ) result(nvd_limit) 
+  PURE FUNCTION NVDFUNNEW_MANY( UF, UC, XI_LIMIT ) result(nvd_limit)
     implicit none
-    ! The function computes NVDFUNNEW, the normalised value of the 
-    ! advected variable on the face of the control volume, based on 
+    ! The function computes NVDFUNNEW, the normalised value of the
+    ! advected variable on the face of the control volume, based on
     ! the normalised value of the advected variable in the donor CV,
-    ! UC, and the high-order estimate of the face value UF. 
-    ! NVDFUNNEW is limited so that it is in the non-oscillatory 
+    ! UC, and the high-order estimate of the face value UF.
+    ! NVDFUNNEW is limited so that it is in the non-oscillatory
     ! region of normalised variable diagram (NVD).
     !
     ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-    ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI 
+    ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
     ! equal to 3 has been recommended elsewhere
-    ! 
+    !
     REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
     real, dimension(size(uc)) :: nvd_limit
-    logical, PARAMETER :: orig_limit=.false. ! original limiter is less invasive. 
+    logical, PARAMETER :: orig_limit=.false. ! original limiter is less invasive.
 
     ! For the region 0 < UC < 1 on the NVD, define the limiter
     if(orig_limit) then
@@ -5997,24 +6070,24 @@ deallocate(NX_ALL, X_NX_ALL)
 
 
 
-  FUNCTION NVDFUNNEW_MANY_sqrt( UF, UC, XI_LIMIT ) result(nvd_limit) 
+  FUNCTION NVDFUNNEW_MANY_sqrt( UF, UC, XI_LIMIT ) result(nvd_limit)
     implicit none
-    ! The function computes NVDFUNNEW, the normalised value of the 
-    ! advected variable on the face of the control volume, based on 
+    ! The function computes NVDFUNNEW, the normalised value of the
+    ! advected variable on the face of the control volume, based on
     ! the normalised value of the advected variable in the donor CV,
-    ! UC, and the high-order estimate of the face value UF. 
-    ! NVDFUNNEW is limited so that it is in the non-oscillatory 
+    ! UC, and the high-order estimate of the face value UF.
+    ! NVDFUNNEW is limited so that it is in the non-oscillatory
     ! region of normalised variable diagram (NVD).
     !
     ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-    ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI 
+    ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
     ! equal to 3 has been recommended elsewhere
-    ! 
+    !
     REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
     real, dimension(size(uc)) :: nvd_limit
 
 
-    nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC) 
+    nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
 
   end function nvdfunnew_many_sqrt
 
@@ -6066,13 +6139,13 @@ deallocate(NX_ALL, X_NX_ALL)
                                 !     - LOGICALS
        D1,       D3,       DCYL )
     !     --------------------------------------------------
-    !     
-    !     - this subroutine calculates the control volume (CV) 
-    !     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian 
-    !     - integration points GI. NODI = the current global 
-    !     - node number for the co-ordinates. 
+    !
+    !     - this subroutine calculates the control volume (CV)
+    !     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
+    !     - integration points GI. NODI = the current global
+    !     - node number for the co-ordinates.
     !     - (XC,YC,ZC) is the centre of CV NODI
-    !     
+    !
     !     -------------------------------
     !     - date last modified : 15/03/2003
     !     -------------------------------
@@ -6080,7 +6153,7 @@ deallocate(NX_ALL, X_NX_ALL)
     INTEGER, intent( in ) :: ELE,    GI
     INTEGER, intent( in ) ::  NLOC
     INTEGER , intent( in ) ::  SVNGI,  TOTELE, NDIM
-    INTEGER, intent( in ) ::   XNONOD     
+    INTEGER, intent( in ) ::   XNONOD
     REAL, DIMENSION( NDIM ), intent( in ) ::   XC_ALL
     INTEGER, DIMENSION( : ), intent( in ) :: XNDGLN
     REAL, DIMENSION( NDIM, SVNGI ), intent( inout ) :: CVNORMX_ALL
@@ -6123,19 +6196,19 @@ deallocate(NX_ALL, X_NX_ALL)
           NODJ = XNDGLN((ELE-1)*NLOC+JLOC)
 
           DXDLX = DXDLX + SVNLX(JLOC,GI)*X_ALL(1,NODJ)
-          DXDLY = DXDLY + SVNLY(JLOC,GI)*X_ALL(1,NODJ) 
-          DYDLX = DYDLX + SVNLX(JLOC,GI)*X_ALL(2,NODJ) 
-          DYDLY = DYDLY + SVNLY(JLOC,GI)*X_ALL(2,NODJ) 
-          DZDLX = DZDLX + SVNLX(JLOC,GI)*X_ALL(3,NODJ) 
-          DZDLY = DZDLY + SVNLY(JLOC,GI)*X_ALL(3,NODJ) 
+          DXDLY = DXDLY + SVNLY(JLOC,GI)*X_ALL(1,NODJ)
+          DYDLX = DYDLX + SVNLX(JLOC,GI)*X_ALL(2,NODJ)
+          DYDLY = DYDLY + SVNLY(JLOC,GI)*X_ALL(2,NODJ)
+          DZDLX = DZDLX + SVNLX(JLOC,GI)*X_ALL(3,NODJ)
+          DZDLY = DZDLY + SVNLY(JLOC,GI)*X_ALL(3,NODJ)
 
           POSVGIX = POSVGIX + SVN(JLOC,GI)*X_ALL(1,NODJ)
           POSVGIY = POSVGIY + SVN(JLOC,GI)*X_ALL(2,NODJ)
           POSVGIZ = POSVGIZ + SVN(JLOC,GI)*X_ALL(3,NODJ)
        end do
 
-       !     - Note that POSVGIX,POSVGIY and POSVGIZ can be considered as the 
-       !     - components of the Gauss pnt GI with the co-ordinate origin 
+       !     - Note that POSVGIX,POSVGIY and POSVGIZ can be considered as the
+       !     - components of the Gauss pnt GI with the co-ordinate origin
        !     - positioned at the current control volume NODI.
 
        POSVGIX = POSVGIX - XC_ALL(1)
@@ -6147,23 +6220,23 @@ deallocate(NX_ALL, X_NX_ALL)
        C = DXDLX*DYDLY - DXDLY*DYDLX
        !
        !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
-       !     
+       !
        DETJ = SQRT( A**2 + B**2 + C**2 )
-       !     
+       !
        !     - Calculate the determinant times the surface weight at Gauss pnt GI.
-       !     
+       !
        CVDETWEI(GI) = DETJ*SVWEIGH(GI)
-       !     
+       !
        !     - Calculate the normal at the Gauss pts
-       !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,    
+       !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
        !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
        !     - Perform cross-product. N = T1 x T2
-       !     
+       !
 !       CALL NORMGI( CVNORMX(GI), CVNORMY(GI), CVNORMZ(GI),&
        CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
             DXDLX,       DYDLX,       DZDLX, &
             DXDLY,       DYDLY,       DZDLY,&
-            POSVGIX,     POSVGIY,     POSVGIZ ) 
+            POSVGIX,     POSVGIY,     POSVGIZ )
 
     ELSE IF(.NOT.D1) THEN
 
@@ -6180,9 +6253,9 @@ deallocate(NX_ALL, X_NX_ALL)
        DYDLY = 0.0
 
        DZDLX = 0.0
-       !     
+       !
        !     - Note that we set the derivative wrt to y of coordinate z to 1.0
-       !     
+       !
        DZDLY = 1.0
 
        POSVGIX = 0.0
@@ -6193,8 +6266,8 @@ deallocate(NX_ALL, X_NX_ALL)
 
           NODJ = XNDGLN((ELE-1)*NLOC+JLOC)
 
-          DXDLX = DXDLX + SVNLX(JLOC,GI)*X_ALL(1,NODJ) 
-          DYDLX = DYDLX + SVNLX(JLOC,GI)*X_ALL(2,NODJ) 
+          DXDLX = DXDLX + SVNLX(JLOC,GI)*X_ALL(1,NODJ)
+          DYDLX = DYDLX + SVNLX(JLOC,GI)*X_ALL(2,NODJ)
 
           POSVGIX = POSVGIX + SVN(JLOC,GI)*X_ALL(1,NODJ)
           POSVGIY = POSVGIY + SVN(JLOC,GI)*X_ALL(2,NODJ)
@@ -6202,25 +6275,25 @@ deallocate(NX_ALL, X_NX_ALL)
           RGI = RGI + SVN(JLOC,GI)*X_ALL(2,NODJ)
 
        end do ! Was loop 300
-       !     
-       !     - Note that POSVGIX and POSVGIY can be considered as the components 
+       !
+       !     - Note that POSVGIX and POSVGIY can be considered as the components
        !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
        !     - current control volume NODI.
-       !     
+       !
 
        POSVGIX = POSVGIX - XC_ALL(1)
        POSVGIY = POSVGIY - XC_ALL(2)
 
-       IF( .NOT. DCYL ) RGI = 1.0 
+       IF( .NOT. DCYL ) RGI = 1.0
 
        DETJ = SQRT( DXDLX**2 + DYDLX**2 )
        CVDETWEI(GI)  = TWOPI*RGI*DETJ*SVWEIGH(GI)
        !
        !     - Calculate the normal at the Gauss pts
-       !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,    
+       !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
        !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
        !     - Perform cross-product. N = T1 x T2
-       !     
+       !
 !       CALL NORMGI( CVNORMX(GI), CVNORMY(GI), CVNORMZ(GI),&
        CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
             DXDLX,       DYDLX,       DZDLX, &
@@ -6231,10 +6304,10 @@ deallocate(NX_ALL, X_NX_ALL)
        !ewrite(3,*) 'DXDLX,       DYDLX,       DZDLX:',DXDLX,       DYDLX,       DZDLX
        !ewrite(3,*) 'DXDLY,       DYDLY,       DZDLY:',DXDLY,       DYDLY,       DZDLY
        !ewrite(3,*) 'POSVGIX,     POSVGIY,     POSVGIZ:',POSVGIX,     POSVGIY,     POSVGIZ
-       !     
+       !
        !     - End of GI loop
 
-    ELSE 
+    ELSE
        ! For 1D...
 
        POSVGIX = 0.0
@@ -6246,14 +6319,14 @@ deallocate(NX_ALL, X_NX_ALL)
           POSVGIX = POSVGIX + SVN(JLOC,GI)*X_ALL(1,NODJ)
 
        end do ! Was loop 300
-       !     
-       !     - Note that POSVGIX and POSVGIY can be considered as the components 
+       !
+       !     - Note that POSVGIX and POSVGIY can be considered as the components
        !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
        !     - current control volume NODI.
-       !     
+       !
        !          EWRITE(3,*)'POSVGIX, XC,POSVGIX - XC:',POSVGIX, XC,POSVGIX - XC
        POSVGIX = POSVGIX - XC_ALL(1)
-! SIGN(A,B) sign of B times A. 
+! SIGN(A,B) sign of B times A.
 !       CVNORMX(GI) = SIGN( 1.0, POSVGIX )
        CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGIX )
 
@@ -6262,7 +6335,7 @@ deallocate(NX_ALL, X_NX_ALL)
 !       ELSE
 !          CVNORMX_ALL(1,GI) = -1.0
 !       ENDIF
-!       CVNORMY(GI)=0.0 
+!       CVNORMY(GI)=0.0
 !       CVNORMZ(GI)=0.0
 
        DETJ = 1.0
@@ -6329,7 +6402,7 @@ deallocate(NX_ALL, X_NX_ALL)
           END DO
 
           Cond_Surf: IF( .NOT. SURF) THEN
-             ! make sure NODJ is connected to all surface nodes and is not a surface node for 
+             ! make sure NODJ is connected to all surface nodes and is not a surface node for
              ! surface element.
              ALLSUF = .TRUE.
              DO L2 = 1, SNLOC
@@ -6394,7 +6467,7 @@ deallocate(NX_ALL, X_NX_ALL)
     REAL, DIMENSION( : ), intent( in ) :: X,Y,Z
     ! Local variables
     REAL, PARAMETER :: PIE = 3.141592654
-    INTEGER :: GI, SL, IGLX 
+    INTEGER :: GI, SL, IGLX
     REAL :: DXDLX, DXDLY, DYDLX, DYDLY, DZDLX, DZDLY, A, B, C, &
          DETJ, RGI, TWOPIE, SAREA, RSNORMZ
     LOGICAL :: D1, D3, DCYL
@@ -6424,11 +6497,11 @@ deallocate(NX_ALL, X_NX_ALL)
           DO SL = 1, CV_SNLOC
              IGLX  = CV_SNDGLN(( SELE - 1 ) * CV_SNLOC + SL )
              DXDLX = DXDLX + SBUFENSLX( SL, GI ) * X( IGLX )
-             DXDLY = DXDLY + SBUFENSLY( SL, GI ) * X( IGLX ) 
-             DYDLX = DYDLX + SBUFENSLX( SL, GI ) * Y( IGLX ) 
-             DYDLY = DYDLY + SBUFENSLY( SL, GI ) * Y( IGLX ) 
-             DZDLX = DZDLX + SBUFENSLX( SL, GI ) * Z( IGLX ) 
-             DZDLY = DZDLY + SBUFENSLY( SL, GI ) * Z( IGLX ) 
+             DXDLY = DXDLY + SBUFENSLY( SL, GI ) * X( IGLX )
+             DYDLX = DYDLX + SBUFENSLX( SL, GI ) * Y( IGLX )
+             DYDLY = DYDLY + SBUFENSLY( SL, GI ) * Y( IGLX )
+             DZDLX = DZDLX + SBUFENSLX( SL, GI ) * Z( IGLX )
+             DZDLY = DZDLY + SBUFENSLY( SL, GI ) * Z( IGLX )
           END DO
 
           A = DYDLX * DZDLY - DYDLY * DZDLX
@@ -6444,13 +6517,13 @@ deallocate(NX_ALL, X_NX_ALL)
           ! Perform x-product. N=T1 x T2
           CALL NORMGI( SNORMXN(GI), SNORMYN(GI), SNORMZN(GI), &
                DXDLX, DYDLX, DZDLX, DXDLY, DYDLY, DZDLY, &
-               SNORMX, SNORMY, SNORMZ)  
+               SNORMX, SNORMY, SNORMZ)
 
        END DO Loop_Gauss3D
 
     ELSE
 
-       TWOPIE = 1.0 
+       TWOPIE = 1.0
        IF( DCYL ) TWOPIE = 2. * PIE
        !
        DO GI = 1, SBNGI
@@ -6460,22 +6533,22 @@ deallocate(NX_ALL, X_NX_ALL)
           DYDLX = 0.
           DYDLY = 0.
           DZDLX = 0.
-          DZDLY=1. ! DZDLY=1 is to calculate the normal. 
+          DZDLY=1. ! DZDLY=1 is to calculate the normal.
 
           DO SL = 1, CV_SNLOC
 
              IGLX =  CV_SNDGLN(( SELE - 1 ) * CV_SNLOC + SL )
-             DXDLX = DXDLX + SBUFENSLX( SL, GI ) * X( IGLX ) 
+             DXDLX = DXDLX + SBUFENSLX( SL, GI ) * X( IGLX )
              DYDLX = DYDLX + SBUFENSLX( SL, GI ) * Y( IGLX )
 
              RGI =   RGI + SBUFEN( SL, GI ) * Y( IGLX )
 
           END DO
 
-          IF( .NOT. DCYL) RGI = 1.0 
+          IF( .NOT. DCYL) RGI = 1.0
           DETJ = SQRT( DXDLX**2 + DYDLX**2 )
           SBDETWEI( GI ) = TWOPIE * RGI * DETJ * SBWEIGH( GI )
-          SAREA = SAREA + SBDETWEI( GI ) 
+          SAREA = SAREA + SBDETWEI( GI )
 
           ! Calculate the normal at the Gauss pts:
           ! TANX1=DXDLX,TANY1=DYDLX,TANZ1=DZDLX,    TANX2=DXDLY,TANY2=DYDLY,TANZ2=DZDLY
@@ -6484,7 +6557,7 @@ deallocate(NX_ALL, X_NX_ALL)
           RSNORMZ = 0.
           CALL NORMGI( SNORMXN( GI ), SNORMYN( GI ), SNORMZN( GI ), &
                DXDLX, DYDLX, DZDLX, DXDLY, DYDLY, DZDLY, &
-               SNORMX, SNORMY, RSNORMZ ) 
+               SNORMX, SNORMY, RSNORMZ )
 
        END DO
 
@@ -6499,11 +6572,11 @@ deallocate(NX_ALL, X_NX_ALL)
 
 
   SUBROUTINE SDETNX2( ELE, SNDGLN, &
-       STOTEL, X_NONODS, SNLOC, SNGI, & 
+       STOTEL, X_NONODS, SNLOC, SNGI, &
        X, Y, Z, &
        SN, SNLX, SNLY, SWEIGH, DETWEI, SAREA, D1, D3, DCYL,  &
        NORMXN, NORMYN, NORMZN, &
-       NORMX, NORMY, NORMZ ) 
+       NORMX, NORMY, NORMZ )
     ! use AdvectionDiffusion
     IMPLICIT NONE
     INTEGER, intent( in ) :: ELE, STOTEL, X_NONODS, SNLOC, SNGI
@@ -6544,11 +6617,11 @@ deallocate(NX_ALL, X_NX_ALL)
           DO SL = 1, SNLOC
              IGLX  = SNDGLN(( ELE - 1 ) * SNLOC + SL )
              DXDLX = DXDLX + SNLX( SL, GI ) * X( IGLX )
-             DXDLY = DXDLY + SNLY( SL, GI ) * X( IGLX ) 
-             DYDLX = DYDLX + SNLX( SL, GI ) * Y( IGLX ) 
-             DYDLY = DYDLY + SNLY( SL, GI ) * Y( IGLX ) 
-             DZDLX = DZDLX + SNLX( SL, GI ) * Z( IGLX ) 
-             DZDLY = DZDLY + SNLY( SL, GI ) * Z( IGLX ) 
+             DXDLY = DXDLY + SNLY( SL, GI ) * X( IGLX )
+             DYDLX = DYDLX + SNLX( SL, GI ) * Y( IGLX )
+             DYDLY = DYDLY + SNLY( SL, GI ) * Y( IGLX )
+             DZDLX = DZDLX + SNLX( SL, GI ) * Z( IGLX )
+             DZDLY = DZDLY + SNLY( SL, GI ) * Z( IGLX )
           END DO
 
           A = DYDLX * DZDLY - DYDLY * DZDLX
@@ -6564,13 +6637,13 @@ deallocate(NX_ALL, X_NX_ALL)
           ! Perform x-product. N=T1 x T2
           CALL NORMGI( NORMXN(GI), NORMYN(GI), NORMZN(GI), &
                DXDLX, DYDLX, DZDLX, DXDLY, DYDLY, DZDLY, &
-               NORMX, NORMY, NORMZ)  
+               NORMX, NORMY, NORMZ)
 
        END DO Loop_Gauss3D
 
     ELSE
 
-       TWOPIE = 1.0 
+       TWOPIE = 1.0
        IF( DCYL ) TWOPIE = 2. * PIE
        !
        DO GI = 1, SNGI
@@ -6580,22 +6653,22 @@ deallocate(NX_ALL, X_NX_ALL)
           DYDLX = 0.
           DYDLY = 0.
           DZDLX = 0.
-          DZDLY=1. ! DZDLY=1 is to calculate the normal. 
+          DZDLY=1. ! DZDLY=1 is to calculate the normal.
 
           DO SL = 1, SNLOC
 
              IGLX =  SNDGLN(( ELE - 1 ) * SNLOC + SL )
-             DXDLX = DXDLX + SNLX( SL, GI ) * X( IGLX ) 
+             DXDLX = DXDLX + SNLX( SL, GI ) * X( IGLX )
              DYDLX = DYDLX + SNLX( SL, GI ) * Y( IGLX )
 
              RGI =   RGI + SN( SL, GI ) * Y( IGLX )
 
           END DO
 
-          IF( .NOT. DCYL) RGI = 1.0 
+          IF( .NOT. DCYL) RGI = 1.0
           DETJ = SQRT( DXDLX**2 + DYDLX**2 )
           DETWEI( GI ) = TWOPIE *RGI * DETJ * SWEIGH( GI )
-          SAREA = SAREA + DETWEI( GI ) 
+          SAREA = SAREA + DETWEI( GI )
 
           ! Calculate the normal at the Gauss pts:
           ! TANX1=DXDLX,TANY1=DYDLX,TANZ1=DZDLX,    TANX2=DXDLY,TANY2=DYDLY,TANZ2=DZDLY
@@ -6604,7 +6677,7 @@ deallocate(NX_ALL, X_NX_ALL)
           NORMZ = 0.
           CALL NORMGI( NORMXN( GI ), NORMYN( GI ), NORMZN( GI ), &
                DXDLX, DYDLX, DZDLX, DXDLY, DYDLY, DZDLY, &
-               NORMX, NORMY, NORMZ ) 
+               NORMX, NORMY, NORMZ )
 
        END DO
 
@@ -6662,7 +6735,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
    real function tolfun(value)
     ! This function is a tolerance function for a value which is used as a denominator.
-    ! If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e. 
+    ! If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
     ! the absolute value of A times the sign of B where A is TOLERANCE and B is VALUE.
 
     implicit none
@@ -6685,7 +6758,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
 
 
-  function tolfun_many(val) result(v_tolfun)
+  PURE function tolfun_many(val) result(v_tolfun)
 
     implicit none
     real, dimension(:), intent(in) :: val
@@ -6708,9 +6781,9 @@ deallocate(NX_ALL, X_NX_ALL)
   SUBROUTINE BETWEEN_ELE_SOLVE_DIF(UDIFF_SUF_STAB, &
        DIFF_FOR_BETWEEN_U_ELE, DIFF_FOR_BETWEEN_U_ELE2, &
        MAT_ELE, MAT_ELE2, U_SLOC2LOC,U_ILOC_OTHER_SIDE,  &
-       SBUFEN,SBCVNGI,U_NLOC,U_SNLOC,NDIM,NPHASE,GOT_OTHER_ELE) 
+       SBUFEN,SBCVNGI,U_NLOC,U_SNLOC,NDIM,NPHASE,GOT_OTHER_ELE)
     ! Calculate the between element diffusion coefficients for stabaization scheme UDIFF_SUF_STAB.
-    implicit none     
+    implicit none
     !  FAST_AND_SIMP is a good option and is accurate...
     LOGICAL, PARAMETER :: FAST_AND_SIMP=.TRUE.
     !      LOGICAL, PARAMETER :: FAST_AND_SIMP=.FALSE.
@@ -6744,7 +6817,7 @@ deallocate(NX_ALL, X_NX_ALL)
           DIFF_ADD_STAB2( :, : )=0.0
           DO U_SILOC = 1, U_SNLOC
              U_ILOC = U_SLOC2LOC( U_SILOC )
-             U_ILOC2= U_ILOC_OTHER_SIDE( U_SILOC ) 
+             U_ILOC2= U_ILOC_OTHER_SIDE( U_SILOC )
              DO IPHASE=1,NPHASE
                 ! Calculate added stabilization diffusion DIFF_ADD_STAB( SGI,IDIM,IPHASE )
                 DIFF_ADD_STAB2( IPHASE, : )=DIFF_ADD_STAB2( IPHASE, : )+SBUFEN(U_SILOC,:) &
@@ -6787,7 +6860,7 @@ deallocate(NX_ALL, X_NX_ALL)
           OTHER_SI2(1:U_NLOC)=0
           DO U_SILOC = 1, U_SNLOC
              U_ILOC = U_SLOC2LOC( U_SILOC )
-             U_ILOC2= U_ILOC_OTHER_SIDE( U_SILOC ) 
+             U_ILOC2= U_ILOC_OTHER_SIDE( U_SILOC )
              OTHER_SI2(U_ILOC2)=U_ILOC
           END DO
 
@@ -6807,9 +6880,9 @@ deallocate(NX_ALL, X_NX_ALL)
           ALLOCATE(MAT_LOC_2ELES(NLEN,NLEN))
           MAT_LOC_2ELES(:,:)=0.0
           MAT_LOC_2ELES(1:U_NLOC,1:U_NLOC)=MAT_ELE(1:U_NLOC,1:U_NLOC)
-          DO U_ILOC2=1,U_NLOC 
+          DO U_ILOC2=1,U_NLOC
              IGL=GLOB_NO(U_ILOC2+U_NLOC)
-             DO U_JLOC2=1,U_NLOC 
+             DO U_JLOC2=1,U_NLOC
                 JGL=GLOB_NO(U_JLOC2+U_NLOC)
                 MAT_LOC_2ELES(IGL,JGL)=MAT_LOC_2ELES(IGL,JGL)+MAT_ELE2(U_ILOC2,U_JLOC2)
              END DO
@@ -6835,13 +6908,13 @@ deallocate(NX_ALL, X_NX_ALL)
           VECRHS_2ELES(1:U_NLOC)=DIFF_FOR_BETWEEN_U_ELE(IPHASE,1:U_NLOC)
           IF(GOT_OTHER_ELE) THEN
 
-             DO U_ILOC2=1,U_NLOC 
+             DO U_ILOC2=1,U_NLOC
                 IGL=GLOB_NO(U_ILOC2+U_NLOC)
                 VECRHS_2ELES(IGL)=VECRHS_2ELES(IGL)+DIFF_FOR_BETWEEN_U_ELE2(IPHASE,U_ILOC2)
              END DO
           ENDIF
 
-          ! Solve MAT_LOC_2ELES *DIFF = VECRHS_2ELES  
+          ! Solve MAT_LOC_2ELES *DIFF = VECRHS_2ELES
           ! MAT is overwritten by decomposition
           CALL SMLINNGOT( MAT, DIFF, VECRHS_2ELES, NLEN, NLEN, IPIV, GOTDEC)
           GOTDEC =.TRUE.
@@ -6905,8 +6978,8 @@ deallocate(NX_ALL, X_NX_ALL)
 
     ! local variables
 
-    ! DIFF_MIN_FRAC is the fraction of the standard diffusion coefficient to use 
-    ! in the non-linear diffusion scheme. DIFF_MAX_FRAC is the maximum fraction. 
+    ! DIFF_MIN_FRAC is the fraction of the standard diffusion coefficient to use
+    ! in the non-linear diffusion scheme. DIFF_MAX_FRAC is the maximum fraction.
     REAL, PARAMETER :: DIFF_MIN_FRAC = 0.05, DIFF_MAX_FRAC = 20.0
 
     REAL :: COEF
@@ -6924,15 +6997,15 @@ deallocate(NX_ALL, X_NX_ALL)
     ALLOCATE( N_DOT_DKDT2_ALL( NPHASE ), N_DOT_DKDTOLD2_ALL( NPHASE ) )
     ALLOCATE( DIFF_STAND_DIVDX_ALL( NPHASE ), DIFF_STAND_DIVDX2_ALL( NPHASE ) )
 
-    ALLOCATE( DIFF_GI( NDIM, NDIM, NPHASE ) ) 
-    ALLOCATE( DIFF_GI2( NDIM, NDIM, NPHASE ) ) 
+    ALLOCATE( DIFF_GI( NDIM, NDIM, NPHASE ) )
+    ALLOCATE( DIFF_GI2( NDIM, NDIM, NPHASE ) )
 
     ZER_DIFF = .FALSE.
     IF ( SELE /= 0 ) ZER_DIFF = ANY ( LOC_WIC_T_BC( : ) /= WIC_T_BC_DIRICHLET )
 
     Cond_ZerDiff: IF ( ZER_DIFF ) THEN
 
-       DIFF_COEF_DIVDX = 0.0 
+       DIFF_COEF_DIVDX = 0.0
        DIFF_COEFOLD_DIVDX = 0.0
 
     ELSE
@@ -6952,7 +7025,7 @@ deallocate(NX_ALL, X_NX_ALL)
           END DO
        END DO
        DIFF_GI = DIFF_GI + DIFF_GI_ADDED
-       DIFF_GI = MAX( 0.0, DIFF_GI ) 
+       DIFF_GI = MAX( 0.0, DIFF_GI )
 
        DO IPHASE = 1, NPHASE
           N_DOT_DKDT_ALL( IPHASE ) = DOT_PRODUCT( CVNORMX_ALL, MATMUL( DIFF_GI( :, :, IPHASE ), DTDX_GI_ALL( :, IPHASE ) ) )
@@ -6999,7 +7072,7 @@ deallocate(NX_ALL, X_NX_ALL)
           N_DOT_DKDT_ALL = 0.5 * ( N_DOT_DKDT_ALL + N_DOT_DKDT2_ALL )
           N_DOT_DKDTOLD_ALL = 0.5 * ( N_DOT_DKDTOLD_ALL + N_DOT_DKDTOLD2_ALL )
 
-          DIFF_STAND_DIVDX_ALL = MIN( DIFF_STAND_DIVDX_ALL, DIFF_STAND_DIVDX2_ALL ) 
+          DIFF_STAND_DIVDX_ALL = MIN( DIFF_STAND_DIVDX_ALL, DIFF_STAND_DIVDX2_ALL )
 
        END IF Conditional_MAT_DISOPT_ELE2
 
@@ -7015,7 +7088,7 @@ deallocate(NX_ALL, X_NX_ALL)
     IF ( SELE /= 0 ) THEN
        DO IPHASE=1,NPHASE
           IF( LOC_WIC_T_BC( IPHASE ) /= WIC_T_BC_DIRICHLET ) THEN
-             DIFF_COEF_DIVDX( IPHASE ) = 0.0 
+             DIFF_COEF_DIVDX( IPHASE ) = 0.0
              DIFF_COEFOLD_DIVDX( IPHASE ) = 0.0
           ENDIF
        END DO
@@ -7029,7 +7102,7 @@ deallocate(NX_ALL, X_NX_ALL)
          N_DOT_DKDT2_ALL, N_DOT_DKDTOLD2_ALL, &
          DIFF_STAND_DIVDX_ALL, DIFF_STAND_DIVDX2_ALL )
 
-    RETURN            
+    RETURN
 
   END SUBROUTINE DIFFUS_CAL_COEFF
 
@@ -7048,10 +7121,10 @@ deallocate(NX_ALL, X_NX_ALL)
        SELE, STOTEL, WIC_U_BC, WIC_U_BC_DIRICHLET, SIMPLE_DIFF_CALC, DIFF_MIN_FRAC, DIFF_MAX_FRAC  )
     ! This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX,DIFF_COEFOLD_DIVDX
     ! based on a non-linear method and a non-oscillating scheme.
-! This implements the stress and tensor form of diffusion and calculates a jump conidition. 
+! This implements the stress and tensor form of diffusion and calculates a jump conidition.
 ! which is in DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD. 
-! look at the manual DG treatment of viscocity. 
+! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
+! look at the manual DG treatment of viscocity.
     IMPLICIT NONE
     LOGICAL, intent( in ) :: STRESS_FORM, STRESS_FORM_STAB, SIMPLE_DIFF_CALC
     INTEGER, intent( in ) :: U_SNLOC, U_NLOC, CV_SNLOC,CV_NLOC, MAT_NLOC, NPHASE,  &
@@ -7067,16 +7140,16 @@ deallocate(NX_ALL, X_NX_ALL)
     REAL, DIMENSION( SBCVNGI, U_SNLOC ), intent( in ) :: SBUFEN_REVERSED
     REAL, DIMENSION( NDIM,NDIM,NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION, SLOC2_UDIFFUSION
     REAL, DIMENSION( NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION_VOL
-    ! DIFF_GI_ADDED( IDIM, :,:) is for dimension IDIM e.g IDIM=1 corresponds to U 
-    ! the rest is for the diffusion tensor. 
+    ! DIFF_GI_ADDED( IDIM, :,:) is for dimension IDIM e.g IDIM=1 corresponds to U
+    ! the rest is for the diffusion tensor.
     REAL, DIMENSION( NDIM_VEL, NDIM,NDIM, NPHASE, SBCVNGI), intent( in ) :: DIFF_GI_ADDED
     REAL, DIMENSION( NDIM_VEL, NDIM , NPHASE, U_SNLOC ), intent( in ) :: SLOC_DUX_ELE_ALL, SLOC2_DUX_ELE_ALL,   SLOC_DUOLDX_ELE_ALL, SLOC2_DUOLDX_ELE_ALL
     REAL, DIMENSION( NDIM, SBCVNGI ), intent( in ) :: SNORMXN_ALL
 
     ! local variables
     !        ===>  REALS  <===
-    ! DIFF_MIN_FRAC is the fraction of the standard diffusion coefficient to use 
-    ! in the non-linear diffusion scheme. DIFF_MAX_FRAC is the maximum fraction. 
+    ! DIFF_MIN_FRAC is the fraction of the standard diffusion coefficient to use
+    ! in the non-linear diffusion scheme. DIFF_MAX_FRAC is the maximum fraction.
     ! If SIMPLE_DIFF_CALC then use a simple and fast diffusion calculation.
 !    LOGICAL, PARAMETER :: SIMPLE_DIFF_CALC2 = .false.
     !REAL, PARAMETER :: DIFF_MIN_FRAC = 0.005, DIFF_MAX_FRAC = 200.0
@@ -7135,7 +7208,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
     Cond_ZerDiff: IF(ZER_DIFF) THEN
 
-       DIFF_COEF_DIVDX    = 0.0 
+       DIFF_COEF_DIVDX    = 0.0
        DIFF_COEFOLD_DIVDX = 0.0
 
     ELSE
@@ -7154,7 +7227,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
 
 
-       IF(SIMPLE_DIFF_CALC) THEN ! The simplest method we can think of... 
+       IF(SIMPLE_DIFF_CALC) THEN ! The simplest method we can think of...
 
           ALLOCATE( DIFF_GI(NDIM,NDIM,NPHASE,SBCVNGI) )
           ALLOCATE( DIFF_GI2(NDIM,NDIM,NPHASE,SBCVNGI) )
@@ -7183,8 +7256,8 @@ deallocate(NX_ALL, X_NX_ALL)
                 END DO
              END DO
           END DO
-          DIFF_GI=MAX(0.0, DIFF_GI) 
-          DIFF_VOL_GI=MAX(0.0, DIFF_VOL_GI) 
+          DIFF_GI=MAX(0.0, DIFF_GI)
+          DIFF_VOL_GI=MAX(0.0, DIFF_VOL_GI)
 
           Conditional_MAT_DISOPT_ELE2_2: IF( ( ELE2 /= 0 ).AND.( ELE2 /= ELE) ) THEN
              DIFF_GI2 = 0.0
@@ -7200,14 +7273,14 @@ deallocate(NX_ALL, X_NX_ALL)
                    END DO
                 END DO
              END DO
-             DIFF_GI2=MAX(0.0, DIFF_GI2) 
-             DIFF_VOL_GI2=MAX(0.0, DIFF_VOL_GI2) 
+             DIFF_GI2=MAX(0.0, DIFF_GI2)
+             DIFF_VOL_GI2=MAX(0.0, DIFF_VOL_GI2)
              DIFF_GI=0.5*(DIFF_GI+DIFF_GI2)
              DIFF_VOL_GI=0.5*(DIFF_VOL_GI+DIFF_VOL_GI2)
           ENDIF Conditional_MAT_DISOPT_ELE2_2
 
           IF(STRESS_FORM) THEN
-             
+
              IF(STRESS_FORM_STAB) THEN
 
                 DIFF_GI_BOTH = DIFF_GI
@@ -7219,7 +7292,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
                    END DO
                 END DO
-                
+
                 DO SGI=1,SBCVNGI
                    DO IPHASE=1, NPHASE
                       DO IDIM=1, NDIM_VEL
@@ -7271,7 +7344,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
 
 ! Calculate DIFF_COEF_DIVDX, N_DOT_DKDU, N_DOT_DKDUOLD
-             CALL FOR_TENS_DERIVS_NDOTS(DIFF_STAND_DIVDX2_U, N_DOT_DKDU2, N_DOT_DKDUOLD2,  &  
+             CALL FOR_TENS_DERIVS_NDOTS(DIFF_STAND_DIVDX2_U, N_DOT_DKDU2, N_DOT_DKDUOLD2,  &
                     DIFF_GI_ADDED, SLOC2_DUX_ELE_ALL, SLOC2_DUOLDX_ELE_ALL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, &
                     NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI, SBUFEN_REVERSED, SBCVFEN_REVERSED, SNORMXN_ALL, HDC, ZERO_OR_TWO_THIRDS, &
                     STRESS_FORM, STRESS_FORM_STAB )
@@ -7283,7 +7356,7 @@ deallocate(NX_ALL, X_NX_ALL)
                N_DOT_DKDUOLD= 0.5*( N_DOT_DKDUOLD + N_DOT_DKDUOLD2 )
 
             ! This is the minimum diffusion...
-               DIFF_STAND_DIVDX_U    = 0.5*( DIFF_STAND_DIVDX_U + DIFF_STAND_DIVDX2_U ) 
+               DIFF_STAND_DIVDX_U    = 0.5*( DIFF_STAND_DIVDX_U + DIFF_STAND_DIVDX2_U )
 
           ENDIF Conditional_MAT_DISOPT_ELE2
 
@@ -7294,18 +7367,18 @@ deallocate(NX_ALL, X_NX_ALL)
                 DO IDIM=1,NDIM_VEL
 
                    DIFF_COEF_DIVDX_U(IDIM,IPHASE,SGI)    = N_DOT_DKDU(IDIM,IPHASE,SGI) / &
-                      TOLFUN( U_CV_NODJ_IPHA_ALL(IDIM,IPHASE,SGI)  - U_CV_NODI_IPHA_ALL(IDIM,IPHASE,SGI) )  
+                      TOLFUN( U_CV_NODJ_IPHA_ALL(IDIM,IPHASE,SGI)  - U_CV_NODI_IPHA_ALL(IDIM,IPHASE,SGI) )
                    DIFF_COEFOLD_DIVDX_U(IDIM,IPHASE,SGI) = N_DOT_DKDUOLD(IDIM,IPHASE,SGI) /  &
-                      TOLFUN( UOLD_CV_NODJ_IPHA_ALL(IDIM,IPHASE,SGI)  - UOLD_CV_NODI_IPHA_ALL(IDIM,IPHASE,SGI) )  
+                      TOLFUN( UOLD_CV_NODJ_IPHA_ALL(IDIM,IPHASE,SGI)  - UOLD_CV_NODI_IPHA_ALL(IDIM,IPHASE,SGI) )
 
                 END DO
              END DO
           END DO
 
-         ! Make sure the diffusion has an lower bound...       
+         ! Make sure the diffusion has an lower bound...
             DIFF_COEF_DIVDX_U    = MAX( DIFF_MIN_FRAC*DIFF_STAND_DIVDX_U, DIFF_COEF_DIVDX_U )
             DIFF_COEFOLD_DIVDX_U = MAX( DIFF_MIN_FRAC*DIFF_STAND_DIVDX_U, DIFF_COEFOLD_DIVDX_U )
-         ! Make sure the diffusion has an upper bound...       
+         ! Make sure the diffusion has an upper bound...
             DIFF_COEF_DIVDX_U    = MIN( DIFF_MAX_FRAC*DIFF_STAND_DIVDX_U, DIFF_COEF_DIVDX_U )
             DIFF_COEFOLD_DIVDX_U = MIN( DIFF_MAX_FRAC*DIFF_STAND_DIVDX_U, DIFF_COEFOLD_DIVDX_U )
 
@@ -7318,7 +7391,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
     END IF Cond_ZerDiff
 
-! 
+!
 ! Zero if we are on boundary and applying Dirichlet b.c's
      DO IPHASE=1, NPHASE
         DO IDIM=1, NDIM
@@ -7328,7 +7401,7 @@ deallocate(NX_ALL, X_NX_ALL)
      END DO
 
 
-    RETURN            
+    RETURN
 
   END SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR
 
@@ -7338,18 +7411,18 @@ deallocate(NX_ALL, X_NX_ALL)
 
 
   SUBROUTINE LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_ELE_EXT,  S_INV_NNX_MAT12,  &
-       STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, & 
+       STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
        U_SNLOC, U_NLOC, CV_SNLOC, CV_NLOC, MAT_NLOC, NPHASE,  &
        SBUFEN_REVERSED,SBCVFEN_REVERSED, SDETWEI, SBCVNGI, NDIM, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, DIFF_GI_ADDED, &
        ON_BOUNDARY, SNORMXN_ALL  )
     ! This sub calculates the effective diffusion coefficientd STRESS_IJ_ELE_EXT
-    ! it only works for between element contributions. 
-    ! based on a high order scheme. 
-! The matrix  S_INV_NNX_MAT12 is used to calculate the rows of the matrix with STRESS_IJ_ELE_EXT. 
-! This implements the stress and tensor form of diffusion and calculates a jump conidition. 
+    ! it only works for between element contributions.
+    ! based on a high order scheme.
+! The matrix  S_INV_NNX_MAT12 is used to calculate the rows of the matrix with STRESS_IJ_ELE_EXT.
+! This implements the stress and tensor form of diffusion and calculates a jump conidition.
 ! which is in DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD. 
-! look at the manual DG treatment of viscocity. 
+! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
+! look at the manual DG treatment of viscocity.
     IMPLICIT NONE
     LOGICAL, intent( in ) :: STRESS_FORM, STRESS_FORM_STAB, ON_BOUNDARY
     INTEGER, intent( in ) :: U_SNLOC, U_NLOC, CV_SNLOC,CV_NLOC, MAT_NLOC, NPHASE,  &
@@ -7362,11 +7435,11 @@ deallocate(NX_ALL, X_NX_ALL)
     REAL, DIMENSION( SBCVNGI ), intent( in ) :: SDETWEI
     REAL, DIMENSION( NDIM,NDIM,NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION, SLOC2_UDIFFUSION
     REAL, DIMENSION( NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION_VOL
-    ! DIFF_GI_ADDED( IDIM, :,:) is for dimension IDIM e.g IDIM=1 corresponds to U 
-    ! the rest is for the diffusion tensor. 
+    ! DIFF_GI_ADDED( IDIM, :,:) is for dimension IDIM e.g IDIM=1 corresponds to U
+    ! the rest is for the diffusion tensor.
     REAL, DIMENSION( NDIM, NDIM,NDIM, NPHASE, SBCVNGI), intent( in ) :: DIFF_GI_ADDED
     REAL, DIMENSION( NDIM, SBCVNGI ), intent( in ) :: SNORMXN_ALL
-! local variables...      
+! local variables...
 ! If FAST then use the fast version that is less well tested..
     LOGICAL, PARAMETER :: FAST = .true.
 
@@ -7403,8 +7476,8 @@ deallocate(NX_ALL, X_NX_ALL)
                 END DO
              END DO
           END DO
-          DIFF_GI=MAX(0.0, DIFF_GI) 
-          DIFF_VOL_GI=MAX(0.0, DIFF_VOL_GI) 
+          DIFF_GI=MAX(0.0, DIFF_GI)
+          DIFF_VOL_GI=MAX(0.0, DIFF_VOL_GI)
 
           IF(.NOT.ON_BOUNDARY) THEN
 ! neighbouring element...
@@ -7421,14 +7494,14 @@ deallocate(NX_ALL, X_NX_ALL)
                    END DO
                 END DO
              END DO
-             DIFF_GI2=MAX(0.0, DIFF_GI2) 
-             DIFF_VOL_GI2=MAX(0.0, DIFF_VOL_GI2) 
+             DIFF_GI2=MAX(0.0, DIFF_GI2)
+             DIFF_VOL_GI2=MAX(0.0, DIFF_VOL_GI2)
 
              DIFF_GI=0.5*(DIFF_GI+DIFF_GI2)
              DIFF_VOL_GI=0.5*(DIFF_VOL_GI+DIFF_VOL_GI2)
           ENDIF
 
-             
+
           IF(STRESS_FORM_STAB) THEN
 
                 DO IDIM=1,NDIM
@@ -7438,11 +7511,11 @@ deallocate(NX_ALL, X_NX_ALL)
 
                    END DO
                 END DO
-                
-          ELSE 
+
+          ELSE
                 DO IDIM=1,NDIM
                       DIFF_GI(IDIM, IDIM, :, :) = DIFF_GI(IDIM, IDIM, :, :) &
-                       +  DIFF_GI_ADDED(IDIM, 1,1, :, :) 
+                       +  DIFF_GI_ADDED(IDIM, 1,1, :, :)
                 END DO
           ENDIF
 
@@ -7459,10 +7532,10 @@ deallocate(NX_ALL, X_NX_ALL)
              DO U_SILOC=1,U_SNLOC
              DO U_SJLOC=1,U_SNLOC
                 DO SGI=1,SBCVNGI
-                   DO JDIM=1,NDIM 
-                      RDUM = SNORMXN_ALL(JDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)*SBUFEN_REVERSED(SGI,U_SJLOC)*SDETWEI( SGI ) 
+                   DO JDIM=1,NDIM
+                      RDUM = SNORMXN_ALL(JDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)*SBUFEN_REVERSED(SGI,U_SJLOC)*SDETWEI( SGI )
                       DO IPHASE=1,NPHASE
-                         DO IDIM=1,NDIM 
+                         DO IDIM=1,NDIM
 ! take -ve as its a surface integral...
        MAT_SUFXX(IDIM,JDIM,IPHASE,U_SILOC,U_SJLOC) = MAT_SUFXX(IDIM,JDIM,IPHASE,U_SILOC,U_SJLOC) &
                        -  RDUM*DIFF_GI( IDIM, JDIM, IPHASE, SGI )
@@ -7487,7 +7560,7 @@ deallocate(NX_ALL, X_NX_ALL)
                     END DO
 
                 END DO
-                
+
              END DO
           ELSE ! less rapid version...
              DO U_SILOC=1,U_SNLOC
@@ -7498,11 +7571,11 @@ deallocate(NX_ALL, X_NX_ALL)
                           DO IPHASE=1,NPHASE
 ! take -ve as its a surface integral...
           CALL CALC_STRESS_TEN( STRESS_IJ_ELE_EXT( :, :, IPHASE, U_SILOC, U_JLOC12 ), ZERO_OR_TWO_THIRDS, NDIM, &
-             - SNORMXN_ALL(:,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)* SBUFEN_REVERSED(SGI,I)*SDETWEI( SGI ), S_INV_NNX_MAT12( 1:NDIM, I, U_JLOC12 ), DIFF_GI( :, :, IPHASE, SGI ), DIFF_VOL_GI( IPHASE, SGI) ) 
+             - SNORMXN_ALL(:,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)* SBUFEN_REVERSED(SGI,I)*SDETWEI( SGI ), S_INV_NNX_MAT12( 1:NDIM, I, U_JLOC12 ), DIFF_GI( :, :, IPHASE, SGI ), DIFF_VOL_GI( IPHASE, SGI) )
                           END DO
                        END DO
                    END DO
-                
+
                 END DO
              END DO
           ENDIF
@@ -7515,10 +7588,10 @@ deallocate(NX_ALL, X_NX_ALL)
              DO U_SILOC=1,U_SNLOC
              DO U_SJLOC=1,U_SNLOC
                 DO SGI=1,SBCVNGI
-                   DO IDIM=1,NDIM 
-                      RDUM = SNORMXN_ALL(IDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)*SBUFEN_REVERSED(SGI,U_SJLOC)*SDETWEI( SGI ) 
+                   DO IDIM=1,NDIM
+                      RDUM = SNORMXN_ALL(IDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)*SBUFEN_REVERSED(SGI,U_SJLOC)*SDETWEI( SGI )
                       DO IPHASE=1,NPHASE
-                         DO JDIM=1,NDIM 
+                         DO JDIM=1,NDIM
 ! take -ve as its a surface integral...
        MAT_SUFXX(IDIM,JDIM,IPHASE,U_SILOC,U_SJLOC) = MAT_SUFXX(IDIM,JDIM,IPHASE,U_SILOC,U_SJLOC) &
                          -  RDUM*DIFF_GI( IDIM, JDIM, IPHASE, SGI )
@@ -7534,7 +7607,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
                    DO I=1,U_SNLOC
                        DO IPHASE=1,NPHASE
-                       DO IDIM=1,NDIM 
+                       DO IDIM=1,NDIM
                           STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) = STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) &
                             + SUM(  MAT_SUFXX(IDIM,:,IPHASE, U_SILOC, I) *  S_INV_NNX_MAT12( :, I, U_JLOC12 )  )
                        END DO
@@ -7552,33 +7625,33 @@ deallocate(NX_ALL, X_NX_ALL)
 
                       DO I=1,U_SNLOC
                           DO IPHASE=1,NPHASE
-                          DO IDIM=1,NDIM 
+                          DO IDIM=1,NDIM
 !                            print *,'IDIM, IPHASE, U_SILOC, U_JLOC12:',IDIM, IPHASE, U_SILOC, U_JLOC12
 !                          STRESS_IJ_ELE_EXT( IDIM, IDIM, IPHASE, U_SILOC, U_JLOC12 ) = STRESS_IJ_ELE_EXT( IDIM, IDIM, IPHASE, U_SILOC, U_JLOC12 ) &
                              STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) = STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) &
                                - SNORMXN_ALL(IDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)* SBUFEN_REVERSED(SGI,I)*SDETWEI( SGI )  &
                                     * SUM( DIFF_GI( IDIM, :, IPHASE, SGI ) *  S_INV_NNX_MAT12( :, I, U_JLOC12 ) )
-!                                 * DIFF_GI( IDIM, idim, IPHASE, SGI ) *  S_INV_NNX_MAT12( idim, I, U_JLOC12 ) 
+!                                 * DIFF_GI( IDIM, idim, IPHASE, SGI ) *  S_INV_NNX_MAT12( idim, I, U_JLOC12 )
                           END DO
                           END DO
                        END DO
                    END DO
-                
+
                 END DO
              END DO
           ENDIF ! endof if THEN ELSE OF The rapid version
 ! all other components are the same...
-          DO IDIM=2,NDIM 
-             STRESS_IJ_ELE_EXT( IDIM,IDIM, :,:,: ) = STRESS_IJ_ELE_EXT( 1,1, :,:,: ) 
+          DO IDIM=2,NDIM
+             STRESS_IJ_ELE_EXT( IDIM,IDIM, :,:,: ) = STRESS_IJ_ELE_EXT( 1,1, :,:,: )
           END DO
-          
+
        ENDIF
 
 !          CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_SILOC, U_JLOC_EXT ), ZERO_OR_TWO_THIRDS, NDIM, &
-!               UFENX_ALL( 1:NDIM, U_ILOC, GI ), UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) ) 
+!               UFENX_ALL( 1:NDIM, U_ILOC, GI ), UFENX_ALL( 1:NDIM, U_JLOC, GI )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
 
 
-    RETURN            
+    RETURN
 
   END SUBROUTINE LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR
 
@@ -7592,20 +7665,20 @@ deallocate(NX_ALL, X_NX_ALL)
                  STRESS_FORM, STRESS_FORM_STAB )
 
 ! Calculate DIFF_STAND_DIVDX_U, N_DOT_DKDU, N_DOT_DKDUOLD
-! This implements the stress and tensor form of diffusion and calculates a jump conidition. 
-! DIFF_STAND_DIVDX_U is the minimal amount of diffusion. 
-! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD. 
-! look at the manual DG treatment of viscocity. 
+! This implements the stress and tensor form of diffusion and calculates a jump conidition.
+! DIFF_STAND_DIVDX_U is the minimal amount of diffusion.
+! The coefficient are in N_DOT_DKDU, N_DOT_DKDUOLD.
+! look at the manual DG treatment of viscocity.
     IMPLICIT NONE
       INTEGER, intent( in )  :: NDIM_VEL, NDIM, NPHASE, U_SNLOC, CV_SNLOC, SBCVNGI
       REAL, intent( in )  :: HDC, ZERO_OR_TWO_THIRDS
       LOGICAL, intent( in )  :: STRESS_FORM, STRESS_FORM_STAB
     REAL, DIMENSION( NDIM,NPHASE,SBCVNGI ), intent( inout ) :: DIFF_STAND_DIVDX_U
     REAL, DIMENSION( NDIM_VEL,NPHASE,SBCVNGI ), intent( inout ) :: N_DOT_DKDU, N_DOT_DKDUOLD
-    ! DIFF_GI_ADDED( IDIM, :,:) is for dimension IDIM e.g IDIM=1 corresponds to U 
-    ! the rest is for the diffusion tensor. 
+    ! DIFF_GI_ADDED( IDIM, :,:) is for dimension IDIM e.g IDIM=1 corresponds to U
+    ! the rest is for the diffusion tensor.
     REAL, DIMENSION( NDIM_VEL, NDIM,NDIM, NPHASE, SBCVNGI), intent( in ) :: DIFF_GI_ADDED
-    REAL, DIMENSION( NDIM_VEL, NDIM , NPHASE, U_SNLOC ), intent( in ) :: SLOC_DUX_ELE_ALL, SLOC_DUOLDX_ELE_ALL 
+    REAL, DIMENSION( NDIM_VEL, NDIM , NPHASE, U_SNLOC ), intent( in ) :: SLOC_DUX_ELE_ALL, SLOC_DUOLDX_ELE_ALL
     REAL, DIMENSION( SBCVNGI, U_SNLOC ), intent( in ) :: SBUFEN_REVERSED
     REAL, DIMENSION( SBCVNGI, CV_SNLOC ), intent( in ) :: SBCVFEN_REVERSED
     REAL, DIMENSION( NDIM,NDIM,NPHASE,CV_SNLOC ), intent( in ) :: SLOC_UDIFFUSION
@@ -7650,7 +7723,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
           DO U_SKLOC = 1, U_SNLOC
              DO SGI=1,SBCVNGI
-             ! U, V & W: 
+             ! U, V & W:
                    DUDX_ALL_GI(:,:,:,SGI)    = DUDX_ALL_GI(:,:,:,SGI)    + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUX_ELE_ALL(:,:,:,U_SKLOC)
                    DUOLDDX_ALL_GI(:,:,:,SGI) = DUOLDDX_ALL_GI(:,:,:,SGI) + SBUFEN_REVERSED(SGI,U_SKLOC) * SLOC_DUOLDX_ELE_ALL(:,:,:,U_SKLOC)
              END DO
@@ -7669,11 +7742,11 @@ deallocate(NX_ALL, X_NX_ALL)
                 END DO
              END DO
           END DO
-          DIFF_GI=MAX(0.0, DIFF_GI) 
-          DIFF_VOL_GI=MAX(0.0, DIFF_VOL_GI) 
+          DIFF_GI=MAX(0.0, DIFF_GI)
+          DIFF_VOL_GI=MAX(0.0, DIFF_VOL_GI)
 
 
-          IF(STRESS_FORM) THEN 
+          IF(STRESS_FORM) THEN
 ! FOR STRESS FORM...
 ! BUT 1st tensor form for added diffusion from stabilization say...
              N_DOT_DKDU=0.0
@@ -7697,10 +7770,10 @@ deallocate(NX_ALL, X_NX_ALL)
                          DO IDIM=1,NDIM
 ! tensor form...
                             N_DOT_DKDU(IDIM_VEL,IPHASE,SGI)   =  N_DOT_DKDU(IDIM_VEL,IPHASE,SGI)   &
-                             +  SNORMXN_ALL(IDIM,SGI)*SUM( DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI) * DUDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) ) 
+                             +  SNORMXN_ALL(IDIM,SGI)*SUM( DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI) * DUDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) )
 ! tensor form...
                             N_DOT_DKDUOLD(IDIM_VEL,IPHASE,SGI)= N_DOT_DKDUOLD(IDIM_VEL,IPHASE,SGI)  &
-                             +  SNORMXN_ALL(IDIM,SGI)*SUM( DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI) * DUOLDDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) ) 
+                             +  SNORMXN_ALL(IDIM,SGI)*SUM( DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI) * DUOLDDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) )
 ! for minimal amount of diffusion calc...
                             DIFF_STAND_DIVDX_U(IDIM_VEL,IPHASE,SGI)   =  DIFF_STAND_DIVDX_U(IDIM_VEL,IPHASE,SGI)   &
                              + SNORMXN_ALL(IDIM,SGI)*SUM( DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI) * SNORMXN_ALL(:,SGI) )  /HDC
@@ -7725,23 +7798,23 @@ deallocate(NX_ALL, X_NX_ALL)
                    DO IDIM_VEL=1,NDIM_VEL
 ! Stress form...
                          N_DOT_DKDU(IDIM_VEL,IPHASE,SGI)   =  N_DOT_DKDU(IDIM_VEL,IPHASE,SGI) &
-                                                           + SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*DUDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) )  & 
-                                                           + SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*DUDX_ALL_GI(:,IDIM_VEL,IPHASE,SGI) ) & 
-! stress form addition...  
+                                                           + SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*DUDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) )  &
+                                                           + SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*DUDX_ALL_GI(:,IDIM_VEL,IPHASE,SGI) ) &
+! stress form addition...
                                                            - ZERO_OR_TWO_THIRDS*SNORMXN_ALL(IDIM_VEL,SGI)*DIFF_GI_BOTH(IDIM_VEL,IDIM_VEL,IPHASE,SGI)*DIVU &
                                                            + SNORMXN_ALL(IDIM_VEL,SGI)*DIFF_VOL_GI_BOTH(IPHASE,SGI)*DIVU
 
 ! Stress form...
                          N_DOT_DKDUOLD(IDIM_VEL,IPHASE,SGI)= N_DOT_DKDUOLD(IDIM_VEL,IPHASE,SGI) &
-                                                           + SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*DUOLDDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) )  & 
-                                                           + SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*DUOLDDX_ALL_GI(:,IDIM_VEL,IPHASE,SGI) ) & 
-! stress form addition...  
+                                                           + SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*DUOLDDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) )  &
+                                                           + SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*DUOLDDX_ALL_GI(:,IDIM_VEL,IPHASE,SGI) ) &
+! stress form addition...
                                                            - ZERO_OR_TWO_THIRDS*SNORMXN_ALL(IDIM_VEL,SGI)*DIFF_GI_BOTH(IDIM_VEL,IDIM_VEL,IPHASE,SGI)*DIVUOLD &
                                                            + SNORMXN_ALL(IDIM_VEL,SGI)*DIFF_VOL_GI_BOTH(IPHASE,SGI)*DIVUOLD
-                                   
+
 ! This is for the minimum & max. diffusion...
                          DIFF_STAND_DIVDX_U(IDIM_VEL,IPHASE,SGI)   =  DIFF_STAND_DIVDX_U(IDIM_VEL,IPHASE,SGI) &
-                                                           + (   SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*SNORMXN_ALL(:,SGI) )  & 
+                                                           + (   SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*SNORMXN_ALL(:,SGI) )  &
                                                                +  SNORMXN_ALL(IDIM_VEL,SGI)*DIFF_GI_BOTH(IDIM_VEL,IDIM_VEL,IPHASE,SGI)*SNORMXN_ALL(IDIM_VEL,SGI)    &
                                                                +  SNORMXN_ALL(IDIM_VEL,SGI)*DIFF_VOL_GI_BOTH(IPHASE,SGI)*SNORMXN_ALL(IDIM_VEL,SGI)     )/HDC
 !                                                               + SUM( SNORMXN_ALL(:,SGI)*DIFF_GI_BOTH(IDIM_VEL,:,IPHASE,SGI)*SNORMXN_ALL(IDIM_VEL,SGI) )    )/HDC
@@ -7763,10 +7836,10 @@ deallocate(NX_ALL, X_NX_ALL)
                       DO IDIM=1,NDIM
 ! tensor form...
                          N_DOT_DKDU(IDIM_VEL,IPHASE,SGI)   =  N_DOT_DKDU(IDIM_VEL,IPHASE,SGI)   &
-                          +  SNORMXN_ALL(IDIM,SGI)*SUM( (DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI)+DIFF_GI(IDIM,:,IPHASE,SGI)) * DUDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) ) 
+                          +  SNORMXN_ALL(IDIM,SGI)*SUM( (DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI)+DIFF_GI(IDIM,:,IPHASE,SGI)) * DUDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) )
 ! tensor form...
                          N_DOT_DKDUOLD(IDIM_VEL,IPHASE,SGI)= N_DOT_DKDUOLD(IDIM_VEL,IPHASE,SGI)  &
-                          +  SNORMXN_ALL(IDIM,SGI)*SUM( (DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI)+DIFF_GI(IDIM,:,IPHASE,SGI)) * DUOLDDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) ) 
+                          +  SNORMXN_ALL(IDIM,SGI)*SUM( (DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI)+DIFF_GI(IDIM,:,IPHASE,SGI)) * DUOLDDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) )
 ! This is for the minimum & max. diffusion...
                          DIFF_STAND_DIVDX_U(IDIM_VEL,IPHASE,SGI)   =  DIFF_STAND_DIVDX_U(IDIM_VEL,IPHASE,SGI)   &
                           +  SNORMXN_ALL(IDIM,SGI)*SUM( (DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI)+DIFF_GI(IDIM,:,IPHASE,SGI)) * SNORMXN_ALL(:,SGI) )   /HDC
@@ -7815,13 +7888,13 @@ deallocate(NX_ALL, X_NX_ALL)
          FEN_TEN_VOL(:)=UFENX_ILOC(:) * TEN_VOL
 
          DO IDIM=1,NDIM
-               STRESS_IJ( IDIM,IDIM ) = STRESS_IJ( IDIM,IDIM ) + SUM( FEN_TEN_XX(IDIM,:) * UFENX_JLOC(:) ) 
+               STRESS_IJ( IDIM,IDIM ) = STRESS_IJ( IDIM,IDIM ) + SUM( FEN_TEN_XX(IDIM,:) * UFENX_JLOC(:) )
          END DO
 
          DO IDIM=1,NDIM
             DO JDIM=1,NDIM
-!               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(JDIM) 
-               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(IDIM) 
+!               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(JDIM)
+               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(IDIM)
             END DO
          END DO
 
@@ -7829,11 +7902,11 @@ deallocate(NX_ALL, X_NX_ALL)
             DO JDIM=1,NDIM
                STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) &
                       - ZERO_OR_TWO_THIRDS * FEN_TEN_XX(IDIM,IDIM) * UFENX_JLOC(JDIM) &
-                      + FEN_TEN_VOL(IDIM) * UFENX_JLOC(JDIM) 
+                      + FEN_TEN_VOL(IDIM) * UFENX_JLOC(JDIM)
             END DO
          END DO
 
-      RETURN            
+      RETURN
 
     END SUBROUTINE CALC_STRESS_TEN
 
@@ -7855,13 +7928,13 @@ deallocate(NX_ALL, X_NX_ALL)
       INTEGER :: IDIM,JDIM
 
          DO IDIM=1,NDIM
-               STRESS_IJ( IDIM,IDIM ) = STRESS_IJ( IDIM,IDIM ) + SUM( FEN_TEN_XX(IDIM,:) * UFENX_JLOC(:) ) 
+               STRESS_IJ( IDIM,IDIM ) = STRESS_IJ( IDIM,IDIM ) + SUM( FEN_TEN_XX(IDIM,:) * UFENX_JLOC(:) )
          END DO
 
          DO IDIM=1,NDIM
             DO JDIM=1,NDIM
-!               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(JDIM) 
-               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(IDIM) 
+!               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(JDIM)
+               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(IDIM)
             END DO
          END DO
 
@@ -7869,11 +7942,11 @@ deallocate(NX_ALL, X_NX_ALL)
             DO JDIM=1,NDIM
                STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) &
                       - ZERO_OR_TWO_THIRDS * FEN_TEN_XX(IDIM,IDIM) * UFENX_JLOC(JDIM) &
-                      + FEN_TEN_VOL(IDIM) * UFENX_JLOC(JDIM) 
+                      + FEN_TEN_VOL(IDIM) * UFENX_JLOC(JDIM)
             END DO
          END DO
 
-      RETURN            
+      RETURN
 
     END SUBROUTINE CALC_STRESS_TEN_REDUCE
 
@@ -7913,8 +7986,8 @@ deallocate(NX_ALL, X_NX_ALL)
 
     ! local variables
     !        ===>  REALS  <===
-    ! DIFF_MIN_FRAC is the fraction of the standard diffusion coefficient to use 
-    ! in the non-linear diffusion scheme. DIFF_MAX_FRAC is the maximum fraction. 
+    ! DIFF_MIN_FRAC is the fraction of the standard diffusion coefficient to use
+    ! in the non-linear diffusion scheme. DIFF_MAX_FRAC is the maximum fraction.
     !REAL, PARAMETER :: DIFF_MIN_FRAC = 0.05, DIFF_MAX_FRAC = 20.0
     REAL, PARAMETER :: DIFF_MIN_FRAC = 1., DIFF_MAX_FRAC = 1.
     REAL, DIMENSION( : , : ), allocatable :: DIFF_GI,DIFF_GI2
@@ -7967,7 +8040,7 @@ deallocate(NX_ALL, X_NX_ALL)
           DIFF_GI( 1:NDIM , 1:NDIM ) = DIFF_GI( 1:NDIM , 1:NDIM ) &
                + SBCVFEN(CV_SKLOC,SGI) * TDIFFUSION( MAT_NODK, 1:NDIM , 1:NDIM , IPHASE )
        END DO
-       DIFF_GI(:,:) = max(0.0, DIFF_GI(:,:) ) 
+       DIFF_GI(:,:) = max(0.0, DIFF_GI(:,:) )
        DIFF_GI( 1:NDIM , 1:NDIM ) = DIFF_GI( 1:NDIM , 1:NDIM )+DIFF_GI_ADDED( 1:NDIM , 1:NDIM )
 
 
@@ -7997,7 +8070,7 @@ deallocate(NX_ALL, X_NX_ALL)
                      *TDIFFUSION(MAT_NODK2, 1:NDIM, 1:NDIM ,IPHASE)
              ENDIF
           END DO
-          DIFF_GI2(:,:) = max(0.0, DIFF_GI2(:,:) ) 
+          DIFF_GI2(:,:) = max(0.0, DIFF_GI2(:,:) )
           DIFF_GI2( 1:NDIM, 1:NDIM ) = DIFF_GI2( 1:NDIM , 1:NDIM ) + DIFF_GI_ADDED( 1:NDIM , 1:NDIM )
 
           DTDX_GI2 = 0.0
@@ -8024,14 +8097,14 @@ deallocate(NX_ALL, X_NX_ALL)
                +SNORMYN(SGI)*(DIFF_GI2(2,1)*DTDX_GI2  &
                +DIFF_GI2(2,2)*DTDY_GI2+DIFF_GI2(2,3)*DTDZ_GI2) &
                +SNORMZN(SGI)*(DIFF_GI2(3,1)*DTDX_GI2  &
-               +DIFF_GI2(3,2)*DTDY_GI2+DIFF_GI2(3,3)*DTDZ_GI2) 
+               +DIFF_GI2(3,2)*DTDY_GI2+DIFF_GI2(3,3)*DTDZ_GI2)
 
           N_DOT_DKDTOLD2=SNORMXN(SGI)*(DIFF_GI2(1,1)*DTOLDDX_GI2  &
                +DIFF_GI2(1,2)*DTOLDDY_GI2+DIFF_GI2(1,3)*DTOLDDZ_GI2) &
                +SNORMYN(SGI)*(DIFF_GI2(2,1)*DTOLDDX_GI2  &
                +DIFF_GI2(2,2)*DTOLDDY_GI2+DIFF_GI2(2,3)*DTOLDDZ_GI2) &
                +SNORMZN(SGI)*(DIFF_GI2(3,1)*DTOLDDX_GI2  &
-               +DIFF_GI2(3,2)*DTOLDDY_GI2+DIFF_GI2(3,3)*DTOLDDZ_GI2) 
+               +DIFF_GI2(3,2)*DTOLDDY_GI2+DIFF_GI2(3,3)*DTOLDDZ_GI2)
 
           ! This is the minimum diffusion...
           DIFF_STAND_DIVDX2 = ( ABS(SNORMXN(SGI))*DIFF_GI2(1,1) &
@@ -8044,7 +8117,7 @@ deallocate(NX_ALL, X_NX_ALL)
           !            DToldDX_GI,DToldDX_GI2,N_DOT_DKDTOLD,N_DOT_DKDTOLD2
 
           ! This is the minimum diffusion...
-          DIFF_STAND_DIVDX = MIN( DIFF_STAND_DIVDX, DIFF_STAND_DIVDX2 ) 
+          DIFF_STAND_DIVDX = MIN( DIFF_STAND_DIVDX, DIFF_STAND_DIVDX2 )
 
        ENDIF Conditional_MAT_DISOPT_ELE2
 
@@ -8057,7 +8130,7 @@ deallocate(NX_ALL, X_NX_ALL)
             TOLFUN( TOLD_CV_NODJ_IPHA  - TOLD_CV_NODI_IPHA )  )
        !              TOLFUN( TOLD( CV_NODJ_IPHA ) - TOLD( CV_NODI_IPHA )))
 
-       ! Make sure the diffusion has an upper bound...       
+       ! Make sure the diffusion has an upper bound...
        DIFF_COEF_DIVDX    = MIN( DIFF_MAX_FRAC*DIFF_STAND_DIVDX, DIFF_COEF_DIVDX )
        DIFF_COEFOLD_DIVDX = MIN( DIFF_MAX_FRAC*DIFF_STAND_DIVDX, DIFF_COEFOLD_DIVDX )
 
@@ -8095,7 +8168,7 @@ deallocate(NX_ALL, X_NX_ALL)
        TMIN_2ND_MC, TMAX_2ND_MC, &
        IANISOTROPIC, SMALL_FINDRM, SMALL_COLM, NSMALL_COLM, &
        TUPWIND_MAT )
-    ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI. 
+    ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
     IMPLICIT NONE
     INTEGER, intent( in ) :: NPHASE, GI, IPHASE, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
          CV_NODJ_IPHA, CV_NODI_IPHA, CV_DG_VEL_INT_OPT, ELE, ELE2, &
@@ -8108,10 +8181,10 @@ deallocate(NX_ALL, X_NX_ALL)
     INTEGER, DIMENSION( : ), intent( in ) :: U_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
     INTEGER, DIMENSION( : ), intent( in ) :: WIC_U_BC
-    INTEGER, DIMENSION( : ), intent( in ) :: TMIN_NOD, TMAX_NOD 
+    INTEGER, DIMENSION( : ), intent( in ) :: TMIN_NOD, TMAX_NOD
     REAL, DIMENSION( :, :  ), intent( in ) :: SUFEN
     REAL, DIMENSION( :  ), intent( in ) :: T, FEMT,DEN
-    REAL, DIMENSION( :  ), intent( in ) :: U, V, W, NU, NV, NW 
+    REAL, DIMENSION( :  ), intent( in ) :: U, V, W, NU, NV, NW
     REAL, DIMENSION( : ), intent( in ) :: CVNORMX, CVNORMY, CVNORMZ
     REAL, DIMENSION( : ), intent( in ) :: SUF_U_BC, SUF_V_BC, SUF_W_BC
     REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
@@ -8206,7 +8279,7 @@ deallocate(NX_ALL, X_NX_ALL)
        IN_ELE_UPWIND, DG_ELE_UPWIND, &
        TMIN_2ND_MC, TMAX_2ND_MC, LIMIT_USE_2ND )
 
-    ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI. 
+    ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
     IMPLICIT NONE
     INTEGER, intent( in ) :: NPHASE, GI, IPHASE, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
          CV_NODJ_IPHA, CV_NODI_IPHA, CV_DG_VEL_INT_OPT, ELE, ELE2, &
@@ -8272,14 +8345,14 @@ deallocate(NX_ALL, X_NX_ALL)
     ! coefficients for this element ELE
     UGI_COEF_ELE=0.0
     VGI_COEF_ELE=0.0
-    WGI_COEF_ELE=0.0 
+    WGI_COEF_ELE=0.0
 
     UGI_COEF_ELE_ALL=0.0
 
     ! coefficients for this element ELE2
     UGI_COEF_ELE2=0.0
     VGI_COEF_ELE2=0.0
-    WGI_COEF_ELE2=0.0 
+    WGI_COEF_ELE2=0.0
 
     UGI_COEF_ELE2_ALL=0.0
 
@@ -8348,7 +8421,7 @@ deallocate(NX_ALL, X_NX_ALL)
     GLOB_DEN( IPHASE, CV_NODJ ) = DEN(CV_NODJ_IPHA)
     ! Copy local variables----End
 
-    Conditional_SELE: IF( SELE /= 0 ) THEN ! On the boundary of the domain. 
+    Conditional_SELE: IF( SELE /= 0 ) THEN ! On the boundary of the domain.
        IF( WIC_U_BC( SELE + ( IPHASE - 1 ) * STOTEL) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
           UDGI_ALL = 0.0
           DO U_KLOC = 1, U_NLOC
@@ -9708,7 +9781,7 @@ deallocate(NX_ALL, X_NX_ALL)
 CONTAINS
 
 
-        SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
+        PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
        TDLIM, TDCEN, INCOME, &
        ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
        TUPWIN, TUPWI2 )
@@ -10689,7 +10762,7 @@ CONTAINS
     IMPLICIT NONE
     INTEGER, intent( in ) :: ELE, CV_NONODS, CV_NLOC, U_NLOC, &
          CV_SNLOC, U_SNLOC, NFACE, CV_ILOC
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN ! (CV_NLOC*TOTELE) 
+    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN ! (CV_NLOC*TOTELE)
     INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN  ! (U_NLOC*TOTELE)
     INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN ! (CV_SNLOC*TOTELE)
     INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN  ! (U_SNLOC*TOTELE)
@@ -10858,7 +10931,7 @@ CONTAINS
        RETRIEVE_SOLID_CTY,theta_cty_solid, &
        loc_u, loc2_u, &
 ! local memory sent down for speed...
-       UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL) 
+       UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL)
     ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
     IMPLICIT NONE
 ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO CT MATRIX
@@ -13175,199 +13248,46 @@ deallocate(NX_ALL)
       end subroutine conv_quad_to_lin_tri_tet
 
 
-
-
-  SUBROUTINE GET_INT_VEL_NEW( NPHASE, NDOTQNEW, NDOTQ,INCOME, &
-       HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS,  &
-       LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
-       LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
-       CV_NODI, CV_NODJ, CVNORMX_ALL,  &
+  PURE SUBROUTINE GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
+       GI, SUFEN, U_NLOC,&
+       LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J, &
+       LOC_U,LOC2_U, LOC_NU, LOC2_NU, NUGI_ALL, &
+       CVNORMX_ALL, &
        CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
-       SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-       SUF_SIG_DIAGTEN_BC,  &
+       SELE, U_SNLOC, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-       VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
-       VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-       INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
-       MASS_CV_I, MASS_CV_J, NDIM, MAT_NLOC, MAT_NONODS, &
-       IN_ELE_UPWIND, DG_ELE_UPWIND, &
-       IANISOTROPIC, &
-       NUGI_ALL, TUPWIND_IN, TUPWIND_OUT,&
-       !Working variables, to avoid having to allocate them every time we call this subroutine
-       rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
-       rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
-       rdum_nphase_13,rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
+       VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2,&
+       NDIM,&
+       DT_I,DT_J,NDOTQ_INT,UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, not_OLD_VEL)
+
     ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
     IMPLICIT NONE
-    INTEGER, intent( in ) :: NPHASE, GI, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
-         CV_NODJ, CV_NODI, CV_DG_VEL_INT_OPT, ELE, ELE2, &
-         SELE, U_SNLOC, STOTEL, CV_ELE_TYPE, CV_NLOC, CV_SNLOC, CV_ILOC, CV_JLOC, &
-         NDIM, MAT_NLOC, MAT_NONODS,  &
-         IN_ELE_UPWIND, DG_ELE_UPWIND
+    INTEGER, intent( in ) :: NPHASE, GI, U_NLOC, &
+         CV_DG_VEL_INT_OPT, ELE, ELE2, &
+         SELE, U_SNLOC, &
+         NDIM
     LOGICAL, intent( in ) :: between_elements, on_domain_boundary
-    REAL, intent( in ) :: HDC, MASS_CV_I, MASS_CV_J, VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2
-    REAL, DIMENSION( : ), intent( inout ) :: NDOTQNEW,NDOTQ, INCOME
-    INTEGER, DIMENSION( : ), intent( in ) :: U_OTHER_LOC
-    INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
-    INTEGER, DIMENSION( :, :, : ), intent( in ) :: WIC_U_BC_ALL
-    REAL, DIMENSION( :, :  ), intent( in ) :: SUFEN
-    REAL, DIMENSION( :, : ), intent( in ) :: LOC_FEMT, LOC2_FEMT
-    REAL, DIMENSION( : ), intent( in ) :: LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J
-    REAL, DIMENSION( :, :, : ), intent( in ) :: LOC_U, LOC2_U, LOC_NU, LOC2_NU, SLOC_NU
-    REAL, DIMENSION( :, : ), intent( in ) :: CVNORMX_ALL
-    REAL, DIMENSION( :, :, : ), intent( in ) :: SUF_U_BC_ALL
-    REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-    REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
+    REAL, intent( in ) :: VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2
+    REAL, DIMENSION( : ), intent( inout ) :: NDOTQ, INCOME, NDOTQNEW
     REAL, DIMENSION( :, : ), intent( inout ) :: NUGI_ALL
-    REAL, DIMENSION( :, :  ), intent( in ) :: SCVFEN
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_SLOC2LOC
-    REAL, DIMENSION( :, :, : ), intent( in ) :: VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS,  VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
-    REAL, DIMENSION( :, :, : ), intent( in ) :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
-
-    INTEGER, intent( in ) :: IANISOTROPIC
-    REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT
-    REAL, DIMENSION(:), intent( inout ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
-            rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, rdum_nphase_13!NPHASE
-    REAL, DIMENSION ( :, : ), intent( inout ) :: rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4!(NDIM, NPHASE)
-
-
-    ! local variables
-!    LOGICAL, PARAMETER :: POROUS_VEL = .false. ! For reduced variable porous media treatment.
-    INTEGER :: U_NLOC_LEV,U_KLOC_LEV,U_KLOC,U_NODK_IPHA, U_KLOC2, U_NODK2_IPHA, IPHASE, U_SKLOC
-!    REAL, ALLOCATABLE, DIMENSION(:,:,:) :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
-
-    logical, parameter :: LIMIT_USE_2ND=.false.
-
-    ! Local variable for indirect addressing
-    INTEGER :: IDIM
-
-    IF( is_compact_overlapping ) THEN
-       ! For reduced variable porous media treatment.
-       CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQ, INCOME, &
-            GI, SUFEN, U_NLOC,&
-            LOC_T_I, LOC_T_J, LOC_FEMT,&
-            LOC_NU, LOC2_NU, SLOC_NU, &
-            CVNORMX_ALL,  &
-            CV_DG_VEL_INT_OPT, between_elements, on_domain_boundary, &
-            SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-            SUF_SIG_DIAGTEN_BC, &
-            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-            CV_SLOC2LOC,&
-            CV_SNLOC, CV_ILOC, SCVFEN, &
-            VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-            VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-            INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
-            NUGI_ALL, &
-            MASS_CV_I, MASS_CV_J, NDIM, &
-            IN_ELE_UPWIND, &
-            TUPWIND_IN, TUPWIND_OUT,&
-            !Working variables, to avoid having to allocate them every time we call this subroutine
-            rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
-            rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12,&
-            rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4)
-    ELSE
-       CALL GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQ, INCOME, &
-            HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS,  &
-            LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
-            LOC_NU, LOC2_NU, SLOC_NU, &
-            CV_NODI, CV_NODJ, CVNORMX_ALL,  &
-            CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
-            SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-            VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
-            NDIM, MAT_NLOC, MAT_NONODS, &
-            IN_ELE_UPWIND, DG_ELE_UPWIND,&
-            !Working variables, to avoid having to allocate them every time we call this subroutine
-            rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
-            rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3 )
-
-        !Calculate velocity velocity
-        do iphase = 1, nphase
-            NUGI_ALL(:, IPHASE) = matmul(LOC_NU( :, IPHASE, : ), SUFEN( :, GI ))
-        end do
-
-        IF( between_elements ) THEN
-            ! Reduce by half and take the other half from the other side of element...
-            do iphase = 1, nphase
-                NUGI_ALL(:, IPHASE) = 0.5*NUGI_ALL(:, IPHASE) + 0.5*matmul(LOC2_NU( :, IPHASE, : ), SUFEN( :, GI ))
-            end do
-        end if
-
-    END IF
-
-
-    ! Calculate NDOTQNEW from NDOTQ
-
-    do iphase = 1, nphase
-        NDOTQNEW(iphase) = NDOTQ(iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iphase,:)*&
-         ( LOC_U(:,iphase,:)-LOC_NU(:,iphase,:))), SUFEN( :, GI ))
-    end do
-
-    IF( between_elements ) THEN
-       ! We have a discontinuity between elements so integrate along the face...
-          DO U_SKLOC = 1, U_SNLOC
-             U_KLOC = U_SLOC2LOC(U_SKLOC)
-             U_KLOC2 = U_OTHER_LOC( U_KLOC )
-!       DO U_KLOC = 1, U_NLOC
-!          U_KLOC2 = U_OTHER_LOC( U_KLOC )
-!          IF( U_KLOC2 /= 0 ) THEN
-             DO IDIM = 1, NDIM
-                NDOTQNEW=NDOTQNEW + SUFEN( U_KLOC, GI ) * UGI_COEF_ELE2_ALL(IDIM, :,U_KLOC2) &
-                           * ( LOC2_U(IDIM,:, U_KLOC ) - LOC2_NU(IDIM,:,U_KLOC ) ) * CVNORMX_ALL(IDIM, GI)
-             END DO
-!          END IF
-       END DO
-    END IF
-
-
-    RETURN
-
-
-contains
-
-  SUBROUTINE GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQ, INCOME, &
-       HDC, GI, SUFEN, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS,  &
-       LOC_T_I, LOC_T_J, LOC_FEMT, LOC2_FEMT, LOC_DEN_I, LOC_DEN_J, &
-       LOC_NU, LOC2_NU, SLOC_NU, &
-       CV_NODI, CV_NODJ, CVNORMX_ALL,  &
-       CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
-       SELE, U_SNLOC,STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-       UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-       VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, SCVFEN,  &
-       NDIM, MAT_NLOC, MAT_NONODS, &
-       IN_ELE_UPWIND, DG_ELE_UPWIND,&
-       DT_I,DT_J,NDOTQ_INT,UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL)
-
-    ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
-    IMPLICIT NONE
-    INTEGER, intent( in ) :: NPHASE, GI, U_NLOC, SCVNGI, TOTELE, U_NONODS, CV_NONODS, &
-         CV_NODJ, CV_NODI, CV_DG_VEL_INT_OPT, ELE, ELE2, &
-         SELE, U_SNLOC, STOTEL, CV_ELE_TYPE, CV_NLOC, CV_ILOC, CV_JLOC, &
-         NDIM, MAT_NLOC, MAT_NONODS,  &
-         IN_ELE_UPWIND, DG_ELE_UPWIND
-    LOGICAL, intent( in ) :: between_elements, on_domain_boundary
-    REAL, intent( in ) :: HDC, VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2
-    REAL, DIMENSION( : ), intent( inout ) :: NDOTQ, INCOME
     INTEGER, DIMENSION( : ), intent( in ) :: U_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
     INTEGER, DIMENSION( :, :, : ), intent( in ) :: WIC_U_BC_ALL
     REAL, DIMENSION( :, :  ), intent( in ) :: SUFEN
-    REAL, DIMENSION( :, : ), intent( in ) :: LOC_FEMT, LOC2_FEMT
     REAL, DIMENSION( : ), intent( in ) :: LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J
-    REAL, DIMENSION( :, :, : ), intent( in ) :: LOC_NU, LOC2_NU, SLOC_NU
+    REAL, DIMENSION( :, :, : ), intent( in ) :: LOC_NU, LOC2_NU, LOC_U, LOC2_U
     REAL, DIMENSION( :, : ), intent( in ) :: CVNORMX_ALL
     REAL, DIMENSION( :, :, : ), intent( in ) :: SUF_U_BC_ALL
     REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, &
                                              UGI_COEF_ELE2_ALL
-    REAL, DIMENSION( :, :  ), intent( in ) :: SCVFEN
     !Working variables, to avoid having to allocate them every time we call this subroutine
     REAL, DIMENSION(:), intent( inout ) :: DT_I,DT_J,NDOTQ_INT!NPHASE
     REAL, DIMENSION (:, :), intent( inout ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL!NDIM, NPHASE
-
+    logical, intent(in) :: not_OLD_VEL
     ! Local variables
     INTEGER :: U_KLOC,U_KLOC2,U_SKLOC
     ! Local variable for indirect addressing
-    INTEGER :: IPHASE
+    INTEGER :: IPHASE, IDIM
 
 
 !          stop 2928
@@ -13480,23 +13400,51 @@ contains
     INCOME = 0.5*( 1. + SIGN(1.0, -NDOTQ) )
 
 
+    !Calculate velocity velocity
+    do iphase = 1, nphase
+        NUGI_ALL(:, IPHASE) = matmul(LOC_NU( :, IPHASE, : ), SUFEN( :, GI ))
+    end do
+
+    IF( between_elements ) THEN
+        ! Reduce by half and take the other half from the other side of element...
+        do iphase = 1, nphase
+            NUGI_ALL(:, IPHASE) = 0.5*NUGI_ALL(:, IPHASE) + 0.5*matmul(LOC2_NU( :, IPHASE, : ), SUFEN( :, GI ))
+        end do
+    end if
+
+    ! Calculate NDOTQNEW from NDOTQ
+    if (not_OLD_VEL) then
+        do iphase = 1, nphase
+            NDOTQNEW(iphase) = NDOTQ(iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iphase,:)*&
+            ( LOC_U(:,iphase,:)-LOC_NU(:,iphase,:))), SUFEN( :, GI ))
+        end do
+
+        IF( between_elements ) THEN
+            ! We have a discontinuity between elements so integrate along the face...
+            DO U_SKLOC = 1, U_SNLOC
+                U_KLOC = U_SLOC2LOC(U_SKLOC)
+                U_KLOC2 = U_OTHER_LOC( U_KLOC )
+                DO IDIM = 1, NDIM
+                    NDOTQNEW=NDOTQNEW + SUFEN( U_KLOC, GI ) * UGI_COEF_ELE2_ALL(IDIM, :,U_KLOC2) &
+                    * ( LOC2_U(IDIM,:, U_KLOC ) - LOC2_NU(IDIM,:,U_KLOC ) ) * CVNORMX_ALL(IDIM, GI)
+                END DO
+            END DO
+        END IF
+    end if
+
+
     RETURN
 
   END SUBROUTINE GET_INT_VEL_ORIG_NEW
 
-end SUBROUTINE GET_INT_VEL_NEW
 
-
-
-
-
-      SUBROUTINE GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQ,INCOME, &
+      PURE SUBROUTINE GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ,INCOME, &
        GI, SUFEN, U_NLOC,&
        LOC_T_I, LOC_T_J, LOC_FEMT,&
-       LOC_NU, LOC2_NU, SLOC_NU, &
+       LOC_U,LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
        CVNORMX_ALL,&
        CV_DG_VEL_INT_OPT, between_elements, on_domain_boundary, &
-       SELE, U_SNLOC, STOTEL, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
+       SELE, U_SNLOC, STOTEL, U_SLOC2LOC, u_other_loc, SUF_U_BC_ALL, WIC_U_BC_ALL, &
        SUF_SIG_DIAGTEN_BC, &
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
        CV_SLOC2LOC, CV_SNLOC, CV_ILOC, SCVFEN, &
@@ -13507,23 +13455,23 @@ end SUBROUTINE GET_INT_VEL_NEW
        !Working variables, to avoid having to allocate them every time we call this subroutine
        ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA,&
        wrelax,XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE,DT_J, abs_tilde,NDOTQ2, DT_I, LIMT3,&
-       UDGI2_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV)
+       UDGI2_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV, not_OLD_VEL)
     !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===
-    ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI. 
+    ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
     ! it assumes a compact_overlapping decomposition approach for velocity.
     IMPLICIT NONE
     INTEGER, intent( in ) :: NPHASE, GI, U_NLOC, CV_SNLOC, &
          CV_DG_VEL_INT_OPT, SELE, U_SNLOC, STOTEL, CV_ILOC,NDIM,IN_ELE_UPWIND
     LOGICAL, intent( in ) :: between_elements, on_domain_boundary
     REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
-    REAL, DIMENSION( : ), intent( inout ) :: NDOTQ, INCOME
+    REAL, DIMENSION( : ), intent( inout ) :: NDOTQ, NDOTQNEW, INCOME
     REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
-    INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
+    INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC, u_other_loc
     INTEGER, DIMENSION( :, :, : ), intent( in ) :: WIC_U_BC_ALL
     REAL, DIMENSION( :, :  ), intent( in ) :: SUFEN
     REAL, DIMENSION( :, : ), intent( in ) :: LOC_FEMT
     REAL, DIMENSION( : ), intent( in ) :: LOC_T_I, LOC_T_J
-    REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, LOC2_NU, SLOC_NU
+    REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, LOC2_NU, SLOC_NU, LOC_U, LOC2_U
     REAL, DIMENSION( :, : ), intent( in ) :: CVNORMX_ALL
     REAL, DIMENSION( :, :, : ), intent( in ) :: SUF_U_BC_ALL
     REAL, DIMENSION( : , : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
@@ -13538,31 +13486,32 @@ end SUBROUTINE GET_INT_VEL_NEW
     REAL, DIMENSION(:), intent(inout)::ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA,&!(NPHASE)
                     wrelax,XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
     REAL, DIMENSION ( :, : ), intent(inout):: UDGI2_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV!(NDIM, NPHASE)
-
+    logical, intent(in) :: not_OLD_VEL
     ! Local variables
     logical :: Incomming_flow
     REAL, DIMENSION(:), allocatable :: SUF_SIG_DIAGTEN_BC_GI
-    INTEGER :: u_kloc, u_skloc, cv_kloc, idim, CV_SKLOC, CV_SNODK, CV_SNODK_IPHA, IPHASE
+    INTEGER :: u_kloc, u_skloc, cv_kloc, idim, CV_SKLOC, CV_SNODK, CV_SNODK_IPHA, IPHASE, u_kloc2
     ! Local variable for indirect addressing
     !Last commit with all the functionalities of the subroutine: 65274db742e27de60dad7a1036c72f708e87e0d1
 
-    !Initialize variables
-    forall (iphase = 1:nphase, idim = 1:ndim)
-       ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
-       ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
-    end forall
 
-    Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain. 
+    Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
+        !Initialize variables
+        if (not_OLD_VEL) then
+            forall (iphase = 1:nphase, idim = 1:ndim)
+               ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+            end forall
+        end if
      DO IPHASE = 1, NPHASE
        IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
           !(vel * shape_functions)/sigma
           UDGI_ALL(:, IPHASE) = matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),&
             matmul(LOC_NU( :, IPHASE, : ), SUFEN( :, GI )))
 
-          ! Here we assume that sigma_out/sigma_in is a diagonal matrix 
-          ! which effectively assumes that the anisotropy just inside the domain 
-          ! is the same as just outside the domain. 
-          ! Multiply by a normalized sigma tensor so that we use the 
+          ! Here we assume that sigma_out/sigma_in is a diagonal matrix
+          ! which effectively assumes that the anisotropy just inside the domain
+          ! is the same as just outside the domain.
+          ! Multiply by a normalized sigma tensor so that we use the
           ! sigma from just outside the boundary:
           allocate(SUF_SIG_DIAGTEN_BC_GI(NDIM))
           DO CV_SKLOC = 1, CV_SNLOC
@@ -13576,14 +13525,16 @@ end SUBROUTINE GET_INT_VEL_NEW
 
           ! Only modify boundary velocity for incoming velocity...
           Incomming_flow = DOT_PRODUCT(UDGI_ALL(:, IPHASE), CVNORMX_ALL(:, GI)) .LT. 0.0
-          DO U_KLOC = 1, U_NLOC
-             IF (Incomming_flow) THEN ! Incomming...
-                UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=SUF_SIG_DIAGTEN_BC_GI(:)
-             ELSE
-                UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=1.0
-             ENDIF
-                 UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)= matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC))
-          END DO
+          if (not_OLD_VEL) then
+              DO U_KLOC = 1, U_NLOC
+                  IF (Incomming_flow) THEN ! Incomming...
+                      UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=SUF_SIG_DIAGTEN_BC_GI(:)
+                  ELSE
+                      UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=1.0
+                  ENDIF
+                  UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)= matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC))
+              END DO
+          end if
           IF(Incomming_flow) THEN ! Incomming...
              UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) * SUF_SIG_DIAGTEN_BC_GI(:)
           ENDIF
@@ -13603,9 +13554,8 @@ end SUBROUTINE GET_INT_VEL_NEW
                 UDGI_ALL_FOR_INV(:, IPHASE) = UDGI_ALL_FOR_INV(:, IPHASE) + SUFEN( U_KLOC, GI ) * 0.5 * &
                                       SLOC_NU(:, IPHASE, U_SKLOC)
 
-                UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=0.5*ROW_SUM_INV_VI(:,IPHASE) 
+                UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=0.5*ROW_SUM_INV_VI(:,IPHASE)
              ELSE
-
                 UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) + SUFEN( U_KLOC, GI )*SUF_U_BC_ALL(:, IPHASE, U_SNLOC* (SELE-1) +U_SKLOC)
              END IF
           END DO
@@ -13671,10 +13621,18 @@ end SUBROUTINE GET_INT_VEL_NEW
           !Calculate contributions from each side
           UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) * (1.0-INCOME(IPHASE)) +&
              UDGI2_ALL(:, IPHASE) * INCOME(IPHASE)
-
-          UGI_COEF_ELE_ALL(:, IPHASE, :)=SPREAD(ROW_SUM_INV_VI(:,IPHASE)* (1.0-INCOME(IPHASE)) &
-              +ROW_SUM_INV_VJ(:,IPHASE)* INCOME(IPHASE), DIM=2, NCOPIES=U_NLOC)
       END DO ! PHASE LOOP
+
+      if (not_OLD_VEL) then
+        forall (iphase = 1:nphase, idim = 1:ndim)
+           ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+           ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+        end forall
+        DO IPHASE = 1, NPHASE
+          UGI_COEF_ELE_ALL(:, IPHASE, :)=SPREAD(ROW_SUM_INV_VI(:,IPHASE)* (1.0-INCOME(IPHASE)) &
+          +ROW_SUM_INV_VJ(:,IPHASE)* INCOME(IPHASE), DIM=2, NCOPIES=U_NLOC)
+        END DO
+      end if
 
    ELSE !Between elements
 
@@ -13741,62 +13699,88 @@ end SUBROUTINE GET_INT_VEL_NEW
          UDGI_ALL(:, IPHASE) = DT_I(IPHASE) * UDGI_ALL(:, IPHASE) + DT_J(IPHASE) * UDGI2_ALL(:, IPHASE)
       END DO
       !Calculation of the coefficients at the GI point
-      DO IPHASE = 1, NPHASE
-         UGI_COEF_ELE_ALL(:, IPHASE, :) = DT_I(IPHASE) * SPREAD(ROW_SUM_INV_VI(:,IPHASE), DIM=2, NCOPIES=U_NLOC)
+      if (not_OLD_VEL) then
+          forall (iphase = 1:nphase, idim = 1:ndim)
+             ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+             ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+          end forall
+          DO IPHASE = 1, NPHASE
+             UGI_COEF_ELE_ALL(:, IPHASE, :) = DT_I(IPHASE) * SPREAD(ROW_SUM_INV_VI(:,IPHASE), DIM=2, NCOPIES=U_NLOC)
 
-         UGI_COEF_ELE2_ALL(:, IPHASE, :) = DT_J(IPHASE) * SPREAD(ROW_SUM_INV_VJ(:,IPHASE), DIM=2, NCOPIES=U_NLOC)
-      END DO
-
+             UGI_COEF_ELE2_ALL(:, IPHASE, :) = DT_J(IPHASE) * SPREAD(ROW_SUM_INV_VJ(:,IPHASE), DIM=2, NCOPIES=U_NLOC)
+          END DO
+      end if
     END IF Conditional_SELE
 
     ! Define whether flux is incoming or outgoing, depending on direction of flow
     NDOTQ =  MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )
-    WHERE ( NDOTQ >= 0. ) 
+    WHERE ( NDOTQ >= 0. )
         INCOME = 0.
     ELSE WHERE
         INCOME = 1.
     END WHERE
 
-    RETURN  
-
-CONTAINS
 
 
-        SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
+    ! Calculate NDOTQNEW from NDOTQ
+    if (not_OLD_VEL) then
+        do iphase = 1, nphase
+            NDOTQNEW(iphase) = NDOTQ(iphase) + dot_product(matmul( CVNORMX_ALL(:, GI), UGI_COEF_ELE_ALL(:, iphase,:)*&
+             ( LOC_U(:,iphase,:)-LOC_NU(:,iphase,:))), SUFEN( :, GI ))
+        end do
+
+        IF( between_elements ) THEN
+           ! We have a discontinuity between elements so integrate along the face...
+              DO U_SKLOC = 1, U_SNLOC
+                 U_KLOC = U_SLOC2LOC(U_SKLOC)
+                 U_KLOC2 = U_OTHER_LOC( U_KLOC )
+                 DO IDIM = 1, NDIM
+                    NDOTQNEW=NDOTQNEW + SUFEN( U_KLOC, GI ) * UGI_COEF_ELE2_ALL(IDIM, :,U_KLOC2) &
+                               * ( LOC2_U(IDIM,:, U_KLOC ) - LOC2_NU(IDIM,:,U_KLOC ) ) * CVNORMX_ALL(IDIM, GI)
+                 END DO
+           END DO
+        END IF
+    end if
+
+
+
+    RETURN
+    contains
+        PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
        TDLIM, TDCEN, INCOME, &
        ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
        TUPWIN, TUPWI2 )
-    implicit none 
-    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central 
-    ! difference face values TDCEN(1...SNGI) using a NVD shceme.  
+    implicit none
+    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
     ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    ! LIBETA is the flux limiting parameter. 
+    ! LIBETA is the flux limiting parameter.
     ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
     ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-    ! PELEOT=element at other side of current face. 
-    ! ELEOT2=element at other side of the element ELEOTH. 
-    ! ELESID=element next to oposing current face. 
-    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID. 
-    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE. 
+    ! PELEOT=element at other side of current face.
+    ! ELEOT2=element at other side of the element ELEOTH.
+    ! ELESID=element next to oposing current face.
+    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
     !---------------------------------------------------
-    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |  
-    !--------------------------------------------------- 
+    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !---------------------------------------------------
     ! TAIN         THALF       TAOUT
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     !>TEXTIN
     !TEXOUT<
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     INTEGER, intent( in ) :: NFIELD
-    REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM  
-    REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2 
+    REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
+    REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
     REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
-    ! Local variables   
+    ! Local variables
     REAL :: DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
          CTILOU(NFIELD), FTILIN(NFIELD), FTILOU(NFIELD)
     REAL, PARAMETER :: TOLER=1.0E-10
 
 
-       ! Calculate normalisation parameters for incomming velocities 
+       ! Calculate normalisation parameters for incomming velocities
        DENOIN = ( ETDNEW_PELE - TUPWIN )
 
        where( ABS( DENOIN ) < TOLER )
@@ -13805,7 +13789,7 @@ CONTAINS
 
        CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
 
-       ! Calculate normalisation parameters for out going velocities 
+       ! Calculate normalisation parameters for out going velocities
 
        DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
        where( ABS( DENOOU ) < TOLER )
@@ -13830,53 +13814,53 @@ CONTAINS
 
 
 
-        SUBROUTINE ONVDLIM_ANO_MANY_SQRT( NFIELD, &
+        PURE SUBROUTINE ONVDLIM_ANO_MANY_SQRT( NFIELD, &
        TDLIM, TDCEN, INCOME, &
        ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
        TUPWIN, TUPWI2 )
-    implicit none 
-    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central 
-    ! difference face values TDCEN(1...SNGI) using a NVD shceme.  
+    implicit none
+    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
     ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    ! LIBETA is the flux limiting parameter. 
+    ! LIBETA is the flux limiting parameter.
     ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
     ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-    ! PELEOT=element at other side of current face. 
-    ! ELEOT2=element at other side of the element ELEOTH. 
-    ! ELESID=element next to oposing current face. 
-    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID. 
-    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE. 
+    ! PELEOT=element at other side of current face.
+    ! ELEOT2=element at other side of the element ELEOTH.
+    ! ELESID=element next to oposing current face.
+    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
     !---------------------------------------------------
-    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |  
-    !--------------------------------------------------- 
+    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !---------------------------------------------------
     ! TAIN         THALF       TAOUT
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     !>TEXTIN
     !TEXOUT<
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     INTEGER, intent( in ) :: NFIELD
-    REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM  
-    REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2 
+    REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
+    REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
     REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
-    ! Local variables   
+    ! Local variables
     INTEGER, PARAMETER :: POWER=2
     REAL :: UCIN(NFIELD), UCOU(NFIELD), TDELE(NFIELD), DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
          CTILOU(NFIELD), FTILIN(NFIELD), FTILOU(NFIELD)
 
 
-       ! Calculate normalisation parameters for incomming velocities 
-       TDELE = ETDNEW_PELE 
+       ! Calculate normalisation parameters for incomming velocities
+       TDELE = ETDNEW_PELE
 
        DENOIN = TOLFUN_MANY( TDELE** POWER - TUPWIN** POWER )
 
-       UCIN = ETDNEW_PELEOT 
+       UCIN = ETDNEW_PELEOT
        CTILIN = ( UCIN ** POWER- TUPWIN** POWER ) / DENOIN
 
-       ! Calculate normalisation parameters for out going velocities 
+       ! Calculate normalisation parameters for out going velocities
        TDELE = ETDNEW_PELEOT
 
        DENOOU = TOLFUN_MANY( TDELE** POWER - TUPWI2** POWER )
-       UCOU = ETDNEW_PELE 
+       UCOU = ETDNEW_PELE
        CTILOU = ( UCOU** POWER - TUPWI2** POWER ) / DENOOU
 
 
@@ -13899,37 +13883,37 @@ CONTAINS
 
 
 
-        SUBROUTINE ONVDLIM_ANO( TOTELE, &
+        PURE SUBROUTINE ONVDLIM_ANO( TOTELE, &
        TDLIM, TDCEN, INCOME, PELE, PELEOT, &
        ETDNEW_PELE, ETDNEW_PELEOT, FIRORD, NOLIMI, COURANT_OR_MINUS_ONE, &
        TUPWIN2, TUPWI22 )
-    implicit none 
-    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central 
-    ! difference face values TDCEN(1...SNGI) using a NVD shceme.  
+    implicit none
+    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
     ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    ! LIBETA is the flux limiting parameter. 
+    ! LIBETA is the flux limiting parameter.
     ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
     ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-    ! PELEOT=element at other side of current face. 
-    ! ELEOT2=element at other side of the element ELEOTH. 
-    ! ELESID=element next to oposing current face. 
-    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID. 
-    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE. 
+    ! PELEOT=element at other side of current face.
+    ! ELEOT2=element at other side of the element ELEOTH.
+    ! ELESID=element next to oposing current face.
+    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
     !---------------------------------------------------
-    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |  
-    !--------------------------------------------------- 
+    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !---------------------------------------------------
     ! TAIN         THALF       TAOUT
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     !>TEXTIN
     !TEXOUT<
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     INTEGER, intent( in ) :: TOTELE
-    REAL, intent( inout ) :: TDLIM  
-    REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN2, TUPWI22 
+    REAL, intent( inout ) :: TDLIM
+    REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN2, TUPWI22
     INTEGER, intent( in ) :: PELE, PELEOT
     REAL, intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
     LOGICAL, intent( in ) :: FIRORD, NOLIMI
-    ! Local variables   
+    ! Local variables
     REAL, PARAMETER :: TOLER=1.0E-10
     INTEGER, PARAMETER :: POWER=1
     REAL :: UCIN, UCOU, TDELE, DENOIN, CTILIN, DENOOU, &
@@ -13946,7 +13930,7 @@ CONTAINS
        TUPWIN = TUPWIN2 ** POWER
        TUPWI2 = TUPWI22 ** POWER
 
-       ! Calculate normalisation parameters for incomming velocities 
+       ! Calculate normalisation parameters for incomming velocities
        TDELE = ETDNEW_PELE ** POWER
        DENOIN = TDELE - TUPWIN
 
@@ -13955,7 +13939,7 @@ CONTAINS
        UCIN = ETDNEW_PELEOT ** POWER
        CTILIN = ( UCIN - TUPWIN ) / DENOIN
 
-       ! Calculate normalisation parameters for out going velocities 
+       ! Calculate normalisation parameters for out going velocities
        TDELE = ETDNEW_PELEOT ** POWER
        DENOOU = TDELE - TUPWI2
 
@@ -13965,15 +13949,15 @@ CONTAINS
 
     ELSE
 
-       ! Calculate normalisation parameters for incomming velocities 
-       TUPWIN = ETDNEW_PELE 
-       UCIN = ETDNEW_PELE 
+       ! Calculate normalisation parameters for incomming velocities
+       TUPWIN = ETDNEW_PELE
+       UCIN = ETDNEW_PELE
        DENOIN = 1.
        CTILIN = 0.
 
-       ! Calculate normalisation parameters for out going velocities 
-       TUPWI2 = ETDNEW_PELE 
-       UCOU = ETDNEW_PELE 
+       ! Calculate normalisation parameters for out going velocities
+       TUPWI2 = ETDNEW_PELE
+       UCOU = ETDNEW_PELE
        DENOOU = 1.
        CTILOU = 0.
 
@@ -13982,7 +13966,7 @@ CONTAINS
     Conditional_FIRORD: IF( FIRORD ) THEN ! Velocity is pointing into element
 
        ! Velocity is going out of element
-       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU 
+       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
 
     ELSE
 
@@ -14008,37 +13992,37 @@ CONTAINS
   END SUBROUTINE ONVDLIM_ANO
 
 
-        SUBROUTINE ONVDLIM_ANO_SQRT( TOTELE, &
+        PURE SUBROUTINE ONVDLIM_ANO_SQRT( TOTELE, &
        TDLIM, TDCEN, INCOME, PELE, PELEOT, &
        ETDNEW_PELE, ETDNEW_PELEOT, FIRORD, NOLIMI, COURANT_OR_MINUS_ONE, &
        TUPWIN2, TUPWI22 )
-    implicit none 
-    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central 
-    ! difference face values TDCEN(1...SNGI) using a NVD shceme.  
+    implicit none
+    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
     ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    ! LIBETA is the flux limiting parameter. 
+    ! LIBETA is the flux limiting parameter.
     ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
     ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-    ! PELEOT=element at other side of current face. 
-    ! ELEOT2=element at other side of the element ELEOTH. 
-    ! ELESID=element next to oposing current face. 
-    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID. 
-    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE. 
+    ! PELEOT=element at other side of current face.
+    ! ELEOT2=element at other side of the element ELEOTH.
+    ! ELESID=element next to oposing current face.
+    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
     !---------------------------------------------------
-    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |  
-    !--------------------------------------------------- 
+    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+    !---------------------------------------------------
     ! TAIN         THALF       TAOUT
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     !>TEXTIN
     !TEXOUT<
-    !--------------------------------------------------- 
+    !---------------------------------------------------
     INTEGER, intent( in ) :: TOTELE
-    REAL, intent( inout ) :: TDLIM  
-    REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN2, TUPWI22 
+    REAL, intent( inout ) :: TDLIM
+    REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN2, TUPWI22
     INTEGER, intent( in ) :: PELE, PELEOT
     REAL, intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
     LOGICAL, intent( in ) :: FIRORD, NOLIMI
-    ! Local variables   
+    ! Local variables
     REAL, PARAMETER :: TOLER=1.0E-10
     INTEGER, PARAMETER :: POWER=2
     REAL :: UCIN, UCOU, TDELE, DENOIN, CTILIN, DENOOU, &
@@ -14055,7 +14039,7 @@ CONTAINS
        TUPWIN = TUPWIN2 ** POWER
        TUPWI2 = TUPWI22 ** POWER
 
-       ! Calculate normalisation parameters for incomming velocities 
+       ! Calculate normalisation parameters for incomming velocities
        TDELE = ETDNEW_PELE ** POWER
        DENOIN = TDELE - TUPWIN
 
@@ -14064,7 +14048,7 @@ CONTAINS
        UCIN = ETDNEW_PELEOT ** POWER
        CTILIN = ( UCIN - TUPWIN ) / DENOIN
 
-       ! Calculate normalisation parameters for out going velocities 
+       ! Calculate normalisation parameters for out going velocities
        TDELE = ETDNEW_PELEOT ** POWER
        DENOOU = TDELE - TUPWI2
 
@@ -14074,13 +14058,13 @@ CONTAINS
 
     ELSE
 
-       ! Calculate normalisation parameters for incomming velocities 
+       ! Calculate normalisation parameters for incomming velocities
        TUPWIN = ETDNEW_PELE ** POWER
        UCIN = ETDNEW_PELE** POWER
        DENOIN = 1.
        CTILIN = 0.
 
-       ! Calculate normalisation parameters for out going velocities 
+       ! Calculate normalisation parameters for out going velocities
        TUPWI2 = ETDNEW_PELE** POWER
        UCOU = ETDNEW_PELE ** POWER
        DENOOU = 1.
@@ -14091,7 +14075,7 @@ CONTAINS
     Conditional_FIRORD: IF( FIRORD ) THEN ! Velocity is pointing into element
 
        ! Velocity is going out of element
-       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU 
+       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
        TDLIM = MAX(TDLIM,0.0) ** (1.0/POWER)
 
     ELSE
@@ -14118,12 +14102,13 @@ CONTAINS
     RETURN
 
   END SUBROUTINE ONVDLIM_ANO_SQRT
-
   END SUBROUTINE GET_INT_VEL_POROUS_VEL
 
 
 
-  function vtolfun(val) result(v_tolfun)
+
+
+  PURE function vtolfun(val) result(v_tolfun)
 
     implicit none
     real, dimension(:), intent(in) :: val
@@ -14138,7 +14123,7 @@ CONTAINS
   end function vtolfun
 
 
-    pure real function Get_DevCapPressure(sat, Pe, a, Own_irr)
+    PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr)
         !This functions returns the derivative of the capillary pressure with regard of the saturation
         Implicit none
         real, intent(in) :: sat, Pe, a, Own_irr
