@@ -1716,6 +1716,9 @@ contains
             end do
             !Make average
             rescaleVal = max(rescaleVal/size(rhs_p%val), 1d-30)
+            !If it is parallel then we want to be consistent between cpus
+            if (IsParallel()) call allmin(rescaleVal)
+
             call MatScale(cmc_petsc%M,1.0/rescaleVal, ierr)
             rhs_p%val = rhs_p%val / rescaleVal
             !End of re-scaling

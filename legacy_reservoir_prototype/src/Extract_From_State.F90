@@ -3158,6 +3158,8 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
                         case default
                             ts_ref_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))
                     end select
+                    !If it is parallel then we want to be consistent between cpus
+                    if (IsParallel()) call allmin(ts_ref_val)
                     !If only non-linear iterations
                     if (.not.nonLinearAdaptTs) then
                         !Automatic non-linear iteration checking
