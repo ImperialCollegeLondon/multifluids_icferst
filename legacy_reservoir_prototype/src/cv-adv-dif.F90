@@ -421,12 +421,12 @@ contains
       REAL :: HDC, &
            VTHETA, &
            FEMDGI, FEMTGI,FEMT2GI, FEMDOLDGI, FEMTOLDGI, FEMT2OLDGI, &
-           TMID, TOLDMID, TMID_J, TOLDMID_J,&
-           ROBIN1, ROBIN2, &
+           TMID, TOLDMID, TMID_J, TOLDMID_J, &
            RSUM, &
            THERM_FTHETA, &
            W_SUM_ONE1, W_SUM_ONE2
       REAL :: FTHETA(NPHASE), FTHETA_T2(NPHASE), ONE_M_FTHETA_T2OLD(NPHASE), FTHETA_T2_J(NPHASE), ONE_M_FTHETA_T2OLD_J(NPHASE)
+      REAL :: ROBIN1(NPHASE), ROBIN2(NPHASE)
 
       real, pointer :: VOLUME
       integer :: cv_inod_ipha, IGETCT, U_NODK_IPHA, IANISOLIM, global_face
@@ -1935,7 +1935,8 @@ contains
            T_ALL_J( : )   =LOC_T_J( : )
            TOLD_ALL_J( : )=LOC_TOLD_J( : )
            LOC_WIC_T_BC_ALL(:)=0
-           IF(SELE.NE.0) THEN
+!           IF(SELE.NE.0) THEN
+           IF(on_domain_boundary) THEN
                DO IPHASE=1,NPHASE
                    LOC_WIC_T_BC_ALL(IPHASE)=WIC_T_BC_ALL(1, IPHASE, SELE)
                    IF(LOC_WIC_T_BC_ALL(IPHASE)==WIC_T_BC_DIRICHLET) THEN
@@ -1952,7 +1953,8 @@ contains
            TOLD_ALL_J( : ), LOC_TOLD_I( : ), &
            ELE, ELE2, CVNORMX_ALL( :, GI ), &
            DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
-           SELE, STOTEL, LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC )
+           SELE, STOTEL, LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, CV_SNLOC, CV_SLOC2LOC, &
+           on_domain_boundary, between_elements )
        ELSE
            DIFF_COEF_DIVDX = 0.0
            DIFF_COEFOLD_DIVDX = 0.0
@@ -2282,58 +2284,53 @@ contains
 ! Generate some local F variables ***************...
 
 ! Make allowances for no matrix stencil operating from outside the boundary.
-          BCZERO=1.0
-!          IF( SELE > 0 ) BCZERO=1.0-INCOME
-          IF( on_domain_boundary ) BCZERO=1.0-INCOME
+                     BCZERO=1.0
+                     IF( on_domain_boundary ) BCZERO=1.0-INCOME
 
-                  Loop_IPHASE7: DO IPHASE = 1, NPHASE
 
                      ! Define face value of theta
                      IF ( IGOT_T2 == 1 ) THEN
-                        FTHETA(IPHASE) = FACE_THETA( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, NDOTQ(IPHASE), LIMDTT2(IPHASE), DIFF_COEF_DIVDX(IPHASE), &
-                             T_ALL( IPHASE, CV_NODJ ) * DEN_ALL( IPHASE, CV_NODJ ) * T2_ALL( IPHASE, CV_NODJ ), &
-                             T_ALL( IPHASE, CV_NODI ) * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ), &
-                             NDOTQOLD(IPHASE), LIMDTT2OLD(IPHASE), DIFF_COEFOLD_DIVDX(IPHASE), &
-                             TOLD_ALL( IPHASE, CV_NODJ ) * DENOLD_ALL( IPHASE, CV_NODJ ) * T2OLD_ALL( IPHASE, CV_NODJ ), &
-                             TOLD_ALL( IPHASE, CV_NODI ) * DENOLD_ALL( IPHASE, CV_NODI ) * T2OLD_ALL( IPHASE, CV_NODI ) )
+                        FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, NPHASE, &
+                             NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
+                             LOC_T_J( : ) * LOC_DEN_J( : ) * LOC_T2_J( : ), &
+                             LOC_T_I( : ) * LOC_DEN_I( : ) * LOC_T2_I( : ), &
+                             NDOTQOLD(:), LIMDTT2OLD(:), DIFF_COEFOLD_DIVDX(:), &
+                             LOC_TOLD_J( : ) * LOC_DENOLD_J( : ) * LOC_T2OLD_J( : ), &
+                             LOC_TOLD_I( : ) * LOC_DENOLD_I( : ) * LOC_T2OLD_I( : ) )
                      ELSE
-                        FTHETA(IPHASE) = FACE_THETA( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, NDOTQ(IPHASE), LIMDTT2(IPHASE), DIFF_COEF_DIVDX(IPHASE), &
-                             T_ALL( IPHASE, CV_NODJ ) * DEN_ALL( IPHASE, CV_NODJ ), &
-                             T_ALL( IPHASE, CV_NODI ) * DEN_ALL( IPHASE, CV_NODI ), &
-                             NDOTQOLD(IPHASE), LIMDTT2OLD(IPHASE), DIFF_COEFOLD_DIVDX(IPHASE), &
-                             TOLD_ALL( IPHASE, CV_NODJ ) * DENOLD_ALL( IPHASE, CV_NODJ ), &
-                             TOLD_ALL( IPHASE, CV_NODI ) * DENOLD_ALL( IPHASE, CV_NODI ) )
+                        FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, NPHASE, &
+                             NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
+                             LOC_T_J( : ) * LOC_DEN_J( : ), &
+                             LOC_T_I( : ) * LOC_DEN_I( : ), &
+                             NDOTQOLD(:), LIMDTT2OLD(:), DIFF_COEFOLD_DIVDX(:), &
+                             LOC_TOLD_J( : ) * LOC_DENOLD_J( : ), &
+                             LOC_TOLD_I( : ) * LOC_DENOLD_I( : )  )
                      END IF
 
-                     FTHETA_T2(IPHASE) = FTHETA(IPHASE) * LIMT2(IPHASE)
-                     ONE_M_FTHETA_T2OLD(IPHASE) = (1.0-FTHETA(IPHASE)) * LIMT2OLD(IPHASE)
+                     FTHETA_T2(:) = FTHETA(:) * LIMT2(:)
+                     ONE_M_FTHETA_T2OLD(:) = (1.0-FTHETA(:)) * LIMT2OLD(:)
 
-                     FTHETA_T2_J(IPHASE) = FTHETA(IPHASE) * LIMT2(IPHASE)
-                     ONE_M_FTHETA_T2OLD_J(IPHASE) = (1.0-FTHETA(IPHASE)) * LIMT2OLD(IPHASE)
+                     FTHETA_T2_J(:) = FTHETA(:) * LIMT2(:)
+                     ONE_M_FTHETA_T2OLD_J(:) = (1.0-FTHETA(:)) * LIMT2OLD(:)
 
                      IF(IGOT_THETA_FLUX == 1) THEN
                         IF ( GET_THETA_FLUX ) THEN
-                           THETA_FLUX( IPHASE, GLOBAL_FACE ) = FTHETA(IPHASE) * LIMDT(IPHASE) / DEN_ALL( IPHASE, CV_NODI )
-                           ONE_M_THETA_FLUX( IPHASE, GLOBAL_FACE ) = (1.0-FTHETA(IPHASE)) * LIMDTOLD(IPHASE) / DEN_ALL( IPHASE, CV_NODI )
+                           THETA_FLUX( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / LOC_DEN_I( : )
+                           ONE_M_THETA_FLUX( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / LOC_DEN_I( : )
                            if(integrate_other_side) then ! for the flux on the other side of the CV face...
-                              THETA_FLUX_J( IPHASE, GLOBAL_FACE ) = FTHETA(IPHASE) * LIMDT(IPHASE) / DEN_ALL( IPHASE, CV_NODJ )
-                              ONE_M_THETA_FLUX_J( IPHASE, GLOBAL_FACE ) = (1.0-FTHETA(IPHASE)) * LIMDTOLD(IPHASE) / DEN_ALL( IPHASE, CV_NODJ )
+                              THETA_FLUX_J( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / LOC_DEN_J( : )
+                              ONE_M_THETA_FLUX_J( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / LOC_DEN_J( : )
                            endif
                         END IF
                         IF ( USE_THETA_FLUX ) THEN
-                           FTHETA_T2(IPHASE) = THETA_FLUX( IPHASE, GLOBAL_FACE )
-                           ONE_M_FTHETA_T2OLD(IPHASE) = ONE_M_THETA_FLUX( IPHASE, GLOBAL_FACE )
+                           FTHETA_T2(:) = THETA_FLUX( :, GLOBAL_FACE )
+                           ONE_M_FTHETA_T2OLD(:) = ONE_M_THETA_FLUX( :, GLOBAL_FACE )
                            if(integrate_other_side) then ! for the flux on the other side of the CV face...
-                              FTHETA_T2_J(IPHASE) = THETA_FLUX_J( IPHASE, GLOBAL_FACE )
-                              ONE_M_FTHETA_T2OLD_J(IPHASE) = ONE_M_THETA_FLUX_J( IPHASE, GLOBAL_FACE )
-!                              FTHETA_T2_J = THETA_FLUX( IPHASE, GLOBAL_FACE )
-!                              ONE_M_FTHETA_T2OLD_J = ONE_M_THETA_FLUX( IPHASE, GLOBAL_FACE )
+                              FTHETA_T2_J(:) = THETA_FLUX_J( :, GLOBAL_FACE )
+                              ONE_M_FTHETA_T2OLD_J(:) = ONE_M_THETA_FLUX_J( :, GLOBAL_FACE )
                            endif
                         END IF
                      END IF
-
-                  END DO Loop_IPHASE7
-
 
 
 
@@ -2360,21 +2357,25 @@ contains
                   Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                         ! Obtain the CV discretised advection/diffusion equations
 
-                     Loop_IPHASE: DO IPHASE = 1, NPHASE
 
-                        RHS_NODI_IPHA = IPHASE +  (CV_NODI - 1 ) * NPHASE
-                        RHS_NODJ_IPHA = IPHASE +  (CV_NODJ - 1 ) * NPHASE
-
-                        ROBIN1=0.0
-                        ROBIN2=0.0
+                     ROBIN1=0.0
+                     ROBIN2=0.0
+                     DO IPHASE = 1, NPHASE
                         IF( on_domain_boundary ) then
 !                        IF ( SELE /= 0 ) THEN
                            IF ( WIC_T_BC_ALL(1,IPHASE,SELE) == WIC_T_BC_ROBIN ) THEN
 ! this needs to be corrected (its correct but misleading)...
-                              ROBIN1 = SUF_T_BC_ROB1_ALL(1,iphase, CV_SILOC+CV_SNLOC*(sele-1))
-                              ROBIN2 = SUF_T_BC_ROB2_ALL (1,iphase, CV_SILOC+CV_SNLOC*(sele-1))
+                              ROBIN1(IPHASE) = SUF_T_BC_ROB1_ALL(1,iphase, CV_SILOC+CV_SNLOC*(sele-1))
+                              ROBIN2(IPHASE) = SUF_T_BC_ROB2_ALL(1,iphase, CV_SILOC+CV_SNLOC*(sele-1))
                            END IF
                         END IF
+                     END DO
+
+
+                     Loop_IPHASE: DO IPHASE = 1, NPHASE
+
+                        RHS_NODI_IPHA = IPHASE +  (CV_NODI - 1 ) * NPHASE
+                        RHS_NODJ_IPHA = IPHASE +  (CV_NODJ - 1 ) * NPHASE
 
                         IF ( GETMAT ) THEN
 
@@ -2424,7 +2425,7 @@ contains
                             +  SECOND_THETA * FTHETA_T2(IPHASE) * SCVDETWEI( GI ) * NDOTQNEW(IPHASE) * ( 1. - INCOME(IPHASE) ) * LIMD(IPHASE) & ! Advection
                             +  FTHETA(IPHASE) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE)  &  ! Diffusion contribution
                             +  SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE)  &  ! Stabilization of capilary diffusion
-                            +  SCVDETWEI( GI ) * ROBIN1  ! Robin bc
+                            +  SCVDETWEI( GI ) * ROBIN1(IPHASE)  ! Robin bc
                             if(integrate_other_side_and_not_boundary) then
                                 CSR_ACV( JMID_IPHA ) =  CSR_ACV( JMID_IPHA ) &
                                 -  SECOND_THETA * FTHETA_T2_J(IPHASE) * SCVDETWEI( GI ) * NDOTQNEW(IPHASE) * ( 1. - INCOME_J(IPHASE) ) * LIMD(IPHASE) & ! Advection
@@ -2435,7 +2436,7 @@ contains
                             IF ( GET_GTHETA ) THEN
                                 THETA_GDIFF( IPHASE, CV_NODI ) =  THETA_GDIFF( IPHASE, CV_NODI ) &
                                 -  FTHETA(IPHASE) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) * T_ALL( IPHASE, CV_NODI ) & ! Diffusion contribution
-                                -  SCVDETWEI( GI ) * ROBIN1 * T_ALL( IPHASE, CV_NODI )  ! Robin bc
+                                -  SCVDETWEI( GI ) * ROBIN1(IPHASE) * T_ALL( IPHASE, CV_NODI )  ! Robin bc
                                 if(integrate_other_side_and_not_boundary) then
                                     THETA_GDIFF( IPHASE, CV_NODJ ) =  THETA_GDIFF( IPHASE, CV_NODJ ) &
                                     -  FTHETA(IPHASE) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) * T_ALL( IPHASE, CV_NODJ ) ! Diffusion contribution
@@ -2501,7 +2502,7 @@ contains
                              - SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(IPHASE) &  ! capillary pressure stabilization term..
                              * ( T_ALL( IPHASE, CV_NODJ ) - T_ALL( IPHASE, CV_NODI ) ) &
 !                                ! Robin bc
-                             + SCVDETWEI( GI ) * ROBIN2
+                             + SCVDETWEI( GI ) * ROBIN2(IPHASE)
                         if(integrate_other_side_and_not_boundary) then
                         CV_RHS( RHS_NODJ_IPHA ) =  CV_RHS( RHS_NODJ_IPHA ) &
                              + (1.-FTHETA(IPHASE)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(IPHASE) &
@@ -2514,7 +2515,7 @@ contains
                                 + (1.-FTHETA(IPHASE)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(IPHASE) &
                                 * ( TOLD_ALL( IPHASE, CV_NODJ ) - TOLD_ALL( IPHASE, CV_NODI ) ) &
                                 ! Robin bc
-                                + SCVDETWEI( GI ) * ROBIN2
+                                + SCVDETWEI( GI ) * ROBIN2(IPHASE)
                         if(integrate_other_side_and_not_boundary) then
                            THETA_GDIFF( IPHASE, CV_NODJ ) =  THETA_GDIFF( IPHASE, CV_NODJ ) &
                                 + (1.-FTHETA(IPHASE)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(IPHASE) &
@@ -6953,18 +6954,21 @@ deallocate(NX_ALL, X_NX_ALL)
        TOLD_CV_NODJ, TOLD_CV_NODI, &
        ELE, ELE2, CVNORMX_ALL,  &
        LOC_DTX_ELE_ALL, LOC_DTOLDX_ELE_ALL, LOC2_DTX_ELE_ALL, LOC2_DTOLDX_ELE_ALL, &
-       SELE, STOTEL, LOC_WIC_T_BC, CV_OTHER_LOC, MAT_OTHER_LOC )
+       SELE, STOTEL, LOC_WIC_T_BC, CV_OTHER_LOC, MAT_OTHER_LOC, CV_SNLOC, CV_SLOC2LOC, &
+       on_domain_boundary, between_elements )
     ! This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
     ! based on a non-linear method and a non-oscillating scheme.
     IMPLICIT NONE
     INTEGER, intent( in ) :: CV_NLOC, MAT_NLOC, CV_NONODS,NPHASE, TOTELE, MAT_NONODS, &
          &                   SCVNGI, GI, NDIM, ELE, ELE2, &
-         &                   SELE, STOTEL
+         &                   SELE, STOTEL, CV_SNLOC
     REAL, intent( in ) :: HDC
+    LOGICAL, intent( in ) :: on_domain_boundary, between_elements
     REAL, DIMENSION( NPHASE ), intent( in ) :: T_CV_NODJ, T_CV_NODI, &
          &                                     TOLD_CV_NODJ, TOLD_CV_NODI
     REAL, DIMENSION( NPHASE ), intent( inout ) :: DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
     INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
+    INTEGER, DIMENSION( : ), intent( in ) :: CV_SLOC2LOC
     INTEGER, DIMENSION( NPHASE ), intent( in ) :: LOC_WIC_T_BC
     INTEGER, DIMENSION( : ), intent( in ) :: CV_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: MAT_OTHER_LOC
@@ -6982,7 +6986,7 @@ deallocate(NX_ALL, X_NX_ALL)
     REAL, PARAMETER :: DIFF_MIN_FRAC = 0.05, DIFF_MAX_FRAC = 20.0
 
     REAL :: COEF
-    INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, CV_ILOC, IPHASE
+    INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, CV_ILOC, IPHASE, CV_SKLOC
     LOGICAL :: ZER_DIFF
 
     REAL, DIMENSION ( :, : ), allocatable :: DTDX_GI_ALL, DTOLDDX_GI_ALL, DTDX_GI2_ALL, DTOLDDX_GI2_ALL
@@ -7000,7 +7004,8 @@ deallocate(NX_ALL, X_NX_ALL)
     ALLOCATE( DIFF_GI2( NDIM, NDIM, NPHASE ) )
 
     ZER_DIFF = .FALSE.
-    IF ( SELE /= 0 ) ZER_DIFF = ANY ( LOC_WIC_T_BC( : ) /= WIC_T_BC_DIRICHLET )
+!    IF ( SELE /= 0 ) ZER_DIFF = ANY ( LOC_WIC_T_BC( : ) /= WIC_T_BC_DIRICHLET )
+    IF ( on_domain_boundary ) ZER_DIFF = ANY ( LOC_WIC_T_BC( : ) /= WIC_T_BC_DIRICHLET )
 
     Cond_ZerDiff: IF ( ZER_DIFF ) THEN
 
@@ -7036,16 +7041,18 @@ deallocate(NX_ALL, X_NX_ALL)
 
 
 
-       Conditional_MAT_DISOPT_ELE2: IF ( ( ELE2 /= 0 ) .AND. ( ELE2 /= ELE ) ) THEN
+!       Conditional_MAT_DISOPT_ELE2: IF ( ( ELE2 /= 0 ) .AND. ( ELE2 /= ELE ) ) THEN
+       Conditional_MAT_DISOPT_ELE2: IF ( between_elements ) THEN
 
 
           DTDX_GI2_ALL = 0.0 ; DTOLDDX_GI2_ALL = 0.0
-          DO CV_KLOC = 1, CV_NLOC
+          DO CV_SKLOC=1,CV_SNLOC
+             CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
              CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-             IF ( CV_KLOC2 /= 0 )THEN
+!             IF ( CV_KLOC2 /= 0 )THEN
                 DTDX_GI2_ALL( :, : ) = DTDX_GI2_ALL( :, : ) + SCVFEN( CV_KLOC, GI ) *  LOC2_DTX_ELE_ALL( :, :, CV_KLOC )
                 DTOLDDX_GI2_ALL( :, : ) = DTOLDDX_GI2_ALL( :, : ) + SCVFEN( CV_KLOC, GI ) * LOC2_DTOLDX_ELE_ALL( :, :, CV_KLOC )
-             END IF
+!             END IF
           END DO
 
           DIFF_GI2 = 0.0
@@ -7084,7 +7091,8 @@ deallocate(NX_ALL, X_NX_ALL)
 
     END IF Cond_ZerDiff
 
-    IF ( SELE /= 0 ) THEN
+!    IF ( SELE /= 0 ) THEN
+    IF ( on_domain_boundary ) THEN
        DO IPHASE=1,NPHASE
           IF( LOC_WIC_T_BC( IPHASE ) /= WIC_T_BC_DIRICHLET ) THEN
              DIFF_COEF_DIVDX( IPHASE ) = 0.0
@@ -10067,6 +10075,53 @@ CONTAINS
     RETURN
 
   END FUNCTION FACE_THETA
+
+
+
+
+  FUNCTION FACE_THETA_MANY( DT, CV_THETA, INTERFACE_TRACK, HDC, NPHASE, &
+       NDOTQ, LIMDT, DIFF_COEF_DIVDX, &
+       T_NODJ_IPHA, T_NODI_IPHA,  &
+       NDOTQOLD, LIMDTOLD, DIFF_COEFOLD_DIVDX, TOLD_NODJ_IPHA, TOLD_NODI_IPHA )
+    IMPLICIT NONE
+    ! Define face value of theta
+    INTEGER, intent(in) :: NPHASE
+    REAL, intent(in) :: DT, CV_THETA, HDC
+    REAL, DIMENSION( NPHASE ), intent(in) :: NDOTQ, LIMDT, DIFF_COEF_DIVDX, T_NODJ_IPHA, T_NODI_IPHA,  &
+         NDOTQOLD, LIMDTOLD, DIFF_COEFOLD_DIVDX, TOLD_NODJ_IPHA, TOLD_NODI_IPHA
+    real, dimension(NPHASE) :: FACE_THETA_MANY
+    LOGICAL, intent(in) :: INTERFACE_TRACK
+    ! Local variables
+    REAL, DIMENSION( : ), allocatable :: HF, HFOLD, GF, PINVTH, QINVTH
+    INTEGER :: IPHASE
+
+    IF( CV_THETA >= 0.0) THEN ! Specified
+       FACE_THETA_MANY = CV_THETA
+    ELSE ! Non-linear
+       ALLOCATE( HF( NPHASE ), HFOLD( NPHASE ), GF( NPHASE ), PINVTH( NPHASE ), QINVTH( NPHASE ) )
+       HF    = NDOTQ * LIMDT + DIFF_COEF_DIVDX * ( T_NODI_IPHA - T_NODJ_IPHA )
+       HFOLD = NDOTQOLD * LIMDTOLD + DIFF_COEFOLD_DIVDX * ( TOLD_NODI_IPHA - TOLD_NODJ_IPHA )
+       GF = TOLFUN_MANY( DT *  (HF - HFOLD) )
+       PINVTH = HDC * ( T_NODI_IPHA - TOLD_NODI_IPHA ) / GF
+       QINVTH = HDC * ( T_NODJ_IPHA - TOLD_NODJ_IPHA ) / GF
+       ! 0.5 is the original value.
+       !       FTHETA = MAX( 0.5, 1. - 0.5 * MIN( ABS( PINVTH ), ABS( QINVTH )))
+       !       FTHETA = MAX( 0.5, 1. - 0.25 * MIN( ABS( PINVTH ), ABS( QINVTH )))
+       IF(INTERFACE_TRACK) THEN ! For interface tracking use forward Euler as much as possible...
+          !            FTHETA = MAX( 0.0, 1. - 0.125 * MIN( ABS( PINVTH ), ABS( QINVTH )))
+          DO IPHASE=1,NPHASE
+             FACE_THETA_MANY(IPHASE) = MAX( 0.0, 1. - 0.5 * MIN( ABS( PINVTH(IPHASE) ), ABS( QINVTH(IPHASE) )))
+          END DO
+       ELSE ! for Crank Nickolson time stepping base scheme...
+          DO IPHASE=1,NPHASE
+             FACE_THETA_MANY(IPHASE) = MAX( 0.5, 1. - 0.125 * MIN( ABS( PINVTH(IPHASE) ), ABS( QINVTH(IPHASE) )))
+          END DO
+       ENDIF
+    ENDIF
+
+    RETURN
+
+  END FUNCTION FACE_THETA_MANY
 
 
 
