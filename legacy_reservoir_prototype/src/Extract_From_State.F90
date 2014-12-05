@@ -49,9 +49,9 @@
     use futils, only: int2str
     use boundary_conditions_from_options
     use parallel_tools, only : allmax, allmin, isparallel
- use memory_diagnostics
- use initialise_fields_module, only: initialise_field_over_regions
- use halos
+    use memory_diagnostics
+    use initialise_fields_module, only: initialise_field_over_regions
+    use halos
 
     !use printout
     !use quicksort
@@ -123,7 +123,7 @@
 
       is_compact_overlapping = .false.
       if (trim(vel_element_type)=='lagrangian') &
-        is_compact_overlapping = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Compact_overlapping')
+           is_compact_overlapping = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Compact_overlapping')
 
       positions => extract_vector_field( state, 'Coordinate' )
       pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -168,10 +168,10 @@
     end subroutine Get_Primary_Scalars
 
     function get_ndglno(mesh) result(ndglno)
-          type(mesh_type) :: mesh
-          integer, dimension(:), pointer  ::  ndglno
+      type(mesh_type) :: mesh
+      integer, dimension(:), pointer  ::  ndglno
 
-          ndglno=> mesh%ndglno
+      ndglno=> mesh%ndglno
     end function get_ndglno
 
 
@@ -218,7 +218,7 @@
 !!$ Velocities
       velocity => extract_vector_field( state( 1 ), 'Velocity' )
 !!$      call Get_Ndgln( u_ndgln, velocity, cv_nloc )
-!$
+      !$
 !!$ Velocity in the continuous space
       velocity_cg_mesh => extract_mesh( state( 1 ), 'VelocityMesh_Continuous' )
 !!$      call Get_Ndgln( xu_ndgln, velocity_cg_mesh )
@@ -498,17 +498,17 @@
       in_ele_upwind = 3 ; dg_ele_upwind = 3
 
       ! simplify things...
-        Impose_first_order = .false.
-        do iphase =1, nphase
-            Impose_first_order = Impose_first_order .or. have_option("/material_phase["// int2str( iphase - 1 ) //&
-                "]/Impose_first_order")
-        end do
+      Impose_first_order = .false.
+      do iphase =1, nphase
+         Impose_first_order = Impose_first_order .or. have_option("/material_phase["// int2str( iphase - 1 ) //&
+              "]/Impose_first_order")
+      end do
       !We impose the lowest discretisation technique for everything.
       if (Impose_first_order) then
-          in_ele_upwind = 1 ; dg_ele_upwind = 1
-          u_dg_vel_int_opt = 1
-          v_dg_vel_int_opt = 1
-          v_disopt = 0 ; t_disopt = 0
+         in_ele_upwind = 1 ; dg_ele_upwind = 1
+         u_dg_vel_int_opt = 1
+         v_dg_vel_int_opt = 1
+         v_disopt = 0 ; t_disopt = 0
       end if
 
       return
@@ -767,8 +767,8 @@
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
            u_sndgln( stotel * u_snloc ), dummy( cv_nonods ) )
 
-!      x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0
- !     u_ndgln = 0 ;  xu_ndgln = 0 ; 
+      !      x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0
+      !     u_ndgln = 0 ;  xu_ndgln = 0 ; 
       cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
 
       call Compute_Node_Global_Numbers( state, &
@@ -791,9 +791,9 @@
 
       x_all => extract_vector_field( packed_state, "PressureCoordinate" )
       do idim = 1, ndim
-          if( idim ==1 ) x_all % val( idim, : ) = x
-          if( idim ==2 ) x_all % val( idim, : ) = y
-          if( idim ==3 ) x_all % val( idim, : ) = z
+         if( idim ==1 ) x_all % val( idim, : ) = x
+         if( idim ==2 ) x_all % val( idim, : ) = y
+         if( idim ==3 ) x_all % val( idim, : ) = z
       end do
 
 !!$
@@ -802,9 +802,9 @@
       Loop_VolumeFraction: do iphase = 1, nphase
          scalarfield => extract_scalar_field( state( iphase ), 'PhaseVolumeFraction' )
          knod = ( iphase - 1 ) * node_count( scalarfield )
-!         call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
-!              PhaseVolumeFraction( knod + 1 : knod + node_count( scalarfield ) ), &
-!              field_prot_source = PhaseVolumeFraction_Source )
+         !         call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
+         !              PhaseVolumeFraction( knod + 1 : knod + node_count( scalarfield ) ), &
+         !              field_prot_source = PhaseVolumeFraction_Source )
          call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
               PhaseVolumeFraction( iphase,:), &
               field_prot_source = PhaseVolumeFraction_Source )
@@ -1000,11 +1000,11 @@
             field_prot = field % val
 
          else if (have_option( trim( option_path ) // '/prognostic/initial_condition') )then
-         call allocate( dummy, field % mesh, 'dummy' )
-         call get_option('/timestepping/current_time', current_time)
-         call initialise_field_over_regions(dummy, trim( option_path ) // '/prognostic/initial_condition', positions, current_time)
-         field_prot = dummy%val
-         call deallocate( dummy )
+            call allocate( dummy, field % mesh, 'dummy' )
+            call get_option('/timestepping/current_time', current_time)
+            call initialise_field_over_regions(dummy, trim( option_path ) // '/prognostic/initial_condition', positions, current_time)
+            field_prot = dummy%val
+            call deallocate( dummy )
 
          else
             !ewrite(-1,*) 'No initial condition for field::', trim( field_name )
@@ -1014,58 +1014,58 @@
 
 !!$ Boundary conditions
       if (present( wic_bc ) ) then
-      
-      option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
-      nobcs = get_boundary_condition_count( field )
-      Loop_BC: do k = 1, nobcs
 
-         option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
-         shape_option = option_shape( trim( option_path ) )
-         allocate( SufID_BC( 1 : shape_option( 1 ) ) )
-         call get_option( trim( option_path ), SufID_BC )
-         allocate( face_nodes( face_loc( field, 1) ) )
+         option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
+         nobcs = get_boundary_condition_count( field )
+         Loop_BC: do k = 1, nobcs
 
-         option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
+            option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
+            shape_option = option_shape( trim( option_path ) )
+            allocate( SufID_BC( 1 : shape_option( 1 ) ) )
+            call get_option( trim( option_path ), SufID_BC )
+            allocate( face_nodes( face_loc( field, 1) ) )
 
-         Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
+            option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
 
-            BC_Type = 1
-            field_prot_bc => extract_surface_field( field, k, 'value' )
+            Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
 
-            sele = 1
-            do j = 1, stotel
-               if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-                  wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-                  face_nodes = ele_nodes( field_prot_bc, sele )
-                  do kk = 1, snloc
-                     suf_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
-                          field_prot_bc % val( face_nodes( kk ) )
-                  end do
-                  sele = sele + 1
-               end if
-            end do
+               BC_Type = 1
+               field_prot_bc => extract_surface_field( field, k, 'value' )
 
-         else if( have_option( trim( option_path ) // 'type::robin' ) ) then
+               sele = 1
+               do j = 1, stotel
+                  if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
+                     wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
+                     face_nodes = ele_nodes( field_prot_bc, sele )
+                     do kk = 1, snloc
+                        suf_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
+                             field_prot_bc % val( face_nodes( kk ) )
+                     end do
+                     sele = sele + 1
+                  end if
+               end do
 
-            BC_Type = 2
+            else if( have_option( trim( option_path ) // 'type::robin' ) ) then
 
-            do j = 1, stotel
-               if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-                  wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-               end if
-            end do
+               BC_Type = 2
 
-            ! calculate this later on...
-            suf_bc_rob1 = 0.
-            suf_bc_rob2 = 0.
+               do j = 1, stotel
+                  if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
+                     wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
+                  end if
+               end do
 
-         end if Conditional_Field_BC
+               ! calculate this later on...
+               suf_bc_rob1 = 0.
+               suf_bc_rob2 = 0.
 
-         deallocate( face_nodes, sufid_bc )
+            end if Conditional_Field_BC
 
-      end do Loop_BC
+            deallocate( face_nodes, sufid_bc )
 
-   end if
+         end do Loop_BC
+
+      end if
 
       return
     end subroutine Get_ScalarFields_Outof_State
@@ -1154,47 +1154,47 @@
       end if Conditional_InitialisedFromFLML
       if ( present(wic_bc)) then  
 
-      
-      Conditional_Composition_BC: if ( have_option( trim( option_path ) // &
-           '/prognostic/boundary_conditions[0]/type::dirichlet' )) then
 
-         BC_Type = 1
-         nobcs = get_boundary_condition_count( field )
+         Conditional_Composition_BC: if ( have_option( trim( option_path ) // &
+              '/prognostic/boundary_conditions[0]/type::dirichlet' )) then
 
-         Loop_Over_BC: do k = 1, nobcs
-            field_prot_bc => extract_surface_field( field, k, 'value' )
-            shape_option = option_shape( trim( option_path ) // &
-                 '/prognostic/boundary_conditions[' // &
-                 int2str( k - 1 ) // ']/surface_ids' )
-            allocate( sufid_bc( 1 : shape_option( 1 ) ) )
+            BC_Type = 1
+            nobcs = get_boundary_condition_count( field )
 
-            call get_option( trim( option_path ) // &
-                 '/prognostic/boundary_conditions[' // &
-                 int2str( k - 1 ) // ']/surface_ids', sufid_bc )
+            Loop_Over_BC: do k = 1, nobcs
+               field_prot_bc => extract_surface_field( field, k, 'value' )
+               shape_option = option_shape( trim( option_path ) // &
+                    '/prognostic/boundary_conditions[' // &
+                    int2str( k - 1 ) // ']/surface_ids' )
+               allocate( sufid_bc( 1 : shape_option( 1 ) ) )
 
-            allocate( face_nodes( face_loc( field, 1 ) ) )
-            sele = 1
-            do j = 1, stotel
-               if( any ( sufid_bc == pmesh % faces % boundary_ids( j ) ) ) then
-                  wic_bc( j + ( iphase - 1 ) * stotel ) = bc_type
-                  face_nodes = ele_nodes( field_prot_bc, sele )
-                  do kk = 1, snloc
-                     suf_bc( ( icomp - ( nphase + 1 ) ) * nphase * stotel * snloc + &
-                          ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
-                          field_prot_bc % val( face_nodes( kk ) )
-                  end do
-                  sele = sele + 1
-               end if
-            end do
+               call get_option( trim( option_path ) // &
+                    '/prognostic/boundary_conditions[' // &
+                    int2str( k - 1 ) // ']/surface_ids', sufid_bc )
 
-            deallocate( face_nodes )
-            deallocate( sufid_bc )
+               allocate( face_nodes( face_loc( field, 1 ) ) )
+               sele = 1
+               do j = 1, stotel
+                  if( any ( sufid_bc == pmesh % faces % boundary_ids( j ) ) ) then
+                     wic_bc( j + ( iphase - 1 ) * stotel ) = bc_type
+                     face_nodes = ele_nodes( field_prot_bc, sele )
+                     do kk = 1, snloc
+                        suf_bc( ( icomp - ( nphase + 1 ) ) * nphase * stotel * snloc + &
+                             ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
+                             field_prot_bc % val( face_nodes( kk ) )
+                     end do
+                     sele = sele + 1
+                  end if
+               end do
 
-         end do Loop_Over_BC ! End of BC loop
+               deallocate( face_nodes )
+               deallocate( sufid_bc )
 
-      end if Conditional_Composition_BC
+            end do Loop_Over_BC ! End of BC loop
 
-   end if
+         end if Conditional_Composition_BC
+
+      end if
 
 
       if ( have_source )  then
@@ -1225,8 +1225,8 @@
       logical, intent( in ) :: initialised
       integer, intent( in ) :: iphase
       type( vector_field ), pointer :: field, field_prot_bc
- !     real, dimension( : ), intent( inout ) :: field_u_prot, field_v_prot, field_w_prot, &
- !          field_nu_prot, field_nv_prot, field_nw_prot
+      !     real, dimension( : ), intent( inout ) :: field_u_prot, field_v_prot, field_w_prot, &
+      !          field_nu_prot, field_nv_prot, field_nw_prot
       real, dimension( : ), intent( inout ), optional :: field_prot_source
       real, dimension( : , :, : ), intent( inout ), optional :: field_prot_absorption
       integer, dimension( : ), intent( inout ), optional :: wic_bc, wic_momu_bc 
@@ -1280,83 +1280,83 @@
 
       if (present(wic_bc)) then
 
-      option_path = '/material_phase[' // int2str( iphase - 1 )// ']/vector_field::' // trim( field_name )
-      option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
+         option_path = '/material_phase[' // int2str( iphase - 1 )// ']/vector_field::' // trim( field_name )
+         option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
 
-      nobcs = get_boundary_condition_count( field )
-      Loop_BC: do k = 1, nobcs
+         nobcs = get_boundary_condition_count( field )
+         Loop_BC: do k = 1, nobcs
 
-         field_prot_bc => extract_surface_field( field, k, 'value' )
+            field_prot_bc => extract_surface_field( field, k, 'value' )
 
-         option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
-         shape_option = option_shape( trim( option_path ) )
-         allocate( SufID_BC( 1 : shape_option( 1 ) ) )
-         call get_option( trim( option_path ), SufID_BC )
-         allocate( face_nodes( face_loc( field, 1) ) )
+            option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
+            shape_option = option_shape( trim( option_path ) )
+            allocate( SufID_BC( 1 : shape_option( 1 ) ) )
+            call get_option( trim( option_path ), SufID_BC )
+            allocate( face_nodes( face_loc( field, 1) ) )
 
-         option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
+            option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
 
-         Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
+            Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
 
-            BC_Type = 1
-
-            face_nodes = (/ ( l, l = 1, snloc2 ) /)
-
-            do j = 1, stotel
-               if( any ( sufid_bc == field % mesh % faces % boundary_ids( j ) ) ) then 
-                  wic_bc( j  + ( iphase - 1 ) * stotel ) = BC_Type
-                  count = 1
-                  do kk = 1, snloc
-                     suf_u_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
-                          field_prot_bc % val( 1, face_nodes( count ) )
-                     if( ndim > 1 ) suf_v_bc( ( iphase - 1 ) * stotel * snloc + & 
-                          ( j - 1 ) * snloc + kk ) = field_prot_bc % val( 2, face_nodes( count ) )
-                     if( ndim > 2 ) suf_w_bc( ( iphase - 1 ) * stotel * snloc + &
-                          ( j - 1 ) * snloc + kk ) = field_prot_bc % val( 3, face_nodes( count ) )
-                     count = count + 1
-                     if ( mod( kk, snloc2 ) == 0. ) count = 1
-                  end do
-                  face_nodes = face_nodes + snloc2
-               end if
-            end do
-
-         else if( have_option( trim( option_path ) // 'type::momentum' ) ) then
-
-            call get_option( trim( option_path ) // 'type::momentum/boundary/', bct )
-            if ( trim( bct ) == "incoming") then
                BC_Type = 1
-            else if ( trim( bct ) == "open") then
-               BC_Type = 5
-            else
-               FLAbort( 'Wrong momentum boundary condition in diamond.' )
-            end if
 
-            face_nodes = (/ ( l, l = 1, snloc2 ) /)
-            do j = 1, stotel
-               if( any ( sufid_bc == field % mesh % faces % boundary_ids( j ) ) ) then 
-                  wic_momu_bc( j  + ( iphase - 1 ) * stotel ) = BC_Type
-                  count = 1
-                  do kk = 1, snloc
-                     suf_momu_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
-                          field_prot_bc % val( 1, face_nodes( count ) )
-                     if( ndim > 1 ) suf_momv_bc( ( iphase - 1 ) * stotel * snloc + & 
-                          ( j - 1 ) * snloc + kk ) = field_prot_bc % val( 2, face_nodes( count ) )
-                     if( ndim > 2 ) suf_momw_bc( ( iphase - 1 ) * stotel * snloc + &
-                          ( j - 1 ) * snloc + kk ) = field_prot_bc % val( 3, face_nodes( count ) )
-                     count = count + 1
-                     if ( mod( kk, snloc2 ) == 0. ) count = 1
-                  end do
-                  face_nodes = face_nodes + snloc2
+               face_nodes = (/ ( l, l = 1, snloc2 ) /)
+
+               do j = 1, stotel
+                  if( any ( sufid_bc == field % mesh % faces % boundary_ids( j ) ) ) then 
+                     wic_bc( j  + ( iphase - 1 ) * stotel ) = BC_Type
+                     count = 1
+                     do kk = 1, snloc
+                        suf_u_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
+                             field_prot_bc % val( 1, face_nodes( count ) )
+                        if( ndim > 1 ) suf_v_bc( ( iphase - 1 ) * stotel * snloc + & 
+                             ( j - 1 ) * snloc + kk ) = field_prot_bc % val( 2, face_nodes( count ) )
+                        if( ndim > 2 ) suf_w_bc( ( iphase - 1 ) * stotel * snloc + &
+                             ( j - 1 ) * snloc + kk ) = field_prot_bc % val( 3, face_nodes( count ) )
+                        count = count + 1
+                        if ( mod( kk, snloc2 ) == 0. ) count = 1
+                     end do
+                     face_nodes = face_nodes + snloc2
+                  end if
+               end do
+
+            else if( have_option( trim( option_path ) // 'type::momentum' ) ) then
+
+               call get_option( trim( option_path ) // 'type::momentum/boundary/', bct )
+               if ( trim( bct ) == "incoming") then
+                  BC_Type = 1
+               else if ( trim( bct ) == "open") then
+                  BC_Type = 5
+               else
+                  FLAbort( 'Wrong momentum boundary condition in diamond.' )
                end if
-            end do
 
-         end if Conditional_Field_BC
+               face_nodes = (/ ( l, l = 1, snloc2 ) /)
+               do j = 1, stotel
+                  if( any ( sufid_bc == field % mesh % faces % boundary_ids( j ) ) ) then 
+                     wic_momu_bc( j  + ( iphase - 1 ) * stotel ) = BC_Type
+                     count = 1
+                     do kk = 1, snloc
+                        suf_momu_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
+                             field_prot_bc % val( 1, face_nodes( count ) )
+                        if( ndim > 1 ) suf_momv_bc( ( iphase - 1 ) * stotel * snloc + & 
+                             ( j - 1 ) * snloc + kk ) = field_prot_bc % val( 2, face_nodes( count ) )
+                        if( ndim > 2 ) suf_momw_bc( ( iphase - 1 ) * stotel * snloc + &
+                             ( j - 1 ) * snloc + kk ) = field_prot_bc % val( 3, face_nodes( count ) )
+                        count = count + 1
+                        if ( mod( kk, snloc2 ) == 0. ) count = 1
+                     end do
+                     face_nodes = face_nodes + snloc2
+                  end if
+               end do
 
-         deallocate( face_nodes, SufID_BC )
+            end if Conditional_Field_BC
 
-      end do Loop_BC
+            deallocate( face_nodes, SufID_BC )
 
-   end if
+         end do Loop_BC
+
+      end if
 
       return
     end subroutine Get_VectorFields_Outof_State
@@ -1511,7 +1511,7 @@
 
             elseif( have_option( trim( option_path ) // '/python' ) )then
                tensorfield => extract_tensor_field( state( istate ), trim( field_name ) )
-              ! element_nodes => ele_nodes( tensorfield, ele )
+               ! element_nodes => ele_nodes( tensorfield, ele )
                do idim = 1, ndim
                   do ele = 1, element_count( tensorfield )
                      element_nodes => ele_nodes( tensorfield, ele )
@@ -1632,7 +1632,7 @@
       do ele = 1, ele_count( field )
          nloc => ele_nodes( field, ele )
          do iloc = 1, ele_loc( field, 1 ) * cv_nloc2
-           ndgln( ( ele - 1 ) * ele_loc( field, 1 ) * cv_nloc2  + iloc ) =  nloc( iloc )
+            ndgln( ( ele - 1 ) * ele_loc( field, 1 ) * cv_nloc2  + iloc ) =  nloc( iloc )
          end do
       end do
 
@@ -1737,8 +1737,8 @@
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
            u_sndgln( stotel * u_snloc ) )
 
-  !    x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
-           cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
+      !    x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
+      cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
 
       allocate( temperature( nphase * cv_nonods ), temperature_bc_spatial( nphase * stotel ), &
            temperature_bc( stotel * cv_snloc * nphase ) )
@@ -1793,7 +1793,7 @@
       suf_t_bc = 0. ; suf_t_bc_rob1 = 0. ; suf_t_bc_rob2 = 0. 
 
       call set_boundary_conditions_values( state, shift_time = .true. )
-     
+
       pmesh => extract_mesh( state, 'PressureMesh' )
 
       do iphase = 1, nphase
@@ -1908,18 +1908,18 @@
 
     subroutine pack_multistate(state, packed_state,&
          multiphase_state, multicomponent_state, pmulti_state ) 
-      
+
       type(state_type), dimension(:), intent(inout):: state
       type(state_type), dimension(:), intent(inout), pointer :: &
            multiphase_state, multicomponent_state
       type(state_type) ::  packed_state 
-    
+
       type(state_type), dimension(:,:), pointer, optional :: pmulti_state
 
       type(state_type), dimension(:,:), pointer :: multi_state
-      
+
       integer :: i,nphase,ncomp,ndim, stat, iphase, icomp, idim, ele
-      
+
       type(scalar_field), pointer :: pressure, p2,sfield
       type(vector_field), pointer :: velocity, position, vfield
       type(tensor_field), pointer :: tfield
@@ -1961,7 +1961,7 @@
 
          tfield => extract_tensor_field( state(1), "a_xx" )
          call insert( packed_state, tfield, "a_xx" )
-         
+
          tfield => extract_tensor_field( state(1), "Viscosity" )
          call insert( packed_state, tfield, "Viscosity" )          
 
@@ -2024,8 +2024,8 @@
 
       if (option_count("/material_phase/scalar_field::Temperature")>0) then
          call insert_sfield(packed_state,"Temperature",1,nphase,&
-           add_source=.true.,add_absorption=.true.)
-          call insert_sfield(packed_state,"FETemperature",1,nphase)
+              add_source=.true.,add_absorption=.true.)
+         call insert_sfield(packed_state,"FETemperature",1,nphase)
       end if
       call insert_sfield(packed_state,"PhaseVolumeFraction",1,nphase,&
            add_source=.true.)
@@ -2033,13 +2033,13 @@
 
       !If we have capillary pressure we create a field in packed_state
       do iphase = 1, nphase
-          if( have_option( '/material_phase['//int2str(iphase-1)//&
-                ']/multiphase_properties/capillary_pressure' ) ) then
-              call allocate(ten_field,pressure%mesh,"PackedCapPressure",dim=[1,nphase])
-              call insert(packed_state,ten_field,"PackedCapPressure")
-              call deallocate(ten_field)
-              exit!Just once
-          end if
+         if( have_option( '/material_phase['//int2str(iphase-1)//&
+              ']/multiphase_properties/capillary_pressure' ) ) then
+            call allocate(ten_field,pressure%mesh,"PackedCapPressure",dim=[1,nphase])
+            call insert(packed_state,ten_field,"PackedCapPressure")
+            call deallocate(ten_field)
+            exit!Just once
+         end if
       end do
 
       velocity=>extract_vector_field(state(1),"Velocity")
@@ -2099,7 +2099,7 @@
       call remap_field( position, u_position )
       call remap_field( position, p_position )
       call remap_field( position, m_position )
-  
+
       call insert(packed_state,position,"Coordinate")
       call insert(packed_state,u_position,"VelocityCoordinate")
       call insert(packed_state,p_position,"PressureCoordinate")
@@ -2159,7 +2159,7 @@
             cycle
          else
 
-            
+
             if (has_density) then
                call unpack_sfield(state(i),packed_state,"IteratedDensity",1,iphase,&
                     check_paired(extract_scalar_field(state(i),"Density"),&
@@ -2185,7 +2185,7 @@
                call insert(multi_state(1,iphase), extract_scalar_field(state(i),"Temperature"),"Temperature")
             end if
 
-            
+
             if(has_phase_volume_fraction) then
                call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
                     check_paired(extract_scalar_field(state(i),"PhaseVolumeFraction"),&
@@ -2241,7 +2241,7 @@
 
       !! // then is_updated(density) is now .true. (no other changes)
       !! // If we then make a  call 
-      
+
 
       !! call mark_as_updated(old_density)
       !! // then is_updated(old_density) is now .true. and is_updated(density) is .false.
@@ -2287,17 +2287,17 @@
               dim=[mesh_dim(position),mesh_dim(position)])
          call zero(permeability)
          tfield => extract_tensor_field( state(1), trim( permeability % name ) )
-        if( size(tfield%val,3) == 1 ) then!constant field
+         if( size(tfield%val,3) == 1 ) then!constant field
             do ele = 1, element_count( tfield )
                Permeability%val( :, :, ele ) = tfield % val( :, :, 1 )
             end do
-        else!python
+         else!python
             do ele = 1, element_count( tfield )
-              element_nodes => ele_nodes( tfield, ele )
+               element_nodes => ele_nodes( tfield, ele )
                Permeability%val( :, :, ele ) = &
                     tfield % val( :, :, element_nodes( 1 ) )
             end do
-        end if
+         end if
          call insert(packed_state,Permeability,"Permeability")
          call deallocate(permeability)
       else
@@ -2308,710 +2308,710 @@
          call deallocate(permeability)
       end if
 
-      contains
+    contains
+
+      subroutine insert_components_in_multi_state(ms,s)
+        type(state_type), dimension(:) :: ms
+        type(state_type) :: s
+
+        integer :: i
+        character(len=FIELD_NAME_LEN) :: full_name, short_name
+
+        do i=1,size(ms)
+           full_name="ComponentMassFractionPhase"//int2str(i)
+           short_name="ComponentMassFraction"
+           if (has_scalar_field(s,trim(full_name))) then
+              call insert(ms(i),extract_scalar_field(s,trim(full_name)),short_name)
+           end if
+        end do
+
+        do i=1,size(ms)
+           full_name="ComponentDensityPhase"//int2str(i)
+           short_name="ComponentDensity"
+           if (has_scalar_field(s,trim(full_name))) then
+              call insert(ms(i),extract_scalar_field(s,trim(full_name)),short_name)
+           end if
+        end do
+
+      end subroutine insert_components_in_multi_state
+
+      subroutine unpack_multicomponent(mstate,mcstate)
+        type(state_type) :: mstate
+        type(state_type), dimension(:) :: mcstate
+
+        integer :: icomp
 
-        subroutine insert_components_in_multi_state(ms,s)
-          type(state_type), dimension(:) :: ms
-          type(state_type) :: s
-
-          integer :: i
-          character(len=FIELD_NAME_LEN) :: full_name, short_name
-
-          do i=1,size(ms)
-             full_name="ComponentMassFractionPhase"//int2str(i)
-             short_name="ComponentMassFraction"
-             if (has_scalar_field(s,trim(full_name))) then
-                call insert(ms(i),extract_scalar_field(s,trim(full_name)),short_name)
-             end if
-          end do
-
-          do i=1,size(ms)
-             full_name="ComponentDensityPhase"//int2str(i)
-             short_name="ComponentDensity"
-             if (has_scalar_field(s,trim(full_name))) then
-                call insert(ms(i),extract_scalar_field(s,trim(full_name)),short_name)
-             end if
-          end do
-
-        end subroutine insert_components_in_multi_state
-
-        subroutine unpack_multicomponent(mstate,mcstate)
-          type(state_type) :: mstate
-          type(state_type), dimension(:) :: mcstate
-
-          integer :: icomp
-
-          type(tensor_field), pointer :: tfield
-          type(vector_field), pointer :: vecfield
-          type(tensor_field) :: vfield
-
-
-          character (len=FIELD_NAME_LEN), dimension(4) ::names
-          character (len=FIELD_NAME_LEN), dimension(4) ::phase_names
-          character (len=FIELD_NAME_LEN), dimension(1) ::phase_vector_names
-          integer :: count
-
-          names(1)="PackedComponentMassFraction"
-          names(2)="PackedComponentDensity"
-          names(3)="PackedOldComponentMassFraction"
-          names(4)="PackedOldComponentDensity"
-
-          phase_names(1)="PackedPhaseVolumeFraction"
-          phase_names(2)="PackedOldPhaseVolumeFraction"
-          phase_names(3)="PackedNonlinearVelocity"
-          phase_names(4)="PackedOldNonlinearVelocity"
-
-          phase_vector_names(1)="PressureCoordinate"
-
-          do count=1,size(names)
-
-             tfield=>extract_tensor_field(mstate,names(count))
-
-             do icomp=1,ncomp
-                call allocate(vfield,tfield%mesh,names(count),field_type=FIELD_TYPE_DEFERRED,dim=[1,nphase])
-                vfield%option_path=tfield%option_path
-                deallocate(vfield%val)
-                vfield%val=>tfield%val(icomp:icomp,:,:)
-                vfield%wrapped=.true.
-                call insert(mcstate(icomp),vfield,vfield%name)
-                call deallocate(vfield)
-             END do
-             
-          end do
-
-          do count=1,size(phase_names)
-             tfield=>extract_tensor_field(mstate,phase_names(count))
-             do icomp=1,ncomp
-                call insert(mcstate(icomp),tfield,tfield%name)
-             end do
-          end do
-
-          do count=1,size(phase_vector_names)
-             vecfield=>extract_vector_field(mstate,phase_vector_names(count))
-             do icomp=1,ncomp
-                call insert(mcstate(icomp),vecfield,vecfield%name)
-             end do
-
-          end do
-
-        end subroutine unpack_multicomponent
-          
-
-        subroutine unpack_multiphase(mstate,mpstate)
-          type(state_type) :: mstate
-          type(state_type), dimension(:) :: mpstate
-          integer :: index, iphase
-
-          type(tensor_field), pointer :: tfield
-          type(tensor_field) :: mp_tfield
-
-
-          do index=1,size(mstate%tensor_fields)
-             tfield=>extract_tensor_field(mstate,index)
-             if (tfield%name(:6)=="Packed") then
-                do iphase=1,nphase
-                   call allocate(mp_tfield,tfield%mesh,tfield%name(7:),field_type=FiELD_TYPE_DEFERRED,dim=[tfield%dim(1),1])
-
-                   mp_tfield%val=>tfield%val(:,iphase:iphase,:)
-                   mp_tfield%updated=>tfield%updated
-                   mp_tfield%wrapped=.true.
-                   call insert(mpstate(iphase),mp_tfield,mp_tfield%name)
-                   call deallocate(mp_tfield)
-                end do
-             end if
-          end do
-
-        end subroutine unpack_multiphase
-        
-
-        subroutine add_new_memory(mstate,sfield,name)
-          type(state_type) :: mstate
-          type(scalar_field) :: sfield
-          character (len=*) :: name
-          type(scalar_field) :: sfield2
-          integer :: i,j
-
-          call allocate(sfield2,sfield%mesh,name)
-          sfield2%option_path=sfield%option_path
-          sfield2%bc=sfield%bc
-          if (associated(sfield2%bc%boundary_condition)) then
-             do i=1,size(sfield2%bc%boundary_condition)
-                if (associated(sfield2%bc%boundary_condition(i)%surface_fields)) then
-                   do j=1, size(sfield2%bc%boundary_condition(i)%surface_fields)
-                      call incref(sfield2%bc%boundary_condition(i)%surface_fields(j))
-                   end do
-                end if
-                call incref(sfield2%bc%boundary_condition(i)%surface_mesh)
-             end do
-          end if
-          call insert(mstate,sfield2,name)
-          call deallocate(sfield2)
-
-        end subroutine add_new_memory
-          
-
-        subroutine insert_sfield(mstate,name,ncomp,nphase,nmesh,&
-             add_source, add_absorption)
-          type(state_type), intent(inout) :: mstate
-          character(len=*), intent(in) :: name
-          type(mesh_type),optional, target :: nmesh
-          integer, intent(in) :: ncomp,nphase
-          logical, optional, intent(in) :: add_source, add_absorption
-
-          type(scalar_field), pointer :: nfield
-          type(mesh_type), pointer :: lmesh
-          type(tensor_field) :: mfield
-          integer :: stat
-          logical :: ladd_source, ladd_absorption
-
-          if (present(add_source)) then
-             ladd_source=add_source
-          else
-             ladd_source=.false.
-          end if
-
-          if (present(add_absorption)) then
-             ladd_absorption=add_absorption
-          else
-             ladd_absorption=.false.
-          end if
-
-          nfield=>extract_scalar_field(state(1),name,stat)
-          if (stat/=0) then
-             nfield=>extract_scalar_field(state(1),"Pressure",stat)
-          end if
-
-          if (present(nmesh)) then
-             lmesh=> nmesh
-          else
-             lmesh=>nfield%mesh
-          end if
-
-          call allocate(mfield,lmesh,"Packed"//name,dim=[ncomp,nphase])
-          call insert(mstate,mfield,"Packed"//name)
-          call deallocate(mfield)
-          call allocate(mfield,lmesh,"PackedOld"//name,dim=[ncomp,nphase])
-          call insert(mstate,mfield,"PackedOld"//name)
-          call deallocate(mfield)
-          call allocate(mfield,lmesh,"PackedIterated"//name,dim=[ncomp,nphase])
-          call insert(mstate,mfield,"PackedIterated"//name)
-          call deallocate(mfield)
-          
-          if (ladd_source) then
-             call allocate(mfield,lmesh,"Packed"//trim(name)//"Source",&
-                  dim=[ncomp,nphase])
-             call zero(mfield)
-             call insert(mstate,mfield,"Packed"//trim(name)//"Source")
-             call deallocate(mfield)
-          end if
-
-          if (ladd_absorption) then
-             call allocate(mfield,lmesh,"Packed"//trim(name)//"Absorption",&
-                  dim=[ncomp,nphase])
-             call zero(mfield)
-             call insert(mstate,mfield,"Packed"//trim(name)//"Absorption")
-             call deallocate(mfield)
-          end if
-
-        end subroutine insert_sfield
-
-        subroutine insert_vfield(mstate,name,nmesh,zerod, add_source, add_absorption)
-          type(state_type), intent(inout) :: mstate
-          character(len=*), intent(in) :: name
-          type(mesh_type), optional, target :: nmesh
-          logical, optional, intent(in) :: zerod, add_source, add_absorption   
-
-          type(vector_field), pointer :: nfield
-          type(mesh_type), pointer :: lmesh
-          type(tensor_field)  :: mfield
-          logical :: lzero, ladd_source, ladd_absorption
-
-          nfield=>extract_vector_field(state(1),name)
-          if (present(nmesh)) then
-             lmesh=> nmesh
-          else
-             lmesh=>nfield%mesh
-          end if
-
-          if (present(zerod)) then
-             lzero=zerod
-          else
-             lzero=.false.
-          end if
-
-          if (present(add_source)) then
-             ladd_source=add_source
-          else
-             ladd_source=.false.
-          end if
-
-          if (present(add_absorption)) then
-             ladd_absorption=add_absorption
-          else
-             ladd_absorption=.false.
-          end if
-
-          call allocate(mfield,lmesh,"Packed"//name,dim=[ndim,nphase]) !!,contiguous=.true.)
-          if (lzero) then
-             call zero(mfield)
-          end if
-
-          call insert(mstate,mfield,"Packed"//name)
-          call deallocate(mfield)
-          call allocate(mfield,lmesh,"PackedOld"//name,dim=[ndim,nphase])
-          if (lzero) then
-             call zero(mfield)
-          end if
-          call insert(mstate,mfield,"PackedOld"//name)
-          call deallocate(mfield)
-          call allocate(mfield,lmesh,"PackedIterated"//name,dim=[ndim,nphase])
-          if (lzero) then
-             call zero(mfield)
-          end if
-          call insert(mstate,mfield,"PackedIterated"//name)
-          call deallocate(mfield)
-
-          if (ladd_source) then
-             call allocate(mfield,lmesh,"Packed"//trim(name)//"Source",&
-                  dim=[ndim,nphase])
-             call zero(mfield)
-             call insert(mstate,mfield,"Packed"//trim(name)//"Source")
-             call deallocate(mfield)
-          end if
-
-          if (ladd_absorption) then
-             call allocate(mfield,lmesh,"Packed"//trim(name)//"Absorption",&
-                  dim=[ndim,nphase])
-             call zero(mfield)
-             call insert(mstate,mfield,"Packed"//trim(name)//"Absorption")
-             call deallocate(mfield)
-          end if
-
-
-        end subroutine insert_vfield
-
-        subroutine unpack_sfield(nstate,mstate,name,icomp, iphase,free)
-          type(state_type), intent(inout) :: nstate, mstate
-          character(len=*) :: name
-          integer :: icomp,iphase, stat
-          logical, optional :: free 
-
-          type(scalar_field), pointer :: nfield
-          type(tensor_field), pointer :: mfield
-          logical lfree
-
-
-          if (present(free)) then
-             lfree=free
-          else
-             lfree=.true.
-          end if
-
-          mfield=>extract_tensor_field(mstate,"Packed"//name)
-
-          nfield=>extract_scalar_field(nstate,name,stat)
-          if (stat==0) then
-             if (size(nfield%val(:))>1) then
-                mfield%val(icomp,iphase,1:size(nfield%val))=nfield%val(:)
-             else
-                mfield%val(icomp,iphase,:)=nfield%val(1)
-             end if
-             if (icomp==1 .and. iphase == 1) then
-                mfield%option_path=nfield%option_path
-             end if
-             if(lfree .and. associated(nfield%val)) then
-#ifdef HAVE_MEMORY_STATS
-                call register_deallocation("scalar_field", "real", &
-                     size(nfield%val), nfield%name)
-#endif
-                deallocate(nfield%val)
-             end if
-             nfield%val=>mfield%val(icomp,iphase,:)
-             nfield%val_stride=ncomp*nphase
-             nfield%wrapped=.true.
-          end if          
-
-        end subroutine unpack_sfield
-
-        subroutine unpack_vfield(nstate,mstate,name,iphase,free)
-          type(state_type), intent(inout) :: nstate, mstate
-          character(len=*) :: name
-          integer :: iphase, stat
-          logical, optional :: free 
-
-          
-          type(vector_field), pointer :: nfield
-          type(tensor_field), pointer :: mfield
-          logical lfree
-
-          if (present(free)) then
-             lfree=free
-          else
-             lfree=.true.
-          end if
-
-          nfield=>extract_vector_field(nstate,name,stat)
-          mfield=>extract_tensor_field(mstate,"Packed"//name)
-
-          if (stat==0) then
-             mfield%val(:,iphase,:)=nfield%val(:,1:node_count(mfield))
-             if (icomp==1 .and. iphase == 1) then
-                mfield%option_path=nfield%option_path
-             end if
-             if (lfree) then
-#ifdef HAVE_MEMORY_STATS
-                call register_deallocation("vector_field", "real", &
-                     size(nfield%val), name=nfield%name)
-#endif
-                deallocate(nfield%val)
-             end if
-             nfield%val=>mfield%val(:,iphase,:)
-             nfield%wrapped=.true.
-          end if
-
-
-        end subroutine unpack_vfield
-
-        subroutine unpack_component_sfield(st,mst,name,ic,prefix)
-          type(state_type) :: st, mst
-          character (len=*) :: name
-          integer :: ic
-          integer :: ip
-          character (len=*), optional :: prefix
-
-
-          type(scalar_field), pointer :: nfield,pnfield
-          type(tensor_field), pointer :: mfield
-          logical :: free
-          
-
-          mfield=>extract_tensor_field(mst,"Packed"//name)
-
-          do ip=1,nphase
-             if ( has_scalar_field(st,name//"Phase"//int2str(ip)) ) then
-
-                nfield=>extract_scalar_field(st,name//"Phase"//int2str(ip))
-                if (present(prefix)) then
-                   pnfield=>extract_scalar_field(st,name(len(prefix)+1:)//"Phase"//int2str(ip))
-                   free=check_paired(pnfield,nfield)
-                else
-                   free=.true.
-                end if
-
-                
-               
-                
-                mfield%val(ic,ip,:)=nfield%val(:)
-                if (ic==1 .and. ip==1) then
-                   mfield%option_path=nfield%option_path
-                end if
-                if (free) then
-#ifdef HAVE_MEMORY_STATS
-                   call register_deallocation("scalar_field", "real", &
-                        size(nfield%val), name=nfield%name)
-#endif
-                   deallocate(nfield%val)
-                end if
-                nfield%val=>mfield%val(ic,ip,:)
-                nfield%val_stride=ncomp*nphase
-                nfield%wrapped=.true.
-             end if
-          end do
-                
-        end subroutine unpack_component_sfield
-
-        subroutine allocate_multiphase_scalar_bcs(s,ms,name)
-
-          type(state_type), intent(inout) :: s
-          type(state_type), dimension(:,:), intent(inout) :: ms
-          character( len=*) :: name
-
-          type(tensor_field), pointer :: mfield
-          type(scalar_field), pointer :: sfield
-          type(tensor_boundary_condition) :: tbc
-          type(scalar_boundary_condition), pointer ::  bc
-          type(tensor_boundary_condition), dimension(:), pointer :: temp
-
-          integer :: iphase,icomp,stat, n, nbc, j
-
-          nbc=0
-          mfield=>extract_tensor_field(s,"Packed"//name)
-
-          allocate(mfield%bc)
-          
-          do iphase=1,mfield%dim(2)
-             do icomp=1,mfield%dim(1)
-                sfield=>extract_scalar_field( ms(icomp,iphase),trim(name),stat)
-                if (stat/= 0 ) cycle
-
-               
-                do n=1,get_boundary_condition_count(sfield)
-
-                  bc=>sfield%bc%boundary_condition(n)
-
-                  nullify(tbc%applies)
-                  allocate(tbc%applies(mfield%dim(1),mfield%dim(2)))
-                  tbc%applies= .false.
-                  tbc%applies(icomp,iphase)=.true.
-
-                  
-                  tbc%name=bc%name
-                  tbc%type=bc%type
-                  tbc%surface_element_list=>bc%surface_element_list
-                  tbc%surface_node_list=>bc%surface_node_list
-                  tbc%surface_mesh=>bc%surface_mesh
-                  call incref(tbc%surface_mesh)
-                  tbc%scalar_surface_fields=>bc%surface_fields
-                  do j=1,size(tbc%scalar_surface_fields)
-                     call incref(tbc%scalar_surface_fields(j))
-                  end do
-                  
-                  nbc=nbc+1
-                  if (nbc>1) then
-                     temp=>mfield%bc%boundary_condition
-                     allocate(mfield%bc%boundary_condition(nbc))
-                     mfield%bc%boundary_condition(1:nbc-1)=temp
-                     deallocate(temp)
-                     mfield%bc%boundary_condition(nbc)=tbc
-                  else
-                     allocate(mfield%bc%boundary_condition(nbc))
-                     mfield%bc%boundary_condition(nbc)=tbc
-                  end if
-               end do
-            end do
-         end do
-               
-
-       end subroutine allocate_multiphase_scalar_bcs
-
-
-        subroutine allocate_multiphase_vector_bcs(s,ms,name)
-
-          type(state_type), intent(inout) :: s
-          type(state_type), dimension(:,:), intent(inout) :: ms
-          character( len=*) :: name
-
-          type(tensor_field), pointer :: mfield
-          type(vector_field), pointer :: vfield
-          type(tensor_boundary_condition) :: tbc
-          type(vector_boundary_condition), pointer ::  bc
-          type(tensor_boundary_condition), dimension(:), pointer :: temp
-
-          integer :: iphase, stat, n, nbc, j
-
-          nbc=0
-          mfield=>extract_tensor_field(s,"Packed"//name)
-
-          allocate(mfield%bc)
-          
-          do iphase=1,mfield%dim(2)
-             vfield=>extract_vector_field( ms(1,iphase),trim(name),stat)
-             if (stat/= 0 ) cycle
-               
-             do n=1,get_boundary_condition_count(vfield)
-
-                bc=>vfield%bc%boundary_condition(n)
-                  
-                tbc%name=bc%name
-                tbc%type=bc%type
-                tbc%surface_element_list=>bc%surface_element_list
-                tbc%surface_node_list=>bc%surface_node_list
-                tbc%surface_mesh=>bc%surface_mesh
-                call incref(tbc%surface_mesh)
-                tbc%vector_surface_fields=>bc%surface_fields
-                do j=1,size(tbc%vector_surface_fields)
-                   call incref(tbc%vector_surface_fields(j))
-                end do
-                  
-
-                nullify(tbc%applies)
-                allocate(tbc%applies(mfield%dim(1),mfield%dim(2)))
-                tbc%applies=.false.
-                tbc%applies(:,iphase)=bc%applies(1:mfield%dim(1))
-
-                nbc=nbc+1
-                if (nbc>1) then
-                   temp=>mfield%bc%boundary_condition
-                   allocate(mfield%bc%boundary_condition(nbc))
-                   mfield%bc%boundary_condition(1:nbc-1)=temp
-                   deallocate(temp)
-                   mfield%bc%boundary_condition(nbc)=tbc
-                else
-                   allocate(mfield%bc%boundary_condition(nbc))
-                   mfield%bc%boundary_condition(nbc)=tbc
-                end if
-             end do
-          end do
-
-       end subroutine allocate_multiphase_vector_bcs
-
-
-subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
-
-          type(state_type), dimension(:), intent(inout) :: s
-          type(state_type), dimension(:,:), intent(inout) :: ms
-          character( len=*) :: name
-
-          type(tensor_field), pointer :: mfield
-          type(scalar_field), pointer :: sfield
-          type(tensor_boundary_condition) :: tbc
-          type(scalar_boundary_condition), pointer ::  bc
-          type(tensor_boundary_condition), dimension(:), pointer :: temp
-
-          integer :: iphase,icomp,stat, n, nbc, j
-
-
-          do icomp=1,size(s)
-             nbc=0
-             mfield=>extract_tensor_field(s(icomp),'Packed'//name)
-             allocate(mfield%bc)
-          
-             do iphase=1,mfield%dim(2)
-                sfield=>extract_scalar_field( ms(icomp,iphase),trim(name),stat)
-
-                if (stat/= 0 ) cycle
-
-                allocate(tbc%applies(1,mfield%dim(2)))
-                tbc%applies= .false.
-                tbc%applies(1,iphase)=.true.
-                
-                do n=1,get_boundary_condition_count(sfield)
-                   
-                   bc=>sfield%bc%boundary_condition(n)
-                   
-                  tbc%name=bc%name
-                  tbc%type=bc%type
-                  tbc%surface_element_list=>bc%surface_element_list
-                  tbc%surface_node_list=>bc%surface_node_list
-                  tbc%surface_mesh=>bc%surface_mesh
-                  call incref(tbc%surface_mesh)
-                  tbc%scalar_surface_fields=>bc%surface_fields
-                  do j=1,size(tbc%scalar_surface_fields)
-                     call incref(tbc%scalar_surface_fields(j))
-                  end do
-                  
-                  nbc=nbc+1
-                  if (nbc>1) then
-                     temp=>mfield%bc%boundary_condition
-                     allocate(mfield%bc%boundary_condition(nbc))
-                     mfield%bc%boundary_condition(1:nbc-1)=temp
-                     deallocate(temp)
-                     mfield%bc%boundary_condition(nbc)=tbc
-                  else
-                     allocate(mfield%bc%boundary_condition(nbc))
-                     mfield%bc%boundary_condition(nbc)=tbc
-                  end if
-               end do
-            end do
-         end do
-               
-
-       end subroutine allocate_multicomponent_scalar_bcs
-
-       function check_paired(sfield1,sfield2) result(unpaired)
-         type(scalar_field) :: sfield1,sfield2
-         logical unpaired
-
-         unpaired = .not. associated(sfield2%val,sfield1%val)
-
-       end function check_paired
-
-       function check_vpaired(vfield1,vfield2) result(unpaired)
-         type(vector_field) :: vfield1,vfield2
-         logical unpaired
-
-         unpaired = .not. associated(vfield2%val,vfield1%val)
-
-       end function check_vpaired
-
-
-      end subroutine pack_multistate
-
-      function wrap_as_tensor(field) result(tfield)
-
-        type(scalar_field), intent(inout) :: field  
         type(tensor_field), pointer :: tfield
+        type(vector_field), pointer :: vecfield
+        type(tensor_field) :: vfield
 
-        allocate(tfield)
-        call allocate(tfield,field%mesh,name=field%name,dim=[1,1])
 
-        tfield%val(1,1,:)=field%val
-        deallocate(tfield%updated)
-        tfield%updated=field%updated
-        deallocate(field%val)
-        deallocate(field%updated)
-        field%val=>tfield%val(1,1,:)
-        field%updated=>tfield%updated
-        tfield%option_path=field%option_path
+        character (len=FIELD_NAME_LEN), dimension(4) ::names
+        character (len=FIELD_NAME_LEN), dimension(4) ::phase_names
+        character (len=FIELD_NAME_LEN), dimension(1) ::phase_vector_names
+        integer :: count
 
-      end function wrap_as_tensor
+        names(1)="PackedComponentMassFraction"
+        names(2)="PackedComponentDensity"
+        names(3)="PackedOldComponentMassFraction"
+        names(4)="PackedOldComponentDensity"
 
-      function as_vector(tfield,dim,slice) result(vfield)
+        phase_names(1)="PackedPhaseVolumeFraction"
+        phase_names(2)="PackedOldPhaseVolumeFraction"
+        phase_names(3)="PackedNonlinearVelocity"
+        phase_names(4)="PackedOldNonlinearVelocity"
 
-        type(tensor_field), intent(inout) :: tfield  
-        integer, intent(in) :: dim
-        integer, intent(in), optional :: slice
-        
-        type(vector_field)  :: vfield 
-        integer :: lslice
+        phase_vector_names(1)="PressureCoordinate"
 
-        if (present(slice)) then
-           lslice=slice
+        do count=1,size(names)
+
+           tfield=>extract_tensor_field(mstate,names(count))
+
+           do icomp=1,ncomp
+              call allocate(vfield,tfield%mesh,names(count),field_type=FIELD_TYPE_DEFERRED,dim=[1,nphase])
+              vfield%option_path=tfield%option_path
+              deallocate(vfield%val)
+              vfield%val=>tfield%val(icomp:icomp,:,:)
+              vfield%wrapped=.true.
+              call insert(mcstate(icomp),vfield,vfield%name)
+              call deallocate(vfield)
+           END do
+
+        end do
+
+        do count=1,size(phase_names)
+           tfield=>extract_tensor_field(mstate,phase_names(count))
+           do icomp=1,ncomp
+              call insert(mcstate(icomp),tfield,tfield%name)
+           end do
+        end do
+
+        do count=1,size(phase_vector_names)
+           vecfield=>extract_vector_field(mstate,phase_vector_names(count))
+           do icomp=1,ncomp
+              call insert(mcstate(icomp),vecfield,vecfield%name)
+           end do
+
+        end do
+
+      end subroutine unpack_multicomponent
+
+
+      subroutine unpack_multiphase(mstate,mpstate)
+        type(state_type) :: mstate
+        type(state_type), dimension(:) :: mpstate
+        integer :: index, iphase
+
+        type(tensor_field), pointer :: tfield
+        type(tensor_field) :: mp_tfield
+
+
+        do index=1,size(mstate%tensor_fields)
+           tfield=>extract_tensor_field(mstate,index)
+           if (tfield%name(:6)=="Packed") then
+              do iphase=1,nphase
+                 call allocate(mp_tfield,tfield%mesh,tfield%name(7:),field_type=FiELD_TYPE_DEFERRED,dim=[tfield%dim(1),1])
+
+                 mp_tfield%val=>tfield%val(:,iphase:iphase,:)
+                 mp_tfield%updated=>tfield%updated
+                 mp_tfield%wrapped=.true.
+                 call insert(mpstate(iphase),mp_tfield,mp_tfield%name)
+                 call deallocate(mp_tfield)
+              end do
+           end if
+        end do
+
+      end subroutine unpack_multiphase
+
+
+      subroutine add_new_memory(mstate,sfield,name)
+        type(state_type) :: mstate
+        type(scalar_field) :: sfield
+        character (len=*) :: name
+        type(scalar_field) :: sfield2
+        integer :: i,j
+
+        call allocate(sfield2,sfield%mesh,name)
+        sfield2%option_path=sfield%option_path
+        sfield2%bc=sfield%bc
+        if (associated(sfield2%bc%boundary_condition)) then
+           do i=1,size(sfield2%bc%boundary_condition)
+              if (associated(sfield2%bc%boundary_condition(i)%surface_fields)) then
+                 do j=1, size(sfield2%bc%boundary_condition(i)%surface_fields)
+                    call incref(sfield2%bc%boundary_condition(i)%surface_fields(j))
+                 end do
+              end if
+              call incref(sfield2%bc%boundary_condition(i)%surface_mesh)
+           end do
+        end if
+        call insert(mstate,sfield2,name)
+        call deallocate(sfield2)
+
+      end subroutine add_new_memory
+
+
+      subroutine insert_sfield(mstate,name,ncomp,nphase,nmesh,&
+           add_source, add_absorption)
+        type(state_type), intent(inout) :: mstate
+        character(len=*), intent(in) :: name
+        type(mesh_type),optional, target :: nmesh
+        integer, intent(in) :: ncomp,nphase
+        logical, optional, intent(in) :: add_source, add_absorption
+
+        type(scalar_field), pointer :: nfield
+        type(mesh_type), pointer :: lmesh
+        type(tensor_field) :: mfield
+        integer :: stat
+        logical :: ladd_source, ladd_absorption
+
+        if (present(add_source)) then
+           ladd_source=add_source
         else
-           lslice=1
+           ladd_source=.false.
         end if
 
-        vfield%name=tfield%name
-        vfield%mesh=tfield%mesh
-        vfield%option_path=tfield%option_path
-        vfield%dim=tfield%dim(dim)
-        select case(dim)
-        case(1)
-           vfield%val=>tfield%val(:,lslice,:)
-        case(2)
-           vfield%val=>tfield%val(lslice,:,:)
-        end select
-        vfield%wrapped=.true.
+        if (present(add_absorption)) then
+           ladd_absorption=add_absorption
+        else
+           ladd_absorption=.false.
+        end if
 
-      end function as_vector
+        nfield=>extract_scalar_field(state(1),name,stat)
+        if (stat/=0) then
+           nfield=>extract_scalar_field(state(1),"Pressure",stat)
+        end if
 
-      function as_packed_vector(tfield) result(vfield)
+        if (present(nmesh)) then
+           lmesh=> nmesh
+        else
+           lmesh=>nfield%mesh
+        end if
 
-        type(tensor_field), intent(inout) :: tfield  
-        
-        type(vector_field) :: vfield 
+        call allocate(mfield,lmesh,"Packed"//name,dim=[ncomp,nphase])
+        call insert(mstate,mfield,"Packed"//name)
+        call deallocate(mfield)
+        call allocate(mfield,lmesh,"PackedOld"//name,dim=[ncomp,nphase])
+        call insert(mstate,mfield,"PackedOld"//name)
+        call deallocate(mfield)
+        call allocate(mfield,lmesh,"PackedIterated"//name,dim=[ncomp,nphase])
+        call insert(mstate,mfield,"PackedIterated"//name)
+        call deallocate(mfield)
+
+        if (ladd_source) then
+           call allocate(mfield,lmesh,"Packed"//trim(name)//"Source",&
+                dim=[ncomp,nphase])
+           call zero(mfield)
+           call insert(mstate,mfield,"Packed"//trim(name)//"Source")
+           call deallocate(mfield)
+        end if
+
+        if (ladd_absorption) then
+           call allocate(mfield,lmesh,"Packed"//trim(name)//"Absorption",&
+                dim=[ncomp,nphase])
+           call zero(mfield)
+           call insert(mstate,mfield,"Packed"//trim(name)//"Absorption")
+           call deallocate(mfield)
+        end if
+
+      end subroutine insert_sfield
+
+      subroutine insert_vfield(mstate,name,nmesh,zerod, add_source, add_absorption)
+        type(state_type), intent(inout) :: mstate
+        character(len=*), intent(in) :: name
+        type(mesh_type), optional, target :: nmesh
+        logical, optional, intent(in) :: zerod, add_source, add_absorption   
+
+        type(vector_field), pointer :: nfield
+        type(mesh_type), pointer :: lmesh
+        type(tensor_field)  :: mfield
+        logical :: lzero, ladd_source, ladd_absorption
+
+        nfield=>extract_vector_field(state(1),name)
+        if (present(nmesh)) then
+           lmesh=> nmesh
+        else
+           lmesh=>nfield%mesh
+        end if
+
+        if (present(zerod)) then
+           lzero=zerod
+        else
+           lzero=.false.
+        end if
+
+        if (present(add_source)) then
+           ladd_source=add_source
+        else
+           ladd_source=.false.
+        end if
+
+        if (present(add_absorption)) then
+           ladd_absorption=add_absorption
+        else
+           ladd_absorption=.false.
+        end if
+
+        call allocate(mfield,lmesh,"Packed"//name,dim=[ndim,nphase]) !!,contiguous=.true.)
+        if (lzero) then
+           call zero(mfield)
+        end if
+
+        call insert(mstate,mfield,"Packed"//name)
+        call deallocate(mfield)
+        call allocate(mfield,lmesh,"PackedOld"//name,dim=[ndim,nphase])
+        if (lzero) then
+           call zero(mfield)
+        end if
+        call insert(mstate,mfield,"PackedOld"//name)
+        call deallocate(mfield)
+        call allocate(mfield,lmesh,"PackedIterated"//name,dim=[ndim,nphase])
+        if (lzero) then
+           call zero(mfield)
+        end if
+        call insert(mstate,mfield,"PackedIterated"//name)
+        call deallocate(mfield)
+
+        if (ladd_source) then
+           call allocate(mfield,lmesh,"Packed"//trim(name)//"Source",&
+                dim=[ndim,nphase])
+           call zero(mfield)
+           call insert(mstate,mfield,"Packed"//trim(name)//"Source")
+           call deallocate(mfield)
+        end if
+
+        if (ladd_absorption) then
+           call allocate(mfield,lmesh,"Packed"//trim(name)//"Absorption",&
+                dim=[ndim,nphase])
+           call zero(mfield)
+           call insert(mstate,mfield,"Packed"//trim(name)//"Absorption")
+           call deallocate(mfield)
+        end if
 
 
-        vfield%name=tfield%name
-        vfield%mesh=tfield%mesh
-        vfield%option_path=tfield%option_path
-        vfield%dim=product(tfield%dim)
+      end subroutine insert_vfield
+
+      subroutine unpack_sfield(nstate,mstate,name,icomp, iphase,free)
+        type(state_type), intent(inout) :: nstate, mstate
+        character(len=*) :: name
+        integer :: icomp,iphase, stat
+        logical, optional :: free 
+
+        type(scalar_field), pointer :: nfield
+        type(tensor_field), pointer :: mfield
+        logical lfree
+
+
+        if (present(free)) then
+           lfree=free
+        else
+           lfree=.true.
+        end if
+
+        mfield=>extract_tensor_field(mstate,"Packed"//name)
+
+        nfield=>extract_scalar_field(nstate,name,stat)
+        if (stat==0) then
+           if (size(nfield%val(:))>1) then
+              mfield%val(icomp,iphase,1:size(nfield%val))=nfield%val(:)
+           else
+              mfield%val(icomp,iphase,:)=nfield%val(1)
+           end if
+           if (icomp==1 .and. iphase == 1) then
+              mfield%option_path=nfield%option_path
+           end if
+           if(lfree .and. associated(nfield%val)) then
+#ifdef HAVE_MEMORY_STATS
+              call register_deallocation("scalar_field", "real", &
+                   size(nfield%val), nfield%name)
+#endif
+              deallocate(nfield%val)
+           end if
+           nfield%val=>mfield%val(icomp,iphase,:)
+           nfield%val_stride=ncomp*nphase
+           nfield%wrapped=.true.
+        end if
+
+      end subroutine unpack_sfield
+
+      subroutine unpack_vfield(nstate,mstate,name,iphase,free)
+        type(state_type), intent(inout) :: nstate, mstate
+        character(len=*) :: name
+        integer :: iphase, stat
+        logical, optional :: free 
+
+
+        type(vector_field), pointer :: nfield
+        type(tensor_field), pointer :: mfield
+        logical lfree
+
+        if (present(free)) then
+           lfree=free
+        else
+           lfree=.true.
+        end if
+
+        nfield=>extract_vector_field(nstate,name,stat)
+        mfield=>extract_tensor_field(mstate,"Packed"//name)
+
+        if (stat==0) then
+           mfield%val(:,iphase,:)=nfield%val(:,1:node_count(mfield))
+           if (icomp==1 .and. iphase == 1) then
+              mfield%option_path=nfield%option_path
+           end if
+           if (lfree) then
+#ifdef HAVE_MEMORY_STATS
+              call register_deallocation("vector_field", "real", &
+                   size(nfield%val), name=nfield%name)
+#endif
+              deallocate(nfield%val)
+           end if
+           nfield%val=>mfield%val(:,iphase,:)
+           nfield%wrapped=.true.
+        end if
+
+
+      end subroutine unpack_vfield
+
+      subroutine unpack_component_sfield(st,mst,name,ic,prefix)
+        type(state_type) :: st, mst
+        character (len=*) :: name
+        integer :: ic
+        integer :: ip
+        character (len=*), optional :: prefix
+
+
+        type(scalar_field), pointer :: nfield,pnfield
+        type(tensor_field), pointer :: mfield
+        logical :: free
+
+
+        mfield=>extract_tensor_field(mst,"Packed"//name)
+
+        do ip=1,nphase
+           if ( has_scalar_field(st,name//"Phase"//int2str(ip)) ) then
+
+              nfield=>extract_scalar_field(st,name//"Phase"//int2str(ip))
+              if (present(prefix)) then
+                 pnfield=>extract_scalar_field(st,name(len(prefix)+1:)//"Phase"//int2str(ip))
+                 free=check_paired(pnfield,nfield)
+              else
+                 free=.true.
+              end if
+
+
+
+
+              mfield%val(ic,ip,:)=nfield%val(:)
+              if (ic==1 .and. ip==1) then
+                 mfield%option_path=nfield%option_path
+              end if
+              if (free) then
+#ifdef HAVE_MEMORY_STATS
+                 call register_deallocation("scalar_field", "real", &
+                      size(nfield%val), name=nfield%name)
+#endif
+                 deallocate(nfield%val)
+              end if
+              nfield%val=>mfield%val(ic,ip,:)
+              nfield%val_stride=ncomp*nphase
+              nfield%wrapped=.true.
+           end if
+        end do
+
+      end subroutine unpack_component_sfield
+
+      subroutine allocate_multiphase_scalar_bcs(s,ms,name)
+
+        type(state_type), intent(inout) :: s
+        type(state_type), dimension(:,:), intent(inout) :: ms
+        character( len=*) :: name
+
+        type(tensor_field), pointer :: mfield
+        type(scalar_field), pointer :: sfield
+        type(tensor_boundary_condition) :: tbc
+        type(scalar_boundary_condition), pointer ::  bc
+        type(tensor_boundary_condition), dimension(:), pointer :: temp
+
+        integer :: iphase,icomp,stat, n, nbc, j
+
+        nbc=0
+        mfield=>extract_tensor_field(s,"Packed"//name)
+
+        allocate(mfield%bc)
+
+        do iphase=1,mfield%dim(2)
+           do icomp=1,mfield%dim(1)
+              sfield=>extract_scalar_field( ms(icomp,iphase),trim(name),stat)
+              if (stat/= 0 ) cycle
+
+
+              do n=1,get_boundary_condition_count(sfield)
+
+                 bc=>sfield%bc%boundary_condition(n)
+
+                 nullify(tbc%applies)
+                 allocate(tbc%applies(mfield%dim(1),mfield%dim(2)))
+                 tbc%applies= .false.
+                 tbc%applies(icomp,iphase)=.true.
+
+
+                 tbc%name=bc%name
+                 tbc%type=bc%type
+                 tbc%surface_element_list=>bc%surface_element_list
+                 tbc%surface_node_list=>bc%surface_node_list
+                 tbc%surface_mesh=>bc%surface_mesh
+                 call incref(tbc%surface_mesh)
+                 tbc%scalar_surface_fields=>bc%surface_fields
+                 do j=1,size(tbc%scalar_surface_fields)
+                    call incref(tbc%scalar_surface_fields(j))
+                 end do
+
+                 nbc=nbc+1
+                 if (nbc>1) then
+                    temp=>mfield%bc%boundary_condition
+                    allocate(mfield%bc%boundary_condition(nbc))
+                    mfield%bc%boundary_condition(1:nbc-1)=temp
+                    deallocate(temp)
+                    mfield%bc%boundary_condition(nbc)=tbc
+                 else
+                    allocate(mfield%bc%boundary_condition(nbc))
+                    mfield%bc%boundary_condition(nbc)=tbc
+                 end if
+              end do
+           end do
+        end do
+
+
+      end subroutine allocate_multiphase_scalar_bcs
+
+
+      subroutine allocate_multiphase_vector_bcs(s,ms,name)
+
+        type(state_type), intent(inout) :: s
+        type(state_type), dimension(:,:), intent(inout) :: ms
+        character( len=*) :: name
+
+        type(tensor_field), pointer :: mfield
+        type(vector_field), pointer :: vfield
+        type(tensor_boundary_condition) :: tbc
+        type(vector_boundary_condition), pointer ::  bc
+        type(tensor_boundary_condition), dimension(:), pointer :: temp
+
+        integer :: iphase, stat, n, nbc, j
+
+        nbc=0
+        mfield=>extract_tensor_field(s,"Packed"//name)
+
+        allocate(mfield%bc)
+
+        do iphase=1,mfield%dim(2)
+           vfield=>extract_vector_field( ms(1,iphase),trim(name),stat)
+           if (stat/= 0 ) cycle
+
+           do n=1,get_boundary_condition_count(vfield)
+
+              bc=>vfield%bc%boundary_condition(n)
+
+              tbc%name=bc%name
+              tbc%type=bc%type
+              tbc%surface_element_list=>bc%surface_element_list
+              tbc%surface_node_list=>bc%surface_node_list
+              tbc%surface_mesh=>bc%surface_mesh
+              call incref(tbc%surface_mesh)
+              tbc%vector_surface_fields=>bc%surface_fields
+              do j=1,size(tbc%vector_surface_fields)
+                 call incref(tbc%vector_surface_fields(j))
+              end do
+
+
+              nullify(tbc%applies)
+              allocate(tbc%applies(mfield%dim(1),mfield%dim(2)))
+              tbc%applies=.false.
+              tbc%applies(:,iphase)=bc%applies(1:mfield%dim(1))
+
+              nbc=nbc+1
+              if (nbc>1) then
+                 temp=>mfield%bc%boundary_condition
+                 allocate(mfield%bc%boundary_condition(nbc))
+                 mfield%bc%boundary_condition(1:nbc-1)=temp
+                 deallocate(temp)
+                 mfield%bc%boundary_condition(nbc)=tbc
+              else
+                 allocate(mfield%bc%boundary_condition(nbc))
+                 mfield%bc%boundary_condition(nbc)=tbc
+              end if
+           end do
+        end do
+
+      end subroutine allocate_multiphase_vector_bcs
+
+
+      subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
+
+        type(state_type), dimension(:), intent(inout) :: s
+        type(state_type), dimension(:,:), intent(inout) :: ms
+        character( len=*) :: name
+
+        type(tensor_field), pointer :: mfield
+        type(scalar_field), pointer :: sfield
+        type(tensor_boundary_condition) :: tbc
+        type(scalar_boundary_condition), pointer ::  bc
+        type(tensor_boundary_condition), dimension(:), pointer :: temp
+
+        integer :: iphase,icomp,stat, n, nbc, j
+
+
+        do icomp=1,size(s)
+           nbc=0
+           mfield=>extract_tensor_field(s(icomp),'Packed'//name)
+           allocate(mfield%bc)
+
+           do iphase=1,mfield%dim(2)
+              sfield=>extract_scalar_field( ms(icomp,iphase),trim(name),stat)
+
+              if (stat/= 0 ) cycle
+
+              allocate(tbc%applies(1,mfield%dim(2)))
+              tbc%applies= .false.
+              tbc%applies(1,iphase)=.true.
+
+              do n=1,get_boundary_condition_count(sfield)
+
+                 bc=>sfield%bc%boundary_condition(n)
+
+                 tbc%name=bc%name
+                 tbc%type=bc%type
+                 tbc%surface_element_list=>bc%surface_element_list
+                 tbc%surface_node_list=>bc%surface_node_list
+                 tbc%surface_mesh=>bc%surface_mesh
+                 call incref(tbc%surface_mesh)
+                 tbc%scalar_surface_fields=>bc%surface_fields
+                 do j=1,size(tbc%scalar_surface_fields)
+                    call incref(tbc%scalar_surface_fields(j))
+                 end do
+
+                 nbc=nbc+1
+                 if (nbc>1) then
+                    temp=>mfield%bc%boundary_condition
+                    allocate(mfield%bc%boundary_condition(nbc))
+                    mfield%bc%boundary_condition(1:nbc-1)=temp
+                    deallocate(temp)
+                    mfield%bc%boundary_condition(nbc)=tbc
+                 else
+                    allocate(mfield%bc%boundary_condition(nbc))
+                    mfield%bc%boundary_condition(nbc)=tbc
+                 end if
+              end do
+           end do
+        end do
+
+
+      end subroutine allocate_multicomponent_scalar_bcs
+
+      function check_paired(sfield1,sfield2) result(unpaired)
+        type(scalar_field) :: sfield1,sfield2
+        logical unpaired
+
+        unpaired = .not. associated(sfield2%val,sfield1%val)
+
+      end function check_paired
+
+      function check_vpaired(vfield1,vfield2) result(unpaired)
+        type(vector_field) :: vfield1,vfield2
+        logical unpaired
+
+        unpaired = .not. associated(vfield2%val,vfield1%val)
+
+      end function check_vpaired
+
+
+    end subroutine pack_multistate
+
+    function wrap_as_tensor(field) result(tfield)
+
+      type(scalar_field), intent(inout) :: field  
+      type(tensor_field), pointer :: tfield
+
+      allocate(tfield)
+      call allocate(tfield,field%mesh,name=field%name,dim=[1,1])
+
+      tfield%val(1,1,:)=field%val
+      deallocate(tfield%updated)
+      tfield%updated=field%updated
+      deallocate(field%val)
+      deallocate(field%updated)
+      field%val=>tfield%val(1,1,:)
+      field%updated=>tfield%updated
+      tfield%option_path=field%option_path
+
+    end function wrap_as_tensor
+
+    function as_vector(tfield,dim,slice) result(vfield)
+
+      type(tensor_field), intent(inout) :: tfield  
+      integer, intent(in) :: dim
+      integer, intent(in), optional :: slice
+
+      type(vector_field)  :: vfield 
+      integer :: lslice
+
+      if (present(slice)) then
+         lslice=slice
+      else
+         lslice=1
+      end if
+
+      vfield%name=tfield%name
+      vfield%mesh=tfield%mesh
+      vfield%option_path=tfield%option_path
+      vfield%dim=tfield%dim(dim)
+      select case(dim)
+      case(1)
+         vfield%val=>tfield%val(:,lslice,:)
+      case(2)
+         vfield%val=>tfield%val(lslice,:,:)
+      end select
+      vfield%wrapped=.true.
+
+    end function as_vector
+
+    function as_packed_vector(tfield) result(vfield)
+
+      type(tensor_field), intent(inout) :: tfield  
+
+      type(vector_field) :: vfield 
+
+
+      vfield%name=tfield%name
+      vfield%mesh=tfield%mesh
+      vfield%option_path=tfield%option_path
+      vfield%dim=product(tfield%dim)
 
 #ifdef USING_GFORTRAN
-        vfield%val(1:vfield%dim,1:node_count(vfield)) => tfield%val !%contiguous_val
+      vfield%val(1:vfield%dim,1:node_count(vfield)) => tfield%val !%contiguous_val
 #else
-        allocate(vfield%val(1:vfield%dim,1:node_count(vfield)))
-        !vfield%val=reshape(tfield%contiguous_val,[vfield%dim,&!
-        vfield%val=reshape(tfield%val,[vfield%dim,&
-             node_count(vfield)])
+      allocate(vfield%val(1:vfield%dim,1:node_count(vfield)))
+      !vfield%val=reshape(tfield%contiguous_val,[vfield%dim,&!
+      vfield%val=reshape(tfield%val,[vfield%dim,&
+           node_count(vfield)])
 #endif
 
-      end function as_packed_vector
+    end function as_packed_vector
 
-      subroutine finalise_multistate(packed_state,multiphase_state,&
-           multicomponent_state)
+    subroutine finalise_multistate(packed_state,multiphase_state,&
+         multicomponent_state)
 
-        type(state_type) :: packed_state
-        type(state_type), dimension(:), pointer :: multiphase_state, multicomponent_state
+      type(state_type) :: packed_state
+      type(state_type), dimension(:), pointer :: multiphase_state, multicomponent_state
 
 
-        call deallocate(multiphase_state)
-        deallocate(multiphase_state)
-        call deallocate(multicomponent_state)
-        deallocate(multicomponent_state)
-        call deallocate(packed_state)
+      call deallocate(multiphase_state)
+      deallocate(multiphase_state)
+      call deallocate(multicomponent_state)
+      deallocate(multicomponent_state)
+      call deallocate(packed_state)
 
-      end subroutine finalise_multistate
+    end subroutine finalise_multistate
 
 
 
@@ -3055,454 +3055,454 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
 
 
     subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
-        Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order)
-        !This subroutine either store variables before the nonlinear timeloop starts, or checks
-        !how the nonlinear iterations are going and depending on that increase the timestep
-        !or decreases the timestep and repeats that timestep
-        Implicit none
-        type(state_type), intent(inout) :: packed_state!, backup_state
-        real, dimension(:,:,:), allocatable, intent(inout) :: reference_field
-        logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
-        logical, intent(in) :: nonLinearAdaptTs
-        integer, intent(in) :: its, order
-        !Local variables
-        real :: dt
-        real, parameter :: check_sat_threshold = 1d-6
-        real, dimension(:), pointer :: pressure
-        real, dimension(:,:), pointer :: phasevolumefraction
-        real, dimension(:,:,:), pointer :: velocity
+         Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order)
+      !This subroutine either store variables before the nonlinear timeloop starts, or checks
+      !how the nonlinear iterations are going and depending on that increase the timestep
+      !or decreases the timestep and repeats that timestep
+      Implicit none
+      type(state_type), intent(inout) :: packed_state!, backup_state
+      real, dimension(:,:,:), allocatable, intent(inout) :: reference_field
+      logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
+      logical, intent(in) :: nonLinearAdaptTs
+      integer, intent(in) :: its, order
+      !Local variables
+      real :: dt
+      real, parameter :: check_sat_threshold = 1d-6
+      real, dimension(:), pointer :: pressure
+      real, dimension(:,:), pointer :: phasevolumefraction
+      real, dimension(:,:,:), pointer :: velocity
 
-!        real, dimension(:,:,:), pointer :: tVar, tVar_it
-!        real, dimension(:,:), pointer :: vVar, vVar_it
-!        real, dimension(:,:), pointer :: sVar, sVar_it
+      !        real, dimension(:,:,:), pointer :: tVar, tVar_it
+      !        real, dimension(:,:), pointer :: vVar, vVar_it
+      !        real, dimension(:,:), pointer :: sVar, sVar_it
 
-        !Variables for automatic non-linear iterations
-        real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts, increase_ts_switch, decrease_ts_switch
-        !Variables for adaptive time stepping based on non-linear iterations
-        real :: increaseFactor, decreaseFactor, ts_ref_val, s_gc, s_or, acctim
-        integer :: variable_selection, i, NonLinearIteration
+      !Variables for automatic non-linear iterations
+      real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts, increase_ts_switch, decrease_ts_switch
+      !Variables for adaptive time stepping based on non-linear iterations
+      real :: increaseFactor, decreaseFactor, ts_ref_val, s_gc, s_or, acctim
+      integer :: variable_selection, i, NonLinearIteration
 
-        !First of all, check if the user wants to do something
-        call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic', tolerance_between_non_linear, default = -1. )
-        if (tolerance_between_non_linear<0) return
-        call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
-          !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
-         !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation)
-        call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear', &
-        variable_selection, default = 3)
-        call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_factor', &
-        increaseFactor, default = 1.2 )
-        call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_factor', &
-        decreaseFactor, default = 2. )
-        call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/max_timestep', &
-        max_ts, default = huge(min_ts) )
-        call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/min_timestep', &
-        min_ts, default = -1. )
-        call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch', &
-        increase_ts_switch, default = 1d-3 )
-        call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch', &
-        decrease_ts_switch, default = 1d-1 )
-        !Get irresidual water saturation and irreducible oil to repeat a timestep if the saturation goes out of these values
-        call get_option("/material_phase[0]/multiphase_properties/immobile_fraction", &
-        s_gc, default=0.0)
-        call get_option("/material_phase[1]/multiphase_properties/immobile_fraction", &
-        s_or, default=0.0)
-        !Get time step
-        call get_option( '/timestepping/timestep', initial_dt )
-        dt = initial_dt
-        !By default the minimum time-steps is ten orders smaller than the initial timestep
-        if(min_ts<0) min_ts = initial_dt * 1d-10
+      !First of all, check if the user wants to do something
+      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic', tolerance_between_non_linear, default = -1. )
+      if (tolerance_between_non_linear<0) return
+      call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
+      !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
+      !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation)
+      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear', &
+           variable_selection, default = 3)
+      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_factor', &
+           increaseFactor, default = 1.2 )
+      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_factor', &
+           decreaseFactor, default = 2. )
+      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/max_timestep', &
+           max_ts, default = huge(min_ts) )
+      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/min_timestep', &
+           min_ts, default = -1. )
+      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch', &
+           increase_ts_switch, default = 1d-3 )
+      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch', &
+           decrease_ts_switch, default = 1d-1 )
+      !Get irresidual water saturation and irreducible oil to repeat a timestep if the saturation goes out of these values
+      call get_option("/material_phase[0]/multiphase_properties/immobile_fraction", &
+           s_gc, default=0.0)
+      call get_option("/material_phase[1]/multiphase_properties/immobile_fraction", &
+           s_or, default=0.0)
+      !Get time step
+      call get_option( '/timestepping/timestep', initial_dt )
+      dt = initial_dt
+      !By default the minimum time-steps is ten orders smaller than the initial timestep
+      if(min_ts<0) min_ts = initial_dt * 1d-10
 
 
-        select case (order)
-            case (1)!Store or get from backup
-                !If we do not have adaptive time stepping then there is nothing to backup
-                if (.not.nonLinearAdaptTs) return
-                !we either store the data or we recover it if repeting a timestep
-                !Procedure to repeat time-steps
-                !If  Repeat_time_step then we recover values, else we store them
-                call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
-            case (2)!Calculate and store reference_field
-                if (its==1) then
-                    !Store variable to check afterwards
-                    call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
-                    phasevolumefraction = phasevolumefraction)
-                    if (allocated(reference_field)) deallocate(reference_field)
-                    select case (variable_selection)
-                        case (1)
-                            allocate (reference_field(1,1,size(pressure,1) ))
-                            reference_field(1,1, :) = pressure
-                        case (2)
-                            allocate (reference_field(size(velocity,1),size(velocity,2),size(velocity,3) ))
-                            reference_field(:,:,:) = velocity
-                        case default
-                            allocate (reference_field(1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
-                            reference_field(1,:,:) = phasevolumefraction
-                        end select
-                end if
+      select case (order)
+      case (1)!Store or get from backup
+         !If we do not have adaptive time stepping then there is nothing to backup
+         if (.not.nonLinearAdaptTs) return
+         !we either store the data or we recover it if repeting a timestep
+         !Procedure to repeat time-steps
+         !If  Repeat_time_step then we recover values, else we store them
+         call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
+      case (2)!Calculate and store reference_field
+         if (its==1) then
+            !Store variable to check afterwards
+            call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
+                 phasevolumefraction = phasevolumefraction)
+            if (allocated(reference_field)) deallocate(reference_field)
+            select case (variable_selection)
+            case (1)
+               allocate (reference_field(1,1,size(pressure,1) ))
+               reference_field(1,1, :) = pressure
+            case (2)
+               allocate (reference_field(size(velocity,1),size(velocity,2),size(velocity,3) ))
+               reference_field(:,:,:) = velocity
+            case default
+               allocate (reference_field(1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
+               reference_field(1,:,:) = phasevolumefraction
+            end select
+         end if
 
-            case default!Check how is the process going on and decide
-                 !If Automatic_NonLinerIterations then we compare the variation of the a property from one time step to the next one
-                ExitNonLinearLoop = .false.
-                Repeat_time_step = .false.
-                if (its > 1 ) then
+      case default!Check how is the process going on and decide
+         !If Automatic_NonLinerIterations then we compare the variation of the a property from one time step to the next one
+         ExitNonLinearLoop = .false.
+         Repeat_time_step = .false.
+         if (its > 1 ) then
 
-                    call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
-                    phasevolumefraction = phasevolumefraction)
+            call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
+                 phasevolumefraction = phasevolumefraction)
 
-                    select case (variable_selection)
-                        case (1)
-                            ts_ref_val = maxval(abs(reference_field(1,1,:)-pressure))
-                        case (2)
-                             ts_ref_val = maxval(abs(reference_field-velocity))
-                        case default
-                            ts_ref_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))
-                    end select
-                    !If it is parallel then we want to be consistent between cpus
-                    if (IsParallel()) call allmax(ts_ref_val)
-                    !If only non-linear iterations
-                    if (.not.nonLinearAdaptTs) then
-                        !Automatic non-linear iteration checking
-                        if (ts_ref_val < tolerance_between_non_linear)  ExitNonLinearLoop = .true.
-                        return
-                    end if
-                    !Check that saturation is between bounds, works for two phases only!!
-                    if (have_option(  '/timestepping/nonlinear_iterations/&
-                            &nonlinear_iterations_automatic/adaptive_timestep_nonlinear/keep_sat_bounds') )  then
-                        Repeat_time_step = (maxval(s_gc-phasevolumefraction(1,:))>check_sat_threshold&
-                        .or.maxval(s_or-phasevolumefraction(2,:))>check_sat_threshold)
-                    end if
+            select case (variable_selection)
+            case (1)
+               ts_ref_val = maxval(abs(reference_field(1,1,:)-pressure))
+            case (2)
+               ts_ref_val = maxval(abs(reference_field-velocity))
+            case default
+               ts_ref_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))
+            end select
+            !If it is parallel then we want to be consistent between cpus
+            if (IsParallel()) call allmax(ts_ref_val)
+            !If only non-linear iterations
+            if (.not.nonLinearAdaptTs) then
+               !Automatic non-linear iteration checking
+               if (ts_ref_val < tolerance_between_non_linear)  ExitNonLinearLoop = .true.
+               return
+            end if
+            !Check that saturation is between bounds, works for two phases only!!
+            if (have_option(  '/timestepping/nonlinear_iterations/&
+                 &nonlinear_iterations_automatic/adaptive_timestep_nonlinear/keep_sat_bounds') )  then
+               Repeat_time_step = (maxval(s_gc-phasevolumefraction(1,:))>check_sat_threshold&
+                    .or.maxval(s_or-phasevolumefraction(2,:))>check_sat_threshold)
+            end if
 
-                     !Increase Ts section
-                    if ((ts_ref_val < increase_ts_switch .and.dt*increaseFactor<max_ts).and..not.Repeat_time_step) then
-                        call get_option( '/timestepping/timestep', dt )
-                        dt = dt * increaseFactor
-                        call set_option( '/timestepping/timestep', dt )
-                        print *, "Time step increased to:", dt
-                        ExitNonLinearLoop = .true.
-                        return
-                    end if
+            !Increase Ts section
+            if ((ts_ref_val < increase_ts_switch .and.dt*increaseFactor<max_ts).and..not.Repeat_time_step) then
+               call get_option( '/timestepping/timestep', dt )
+               dt = dt * increaseFactor
+               call set_option( '/timestepping/timestep', dt )
+               print *, "Time step increased to:", dt
+               ExitNonLinearLoop = .true.
+               return
+            end if
 
-!                    !Exit loop section
-!                    if ((ts_ref_val < tolerance_between_non_linear).and..not.Repeat_time_step) then
-!                        ExitNonLinearLoop = .true.
-!                        return
-!                    end if
+            !                    !Exit loop section
+            !                    if ((ts_ref_val < tolerance_between_non_linear).and..not.Repeat_time_step) then
+            !                        ExitNonLinearLoop = .true.
+            !                        return
+            !                    end if
 
-                    !Decrease Ts section only if we have done at least the 70% of the  nonLinearIterations
-                    if ((ts_ref_val > decrease_ts_switch.or.repeat_time_step) &
-                    .and.its>=int(0.70*NonLinearIteration)) then
+            !Decrease Ts section only if we have done at least the 70% of the  nonLinearIterations
+            if ((ts_ref_val > decrease_ts_switch.or.repeat_time_step) &
+                 .and.its>=int(0.70*NonLinearIteration)) then
 
-                        if ( dt / decreaseFactor < min_ts) then
-                            !Do not decrease
-                            Repeat_time_step = .false.
-                            ExitNonLinearLoop = .true.
-                            deallocate(reference_field)
-                            return
-                        end if
+               if ( dt / decreaseFactor < min_ts) then
+                  !Do not decrease
+                  Repeat_time_step = .false.
+                  ExitNonLinearLoop = .true.
+                  deallocate(reference_field)
+                  return
+               end if
 
-                        !Decrease time step, reset the time and repeat!
-                        call get_option( '/timestepping/timestep', dt )
-                        call get_option( '/timestepping/current_time', acctim )
-                        acctim = acctim - dt
-                        call set_option( '/timestepping/current_time', acctim )
-                        dt = dt / decreaseFactor
-                        call set_option( '/timestepping/timestep', dt )
-                        print *, "Time step decreased to:", dt
-                        Repeat_time_step = .true.
-                        ExitNonLinearLoop = .true.
-                    end if
-                end if
+               !Decrease time step, reset the time and repeat!
+               call get_option( '/timestepping/timestep', dt )
+               call get_option( '/timestepping/current_time', acctim )
+               acctim = acctim - dt
+               call set_option( '/timestepping/current_time', acctim )
+               dt = dt / decreaseFactor
+               call set_option( '/timestepping/timestep', dt )
+               print *, "Time step decreased to:", dt
+               Repeat_time_step = .true.
+               ExitNonLinearLoop = .true.
+            end if
+         end if
 
-        end select
+      end select
 
     end subroutine Adaptive_NonLinear
 
 
-   subroutine copy_packed_new_to_iterated(packed_state, viceversa)
-    !Values from packed_state are stored in iterated unless viceversa is true, in that case
-    !the iterated values are moved to the new values
-     type(state_type), intent(inout) :: packed_state
-     logical, intent(in) :: viceversa
+    subroutine copy_packed_new_to_iterated(packed_state, viceversa)
+      !Values from packed_state are stored in iterated unless viceversa is true, in that case
+      !the iterated values are moved to the new values
+      type(state_type), intent(inout) :: packed_state
+      logical, intent(in) :: viceversa
 
-     type(scalar_field), pointer :: sfield, nsfield
-     type(vector_field), pointer :: vfield, nvfield
-     type(tensor_field), pointer :: tfield, ntfield
+      type(scalar_field), pointer :: sfield, nsfield
+      type(vector_field), pointer :: vfield, nvfield
+      type(tensor_field), pointer :: tfield, ntfield
 
-     integer :: i
+      integer :: i
 
-     do i=1,size(packed_state%scalar_fields)
-        sfield=>packed_state%scalar_fields(i)%ptr
-        if (sfield%name(1:14)=="PackedIterated") then
+      do i=1,size(packed_state%scalar_fields)
+         sfield=>packed_state%scalar_fields(i)%ptr
+         if (sfield%name(1:14)=="PackedIterated") then
             nsfield=>extract_scalar_field(packed_state,"Packed"//sfield%name(15:))
             if (viceversa) then
-                nsfield%val = sfield%val
+               nsfield%val = sfield%val
             else
-                sfield%val=nsfield%val
+               sfield%val=nsfield%val
             end if
-        end if
-    end do
-
-    do i=1,size(packed_state%vector_fields)
-        vfield=>packed_state%vector_fields(i)%ptr
-         if (vfield%name(1:14)=="PackedIterated") then
-             nvfield=>extract_vector_field(packed_state,"Packed"//vfield%name(15:))
-             if (viceversa) then
-                 nvfield%val = vfield%val
-             else
-                 vfield%val=nvfield%val
-             end if
          end if
-     end do
+      end do
 
-     do i=1,size(packed_state%tensor_fields)
+      do i=1,size(packed_state%vector_fields)
+         vfield=>packed_state%vector_fields(i)%ptr
+         if (vfield%name(1:14)=="PackedIterated") then
+            nvfield=>extract_vector_field(packed_state,"Packed"//vfield%name(15:))
+            if (viceversa) then
+               nvfield%val = vfield%val
+            else
+               vfield%val=nvfield%val
+            end if
+         end if
+      end do
+
+      do i=1,size(packed_state%tensor_fields)
          tfield=>packed_state%tensor_fields(i)%ptr
          if (tfield%name(1:14)=="PackedIterated") then
-             ntfield=>extract_tensor_field(packed_state,"Packed"//tfield%name(15:))
-             if (viceversa) then
-                 ntfield%val  = tfield%val
-             else
-                 tfield%val=ntfield%val
-             end if
+            ntfield=>extract_tensor_field(packed_state,"Packed"//tfield%name(15:))
+            if (viceversa) then
+               ntfield%val  = tfield%val
+            else
+               tfield%val=ntfield%val
+            end if
          end if
-     end do
+      end do
 
-     sfield=>extract_scalar_field(packed_state,"OldFEPressure")
-     nsfield=>extract_scalar_field(packed_state,"FEPressure")
-     sfield%val=nsfield%val
+      sfield=>extract_scalar_field(packed_state,"OldFEPressure")
+      nsfield=>extract_scalar_field(packed_state,"FEPressure")
+      sfield%val=nsfield%val
 
-     sfield=>extract_scalar_field(packed_state,"OldCVPressure")
-     nsfield=>extract_scalar_field(packed_state,"CVPressure")
-     sfield%val=nsfield%val
+      sfield=>extract_scalar_field(packed_state,"OldCVPressure")
+      nsfield=>extract_scalar_field(packed_state,"CVPressure")
+      sfield%val=nsfield%val
 
-   end subroutine copy_packed_new_to_iterated
+    end subroutine copy_packed_new_to_iterated
 
     subroutine get_var_from_packed_state(packed_state,FEDensity,&
-    OldFEDensity,IteratedFEDensity,Density,OldDensity,IteratedDensity,PhaseVolumeFraction,&
-    OldPhaseVolumeFraction,IteratedPhaseVolumeFraction, Velocity, OldVelocity, IteratedVelocity, &
-    FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction,&
-    NonlinearVelocity, OldNonlinearVelocity,IteratedNonlinearVelocity, ComponentDensity, &
-    OldComponentDensity, IteratedComponentDensity,ComponentMassFraction, OldComponentMassFraction,&
-    Temperature,OldTemperature, IteratedTemperature,FETemperature, OldFETemperature, IteratedFETemperature,&
-    IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity,&
-    FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
-    Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
-    Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure  )
-        !This subroutine returns a pointer to the desired values of a variable stored in packed state
-        !All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
-        !and also all of them are optional, hence you can obtaine whichever you want
-        !######################EXAMPLE OF USAGE OF THIS SUBROUTINE:#####################################
-        !If we want to get the velocity and the phasevolumefraction one should proceed this way:
-        !Define variables:
-        !real, dimension(:,:,:), pointer :: Velocity_pointer
-        !real, dimension(:,:), pointer :: PhaseVolumeFraction_pointer
-        !Assign the pointers
-        !call get_var_from_packed_state(packed_state, Velocity = Velocity_pointer, PhaseVolumeFraction = PhaseVolumeFraction_pointer)
-        !
-        ! In this way we only have to introduce the name of the variables we want to get from packed_state
-        !########################################################################################
-        implicit none
-        type(state_type), intent(inout) :: packed_state
-        real, optional, dimension(:,:,:), pointer :: Velocity, OldVelocity, IteratedVelocity, NonlinearVelocity, OldNonlinearVelocity,&
-        IteratedNonlinearVelocity,ComponentDensity, OldComponentDensity, IteratedComponentDensity,ComponentMassFraction, OldComponentMassFraction,&
-        IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity, FEComponentMassFraction, &
-        OldFEComponentMassFraction, IteratedFEComponentMassFraction
-        real, optional, dimension(:,:), pointer :: FEDensity, OldFEDensity, IteratedFEDensity, Density,&
-        OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
-        Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
-        Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, &
-        FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure
-        real, optional, dimension(:), pointer ::Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure
-        !Local variables
-        type(scalar_field), pointer :: sfield
-        type(vector_field), pointer :: vfield
-        type(tensor_field), pointer :: tfield
+         OldFEDensity,IteratedFEDensity,Density,OldDensity,IteratedDensity,PhaseVolumeFraction,&
+         OldPhaseVolumeFraction,IteratedPhaseVolumeFraction, Velocity, OldVelocity, IteratedVelocity, &
+         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction,&
+         NonlinearVelocity, OldNonlinearVelocity,IteratedNonlinearVelocity, ComponentDensity, &
+         OldComponentDensity, IteratedComponentDensity,ComponentMassFraction, OldComponentMassFraction,&
+         Temperature,OldTemperature, IteratedTemperature,FETemperature, OldFETemperature, IteratedFETemperature,&
+         IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity,&
+         FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
+         Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
+         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, CapPressure  )
+      !This subroutine returns a pointer to the desired values of a variable stored in packed state
+      !All the input variables (but packed_stated) are pointers following the structure of the *_ALL variables
+      !and also all of them are optional, hence you can obtaine whichever you want
+      !######################EXAMPLE OF USAGE OF THIS SUBROUTINE:#####################################
+      !If we want to get the velocity and the phasevolumefraction one should proceed this way:
+      !Define variables:
+      !real, dimension(:,:,:), pointer :: Velocity_pointer
+      !real, dimension(:,:), pointer :: PhaseVolumeFraction_pointer
+      !Assign the pointers
+      !call get_var_from_packed_state(packed_state, Velocity = Velocity_pointer, PhaseVolumeFraction = PhaseVolumeFraction_pointer)
+      !
+      ! In this way we only have to introduce the name of the variables we want to get from packed_state
+      !########################################################################################
+      implicit none
+      type(state_type), intent(inout) :: packed_state
+      real, optional, dimension(:,:,:), pointer :: Velocity, OldVelocity, IteratedVelocity, NonlinearVelocity, OldNonlinearVelocity,&
+           IteratedNonlinearVelocity,ComponentDensity, OldComponentDensity, IteratedComponentDensity,ComponentMassFraction, OldComponentMassFraction,&
+           IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity, FEComponentMassFraction, &
+           OldFEComponentMassFraction, IteratedFEComponentMassFraction
+      real, optional, dimension(:,:), pointer :: FEDensity, OldFEDensity, IteratedFEDensity, Density,&
+           OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
+           Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
+           Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, &
+           FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure
+      real, optional, dimension(:), pointer ::Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure
+      !Local variables
+      type(scalar_field), pointer :: sfield
+      type(vector_field), pointer :: vfield
+      type(tensor_field), pointer :: tfield
 
-        !Scalar stored
-        if (present(FEPressure)) then
-            sfield => extract_scalar_field( packed_state, "FEPressure" )
-            FEPressure =>  sfield%val(:)
-        end if
-        if (present(OldFEPressure)) then
-            sfield => extract_scalar_field( packed_state, "OldFEPressure" )
-            OldFEPressure =>  sfield%val(:)
-        end if
-        if (present(CVPressure)) then
-            sfield => extract_scalar_field( packed_state, "CVPressure" )
-            CVPressure =>  sfield%val(:)
-        end if
-        if (present(OldCVPressure)) then
-            sfield => extract_scalar_field( packed_state, "OldCVPressure" )
-            OldCVPressure =>  sfield%val(:)
-        end if
+      !Scalar stored
+      if (present(FEPressure)) then
+         sfield => extract_scalar_field( packed_state, "FEPressure" )
+         FEPressure =>  sfield%val(:)
+      end if
+      if (present(OldFEPressure)) then
+         sfield => extract_scalar_field( packed_state, "OldFEPressure" )
+         OldFEPressure =>  sfield%val(:)
+      end if
+      if (present(CVPressure)) then
+         sfield => extract_scalar_field( packed_state, "CVPressure" )
+         CVPressure =>  sfield%val(:)
+      end if
+      if (present(OldCVPressure)) then
+         sfield => extract_scalar_field( packed_state, "OldCVPressure" )
+         OldCVPressure =>  sfield%val(:)
+      end if
 
-        !Vectors stored
-        if (present(Coordinate)) then
-            vfield => extract_vector_field( packed_state, "Coordinate" )
-            Coordinate =>  vfield%val(:,:)
-        end if
-        if (present(VelocityCoordinate)) then
-            vfield => extract_vector_field( packed_state, "VelocityCoordinate" )
-            VelocityCoordinate =>  vfield%val(:,:)
-        end if
-        if (present(PressureCoordinate)) then
-            vfield => extract_vector_field( packed_state, "PressureCoordinate" )
-            PressureCoordinate =>  vfield%val(:,:)
-        end if
-        if (present(MaterialCoordinate)) then
-            vfield => extract_vector_field( packed_state, "MaterialCoordinate" )
-            MaterialCoordinate =>  vfield%val(:,:)
-        end if
+      !Vectors stored
+      if (present(Coordinate)) then
+         vfield => extract_vector_field( packed_state, "Coordinate" )
+         Coordinate =>  vfield%val(:,:)
+      end if
+      if (present(VelocityCoordinate)) then
+         vfield => extract_vector_field( packed_state, "VelocityCoordinate" )
+         VelocityCoordinate =>  vfield%val(:,:)
+      end if
+      if (present(PressureCoordinate)) then
+         vfield => extract_vector_field( packed_state, "PressureCoordinate" )
+         PressureCoordinate =>  vfield%val(:,:)
+      end if
+      if (present(MaterialCoordinate)) then
+         vfield => extract_vector_field( packed_state, "MaterialCoordinate" )
+         MaterialCoordinate =>  vfield%val(:,:)
+      end if
 
-        !Tensors stored
-        if (present(FEDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
-            FEDensity =>  tfield%val(1,:,:)
-        end if
-        if (present(OldFEDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldFEDensity" )
-            OldFEDensity =>  tfield%val(1,:,:)
-        end if
-        if (present(IteratedFEDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedFEDensity" )
-            IteratedFEDensity => tfield%val(1,:,:)
-        end if
-        if (present(Density)) then
-            tfield => extract_tensor_field( packed_state, "PackedDensity" )
-            Density => tfield%val(1,:,:)
-        end if
-        if (present(OldDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldDensity" )
-            OldDensity => tfield%val(1,:,:)
-        end if
-        if (present(IteratedDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedDensity" )
-            IteratedDensity =>  tfield%val(1,:,:)
-        end if
-        if (present(PhaseVolumeFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-            PhaseVolumeFraction =>  tfield%val(1,:,:)
-        end if
-        if (present(OldPhaseVolumeFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
-            OldPhaseVolumeFraction =>  tfield%val(1,:,:)
-        end if
-        if (present(IteratedPhaseVolumeFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedPhaseVolumeFraction" )
-            IteratedPhaseVolumeFraction =>  tfield%val(1,:,:)
-        end if
-        if (present(FEPhaseVolumeFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
-            FEPhaseVolumeFraction =>  tfield%val(1,:,:)
-        end if
-        if (present(OldFEPhaseVolumeFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldFEPhaseVolumeFraction" )
-            OldFEPhaseVolumeFraction =>  tfield%val(1,:,:)
-        end if
-        if (present(IteratedFEPhaseVolumeFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedFEPhaseVolumeFraction" )
-            IteratedFEPhaseVolumeFraction =>  tfield%val(1,:,:)
-        end if
-        if (present(CapPressure)) then
-            tfield => extract_tensor_field( packed_state, "PackedCapPressure" )
-            CapPressure =>  tfield%val(1,:,:)
-        end if
-        if (present(Temperature)) then
-            tfield => extract_tensor_field( packed_state, "PackedTemperature" )
-            Temperature =>  tfield%val(1,:,:)
-        end if
-        if (present(OldTemperature)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldTemperature" )
-            OldTemperature =>  tfield%val(1,:,:)
-        end if
-        if (present(IteratedTemperature)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedTemperature" )
-            IteratedTemperature =>  tfield%val(1,:,:)
-        end if
-         if (present(FETemperature)) then
-            tfield => extract_tensor_field( packed_state, "PackedFETemperature" )
-            FETemperature =>  tfield%val(1,:,:)
-        end if
-         if (present(OldFETemperature)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldFETemperature" )
-            OldFETemperature =>  tfield%val(1,:,:)
-        end if
-        if (present(IteratedFETemperature)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedFETemperature" )
-            IteratedFETemperature =>  tfield%val(1,:,:)
-        end if
-        if (present(Velocity)) then
-            tfield => extract_tensor_field( packed_state, "PackedVelocity" )
-            Velocity => tfield%val(:,:,:)
-        end if
-        if (present(OldVelocity)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldVelocity" )
-            OldVelocity => tfield%val(:,:,:)
-        end if
-        if (present(IteratedVelocity)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedVelocity" )
-            IteratedVelocity => tfield%val(:,:,:)
-        end if
-        if (present(NonlinearVelocity)) then
-            tfield => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
-            NonlinearVelocity => tfield%val(:,:,:)
-        end if
-        if (present(OldNonlinearVelocity)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldNonlinearVelocity" )
-            OldNonlinearVelocity => tfield%val(:,:,:)
-        end if
-        if (present(IteratedNonlinearVelocity)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedNonlinearVelocity" )
-            IteratedNonlinearVelocity => tfield%val(:,:,:)
-        end if
-        if (present(ComponentDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedComponentDensity" )
-            ComponentDensity => tfield%val(:,:,:)
-        end if
-        if (present(OldComponentDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
-            OldComponentDensity => tfield%val(:,:,:)
-        end if
-        if (present(IteratedComponentDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedComponentDensity" )
-            IteratedComponentDensity => tfield%val(:,:,:)
-        end if
-        if (present(ComponentMassFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
-            ComponentMassFraction => tfield%val(:,:,:)
-        end if
-        if (present(OldComponentMassFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldComponentMassFraction" )
-            OldComponentMassFraction => tfield%val(:,:,:)
-        end if
-        if (present(IteratedComponentMassFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedComponentMassFraction" )
-            IteratedComponentMassFraction => tfield%val(:,:,:)
-        end if
-        if (present(FEComponentDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedFEComponentDensity" )
-            FEComponentDensity => tfield%val(:,:,:)
-        end if
-        if (present(OldFEComponentDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldFEComponentDensity" )
-            OldFEComponentDensity => tfield%val(:,:,:)
-        end if
-        if (present(IteratedFEComponentDensity)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedFEComponentDensity" )
-            IteratedFEComponentDensity => tfield%val(:,:,:)
-        end if
-        if (present(FEComponentMassFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedFEComponentMassFraction" )
-            FEComponentMassFraction => tfield%val(:,:,:)
-        end if
-        if (present(OldFEComponentMassFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedOldFEComponentMassFraction" )
-            OldFEComponentMassFraction => tfield%val(:,:,:)
-        end if
-        if (present(IteratedFEComponentMassFraction)) then
-            tfield => extract_tensor_field( packed_state, "PackedIteratedFEComponentMassFraction" )
-            IteratedFEComponentMassFraction => tfield%val(:,:,:)
-        end if
+      !Tensors stored
+      if (present(FEDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
+         FEDensity =>  tfield%val(1,:,:)
+      end if
+      if (present(OldFEDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldFEDensity" )
+         OldFEDensity =>  tfield%val(1,:,:)
+      end if
+      if (present(IteratedFEDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedFEDensity" )
+         IteratedFEDensity => tfield%val(1,:,:)
+      end if
+      if (present(Density)) then
+         tfield => extract_tensor_field( packed_state, "PackedDensity" )
+         Density => tfield%val(1,:,:)
+      end if
+      if (present(OldDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldDensity" )
+         OldDensity => tfield%val(1,:,:)
+      end if
+      if (present(IteratedDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedDensity" )
+         IteratedDensity =>  tfield%val(1,:,:)
+      end if
+      if (present(PhaseVolumeFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+         PhaseVolumeFraction =>  tfield%val(1,:,:)
+      end if
+      if (present(OldPhaseVolumeFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
+         OldPhaseVolumeFraction =>  tfield%val(1,:,:)
+      end if
+      if (present(IteratedPhaseVolumeFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedPhaseVolumeFraction" )
+         IteratedPhaseVolumeFraction =>  tfield%val(1,:,:)
+      end if
+      if (present(FEPhaseVolumeFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
+         FEPhaseVolumeFraction =>  tfield%val(1,:,:)
+      end if
+      if (present(OldFEPhaseVolumeFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldFEPhaseVolumeFraction" )
+         OldFEPhaseVolumeFraction =>  tfield%val(1,:,:)
+      end if
+      if (present(IteratedFEPhaseVolumeFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedFEPhaseVolumeFraction" )
+         IteratedFEPhaseVolumeFraction =>  tfield%val(1,:,:)
+      end if
+      if (present(CapPressure)) then
+         tfield => extract_tensor_field( packed_state, "PackedCapPressure" )
+         CapPressure =>  tfield%val(1,:,:)
+      end if
+      if (present(Temperature)) then
+         tfield => extract_tensor_field( packed_state, "PackedTemperature" )
+         Temperature =>  tfield%val(1,:,:)
+      end if
+      if (present(OldTemperature)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldTemperature" )
+         OldTemperature =>  tfield%val(1,:,:)
+      end if
+      if (present(IteratedTemperature)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedTemperature" )
+         IteratedTemperature =>  tfield%val(1,:,:)
+      end if
+      if (present(FETemperature)) then
+         tfield => extract_tensor_field( packed_state, "PackedFETemperature" )
+         FETemperature =>  tfield%val(1,:,:)
+      end if
+      if (present(OldFETemperature)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldFETemperature" )
+         OldFETemperature =>  tfield%val(1,:,:)
+      end if
+      if (present(IteratedFETemperature)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedFETemperature" )
+         IteratedFETemperature =>  tfield%val(1,:,:)
+      end if
+      if (present(Velocity)) then
+         tfield => extract_tensor_field( packed_state, "PackedVelocity" )
+         Velocity => tfield%val(:,:,:)
+      end if
+      if (present(OldVelocity)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldVelocity" )
+         OldVelocity => tfield%val(:,:,:)
+      end if
+      if (present(IteratedVelocity)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedVelocity" )
+         IteratedVelocity => tfield%val(:,:,:)
+      end if
+      if (present(NonlinearVelocity)) then
+         tfield => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
+         NonlinearVelocity => tfield%val(:,:,:)
+      end if
+      if (present(OldNonlinearVelocity)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldNonlinearVelocity" )
+         OldNonlinearVelocity => tfield%val(:,:,:)
+      end if
+      if (present(IteratedNonlinearVelocity)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedNonlinearVelocity" )
+         IteratedNonlinearVelocity => tfield%val(:,:,:)
+      end if
+      if (present(ComponentDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedComponentDensity" )
+         ComponentDensity => tfield%val(:,:,:)
+      end if
+      if (present(OldComponentDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
+         OldComponentDensity => tfield%val(:,:,:)
+      end if
+      if (present(IteratedComponentDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedComponentDensity" )
+         IteratedComponentDensity => tfield%val(:,:,:)
+      end if
+      if (present(ComponentMassFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+         ComponentMassFraction => tfield%val(:,:,:)
+      end if
+      if (present(OldComponentMassFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldComponentMassFraction" )
+         OldComponentMassFraction => tfield%val(:,:,:)
+      end if
+      if (present(IteratedComponentMassFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedComponentMassFraction" )
+         IteratedComponentMassFraction => tfield%val(:,:,:)
+      end if
+      if (present(FEComponentDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedFEComponentDensity" )
+         FEComponentDensity => tfield%val(:,:,:)
+      end if
+      if (present(OldFEComponentDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldFEComponentDensity" )
+         OldFEComponentDensity => tfield%val(:,:,:)
+      end if
+      if (present(IteratedFEComponentDensity)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedFEComponentDensity" )
+         IteratedFEComponentDensity => tfield%val(:,:,:)
+      end if
+      if (present(FEComponentMassFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedFEComponentMassFraction" )
+         FEComponentMassFraction => tfield%val(:,:,:)
+      end if
+      if (present(OldFEComponentMassFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedOldFEComponentMassFraction" )
+         OldFEComponentMassFraction => tfield%val(:,:,:)
+      end if
+      if (present(IteratedFEComponentMassFraction)) then
+         tfield => extract_tensor_field( packed_state, "PackedIteratedFEComponentMassFraction" )
+         IteratedFEComponentMassFraction => tfield%val(:,:,:)
+      end if
 
 
 
@@ -3512,34 +3512,34 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
     !Subroutine to print Arrays by (columns,rows)
     !Matrix = 2D Array
     subroutine printMatrix(Matrix)
-        implicit none
+      implicit none
 
-        Integer :: length,i,j, k
-        character (len=1000000) :: cadena
-        character (len=100) :: aux
-        real, intent(in), dimension(:,:):: Matrix
-        !Local
-        real, dimension(size(matrix,2),size(matrix,1)) :: auxMatrix
+      Integer :: length,i,j, k
+      character (len=1000000) :: cadena
+      character (len=100) :: aux
+      real, intent(in), dimension(:,:):: Matrix
+      !Local
+      real, dimension(size(matrix,2),size(matrix,1)) :: auxMatrix
 
-        auxMatrix = transpose(Matrix)
+      auxMatrix = transpose(Matrix)
 
-        length = size(auxMatrix,2);
-        do i = 1,size(auxMatrix,1)
-            print *,""
-            cadena = ""
-            do j = 1 , length
-                write(aux,*), auxMatrix(i,j)
-                k = index(trim(aux),"E",.true.)
-                if (k/=0) then
-                    aux = aux(1:k-6)//trim(aux(k:))
-                end if
+      length = size(auxMatrix,2);
+      do i = 1,size(auxMatrix,1)
+         print *,""
+         cadena = ""
+         do j = 1 , length
+            write(aux,*), auxMatrix(i,j)
+            k = index(trim(aux),"E",.true.)
+            if (k/=0) then
+               aux = aux(1:k-6)//trim(aux(k:))
+            end if
 
-                cadena = trim(cadena)//' '//trim(aux)
-            end do
-            print '(A $)', trim(cadena)
-        end do
+            cadena = trim(cadena)//' '//trim(aux)
+         end do
+         print '(A $)', trim(cadena)
+      end do
 
-        print *,"";
+      print *,"";
     end subroutine PrintMatrix
 
 
@@ -3552,16 +3552,16 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
 
       if (isparallel()) then
 
-      tmax=[maxval(tfield%val,dim=3)]
-      tmin=[minval(tfield%val,dim=3)]
+         tmax=[maxval(tfield%val,dim=3)]
+         tmin=[minval(tfield%val,dim=3)]
 
-      do i=1,size(tmax)
-         call allmax(tmax(i))
-         call allmin(tmin(i))
-      end do
+         do i=1,size(tmax)
+            call allmax(tmax(i))
+            call allmin(tmin(i))
+         end do
 
-      is_constant=maxval(abs(tmax-tmin))<tol
-         
+         is_constant=maxval(abs(tmax-tmin))<tol
+
       else
          is_constant=.true.
          do i=2,size(tfield%val,3)
@@ -3572,7 +3572,7 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
          end do
       end if
     end function is_constant
-            
+
     function GetOldName(tfield) result(old_name)
 
       type(tensor_field), intent(in) :: tfield
@@ -3585,7 +3585,7 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
       end if
 
     end function GetOldName
-      
+
     function GetFEMName(tfield) result(fem_name)
 
       type(tensor_field), intent(in) :: tfield
@@ -3601,40 +3601,40 @@ subroutine allocate_multicomponent_scalar_bcs(s,ms,name)
 
 
     subroutine Clean_Storage(state, StorageIndexes, ignore_var)
-        !This subroutine removes all the storage controlled by StorageIndexes
-        Implicit none
-        type(state_type), dimension(:), intent(inout) :: state
-        integer, dimension(:), intent(inout) :: StorageIndexes
-        character (len=*), intent(in), optional :: ignore_var
-        !Local variables
-        character (len = 100) :: StorName
-        integer :: maxpos, ignored_var_pos, i
+      !This subroutine removes all the storage controlled by StorageIndexes
+      Implicit none
+      type(state_type), dimension(:), intent(inout) :: state
+      integer, dimension(:), intent(inout) :: StorageIndexes
+      character (len=*), intent(in), optional :: ignore_var
+      !Local variables
+      character (len = 100) :: StorName
+      integer :: maxpos, ignored_var_pos, i
 
-        if (.not.present(ignore_var)) then
-            !This loop is the most robust, so by default we still use this one
-            do while (maxval(abs(StorageIndexes)) > 0)
-                maxpos = maxloc(StorageIndexes, dim =1)
-                StorName = trim(state(1)%scalar_names(StorageIndexes(maxpos)))!This lines is
-                call remove_scalar_field(state(1), trim(StorName))           !failing for Xie when using adaptive meshing
-                StorageIndexes(maxpos) = 0
-            end do
-            !Just in case
-            StorageIndexes = 0
-        else
-            !Backward loop, otherwise the indexes in
-            !StorageIndexes and State may become unconsistent
-            do i = size(StorageIndexes,1), 1,-1
-                StorName = trim(state(1)%scalar_names(StorageIndexes(i)))
-                if (trim(StorName)==trim(ignore_var)) then
-                    ignored_var_pos = i!Get StorageIndex of the field we want to save
-                else
-                    call remove_scalar_field(state(1), trim(StorName))
-                    StorageIndexes(i) = 0
-                end if
-            end do
-            !Store new position of that field
-            StorageIndexes(ignored_var_pos) = get_state_index(state, trim(ignore_var))
-        end if
+      if (.not.present(ignore_var)) then
+         !This loop is the most robust, so by default we still use this one
+         do while (maxval(abs(StorageIndexes)) > 0)
+            maxpos = maxloc(StorageIndexes, dim =1)
+            StorName = trim(state(1)%scalar_names(StorageIndexes(maxpos)))!This lines is
+            call remove_scalar_field(state(1), trim(StorName))           !failing for Xie when using adaptive meshing
+            StorageIndexes(maxpos) = 0
+         end do
+         !Just in case
+         StorageIndexes = 0
+      else
+         !Backward loop, otherwise the indexes in
+         !StorageIndexes and State may become unconsistent
+         do i = size(StorageIndexes,1), 1,-1
+            StorName = trim(state(1)%scalar_names(StorageIndexes(i)))
+            if (trim(StorName)==trim(ignore_var)) then
+               ignored_var_pos = i!Get StorageIndex of the field we want to save
+            else
+               call remove_scalar_field(state(1), trim(StorName))
+               StorageIndexes(i) = 0
+            end if
+         end do
+         !Store new position of that field
+         StorageIndexes(ignored_var_pos) = get_state_index(state, trim(ignore_var))
+      end if
     end subroutine Clean_Storage
 
 
