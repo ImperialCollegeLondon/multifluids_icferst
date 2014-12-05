@@ -2362,7 +2362,6 @@ contains
                      ROBIN2=0.0
                      DO IPHASE = 1, NPHASE
                         IF( on_domain_boundary ) then
-!                        IF ( SELE /= 0 ) THEN
                            IF ( WIC_T_BC_ALL(1,IPHASE,SELE) == WIC_T_BC_ROBIN ) THEN
 ! this needs to be corrected (its correct but misleading)...
                               ROBIN1(IPHASE) = SUF_T_BC_ROB1_ALL(1,iphase, CV_SILOC+CV_SNLOC*(sele-1))
@@ -2404,7 +2403,7 @@ contains
                                         + FTHETA(IPHASE) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) * T_ALL( IPHASE, CV_NODI ) ! Diffusion contribution
                                     endif
                                 END IF
-                            ELSE IF ( SELE /= 0 ) THEN
+                            ELSE IF ( on_domain_boundary ) THEN
                                 IF(WIC_T_BC_ALL(1,iphase,sele) == WIC_T_BC_DIRICHLET) THEN
                                     CV_RHS( RHS_NODI_IPHA ) =  CV_RHS( RHS_NODI_IPHA ) &
                                     + FTHETA(IPHASE) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
@@ -2457,9 +2456,6 @@ contains
                         TMID_J = T_ALL( IPHASE, CV_NODJ )
                         TOLDMID_J = TOLD_ALL( IPHASE, CV_NODJ )
 
-!                        ! Make allowances for no matrix stencil operating from outside the boundary.
-!                        BCZERO(IPHASE) = 1.0
-!                        IF ( (SELE /= 0) .AND. (INCOME(IPHASE) > 0.5) ) BCZERO(IPHASE)=0.0
 
                         ! Put results into the RHS vector
                         CV_RHS( RHS_NODI_IPHA ) =  CV_RHS( RHS_NODI_IPHA )  &
