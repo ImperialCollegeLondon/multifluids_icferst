@@ -2685,73 +2685,77 @@ contains
 !            IMID = SMALL_CENTRM(CV_NODI)
             R = MEAN_PORE_CV( CV_NODI ) * MASS_CV( CV_NODI ) / DT
 
-            Loop_IPHASE2: DO IPHASE = 1, NPHASE
+            !Loop_IPHASE2: DO IPHASE = 1, NPHASE
 
-               RHS_NODI_IPHA = IPHASE + ( CV_NODI -1 ) * NPHASE
+               !RHS_NODI_IPHA = IPHASE + ( CV_NODI -1 ) * NPHASE
 !               IMID_IPHA = IPHASE + (IMID-1)*NPHASE
 
                IF(THERMAL) THEN
                   IF(GOT_VIS) THEN
                      IF( RETRIEVE_SOLID_CTY ) THEN
-                       CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                         + VOL_FRA_FLUID(cv_nodi)*SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV(CV_NODI) 
+                       CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                         + VOL_FRA_FLUID(cv_nodi)*SUM( VECS_STRESS(:,:,:,CV_NODI)*VECS_GRAD_U(:,:,:,CV_NODI)  )/MASS_CV(CV_NODI) 
                      else
-                       CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                         + SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV(CV_NODI) 
+                       CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                         + SUM( VECS_STRESS(:,:,:,CV_NODI)*VECS_GRAD_U(:,:,:,CV_NODI)  )/MASS_CV(CV_NODI) 
                      endif
                   ENDIF
 
 !                  IF ( IGOT_T2 == 1 ) THEN
                   IF ( GOT_T2 ) THEN
-                     CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T2_ALL( IPHASE, CV_NODI )- T2OLD_ALL( IPHASE, CV_NODI ))  
+                     CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T2_ALL( :, CV_NODI )- T2OLD_ALL( :, CV_NODI ))  
                   ELSE
-                     CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T_ALL( IPHASE, CV_NODI )- TOLD_ALL( IPHASE, CV_NODI ))  
+                     CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T_ALL( :, CV_NODI )- TOLD_ALL( :, CV_NODI ))  
                   END IF !IGOT_T2 
                ENDIF
 !
 !               IF ( IGOT_T2 == 1 ) THEN
                IF ( GOT_T2 ) THEN
-                  CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                       + MASS_CV(CV_NODI) * SOURCT_ALL( IPHASE, CV_NODI )
+                  CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                       + MASS_CV(CV_NODI) * SOURCT_ALL( :, CV_NODI )
 
 !                  CSR_ACV( IMID_IPHA ) = CSR_ACV( IMID_IPHA ) &
-                  DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
+                  DO IPHASE = 1,NPHASE
+                     DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
                        + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) ) &
                        * R
+                  END DO 
 
-                  CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                       + (CV_BETA * DENOLD_ALL( IPHASE, CV_NODI ) * T2OLD_ALL( IPHASE, CV_NODI ) &
-                       + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) )  &
-                       * R * TOLD_ALL( IPHASE, CV_NODI )
+                  CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                       + (CV_BETA * DENOLD_ALL( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
+                       + (1.-CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) )  &
+                       * R * TOLD_ALL( :, CV_NODI )
                ELSE
 
-                  CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                       + MASS_CV( CV_NODI ) * SOURCT_ALL( IPHASE, CV_NODI )
+                  CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                       + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI )
 
 !                  CSR_ACV( IMID_IPHA ) =  CSR_ACV( IMID_IPHA ) &
-                  DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
+                  DO IPHASE = 1,NPHASE
+                     DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
                        + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) )  &
                        * R
+                  END DO
 
-                  CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                       + ( CV_BETA * DENOLD_ALL( IPHASE, CV_NODI ) &
-                       + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) ) &
-                       * R * TOLD_ALL( IPHASE, CV_NODI )
+                  CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                       + ( CV_BETA * DENOLD_ALL( :, CV_NODI ) &
+                       + (1.-CV_BETA) * DEN_ALL( :, CV_NODI ) ) &
+                       * R * TOLD_ALL( :, CV_NODI )
                END IF
 
 
                Conditional_GETMAT2: IF ( GETMAT ) THEN
 
-                     DENSE_ACV( IPHASE, :, CV_NODI )  = DENSE_ACV( IPHASE, :, CV_NODI ) &
-                          + MASS_CV( CV_NODI ) * ABSORBT_ALL( IPHASE, :, CV_NODI )
+                     DENSE_ACV( :, :, CV_NODI )  = DENSE_ACV( :, :, CV_NODI ) &
+                          + MASS_CV( CV_NODI ) * ABSORBT_ALL( :, :, CV_NODI )
 
                END IF Conditional_GETMAT2
 
-            END DO Loop_IPHASE2
+            !END DO Loop_IPHASE2
 
          END DO Loop_CVNODI2
 
