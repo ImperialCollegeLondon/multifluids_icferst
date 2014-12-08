@@ -7563,8 +7563,8 @@ deallocate(NX_ALL, X_NX_ALL)
 
           IF(STRESS_FORM_STAB) THEN
 
-                DO IDIM=1,NDIM
-                   DO JDIM=1,NDIM
+                DO JDIM=1,NDIM
+                   DO IDIM=1,NDIM
                       DIFF_GI(IDIM, JDIM, :, :) = DIFF_GI(IDIM, JDIM, :, :) &
                        + SQRT( DIFF_GI_ADDED(IDIM, 1,1, :, :) * DIFF_GI_ADDED(JDIM, 1,1, :, :) )
 
@@ -7607,10 +7607,11 @@ deallocate(NX_ALL, X_NX_ALL)
              END DO
              END DO
 
-             DO U_SILOC=1,U_SNLOC
-                DO U_JLOC12=1,U_NLOC*2
 
-                    DO I=1,U_SNLOC
+
+              DO I=1,U_SNLOC
+                 DO U_JLOC12=1,U_NLOC*2
+                    DO U_SILOC=1,U_SNLOC
                        DO IPHASE=1,NPHASE
                           CALL CALC_STRESS_TEN_REDUCE(STRESS_IJ_ELE_EXT( :, :, IPHASE, U_SILOC, U_JLOC12 ), ZERO_OR_TWO_THIRDS, NDIM,    &
                  MAT_SUFXX(:,:,IPHASE,U_SILOC,I), MAT_SUFVOL(:,IPHASE,U_SILOC,I),  S_INV_NNX_MAT12( :, I, U_JLOC12 )  )
@@ -7816,8 +7817,8 @@ deallocate(NX_ALL, X_NX_ALL)
              DIFF_VOL_GI_BOTH = DIFF_VOL_GI
 
              IF(STRESS_FORM_STAB) THEN
-                DO IDIM=1,NDIM
-                   DO JDIM=1,NDIM
+                DO JDIM=1,NDIM
+                   DO IDIM=1,NDIM
                       DIFF_GI_BOTH(IDIM, JDIM, :, :) = DIFF_GI_BOTH(IDIM, JDIM, :, :) &
                        + SQRT( DIFF_GI_ADDED(IDIM, 1,1, :, :) * DIFF_GI_ADDED(JDIM, 1,1, :, :) )
                    END DO
@@ -7891,8 +7892,8 @@ deallocate(NX_ALL, X_NX_ALL)
              DIFF_STAND_DIVDX_U=0.0
              DO SGI=1,SBCVNGI
                 DO IPHASE=1, NPHASE
-                   DO IDIM_VEL=1,NDIM_VEL
-                      DO IDIM=1,NDIM
+                   DO IDIM=1,NDIM
+                      DO IDIM_VEL=1,NDIM_VEL
 ! tensor form...
                          N_DOT_DKDU(IDIM_VEL,IPHASE,SGI)   =  N_DOT_DKDU(IDIM_VEL,IPHASE,SGI)   &
                           +  SNORMXN_ALL(IDIM,SGI)*SUM( (DIFF_GI_ADDED(IDIM_VEL,IDIM,:,IPHASE,SGI)+DIFF_GI(IDIM,:,IPHASE,SGI)) * DUDX_ALL_GI(IDIM_VEL,:,IPHASE,SGI) )
@@ -7950,15 +7951,15 @@ deallocate(NX_ALL, X_NX_ALL)
                STRESS_IJ( IDIM,IDIM ) = STRESS_IJ( IDIM,IDIM ) + SUM( FEN_TEN_XX(IDIM,:) * UFENX_JLOC(:) )
          END DO
 
-         DO IDIM=1,NDIM
-            DO JDIM=1,NDIM
+         DO JDIM=1,NDIM
+            DO IDIM=1,NDIM
 !               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(JDIM)
                STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(IDIM)
             END DO
          END DO
 
-         DO IDIM=1,NDIM
-            DO JDIM=1,NDIM
+         DO JDIM=1,NDIM
+            DO IDIM=1,NDIM
                STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) &
                       - ZERO_OR_TWO_THIRDS * FEN_TEN_XX(IDIM,IDIM) * UFENX_JLOC(JDIM) &
                       + FEN_TEN_VOL(IDIM) * UFENX_JLOC(JDIM)
@@ -7990,15 +7991,15 @@ deallocate(NX_ALL, X_NX_ALL)
                STRESS_IJ( IDIM,IDIM ) = STRESS_IJ( IDIM,IDIM ) + SUM( FEN_TEN_XX(IDIM,:) * UFENX_JLOC(:) )
          END DO
 
-         DO IDIM=1,NDIM
-            DO JDIM=1,NDIM
+         DO JDIM=1,NDIM
+            DO IDIM=1,NDIM
 !               STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(JDIM)
                STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) + FEN_TEN_XX(IDIM,JDIM) * UFENX_JLOC(IDIM)
             END DO
          END DO
 
-         DO IDIM=1,NDIM
-            DO JDIM=1,NDIM
+         DO JDIM=1,NDIM
+            DO IDIM=1,NDIM
                STRESS_IJ( IDIM,JDIM ) = STRESS_IJ( IDIM,JDIM ) &
                       - ZERO_OR_TWO_THIRDS * FEN_TEN_XX(IDIM,IDIM) * UFENX_JLOC(JDIM) &
                       + FEN_TEN_VOL(IDIM) * UFENX_JLOC(JDIM)
