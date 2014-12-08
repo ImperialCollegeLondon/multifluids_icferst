@@ -525,8 +525,9 @@ contains
       integer :: FEM_IT
 
       integer, dimension(:), pointer :: neighbours
-      integer :: nb
+      integer :: nb, i_use_volume_frac_t2
       logical :: skip
+      logical :: GOT_T2, use_volume_frac_T2
 
       type( scalar_field ), pointer :: sfield
 
@@ -936,6 +937,10 @@ contains
       IGETCT = 0
       IF ( GETCT ) IGETCT = 1
 
+! Change this for thermal...
+      GOT_T2=( IGOT_T2 == 1 )
+      use_volume_frac_T2=( IGOT_T2 == 1 )
+      i_use_volume_frac_t2=IGOT_T2
 
 ! TEMP STUFF HERE
 
@@ -954,9 +959,17 @@ contains
 
       DO IPHASE = 1, NPHASE
 
-         IF ( IGOT_T2 == 1 ) THEN
+!         IF ( IGOT_T2 == 1 ) THEN
+         IF ( GOT_T2 ) THEN
             T2_ALL( IPHASE, : ) = T2( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
             T2OLD_ALL( IPHASE, : ) = T2OLD( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
+         ELSE IF (.false.) THEN
+!         ELSE IF (THERMAL) THEN
+! Change this for thermal...
+! ******change the below for thermal Dimitrios 
+            T2_ALL( IPHASE, : ) = 1.0
+            T2OLD_ALL( IPHASE, : ) = 1.0
+! ******change the below for thermal Dimitrios 
          END IF
 
          SOURCT_ALL( IPHASE, : ) = SOURCT( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
@@ -1001,8 +1014,10 @@ contains
                           CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),CV_NONODS)
           END DO
 
+! ******change the below for thermal Dimitrios WIC_T2_BC_ALL
           DO IPHASE=1,NPHASE
-             IF(IGOT_T2==1) THEN
+!             IF(IGOT_T2==1) THEN
+             IF(use_volume_frac_t2) THEN
                 IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
                           CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),CV_NONODS)
              ELSE
@@ -1011,7 +1026,8 @@ contains
              ENDIF
           END DO
           DO IPHASE=1,NPHASE
-             IF(IGOT_T2==1) THEN
+!             IF(IGOT_T2==1) THEN
+             IF(use_volume_frac_t2) THEN
                 IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
                           CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),CV_NONODS)
              ELSE
@@ -1019,6 +1035,7 @@ contains
                 IGOT_T_CONST_VALUE(IPHASE,6)=1.0
              ENDIF
           END DO
+! ******change the below for thermal Dimitrios WIC_T2_BC_ALL
 
           NFIELD=0
           DO IFI=1,6
@@ -1045,7 +1062,8 @@ contains
           DOWNWIND_EXTRAP_INDIVIDUAL=.FALSE.
           IPT=1
           IF( cv_disopt>=8 ) THEN
-             IF(IGOT_T2==1) THEN
+!             IF(IGOT_T2==1) THEN
+             IF(GOT_T2) THEN
                 DO IPHASE=1,NPHASE
                    IF(.NOT.IGOT_T_CONST(IPHASE,1)) THEN
                       DOWNWIND_EXTRAP_INDIVIDUAL(IPT)=.TRUE.
@@ -1053,7 +1071,8 @@ contains
                    ENDIF
                 END DO
              ENDIF
-             IF(IGOT_T2==1) THEN
+!             IF(IGOT_T2==1) THEN
+             IF(GOT_T2) THEN
                 DO IPHASE=1,NPHASE
                    IF(.NOT.IGOT_T_CONST(IPHASE,2)) THEN
                       DOWNWIND_EXTRAP_INDIVIDUAL(IPT)=.TRUE.
@@ -1327,7 +1346,8 @@ contains
 
       ALLOCATE( TUPWIND_MAT_ALL( NPHASE, NSMALL_COLM ), TOLDUPWIND_MAT_ALL( NPHASE, NSMALL_COLM ), &
               DENUPWIND_MAT_ALL( NPHASE, NSMALL_COLM ), DENOLDUPWIND_MAT_ALL( NPHASE, NSMALL_COLM ) )
-      ALLOCATE( T2UPWIND_MAT_ALL( NPHASE*IGOT_T2, NSMALL_COLM* IGOT_T2), T2OLDUPWIND_MAT_ALL( NPHASE*IGOT_T2, NSMALL_COLM*IGOT_T2 ) )
+!      ALLOCATE( T2UPWIND_MAT_ALL( NPHASE*IGOT_T2, NSMALL_COLM* IGOT_T2), T2OLDUPWIND_MAT_ALL( NPHASE*IGOT_T2, NSMALL_COLM*IGOT_T2 ) )
+      ALLOCATE( T2UPWIND_MAT_ALL( NPHASE*i_use_volume_frac_t2, NSMALL_COLM* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( NPHASE*i_use_volume_frac_t2, NSMALL_COLM*i_use_volume_frac_t2 ) )
 
 
       IF ( IANISOLIM == 0 ) THEN
@@ -1335,7 +1355,7 @@ contains
 ! Isotropic limiting - calculate far field upwind maticies...
         CALL ISOTROPIC_LIMITER_ALL( &
 ! FOR SUB SURRO_CV_MINMAX:
-           T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, IGOT_T2, NPHASE, CV_NONODS, size(small_colm), SMALL_CENTRM, SMALL_FINDRM, SMALL_COLM, &
+           T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, NPHASE, CV_NONODS, size(small_colm), SMALL_CENTRM, SMALL_FINDRM, SMALL_COLM, &
            STOTEL, CV_SNLOC, CV_SNDGLN, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
            MASS_CV, &
 ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
@@ -1353,7 +1373,7 @@ contains
               T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
               ! Store the upwind element for interpolation and its weights for
               ! faster results...
-              IGOT_T2,NPHASE,CV_NONODS,CV_NLOC,X_NLOC,TOTELE,CV_NDGLN, &
+              i_use_volume_frac_t2,NPHASE,CV_NONODS,CV_NLOC,X_NLOC,TOTELE,CV_NDGLN, &
               SMALL_FINDRM,SMALL_CENTRM,SMALL_COLM,NSMALL_COLM, &
               X_NDGLN,X_NONODS,NDIM, &
               X_ALL, XC_CV_ALL, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE,&
@@ -1417,7 +1437,8 @@ contains
                THETA_FLUX_J = 0.0
                ONE_M_THETA_FLUX_J = 0.0
             endif
-            IF ( IGOT_T2 == 1 ) THEN
+!            IF ( IGOT_T2 == 1 ) THEN
+            IF ( GOT_T2 ) THEN
                GET_GTHETA = .TRUE.
                THETA_GDIFF = 0.0
             END IF
@@ -1479,7 +1500,8 @@ contains
              LOC_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_NODK)
              LOC_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_NODK)
 
-             IF ( IGOT_T2 == 1 ) THEN
+!             IF ( IGOT_T2 == 1 ) THEN
+             IF ( use_volume_frac_t2 ) THEN
                 LOC_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_NODK)
                 LOC_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_NODK)
              END IF
@@ -1812,13 +1834,14 @@ contains
                   WIC_D_BC_ALL( :,:, SELE ),&
                   NPHASE, NFIELD, IPT, IGOT_T_PACK( :,4) )
 
-             IF(IGOT_T2==1) THEN
+!             IF(IGOT_T2==1) THEN
+             IF(use_volume_frac_T2) THEN
                 CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),&
                      WIC_T2_BC_ALL( : , :, SELE ),&
                      NPHASE, NFIELD, IPT, IGOT_T_PACK( :,5) )
                 CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),&
                      WIC_T2_BC_ALL( : , : , SELE ),&
-                     NPHASE, NFIELD, IPT, IGOT_T_PACK( :,6) )
+                     NPHASE, NFIELD, IPT, IGOT_T_PACK( :,6) ) 
              ENDIF
 ! The b.c values: 
              DO CV_SKLOC=1,CV_SNLOC
@@ -1829,7 +1852,8 @@ contains
                 CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_D_BC_ALL( 1, :, CV_SKLOC+ CV_SNLOC*( SELE- 1) ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,3) )
                 CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_D_BC_ALL( 1, :, CV_SKLOC+ CV_SNLOC*( SELE- 1) ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,4) )
 
-               IF(IGOT_T2==1) THEN
+!               IF(IGOT_T2==1) THEN
+               IF(use_volume_frac_T2) THEN
                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T2_BC_ALL( 1, :, CV_SKLOC + CV_SNLOC*( SELE- 1) ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,5) )
                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T2_BC_ALL( 1, :, CV_SKLOC + CV_SNLOC*( SELE- 1) ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,6) )
                ENDIF
@@ -1854,7 +1878,8 @@ contains
           CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    NPHASE, NFIELD, IPT_IN, IGOT_T_PACK(:,4) )
           CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    NPHASE, NFIELD, IPT_OUT, IGOT_T_PACK(:,4) )
 
-          IF(IGOT_T2==1) THEN
+!          IF(IGOT_T2==1) THEN
+          IF(use_volume_frac_T2) THEN
              CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    NPHASE, NFIELD, IPT_IN, IGOT_T_PACK(:,5) )
              CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    NPHASE, NFIELD, IPT_OUT, IGOT_T_PACK(:,5) )
              CALL PACK_LOC( FUPWIND_IN( : ),  T2OLDUPWIND_MAT_ALL( :, COUNT_IN),    NPHASE, NFIELD, IPT_IN, IGOT_T_PACK(:,6) )
@@ -1893,7 +1918,8 @@ contains
                CV_KNOD2 = CV_NDGLN((ELE2-1)*CV_NLOC+CV_KLOC2)
                LOC2_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_KNOD2)
                LOC2_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_KNOD2)
-               IF ( IGOT_T2 == 1 ) THEN
+!               IF ( IGOT_T2 == 1 ) THEN
+               IF (use_volume_frac_T2) THEN
                   LOC2_FEMT2(:, CV_KLOC) = FEMT2_ALL(:, CV_KNOD2)
                   LOC2_FEMT2OLD(:, CV_KLOC) = FEMT2OLD_ALL(:, CV_KNOD2)
                END IF
@@ -1922,7 +1948,8 @@ contains
        LOC_DEN_J( : ) = DEN_ALL(:, CV_NODJ)
        LOC_DENOLD_I( : ) = DENOLD_ALL(:, CV_NODI)
        LOC_DENOLD_J( : ) = DENOLD_ALL(:, CV_NODJ)
-       IF ( IGOT_T2 == 1 ) THEN
+!       IF ( IGOT_T2 == 1 ) THEN
+       IF ( use_volume_frac_T2 ) THEN
           LOC_T2_I( : ) = T2_ALL(:, CV_NODI)
           LOC_T2_J( : ) = T2_ALL(:, CV_NODJ)
           LOC_T2OLD_I( : ) = T2OLD_ALL(:, CV_NODI)
@@ -1975,7 +2002,8 @@ contains
        !                     DO FACE_ITS = 1, NFACE_ITS
        ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
        !Calling the functions directly instead inside a wrapper saves a around a 5%
-       IF(IGOT_T2==1) THEN
+!       IF(IGOT_T2==1) THEN
+       IF( GOT_T2 ) THEN
 
            IF( is_compact_overlapping ) THEN
                CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
@@ -2290,7 +2318,8 @@ contains
 
 
                      ! Define face value of theta
-                     IF ( IGOT_T2 == 1 ) THEN
+!                     IF ( IGOT_T2 == 1 ) THEN
+                     IF ( GOT_T2 ) THEN
                         FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, NPHASE, &
                              NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
                              LOC_T_J( : ) * LOC_DEN_J( : ) * LOC_T2_J( : ), &
@@ -2537,7 +2566,21 @@ contains
                            ENDIF
 
 
-                           IF ( IGOT_T2 /= 0 ) THEN
+!                           IF ( IGOT_T2 /= 0 ) THEN
+                      
+                      if(nphase==1) then ! this is temporary delete once we are sure...
+
+                              LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
+                                   - CV_P( CV_NODI ) * SCVDETWEI( GI ) * ( &
+                                   THERM_FTHETA * NDOTQNEW( : )  &
+                                   + ( 1. - THERM_FTHETA ) * NDOTQOLD(:)  )*VOL_FRA_FLUID_I
+                              if ( integrate_other_side_and_not_boundary ) then
+                                 LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
+                                      + CV_P( CV_NODJ ) * SCVDETWEI( GI ) * ( &
+                                      THERM_FTHETA * NDOTQNEW(:)  &
+                                      + ( 1. - THERM_FTHETA ) * NDOTQOLD(:)  )*VOL_FRA_FLUID_J
+                              end if
+                      else
 
                               LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
                                    - CV_P( CV_NODI ) * SCVDETWEI( GI ) * ( &
@@ -2549,21 +2592,22 @@ contains
                                       THERM_FTHETA * NDOTQNEW(:) * LIMT2(:) &
                                       + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD(:) )*VOL_FRA_FLUID_J
                               end if
+                      endif
 
-                           ELSE
-
-                              LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
-                                   - CV_P( CV_NODI ) * SCVDETWEI( GI ) * ( &
-                                   THERM_FTHETA * NDOTQNEW( : )* LIMT( : ) &
-                                   + ( 1. - THERM_FTHETA ) * NDOTQOLD(:)* LIMTOLD( : ) )*VOL_FRA_FLUID_I
-                              if ( integrate_other_side_and_not_boundary ) then
-                                 LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
-                                      + CV_P( CV_NODJ ) * SCVDETWEI( GI ) * ( &
-                                      THERM_FTHETA * NDOTQNEW( : )* LIMT( : ) &
-                                      + ( 1. - THERM_FTHETA ) * NDOTQOLD( : )* LIMTOLD( : ) )*VOL_FRA_FLUID_J
-                              end if
-                           
-                           END IF !IGOT_T2 
+!                           ELSE
+!
+!                              LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
+!                                   - CV_P( CV_NODI ) * SCVDETWEI( GI ) * ( &
+!                                   THERM_FTHETA * NDOTQNEW( : )* LIMT( : ) &
+!                                   + ( 1. - THERM_FTHETA ) * NDOTQOLD(:)* LIMTOLD( : ) )*VOL_FRA_FLUID_I
+!                              if ( integrate_other_side_and_not_boundary ) then
+!                                 LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
+!                                      + CV_P( CV_NODJ ) * SCVDETWEI( GI ) * ( &
+!                                      THERM_FTHETA * NDOTQNEW( : )* LIMT( : ) &
+!                                      + ( 1. - THERM_FTHETA ) * NDOTQOLD( : )* LIMTOLD( : ) )*VOL_FRA_FLUID_J
+!                              end if
+!                           
+!                           END IF !IGOT_T2 
 
                            IF ( GOT_VIS ) THEN
                               ! stress form of viscosity...
@@ -2657,7 +2701,8 @@ contains
                      endif
                   ENDIF
 
-                  IF ( IGOT_T2 /= 0 ) THEN
+!                  IF ( IGOT_T2 == 1 ) THEN
+                  IF ( GOT_T2 ) THEN
                      CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
                                    - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T2_ALL( IPHASE, CV_NODI )- T2OLD_ALL( IPHASE, CV_NODI ))  
                   ELSE
@@ -2665,8 +2710,9 @@ contains
                                    - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T_ALL( IPHASE, CV_NODI )- TOLD_ALL( IPHASE, CV_NODI ))  
                   END IF !IGOT_T2 
                ENDIF
-
-               IF ( IGOT_T2 == 1 ) THEN
+!
+!               IF ( IGOT_T2 == 1 ) THEN
+               IF ( GOT_T2 ) THEN
                   CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
                        + MASS_CV(CV_NODI) * SOURCT_ALL( IPHASE, CV_NODI )
 
