@@ -2682,13 +2682,13 @@ contains
 
          Loop_CVNODI2: DO CV_NODI = 1, CV_NONODS ! Put onto the diagonal of the matrix
 
-            IMID = SMALL_CENTRM(CV_NODI)
+!            IMID = SMALL_CENTRM(CV_NODI)
             R = MEAN_PORE_CV( CV_NODI ) * MASS_CV( CV_NODI ) / DT
 
             Loop_IPHASE2: DO IPHASE = 1, NPHASE
 
                RHS_NODI_IPHA = IPHASE + ( CV_NODI -1 ) * NPHASE
-               IMID_IPHA = IPHASE + (IMID-1)*NPHASE
+!               IMID_IPHA = IPHASE + (IMID-1)*NPHASE
 
                IF(THERMAL) THEN
                   IF(GOT_VIS) THEN
@@ -2716,7 +2716,8 @@ contains
                   CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
                        + MASS_CV(CV_NODI) * SOURCT_ALL( IPHASE, CV_NODI )
 
-                  CSR_ACV( IMID_IPHA ) = CSR_ACV( IMID_IPHA ) &
+!                  CSR_ACV( IMID_IPHA ) = CSR_ACV( IMID_IPHA ) &
+                  DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
                        + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) ) &
                        * R
@@ -2730,7 +2731,8 @@ contains
                   CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
                        + MASS_CV( CV_NODI ) * SOURCT_ALL( IPHASE, CV_NODI )
 
-                  CSR_ACV( IMID_IPHA ) =  CSR_ACV( IMID_IPHA ) &
+!                  CSR_ACV( IMID_IPHA ) =  CSR_ACV( IMID_IPHA ) &
+                  DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
                        + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) )  &
                        * R
