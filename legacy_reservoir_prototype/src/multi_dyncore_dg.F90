@@ -89,7 +89,6 @@ contains
        CV_NLOC, U_NLOC, X_NLOC,  &
        CV_NDGLN, X_NDGLN, U_NDGLN, &
        CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-                                !    T, TOLD, &!
        MAT_NLOC,MAT_NDGLN,MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
        T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
        SUF_SIG_DIAGTEN_BC, &
@@ -99,8 +98,6 @@ contains
        NCOLM, FINDM, COLM, MIDM, &
        XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-       T_FEMT, &
-!!$       T_FEMT, DEN_FEMT, &
        IGOT_T2, T2, T2OLD, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
        THETA_GDIFF, &
        IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -140,11 +137,6 @@ contains
     integer, dimension (:,:) :: global_dense_block_acv
     INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
     INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-    !        REAL, DIMENSION( : ), intent( inout ) :: T, T_FEMT, DEN_FEMT
-    REAL, DIMENSION( : ), intent( inout ) :: T_FEMT
-!!$    REAL, DIMENSION( : ), intent( inout ) :: T_FEMT, DEN_FEMT
-
-    !        REAL, DIMENSION( : ), intent( in ) :: TOLD
     REAL, DIMENSION( : ), intent( in ) :: T2, T2OLD
     REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
     REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -299,18 +291,15 @@ contains
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-!!$            DEN_FEMT, &
             IGOT_T2, T2, T2OLD,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
             IN_ELE_UPWIND, DG_ELE_UPWIND, &
             NOIT_DIM, &
             MEAN_PORE_CV, &
             SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
-            mass_ele_transp,&
-!            StorageIndexes, Field_selector, T_input = T, TOLD_input=TOLD, FEMT_input =  T_FEMT ,&!
-            StorageIndexes, Field_selector, FEMT_input =  T_FEMT ,&
-            saturation=saturation)
-            !t=0.
+            mass_ele_transp, &
+            StorageIndexes, Field_selector, &
+            saturation=saturation )
 
             Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                 ! Lump the multi-phase flow eqns together
@@ -878,7 +867,6 @@ contains
          NCOLM, FINDM, COLM, MIDM, &
          XU_NLOC, XU_NDGLN ,FINELE, COLELE, NCOLELE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-         DEN_FEMT, &!Unused
          igot_theta_flux, SCVNGI_THETA, USE_THETA_FLUX, &
          IN_ELE_UPWIND, DG_ELE_UPWIND, &
          NOIT_DIM, &
@@ -913,7 +901,7 @@ contains
       integer, dimension(:,:), intent(in) :: global_dense_block_acv
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-      REAL, DIMENSION( : ), intent( inout ) :: DEN_FEMT
+!      REAL, DIMENSION( : ), intent( inout ) :: DEN_FEMT
       REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
       INTEGER, intent( in ) :: V_DISOPT, V_DG_VEL_INT_OPT
       REAL, intent( in ) :: DT, V_THETA
@@ -1080,7 +1068,6 @@ contains
               NCOLM, FINDM, COLM, MIDM, &
               XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
               opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-!              DEN_FEMT, &
               IGOT_T2, T2, T2OLD, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
               THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
               IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -8750,7 +8737,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
             RDUM4, RDUM4, &
-            RDUM, &
             IGOT_T2, CURVATURE, VOLUME_FRAC,IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             DUMMY_THETA_GDIFF, &
             IN_ELE_UPWIND, DG_ELE_UPWIND, &

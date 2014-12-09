@@ -162,9 +162,8 @@
       integer :: cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, igot_t2, igot_theta_flux, IGOT_THERM_VIS
 
 !!$ For output:
-      real, dimension( : ), allocatable :: PhaseVolumeFraction_FEMT, Temperature_FEMT, Density_FEMT, &
-           Component_FEMT, Mean_Pore_CV, SumConc_FEMT
-!!$           Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT
+      real, dimension( : ), allocatable :: &
+           Mean_Pore_CV
       type( scalar_field ), pointer :: Component_State
 
 !!$ Variables that can be effectively deleted as they are not used anymore:
@@ -229,7 +228,7 @@
       real, dimension(:,:,:), allocatable  :: reference_field
 
       type( tensor_field ), pointer :: NU_s, NUOLD_s, U_s, UOLD_s, D_s, DOLD_s, DC_s, DCOLD_s
-      type( tensor_field ), pointer :: MFC_s, MFCOLD_s!, MFC_FEMT_s, MFCOLD_FEMT_s
+      type( tensor_field ), pointer :: MFC_s, MFCOLD_s
 
       !! face value storage
       integer :: ncv_faces
@@ -261,8 +260,6 @@
       type(scalar_field), pointer :: pressure_field, porosity_field, tracer_field2
       type(vector_field), pointer :: positions
 
-      !Dummy to print FEM saturation
-      real, dimension(:,:), allocatable :: dummy_to_print_FEM
 
       logical :: write_all_stats=.true.
 
@@ -401,11 +398,8 @@
            PhaseVolumeFraction_Old( nphase * cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
 !!$
            suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
-           PhaseVolumeFraction_FEMT( cv_nonods * nphase ), Temperature_FEMT( cv_nonods * nphase ), &
-           Density_FEMT( cv_nonods * nphase ), Component_FEMT( cv_nonods * nphase * ncomp ), &
-           Mean_Pore_CV( cv_nonods ),  SumConc_FEMT( cv_nonods * ncomp ), &
+           Mean_Pore_CV( cv_nonods ), &
            dummy_ele( totele ), mass_ele( totele ), &
-!!$           Dummy_PhaseVolumeFraction_FEMT( cv_nonods * nphase ), dummy_ele( totele ), mass_ele( totele ), &
 !!$
            Temperature_Source( nphase * cv_nonods ), &
            PhaseVolumeFraction_Source( cv_nonods * nphase ), Velocity_U_Source( u_nonods * nphase * ndim ), &
@@ -441,11 +435,8 @@
       Temperature_Source=0.
       suf_sig_diagten_bc=0.
 !!$
-      PhaseVolumeFraction_FEMT=0. ; Temperature_FEMT=0.
-      Density_FEMT=1. ; Component_FEMT=0.
-      Mean_Pore_CV=0. ; SumConc_FEMT=0.
+      Mean_Pore_CV=0.
       dummy_ele=0. ; mass_ele=0.
-!!$      Dummy_PhaseVolumeFraction_FEMT=0. ; dummy_ele=0. ; mass_ele=0.
 !!$
       PhaseVolumeFraction_Source=0. ; Velocity_U_Source=0.
       Velocity_U_Source_CV=0. ; Component_Source=0.
@@ -494,14 +485,6 @@
 !!$ Calculate diagnostic fields
       call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
       call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
-
-!!$ Dummy field used in the scalar advection option:
-!!$      Dummy_PhaseVolumeFraction_FEMT = 1.
-
-!!$
-!!$ Initialising Robin boundary conditions --  this still need to be defined in the schema:
-!!$
-
 !!$
 !!$ Initialising Absorption terms that do not appear in the schema
 !!$
@@ -772,8 +755,6 @@
                     CV_NDGLN, X_NDGLN, U_NDGLN, &
                     CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
 !!$
-!                    Temperature, Temperature_Old, &
-!!$
                     MAT_NLOC, MAT_NDGLN, MAT_NONODS, ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                     t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                     suf_sig_diagten_bc,&
@@ -786,8 +767,6 @@
                     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                    Temperature_FEMT,  &
-!!$                    Temperature_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
                     0,Temperature, Temperature_Old,igot_theta_flux, scvngi_theta, &
                     t_get_theta_flux, t_use_theta_flux, &
                     THETA_GDIFF, &
@@ -800,17 +779,6 @@
                     mass_ele_transp = dummy_ele, &
                     thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                     StorageIndexes=StorageIndexes )
-
-!!$  Update state memory
-!!$               do iphase = 1, nphase
-!!$                  Temperature_State => extract_scalar_field( state( iphase ), 'Temperature' )
-!!$                  Temperature_State % val = Temperature( 1 + ( iphase - 1 ) * cv_nonods : iphase * cv_nonods )
-!!$               end do
-
-               do iphase = 1, nphase
-                  tracer_field2=>extract_scalar_field(state(iphase),"DummyT")
-                  tracer_field2%val = tracer_field%val(1,iphase,:)
-               end do
 
                call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                     cv_ndgln, DRhoDPressure )
@@ -932,7 +900,6 @@
                     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                    Density_FEMT, &
                     igot_theta_flux,scvngi_theta, volfra_use_theta_flux, &
                     in_ele_upwind, dg_ele_upwind, &
 !!$                    
@@ -981,16 +948,6 @@
                            end do
                         end if
 
-                        !    if( PhaseVolumeFraction( cv_nodi ) > 0.90 ) then
-                        !       do iphase = 1, nphase
-                        !          do jphase = min( iphase + 1, nphase ), nphase
-                        !             Component_Absorption( cv_nodi, iphase, jphase ) = &
-                        !                  Component_Absorption( cv_nodi, iphase, jphase ) * max( 0.00001, &
-                        !                  20. * ( 1. - (PhaseVolumeFraction( cv_nodi )-0.05)  ) )
-                        !          end do
-                        !       end do
-                        !    end if
-
                      end do
                   end if Conditional_SmoothAbsorption
 
@@ -1019,9 +976,6 @@
                           CV_NDGLN, X_NDGLN, U_NDGLN, &
                           CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
 !!$
-!                          Component( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
-!                          Component_Old( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
-!!$
                           MAT_NLOC, MAT_NDGLN, MAT_NONODS, Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                           v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                           SUF_SIG_DIAGTEN_BC,&
@@ -1033,8 +987,6 @@
                           XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
                           opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                          Component_FEMT( ( icomp - 1 ) * nphase * cv_nonods + 1 : icomp * nphase * cv_nonods ), &
-!!$                          Density_FEMT, &
                           igot_t2, PhaseVolumeFraction, PhaseVolumeFraction_Old, igot_theta_flux, scvngi_theta, &
                           comp_get_theta_flux, comp_use_theta_flux, &
                           theta_gdiff, &
@@ -1065,16 +1017,6 @@
                   end do
 
                end do Loop_Components
-
-               !! Temporal working array:
-               !         DO CV_INOD = 1, CV_NONODS
-               !            DO IPHASE = 1, NPHASE
-               !               DO ICOMP = 1, NCOMP
-               !                  MFC_s%val(ICOMP, IPHASE, CV_INOD) = &
-               !                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS )
-               !               END DO
-               !            END DO
-               !         END DO
 
 
                if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // & 
@@ -1160,16 +1102,6 @@
                !                  END DO
                !               END DO
 
-!!$               ! Update state memory
-!!$               do icomp = 1, ncomp
-!!$                  do iphase = 1, nphase
-!!$                     Component_State => extract_scalar_field( state( icomp + nphase ), & 
-!!$                          'ComponentMassFractionPhase' // int2str( iphase ) )
-!!$                     Component_State % val = component( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
-!!$                          nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods )
-!!$                  end do
-!!$               end do
-
             end if Conditional_Components
 
             !Check if the results are good so far and act in consequence, only does something if requested by the user
@@ -1196,10 +1128,6 @@
 
          current_time = acctim
 
-!!$ Copying fields back to state:
-         !         call copy_into_state( state, & ! Copying main fields into state
-         !              PhaseVolumeFraction, Temperature, &
-         !              Component, ncomp, nphase, cv_ndgln )
 
 !!$ Calculate diagnostic fields
          call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
@@ -1217,29 +1145,12 @@
                checkpoint_number=checkpoint_number+1
             end if
 
-            if ( have_option( "/io/output_scalars_fem" ) ) then
-               !As SAT_s is pointing into state, we need to use a backup to print the FE saturation.
-               allocate(dummy_to_print_FEM(size(SAT_s,1),size(SAT_s,2)))
-               dummy_to_print_FEM = SAT_s!<=create backup
-               call copy_into_state( state, & ! Copying main fields into state
-                    FESAT_s, Temperature_FEMT, &
-                    Component_FEMT, ncomp, nphase, cv_ndgln )
-            end if
-
             call get_option( '/timestepping/current_time', current_time ) ! Find the current time 
 
             if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
             not_to_move_det_yet = .false. ; dump_no = itime/dump_period_in_timesteps ! Sync dump_no with itime
             call write_state( dump_no, state ) ! Now writing into the vtu files
 
-            if ( have_option( "/io/output_scalars_fem" ) ) then
-               SAT_s = dummy_to_print_FEM!<= retrieve backup
-               deallocate(dummy_to_print_FEM)
-
-               call copy_into_state( state, & ! Copying main fields into state
-                    SAT_s, Temperature, &
-                    Component, ncomp, nphase, cv_ndgln )
-            end if
          end if Conditional_TimeDump
 
 !!$! ******************
@@ -1375,9 +1286,7 @@
 !!$ Defining element-pair type and discretisation options and coefficients
                  opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
 !!$ For output:
-                 PhaseVolumeFraction_FEMT, Temperature_FEMT, Density_FEMT, &
-                 Component_FEMT, Mean_Pore_CV, SumConc_FEMT, &
-!!$                 Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
+                 Mean_Pore_CV, &
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                  plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
@@ -1482,11 +1391,8 @@
                  PhaseVolumeFraction_Old( nphase * cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
 !!$             
                  suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
-                 PhaseVolumeFraction_FEMT( cv_nonods * nphase ), Temperature_FEMT( cv_nonods * nphase ), &
-                 Density_FEMT( cv_nonods * nphase ), Component_FEMT( cv_nonods * nphase * ncomp ), &
-                 Mean_Pore_CV( cv_nonods ), SumConc_FEMT( cv_nonods * ncomp ), &
+                 Mean_Pore_CV( cv_nonods ), &
                  dummy_ele( totele ), mass_ele( totele ), &
-!!$                 Dummy_PhaseVolumeFraction_FEMT( cv_nonods * nphase ), dummy_ele( totele ), mass_ele( totele ), &
 !!$
                  Temperature_Source( cv_nonods * nphase ), &
                  PhaseVolumeFraction_Source( cv_nonods * nphase ), Velocity_U_Source( u_nonods * nphase * ndim ), &
@@ -1513,7 +1419,7 @@
             Momentum_Diffusion_Vol=0.
 !!$
             Temperature=0. ; Temperature_Source=0. ; 
-            Temperature_FEMT=0. ; Temperature_Absorption=0.
+            Temperature_Absorption=0.
 !!$
             Component=0. ; Component_Source=0.
             Component_Diffusion=0. ; Component_Absorption=0.
@@ -1522,8 +1428,6 @@
 !!$
 !!$
             PhaseVolumeFraction=0. ; PhaseVolumeFraction_Old=0. ; PhaseVolumeFraction_Source=0.
-            PhaseVolumeFraction_FEMT=0. 
-!!$            PhaseVolumeFraction_FEMT=0. ; Dummy_PhaseVolumeFraction_FEMT=0.
 !!$
             ScalarAdvectionField_Diffusion=0. ; ScalarField_Absorption=0.
             ScalarField_Source=0. ; ScalarAdvectionField_Source=0.
@@ -1558,10 +1462,6 @@
                end do
                !#############################################################
             end if
-
-
-!!$ Dummy field used in the scalar advection option:
-!!$            Dummy_PhaseVolumeFraction_FEMT = 1.
 
             ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
 
@@ -1649,9 +1549,7 @@
 !!$ Defining element-pair type and discretisation options and coefficients
            opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
 !!$ For output:
-           PhaseVolumeFraction_FEMT, Temperature_FEMT, Density_FEMT, &
-           Component_FEMT, Mean_Pore_CV, SumConc_FEMT, &
-!!$           Component_FEMT, Mean_Pore_CV, SumConc_FEMT, Dummy_PhaseVolumeFraction_FEMT, &
+           Mean_Pore_CV, &
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
            plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
