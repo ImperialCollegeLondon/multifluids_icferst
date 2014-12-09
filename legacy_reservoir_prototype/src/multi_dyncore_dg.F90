@@ -986,7 +986,7 @@ contains
             allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
             Artificial_Pe = .true.
             call get_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
-            if (minval(Pe_aux)<0) then!Automatic set up for Pe
+            if (Pe_aux<0) then!Automatic set up for Pe
                 Pe = p * 1d-2
             else
                 Pe = Pe_aux
