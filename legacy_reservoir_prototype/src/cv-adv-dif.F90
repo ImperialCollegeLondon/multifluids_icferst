@@ -7664,7 +7664,7 @@ deallocate(NX_ALL, X_NX_ALL)
 
              DO SGI=1,SBCVNGI
                 DO U_JLOC12=1,U_NLOC*2
-                DO U_SILOC=1,U_SNLOC                   
+                    DO U_SILOC=1,U_SNLOC                   
 
                       DO I=1,U_SNLOC
                           DO IPHASE=1,NPHASE
