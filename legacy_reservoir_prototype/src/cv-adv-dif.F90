@@ -337,8 +337,7 @@ contains
            JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, CV_SLOC2LOC, U_SLOC2LOC
       INTEGER, DIMENSION( : , : ), allocatable :: FACE_ELE
       REAL, DIMENSION( : ), allocatable ::  &
-           MASS_CV, MASS_ELE, SNDOTQ, SNDOTQOLD,  &
-           SRA,   &
+           MASS_CV, MASS_ELE,  &
            SUM_CV, ONE_PORE, &
            DU, DV, DW, PERM_ELE
       REAL, DIMENSION( :, : ), allocatable :: CVNORMX_ALL, XC_CV_ALL
@@ -474,7 +473,6 @@ contains
       LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
       LOGICAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_PACK, IGOT_T_CONST
       REAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_CONST_VALUE
-      REAL, DIMENSION( :, :, : ), ALLOCATABLE :: TEN_XX_ONE
 
       !Working pointers
       real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
@@ -802,9 +800,6 @@ contains
 
 
       ALLOCATE( CVNORMX_ALL( NDIM, SCVNGI )) ; CVNORMX_ALL=0.0 
-
-      ALLOCATE( SNDOTQ( SCVNGI ))
-      ALLOCATE( SNDOTQOLD( SCVNGI ))
       ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ))
       ALLOCATE( CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
       ALLOCATE( U_ON_FACE( U_NLOC, SCVNGI ))
@@ -815,8 +810,6 @@ contains
       ALLOCATE( X_SHARE( X_NONODS ))
 
       ALLOCATE( SHAPE_CV_SNL( CV_NLOC ))
-
-      ALLOCATE( SRA( SCVNGI ))
 
       ALLOCATE( DUMMY_ZERO_NDIM_NDIM(NDIM,NDIM))
       DUMMY_ZERO_NDIM_NDIM=0.0
@@ -831,8 +824,6 @@ contains
       ALLOCATE( UGI_COEF_ELE2_ALL(NDIM,NPHASE,U_NLOC) )
       ! The procity mapped to the CV nodes
       ALLOCATE( SUM_CV( CV_NONODS ))
-
-      ALLOCATE( TEN_XX_ONE( NDIM, NDIM, NPHASE )); TEN_XX_ONE=1.0
 
       ALLOCATE( ONE_PORE( TOTELE ))
       IF ( have_option( '/porous_media/actual_velocity' ) ) THEN
@@ -2841,8 +2832,6 @@ contains
 !      DEALLOCATE( CVNORMX )
 !      DEALLOCATE( CVNORMY )
 !      DEALLOCATE( CVNORMZ )
-      DEALLOCATE( SNDOTQ )
-      DEALLOCATE( SNDOTQOLD )
       DEALLOCATE( CV_ON_FACE )
       DEALLOCATE( U_ON_FACE )
       DEALLOCATE( CVFEM_ON_FACE )
@@ -2851,8 +2840,6 @@ contains
       DEALLOCATE( U_OTHER_LOC )
       DEALLOCATE( MAT_OTHER_LOC )
       DEALLOCATE( X_SHARE )
-
-      DEALLOCATE( SRA )
 
       DEALLOCATE( CV_SLOC2LOC )
       DEALLOCATE( U_SLOC2LOC )
@@ -3179,7 +3166,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
            FACE_ELE, CV_NEILOC
       REAL, DIMENSION( : ), allocatable :: CVWEIGHT, CVWEIGHT_SHORT, SCVFEWEIGH, SBCVFEWEIGH, &
            CVNORMX, &
-           CVNORMY, CVNORMZ, SCVRA, SCVDETWEI, SRA, &
+           CVNORMY, CVNORMZ, SCVRA, SCVDETWEI, &
            SUM_CV, ONE_PORE, SELE_OVERLAP_SCALE, &
            UP_WIND_NOD, DU, DV, DW, PERM_ELE
       REAL, DIMENSION( : , : ), allocatable :: CVN, CVN_SHORT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
@@ -3972,8 +3959,8 @@ deallocate(SCVFENX_ALL, INV_JAC)
     END DO Loop_Elements
 
     ! Form average...
-    DO CV_NODI=1,CV_NONODS
-       DO IT = 1, NTSOL_AVE
+    DO IT = 1, NTSOL_AVE
+       DO CV_NODI=1,CV_NONODS
           PSI_AVE( CV_NODI + ( IT - 1 ) * CV_NONODS ) = PSI_AVE( CV_NODI +( IT - 1 ) &
                * CV_NONODS ) / MASS_CV( CV_NODI )
        END DO
