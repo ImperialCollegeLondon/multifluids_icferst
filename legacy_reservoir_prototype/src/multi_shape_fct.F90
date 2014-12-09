@@ -2230,7 +2230,6 @@ ewrite(3,*)'lll:', option_path_len
 
 
 
-
       sele_overlap_scale = 1.
 
       if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element

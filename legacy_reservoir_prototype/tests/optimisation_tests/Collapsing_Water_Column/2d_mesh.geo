@@ -1,5 +1,5 @@
-nxlayers=15;
-nylayers=13;
+nxlayers=7;
+nylayers=7;
 Point(1) = {0., 0., 0.};
 Extrude {0.7, 0, 0} {
   Point{1}; Layers{nxlayers};

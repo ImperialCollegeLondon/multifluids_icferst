@@ -14208,7 +14208,7 @@ deallocate(NX_ALL)
 
   end function vtolfun
 
-
+    !This function should be in multi_eos.F90
     PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr)
         !This functions returns the derivative of the capillary pressure with regard of the saturation
         Implicit none
@@ -14225,7 +14225,6 @@ deallocate(NX_ALL)
 
 
     end function Get_DevCapPressure
-
 
 ! -----------------------------------------------------------------------------
 
