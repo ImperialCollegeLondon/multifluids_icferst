@@ -2346,7 +2346,7 @@
         type(tensor_field) :: vfield
 
 
-        character (len=FIELD_NAME_LEN), dimension(4) ::names
+        character (len=FIELD_NAME_LEN), dimension(5) ::names
         character (len=FIELD_NAME_LEN), dimension(4) ::phase_names
         character (len=FIELD_NAME_LEN), dimension(1) ::phase_vector_names
         integer :: count
@@ -2354,7 +2354,8 @@
         names(1)="PackedComponentMassFraction"
         names(2)="PackedComponentDensity"
         names(3)="PackedOldComponentMassFraction"
-        names(4)="PackedOldComponentDensity"
+        names(4)="PackedOldComponentDensity"        
+        names(5)="PackedComponentMassFractionSource"
 
         phase_names(1)="PackedPhaseVolumeFraction"
         phase_names(2)="PackedOldPhaseVolumeFraction"
