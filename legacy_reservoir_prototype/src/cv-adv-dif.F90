@@ -479,7 +479,7 @@ contains
       !Working pointers
       real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
       real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
-      real, dimension(:,:), allocatable, target :: T_ALL_TARGET, TOLD_ALL_TARGET, FEMT_ALL_TARGET, FEMTOLD_ALL_TARGET, T_TEMP, TOLD_TEMP
+      real, dimension(:,:), allocatable, target :: T_TEMP, TOLD_TEMP
       real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, X_ALL, FEMT_ALL, FEMTOLD_ALL
       real, dimension(:, :, :), pointer :: comp, comp_old, fecomp, fecomp_old, U_ALL, NU_ALL, NUOLD_ALL
       real, dimension(:,:), allocatable :: T_ALL_KEEP
@@ -927,7 +927,7 @@ contains
 !      ALLOCATE( T_ALL( NPHASE, CV_NONODS ), TOLD_ALL( NPHASE, CV_NONODS ) )
 
       ALLOCATE( T2_ALL( NPHASE, CV_NONODS ), T2OLD_ALL( NPHASE, CV_NONODS ) )
-
+      nullify(FEMT_ALL); nullify(FEMTOLD_ALL);
       ALLOCATE( FEMT_ALL( NPHASE, CV_NONODS ), FEMTOLD_ALL( NPHASE, CV_NONODS ) )
       ALLOCATE( FEMDEN_ALL( NPHASE, CV_NONODS ), FEMDENOLD_ALL( NPHASE, CV_NONODS ) )
       ALLOCATE( FEMT2_ALL( NPHASE, CV_NONODS ), FEMT2OLD_ALL( NPHASE, CV_NONODS ) )
@@ -2873,6 +2873,9 @@ contains
          call deallocate(saturation_BCs)
          call deallocate(saturation_BCs_robin2)
       end if
+
+      DEALLOCATE( T2_ALL,T2OLD_ALL, FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL)
+      nullify(FEMT_ALL); nullify(FEMTOLD_ALL);
 
 !if (present(T_input)) then!<==TEMPORARY
 !      deallocate( T_ALL_TARGET, TOLD_ALL_TARGET, FEMT_ALL_TARGET, FEMTOLD_ALL_TARGET)

@@ -1073,7 +1073,7 @@
          end if
          !Get mesh file just to be able to allocate the fields we want to store
          fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
-         Auxmesh = make_mesh(fl_mesh,name='StorageMesh')
+         Auxmesh = make_mesh(fl_mesh,name='StorageMesh1')
          !The number of nodes I want does not coincide
          Auxmesh%nodes = NBLOCK * NBLOCK * TOTELE
 
@@ -1086,22 +1086,21 @@
 
          call deallocate (Targ_NX_ALL)
          call deallocate (Auxmesh)
-      end if
 
-      IF (indx<=0) then
-          !We have to calculate and store the inverse
-          ALLOCATE( PIVIT_MAT2( NBLOCK, NBLOCK, TOTELE ))
+         !We have to calculate and store the inverse
+         ALLOCATE( PIVIT_MAT2( NBLOCK, NBLOCK, TOTELE ))
 
-          PIVIT_MAT2 = PIVIT_MAT!Very slow, but necessary because CX1 cannot reshape pointers...
+         PIVIT_MAT2 = PIVIT_MAT!Very slow, but necessary because CX1 cannot reshape pointers...
+         deallocate(PIVIT_MAT)!PIVIT_MAT comes already allocated
+         nullify(PIVIT_MAT)
+         call PHA_BLOCK_INV( PIVIT_MAT2, TOTELE, NBLOCK )
 
-          call PHA_BLOCK_INV( PIVIT_MAT2, TOTELE, NBLOCK )
-
-          !Store data
-          from = 1; to = NBLOCK * NBLOCK * TOTELE
-          state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
-          reshape(PIVIT_MAT2,[NBLOCK * NBLOCK * TOTELE])
-          deallocate(PIVIT_MAT2)
-          indx = abs(indx)
+         !Store data
+         from = 1; to = NBLOCK * NBLOCK * TOTELE
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
+         reshape(PIVIT_MAT2,[NBLOCK * NBLOCK * TOTELE])
+         deallocate(PIVIT_MAT2)
+         indx = abs(indx)
      end if
 
       !Set the pointer to the  solution

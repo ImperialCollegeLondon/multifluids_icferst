@@ -51,7 +51,7 @@ os.system('python' +' *.py > log')
 
 
 #Wait until all the experiments have finished
-#p.communicate()
+p.communicate()
 
 #Now we show the results
 logpath = path + '/BL_fast/log'

@@ -398,389 +398,6 @@ contains
 
     END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
-
-
-
-
-
-
-    !This sub is currently unused
-!    SUBROUTINE CV_ASSEMB_CV_DG( state, packed_state, &
-!         tracer, velocity, density, pressure, &
-!    CV_RHS, &
-!    NCOLACV, ACV, DENSE_BLOCK_MATRIX, FINACV, COLACV, MIDACV, &
-!    SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-!    NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
-!    CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-!    CV_ELE_TYPE,  &
-!    NPHASE, &
-!    CV_NLOC, U_NLOC, X_NLOC,  &
-!    CV_NDGLN, X_NDGLN, U_NDGLN, &
-!    CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-!    X, Y, Z,  &
-!    NU, NV, NW, NUOLD, NVOLD, NWOLD, UG, VG, WG, &
-!    T, TOLD, DEN, DENOLD, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
-!    MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, &
-!    T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, SECOND_THETA, T_BETA, &
-!    SUF_SIG_DIAGTEN_BC, &
-!    DERIV, P,  &
-!    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
-!    NDIM, &
-!    NCOLM, FINDM, COLM, MIDM, &
-!    XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-!    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-!    IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
-!    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-!    IN_ELE_UPWIND, DG_ELE_UPWIND, &
-!    NOIT_DIM, &
-!    MEAN_PORE_CV, &
-!    THERMAL, &
-!    mass_ele_transp, &
-!    option_path, StorageIndexes, Field_selector )
-!
-!        ! Solve for internal energy using a control volume method.
-!
-!        implicit none
-!        type( state_type ), dimension( : ), intent( inout ) :: state
-!        type( state_type ), intent( inout ) :: packed_state
-!        type(tensor_field), intent(inout) :: tracer
-!        type(tensor_field), intent(in) :: velocity, density
-!        type(scalar_field), intent(in) :: pressure
-!
-!        INTEGER, intent( in ) :: NCOLACV, NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
-!        CV_ELE_TYPE, NPHASE, CV_NLOC, U_NLOC, X_NLOC,  MAT_NLOC, &
-!        CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, NCOLM, NCOLELE, &
-!        IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, IDIVID_BY_VOL_FRAC, Field_selector
-!
-!        LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX, THERMAL
-!        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-!        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-!        INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
-!        INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
-!        INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
-!        INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
-!        INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
-!        INTEGER, DIMENSION( : ), intent( in ) :: FINACV
-!        INTEGER, DIMENSION( : ), intent( in ) :: COLACV
-!        INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
-!        INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV
-!        INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-!        INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-!        REAL, DIMENSION( : ), allocatable, intent( inout ) :: ACV
-!        REAL, DIMENSION( :, :, : ), intent( inout ) :: DENSE_BLOCK_MATRIX
-!        REAL, DIMENSION( :, :, : ), intent( inout ) :: CV_RHS
-!        REAL, DIMENSION( : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
-!        REAL, DIMENSION( : ), intent( inout ) :: CT_RHS
-!        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: CT
-!        REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
-!        REAL, DIMENSION( : ), intent( in ) :: NU, NV, NW, NUOLD, NVOLD, NWOLD, UG, VG, WG
-!        REAL, DIMENSION( : ), intent( inout ) :: T
-!        REAL, DIMENSION( :), intent( in ) :: TOLD
-!        REAL, DIMENSION( :, : ), intent( in ) :: DEN, DENOLD
-!        REAL, DIMENSION( :, : ), intent( in ) :: FEM_VOL_FRAC
-!        REAL, DIMENSION( : ), intent( in ) :: T2, T2OLD
-!        REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
-!        REAL, DIMENSION(:, : ),  intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-!        REAL, DIMENSION( :, :, :, : ), intent( inout ) :: TDIFFUSION
-!        INTEGER, intent( in ) :: T_DISOPT, T_DG_VEL_INT_OPT
-!        REAL, intent( in ) :: DT, T_THETA
-!        REAL, intent( in ) :: T_BETA
-!        REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-!        REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DERIV
-!        REAL, DIMENSION( : ), intent( in ) :: P
-!        REAL, DIMENSION( : ), intent( in ) :: T_SOURCE
-!        REAL, DIMENSION( :, :, : ), intent( in ) :: T_ABSORB
-!        REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
-!        INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-!        INTEGER, DIMENSION( : ), intent( in ) :: COLM
-!        INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-!        INTEGER, DIMENSION( : ), intent( in ) :: FINELE
-!        INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-!        REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-!        INTEGER, INTENT( IN ) :: NOIT_DIM
-!        REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
-!        real, dimension( : ), intent( inout ) :: mass_ele_transp
-!        character( len = * ), intent( in ), optional :: option_path
-!        integer, dimension(:), intent(inout) :: StorageIndexes
-!        ! Local variables
-!        LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
-!        INTEGER :: ITS_FLUX_LIM, IGOT_THERM_VIS
-!        INTEGER :: NCOLACV_SUB, IPHASE, I, J
-!        REAL :: SECOND_THETA
-!        INTEGER :: STAT,U_ELE_TYPE
-!        LOGICAL :: CV_METHOD
-!        character( len = option_path_len ) :: path
-!
-!        REAL, DIMENSION( : ), allocatable :: CV_RHS1
-!        REAL, DIMENSION( :,:,:,: ), allocatable :: THERM_U_DIFFUSION
-!        REAL, DIMENSION( :,: ), allocatable :: THERM_U_DIFFUSION_VOL
-!
-!        allocate(  cv_rhs1( cv_nonods * nphase ) ) ; cv_rhs1=0.0
-!
-!        SECOND_THETA = 1.0
-!        U_ELE_TYPE = CV_ELE_TYPE
-!        path='/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/control_volumes/second_theta'
-!        call get_option( path, second_theta, stat )
-!        CV_METHOD = .FALSE.
-!
-!        IF(CV_METHOD) THEN ! cv method...
-!
-!            IGOT_THERM_VIS=0
-!            ALLOCATE( THERM_U_DIFFUSION(NDIM,NDIM,NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
-!            ALLOCATE( THERM_U_DIFFUSION_VOL(NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
-!
-!            CALL CV_ASSEMB( state, packed_state, &
-!                 tracer, velocity, density, &
-!            CV_RHS1, &
-!            NCOLACV, ACV, DENSE_BLOCK_MATRIX, FINACV, COLACV, MIDACV, &
-!            SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-!            NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
-!            CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-!            CV_ELE_TYPE,  &
-!            NPHASE, &
-!            CV_NLOC, U_NLOC, X_NLOC,  &
-!            CV_NDGLN, X_NDGLN, U_NDGLN, &
-!            CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-!            DEN, DENOLD, &
-!            MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-!            T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, SECOND_THETA, T_BETA, &
-!            SUF_SIG_DIAGTEN_BC, &
-!            DERIV, P, &
-!            T_SOURCE, T_ABSORB, VOLFRA_PORE, &
-!            NDIM, GETCV_DISC, GETCT, &
-!            NCOLM, FINDM, COLM, MIDM, &
-!            XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-!            opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-!            IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
-!            THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-!            IN_ELE_UPWIND, DG_ELE_UPWIND, &
-!            NOIT_DIM, &
-!            MEAN_PORE_CV, &
-!            FINACv, COLACV, NCOLACV, ACV, THERMAL, RETRIEVE_SOLID_CTY, &
-!            mass_ele_transp , &
-!            StorageIndexes, Field_selector)!-1,  T_input = T, TOLD_input=TOLD )
-!
-!        ELSE ! this is for DG...
-!
-!            !TEMPORARY
-!            allocate(ACV(NCOLACV))
-!
-!
-!            CALL WRAPPER_ASSEMB_FORCE_CTY( state, packed_state, &
-!                 velocity,pressure, &
-!            NDIM, NPHASE, U_NLOC, X_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
-!            U_ELE_TYPE, CV_ELE_TYPE, &
-!            U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
-!            U_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
-!            STOTEL, U_SNDGLN, CV_SNDGLN, U_SNLOC, CV_SNLOC, &
-!            X, Y, Z, T_ABSORB, T_SOURCE, TDIFFUSION, &
-!            T, TOLD, &
-!            NU, NV, NW, NUOLD, NVOLD, NWOLD, &
-!            DEN, DENOLD, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
-!            DT, &
-!            CV_RHS, &
-!            ACV, NCOLACV, FINACV, COLACV, & ! Force balance sparsity
-!            NCOLELE, FINELE, COLELE, & ! Element connectivity.
-!            NCOLM, FINDM, COLM, MIDM, &
-!            XU_NLOC, XU_NDGLN, &
-!            option_path,&
-!            StorageIndexes=StorageIndexes )
-!
-!        ENDIF
-!
-!    END SUBROUTINE CV_ASSEMB_CV_DG
-
-
-
-
-    SUBROUTINE WRAPPER_ASSEMB_FORCE_CTY( state, packed_state,&
-         velocity,pressure, &
-    NDIM, NPHASE, U_NLOC, X_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
-    U_ELE_TYPE, CV_ELE_TYPE, &
-    U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
-    U_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
-    STOTEL, U_SNDGLN, CV_SNDGLN, U_SNLOC, CV_SNLOC, &
-    X, Y, Z, T_ABSORB, T_SOURCE, TDIFFUSION, &
-    T, TOLD, &
-    U, V, W, UOLD, VOLD, WOLD, &
-    DEN_ALL, DENOLD_ALL, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
-    DT, &
-    CV_RHS, &
-    ACV, NCOLACV, FINACV, COLACV, & ! Force balance sparsity
-    NCOLELE, FINELE, COLELE, & ! Element connectivity.
-    NCOLM, FINDM, COLM, MIDM, &
-    XU_NLOC, XU_NDGLN, &
-    option_path,&
-    StorageIndexes )
-        implicit none
-
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
-        type(tensor_field), intent(in) :: velocity
-        type(scalar_field), intent(in) :: pressure
-        INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, X_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
-        U_ELE_TYPE, CV_ELE_TYPE, U_NONODS, CV_NONODS, X_NONODS, &
-        MAT_NONODS, STOTEL, U_SNLOC, CV_SNLOC, &
-        NCOLACV, NCOLELE, XU_NLOC, IDIVID_BY_VOL_FRAC, NCOLM
-        INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
-        INTEGER, DIMENSION( : ), intent( in )  :: CV_NDGLN
-        INTEGER, DIMENSION( : ), intent( in )  :: X_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
-        REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
-        REAL, DIMENSION( :, :, : ), intent( in ) :: T_ABSORB
-        REAL, DIMENSION( : ), intent( in ) :: T_SOURCE
-        REAL, DIMENSION( : ), intent( in ) :: U, V, W, UOLD, VOLD, WOLD
-        REAL, DIMENSION( : ), intent( in ) :: T, TOLD
-        REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL, DENOLD_ALL
-        REAL, intent( in ) :: DT
-        REAL, DIMENSION( :, :, : ), intent( inout ) :: CV_RHS
-        REAL, DIMENSION( : ),  intent( inout ) :: ACV
-        INTEGER, DIMENSION( : ), intent( in ) :: FINACV
-        INTEGER, DIMENSION( : ), intent( in ) :: COLACV
-        INTEGER, DIMENSION( : ), intent( in ) :: FINELE
-        INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-        INTEGER, DIMENSION( : ), intent( in ) :: COLM
-        INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-        REAL, DIMENSION( :, :, :, : ), intent( inout ) :: TDIFFUSION
-        REAL, DIMENSION( :, : ), intent( in ) :: FEM_VOL_FRAC
-        character( len = * ), intent( in ), optional :: option_path
-        integer, dimension(:), intent(inout) :: StorageIndexes
-        ! Local  variables... none
-        REAL, DIMENSION ( :, :, : ), allocatable :: RZERO, T_IN, TOLD_IN
-        REAL, DIMENSION ( : ), allocatable :: RDUM
-        REAL, DIMENSION ( :, : ), allocatable :: RDUM2
-        REAL, DIMENSION ( :, :, : ), pointer :: RDUM3
-        REAL, DIMENSION ( :, :, :, : ), allocatable :: RDUM4
-        INTEGER, DIMENSION ( : ), allocatable :: IDUM,IZERO
-
-        INTEGER :: IPLIKE_GRAD_SOU, NDIM_IN, NPHASE_IN, X_ILOC, X_INOD, MAT_INOD, S, E
-        LOGICAL :: JUST_BL_DIAG_MAT
-
-        INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM, I, SELE, U_SILOC
-        REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, T_SOURCE_ALL, T_ABSORB_ALL
-        REAL, DIMENSION( :, : ), allocatable :: X_ALL
-        REAL, DIMENSION( :, : ), allocatable :: TDIFFUSION_VOL
-
-        INTEGER, DIMENSION( :, : ), allocatable :: IZERO2
-
-
-        ndim_in = 1 ; nphase_in = 1
-
-        ALLOCATE( U_ALL( NDIM, NPHASE, U_NONODS ), UOLD_ALL( NDIM, NPHASE, U_NONODS ), &
-        X_ALL( NDIM, X_NONODS ) )
-        U_ALL = 0. ; UOLD_ALL = 0. ; X_ALL = 0.
-
-        IF(U_NLOC.NE.CV_NLOC) THEN
-            ewrite(3,*) 'u_nloc, cv_nloc:', u_nloc, cv_nloc
-            FLAbort( 'Only working for u_nloc == cv_nloc ' )
-        END IF
-
-        ALLOCATE(RZERO(TOTELE , U_NLOC * NPHASE * NDIM , U_NLOC * NPHASE * NDIM))
-        RZERO=0.0
-        ALLOCATE(IZERO(TOTELE * U_NLOC * NPHASE * NDIM * U_NLOC * NPHASE * NDIM))
-        IZERO=0
-        ALLOCATE(RDUM(TOTELE *  U_NLOC * NPHASE * NDIM  *  U_NLOC * NPHASE * NDIM))
-        RDUM=0.0
-        ALLOCATE(IDUM(TOTELE * U_NLOC * NPHASE * NDIM * U_NLOC * NPHASE * NDIM))
-        IDUM=0
-        ALLOCATE(RDUM2(NPHASE,CV_NONODS))
-        RDUM2=0.0
-
-        IPLIKE_GRAD_SOU=0
-
-        DO ELE = 1, TOTELE
-            DO U_ILOC = 1 , U_NLOC
-                U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                DO IPHASE = 1, NPHASE
-                    DO IDIM = 1, NDIM
-                        IF ( IDIM==1 ) THEN
-                            U_ALL( IDIM, IPHASE, U_INOD ) = U( U_INOD + (IPHASE-1)*U_NONODS )
-                            UOLD_ALL( IDIM, IPHASE, U_INOD ) = UOLD( U_INOD + (IPHASE-1)*U_NONODS )
-                        ELSE IF ( IDIM==2 ) THEN
-                            U_ALL( IDIM, IPHASE, U_INOD ) = V( U_INOD + (IPHASE-1)*U_NONODS )
-                            UOLD_ALL( IDIM, IPHASE, U_INOD ) = VOLD( U_INOD + (IPHASE-1)*U_NONODS )
-                        ELSE
-                            U_ALL( IDIM, IPHASE, U_INOD ) = W( U_INOD + (IPHASE-1)*U_NONODS )
-                            UOLD_ALL( IDIM, IPHASE, U_INOD ) = WOLD( U_INOD + (IPHASE-1)*U_NONODS )
-                        END IF
-                    END DO
-                END DO
-            END DO
-        END DO
-        DO IDIM = 1, NDIM
-            IF ( IDIM==1 ) THEN
-                X_ALL( IDIM, : ) = X
-            ELSE IF ( IDIM==2 ) THEN
-                X_ALL( IDIM, : ) = Y
-            ELSE
-                X_ALL( IDIM, : ) = Z
-            END IF
-        END DO
-
-        ALLOCATE( T_SOURCE_ALL( NDIM_IN, NPHASE_IN, U_NONODS ) )
-        DO IPHASE = 1, NPHASE
-            DO IDIM = 1, NDIM_IN
-                S = 1 + (IDIM-1)*U_NONODS + (IPHASE-1)*NDIM_IN*U_NONODS
-                E = IDIM*U_NONODS + (IPHASE-1)*NDIM_IN*U_NONODS
-                T_SOURCE_ALL( IDIM, IPHASE, : ) = T_SOURCE( S:E )
-            END DO
-        END DO
-
-        ALLOCATE( T_ABSORB_ALL( NDIM_IN * NPHASE_IN, NDIM_IN * NPHASE_IN, MAT_NONODS ) )
-        DO MAT_INOD = 1, MAT_NONODS
-            T_ABSORB_ALL( :, :, MAT_INOD ) = T_ABSORB( MAT_INOD, :, : )
-        END DO
-
-
-
-
-        allocate( t_in( ndim_in, nphase_in, u_nonods ) ) ; t_in(1,1,:) = t
-        allocate( told_in( ndim_in, nphase_in, u_nonods ) ) ; told_in(1,1,:) = t
-
-        ALLOCATE( IZERO2( NPHASE_IN,STOTEL ) ) ; IZERO2 = 0
-!        ALLOCATE( RDUM3( NPHASE_IN,CV_SNLOC,STOTEL ) ) ; RDUM3 = 0.
-        ALLOCATE( RDUM4( 1,1,1,1 ) ) ; RDUM4 = 0.
-        ALLOCATE( TDIFFUSION_VOL( NPHASE, MAT_NONODS ) ) ; TDIFFUSION_VOL = 0.
-
-        !Currently RDUM3 has been set to be a pointer, this means considering how the storage method is
-        !that it will point to the C matrix. However, this should not affect
-        CALL ASSEMB_FORCE_CTY( state, packed_state, &
-             velocity,pressure, &
-        NDIM, NPHASE_IN, U_NLOC, X_NLOC, CV_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
-        U_ELE_TYPE, CV_ELE_TYPE, &
-        U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
-        U_NDGLN, CV_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
-        STOTEL, U_SNDGLN, CV_SNDGLN, CV_SNDGLN, U_SNLOC, CV_SNLOC, CV_SNLOC, &
-        X_ALL, RZERO, T_ABSORB_ALL, T_SOURCE_ALL, RDUM3, &
-        T_IN, TOLD_IN, &
-        U_ALL, UOLD_ALL, &
-        DEN_ALL, DENOLD_ALL, TDIFFUSION_VOL , IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
-        DT, &
-        CV_RHS, &
-        RDUM3, 0, IDUM, IDUM, &
-        ACV, NCOLACV, FINACV, COLACV, &! Force balance sparsity
-        NCOLELE, FINELE, COLELE, & ! Element connectivity.
-        NCOLM, FINDM, COLM, MIDM,& !For the CV-FEM projection
-        XU_NLOC, XU_NDGLN, &
-        RZERO, JUST_BL_DIAG_MAT,  &
-        TDIFFUSION, TDIFFUSION_VOL, RDUM4, RDUM2, DEN_ALL, DENOLD_ALL, .FALSE., & ! TDiffusion need to be obtained down in the tree according to the option_path
-        IPLIKE_GRAD_SOU, RDUM2, RDUM2, &
-        RDUM, NDIM_IN, &
-        StorageIndexes )
-
-
-
-        DEALLOCATE( U_ALL, UOLD_ALL, X_ALL, RZERO, IZERO, RDUM, IDUM, T_IN, TOLD_IN )
-
-    END SUBROUTINE WRAPPER_ASSEMB_FORCE_CTY
-
-
-
-
     SUBROUTINE SIMPLE_SOLVER( CMC, P, RHS,  &
     NCMC, NONODS, FINCMC, COLCMC, MIDCMC,  &
     ERROR, RELAX, RELAX_DIAABS, RELAX_DIA, N_LIN_ITS )
@@ -1327,8 +944,9 @@ contains
 
 
 
-        if (storageIndexes(34)<=0) then
-            ALLOCATE( PIVIT_MAT( NDIM * NPHASE * U_NLOC, NDIM * NPHASE * U_NLOC, TOTELE )) ; PIVIT_MAT=0.0
+        if (storageIndexes(34)<=0 .or. .not.is_compact_overlapping) then
+            nullify(PIVIT_MAT)
+            ALLOCATE( PIVIT_MAT( NDIM * NPHASE * U_NLOC, NDIM * NPHASE * U_NLOC, TOTELE )); PIVIT_MAT=0.0
         end if
         ALLOCATE( DGM_PHA( NCOLDGM_PHA )) ; DGM_PHA=0.
 
@@ -1357,7 +975,7 @@ contains
         call allocate(deltaP,pressure%mesh,"DeltaP")
         call allocate(rhs_p,pressure%mesh,"PressureCorrectionRHS")
 
-
+        JUST_BL_DIAG_MAT = .false.
         !Calculate gravity source terms
         if ( have_option ( '/material_phase[0]/multiphase_properties/relperm_type' ) )then
            UDEN_ALL=0.0; UDENOLD_ALL=0.0
@@ -1702,11 +1320,6 @@ contains
 !            mat2=csr2petsc_csr(cmat)
 !            call deallocate(cmat)
 
-
-
-
-
-
             !Solve the system
             call zero(deltaP)
              !We solve (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p
@@ -1811,20 +1424,17 @@ contains
         DEALLOCATE( DU_VEL )
         DEALLOCATE( UP_VEL )
 
-        if (.not.is_compact_overlapping) then
-            DEALLOCATE( PIVIT_MAT )
-        else
-            nullify(PIVIT_MAT)
-        end if
+        if (.not.is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
 
 #ifdef USING_GFORTRAN
 !Nothing to do
 #else!deallocate the C and PIVIT_MAT matrices
 DEALLOCATE( C )
-DEALLOCATE( PIVIT_MAT )
+if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
 #endif
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
 
+        nullify(PIVIT_MAT)
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
 

@@ -1460,7 +1460,7 @@
          end if
          !Get mesh file just to be able to allocate the fields we want to store
          fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
-         Auxmesh = make_mesh(fl_mesh,name='StorageMesh')
+         Auxmesh = make_mesh(fl_mesh,name='StorageMesh2')
          !The number of nodes I want does not coincide
          Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*NLOC*NGI*NDIM &
          +merge(totele,1,btest(cache_level,1))*NDIM*NDIM*NGI &

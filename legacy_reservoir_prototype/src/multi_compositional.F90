@@ -36,7 +36,6 @@
     use matrix_operations
     use Copy_Outof_State
     use futils, only: int2str
-    use global_parameters, only: is_compact_overlapping
 
     implicit none
 

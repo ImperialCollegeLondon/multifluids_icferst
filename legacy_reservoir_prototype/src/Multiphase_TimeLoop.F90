@@ -690,7 +690,7 @@
 
             call calculate_rheologies(state,rheology)
             !To force the recalculation of all the stored variables uncomment the following line:
-            !        call Clean_Storage(state, StorageIndexes)
+!           call Clean_Storage(state, StorageIndexes)
 
 
             if( have_temperature_field .and. &

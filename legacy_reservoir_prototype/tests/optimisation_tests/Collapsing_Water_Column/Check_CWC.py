@@ -43,8 +43,10 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.0227
-Tolerance_L2_NORM = 0.0029
+#The errors seem big but that is 
+#because the MAXIMUM pressure is about 10^6
+Tolerance_L1_NORM = 56.93
+Tolerance_L2_NORM = 4.13
 
 AutomaticLine = 0
 
@@ -57,7 +59,7 @@ AutomaticVTU_Number = 40
 showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
-data_name = 'phase1::C1to4'
+data_name = 'phase1::Pressure'
 
 #Initial and last coordinate of the probe
 x0 = 0.0
@@ -229,7 +231,7 @@ for i in range(len(Experimental_X)):
         L2_sum_shock_front = L2_sum_shock_front + (x - Experimental_Y[i])**2      
         
         
-L1_norm= L1_sum / len(Experimental_X) 
+L1_norm= L1_sum / len(Experimental_X)
 L2_norm = L2_sum**0.5 / len(Experimental_X)    
 
 Passed = True
