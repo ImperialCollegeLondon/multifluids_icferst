@@ -3113,7 +3113,6 @@
       !By default the minimum time-steps is ten orders smaller than the initial timestep
       if(min_ts<0) min_ts = initial_dt * 1d-10
 
-
       select case (order)
       case (1)!Store or get from backup
          !If we do not have adaptive time stepping then there is nothing to backup

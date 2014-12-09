@@ -952,7 +952,7 @@ contains
       !Variables for capillary pressure
       type(corey_options) :: options
       character(len=250) :: cap_path!,option_dir
-      real :: aux, Pe_aux
+      real :: Pe_aux
       real, dimension(:), pointer ::c_regions, a_regions, Pe, Cap_exp
       logical :: Artificial_Pe
 
@@ -986,17 +986,16 @@ contains
             allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
             Artificial_Pe = .true.
             call get_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
-
-            if (minval(Pe)<0) then!Automatic set up for Pe
+            if (minval(Pe_aux)<0) then!Automatic set up for Pe
                 Pe = p * 1d-2
             else
                 Pe = Pe_aux
             end if
-
             Cap_exp = 1.!Linear exponent
          end if
       end do
-
+      !We consider only the corey options, for capillary pressure
+      call get_corey_options(options)
 
       GET_THETA_FLUX = .FALSE.
       IGOT_T2 = 0
