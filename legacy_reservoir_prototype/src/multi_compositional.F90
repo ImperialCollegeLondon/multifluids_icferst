@@ -814,10 +814,11 @@
       logical :: ensure_positive
     !Working pointer
       real, dimension(:,:), pointer ::satura
-      type( tensor_field ), pointer :: MFC_s
+      type( tensor_field ), pointer :: MFC_s, tracer_source
 
      call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
      MFC_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedComponentMassFraction" )
+     tracer_source => extract_tensor_field(packed_state, "PackedPhaseVolumeFractionSource")
 
       if( have_option( '/material_phase[' // int2str( nphase ) // &
            ']/is_multiphase_component/Comp_Sum2One/Relaxation_Coefficient' ) ) then
@@ -841,10 +842,14 @@
             !ewrite(3,*)'IPHASE,CV_NODI,S,COMP_SUM:',IPHASE,CV_NODI,SATURA( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ),COMP_SUM
 
             IF ( ENSURE_POSITIVE ) THEN
-               V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) & 
+!               V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) & 
+!                    - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
+               tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) & 
                     - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
             ELSE
-               V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) & 
+!               V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) & 
+!                    - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
+               tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) &  
                     - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
             END IF
 

@@ -517,7 +517,7 @@ contains
       type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
       type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
       type(vector_field), pointer :: coord
-      type( tensor_field ), pointer :: old_tracer, old_density, old_saturation
+      type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tracer_source
       integer :: FEM_IT
 
       integer, dimension(:), pointer :: neighbours
@@ -950,7 +950,12 @@ contains
 ! ******change the below for thermal Dimitrios 
          END IF
 
-         SOURCT_ALL( IPHASE, : ) = SOURCT( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
+         !SOURCT_ALL( IPHASE, : ) = SOURCT( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
+         tracer_source=>extract_tensor_field(packed_state,trim(tracer%name)//"Source")
+         SOURCT_ALL = tracer_source%val(1,:,:)
+
+!         print*, tracer%name, maxval((sourct_all)),maxval((sourct_all1)),maxval(abs(sourct_all-sourct_all1)), minval(abs(sourct_all-sourct_all1)), sqrt(sum(abs(sourct_all-sourct_all1)))
+
 
          DO JPHASE = 1, NPHASE
             ABSORBT_ALL( JPHASE, IPHASE, : ) = ABSORBT( :, JPHASE, IPHASE )

@@ -256,7 +256,7 @@
       !Working pointers
       real, dimension(:,:), pointer :: SAT_s, OldSAT_s, FESAT_s
 
-      type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field
+      type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
       type(scalar_field), pointer :: pressure_field, porosity_field, tracer_field2
       type(vector_field), pointer :: positions
 
@@ -786,6 +786,7 @@
             end if Conditional_ScalarAdvectionField
 
             ScalarField_Source_Store = ScalarField_Source + ScalarField_Source_Component
+            tracer_source => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource")
 
             volfra_use_theta_flux = .true.
             if( ncomp <= 1 ) volfra_use_theta_flux = .false.
@@ -917,6 +918,8 @@
 !!$ Starting loop over components
             sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0. ; ScalarField_Source_Component = 0.
 
+            tracer_source%val = 0.
+
             velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
             saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             old_saturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
@@ -1010,11 +1013,12 @@
 
 
                   ! We have divided through by density 
-                  do cv_inod=1,cv_nonods
-                     do iphase=1,nphase
-                        ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) = ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) + THETA_GDIFF(iphase,cv_inod)
-                     end do
-                  end do
+                  !do cv_inod=1,cv_nonods
+                  !   do iphase=1,nphase
+                  !      ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) = ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) + THETA_GDIFF(iphase,cv_inod)
+                  !   end do
+                  !end do
+                  tracer_source%val(1,:,:) = tracer_source%val(1,:,:) + THETA_GDIFF
 
                end do Loop_Components
 
@@ -1062,8 +1066,12 @@
                   Loop_Phase_SourceTerm1: do iphase = 1, nphase
                      Loop_Phase_SourceTerm2: do jphase = 1, nphase
                         DO CV_NODI = 1, CV_NONODS
-                           ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = &
-                                ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) - &
+                           !ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = &
+                           !     ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) - &
+                           !     Component_Absorption( CV_NODI, IPHASE, JPHASE ) * &
+                           !     MFC_s%val(ICOMP, JPHASE, CV_NODI) / &
+                           !     DC_s%val( icomp, iphase, cv_nodi  )
+                           tracer_source%val(1,iphase,cv_nodi)=tracer_source%val(1,iphase,cv_nodi)- &
                                 Component_Absorption( CV_NODI, IPHASE, JPHASE ) * &
                                 MFC_s%val(ICOMP, JPHASE, CV_NODI) / &
                                 DC_s%val( icomp, iphase, cv_nodi  )
@@ -1074,8 +1082,13 @@
                   ! For compressibility
                   DO IPHASE = 1, NPHASE
                      DO CV_NODI = 1, CV_NONODS
-                        ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = &
-                             ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) &
+                        !ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = &
+                        !     ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) &
+                        !     + Mean_Pore_CV( CV_NODI ) * MFCOLD_s%val(ICOMP, IPHASE, CV_NODI) &
+                        !     * ( DCOLD_s%val( ICOMP, IPHASE, CV_NODI ) - DC_s%val( ICOMP, IPHASE, CV_NODI) ) &
+                        !     * OldSAT_s( IPHASE, CV_NONODS ) &
+                        !     / ( DC_s%val( ICOMP, IPHASE, CV_NODI ) * DT )
+                        tracer_source%val(1,iphase,cv_nodi)=tracer_source%val(1,iphase,cv_nodi)&
                              + Mean_Pore_CV( CV_NODI ) * MFCOLD_s%val(ICOMP, IPHASE, CV_NODI) &
                              * ( DCOLD_s%val( ICOMP, IPHASE, CV_NODI ) - DC_s%val( ICOMP, IPHASE, CV_NODI) ) &
                              * OldSAT_s( IPHASE, CV_NONODS ) &
