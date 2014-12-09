@@ -240,6 +240,12 @@ contains
       !
       !
       !***********************************************************************
+      
+      ! Incomplete list of variables that appear not to be used in CV_ASSEMB: 
+      ! CV_NODK_IPHA, CV_SNODK, CV_SNODK_IPHA, CVNOD, DU, DV, DW, FEMDGI, 
+      ! FEMDOLDGI, FEMT2GI, FEMT2OLDGI, FEMT_ALL_TARGET, FEMTGI, FEMTOLD_ALL_TARGET
+      ! FEMTOLDGI, found, have_components_fields, have_temperature_fields, ID, 
+      ! IDOLD, IJ, IMID_IPHA, JMID_IPHA
 
       ! Inputs/Outputs
       IMPLICIT NONE
