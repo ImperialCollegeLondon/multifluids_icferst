@@ -10,7 +10,6 @@ import time
 import os, subprocess
 
 def getLog(path):
-    #Returns the physical line and line to which certain edge belong
     a=open(path,'rb')
     lines = a.readlines()
     if lines:
@@ -26,10 +25,15 @@ start = time.time()
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
 
-print 'Running the gravity-capillarity test case (in a second cpu)'
-#os.chdir(path + '/Grav_cap_competing_fast/')
+print 'Running the collapsing water column test case (in a second cpu)'
+#os.chdir(path + '/Collapsing_Water_Column/')
 #os.system('python' +' *.py > log')
-p =subprocess.Popen('python' +' *.py > log', shell=True, cwd=path + '/Grav_cap_competing_fast/')
+p =subprocess.Popen('python' +' *.py > log', shell=True, cwd=path + '/Collapsing_Water_Column/')
+
+print 'Running the gravity-capillarity test case'
+os.chdir(path + '/Grav_cap_competing_fast/')
+os.system('python' +' *.py > log')
+#p =subprocess.Popen('python' +' *.py > log', shell=True, cwd=path + '/Grav_cap_competing_fast/')
 
 print 'Running the BL test case'
 os.chdir(path + '/BL_fast/')
@@ -47,7 +51,7 @@ os.system('python' +' *.py > log')
 
 
 #Wait until all the experiments have finished
-p.communicate()
+#p.communicate()
 
 #Now we show the results
 logpath = path + '/BL_fast/log'
@@ -60,6 +64,9 @@ logpath = path + '/Grav_cap_competing_fast/log'
 print getLog(logpath)
 
 logpath = path + '/BL_with_gravity/log'
+print getLog(logpath)
+
+logpath = path + '/Collapsing_Water_Column/log'
 print getLog(logpath)
 
 end = time.time()
