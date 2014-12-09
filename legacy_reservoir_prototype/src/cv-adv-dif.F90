@@ -112,7 +112,6 @@ contains
          NCOLM, FINDM, COLM, MIDM, &
          XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-!         DEN_FEMT, &
          IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
          IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -121,8 +120,7 @@ contains
          FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
-!         option_path_spatial_discretisation,T_input,TOLD_input, FEMT_input,&!
-         option_path_spatial_discretisation, FEMT_input,&
+         option_path_spatial_discretisation, &
          saturation, Pe, Cap_exp, Swirr, Sor)
 
       !  =====================================================================
@@ -281,8 +279,6 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
-      !REAL, DIMENSION( : ), optional, intent( in ) :: T_input, TOLD_input, FEMT_input !<========TEMPORARY UNTIL ALL THE VARIABLES ARE INSIDE PACKED_STATE!!!
-      REAL, DIMENSION( : ), optional, intent( in ) :: FEMT_input
       REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL, DENOLD_ALL
       REAL, DIMENSION( : ), intent( in ) :: T2, T2OLD
       REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (NPHASE,CV_NONODS)
@@ -697,24 +693,6 @@ contains
           FLAbort('Invalid field_selector value')
        end select
 
-       !      else
-       !         ALLOCATE( T_ALL_TARGET( NPHASE, CV_NONODS ), TOLD_ALL_TARGET( NPHASE, CV_NONODS ), FEMT_ALL_TARGET(NPHASE, CV_NONODS) )
-       !         do cv_inod = 1, cv_nonods
-       !            do iphase = 1, nphase
-       !               T_ALL_TARGET(iphase, cv_inod) = T_input(cv_inod+(iphase-1)*cv_nonods)
-       !               TOLD_ALL_TARGET(iphase, cv_inod) = TOLD_input(cv_inod+(iphase-1)*cv_nonods)
-       !               FEMT_ALL_TARGET(iphase, cv_inod) = FEMT_input(cv_inod+(iphase-1)*cv_nonods)
-       !            end do
-       !         end do
-       !         T_ALL => T_ALL_TARGET
-       !         TOLD_ALL => TOLD_ALL_TARGET
-       !         FEMT_ALL => FEMT_ALL_TARGET
-       !         allocate (FEMTOLD_ALL_TARGET(NPHASE, CV_NONODS))
-       !         FEMTOLD_ALL_TARGET = 0.
-       !         FEMTOLD_ALL => FEMTOLD_ALL_TARGET
-       !
-       !         T_ALL_KEEP = T_ALL
-       !      end if
     end if
     !##################END OF SET VARIABLES##################
 
@@ -2685,73 +2663,77 @@ contains
 !            IMID = SMALL_CENTRM(CV_NODI)
             R = MEAN_PORE_CV( CV_NODI ) * MASS_CV( CV_NODI ) / DT
 
-            Loop_IPHASE2: DO IPHASE = 1, NPHASE
+            !Loop_IPHASE2: DO IPHASE = 1, NPHASE
 
-               RHS_NODI_IPHA = IPHASE + ( CV_NODI -1 ) * NPHASE
+               !RHS_NODI_IPHA = IPHASE + ( CV_NODI -1 ) * NPHASE
 !               IMID_IPHA = IPHASE + (IMID-1)*NPHASE
 
                IF(THERMAL) THEN
                   IF(GOT_VIS) THEN
                      IF( RETRIEVE_SOLID_CTY ) THEN
-                       CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                         + VOL_FRA_FLUID(cv_nodi)*SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV(CV_NODI) 
+                       CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                         + VOL_FRA_FLUID(cv_nodi)*SUM( VECS_STRESS(:,:,:,CV_NODI)*VECS_GRAD_U(:,:,:,CV_NODI)  )/MASS_CV(CV_NODI) 
                      else
-                       CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                         + SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV(CV_NODI) 
+                       CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                         + SUM( VECS_STRESS(:,:,:,CV_NODI)*VECS_GRAD_U(:,:,:,CV_NODI)  )/MASS_CV(CV_NODI) 
                      endif
                   ENDIF
 
 !                  IF ( IGOT_T2 == 1 ) THEN
                   IF ( GOT_T2 ) THEN
-                     CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T2_ALL( IPHASE, CV_NODI )- T2OLD_ALL( IPHASE, CV_NODI ))  
+                     CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T2_ALL( :, CV_NODI )- T2OLD_ALL( :, CV_NODI ))  
                   ELSE
-                     CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T_ALL( IPHASE, CV_NODI )- TOLD_ALL( IPHASE, CV_NODI ))  
+                     CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T_ALL( :, CV_NODI )- TOLD_ALL( :, CV_NODI ))  
                   END IF !IGOT_T2 
                ENDIF
 !
 !               IF ( IGOT_T2 == 1 ) THEN
                IF ( GOT_T2 ) THEN
-                  CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                       + MASS_CV(CV_NODI) * SOURCT_ALL( IPHASE, CV_NODI )
+                  CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                       + MASS_CV(CV_NODI) * SOURCT_ALL( :, CV_NODI )
 
 !                  CSR_ACV( IMID_IPHA ) = CSR_ACV( IMID_IPHA ) &
-                  DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
+                  DO IPHASE = 1,NPHASE
+                     DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
                        + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) ) &
                        * R
+                  END DO 
 
-                  CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                       + (CV_BETA * DENOLD_ALL( IPHASE, CV_NODI ) * T2OLD_ALL( IPHASE, CV_NODI ) &
-                       + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) )  &
-                       * R * TOLD_ALL( IPHASE, CV_NODI )
+                  CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                       + (CV_BETA * DENOLD_ALL( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
+                       + (1.-CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) )  &
+                       * R * TOLD_ALL( :, CV_NODI )
                ELSE
 
-                  CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                       + MASS_CV( CV_NODI ) * SOURCT_ALL( IPHASE, CV_NODI )
+                  CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                       + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI )
 
 !                  CSR_ACV( IMID_IPHA ) =  CSR_ACV( IMID_IPHA ) &
-                  DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
+                  DO IPHASE = 1,NPHASE
+                     DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
                        + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) )  &
                        * R
+                  END DO
 
-                  CV_RHS( RHS_NODI_IPHA ) = CV_RHS( RHS_NODI_IPHA ) &
-                       + ( CV_BETA * DENOLD_ALL( IPHASE, CV_NODI ) &
-                       + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) ) &
-                       * R * TOLD_ALL( IPHASE, CV_NODI )
+                  CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
+                       + ( CV_BETA * DENOLD_ALL( :, CV_NODI ) &
+                       + (1.-CV_BETA) * DEN_ALL( :, CV_NODI ) ) &
+                       * R * TOLD_ALL( :, CV_NODI )
                END IF
 
 
                Conditional_GETMAT2: IF ( GETMAT ) THEN
 
-                     DENSE_ACV( IPHASE, :, CV_NODI )  = DENSE_ACV( IPHASE, :, CV_NODI ) &
-                          + MASS_CV( CV_NODI ) * ABSORBT_ALL( IPHASE, :, CV_NODI )
+                     DENSE_ACV( :, :, CV_NODI )  = DENSE_ACV( :, :, CV_NODI ) &
+                          + MASS_CV( CV_NODI ) * ABSORBT_ALL( :, :, CV_NODI )
 
                END IF Conditional_GETMAT2
 
-            END DO Loop_IPHASE2
+            !END DO Loop_IPHASE2
 
          END DO Loop_CVNODI2
 
