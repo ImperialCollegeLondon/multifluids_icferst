@@ -431,12 +431,12 @@ start =
                         empty
                         }?,
                         ## Multiply present timestep by this factor when increasing it.
-                        ## By default 1.2
+                        ## By default 1.05
                         element increase_factor{
                         real
                         }?,
                         ## Multiply present timestep by this factor when decreasing it.
-                        ## By default 2.0
+                        ## By default 1.2
                         element decrease_factor{
                         real
                         }?,
@@ -803,10 +803,11 @@ start =
                ## Introduce artificial diffusion in the transport equation. 
                ## It is treated as a Capillary pressure term. The input value is the entry pressure.
                ## Recommended value: Two orders of magnitude smaller that the Pressure of the system.
+               ## To use automatic values based on the pressure of each node set a negative value.
                ## You should specify this ONLY for the wetting phase.
                ## 
                ## To introduce no artificial diffusion set Pe_stab = 0
-               ##
+               ## 
                ## Tip: You may need to disable this option if the capillary pressure is enabled.
                element Pe_stab {real}?
             }?

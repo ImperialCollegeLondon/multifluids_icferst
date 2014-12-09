@@ -967,6 +967,12 @@ contains
       real :: aux, Pe_aux
       real, dimension(:), pointer ::c_regions, a_regions, Pe, Cap_exp
       logical :: Artificial_Pe
+
+      !Extract variables from packed_state
+      call get_var_from_packed_state(packed_state,FEPressure = P,&
+           PhaseVolumeFraction = satura,OldPhaseVolumeFraction = saturaold)
+
+
       !Get information for capillary pressure to be use in CV_ASSEMB
       Artificial_Pe = .false.
       do iphase = Nphase, 1, -1!Loop backwards since the wetting phase should be phase 1
@@ -992,15 +998,18 @@ contains
             allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
             Artificial_Pe = .true.
             call get_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
-            Pe = Pe_aux
+
+            if (minval(Pe)<0) then!Automatic set up for Pe
+                Pe = p * 1d-2
+            else
+                Pe = Pe_aux
+            end if
+
             Cap_exp = 1.!Linear exponent
          end if
       end do
-      !We consider only the corey options, for capillary pressure
-      call get_corey_options(options)
 
-      call get_var_from_packed_state(packed_state,FEPressure = P,&
-           PhaseVolumeFraction = satura,OldPhaseVolumeFraction = saturaold)
+
       GET_THETA_FLUX = .FALSE.
       IGOT_T2 = 0
 

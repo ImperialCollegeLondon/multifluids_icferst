@@ -35,7 +35,7 @@ AutomaticFile = 'QuickTest_DG'
 AutomaticVTU_Number = 20
 
 #Plot the results in 2d?
-showPlot = True
+showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'phase1::PhaseVolumeFraction'
@@ -222,3 +222,16 @@ if (Passed):
     print 'BL with gravity works OK'
 else:
     print 'BL with gravity does NOT work'
+
+if (showPlot):
+    fig, ax = plt.subplots()
+    x = []
+    y = []
+    for i in range(len(detector)):
+        x.append(float(detector[i][0]))
+        y.append(float(FS[i][0]))
+    line = plt.Line2D(x, y, color='red', linewidth=2)
+    #line.text.set_color('red')
+    #line.text.set_fontsize(16)
+    ax.add_line(line)
+    plt.show()

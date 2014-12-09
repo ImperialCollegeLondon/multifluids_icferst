@@ -3091,9 +3091,9 @@
       call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear', &
            variable_selection, default = 3)
       call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_factor', &
-           increaseFactor, default = 1.2 )
+           increaseFactor, default = 1.05 )
       call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_factor', &
-           decreaseFactor, default = 2. )
+           decreaseFactor, default = 1.2 )
       call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/max_timestep', &
            max_ts, default = huge(min_ts) )
       call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/min_timestep', &

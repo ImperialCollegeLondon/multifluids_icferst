@@ -223,3 +223,16 @@ if (Passed):
     print 'Grav-cap works OK'
 else:
     print 'Grav-cap does NOT work'
+
+if (showPlot):
+    fig, ax = plt.subplots()
+    x = []
+    y = []
+    for i in range(len(detector)):
+        x.append(float(detector[i][0]))
+        y.append(float(FS[i][0]))
+    line = plt.Line2D(x, y, color='red', linewidth=2)
+    #line.text.set_color('red')
+    #line.text.set_fontsize(16)
+    ax.add_line(line)
+    plt.show()
