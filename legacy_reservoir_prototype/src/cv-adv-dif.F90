@@ -240,12 +240,6 @@ contains
       !
       !
       !***********************************************************************
-      
-      ! Incomplete list of variables that appear not to be used in CV_ASSEMB: 
-      ! CV_NODK_IPHA, CV_SNODK, CV_SNODK_IPHA, CVNOD, DU, DV, DW, FEMDGI, 
-      ! FEMDOLDGI, FEMT2GI, FEMT2OLDGI, FEMT_ALL_TARGET, FEMTGI, FEMTOLD_ALL_TARGET
-      ! FEMTOLDGI, found, have_components_fields, have_temperature_fields, ID, 
-      ! IDOLD, IJ, IMID_IPHA, JMID_IPHA
 
       ! Inputs/Outputs
       IMPLICIT NONE
@@ -345,7 +339,7 @@ contains
       REAL, DIMENSION( : ), allocatable ::  &
            MASS_CV, MASS_ELE,  &
            SUM_CV, ONE_PORE, &
-           DU, DV, DW, PERM_ELE
+           PERM_ELE
       REAL, DIMENSION( :, : ), allocatable :: CVNORMX_ALL, XC_CV_ALL
 !      REAL, DIMENSION( :, : ), allocatable :: UGI_COEF_ELE, VGI_COEF_ELE, WGI_COEF_ELE, &
 !           UGI_COEF_ELE2, VGI_COEF_ELE2, WGI_COEF_ELE2
@@ -414,14 +408,13 @@ contains
            CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
            CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
            CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
-           ICOUNT_IPHA, JCOUNT_IPHA, IMID_IPHA, JMID_IPHA, &
+           ICOUNT_IPHA, JCOUNT_IPHA, &
            NFACE, X_NODI,  &
            CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, &
-           CVNOD, XNOD, NSMALL_COLM, COUNT2, NOD
+           XNOD, NSMALL_COLM, COUNT2, NOD
       !        ===>  REALS  <===
       REAL :: HDC, &
            VTHETA, &
-           FEMDGI, FEMTGI,FEMT2GI, FEMDOLDGI, FEMTOLDGI, FEMT2OLDGI, &
            TMID, TOLDMID, TMID_J, TOLDMID_J, &
            RSUM, &
            THERM_FTHETA, &
@@ -431,7 +424,6 @@ contains
 
       real, pointer :: VOLUME
       integer :: cv_inod_ipha, IGETCT, U_NODK_IPHA, IANISOLIM, global_face
-      logical :: Have_Temperature_Fields, Have_VolumeFraction_Fields, Have_Components_Fields
       ! Functions...
       !REAL :: R2NORM, FACE_THETA
       !        ===>  LOGICALS  <===
@@ -451,12 +443,12 @@ contains
       REAL :: RDUM(1),n1,n2,n3
 
       INTEGER :: I, IDIM, U_ILOC, U_INOD, ELE3
-      INTEGER :: NFIELD, CV_KLOC, CV_NODK, CV_NODK_IPHA
-      INTEGER :: IT, ITOLD, ID, IDOLD, IT2, IT2OLD, IFI
-      INTEGER :: COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_NODK2_IPHA,CV_SKLOC, CV_SNODK, CV_SNODK_IPHA
+      INTEGER :: NFIELD, CV_KLOC, CV_NODK
+      INTEGER :: IT, ITOLD, IT2, IT2OLD, IFI
+      INTEGER :: COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_NODK2_IPHA,CV_SKLOC
       INTEGER :: IPT_IN, IPT_OUT
       INTEGER :: U_KLOC2,U_NODK2,U_NODK2_IPHA,U_SKLOC
-      INTEGER :: IPT,ILOOP,IMID,JMID,JDIM,IJ
+      INTEGER :: IPT,ILOOP,IMID,JMID,JDIM
       LOGICAL :: STORE, integrate_other_side_and_not_boundary, prep_stop, GOT_VIS
       REAL :: R, NDOTQ_HAT
       REAL :: LIMT_keep(NPHASE ),  LIMTOLD_keep( NPHASE ), LIMD_keep( NPHASE ),   LIMDOLD_keep( NPHASE ), LIMT2_keep( NPHASE ),   LIMT2OLD_keep(NPHASE)
@@ -533,7 +525,6 @@ contains
 
       !Variables for Capillary pressure
       logical :: capillary_pressure_activated, between_elements, on_domain_boundary
-      logical :: found
       real, dimension(nphase):: rsum_nodi, rsum_nodj
       real :: aux_Sr
       integer :: Phase_with_Pc, x_nod
