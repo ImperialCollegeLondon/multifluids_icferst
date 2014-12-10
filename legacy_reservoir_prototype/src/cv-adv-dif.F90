@@ -524,12 +524,13 @@ contains
       type( scalar_field ), pointer :: sfield
 
       !Variables for Capillary pressure
-      logical :: capillary_pressure_activated, between_elements, on_domain_boundary
+      logical :: capillary_pressure_activated, between_elements, on_domain_boundary, Pc_imbibition
       real, dimension(nphase):: rsum_nodi, rsum_nodj
       real :: aux_Sr
       integer :: Phase_with_Pc, x_nod
       !capillary_pressure_activated includes GOT_CAPDIFFUS
       capillary_pressure_activated = .false.
+      Pc_imbibition = .false.
 
       !Check capillary pressure options
       Phase_with_Pc = 1
@@ -543,6 +544,10 @@ contains
                 "]/multiphase_properties/Pe_stab")) then
                     capillary_pressure_activated = .true.
                     Phase_with_Pc = iphase
+                    if (have_option("/material_phase["//int2str(iphase-1)//&
+                       "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/Pc_imbibition") ) then
+                        Pc_imbibition = .true.
+                    end if
                 end if
             end do
         else
@@ -1166,7 +1171,7 @@ contains
                  end select
                  CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
                   - T_ALL(Phase_with_Pc, CV_NODI) * Get_DevCapPressure(T_ALL(Phase_with_Pc, CV_NODI),&
-                    Pe(CV_NODI), Cap_Exp(CV_NODI), aux_Sr)
+                    Pe(CV_NODI), Cap_Exp(CV_NODI), aux_Sr, Swirr, Pc_imbibition)
              end do
          end do
 !          end if
@@ -14204,18 +14209,24 @@ deallocate(NX_ALL)
   end function vtolfun
 
     !This function should be in multi_eos.F90
-    PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr)
+    PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr, Other_irr, Pc_imbibition)
         !This functions returns the derivative of the capillary pressure with regard of the saturation
         Implicit none
-        real, intent(in) :: sat, Pe, a, Own_irr
+        real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
+        logical, intent(in) :: Pc_imbibition
         !Local
         real, parameter :: tol = 1d-2
         real :: aux
-
-        aux = (1.0 - Own_irr)
-
-        Get_DevCapPressure = &
-        -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
+   
+        if ( Pc_imbibition ) then
+           aux = (1.0 - Own_irr - Other_irr)
+           Get_DevCapPressure = &
+           a * Pe * (1/aux) * (1.0 - max(min((sat - Own_irr) / aux, 1.0), tol)) ** (-a-1)
+        else
+           aux = (1.0 - Own_irr)
+           Get_DevCapPressure = &
+           -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)   
+        end if
 
 
 

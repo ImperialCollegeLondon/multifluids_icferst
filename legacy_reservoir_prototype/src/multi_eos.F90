@@ -1947,6 +1947,7 @@
       INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase, useful_phases
       real ::  S_OR, S_GC, auxO, auxW!c, a,
       character(len=OPTION_PATH_LEN):: option_path, phase_name, cap_path
+      logical :: Pc_imbibition
       !Corey options
       type(corey_options) :: options
       !Working pointers
@@ -1969,6 +1970,7 @@
       nphase =size(Satura,1)
 
       CapPressure = 0.
+      Pc_imbibition = .false.
 
       DO IPHASE = 1, NPHASE
 
@@ -1987,6 +1989,11 @@
                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
             call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), iphase, nphase)
 
+            if (have_option("/material_phase["//int2str(iphase-1)//&
+               "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/imbibition") ) then
+               Pc_imbibition = .true.
+            end if
+
               if (IPHASE==1) then
                   auxW = S_GC
                   auxO = S_OR
@@ -2003,7 +2010,7 @@
 !                      CapPressure( jphase, k ) = CapPressure( jphase, k ) + &
 !                      Get_capPressure(satura(iphase,k), c, a, auxW, auxO)
                       CapPressure( jphase, k ) = CapPressure( jphase, k ) + &
-                      Get_capPressure(satura(iphase,k), c_regions(k), a_regions(k), auxW, auxO)
+                      Get_capPressure(satura(iphase,k), c_regions(k), a_regions(k), auxW, auxO, Pc_imbibition)
                   end forall
                 end if
               end do
@@ -2014,16 +2021,22 @@
     END SUBROUTINE calculate_capillary_pressure
 
 
-    pure real function Get_capPressure(sat, Pe, a, Own_irr, Other_irr)
+    pure real function Get_capPressure(sat, Pe, a, Own_irr, Other_irr, Pc_imbibition)
         !This functions returns the capillary pressure for a certain input saturation
         !There is another function, its derivative in cv-adv-diff called Get_DevCapPressure
         Implicit none
         real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
+        logical, intent(in) :: Pc_imbibition
         !Local
         real, parameter :: tol = 1d-5
 
-        Get_capPressure = &
-        Pe * max(min((sat - Own_irr) / (1.0 - Own_irr), 1.0), tol) ** (-a)
+        if ( Pc_imbibition ) then
+           Get_capPressure = &
+           Pe * (1.0 - max(min((sat - Own_irr) / (1.0 - Own_irr - Other_irr), 1.0), tol)) ** (-a)
+        else
+           Get_capPressure = &
+           Pe * max(min((sat - Own_irr) / (1.0 - Own_irr), 1.0), tol) ** (-a)
+        end if
 
     end function Get_capPressure
 

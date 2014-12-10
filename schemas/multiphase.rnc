@@ -796,7 +796,14 @@ start =
                              generic_aliased_field
                           }
                        )
-                    }}
+                    },
+                    ## Modified capillary pressure curve [see SPE-172989-MS, eq (5)]
+                    ## Pc = c * (1 - (S_w-Swir)/(1-Swir-Sor)) ** -a
+                    ##
+                    ## You should specify this ONLY for the wetting phase.
+                    ##
+                    ## This option is by default disabled.
+                    element Pc_imbibition { comment }?}
                }?,
                ## Immobile volume of fluid phase
                element immobile_fraction {real}?,
