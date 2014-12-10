@@ -1990,7 +1990,7 @@
             call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), iphase, nphase)
 
             if (have_option("/material_phase["//int2str(iphase-1)//&
-               "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/imbibition") ) then
+               "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/Pc_imbibition") ) then
                Pc_imbibition = .true.
             end if
 
