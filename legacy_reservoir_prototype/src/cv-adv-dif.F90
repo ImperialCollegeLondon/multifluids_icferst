@@ -240,6 +240,12 @@ contains
       !
       !
       !***********************************************************************
+      
+      ! Incomplete list of variables that appear not to be used in CV_ASSEMB: 
+      ! CV_NODK_IPHA, CV_SNODK, CV_SNODK_IPHA, CVNOD, DU, DV, DW, FEMDGI, 
+      ! FEMDOLDGI, FEMT2GI, FEMT2OLDGI, FEMT_ALL_TARGET, FEMTGI, FEMTOLD_ALL_TARGET
+      ! FEMTOLDGI, found, have_components_fields, have_temperature_fields, ID, 
+      ! IDOLD, IJ, IMID_IPHA, JMID_IPHA
 
       ! Inputs/Outputs
       IMPLICIT NONE
@@ -4704,8 +4710,8 @@ deallocate(SCVFENX_ALL, INV_JAC)
           DTOLDX=0.0
           DTOLDY=0.0
           DTOLDZ=0.0
-          DO CV_ILOC=1,CV_NLOC
-             DO CV_JLOC=1,CV_NLOC
+          DO CV_JLOC=1,CV_NLOC
+             DO CV_ILOC=1,CV_NLOC
                 DTX(CV_ILOC)=DTX(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*VTX(CV_JLOC)
                 DTY(CV_ILOC)=DTY(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*VTY(CV_JLOC)
                 DTZ(CV_ILOC)=DTZ(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*VTZ(CV_JLOC)
@@ -7323,8 +7329,8 @@ deallocate(NX_ALL, X_NX_ALL)
 
                 DIFF_GI_BOTH = DIFF_GI
                 DIFF_VOL_GI_BOTH = DIFF_VOL_GI
-                DO IDIM=1,NDIM
-                   DO JDIM=1,NDIM
+                DO JDIM=1,NDIM
+                   DO IDIM=1,NDIM
                       DIFF_GI_BOTH(IDIM, JDIM, :, :) = DIFF_GI_BOTH(IDIM, JDIM, :, :) &
                        + SQRT( DIFF_GI_ADDED(IDIM, 1,1, :, :) * DIFF_GI_ADDED(JDIM, 1,1, :, :) )
 
@@ -7602,9 +7608,8 @@ deallocate(NX_ALL, X_NX_ALL)
 
              END DO
           ELSE ! less rapid version...
-             DO U_SILOC=1,U_SNLOC
-                DO U_JLOC12=1,U_NLOC*2
-
+            DO U_JLOC12=1,U_NLOC*2
+                DO U_SILOC=1,U_SNLOC
                     DO I=1,U_SNLOC
                        DO SGI=1,SBCVNGI
                           DO IPHASE=1,NPHASE
@@ -7641,9 +7646,8 @@ deallocate(NX_ALL, X_NX_ALL)
              END DO
              END DO
 ! STRESS_IJ_ELE_EXT = MAT_SUFX*S_INV_NNX_MAT12
-             DO U_SILOC=1,U_SNLOC
-                DO U_JLOC12=1,U_NLOC*2
-
+             DO U_JLOC12=1,U_NLOC*2
+                DO U_SILOC=1,U_SNLOC
                    DO I=1,U_SNLOC
                        DO IPHASE=1,NPHASE
                        DO IDIM=1,NDIM
@@ -7659,8 +7663,8 @@ deallocate(NX_ALL, X_NX_ALL)
           ELSE  ! The rapid version
 
              DO SGI=1,SBCVNGI
-                DO U_SILOC=1,U_SNLOC
-                   DO U_JLOC12=1,U_NLOC*2
+                DO U_JLOC12=1,U_NLOC*2
+                    DO U_SILOC=1,U_SNLOC                   
 
                       DO I=1,U_SNLOC
                           DO IPHASE=1,NPHASE
@@ -14208,7 +14212,7 @@ deallocate(NX_ALL)
 
   end function vtolfun
 
-
+    !This function should be in multi_eos.F90
     PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr)
         !This functions returns the derivative of the capillary pressure with regard of the saturation
         Implicit none
@@ -14225,7 +14229,6 @@ deallocate(NX_ALL)
 
 
     end function Get_DevCapPressure
-
 
 ! -----------------------------------------------------------------------------
 
