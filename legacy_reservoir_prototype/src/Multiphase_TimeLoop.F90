@@ -1276,7 +1276,6 @@
 
             end if Conditional_Adaptivity
 
-            call nullify( packed_state )
             call deallocate(packed_state)
             call deallocate(multiphase_state)
             call deallocate(multicomponent_state )

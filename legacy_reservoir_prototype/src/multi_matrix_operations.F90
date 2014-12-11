@@ -443,20 +443,11 @@
       integer, dimension( : ), allocatable :: dnnz
       integer :: cmc_rows
 
+      type(csr_sparsity) :: sparsity
 
       !Initialize CMC_petsc
-       cmc_rows = size( FINDCMC ) - 1
 
-       allocate( dnnz( cmc_rows ) )
-
-       ! find the number of non zeros per row
-       do i = 1, size( dnnz )
-           dnnz( i ) =(FINDCMC( i+1 ) - FINDCMC( i ))
-       end do
-       call allocate( CMC_petsc, cmc_rows, cmc_rows, dnnz, dnnz,(/1, 1/)&
-        ,name = 'CMC_petsc', halo = halos)
-
-       call zero( CMC_petsc )
+      call zero( CMC_petsc )
 
       if (ndpset<0) call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
            'prognostic/reference_node', ndpset, default = 0 )
@@ -488,7 +479,6 @@
 
       !Final step to prepare the CMC_petsc
 !      call assemble( CMC_petsc )
-      deallocate(dnnz)
 
     END SUBROUTINE COLOR_GET_CMC_PHA
 

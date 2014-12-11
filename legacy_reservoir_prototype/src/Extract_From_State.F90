@@ -3613,8 +3613,8 @@
       if (.not.present(ignore_var)) then
          !This loop is the most robust, so by default we still use this one
          do while (maxval(abs(StorageIndexes)) > 0)
-            maxpos = maxloc(StorageIndexes, dim =1)
-            StorName = trim(state(1)%scalar_names(StorageIndexes(maxpos)))!This lines is
+            maxpos = maxloc(abs(StorageIndexes), dim =1)
+            StorName = trim(state(1)%scalar_names(abs(StorageIndexes(maxpos))))!This lines is
             call remove_scalar_field(state(1), trim(StorName))           !failing for Xie when using adaptive meshing
             StorageIndexes(maxpos) = 0
          end do

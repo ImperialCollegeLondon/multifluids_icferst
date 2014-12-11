@@ -912,6 +912,7 @@ contains
         type(halo_type), pointer :: halo
 
         real, dimension(:,:), pointer :: den_fem
+        integer :: row
 
         ALLOCATE( U_ALL( NDIM, NPHASE, U_NONODS ), UOLD_ALL( NDIM, NPHASE, U_NONODS ), &
         X_ALL( NDIM, X_NONODS ), UDEN_ALL( NPHASE, CV_NONODS ), UDENOLD_ALL( NPHASE, CV_NONODS ), &
@@ -1134,11 +1135,14 @@ contains
 
 
             !Prepare halos for the CMC matrix
-            if (associated(pressure%mesh%halos)) then
-                halo => pressure%mesh%halos(2)
+            if (associated( pressure%mesh%halos)) then
+               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity',&
+                    row_halo=pressure%mesh%halos(2),column_halo=pressure%mesh%halos(2))
             else
-                nullify(halo)
+               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity')
             end if
+            call allocate(CMC_petsc,sparsity,[1,1],"CMC_petsc",.true.)
+
             CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, &
             NCOLC, FINDC, COLC, &
             PIVIT_MAT, &
@@ -1327,13 +1331,13 @@ contains
 !            call Rescale_and_solve(CMC_petsc, FINDCMC, rhs_p, deltap, trim(pressure%option_path))
 
             !Re-scale of the matrix to allow working with small values of sigma
-            rescaleVal = 0.0
-            do i = 1, size(rhs_p%val)!Get minvalue to re-scale
-                call MatGetValues(cmc_petsc%M, 1, (/ i-1 /), 1, (/ i-1 /),  aij, ierr)
-                 rescaleVal = rescaleVal + abs(aij(1))
-            end do
+            ! this is a hack to deal with bad preconditioners and divide by zero errors.
+            rescaleVal = 0.0        
+            row=cmc_petsc%row_numbering%gnn2unn(1,1)
+            call MatGetValues(cmc_petsc%M, 1, [row], 1,[row],  aij, ierr)
+            rescaleVal = abs(aij(1))
             !Make average
-            rescaleVal = max(rescaleVal/size(rhs_p%val), 1d-30)
+            rescaleVal = max(rescaleVal, 1d-30)
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call allmin(rescaleVal)
             call scale(cmc_petsc, 1.0/rescaleVal)
@@ -1346,7 +1350,7 @@ contains
             call halo_update(p_all)
 
             call deallocate(rhs_p)
-!            call deallocate(sparsity)
+            call deallocate(sparsity)
             call deallocate(cmc_petsc)
 !               CALL SOLVER( CMC, DP, rhs_p%val, &
 !                    FINDCMC, COLCMC, &
