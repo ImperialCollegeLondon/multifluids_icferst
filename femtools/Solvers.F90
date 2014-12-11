@@ -1760,7 +1760,8 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
   logical, optional, intent(in) :: is_subpc
   ! option to "mg" to tell it not to do a direct solve at the coarsest level
   logical, optional, intent(in) :: has_null_space
-    
+  character(len=50) :: pcname
+
     KSP:: subksp
     PC:: subpc
     PCType:: pctype, hypretype
