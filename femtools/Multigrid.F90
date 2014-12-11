@@ -11,32 +11,9 @@ use futils
 use parallel_tools
 #ifdef HAVE_PETSC_MODULES
   use petsc
-  use petscvec
-  use petscmat
-  use petscksp
-  use petscpc
-  use petscis
-  use petscmg
 #endif
 implicit none
-#ifdef HAVE_PETSC_MODULES
-#include "finclude/petscvecdef.h"
-#include "finclude/petscmatdef.h"
-#include "finclude/petsckspdef.h"
-#include "finclude/petscpcdef.h"
-#include "finclude/petscviewerdef.h"
-#include "finclude/petscsysdef.h"
-#else
-#include "finclude/petsc.h"
-#if PETSC_VERSION_MINOR==0
-#include "finclude/petscmat.h"
-#include "finclude/petscvec.h"
-#include "finclude/petscviewer.h"
-#include "finclude/petscksp.h"
-#include "finclude/petscpc.h"
-#include "finclude/petscsys.h"
-#endif
-#endif
+#include "petsc_legacy.h"
 
 !! Some parameters that change the behaviour of 
 !! the smoothed aggregation method. All of
@@ -174,8 +151,8 @@ subroutine SetUpInternalSmoother(surface_node_list_in,matrix,pc, &
   call SetupSmoothedAggregation(internal_smoother_pc, &
        Internal_Smoother_Mat, ierr, no_top_smoothing=lno_top_smoothing)
 
-  call PCSetOperators(internal_smoother_pc,Internal_Smoother_Mat, &
-       Internal_Smoother_Mat,DIFFERENT_NONZERO_PATTERN,ierr)
+  ! PCSetOperators needs to be in small caps due to macro hack in include/petsc_legacy.h
+  call pcsetoperators(internal_smoother_pc,Internal_Smoother_Mat, Internal_Smoother_Mat, ierr)
 
   !set up pc to output
   myPETSC_NULL_OBJECT=PETSC_NULL_OBJECT
@@ -608,8 +585,7 @@ logical, optional, intent(in) :: has_null_space
       call SetupSORSmoother(ksp_smoother, matrices(nolevels), &
         SOR_LOCAL_SYMMETRIC_SWEEP, 20)
     else
-      call KSPSetOperators(ksp_smoother, matrices(nolevels), matrices(nolevels), &
-        SAME_PRECONDITIONER, ierr)
+      call KSPSetOperators(ksp_smoother, matrices(nolevels), matrices(nolevels), ierr)
       call KSPSetType(ksp_smoother, KSPPREONLY, ierr)
       call PCSetType(prec_smoother, PCLU, ierr)
       call KSPSetTolerances(ksp_smoother, 1.0e-100_PetscReal_kind, 1e-8_PetscReal_kind, 1e10_PetscReal_kind, 300, ierr)
@@ -637,12 +613,12 @@ integer, intent(in):: iterations
   PetscErrorCode:: ierr
   
   call KSPSetType(ksp, KSPRICHARDSON, ierr)
-  call KSPSetOperators(ksp, matrix, matrix, SAME_PRECONDITIONER, ierr)
+  call KSPSetOperators(ksp, matrix, matrix, ierr)
   ! set 1 richardson iteration, as global iteration inside pcsor might be more efficient
-  call KSPSetTolerances(ksp, PETSC_DEFAULT_DOUBLE_PRECISION, &
-    PETSC_DEFAULT_DOUBLE_PRECISION, PETSC_DEFAULT_DOUBLE_PRECISION, &
+  call KSPSetTolerances(ksp, PETSC_DEFAULT_REAL, &
+    PETSC_DEFAULT_REAL, PETSC_DEFAULT_REAL, &
     1, ierr)
-  call KSPSetNormType(ksp, KSP_NORM_NO, ierr)
+  call KSPSetNormType(ksp, KSP_NORM_NONE, ierr)
   
   call KSPGetPC(ksp, pc, ierr)
   call PCSetType(pc, PCSOR, ierr)
@@ -660,12 +636,12 @@ Mat, intent(in):: matrix
   PetscErrorCode:: ierr
   
   call KSPSetType(ksp, KSPRICHARDSON, ierr)
-  call KSPSetOperators(ksp, matrix, matrix, SAME_PRECONDITIONER, ierr)
-  call KSPSetTolerances(ksp, PETSC_DEFAULT_DOUBLE_PRECISION, &
-    PETSC_DEFAULT_DOUBLE_PRECISION, PETSC_DEFAULT_DOUBLE_PRECISION, &
+  call KSPSetOperators(ksp, matrix, matrix, ierr)
+  call KSPSetTolerances(ksp, PETSC_DEFAULT_REAL, &
+    PETSC_DEFAULT_REAL, PETSC_DEFAULT_REAL, &
     0, ierr)
   call KSPRichardsonSetScale(ksp,real(0.0, kind = PetscReal_kind),ierr)
-  call KSPSetNormType(ksp, KSP_NORM_NO, ierr)
+  call KSPSetNormType(ksp, KSP_NORM_NONE, ierr)
   
   call KSPGetPC(ksp, pc, ierr)
   call PCSetType(pc,PCNONE,ierr)
@@ -681,17 +657,13 @@ integer, intent(in):: iterations
   PC:: pc
   PetscErrorCode:: ierr
   
-  call KSPSetType(ksp, KSPCHEBYCHEV, ierr)
-  call KSPSetOperators(ksp, matrix, matrix, SAME_PRECONDITIONER, ierr)
-  call KSPSetTolerances(ksp, PETSC_DEFAULT_DOUBLE_PRECISION, &
-    PETSC_DEFAULT_DOUBLE_PRECISION, PETSC_DEFAULT_DOUBLE_PRECISION, &
+  call KSPSetType(ksp, KSPCHEBYSHEV, ierr)
+  call KSPSetOperators(ksp, matrix, matrix, ierr)
+  call KSPSetTolerances(ksp, PETSC_DEFAULT_REAL, &
+    PETSC_DEFAULT_REAL, PETSC_DEFAULT_REAL, &
     iterations, ierr)
-#ifdef DOUBLEP
-  call KSPChebychevSetEigenvalues(ksp, emax, emin, ierr)
-#else
-  call KSPChebychevSetEigenvalues(ksp, emax, emin, ierr)
-#endif
-  call KSPSetNormType(ksp, KSP_NORM_NO, ierr)
+  call KSPChebyshevSetEigenvalues(ksp, emax, emin, ierr)
+  call KSPSetNormType(ksp, KSP_NORM_NONE, ierr)
 
   call KSPGetPC(ksp, pc, ierr)
   call PCSetType(pc, PCNONE, ierr)
@@ -704,7 +676,7 @@ PetscReal, intent(out):: epsilon, epsilon_decay, omega
 integer, intent(out):: maxlevels, coarsesize
 integer, intent(out):: nosmd, nosmu, clustersize
 
-  PetscTruth flag
+  PetscBool flag
   PetscErrorCode ierr
 
     call PetscOptionsGetReal('', '-mymg_epsilon', epsilon, flag, ierr)
@@ -801,7 +773,7 @@ integer, optional, dimension(:), intent(out):: cluster
   
   !
   call VecCopy(diag, sqrt_diag, ierr)
-  call VecSqrt(sqrt_diag, ierr)
+  call VecSqrtAbs(sqrt_diag, ierr)
   !
   call VecDuplicate(sqrt_diag, inv_sqrt_diag, ierr)
   call VecCopy(sqrt_diag, inv_sqrt_diag, ierr)

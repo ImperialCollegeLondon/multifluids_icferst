@@ -329,7 +329,13 @@ contains
 ! If UPWIND_CAP_DIFFUSION then when calculating capillary pressure diffusion coefficient use the 
 ! upwind value
       logical, PARAMETER :: UPWIND_CAP_DIFFUSION = .true.
-      LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
+! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
+! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible. 
+! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
+! Zhi try THETA_VEL_HAT = 1.0
+      real, PARAMETER :: THETA_VEL_HAT = 0.0
+!
+      LOGICAL, DIMENSION( : ), allocatable :: X_SHARE 
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
            CVFEM_ON_FACE, UFEM_ON_FACE
       INTEGER, DIMENSION( : ), allocatable :: &
@@ -456,14 +462,11 @@ contains
       REAL , DIMENSION( :, : ), ALLOCATABLE :: NUOLDGI_ALL, NUGI_ALL, NU_LEV_GI
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
       REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
-      REAL , DIMENSION( :, :, :, : ), ALLOCATABLE, target :: INV_V_OPT_VEL_UPWIND_COEFS
-      real, dimension(:,:,:), pointer :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, VI_LOC_OPT_VEL_UPWIND_COEFS,&
-                    GI_LOC_OPT_VEL_UPWIND_COEFS,VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
+      REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: INV_V_OPT_VEL_UPWIND_COEFS
       REAL :: BCZERO(NPHASE),  T_ALL_J( NPHASE ), TOLD_ALL_J( NPHASE )
       INTEGER :: LOC_WIC_T_BC_ALL(NPHASE)
 
 
-      REAL , DIMENSION( :, :, : ), pointer :: INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
 
       REAL, DIMENSION( :, :, : ), ALLOCATABLE :: ABSORBT_ALL
       REAL, DIMENSION( :, : ), ALLOCATABLE :: T2_ALL, T2OLD_ALL, &
@@ -503,6 +506,7 @@ contains
             rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, rdum_nphase_13
       real :: rdum_ndim_1(NDIM), rdum_ndim_2(NDIM), rdum_ndim_3(NDIM)
       real :: LOC_CV_RHS_I(NPHASE),LOC_CV_RHS_J(NPHASE)
+      real :: THETA_VEL(NPHASE)
 
 !! femdem
       type( vector_field ), pointer :: delta_u_all, us_all
@@ -1071,11 +1075,6 @@ contains
                     call invert(INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI))
                  END DO
               END DO
-!            else
-!               ALLOCATE( VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  &
-!                    VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
-!               ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(0,0,0,0) )
-!               ALLOCATE( INV_VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0))!, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
            ENDIF
 
 
@@ -1536,12 +1535,6 @@ contains
 
 ! Generate some local F variables ***************
             F_CV_NODI(:)= LOC_F(:, CV_ILOC)
-            IF ( is_compact_overlapping ) THEN
-                !Set pointers to coeficients, gradients and inverse of sigmas
-                VI_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_coefs_new(:,:,:, MAT_NODI)
-                GI_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_grad_new(:,:,:, MAT_NODI)
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS(1:NDIM,1:NDIM,1:NPHASE) => INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI)
-            ENDIF
 ! Generate some local F variables ***************
 
             ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
@@ -1966,12 +1959,6 @@ contains
 
 
 
-       IF ( is_compact_overlapping ) THEN
-           !Set pointers to coeficients, gradients and inverse of sigmas
-           VJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ)
-           GJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_grad_new(:,:,:, MAT_NODJ)
-           INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ)
-       ENDIF
 
        NFACE_ITS = 1
        FACE_ITS = 1
@@ -1993,9 +1980,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
+               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                NUOLDGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -2016,9 +2003,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
+               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                NUGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -2072,9 +2059,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
+               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                NUOLDGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -2095,9 +2082,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
+               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                NUGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -2313,6 +2300,25 @@ contains
                              LOC_TOLD_I( : ) * LOC_DENOLD_I( : )  )
                      END IF
 
+! adjust the value of FTHETA for use with velocity only so we can use FTHETA=0.0 for voln frac. 
+! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
+! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.  
+! This determins how implicit velocity is in the cty eqn. 
+                     THETA_VEL(:)=THETA_VEL_HAT
+                     IF(THETA_VEL_HAT<0.0) THEN
+                        DO IPHASE=1,NPHASE
+                           IF(FTHETA(IPHASE)>=0.5) THEN
+                               THETA_VEL(IPHASE) = ABS(THETA_VEL_HAT) 
+                           ELSE 
+                               THETA_VEL(IPHASE) = MAX( (0.5-FTHETA(IPHASE))/(1.0-FTHETA(IPHASE)),  ABS(THETA_VEL_HAT))
+                           ENDIF
+                        END DO
+                     ENDIF
+                     NDOTQOLD = THETA_VEL*NDOTQNEW + (1.0-THETA_VEL)*NDOTQOLD
+
+
+
+
                      FTHETA_T2(:) = FTHETA(:) * LIMT2(:)
                      ONE_M_FTHETA_T2OLD(:) = (1.0-FTHETA(:)) * LIMT2OLD(:)
 
@@ -2352,7 +2358,7 @@ contains
                              NDOTQ_HAT, &
                              FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                              RETRIEVE_SOLID_CTY,theta_cty_solid, &
-                             loc_u, loc2_u, & 
+                             loc_u, loc2_u, THETA_VEL, & 
                              rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3 ) 
                      ENDIF Conditional_GETCT2
 
@@ -11015,7 +11021,7 @@ CONTAINS
        NDOTQ_HAT, &
        FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
        RETRIEVE_SOLID_CTY,theta_cty_solid, &
-       loc_u, loc2_u, &
+       loc_u, loc2_u, THETA_VEL, &
 ! local memory sent down for speed...
        UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL)
     ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
@@ -11036,6 +11042,7 @@ CONTAINS
     REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DEN_ALL
     REAL, DIMENSION( NPHASE ), intent( in ) :: NDOTQ, NDOTQOLD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, LIMD
     REAL, intent( in ) :: NDOTQ_HAT
+    REAL, DIMENSION( NPHASE ), intent( in ) :: THETA_VEL
     ! LIMT_HAT is the normalised voln fraction
     REAL, intent( in ) :: theta_cty_solid
     REAL,  DIMENSION( NPHASE ), intent( in ) :: FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J
@@ -11065,7 +11072,7 @@ CONTAINS
 
     DO U_KLOC = 1, U_NLOC
 
-       RCON(:) = SCVDETWEI( GI ) * FTHETA_T2(:) * LIMDT(:) &
+       RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
             * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
 
        IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
@@ -11092,7 +11099,7 @@ CONTAINS
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
 
-          RCON_J(:) = SCVDETWEI( GI ) * FTHETA_T2_J(:)* LIMDT(:) &
+          RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:))  &
                * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
 
 
@@ -11131,20 +11138,20 @@ CONTAINS
        END DO
 
        CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) - SCVDETWEI( GI ) * SUM(  ( &
-            ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) &
+            ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
             + FTHETA_T2(:)  * LIMDT(:) * (NDOTQ(:)-NDOTQ_IMP(:)) &
             ) / DEN_ALL( :, CV_NODI )  )
 
     ELSE
 
        CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) - SCVDETWEI( GI ) * SUM(  ( &
-            ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) &
+            ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:))  &
             ) / DEN_ALL( :, CV_NODI )   )
 
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
           CT_RHS( CV_NODJ ) = CT_RHS( CV_NODJ ) + SCVDETWEI( GI ) * SUM(   ( &
-               ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * NDOTQOLD(:) &
+               ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:))  &
                ) / DEN_ALL( :, CV_NODJ )    )
        end if
     END IF
@@ -11156,7 +11163,7 @@ CONTAINS
           U_KLOC2 = U_OTHER_LOC( U_KLOC)
           IF ( U_KLOC2 /= 0 ) THEN
 
-             RCON(:) = SCVDETWEI( GI ) * FTHETA_T2(:) * LIMDT(:)  &
+             RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
                   * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
              IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
                 RCON(:)    = RCON(:)    + SCVDETWEI( GI )  * (LIMT_HAT(:) - LIMT(:))  &
@@ -11182,7 +11189,7 @@ CONTAINS
      endif
              ! flux from the other side (change of sign because normal is -ve)...
              if ( integrate_other_side_and_not_boundary ) then
-                RCON_J(:) = SCVDETWEI( GI ) * FTHETA_T2_J(:) * LIMDT(:)  &
+                RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:))    &
                      * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
                 IF(RETRIEVE_SOLID_CTY) THEN ! For solid modelling...
                    RCON_J(:)    = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:))  &
@@ -13524,7 +13531,7 @@ deallocate(NX_ALL)
   END SUBROUTINE GET_INT_VEL_ORIG_NEW
 
 
-      PURE SUBROUTINE GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ,INCOME, &
+      SUBROUTINE GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ,INCOME, &
        GI, SUFEN, U_NLOC,&
        LOC_T_I, LOC_T_J, LOC_FEMT,&
        LOC_U,LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
@@ -13588,6 +13595,7 @@ deallocate(NX_ALL)
                ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
             end forall
         end if
+
      DO IPHASE = 1, NPHASE
        IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
           !(vel * shape_functions)/sigma
@@ -14238,4 +14246,5 @@ deallocate(NX_ALL)
 ! -----------------------------------------------------------------------------
 
   end module cv_advection
+
 
