@@ -2308,9 +2308,9 @@ contains
                      IF(THETA_VEL_HAT<0.0) THEN
                         DO IPHASE=1,NPHASE
                            IF(FTHETA(IPHASE)>=0.5) THEN
-                               THETA_VEL(IPHASE) = -THETA_VEL_HAT
+                               THETA_VEL(IPHASE) = ABS(THETA_VEL_HAT) 
                            ELSE 
-                               THETA_VEL(IPHASE) = MAX( (0.5-FTHETA(IPHASE))/(1.0-FTHETA(IPHASE)),  -THETA_VEL_HAT)
+                               THETA_VEL(IPHASE) = MAX( (0.5-FTHETA(IPHASE))/(1.0-FTHETA(IPHASE)),  ABS(THETA_VEL_HAT))
                            ENDIF
                         END DO
                      ENDIF
@@ -11151,7 +11151,7 @@ CONTAINS
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
           CT_RHS( CV_NODJ ) = CT_RHS( CV_NODJ ) + SCVDETWEI( GI ) * SUM(   ( &
-               ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * NDOTQOLD(:) &
+               ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:))  &
                ) / DEN_ALL( :, CV_NODJ )    )
        end if
     END IF
