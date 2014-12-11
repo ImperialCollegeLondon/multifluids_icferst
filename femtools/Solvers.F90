@@ -1760,7 +1760,8 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
   logical, optional, intent(in) :: is_subpc
   ! option to "mg" to tell it not to do a direct solve at the coarsest level
   logical, optional, intent(in) :: has_null_space
-    
+  character(len=50) :: pcname
+
     KSP:: subksp
     PC:: subpc
     PCType:: pctype, hypretype
@@ -1769,6 +1770,12 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
     
     call get_option(trim(option_path)//'/name', pctype)
 
+#if PETSC_VERSION_MINOR>=3
+    !Temporary hack to get GAMG working by introducing the name manually in diamond
+    call get_option(trim(option_path)//'/name', pcname)
+    if (trim(pcname)=='GAMG' .or.  trim(pcname)=='gamg'.or.&
+        trim(pcname)=='PCGAMG' .or.  trim(pcname)=='pcgamg' ) pctype = PCGAMG
+#endif
     if (pctype==PCMG) then
       call SetupMultigrid(pc, pmat, ierr, &
             external_prolongators=prolongators, &

@@ -537,7 +537,7 @@
          REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC_MANY, CMC_COLOR_VEC2_MANY
          INTEGER :: CV_NOD, CV_JNOD, COUNT, COUNT2, COUNT3, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
          INTEGER :: MAX_COLOR_IN_ROW, ICHOOSE, KVEC, I, ELE, U_INOD, U_NOD, ICAN_COLOR, MX_COLOR, NOD_COLOR
-         INTEGER :: NCOLOR, ierr
+         INTEGER :: NCOLOR, ierr, j
          REAL :: RSUM
          !Variables to store things in state
          type(mesh_type), pointer :: fl_mesh
@@ -713,32 +713,38 @@
             END DO
          END DO
 
+         CMC_petsc%is_assembled=.false.
          call assemble( CMC_petsc )
+
          !If we have a reference node with pressure zero we impose that here.
-         IF ( NDPSET /= 0 ) call zero_rows(CMC_petsc, 1, (/NDPSET/), 1.0)
-!         IF ( NDPSET /= 0 ) THEN
-!            CV_NOD = NDPSET
-!            DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
-!               CV_JNOD = COLCMC( COUNT )
-!               IF ( CV_JNOD /= CV_NOD ) THEN
-!                  call MatSetValue(CMC_petsc%M, cv_nod-1, cv_jnod-1,0.,INSERT_VALUES, ierr)! not the diagonal
-!                  !CMC( COUNT ) = 0.0 ! not the diagonal
-!                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = 0.0
-!                  DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
-!                     CV_JNOD2 = COLCMC( COUNT2 )
-!                     IF ( CV_JNOD2 /= CV_NOD ) then
-!                        call MatSetValue(CMC_petsc%M, cv_nod-1, cv_jnod2-1, 0.,INSERT_VALUES, ierr)! not the diagonal
-!                     end if
-!                     !IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
-!                     IF ( IGOT_CMC_PRECON/=0 ) THEN
-!                        IF ( CV_JNOD2 == CV_NOD ) CMC_PRECON( COUNT2 ) = 0.0
-!                     END IF
-!                  END DO
-!               END IF
-!            END DO
-!         END IF
-
-
+         IF ( NDPSET /= 0 ) THEN
+            CV_NOD = NDPSET
+            DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+               CV_JNOD = COLCMC( COUNT )
+               IF ( CV_JNOD /= CV_NOD ) THEN
+                  i=CMC_petsc%row_numbering%gnn2unn(cv_nod,1)
+                  j=CMC_petsc%column_numbering%gnn2unn(cv_jnod,1)
+                  call MatSetValue(CMC_petsc%M, i, j, 0.0,INSERT_VALUES, ierr)! not the diagonal
+                  !CMC( COUNT ) = 0.0 ! not the diagonal
+                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = 0.0
+                  DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
+                     CV_JNOD2 = COLCMC( COUNT2 )
+                     IF ( CV_JNOD2 == CV_NOD ) then
+                        i=CMC_petsc%row_numbering%gnn2unn(cv_jnod,1)
+                        j=CMC_petsc%column_numbering%gnn2unn(CV_JNOD2,1)
+                        call MatSetValue(CMC_petsc%M, i, j, 0.0,INSERT_VALUES, ierr)! not the diagonal
+                     end if
+                     !IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
+                     IF ( IGOT_CMC_PRECON/=0 ) THEN
+                        IF ( CV_JNOD2 == CV_NOD ) CMC_PRECON( COUNT2 ) = 0.0
+                     END IF
+                  END DO
+               END IF
+            END DO
+         END IF
+        !Re-assemble just in case
+        CMC_petsc%is_assembled=.false.
+        call assemble( CMC_petsc )
         IF ( IGOT_CMC_PRECON /= 0 ) deallocate(CMC_COLOR_VEC2_MANY)
 
         deallocate(COLOR_IN_ROW, COLOR_IN_ROW2 )
