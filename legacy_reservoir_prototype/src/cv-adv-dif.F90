@@ -462,14 +462,11 @@ contains
       REAL , DIMENSION( :, : ), ALLOCATABLE :: NUOLDGI_ALL, NUGI_ALL, NU_LEV_GI
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
       REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
-      REAL , DIMENSION( :, :, :, : ), ALLOCATABLE, target :: INV_V_OPT_VEL_UPWIND_COEFS
-      real, dimension(:,:,:), pointer :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, VI_LOC_OPT_VEL_UPWIND_COEFS,&
-                    GI_LOC_OPT_VEL_UPWIND_COEFS,VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
+      REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: INV_V_OPT_VEL_UPWIND_COEFS
       REAL :: BCZERO(NPHASE),  T_ALL_J( NPHASE ), TOLD_ALL_J( NPHASE )
       INTEGER :: LOC_WIC_T_BC_ALL(NPHASE)
 
 
-      REAL , DIMENSION( :, :, : ), pointer :: INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
 
       REAL, DIMENSION( :, :, : ), ALLOCATABLE :: ABSORBT_ALL
       REAL, DIMENSION( :, : ), ALLOCATABLE :: T2_ALL, T2OLD_ALL, &
@@ -1078,11 +1075,6 @@ contains
                     call invert(INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI))
                  END DO
               END DO
-!            else
-!               ALLOCATE( VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  &
-!                    VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
-!               ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(0,0,0,0) )
-!               ALLOCATE( INV_VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0))!, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
            ENDIF
 
 
@@ -1543,12 +1535,6 @@ contains
 
 ! Generate some local F variables ***************
             F_CV_NODI(:)= LOC_F(:, CV_ILOC)
-            IF ( is_compact_overlapping ) THEN
-                !Set pointers to coeficients, gradients and inverse of sigmas
-                VI_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_coefs_new(:,:,:, MAT_NODI)
-                GI_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_grad_new(:,:,:, MAT_NODI)
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS(1:NDIM,1:NDIM,1:NPHASE) => INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI)
-            ENDIF
 ! Generate some local F variables ***************
 
             ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
@@ -1973,12 +1959,6 @@ contains
 
 
 
-       IF ( is_compact_overlapping ) THEN
-           !Set pointers to coeficients, gradients and inverse of sigmas
-           VJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ)
-           GJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_grad_new(:,:,:, MAT_NODJ)
-           INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ)
-       ENDIF
 
        NFACE_ITS = 1
        FACE_ITS = 1
@@ -2000,9 +1980,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
+               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                NUOLDGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -2023,9 +2003,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
+               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                NUGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -2079,9 +2059,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
+               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                NUOLDGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -2102,9 +2082,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
+               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
+               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                NUGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT),&
