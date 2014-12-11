@@ -2348,9 +2348,9 @@ contains
 
                      !====================== ACV AND RHS ASSEMBLY ===================
                      Conditional_GETCT2 : IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS
-                        CALL PUT_IN_CT_RHS( CT, CT_RHS, U_NLOC, SCVNGI, GI, NCOLCT, NDIM, &
+                        CALL PUT_IN_CT_RHS( CT, CT_RHS, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
                              CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary,  &
-                             JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC,  &
+                             JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, &
                              SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
                              UGI_COEF_ELE_ALL,  &
                              UGI_COEF_ELE2_ALL,  &
@@ -11011,9 +11011,9 @@ CONTAINS
 
 
 
-  SUBROUTINE PUT_IN_CT_RHS( CT, CT_RHS, U_NLOC, SCVNGI, GI, NCOLCT, NDIM, &
+  SUBROUTINE PUT_IN_CT_RHS( CT, CT_RHS, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
        CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary, &
-       JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC,   &
+       JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC, U_SLOC2LOC,   &
        SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
        UGI_COEF_ELE_ALL,  &
        UGI_COEF_ELE2_ALL,  &
@@ -11027,12 +11027,13 @@ CONTAINS
     ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
     IMPLICIT NONE
 ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO CT MATRIX
-    LOGICAL, PARAMETER :: more_in_ct=.false.
-    INTEGER, intent( in ) :: U_NLOC, SCVNGI, GI, NCOLCT, NDIM, &
+!    LOGICAL, PARAMETER :: more_in_ct=.false.
+    INTEGER, intent( in ) :: U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
          CV_NONODS, U_NONODS, NPHASE, CV_NODI, CV_NODJ
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: loc_u, loc2_u
     LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary
     INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
+    INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
     REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
     REAL, DIMENSION( : ), intent( inout ) :: CT_RHS
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
@@ -11054,7 +11055,7 @@ CONTAINS
 
     ! Local variables...
     INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
-         U_KLOC_LEV, U_NLOC_LEV, IPHASE
+         U_KLOC_LEV, U_NLOC_LEV, IPHASE, U_SKLOC
 
     IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
        ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the CT matrix and add what we really want)
@@ -11159,9 +11160,12 @@ CONTAINS
 !    IF ( (ELE2 /= 0) .AND. (ELE2 /= ELE) ) THEN
     IF ( between_elements ) THEN
        ! We have a discontinuity between elements so integrate along the face...
-       DO U_KLOC = 1, U_NLOC
-          U_KLOC2 = U_OTHER_LOC( U_KLOC)
-          IF ( U_KLOC2 /= 0 ) THEN
+!       DO U_KLOC = 1, U_NLOC
+!          U_KLOC2 = U_OTHER_LOC( U_KLOC)
+       DO U_SKLOC = 1, U_SNLOC
+          U_KLOC = U_SLOC2LOC(U_SKLOC)
+          U_KLOC2 = U_OTHER_LOC( U_KLOC )
+!          IF ( U_KLOC2 /= 0 ) THEN
 
              RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
                   * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
@@ -11216,9 +11220,9 @@ CONTAINS
 !     endif
              end if  ! endof if ( integrate_other_side_and_not_boundary ) then
 
-          END IF
+!          END IF
        END DO
-    END IF
+    END IF ! endof IF ( between_elements ) THEN
 
     RETURN
   END SUBROUTINE PUT_IN_CT_RHS
