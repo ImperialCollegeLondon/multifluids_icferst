@@ -329,7 +329,13 @@ contains
 ! If UPWIND_CAP_DIFFUSION then when calculating capillary pressure diffusion coefficient use the 
 ! upwind value
       logical, PARAMETER :: UPWIND_CAP_DIFFUSION = .true.
-      LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
+! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
+! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible. 
+! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
+! Zhi try THETA_VEL_HAT = 1.0
+      real, PARAMETER :: THETA_VEL_HAT = 0.0
+!
+      LOGICAL, DIMENSION( : ), allocatable :: X_SHARE 
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
            CVFEM_ON_FACE, UFEM_ON_FACE
       INTEGER, DIMENSION( : ), allocatable :: &
@@ -500,6 +506,7 @@ contains
             rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, rdum_nphase_13
       real :: rdum_ndim_1(NDIM), rdum_ndim_2(NDIM), rdum_ndim_3(NDIM)
       real :: LOC_CV_RHS_I(NPHASE),LOC_CV_RHS_J(NPHASE)
+      real :: THETA_VEL(NPHASE)
 
 !! femdem
       type( vector_field ), pointer :: delta_u_all, us_all
@@ -2293,6 +2300,25 @@ contains
                              LOC_TOLD_I( : ) * LOC_DENOLD_I( : )  )
                      END IF
 
+! adjust the value of FTHETA for use with velocity only so we can use FTHETA=0.0 for voln frac. 
+! THETA_VEL_HAT=0.0 does not change NDOTQOLD, THETA_VEL_HAT=1.0 sets NDOTQOLD=NDOTQNEW.
+! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible.  
+! This determins how implicit velocity is in the cty eqn. 
+                     THETA_VEL(:)=THETA_VEL_HAT
+                     IF(THETA_VEL_HAT<0.0) THEN
+                        DO IPHASE=1,NPHASE
+                           IF(FTHETA(IPHASE)>=0.5) THEN
+                               THETA_VEL(IPHASE) = -THETA_VEL_HAT
+                           ELSE 
+                               THETA_VEL(IPHASE) = MAX( (0.5-FTHETA(IPHASE))/(1.0-FTHETA(IPHASE)),  -THETA_VEL_HAT)
+                           ENDIF
+                        END DO
+                     ENDIF
+                     NDOTQOLD = THETA_VEL*NDOTQNEW + (1.0-THETA_VEL)*NDOTQOLD
+
+
+
+
                      FTHETA_T2(:) = FTHETA(:) * LIMT2(:)
                      ONE_M_FTHETA_T2OLD(:) = (1.0-FTHETA(:)) * LIMT2OLD(:)
 
@@ -2332,7 +2358,7 @@ contains
                              NDOTQ_HAT, &
                              FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                              RETRIEVE_SOLID_CTY,theta_cty_solid, &
-                             loc_u, loc2_u, & 
+                             loc_u, loc2_u, THETA_VEL, & 
                              rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3 ) 
                      ENDIF Conditional_GETCT2
 
@@ -10995,7 +11021,7 @@ CONTAINS
        NDOTQ_HAT, &
        FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
        RETRIEVE_SOLID_CTY,theta_cty_solid, &
-       loc_u, loc2_u, &
+       loc_u, loc2_u, THETA_VEL, &
 ! local memory sent down for speed...
        UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL)
     ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
@@ -11016,6 +11042,7 @@ CONTAINS
     REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DEN_ALL
     REAL, DIMENSION( NPHASE ), intent( in ) :: NDOTQ, NDOTQOLD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, LIMD
     REAL, intent( in ) :: NDOTQ_HAT
+    REAL, DIMENSION( NPHASE ), intent( in ) :: THETA_VEL
     ! LIMT_HAT is the normalised voln fraction
     REAL, intent( in ) :: theta_cty_solid
     REAL,  DIMENSION( NPHASE ), intent( in ) :: FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J
@@ -11045,7 +11072,7 @@ CONTAINS
 
     DO U_KLOC = 1, U_NLOC
 
-       RCON(:) = SCVDETWEI( GI ) * FTHETA_T2(:) * LIMDT(:) &
+       RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
             * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
 
        IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
@@ -11072,7 +11099,7 @@ CONTAINS
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
 
-          RCON_J(:) = SCVDETWEI( GI ) * FTHETA_T2_J(:)* LIMDT(:) &
+          RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:))  &
                * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
 
 
@@ -11111,14 +11138,14 @@ CONTAINS
        END DO
 
        CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) - SCVDETWEI( GI ) * SUM(  ( &
-            ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) &
+            ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
             + FTHETA_T2(:)  * LIMDT(:) * (NDOTQ(:)-NDOTQ_IMP(:)) &
             ) / DEN_ALL( :, CV_NODI )  )
 
     ELSE
 
        CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) - SCVDETWEI( GI ) * SUM(  ( &
-            ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) &
+            ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:))  &
             ) / DEN_ALL( :, CV_NODI )   )
 
        ! flux from the other side (change of sign because normal is -ve)...
@@ -11136,7 +11163,7 @@ CONTAINS
           U_KLOC2 = U_OTHER_LOC( U_KLOC)
           IF ( U_KLOC2 /= 0 ) THEN
 
-             RCON(:) = SCVDETWEI( GI ) * FTHETA_T2(:) * LIMDT(:)  &
+             RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
                   * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
              IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
                 RCON(:)    = RCON(:)    + SCVDETWEI( GI )  * (LIMT_HAT(:) - LIMT(:))  &
@@ -11162,7 +11189,7 @@ CONTAINS
      endif
              ! flux from the other side (change of sign because normal is -ve)...
              if ( integrate_other_side_and_not_boundary ) then
-                RCON_J(:) = SCVDETWEI( GI ) * FTHETA_T2_J(:) * LIMDT(:)  &
+                RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:))    &
                      * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
                 IF(RETRIEVE_SOLID_CTY) THEN ! For solid modelling...
                    RCON_J(:)    = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:))  &

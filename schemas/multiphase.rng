@@ -1087,6 +1087,17 @@ You should specify this ONLY for the wetting phase</a:documentation>
                         </element>
                       </choice>
                     </element>
+                    <optional>
+                      <element name="Pc_imbibition">
+                        <a:documentation>Modified capillary pressure curve [see SPE-172989-MS, eq (5)]
+Pc = c * (1 - (S_w-Swir)/(1-Swir-Sor)) ** -a
+
+You should specify this ONLY for the wetting phase.
+
+This option is by default disabled.</a:documentation>
+                        <ref name="comment"/>
+                      </element>
+                    </optional>
                   </element>
                 </element>
               </optional>
