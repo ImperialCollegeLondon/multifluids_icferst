@@ -21,13 +21,6 @@
 
 #include "petscversion.h"
 #include "finclude/petsc.h"
-#if PETSC_VERSION_MINOR==0
-#include "finclude/petscvec.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscksp.h"
-#include "finclude/petscpc.h"
-#endif
-
     type(state_type) :: state
     type(vector_field), target:: positions, vertical_normal
     type(scalar_field) :: psi, DistanceToTop, exact
@@ -313,14 +306,12 @@
     real, intent(out) :: eps0
 
 #include "finclude/petsc.h"
-#if PETSC_VERSION_MINOR==0
-#include "finclude/petscvec.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscksp.h"
-#include "finclude/petscpc.h"
-#endif
 
-    PetscTruth :: flag
+#if PETSC_VERSION_MINOR>=2
+    PetscBool:: flag
+#else
+    PetscTruth:: flag
+#endif
     PetscErrorCode :: ierr
     PetscReal :: number_in=0.0
 

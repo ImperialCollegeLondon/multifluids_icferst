@@ -13531,7 +13531,7 @@ deallocate(NX_ALL)
   END SUBROUTINE GET_INT_VEL_ORIG_NEW
 
 
-      PURE SUBROUTINE GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ,INCOME, &
+      SUBROUTINE GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ,INCOME, &
        GI, SUFEN, U_NLOC,&
        LOC_T_I, LOC_T_J, LOC_FEMT,&
        LOC_U,LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
@@ -13595,6 +13595,7 @@ deallocate(NX_ALL)
                ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
             end forall
         end if
+
      DO IPHASE = 1, NPHASE
        IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
           !(vel * shape_functions)/sigma
@@ -14245,4 +14246,5 @@ deallocate(NX_ALL)
 ! -----------------------------------------------------------------------------
 
   end module cv_advection
+
 
