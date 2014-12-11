@@ -31,8 +31,6 @@
 #include <sstream>
 #include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
-
 #include "confdefs.h"
 
 #include "c++debug.h"

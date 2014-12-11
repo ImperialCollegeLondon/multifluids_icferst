@@ -29,7 +29,6 @@
 #include <cstring>
 #include <iostream>
 #include <stdlib.h>
-#include <unistd.h>
 
 #include "confdefs.h"
 

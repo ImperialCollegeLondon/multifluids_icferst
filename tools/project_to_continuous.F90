@@ -27,29 +27,23 @@
 #include "confdefs.h"
 #include "fdebug.h"
 
-subroutine project_to_continuous(vtuname_, vtuname_len, meshname_,&
-     & meshname_len) bind(c)
+subroutine project_to_continuous(vtuname, vtuname_len, meshname,&
+     & meshname_len) 
   !!< Given a vtu file containing fields on a discontinuous mesh, and the
   !!< triangle files for the corresponding continuous mesh, produce a vtu
   !!< with its fields projected onto the continuous mesh.
   use state_module
   use elements
   use fields
-  use read_triangle
+  use mesh_files
   use vtk_interfaces
   use sparse_tools
   use fefields
   use sparse_matrices_fields
-  use iso_c_binding
   implicit none
-
-  character(kind=c_char, len=1) :: vtuname_(*)
-  integer(kind=c_size_t), value :: vtuname_len
-  character(kind=c_char, len=1) :: meshname_(*)
-  integer(kind=c_size_t), value :: meshname_len
-
-  character(len=vtuname_len):: vtuname
-  character(len=meshname_len):: meshname
+  integer, intent(in):: vtuname_len, meshname_len
+  character(len=vtuname_len), intent(in):: vtuname
+  character(len=meshname_len), intent(in):: meshname
 
   type(state_type) :: dg_state, cg_state
   type(vector_field) :: cg_coordinate
@@ -62,17 +56,9 @@ subroutine project_to_continuous(vtuname_, vtuname_len, meshname_,&
 
   integer :: i, j, k
 
-! now turn into proper fortran strings (is there an easier way to do this?)
-  do i=1, vtuname_len
-    vtuname(i:i)=vtuname_(i)
-  end do
-  do i=1, meshname_len
-    meshname(i:i)=meshname_(i)
-  end do
-
   call vtk_read_state(vtuname, dg_state, quad_degree=6)
   
-  cg_coordinate= read_triangle_files(meshname, quad_degree=6)
+  cg_coordinate= read_mesh_files(meshname, quad_degree=6)
   cg_mesh=cg_coordinate%mesh
 
   call allocate(lumped_mass, cg_mesh, "LumpedMass")

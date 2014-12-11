@@ -25,31 +25,29 @@
 ! Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 ! USA
 
-#include "fdebug.h"
+#include "confdefs.h"
+#include "ewrite.h"
 
-      module addebug
-  
-        use write_log
-  
-        implicit none
-  
-        private
-  
-        public :: adabort_pinpoint
-  
-      contains
+! #define FORTRAN_DISALLOWS_LONG_LINES
 
-        SUBROUTINE adabort_pinpoint(ErrorStr, FromFile, LineNumber)
+#ifndef __FILE__
+#error __FILE__ does not work
+#endif
 
-          CHARACTER*(*) ErrorStr, FromFile
-          INTEGER LineNumber
-    
-          ewrite(-1,FMT='(A)') "*** LIBADAPT ERROR ***"
-          ewrite(-1,FMT='(3A,I5,A)') "Source location: (",FromFile,",",LineNumber,")"
-          ewrite(-1,FMT='(2A)') "Error message: ",ErrorStr
-          ewrite(-1,FMT='(A)') "Error is terminal."
-    
-          STOP
-        END SUBROUTINE adabort_pinpoint
-  
-      end module addebug
+#ifndef __LINE__
+#error __LINE__ does not work
+#endif
+
+#define adabort(X) call adabort_pinpoint(X, __FILE__, __LINE__)
+#define adabort(X) call adabort_pinpoint(X, __FILE__, __LINE__)
+
+#ifdef NDEBUG
+#define ASSERT(X)
+#else
+#ifdef FORTRAN_DISALLOWS_LONG_LINES
+#define ASSERT(X) IF(.NOT.(X)) adabort('Failed assertion ')
+#else
+#define ASSERT(X) IF(.NOT.(X)) adabort('Failed assertion '//'X')
+#endif
+#endif
+#define assert(X) ASSERT(X)

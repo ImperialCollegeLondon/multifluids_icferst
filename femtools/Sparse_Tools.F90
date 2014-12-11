@@ -43,7 +43,15 @@ module sparse_tools
   
   implicit none
   
-#include "petsc_legacy.h"
+#ifdef HAVE_PETSC_MODULES
+#include "finclude/petsckspdef.h"
+#else
+#include "finclude/petsc.h"
+#if PETSC_VERSION_MINOR==0
+#include "finclude/petscksp.h"
+#include "finclude/petscsys.h"
+#endif
+#endif
 
   private
   

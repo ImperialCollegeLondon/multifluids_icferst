@@ -34,12 +34,13 @@
 #endif
 
 extern "C" {
-  void probe_vtu(const char*, size_t, const char*, size_t, double, double, double, size_t);
+#define probe_vtu_fc F77_FUNC(probe_vtu, PROBE_VTU)
+  void probe_vtu_fc(const char*, int*, const char*, int*, flfloat_t*, flfloat_t*, flfloat_t*, int*);
 }
 
+#ifdef _AIX
 #include <unistd.h>
-
-#ifndef _AIX
+#else
 #include <getopt.h>
 #endif
 
@@ -114,13 +115,13 @@ int main(int argc, char **argv){
   set_global_debug_level_fc(&val);
 
   string vtu_filename = argv[optind];
-  size_t vtu_filename_len = vtu_filename.size();  
+  int vtu_filename_len = vtu_filename.length();  
   
   string fieldname = argv[optind + 1];
-  size_t fieldname_len = fieldname.size();
+  int fieldname_len = fieldname.length();
   
-  size_t dim = 1;
-  double x, y = 0.0, z = 0.0;
+  int dim = 1;
+  flfloat_t x, y = 0.0, z = 0.0;
   
   x = atof(argv[optind + 2]);  
   if(optind < argc - 3){
@@ -132,7 +133,7 @@ int main(int argc, char **argv){
     dim++;
   }
   
-  probe_vtu(vtu_filename.c_str(), vtu_filename_len, fieldname.c_str(), fieldname_len, x, y, z, dim);
+  probe_vtu_fc(vtu_filename.c_str(), &vtu_filename_len, fieldname.c_str(), &fieldname_len, &x, &y, &z, &dim);
     
 #ifdef HAVE_PETSC
   PetscFinalize();

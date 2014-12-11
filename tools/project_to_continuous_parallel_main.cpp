@@ -26,17 +26,22 @@
     USA
 */
 
-#include "Usage.h"
-#include "Precision.h"
+#include "confdefs.h"
+#include "c++debug.h"
 
 #ifdef HAVE_MPI
 #include <mpi.h>
 #endif
 
+#ifdef HAVE_PETSC
+#include <petsc.h>
+#endif
+
 extern "C" {
-#define vtu_bins_fc F77_FUNC(vtu_bins, VTU_BINS)
-  void vtu_bins_fc(const char*, int*, const char*, int*, flfloat_t*, int*);
+#define project_to_continuous_parallel_fc F77_FUNC(project_to_continuous_parallel, PROJECT_TO_CONTINUOUS_PARALLEL_FC)
+  void project_to_continuous_parallel_fc(const char *, const int *, const char *, const int *);
 }
+void PetscInit(int argc, char** argv);
 
 #ifdef _AIX
 #include <unistd.h>
@@ -54,22 +59,24 @@ extern "C" {
 
 using namespace std; 
 
-void vtu_bins_usage(char *binary){
-  cerr<<"Usage: "<<binary<<" [OPTIONS] input_filename input_fieldname BOUND1 [BOUND2 BOUND3 ...]\n"
-      <<"Return the volumes between field values.\n"
+void project_to_continuous_parallel_usage(char *binary){
+  cerr<<"Usage: "<<binary<<" [OPTIONS] vtufile trianglename.\n"
+      <<"\twhere 'vtufile' is the name of the discontinuous vtu (without extension)\n"
+      <<"\tand 'trianglename' is the base name of the triangle files.\n"
+      <<"\n"
       <<"\t-h\t\tPrints out this message\n"
       <<"\t-v\t\tVerbose mode\n";
 }
 
 int main(int argc, char **argv){
- #ifdef HAVE_MPI
+#ifdef HAVE_MPI
   // This must be called before we process any arguments
   MPI::Init(argc,argv);
 
   // Undo some MPI init shenanigans
   chdir(getenv("PWD"));
 #endif
-  
+ 
   // Initialise PETSc (this also parses PETSc command line arguments)
   PetscInit(argc, argv);
  
@@ -77,62 +84,67 @@ int main(int argc, char **argv){
   // reset optarg so we can detect changes
   optarg = NULL;  
   char c;
-  map<char, string> args;
-  while((c = getopt(argc, argv, "hv")) != -1){
+  int no_option_args=0;
+  map<char, string> flArgs;
+  while((c = getopt(argc, argv, "f:hn:v")) != -1){
     if (c != '?'){
       if (optarg == NULL){
-        args[c] = "true";
+        flArgs[c] = "true";
       }else{
-        args[c] = optarg;
+        flArgs[c] = optarg;
       };
+      no_option_args++;
     }else{
       if (isprint(optopt)){
         cerr << "Unknown option " << optopt << endl;
       }else{
         cerr << "Unknown option " << hex << optopt << endl;
       }
-      vtu_bins_usage(argv[0]);
+      project_to_continuous_parallel_usage(argv[0]);
       exit(-1);
     }
   }
 
   // Help?
-  if(args.count('h')){
-    vtu_bins_usage(argv[0]);
+  if(flArgs.count('h')){
+    project_to_continuous_parallel_usage(argv[0]);
     exit(-1);
   }
   
-  if(optind > argc - 3){
-    cerr << "Need an input vtu, input field name and at least one boundary value" << endl;
-    vtu_bins_usage(argv[0]);
+  if (argc-no_option_args != 3){
+    cerr << "Need exactly two non-option arguments" << endl;
+    project_to_continuous_parallel_usage(argv[0]);
     exit(-1);
   }
 
   // What to do with stdout?
   int val=3;
-  if(args.count('v')==0)
+  if(flArgs.count('v')==0)
     val = 0;
   set_global_debug_level_fc(&val);
 
-  string input_filename = argv[optind];
-  int input_filename_len = input_filename.length();  
-  
-  string input_fieldname;
-  input_fieldname = argv[optind + 1];  
-  int input_fieldname_len = input_fieldname.length();
-  
-  int nbounds =  argc - optind - 2;
-  flfloat_t bounds[nbounds];
-  for(int i = 0;i < nbounds;i++){
-    bounds[i] = atof(argv[optind + 2 + i]);
-  }
+  string vtufile;
+  if(argv[no_option_args+1][0]!='/')
+    vtufile = getenv("PWD");
+  vtufile.append("/");
+  vtufile.append(argv[no_option_args+1]);
+  vtufile.append(" "); // needed by fluidity to find end of file
+  int vtulen = vtufile.length();  
 
-  vtu_bins_fc(input_filename.c_str(), &input_filename_len, input_fieldname.c_str(), &input_fieldname_len, bounds, &nbounds);
-    
+  string trianglefile;
+  if(argv[no_option_args+1][0]!='/')
+    trianglefile = getenv("PWD");
+  trianglefile.append("/");
+  trianglefile.append(argv[no_option_args+2]);
+  trianglefile.append(" "); // needed by fluidity to find end of file
+  int trianglelen = trianglefile.length();  
+
+  project_to_continuous_parallel_fc(vtufile.c_str(),&vtulen,trianglefile.c_str(),&trianglelen);
+  
 #ifdef HAVE_PETSC
   PetscFinalize();
 #endif
-
+  
 #ifdef HAVE_MPI
   MPI::Finalize();
 #endif

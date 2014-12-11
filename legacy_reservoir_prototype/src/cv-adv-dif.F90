@@ -462,11 +462,14 @@ contains
       REAL , DIMENSION( :, : ), ALLOCATABLE :: NUOLDGI_ALL, NUGI_ALL, NU_LEV_GI
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
       REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
-      REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: INV_V_OPT_VEL_UPWIND_COEFS
+      REAL , DIMENSION( :, :, :, : ), ALLOCATABLE, target :: INV_V_OPT_VEL_UPWIND_COEFS
+      real, dimension(:,:,:), pointer :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, VI_LOC_OPT_VEL_UPWIND_COEFS,&
+                    GI_LOC_OPT_VEL_UPWIND_COEFS,VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
       REAL :: BCZERO(NPHASE),  T_ALL_J( NPHASE ), TOLD_ALL_J( NPHASE )
       INTEGER :: LOC_WIC_T_BC_ALL(NPHASE)
 
 
+      REAL , DIMENSION( :, :, : ), pointer :: INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
 
       REAL, DIMENSION( :, :, : ), ALLOCATABLE :: ABSORBT_ALL
       REAL, DIMENSION( :, : ), ALLOCATABLE :: T2_ALL, T2OLD_ALL, &
@@ -528,13 +531,12 @@ contains
       type( scalar_field ), pointer :: sfield
 
       !Variables for Capillary pressure
-      logical :: capillary_pressure_activated, between_elements, on_domain_boundary, Pc_imbibition
+      logical :: capillary_pressure_activated, between_elements, on_domain_boundary
       real, dimension(nphase):: rsum_nodi, rsum_nodj
       real :: aux_Sr
       integer :: Phase_with_Pc, x_nod
       !capillary_pressure_activated includes GOT_CAPDIFFUS
       capillary_pressure_activated = .false.
-      Pc_imbibition = .false.
 
       !Check capillary pressure options
       Phase_with_Pc = 1
@@ -548,10 +550,6 @@ contains
                 "]/multiphase_properties/Pe_stab")) then
                     capillary_pressure_activated = .true.
                     Phase_with_Pc = iphase
-                    if (have_option("/material_phase["//int2str(iphase-1)//&
-                       "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/Pc_imbibition") ) then
-                        Pc_imbibition = .true.
-                    end if
                 end if
             end do
         else
@@ -1075,6 +1073,11 @@ contains
                     call invert(INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI))
                  END DO
               END DO
+!            else
+!               ALLOCATE( VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  &
+!                    VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0),  GJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
+!               ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(0,0,0,0) )
+!               ALLOCATE( INV_VI_LOC_OPT_VEL_UPWIND_COEFS(0,0,0))!, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(0,0,0) )
            ENDIF
 
 
@@ -1170,7 +1173,7 @@ contains
                  end select
                  CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
                   - T_ALL(Phase_with_Pc, CV_NODI) * Get_DevCapPressure(T_ALL(Phase_with_Pc, CV_NODI),&
-                    Pe(CV_NODI), Cap_Exp(CV_NODI), aux_Sr, Swirr, Pc_imbibition)
+                    Pe(CV_NODI), Cap_Exp(CV_NODI), aux_Sr)
              end do
          end do
 !          end if
@@ -1535,6 +1538,12 @@ contains
 
 ! Generate some local F variables ***************
             F_CV_NODI(:)= LOC_F(:, CV_ILOC)
+            IF ( is_compact_overlapping ) THEN
+                !Set pointers to coeficients, gradients and inverse of sigmas
+                VI_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_coefs_new(:,:,:, MAT_NODI)
+                GI_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_grad_new(:,:,:, MAT_NODI)
+               INV_VI_LOC_OPT_VEL_UPWIND_COEFS(1:NDIM,1:NDIM,1:NPHASE) => INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI)
+            ENDIF
 ! Generate some local F variables ***************
 
             ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
@@ -1959,6 +1968,12 @@ contains
 
 
 
+       IF ( is_compact_overlapping ) THEN
+           !Set pointers to coeficients, gradients and inverse of sigmas
+           VJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ)
+           GJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => opt_vel_upwind_grad_new(:,:,:, MAT_NODJ)
+           INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(1:,1:,1:) => INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ)
+       ENDIF
 
        NFACE_ITS = 1
        FACE_ITS = 1
@@ -1980,9 +1995,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
-               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
-               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
+               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
+               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
                NUOLDGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -2003,9 +2018,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
-               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
-               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
+               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
+               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
                NUGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -2059,9 +2074,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
-               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
-               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
+               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
+               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
                NUOLDGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -2082,9 +2097,9 @@ contains
                UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
                CV_SLOC2LOC,&
                CV_SNLOC, CV_ILOC, SCVFEN, &
-               opt_vel_upwind_coefs_new(:,:,:, MAT_NODI), opt_vel_upwind_grad_new(:,:,:, MAT_NODI), &
-               opt_vel_upwind_coefs_new(:,:,:, MAT_NODJ), opt_vel_upwind_grad_new(:,:,:, MAT_NODJ), &
-               INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
+               VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
+               VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
+               INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
                NUGI_ALL, &
                MASS_CV(CV_NODI), MASS_CV(CV_NODJ), NDIM, &
                IN_ELE_UPWIND, TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT),&
@@ -13531,7 +13546,7 @@ deallocate(NX_ALL)
   END SUBROUTINE GET_INT_VEL_ORIG_NEW
 
 
-      SUBROUTINE GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ,INCOME, &
+      PURE SUBROUTINE GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ,INCOME, &
        GI, SUFEN, U_NLOC,&
        LOC_T_I, LOC_T_J, LOC_FEMT,&
        LOC_U,LOC2_U, LOC_NU, LOC2_NU, SLOC_NU, &
@@ -13595,7 +13610,6 @@ deallocate(NX_ALL)
                ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
             end forall
         end if
-
      DO IPHASE = 1, NPHASE
        IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
           !(vel * shape_functions)/sigma
@@ -14217,24 +14231,18 @@ deallocate(NX_ALL)
   end function vtolfun
 
     !This function should be in multi_eos.F90
-    PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr, Other_irr, Pc_imbibition)
+    PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr)
         !This functions returns the derivative of the capillary pressure with regard of the saturation
         Implicit none
-        real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
-        logical, intent(in) :: Pc_imbibition
+        real, intent(in) :: sat, Pe, a, Own_irr
         !Local
         real, parameter :: tol = 1d-2
         real :: aux
-   
-        if ( Pc_imbibition ) then
-           aux = (1.0 - Own_irr - Other_irr)
-           Get_DevCapPressure = &
-           a * Pe * (1/aux) * (1.0 - max(min((sat - Own_irr) / aux, 1.0), tol)) ** (-a-1)
-        else
-           aux = (1.0 - Own_irr)
-           Get_DevCapPressure = &
-           -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)   
-        end if
+
+        aux = (1.0 - Own_irr)
+
+        Get_DevCapPressure = &
+        -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
 
 
 
@@ -14246,5 +14254,4 @@ deallocate(NX_ALL)
 ! -----------------------------------------------------------------------------
 
   end module cv_advection
-
 

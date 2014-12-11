@@ -33,11 +33,13 @@
 #endif
 
 extern "C" {
-  void project_vtu(const char*, size_t, const char*, size_t, const char*, size_t, const char*, size_t);
+#define project_vtu_fc F77_FUNC(project_vtu, PROJECT_VTU)
+  void project_vtu_fc(const char*, int*, const char*, int*, const char*, int*, const char*, int*);
 }
 
+#ifdef _AIX
 #include <unistd.h>
-#ifndef _AIX
+#else
 #include <getopt.h>
 #endif
 
@@ -52,11 +54,8 @@ extern "C" {
 using namespace std; 
 
 void project_vtu_usage(char *binary){
-  cerr<<"Usage: "<<binary<<" [OPTIONS] input_filename donor_mesh target_mesh output_filename\n"
-      <<"Project an input vtu onto a different mesh\n\n"
-      <<"input_filename and output_filename are the names of the input and output vtus\n"
-      <<"donor_mesh and target_mesh are either the name of gmsh file corresponding to the donor and target mesh (if ending in .msh), "
-      <<"or the basename for the triangle files (.node+.ele+.edge/.face) for those meshes\n\n"
+  cerr<<"Usage: "<<binary<<" [OPTIONS] input_filename donor_basename target_basename output_filename\n"
+      <<"Project an input vtu onto a triangle mesh\n"
       <<"\t-h\t\tPrints out this message\n"
       <<"\t-v\t\tVerbose mode\n";
 }
@@ -115,18 +114,18 @@ int main(int argc, char **argv){
   set_global_debug_level_fc(&val);
 
   string input_filename = argv[optind];
-  size_t input_filename_len = input_filename.size();  
+  int input_filename_len = input_filename.length();  
   
   string donor_basename = argv[optind + 1];
-  size_t donor_basename_len = donor_basename.size();
+  int donor_basename_len = donor_basename.length();
   
   string target_basename = argv[optind + 2];
-  size_t target_basename_len = target_basename.size();
+  int target_basename_len = target_basename.length();
   
   string output_filename = argv[optind + 3];
-  size_t output_filename_len = output_filename.size();  
+  int output_filename_len = output_filename.length();  
 
-  project_vtu(input_filename.c_str(), input_filename_len, donor_basename.c_str(), donor_basename_len, target_basename.c_str(), target_basename_len, output_filename.c_str(), output_filename_len);
+  project_vtu_fc(input_filename.c_str(), &input_filename_len, donor_basename.c_str(), &donor_basename_len, target_basename.c_str(), &target_basename_len, output_filename.c_str(), &output_filename_len);
     
 #ifdef HAVE_PETSC
   PetscFinalize();

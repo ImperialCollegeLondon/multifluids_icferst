@@ -187,18 +187,9 @@ contains
     ! destroy all PETSc objects and the petsc_numbering
     call petsc_solve_destroy_petsc_csr( y, b, ksp, solver_option_path )
 
-    
-
     return
   end subroutine petsc_solve_scalar_petsc_csr_mp
 
-  subroutine petsc_solve_destroy_petsc_csr( y, b, ksp, solver_option_path )
-
-    KSP :: ksp
-    Vec :: y, b
-    character(len=OPTION_PATH_LEN) :: solver_option_path
-
-  end subroutine petsc_solve_destroy_petsc_csr
 
   SUBROUTINE PRES_DG_MULTIGRID(CMC, CMC_PRECON, IGOT_CMC_PRECON, P, RHS, &
        NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &

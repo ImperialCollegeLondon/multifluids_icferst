@@ -1,4 +1,4 @@
-#include "fdebug_adapt.h"
+#include "fdebug.h"
 
 !#define LIPNIKOV_FUNCTIONAL
 #ifdef LIPNIKOV_FUNCTIONAL

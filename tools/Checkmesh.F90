@@ -1,6 +1,6 @@
 #include "fdebug.h"
 
-subroutine checkmesh(filename_, filename_len) bind(c)
+subroutine checkmesh(filename, filename_len)
   !!< Checks the validity of the supplied triangle mesh
 
 ! these 5 need to be on top and in this order, so as not to confuse silly old intel compiler 
@@ -15,30 +15,23 @@ subroutine checkmesh(filename_, filename_len) bind(c)
   use linked_lists
   use meshdiagnostics
   use metric_tools
-  use read_triangle
+  use mesh_files
   use supermesh_construction
   use tetrahedron_intersection_module
-  use iso_c_binding
 
   implicit none
 
-  character(kind=c_char, len=1) :: filename_(*)
-  integer(kind=c_size_t), value :: filename_len
+  integer, intent(in) :: filename_len
 
-  character(len = filename_len) :: filename
+  character(len = filename_len), intent(in) :: filename
   character(len = real_format_len()) :: rformat
-  integer :: global_ele, global_nodes, global_sele, global_facets, i
+  integer :: global_ele, global_nodes, global_sele, global_facets
   type(vector_field) :: positions
-
-  do i=1, filename_len
-    filename(i:i)=filename_(i)
-  end do
-
 
   rformat = real_format()    
 
   print "(a)", "Reading in mesh mesh with base name " // trim(filename)
-  positions = read_triangle_files(filename, quad_degree = 4)    
+  positions = read_mesh_files(filename, quad_degree = 4)    
   if(isparallel()) call read_halos(filename, positions)
   print "(a)", "Read successful"
 
