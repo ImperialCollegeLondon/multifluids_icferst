@@ -11182,11 +11182,11 @@ CONTAINS
                      = CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
                      + RCON_IN_CT(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
              END DO
-     if(more_in_ct) then
-       DO IPHASE = 1, NPHASE
-          CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) + (rcon_in_ct(IPHASE)-rcon(IPHASE))* SUM(  UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )*LOC2_U(:,IPHASE, U_KLOC2 )  )
-       END DO
-     endif
+!     if(more_in_ct) then
+!       DO IPHASE = 1, NPHASE
+!          CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) + (rcon_in_ct(IPHASE)-rcon(IPHASE))* SUM(  UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )*LOC2_U(:,IPHASE, U_KLOC2 )  )
+!       END DO
+!     endif
              ! flux from the other side (change of sign because normal is -ve)...
              if ( integrate_other_side_and_not_boundary ) then
                 RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:))    &
