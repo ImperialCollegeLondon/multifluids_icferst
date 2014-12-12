@@ -1750,15 +1750,12 @@ contains
 
 
           IF( between_elements .or. on_domain_boundary ) THEN
-!          IF( (ELE2 > 0) .OR. (SELE > 0) ) THEN
-!          IF( (ELE2 > 0) .and. (SELE > 0) ) THEN
              DO CV_SKLOC = 1, CV_SNLOC
                 CV_KLOC = CV_SLOC2LOC( CV_SKLOC )
 
                    SLOC_F(:, CV_SKLOC) = LOC_F(:, CV_KLOC) 
                    SLOC_FEMF(:, CV_SKLOC) = LOC_FEMF(:, CV_KLOC) 
                
-!                   IF(ELE2>0) THEN
                    IF(between_elements) THEN
                       CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
                       CV_NODK2 = CV_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_KLOC2 ) 
@@ -1792,8 +1789,6 @@ contains
           ENDIF ! ENDOF IF( between_elements .or. on_domain_boundary ) THEN ...
 
 
-!         if(.true.) then
-!          IF( SELE > 0 ) THEN
           IF( on_domain_boundary ) THEN
 ! bcs:              
              ! Make allowances for no matrix stencil operating from outside the boundary.
@@ -1857,7 +1852,6 @@ contains
           CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    NPHASE, NFIELD, IPT_IN, IGOT_T_PACK(:,4) )
           CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    NPHASE, NFIELD, IPT_OUT, IGOT_T_PACK(:,4) )
 
-!          IF(IGOT_T2==1) THEN
           IF(use_volume_frac_T2) THEN
              CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    NPHASE, NFIELD, IPT_IN, IGOT_T_PACK(:,5) )
              CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    NPHASE, NFIELD, IPT_OUT, IGOT_T_PACK(:,5) )
@@ -1869,7 +1863,6 @@ contains
 !         
 
 ! LOC2_U, LOC2_NU for GET_INT_VEL_NEW
-!       IF (ELE2/=0) THEN
        IF (between_elements) THEN 
 
 
@@ -1906,7 +1899,6 @@ contains
 
        END IF ! ENDOF IF (between_elements) THEN
 
-!       IF ( SELE /= 0 ) THEN
        IF ( on_domain_boundary ) THEN
           DO U_SKLOC = 1, U_SNLOC
              U_KLOC = U_SLOC2LOC( U_SKLOC )
@@ -1942,7 +1934,6 @@ contains
            T_ALL_J( : )   =LOC_T_J( : )
            TOLD_ALL_J( : )=LOC_TOLD_J( : )
            LOC_WIC_T_BC_ALL(:)=0
-!           IF(SELE.NE.0) THEN
            IF(on_domain_boundary) THEN
                DO IPHASE=1,NPHASE
                    LOC_WIC_T_BC_ALL(IPHASE)=WIC_T_BC_ALL(1, IPHASE, SELE)
@@ -1975,7 +1966,6 @@ contains
        !                     DO FACE_ITS = 1, NFACE_ITS
        ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
        !Calling the functions directly instead inside a wrapper saves a around a 5%
-!       IF(IGOT_T2==1) THEN
        IF( GOT_T2 ) THEN
 
            IF( is_compact_overlapping ) THEN
@@ -2265,14 +2255,12 @@ contains
                    R=SUM(LIMT_HAT(:))
                    LIMT_HAT(:)=LIMT_HAT(:)/R
 
-!                   if(sele.ne.0) then ! effectively apply the bcs to NDOTQ_HAT
                    if(on_domain_boundary) then ! effectively apply the bcs to NDOTQ_HAT
                      NDOTQ_HAT =SUM(LIMT_HAT(:)*NDOTQNEW(:))
                    endif
                 ENDIF
 
     ! Amend for porosity...
-!          IF ( ELE2 /= 0 ) THEN 
           IF ( between_elements ) THEN 
 !             FVD   = 0.5 * ( ONE_PORE(ELE) + ONE_PORE(ELE2) ) * FVD
              LIMD   = 0.5 * ( ONE_PORE(ELE) + ONE_PORE(ELE2) ) * LIMD
@@ -2299,7 +2287,6 @@ contains
 
 
                      ! Define face value of theta
-!                     IF ( IGOT_T2 == 1 ) THEN
                      IF ( GOT_T2 ) THEN
                         FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, NPHASE, &
                              NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
