@@ -1538,7 +1538,7 @@ contains
             IMID = SMALL_CENTRM(CV_NODI)
 
 ! Generate some local F variables ***************
-            F_CV_NODI(:)= LOC_F(:, CV_ILOC)
+            F_CV_NODI(:)= LOC_F(:, CV_ILOC)!MAYBE A POINTER HERE???
 ! Generate some local F variables ***************
 
             ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
@@ -1918,7 +1918,7 @@ contains
     
           END DO
        END IF
-
+!MAYBE THIS POINTERS
        LOC_T_I( : ) = T_ALL(:, CV_NODI)
        LOC_T_J( : ) = T_ALL(:, CV_NODJ)
        LOC_TOLD_I( : ) = TOLD_ALL(:, CV_NODI)
@@ -3031,26 +3031,30 @@ deallocate(SCVFENX_ALL, INV_JAC)
 ! local variables...
              INTEGER :: IPHASE
 
-            !Initial check to know whether we have already stored all the values
-            if (indx < 0) then
-                if (GLOBAL_FACE<state(1)%scalar_fields(abs(indx))%ptr%val(size(state(1)%scalar_fields(abs(indx))%ptr%val,1))) then
-                    !If the input index is smaller than the last stored index, then we have re-started and we should be extracting stored values
-                    indx = abs(indx)
-                end if
-            end if
 
              DO IPHASE=1,NPHASE
+                !Initial check to know whether we have already stored all the values
+                if (indx < 0) then
+                    if ((IPHASE+(GLOBAL_FACE-1)*NPHASE)<int(state(1)%scalar_fields(abs(indx))%ptr%val(TOTAL_GLOBAL_FACE*NPHASE+1))) then
+                        !If the input index is smaller than the last stored index,
+                        !then we have re-started and we should be extracting stored values
+                        indx = abs(indx)
+                        !We just need to enter once
+                        state(1)%scalar_fields(abs(indx))%ptr%val(TOTAL_GLOBAL_FACE*NPHASE+1) = -1.0
+
+                    end if
+                end if
                  IF(IGOT_T_PACK(IPHASE)) THEN
                      T_ALL(IPHASE) = LOC_F(IPT)
-                      IPT=IPT+1
+                     IPT=IPT+1
                      if (.not.IGOT_T_CONST(IPHASE)) then
                          IF(STORE) THEN ! Put in storage if not already in storage...
                              if (indx < 0) then!We may need to store a new value
                                  !Store in state, indx is an input
-                                 state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = T_ALL(IPHASE)
+                                 state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = LOC_F(IPT-1)
                                  !Store input index to check when we start to get data instead of sting data
-                                 state(1)%scalar_fields(abs(indx))%ptr%val(size(state(1)%scalar_fields(abs(indx))%ptr%val,1)) = GLOBAL_FACE
-                             else if (GLOBAL_FACE==1) then !The first time we need to introduce the targets in state
+                                 state(1)%scalar_fields(abs(indx))%ptr%val(TOTAL_GLOBAL_FACE*NPHASE+1) = IPHASE+(GLOBAL_FACE-1)*NPHASE
+                             else if (GLOBAL_FACE==1 .and. indx == 0) then !The first time we need to introduce the targets in state
                                  if (has_scalar_field(state(1), "Fld"//StorName)) then
                                      !If we are recalculating due to a mesh modification then
                                      !we return to the original situation
@@ -3062,7 +3066,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
                                  Auxmesh = fl_mesh
                                  !The number of nodes I want does not coincide
                                  !############################################################################
-                                 !TOTAL_GLOBAL_FACE*NPHASE, SEEMS AN OVERSTIMATE, MAYBE TOTAL_GLOBAL_FACE*NFIELD IS ENOUGH???????
+                                 !TOTAL_GLOBAL_FACE*NPHASE, IS AN OVERSTIMATE
                                  !############################################################################
                                  Auxmesh%nodes = TOTAL_GLOBAL_FACE*NPHASE+1!(+1 to store the last input index)
                                  allocate(targ_fieldToStore)
@@ -3076,10 +3080,11 @@ deallocate(SCVFENX_ALL, INV_JAC)
                                  deallocate(targ_fieldToStore)
 !                                 deallocate(auxmesh)
                                  indx = -size(state(1)%scalar_fields)
-
                                   !Store in state
-                                 state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = T_ALL(IPHASE)
+                                 state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = LOC_F(IPT-1)
+!
                              end if
+                          T_ALL(IPHASE) = state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE)
                          end if
                      ENDIF
                  ELSE IF(IGOT_T_CONST(IPHASE)) THEN

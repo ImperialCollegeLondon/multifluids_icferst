@@ -1637,12 +1637,9 @@
          DO COUNT = FINDC( U_INOD ), FINDC( U_INOD + 1 ) - 1
 
             P_JNOD = COLC( COUNT )
-
-            DO IPHASE = 1, NPHASE
-               DO IDIM = 1, NDIM
+            FORALL (IPHASE = 1:NPHASE, IDIM = 1:NDIM)
                   CDP( :, IDIM, IPHASE, U_INOD ) = CDP( :, IDIM, IPHASE, U_INOD ) + C( IDIM, IPHASE, COUNT ) * DP( :, P_JNOD )
-               END DO
-            END DO
+            END FORALL
 
          END DO
 
