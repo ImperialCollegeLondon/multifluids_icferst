@@ -185,7 +185,7 @@
            Component, Temperature_Old, &
            PhaseVolumeFraction_Old, Component_Old, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
-           ScalarField_Source, Component_Source, ScalarAdvectionField_Source, &
+           Component_Source, ScalarAdvectionField_Source, &
            ScalarField_Source_Store, ScalarField_Source_Component, &
            mass_ele, dummy_ele
 
@@ -404,7 +404,7 @@
            Temperature_Source( nphase * cv_nonods ), &
            PhaseVolumeFraction_Source( cv_nonods * nphase ), Velocity_U_Source( u_nonods * nphase * ndim ), &
            Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
-           ScalarField_Source( cv_nonods * nphase ), ScalarAdvectionField_Source( cv_nonods * nphase ), &
+           ScalarAdvectionField_Source( cv_nonods * nphase ), &
 !!$
            Permeability( totele, ndim, ndim ), &
 !!$
@@ -440,7 +440,7 @@
 !!$
       PhaseVolumeFraction_Source=0. ; Velocity_U_Source=0.
       Velocity_U_Source_CV=0. ; Component_Source=0.
-      ScalarField_Source=0. ; ScalarAdvectionField_Source=0.
+      ScalarAdvectionField_Source=0.
 !!$
       Permeability=0.
 !!$
@@ -785,7 +785,7 @@
 
             end if Conditional_ScalarAdvectionField
 
-            ScalarField_Source_Store = ScalarField_Source + ScalarField_Source_Component
+            ScalarField_Source_Store = ScalarField_Source_Component
             tracer_source => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource")
 
             volfra_use_theta_flux = .true.
@@ -1308,7 +1308,7 @@
                  PhaseVolumeFraction_Old, Component_Old, &
                  DRhoDPressure, &
                  Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
-                 ScalarField_Source, Component_Source, ScalarAdvectionField_Source, &
+                 Component_Source, ScalarAdvectionField_Source, &
                  suf_sig_diagten_bc, &
                  theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
                  mass_ele, dummy_ele, &
@@ -1409,7 +1409,7 @@
                  Temperature_Source( cv_nonods * nphase ), &
                  PhaseVolumeFraction_Source( cv_nonods * nphase ), Velocity_U_Source( u_nonods * nphase * ndim ), &
                  Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
-                 ScalarField_Source( cv_nonods * nphase ), ScalarAdvectionField_Source( cv_nonods * nphase ), &
+                 ScalarAdvectionField_Source( cv_nonods * nphase ), &
 !!$
                  Permeability( totele, ndim, ndim ), &
 !!$
@@ -1442,7 +1442,7 @@
             PhaseVolumeFraction=0. ; PhaseVolumeFraction_Old=0. ; PhaseVolumeFraction_Source=0.
 !!$
             ScalarAdvectionField_Diffusion=0. ; ScalarField_Absorption=0.
-            ScalarField_Source=0. ; ScalarAdvectionField_Source=0.
+            ScalarAdvectionField_Source=0.
 !!$
             Material_Absorption=0. ; Material_Absorption_Stab=0.
 !!$
@@ -1571,7 +1571,7 @@
            PhaseVolumeFraction_Old, Component_Old, &
            DRhoDPressure, FEM_VOL_FRAC, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
-           ScalarField_Source, Component_Source, ScalarAdvectionField_Source, &
+           Component_Source, ScalarAdvectionField_Source, &
            theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
            mass_ele, dummy_ele, &
            Permeability, Material_Absorption, Material_Absorption_Stab, &
