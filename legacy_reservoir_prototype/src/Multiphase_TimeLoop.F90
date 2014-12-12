@@ -184,7 +184,7 @@
            Temperature, PhaseVolumeFraction, &
            Component, Temperature_Old, &
            PhaseVolumeFraction_Old, Component_Old, &
-           Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
+           Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
            Component_Source, ScalarAdvectionField_Source, &
            ScalarField_Source_Store, ScalarField_Source_Component, &
            mass_ele, dummy_ele
@@ -196,6 +196,7 @@
 
       real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
 !!$
+      real, dimension( :, : ), pointer :: PhaseVolumeFraction_Source
       real, dimension( :, :, : ), allocatable :: Permeability, Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
 !!$
@@ -402,12 +403,13 @@
            dummy_ele( totele ), mass_ele( totele ), &
 !!$
            Temperature_Source( nphase * cv_nonods ), &
-           PhaseVolumeFraction_Source( cv_nonods * nphase ), Velocity_U_Source( u_nonods * nphase * ndim ), &
+           Velocity_U_Source( u_nonods * nphase * ndim ), &
            Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
            ScalarAdvectionField_Source( cv_nonods * nphase ), &
 !!$
            Permeability( totele, ndim, ndim ), &
 !!$
+           PhaseVolumeFraction_Source( nphase, cv_nonods ), &
            Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
            Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
            Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), & 
@@ -1407,12 +1409,13 @@
                  dummy_ele( totele ), mass_ele( totele ), &
 !!$
                  Temperature_Source( cv_nonods * nphase ), &
-                 PhaseVolumeFraction_Source( cv_nonods * nphase ), Velocity_U_Source( u_nonods * nphase * ndim ), &
+                 Velocity_U_Source( u_nonods * nphase * ndim ), &
                  Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
                  ScalarAdvectionField_Source( cv_nonods * nphase ), &
 !!$
                  Permeability( totele, ndim, ndim ), &
 !!$
+                 PhaseVolumeFraction_Source( nphase, cv_nonods ), &
                  Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                  Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                  Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), & 
