@@ -45,7 +45,8 @@
     use fields_data_types, only: mesh_type, scalar_field
     use multiphase_caching, only: cache_level, reshape_vector2pointer
 
-    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
+!    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
+    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.
 
  contains
 
