@@ -7623,6 +7623,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
         REAL, DIMENSION(1,1) :: DUMMY_THETA_GDIFF
         type(tensor_field) :: tfield
+
+        real, dimension(0) :: unnecessary_zero_length_array
       
 
         ALLOCATE(DUMMY_ELE(TOTELE))
@@ -7821,7 +7823,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         option_path='/material_phase[0]/scalar_field::Pressure'
 
         CALL PROJ_CV_TO_FEM( FEMT, VOLUME_FRAC, 1, NDIM, &
-        RDUM,0, RDUM,0, MASS_ELE, &
+        unnecessary_zero_length_array,0,unnecessary_zero_length_array,0, MASS_ELE, &
         CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
         CV_NGI_SHORT, CV_NLOC, CVN_SHORT, CVWEIGHT_SHORT, &
         CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &

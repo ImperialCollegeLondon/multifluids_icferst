@@ -2852,9 +2852,10 @@
 
         integer :: iphase,icomp,stat, n, nbc, j
 
+        nullify(tbc%applies)
+
 
         do icomp=1,size(s)
-           nbc=0
            mfield=>extract_tensor_field(s(icomp),'Packed'//name)
            allocate(mfield%bc)
 
@@ -2862,10 +2863,8 @@
               sfield=>extract_scalar_field( ms(icomp,iphase),trim(name),stat)
 
               if (stat/= 0 ) cycle
-
-              allocate(tbc%applies(1,mfield%dim(2)))
-              tbc%applies= .false.
-              tbc%applies(1,iphase)=.true.
+              
+              nbc=0
 
               do n=1,get_boundary_condition_count(sfield)
 
@@ -2881,6 +2880,10 @@
                  do j=1,size(tbc%scalar_surface_fields)
                     call incref(tbc%scalar_surface_fields(j))
                  end do
+                 allocate(tbc%applies(1,mfield%dim(2)))
+                 tbc%applies= .false.
+                 tbc%applies(1,iphase)=.true.
+
 
                  nbc=nbc+1
                  if (nbc>1) then
@@ -2896,7 +2899,6 @@
               end do
            end do
         end do
-
 
       end subroutine allocate_multicomponent_scalar_bcs
 
