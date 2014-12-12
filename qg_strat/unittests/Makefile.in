@@ -24,7 +24,9 @@
 #    License along with this library; if not, write to the Free Software
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 #    USA
+PACKAGE_NAME = fluidity
 
+FLUIDITY = $(PACKAGE_NAME)
 FC      = @FC@
 FCFLAGS = -I../../include @FCFLAGS@ @MODINC_FLAG@../../f90modules \
   @MODINC_FLAG@../
@@ -39,7 +41,7 @@ LFLAGS  = @LFLAGS@
 
 LIBS = @LIBS@ ./lib/libadaptivity.a ./lib/libvtkfortran.a ./lib/libspatialindex.a ./lib/libspud.a  ./lib/libjudy.a
 FLIBS = @FLIBS@
-LIBFLUIDITY=../../lib/lib@FLUIDITY@.a
+LIBFLUIDITY=../../lib/lib$(FLUIDITY).a
 
 # the test binaries NOT to be built
 DISABLED_TESTS=

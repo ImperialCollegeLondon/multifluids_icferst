@@ -25,8 +25,10 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 #    USA
 SHELL = @SHELL@
+PACKAGE_NAME = fluidity
 
-LIB = ../lib/lib@FLUIDITY@.a
+FLUIDITY = $(PACKAGE_NAME)
+LIB = ../lib/lib$(FLUIDITY).a
 
 AR = @AR@
 ARFLAGS = @ARFLAGS@
@@ -47,7 +49,7 @@ FCFLAGS   = -I../include @MODFLAG@../include @FCFLAGS@ @CPPFLAGS@ -I/usr/include
 CXXFLAGS = -I../include @CXXFLAGS@ @CPPFLAGS@
 
 LDFLAGS   = @LDFLAGS@
-LIBS    = -L../lib -l@FLUIDITY@ @LIBS@ @BLAS_LIBS@ \
+LIBS    = -L../lib -l$(FLUIDITY) @LIBS@ @BLAS_LIBS@ \
 		  ../lib/libvtkfortran.a ../lib/libspatialindex.a ../lib/libspud.a ../lib/libjudy.a
 
 OBJS = NetCDF_reader.o SampleNetCDF2.o import_bath_data.o read_netcdf_interface.o

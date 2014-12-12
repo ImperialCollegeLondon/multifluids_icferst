@@ -25,8 +25,10 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 #    USA
 SHELL = @SHELL@
+PACKAGE_NAME = fluidity
 
-LIB_FLUIDITY = ./lib/lib@FLUIDITY@.a
+FLUIDITY = $(PACKAGE_NAME)
+LIB_FLUIDITY = ./lib/lib$(FLUIDITY).a
 
 FC      = @FC@
 FCFLAGS = -I../../include @FCFLAGS@
@@ -34,7 +36,7 @@ FCFLAGS = -I../../include @FCFLAGS@
 LINKER  = @LINKER@ @LDFLAGS@
 
 # Some enteries are duplicated on purpose because of the insane way some linkers resolve symbols
-LIBS    = -L../../lib -l@FLUIDITY@ @LIBS@ @BLAS_LIBS@ @LIB_FEMDEM@ ../../lib/libadaptivity.a \
+LIBS    = -L../../lib -l$(FLUIDITY) @LIBS@ @BLAS_LIBS@ @LIB_FEMDEM@ ../../lib/libadaptivity.a \
            ../../lib/libvtkfortran.a ../../lib/libspatialindex.a ../../lib/libspud.a  \
            @LIBS@
 

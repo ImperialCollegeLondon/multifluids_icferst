@@ -25,12 +25,14 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 #    USA
 SHELL = @SHELL@
+PACKAGE_NAME = fluidity
 
-PROGRAM	 = ./bin/@FLUIDITY@
+FLUIDITY = $(PACKAGE_NAME)
+PROGRAM	 = ./bin/$(FLUIDITY)
 FLDECOMP = ./bin/fldecomp
 
-LIB_FLUIDITY = ./lib/lib@FLUIDITY@.a
-SLIB_FLUIDITY = lib@FLUIDITY@.so
+LIB_FLUIDITY = ./lib/lib$(FLUIDITY).a
+SLIB_FLUIDITY = lib$(FLUIDITY).so
 
 prefix  = @prefix@
 FLUIDITY_ROOT=$(DESTDIR)@prefix@
@@ -50,7 +52,7 @@ CXXFLAGS= @CPPFLAGS@ @CXXFLAGS@ -I./include
 
 LINKER  = @LINKER@ @LDFLAGS@
 
-LIBS    = -L./lib -l@FLUIDITY@ @BLAS_LIBS@ @LIB_FEMDEM@ ./lib/libadaptivity.a \
+LIBS    = -L./lib -l$(FLUIDITY) @BLAS_LIBS@ @LIB_FEMDEM@ ./lib/libadaptivity.a \
            ./lib/libvtkfortran.a ./lib/libspatialindex.a ./lib/libspud.a ./lib/libjudy.a \
            @LIBS@
 
@@ -92,7 +94,7 @@ endif
 	@echo "        CXX $<"
 	$(CXX) $(CXXFLAGS) -c $<
 
-default: bin/@FLUIDITY@
+default: bin/$(FLUIDITY)
 
 sub_system: $(LIBMBA2D) $(LIBMBA3D) $(LIBALGENCAN)  @LIB_FEMDEM@ \
 	lib/libadaptivity.a lib/libvtkfortran.a lib/libspatialindex.a \
@@ -144,7 +146,7 @@ ifeq (@FEMDEM@,yes)
 	@cd @FLFEMDEM_PATH@;$(MAKE)
 endif
 
-bin/@FLUIDITY@: main.o lib/lib@FLUIDITY@.a
+bin/$(FLUIDITY): main.o lib/lib$(FLUIDITY).a
 	@echo "BUILD fluidity"
 	@echo "    MKDIR bin"
 	@mkdir -p bin
@@ -230,8 +232,8 @@ lib/shared/$(SLIB_FLUIDITY).1: fluidity_library
 	@rm -rf tmp
 	@mkdir -p tmp lib/shared
 	@cp $(LIB_FLUIDITY) tmp
-	@cd tmp; ar x lib@FLUIDITY@.a; rm lib@FLUIDITY@.a; cd ..
-	@echo "    LD lib@FLUIDITY@.so"
+	@cd tmp; ar x lib$(FLUIDITY).a; rm lib$(FLUIDITY).a; cd ..
+	@echo "    LD lib$(FLUIDITY).so"
 	@$(EVAL) $(LINKER) -shared -Wl,-soname,$(SLIB_FLUIDITY).1 -o lib/shared/$(SLIB_FLUIDITY).1 tmp/* -L./lib -lvtkfortran 
 	@rm -rf tmp
 	@cd lib/shared; ln -sf $(SLIB_FLUIDITY).1 $(SLIB_FLUIDITY); cd ../..
@@ -260,8 +262,8 @@ python_clean:
 	@cd python; rm -rf build
 	@cd python/fluidity; find . -type l -name '*.so' -exec rm -f {} \;
 
-fluidity_library: lib/lib@FLUIDITY@.a
-lib/lib@FLUIDITY@.a: $(OBJS) python_build sub_system 
+fluidity_library: lib/lib$(FLUIDITY).a
+lib/lib$(FLUIDITY).a: $(OBJS) python_build sub_system 
 	@echo "DEFINE __FLUIDITY_VERSION__"
 	@grep "$(VERSION)" include/confdefs.h >/dev/null 2>&1 || (echo "#undef __FLUIDITY_VERSION__" >> include/confdefs.h && echo "#define __FLUIDITY_VERSION__ \"$(VERSION)\"" >> include/confdefs.h)
 	@echo "BUILD libfluidity"
@@ -425,7 +427,7 @@ clean-test:
 	@echo "    CLEAN tests"
 	@cd tests; ../tools/testharness.py --clean >/dev/null
 
-test: fltools bin/@FLUIDITY@ bin/shallow_water serialtest bin/burgers_equation
+test: fltools bin/$(FLUIDITY) bin/shallow_water serialtest bin/burgers_equation
 
 serialtest:
 ifeq (@MBA2D@,yes)

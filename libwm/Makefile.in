@@ -26,7 +26,9 @@
 #    USA
 
 SHELL = @SHELL@
+PACKAGE_NAME = fluidity
 
+FLUIDITY = $(PACKAGE_NAME)
 FC      = @FC@
 FCFLAGS = -I../include @FCFLAGS@
 
@@ -42,7 +44,7 @@ MAKE    = @MAKE@
 AR  = @AR@
 ARFLAGS = @ARFLAGS@
 
-LIB = ../lib/lib@FLUIDITY@.a
+LIB = ../lib/lib$(FLUIDITY).a
 
 TESTLIBS = $(shell echo @LIBS@ | sed 's@./lib/lib\([a-z]*\)\.a@-l\1@g')
 

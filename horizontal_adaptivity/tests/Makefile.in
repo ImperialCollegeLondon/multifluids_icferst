@@ -26,7 +26,9 @@
 #    USA
 
 SHELL = @SHELL@
+PACKAGE_NAME = fluidity
 
+FLUIDITY = $(PACKAGE_NAME)
 FC      = @FC@
 FCFLAGS = -I../../include @FCFLAGS@ @MODINC_FLAG@../../f90modules \
   @MODINC_FLAG@../
@@ -41,7 +43,7 @@ LDFLAGS  = @LDFLAGS@
 
 LIBS = ./lib/libadaptivity.a ./lib/libvtkfortran.a ./lib/libspatialindex.a ./lib/libspud.a ./lib/libjudy.a @LIBS@
 FLIBS = @FLIBS@
-LIBFLUIDITY=../../lib/lib@FLUIDITY@.a
+LIBFLUIDITY=../../lib/lib$(FLUIDITY).a
 
 # the test binaries NOT to be built
 DISABLED_TESTS=test_extrude
