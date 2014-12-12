@@ -62,7 +62,7 @@
     private
 
     public :: Get_Primary_Scalars, Compute_Node_Global_Numbers, Extracting_MeshDependentFields_From_State, &
-         Extract_TensorFields_Outof_State, Extract_Position_Field, xp1_2_xp2, Get_Ele_Type, Get_Discretisation_Options, &
+         Extract_TensorFields_Outof_State, Extract_Position_Field, Get_Ele_Type, Get_Discretisation_Options, &
          print_from_state, update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
          get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage
 
@@ -556,164 +556,158 @@
       return
     end subroutine Extract_Position_Field
 
-
-    subroutine xp1_2_xp2( state, &
-         x_nloc_p2, x_nloc_p1, x_nonods_p1, x_nonods_p2, &
-         x_ndgln_p1, x_ndgln_p2, &
-         x, y, z )
-      ! This subrt maps the coordinate P1 mesh into a P2 mesh. 
-      implicit none
-      type( state_type ), dimension( : ), intent( in ) :: state
-      type( vector_field ), pointer :: positions
-      integer, intent( in ) :: x_nloc_p2, x_nloc_p1, x_nonods_p1, x_nonods_p2
-      integer, dimension( : ), intent( in ) :: x_ndgln_p1
-      integer, dimension( : ), intent( in ) :: x_ndgln_p2
-      real, dimension( : ), intent( inout ) :: x, y, z
-
-      ! Local variables
-      real, dimension( x_nonods_p1 ) :: x_p1, y_p1, z_p1
-      integer, dimension( : ), allocatable :: iloclist_p2
-      real, dimension( : ), allocatable :: x2, y2, z2
-      integer :: ndim, totele, ele, iloc, inod
-      real :: xnod1, xnod2, ynod1, ynod2, xtemp, ytemp
-
-      call get_option( '/geometry/dimension', ndim )
-      positions => extract_vector_field( state( 1 ), 'Coordinate' )
-      totele = ele_count( positions )
-
-      allocate( iloclist_p2 ( x_nloc_p2 ) ) ; iloclist_p2 = 0
-      allocate( x2( x_nloc_p2 ) ) ; x2 = 0.
-      allocate( y2( x_nloc_p2 ) ) ; y2 = 0.
-      allocate( z2( x_nloc_p2 ) ) ; z2 = 0.
-
-
-      if( ndim == 2 ) then
-         iloclist_p2 = (/ 1, 4, 2, 5, 6, 3 /) 
-      elseif( ndim == 3 ) then
-         iloclist_p2 = (/ 1, 5, 2, 6, 7, 3, 8, 9, 10, 4 /)
-      else
-         iloclist_p2 = (/ 1, 3, 2 /)           
-      end if
-
-      Conditional_Pn: if ( x_nloc_p2 == 3 .or. x_nloc_p2 == 4 ) then
-
-         if( ( x_nloc_p2 == 3 ) .and. ( ndim == 1 ) ) then ! 1D quadratic
-            x_p1 = positions % val( 1, : )
-            do ele = 1, totele
-               x2 = 0.
-               do iloc = 1, x_nloc_p1
-                  x2( iloc ) = x_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc )) 
-               end do
-               do iloc = 1, x_nloc_p1 - 1
-                  xnod1 = x2( iloc )
-                  xnod2 = x2( iloc + 1 )
-                  x2( x_nloc_p1 + iloc ) = 0.5 * (  xnod1  +  xnod2  )              
-               end do
-               do iloc = 1, x_nloc_p2
-                  inod = x_ndgln_p2( ( ele - 1 ) * x_nloc_p2 + iloc )
-                  x( inod ) = x2( iloclist_p2( iloc ) )
-               end do
-            end do
-
-         else
-
-            x = positions % val( 1, : )
-            if( ndim > 1 ) y = positions % val( 2, : )
-            if( ndim > 2 ) z = positions % val( 3, : )
-         end if
-
-      else if ( x_nloc_p2 == 6 .or. x_nloc_p2 == 10 ) then
-
-         x_p1 = positions % val( 1, : )
-         y_p1 = positions % val( 2, : )
-         if (ndim == 3)  z_p1 = positions % val( 3, : )
-
-         if ( ( x_nloc_p2 == 6 ) .and. ( ndim == 2 ) ) then ! 2D P2 Tri
-
-            do ele = 1, totele
-
-               x2 = 0. ; y2 = 0.
-               do iloc = 1, x_nloc_p1
-                  x2( iloc ) = x_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc )) 
-                  y2( iloc ) = y_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
-               end do
-
-               do iloc = 1, x_nloc_p1
-                  if( iloc < x_nloc_p1 ) then
-                     xnod1 = x2( iloc )      ; ynod1 = y2( iloc )
-                     xnod2 = x2( iloc + 1 ); ynod2 = y2( iloc + 1 )
-                  else
-                     xnod1 = x2( iloc ) ; ynod1 = y2( iloc )
-                     xnod2 = x2( 1 )    ; ynod2 = y2 ( 1 )
-                  end if
-                  x2( x_nloc_p1 + iloc ) = 0.5 * (  xnod1  +  xnod2  )
-                  y2( x_nloc_p1 + iloc ) = 0.5 * (  ynod1  +  ynod2  )
-               end do
-
-               xtemp = x2( 5 ) ; ytemp = y2( 5 )
-               x2( 5 ) = x2( 6 ) ; y2( 5 ) = y2( 6 )
-               x2( 6 ) = xtemp ; y2( 6 ) = ytemp
-
-               do iloc = 1, x_nloc_p2
-                  inod = x_ndgln_p2( ( ele - 1 ) * x_nloc_p2 + iloc )
-                  x( inod ) = x2( iloclist_p2( iloc ) )
-                  y( inod ) = y2( iloclist_p2( iloc ) )
-               end do
-
-            end do
-
-         else ! Quadratic Tets
-
-            do ele = 1, totele
-
-               x2 = 0. ; y2 = 0. ; z2 = 0.
-               do iloc = 1, x_nloc_p1
-                  x2( iloc ) = x_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc )) 
-                  y2( iloc ) = y_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
-                  z2( iloc ) = z_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
-               end do
-
-               x2( 5 ) = 0.5 * (x2(1) + x2(2) )
-               y2( 5 ) = 0.5 * (y2(1) + y2(2) )
-               z2( 5 ) = 0.5 * (z2(1) + z2(2) )
-
-               x2( 6 ) = 0.5 * (x2(1) + x2(3) )
-               y2( 6 ) = 0.5 * (y2(1) + y2(3) )
-               z2( 6 ) = 0.5 * (z2(1) + z2(3) )
-
-               x2( 7 ) = 0.5 * (x2(2) + x2(3) )
-               y2( 7 ) = 0.5 * (y2(2) + y2(3) )
-               z2( 7 ) = 0.5 * (z2(2) + z2(3) )
-
-               x2( 8 ) = 0.5 * (x2(1) + x2(4) )
-               y2( 8 ) = 0.5 * (y2(1) + y2(4) )
-               z2( 8 ) = 0.5 * (z2(1) + z2(4) )
-
-               x2( 9 ) = 0.5 * (x2(2) + x2(4) )
-               y2( 9 ) = 0.5 * (y2(2) + y2(4) )
-               z2( 9 ) = 0.5 * (z2(2) + z2(4) )
-
-               x2( 10 ) = 0.5 * (x2(3) + x2(4) )
-               y2( 10 ) = 0.5 * (y2(3) + y2(4) )
-               z2( 10 ) = 0.5 * (z2(3) + z2(4) )
-
-
-               do iloc = 1, x_nloc_p2
-                  inod = x_ndgln_p2( ( ele - 1 ) * x_nloc_p2 + iloc )
-                  x( inod ) = x2( iloclist_p2( iloc ) )
-                  y( inod ) = y2( iloclist_p2( iloc ) )
-                  z( inod ) = z2( iloclist_p2( iloc ) )
-               end do
-
-            end do
-
-         end if
-      end if Conditional_Pn
-
-      deallocate( iloclist_p2, x2, y2, z2 )
-
-      return
-    end subroutine xp1_2_xp2
+!    subroutine xp1_2_xp2( state, &
+!         x_nloc_p2, x_nloc_p1, x_nonods_p1, x_nonods_p2, &
+!         x_ndgln_p1, x_ndgln_p2, &
+!         x, y, z )
+!      ! This subrt maps the coordinate P1 mesh into a P2 mesh.
+!      implicit none
+!      type( state_type ), dimension( : ), intent( in ) :: state
+!      type( vector_field ), pointer :: positions
+!      integer, intent( in ) :: x_nloc_p2, x_nloc_p1, x_nonods_p1, x_nonods_p2
+!      integer, dimension( : ), intent( in ) :: x_ndgln_p1
+!      integer, dimension( : ), intent( in ) :: x_ndgln_p2
+!      real, dimension( : ), intent( inout ) :: x, y, z
+!
+!      ! Local variables
+!      real, dimension( x_nonods_p1 ) :: x_p1, y_p1, z_p1
+!      integer, dimension( x_nloc_p2 ) :: iloclist_p2
+!      real, dimension( x_nloc_p2 ) :: x2, y2, z2
+!      integer :: ndim, totele, ele, iloc, inod
+!      real :: xnod1, xnod2, ynod1, ynod2, xtemp, ytemp
+!
+!      call get_option( '/geometry/dimension', ndim )
+!      positions => extract_vector_field( state( 1 ), 'Coordinate' )
+!      totele = ele_count( positions )
+!
+!        x2 = 0.;y2 = 0.;z2 = 0.
+!
+!      if( ndim == 2 ) then
+!         iloclist_p2 = (/ 1, 4, 2, 5, 6, 3 /)
+!      elseif( ndim == 3 ) then
+!         iloclist_p2 = (/ 1, 5, 2, 6, 7, 3, 8, 9, 10, 4 /)
+!      else
+!         iloclist_p2 = (/ 1, 3, 2 /)
+!      end if
+!
+!      Conditional_Pn: if ( x_nloc_p2 == 3 .or. x_nloc_p2 == 4 ) then
+!
+!         if( ( x_nloc_p2 == 3 ) .and. ( ndim == 1 ) ) then ! 1D quadratic
+!            x_p1 = positions % val( 1, : )
+!            do ele = 1, totele
+!               x2 = 0.
+!               do iloc = 1, x_nloc_p1
+!                  x2( iloc ) = x_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
+!               end do
+!               do iloc = 1, x_nloc_p1 - 1
+!                  xnod1 = x2( iloc )
+!                  xnod2 = x2( iloc + 1 )
+!                  x2( x_nloc_p1 + iloc ) = 0.5 * (  xnod1  +  xnod2  )
+!               end do
+!               do iloc = 1, x_nloc_p2
+!                  inod = x_ndgln_p2( ( ele - 1 ) * x_nloc_p2 + iloc )
+!                  x( inod ) = x2( iloclist_p2( iloc ) )
+!               end do
+!            end do
+!
+!         else
+!
+!            x = positions % val( 1, : )
+!            if( ndim > 1 ) y = positions % val( 2, : )
+!            if( ndim > 2 ) z = positions % val( 3, : )
+!         end if
+!
+!      else if ( x_nloc_p2 == 6 .or. x_nloc_p2 == 10 ) then
+!
+!         x_p1 = positions % val( 1, : )
+!         y_p1 = positions % val( 2, : )
+!         if (ndim == 3)  z_p1 = positions % val( 3, : )
+!
+!         if ( ( x_nloc_p2 == 6 ) .and. ( ndim == 2 ) ) then ! 2D P2 Tri
+!
+!            do ele = 1, totele
+!
+!               x2 = 0. ; y2 = 0.
+!               do iloc = 1, x_nloc_p1
+!                  x2( iloc ) = x_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
+!                  y2( iloc ) = y_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
+!               end do
+!
+!               do iloc = 1, x_nloc_p1
+!                  if( iloc < x_nloc_p1 ) then
+!                     xnod1 = x2( iloc )      ; ynod1 = y2( iloc )
+!                     xnod2 = x2( iloc + 1 ); ynod2 = y2( iloc + 1 )
+!                  else
+!                     xnod1 = x2( iloc ) ; ynod1 = y2( iloc )
+!                     xnod2 = x2( 1 )    ; ynod2 = y2 ( 1 )
+!                  end if
+!                  x2( x_nloc_p1 + iloc ) = 0.5 * (  xnod1  +  xnod2  )
+!                  y2( x_nloc_p1 + iloc ) = 0.5 * (  ynod1  +  ynod2  )
+!               end do
+!
+!               xtemp = x2( 5 ) ; ytemp = y2( 5 )
+!               x2( 5 ) = x2( 6 ) ; y2( 5 ) = y2( 6 )
+!               x2( 6 ) = xtemp ; y2( 6 ) = ytemp
+!
+!               do iloc = 1, x_nloc_p2
+!                  inod = x_ndgln_p2( ( ele - 1 ) * x_nloc_p2 + iloc )
+!                  x( inod ) = x2( iloclist_p2( iloc ) )
+!                  y( inod ) = y2( iloclist_p2( iloc ) )
+!               end do
+!
+!            end do
+!
+!         else ! Quadratic Tets
+!
+!            do ele = 1, totele
+!
+!               x2 = 0. ; y2 = 0. ; z2 = 0.
+!               do iloc = 1, x_nloc_p1
+!                  x2( iloc ) = x_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
+!                  y2( iloc ) = y_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
+!                  z2( iloc ) = z_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
+!               end do
+!
+!               x2( 5 ) = 0.5 * (x2(1) + x2(2) )
+!               y2( 5 ) = 0.5 * (y2(1) + y2(2) )
+!               z2( 5 ) = 0.5 * (z2(1) + z2(2) )
+!
+!               x2( 6 ) = 0.5 * (x2(1) + x2(3) )
+!               y2( 6 ) = 0.5 * (y2(1) + y2(3) )
+!               z2( 6 ) = 0.5 * (z2(1) + z2(3) )
+!
+!               x2( 7 ) = 0.5 * (x2(2) + x2(3) )
+!               y2( 7 ) = 0.5 * (y2(2) + y2(3) )
+!               z2( 7 ) = 0.5 * (z2(2) + z2(3) )
+!
+!               x2( 8 ) = 0.5 * (x2(1) + x2(4) )
+!               y2( 8 ) = 0.5 * (y2(1) + y2(4) )
+!               z2( 8 ) = 0.5 * (z2(1) + z2(4) )
+!
+!               x2( 9 ) = 0.5 * (x2(2) + x2(4) )
+!               y2( 9 ) = 0.5 * (y2(2) + y2(4) )
+!               z2( 9 ) = 0.5 * (z2(2) + z2(4) )
+!
+!               x2( 10 ) = 0.5 * (x2(3) + x2(4) )
+!               y2( 10 ) = 0.5 * (y2(3) + y2(4) )
+!               z2( 10 ) = 0.5 * (z2(3) + z2(4) )
+!
+!
+!               do iloc = 1, x_nloc_p2
+!                  inod = x_ndgln_p2( ( ele - 1 ) * x_nloc_p2 + iloc )
+!                  x( inod ) = x2( iloclist_p2( iloc ) )
+!                  y( inod ) = y2( iloclist_p2( iloc ) )
+!                  z( inod ) = z2( iloclist_p2( iloc ) )
+!               end do
+!
+!            end do
+!
+!         end if
+!      end if Conditional_Pn
+!
+!
+!      return
+!    end subroutine xp1_2_xp2
 
 
     subroutine Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
@@ -751,10 +745,7 @@
            xu_ndgln, mat_ndgln, cv_sndgln, p_sndgln, u_sndgln
       real :: dx
       logical :: is_isotropic, is_diagonal, is_symmetric, have_gravity
-      real, dimension( :, : ), allocatable :: constant
-      real, dimension( : ), allocatable :: x, y, z, dummy
-
-      integer, allocatable, dimension(:) :: unns 
+      real, dimension( : ), allocatable :: dummy!, x, y, z
 
 !!$ Extracting spatial resolution
       call Get_Primary_Scalars( state, &         
@@ -780,21 +771,21 @@
       call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type )
 
 
+!      allocate( x( x_nonods ) , y( x_nonods ), z( x_nonods ) )
+!
+!      x = 0. ; y = 0. ; z = 0.
+!      call xp1_2_xp2( state, &
+!           x_nloc, x_nloc_p1, x_nonods_p1, x_nonods, &
+!           x_ndgln_p1, x_ndgln, &
+!           x, y, z )
+!      do idim = 1, ndim
+!         if( idim ==1 ) x_all % val( idim, : ) = x
+!         if( idim ==2 ) x_all % val( idim, : ) = y
+!         if( idim ==3 ) x_all % val( idim, : ) = z
+!      end do
 
-      allocate( x( x_nonods ) , y( x_nonods ), z( x_nonods ) )
-
-      x = 0. ; y = 0. ; z = 0.
-      call xp1_2_xp2( state, &
-           x_nloc, x_nloc_p1, x_nonods_p1, x_nonods, &
-           x_ndgln_p1, x_ndgln, &
-           x, y, z )
-
+      !Get the coordinates of the nodes from the mesh
       x_all => extract_vector_field( packed_state, "PressureCoordinate" )
-      do idim = 1, ndim
-         if( idim ==1 ) x_all % val( idim, : ) = x
-         if( idim ==2 ) x_all % val( idim, : ) = y
-         if( idim ==3 ) x_all % val( idim, : ) = z
-      end do
 
 !!$
 !!$ Extracting Volume Fraction (or Saturation) Field:
