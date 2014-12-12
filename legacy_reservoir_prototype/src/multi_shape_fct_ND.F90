@@ -1515,8 +1515,9 @@
          VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(jump + ELE)
       end if
 
+
       IF (indx>0 .and. not(cache_level)==0) return
-       !When all the values are obtained, the index is set to a positive value
+      !When all the values are obtained, the index is set to a positive value
       if (ELE == totele) indx = abs(indx)
       !#########Storing area finished########################
       !

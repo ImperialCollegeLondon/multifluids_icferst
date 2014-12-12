@@ -3015,7 +3015,7 @@ deallocate(SCVFENX_ALL, INV_JAC)
 
             !Initial check to know whether we have already stored all the values
             if (indx < 0) then
-                if (GLOBAL_FACE<state(1)%scalar_fields(-indx)%ptr%val(size(state(1)%scalar_fields(-indx)%ptr%val,1))) then
+                if (GLOBAL_FACE<state(1)%scalar_fields(abs(indx))%ptr%val(size(state(1)%scalar_fields(abs(indx))%ptr%val,1))) then
                     !If the input index is smaller than the last stored index, then we have re-started and we should be extracting stored values
                     indx = abs(indx)
                 end if
@@ -3029,9 +3029,9 @@ deallocate(SCVFENX_ALL, INV_JAC)
                          IF(STORE) THEN ! Put in storage if not already in storage...
                              if (indx < 0) then!We may need to store a new value
                                  !Store in state, indx is an input
-                                 state(1)%scalar_fields(-indx)%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = T_ALL(IPHASE)
+                                 state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = T_ALL(IPHASE)
                                  !Store input index to check when we start to get data instead of sting data
-                                 state(1)%scalar_fields(-indx)%ptr%val(size(state(1)%scalar_fields(-indx)%ptr%val,1)) = GLOBAL_FACE
+                                 state(1)%scalar_fields(abs(indx))%ptr%val(size(state(1)%scalar_fields(abs(indx))%ptr%val,1)) = GLOBAL_FACE
                              else if (GLOBAL_FACE==1) then !The first time we need to introduce the targets in state
                                  if (has_scalar_field(state(1), "Fld"//StorName)) then
                                      !If we are recalculating due to a mesh modification then
@@ -3060,14 +3060,14 @@ deallocate(SCVFENX_ALL, INV_JAC)
                                  indx = -size(state(1)%scalar_fields)
 
                                   !Store in state
-                                 state(1)%scalar_fields(-indx)%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = T_ALL(IPHASE)
+                                 state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = T_ALL(IPHASE)
                              end if
                          end if
                      ENDIF
                  ELSE IF(IGOT_T_CONST(IPHASE)) THEN
                      T_ALL(IPHASE) = IGOT_T_CONST_VALUE(IPHASE)
                  ELSE IF(STORE.and.indx>0) THEN ! Check storage and pull out of storage
-                     T_ALL(IPHASE) = state(1)%scalar_fields(indx)%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE)
+                     T_ALL(IPHASE) = state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE)
                  ELSE ! Set to 1 as last resort e.g. for T2, T2OLD
                      T_ALL(IPHASE) = 1.0
                  ENDIF

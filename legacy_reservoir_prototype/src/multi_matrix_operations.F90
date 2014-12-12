@@ -1078,7 +1078,7 @@
          !Now we insert them in state and store the indexes
          call insert(state(1), Targ_NX_ALL, StorName)
          !Store index
-         indx = -size(state(1)%scalar_fields)
+         indx = size(state(1)%scalar_fields)
 
          call deallocate (Targ_NX_ALL)
          call deallocate (Auxmesh)
