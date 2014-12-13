@@ -121,7 +121,7 @@ contains
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
          option_path_spatial_discretisation, &
-         saturation, Pe, Cap_exp, Swirr, Sor)
+         saturation, Pe, Cap_exp, Swirr, Sor, indx, Storname)
 
       !  =====================================================================
       !     In this subroutine the advection terms in the advection-diffusion
@@ -315,6 +315,9 @@ contains
       !Variables for Capillary pressure
       real, optional, dimension(:), intent(in) :: Pe, Cap_exp
       real, optional, intent(in) ::  Swirr, Sor
+      !Variables to cache get_int_vel OLD
+      integer, optional ::indx
+      character(len=*), optional :: Storname
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
 
@@ -398,7 +401,7 @@ contains
 
 ! NPHASE Variables: 
       REAL, DIMENSION( : ), allocatable :: CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, &
-               NDOTQNEW,  NDOTQOLD, INCOMEOLD,  INCOME_J, LIMT2OLD, LIMDTOLD, &
+               NDOTQNEW,   INCOME_J, LIMT2OLD, LIMDTOLD, &
                NDOTQ, INCOME, LIMT2, LIMTOLD, LIMT, LIMT_HAT, &
                FVTOLD, FVT2OLD, FVDOLD, &
                LIMDOLD, LIMDTT2OLD,&
@@ -459,14 +462,15 @@ contains
       REAL :: R, NDOTQ_HAT
       REAL :: LIMT_keep(NPHASE ),  LIMTOLD_keep( NPHASE ), LIMD_keep( NPHASE ),   LIMDOLD_keep( NPHASE ), LIMT2_keep( NPHASE ),   LIMT2OLD_keep(NPHASE)
       REAL , DIMENSION( : ), ALLOCATABLE :: F_CV_NODI, F_CV_NODJ
-      REAL , DIMENSION( :, : ), ALLOCATABLE :: NUOLDGI_ALL, NUGI_ALL, NU_LEV_GI
+      REAL , DIMENSION( :, : ), ALLOCATABLE :: NUGI_ALL, NU_LEV_GI!,NUOLDGI_ALL
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
       REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: INV_V_OPT_VEL_UPWIND_COEFS
       REAL :: BCZERO(NPHASE),  T_ALL_J( NPHASE ), TOLD_ALL_J( NPHASE )
       INTEGER :: LOC_WIC_T_BC_ALL(NPHASE)
-
-
+      !Pointer for get_int_vel old
+      REAL , DIMENSION( :, : ), pointer :: NUOLDGI_ALL
+      REAL, DIMENSION( : ), pointer :: NDOTQOLD, INCOMEOLD
 
       REAL, DIMENSION( :, :, : ), ALLOCATABLE :: ABSORBT_ALL
       REAL, DIMENSION( :, : ), ALLOCATABLE :: T2_ALL, T2OLD_ALL, &
@@ -532,6 +536,8 @@ contains
       real, dimension(nphase):: rsum_nodi, rsum_nodj
       real :: aux_Sr
       integer :: Phase_with_Pc, x_nod
+      !Logical for caching get_int_vel
+      logical :: calculate_get_int_vel_OLD
       !capillary_pressure_activated includes GOT_CAPDIFFUS
       capillary_pressure_activated = .false.
       Pc_imbibition = .false.
@@ -1135,7 +1141,7 @@ contains
 ! 
       ALLOCATE( F_CV_NODI( NFIELD ), F_CV_NODJ( NFIELD ) )
 ! 
-      ALLOCATE( NUOLDGI_ALL( NDIM, NPHASE ), NUGI_ALL( NDIM, NPHASE ),  NU_LEV_GI( NDIM, NPHASE ) )
+      ALLOCATE( NUGI_ALL( NDIM, NPHASE ),  NU_LEV_GI( NDIM, NPHASE ) )
 ! 
       IF(THERMAL.AND.GOT_VIS) THEN
          ALLOCATE( VECS_STRESS( NDIM, NDIM, NPHASE, CV_NONODS ), VECS_GRAD_U( NDIM, NDIM, NPHASE, CV_NONODS ) ) ; VECS_STRESS=0. ; VECS_GRAD_U=0.
@@ -1144,7 +1150,7 @@ contains
 
 ! NFIELD Variables: 
       ALLOCATE(CAP_DIFF_COEF_DIVDX(NPHASE), DIFF_COEF_DIVDX(NPHASE), DIFF_COEFOLD_DIVDX(NPHASE), &
-               NDOTQNEW(NPHASE),  NDOTQOLD(NPHASE), INCOMEOLD(NPHASE), LIMT2OLD(NPHASE), LIMDTOLD(NPHASE), &
+               NDOTQNEW(NPHASE), LIMT2OLD(NPHASE), LIMDTOLD(NPHASE), &
                NDOTQ(NPHASE), INCOME(NPHASE), LIMT2(NPHASE), LIMTOLD(NPHASE), LIMT(NPHASE), LIMT_HAT(NPHASE), &
                FVTOLD(NPHASE), FVT2OLD(NPHASE), FVDOLD(NPHASE), &
                LIMDOLD(NPHASE), LIMDTT2OLD(NPHASE),&
@@ -1175,7 +1181,7 @@ contains
          end do
 !          end if
       ENDIF
-      ndotq = 0. ; ndotqold = 0.
+      ndotq = 0. ;! ndotqold = 0.
 
 ! variables for get_int_tden********************
 
@@ -1750,12 +1756,15 @@ contains
 
 
           IF( between_elements .or. on_domain_boundary ) THEN
+!          IF( (ELE2 > 0) .OR. (SELE > 0) ) THEN
+!          IF( (ELE2 > 0) .and. (SELE > 0) ) THEN
              DO CV_SKLOC = 1, CV_SNLOC
                 CV_KLOC = CV_SLOC2LOC( CV_SKLOC )
 
                    SLOC_F(:, CV_SKLOC) = LOC_F(:, CV_KLOC) 
                    SLOC_FEMF(:, CV_SKLOC) = LOC_FEMF(:, CV_KLOC) 
                
+!                   IF(ELE2>0) THEN
                    IF(between_elements) THEN
                       CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
                       CV_NODK2 = CV_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_KLOC2 ) 
@@ -1789,6 +1798,8 @@ contains
           ENDIF ! ENDOF IF( between_elements .or. on_domain_boundary ) THEN ...
 
 
+!         if(.true.) then
+!          IF( SELE > 0 ) THEN
           IF( on_domain_boundary ) THEN
 ! bcs:              
              ! Make allowances for no matrix stencil operating from outside the boundary.
@@ -1852,6 +1863,7 @@ contains
           CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    NPHASE, NFIELD, IPT_IN, IGOT_T_PACK(:,4) )
           CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    NPHASE, NFIELD, IPT_OUT, IGOT_T_PACK(:,4) )
 
+!          IF(IGOT_T2==1) THEN
           IF(use_volume_frac_T2) THEN
              CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    NPHASE, NFIELD, IPT_IN, IGOT_T_PACK(:,5) )
              CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    NPHASE, NFIELD, IPT_OUT, IGOT_T_PACK(:,5) )
@@ -1863,6 +1875,7 @@ contains
 !         
 
 ! LOC2_U, LOC2_NU for GET_INT_VEL_NEW
+!       IF (ELE2/=0) THEN
        IF (between_elements) THEN 
 
 
@@ -1899,6 +1912,7 @@ contains
 
        END IF ! ENDOF IF (between_elements) THEN
 
+!       IF ( SELE /= 0 ) THEN
        IF ( on_domain_boundary ) THEN
           DO U_SKLOC = 1, U_SNLOC
              U_KLOC = U_SLOC2LOC( U_SKLOC )
@@ -1934,6 +1948,7 @@ contains
            T_ALL_J( : )   =LOC_T_J( : )
            TOLD_ALL_J( : )=LOC_TOLD_J( : )
            LOC_WIC_T_BC_ALL(:)=0
+!           IF(SELE.NE.0) THEN
            IF(on_domain_boundary) THEN
                DO IPHASE=1,NPHASE
                    LOC_WIC_T_BC_ALL(IPHASE)=WIC_T_BC_ALL(1, IPHASE, SELE)
@@ -1966,10 +1981,25 @@ contains
        !                     DO FACE_ITS = 1, NFACE_ITS
        ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
        !Calling the functions directly instead inside a wrapper saves a around a 5%
+!       IF(IGOT_T2==1) THEN
        IF( GOT_T2 ) THEN
 
            IF( is_compact_overlapping ) THEN
-               CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+               !Storage section
+               if (present(indx)) then
+                   call Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
+                   if (indx<=0) then!Still storing values
+                       calculate_get_int_vel_OLD = .true.
+                       if (ele==totele .and. gi ==scvngi) indx = abs(indx)!Last value to calculate
+                   else
+                       calculate_get_int_vel_OLD = .false.
+                   end if
+               else
+                   calculate_get_int_vel_OLD = .true.
+                   allocate(NDOTQOLD(NPHASE), INCOMEOLD(NPHASE), NUOLDGI_ALL( NDIM, NPHASE ))
+               end if
+
+               if (calculate_get_int_vel_OLD) CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&
                LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD,&
                LOC_U,LOC2_U,LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
@@ -2016,7 +2046,22 @@ contains
                .true.)
            else
 
-               call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+               !Storage section
+               if (present(indx)) then
+                   call Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
+                   if (indx<=0) then!Still storing values
+                       calculate_get_int_vel_OLD = .true.
+                       if (ele==totele .and. gi ==scvngi) indx = abs(indx)!Last value to calculate
+                   else
+                       calculate_get_int_vel_OLD = .false.
+                   end if
+               else
+                   calculate_get_int_vel_OLD = .true.
+                   allocate(NDOTQOLD(NPHASE), INCOMEOLD(NPHASE), NUOLDGI_ALL( NDIM, NPHASE ))
+               end if
+
+                !We keep the second index for got_t2 since it is the optional one
+               if (calculate_get_int_vel_OLD) call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&
                LOC_T2OLD_I, LOC_T2OLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
                LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
@@ -2048,7 +2093,21 @@ contains
        ELSE
 
            IF( is_compact_overlapping ) THEN
-               CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+               !Storage section
+               if (present(indx)) then
+                   call Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
+                   if (indx<=0) then!Still storing values
+                       calculate_get_int_vel_OLD = .true.
+                       if (ele==totele.and. gi ==scvngi) indx = abs(indx)!Last value to calculate
+                   else
+                       calculate_get_int_vel_OLD = .false.
+                   end if
+               else
+                   calculate_get_int_vel_OLD = .true.
+                   allocate(NDOTQOLD(NPHASE), INCOMEOLD(NPHASE), NUOLDGI_ALL( NDIM, NPHASE ))
+               end if
+
+               if (calculate_get_int_vel_OLD) CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&
                LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD,&
                LOC_U,LOC2_U,LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
@@ -2095,7 +2154,21 @@ contains
                .true.)
            else
 
-               call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
+               !Storage section
+               if (present(indx)) then
+                   call Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
+                   if (indx<=0) then!Still storing values
+                       calculate_get_int_vel_OLD = .true.
+                       if (ele==totele.and. gi ==scvngi) indx = abs(indx)!Last value to calculate
+                   else
+                       calculate_get_int_vel_OLD = .false.
+                   end if
+               else
+                   calculate_get_int_vel_OLD = .true.
+                   allocate(NDOTQOLD(NPHASE), INCOMEOLD(NPHASE), NUOLDGI_ALL( NDIM, NPHASE ))
+               end if
+
+               if (calculate_get_int_vel_OLD) call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&
                LOC_TOLD_I, LOC_TOLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
                LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
@@ -2255,12 +2328,14 @@ contains
                    R=SUM(LIMT_HAT(:))
                    LIMT_HAT(:)=LIMT_HAT(:)/R
 
+!                   if(sele.ne.0) then ! effectively apply the bcs to NDOTQ_HAT
                    if(on_domain_boundary) then ! effectively apply the bcs to NDOTQ_HAT
                      NDOTQ_HAT =SUM(LIMT_HAT(:)*NDOTQNEW(:))
                    endif
                 ENDIF
 
     ! Amend for porosity...
+!          IF ( ELE2 /= 0 ) THEN 
           IF ( between_elements ) THEN 
 !             FVD   = 0.5 * ( ONE_PORE(ELE) + ONE_PORE(ELE2) ) * FVD
              LIMD   = 0.5 * ( ONE_PORE(ELE) + ONE_PORE(ELE2) ) * LIMD
@@ -2287,6 +2362,7 @@ contains
 
 
                      ! Define face value of theta
+!                     IF ( IGOT_T2 == 1 ) THEN
                      IF ( GOT_T2 ) THEN
                         FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, NPHASE, &
                              NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
@@ -2879,6 +2955,12 @@ contains
          call deallocate(saturation_BCs_robin2)
       end if
 
+      !Deallocate variables if they have not been allocated in the storage
+      if (.not.present(indx)) then
+        deallocate(INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
+        nullify(INCOMEOLD); nullify(NDOTQOLD); nullify(NUOLDGI_ALL)
+      end if
+
       DEALLOCATE( T2_ALL,T2OLD_ALL, FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL)
       nullify(FEMT_ALL); nullify(FEMTOLD_ALL);
 
@@ -2897,6 +2979,7 @@ contains
 #ifdef USING_GFORTRAN
 !Nothing to do here
 #else
+!THIS IS ONLY NECESSARY BECAUSE THE COMPILER IN CX1 DOES NOT ALLOW RESHAPING VECTORS
 !Variables from cv_fem_shape_funs_plus_storage
 deallocate(CVN, CVN_SHORT,CVFEN, CVFENLX_ALL,CVFEN_SHORT, CVFENLX_SHORT_ALL, &
 UFEN, UFENLX_ALL,CV_NEILOC, &
@@ -2906,6 +2989,13 @@ SBCVFENSLY, SBCVFENLX_ALL,SBUFEN, SBUFENSLX,&
 SBUFENSLY, SBUFENLX_ALL, CV_SLOCLIST, U_SLOCLIST)
 !Variables from DETNLXR_INVJAC
 deallocate(SCVFENX_ALL, INV_JAC)
+!We make sure the storage of get_int_vel is not used
+if (present(indx)) then
+indx = 0
+deallocate(INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
+nullify(INCOMEOLD); nullify(NDOTQOLD); nullify(NUOLDGI_ALL)
+end if
+
 #endif
       RETURN
 
@@ -14255,6 +14345,72 @@ deallocate(NX_ALL)
 
 
     end function Get_DevCapPressure
+
+
+
+   subroutine Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
+    !This subroutine only associates the pointers with the memory
+    !Later on it will be decided whether we need to recalculate or not
+        Implicit none
+     INTEGER, intent( in ) :: ELE, TOTELE, NPHASE, SCVNGI, NDIM, GI
+      REAL, DIMENSION( : ), pointer, intent( inout ) :: INCOMEOLD, NDOTQOLD
+      REAL, DIMENSION( :, : ), pointer, intent( inout ) ::  NUOLDGI_ALL
+      type( state_type ), intent( inout ), dimension(:) :: state
+      character(len=*), intent(in) :: StorName
+      integer, intent(inout) :: indx
+      ! Local variables
+      integer :: from, to, jump, LELE
+      !Variables to store things in state
+      type(mesh_type), pointer :: fl_mesh
+      type(mesh_type) :: Auxmesh
+      type(scalar_field), target :: targ_NX_ALL
+
+      !#########Storing area#################################
+      !If new mesh or mesh moved indx will be zero (set in Multiphase_TimeLoop)
+      if (indx==0 .and. ELE==1) then !The first time we need to introduce the targets in state
+         if (has_scalar_field(state(1), StorName)) then
+            !If we are recalculating due to a mesh modification then
+            !we return to the original situation
+            call remove_scalar_field(state(1), StorName)
+         end if
+         !Get mesh file just to be able to allocate the fields we want to store
+         fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+         Auxmesh = make_mesh(fl_mesh,name='StorageMesh')
+         !The number of nodes I want does not coincide
+         Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*&
+            (NPHASE*SCVNGI + NPHASE*SCVNGI + NPHASE*SCVNGI*NDIM)
+         call allocate (Targ_NX_ALL, Auxmesh, StorName)
+
+         !Now we insert them in state and store the indexes
+         call insert(state(1), Targ_NX_ALL, StorName)
+         !Store index with a negative value, because if the index is
+         !zero or negative then we have to calculate stuff
+         indx = -size(state(1)%scalar_fields)
+
+         call deallocate (Targ_NX_ALL)
+         call deallocate (Auxmesh)
+      end if
+       !Get from state, indx is an input
+         LELE=merge(ele,1,btest(cache_level,0))
+
+         from = 1+(LELE-1)*(SCVNGI*nphase)+nphase*(GI-1); to = from-1 + nphase
+         INCOMEOLD(1:nphase) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         jump = NPHASE*SCVNGI*merge(totele,1,btest(cache_level,0))
+         from = jump + 1 + (LELE-1)*(SCVNGI*nphase)+nphase*(GI-1); to = from-1 + nphase
+         NDOTQOLD(1:nphase) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         jump = jump + NPHASE*SCVNGI*merge(totele,1,btest(cache_level,0))
+         from = jump + 1 + (LELE-1)*(SCVNGI*nphase*ndim)+nphase*ndim*(GI-1); to = from-1 + nphase*ndim
+         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         NUOLDGI_ALL, NDIM, NPHASE)
+
+      IF (indx>0 .and. not(cache_level)==0) return
+      !When all the values are obtained, the index is set to a positive value
+      !For this case we have to change the sign outside this subroutine
+      !if (ELE == totele) indx = abs(indx)
+      !#########Storing area finished########################
+
+
+    end subroutine Get_int_vel_cache
 
 ! -----------------------------------------------------------------------------
 

@@ -701,9 +701,8 @@ contains
               SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
               mass_ele_transp,&
               StorageIndexes, 3 ,&
-              Pe = Pe , Cap_exp = Cap_exp, Swirr = options%S_gc, Sor= options%S_or)!Capillary variables
-         !            satura=0.0 !saturaold([([(i+(j-1)*cv_nonods,j=1,nphase)],i=1,cv_nonods)])
-
+              Pe = Pe , Cap_exp = Cap_exp, Swirr = options%S_gc, Sor= options%S_or,&!Capillary variables
+              indx = StorageIndexes(35), Storname="Get_Int_Vel_OLD")
          call assemble_global_multiphase_petsc_csr(petsc_acv,&
               block_acv,dense_block_matrix,&
               small_finacv,small_colacv,tracer%mesh)

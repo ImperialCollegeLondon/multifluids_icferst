@@ -238,7 +238,7 @@
       integer :: checkpoint_number
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-      integer, dimension (34) :: StorageIndexes
+      integer, dimension (40) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
       !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
       !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
@@ -253,6 +253,7 @@
       !PROJ_CV_TO_FEM_state          : 31 (disabled)
       !Capillary pressure            : 32 (Pe), 33 (exponent a)
       !PIVIT_MAT (inverted)          : 34
+      !Get_INT VEL                   : 35:40 (Currently only 35 used)
 
       !Working pointers
       real, dimension(:,:), pointer :: SAT_s, OldSAT_s, FESAT_s
@@ -604,6 +605,8 @@
       checkpoint_number=1
       Loop_Time: do
 !!$
+        !We make sure that every time step the storage of get_int_vel is recalculated
+        StorageIndexes(35:40) = 0
 
          ewrite(2,*) '    NEW DT', itime+1
 
