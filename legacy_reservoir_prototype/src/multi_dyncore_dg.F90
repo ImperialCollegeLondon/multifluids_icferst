@@ -567,52 +567,15 @@ contains
       type(vector_field) :: rhs_field
 
       !Variables for capillary pressure
-      type(corey_options) :: options
-      character(len=250) :: cap_path!,option_dir
-      real :: Pe_aux
-      real, dimension(:), pointer ::c_regions, a_regions, Pe, Cap_exp
-      logical :: Artificial_Pe
+      real, dimension(cv_nonods) :: OvRelax_param
+      integer :: Phase_with_Pc
 
       !Extract variables from packed_state
       call get_var_from_packed_state(packed_state,FEPressure = P,&
            PhaseVolumeFraction = satura,OldPhaseVolumeFraction = saturaold)
 
-
       !Get information for capillary pressure to be use in CV_ASSEMB
-      Artificial_Pe = .false.
-      do iphase = Nphase, 1, -1!Loop backwards since the wetting phase should be phase 1
-         if (have_option("/material_phase["//int2str(iphase-1)//&
-              "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
-            !Get C
-            cap_path = "/material_phase["//int2str(iphase-1)//&
-                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::CS/prescribed/value"
-            call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32), iphase, nphase)
-            !We point to the field
-            Pe => c_regions
-            !Get a
-            cap_path = "/material_phase["//int2str(iphase-1)//&
-                 "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-            call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), iphase, nphase)
-            !We point to the field
-            Cap_exp => a_regions
-         end if
-      end do
-      !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
-      do iphase = Nphase, 1, -1!Loop backwards since the wetting phase should be phase 1
-         if (have_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab") ) then
-            allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
-            Artificial_Pe = .true.
-            call get_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
-            if (Pe_aux<0) then!Automatic set up for Pe
-                Pe = p * 1d-2
-            else
-                Pe = Pe_aux
-            end if
-            Cap_exp = 1.!Linear exponent
-         end if
-      end do
-      !We consider only the corey options, for capillary pressure
-      call get_corey_options(options)
+      call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes)
 
       GET_THETA_FLUX = .FALSE.
       IGOT_T2 = 0
@@ -701,8 +664,9 @@ contains
               SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
               mass_ele_transp,&
               StorageIndexes, 3 ,&
-              Pe = Pe , Cap_exp = Cap_exp, Swirr = options%S_gc, Sor= options%S_or,&!Capillary variables
+              OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc, &!Capillary variables
               indx = StorageIndexes(35), Storname="Get_Int_Vel_OLD")
+
          call assemble_global_multiphase_petsc_csr(petsc_acv,&
               block_acv,dense_block_matrix,&
               small_finacv,small_colacv,tracer%mesh)
@@ -741,17 +705,6 @@ contains
       DEALLOCATE( T2OLD )
       DEALLOCATE( THETA_GDIFF )
       call deallocate(rhs_field)
-
-
-      !Only if the the artificial over-relaxation is not
-      !associated to the actual values of capillary pressure
-      !we deallocate it, otherwise it is just a simple pointer
-      if (Artificial_Pe) then
-         deallocate(Pe)
-         nullify(Pe)
-         deallocate(Cap_exp)
-         nullify(Cap_exp)
-      end if
 
       ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
@@ -895,10 +848,10 @@ contains
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: X_ILOC, X_INOD, MAT_INOD, S, E, sele, p_sjloc, u_siloc
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
-        REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, DEN_ALL, DENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL
+        REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL
         REAL, DIMENSION( :, :, :, : ), allocatable :: UDIFFUSION_ALL
         REAL, DIMENSION( :, : ), allocatable :: UDIFFUSION_VOL_ALL
-
+        REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2
         type( vector_field ), pointer :: x_all2
         type( scalar_field ), pointer :: p_all, cvp_all, pressure_state, sf, soldf
@@ -914,10 +867,8 @@ contains
         integer :: row
 
         ALLOCATE( U_ALL( NDIM, NPHASE, U_NONODS ), UOLD_ALL( NDIM, NPHASE, U_NONODS ), &
-        X_ALL( NDIM, X_NONODS ), UDEN_ALL( NPHASE, CV_NONODS ), UDENOLD_ALL( NPHASE, CV_NONODS ), &
-        DEN_ALL( NPHASE, CV_NONODS ), DENOLD_ALL( NPHASE, CV_NONODS ) )
+        X_ALL( NDIM, X_NONODS ), UDEN_ALL( NPHASE, CV_NONODS ), UDENOLD_ALL( NPHASE, CV_NONODS ))
         U_ALL = 0. ; UOLD_ALL = 0. ; X_ALL = 0. ; UDEN_ALL = 0. ; UDENOLD_ALL = 0.
-        DEN_ALL = 0. ; DENOLD_ALL = 0.
 
         ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
 
@@ -968,9 +919,8 @@ contains
 
         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
         DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-
-        DEN_ALL = DEN_ALL2%VAL( 1, :, : )
-        DENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
+        DEN_ALL(1:, 1:) => DEN_ALL2%VAL( 1, :, : )
+        DENOLD_ALL(1:, 1:) => DENOLD_ALL2%VAL( 1, :, : )
 
         call allocate(deltaP,pressure%mesh,"DeltaP")
         call allocate(rhs_p,pressure%mesh,"PressureCorrectionRHS")
@@ -1641,7 +1591,8 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION(  : ,:,: ), intent( in ) :: U_ALL, UOLD_ALL
         REAL, DIMENSION(  :  ), intent( in ) :: CV_P, P
 !        REAL, DIMENSION(  :  ), intent( in ) :: SATURA, SATURAOLD
-        REAL, DIMENSION(  :, :  ), intent( in ) :: FEM_VOL_FRAC, DEN_ALL, DENOLD_ALL
+        REAL, DIMENSION(  :, :  ), intent( in ) :: FEM_VOL_FRAC!, DEN_ALL, DENOLD_ALL
+        REAL, DIMENSION(  :, :  ), intent( in ), pointer :: DEN_ALL, DENOLD_ALL
         REAL, DIMENSION(  NPHASE, CV_NONODS  ), intent( in ) :: DERIV
         REAL, DIMENSION(  : ,  :   ), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, intent( in ) :: DT
@@ -1694,29 +1645,21 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
         REAL :: SECOND_THETA
         LOGICAL, PARAMETER :: GETCV_DISC = .FALSE., GETCT= .TRUE., THERMAL= .FALSE.
-        REAL, DIMENSION( : ), allocatable :: ACV, Block_acv, CV_RHS, SUF_VOL_BC_ROB1, SUF_VOL_BC_ROB2, &
-        SAT_FEMT, DEN_FEMT, dummy_transp
+        REAL, DIMENSION( : ), allocatable :: ACV, Block_acv, CV_RHS,dummy_transp
         REAL, DIMENSION( :,:,:), allocatable :: DENSE_BLOCK_MATRIX
         REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
-        REAL, DIMENSION( : ), allocatable :: SUF_T2_BC_ROB1, SUF_T2_BC_ROB2, SUF_T2_BC
-        INTEGER, DIMENSION( : ), allocatable :: WIC_T2_BC
-        REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF, DEN_OR_ONE, DENOLD_OR_ONE
-        REAL, DIMENSION( : ), allocatable :: T2, T2OLD, MEAN_PORE_CV !, DEN_OR_ONE, DENOLD_OR_ONE
+        REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
+        REAL, DIMENSION( : , : ), pointer :: DEN_OR_ONE, DENOLD_OR_ONE
+        REAL, DIMENSION( : ), allocatable :: T2, T2OLD, MEAN_PORE_CV
         LOGICAL :: GET_THETA_FLUX, Q_SCHEME
         INTEGER :: IGOT_T2, I, P_SJLOC, SELE, U_SILOC, IGOT_THERM_VIS
-
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM, X_ILOC, X_INOD, MAT_INOD, S, E
-
-
         type(tensor_field), pointer :: tracer, density
 
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
 
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
-
-        ALLOCATE( DEN_OR_ONE( NPHASE, CV_NONODS )) !  ; DEN_OR_ONE = 0.
-        ALLOCATE( DENOLD_OR_ONE( NPHASE, CV_NONODS )) !  ; DENOLD_OR_ONE = 0.
 
         ALLOCATE( T2( CV_NONODS * NPHASE * IGOT_T2 )) ; T2 = 0.
         ALLOCATE( T2OLD( CV_NONODS * NPHASE * IGOT_T2 )) ; T2OLD =0.
@@ -1726,11 +1669,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         ALLOCATE( DENSE_BLOCK_MATRIX( NPHASE,nphase,cv_nonods))  ; DENSE_BLOCK_MATRIX = 0.
         ALLOCATE( CV_RHS( CV_NONODS * NPHASE )) ; CV_RHS = 0.
         ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE )) ; TDIFFUSION = 0.
-        ALLOCATE( SUF_VOL_BC_ROB1( STOTEL * CV_SNLOC * NPHASE )) ; SUF_VOL_BC_ROB1 = 0.
-        ALLOCATE( SUF_VOL_BC_ROB2( STOTEL * CV_SNLOC * NPHASE )) ; SUF_VOL_BC_ROB2 = 0.
         ALLOCATE( MEAN_PORE_CV( CV_NONODS )) ; MEAN_PORE_CV = 0.
-        ALLOCATE( SAT_FEMT( NPHASE * CV_NONODS ) ) ; SAT_FEMT = 0.
-        ALLOCATE( DEN_FEMT( NPHASE * CV_NONODS ) ) ; DEN_FEMT = 0.
         allocate( dummy_transp( totele ) ) ; dummy_transp = 0.
 
 
@@ -1787,11 +1726,11 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
 
 
         IF ( USE_THETA_FLUX ) THEN ! We have already put density in theta...
-            DEN_OR_ONE = 1.0
-            DENOLD_OR_ONE = 1.0
+            ALLOCATE( DEN_OR_ONE( NPHASE, CV_NONODS )); DEN_OR_ONE = 1.
+            ALLOCATE( DENOLD_OR_ONE( NPHASE, CV_NONODS )); DENOLD_OR_ONE = 1.
         ELSE
-            DEN_OR_ONE = DEN_ALL
-            DENOLD_OR_ONE = DENOLD_ALL
+            DEN_OR_ONE(1:,1:) => DEN_ALL(:,:)
+            DENOLD_OR_ONE(1:,1:) => DENOLD_ALL(:,:)
         END IF
 
 
@@ -1828,7 +1767,6 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         NCOLM, FINDM, COLM, MIDM, &
         XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-!        DEN_FEMT, &
         IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -1836,9 +1774,13 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         MEAN_PORE_CV, &
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
         dummy_transp, &
-        StorageIndexes, 3 )
+        StorageIndexes, 3)
 
         ewrite(3,*)'Back from cv_assemb'
+
+
+
+
 
         IF ( GLOBAL_SOLVE ) THEN
             ! Put CT into global matrix MCY...
@@ -1859,11 +1801,13 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         DEALLOCATE( DENSE_BLOCK_MATRIX )
         DEALLOCATE( CV_RHS )
         DEALLOCATE( TDIFFUSION )
-        DEALLOCATE( SUF_VOL_BC_ROB1 )
-        DEALLOCATE( SUF_VOL_BC_ROB2 )
         DEALLOCATE( MEAN_PORE_CV )
-        DEALLOCATE( SAT_FEMT )
-        DEALLOCATE( DEN_FEMT )
+
+        !Deallocate pointers only if not pointing to something in packed state
+        if (USE_THETA_FLUX) then
+            deallocate(DENOLD_OR_ONE, DEN_OR_ONE)
+            nullify(DENOLD_OR_ONE); nullify(DEN_OR_ONE)
+        end if
 
         ewrite(3,*) 'Leaving CV_ASSEMB_FORCE_CTY'
 
@@ -8951,5 +8895,106 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         call deallocate(CMC_mod)
         call deallocate(Diagonal)
     end subroutine Rescale_and_solve
+
+
+    subroutine getOverrelaxation_parameter(state, packed_state, Overrelaxation, Phase_with_Pc, StorageIndexes)
+    !This subroutine calculates the overrelaxation parameter we introduce in the saturation equation
+    !It is the derivative of the capillary pressure for each node.
+    !Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
+        implicit none
+        type( state_type ), dimension(:), intent(inout) :: state
+        type( state_type ), intent(inout) :: packed_state
+        real, dimension(:), intent(inout) :: Overrelaxation
+        integer, intent(inout) :: Phase_with_Pc
+        integer, dimension(:), intent(inout) :: StorageIndexes
+        !Local variables
+        integer :: iphase, nphase, cv_nodi, cv_nonods
+        type(corey_options) :: options
+        character(len=250) :: cap_path
+        real :: Pe_aux, aux_Sr, aux_Sr_other
+        real, dimension(:), pointer ::c_regions, a_regions, Pe, Cap_exp
+        logical :: Artificial_Pe, Pc_imbibition
+        real, dimension(:), pointer :: p
+        real, dimension(:,:), pointer :: satura
+
+        !Extract variables from packed_state
+        call get_var_from_packed_state(packed_state,FEPressure = P,&
+        PhaseVolumeFraction = satura)
+
+        !Initiate local variables
+        nphase = size(satura,1)
+        cv_nonods = size(satura,2)
+        !Check capillary pressure options
+        Phase_with_Pc = -1
+        Pc_imbibition = .false.
+        do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
+            !this way we try to avoid problems if someone introduces 0 capillary pressure in the second phase
+            if (have_option( "/material_phase["//int2str(iphase-1)//&
+            "]/multiphase_properties/capillary_pressure" ) .or.&
+            have_option("/material_phase[["//int2str(iphase-1)//&
+            "]/multiphase_properties/Pe_stab")) then
+                Phase_with_Pc = iphase
+                if (have_option("/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/Pc_imbibition") ) then
+                    Pc_imbibition = .true.
+                end if
+            end if
+        end do
+        if (Phase_with_Pc>0) then
+            !Get information for capillary pressure to be use
+            Artificial_Pe = .false.
+            if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
+            "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
+                !Get C
+                cap_path = "/material_phase["//int2str(Phase_with_Pc-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::CS/prescribed/value"
+                call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32), Phase_with_Pc, nphase)
+                !We point to the field
+                Pe => c_regions
+                !Get a
+                cap_path = "/material_phase["//int2str(Phase_with_Pc-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
+                call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), Phase_with_Pc, nphase)
+                !We point to the field
+                Cap_exp => a_regions
+            end if
+            !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
+            if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab") ) then
+                allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
+                Artificial_Pe = .true.
+                call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
+                if (Pe_aux<0) then!Automatic set up for Pe
+                    Pe = p * 1d-2
+                else
+                    Pe = Pe_aux
+                end if
+                Cap_exp = 1.!Linear exponent
+            end if
+            !We consider only the corey options for capillary pressure
+            call get_corey_options(options)
+            select case (Phase_with_Pc)
+                case (2)
+                    aux_Sr = options%S_or
+                    aux_Sr_other = options%S_gc
+                case default
+                    aux_Sr = options%S_gc
+                    aux_Sr_other = options%S_or
+            end select
+            !Calculate the Overrelaxation
+            do CV_NODI = 1, cv_nonods
+                Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
+                Pe(CV_NODI), Cap_Exp(CV_NODI), aux_Sr, aux_Sr_other, Pc_imbibition)
+            end do
+        else
+            Overrelaxation = 0.0
+        end if
+
+        !Deallocate
+        if (Artificial_Pe) then
+           deallocate(Pe, Cap_exp)
+        end if
+        nullify(Pe, Cap_exp)
+
+    end subroutine getOverrelaxation_parameter
 
 end module multiphase_1D_engine

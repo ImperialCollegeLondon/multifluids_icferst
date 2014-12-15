@@ -121,7 +121,7 @@ contains
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
          option_path_spatial_discretisation, &
-         saturation, Pe, Cap_exp, Swirr, Sor, indx, Storname)
+         saturation,OvRelax_param, Phase_with_Pc, indx, Storname)
 
       !  =====================================================================
       !     In this subroutine the advection terms in the advection-diffusion
@@ -279,7 +279,7 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
-      REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL, DENOLD_ALL
+      REAL, DIMENSION( :, : ), intent( in ), target :: DEN_ALL, DENOLD_ALL
       REAL, DIMENSION( : ), intent( in ) :: T2, T2OLD
       REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (NPHASE,CV_NONODS)
       REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -313,8 +313,8 @@ contains
       integer, optional, intent(in) :: icomp
       type(tensor_field), intent(in), optional, target :: saturation
       !Variables for Capillary pressure
-      real, optional, dimension(:), intent(in) :: Pe, Cap_exp
-      real, optional, intent(in) ::  Swirr, Sor
+      real, optional, dimension(:), intent(in) :: OvRelax_param
+      integer, optional, intent(in) :: Phase_with_Pc
       !Variables to cache get_int_vel OLD
       integer, optional ::indx
       character(len=*), optional :: Storname
@@ -350,8 +350,6 @@ contains
            SUM_CV, ONE_PORE, &
            PERM_ELE
       REAL, DIMENSION( :, : ), allocatable :: CVNORMX_ALL, XC_CV_ALL
-!      REAL, DIMENSION( :, : ), allocatable :: UGI_COEF_ELE, VGI_COEF_ELE, WGI_COEF_ELE, &
-!           UGI_COEF_ELE2, VGI_COEF_ELE2, WGI_COEF_ELE2
       REAL, DIMENSION( :, :, : ), allocatable :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
       REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
 
@@ -395,9 +393,10 @@ contains
       INTEGER :: CV_KNOD, CV_KNOD2, U_SNODK
       REAL, DIMENSION ( :, : ), allocatable :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD
       REAL, DIMENSION ( :, : ), allocatable :: LOC_FEMT2, LOC2_FEMT2, LOC_FEMT2OLD, LOC2_FEMT2OLD
-      REAL, DIMENSION ( : ), allocatable :: LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J
-      REAL, DIMENSION ( : ), allocatable :: LOC_TOLD_I, LOC_TOLD_J, LOC_DENOLD_I, LOC_DENOLD_J
-      REAL, DIMENSION ( : ), allocatable :: LOC_T2_I, LOC_T2_J, LOC_T2OLD_I, LOC_T2OLD_J
+      !Pointers to work with local notation
+      REAL, DIMENSION ( : ), pointer :: LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J
+      REAL, DIMENSION ( : ), pointer :: LOC_TOLD_I, LOC_TOLD_J, LOC_DENOLD_I, LOC_DENOLD_J
+      REAL, DIMENSION ( : ), pointer :: LOC_T2_I, LOC_T2_J, LOC_T2OLD_I, LOC_T2OLD_J
 
 ! NPHASE Variables: 
       REAL, DIMENSION( : ), allocatable :: CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, &
@@ -473,7 +472,7 @@ contains
       REAL, DIMENSION( : ), pointer :: NDOTQOLD, INCOMEOLD
 
       REAL, DIMENSION( :, :, : ), ALLOCATABLE :: ABSORBT_ALL
-      REAL, DIMENSION( :, : ), ALLOCATABLE :: T2_ALL, T2OLD_ALL, &
+      REAL, DIMENSION( :, : ), ALLOCATABLE, target :: T2_ALL, T2OLD_ALL, &
            FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, SOURCT_ALL
       LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
       LOGICAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_PACK, IGOT_T_CONST
@@ -533,36 +532,17 @@ contains
 
       !Variables for Capillary pressure
       logical :: capillary_pressure_activated, between_elements, on_domain_boundary, Pc_imbibition
+
       real, dimension(nphase):: rsum_nodi, rsum_nodj
-      real :: aux_Sr
-      integer :: Phase_with_Pc, x_nod
+      integer :: x_nod
       !Logical for caching get_int_vel
       logical :: calculate_get_int_vel_OLD
-      !capillary_pressure_activated includes GOT_CAPDIFFUS
-      capillary_pressure_activated = .false.
-      Pc_imbibition = .false.
 
       !Check capillary pressure options
-      Phase_with_Pc = 1
+      capillary_pressure_activated = .false.
       if (GOT_CAPDIFFUS) then
-        if (present(Pe).and. present(Cap_Exp) .and. present(Swirr) .and. present(Sor)) then
-            do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
-            !this way we try to avoid problems if someone introduces 0 capillary pressure in the second phase
-                if (have_option( "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/capillary_pressure" ) .or.&
-                have_option("/material_phase[["//int2str(iphase-1)//&
-                "]/multiphase_properties/Pe_stab")) then
-                    capillary_pressure_activated = .true.
-                    Phase_with_Pc = iphase
-                    if (have_option("/material_phase["//int2str(iphase-1)//&
-                       "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/Pc_imbibition") ) then
-                        Pc_imbibition = .true.
-                    end if
-                end if
-            end do
-        else
-            capillary_pressure_activated = .false.
-        end if
+        if (present(OvRelax_param) .and. present(Phase_with_Pc)) &
+            capillary_pressure_activated = Phase_with_Pc >0
       end if
 
     !#################SET WORKING VARIABLES#################
@@ -1126,9 +1106,9 @@ contains
       ALLOCATE( LOC_FEMTOLD(NPHASE, CV_NLOC), LOC2_FEMTOLD(NPHASE, CV_NLOC) )
       ALLOCATE( LOC_FEMT2(NPHASE, CV_NLOC), LOC2_FEMT2(NPHASE, CV_NLOC) )
       ALLOCATE( LOC_FEMT2OLD(NPHASE, CV_NLOC), LOC2_FEMT2OLD(NPHASE, CV_NLOC) )
-      ALLOCATE( LOC_T_I( NPHASE ), LOC_T_J( NPHASE ), LOC_TOLD_I( NPHASE ), LOC_TOLD_J( NPHASE ) )
-      ALLOCATE( LOC_DEN_I( NPHASE ), LOC_DEN_J( NPHASE ), LOC_DENOLD_I( NPHASE ), LOC_DENOLD_J( NPHASE ) )
-      ALLOCATE( LOC_T2_I( NPHASE ), LOC_T2_J( NPHASE ), LOC_T2OLD_I( NPHASE ), LOC_T2OLD_J( NPHASE ) )
+!      ALLOCATE( LOC_T_I( NPHASE ), LOC_T_J( NPHASE ), LOC_TOLD_I( NPHASE ), LOC_TOLD_J( NPHASE ) )
+!      ALLOCATE( LOC_DEN_I( NPHASE ), LOC_DEN_J( NPHASE ), LOC_DENOLD_I( NPHASE ), LOC_DENOLD_J( NPHASE ) )
+!      ALLOCATE( LOC_T2_I( NPHASE ), LOC_T2_J( NPHASE ), LOC_T2OLD_I( NPHASE ), LOC_T2OLD_J( NPHASE ) )
 ! bc's:
       ALLOCATE( SELE_LOC_WIC_F_BC( NFIELD ) )
       ALLOCATE( SLOC_SUF_F_BC(NFIELD, CV_SNLOC) )  
@@ -1163,23 +1143,14 @@ contains
          ALLOCATE( CAP_DIFFUSION( NPHASE, MAT_NONODS ) )
          !Introduce the information in CAP_DIFFUSION
          CAP_DIFFUSION = 0.!Initialize to zero just in case
-!         if (present(Pe).and. present(Cap_Exp) .and. present(Swirr) .and. present(Sor)) then
          do ele = 1, totele
              do CV_ILOC = 1, CV_NLOC
                  CV_NODI = cv_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
                  MAT_NODI = MAT_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
-                 select case (Phase_with_Pc)
-                     case (2)
-                         aux_Sr = Sor
-                     case default
-                         aux_Sr = Swirr
-                 end select
                  CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
-                  - T_ALL(Phase_with_Pc, CV_NODI) * Get_DevCapPressure(T_ALL(Phase_with_Pc, CV_NODI),&
-                    Pe(CV_NODI), Cap_Exp(CV_NODI), aux_Sr, Swirr, Pc_imbibition)
+                  - T_ALL(Phase_with_Pc, CV_NODI) * OvRelax_param(CV_NODI)
              end do
          end do
-!          end if
       ENDIF
       ndotq = 0. ;! ndotqold = 0.
 
@@ -1924,21 +1895,22 @@ contains
     
           END DO
        END IF
-!MAYBE THIS POINTERS
-       LOC_T_I( : ) = T_ALL(:, CV_NODI)
-       LOC_T_J( : ) = T_ALL(:, CV_NODJ)
-       LOC_TOLD_I( : ) = TOLD_ALL(:, CV_NODI)
-       LOC_TOLD_J( : ) = TOLD_ALL(:, CV_NODJ)
-       LOC_DEN_I( : ) = DEN_ALL(:, CV_NODI)
-       LOC_DEN_J( : ) = DEN_ALL(:, CV_NODJ)
-       LOC_DENOLD_I( : ) = DENOLD_ALL(:, CV_NODI)
-       LOC_DENOLD_J( : ) = DENOLD_ALL(:, CV_NODJ)
+
+
+       LOC_T_I( 1: ) => T_ALL(:, CV_NODI)
+       LOC_T_J( 1: ) => T_ALL(:, CV_NODJ)
+       LOC_TOLD_I( 1: ) => TOLD_ALL(:, CV_NODI)
+       LOC_TOLD_J( 1: ) => TOLD_ALL(:, CV_NODJ)
+       LOC_DEN_I( 1: ) => DEN_ALL(:, CV_NODI)
+       LOC_DEN_J( 1: ) => DEN_ALL(:, CV_NODJ)
+       LOC_DENOLD_I( 1: ) => DENOLD_ALL(:, CV_NODI)
+       LOC_DENOLD_J( 1: ) => DENOLD_ALL(:, CV_NODJ)
 !       IF ( IGOT_T2 == 1 ) THEN
        IF ( use_volume_frac_T2 ) THEN
-          LOC_T2_I( : ) = T2_ALL(:, CV_NODI)
-          LOC_T2_J( : ) = T2_ALL(:, CV_NODJ)
-          LOC_T2OLD_I( : ) = T2OLD_ALL(:, CV_NODI)
-          LOC_T2OLD_J( : ) = T2OLD_ALL(:, CV_NODJ)
+          LOC_T2_I( 1: ) => T2_ALL(:, CV_NODI)
+          LOC_T2_J( 1: ) => T2_ALL(:, CV_NODJ)
+          LOC_T2OLD_I( 1: ) => T2OLD_ALL(:, CV_NODI)
+          LOC_T2OLD_J( 1: ) => T2OLD_ALL(:, CV_NODJ)
        END IF
        !------------------
 
@@ -1986,7 +1958,7 @@ contains
 
            IF( is_compact_overlapping ) THEN
                !Storage section
-               if (present(indx)) then
+               if (present(indx).and.present(Storname)) then
                    call Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
                    if (indx<=0) then!Still storing values
                        calculate_get_int_vel_OLD = .true.
@@ -2047,7 +2019,7 @@ contains
            else
 
                !Storage section
-               if (present(indx)) then
+               if (present(indx).and.present(Storname)) then
                    call Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
                    if (indx<=0) then!Still storing values
                        calculate_get_int_vel_OLD = .true.
@@ -2094,7 +2066,7 @@ contains
 
            IF( is_compact_overlapping ) THEN
                !Storage section
-               if (present(indx)) then
+               if (present(indx).and.present(Storname)) then
                    call Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
                    if (indx<=0) then!Still storing values
                        calculate_get_int_vel_OLD = .true.
@@ -2155,7 +2127,7 @@ contains
            else
 
                !Storage section
-               if (present(indx)) then
+               if (present(indx).and.present(Storname)) then
                    call Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
                    if (indx<=0) then!Still storing values
                        calculate_get_int_vel_OLD = .true.
@@ -2202,137 +2174,133 @@ contains
 
 
        If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
-          IF(SELE.EQ.0) THEN
-          CAP_DIFF_COEF_DIVDX = 0.
-            do iphase =1, nphase
-                rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(INV_V_OPT_VEL_UPWIND_COEFS(:,:,iphase,MAT_NODI),&
-                 CVNORMX_ALL(:, GI)))
-                rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(INV_V_OPT_VEL_UPWIND_COEFS(:,:,iphase,MAT_NODJ),&
-                 CVNORMX_ALL(:, GI) ))
-             end do
-!             CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )+CAP_DIFFUSION( :, MAT_NODJ )) * SUM( CVNORMX_ALL(:, GI)**2 ) /HDC
-             IF(UPWIND_CAP_DIFFUSION) THEN
-                CAP_DIFF_COEF_DIVDX( : ) = (CAP_DIFFUSION( :, MAT_NODI )&
-                    * rsum_nodi(:)*(1.-INCOME(:))  +&
+           IF(SELE.EQ.0) THEN
+               CAP_DIFF_COEF_DIVDX = 0.
+               do iphase =1, nphase
+                   rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(INV_V_OPT_VEL_UPWIND_COEFS(:,:,iphase,MAT_NODI),&
+                   CVNORMX_ALL(:, GI)))
+                   rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(INV_V_OPT_VEL_UPWIND_COEFS(:,:,iphase,MAT_NODJ),&
+                   CVNORMX_ALL(:, GI) ))
+               end do
+               IF(UPWIND_CAP_DIFFUSION) THEN
+                   CAP_DIFF_COEF_DIVDX( : ) = (CAP_DIFFUSION( :, MAT_NODI )&
+                   * rsum_nodi(:)*(1.-INCOME(:))  +&
                    CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) * INCOME(:)) /HDC
-!
-!                 CAP_DIFF_COEF_DIVDX( : ) = 0.25*(1./(rsum_nodi(:)+rsum_nodj(:)))*(CAP_DIFFUSION( :, MAT_NODI )  + &
-!                                                                             CAP_DIFFUSION( :, MAT_NODJ ) ) /HDC
-             ELSE ! Central difference...
-                CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )&
-                * rsum_nodi(:) + CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) ) /HDC
-             ENDIF
-          ELSE
-             CAP_DIFF_COEF_DIVDX( : ) = 0.0
-          ENDIF
+               ELSE ! Central difference...
+                   CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )&
+                   * rsum_nodi(:) + CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) ) /HDC
+               ENDIF
+           ELSE
+               CAP_DIFF_COEF_DIVDX( : ) = 0.0
+           ENDIF
        ELSE
-          CAP_DIFF_COEF_DIVDX( : ) = 0.0
+           CAP_DIFF_COEF_DIVDX( : ) = 0.0
        END IF If_GOT_CAPDIFFUS
       
 
 
-! Pack ndotq information: 
-             IPT=1
-             CALL PACK_LOC( F_INCOME(:), INCOME( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,1) ) ! t
-             CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,2) ) ! TOLD
-             CALL PACK_LOC( F_INCOME(:), INCOME( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,3) )  ! d
-             CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,4) )  ! DOLD
+       ! Pack ndotq information:
+       IPT=1
+       CALL PACK_LOC( F_INCOME(:), INCOME( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,1) ) ! t
+       CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,2) ) ! TOLD
+       CALL PACK_LOC( F_INCOME(:), INCOME( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,3) )  ! d
+       CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,4) )  ! DOLD
        IF ( use_volume_frac_T2 ) THEN
-             CALL PACK_LOC( F_INCOME(:), INCOME( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,5) )  ! T2
-             CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
+           CALL PACK_LOC( F_INCOME(:), INCOME( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,5) )  ! T2
+           CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
        ENDIF
-             IPT=1
-             CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,1) ) ! t
-             CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,2) ) ! TOLD
-             CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,3) )  ! d
-             CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,4) )  ! DOLD
+       IPT=1
+       CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,1) ) ! t
+       CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,2) ) ! TOLD
+       CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,3) )  ! d
+       CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,4) )  ! DOLD
        IF ( use_volume_frac_T2 ) THEN
-             CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,5) )  ! T2
-             CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
+           CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,5) )  ! T2
+           CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), NPHASE, NFIELD, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
        ENDIF
 
 
 
-                        !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
-                        ! Calculate T and DEN on the CV face at quadrature point GI.
-                  IF(NFIELD.GT.0) THEN
-                        CALL GET_INT_T_DEN_new( LIMF(:), & 
-                             CV_DISOPT, CV_NONODS, NPHASE, NFIELD, CV_NODI, CV_NODJ, CV_ILOC, CV_JLOC, CV_SILOC, ELE, ELE2, GI,   &
-                             between_elements, on_domain_boundary, &
-                             CV_NLOC, TOTELE, CV_OTHER_LOC, SCVNGI, SCVFEN, F_INCOME, F_NDOTQ, &
-                             LOC_F, LOC_FEMF, SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF, &
-                             SELE, CV_SNLOC,  U_SNLOC,  STOTEL, CV_SLOC2LOC, SLOC_SUF_F_BC, &
-                             U_SLOC2LOC, U_OTHER_LOC,  &
-                             SELE_LOC_WIC_F_BC,   &
-                             WIC_T_BC_DIRICHLET, WIC_D_BC_DIRICHLET,  & 
-                             HDC, DT, &
-                             SCVFENX_ALL(1:NDIM,:,:), CVNORMX_ALL, &
-                             LOC_UF,  &
-                             U_NLOC,U_NONODS,NDIM,SUFEN, INV_JAC, &
-                             FUPWIND_IN, FUPWIND_OUT, DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, SHAPE_CV_SNL, DOWNWIND_EXTRAP_INDIVIDUAL, &
-                             F_CV_NODI, F_CV_NODJ) 
+             !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
+             ! Calculate T and DEN on the CV face at quadrature point GI.
+       IF(NFIELD.GT.0) THEN
+           CALL GET_INT_T_DEN_new( LIMF(:), &
+           CV_DISOPT, CV_NONODS, NPHASE, NFIELD, CV_NODI, CV_NODJ, CV_ILOC, CV_JLOC, CV_SILOC, ELE, ELE2, GI,   &
+           between_elements, on_domain_boundary, &
+           CV_NLOC, TOTELE, CV_OTHER_LOC, SCVNGI, SCVFEN, F_INCOME, F_NDOTQ, &
+           LOC_F, LOC_FEMF, SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF, &
+           SELE, CV_SNLOC,  U_SNLOC,  STOTEL, CV_SLOC2LOC, SLOC_SUF_F_BC, &
+           U_SLOC2LOC, U_OTHER_LOC,  &
+           SELE_LOC_WIC_F_BC,   &
+           WIC_T_BC_DIRICHLET, WIC_D_BC_DIRICHLET,  &
+           HDC, DT, &
+           SCVFENX_ALL(1:NDIM,:,:), CVNORMX_ALL, &
+           LOC_UF,  &
+           U_NLOC,U_NONODS,NDIM,SUFEN, INV_JAC, &
+           FUPWIND_IN, FUPWIND_OUT, DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, SHAPE_CV_SNL, DOWNWIND_EXTRAP_INDIVIDUAL, &
+           F_CV_NODI, F_CV_NODJ)
 
-                  ENDIF
+       ENDIF
 
-! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
-                        FVT(:)=T_ALL(:,CV_NODI)*(1.0-INCOME(:)) + T_ALL(:,CV_NODJ)*INCOME(:) 
-!                        FVD(:)=DEN_ALL(:,CV_NODI)*(1.0-INCOME(:)) + DEN_ALL(:,CV_NODJ)*INCOME(:) 
+       ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
+       FVT(:)=T_ALL(:,CV_NODI)*(1.0-INCOME(:)) + T_ALL(:,CV_NODJ)*INCOME(:)
+       !                        FVD(:)=DEN_ALL(:,CV_NODI)*(1.0-INCOME(:)) + DEN_ALL(:,CV_NODJ)*INCOME(:)
 
 
-!           print *,'done temp'
-! Generate some local F variables ***************
-!       IF(.true.) THEN
-! loc_f - Unpack into the limiting variables LIMT and may be store them in the cache.
+       !           print *,'done temp'
+       ! Generate some local F variables ***************
+       !       IF(.true.) THEN
+       ! loc_f - Unpack into the limiting variables LIMT and may be store them in the cache.
 
-             !###############TEMPORARY USAGE IN UNPACK_LOC #######################
-             !Currently for UNPACK_LOC we are passing SCVNGI*TOTELE as the maximum Global_face value
-             !However, that is an overstimate. THAT VALUE WILL NEED TO BE CHANGED!!
-             !###############################################################
-             IPT=1
-             CALL UNPACK_LOC( LIMF(:), LIMT( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,1), GLOBAL_FACE, IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1),&
-                SCVNGI*TOTELE,state, 'limf1', StorageIndexes(5) )
-             CALL UNPACK_LOC( LIMF(:), LIMTOLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,2), GLOBAL_FACE, IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2),&
-                SCVNGI*TOTELE,state, 'limf2', StorageIndexes(6) )
-             CALL UNPACK_LOC( LIMF(:), LIMD( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,3), GLOBAL_FACE, IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3),&
-                SCVNGI*TOTELE,state, 'limf3', StorageIndexes(7) )
-             CALL UNPACK_LOC( LIMF(:), LIMDOLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,4), GLOBAL_FACE, IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4),&
-                SCVNGI*TOTELE,state, 'limf4', StorageIndexes(8) )
+       !###############TEMPORARY USAGE IN UNPACK_LOC #######################
+       !Currently for UNPACK_LOC we are passing SCVNGI*TOTELE as the maximum Global_face value
+       !However, that is an overstimate. THAT VALUE WILL NEED TO BE CHANGED!!
+       !###############################################################
+       IPT=1
+       CALL UNPACK_LOC( LIMF(:), LIMT( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,1), GLOBAL_FACE, IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1),&
+       SCVNGI*TOTELE,state, 'limf1', StorageIndexes(5) )
+       CALL UNPACK_LOC( LIMF(:), LIMTOLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,2), GLOBAL_FACE, IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2),&
+       SCVNGI*TOTELE,state, 'limf2', StorageIndexes(6) )
+       CALL UNPACK_LOC( LIMF(:), LIMD( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,3), GLOBAL_FACE, IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3),&
+       SCVNGI*TOTELE,state, 'limf3', StorageIndexes(7) )
+       CALL UNPACK_LOC( LIMF(:), LIMDOLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,4), GLOBAL_FACE, IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4),&
+       SCVNGI*TOTELE,state, 'limf4', StorageIndexes(8) )
        IF ( use_volume_frac_T2 ) THEN
-             CALL UNPACK_LOC( LIMF(:), LIMT2( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,5), GLOBAL_FACE, IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5),&
-                SCVNGI*TOTELE,state, 'limf5', StorageIndexes(9) )
-             CALL UNPACK_LOC( LIMF(:), LIMT2OLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,6), GLOBAL_FACE, IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6),&
-                SCVNGI*TOTELE,state, 'limf6', StorageIndexes(10) )
+           CALL UNPACK_LOC( LIMF(:), LIMT2( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,5), GLOBAL_FACE, IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5),&
+           SCVNGI*TOTELE,state, 'limf5', StorageIndexes(9) )
+           CALL UNPACK_LOC( LIMF(:), LIMT2OLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,6), GLOBAL_FACE, IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6),&
+           SCVNGI*TOTELE,state, 'limf6', StorageIndexes(10) )
        else
-             LIMT2( : )=1.0; LIMT2OLD( : )=1.0
+           LIMT2( : )=1.0; LIMT2OLD( : )=1.0
        ENDIF
 
 
-                IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
-                   NDOTQ_HAT = 0.0
-                   DO U_KLOC = 1, U_NLOC
-!                      IF (ELE2/=0) THEN ! Between elements...
-                      IF (between_elements) THEN ! Between elements...
-                         NDOTQ_HAT =  NDOTQ_HAT + SUFEN( U_KLOC, GI ) * 0.5 * SUM( CVNORMX_ALL(:, GI) * (LOC_U_HAT( :, U_KLOC ) + LOC2_U_HAT( :, U_KLOC )) )
-                      ELSE
-                         NDOTQ_HAT =  NDOTQ_HAT + SUFEN( U_KLOC, GI ) * SUM( CVNORMX_ALL(:, GI) * LOC_U_HAT( :, U_KLOC ) )
-                      ENDIF
-                   END DO
+       IF(GETCT.AND.RETRIEVE_SOLID_CTY) THEN
+           NDOTQ_HAT = 0.0
+           DO U_KLOC = 1, U_NLOC
+               !                      IF (ELE2/=0) THEN ! Between elements...
+               IF (between_elements) THEN ! Between elements...
+                   NDOTQ_HAT =  NDOTQ_HAT + SUFEN( U_KLOC, GI ) * 0.5 * SUM( CVNORMX_ALL(:, GI) * (LOC_U_HAT( :, U_KLOC ) + LOC2_U_HAT( :, U_KLOC )) )
+               ELSE
+                   NDOTQ_HAT =  NDOTQ_HAT + SUFEN( U_KLOC, GI ) * SUM( CVNORMX_ALL(:, GI) * LOC_U_HAT( :, U_KLOC ) )
+               ENDIF
+           END DO
                    
-!                   if(.false.) then ! use an average to make sure all is well in terms of propagation of information...
-!                      LIMT(:)=0.5*(LOC_T_I( : )+LOC_T_J( : ))
-!                   endif
+           !                   if(.false.) then ! use an average to make sure all is well in terms of propagation of information...
+           !                      LIMT(:)=0.5*(LOC_T_I( : )+LOC_T_J( : ))
+           !                   endif
                       
-                   DO IPHASE=1,NPHASE
-                      LIMT_HAT(IPHASE) = MAX(1.E-7,LIMT(IPHASE))
-                   END DO
-                   R=SUM(LIMT_HAT(:))
-                   LIMT_HAT(:)=LIMT_HAT(:)/R
+           DO IPHASE=1,NPHASE
+               LIMT_HAT(IPHASE) = MAX(1.E-7,LIMT(IPHASE))
+           END DO
+           R=SUM(LIMT_HAT(:))
+           LIMT_HAT(:)=LIMT_HAT(:)/R
 
-!                   if(sele.ne.0) then ! effectively apply the bcs to NDOTQ_HAT
-                   if(on_domain_boundary) then ! effectively apply the bcs to NDOTQ_HAT
-                     NDOTQ_HAT =SUM(LIMT_HAT(:)*NDOTQNEW(:))
-                   endif
-                ENDIF
+           !                   if(sele.ne.0) then ! effectively apply the bcs to NDOTQ_HAT
+           if(on_domain_boundary) then ! effectively apply the bcs to NDOTQ_HAT
+               NDOTQ_HAT =SUM(LIMT_HAT(:)*NDOTQNEW(:))
+           endif
+       ENDIF
 
     ! Amend for porosity...
 !          IF ( ELE2 /= 0 ) THEN 
@@ -4561,7 +4529,7 @@ end if
             X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
             X_NX_ALL, &
             CV_NLOC, NLX, NLY, NLZ, NX_ALL,&
-            state,StorName, indx )
+            state,StorName, indx)
 
        !ewrite(3,*)'N',N
        !ewrite(3,*)'nlx:',nlx
@@ -14321,32 +14289,6 @@ deallocate(NX_ALL)
     return
 
   end function vtolfun
-
-    !This function should be in multi_eos.F90
-    PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr, Other_irr, Pc_imbibition)
-        !This functions returns the derivative of the capillary pressure with regard of the saturation
-        Implicit none
-        real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
-        logical, intent(in) :: Pc_imbibition
-        !Local
-        real, parameter :: tol = 1d-2
-        real :: aux
-   
-        if ( Pc_imbibition ) then
-           aux = (1.0 - Own_irr - Other_irr)
-           Get_DevCapPressure = &
-           a * Pe * (1/aux) * (1.0 - max(min((sat - Own_irr) / aux, 1.0), tol)) ** (-a-1)
-        else
-           aux = (1.0 - Own_irr)
-           Get_DevCapPressure = &
-           -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)   
-        end if
-
-
-
-    end function Get_DevCapPressure
-
-
 
    subroutine Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
     !This subroutine only associates the pointers with the memory

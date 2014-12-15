@@ -2040,6 +2040,25 @@
 
     end function Get_capPressure
 
+
+    PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr, Other_irr, Pc_imbibition)
+        !This functions returns the derivative of the capillary pressure with the saturation
+        Implicit none
+        real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
+        logical, intent(in) :: Pc_imbibition
+        !Local
+        real, parameter :: tol = 1d-2
+        real :: aux
+
+        if ( Pc_imbibition ) then
+           aux = (1.0 - Own_irr - Other_irr)
+        else
+           aux = (1.0 - Own_irr)
+        end if
+        Get_DevCapPressure = &
+            -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
+    end function Get_DevCapPressure
+
     subroutine calculate_u_source(state, Density_FEMT, u_source)
       !u_source has to be initialized before calling this subroutine
       type(state_type), dimension(:), intent(in) :: state
@@ -2730,8 +2749,8 @@
             indx = size(state(1)%scalar_fields)
           end if
           !Get the data
-          siz = size(state(1)%scalar_fields(indx)%ptr%val(:),1)/nphase
-          field_values => state(1)%scalar_fields(indx)%ptr%val((iphase-1)*siz + 1: siz * iphase )
+          siz = size(state(1)%scalar_fields(abs(indx))%ptr%val(:),1)/nphase
+          field_values => state(1)%scalar_fields(abs(indx))%ptr%val((iphase-1)*siz + 1: siz * iphase )
 
 
     end subroutine extract_scalar_from_diamond
