@@ -467,7 +467,7 @@ contains
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
          NCOLACV, FINACV, COLACV, MIDACV, &
          SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-         block_to_global_acv, global_dense_block_acv, &
+         block_to_global_acv, &
          NCOLCT, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
          CV_ELE_TYPE,  &
@@ -515,7 +515,6 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
       integer, dimension(:), intent(in)  :: small_finacv,small_colacv,small_midacv
       integer, dimension(:), intent(in)  :: block_to_global_acv
-      integer, dimension(:,:), intent(in) :: global_dense_block_acv
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
 !      REAL, DIMENSION( : ), intent( inout ) :: DEN_FEMT
@@ -544,9 +543,9 @@ contains
       REAL, DIMENSION( : ), allocatable :: ACV, mass_mn_pres, block_ACV, CV_RHS, DIAG_SCALE_PRES, CT_RHS
       REAL, DIMENSION( :,:,: ), allocatable :: dense_block_matrix, CT
       REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
-      REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF, DEN_ALL, DENOLD_ALL
+      REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
+      REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
       REAL, DIMENSION( : ), allocatable :: T2, T2OLD, MEAN_PORE_CV
-      REAL, DIMENSION( : ), allocatable :: DENSITY_OR_ONE, DENSITYOLD_OR_ONE
       REAL, DIMENSION( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
       REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
       LOGICAL :: GET_THETA_FLUX
@@ -586,29 +585,27 @@ contains
 
       ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
 
-      ALLOCATE( ACV( NCOLACV ) ) ; ACV = 0.
       ALLOCATE( block_ACV( size(block_to_global_acv) ) ) ; block_ACV = 0.
       ALLOCATE( mass_mn_pres(size(small_colacv)) ) ; mass_mn_pres = 0.
       ALLOCATE( dense_block_matrix( nphase , nphase , cv_nonods) ); dense_block_matrix=0;
       ALLOCATE( CV_RHS( CV_NONODS * NPHASE ) ) ; CV_RHS = 0.
-      ALLOCATE( CT( NDIM,NPHASE,NCOLCT ) )
+      ALLOCATE( CT( 0,0,0 ) )
       ALLOCATE( DIAG_SCALE_PRES( CV_NONODS ) )
-      ALLOCATE( CT_RHS( CV_NONODS ) )
+      ALLOCATE( CT_RHS( 0 ) )
       ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) )
       ALLOCATE( MEAN_PORE_CV( CV_NONODS ) )
 
 
 
-      ALLOCATE( DEN_ALL( NPHASE, CV_NONODS  ), DENOLD_ALL( NPHASE, CV_NONODS ) )
-      IF ( IGOT_THETA_FLUX == 1 ) THEN
-         ! use DEN=1 because the density is already in the theta variables
-         DEN_ALL=1.0 ; DENOLD_ALL=1.0
-      ELSE
-         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
-         DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-         DEN_ALL = DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
-      END IF
-
+        IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
+             ! use DEN=1 because the density is already in the theta variables
+            ALLOCATE( DEN_ALL( NPHASE, CV_NONODS )); DEN_ALL = 1.
+            ALLOCATE( DENOLD_ALL( NPHASE, CV_NONODS )); DENOLD_ALL = 1.
+        ELSE
+             DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
+             DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
+             DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
+        END IF
 
       TDIFFUSION = 0.0
       V_BETA = 1.0
@@ -623,8 +620,7 @@ contains
       ALLOCATE( THERM_U_DIFFUSION(NDIM,NDIM,NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
       ALLOCATE( THERM_U_DIFFUSION_VOL(NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
 
-      !         p => extract_scalar_field( packed_state, "FEPressure" )
-      allocate(X(size(CV_RHS,1)))
+!         p => extract_scalar_field( packed_state, "FEPressure" )
 
       tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
       velocity=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -692,7 +688,6 @@ contains
 
 
 
-      DEALLOCATE( ACV )
       DEALLOCATE( mass_mn_pres )
       deallocate( block_acv )
       deallocate( dense_block_matrix )
@@ -705,6 +700,12 @@ contains
       DEALLOCATE( T2OLD )
       DEALLOCATE( THETA_GDIFF )
       call deallocate(rhs_field)
+
+       !Deallocate pointers only if not pointing to something in packed state
+        if (IGOT_THETA_FLUX == 1) then
+            deallocate(DEN_ALL, DENOLD_ALL)
+        end if
+        nullify(DEN_ALL); nullify(DENOLD_ALL)
 
       ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 

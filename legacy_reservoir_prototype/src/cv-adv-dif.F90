@@ -270,7 +270,7 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINACV
       INTEGER, DIMENSION( : ), intent( in ) :: COLACV
       INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
-      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: CT
+      REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
       ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
       REAL, DIMENSION( : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :  ), intent( inout ) :: CT_RHS
