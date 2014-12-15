@@ -605,7 +605,8 @@
       Loop_Time: do
 !!$
         !We make sure that every time step the storage of get_int_vel is recalculated
-        StorageIndexes(35:40) = 0
+        !without removing the values. !DO NOT SET THESE VALUES TO ZERO HERE!!
+        StorageIndexes(35:40) = - abs(StorageIndexes(35:40))
 
          ewrite(2,*) '    NEW DT', itime+1
 

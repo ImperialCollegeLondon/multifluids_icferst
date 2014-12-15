@@ -1077,7 +1077,7 @@ contains
 !                nullify(PIVIT_MAT)
                 !PIVIT_MAT is the same unless the mesh changes
                 call PHA_BLOCK_INV_plus_storage( PIVIT_MAT, TOTELE,&
-                    U_NLOC * NPHASE * NDIM, state, 'PIVIT_MAT', StorageIndexes(34))
+                    U_NLOC * NPHASE * NDIM, state, 'stored_PIVIT_MAT', StorageIndexes(34))
             else
                 CALL PHA_BLOCK_INV( PIVIT_MAT, TOTELE, U_NLOC * NPHASE * NDIM )
             end if
@@ -1740,7 +1740,6 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         ! no q scheme
         IGOT_THERM_VIS = 0
 
-
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction") 
         density=>extract_tensor_field(packed_state,"PackedDensity")
         call halo_update(density)
@@ -1774,12 +1773,9 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         MEAN_PORE_CV, &
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
         dummy_transp, &
-        StorageIndexes, 3)
+        StorageIndexes, 3,indx = StorageIndexes(35), Storname="Get_Int_Vel_OLD")
 
         ewrite(3,*)'Back from cv_assemb'
-
-
-
 
 
         IF ( GLOBAL_SOLVE ) THEN

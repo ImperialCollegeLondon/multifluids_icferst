@@ -2169,7 +2169,6 @@ contains
                rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .true. )
            end if
        ENDIF
-
        INCOME_J=1.-INCOME
 
 
@@ -2220,7 +2219,6 @@ contains
        ENDIF
 
 
-
              !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
              ! Calculate T and DEN on the CV face at quadrature point GI.
        IF(NFIELD.GT.0) THEN
@@ -2241,7 +2239,6 @@ contains
            F_CV_NODI, F_CV_NODJ)
 
        ENDIF
-
        ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
        FVT(:)=T_ALL(:,CV_NODI)*(1.0-INCOME(:)) + T_ALL(:,CV_NODJ)*INCOME(:)
        !                        FVD(:)=DEN_ALL(:,CV_NODI)*(1.0-INCOME(:)) + DEN_ALL(:,CV_NODJ)*INCOME(:)
@@ -14310,40 +14307,44 @@ deallocate(NX_ALL)
       !#########Storing area#################################
       !If new mesh or mesh moved indx will be zero (set in Multiphase_TimeLoop)
       if (indx==0 .and. ELE==1) then !The first time we need to introduce the targets in state
-         if (has_scalar_field(state(1), StorName)) then
+         if (has_scalar_field(state(1), trim(Storname))) then
             !If we are recalculating due to a mesh modification then
             !we return to the original situation
-            call remove_scalar_field(state(1), StorName)
+            call remove_scalar_field(state(1), trim(Storname))
          end if
          !Get mesh file just to be able to allocate the fields we want to store
          fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
-         Auxmesh = make_mesh(fl_mesh,name='StorageMesh')
+         Auxmesh = make_mesh(fl_mesh,name=trim(Storname))
          !The number of nodes I want does not coincide
          Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*&
             (NPHASE*SCVNGI + NPHASE*SCVNGI + NPHASE*SCVNGI*NDIM)
-         call allocate (Targ_NX_ALL, Auxmesh, StorName)
+         call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
 
          !Now we insert them in state and store the indexes
-         call insert(state(1), Targ_NX_ALL, StorName)
+         call insert(state(1), Targ_NX_ALL, trim(Storname))
          !Store index with a negative value, because if the index is
          !zero or negative then we have to calculate stuff
-         indx = -size(state(1)%scalar_fields)
+         !robust way to get the indx
+         do indx = 1, size(state(1)%scalar_fields)
+             if (trim(state(1)%scalar_names(indx)) == trim(Storname)) exit
+         end do
+          indx = - indx
 
          call deallocate (Targ_NX_ALL)
          call deallocate (Auxmesh)
       end if
-       !Get from state, indx is an input
-         LELE=merge(ele,1,btest(cache_level,0))
+      !Get from state, indx is an input
+      LELE=merge(ele,1,btest(cache_level,0))
 
-         from = 1+(LELE-1)*(SCVNGI*nphase)+nphase*(GI-1); to = from-1 + nphase
-         INCOMEOLD(1:nphase) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
-         jump = NPHASE*SCVNGI*merge(totele,1,btest(cache_level,0))
-         from = jump + 1 + (LELE-1)*(SCVNGI*nphase)+nphase*(GI-1); to = from-1 + nphase
-         NDOTQOLD(1:nphase) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
-         jump = jump + NPHASE*SCVNGI*merge(totele,1,btest(cache_level,0))
-         from = jump + 1 + (LELE-1)*(SCVNGI*nphase*ndim)+nphase*ndim*(GI-1); to = from-1 + nphase*ndim
-         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
-         NUOLDGI_ALL, NDIM, NPHASE)
+      from = 1+(LELE-1)*(SCVNGI*nphase)+nphase*(GI-1); to = from-1 + nphase
+      INCOMEOLD(1:nphase) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+      jump = NPHASE*SCVNGI*merge(totele,1,btest(cache_level,0))
+      from = jump + 1 + (LELE-1)*(SCVNGI*nphase)+nphase*(GI-1); to = from-1 + nphase
+      NDOTQOLD(1:nphase) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+      jump = jump + NPHASE*SCVNGI*merge(totele,1,btest(cache_level,0))
+      from = jump + 1 + (LELE-1)*(SCVNGI*nphase*ndim)+nphase*ndim*(GI-1); to = from-1 + nphase*ndim
+      call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+      NUOLDGI_ALL, NDIM, NPHASE)
 
       IF (indx>0 .and. not(cache_level)==0) return
       !When all the values are obtained, the index is set to a positive value

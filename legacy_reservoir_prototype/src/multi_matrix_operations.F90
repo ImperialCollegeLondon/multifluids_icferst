@@ -1062,21 +1062,21 @@
       REAL, DIMENSION( :, :, : ), allocatable :: PIVIT_MAT2
 
       if (indx==0) then !The first time we need to introduce the targets in state
-         if (has_scalar_field(state(1), StorName)) then
+         if (has_scalar_field(state(1), trim(Storname))) then
             !If we are recalculating due to a mesh modification then
             !we return to the original situation
-            call remove_scalar_field(state(1), StorName)
+            call remove_scalar_field(state(1), trim(Storname))
          end if
          !Get mesh file just to be able to allocate the fields we want to store
          fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
-         Auxmesh = make_mesh(fl_mesh,name='StorageMesh1')
+         Auxmesh = make_mesh(fl_mesh,name=trim(Storname))
          !The number of nodes I want does not coincide
          Auxmesh%nodes = NBLOCK * NBLOCK * TOTELE
 
-         call allocate (Targ_NX_ALL, Auxmesh, StorName)
+         call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
 
          !Now we insert them in state and store the indexes
-         call insert(state(1), Targ_NX_ALL, StorName)
+         call insert(state(1), Targ_NX_ALL, trim(Storname))
          !Store index
          indx = size(state(1)%scalar_fields)
 

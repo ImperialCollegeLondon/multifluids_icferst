@@ -1674,13 +1674,13 @@
 
       !If values not stored then create space in state
       if (indx <=0) then
-          if (has_scalar_field(state(1),StorName)) then
+          if (has_scalar_field(state(1),trim(Storname))) then
 !               !We have to deallocate also the mesh type we are using inside the scalar field?
 !               pntr_Storage => extract_scalar_field(state(1), StorName)
 !               !deallocate mesh
 !               call deallocate(pntr_Storage%mesh)!Can I remove this without incurring in memory leaking?
 
-              call remove_scalar_field(state(1), StorName)
+              call remove_scalar_field(state(1), trim(Storname))
           end if
           !Get mesh file just to be able to allocate the fields we want to store       
           fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
@@ -1691,7 +1691,7 @@
            SCVNGI + SBCVNGI + U_NLOC*CV_NGI * (1+ndim) + CV_NLOC * SCVNGI * (3+ndim)+ U_NLOC*SCVNGI * (3+ndim) + &
            CV_SNLOC * SBCVNGI * (4+ndim) + U_SNLOC * SBCVNGI * (3+ndim) + CV_NLOC
 
-          call allocate ( Auxmesh ,auxmesh_nodes,auxmesh_nodes ,aux_shape, name="StorageMesh3" )
+          call allocate ( Auxmesh ,auxmesh_nodes,auxmesh_nodes ,aux_shape, name=trim(Storname) )
           !The number of nodes I want does not coincide
 
           call allocate (targ_Storage, Auxmesh,name=StorName)
@@ -7955,10 +7955,10 @@ ewrite(3,*)'lll:', option_path_len
       if (D3) ndim = 3
 
       if (indx==0 .and. ELE==1) then !The first time we need to introduce the targets in state
-         if (has_scalar_field(state(1), StorName)) then
+         if (has_scalar_field(state(1), trim(StorName))) then
             !If we are recalculating due to a mesh modification then
             !we return to the original situation
-            call remove_scalar_field(state(1), StorName)
+            call remove_scalar_field(state(1), trim(StorName))
          end if
           !Get mesh file just to be able to allocate the fields we want to store
          fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
@@ -7968,10 +7968,10 @@ ewrite(3,*)'lll:', option_path_len
          Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*X_NLOC*NGI*NDIM&
          +merge(totele,1,btest(cache_level,1))*U_NLOC*NDIM*NGI&
          +merge(totele,1,btest(cache_level,2))*NGI*2 + totele
-         call allocate (Targ_NX_ALL, Auxmesh,'NX_ALL')
+         call allocate (Targ_NX_ALL, Auxmesh,trim(StorName))
 
          !Now we insert them in state and store the indexes
-         call insert(state(1), Targ_NX_ALL, StorName)
+         call insert(state(1), Targ_NX_ALL, trim(StorName))
          !Store index with a negative value, because if the index is
          !zero or negative then we have to calculate stuff
          indx = -size(state(1)%scalar_fields)
