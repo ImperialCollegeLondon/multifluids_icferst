@@ -128,10 +128,11 @@
            mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, &
            ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, ncolcmc, ncolm
       integer, dimension( : ), allocatable :: finacv, midacv, finmcy,  midmcy, &
-           finele, midele, findgm_pha, middgm_pha, findct, &
+           findgm_pha, middgm_pha, findct, &
            findc, findcmc, midcmc, findm, &
            midm
-      integer, dimension(:), pointer :: colacv, colmcy, colele, colct,colm,colc,colcmc,coldgm_pha
+      integer, dimension(:), pointer :: colacv, colmcy, colct,colm,colc,colcmc,coldgm_pha
+      integer, dimension(:), pointer :: finele, colele, midele
       integer, dimension(:), pointer :: small_finacv, small_colacv, small_midacv
       integer, dimension(:), pointer :: block_to_global_acv
       integer, dimension(:,:), allocatable :: global_dense_block_acv
@@ -262,7 +263,6 @@
       type(scalar_field), pointer :: pressure_field, porosity_field, tracer_field2
       type(vector_field), pointer :: positions
 
-
       logical :: write_all_stats=.true.
 
 #ifdef HAVE_ZOLTAN
@@ -342,7 +342,6 @@
       nlenmcy = u_nonods * nphase * ndim + cv_nonods
       allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
            finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
-           finele( totele + 1 ), colele( mxnele ), midele( totele ), &
            findgm_pha( u_nonods * nphase * ndim + 1 ), coldgm_pha( mx_ncoldgm_pha ), &
            middgm_pha( u_nonods * nphase * ndim ), &
            findct( cv_nonods + 1 ), colct( mx_nct ), &
@@ -353,8 +352,8 @@
 
       allocate( global_dense_block_acv( nphase , cv_nonods ) )
 
-      finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; finele = 0
-      colele = 0 ; midele = 0 ; findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0
+      finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ;
+     findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0
       colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0
       colm = 0 ; midm = 0
 
@@ -1297,7 +1296,7 @@
                  small_finacv, small_colacv, small_midacv, &
                  finmcy, colmcy, midmcy, &
                  block_to_global_acv, global_dense_block_acv, &
-                 finele, colele, midele, findgm_pha, coldgm_pha, middgm_pha, findct, &
+                 findgm_pha, coldgm_pha, middgm_pha, findct, &
                  colct, findc, colc, findcmc, colcmc, midcmc, findm, &
                  colm, midm, &
 !!$ Defining element-pair type and discretisation options and coefficients
@@ -1354,8 +1353,7 @@
                  mx_ncolacv, mx_ncolm )
             nlenmcy = u_nonods * nphase * ndim + cv_nonods
             allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
-                 finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
-                 finele( totele + 1 ), colele( mxnele ), midele( totele ), &
+                 finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &         
                  findgm_pha( u_nonods * nphase * ndim + 1 ), coldgm_pha( mx_ncoldgm_pha ), &
                  middgm_pha( u_nonods * nphase * ndim ), &
                  findct( cv_nonods + 1 ), colct( mx_nct ), &
@@ -1364,8 +1362,8 @@
                  findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
 
             allocate( global_dense_block_acv (nphase,cv_nonods) )
-            finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; finele = 0 ; &
-                 colele = 0 ; midele = 0 ; findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
+            finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; &
+                 findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
                  colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0 ; &
                  colm = 0 ; midm = 0
 
@@ -1561,7 +1559,7 @@
            small_finacv, small_colacv, small_midacv, &
            finmcy, colmcy, midmcy, &
            block_to_global_acv, global_dense_block_acv, &
-           finele, colele, midele, findgm_pha, coldgm_pha, middgm_pha, findct, &
+           findgm_pha, coldgm_pha, middgm_pha, findct, &
            colct, findc, colc, findcmc, colcmc, midcmc, findm, &
            colm, midm, &
 !!$ Defining element-pair type and discretisation options and coefficients
@@ -1616,11 +1614,10 @@
 
         integer ic
 
+
+
         allocate(sparsity)
 
-        sparsity=wrap(finele,midele,colm=colele,name='ElementConnectivity')
-        call insert(packed_state,sparsity,'ElementConnectivity')
-        call deallocate(sparsity)
         sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name='SinglePhaseAdvectionSparsity')
         call insert(packed_state,sparsity,'SinglePhaseAdvectionSparsity')
         call deallocate(sparsity)
@@ -1651,7 +1648,8 @@
            call insert(multicomponent_state(ic),sparsity,"PressureMassMatrixSparsity")
         end do
 
-
+        sparsity=> extract_csr_sparsity(state(1),"ElementConnectivity")
+        call insert(packed_state,sparsity,"ElementConnectivity")
 
       end subroutine temp_mem_hacks
 

@@ -1571,17 +1571,18 @@
 !!$ Obtain the sparsity patterns of the two types of matricies for
 !!$ (momentum + cty) and for energy
       implicit none
-      type( state_type ), dimension( : ), intent( in ) :: state
+      type( state_type ), dimension( : ), intent( inout ) :: state
       integer, intent( in ) :: mx_ncolacv, nlenmcy, mx_ncolmcy, mxnele, mx_ncoldgm_pha, &
            mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_nface_p1
       integer, intent( inout ) :: ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, &
            ncolcmc, ncolm
+      integer, dimension(:), pointer, intent(inout) :: finele, colele, midele
       integer, dimension( : ), intent( inout ) :: finacv, midacv
       integer, dimension(:), pointer :: midacv_loc, finacv_loc, colacv_loc
 integer, dimension( : ), intent( inout ) ::  finmcy, midmcy, &
-           midele, finele, findgm_pha, middgm_pha, findct, &
+           findgm_pha, middgm_pha, findct, &
            findc, findcmc, midcmc, findm, midm
-integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha, colele,colacv
+integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha, colacv
 !!$ Local variables
       integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, mat_ndgln, u_ndgln, &
            xu_ndgln, cv_sndgln, p_sndgln, u_sndgln, &
@@ -1595,6 +1596,10 @@ integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha
       real :: dx
       integer, dimension(:), pointer :: block_to_global_acv
       integer, dimension(:,:) :: global_dense_block_acv
+
+      type(csr_sparsity), pointer :: sparsity
+      type(mesh_type), pointer :: element_mesh
+
 
       ewrite(3,*)'In Get_Sparsity_Patterns'
 
@@ -1625,19 +1630,23 @@ integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha
       !-
       !- Computing sparsity for element connectivity
       !-
-      finele = 0 ; colele = 0 ; midele = 0
-      Conditional_Dimensional_1: if ( ( ndim == 1 ) .and. .false. ) then 
-         call def_spar( 1, totele, mxnele, ncolele, &
-              midele, finele, colele )
-      else
-         call getfinele( totele, cv_nloc, cv_snloc, x_nonods, x_ndgln, mx_nface_p1, &
-              mxnele, ncolele, finele, colele, midele )
 
-         call resize(colele,ncolele)
-      end if Conditional_Dimensional_1
-!!$      ewrite(3,*)'finele: ', size( finele ), '==>', finele( 1 : totele + 1 )
-!!$      ewrite(3,*)'colele: ', size( colele ), ncolele, '==>', colele( 1 : ncolele )
-!!$      ewrite(3,*)'midele: ', size( midele ), '==>', midele( 1 : totele )
+
+      element_mesh=> extract_mesh(state(1),"P0DG") 
+      allocate(sparsity)
+      sparsity = make_sparsity_compactdgdouble(element_mesh,&
+           name="ElementConnectivity")
+      call insert(state(1),sparsity,name="ElementConnectivity")
+      call deallocate(sparsity)
+      deallocate(sparsity)
+
+      sparsity=> extract_csr_sparsity(state(1),name="ElementConnectivity")
+      finele => sparsity%findrm
+      midele => sparsity%centrm
+      colele => sparsity%colm
+
+
+      ncolele=size(colele)
 
       if(.not.(is_compact_overlapping)) then
       !-
