@@ -44,6 +44,8 @@ module cv_advection
   use sparse_tools
   use sparsity_patterns
 
+  use petsc_tools
+
 
   use shape_functions_Linear_Quadratic
   use shape_functions_NDim
@@ -51,8 +53,13 @@ module cv_advection
   use matrix_operations
   use Copy_Outof_State
   use boundary_conditions
+#ifdef HAVE_PETSC_MODULES
+  use petsc 
+#endif
 
   implicit none
+
+#include "petsc_legacy.h"
 
   INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1, WIC_T_BC_ROBIN = 2, &
        WIC_T_BC_DIRI_ADV_AND_ROBIN = 3, WIC_D_BC_DIRICHLET = 1, &
@@ -292,7 +299,7 @@ contains
 
       REAL, intent( in ) :: DT, CV_THETA, SECOND_THETA, CV_BETA
       REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-      REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DERIV
+      REAL, DIMENSION(: , : ), intent( in ) :: DERIV
       REAL, DIMENSION( : ), intent( in ) :: CV_P
       REAL, DIMENSION( : ), intent( in ) :: SOURCT
       REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT

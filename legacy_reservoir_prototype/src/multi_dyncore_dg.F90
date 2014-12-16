@@ -833,7 +833,7 @@ contains
         REAL, DIMENSION( : ), allocatable :: CT_RHS, DIAG_SCALE_PRES, &
         MCY_RHS, MCY, &
         CMC_PRECON, MASS_MN_PRES, MASS_CV, UP, U_RHS_CDP, &
-        UP_VEL, DGM_PHA, DIAG_P_SQRT
+        UP_VEL, DIAG_P_SQRT
         REAL, DIMENSION( :, :, : ), allocatable :: CDP, CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ele, x_nod1, x_nod2, x_nod3, cv_iloc, &
@@ -899,7 +899,6 @@ contains
             nullify(PIVIT_MAT)
             ALLOCATE( PIVIT_MAT( NDIM * NPHASE * U_NLOC, NDIM * NPHASE * U_NLOC, TOTELE )); PIVIT_MAT=0.0
         end if
-        ALLOCATE( DGM_PHA( NCOLDGM_PHA )) ; DGM_PHA=0.
 
         !################TEMPORARY ADAPT FROM OLD VARIABLES TO NEW###############
     
@@ -925,7 +924,29 @@ contains
         call allocate(deltaP,pressure%mesh,"DeltaP")
         call allocate(rhs_p,pressure%mesh,"PressureCorrectionRHS")
 
+        if (associated(velocity%mesh%halos)) then
+           halo => velocity%mesh%halos(2)
+        else
+           nullify(halo)
+        end if
+
+        NO_MATRIX_STORE = ( NCOLDGM_PHA <= 1 )
         JUST_BL_DIAG_MAT = .false.
+
+        IF (.not. ( JUST_BL_DIAG_MAT .OR. NO_MATRIX_STORE ) ) then
+
+           if (associated(halo)) then
+              sparsity=wrap(findgm_pha,colm=coldgm_pha,&
+                   name='MomentumSparsity',row_halo=halo,column_halo=halo)
+           else
+              sparsity=wrap(findgm_pha,colm=coldgm_pha,name='MomentumSparsity')
+           end if
+
+           Mat = allocate_momentum_matrix(sparsity,velocity)
+           
+           call deallocate(sparsity)
+        end IF
+
         !Calculate gravity source terms
         if ( have_option ( '/material_phase[0]/multiphase_properties/relperm_type' ) )then
            UDEN_ALL=0.0; UDENOLD_ALL=0.0
@@ -1032,7 +1053,7 @@ contains
         P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
         DT, &
         NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
-        DGM_PHA, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparcity
+        MAT, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparcity
         NCOLELE, FINELE, COLELE, & ! Element connectivity.
         NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & ! pressure matrix for projection method
         NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
@@ -1130,34 +1151,12 @@ contains
 
             ELSE
 
-
-                if( .false. ) then
-                   DO CV_NOD = 1, U_NONODS
-                      ewrite(2,*) 'u_nod=',cv_nod, &
-                           'findgm_pha=', FINDGM_PHA( CV_NOD ), FINDGM_PHA( CV_NOD + 1 ) - 1
-                      rsum = 0.0
-                      DO COUNT = FINDGM_PHA( CV_NOD ), FINDGM_PHA( CV_NOD + 1 ) - 1
-                         CV_JNOD = COLDGM_PHA( COUNT )
-                         ewrite(2,*) 'count,CV_JNOD,DGM_PHA(count):', count, CV_JNOD, DGM_PHA( count )
-                         if ( cv_nod /= cv_jnod ) rsum = rsum + abs( DGM_PHA( count ) )
-                      END DO
-                      ewrite(2,*) 'off_diag=',rsum
-                   END DO
-                   !stop 1243
-                end if
-
-
-
-
                 U_RHS_CDP = RESHAPE( U_RHS + CDP_tensor%val, (/ NDIM * NPHASE * U_NONODS /) )
                 call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
 
                 rhs%val=RESHAPE( U_RHS + CDP_tensor%val, (/ NDIM * NPHASE , U_NONODS /) )
               
                 call zero_non_owned(rhs)                      
-
-                mat=wrap_momentum_matrix(DGM_PHA,FINDGM_PHA,COLDGM_PHA,velocity) 
-
 
                 call zero(velocity)
                 packed_vel=as_packed_vector(velocity)
@@ -1518,7 +1517,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
     P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
-    DGM_PHA, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparcity
+    DGM_PETSC, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparcity
     NCOLELE, FINELE, COLELE, & ! Element connectivity.
     NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & ! pressure matrix for projection method
     NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
@@ -1583,7 +1582,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         REAL, intent( in ) :: DT
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDC
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLC
-        REAL, DIMENSION(  :  ), intent( inout ) :: DGM_PHA
+        type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDGM_PHA
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLDGM_PHA
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINELE
@@ -1677,7 +1676,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         DT, &
         U_RHS, &
         C, NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
-        DGM_PHA, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparsity
+        DGM_PETSC, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparsity
         NCOLELE, FINELE, COLELE, & ! Element connectivity.
         NCOLM, FINDM, COLM, MIDM,& !for the CV-FEM projection
         XU_NLOC, XU_NDGLN, &
@@ -1703,10 +1702,12 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
                 END DO
             END DO
 
-            CALL PUT_MOM_C_IN_GLOB_MAT( NPHASE,NDIM, &
-            NCOLDGM_PHA, DGM_PHA, FINDGM_PHA, &
-            NLENMCY, NCOLMCY, MCY, FINMCY, &
-            U_NONODS, NCOLC, C, FINDC )
+FLAbort('Global solve for pressure-mommentum is broken until nested matrices get impliented.')
+
+!            CALL PUT_MOM_C_IN_GLOB_MAT( NPHASE,NDIM, &
+!            NCOLDGM_PHA, DGM_PETSC, FINDGM_PHA, &
+!            NLENMCY, NCOLMCY, MCY, FINMCY, &
+!            U_NONODS, NCOLC, C, FINDC )
         END IF
 
 
@@ -1961,7 +1962,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
     DT, &      
     U_RHS, &
     C, NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
-    DGM_PHA, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparsity
+    DGM_PETSC, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparsity
     NCOLELE, FINELE, COLELE, & ! Element connectivity.
     NCOLM, FINDM, COLM, MIDM,& !For the CV-FEM projection
     XU_NLOC, XU_NDGLN, &
@@ -2011,7 +2012,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, :, : ), pointer, intent( inout ) :: C
         INTEGER, DIMENSION( : ), intent( in ) :: FINDC
         INTEGER, DIMENSION( : ), intent( in ) :: COLC
-        REAL, DIMENSION( : ), intent( inout ) :: DGM_PHA
+        type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
         INTEGER, DIMENSION( :), intent( in ) :: FINDGM_PHA
         INTEGER, DIMENSION( :), intent( in ) :: COLDGM_PHA
         INTEGER, DIMENSION(: ), intent( in ) :: FINELE
@@ -2887,7 +2888,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
 
         NO_MATRIX_STORE = NCOLDGM_PHA<=1
 
-        IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.NO_MATRIX_STORE) ) DGM_PHA = 0.0
+        IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.NO_MATRIX_STORE) ) call zero( dgm_petsc )
         if (.not.got_c_matrix) C = 0.0
         U_RHS = 0.0
         IF (.NOT.NO_MATRIX_STORE ) THEN!Only for inertia flow
@@ -5613,7 +5614,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         ! into the matrix DGM_PHA.
         IF(.NOT.NO_MATRIX_STORE) THEN
             CALL COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
-            DGM_PHA, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, & ! Force balance sparsity
+            DGM_PETSC, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, & ! Force balance sparsity
             NCOLELE, FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, U_NONODS, TOTELE , velocity, position,pressure)  ! Element connectivity.
             DEALLOCATE( DIAG_BIGM_CON )
             DEALLOCATE( BIGM_CON)
@@ -6520,7 +6521,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
     SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
-    DGM_PHA, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, & ! Force balance sparsity
+    DGM_PETSC, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, & ! Force balance sparsity
     NCOLELE, FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, U_NONODS, TOTELE, velocity, position, pressure )  ! Element connectivity.
         ! This subroutine combines the distributed and block diagonal for an element
         ! into the matrix DGM_PHA.
@@ -6529,7 +6530,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         !
         REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
         REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
-        REAL, DIMENSION( : ), intent( inout ) :: DGM_PHA
+        type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
         INTEGER, DIMENSION( :), intent( in ) :: FINDGM_PHA
         INTEGER, DIMENSION( :), intent( in ) :: COLDGM_PHA
         INTEGER, DIMENSION(: ), intent( in ) :: FINELE
@@ -6600,8 +6601,11 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                             ! New for rapid code ordering of variables...
                                             I=IDIM + (IPHASE-1)*NDIM_VEL + (U_ILOC-1)*NDIM_VEL*NPHASE
                                             J=JDIM + (JPHASE-1)*NDIM_VEL + (U_JLOC-1)*NDIM_VEL*NPHASE
+                                            GLOBI=(ELE-1)*U_NLOC + U_ILOC
+                                            GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
                                             COUNT = (COUNT_ELE-1)*(NDIM_VEL*NPHASE)**2 + (I-1)*NDIM_VEL*NPHASE*U_NLOC + J
-                                            DGM_PHA(COUNT) = LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
+                                            call addto(dgm_petsc, I , J , globi , globj , &
+                                                 LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
 
                                         ELSE
 
@@ -6619,15 +6623,9 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                                 U_JNOD_JDIM_JPHA = GLOBJ + (JDIM-1)*U_NONODS + ( JPHASE - 1 ) * NDIM_VEL*U_NONODS
                                             end if
 
-                                            COUNT=0
-                                            CALL POSINMAT( COUNT, U_INOD_IDIM_IPHA, U_JNOD_JDIM_JPHA, &
-                                            U_NONODS * NPHASE * NDIM_VEL, FINDGM_PHA, COLDGM_PHA, NCOLDGM_PHA )
-                                            IF(COUNT.NE.0) THEN
-
-                                                DGM_PHA(COUNT) = LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-                                                !DGM_PHA(COUNT) = DGM_PHA(COUNT)+LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC)
-
-                                            END IF
+                                            call addto(dgm_petsc,idim+ ( IPHASE - 1 ) * NDIM_VEL,&
+                                                 jdim+ ( JPHASE - 1 ) * NDIM_VEL, globi,globj, &
+                                                 LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
 
                                         END IF
 

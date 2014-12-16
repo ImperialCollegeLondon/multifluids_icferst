@@ -1963,11 +1963,11 @@
          product(velocity%dim),halo,fluidity_ordering=.true.)
 
     if (.not. IsParallel()) then
-       mat%M=csr2petsc_CreateSeqAIJ(sparsity, mat%row_numbering, &
-        mat%column_numbering, .false., use_inodes=.false.)
+       mat%M=full_CreateSeqAIJ(sparsity, mat%row_numbering, &
+        mat%column_numbering, .true., use_inodes=.false.)
     else
        mat%M=full_CreateMPIAIJ(sparsity, mat%row_numbering, &
-            mat%column_numbering, .false., use_inodes=.false.)
+            mat%column_numbering, .true., use_inodes=.false.)
     end if
 
     call MatSetOption(mat%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
@@ -1995,6 +1995,55 @@
     call deallocate(sparsity)
     
   end function wrap_momentum_matrix
+
+  function allocate_momentum_matrix(sparsity,velocity) result(Mat)
+    type(csr_sparsity), intent (inout) :: sparsity
+    type(tensor_field), intent (inout) :: velocity
+    type(halo_type), pointer:: halo
+    type(petsc_csr_matrix) :: mat
+    integer :: ierr
+
+
+    if (associated(velocity%mesh%halos)) then
+       halo => velocity%mesh%halos(2)
+    else
+       nullify(halo)
+    end if
+
+    mat%name="MomentumMatrix"
+
+    if (associated(halo)) then
+       mat%row_halo => halo
+       call incref(mat%row_halo)
+       mat%column_halo => halo
+       call incref(mat%column_halo)
+    else
+       nullify(mat%row_halo)
+       nullify(mat%column_halo)
+    end if
+
+    call allocate(mat%row_numbering,node_count(velocity),&
+         product(velocity%dim),halo,fluidity_ordering=.true.)
+    call allocate(mat%column_numbering,node_count(velocity),&
+         product(velocity%dim),halo,fluidity_ordering=.true.)
+
+    if (.not. IsParallel()) then
+       mat%M=full_CreateSeqAIJ(sparsity, mat%row_numbering, &
+        mat%column_numbering,.false.)
+    else
+       mat%M=full_CreateMPIAIJ(sparsity, mat%row_numbering, &
+            mat%column_numbering,.false.)
+    end if
+
+    call MatSetOption(mat%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
+    call MatSetOption(mat%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
+    call MatSetOption(mat%M, MAT_ROW_ORIENTED, PETSC_FALSE, ierr)
+    nullify(mat%refcount)
+    call addref_petsc_csr_matrix(mat)
+
+
+  end function allocate_momentum_matrix
+    
 
 
   subroutine apply_strong_bcs_multiphase(A , x , b)
