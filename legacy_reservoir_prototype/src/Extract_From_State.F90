@@ -726,7 +726,8 @@
            Velocity_U_Source, &
            Temperature, Temperature_Source
       real, dimension(:,:), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source
-      real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption, Permeability
+      real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption
+      real, dimension( :, :, : ), optional, intent( inout ) ::Permeability
 
 !!$ Local variables
       type( scalar_field ), pointer :: scalarfield
@@ -863,28 +864,29 @@
 !!$
 !!$ Extracting Permeability Field:
 !!$
-      Permeability = 0.
-      Conditional_PermeabilityField: if( have_option( '/porous_media/scalar_field::Permeability' ) ) then
+      if (present(permeability)) then
+          Permeability = 0.
+          Conditional_PermeabilityField: if( have_option( '/porous_media/scalar_field::Permeability' ) ) then
 
-         scalarfield => extract_scalar_field( state( 1 ), 'Permeability' )
-         do ele = 1, element_count( scalarfield ) 
-            element_nodes => ele_nodes( scalarfield, ele )
-            forall( idim = 1 : ndim ) Permeability( ele, idim, idim ) = scalarfield % val( element_nodes( 1 ) )
-         end do
+             scalarfield => extract_scalar_field( state( 1 ), 'Permeability' )
+             do ele = 1, element_count( scalarfield )
+                element_nodes => ele_nodes( scalarfield, ele )
+                forall( idim = 1 : ndim ) Permeability( ele, idim, idim ) = scalarfield % val( element_nodes( 1 ) )
+             end do
 
-      elseif( have_option( '/porous_media/tensor_field::Permeability' ) ) then
+          elseif( have_option( '/porous_media/tensor_field::Permeability' ) ) then
 
-         tensorfield => extract_tensor_field( state( 1 ), 'Permeability' )
-         option_path =  '/porous_media/tensor_field::Permeability'
-         call Extract_TensorFields_Outof_State( state, 1, &
-              tensorfield, option_path, &
-              Permeability )
+             tensorfield => extract_tensor_field( state( 1 ), 'Permeability' )
+             option_path =  '/porous_media/tensor_field::Permeability'
+             call Extract_TensorFields_Outof_State( state, 1, &
+                  tensorfield, option_path, &
+                  Permeability )
 
-      elseif( have_option( '/porous_media/vector_field::Permeability' ) ) then
-         FLAbort( 'Permeability Vector Field is not defined yet.' )
+          elseif( have_option( '/porous_media/vector_field::Permeability' ) ) then
+             FLAbort( 'Permeability Vector Field is not defined yet.' )
 
-      end if Conditional_PermeabilityField
-
+          end if Conditional_PermeabilityField
+      end if
       deallocate( cv_sndgln, p_sndgln, u_sndgln, dummy )
 
       return
