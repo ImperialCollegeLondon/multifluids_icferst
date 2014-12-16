@@ -724,8 +724,8 @@
       real, dimension( : ), intent( inout ) :: &
            Component, Component_Source, &
            Velocity_U_Source, &
-           Temperature, Temperature_Source
-      real, dimension(:,:), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source
+           Temperature_Source
+      real, dimension(:,:), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source, Temperature
       real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption, Permeability
 
 !!$ Local variables
@@ -854,9 +854,12 @@
               ']/scalar_field::Temperature' ) ) then
             scalarfield => extract_scalar_field( state( iphase ), 'Temperature' )
             knod = ( iphase - 1 ) * node_count( scalarfield )
+            !call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
+            !     Temperature( knod + 1 : knod + node_count( scalarfield ) ), &
+            !     field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) )
             call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
-                 Temperature( knod + 1 : knod + node_count( scalarfield ) ), &
-                 field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) )
+                 Temperature( iphase, : ), &
+                 field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) ) 
          end if Conditional_Temperature
       end do
 

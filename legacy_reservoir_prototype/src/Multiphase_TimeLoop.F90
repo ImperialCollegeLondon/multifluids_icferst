@@ -182,9 +182,8 @@
 
 !!$ Working arrays:
       real, dimension( : ), pointer :: &
-           Temperature, PhaseVolumeFraction, &
-           Component, Temperature_Old, &
-           PhaseVolumeFraction_Old, Component_Old, &
+           Component, &
+           Component_Old, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
            Component_Source, ScalarAdvectionField_Source, &
            ScalarField_Source_Store, ScalarField_Source_Component, &
@@ -197,7 +196,8 @@
 
       real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
 !!$
-      real, dimension( :, : ), pointer :: PhaseVolumeFraction_Source
+      real, dimension( :, : ), pointer :: Temperature, Temperature_Old, PhaseVolumeFraction, &
+           PhaseVolumeFraction_Old, PhaseVolumeFraction_Source
       real, dimension( :, :, : ), allocatable :: Permeability, Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
 !!$
@@ -391,12 +391,12 @@
 !!$ Allocating space for various arrays:
       allocate( &
 !!$
-           Temperature( nphase * cv_nonods ), &
-           PhaseVolumeFraction( nphase * cv_nonods ), Component( nphase * cv_nonods * ncomp ), &
+           Temperature( nphase, cv_nonods ), &
+           PhaseVolumeFraction( nphase, cv_nonods ), Component( nphase * cv_nonods * ncomp ), &
            DRhoDPressure( nphase, cv_nonods ), FEM_VOL_FRAC( nphase, cv_nonods ),&
 !!$
-           Temperature_Old( nphase * cv_nonods ), &
-           PhaseVolumeFraction_Old( nphase * cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
+           Temperature_Old( nphase, cv_nonods ), &
+           PhaseVolumeFraction_Old( nphase, cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
 !!$
            suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
            Mean_Pore_CV( cv_nonods ), &
@@ -590,11 +590,15 @@
 
       if (have_component_field) then
          !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
-         do cv_inod = 1, size(SAT_s,2)
-            do iphase = 1, size(SAT_s,1)
-               PhaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
-               PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
-            end do
+         !do cv_inod = 1, size(SAT_s,2)
+         !   do iphase = 1, size(SAT_s,1)
+         !      PhaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
+         !      PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
+         !   end do
+         !end do
+         do iphase = 1, size(SAT_s,1)
+            PhaseVolumeFraction(iphase, :) = SAT_s(iphase, :)
+            PhaseVolumeFraction_Old(iphase, :) = OldSAT_s(iphase, :)
          end do
          !#############################################################
       end if
@@ -946,12 +950,12 @@
                   Conditional_SmoothAbsorption: if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                      do cv_nodi = 1, cv_nonods
-                        if( PhaseVolumeFraction( cv_nodi ) > 0.95 ) then
+                        if( PhaseVolumeFraction( 1, cv_nodi ) > 0.95 ) then
                            do iphase = 1, nphase
                               do jphase = min( iphase + 1, nphase ), nphase
                                  Component_Absorption( cv_nodi, iphase, jphase ) = &
                                       Component_Absorption( cv_nodi, iphase, jphase ) * max( 0.01, &
-                                      20. * ( 1. - PhaseVolumeFraction( cv_nodi ) ) )
+                                      20. * ( 1. - PhaseVolumeFraction( 1, cv_nodi ) ) )
                               end do
                            end do
                         end if
@@ -1056,7 +1060,7 @@
                   if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                      do cv_nodi = 1, cv_nonods
-                        if( PhaseVolumeFraction( cv_nodi ) > 0.95 ) then
+                        if( PhaseVolumeFraction( 1, cv_nodi ) > 0.95 ) then
                            do iphase = 1, nphase
                               do jphase = min( iphase + 1, nphase ), nphase
                                  Component_Absorption( cv_nodi, iphase, jphase ) = &
@@ -1398,13 +1402,13 @@
 !!$ Allocating space for various arrays:
             allocate( &
 !!$
-                 Temperature( nphase * cv_nonods ), &
-                 PhaseVolumeFraction( nphase * cv_nonods ), SAT_s( nphase , cv_nonods ), Component( nphase * cv_nonods * ncomp ), &
+                 Temperature( nphase, cv_nonods ), &
+                 PhaseVolumeFraction( nphase, cv_nonods ), SAT_s( nphase , cv_nonods ), Component( nphase * cv_nonods * ncomp ), &
                  oldSAT_s( nphase , cv_nonods ), &
                  DRhoDPressure( nphase, cv_nonods ), &
 !!$
-                 Temperature_Old( nphase * cv_nonods ), &
-                 PhaseVolumeFraction_Old( nphase * cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
+                 Temperature_Old( nphase, cv_nonods ), &
+                 PhaseVolumeFraction_Old( nphase, cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
 !!$             
                  suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
                  Mean_Pore_CV( cv_nonods ), &
@@ -1471,11 +1475,15 @@
 
             if (have_component_field) then
                !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
-               do cv_inod = 1, size(SAT_s,2)
-                  do iphase = 1, size(SAT_s,1)
-                     phaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
-                     PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
-                  end do
+               !do cv_inod = 1, size(SAT_s,2)
+               !   do iphase = 1, size(SAT_s,1)
+               !      phaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
+               !      PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
+               !   end do
+               !end do
+               do iphase = 1, size(SAT_s,1)
+                  PhaseVolumeFraction(iphase, :) = SAT_s(iphase, :)
+                  PhaseVolumeFraction_Old(iphase, :) = OldSAT_s(iphase, :)
                end do
                !#############################################################
             end if

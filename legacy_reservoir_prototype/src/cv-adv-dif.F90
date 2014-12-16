@@ -287,7 +287,7 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
       REAL, DIMENSION( :, : ), intent( in ), target :: DEN_ALL, DENOLD_ALL
-      REAL, DIMENSION( : ), intent( in ) :: T2, T2OLD
+      REAL, DIMENSION( :, : ), intent( in ) :: T2, T2OLD
       REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (NPHASE,CV_NONODS)
       REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
       REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
@@ -929,8 +929,10 @@ contains
 
 !         IF ( IGOT_T2 == 1 ) THEN
          IF ( GOT_T2 ) THEN
-            T2_ALL( IPHASE, : ) = T2( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
-            T2OLD_ALL( IPHASE, : ) = T2OLD( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
+            !T2_ALL( IPHASE, : ) = T2( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
+            !T2OLD_ALL( IPHASE, : ) = T2OLD( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
+            T2_ALL( IPHASE, : ) = T2( IPHASE, : )
+            T2OLD_ALL( IPHASE, : ) = T2OLD( IPHASE, : )
          ELSE IF (.false.) THEN
 !         ELSE IF (THERMAL) THEN
 ! Change this for thermal...
