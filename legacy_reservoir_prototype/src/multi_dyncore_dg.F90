@@ -660,8 +660,8 @@ contains
               SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
               mass_ele_transp,&
               StorageIndexes, 3 ,&
-              OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc, &!Capillary variables
-              indx = StorageIndexes(35), Storname="Get_Int_Vel_OLD")
+              OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc)!, &!Capillary variables
+              !indx = StorageIndexes(35), Storname="Get_Int_Vel_OLD")
 
          call assemble_global_multiphase_petsc_csr(petsc_acv,&
               block_acv,dense_block_matrix,&
@@ -878,7 +878,6 @@ contains
         ALLOCATE( DIAG_SCALE_PRES( CV_NONODS )) ; DIAG_SCALE_PRES=0.
         ALLOCATE( U_RHS( NDIM, NPHASE, U_NONODS )) ; U_RHS=0.
         ALLOCATE( MCY_RHS( NDIM * NPHASE * U_NONODS + CV_NONODS )) ; MCY_RHS=0.
-!        ALLOCATE( C( NDIM, NPHASE, NCOLC )) ; C=0.
         ALLOCATE( MCY( NCOLMCY )) ; MCY=0.
         ALLOCATE( CMC_PRECON( NCOLCMC*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
         ALLOCATE( MASS_MN_PRES( NCOLCMC )) ;MASS_MN_PRES=0.
@@ -964,23 +963,8 @@ contains
 
 
         ! calculate the viscosity for the momentum equation...
-        !if ( its == 1 ) 
         uDiffusion_VOL = 0.0
         call calculate_viscosity( state, packed_state, ncomp, nphase, ndim, mat_nonods, mat_ndgln, uDiffusion )
-
-        !ewrite(3,*) 'uDiffusion'
-        !ewrite(3,*) '+++',minval( uDiffusion(:,1,1,1) ), maxval( uDiffusion(:,1,1,1) )
-        !ewrite(3,*) '+++',minval( uDiffusion(:,1,2,1) ), maxval( uDiffusion(:,1,2,1) )
-        !ewrite(3,*) '+++',minval( uDiffusion(:,1,3,1) ), maxval( uDiffusion(:,1,3,1) )
-
-        !ewrite(3,*) '+++',minval( uDiffusion(:,2,1,1) ), maxval( uDiffusion(:,2,1,1) )
-        !ewrite(3,*) '+++',minval( uDiffusion(:,2,2,1) ), maxval( uDiffusion(:,2,2,1) )
-        !ewrite(3,*) '+++',minval( uDiffusion(:,2,3,1) ), maxval( uDiffusion(:,2,3,1) )
-
-        !ewrite(3,*) '+++',minval( uDiffusion(:,3,1,1) ), maxval( uDiffusion(:,3,1,1) )
-        !ewrite(3,*) '+++',minval( uDiffusion(:,3,2,1) ), maxval( uDiffusion(:,3,2,1) )
-        !ewrite(3,*) '+++',minval( uDiffusion(:,3,3,1) ), maxval( uDiffusion(:,3,3,1) )
-
 
         ! stabilisation for high aspect ratio problems - switched off
         call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
@@ -1665,10 +1649,10 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         ALLOCATE( T2( CV_NONODS * NPHASE * IGOT_T2 )) ; T2 = 0.
         ALLOCATE( T2OLD( CV_NONODS * NPHASE * IGOT_T2 )) ; T2OLD =0.
         ALLOCATE( THETA_GDIFF( NPHASE * IGOT_T2, CV_NONODS * IGOT_T2 )) ; THETA_GDIFF = 0.
-        ALLOCATE( ACV( NCOLACV )) ; ACV = 0.
-        ALLOCATE( BLOCK_ACV( NPHASE*size(SMALL_COLACV )))  ; BLOCK_ACV = 0.
-        ALLOCATE( DENSE_BLOCK_MATRIX( NPHASE,nphase,cv_nonods))  ; DENSE_BLOCK_MATRIX = 0.
-        ALLOCATE( CV_RHS( CV_NONODS * NPHASE )) ; CV_RHS = 0.
+        ALLOCATE( ACV( 0 ))
+        ALLOCATE( BLOCK_ACV( 0))
+        ALLOCATE( DENSE_BLOCK_MATRIX( 0,0,0))
+        ALLOCATE( CV_RHS( 0 ))
         ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE )) ; TDIFFUSION = 0.
         ALLOCATE( MEAN_PORE_CV( CV_NONODS )) ; MEAN_PORE_CV = 0.
         allocate( dummy_transp( totele ) ) ; dummy_transp = 0.
@@ -1774,7 +1758,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         MEAN_PORE_CV, &
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
         dummy_transp, &
-        StorageIndexes, 3,indx = StorageIndexes(35), Storname="Get_Int_Vel_OLD")
+        StorageIndexes, 3)!,indx = StorageIndexes(35), Storname="Get_Int_Vel_OLD")
 
         ewrite(3,*)'Back from cv_assemb'
 
