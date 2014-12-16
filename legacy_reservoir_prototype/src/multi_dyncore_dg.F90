@@ -1069,7 +1069,7 @@ contains
         P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
         DT, &
         NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
-        MAT, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparcity
+        MAT, NO_MATRIX_STORE, &! Force balance
         NCOLELE, FINELE, COLELE, & ! Element connectivity.
         NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & ! pressure matrix for projection method
         NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
@@ -1533,7 +1533,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
     P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
-    DGM_PETSC, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparcity
+    DGM_PETSC, NO_MATRIX_STORE, &! Force balance
     NCOLELE, FINELE, COLELE, & ! Element connectivity.
     NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & ! pressure matrix for projection method
     NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
@@ -1569,7 +1569,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
         STOTEL, U_SNLOC, P_SNLOC, &
         CV_SNLOC, &
-        NCOLC, NCOLDGM_PHA, NCOLELE, NCOLCMC, NCOLACV, NCOLCT, &
+        NCOLC, NCOLELE, NCOLCMC, NCOLACV, NCOLCT, &
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, XU_NLOC, &
         NLENMCY, NCOLMCY, IGOT_THETA_FLUX, SCVNGI_THETA, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, IPLIKE_GRAD_SOU,  IDIVID_BY_VOL_FRAC
@@ -1599,8 +1599,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDC
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLC
         type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
-        INTEGER, DIMENSION(  :  ), intent( in ) :: FINDGM_PHA
-        INTEGER, DIMENSION(  :  ), intent( in ) :: COLDGM_PHA
+        logical :: NO_MATRIX_STORE
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINELE
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLELE
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDCMC
@@ -1692,7 +1691,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         DT, &
         U_RHS, &
         C, NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
-        DGM_PETSC, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparsity
+        DGM_PETSC, NO_MATRIX_STORE, &! Force balance
         NCOLELE, FINELE, COLELE, & ! Element connectivity.
         NCOLM, FINDM, COLM, MIDM,& !for the CV-FEM projection
         XU_NLOC, XU_NDGLN, &
@@ -1978,7 +1977,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
     DT, &      
     U_RHS, &
     C, NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
-    DGM_PETSC, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, &! Force balance sparsity
+    DGM_PETSC, NO_MATRIX_STORE, &! Force balance
     NCOLELE, FINELE, COLELE, & ! Element connectivity.
     NCOLM, FINDM, COLM, MIDM,& !For the CV-FEM projection
     XU_NLOC, XU_NDGLN, &
@@ -2000,7 +1999,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
         U_ELE_TYPE, P_ELE_TYPE, U_NONODS, CV_NONODS, X_NONODS, &
         MAT_NONODS, STOTEL, U_SNLOC, P_SNLOC, CV_SNLOC, &
-        NCOLC, NCOLDGM_PHA, NCOLELE, XU_NLOC, IPLIKE_GRAD_SOU, NDIM_VEL, IDIVID_BY_VOL_FRAC, NCOLM
+        NCOLC,  NCOLELE, XU_NLOC, IPLIKE_GRAD_SOU, NDIM_VEL, IDIVID_BY_VOL_FRAC, NCOLM
 ! If IDIVID_BY_VOL_FRAC==1 then modify the stress term to take into account dividing through by volume fraction. 
         ! NDIM_VEL
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
@@ -2029,8 +2028,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         INTEGER, DIMENSION( : ), intent( in ) :: FINDC
         INTEGER, DIMENSION( : ), intent( in ) :: COLC
         type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
-        INTEGER, DIMENSION( :), intent( in ) :: FINDGM_PHA
-        INTEGER, DIMENSION( :), intent( in ) :: COLDGM_PHA
+        logical :: NO_MATRIX_STORE
         INTEGER, DIMENSION(: ), intent( in ) :: FINELE
         INTEGER, DIMENSION( : ), intent( in ) :: COLELE
         INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -2268,7 +2266,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
         INTEGER :: P_INOD, U_INOD_IPHA, U_JNOD, U_KLOC2, U_NODK2, U_NODK2_PHA, GLOBJ_IPHA, IDIM_VEL
-        logical firstst,NO_MATRIX_STORE
+        logical firstst
         character( len = 100 ) :: name
 
         logical :: mom_conserv, lump_mass, GOT_OTHER_ELE, BETWEEN_ELE_STAB
@@ -2482,8 +2480,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !ewrite(3,*) 'Just double-checking sparsity patterns memory allocation:'
         !ewrite(3,*) 'FINDC with size,', size( FINDC ), ':', FINDC( 1 :  size( FINDC ) )
         !ewrite(3,*) 'COLC with size,', size( COLC ), ':', COLC( 1 :  size( COLC ) )
-        !ewrite(3,*) 'FINDGM_PHA with size,', size( FINDGM_PHA ), ':', FINDGM_PHA( 1 :  size( FINDGM_PHA ) )
-        !ewrite(3,*) 'COLDGM_PHA with size,', size( COLDGM_PHA ), ':', COLDGM_PHA( 1 :  size( COLDGM_PHA ) )
         !ewrite(3,*) 'FINELE with size,', size( FINELE ), ':', FINELE( 1 :  size( FINELE ) )
         !ewrite(3,*) 'COLELE with size,', size( COLELE ), ':', COLELE( 1 :  size( COLELE ) )
 
@@ -2901,8 +2897,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         D1   = ( NDIM == 1 )
         DCYL = ( NDIM ==-2 )
         D3   = ( NDIM == 3 )
-
-        NO_MATRIX_STORE = NCOLDGM_PHA<=1
 
         IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.NO_MATRIX_STORE) ) call zero( dgm_petsc )
         if (.not.got_c_matrix) C = 0.0
@@ -5297,13 +5291,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                               J2=JDIM + (JPHASE-1)*NDIM_VEL + (U_JLOC2-1)*NDIM_VEL*NPHASE
                               JU2_NOD_DIM_PHA = J2 + (ELE2-1)*NDIM_VEL*NPHASE*U_NLOC
 
-!                              IF(.NOT.NO_MATRIX_STORE) THEN
-!                                 CALL POSINMAT( COUNT, IU_NOD_DIM_PHA, JU_NOD_DIM_PHA, &
-!                                   U_NONODS * NPHASE * NDIM_VEL, FINDGM_PHA, COLDGM_PHA, NCOLDGM_PHA )
-!                                 CALL POSINMAT( COUNT2, IU_NOD_DIM_PHA, JU2_NOD_DIM_PHA, &
-!                                   U_NONODS * NPHASE * NDIM_VEL, FINDGM_PHA, COLDGM_PHA, NCOLDGM_PHA )
-!                              ENDIF
-
 
 
                                     VLM=0.0
@@ -5630,7 +5617,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! into the matrix DGM_PHA.
         IF(.NOT.NO_MATRIX_STORE) THEN
             CALL COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
-            DGM_PETSC, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, & ! Force balance sparsity
+            DGM_PETSC, &
             NCOLELE, FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, U_NONODS, TOTELE , velocity, position,pressure)  ! Element connectivity.
             DEALLOCATE( DIAG_BIGM_CON )
             DEALLOCATE( BIGM_CON)
@@ -5640,9 +5627,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !ewrite(3,*)'p=',p
         !ewrite(3,*)'U_RHS:',U_RHS
         !stop 222
-        !do i=1, ndim*nphase*u_nonods
-        !   ewrite(3,*) i, sum(DGM_PHA(FINDGM_PHA(i):FINDGM_PHA(i+1)-1))
-        !end do
 
         !EWRITE(3,*)'-STOTEL, U_SNLOC, P_SNLOC:', STOTEL, U_SNLOC, P_SNLOC
         !EWRITE(3,*)'-WIC_P_BC:', WIC_P_BC( 1 : STOTEL * NPHASE )
@@ -6537,18 +6521,16 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
     SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
-    DGM_PETSC, NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, & ! Force balance sparsity
+    DGM_PETSC, & 
     NCOLELE, FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, U_NONODS, TOTELE, velocity, position, pressure )  ! Element connectivity.
         ! This subroutine combines the distributed and block diagonal for an element
         ! into the matrix DGM_PHA.
         IMPLICIT NONE
-        INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, U_NONODS, TOTELE, NCOLDGM_PHA, NCOLELE
+        INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, U_NONODS, TOTELE, NCOLELE
         !
         REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
         REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
         type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
-        INTEGER, DIMENSION( :), intent( in ) :: FINDGM_PHA
-        INTEGER, DIMENSION( :), intent( in ) :: COLDGM_PHA
         INTEGER, DIMENSION(: ), intent( in ) :: FINELE
         INTEGER, DIMENSION( : ), intent( in ) :: COLELE
         ! NEW_ORDERING then order the matrix: IDIM,IPHASE,UILOC,ELE
