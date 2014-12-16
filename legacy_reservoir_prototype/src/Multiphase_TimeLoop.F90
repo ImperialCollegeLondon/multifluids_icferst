@@ -185,7 +185,7 @@
            Component, &
            Component_Old, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
-           Component_Source, ScalarAdvectionField_Source, &
+           Component_Source, &
            ScalarField_Source_Store, ScalarField_Source_Component, &
            mass_ele, dummy_ele
 
@@ -198,7 +198,7 @@
 !!$
       real, dimension( :, : ), pointer :: Temperature, Temperature_Old, PhaseVolumeFraction, &
            PhaseVolumeFraction_Old, PhaseVolumeFraction_Source
-      real, dimension( :, :, : ), allocatable :: Permeability, Material_Absorption, Material_Absorption_Stab, &
+      real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
 !!$
            Component_Diffusion_Operator_Coefficient
@@ -208,15 +208,6 @@
 
       real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
            sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-
-!!$ Material_Absorption_Stab = u_abs_stab; Material_Absorption = u_absorb; ScalarField_Absorption = v_absorb
-!!$ Component_Absorption = comp_absorb; ScalarAdvectionField_Absorption = t_absorb
-!!$ Velocity_U_Source = u_source, ScalarField_Source = v_source, Component_Source = comp_source,
-!!$ ScalarAdvectionField_Source = Temperature_Source = t_source; Component_Diffusion_Operator_Coefficient = comp_diff_coef
-!!$ Momentum_Diffusion = udiffusion; ScalarAdvectionField_Diffusion = tdiffusion, 
-!!$ Component_Diffusion = comp_diffusion
-
-      !character( len = option_path_len ) :: eos_option_path( 1 )
 
       integer :: stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod
       real, dimension( : ), allocatable :: rsum
@@ -239,7 +230,7 @@
       integer :: checkpoint_number
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-      integer, dimension (40) :: StorageIndexes
+      integer, dimension (34) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
       !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
       !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
@@ -254,7 +245,6 @@
       !PROJ_CV_TO_FEM_state          : 31 (disabled)
       !Capillary pressure            : 32 (Pe), 33 (exponent a)
       !PIVIT_MAT (inverted)          : 34
-      !Get_INT VEL                   : 35:40 (Currently only 35 used)
 
       !Working pointers
       real, dimension(:,:), pointer :: SAT_s, OldSAT_s, FESAT_s
@@ -405,9 +395,6 @@
            Temperature_Source( nphase * cv_nonods ), &
            Velocity_U_Source( u_nonods * nphase * ndim ), &
            Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
-           ScalarAdvectionField_Source( cv_nonods * nphase ), &
-!!$
-           Permeability( totele, ndim, ndim ), &
 !!$
            PhaseVolumeFraction_Source( nphase, cv_nonods ), &
            Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -442,9 +429,6 @@
 !!$
       PhaseVolumeFraction_Source=0. ; Velocity_U_Source=0.
       Velocity_U_Source_CV=0. ; Component_Source=0.
-      ScalarAdvectionField_Source=0.
-!!$
-      Permeability=0.
 !!$
       Material_Absorption=0.
       Velocity_Absorption=0.
@@ -481,8 +465,7 @@
            SAT_s, PhaseVolumeFraction_Source,&
            Component, Component_Source, &
            Velocity_U_Source, Velocity_Absorption, &
-           Temperature, Temperature_Source, &
-           Permeability )
+           Temperature, Temperature_Source)
       FESAT_s = 0; OldSAT_s = 0.
 !!$ Calculate diagnostic fields
       call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
@@ -608,9 +591,6 @@
       checkpoint_number=1
       Loop_Time: do
 !!$
-        !We make sure that every time step the storage of get_int_vel is recalculated
-        !without removing the values. !DO NOT SET THESE VALUES TO ZERO HERE!!
-        StorageIndexes(35:40) = - abs(StorageIndexes(35:40))
 
          ewrite(2,*) '    NEW DT', itime+1
 
@@ -1317,11 +1297,11 @@
                  PhaseVolumeFraction_Old, Component_Old, &
                  DRhoDPressure, &
                  Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
-                 Component_Source, ScalarAdvectionField_Source, &
+                 Component_Source, &
                  suf_sig_diagten_bc, &
                  theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
                  mass_ele, dummy_ele, &
-                 Permeability, Material_Absorption, Material_Absorption_Stab, &
+                 Material_Absorption, Material_Absorption_Stab, &
                  Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
                  Component_Diffusion_Operator_Coefficient, &
                  Momentum_Diffusion, Momentum_Diffusion_Vol, ScalarAdvectionField_Diffusion, &
@@ -1417,9 +1397,6 @@
                  Temperature_Source( cv_nonods * nphase ), &
                  Velocity_U_Source( u_nonods * nphase * ndim ), &
                  Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
-                 ScalarAdvectionField_Source( cv_nonods * nphase ), &
-!!$
-                 Permeability( totele, ndim, ndim ), &
 !!$
                  PhaseVolumeFraction_Source( nphase, cv_nonods ), &
                  Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -1445,13 +1422,10 @@
             Component=0. ; Component_Source=0.
             Component_Diffusion=0. ; Component_Absorption=0.
 !!$
-            Permeability=0.
-!!$
 !!$
             PhaseVolumeFraction=0. ; PhaseVolumeFraction_Old=0. ; PhaseVolumeFraction_Source=0.
 !!$
             ScalarAdvectionField_Diffusion=0. ; ScalarField_Absorption=0.
-            ScalarAdvectionField_Source=0.
 !!$
             Material_Absorption=0. ; Material_Absorption_Stab=0.
 !!$
@@ -1467,20 +1441,13 @@
                  SAT_s, PhaseVolumeFraction_Source, &
                  Component, Component_Source, &
                  Velocity_U_Source, Velocity_Absorption, &
-                 Temperature,  Temperature_Source, &
-                 Permeability )
+                 Temperature,  Temperature_Source )
 
             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
                  OldPhaseVolumeFraction=OldSAT_s,FEPhaseVolumeFraction = FESAT_s )
 
             if (have_component_field) then
                !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
-               !do cv_inod = 1, size(SAT_s,2)
-               !   do iphase = 1, size(SAT_s,1)
-               !      phaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
-               !      PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
-               !   end do
-               !end do
                do iphase = 1, size(SAT_s,1)
                   PhaseVolumeFraction(iphase, :) = SAT_s(iphase, :)
                   PhaseVolumeFraction_Old(iphase, :) = OldSAT_s(iphase, :)
@@ -1584,10 +1551,10 @@
            PhaseVolumeFraction_Old, Component_Old, &
            DRhoDPressure, FEM_VOL_FRAC, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
-           Component_Source, ScalarAdvectionField_Source, &
+           Component_Source, &
            theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
            mass_ele, dummy_ele, &
-           Permeability, Material_Absorption, Material_Absorption_Stab, &
+           Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
            Component_Diffusion_Operator_Coefficient, &
            Momentum_Diffusion, Momentum_Diffusion_Vol, ScalarAdvectionField_Diffusion, &

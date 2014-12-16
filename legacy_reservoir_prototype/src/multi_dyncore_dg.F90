@@ -30,7 +30,6 @@
 module multiphase_1D_engine
 
     use elements
-    use fields
     use field_options
     use state_module
     use spud
@@ -38,7 +37,6 @@ module multiphase_1D_engine
     use futils, only: int2str
 
     use Fields_Allocates, only : allocate
-    use petsc
     use sparse_tools_petsc
 
     use solvers_module
@@ -665,8 +663,7 @@ contains
               SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
               mass_ele_transp,&
               StorageIndexes, 3 ,&
-              OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc)!, &!Capillary variables
-              !indx = StorageIndexes(35), Storname="Get_Int_Vel_OLD")
+              OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc)!Capillary variables
 
          call assemble_global_multiphase_petsc_csr(petsc_acv,&
               block_acv,dense_block_matrix,&
@@ -838,7 +835,7 @@ contains
         MCY_RHS, MCY, &
         CMC_PRECON, MASS_MN_PRES, MASS_CV, UP, U_RHS_CDP, &
         UP_VEL, DIAG_P_SQRT
-        REAL, DIMENSION( :, :, : ), allocatable :: CDP, CT, U_RHS, DU_VEL, U_RHS_CDP2
+        REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ele, x_nod1, x_nod2, x_nod3, cv_iloc, &
         cv_nod1, cv_nod2, cv_nod3, mat_nod1, u_iloc, u_nod, u_nod_pha, ndpset, ierr
@@ -1756,7 +1753,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         MEAN_PORE_CV, &
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
         dummy_transp, &
-        StorageIndexes, 3)!,indx = StorageIndexes(35), Storname="Get_Int_Vel_OLD")
+        StorageIndexes, 3)
 
         ewrite(3,*)'Back from cv_assemb'
 
