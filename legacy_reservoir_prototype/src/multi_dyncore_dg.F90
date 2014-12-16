@@ -137,7 +137,7 @@ contains
     integer, dimension (:,:) :: global_dense_block_acv
     INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
     INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-    REAL, DIMENSION( : ), intent( in ) :: T2, T2OLD
+    REAL, DIMENSION( :, : ), intent( in ) :: T2, T2OLD
     REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
     REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
     REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
@@ -545,7 +545,8 @@ contains
       REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
       REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
       REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
-      REAL, DIMENSION( : ), allocatable :: T2, T2OLD, MEAN_PORE_CV
+      REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD 
+      REAL, DIMENSION( : ), allocatable ::MEAN_PORE_CV
       REAL, DIMENSION( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
       REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
       LOGICAL :: GET_THETA_FLUX
@@ -579,8 +580,12 @@ contains
       GET_THETA_FLUX = .FALSE.
       IGOT_T2 = 0
 
-      ALLOCATE( T2( CV_NONODS * NPHASE * IGOT_T2 ))
-      ALLOCATE( T2OLD( CV_NONODS * NPHASE * IGOT_T2 ))
+      !ALLOCATE( T2( CV_NONODS * NPHASE * IGOT_T2 ))
+      !ALLOCATE( T2OLD( CV_NONODS * NPHASE * IGOT_T2 ))
+      IF ( IGOT_T2 == 1 ) THEN
+         ALLOCATE( T2( NPHASE, CV_NONODS ))
+         ALLOCATE( T2OLD( NPHASE, CV_NONODS ))
+      END IF
       ALLOCATE( THETA_GDIFF( NPHASE * IGOT_T2, CV_NONODS * IGOT_T2 ))
 
       ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
@@ -696,8 +701,10 @@ contains
       DEALLOCATE( DIAG_SCALE_PRES )
       DEALLOCATE( CT_RHS )
       DEALLOCATE( TDIFFUSION )
-      DEALLOCATE( T2 )
-      DEALLOCATE( T2OLD )
+      IF ( IGOT_T2 == 1 ) THEN
+         DEALLOCATE( T2 )
+         DEALLOCATE( T2OLD )
+      END IF
       DEALLOCATE( THETA_GDIFF )
       call deallocate(rhs_field)
 
@@ -1634,7 +1641,8 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
         REAL, DIMENSION( : , : ), pointer :: DEN_OR_ONE, DENOLD_OR_ONE
-        REAL, DIMENSION( : ), allocatable :: T2, T2OLD, MEAN_PORE_CV
+        REAL, DIMENSION( : ), allocatable :: MEAN_PORE_CV
+        REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
         LOGICAL :: GET_THETA_FLUX, Q_SCHEME
         INTEGER :: IGOT_T2, I, P_SJLOC, SELE, U_SILOC, IGOT_THERM_VIS
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM, X_ILOC, X_INOD, MAT_INOD, S, E
@@ -1645,8 +1653,12 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
 
-        ALLOCATE( T2( CV_NONODS * NPHASE * IGOT_T2 )) ; T2 = 0.
-        ALLOCATE( T2OLD( CV_NONODS * NPHASE * IGOT_T2 )) ; T2OLD =0.
+        !ALLOCATE( T2( CV_NONODS * NPHASE * IGOT_T2 )) ; T2 = 0.
+        !ALLOCATE( T2OLD( CV_NONODS * NPHASE * IGOT_T2 )) ; T2OLD =0.
+        IF ( IGOT_T2 == 1 ) THEN
+           ALLOCATE( T2( NPHASE, CV_NONODS )) ; T2 = 0.
+           ALLOCATE( T2OLD( NPHASE, CV_NONODS )) ; T2OLD =0.
+        END IF
         ALLOCATE( THETA_GDIFF( NPHASE * IGOT_T2, CV_NONODS * IGOT_T2 )) ; THETA_GDIFF = 0.
         ALLOCATE( ACV( 0 ))
         ALLOCATE( BLOCK_ACV( 0))
@@ -1775,8 +1787,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             FINDCMC, NCOLCMC, MASS_MN_PRES )
         END IF
 
-        DEALLOCATE( T2 )
-        DEALLOCATE( T2OLD )
+        IF ( IGOT_T2 == 1 ) THEN
+           DEALLOCATE( T2 )
+           DEALLOCATE( T2OLD )
+        END IF
         DEALLOCATE( THETA_GDIFF )
         DEALLOCATE( ACV )
         DEALLOCATE( BLOCK_ACV )
@@ -8261,38 +8275,38 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             ALLOCATE( THERM_U_DIFFUSION_VOL(NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
 
 
-            CALL INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                 tfield, tfield,tfield,&
-            NCOLACV, FINACV, COLACV, MIDACV, &
-            SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-            block_to_global_acv, global_dense_block_acv, &
-            NCOLCT, FINDCT, COLCT, &
-            CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-            U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
-            NPHASE,  &
-            CV_NLOC, U_NLOC, X_NLOC,  &
-            CV_NDGLN, X_NDGLN, U_NDGLN, &
-            CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-!            CURVATURE, VOLUME_FRAC, &!
-            MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-            CV_DISOPT, CV_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
-            RZERO_DIAGTEN, &
-            RZERO, &
-            RZERO, T_ABSORB, RZERO, &
-            NDIM,  &
-            NCOLM, FINDM, COLM, MIDM, &
-            XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-            RDUM4, RDUM4, &
-            IGOT_T2, CURVATURE, VOLUME_FRAC,IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
-            DUMMY_THETA_GDIFF, &
-            IN_ELE_UPWIND, DG_ELE_UPWIND, &
-            NOIT_DIM, &
+            !CALL INTENERGE_ASSEM_SOLVE( state, packed_state, &
+            !     tfield, tfield,tfield,&
+            !NCOLACV, FINACV, COLACV, MIDACV, &
+            !SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
+            !block_to_global_acv, global_dense_block_acv, &
+            !NCOLCT, FINDCT, COLCT, &
+            !CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
+            !U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
+            !NPHASE,  &
+            !CV_NLOC, U_NLOC, X_NLOC,  &
+            !CV_NDGLN, X_NDGLN, U_NDGLN, &
+            !CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
+!!            CURVATURE, VOLUME_FRAC, &!
+            !MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+            !CV_DISOPT, CV_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
+            !RZERO_DIAGTEN, &
+            !RZERO, &
+            !RZERO, T_ABSORB, RZERO, &
+            !NDIM,  &
+            !NCOLM, FINDM, COLM, MIDM, &
+            !XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+            !RDUM4, RDUM4, &
+            !IGOT_T2, CURVATURE, VOLUME_FRAC,IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+            !DUMMY_THETA_GDIFF, &
+            !IN_ELE_UPWIND, DG_ELE_UPWIND, &
+            !NOIT_DIM, &
             ! nits_flux_lim_t
-            RZERO, &
-            option_path = '/material_phase[0]/scalar_field::Pressure', &
-            mass_ele_transp = dummy_ele, &
-            thermal = .FALSE.,&
-            StorageIndexes=StorageIndexes, icomp=-1)
+            !RZERO, &
+            !option_path = '/material_phase[0]/scalar_field::Pressure', &
+            !mass_ele_transp = dummy_ele, &
+            !thermal = .FALSE.,&
+            !StorageIndexes=StorageIndexes, icomp=-1)
 
             DEALLOCATE(T_ABSORB)
 
