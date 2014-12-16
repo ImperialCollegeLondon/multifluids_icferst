@@ -851,7 +851,7 @@
                     dt, &
 !!$
                     NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn 
-                    NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, MIDDGM_PHA, &! Force balance sparsity
+                    NCOLDGM_PHA, &! Force balance 
                     NCOLELE, FINELE, COLELE, & ! Element connectivity.
                     NCOLCMC, FINDCMC, COLCMC, MIDCMC, & ! pressure matrix for projection method
                     NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
@@ -1620,8 +1620,11 @@
 
         type(csr_sparsity), pointer :: sparsity
         type(scalar_field), pointer :: sfield
+        type(tensor_field), pointer :: tfield
 
         integer ic
+
+        type(halo_type), pointer :: halo
 
 
 
@@ -1639,14 +1642,41 @@
         sparsity=wrap(findct,colm=colct,name='CTMatrixSparsity')
         call insert(packed_state,sparsity,'CTMatrixSparsity')
         call deallocate(sparsity)
-        sparsity=wrap(findcmc,colm=colcmc,name='CMCMatrixSparsity')
-        call insert(packed_state,sparsity,'CMCMatrixSparsity')
-        call deallocate(sparsity)
+
         sparsity=wrap(findm,midm,colm=colm,name='CVFEMSparsity')
         call insert(packed_state,sparsity,'CVFEMSparsity')
         call deallocate(sparsity)
 
         sfield=>extract_scalar_field(packed_state,"FEPressure")
+
+        if (associated( sfield%mesh%halos)) then
+           sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity',&
+                row_halo=sfield%mesh%halos(2),&
+                column_halo=sfield%mesh%halos(2))
+        else
+           sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity')
+        end if
+        
+        call insert(packed_state,sparsity,'CMCSparsity')
+        call deallocate(sparsity)
+
+        tfield=>extract_tensor_field(packed_state,"PackedVelocity")
+        if (associated(tfield%mesh%halos)) then
+           halo => tfield%mesh%halos(2)
+        else
+           nullify(halo)
+        end if
+        if (associated(halo)) then
+           sparsity=wrap(findgm_pha,colm=coldgm_pha,&
+                name='MomentumSparsity',row_halo=halo,column_halo=halo)
+        else
+           sparsity=wrap(findgm_pha,colm=coldgm_pha,name="MomentumSparsity")
+        end if
+        call insert(packed_state,sparsity,"MomentumSparsity")
+        call deallocate(sparsity)
+
+
+
         sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
              "PressureMassMatrixSparsity")
         call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
@@ -1656,6 +1686,9 @@
         do ic=1,size(multicomponent_state)
            call insert(multicomponent_state(ic),sparsity,"PressureMassMatrixSparsity")
         end do
+
+
+
 
         sparsity=> extract_csr_sparsity(state(1),"ElementConnectivity")
         call insert(packed_state,sparsity,"ElementConnectivity")

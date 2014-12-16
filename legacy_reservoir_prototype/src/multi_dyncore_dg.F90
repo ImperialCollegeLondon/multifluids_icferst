@@ -732,7 +732,7 @@ contains
     DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
-    NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, MIDDGM_PHA, &! Force balance sparcity
+    NCOLDGM_PHA, &! Force balance
     NCOLELE, FINELE, COLELE, & ! Element connectivity.
     NCOLCMC, FINDCMC, COLCMC, MIDCMC, & ! pressure matrix for projection method
     NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
@@ -792,9 +792,6 @@ contains
         REAL, intent( in ) :: DT
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDC
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLC
-        INTEGER, DIMENSION(  :  ), intent( in ) :: FINDGM_PHA
-        INTEGER, DIMENSION(  :  ), intent( in ) :: COLDGM_PHA
-        INTEGER, DIMENSION(  :  ), intent( in ) :: MIDDGM_PHA
 
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINELE
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLELE
@@ -868,11 +865,12 @@ contains
         type( scalar_field ) :: deltap, rhs_p
         type( petsc_csr_matrix ) :: mat, C_petsc
         type(tensor_field) :: cdp_tensor
-        type( csr_sparsity ) :: sparsity
-        type(halo_type), pointer :: halo
+        type( csr_sparsity ), pointer :: sparsity
 
         real, dimension(:,:), pointer :: den_fem
         integer :: row
+
+        type(halo_type), pointer :: halo
 
         ALLOCATE( U_ALL( NDIM, NPHASE, U_NONODS ), UOLD_ALL( NDIM, NPHASE, U_NONODS ), &
         X_ALL( NDIM, X_NONODS ), UDEN_ALL( NPHASE, CV_NONODS ), UDENOLD_ALL( NPHASE, CV_NONODS ))
@@ -931,27 +929,14 @@ contains
         call allocate(deltaP,pressure%mesh,"DeltaP")
         call allocate(rhs_p,pressure%mesh,"PressureCorrectionRHS")
 
-        if (associated(velocity%mesh%halos)) then
-           halo => velocity%mesh%halos(2)
-        else
-           nullify(halo)
-        end if
-
         NO_MATRIX_STORE = ( NCOLDGM_PHA <= 1 )
         JUST_BL_DIAG_MAT = .false.
 
         IF (.not. ( JUST_BL_DIAG_MAT .OR. NO_MATRIX_STORE ) ) then
 
-           if (associated(halo)) then
-              sparsity=wrap(findgm_pha,colm=coldgm_pha,&
-                   name='MomentumSparsity',row_halo=halo,column_halo=halo)
-           else
-              sparsity=wrap(findgm_pha,colm=coldgm_pha,name='MomentumSparsity')
-           end if
-
+           sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
            Mat = allocate_momentum_matrix(sparsity,velocity)
            
-           call deallocate(sparsity)
         end IF
 
         !Calculate gravity source terms
@@ -1096,14 +1081,15 @@ contains
             end if
 
 
-            !Prepare halos for the CMC matrix
-            if (associated( pressure%mesh%halos)) then
-               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity',&
-                    row_halo=pressure%mesh%halos(2),column_halo=pressure%mesh%halos(2))
-            else
-               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity')
-            end if
+            
+            sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
             call allocate(CMC_petsc,sparsity,[1,1],"CMC_petsc",.true.)
+            if (associated(pressure%mesh%halos)) then
+               halo => pressure%mesh%halos(2)
+            else
+               nullify(halo)
+            end if
+            
 
             CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, &
             NCOLC, FINDC, COLC, &
