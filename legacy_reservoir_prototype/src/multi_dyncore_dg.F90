@@ -6675,7 +6675,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
 
-
+    !Currently unused
     SUBROUTINE DG_DIFFUSION( ELE, U_NLOC, NONODS, LMMAT1, LINVMMAT1, LMMAT, LNNXMAT, LNXNMAT1, LINVMNXNMAT1, AMAT )
         ! Find diffusion contributions at the surface
         implicit none
@@ -8764,7 +8764,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         !Create D^-0.5
         do i = 1, size(rhs_p%val)
             call MatGetValues(cmc_petsc%M, 1, (/ i-1 /), 1, (/ i-1 /),  D(i), ierr)
-            D(i) = D(i)**(-0.5)
+            D(i) = abs(D(i))**(-0.5)
            call addto( Diagonal, blocki = 1, blockj = 1, i = i, j = i,val = D(i))
         end do
         !For some reason we have to impose that it is not assembled to be able to assemble it
@@ -8828,9 +8828,9 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 end if
             end if
         end do
+        Artificial_Pe = .false.
         if (Phase_with_Pc>0) then
             !Get information for capillary pressure to be use
-            Artificial_Pe = .false.
             if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
                 !Get C

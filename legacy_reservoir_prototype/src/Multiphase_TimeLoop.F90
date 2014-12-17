@@ -29,7 +29,6 @@
 
    module multiphase_time_loop
 
-    use fields
     use field_options
     use write_state_module
     use diagnostic_variables
@@ -74,7 +73,6 @@
     use shape_functions_Linear_Quadratic
     use Compositional_Terms
     use Copy_Outof_State
-    use Copy_BackTo_State
     use cv_advection, only : cv_count_faces
     use multiphase_1D_engine 
 
