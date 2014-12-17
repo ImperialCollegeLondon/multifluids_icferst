@@ -930,8 +930,8 @@ contains
             !T2OLD_ALL( IPHASE, : ) = T2OLD( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
             T2_ALL( IPHASE, : ) = T2( IPHASE, : )
             T2OLD_ALL( IPHASE, : ) = T2OLD( IPHASE, : )
-         ELSE IF (.false.) THEN
-!         ELSE IF (THERMAL) THEN
+!         ELSE IF (.false.) THEN
+         ELSE IF (THERMAL) THEN
 ! Change this for thermal...
 ! ******change the below for thermal Dimitrios 
             T2_ALL( IPHASE, : ) = 1.0
@@ -2543,49 +2543,16 @@ contains
                               VOL_FRA_FLUID_J = 1.0
                            ENDIF
 
-
-!                           IF ( IGOT_T2 /= 0 ) THEN
-                      
-                      if(nphase==1) then ! this is temporary delete once we are sure...
-
-                              LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
-                                   - CV_P( CV_NODI ) * SCVDETWEI( GI ) * ( &
-                                   THERM_FTHETA * NDOTQNEW( : )  &
-                                   + ( 1. - THERM_FTHETA ) * NDOTQOLD(:)  )*VOL_FRA_FLUID_I
-                              if ( integrate_other_side_and_not_boundary ) then
-                                 LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
-                                      + CV_P( CV_NODJ ) * SCVDETWEI( GI ) * ( &
-                                      THERM_FTHETA * NDOTQNEW(:)  &
-                                      + ( 1. - THERM_FTHETA ) * NDOTQOLD(:)  )*VOL_FRA_FLUID_J
-                              end if
-                      else
-
-                              LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
-                                   - CV_P( CV_NODI ) * SCVDETWEI( GI ) * ( &
-                                   THERM_FTHETA * NDOTQNEW( : ) * LIMT2( : ) &
-                                   + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD( : ) )*VOL_FRA_FLUID_I
-                              if ( integrate_other_side_and_not_boundary ) then
-                                 LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
-                                      + CV_P( CV_NODJ ) * SCVDETWEI( GI ) * ( &
-                                      THERM_FTHETA * NDOTQNEW(:) * LIMT2(:) &
-                                      + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD(:) )*VOL_FRA_FLUID_J
-                              end if
-                      endif
-
-!                           ELSE
-!
-!                              LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
-!                                   - CV_P( CV_NODI ) * SCVDETWEI( GI ) * ( &
-!                                   THERM_FTHETA * NDOTQNEW( : )* LIMT( : ) &
-!                                   + ( 1. - THERM_FTHETA ) * NDOTQOLD(:)* LIMTOLD( : ) )*VOL_FRA_FLUID_I
-!                              if ( integrate_other_side_and_not_boundary ) then
-!                                 LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
-!                                      + CV_P( CV_NODJ ) * SCVDETWEI( GI ) * ( &
-!                                      THERM_FTHETA * NDOTQNEW( : )* LIMT( : ) &
-!                                      + ( 1. - THERM_FTHETA ) * NDOTQOLD( : )* LIMTOLD( : ) )*VOL_FRA_FLUID_J
-!                              end if
-!                           
-!                           END IF !IGOT_T2 
+                           LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
+                                - CV_P( CV_NODI ) * SCVDETWEI( GI ) * ( &
+                                THERM_FTHETA * NDOTQNEW( : ) * LIMT2( : ) &
+                                + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD( : ) )*VOL_FRA_FLUID_I
+                           if ( integrate_other_side_and_not_boundary ) then
+                              LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
+                                   + CV_P( CV_NODJ ) * SCVDETWEI( GI ) * ( &
+                                   THERM_FTHETA * NDOTQNEW(:) * LIMT2(:) &
+                                   + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD(:) )*VOL_FRA_FLUID_J
+                           end if
 
                            IF ( GOT_VIS ) THEN
                               ! stress form of viscosity...
@@ -2679,14 +2646,8 @@ contains
                      endif
                   ENDIF
 
-!                  IF ( IGOT_T2 == 1 ) THEN
-                  IF ( GOT_T2 ) THEN
-                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T2_ALL( :, CV_NODI )- T2OLD_ALL( :, CV_NODI ))  
-                  ELSE
-                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                                   - CV_P( CV_NODI ) * (MASS_CV( CV_NODI ) / DT)* ( T_ALL( :, CV_NODI )- TOLD_ALL( :, CV_NODI ))  
-                  END IF !IGOT_T2 
+                  LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:) &
+                                - CV_P( CV_NODI ) * ( MASS_CV( CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
                ENDIF
 !
 !               IF ( IGOT_T2 == 1 ) THEN
