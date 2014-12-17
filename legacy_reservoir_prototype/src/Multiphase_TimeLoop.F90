@@ -432,17 +432,6 @@
       iplike_grad_sou=0 
 
 
-      tracer_field=>extract_tensor_field(packed_state,"PackedTemperature",stat)
-      if(stat==0)then
-         do iphase = 1, nphase
-            tracer_field2=>extract_scalar_field(state(iphase),"DummyT",stat)
-            if(stat==0)then
-               tracer_field2%val = tracer_field%val(1,iphase,:)
-            end if
-         end do
-      end if
-
-
 
 !!$ Extracting Mesh Dependent Fields
       initialised = .false.
