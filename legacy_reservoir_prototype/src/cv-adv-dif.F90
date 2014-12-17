@@ -286,7 +286,12 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
+<<<<<<< HEAD
       REAL, DIMENSION( :, : ), intent( in ), target :: DEN_ALL, DENOLD_ALL
+=======
+      REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL, DENOLD_ALL
+      REAL, DIMENSION( :, : ), intent( in ) :: T2, T2OLD
+>>>>>>> cbce9c7fe9cc670b7be186463fb953c1088f6991
       REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (NPHASE,CV_NONODS)
       REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
       REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
@@ -399,10 +404,6 @@ contains
       INTEGER :: CV_KNOD, CV_KNOD2, U_SNODK
       REAL, DIMENSION ( :, : ), allocatable :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD
       REAL, DIMENSION ( :, : ), allocatable :: LOC_FEMT2, LOC2_FEMT2, LOC_FEMT2OLD, LOC2_FEMT2OLD
-      !Pointers to work with local notation
-      REAL, DIMENSION ( : ), pointer :: LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J
-      REAL, DIMENSION ( : ), pointer :: LOC_TOLD_I, LOC_TOLD_J, LOC_DENOLD_I, LOC_DENOLD_J
-      REAL, DIMENSION ( : ), pointer :: LOC_T2_I, LOC_T2_J, LOC_T2OLD_I, LOC_T2OLD_J
 
 ! NPHASE Variables: 
       REAL, DIMENSION( : ), allocatable :: CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, &
@@ -1082,9 +1083,6 @@ contains
       ALLOCATE( LOC_FEMTOLD(NPHASE, CV_NLOC), LOC2_FEMTOLD(NPHASE, CV_NLOC) )
       ALLOCATE( LOC_FEMT2(NPHASE, CV_NLOC), LOC2_FEMT2(NPHASE, CV_NLOC) )
       ALLOCATE( LOC_FEMT2OLD(NPHASE, CV_NLOC), LOC2_FEMT2OLD(NPHASE, CV_NLOC) )
-!      ALLOCATE( LOC_T_I( NPHASE ), LOC_T_J( NPHASE ), LOC_TOLD_I( NPHASE ), LOC_TOLD_J( NPHASE ) )
-!      ALLOCATE( LOC_DEN_I( NPHASE ), LOC_DEN_J( NPHASE ), LOC_DENOLD_I( NPHASE ), LOC_DENOLD_J( NPHASE ) )
-!      ALLOCATE( LOC_T2_I( NPHASE ), LOC_T2_J( NPHASE ), LOC_T2OLD_I( NPHASE ), LOC_T2OLD_J( NPHASE ) )
 ! bc's:
       ALLOCATE( SELE_LOC_WIC_F_BC( NFIELD ) )
       ALLOCATE( SLOC_SUF_F_BC(NFIELD, CV_SNLOC) )  
@@ -1872,28 +1870,13 @@ contains
        END IF
 
 
-       LOC_T_I( 1: ) => T_ALL(:, CV_NODI)
-       LOC_T_J( 1: ) => T_ALL(:, CV_NODJ)
-       LOC_TOLD_I( 1: ) => TOLD_ALL(:, CV_NODI)
-       LOC_TOLD_J( 1: ) => TOLD_ALL(:, CV_NODJ)
-       LOC_DEN_I( 1: ) => DEN_ALL(:, CV_NODI)
-       LOC_DEN_J( 1: ) => DEN_ALL(:, CV_NODJ)
-       LOC_DENOLD_I( 1: ) => DENOLD_ALL(:, CV_NODI)
-       LOC_DENOLD_J( 1: ) => DENOLD_ALL(:, CV_NODJ)
-!       IF ( IGOT_T2 == 1 ) THEN
-       IF ( use_volume_frac_T2 ) THEN
-          LOC_T2_I( 1: ) => T2_ALL(:, CV_NODI)
-          LOC_T2_J( 1: ) => T2_ALL(:, CV_NODJ)
-          LOC_T2OLD_I( 1: ) => T2OLD_ALL(:, CV_NODI)
-          LOC_T2OLD_J( 1: ) => T2OLD_ALL(:, CV_NODJ)
-       END IF
        !------------------
 
        If_GOT_DIFFUS2: IF ( GOT_DIFFUS ) THEN
            ! This sub caculates the effective diffusion
            ! coefficient DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
-           T_ALL_J( : )   =LOC_T_J( : )
-           TOLD_ALL_J( : )=LOC_TOLD_J( : )
+           T_ALL_J( : )   =T_ALL(:, CV_NODJ)
+           TOLD_ALL_J( : )=TOLD_ALL(:, CV_NODJ)
            LOC_WIC_T_BC_ALL(:)=0
 !           IF(SELE.NE.0) THEN
            IF(on_domain_boundary) THEN
@@ -1909,8 +1892,8 @@ contains
            CV_NLOC, MAT_NLOC, CV_NONODS, NPHASE, TOTELE, MAT_NONODS, MAT_NDGLN, &
            SCVFEN, SCVFEN, SCVNGI, GI, NDIM, TDIFFUSION, DUMMY_ZERO_NDIM_NDIM_NPHASE, &
            HDC, &
-           T_ALL_J( : ), LOC_T_I( : ), &
-           TOLD_ALL_J( : ), LOC_TOLD_I( : ), &
+           T_ALL_J( : ), T_ALL(:, CV_NODI), &
+           TOLD_ALL_J( : ), TOLD_ALL(:, CV_NODI), &
            ELE, ELE2, CVNORMX_ALL( :, GI ), &
            DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
            SELE, STOTEL, LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, CV_SNLOC, CV_SLOC2LOC, &
@@ -1935,7 +1918,7 @@ contains
 
                CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&
-               LOC_T2OLD_I, LOC_T2OLD_J, LOC_FEMT2OLD,&
+               T2OLD_ALL(:, CV_NODI), T2OLD_ALL(:, CV_NODJ), LOC_FEMT2OLD,&
                LOC_U,LOC2_U,LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                CVNORMX_ALL,  &
                CV_DG_VEL_INT_OPT, between_elements, on_domain_boundary, &
@@ -1958,7 +1941,7 @@ contains
 
                CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
                GI, SUFEN, U_NLOC,&
-               LOC_T2_I, LOC_T2_J, LOC_FEMT2,&
+               T2_ALL(:, CV_NODI), T2_ALL(:, CV_NODJ), LOC_FEMT2,&
                LOC_U,LOC2_U,LOC_NU, LOC2_NU, SLOC_NU, &
                CVNORMX_ALL,  &
                CV_DG_VEL_INT_OPT, between_elements, on_domain_boundary, &
@@ -1982,7 +1965,7 @@ contains
 
                call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&
-               LOC_T2OLD_I, LOC_T2OLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
+               T2OLD_ALL(:, CV_NODI), T2OLD_ALL(:, CV_NODJ), DENOLD_ALL(:, CV_NODI), DENOLD_ALL(:, CV_NODJ), &
                LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
                CVNORMX_ALL, &
                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
@@ -1996,7 +1979,7 @@ contains
 
                call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
                GI, SUFEN, U_NLOC,&
-               LOC_T2_I, LOC_T2_J, LOC_DEN_I, LOC_DEN_J, &
+               T2_ALL(:, CV_NODI), T2_ALL(:, CV_NODJ), DEN_ALL(:, CV_NODI), DEN_ALL(:, CV_NODJ), &
                LOC_U,LOC2_U, LOC_NU, LOC2_NU, NUGI_ALL, &
                CVNORMX_ALL, &
                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
@@ -2015,7 +1998,7 @@ contains
 
                CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&
-               LOC_TOLD_I, LOC_TOLD_J, LOC_FEMTOLD,&
+               TOLD_ALL(:, CV_NODI), TOLD_ALL(:, CV_NODJ), LOC_FEMTOLD,&
                LOC_U,LOC2_U,LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                CVNORMX_ALL,  &
                CV_DG_VEL_INT_OPT, between_elements, on_domain_boundary, &
@@ -2038,7 +2021,7 @@ contains
 
                CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
                GI, SUFEN, U_NLOC,&
-               LOC_T_I, LOC_T_J, LOC_FEMT,&
+               T_ALL(:, CV_NODI), T_ALL(:, CV_NODJ), LOC_FEMT,&
                LOC_U,LOC2_U,LOC_NU, LOC2_NU, SLOC_NU, &
                CVNORMX_ALL,  &
                CV_DG_VEL_INT_OPT, between_elements, on_domain_boundary, &
@@ -2062,7 +2045,7 @@ contains
 
                call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&
-               LOC_TOLD_I, LOC_TOLD_J, LOC_DENOLD_I, LOC_DENOLD_J, &
+               TOLD_ALL(:, CV_NODI), TOLD_ALL(:, CV_NODJ), DENOLD_ALL(:, CV_NODI), DENOLD_ALL(:, CV_NODJ), &
                LOC_U, LOC2_U, LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
                CVNORMX_ALL, &
                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
@@ -2076,7 +2059,7 @@ contains
 
                call GET_INT_VEL_ORIG_NEW( NPHASE, NDOTQNEW, NDOTQ, INCOME, &
                GI, SUFEN, U_NLOC,&
-               LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J, &
+               T_ALL(:, CV_NODI), T_ALL(:, CV_NODJ), DEN_ALL(:, CV_NODI), DEN_ALL(:, CV_NODJ), &
                LOC_U,LOC2_U, LOC_NU, LOC2_NU, NUGI_ALL, &
                CVNORMX_ALL, &
                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
@@ -2203,10 +2186,6 @@ contains
                ENDIF
            END DO
                    
-           !                   if(.false.) then ! use an average to make sure all is well in terms of propagation of information...
-           !                      LIMT(:)=0.5*(LOC_T_I( : )+LOC_T_J( : ))
-           !                   endif
-                      
            DO IPHASE=1,NPHASE
                LIMT_HAT(IPHASE) = MAX(1.E-7,LIMT(IPHASE))
            END DO
@@ -2251,19 +2230,19 @@ contains
                      IF ( GOT_T2 ) THEN
                         FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, NPHASE, &
                              NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
-                             LOC_T_J( : ) * LOC_DEN_J( : ) * LOC_T2_J( : ), &
-                             LOC_T_I( : ) * LOC_DEN_I( : ) * LOC_T2_I( : ), &
+                             T_ALL(:, CV_NODJ) * DEN_ALL(:, CV_NODJ) * T2_ALL(:, CV_NODJ), &
+                             T_ALL(:, CV_NODI) * DEN_ALL(:, CV_NODI) * T2_ALL(:, CV_NODI), &
                              NDOTQOLD(:), LIMDTT2OLD(:), DIFF_COEFOLD_DIVDX(:), &
-                             LOC_TOLD_J( : ) * LOC_DENOLD_J( : ) * LOC_T2OLD_J( : ), &
-                             LOC_TOLD_I( : ) * LOC_DENOLD_I( : ) * LOC_T2OLD_I( : ) )
+                             TOLD_ALL(:, CV_NODJ) * DENOLD_ALL(:, CV_NODJ) * T2OLD_ALL(:, CV_NODJ), &
+                             TOLD_ALL(:, CV_NODI) * DENOLD_ALL(:, CV_NODI) * T2OLD_ALL(:, CV_NODI) )
                      ELSE
                         FTHETA(:) = FACE_THETA_MANY( DT, CV_THETA, ( CV_DISOPT>=8 ), HDC, NPHASE, &
                              NDOTQ(:), LIMDTT2(:), DIFF_COEF_DIVDX(:), &
-                             LOC_T_J( : ) * LOC_DEN_J( : ), &
-                             LOC_T_I( : ) * LOC_DEN_I( : ), &
+                             T_ALL(:, CV_NODJ) * DEN_ALL(:, CV_NODJ), &
+                             T_ALL(:, CV_NODI) * DEN_ALL(:, CV_NODI), &
                              NDOTQOLD(:), LIMDTT2OLD(:), DIFF_COEFOLD_DIVDX(:), &
-                             LOC_TOLD_J( : ) * LOC_DENOLD_J( : ), &
-                             LOC_TOLD_I( : ) * LOC_DENOLD_I( : )  )
+                             TOLD_ALL(:, CV_NODJ) * DENOLD_ALL(:, CV_NODJ), &
+                             TOLD_ALL(:, CV_NODI) * DENOLD_ALL(:, CV_NODI)  )
                      END IF
 
 ! adjust the value of FTHETA for use with velocity only so we can use FTHETA=0.0 for voln frac. 
@@ -2293,11 +2272,11 @@ contains
 
                      IF(IGOT_THETA_FLUX == 1) THEN
                         IF ( GET_THETA_FLUX ) THEN
-                           THETA_FLUX( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / LOC_DEN_I( : )
-                           ONE_M_THETA_FLUX( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / LOC_DEN_I( : )
+                           THETA_FLUX( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL(:, CV_NODI)
+                           ONE_M_THETA_FLUX( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL(:, CV_NODI)
                            if(integrate_other_side) then ! for the flux on the other side of the CV face...
-                              THETA_FLUX_J( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / LOC_DEN_J( : )
-                              ONE_M_THETA_FLUX_J( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / LOC_DEN_J( : )
+                              THETA_FLUX_J( :, GLOBAL_FACE ) = FTHETA(:) * LIMDT(:) / DEN_ALL(:, CV_NODJ)
+                              ONE_M_THETA_FLUX_J( :, GLOBAL_FACE ) = (1.0-FTHETA(:)) * LIMDTOLD(:) / DEN_ALL(:, CV_NODJ)
                            endif
                         END IF
                         IF ( USE_THETA_FLUX ) THEN
@@ -2393,11 +2372,11 @@ contains
 
                                 IF ( GET_GTHETA ) THEN
                                     THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                    + FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * LOC_T_J( : ) ! Diffusion contribution
+                                    + FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODJ) ! Diffusion contribution
                                     ! integrate the other CV side contribution (the sign is changed)...
                                     if(integrate_other_side_and_not_boundary) then
                                         THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                        + FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * LOC_T_I( : ) ! Diffusion contribution
+                                        + FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODI) ! Diffusion contribution
                                     endif
                                 END IF
                             END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
@@ -2428,11 +2407,11 @@ contains
 
                             IF ( GET_GTHETA ) THEN
                                 THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                -  FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * LOC_T_I( : ) & ! Diffusion contribution
-                                -  SCVDETWEI( GI ) * ROBIN1(:) * LOC_T_I( : )  ! Robin bc
+                                -  FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODI) & ! Diffusion contribution
+                                -  SCVDETWEI( GI ) * ROBIN1(:) * T_ALL(:, CV_NODI)  ! Robin bc
                                 if(integrate_other_side_and_not_boundary) then
                                     THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                    -  FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * LOC_T_J( : ) ! Diffusion contribution
+                                    -  FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODJ) ! Diffusion contribution
                                 endif
                            END IF
 
@@ -2448,18 +2427,18 @@ contains
                                 + ONE_M_FTHETA_T2OLD(:)* NDOTQOLD(:) * LIMDTOLD(:) ) ! hi order adv
                         ! Subtract out 1st order term non-conservative adv.
                         LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
-                             - FTHETA_T2(:) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * LOC_T_I( : ) &
+                             - FTHETA_T2(:) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODI) &
 !
                         ! High-order non-conservative advection contribution
                              + ( 1. - CV_BETA) * SCVDETWEI( GI ) &
-                             * ( FTHETA_T2(:) * NDOTQNEW(:) * LOC_T_I( : ) * LIMD(:)  &
-                                + ONE_M_FTHETA_T2OLD(:) * NDOTQOLD(:) * LIMDOLD(:) * LOC_TOLD_I( : ) )  &
+                             * ( FTHETA_T2(:) * NDOTQNEW(:) * T_ALL(:, CV_NODI) * LIMD(:)  &
+                                + ONE_M_FTHETA_T2OLD(:) * NDOTQOLD(:) * LIMDOLD(:) * TOLD_ALL(:, CV_NODI) )  &
 !
                         ! Diffusion contribution
                              + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
-                             * ( LOC_TOLD_J( : ) - LOC_TOLD_I( : ) ) &
+                             * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) ) &
                              - SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &  ! capillary pressure stabilization term..
-                             * ( LOC_T_J( : ) - LOC_T_I( : ) ) &
+                             * ( T_ALL(:, CV_NODJ) - T_ALL(:, CV_NODI) ) &
 !                                ! Robin bc
                              + SCVDETWEI( GI ) * ROBIN2(:)
 
@@ -2471,18 +2450,18 @@ contains
                                 + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDTOLD(:) )  & ! hi order adv
 !
                         ! Subtract out 1st order term non-conservative adv.
-                             + FTHETA_T2_J(:) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * LOC_T_J( : ) &
+                             + FTHETA_T2_J(:) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODJ) &
 !
                         ! High-order non-conservative advection contribution
                              - ( 1. - CV_BETA) * SCVDETWEI( GI ) &
-                             * ( FTHETA_T2_J(:) * NDOTQNEW(:) * LOC_T_J( : ) * LIMD(:)  &
-                                + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDOLD(:) * LOC_TOLD_J( : ) )  &
+                             * ( FTHETA_T2_J(:) * NDOTQNEW(:) * T_ALL(:, CV_NODJ) * LIMD(:)  &
+                                + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDOLD(:) * TOLD_ALL(:, CV_NODJ) )  &
 !
                         ! Diffusion contribution
                              + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
-                             * ( LOC_TOLD_I( : ) - LOC_TOLD_J( : ) ) &
+                             * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) ) &
                              - SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) & ! capilary pressure stabilization term..
-                             * ( LOC_T_I( : ) - LOC_T_J( : ) )
+                             * ( T_ALL(:, CV_NODI) - T_ALL(:, CV_NODJ) )
                      endif
 
 
@@ -2490,13 +2469,13 @@ contains
                         IF ( GET_GTHETA ) THEN
                            THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
                                 + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
-                                * ( LOC_TOLD_J( : ) - LOC_TOLD_I( : ) ) &
+                                * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) ) &
                                 ! Robin bc
                                 + SCVDETWEI( GI ) * ROBIN2(:)
                         if(integrate_other_side_and_not_boundary) then
                            THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
                                 + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
-                                * ( LOC_TOLD_I( : ) - LOC_TOLD_J( : ) ) 
+                                * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) )
                         endif
                         END IF
 
