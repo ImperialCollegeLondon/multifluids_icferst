@@ -79,7 +79,6 @@ contains
        tracer, velocity, density, &
        NCOLACV, FINACV, COLACV, MIDACV, &
        SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-       block_to_global_acv, global_dense_block_acv, &
        NCOLCT, FINDCT, COLCT, &
        CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
        U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, &
@@ -131,8 +130,6 @@ contains
     INTEGER, DIMENSION( : ), intent( in ) :: COLACV
     INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
     INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV
-    integer, dimension(:)    :: block_to_global_acv
-    integer, dimension (:,:) :: global_dense_block_acv
     INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
     INTEGER, DIMENSION( : ), intent( in ) :: COLCT
     REAL, DIMENSION( :, : ), intent( in ) :: T2, T2OLD
@@ -146,7 +143,7 @@ contains
     REAL, intent( in ) :: DT, T_THETA
     REAL, intent( in ) :: T_BETA
     REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-    REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DERIV
+    REAL, DIMENSION( :, : ), intent( in ) :: DERIV
     REAL, DIMENSION( : ), intent( in ) :: T_SOURCE
     REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
     REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
@@ -168,8 +165,7 @@ contains
     LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE. 
     integer :: nits_flux_lim, its_flux_lim
     logical :: lump_eqns
-    REAL, DIMENSION( : ), allocatable :: CV_RHS, DIAG_SCALE_PRES, CT_RHS
-    REAL, DIMENSION( my_size(block_to_global_acv) ) :: block_acv
+    REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES
     real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
     REAL, DIMENSION( : , : , : ), allocatable :: dense_block_matrix, CT
     REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all
@@ -181,12 +177,14 @@ contains
     LOGICAL :: RETRIEVE_SOLID_CTY
     INTEGER :: STAT
     character( len = option_path_len ) :: path
-    type(vector_field) :: rhs_field
+    type(vector_field) :: cv_rhs_field
+    type(scalar_field) :: ct_rhs
     type( tensor_field ), pointer :: den_all2, denold_all2
     integer :: lcomp, Field_selector
 
     type(petsc_csr_matrix) :: petsc_acv
     type(vector_field)  :: vtracer
+    type(csr_sparsity), pointer :: sparsity
 
     if (present(icomp)) then
        lcomp=icomp
@@ -194,18 +192,14 @@ contains
        lcomp=0
     end if
 
-    call allocate(rhs_field,nphase,tracer%mesh,"RHS")
-
-    !        ALLOCATE( ACV( NCOLACV ) )
-    !        ALLOCATE( mass_mn_pres( size(small_COLACV ) ))
-    !        allocate( block_acv(size(block_to_global_acv) ) )
-    allocate( dense_block_matrix (nphase,nphase,cv_nonods) ); dense_block_matrix=0;
-    ALLOCATE( CV_RHS( CV_NONODS * NPHASE ) )
-
+    call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
+    
+    sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+    call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
 
     allocate( den_all( nphase, cv_nonods ), denold_all( nphase, cv_nonods ) )
 
-    allocate(Ct(0,0,0),ct_rhs(0),DIAG_SCALE_PRES(0))
+    allocate(Ct(0,0,0),DIAG_SCALE_PRES(0))
 
         if ( thermal ) then
            p => extract_scalar_field( packed_state, "CVPressure" )
@@ -269,8 +263,8 @@ contains
 
             call CV_ASSEMB( state, packed_state, &
                  tracer, velocity, density, &
-            CV_RHS, &
-            NCOLACV, block_acv, DENSE_BLOCK_MATRIX, FINACV, COLACV, MIDACV, &
+            CV_RHS_field, &
+            NCOLACV, petsc_acv, &
             SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
             NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
             CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -305,8 +299,8 @@ contains
 
                 CV_RHS_SUB = 0.0
                 DO IPHASE = 1, NPHASE
-                    CV_RHS_SUB( : ) = CV_RHS_SUB( : ) + CV_RHS( 1 +( IPHASE - 1) * CV_NONODS : &
-                    IPHASE * CV_NONODS )
+                    CV_RHS_SUB( : ) = CV_RHS_SUB( : )&
+                         + CV_RHS_field%val(iphase,:)
                 END DO
 
                 NCOLACV_SUB = FINACV( CV_NONODS + 1) - 1 - CV_NONODS *( NPHASE - 1 )
@@ -323,74 +317,32 @@ contains
                 !FINACV_SUB, COLACV_SUB, &
                 !trim(option_path))
 
-                !DO IPHASE = 2, NPHASE
-                !   T( 1 + ( IPHASE - 1 ) * CV_NONODS : IPHASE * CV_NONODS ) = T ( 1 : CV_NONODS )
-                !END DO
-
              ELSE
-
-!                call assemble_global_multiphase_csr(acv,&
-!                     block_acv,dense_block_matrix,&
-!                     block_to_global_acv,global_dense_block_acv)
-
-                call assemble_global_multiphase_petsc_csr(petsc_acv,&
-                     block_acv,dense_block_matrix,&
-                     small_finacv,small_colacv,tracer%mesh)
 
                 IF ( IGOT_T2 == 1) THEN
                    vtracer=as_vector(tracer,dim=2)
-                   
-                   call zero (vtracer)
-                   rhs_field%val(:,:)=reshape(cv_rhs,[nphase,cv_nonods])
-                   call zero_non_owned(rhs_field)
+                   call zero_non_owned(cv_rhs_field)
+                   call zero(vtracer)
 
-                   call petsc_solve(vtracer,petsc_acv,rhs_field,'/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic')
-
-
-!                   CALL SOLVER( ACV, T, CV_RHS, &
-!                        FINACV, COLACV, &
-!                        trim('/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic') )#
-
-
-
-                   !T([([(i+(j-1)*cv_nonods,j=1,nphase)],i=1,cv_nonods)]) = [vtracer%val]
+                   call petsc_solve(vtracer,petsc_acv,cv_rhs_field,'/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic')
 
                 ELSE
                    vtracer=as_vector(tracer,dim=2)
-                   call zero (vtracer)
-                   rhs_field%val(:,:)=reshape(cv_rhs,[nphase,cv_nonods])
-                   call zero_non_owned(rhs_field)
+                   call zero_non_owned(cv_rhs_field)
+                   call zero(vtracer)
 
-                   call petsc_solve(vtracer,petsc_acv,rhs_field,trim(option_path))
-!                   CALL SOLVER( ACV, T, CV_RHS, &
-!                        FINACV, COLACV, &
-!                        trim(option_path) )
+                   call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
-                   !T([([(i+(j-1)*cv_nonods,j=1,nphase)],i=1,cv_nonods)]) = [tracer%val]
 
                 END IF
 
-!!                call dump_petsc_csr_matrix(petsc_acv)
-
-
-                !ewrite(3,*)'cv_rhs:', cv_rhs
-                !ewrite(3,*)'SUF_T_BC:',SUF_T_BC
-                !ewrite(3,*)'ACV:',  (acv(i),i= FINACV(1), FINACV(2)-1)
-                !ewrite(3,*)'T_ABSORB:',((T_ABSORB(1,i,j), i=1,nphase),j=1,nphase)
-                !ewrite(3,*)
-
              END IF Conditional_Lumping
 
-             call deallocate(petsc_acv)
 
         END DO Loop_NonLinearFlux
 
-        deallocate( dense_block_matrix )
-        DEALLOCATE( CV_RHS )
-        call deallocate(RHS_FIELD)
-
-        !ewrite(3,*)'t:', t
-        !ewrite(3,*)'told:', told
+        call deallocate(petsc_acv)
+        call deallocate(cv_RHS_FIELD)
 
         ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
@@ -465,7 +417,6 @@ contains
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
          NCOLACV, FINACV, COLACV, MIDACV, &
          SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-         block_to_global_acv, &
          NCOLCT, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
          CV_ELE_TYPE,  &
@@ -512,7 +463,6 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: COLACV
       INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
       integer, dimension(:), intent(in)  :: small_finacv,small_colacv,small_midacv
-      integer, dimension(:), intent(in)  :: block_to_global_acv
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
 !      REAL, DIMENSION( : ), intent( inout ) :: DEN_FEMT
@@ -521,7 +471,7 @@ contains
       REAL, intent( in ) :: DT, V_THETA
       REAL, intent( inout ) :: V_BETA
       REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-      REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DERIV
+      REAL, DIMENSION( :, : ), intent( in ) :: DERIV
       REAL, DIMENSION( : ), intent( in ) :: V_SOURCE
       REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
       REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
@@ -538,8 +488,8 @@ contains
       ! Local Variables
       LOGICAL, PARAMETER :: THERMAL= .false.
       integer :: nits_flux_lim, its_flux_lim, igot_t2
-      REAL, DIMENSION( : ), allocatable :: ACV, mass_mn_pres, block_ACV, CV_RHS, DIAG_SCALE_PRES, CT_RHS
-      REAL, DIMENSION( :,:,: ), allocatable :: dense_block_matrix, CT
+      REAL, DIMENSION( : ), allocatable :: ACV, mass_mn_pres, DIAG_SCALE_PRES
+      REAL, DIMENSION( :,:,: ), allocatable :: CT
       REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
       REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
       REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
@@ -562,7 +512,9 @@ contains
 
       type(petsc_csr_matrix) :: petsc_acv
       type(vector_field)  :: vtracer
-      type(vector_field) :: rhs_field
+      type(vector_field) :: cv_rhs_field
+      type(scalar_field) :: CT_RHS
+      type(csr_sparsity), pointer :: sparsity
 
       !Variables for capillary pressure
       real, dimension(cv_nonods) :: OvRelax_param
@@ -588,17 +540,13 @@ contains
 
       ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
 
-      ALLOCATE( block_ACV( size(block_to_global_acv) ) ) ; block_ACV = 0.
       ALLOCATE( mass_mn_pres(size(small_colacv)) ) ; mass_mn_pres = 0.
-      ALLOCATE( dense_block_matrix( nphase , nphase , cv_nonods) ); dense_block_matrix=0;
-      ALLOCATE( CV_RHS( CV_NONODS * NPHASE ) ) ; CV_RHS = 0.
       ALLOCATE( CT( 0,0,0 ) )
       ALLOCATE( DIAG_SCALE_PRES( CV_NONODS ) )
-      ALLOCATE( CT_RHS( 0 ) )
       ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) )
       ALLOCATE( MEAN_PORE_CV( CV_NONODS ) )
 
-
+   
 
         IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
              ! use DEN=1 because the density is already in the theta variables
@@ -628,15 +576,17 @@ contains
       tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
       velocity=>extract_tensor_field(packed_state,"PackedVelocity")
       density=>extract_tensor_field(packed_state,"PackedDensity")
+      sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+      call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
 
-      call allocate(rhs_field,nphase,tracer%mesh,"RHS")
+      call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
 
       Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, 1 !nits_flux_lim
 
          call CV_ASSEMB( state, packed_state, &
               tracer, velocity, density, &
-              CV_RHS, &
-              NCOLACV, block_acv, DENSE_BLOCK_MATRIX, FINACV, COLACV, MIDACV, &
+              CV_RHS_field, &
+              NCOLACV, petsc_acv, &
               SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
               NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
               CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -665,19 +615,12 @@ contains
               StorageIndexes, 3 ,&
               OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc)!Capillary variables
 
-         call assemble_global_multiphase_petsc_csr(petsc_acv,&
-              block_acv,dense_block_matrix,&
-              small_finacv,small_colacv,tracer%mesh)
-
 
          vtracer=as_vector(tracer,dim=2)
-         call zero (vtracer)
-         rhs_field%val(:,:)=reshape(cv_rhs,[nphase,cv_nonods])
+         call zero(vtracer)
+         call zero_non_owned(cv_rhs_field)
 
-         call zero_non_owned(rhs_field)
-
-         call petsc_solve(vtracer,petsc_acv,rhs_field,trim(option_path))
-         call deallocate(petsc_acv)
+         call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
          satura(:,:)=tracer%val(1,:,:)
       END DO Loop_NonLinearFlux
@@ -691,19 +634,16 @@ contains
 
 
       DEALLOCATE( mass_mn_pres )
-      deallocate( block_acv )
-      deallocate( dense_block_matrix )
-      DEALLOCATE( CV_RHS )
       DEALLOCATE( CT )
       DEALLOCATE( DIAG_SCALE_PRES )
-      DEALLOCATE( CT_RHS )
       DEALLOCATE( TDIFFUSION )
       IF ( IGOT_T2 == 1 ) THEN
          DEALLOCATE( T2 )
          DEALLOCATE( T2OLD )
       END IF
       DEALLOCATE( THETA_GDIFF )
-      call deallocate(rhs_field)
+      call deallocate(cv_rhs_field)
+      call deallocate(petsc_acv)
 
        !Deallocate pointers only if not pointing to something in packed state
         if (IGOT_THETA_FLUX == 1) then
@@ -831,7 +771,8 @@ contains
         LOGICAL :: RETRIEVE_SOLID_CTY = .FALSE.
         character( len = option_path_len ) :: opt
 
-        REAL, DIMENSION( : ), allocatable :: CT_RHS, DIAG_SCALE_PRES, &
+        type( scalar_field ) :: ct_rhs
+        REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES, &
         MCY_RHS, MCY, &
         CMC_PRECON, MASS_MN_PRES, MASS_CV, UP, U_RHS_CDP, &
         UP_VEL, DIAG_P_SQRT
@@ -876,7 +817,7 @@ contains
         ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
 
         ALLOCATE( CT( NDIM, NPHASE, NCOLCT )) ; CT=0.
-        ALLOCATE( CT_RHS( CV_NONODS )) ; CT_RHS=0.
+        call allocate(ct_rhs,pressure%mesh,"CT_rhs")
         ALLOCATE( DIAG_SCALE_PRES( CV_NONODS )) ; DIAG_SCALE_PRES=0.
         ALLOCATE( U_RHS( NDIM, NPHASE, U_NONODS )) ; U_RHS=0.
         ALLOCATE( MCY_RHS( NDIM * NPHASE * U_NONODS + CV_NONODS )) ; MCY_RHS=0.
@@ -1187,14 +1128,13 @@ contains
             !ewrite(3,*) 'w::', w
             !ewrite(3,*) 'ct::', ct
             !ewrite(3,*) 'c::', c
-            !ewrite(3,*) 'ct_rhs::', ct_rhs
 
             ! put on rhs the cty eqn; put most recent pressure in RHS of momentum eqn
             ! NB. P_RHS = -CT * U + CT_RHS
             CALL CT_MULT2( rhs_p%val, UP_VEL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
             CT, NCOLCT, FINDCT, COLCT )
 
-            rhs_p%val = -rhs_p%val + CT_RHS
+            rhs_p%val = -rhs_p%val + CT_RHS%val
 
             ! Matrix vector involving the mass diagonal term
             DO CV_NOD = 1, CV_NONODS
@@ -1214,9 +1154,6 @@ contains
             call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
             'prognostic/reference_node', ndpset, default = 0 )
             if ( ndpset /= 0 ) rhs_p%val( ndpset ) = 0.0
-
-            !ewrite(3,*) 'P_RHS2::', rhs_p%val
-            !ewrite(3,*) 'CT_RHS::', ct_rhs
 
             ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
             ewrite(3,*)'about to solve for pressure'
@@ -1338,7 +1275,6 @@ contains
 
 
         DEALLOCATE( CT )
-        DEALLOCATE( CT_RHS )
         DEALLOCATE( DIAG_SCALE_PRES )
         DEALLOCATE( U_RHS )
         DEALLOCATE( MCY_RHS )
@@ -1347,6 +1283,7 @@ contains
         DEALLOCATE( MASS_MN_PRES )
         DEALLOCATE( UP )
         DEALLOCATE( U_RHS_CDP )
+        call deallocate(ct_rhs)
         call DEALLOCATE( CDP_tensor )
         DEALLOCATE( DU_VEL )
         DEALLOCATE( UP_VEL )
@@ -1597,7 +1534,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, :, : ), pointer, intent( inout ) :: C
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: CT
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
-        REAL, DIMENSION( : ), intent( inout ) :: CT_RHS
+        type(scalar_field), intent( inout ) :: CT_RHS
         REAL, DIMENSION( : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
         LOGICAL, intent( in ) :: GLOBAL_SOLVE
         INTEGER, DIMENSION( : ), intent( in ) :: FINMCY
@@ -1618,8 +1555,8 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
         REAL :: SECOND_THETA
         LOGICAL, PARAMETER :: GETCV_DISC = .FALSE., GETCT= .TRUE., THERMAL= .FALSE.
-        REAL, DIMENSION( : ), allocatable :: ACV, Block_acv, CV_RHS,dummy_transp
-        REAL, DIMENSION( :,:,:), allocatable :: DENSE_BLOCK_MATRIX
+        type( petsc_csr_matrix ) :: acv
+        REAL, DIMENSION( : ), allocatable ::  dummy_transp
         REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
         REAL, DIMENSION( : , : ), pointer :: DEN_OR_ONE, DENOLD_OR_ONE
@@ -1629,6 +1566,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         INTEGER :: IGOT_T2, I, P_SJLOC, SELE, U_SILOC, IGOT_THERM_VIS
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM, X_ILOC, X_INOD, MAT_INOD, S, E
         type(tensor_field), pointer :: tracer, density
+        type(vector_field) :: cv_rhs
 
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
 
@@ -1642,10 +1580,6 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
            ALLOCATE( T2OLD( NPHASE, CV_NONODS )) ; T2OLD =0.
         END IF
         ALLOCATE( THETA_GDIFF( NPHASE * IGOT_T2, CV_NONODS * IGOT_T2 )) ; THETA_GDIFF = 0.
-        ALLOCATE( ACV( 0 ))
-        ALLOCATE( BLOCK_ACV( 0))
-        ALLOCATE( DENSE_BLOCK_MATRIX( 0,0,0))
-        ALLOCATE( CV_RHS( 0 ))
         ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE )) ; TDIFFUSION = 0.
         ALLOCATE( MEAN_PORE_CV( CV_NONODS )) ; MEAN_PORE_CV = 0.
         allocate( dummy_transp( totele ) ) ; dummy_transp = 0.
@@ -1727,7 +1661,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         call CV_ASSEMB( state, packed_state, &
              tracer, velocity, density, &
         CV_RHS, &
-        NCOLACV,  ACV, DENSE_BLOCK_MATRIX, FINACV, COLACV, MIDACV, &
+        NCOLACV,  ACV, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
         NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
         CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -1761,7 +1695,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         IF ( GLOBAL_SOLVE ) THEN
             ! Put CT into global matrix MCY...
             MCY_RHS( U_NONODS * NDIM * NPHASE + 1 : U_NONODS * NDIM * NPHASE + CV_NONODS ) = &
-            CT_RHS( 1 : CV_NONODS )
+            CT_RHS%val( 1 : CV_NONODS )
 
             CALL PUT_CT_IN_GLOB_MAT( NPHASE, NDIM, U_NONODS, &
             NLENMCY, NCOLMCY, MCY, FINMCY, &
@@ -1774,10 +1708,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            DEALLOCATE( T2OLD )
         END IF
         DEALLOCATE( THETA_GDIFF )
-        DEALLOCATE( ACV )
-        DEALLOCATE( BLOCK_ACV )
-        DEALLOCATE( DENSE_BLOCK_MATRIX )
-        DEALLOCATE( CV_RHS )
         DEALLOCATE( TDIFFUSION )
         DEALLOCATE( MEAN_PORE_CV )
 
