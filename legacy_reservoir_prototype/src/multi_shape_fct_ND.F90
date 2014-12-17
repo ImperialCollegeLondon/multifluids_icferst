@@ -1454,23 +1454,23 @@
 
 
       if (indx==0 .and. ELE==1) then !The first time we need to introduce the targets in state
-         if (has_scalar_field(state(1), StorName)) then
+         if (has_scalar_field(state(1), trim(Storname))) then
             !If we are recalculating due to a mesh modification then
             !we return to the original situation
-            call remove_scalar_field(state(1), StorName)
+            call remove_scalar_field(state(1), trim(Storname))
          end if
          !Get mesh file just to be able to allocate the fields we want to store
          fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
-         Auxmesh = make_mesh(fl_mesh,name='StorageMesh2')
+         Auxmesh = make_mesh(fl_mesh,name=trim(Storname))
          !The number of nodes I want does not coincide
          Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*NLOC*NGI*NDIM &
          +merge(totele,1,btest(cache_level,1))*NDIM*NDIM*NGI &
          +merge(totele,1,btest(cache_level,2))*NGI*2 + totele
 
-         call allocate (Targ_NX_ALL, Auxmesh, StorName)
+         call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
          
          !Now we insert them in state and store the indexes
-         call insert(state(1), Targ_NX_ALL, StorName)
+         call insert(state(1), Targ_NX_ALL, trim(Storname))
 !         call deallocate (Auxmesh)
          !Store index with a negative value, because if the index is
          !zero or negative then we have to calculate stuff
@@ -3075,10 +3075,6 @@
               x_ndgln, lx, ly, lz, x, y, z, fem_nod, &
               x_ideal, y_ideal, z_ideal, x_ndgln_ideal )
 
-         !         call get_x_ndgln_qtet( max_x_nonods, max_totele, quad_cv_nloc, &
-         !              x_nonods, totele, fem_nod, x_ndgln, &
-         !              x, y, z, lx, ly, lz )
-
       case default; FLExit( "Wrong integer for CV_ELE_TYPE" )
       end Select Conditional_ElementTypes
 
@@ -3086,43 +3082,6 @@
 
       return
     end subroutine Compute_XNDGLN_TriTetQuadHex
-
-    subroutine get_x_ndgln_qtet( max_x_nonods2, max_totele2, quad_cv_nloc2, &
-         x_nonods2, totele2, fem_nod, x_ndgln_return, &
-         x, y, z, lx, ly, lz )
-      use pascal_tetrahedra
-      implicit none
-      integer, intent( in ) :: max_x_nonods2, max_totele2, quad_cv_nloc2
-      integer, intent( inout ) :: x_nonods2, totele2
-      integer, dimension( : ), intent( inout ) :: fem_nod
-      integer, dimension( : ), intent( inout ) :: x_ndgln_return
-      real, dimension( : ), intent( inout ) :: lx, ly, lz, x, y, z
-      ! Local variables
-      integer, dimension( : ), allocatable :: x_ndgln_big, x_ndgln2
-      integer :: triangle_totele, nodeplustetnodes
-
-      totele2 = totele * tet_totele
-      triangle_totele = totele * tet_totele
-      x_nonods2 = no_of_nodes_in_faces * no_faces * triangle_totele + triangle_totele
-      allocate( x_ndgln2( x_nonods2 ) )
-      allocate( x_ndgln_big( x_nonods2 ) )
-
-      ! Sanity check
-      if( x_nonods2 > max_totele2 * quad_cv_nloc2 ) &
-           FLExit( "Dimension for x_ndgln is wrong" )
-      
-      call numbering_tet_elements( x_nonods2, triangle_totele, nodeplustetnodes, &
-           x_ndgln_return, &
-           x, y, z, lx, ly, lz, fem_nod, &
-           x_ndgln_big, x_ndgln2 ) 
-
-      deallocate( x_ndgln2 )
-      deallocate( x_ndgln_big )
-
-      return
-    end subroutine get_x_ndgln_qtet
-
-
 
     subroutine suf_cv_tri_tet_shape( cv_ele_type, ndim, scvngi, cv_nloc, u_nloc, scvfeweigh, &
          scvfen, scvfenlx, scvfenly, scvfenlz, scvfenslx, scvfensly,  &
@@ -6814,123 +6773,6 @@
       return
     end subroutine Adding_Extra_Parametric_Nodes
 
-    subroutine Adding_Extra_Parametric_Nodes_Tet( totele, x_nloc, mx_x_nonods, &
-         x_ndgln, x, y, z )
-      implicit none
-      integer, intent( in ) :: totele, x_nloc, mx_x_nonods
-      integer, dimension( : ), intent( inout ) :: x_ndgln
-      real, dimension( : ), intent( inout ) :: x, y, z
-      ! Local variables
-      integer, dimension( : ), allocatable :: x_ndgln2, loclist
-      integer :: ele, iloc, iloc2, x_loc_ref
-      integer :: xnod1, xnod2, xnod3, xnod4
-      integer :: xnod5, xnod6, xnod7, xnod8 
-      integer :: npoly, inod
-      integer :: iloc_list(4),jloc_list(4),iiloc,jloc, ii, jj
-      real :: rsumx, rsumy
-
-      ewrite(3,*) 'In Adding_Extra_Parametric_Nodes'
-
-      x_loc_ref = maxval( x_ndgln ) 
-
-      if( .true. ) then
-         iloc_list(1)=1
-         jloc_list(1)=1
-         iloc_list(2)=1
-         jloc_list(2)=1
-         iloc_list(3)=1
-         jloc_list(3)=1
-         iloc_list(4)=1
-         jloc_list(4)=1
-
-         do ele = 1, totele ! loop over hexes
-            iiloc=8
-
-            do ii = 1, 6 ! loop over faces
-
-               do jj = 1, 4 ! loop over edges
-
-                  iloc=1
-                  jloc=1
-                  xnod1 = x_ndgln( ( ele - 1 ) * x_nloc + iloc )
-                  xnod2 = x_ndgln( ( ele - 1 ) * x_nloc + jloc )
-
-                  x_loc_ref = x_loc_ref + 1
-                  iiloc=iiloc+1
-
-                  ! add a parametric node on the edge
-                  x_ndgln( ( ele - 1 ) * x_nloc + iiloc ) = x_loc_ref
-                  x( x_loc_ref ) = 0.5 * ( x( xnod1 ) + x( xnod2 ) ) 
-                  y( x_loc_ref ) = 0.5 * ( y( xnod1 ) + y( xnod2 ) ) 
-                  z( x_loc_ref ) = 0.5 * ( z( xnod1 ) + z( xnod2 ) ) 
-               end do
-
-               xnod1 = x_ndgln( ( ele - 1 ) * x_nloc + 1 ) ! this 1 2 3 4 is wrong
-               xnod2 = x_ndgln( ( ele - 1 ) * x_nloc + 2 )
-               xnod3 = x_ndgln( ( ele - 1 ) * x_nloc + 3 )
-               xnod4 = x_ndgln( ( ele - 1 ) * x_nloc + 4 )
-
-               x_loc_ref = x_loc_ref + 1
-               iiloc=iiloc+1
-
-               ! add a parametric node on the face
-               x_ndgln( ( ele - 1 ) * x_nloc + iiloc ) = x_loc_ref
-               x( x_loc_ref ) = 0.25 * ( x( xnod1 ) + x( xnod2 ) + x( xnod3 ) + x( xnod4 ) ) 
-               y( x_loc_ref ) = 0.25 * ( y( xnod1 ) + y( xnod2 ) + y( xnod3 ) + y( xnod4 ) )
-               z( x_loc_ref ) = 0.25 * ( z( xnod1 ) + z( xnod2 ) + z( xnod3 ) + z( xnod4 ) )
-            end do ! loop over faces
-            
-            xnod1 = x_ndgln( ( ele - 1 ) * x_nloc + 1 ) ! this 1 2 3 4... is wrong
-            xnod2 = x_ndgln( ( ele - 1 ) * x_nloc + 2 )
-            xnod3 = x_ndgln( ( ele - 1 ) * x_nloc + 3 )
-            xnod4 = x_ndgln( ( ele - 1 ) * x_nloc + 4 )
-            xnod5 = x_ndgln( ( ele - 1 ) * x_nloc + 5 )
-            xnod6 = x_ndgln( ( ele - 1 ) * x_nloc + 6 )
-            xnod7 = x_ndgln( ( ele - 1 ) * x_nloc + 7 )
-            xnod8 = x_ndgln( ( ele - 1 ) * x_nloc + 8 )
-
-            x_loc_ref = x_loc_ref + 1
-            iiloc=iiloc+1
-
-            ! add a parametric node on the volume 
-            x_ndgln( ( ele - 1 ) * x_nloc + iiloc ) = x_loc_ref
-            x( x_loc_ref ) = 0.125 * ( x( xnod1 ) + x( xnod2 ) + x( xnod3 ) + x( xnod4 ) + &
-                 x( xnod5 ) + x( xnod6 ) + x( xnod7 ) + x( xnod8 ) )
-            y( x_loc_ref ) = 0.125 * ( y( xnod1 ) + y( xnod2 ) + y( xnod3 ) + y( xnod4 ) + &
-                 y( xnod5 ) + y( xnod6 ) + y( xnod7 ) + y( xnod8 ) )
-            z( x_loc_ref ) = 0.125 * ( z( xnod1 ) + z( xnod2 ) + z( xnod3 ) + z( xnod4 ) + &
-                 z( xnod5 ) + z( xnod6 ) + z( xnod7 ) + z( xnod8 ) )
-
-         end do ! loop over hexes
-
-      end if
-
-      allocate( x_ndgln2( totele * x_nloc ) ) ; x_ndgln2 = 0
-      allocate( loclist( x_nloc ) ) ; loclist = 0
-      x_ndgln2 = x_ndgln ; x_ndgln = 0 ; inod = 0 ; jloc = 0
-
-      loclist = (/ 1, 5, 2, 6, 7, 8, 3, 9, 4 /) ! this is wrong
-
-      do ele = 1, totele
-         do iloc = 1, x_nloc
-            jloc = loclist( iloc )
-            x_ndgln( ( ele - 1 ) * x_nloc + iloc ) = &
-                 x_ndgln2( ( ele - 1 ) * x_nloc + jloc )  
-         end do
-      end do
-
-      !do ele = 1, totele
-      !   ewrite(3,*)'x_ndgln:', ele, &
-      !        ( x_ndgln( ( ele - 1 ) * x_nloc + iloc ) , iloc = 1, x_nloc )
-      !end do
-
-      deallocate( x_ndgln2 )
-      deallocate( loclist )
-
-      return
-    end subroutine Adding_Extra_Parametric_Nodes_Tet
-
-
 !!!!!!!!
 !!!!!!!! Making and Numbering Quadratic Tetrahedron and 8 Hexahedra 
 !!!!!!!!
@@ -7938,66 +7780,12 @@
         CALL SPECTR(NGI,NLOC,MLOC, &
              M,WEIGHT,N,NLX,NLY,NLZ,D3,.NOT.D3, IPOLY,IQADRA)
      ENDIF
-     
+
    END SUBROUTINE SHAPE
-   
 
 
 
-   SUBROUTINE TR2DQU(NGI,NLOC,MLOC,&
-     &      M,MLX,MLY,&
-     &      WEIGHT,N,NLX,NLY, &
-     &      SNGI,SNLOC,SWEIGH,SN,SNLX,&
-     &      SMLOC,&
-     &      SM,SMLX )
-!      This subroutine defines the shape functions M and N and their
-!      derivatives at the Gauss points for quadratic elements. 
-! For 3-D FLOW. 
-      INTEGER , intent(in) :: NLOC,MLOC,NGI,SNGI,SNLOC,SMLOC
-      REAL , dimension(:,:), intent(inout) :: M,MLX,MLY, N, NLX, NLY, SN, SNLX, SM, SMLX
-      REAL , dimension(:), intent(inout) :: WEIGHT, SWEIGH
-! Local variables...
-      REAL :: POSI,TLY
-      INTEGER :: IPOLY,IQADRA
-      REAL :: L1(20),L2(20),L3(20)
-      REAL :: RUB(10)
-      REAL, dimension(10,10) ::  RUB2
-      LOGICAL :: DD3
-! NB LXP(I) AND LYP(I) ARE THE LOCAL X AND Y COORDS OF NODAL POINT I
 
-      !ewrite(3,*) 'HERE 1 MLOC,NLOC,NGI=',MLOC,NLOC,NGI
-      !ewrite(3,*) 'HERE 2'
-!
-! Get the quadrature positions and weights for TRIANGLES...
-     DD3=.FALSE.
-     CALL TRIQUAold(L1, L2, L3, L3, WEIGHT, DD3,NGI)
-
-! Work out the shape functions and there derivatives...
-        CALL SHATRIold(L1, L2, L3, L3, WEIGHT, DD3,&
-     &              NLOC,NGI,&
-     &              N,NLX,NLY,NLY) 
-        CALL SHATRIold(L1, L2, L3, L3, WEIGHT, DD3,&
-     &              MLOC,NGI,&
-     &              M,MLX,MLY,MLY) 
-
-
-      IF(SNGI.GT.0) THEN
-        !ewrite(3,*)'for surfaces SNGI,SNLOC,smloc:',SNGI,SNLOC,smloc
-! IQADRA=1 corresponds to Gaussian quadrature.
-         IQADRA=1
-! IPOLY=1 is for Lagrange polynomials.
-         IPOLY=1
-
-          !ewrite(3,*)'for sn:'
-         CALL SPECTR(SNGI,SNLOC,0,&
-     &   RUB2,SWEIGH,SN,SNLX,SNLX,SNLX,.FALSE.,.FALSE., IPOLY,IQADRA)
-
-          !ewrite(3,*)'for sm:'
-         CALL SPECTR(SNGI,SMLOC,0,&
-     &   RUB2,SWEIGH,SM,SMLX,SMLX,SMLX,.FALSE.,.FALSE., IPOLY,IQADRA)
-      ENDIF
-      
-   END subroutine tr2dqu
      
 
 
@@ -8219,82 +8007,6 @@
 
 
 
-   SUBROUTINE TR3D(LOWQUA,NGI,NLOC,MLOC,&
-          M,WEIGHT,N,NLX,NLY,NLZ,&
-          SNGI,SNLOC,SWEIGH,SN,SNLX,SNLY)
-!     This subroutine defines the shape functions M and N and their
-!     derivatives at the Gauss points
-!     For 3-D FLOW.
-      INTEGER , intent(in) :: NGI,NLOC,MLOC
-      INTEGER , intent(in) :: SNGI,SNLOC
-      REAL , dimension(:), intent(inout) :: SWEIGH, WEIGHT
-      real, dimension(:,:), intent(inout) :: SN, SNLX, SNLY, M, N, NLX, NLY, NLZ
-      !Local variables
-      real, parameter ::ALPHA=0.58541020
-      real, parameter :: BETA=0.13819660
-      REAL :: RUB(20)
-      REAL :: RUB2(20,20)
-      INTEGER :: P,Q,CORN,GPOI,ILOC,JLOC,GI
-      LOGICAL :: LOWQUA
-      INTEGER :: I
-! NB LXP(I) AND LYP(I) ARE THE LOCAL X AND Y COORDS OF NODAL POINT I
-       
-      !ewrite(3,*) 'HERE 1 MLOC,NLOC,NGI=',MLOC,NLOC,NGI
-      !ewrite(3,*) 'HERE 2'
-
-      IF((NLOC.NE.4).OR.(NGI.NE.4)) THEN
-         ewrite(3,*) 'PROBLEM IN TR3D'
-         STOP 201
-      ENDIF
-
-! This is for one point. 
-
-! This is for 4 point quadrature. 
-      do  GI=1,NGI
-         NLX(1,GI)=1.
-         NLY(1,GI)=0.
-         NLZ(1,GI)=0.
-
-         NLX(2,GI)=0.
-         NLY(2,GI)=1.
-         NLZ(2,GI)=0.
-
-         NLX(3,GI)=0.
-         NLY(3,GI)=0.
-         NLZ(3,GI)=1.
-
-         NLX(4,GI)=-1.
-         NLY(4,GI)=-1.
-         NLZ(4,GI)=-1.
-      end do 
-
-      do I=1,4
-         do GI=1,4
-            N(I,GI)=BETA
-         END DO
-      END DO
-
-      do I=1,4
-         N(I,I)=ALPHA
-         WEIGHT(I)=0.25
-         IF(MLOC.EQ.1) M(1,I)=1.0
-      END DO
-      IF(MLOC.EQ.NLOC) M = N
-
-      IF(SNGI.GT.0) THEN
-         CALL TR2D(.FALSE.,SNGI,SNLOC,SNLOC,&
-           RUB2,SWEIGH,SN,SNLX,SNLY, &
-           0,0,RUB,RUB2,RUB2 )
-      ENDIF 
-
-      do I=1,NGI
-         WEIGHT(I)=WEIGHT(I)/6.
-      END DO
-      do I=1,SNGI
-         SWEIGH(I)=SWEIGH(I)/2.
-      END DO
-      
-   end subroutine tr3d
       
    SUBROUTINE SHATRInew(L1, L2, L3, L4, WEIGHT, &
         NLOC,NGI,  N,NLX_ALL)

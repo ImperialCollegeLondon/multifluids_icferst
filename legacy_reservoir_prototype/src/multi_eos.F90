@@ -60,7 +60,6 @@
        real :: kr1_exp
        real :: kr2_exp
        logical :: boost_at_zero_saturation
-       logical :: is_Corey_epsilon_method
               
     end type corey_options
 
@@ -817,9 +816,7 @@
          inv_perm( :, :, ele)=inverse(perm( :, :, ele))
       end do
       U_ABSORB = 0.0
-!open(1,file = "Sigma_saturation_phase1", status="replace", action = "write")
-!open(2,file = "Sigma_saturation_phase2", status="replace", action = "write")
-!print*,"SIGMA VS PHASE_1 SATURATION"
+
       Loop_NPHASE: DO IPHASE = 1, NPHASE
 
          is_Corey=.false.
@@ -829,13 +826,6 @@
             if (nphase==2) then
                is_Corey=.true.
                call get_corey_options(options)
-            else
-               FLAbort('Attempting to use twophase relperm function with '//int2str(nphase)//' phase(s)')
-            end if
-         elseif (have_option("/material_phase["// int2str(iphase-1) //"]/multiphase_properties/relperm_type/Land")) then
-            if (nphase==2) then
-               is_Land=.true.
-               call get_land_options(options)
             else
                FLAbort('Attempting to use twophase relperm function with '//int2str(nphase)//' phase(s)')
             end if
@@ -864,24 +854,9 @@
 
 
                      if (is_corey) then
-                          if (options%is_Corey_epsilon_method) then
-                             CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), visc_phase1, visc_phase2, &
-                                 INV_PERM( IDIM, JDIM, ELE ), min(1.0,max(0.0,SATURA(1,CV_NOD))), IPHASE,&
-                                 options, SATURATIONOLD)!Second phase is considered inside the subroutine
-                          else
-                                CALL relperm_corey( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), MOBILITY, &
-                                     INV_PERM( IDIM, JDIM, ELE ), min(1.0,max(0.0,SATURA(1,CV_NOD))), IPHASE,&
-                                     options)
-                             end if
-
-!if (IPHASE==1)write(IPHASE, *) min(1.0,max(0.0,SATURA(CV_NOD))),";", U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM )
-!if (IPHASE==2)write(IPHASE, *) min(1.0,max(0.0,SATURA(CV_NOD))),";", U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM )
-
-
-                     else if (is_land) then
-                        CALL relperm_land( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), MOBILITY, &
+                         CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), visc_phase1, visc_phase2, &
                              INV_PERM( IDIM, JDIM, ELE ), min(1.0,max(0.0,SATURA(1,CV_NOD))), IPHASE,&
-                             options)
+                             options)!Second phase is considered inside the subroutine
                      else
                         U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = 0.0
 
@@ -1538,20 +1513,6 @@
 
     end subroutine get_solid_solid_interaction_options
   
-    subroutine get_polydispersive_drag_options(phase,state,options)
-      integer :: phase
-      type(state_type), dimension(:) :: state
-      type(polydispersive_drag_option_type) :: options
-
-      call get_option("/material_phase["//int2str(phase-1)//&
-           "]/multiphase_properties/polydispersive_drag/lubication_distance",&
-           options%lubrication_distance,default=tiny(0.0))
-     
-
-    end subroutine get_polydispersive_drag_options
-
-
-
     subroutine get_drag_options(phase,state,options)
       integer :: phase
       type(state_type), dimension(:) :: state
@@ -1636,30 +1597,9 @@
       call get_option("/material_phase[1]/multiphase_properties/relperm_type/Corey/relperm_exponent", &
            options%kr2_exp, default=2.0)
       options%boost_at_zero_saturation = have_option("/material_phase[1]/multiphase_properties/relperm_type/Corey/boost_at_zero_saturation")
-      options%is_Corey_epsilon_method = have_option("/material_phase[0]/multiphase_properties/relperm_type/Corey/Use_epsilon_method").or.&
-                    have_option("/material_phase[1]/multiphase_properties/relperm_type/Corey/Use_epsilon_method")
     end subroutine get_corey_options
 
-    subroutine get_land_options(options)
-      type(corey_options) :: options
-      !    S_GC = 0.1
-      call get_option("/material_phase[0]/multiphase_properties/s_gi", &
-           options%s_gi, default=0.1)
-      !    S_OR = 0.3
-      call get_option("/material_phase[1]/multiphase_properties/cs_gi", &
-           options%cs_gi, default=0.3)
-      call get_option("/material_phase[1]/multiphase_properties/c", options%c, default=0.3)
-      call get_option("/material_phase[0]/multiphase_properties/relperm_type/Corey/relperm_max", &
-           options%kr1_max, default=1.0)
-      call get_option("/material_phase[1]/multiphase_properties/relperm_type/Corey/relperm_max", &
-           options%kr2_max, default=1.0)
-      call get_option("/material_phase[0]/multiphase_properties/relperm_type/Corey/relperm_exponent", &
-           options%kr1_exp, default=2.0)
-      call get_option("/material_phase[1]/multiphase_properties/relperm_type/Corey/relperm_exponent", &
-           options%kr2_exp, default=2.0)
-    end subroutine get_land_options
-
-    SUBROUTINE relperm_corey_epsilon( ABSP, visc_phase1, visc_phase2, INV_PERM, SAT, IPHASE,opt, SATOLD )
+    SUBROUTINE relperm_corey_epsilon( ABSP, visc_phase1, visc_phase2, INV_PERM, SAT, IPHASE,opt )
           !This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
           !when dividing it to obtain the sigma.
         IMPLICIT NONE
@@ -1667,7 +1607,6 @@
         REAL, intent( in ) :: visc_phase1, visc_phase2, SAT, INV_PERM
         INTEGER, intent( in ) :: IPHASE
         type(corey_options), intent(in) :: opt
-        real, optional, intent(in) :: satOLD
         ! Local variables...
         REAL :: KR, VISC, SATURATION, Krmax
         real, parameter :: epsilon = 1d-10
@@ -1676,11 +1615,7 @@
         !and we multiply both phases by kr_max. By default kr_max= 1
 
         SATURATION = sat
-        if (present(SATOLD)) then
-            KR = get_relperm_Brooks_Corey(SATURATION, iphase, opt, visc_phase1, visc_phase2, visc, krmax,  satOLD)
-        else
-            KR = get_relperm_Brooks_Corey(SATURATION, iphase, opt, visc_phase1, visc_phase2, visc, krmax)
-        end if
+        KR = get_relperm_Brooks_Corey(SATURATION, iphase, opt, visc_phase1, visc_phase2, visc, krmax)
 
         !Make sure that the relperm is between bounds
         KR = min(max(epsilon, KR),Krmax)!Lower value just to make sure we do not divide by zero.
@@ -1690,7 +1625,7 @@
       RETURN
     END SUBROUTINE relperm_corey_epsilon
 
-    real function get_relperm_Brooks_Corey(sat, iphase, opt, visc_phase1, visc_phase2, visc, krmax, oldSAT)
+    real function get_relperm_Brooks_Corey(sat, iphase, opt, visc_phase1, visc_phase2, visc, krmax)
         !Calculates the Brooks-Corey relperm. If optional oldSAT
         !is introduced, the new relperm is calculated using:
         !Kr = Kr(SwNew) + dKr/dS(SwNew-SwOld)
@@ -1699,7 +1634,6 @@
         real, intent(in) :: visc_phase1, visc_phase2
         integer, intent(in) :: iphase
         type(corey_options), intent(in) :: opt
-        real, optional, intent(in) :: oldSAT
         !Local variables
         real :: derivative, aux
 
@@ -1711,224 +1645,18 @@
             get_relperm_Brooks_Corey = krmax*( ( sat - opt%s_gc) /&
                  ( aux )) ** opt%kr1_exp
             Visc = visc_phase1
-!            if (present(oldSAT)) then
-!                derivative = krmax* (opt%kr1_exp)/( aux**opt%kr1_exp )&
-!                 * ( sat - opt%s_gc) ** (opt%kr1_exp-1.0)
-!                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative * (sat - oldsat)
-!            end if
         else
             sat = 1.0 - SAT
             krmax = opt%kr2_max
             get_relperm_Brooks_Corey = krmax * ( ( sat - opt%s_or ) /&
                  ( aux )) ** opt%kr2_exp
             VISC = visc_phase2
-!            if (present(oldSAT)) then
-!                derivative = krmax* (opt%kr2_exp)/( aux**opt%kr2_exp )&
-!                 * ( 1.0 - sat - opt%s_gc) ** (opt%kr2_exp-1.0)
-!                get_relperm_Brooks_Corey = get_relperm_Brooks_Corey + derivative * (oldsat - sat)
-!            end if
         end if
 
     end function get_relperm_Brooks_Corey
 
 
 
-    SUBROUTINE relperm_corey( ABSP, MOBILITY, INV_PERM, SAT, IPHASE,options )
-      IMPLICIT NONE
-      REAL, intent( inout ) :: ABSP
-      REAL, intent( in ) :: MOBILITY, SAT, INV_PERM
-      INTEGER, intent( in ) :: IPHASE
-      type(corey_options), intent(in) :: options
-      ! Local variables...
-      REAL :: S_GC, S_OR, &
-           KR1, KR2, KR, VISC, SATURATION, ABS_SUM, SAT2, &
-           kr1_max, kr2_max, kr1_exp, kr2_exp
-
-      s_gc=options%s_gc
-      s_or=options%s_or
-      kr1_max=options%kr1_max
-      kr2_max=options%kr2_max
-      kr1_exp=options%kr1_exp
-      kr2_exp=options%kr2_exp
-
-      SATURATION = SAT
-      IF( IPHASE == 2 ) SATURATION = 1. - SAT
-
-      IF( SAT < S_GC ) THEN
-         KR1 = 0.0
-      ELSE IF( SAT > 1. -S_OR ) THEN
-         kr1 = kr1_max
-      ELSE
-         KR1 = ( ( SAT - S_GC) / ( 1. - S_GC - S_OR )) ** kr1_exp
-      ENDIF
-
-      SAT2 = 1.0 - SAT
-      IF( SAT2 < S_OR ) THEN
-         KR2 = 0.0
-      ELSEIF( SAT2 > 1. - S_GC ) THEN
-         KR2 = kr2_max
-      ELSE
-         KR2 = ( ( SAT2 - S_OR ) / ( 1. - S_GC - S_OR )) ** kr2_exp
-      ENDIF
-
-      IF( IPHASE == 1 ) THEN
-         KR = KR1
-         VISC = 1.0
-      ELSE
-         KR = KR2
-         VISC = MOBILITY
-      ENDIF
-
-      ABS_SUM = KR / MAX( 1.e-6, VISC * max( 0.01, SATURATION ))
-
-      ABSP = INV_PERM / MAX( 1.e-6, ABS_SUM )
-
-      if( iphase == 1 ) then
-         ABSP =  min( 1.e+4, ABSP )
-         if( saturation < s_gc ) then
-            ABSP = ( 1. + max( 100. * ( s_gc - saturation ), 0.0 )) * ABSP
-         endif
-      else
-         if (options%boost_at_zero_saturation) then
-            ABSP = min( 4.0e+5, ABSP)
-            if(saturation < s_or) then
-               ABSP = (1. + max( 100. * ( s_or - saturation ), 0.0 )) * ABSP
-               ABSP=ABSP+100000.*exp(30.0*(sat-(1-s_or)))
-            endif
-         else
-            ABSP = min( 1.e+5, ABSP )
-            if( saturation < s_or ) then
-               ABSP = ( 1. + max( 100. * ( s_or - saturation ), 0.0 )) * ABSP
-            endif
-         endif
-      endif
-
-      RETURN
-    END SUBROUTINE relperm_corey
-
-!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! CHRIS BAKER EDIT
-    SUBROUTINE relperm_land( ABSP, MOBILITY, INV_PERM, SAT, IPHASE,options )
-      IMPLICIT NONE
-      REAL, intent( inout ) :: ABSP
-      REAL, intent( in ) :: MOBILITY, SAT, INV_PERM
-      INTEGER, intent( in ) :: IPHASE
-      ! Local variables...
-      REAL :: S_GI, S_GT, S_GF, CS_GI, C
-      REAL :: S_GC, S_OR, &
-           KR1, KR2, KR, VISC, SATURATION, ABS_SUM, SAT2, &
-           kr1_max, kr2_max, kr1_exp, kr2_exp
-      type(corey_options) options
-
-
-      s_gi=options%s_gi
-      cs_gi=options%cs_gi
-      c=options%c
-
-      SATURATION = SAT
-      IF( IPHASE == 2 ) SATURATION = 1. - SAT
-
-
-
-      S_GT = S_GI/(1+ CS_GI)
-
-      S_GF = 0.5*( ( S_GI - S_GT) + (( S_GI - S_GT)**2.0 + (4.0/C)*( S_GI - S_GT))**0.5)
-
-      ABSP = S_GF 
-
-      RETURN
-    END SUBROUTINE relperm_land
-
-!   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM )
-!
-!      ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
-!      ! CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE, NPHASE ) are the coefficients
-!      ! Capillary pressure coefs have the dims CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE,NPHASE )
-!      ! used to calculate the capillary pressure.
-!
-!      IMPLICIT NONE
-!      type(state_type), dimension(:), intent(in) :: state
-!      type(state_type), intent(inout) :: packed_state
-!      logical, intent(in) :: Sat_in_FEM
-!      ! Local Variables
-!      INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase
-!      real c, a, S_OR, S_GC, auxO, auxW
-!      character(len=OPTION_PATH_LEN) option_path, phase_name
-!      !Corey options
-!      type(corey_options) :: options
-!      !Working pointers
-!      real, dimension(:,:), pointer :: Satura, CapPressure
-!
-!      !Get from packed_state
-!      if (Sat_in_FEM) then
-!          call get_var_from_packed_state(packed_state,FEPhaseVolumeFraction = Satura)
-!      else
-!          call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
-!      end if
-!      call get_var_from_packed_state(packed_state,CapPressure = CapPressure)
-!      !Get corey options
-!      call get_corey_options(options)
-!      s_gc=options%s_gc
-!      s_or=options%s_or
-!
-!      nphase =size(Satura,1)
-!
-!      ewrite(3,*) 'In calc_capil_pres'
-!
-!      nstates = option_count("/material_phase")
-!      ncomps=0
-!      do i=1,nstates
-!         if (have_option("/material_phase[" // int2str(i-1) // "]/is_multiphase_component")) then
-!            ncomps=ncomps+1
-!         end if
-!      end do
-!      nphases=nstates-ncomps
-!
-!
-!      if (have_option("/material_phase[0]/multiphase_properties/capillary_pressure/type_Brookes_Corey") ) then
-!         CapPressure = 0.
-!
-!         DO IPHASE = 1, NPHASE
-!
-!            option_path = "/material_phase["//int2str(iphase-1)//"]/multiphase_properties/capillary_pressure/type_Brookes_Corey"
-!            DO JPHASE = 1, NPHASE
-!
-!               if (iphase/=jphase) then
-!
-!                  ! Make sure we're pairing the right fields
-!                  j=-1
-!                  do i=0, option_count(trim(option_path)//"/phase")-1
-!                     call get_option(trim(option_path)//"/phase["//int2str(i)//"]/material_phase_name", phase_name)
-!                     if (trim(state(jphase)%name) == trim(phase_name)) then
-!                        j=i
-!                     endif
-!                  enddo
-!                  if (j<0) FLAbort('Capillary pressure phase pair not found')
-!
-!                    if (JPHASE==1) then
-!                        auxW = S_GC
-!                        auxO = S_OR
-!                    else
-!                        auxW = S_OR
-!                        auxO = S_GC
-!                    end if
-!
-!                  call get_option(trim(option_path)//"/phase["//int2str(j)//"]/c", c)
-!                  call get_option(trim(option_path)//"/phase["//int2str(j)//"]/a", a)
-!                  !Apply Brooks-Corey model
-!                  forall (k = 1:size(CapPressure,2))
-!                      CapPressure( iphase, k ) = CapPressure( iphase, k ) + &
-!                        Get_capPressure(satura(jphase,k), c, a, auxW, auxO)
-!                  end forall
-!               endif
-!
-!            END DO
-!
-!         END DO
-!      else
-!         FLAbort('Unknown capillary pressure type')
-!      endif
-!      RETURN
-!    END SUBROUTINE calculate_capillary_pressure
 
 
    SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM, StorageIndexes)
@@ -2039,6 +1767,25 @@
         end if
 
     end function Get_capPressure
+
+
+    PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr, Other_irr, Pc_imbibition)
+        !This functions returns the derivative of the capillary pressure with the saturation
+        Implicit none
+        real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
+        logical, intent(in) :: Pc_imbibition
+        !Local
+        real, parameter :: tol = 1d-2
+        real :: aux
+
+        if ( Pc_imbibition ) then
+           aux = (1.0 - Own_irr - Other_irr)
+        else
+           aux = (1.0 - Own_irr)
+        end if
+        Get_DevCapPressure = &
+            -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
+    end function Get_DevCapPressure
 
     subroutine calculate_u_source(state, Density_FEMT, u_source)
       !u_source has to be initialized before calling this subroutine
@@ -2493,10 +2240,6 @@
               "]/multiphase_properties/relperm_type/Corey") ) then
             is_corey=.true.
             call get_corey_options(options)
-         elseif ( have_option("/material_phase["// int2str(iphase-1) //&
-                                   "]/multiphase_properties/relperm_type/Land") ) then
-            is_land=.true.
-            call get_land_options(options)
          end if
 
          do ele = 1, totele
@@ -2527,20 +2270,8 @@
 !                        sigma_out = 0.
                         do idim = 1, ndim
                            do jdim = 1, ndim
-                              if (is_corey) then
-                                if (options%is_Corey_epsilon_method) then
-                                     call relperm_corey_epsilon( sigma_out( idim, jdim ), visc_phase1, visc_phase2, &
-                                          inv_perm( idim, jdim ), satura_bc, iphase,options)
-                                 else
-                                     call relperm_corey( sigma_out( idim, jdim ), mobility, &
-                                         inv_perm( idim, jdim ), satura_bc, iphase,options)
-                                 end if
-                              elseif (is_land) then
-
-                                 call relperm_land( sigma_out( idim, jdim ), mobility, &
-                                      inv_perm( idim, jdim ), satura_bc, iphase,options )
-
-                              end if
+                              if (is_corey)  call relperm_corey_epsilon( sigma_out( idim, jdim ), visc_phase1, visc_phase2, &
+                                      inv_perm( idim, jdim ), satura_bc, iphase,options)
                            end do
                         end do
 
@@ -2730,8 +2461,8 @@
             indx = size(state(1)%scalar_fields)
           end if
           !Get the data
-          siz = size(state(1)%scalar_fields(indx)%ptr%val(:),1)/nphase
-          field_values => state(1)%scalar_fields(indx)%ptr%val((iphase-1)*siz + 1: siz * iphase )
+          siz = size(state(1)%scalar_fields(abs(indx))%ptr%val(:),1)/nphase
+          field_values => state(1)%scalar_fields(abs(indx))%ptr%val((iphase-1)*siz + 1: siz * iphase )
 
 
     end subroutine extract_scalar_from_diamond

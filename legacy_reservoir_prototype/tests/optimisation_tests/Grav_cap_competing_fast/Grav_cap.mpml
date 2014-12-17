@@ -506,9 +506,7 @@
     </scalar_field>
     <multiphase_properties>
       <relperm_type>
-        <Corey>
-          <Use_epsilon_method/>
-        </Corey>
+        <Corey/>
       </relperm_type>
       <capillary_pressure>
         <type_Brooks_Corey>
@@ -819,9 +817,7 @@
     </scalar_field>
     <multiphase_properties>
       <relperm_type>
-        <Corey>
-          <Use_epsilon_method/>
-        </Corey>
+        <Corey/>
       </relperm_type>
       <immobile_fraction>
         <real_value rank="0">0.3</real_value>

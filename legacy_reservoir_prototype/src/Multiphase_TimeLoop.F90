@@ -29,7 +29,6 @@
 
    module multiphase_time_loop
 
-    use fields
     use field_options
     use write_state_module
     use diagnostic_variables
@@ -74,7 +73,6 @@
     use shape_functions_Linear_Quadratic
     use Compositional_Terms
     use Copy_Outof_State
-    use Copy_BackTo_State
     use cv_advection, only : cv_count_faces
     use multiphase_1D_engine 
 
@@ -128,10 +126,11 @@
            mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, &
            ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, ncolcmc, ncolm
       integer, dimension( : ), allocatable :: finacv, midacv, finmcy,  midmcy, &
-           finele, midele, findgm_pha, middgm_pha, findct, &
+           findgm_pha, middgm_pha, findct, &
            findc, findcmc, midcmc, findm, &
            midm
-      integer, dimension(:), pointer :: colacv, colmcy, colele, colct,colm,colc,colcmc,coldgm_pha
+      integer, dimension(:), pointer :: colacv, colmcy, colct,colm,colc,colcmc,coldgm_pha
+      integer, dimension(:), pointer :: finele, colele, midele
       integer, dimension(:), pointer :: small_finacv, small_colacv, small_midacv
       integer, dimension(:), pointer :: block_to_global_acv
       integer, dimension(:,:), allocatable :: global_dense_block_acv
@@ -181,11 +180,8 @@
 
 !!$ Working arrays:
       real, dimension( : ), pointer :: &
-           Temperature, PhaseVolumeFraction, &
-           Component, Temperature_Old, &
-           PhaseVolumeFraction_Old, Component_Old, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
-           Component_Source, ScalarAdvectionField_Source, &
+           Component_Source, &
            ScalarField_Source_Store, ScalarField_Source_Component, &
            mass_ele, dummy_ele
 
@@ -197,7 +193,7 @@
       real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
 !!$
       real, dimension( :, : ), pointer :: PhaseVolumeFraction_Source
-      real, dimension( :, :, : ), allocatable :: Permeability, Material_Absorption, Material_Absorption_Stab, &
+      real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
 !!$
            Component_Diffusion_Operator_Coefficient
@@ -207,15 +203,6 @@
 
       real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
            sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
-
-!!$ Material_Absorption_Stab = u_abs_stab; Material_Absorption = u_absorb; ScalarField_Absorption = v_absorb
-!!$ Component_Absorption = comp_absorb; ScalarAdvectionField_Absorption = t_absorb
-!!$ Velocity_U_Source = u_source, ScalarField_Source = v_source, Component_Source = comp_source,
-!!$ ScalarAdvectionField_Source = Temperature_Source = t_source; Component_Diffusion_Operator_Coefficient = comp_diff_coef
-!!$ Momentum_Diffusion = udiffusion; ScalarAdvectionField_Diffusion = tdiffusion, 
-!!$ Component_Diffusion = comp_diffusion
-
-      !character( len = option_path_len ) :: eos_option_path( 1 )
 
       integer :: stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod
       real, dimension( : ), allocatable :: rsum
@@ -238,7 +225,7 @@
       integer :: checkpoint_number
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-      integer, dimension (40) :: StorageIndexes
+      integer, dimension (34) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
       !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
       !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
@@ -253,7 +240,6 @@
       !PROJ_CV_TO_FEM_state          : 31 (disabled)
       !Capillary pressure            : 32 (Pe), 33 (exponent a)
       !PIVIT_MAT (inverted)          : 34
-      !Get_INT VEL                   : 35:40 (Currently only 35 used)
 
       !Working pointers
       real, dimension(:,:), pointer :: SAT_s, OldSAT_s, FESAT_s
@@ -261,7 +247,6 @@
       type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
       type(scalar_field), pointer :: pressure_field, porosity_field, tracer_field2
       type(vector_field), pointer :: positions
-
 
       logical :: write_all_stats=.true.
 
@@ -342,7 +327,6 @@
       nlenmcy = u_nonods * nphase * ndim + cv_nonods
       allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
            finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
-           finele( totele + 1 ), colele( mxnele ), midele( totele ), &
            findgm_pha( u_nonods * nphase * ndim + 1 ), coldgm_pha( mx_ncoldgm_pha ), &
            middgm_pha( u_nonods * nphase * ndim ), &
            findct( cv_nonods + 1 ), colct( mx_nct ), &
@@ -353,8 +337,8 @@
 
       allocate( global_dense_block_acv( nphase , cv_nonods ) )
 
-      finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; finele = 0
-      colele = 0 ; midele = 0 ; findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0
+      finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ;
+     findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0
       colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0
       colm = 0 ; midm = 0
 
@@ -392,12 +376,7 @@
 !!$ Allocating space for various arrays:
       allocate( &
 !!$
-           Temperature( nphase * cv_nonods ), &
-           PhaseVolumeFraction( nphase * cv_nonods ), Component( nphase * cv_nonods * ncomp ), &
            DRhoDPressure( nphase, cv_nonods ), FEM_VOL_FRAC( nphase, cv_nonods ),&
-!!$
-           Temperature_Old( nphase * cv_nonods ), &
-           PhaseVolumeFraction_Old( nphase * cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
 !!$
            suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
            Mean_Pore_CV( cv_nonods ), &
@@ -406,9 +385,6 @@
            Temperature_Source( nphase * cv_nonods ), &
            Velocity_U_Source( u_nonods * nphase * ndim ), &
            Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
-           ScalarAdvectionField_Source( cv_nonods * nphase ), &
-!!$
-           Permeability( totele, ndim, ndim ), &
 !!$
            PhaseVolumeFraction_Source( nphase, cv_nonods ), &
            Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -428,12 +404,7 @@
       ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln)
 
 !!$
-      Temperature=0.
-      PhaseVolumeFraction=0. ; Component=0.
       DRhoDPressure=0.
-!!$
-      Temperature_Old=0.
-      PhaseVolumeFraction_Old=0. ; Component_Old=0.
 !!$
       Temperature_Source=0.
       suf_sig_diagten_bc=0.
@@ -443,9 +414,6 @@
 !!$
       PhaseVolumeFraction_Source=0. ; Velocity_U_Source=0.
       Velocity_U_Source_CV=0. ; Component_Source=0.
-      ScalarAdvectionField_Source=0.
-!!$
-      Permeability=0.
 !!$
       Material_Absorption=0.
       Velocity_Absorption=0.
@@ -480,10 +448,9 @@
       initialised = .false.
       call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
            SAT_s, PhaseVolumeFraction_Source,&
-           Component, Component_Source, &
+           Component_Source, &
            Velocity_U_Source, Velocity_Absorption, &
-           Temperature, Temperature_Source, &
-           Permeability )
+           Temperature_Source)
       FESAT_s = 0; OldSAT_s = 0.
 !!$ Calculate diagnostic fields
       call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
@@ -581,32 +548,12 @@
       end if
 
 
-      !   print *,'u_nonods, cv_nonods, totele:',u_nonods, cv_nonods, totele
-      !   print *,'mx_ncolacv, ncolacv:',mx_ncolacv, ncolacv
-      !   print *,'nlenmcy, mx_ncolmcy, ncolmcy,mxnele, ncolele:',nlenmcy, mx_ncolmcy, ncolmcy,mxnele, ncolele
-      !   print *,'mx_ncoldgm_pha, ncoldgm_pha:',mx_ncoldgm_pha, ncoldgm_pha
-      !   print *,'mx_nct, ncolct,mx_nc, ncolc, mx_ncolcmc, ncolcmc:',mx_nct, ncolct,mx_nc, ncolc, mx_ncolcmc, ncolcmc
-      !   print *,'mx_ncolm, ncolm:',mx_ncolm, ncolm
-      !   stop 282
-
-      if (have_component_field) then
-         !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
-         do cv_inod = 1, size(SAT_s,2)
-            do iphase = 1, size(SAT_s,1)
-               PhaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
-               PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
-            end do
-         end do
-         !#############################################################
-      end if
 !!$ Starting Time Loop
       itime = 0
       dtime = 0
       checkpoint_number=1
       Loop_Time: do
 !!$
-        !We make sure that every time step the storage of get_int_vel is recalculated
-        StorageIndexes(35:40) = 0
 
          ewrite(2,*) '    NEW DT', itime+1
 
@@ -651,8 +598,6 @@
 
 
 !!$ Update all fields from time-step 'N - 1'
-         if (have_component_field) PhaseVolumeFraction_Old = PhaseVolumeFraction
-         Temperature_Old = Temperature ; Component_Old = Component
 
          U_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
          UOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
@@ -751,7 +696,6 @@
                     tracer_field,velocity_field,density_field,&
                     NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
-                    block_to_global_acv, global_dense_block_acv, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                     U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
@@ -772,7 +716,7 @@
                     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                    0,Temperature, Temperature_Old,igot_theta_flux, scvngi_theta, &
+                    0, igot_theta_flux, scvngi_theta, &
                     t_get_theta_flux, t_use_theta_flux, &
                     THETA_GDIFF, &
                     in_ele_upwind, dg_ele_upwind, &
@@ -811,7 +755,7 @@
 
                CALL CALCULATE_SURFACE_TENSION( state, packed_state, nphase, ncomp, &
                     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-                    Velocity_U_Source_CV, Velocity_U_Source, Component, &
+                    Velocity_U_Source_CV, Velocity_U_Source, &
                     NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
                     block_to_global_acv, global_dense_block_acv, &
@@ -847,7 +791,7 @@
                     dt, &
 !!$
                     NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn 
-                    NCOLDGM_PHA, FINDGM_PHA, COLDGM_PHA, MIDDGM_PHA, &! Force balance sparsity
+                    NCOLDGM_PHA, &! Force balance 
                     NCOLELE, FINELE, COLELE, & ! Element connectivity.
                     NCOLCMC, FINDCMC, COLCMC, MIDCMC, & ! pressure matrix for projection method
                     NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
@@ -885,7 +829,6 @@
                call VolumeFraction_Assemble_Solve( state, packed_state, &
                     NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
-                    block_to_global_acv, global_dense_block_acv, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                     CV_ELE_TYPE, &
@@ -946,12 +889,12 @@
                   Conditional_SmoothAbsorption: if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                      do cv_nodi = 1, cv_nonods
-                        if( PhaseVolumeFraction( cv_nodi ) > 0.95 ) then
+                        if( Sat_S( 1, cv_nodi ) > 0.95 ) then
                            do iphase = 1, nphase
                               do jphase = min( iphase + 1, nphase ), nphase
                                  Component_Absorption( cv_nodi, iphase, jphase ) = &
                                       Component_Absorption( cv_nodi, iphase, jphase ) * max( 0.01, &
-                                      20. * ( 1. - PhaseVolumeFraction( cv_nodi ) ) )
+                                      20. * ( 1. - Sat_S( 1, cv_nodi ) ) )
                               end do
                            end do
                         end if
@@ -975,7 +918,6 @@
                           tracer_field,velocity_field,density_field,&
                           NCOLACV, FINACV, COLACV, MIDACV, & ! CV sparsity pattern matrix
                           SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
-                          block_to_global_acv, global_dense_block_acv, &
                           NCOLCT, FINDCT, COLCT, &
                           CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                           U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
@@ -995,7 +937,7 @@
                           XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
                           opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                          igot_t2, PhaseVolumeFraction, PhaseVolumeFraction_Old, igot_theta_flux, scvngi_theta, &
+                          igot_t2, igot_theta_flux, scvngi_theta, &
                           comp_get_theta_flux, comp_use_theta_flux, &
                           theta_gdiff, &
                           in_ele_upwind, dg_ele_upwind, &
@@ -1056,7 +998,7 @@
                   if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                      do cv_nodi = 1, cv_nonods
-                        if( PhaseVolumeFraction( cv_nodi ) > 0.95 ) then
+                        if( Sat_S( 1, cv_nodi ) > 0.95 ) then
                            do iphase = 1, nphase
                               do jphase = min( iphase + 1, nphase ), nphase
                                  Component_Absorption( cv_nodi, iphase, jphase ) = &
@@ -1202,24 +1144,21 @@
                Conditional_Adapt_by_TimeStep: if( mod( itime, adapt_time_steps ) == 0 ) then
 
                   ! linearise compositional fields:
-                  Conditional_Components_Linearisation2: if ( ncomp > 1 ) then
-
-                     do icomp = 1, ncomp
-                        do iphase = 1, nphase
-
-                           Component_State => extract_scalar_field( state( icomp + nphase ), & 
-                                'ComponentMassFractionPhase' // int2str( iphase ) )
-                           if (.not. have_option(trim(Component_State%option_path)//"/prognostic/consistent_interpolation")) then
-
-                              call Updating_Linearised_Components( totele, ndim, cv_nloc, cv_nonods, cv_ndgln,& 
-                                   component ( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
-                                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods ) )
-                              Component_State % val = component( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
-                                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods )
-                           end if
-                        end do
-                     end do
-                  end if Conditional_Components_Linearisation2
+                !  Conditional_Components_Linearisation2: if ( ncomp > 1 ) then
+                !     do icomp = 1, ncomp
+                !        do iphase = 1, nphase
+                !           Component_State => extract_scalar_field( state( icomp + nphase ), & 
+                !                'ComponentMassFractionPhase' // int2str( iphase ) )
+                !           if (.not. have_option(trim(Component_State%option_path)//"/prognostic/consistent_interpolation")) then
+                !              call Updating_Linearised_Components( totele, ndim, cv_nloc, cv_nonods, cv_ndgln,& 
+                !                   component ( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
+                !                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods ) )
+                !              Component_State % val = component( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
+                !                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods )
+                !           end if
+                !        end do
+                !     end do
+                !  end if Conditional_Components_Linearisation2
 
 
                   call pre_adapt_tasks( sub_state )
@@ -1297,7 +1236,7 @@
                  small_finacv, small_colacv, small_midacv, &
                  finmcy, colmcy, midmcy, &
                  block_to_global_acv, global_dense_block_acv, &
-                 finele, colele, midele, findgm_pha, coldgm_pha, middgm_pha, findct, &
+                 findgm_pha, coldgm_pha, middgm_pha, findct, &
                  colct, findc, colc, findcmc, colcmc, midcmc, findm, &
                  colm, midm, &
 !!$ Defining element-pair type and discretisation options and coefficients
@@ -1307,17 +1246,13 @@
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                  plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
-                 Temperature, PhaseVolumeFraction, &
-                 Component, &
-                 Temperature_Old, &
-                 PhaseVolumeFraction_Old, Component_Old, &
                  DRhoDPressure, &
                  Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
-                 Component_Source, ScalarAdvectionField_Source, &
+                 Component_Source, &
                  suf_sig_diagten_bc, &
                  theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
                  mass_ele, dummy_ele, &
-                 Permeability, Material_Absorption, Material_Absorption_Stab, &
+                 Material_Absorption, Material_Absorption_Stab, &
                  Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
                  Component_Diffusion_Operator_Coefficient, &
                  Momentum_Diffusion, Momentum_Diffusion_Vol, ScalarAdvectionField_Diffusion, &
@@ -1354,8 +1289,7 @@
                  mx_ncolacv, mx_ncolm )
             nlenmcy = u_nonods * nphase * ndim + cv_nonods
             allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
-                 finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
-                 finele( totele + 1 ), colele( mxnele ), midele( totele ), &
+                 finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &         
                  findgm_pha( u_nonods * nphase * ndim + 1 ), coldgm_pha( mx_ncoldgm_pha ), &
                  middgm_pha( u_nonods * nphase * ndim ), &
                  findct( cv_nonods + 1 ), colct( mx_nct ), &
@@ -1364,8 +1298,8 @@
                  findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
 
             allocate( global_dense_block_acv (nphase,cv_nonods) )
-            finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; finele = 0 ; &
-                 colele = 0 ; midele = 0 ; findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
+            finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; &
+                 findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
                  colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0 ; &
                  colm = 0 ; midm = 0
 
@@ -1399,13 +1333,9 @@
 !!$ Allocating space for various arrays:
             allocate( &
 !!$
-                 Temperature( nphase * cv_nonods ), &
-                 PhaseVolumeFraction( nphase * cv_nonods ), SAT_s( nphase , cv_nonods ), Component( nphase * cv_nonods * ncomp ), &
+                 SAT_s( nphase , cv_nonods ), &
                  oldSAT_s( nphase , cv_nonods ), &
                  DRhoDPressure( nphase, cv_nonods ), &
-!!$
-                 Temperature_Old( nphase * cv_nonods ), &
-                 PhaseVolumeFraction_Old( nphase * cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
 !!$             
                  suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
                  Mean_Pore_CV( cv_nonods ), &
@@ -1414,9 +1344,6 @@
                  Temperature_Source( cv_nonods * nphase ), &
                  Velocity_U_Source( u_nonods * nphase * ndim ), &
                  Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
-                 ScalarAdvectionField_Source( cv_nonods * nphase ), &
-!!$
-                 Permeability( totele, ndim, ndim ), &
 !!$
                  PhaseVolumeFraction_Source( nphase, cv_nonods ), &
                  Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -1436,19 +1363,16 @@
             Momentum_Diffusion=0.
             Momentum_Diffusion_Vol=0.
 !!$
-            Temperature=0. ; Temperature_Source=0. ; 
+            Temperature_Source=0. ; 
             Temperature_Absorption=0.
 !!$
-            Component=0. ; Component_Source=0.
+            Component_Source=0.
             Component_Diffusion=0. ; Component_Absorption=0.
 !!$
-            Permeability=0.
 !!$
-!!$
-            PhaseVolumeFraction=0. ; PhaseVolumeFraction_Old=0. ; PhaseVolumeFraction_Source=0.
+            PhaseVolumeFraction_Source=0.
 !!$
             ScalarAdvectionField_Diffusion=0. ; ScalarField_Absorption=0.
-            ScalarAdvectionField_Source=0.
 !!$
             Material_Absorption=0. ; Material_Absorption_Stab=0.
 !!$
@@ -1462,24 +1386,13 @@
             initialised = .true.
             call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
                  SAT_s, PhaseVolumeFraction_Source, &
-                 Component, Component_Source, &
+                 Component_Source, &
                  Velocity_U_Source, Velocity_Absorption, &
-                 Temperature,  Temperature_Source, &
-                 Permeability )
+                 Temperature_Source )
 
             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
                  OldPhaseVolumeFraction=OldSAT_s,FEPhaseVolumeFraction = FESAT_s )
 
-            if (have_component_field) then
-               !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
-               do cv_inod = 1, size(SAT_s,2)
-                  do iphase = 1, size(SAT_s,1)
-                     phaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
-                     PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
-                  end do
-               end do
-               !#############################################################
-            end if
 
             ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
 
@@ -1561,7 +1474,7 @@
            small_finacv, small_colacv, small_midacv, &
            finmcy, colmcy, midmcy, &
            block_to_global_acv, global_dense_block_acv, &
-           finele, colele, midele, findgm_pha, coldgm_pha, middgm_pha, findct, &
+           findgm_pha, coldgm_pha, middgm_pha, findct, &
            colct, findc, colc, findcmc, colcmc, midcmc, findm, &
            colm, midm, &
 !!$ Defining element-pair type and discretisation options and coefficients
@@ -1571,16 +1484,12 @@
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
            plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
-           Temperature, PhaseVolumeFraction, &
-           Component, &
-           Temperature_Old, &
-           PhaseVolumeFraction_Old, Component_Old, &
            DRhoDPressure, FEM_VOL_FRAC, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
-           Component_Source, ScalarAdvectionField_Source, &
+           Component_Source, &
            theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
            mass_ele, dummy_ele, &
-           Permeability, Material_Absorption, Material_Absorption_Stab, &
+           Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
            Component_Diffusion_Operator_Coefficient, &
            Momentum_Diffusion, Momentum_Diffusion_Vol, ScalarAdvectionField_Diffusion, &
@@ -1613,17 +1522,16 @@
 
         type(csr_sparsity), pointer :: sparsity
         type(scalar_field), pointer :: sfield
+        type(tensor_field), pointer :: tfield
 
         integer ic
 
+        type(halo_type), pointer :: halo
+
+
+
         allocate(sparsity)
 
-        sparsity=wrap(finele,midele,colm=colele,name='ElementConnectivity')
-        call insert(packed_state,sparsity,'ElementConnectivity')
-        call deallocate(sparsity)
-        sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name='SinglePhaseAdvectionSparsity')
-        call insert(packed_state,sparsity,'SinglePhaseAdvectionSparsity')
-        call deallocate(sparsity)
         sparsity=wrap(finacv,midacv,colm=colacv,name='PackedAdvectionSparsity')
         call insert(packed_state,sparsity,'PackedAdvectionSparsity')
         call deallocate(sparsity)
@@ -1633,25 +1541,72 @@
         sparsity=wrap(findct,colm=colct,name='CTMatrixSparsity')
         call insert(packed_state,sparsity,'CTMatrixSparsity')
         call deallocate(sparsity)
-        sparsity=wrap(findcmc,colm=colcmc,name='CMCMatrixSparsity')
-        call insert(packed_state,sparsity,'CMCMatrixSparsity')
-        call deallocate(sparsity)
+
         sparsity=wrap(findm,midm,colm=colm,name='CVFEMSparsity')
         call insert(packed_state,sparsity,'CVFEMSparsity')
         call deallocate(sparsity)
 
         sfield=>extract_scalar_field(packed_state,"FEPressure")
+
+        if (associated( sfield%mesh%halos)) then
+           sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity',&
+                row_halo=sfield%mesh%halos(2),&
+                column_halo=sfield%mesh%halos(2))
+        else
+           sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity')
+        end if
+        call insert(packed_state,sparsity,'CMCSparsity')
+        call deallocate(sparsity)
+
+
+        if (associated( sfield%mesh%halos)) then
+           sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity",&
+                row_halo=sfield%mesh%halos(2),&
+                column_halo=sfield%mesh%halos(2))
+        else
+           sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity")
+        end if
+        call insert(packed_state,sparsity,"ACVSparsity")
+        call deallocate(sparsity)
+
+        tfield=>extract_tensor_field(packed_state,"PackedVelocity")
+        if (associated(tfield%mesh%halos)) then
+           halo => tfield%mesh%halos(2)
+        else
+           nullify(halo)
+        end if
+        if (associated(halo)) then
+           sparsity=wrap(findgm_pha,colm=coldgm_pha,&
+                name='MomentumSparsity',row_halo=halo,column_halo=halo)
+        else
+           sparsity=wrap(findgm_pha,colm=coldgm_pha,name="MomentumSparsity")
+        end if
+        call insert(packed_state,sparsity,"MomentumSparsity")
+        call deallocate(sparsity)
+
+
+
         sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
              "PressureMassMatrixSparsity")
         call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
         call deallocate(sparsity)
+
+
         deallocate(sparsity)
+
+
+
         sparsity=> extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
         do ic=1,size(multicomponent_state)
            call insert(multicomponent_state(ic),sparsity,"PressureMassMatrixSparsity")
         end do
+        sparsity=> extract_csr_sparsity(packed_state,"ACVSparsity")
+         do ic=1,size(multicomponent_state)
+           call insert(multicomponent_state(ic),sparsity,"ACVSparsity")
+        end do
 
-
+        sparsity=> extract_csr_sparsity(state(1),"ElementConnectivity")
+        call insert(packed_state,sparsity,"ElementConnectivity")
 
       end subroutine temp_mem_hacks
 

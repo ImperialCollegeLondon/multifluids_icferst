@@ -59,59 +59,6 @@
 
   contains
 
-    SUBROUTINE MULMAT( VEC, CT, U, FREDOP, NONODS, NCOLCT, FINDCT, COLCT ) 
-      IMPLICIT NONE
-      ! perform VEC = C^T * P, matrix vector multiplication
-
-      INTEGER, intent( in ) :: FREDOP, NONODS, NCOLCT
-      REAL, DIMENSION( : ), intent( inout ) :: VEC
-      REAL, DIMENSION( : ), intent( inout ) :: CT
-      REAL, DIMENSION( : ), intent( in ) :: U
-      INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-      INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-      ! Local variables
-      INTEGER :: PNOD, COUNT, COL
-
-      VEC( 1: FREDOP ) = 0.0
-
-      DO PNOD = 1, FREDOP
-
-         DO COUNT = FINDCT( PNOD ), FINDCT( PNOD + 1 ) - 1
-            COL = COLCT( COUNT )
-            VEC( PNOD ) = VEC( PNOD ) + CT( COUNT ) * U( COL )
-         END DO
-
-      END DO
-
-      RETURN
-    END SUBROUTINE MULMAT
-
-
-    SUBROUTINE MULMATtransp( VEC, CT, P, FREDOP, NONODS, NCOLCT, FINDCT, COLCT ) 
-      IMPLICIT NONE
-      ! perform VEC = C * P, matrix vector multiplication
-
-      INTEGER, intent( in ) :: FREDOP, NONODS, NCOLCT
-      REAL, DIMENSION( : ), intent( inout ) :: VEC
-      REAL, DIMENSION( : ), intent( inout ) :: CT
-      REAL, DIMENSION( : ), intent( in ) :: P
-      INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-      INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-      ! Local variables
-      INTEGER :: PNOD, COUNT, COL
-
-      VEC( 1: NONODS ) = 0.0
-
-      DO PNOD = 1, FREDOP
-         DO COUNT = FINDCT( PNOD ), FINDCT( PNOD + 1 ) - 1
-            COL = COLCT( COUNT )
-            VEC( COL ) = VEC( COL ) +CT( COUNT ) * P( PNOD )
-         END DO
-      END DO
-
-      RETURN
-    END SUBROUTINE MULMATtransp
-
 
     SUBROUTINE MATDMATINV( DMAT, DMATINV, NLOC )
       ! calculate DMATINV
@@ -1062,21 +1009,21 @@
       REAL, DIMENSION( :, :, : ), allocatable :: PIVIT_MAT2
 
       if (indx==0) then !The first time we need to introduce the targets in state
-         if (has_scalar_field(state(1), StorName)) then
+         if (has_scalar_field(state(1), trim(Storname))) then
             !If we are recalculating due to a mesh modification then
             !we return to the original situation
-            call remove_scalar_field(state(1), StorName)
+            call remove_scalar_field(state(1), trim(Storname))
          end if
          !Get mesh file just to be able to allocate the fields we want to store
          fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
-         Auxmesh = make_mesh(fl_mesh,name='StorageMesh1')
+         Auxmesh = make_mesh(fl_mesh,name=trim(Storname))
          !The number of nodes I want does not coincide
          Auxmesh%nodes = NBLOCK * NBLOCK * TOTELE
 
-         call allocate (Targ_NX_ALL, Auxmesh, StorName)
+         call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
 
          !Now we insert them in state and store the indexes
-         call insert(state(1), Targ_NX_ALL, StorName)
+         call insert(state(1), Targ_NX_ALL, trim(Storname))
          !Store index
          indx = size(state(1)%scalar_fields)
 
@@ -1270,24 +1217,6 @@
 
     END SUBROUTINE PHA_BLOCK_MAT_VEC2
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     SUBROUTINE PHA_BLOCK_MAT_VEC_MANY2( U, BLOCK_MAT, CDP, U_NONODS, NDIM, NPHASE, NBLOCK, &
          TOTELE, U_NLOC, U_NDGLN ) 
       implicit none
@@ -1469,64 +1398,6 @@
 
     END SUBROUTINE CT_MULT2
 
-
-
-
-
-
-
-
-
-
-
-
-!!$
-!!$    SUBROUTINE CT_MULT( CV_RHS, U, V, W, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-!!$         CT, NCOLCT, FINDCT, COLCT ) 
-!!$      ! CV_RHS=CT*U
-!!$      implicit none
-!!$      INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLCT
-!!$      REAL, DIMENSION( : ), intent( out) :: CV_RHS
-!!$      REAL, DIMENSION( : ), intent( in ) :: U, V, W
-!!$      INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-!!$      INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-!!$      REAL, DIMENSION( : ), intent( in ) :: CT
-!!$
-!!$
-!!$      ! Local variables
-!!$      real, dimension( ncolct) :: CTU
-!!$      INTEGER :: CV_INOD, COUNT, U_JNOD, IPHASE, i,J,k
-!!$      integer, pointer :: countp
-!!$
-!!$    ! when code is realigned, it will be possible to form the dot product
-!!$    !              sum(CT(1:ndim*nphase,CV_NOD,U(1:ndim*nphase,cv_nod) 
-!!$    ! directly, unrolling one loop and reducing indirection.
-!!$
-!!$
-!!$      DO CV_INOD = 1, CV_NONODS
-!!$         CTU( FINDCT( CV_INOD ) :FINDCT( CV_INOD + 1 )-1)=CT( FINDCT( CV_INOD ) :FINDCT( CV_INOD + 1 ) -1)&
-!!$              *u(colct( FINDCT( CV_INOD ) :FINDCT( CV_INOD + 1 )-1))
-!!$      end do
-!!$      if (ndim>=2) CTU=CTU+CT(ncolct+1:2*ncolct)*V(colct)
-!!$      if (ndim>=3) CTU=CTU+CT(2*ncolct+1:3*ncolct)*W(colct)
-!!$
-!!$      DO IPHASE = 2, NPHASE
-!!$         CTU=CTU+CT((iphase-1)*ncolct*ndim+1:(iphase-1)*ncolct*ndim+ncolct)*U(colct + ( IPHASE - 1 ) * U_NONODS)
-!!$         if (ndim>=2) &
-!!$              CTU=CTU+CT((iphase-1)*ncolct*ndim+ncolct+1:(iphase-1)*ncolct*ndim+2*ncolct)&
-!!$              *V(colct + ( IPHASE - 1 ) * U_NONODS)
-!!$         if (ndim>=3) CTU=CTU+CT((iphase-1)*ncolct*ndim+2*ncolct+1:(iphase-1)*ncolct*ndim+3*ncolct)*W(colct + ( IPHASE - 1 ) * U_NONODS)
-!!$      end DO
-!!$
-!!$      DO CV_INOD = 1, CV_NONODS
-!!$         CV_RHS( CV_INOD ) = sum(CTU( FINDCT( CV_INOD ) :FINDCT( CV_INOD + 1 ) - 1))
-!!$      END DO
-!!$
-!!$      RETURN
-!!$
-!!$    END SUBROUTINE CT_MULT
-
-
     SUBROUTINE CT_MULT_MANY( CV_RHS, U, CV_NONODS, U_NONODS, NDIM, NPHASE, NBLOCK, &
          CT, NCOLCT, FINDCT, COLCT ) 
       ! CV_RHS = CT * U
@@ -1568,54 +1439,6 @@
       RETURN
 
     END SUBROUTINE CT_MULT_MANY
-
-
-    SUBROUTINE C_MULT( CDP, DP, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-         C, NCOLC, FINDC, COLC ) 
-      implicit none
-      ! CDP=C*DP
-      INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC
-      REAL, DIMENSION( : ), intent( inout ) :: CDP
-      REAL, DIMENSION( : ), intent( in )  :: DP
-      REAL, DIMENSION( : ), intent( in ), target :: C
-      INTEGER, DIMENSION( : ), intent( in ) ::FINDC
-      INTEGER, DIMENSION( : ), intent( in ), target :: COLC
-      ! Local variables
-      INTEGER :: U_INOD, COUNT, P_JNOD, IPHASE, I1, IDIM, COUNT_DIM_PHA,j,dim_pha
-      real, dimension(NCOLC) :: ldp
-
-      !interface
-      !   real function ddot( N, dx,incx,dy, incy)
-      !     integer :: n, incx, incy
-      !     real, dimension(N) :: dx,dy
-      !   end function ddot
-      !end interface
-
-      LDP = DP( COLC )
-
-      Loop_Phase: DO IPHASE = 0, NPHASE-1
-         Loop_Dim: DO IDIM = 1, NDIM
-            DIM_PHA = (IDIM-1) + NDIM*IPHASE
-            Loop_VelNodes: DO U_INOD = 1, U_NONODS 
-               CDP( U_INOD + DIM_PHA * U_NONODS ) = &
-                    DOT_PRODUCT( &
-                    C( FINDC( U_INOD ) + NCOLC * DIM_PHA : FINDC( U_INOD + 1 ) - 1 + NCOLC * DIM_PHA ), &
-                    LDP( FINDC( U_INOD ) : FINDC( U_INOD + 1 ) - 1 ) )
-            END DO Loop_VelNodes
-         END DO Loop_Dim
-      END DO Loop_Phase
-
-      RETURN
-    END SUBROUTINE C_MULT
-
-
-
-
-
-
-
-
-
 
     SUBROUTINE C_MULT_MANY( CDP, DP, CV_NONODS, U_NONODS, NDIM, NPHASE, NBLOCK, &
          C, NCOLC, FINDC, COLC ) 
@@ -1860,66 +1683,27 @@
     end subroutine assemble_global_multiphase_csr
 
 
- subroutine assemble_global_multiphase_petsc_csr(global_petsc,&
-         block_csr,dense_block_matrix,finacv,colacv,mesh)
+ subroutine allocate_global_multiphase_petsc_csr(global_petsc,&
+         sparsity,tracer)
 
       type(petsc_csr_matrix)    ::  global_petsc
-      real, dimension(:), intent(in)     :: block_csr
-      real, dimension(:,:,:), intent(in) :: dense_block_matrix
-      integer, dimension(:), intent(in)  :: finacv,colacv
-      type(mesh_type), intent(inout) :: mesh
+      type(tensor_field) :: tracer
 
-      integer :: node, iphase, jphase, count, node_count, nphase, j,my_pos
+      integer :: nphase
 
       type(csr_sparsity) :: sparsity
-      integer, dimension(:), pointer :: row
 
-      node_count=size(dense_block_matrix,3)
-      nphase=size(dense_block_matrix,2)
+      nphase=tracer%dim(2)
 
 
       ewrite(3,*), "In  assemble_global_multiphase_petsc_csr"
       
-      if (associated(mesh%halos)) then
-         sparsity=wrap(finacv,colm=colacv,name='ACVSparsity',row_halo=mesh%halos(1),column_halo=mesh%halos(1))
-      else
-         sparsity=wrap(finacv,colm=colacv,name='ACVSparsity')
-      end if
       call allocate(global_petsc,sparsity,[nphase,nphase],"ACV",.true.)
       call zero(global_petsc)
 
-      my_pos=0
-      do node=1,node_count
+      ewrite(3,*), "Leaving allocate_global_multiphase_petsc_csr"
 
-         row=>row_m_ptr(sparsity,node)
-
-         do j=1,size(row)
-            do jphase=1,nphase
-               my_pos=my_pos+1
-               if (node_owned(mesh,node)) call addto(global_petsc,jphase,jphase,node,row(j),block_csr(my_pos))
-            end do
-         end do
-
-      end do
-
-
-      ! now for the dense block
-     
-
-      do node=1,node_count
-         if (.not. node_owned(mesh,node)) cycle
-         do jphase=1,nphase
-            do iphase=1,nphase
-               call addto(global_petsc,iphase,jphase,node,node,dense_block_matrix(iphase,jphase,node))
-            end do
-         end do
-      end do
-
-      ewrite(3,*), "Leaving assemble_global_multiphase_petsc_csr"
-
-      call deallocate(sparsity)
-
-    end subroutine assemble_global_multiphase_petsc_csr
+    end subroutine allocate_global_multiphase_petsc_csr
 
     function wrap_momentum_matrix(DGM_PHA,FINDGM_PHA,COLDGM_PHA,velocity) result(mat)
       type(petsc_csr_matrix)    ::  mat
@@ -1963,11 +1747,11 @@
          product(velocity%dim),halo,fluidity_ordering=.true.)
 
     if (.not. IsParallel()) then
-       mat%M=csr2petsc_CreateSeqAIJ(sparsity, mat%row_numbering, &
-        mat%column_numbering, .false., use_inodes=.false.)
+       mat%M=full_CreateSeqAIJ(sparsity, mat%row_numbering, &
+        mat%column_numbering, .true., use_inodes=.false.)
     else
        mat%M=full_CreateMPIAIJ(sparsity, mat%row_numbering, &
-            mat%column_numbering, .false., use_inodes=.false.)
+            mat%column_numbering, .true., use_inodes=.false.)
     end if
 
     call MatSetOption(mat%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
@@ -1996,14 +1780,61 @@
     
   end function wrap_momentum_matrix
 
+  function allocate_momentum_matrix(sparsity,velocity) result(Mat)
+    type(csr_sparsity), intent (inout) :: sparsity
+    type(tensor_field), intent (inout) :: velocity
+    type(halo_type), pointer:: halo
+    type(petsc_csr_matrix) :: mat
+    integer :: ierr
+
+
+    if (associated(velocity%mesh%halos)) then
+       halo => velocity%mesh%halos(2)
+    else
+       nullify(halo)
+    end if
+
+    mat%name="MomentumMatrix"
+
+    if (associated(halo)) then
+       mat%row_halo => halo
+       call incref(mat%row_halo)
+       mat%column_halo => halo
+       call incref(mat%column_halo)
+    else
+       nullify(mat%row_halo)
+       nullify(mat%column_halo)
+    end if
+
+    call allocate(mat%row_numbering,node_count(velocity),&
+         product(velocity%dim),halo,fluidity_ordering=.true.)
+    call allocate(mat%column_numbering,node_count(velocity),&
+         product(velocity%dim),halo,fluidity_ordering=.true.)
+
+    if (.not. IsParallel()) then
+       mat%M=full_CreateSeqAIJ(sparsity, mat%row_numbering, &
+        mat%column_numbering,.false.)
+    else
+       mat%M=full_CreateMPIAIJ(sparsity, mat%row_numbering, &
+            mat%column_numbering,.false.)
+    end if
+
+    call MatSetOption(mat%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
+    call MatSetOption(mat%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
+    call MatSetOption(mat%M, MAT_ROW_ORIENTED, PETSC_FALSE, ierr)
+    nullify(mat%refcount)
+    call addref_petsc_csr_matrix(mat)
+
+
+  end function allocate_momentum_matrix
+    
+
 
   subroutine apply_strong_bcs_multiphase(A , x , b)
 
     type(petsc_csr_matrix) :: a
     type(tensor_field)     :: x
     type(vector_field)     :: b
-
-    type(tensor_field)     ::  x_bcs
 
     character(len=FIELD_NAME_LEN)  :: bc_type
     logical, dimension(x%dim(1),x%dim(2)) :: applies

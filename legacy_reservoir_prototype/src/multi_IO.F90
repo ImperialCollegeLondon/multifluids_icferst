@@ -178,35 +178,6 @@ contains
 
   ! -----------------------------------------------------------------------------------------
 
-  subroutine output_fem_sol_of_cv( unit, totele, cv_nonods, x_nonods, nphase, &
-       cv_nloc, x_nloc, cv_ndgln, x_ndgln, x, femt )
-
-    implicit none
-
-    integer, intent( in ) :: unit, totele, cv_nonods, x_nonods, nphase, cv_nloc, x_nloc
-    integer, dimension( : ), intent( in ) :: cv_ndgln
-    integer, dimension( : ), intent( in ) :: x_ndgln
-    real, dimension( : ), intent( in ) :: x
-    real, dimension( : ), intent( in ) :: femt
-
-    ! Local variables
-    integer :: ele, cv_iloc
-
-    ewrite(3,*) 'In output_fem_sol_of_cv'
-
-    do ele = 1, totele
-       do cv_iloc = 1, cv_nloc
-          write( unit ,* ) x( x_ndgln(( ele - 1 ) * x_nloc + cv_iloc )), &
-               femt( cv_ndgln(( ele - 1 ) * cv_nloc + cv_iloc ))
-       end do
-    end do
-
-    ewrite(3,*) 'Leaving output_fem_sol_of_cv'
-
-  end subroutine output_fem_sol_of_cv
-
-  ! -----------------------------------------------------------------------------------------
-
   subroutine generate_name_dump( itime, unit, field, field_no )
     implicit none
     integer, intent( in ) :: itime

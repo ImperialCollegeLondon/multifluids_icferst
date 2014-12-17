@@ -511,9 +511,7 @@
     </scalar_field>
     <multiphase_properties>
       <relperm_type>
-        <Corey>
-          <Use_epsilon_method/>
-        </Corey>
+        <Corey/>
       </relperm_type>
       <immobile_fraction>
         <real_value rank="0">0.2</real_value>
@@ -798,9 +796,7 @@
     </scalar_field>
     <multiphase_properties>
       <relperm_type>
-        <Corey>
-          <Use_epsilon_method/>
-        </Corey>
+        <Corey/>
       </relperm_type>
       <immobile_fraction>
         <real_value rank="0">0.3</real_value>

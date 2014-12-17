@@ -712,21 +712,22 @@
 
     subroutine Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
          PhaseVolumeFraction, PhaseVolumeFraction_Source, &
-         Component, Component_Source, &
+         Component_Source, &
          Velocity_U_Source, Velocity_Absorption, &
-         Temperature, Temperature_Source,  &
-         Permeability  )
+         Temperature_Source, &
+         Permeability )
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
 
       logical, intent( in ) :: initialised
       real, dimension( : ), intent( inout ) :: &
-           Component, Component_Source, &
+           Component_Source, &
            Velocity_U_Source, &
-           Temperature, Temperature_Source
+           Temperature_Source
       real, dimension(:,:), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source
-      real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption, Permeability
+      real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption
+      real, dimension( :, :, : ), optional, intent( inout ) :: Permeability
 
 !!$ Local variables
       type( scalar_field ), pointer :: scalarfield
@@ -820,22 +821,22 @@
 !!$
 !!$ Extracting Components Field:
 !!$
-      Loop_Components: do icomp = nphase + 1, nphase + ncomp ! Component loop
-         Loop_Phases_Components: do iphase = 1, nphase ! Phase loop
-
-            scalarfield => extract_scalar_field( state( icomp ), 'ComponentMassFractionPhase' // int2str( iphase ) )
-
-            knod = ( icomp - ( nphase + 1 ) ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods
-            knod2 = ( icomp - ( nphase + 1 ) ) * nphase * stotel * cv_snloc + &
-                 ( iphase - 1 ) * stotel * cv_snloc
-
-            call Get_CompositionFields_Outof_State( state, initialised, nphase, icomp, iphase, scalarfield, &
-                 Component( knod + 1 : knod + cv_nonods ), &
-                 field_prot_source = Component_Source( ( iphase - 1 ) * cv_nonods + 1 : &
-                 ( iphase - 1 ) * cv_nonods + cv_nonods ) )
-
-         end do Loop_Phases_Components
-      end do Loop_Components
+!      Loop_Components: do icomp = nphase + 1, nphase + ncomp ! Component loop
+!         Loop_Phases_Components: do iphase = 1, nphase ! Phase loop
+!
+!            scalarfield => extract_scalar_field( state( icomp ), 'ComponentMassFractionPhase' // int2str( iphase ) )
+!
+!            knod = ( icomp - ( nphase + 1 ) ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods
+!            knod2 = ( icomp - ( nphase + 1 ) ) * nphase * stotel * cv_snloc + &
+!                 ( iphase - 1 ) * stotel * cv_snloc
+!
+!            call Get_CompositionFields_Outof_State( state, initialised, nphase, icomp, iphase, scalarfield, &
+!                 Component( knod + 1 : knod + cv_nonods ), &
+!                 field_prot_source = Component_Source( ( iphase - 1 ) * cv_nonods + 1 : &
+!                 ( iphase - 1 ) * cv_nonods + cv_nonods ) )
+!
+!         end do Loop_Phases_Components
+!      end do Loop_Components
 
 !!$
 !!$ Extracting Velocity Field:
@@ -849,42 +850,46 @@
 !!$
 !!$ Extracting Temperature Field:
 !!$
-      do iphase = 1, nphase
-         Conditional_Temperature: if( have_option( '/material_phase[' // int2str( iphase - 1 ) // &
-              ']/scalar_field::Temperature' ) ) then
-            scalarfield => extract_scalar_field( state( iphase ), 'Temperature' )
-            knod = ( iphase - 1 ) * node_count( scalarfield )
-            call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
-                 Temperature( knod + 1 : knod + node_count( scalarfield ) ), &
-                 field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) )
-         end if Conditional_Temperature
-      end do
+!      do iphase = 1, nphase
+!         Conditional_Temperature: if( have_option( '/material_phase[' // int2str( iphase - 1 ) // &
+!              ']/scalar_field::Temperature' ) ) then
+!            scalarfield => extract_scalar_field( state( iphase ), 'Temperature' )
+!            knod = ( iphase - 1 ) * node_count( scalarfield )
+!            !call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
+!            !     Temperature( knod + 1 : knod + node_count( scalarfield ) ), &
+!            !     field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) )
+!            call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
+!                 Temperature( iphase, : ), &
+!                 field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) ) 
+!         end if Conditional_Temperature
+!      end do
 
 !!$
 !!$ Extracting Permeability Field:
 !!$
-      Permeability = 0.
-      Conditional_PermeabilityField: if( have_option( '/porous_media/scalar_field::Permeability' ) ) then
+      if (present(Permeability)) then
+          Permeability = 0.
+          Conditional_PermeabilityField: if( have_option( '/porous_media/scalar_field::Permeability' ) ) then
 
-         scalarfield => extract_scalar_field( state( 1 ), 'Permeability' )
-         do ele = 1, element_count( scalarfield ) 
-            element_nodes => ele_nodes( scalarfield, ele )
-            forall( idim = 1 : ndim ) Permeability( ele, idim, idim ) = scalarfield % val( element_nodes( 1 ) )
-         end do
+             scalarfield => extract_scalar_field( state( 1 ), 'Permeability' )
+             do ele = 1, element_count( scalarfield )
+                element_nodes => ele_nodes( scalarfield, ele )
+                forall( idim = 1 : ndim ) Permeability( ele, idim, idim ) = scalarfield % val( element_nodes( 1 ) )
+             end do
 
-      elseif( have_option( '/porous_media/tensor_field::Permeability' ) ) then
+          elseif( have_option( '/porous_media/tensor_field::Permeability' ) ) then
 
-         tensorfield => extract_tensor_field( state( 1 ), 'Permeability' )
-         option_path =  '/porous_media/tensor_field::Permeability'
-         call Extract_TensorFields_Outof_State( state, 1, &
-              tensorfield, option_path, &
-              Permeability )
+             tensorfield => extract_tensor_field( state( 1 ), 'Permeability' )
+             option_path =  '/porous_media/tensor_field::Permeability'
+             call Extract_TensorFields_Outof_State( state, 1, &
+                  tensorfield, option_path, &
+                  Permeability )
 
-      elseif( have_option( '/porous_media/vector_field::Permeability' ) ) then
-         FLAbort( 'Permeability Vector Field is not defined yet.' )
+          elseif( have_option( '/porous_media/vector_field::Permeability' ) ) then
+             FLAbort( 'Permeability Vector Field is not defined yet.' )
 
-      end if Conditional_PermeabilityField
-
+          end if Conditional_PermeabilityField
+      end if
       deallocate( cv_sndgln, p_sndgln, u_sndgln, dummy )
 
       return
