@@ -6977,7 +6977,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
     SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, nphase, ncomp, &
     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
     U_SOURCE_CV, U_SOURCE, &
-    COMP, &
     NCOLACV, FINACV, COLACV, MIDACV, &
     SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
     block_to_global_acv, global_dense_block_acv, &
@@ -7021,7 +7020,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         integer, dimension( : ), intent( in ) :: FINDCT
         integer, dimension( : ), intent( in ) :: COLCT
 
-        real, dimension( : ), intent( in ) :: COMP
+        real, dimension( : ), allocatable :: COMP
 
         integer, dimension( : ), intent( in ) :: FINDM
         integer, dimension( : ), intent( in ) :: COLM
@@ -7043,6 +7042,9 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
         ewrite(3,*) 'Entering CALCULATE_SURFACE_TENSION'
+
+        allocate( COMP(  CV_NONODS*NPHASE*NCOMP ) ) ; COMP = 0.0
+
 
         allocate( X(  X_NONODS ) ) ; X = 0.0
         allocate( Y(  X_NONODS ) ) ; Y = 0.0
@@ -7141,6 +7143,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             end if
 
         end do
+
+        DEALLOCATE( COMP )
 
         ewrite(3,*) 'Leaving CALCULATE_SURFACE_TENSION'
 

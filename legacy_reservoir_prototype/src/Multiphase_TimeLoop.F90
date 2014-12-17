@@ -180,8 +180,6 @@
 
 !!$ Working arrays:
       real, dimension( : ), pointer :: &
-           Component, &
-           Component_Old, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
            Component_Source, &
            ScalarField_Source_Store, ScalarField_Source_Component, &
@@ -194,8 +192,7 @@
 
       real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
 !!$
-      real, dimension( :, : ), pointer :: PhaseVolumeFraction, &
-           PhaseVolumeFraction_Old, PhaseVolumeFraction_Source
+      real, dimension( :, : ), pointer :: PhaseVolumeFraction_Source
       real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
 !!$
@@ -379,10 +376,7 @@
 !!$ Allocating space for various arrays:
       allocate( &
 !!$
-           PhaseVolumeFraction( nphase, cv_nonods ), Component( nphase * cv_nonods * ncomp ), &
            DRhoDPressure( nphase, cv_nonods ), FEM_VOL_FRAC( nphase, cv_nonods ),&
-!!$
-           PhaseVolumeFraction_Old( nphase, cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
 !!$
            suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
            Mean_Pore_CV( cv_nonods ), &
@@ -410,10 +404,7 @@
       ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln)
 
 !!$
-      PhaseVolumeFraction=0. ; Component=0.
       DRhoDPressure=0.
-!!$
-      PhaseVolumeFraction_Old=0. ; Component_Old=0.
 !!$
       Temperature_Source=0.
       suf_sig_diagten_bc=0.
@@ -457,7 +448,7 @@
       initialised = .false.
       call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
            SAT_s, PhaseVolumeFraction_Source,&
-           Component, Component_Source, &
+           Component_Source, &
            Velocity_U_Source, Velocity_Absorption, &
            Temperature_Source)
       FESAT_s = 0; OldSAT_s = 0.
@@ -556,13 +547,7 @@
          call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'ErrorMetric' )
       end if
 
-      if (have_component_field) then
-         do iphase = 1, size(SAT_s,1)
-            PhaseVolumeFraction(iphase, :) = SAT_s(iphase, :)
-            PhaseVolumeFraction_Old(iphase, :) = OldSAT_s(iphase, :)
-         end do
-         !#############################################################
-      end if
+
 !!$ Starting Time Loop
       itime = 0
       dtime = 0
@@ -613,8 +598,6 @@
 
 
 !!$ Update all fields from time-step 'N - 1'
-         if (have_component_field) PhaseVolumeFraction_Old = PhaseVolumeFraction
-         Component_Old = Component
 
          U_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
          UOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
@@ -772,7 +755,7 @@
 
                CALL CALCULATE_SURFACE_TENSION( state, packed_state, nphase, ncomp, &
                     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-                    Velocity_U_Source_CV, Velocity_U_Source, Component, &
+                    Velocity_U_Source_CV, Velocity_U_Source, &
                     NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
                     block_to_global_acv, global_dense_block_acv, &
@@ -906,14 +889,12 @@
                   Conditional_SmoothAbsorption: if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                      do cv_nodi = 1, cv_nonods
-                        !if( PhaseVolumeFraction( 1, cv_nodi ) > 0.95 ) then
                         if( Sat_S( 1, cv_nodi ) > 0.95 ) then
                            do iphase = 1, nphase
                               do jphase = min( iphase + 1, nphase ), nphase
                                  Component_Absorption( cv_nodi, iphase, jphase ) = &
                                       Component_Absorption( cv_nodi, iphase, jphase ) * max( 0.01, &
                                       20. * ( 1. - Sat_S( 1, cv_nodi ) ) )
-                                      !20. * ( 1. - PhaseVolumeFraction( 1, cv_nodi ) ) )
                               end do
                            end do
                         end if
@@ -1017,7 +998,6 @@
                   if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                      do cv_nodi = 1, cv_nonods
-                        !if( PhaseVolumeFraction( 1, cv_nodi ) > 0.95 ) then
                         if( Sat_S( 1, cv_nodi ) > 0.95 ) then
                            do iphase = 1, nphase
                               do jphase = min( iphase + 1, nphase ), nphase
@@ -1164,24 +1144,21 @@
                Conditional_Adapt_by_TimeStep: if( mod( itime, adapt_time_steps ) == 0 ) then
 
                   ! linearise compositional fields:
-                  Conditional_Components_Linearisation2: if ( ncomp > 1 ) then
-
-                     do icomp = 1, ncomp
-                        do iphase = 1, nphase
-
-                           Component_State => extract_scalar_field( state( icomp + nphase ), & 
-                                'ComponentMassFractionPhase' // int2str( iphase ) )
-                           if (.not. have_option(trim(Component_State%option_path)//"/prognostic/consistent_interpolation")) then
-
-                              call Updating_Linearised_Components( totele, ndim, cv_nloc, cv_nonods, cv_ndgln,& 
-                                   component ( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
-                                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods ) )
-                              Component_State % val = component( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
-                                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods )
-                           end if
-                        end do
-                     end do
-                  end if Conditional_Components_Linearisation2
+                !  Conditional_Components_Linearisation2: if ( ncomp > 1 ) then
+                !     do icomp = 1, ncomp
+                !        do iphase = 1, nphase
+                !           Component_State => extract_scalar_field( state( icomp + nphase ), & 
+                !                'ComponentMassFractionPhase' // int2str( iphase ) )
+                !           if (.not. have_option(trim(Component_State%option_path)//"/prognostic/consistent_interpolation")) then
+                !              call Updating_Linearised_Components( totele, ndim, cv_nloc, cv_nonods, cv_ndgln,& 
+                !                   component ( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
+                !                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods ) )
+                !              Component_State % val = component( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
+                !                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods )
+                !           end if
+                !        end do
+                !     end do
+                !  end if Conditional_Components_Linearisation2
 
 
                   call pre_adapt_tasks( sub_state )
@@ -1269,9 +1246,6 @@
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                  plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
-                 PhaseVolumeFraction, &
-                 Component, &
-                 PhaseVolumeFraction_Old, Component_Old, &
                  DRhoDPressure, &
                  Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
                  Component_Source, &
@@ -1359,11 +1333,9 @@
 !!$ Allocating space for various arrays:
             allocate( &
 !!$
-                 PhaseVolumeFraction( nphase, cv_nonods ), SAT_s( nphase , cv_nonods ), Component( nphase * cv_nonods * ncomp ), &
+                 SAT_s( nphase , cv_nonods ), &
                  oldSAT_s( nphase , cv_nonods ), &
                  DRhoDPressure( nphase, cv_nonods ), &
-!!$
-                 PhaseVolumeFraction_Old( nphase, cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
 !!$             
                  suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
                  Mean_Pore_CV( cv_nonods ), &
@@ -1394,11 +1366,11 @@
             Temperature_Source=0. ; 
             Temperature_Absorption=0.
 !!$
-            Component=0. ; Component_Source=0.
+            Component_Source=0.
             Component_Diffusion=0. ; Component_Absorption=0.
 !!$
 !!$
-            PhaseVolumeFraction=0. ; PhaseVolumeFraction_Old=0. ; PhaseVolumeFraction_Source=0.
+            PhaseVolumeFraction_Source=0.
 !!$
             ScalarAdvectionField_Diffusion=0. ; ScalarField_Absorption=0.
 !!$
@@ -1414,21 +1386,13 @@
             initialised = .true.
             call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
                  SAT_s, PhaseVolumeFraction_Source, &
-                 Component, Component_Source, &
+                 Component_Source, &
                  Velocity_U_Source, Velocity_Absorption, &
                  Temperature_Source )
 
             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
                  OldPhaseVolumeFraction=OldSAT_s,FEPhaseVolumeFraction = FESAT_s )
 
-            if (have_component_field) then
-               !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
-               do iphase = 1, size(SAT_s,1)
-                  PhaseVolumeFraction(iphase, :) = SAT_s(iphase, :)
-                  PhaseVolumeFraction_Old(iphase, :) = OldSAT_s(iphase, :)
-               end do
-               !#############################################################
-            end if
 
             ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
 
@@ -1520,9 +1484,6 @@
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
            plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
-           PhaseVolumeFraction, &
-           Component, &
-           PhaseVolumeFraction_Old, Component_Old, &
            DRhoDPressure, FEM_VOL_FRAC, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
            Component_Source, &

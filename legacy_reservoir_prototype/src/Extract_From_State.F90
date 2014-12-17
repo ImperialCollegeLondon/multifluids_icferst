@@ -712,7 +712,7 @@
 
     subroutine Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
          PhaseVolumeFraction, PhaseVolumeFraction_Source, &
-         Component, Component_Source, &
+         Component_Source, &
          Velocity_U_Source, Velocity_Absorption, &
          Temperature_Source, &
          Permeability )
@@ -722,7 +722,7 @@
 
       logical, intent( in ) :: initialised
       real, dimension( : ), intent( inout ) :: &
-           Component, Component_Source, &
+           Component_Source, &
            Velocity_U_Source, &
            Temperature_Source
       real, dimension(:,:), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source
@@ -821,22 +821,22 @@
 !!$
 !!$ Extracting Components Field:
 !!$
-      Loop_Components: do icomp = nphase + 1, nphase + ncomp ! Component loop
-         Loop_Phases_Components: do iphase = 1, nphase ! Phase loop
-
-            scalarfield => extract_scalar_field( state( icomp ), 'ComponentMassFractionPhase' // int2str( iphase ) )
-
-            knod = ( icomp - ( nphase + 1 ) ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods
-            knod2 = ( icomp - ( nphase + 1 ) ) * nphase * stotel * cv_snloc + &
-                 ( iphase - 1 ) * stotel * cv_snloc
-
-            call Get_CompositionFields_Outof_State( state, initialised, nphase, icomp, iphase, scalarfield, &
-                 Component( knod + 1 : knod + cv_nonods ), &
-                 field_prot_source = Component_Source( ( iphase - 1 ) * cv_nonods + 1 : &
-                 ( iphase - 1 ) * cv_nonods + cv_nonods ) )
-
-         end do Loop_Phases_Components
-      end do Loop_Components
+!      Loop_Components: do icomp = nphase + 1, nphase + ncomp ! Component loop
+!         Loop_Phases_Components: do iphase = 1, nphase ! Phase loop
+!
+!            scalarfield => extract_scalar_field( state( icomp ), 'ComponentMassFractionPhase' // int2str( iphase ) )
+!
+!            knod = ( icomp - ( nphase + 1 ) ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods
+!            knod2 = ( icomp - ( nphase + 1 ) ) * nphase * stotel * cv_snloc + &
+!                 ( iphase - 1 ) * stotel * cv_snloc
+!
+!            call Get_CompositionFields_Outof_State( state, initialised, nphase, icomp, iphase, scalarfield, &
+!                 Component( knod + 1 : knod + cv_nonods ), &
+!                 field_prot_source = Component_Source( ( iphase - 1 ) * cv_nonods + 1 : &
+!                 ( iphase - 1 ) * cv_nonods + cv_nonods ) )
+!
+!         end do Loop_Phases_Components
+!      end do Loop_Components
 
 !!$
 !!$ Extracting Velocity Field:
