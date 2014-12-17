@@ -3393,7 +3393,12 @@
 ! Exterior faces :  1,3,6  ----James is this face the face with the 1st 6 surface quadrature points and the 1st 6 CV's.
 !                     This is only the exterior surface faces on the triangle with 1,2,3,4,5,6 
        
-       cv_neiloc([1,2,3,4,5,6],1:6)=-1
+       cv_neiloc(1,1)=-1
+       cv_neiloc(2,2)=-1
+       cv_neiloc(3,3)=-1
+       cv_neiloc(4,4)=-1
+       cv_neiloc(5,5)=-1
+       cv_neiloc(6,6)=-1
 
       call set_quad(li(:,1),sarea(1),norm(:,1),quad_gp(1,2,4))
       call set_quad(li(:,2),sarea(2),norm(:,2),&
@@ -3408,7 +3413,12 @@
 
 ! Exterior faces :  1,3,10
 
-      cv_neiloc([1,2,3,7,8,10],7:12)=-1
+      cv_neiloc(1,7)=-1
+      cv_neiloc(2,8)=-1
+      cv_neiloc(3,9)=-1
+      cv_neiloc(7,10)=-1
+      cv_neiloc(8,11)=-1
+      cv_neiloc(10,12)=-1
 
       call set_quad(li(:,7),sarea(7),norm(:,7),quad_gp(1,2,7))
       call set_quad(li(:,8),sarea(8),norm(:,8),&
@@ -3422,7 +3432,12 @@
 
 ! Exterior faces :  1,6,10
 
-       cv_neiloc([1,4,6,7,9,10],13:18)=-1
+      cv_neiloc(1,13)=-1
+      cv_neiloc(4,14)=-1
+      cv_neiloc(6,15)=-1
+      cv_neiloc(7,16)=-1
+      cv_neiloc(9,17)=-1
+      cv_neiloc(10,18)=-1
 
       call set_quad(li(:,13),sarea(13),norm(:,13),quad_gp(1,4,7))
       call set_quad(li(:,14),sarea(14),norm(:,14),&
@@ -3436,7 +3451,12 @@
 
 ! Exterior faces :  3,6,10
 
-       cv_neiloc([3,5,6,8,9,10],19:24)=-1
+      cv_neiloc(3,19)=-1
+      cv_neiloc(5,20)=-1
+      cv_neiloc(6,21)=-1
+      cv_neiloc(8,22)=-1
+      cv_neiloc(9,23)=-1
+      cv_neiloc(10,24)=-1
 
       call set_quad(li(:,19),sarea(19),norm(:,19),quad_gp(3,5,8))
       call set_quad(li(:,20),sarea(20),norm(:,20),&

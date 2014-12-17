@@ -163,8 +163,7 @@ do j=1,scvngi
   call SCVDETNX_new( 1,j,        &
        cv_nloc,     ScVNGI, 1,3,  &
        dglno,cv_nloc,&
-       SCVDETWEI,normal(:,1),normal(:,2),&
-       normal(:,3),SCVFEN, SCVFENSLX,    &
+       SCVDETWEI,normal,SCVFEN, SCVFENSLX,    &
        SCVFENSLY,  SCVFEWEIGH, X_ALL(:,1),     &
        X_ALL,        &
        .false.,       .true.,       .false. )
@@ -174,6 +173,16 @@ print*, '     Node #', '         l1', '         l2', '           l3' , '      sc
 
  do j=1, size(scvdetwei)
      print*, j, l1(j),l2(j),l3(j), scvdetwei(j), area(j), scvdetwei(j)/area(j)
+  end do
+
+  do j=1, cv_ngi_3d
+
+     print*, j, sum(CVFENLX_ALL(1,:,j)*X_all(1,:))
+
+  end do
+
+do j=1, size(scvdetwei)
+     print*, cv_neiloc(:,j)
   end do
   
   call report_test("[P1 Dual shape_functions]", fail, .false., "P1 shape function incorrect")
