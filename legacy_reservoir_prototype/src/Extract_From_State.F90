@@ -714,8 +714,8 @@
          PhaseVolumeFraction, PhaseVolumeFraction_Source, &
          Component, Component_Source, &
          Velocity_U_Source, Velocity_Absorption, &
-         Temperature, Temperature_Source,  &
-         Permeability  )
+         Temperature_Source, &
+         Permeability )
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
@@ -725,7 +725,7 @@
            Component, Component_Source, &
            Velocity_U_Source, &
            Temperature_Source
-      real, dimension(:,:), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source, Temperature
+      real, dimension(:,:), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source
       real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption
       real, dimension( :, :, : ), optional, intent( inout ) :: Permeability
 
@@ -850,19 +850,19 @@
 !!$
 !!$ Extracting Temperature Field:
 !!$
-      do iphase = 1, nphase
-         Conditional_Temperature: if( have_option( '/material_phase[' // int2str( iphase - 1 ) // &
-              ']/scalar_field::Temperature' ) ) then
-            scalarfield => extract_scalar_field( state( iphase ), 'Temperature' )
-            knod = ( iphase - 1 ) * node_count( scalarfield )
-            !call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
-            !     Temperature( knod + 1 : knod + node_count( scalarfield ) ), &
-            !     field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) )
-            call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
-                 Temperature( iphase, : ), &
-                 field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) ) 
-         end if Conditional_Temperature
-      end do
+!      do iphase = 1, nphase
+!         Conditional_Temperature: if( have_option( '/material_phase[' // int2str( iphase - 1 ) // &
+!              ']/scalar_field::Temperature' ) ) then
+!            scalarfield => extract_scalar_field( state( iphase ), 'Temperature' )
+!            knod = ( iphase - 1 ) * node_count( scalarfield )
+!            !call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
+!            !     Temperature( knod + 1 : knod + node_count( scalarfield ) ), &
+!            !     field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) )
+!            call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
+!                 Temperature( iphase, : ), &
+!                 field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) ) 
+!         end if Conditional_Temperature
+!      end do
 
 !!$
 !!$ Extracting Permeability Field:

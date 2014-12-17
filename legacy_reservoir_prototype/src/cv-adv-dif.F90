@@ -119,7 +119,7 @@ contains
          NCOLM, FINDM, COLM, MIDM, &
          XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-         IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+         IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
          IN_ELE_UPWIND, DG_ELE_UPWIND, &
          NOIT_DIM, &
@@ -287,7 +287,6 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
       REAL, DIMENSION( :, : ), intent( in ), target :: DEN_ALL, DENOLD_ALL
-      REAL, DIMENSION( :, : ), intent( in ) :: T2, T2OLD
       REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (NPHASE,CV_NONODS)
       REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
       REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
@@ -478,7 +477,7 @@ contains
       REAL, DIMENSION( : ), allocatable :: NDOTQOLD, INCOMEOLD
 
       REAL, DIMENSION( :, :, : ), ALLOCATABLE :: ABSORBT_ALL
-      REAL, DIMENSION( :, : ), ALLOCATABLE, target :: T2_ALL, T2OLD_ALL, &
+      REAL, DIMENSION( :, : ), ALLOCATABLE, target :: &
            FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, SOURCT_ALL
       LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
       LOGICAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_PACK, IGOT_T_CONST
@@ -488,7 +487,7 @@ contains
       real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
       real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
       real, dimension(:,:), allocatable, target :: T_TEMP, TOLD_TEMP
-      real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, X_ALL, FEMT_ALL, FEMTOLD_ALL
+      real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL, FEMT_ALL, FEMTOLD_ALL
       real, dimension(:, :, :), pointer :: comp, comp_old, fecomp, fecomp_old, U_ALL, NU_ALL, NUOLD_ALL
       real, dimension(:,:), allocatable :: T_ALL_KEEP
 
@@ -909,51 +908,22 @@ contains
 
 ! TEMP STUFF HERE
 
-!      ALLOCATE( U_ALL( NDIM, NPHASE, U_NONODS ), NU_ALL( NDIM, NPHASE, U_NONODS ), NUOLD_ALL( NDIM, NPHASE, U_NONODS ) )
-!      ALLOCATE( X_ALL( NDIM, X_NONODS ) )
-!      ALLOCATE( T_ALL( NPHASE, CV_NONODS ), TOLD_ALL( NPHASE, CV_NONODS ) )
-
-      ALLOCATE( T2_ALL( NPHASE, CV_NONODS ), T2OLD_ALL( NPHASE, CV_NONODS ) )
       nullify(FEMT_ALL); nullify(FEMTOLD_ALL);
       ALLOCATE( FEMT_ALL( NPHASE, CV_NONODS ), FEMTOLD_ALL( NPHASE, CV_NONODS ) )
       ALLOCATE( FEMDEN_ALL( NPHASE, CV_NONODS ), FEMDENOLD_ALL( NPHASE, CV_NONODS ) )
       ALLOCATE( FEMT2_ALL( NPHASE, CV_NONODS ), FEMT2OLD_ALL( NPHASE, CV_NONODS ) )
 
       ALLOCATE( SOURCT_ALL( NPHASE, CV_NONODS ), ABSORBT_ALL( NPHASE, NPHASE, CV_NONODS ) )
-
-
       DO IPHASE = 1, NPHASE
-
-!         IF ( IGOT_T2 == 1 ) THEN
-         IF ( GOT_T2 ) THEN
-            !T2_ALL( IPHASE, : ) = T2( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
-            !T2OLD_ALL( IPHASE, : ) = T2OLD( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
-            T2_ALL( IPHASE, : ) = T2( IPHASE, : )
-            T2OLD_ALL( IPHASE, : ) = T2OLD( IPHASE, : )
-!         ELSE IF (.false.) THEN
-         ELSE IF (THERMAL) THEN
-! Change this for thermal...
-! ******change the below for thermal Dimitrios 
-            T2_ALL( IPHASE, : ) = 1.0
-            T2OLD_ALL( IPHASE, : ) = 1.0
-! ******change the below for thermal Dimitrios 
-         END IF
-
-         !SOURCT_ALL( IPHASE, : ) = SOURCT( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
          tracer_source=>extract_tensor_field(packed_state,trim(tracer%name)//"Source")
          SOURCT_ALL = tracer_source%val(1,:,:)
-
-!         print*, tracer%name, maxval((sourct_all)),maxval((sourct_all1)),maxval(abs(sourct_all-sourct_all1)), minval(abs(sourct_all-sourct_all1)), sqrt(sum(abs(sourct_all-sourct_all1)))
-
-
          DO JPHASE = 1, NPHASE
             ABSORBT_ALL( JPHASE, IPHASE, : ) = ABSORBT( :, JPHASE, IPHASE )
          END DO
-
       END DO
 
-
-!      print *,'before allocate'
+      IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
+                                       PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
 
 ! variables for get_int_tden********************
 ! Set up the fields...
@@ -2799,7 +2769,7 @@ contains
 
 
       deallocate(INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
-      DEALLOCATE( T2_ALL,T2OLD_ALL, FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL)
+      DEALLOCATE( FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL)
       nullify(FEMT_ALL); nullify(FEMTOLD_ALL);
 
 !if (present(T_input)) then!<==TEMPORARY

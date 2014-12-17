@@ -194,7 +194,7 @@
 
       real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
 !!$
-      real, dimension( :, : ), pointer :: Temperature, Temperature_Old, PhaseVolumeFraction, &
+      real, dimension( :, : ), pointer :: PhaseVolumeFraction, &
            PhaseVolumeFraction_Old, PhaseVolumeFraction_Source
       real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
@@ -379,11 +379,9 @@
 !!$ Allocating space for various arrays:
       allocate( &
 !!$
-           Temperature( nphase, cv_nonods ), &
            PhaseVolumeFraction( nphase, cv_nonods ), Component( nphase * cv_nonods * ncomp ), &
            DRhoDPressure( nphase, cv_nonods ), FEM_VOL_FRAC( nphase, cv_nonods ),&
 !!$
-           Temperature_Old( nphase, cv_nonods ), &
            PhaseVolumeFraction_Old( nphase, cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
 !!$
            suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
@@ -412,11 +410,9 @@
       ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln)
 
 !!$
-      Temperature=0.
       PhaseVolumeFraction=0. ; Component=0.
       DRhoDPressure=0.
 !!$
-      Temperature_Old=0.
       PhaseVolumeFraction_Old=0. ; Component_Old=0.
 !!$
       Temperature_Source=0.
@@ -463,7 +459,7 @@
            SAT_s, PhaseVolumeFraction_Source,&
            Component, Component_Source, &
            Velocity_U_Source, Velocity_Absorption, &
-           Temperature, Temperature_Source)
+           Temperature_Source)
       FESAT_s = 0; OldSAT_s = 0.
 !!$ Calculate diagnostic fields
       call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
@@ -560,23 +556,7 @@
          call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'ErrorMetric' )
       end if
 
-
-      !   print *,'u_nonods, cv_nonods, totele:',u_nonods, cv_nonods, totele
-      !   print *,'mx_ncolacv, ncolacv:',mx_ncolacv, ncolacv
-      !   print *,'nlenmcy, mx_ncolmcy, ncolmcy,mxnele, ncolele:',nlenmcy, mx_ncolmcy, ncolmcy,mxnele, ncolele
-      !   print *,'mx_ncoldgm_pha, ncoldgm_pha:',mx_ncoldgm_pha, ncoldgm_pha
-      !   print *,'mx_nct, ncolct,mx_nc, ncolc, mx_ncolcmc, ncolcmc:',mx_nct, ncolct,mx_nc, ncolc, mx_ncolcmc, ncolcmc
-      !   print *,'mx_ncolm, ncolm:',mx_ncolm, ncolm
-      !   stop 282
-
       if (have_component_field) then
-         !######TEMPORARY CONVERSION FROM OLD PhaseVolumeFraction TO PACKED######
-         !do cv_inod = 1, size(SAT_s,2)
-         !   do iphase = 1, size(SAT_s,1)
-         !      PhaseVolumeFraction(cv_inod +(iphase-1)*size(SAT_s,2)) = SAT_s(iphase,cv_inod)
-         !      PhaseVolumeFraction_Old(cv_inod +(iphase-1)*size(SAT_s,2)) = OldSAT_s(iphase,cv_inod)
-         !   end do
-         !end do
          do iphase = 1, size(SAT_s,1)
             PhaseVolumeFraction(iphase, :) = SAT_s(iphase, :)
             PhaseVolumeFraction_Old(iphase, :) = OldSAT_s(iphase, :)
@@ -634,7 +614,7 @@
 
 !!$ Update all fields from time-step 'N - 1'
          if (have_component_field) PhaseVolumeFraction_Old = PhaseVolumeFraction
-         Temperature_Old = Temperature ; Component_Old = Component
+         Component_Old = Component
 
          U_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
          UOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
@@ -754,7 +734,7 @@
                     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                    0,Temperature, Temperature_Old,igot_theta_flux, scvngi_theta, &
+                    0, igot_theta_flux, scvngi_theta, &
                     t_get_theta_flux, t_use_theta_flux, &
                     THETA_GDIFF, &
                     in_ele_upwind, dg_ele_upwind, &
@@ -928,12 +908,14 @@
                   Conditional_SmoothAbsorption: if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                      do cv_nodi = 1, cv_nonods
-                        if( PhaseVolumeFraction( 1, cv_nodi ) > 0.95 ) then
+                        !if( PhaseVolumeFraction( 1, cv_nodi ) > 0.95 ) then
+                        if( Sat_S( 1, cv_nodi ) > 0.95 ) then
                            do iphase = 1, nphase
                               do jphase = min( iphase + 1, nphase ), nphase
                                  Component_Absorption( cv_nodi, iphase, jphase ) = &
                                       Component_Absorption( cv_nodi, iphase, jphase ) * max( 0.01, &
-                                      20. * ( 1. - PhaseVolumeFraction( 1, cv_nodi ) ) )
+                                      20. * ( 1. - Sat_S( 1, cv_nodi ) ) )
+                                      !20. * ( 1. - PhaseVolumeFraction( 1, cv_nodi ) ) )
                               end do
                            end do
                         end if
@@ -977,7 +959,7 @@
                           XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
                           opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                          igot_t2, PhaseVolumeFraction, PhaseVolumeFraction_Old, igot_theta_flux, scvngi_theta, &
+                          igot_t2, igot_theta_flux, scvngi_theta, &
                           comp_get_theta_flux, comp_use_theta_flux, &
                           theta_gdiff, &
                           in_ele_upwind, dg_ele_upwind, &
@@ -1038,7 +1020,8 @@
                   if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                      do cv_nodi = 1, cv_nonods
-                        if( PhaseVolumeFraction( 1, cv_nodi ) > 0.95 ) then
+                        !if( PhaseVolumeFraction( 1, cv_nodi ) > 0.95 ) then
+                        if( Sat_S( 1, cv_nodi ) > 0.95 ) then
                            do iphase = 1, nphase
                               do jphase = min( iphase + 1, nphase ), nphase
                                  Component_Absorption( cv_nodi, iphase, jphase ) = &
@@ -1289,9 +1272,8 @@
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                  plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
-                 Temperature, PhaseVolumeFraction, &
+                 PhaseVolumeFraction, &
                  Component, &
-                 Temperature_Old, &
                  PhaseVolumeFraction_Old, Component_Old, &
                  DRhoDPressure, &
                  Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
@@ -1380,12 +1362,10 @@
 !!$ Allocating space for various arrays:
             allocate( &
 !!$
-                 Temperature( nphase, cv_nonods ), &
                  PhaseVolumeFraction( nphase, cv_nonods ), SAT_s( nphase , cv_nonods ), Component( nphase * cv_nonods * ncomp ), &
                  oldSAT_s( nphase , cv_nonods ), &
                  DRhoDPressure( nphase, cv_nonods ), &
 !!$
-                 Temperature_Old( nphase, cv_nonods ), &
                  PhaseVolumeFraction_Old( nphase, cv_nonods ), Component_Old( nphase * cv_nonods * ncomp ), &
 !!$             
                  suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
@@ -1414,7 +1394,7 @@
             Momentum_Diffusion=0.
             Momentum_Diffusion_Vol=0.
 !!$
-            Temperature=0. ; Temperature_Source=0. ; 
+            Temperature_Source=0. ; 
             Temperature_Absorption=0.
 !!$
             Component=0. ; Component_Source=0.
@@ -1439,7 +1419,7 @@
                  SAT_s, PhaseVolumeFraction_Source, &
                  Component, Component_Source, &
                  Velocity_U_Source, Velocity_Absorption, &
-                 Temperature,  Temperature_Source )
+                 Temperature_Source )
 
             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
                  OldPhaseVolumeFraction=OldSAT_s,FEPhaseVolumeFraction = FESAT_s )
@@ -1543,9 +1523,8 @@
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
            plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
-           Temperature, PhaseVolumeFraction, &
+           PhaseVolumeFraction, &
            Component, &
-           Temperature_Old, &
            PhaseVolumeFraction_Old, Component_Old, &
            DRhoDPressure, FEM_VOL_FRAC, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
