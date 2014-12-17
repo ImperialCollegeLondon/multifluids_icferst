@@ -99,8 +99,8 @@ contains
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
          tracer, velocity, density, &
-         CV_RHS, &
-         NCOLACV, CSR_ACV, dense_acv, FINACV, COLACV, MIDACV, &
+         CV_RHS_field, &
+         NCOLACV, PETSC_ACV,&
          SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
          NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -271,16 +271,12 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
       INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
       INTEGER, DIMENSION(: ), intent( in ) :: U_SNDGLN
-      REAL, DIMENSION( : ), intent( inout ) :: CV_RHS
-      real, dimension(:), intent(inout) :: CSR_ACV
-      real, dimension(:,:,:), intent(inout) :: dense_acv
-      INTEGER, DIMENSION( : ), intent( in ) :: FINACV
-      INTEGER, DIMENSION( : ), intent( in ) :: COLACV
-      INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
+      type(vector_field), intent( inout ) :: CV_RHS_field
+      type( petsc_csr_matrix ), intent(inout) :: petsc_ACV
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
       ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
       REAL, DIMENSION( : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
-      REAL, DIMENSION( :  ), intent( inout ) :: CT_RHS
+      type(scalar_field), intent( inout ) :: CT_RHS
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
@@ -1340,15 +1336,14 @@ contains
       FTHETA(:) = CV_THETA
 
       IF ( GETCT ) THEN ! Obtain the CV discretised CT eqns plus RHS
-         CT_RHS = 0.0
+         call zero(CT_RHS)
          CT = 0.0
       END IF
 
       IF ( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion eqns
-         CV_RHS = 0.0
+         call zero(CV_RHS_FIELD)
          IF ( GETMAT ) THEN
-            CSR_ACV = 0.0
-            dense_acv=0.0
+            call zero(petsc_ACV)
          END IF
       END IF
 
@@ -2332,9 +2327,6 @@ contains
 
 !                     Loop_IPHASE: DO IPHASE = 1, NPHASE
 
-!                        RHS_NODI_IPHA = IPHASE +  (CV_NODI - 1 ) * NPHASE
-!                        RHS_NODJ_IPHA = IPHASE +  (CV_NODJ - 1 ) * NPHASE
-
                         IF ( GETMAT ) THEN
 
                             ! - Calculate the integration of the limited, high-order flux over a face
@@ -2356,18 +2348,22 @@ contains
                             ELSE
 
 !                               if(cv_nodi==cv_nodj) stop 2821
-!                                CSR_ACV( IPHASE+(JCOUNT_IPHA-1)*NPHASE ) =  CSR_ACV( IPHASE+(JCOUNT_IPHA-1)*NPHASE ) &
-                                CSR_ACV( 1+(JCOUNT_IPHA-1)*NPHASE: NPHASE+(JCOUNT_IPHA-1)*NPHASE ) = CSR_ACV( 1+(JCOUNT_IPHA-1)*NPHASE: NPHASE+(JCOUNT_IPHA-1)*NPHASE )  &
-                                + SECOND_THETA * FTHETA_T2(:) * SCVDETWEI( GI ) * NDOTQNEW(:) * INCOME(:) * LIMD(:) & ! Advection
-                                - FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) & ! Diffusion contribution
-                                - SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(:) ! Stabilization of capillary diffusion contribution
+                               do iphase=1,nphase
+                                  call addto(petsc_acv,iphase,iphase,&
+                                       cv_nodi,cv_nodj,&
+                                  SECOND_THETA * FTHETA_T2(iphase) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * INCOME(iphase) * LIMD(iphase) & ! Advection
+                                - FTHETA(iphase) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(iphase) & ! Diffusion contribution
+                                - SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase)) ! Stabilization of capillary diffusion contribution
                                 ! integrate the other CV side contribution (the sign is changed)...
-                                if(integrate_other_side_and_not_boundary) then
-!                                    CSR_ACV( IPHASE+(ICOUNT_IPHA-1)*NPHASE ) =  CSR_ACV( IPHASE+(ICOUNT_IPHA-1)*NPHASE ) &
-                                    CSR_ACV( 1+(ICOUNT_IPHA-1)*NPHASE: NPHASE+(ICOUNT_IPHA-1)*NPHASE ) = CSR_ACV( 1+(ICOUNT_IPHA-1)*NPHASE: NPHASE+(ICOUNT_IPHA-1)*NPHASE ) &
-                                    - SECOND_THETA * FTHETA_T2_J(:) * SCVDETWEI( GI ) * NDOTQNEW(:) * INCOME_J(:) * LIMD(:) & ! Advection
-                                    - FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) & ! Diffusion contribution
-                                    - SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(:) ! Stabilization of capillary diffusion contribution
+                               end do
+                               if(integrate_other_side_and_not_boundary) then  
+                                 do iphase=1,nphase
+                                  call addto(petsc_acv,iphase,iphase,&
+                                       cv_nodj,cv_nodi,&
+                                    - SECOND_THETA * FTHETA_T2_J(IPHASE) * SCVDETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME_J(IPHASE) * LIMD(IPHASE) & ! Advection
+                                    - FTHETA(IPHASE) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) & ! Diffusion contribution
+                                    - SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE)) ! Stabilization of capillary diffusion contribution
+                                   end do
                                 endif
 
                                 IF ( GET_GTHETA ) THEN
@@ -2382,27 +2378,30 @@ contains
                             END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
 
 
-
-!                            CSR_ACV( IMID_IPHA ) =  CSR_ACV( IMID_IPHA ) &
-                            CSR_ACV(1+(IMID-1)*NPHASE:NPHASE+(IMID-1)*NPHASE) = CSR_ACV(1+(IMID-1)*NPHASE:NPHASE+(IMID-1)*NPHASE)  &
-                            +  SECOND_THETA * FTHETA_T2(:) * SCVDETWEI( GI ) * NDOTQNEW(:) * ( 1. - INCOME(:) ) * LIMD(:) & ! Advection
-                            +  FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:)  &  ! Diffusion contribution
-                            +  SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(:)  &  ! Stabilization of capilary diffusion
-                            +  SCVDETWEI( GI ) * ROBIN1(:)  & ! Robin bc
+                            do iphase=1,nphase
+                             call addto(petsc_acv,iphase,iphase,&
+                                  cv_nodi,cv_nodi,&
+                            +  SECOND_THETA * FTHETA_T2(iphase) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) & ! Advection
+                            +  FTHETA(iphase) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(iphase)  &  ! Diffusion contribution
+                            +  SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase)  &  ! Stabilization of capilary diffusion
+                            +  SCVDETWEI( GI ) * ROBIN1(iphase)  & ! Robin bc
 !
                            ! CV_BETA=0 for Non-conservative discretisation (CV_BETA=1 for conservative disc)
 !                           CSR_ACV( IMID_IPHA ) = CSR_ACV( IMID_IPHA )  &
-                           - SECOND_THETA * FTHETA_T2(:) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:)
-
+                           - SECOND_THETA * FTHETA_T2(iphase) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
+                             end do
                             if(integrate_other_side_and_not_boundary) then
-!                                CSR_ACV( JMID_IPHA ) =  CSR_ACV( JMID_IPHA ) &
-                                CSR_ACV(1+(JMID-1)*NPHASE:NPHASE+(JMID-1)*NPHASE) = CSR_ACV(1+(JMID-1)*NPHASE:NPHASE+(JMID-1)*NPHASE)  &
-                                -  SECOND_THETA * FTHETA_T2_J(:) * SCVDETWEI( GI ) * NDOTQNEW(:) * ( 1. - INCOME_J(:) ) * LIMD(:) & ! Advection
-                                +  FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:)  &  ! Diffusion contribution
-                                +  SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(:)   &  ! Stabilization of capilary diffusion
+                               do iphase=1,nphase
+                                  call addto(petsc_acv,iphase,iphase,&
+                                       cv_nodj,cv_nodj,&
+!                                
+                                -  SECOND_THETA * FTHETA_T2_J(iphase) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME_J(iphase) ) * LIMD(iphase) & ! Advection
+                                +  FTHETA(iphase) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(iphase)  &  ! Diffusion contribution
+                                +  SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase)   &  ! Stabilization of capilary diffusion
 !
                            ! CV_BETA=0 for Non-conservative discretisation (CV_BETA=1 for conservative disc)
-                               + SECOND_THETA * FTHETA_T2_J(:) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:)
+                               + SECOND_THETA * FTHETA_T2_J(iphase) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
+                                  end do
                             endif
 
                             IF ( GET_GTHETA ) THEN
@@ -2539,9 +2538,8 @@ contains
 
                         END IF ! THERMAL
 
-
-                        CV_RHS(1+(CV_NODI-1)*NPHASE:NPHASE+(CV_NODI-1)*NPHASE) = CV_RHS(1+(CV_NODI-1)*NPHASE:NPHASE+(CV_NODI-1)*NPHASE) + LOC_CV_RHS_I(:) 
-                        CV_RHS(1+(CV_NODJ-1)*NPHASE:NPHASE+(CV_NODJ-1)*NPHASE) = CV_RHS(1+(CV_NODJ-1)*NPHASE:NPHASE+(CV_NODJ-1)*NPHASE) + LOC_CV_RHS_J(:)
+                        call addto(cv_rhs_field,CV_NODI,LOC_CV_RHS_I)
+                        call addto(cv_rhs_field,CV_NODJ,LOC_CV_RHS_J)
 
                   ENDIF Conditional_GETCV_DISC
 
@@ -2606,10 +2604,11 @@ contains
 
 !                  CSR_ACV( IMID_IPHA ) = CSR_ACV( IMID_IPHA ) &
                   DO IPHASE = 1,NPHASE
-                     DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
+                     call addto(petsc_acv,iphase,iphase,&
+                             cv_nodi, cv_nodi,&
                        + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) ) &
-                       * R
+                       * R)
                   END DO 
 
                   LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
@@ -2622,10 +2621,11 @@ contains
                        + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI )
 
                   DO IPHASE = 1,NPHASE
-                     DENSE_ACV( IPHASE, IPHASE, CV_NODI )  = DENSE_ACV( IPHASE, IPHASE, CV_NODI ) &
+                      call addto(petsc_acv,iphase,iphase,&
+                             cv_nodi, cv_nodi,&
                        + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) )  &
-                       * R
+                       * R )
                   END DO
 
                   LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
@@ -2637,14 +2637,18 @@ contains
 
                Conditional_GETMAT2: IF ( GETMAT ) THEN
 
-                     DENSE_ACV( :, :, CV_NODI )  = DENSE_ACV( :, :, CV_NODI ) &
-                          + MASS_CV( CV_NODI ) * ABSORBT_ALL( :, :, CV_NODI )
+                  do jphase=1,nphase
+                     do iphase=1,nphase
+                        call addto(petsc_acv,iphase,jphase,&
+                             cv_nodi, cv_nodi,&
+                          MASS_CV( CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
+                     end do
+                  end do
 
                END IF Conditional_GETMAT2
 
 
-                  CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) = CV_RHS( 1+(CV_NODI-1)*NPHASE: NPHASE+(CV_NODI-1)*NPHASE ) &
-                     +  LOC_CV_RHS_I(:) 
+               call addto(cv_rhs_field,CV_NODI,LOC_CV_RHS_I)
 
 
          END DO Loop_CVNODI2
@@ -2667,36 +2671,37 @@ contains
 ! Add constraint to force sum of volume fracts to be unity...
                   ! W_SUM_ONE==1 applies the constraint
                   ! W_SUM_ONE==0 does NOT apply the constraint
-            CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R
+            call addto(ct_rhs,cv_nodi,&
+                 - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R)
 
             IF(RETRIEVE_SOLID_CTY) THEN 
 ! VOL_FRA_FLUID is the old voln fraction of total fluid...
 ! multiply by solid-voln fraction: (1.-VOL_FRA_FLUID)
-               CT_RHS( CV_NODI ) = CT_RHS( CV_NODI )  + (1.-VOL_FRA_FLUID( CV_NODI )) * R
+               call addto(ct_rhs,cv_nodi,&
+                    + (1.-VOL_FRA_FLUID( CV_NODI )) * R)
 
             ENDIF
 
 !            DO IPHASE = 1, NPHASE
 
-               CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) &
+            call addto(ct_rhs,cv_nodi,&
                     - R * SUM( &
                     + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
                     + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
-                    - DERIV( :, CV_NODI ) * CV_P( CV_NODI ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL( :, CV_NODI ) )
+                    - DERIV( :, CV_NODI ) * CV_P( CV_NODI ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL( :, CV_NODI ) ) )
 
 
                DIAG_SCALE_PRES( CV_NODI ) = DIAG_SCALE_PRES( CV_NODI )  &
                   +  MEAN_PORE_CV( CV_NODI ) * SUM( T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
                     / ( DT * DEN_ALL( :, CV_NODI ) )   )
 
-               CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) + MASS_CV( CV_NODI ) * SUM( SOURCT_ALL( :, CV_NODI ) / DEN_ALL( :, CV_NODI )  )
+               call addto(ct_rhs,cv_nodi,&
+                    MASS_CV( CV_NODI ) * SUM( SOURCT_ALL( :, CV_NODI ) / DEN_ALL( :, CV_NODI )  ) )
 
                DO JPHASE = 1, NPHASE
-                  CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) &
-                    - MASS_CV( CV_NODI ) * SUM( ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL( :, CV_NODI )   )
+                  call addto(ct_rhs,cv_nodi,&
+                    - MASS_CV( CV_NODI ) * SUM( ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL( :, CV_NODI )   ) )
                END DO
-!            END DO
-
 
          END DO
 
@@ -10517,7 +10522,7 @@ CONTAINS
     INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
     REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
-    REAL, DIMENSION( : ), intent( inout ) :: CT_RHS
+    type( scalar_field ), intent( inout ) :: CT_RHS
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
     REAL, DIMENSION( :, : ), intent( in ) :: SUFEN
     REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI
@@ -10541,15 +10546,19 @@ CONTAINS
 
     IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
        ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the CT matrix and add what we really want)
-       CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) + THETA_CTY_SOLID * SCVDETWEI( GI ) * ( SUM(LIMT_HAT(:)*NDOTQ(:)) - NDOTQ_HAT )
+       call addto(ct_rhs,cv_nodi,&
+            THETA_CTY_SOLID * SCVDETWEI( GI ) * ( SUM(LIMT_HAT(:)*NDOTQ(:)) - NDOTQ_HAT ))
 ! assume cty is satified for solids...
-       CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) + (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * SUM(  (LIMT_HAT(:) - LIMT(:))*NDOTQ(:)  )
+       call addto(ct_rhs,cv_nodi,&
+            (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * SUM(  (LIMT_HAT(:) - LIMT(:))*NDOTQ(:)  ) )
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
 ! assume cty is satified for solids...
-          CT_RHS( CV_NODJ ) = CT_RHS( CV_NODJ ) - THETA_CTY_SOLID * SCVDETWEI( GI ) * ( SUM( LIMT_HAT(:)*NDOTQ(:) ) - NDOTQ_HAT  )
+          call addto(ct_rhs,cv_nodj,&
+               - THETA_CTY_SOLID * SCVDETWEI( GI ) * ( SUM( LIMT_HAT(:)*NDOTQ(:) ) - NDOTQ_HAT  ) )
 ! assume cty is satified for solids...
-          CT_RHS( CV_NODJ ) = CT_RHS( CV_NODJ ) - (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) *  SUM( (LIMT_HAT(:) - LIMT(:))*NDOTQ(:) )
+          call addto(ct_rhs,cv_nodj,&
+               - (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) *  SUM( (LIMT_HAT(:) - LIMT(:))*NDOTQ(:) ) )
        end if
     END IF ! For solid modelling...
 
@@ -10620,22 +10629,25 @@ CONTAINS
           NDOTQ_IMP(IPHASE)= SUM( CVNORMX_ALL( :,GI ) * UDGI_IMP_ALL(:,IPHASE) )
        END DO
 
-       CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) - SCVDETWEI( GI ) * SUM(  ( &
+       call addto(ct_rhs,cv_nodi,&
+            - SCVDETWEI( GI ) * SUM(  ( &
             ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
             + FTHETA_T2(:)  * LIMDT(:) * (NDOTQ(:)-NDOTQ_IMP(:)) &
-            ) / DEN_ALL( :, CV_NODI )  )
+            ) / DEN_ALL( :, CV_NODI )  ) )
 
     ELSE
-
-       CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) - SCVDETWEI( GI ) * SUM(  ( &
+       
+       call addto(ct_rhs,cv_nodi,&
+            - SCVDETWEI( GI ) * SUM(  ( &
             ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:))  &
-            ) / DEN_ALL( :, CV_NODI )   )
+            ) / DEN_ALL( :, CV_NODI )   ) )
 
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
-          CT_RHS( CV_NODJ ) = CT_RHS( CV_NODJ ) + SCVDETWEI( GI ) * SUM(   ( &
+          call addto(ct_rhs,cv_nodj,&
+               SCVDETWEI( GI ) * SUM(   ( &
                ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:))  &
-               ) / DEN_ALL( :, CV_NODJ )    )
+               ) / DEN_ALL( :, CV_NODJ )    ) )
        end if
     END IF
 

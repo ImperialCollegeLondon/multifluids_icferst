@@ -713,7 +713,6 @@
                     tracer_field,velocity_field,density_field,&
                     NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
-                    block_to_global_acv, global_dense_block_acv, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                     U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
@@ -847,7 +846,6 @@
                call VolumeFraction_Assemble_Solve( state, packed_state, &
                     NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
-                    block_to_global_acv, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                     CV_ELE_TYPE, &
@@ -939,7 +937,6 @@
                           tracer_field,velocity_field,density_field,&
                           NCOLACV, FINACV, COLACV, MIDACV, & ! CV sparsity pattern matrix
                           SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
-                          block_to_global_acv, global_dense_block_acv, &
                           NCOLCT, FINDCT, COLCT, &
                           CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                           U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
@@ -1574,9 +1571,6 @@
 
         allocate(sparsity)
 
-        sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name='SinglePhaseAdvectionSparsity')
-        call insert(packed_state,sparsity,'SinglePhaseAdvectionSparsity')
-        call deallocate(sparsity)
         sparsity=wrap(finacv,midacv,colm=colacv,name='PackedAdvectionSparsity')
         call insert(packed_state,sparsity,'PackedAdvectionSparsity')
         call deallocate(sparsity)
@@ -1600,8 +1594,18 @@
         else
            sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity')
         end if
-        
         call insert(packed_state,sparsity,'CMCSparsity')
+        call deallocate(sparsity)
+
+
+        if (associated( sfield%mesh%halos)) then
+           sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity",&
+                row_halo=sfield%mesh%halos(2),&
+                column_halo=sfield%mesh%halos(2))
+        else
+           sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity")
+        end if
+        call insert(packed_state,sparsity,"ACVSparsity")
         call deallocate(sparsity)
 
         tfield=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -1625,14 +1629,20 @@
              "PressureMassMatrixSparsity")
         call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
         call deallocate(sparsity)
+
+
         deallocate(sparsity)
+
+
+
         sparsity=> extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
         do ic=1,size(multicomponent_state)
            call insert(multicomponent_state(ic),sparsity,"PressureMassMatrixSparsity")
         end do
-
-
-
+        sparsity=> extract_csr_sparsity(packed_state,"ACVSparsity")
+         do ic=1,size(multicomponent_state)
+           call insert(multicomponent_state(ic),sparsity,"ACVSparsity")
+        end do
 
         sparsity=> extract_csr_sparsity(state(1),"ElementConnectivity")
         call insert(packed_state,sparsity,"ElementConnectivity")
