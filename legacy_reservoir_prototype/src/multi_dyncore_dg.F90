@@ -95,7 +95,7 @@ contains
        NCOLM, FINDM, COLM, MIDM, &
        XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-       IGOT_T2, T2, T2OLD, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+       IGOT_T2, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
        THETA_GDIFF, &
        IN_ELE_UPWIND, DG_ELE_UPWIND, &
        NOIT_DIM, &
@@ -132,7 +132,6 @@ contains
     INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV
     INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
     INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-    REAL, DIMENSION( :, : ), intent( in ) :: T2, T2OLD
     REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
     REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
     REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
@@ -283,7 +282,7 @@ contains
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-            IGOT_T2, T2, T2OLD,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+            IGOT_T2,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
             IN_ELE_UPWIND, DG_ELE_UPWIND, &
             NOIT_DIM, &
@@ -605,7 +604,8 @@ contains
               NCOLM, FINDM, COLM, MIDM, &
               XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
               opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-              IGOT_T2, T2, T2OLD, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+              !IGOT_T2, T2, T2OLD, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &!
+              IGOT_T2, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
               THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
               IN_ELE_UPWIND, DG_ELE_UPWIND, &
               NOIT_DIM, &
@@ -1680,7 +1680,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         NCOLM, FINDM, COLM, MIDM, &
         XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-        IGOT_T2, T2, T2OLD, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+        IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
         NOIT_DIM, &
@@ -6977,7 +6977,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
     SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, nphase, ncomp, &
     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
     U_SOURCE_CV, U_SOURCE, &
-    COMP, &
     NCOLACV, FINACV, COLACV, MIDACV, &
     SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
     block_to_global_acv, global_dense_block_acv, &
@@ -7021,7 +7020,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         integer, dimension( : ), intent( in ) :: FINDCT
         integer, dimension( : ), intent( in ) :: COLCT
 
-        real, dimension( : ), intent( in ) :: COMP
+        real, dimension( : ), allocatable :: COMP
 
         integer, dimension( : ), intent( in ) :: FINDM
         integer, dimension( : ), intent( in ) :: COLM
@@ -7043,6 +7042,9 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
         ewrite(3,*) 'Entering CALCULATE_SURFACE_TENSION'
+
+        allocate( COMP(  CV_NONODS*NPHASE*NCOMP ) ) ; COMP = 0.0
+
 
         allocate( X(  X_NONODS ) ) ; X = 0.0
         allocate( Y(  X_NONODS ) ) ; Y = 0.0
@@ -7141,6 +7143,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             end if
 
         end do
+
+        DEALLOCATE( COMP )
 
         ewrite(3,*) 'Leaving CALCULATE_SURFACE_TENSION'
 

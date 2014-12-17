@@ -1749,10 +1749,14 @@
               sele_overlap_scale2, QUAD_OVER_WHOLE_ELE)
 
               !Calculate the CVN shape functions manually as for compact_overlapping is not calculated by the previous subroutine
+            IF(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_nloc==10).and.(ndim==3)) THEN
+                cvn_short2 = cvn2
+            ELSE
               if (is_compact_overlapping)  then
                 call get_CVN_compact_overlapping( CV_ELE_TYPE, NDIM, CV_NGI, CV_NLOC, cvn2, cvweight2)
                 cvn_short2 = cvn2
               end if
+            ENDIF
 
              !Store calculated data into state, indx is an input
               !###cv_nloc*cv_ngi section###
