@@ -59,59 +59,6 @@
 
   contains
 
-    SUBROUTINE MULMAT( VEC, CT, U, FREDOP, NONODS, NCOLCT, FINDCT, COLCT ) 
-      IMPLICIT NONE
-      ! perform VEC = C^T * P, matrix vector multiplication
-
-      INTEGER, intent( in ) :: FREDOP, NONODS, NCOLCT
-      REAL, DIMENSION( : ), intent( inout ) :: VEC
-      REAL, DIMENSION( : ), intent( inout ) :: CT
-      REAL, DIMENSION( : ), intent( in ) :: U
-      INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-      INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-      ! Local variables
-      INTEGER :: PNOD, COUNT, COL
-
-      VEC( 1: FREDOP ) = 0.0
-
-      DO PNOD = 1, FREDOP
-
-         DO COUNT = FINDCT( PNOD ), FINDCT( PNOD + 1 ) - 1
-            COL = COLCT( COUNT )
-            VEC( PNOD ) = VEC( PNOD ) + CT( COUNT ) * U( COL )
-         END DO
-
-      END DO
-
-      RETURN
-    END SUBROUTINE MULMAT
-
-
-    SUBROUTINE MULMATtransp( VEC, CT, P, FREDOP, NONODS, NCOLCT, FINDCT, COLCT ) 
-      IMPLICIT NONE
-      ! perform VEC = C * P, matrix vector multiplication
-
-      INTEGER, intent( in ) :: FREDOP, NONODS, NCOLCT
-      REAL, DIMENSION( : ), intent( inout ) :: VEC
-      REAL, DIMENSION( : ), intent( inout ) :: CT
-      REAL, DIMENSION( : ), intent( in ) :: P
-      INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-      INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-      ! Local variables
-      INTEGER :: PNOD, COUNT, COL
-
-      VEC( 1: NONODS ) = 0.0
-
-      DO PNOD = 1, FREDOP
-         DO COUNT = FINDCT( PNOD ), FINDCT( PNOD + 1 ) - 1
-            COL = COLCT( COUNT )
-            VEC( COL ) = VEC( COL ) +CT( COUNT ) * P( PNOD )
-         END DO
-      END DO
-
-      RETURN
-    END SUBROUTINE MULMATtransp
-
 
     SUBROUTINE MATDMATINV( DMAT, DMATINV, NLOC )
       ! calculate DMATINV
@@ -1270,24 +1217,6 @@
 
     END SUBROUTINE PHA_BLOCK_MAT_VEC2
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     SUBROUTINE PHA_BLOCK_MAT_VEC_MANY2( U, BLOCK_MAT, CDP, U_NONODS, NDIM, NPHASE, NBLOCK, &
          TOTELE, U_NLOC, U_NDGLN ) 
       implicit none
@@ -1469,64 +1398,6 @@
 
     END SUBROUTINE CT_MULT2
 
-
-
-
-
-
-
-
-
-
-
-
-!!$
-!!$    SUBROUTINE CT_MULT( CV_RHS, U, V, W, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-!!$         CT, NCOLCT, FINDCT, COLCT ) 
-!!$      ! CV_RHS=CT*U
-!!$      implicit none
-!!$      INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLCT
-!!$      REAL, DIMENSION( : ), intent( out) :: CV_RHS
-!!$      REAL, DIMENSION( : ), intent( in ) :: U, V, W
-!!$      INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-!!$      INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-!!$      REAL, DIMENSION( : ), intent( in ) :: CT
-!!$
-!!$
-!!$      ! Local variables
-!!$      real, dimension( ncolct) :: CTU
-!!$      INTEGER :: CV_INOD, COUNT, U_JNOD, IPHASE, i,J,k
-!!$      integer, pointer :: countp
-!!$
-!!$    ! when code is realigned, it will be possible to form the dot product
-!!$    !              sum(CT(1:ndim*nphase,CV_NOD,U(1:ndim*nphase,cv_nod) 
-!!$    ! directly, unrolling one loop and reducing indirection.
-!!$
-!!$
-!!$      DO CV_INOD = 1, CV_NONODS
-!!$         CTU( FINDCT( CV_INOD ) :FINDCT( CV_INOD + 1 )-1)=CT( FINDCT( CV_INOD ) :FINDCT( CV_INOD + 1 ) -1)&
-!!$              *u(colct( FINDCT( CV_INOD ) :FINDCT( CV_INOD + 1 )-1))
-!!$      end do
-!!$      if (ndim>=2) CTU=CTU+CT(ncolct+1:2*ncolct)*V(colct)
-!!$      if (ndim>=3) CTU=CTU+CT(2*ncolct+1:3*ncolct)*W(colct)
-!!$
-!!$      DO IPHASE = 2, NPHASE
-!!$         CTU=CTU+CT((iphase-1)*ncolct*ndim+1:(iphase-1)*ncolct*ndim+ncolct)*U(colct + ( IPHASE - 1 ) * U_NONODS)
-!!$         if (ndim>=2) &
-!!$              CTU=CTU+CT((iphase-1)*ncolct*ndim+ncolct+1:(iphase-1)*ncolct*ndim+2*ncolct)&
-!!$              *V(colct + ( IPHASE - 1 ) * U_NONODS)
-!!$         if (ndim>=3) CTU=CTU+CT((iphase-1)*ncolct*ndim+2*ncolct+1:(iphase-1)*ncolct*ndim+3*ncolct)*W(colct + ( IPHASE - 1 ) * U_NONODS)
-!!$      end DO
-!!$
-!!$      DO CV_INOD = 1, CV_NONODS
-!!$         CV_RHS( CV_INOD ) = sum(CTU( FINDCT( CV_INOD ) :FINDCT( CV_INOD + 1 ) - 1))
-!!$      END DO
-!!$
-!!$      RETURN
-!!$
-!!$    END SUBROUTINE CT_MULT
-
-
     SUBROUTINE CT_MULT_MANY( CV_RHS, U, CV_NONODS, U_NONODS, NDIM, NPHASE, NBLOCK, &
          CT, NCOLCT, FINDCT, COLCT ) 
       ! CV_RHS = CT * U
@@ -1568,54 +1439,6 @@
       RETURN
 
     END SUBROUTINE CT_MULT_MANY
-
-
-    SUBROUTINE C_MULT( CDP, DP, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-         C, NCOLC, FINDC, COLC ) 
-      implicit none
-      ! CDP=C*DP
-      INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC
-      REAL, DIMENSION( : ), intent( inout ) :: CDP
-      REAL, DIMENSION( : ), intent( in )  :: DP
-      REAL, DIMENSION( : ), intent( in ), target :: C
-      INTEGER, DIMENSION( : ), intent( in ) ::FINDC
-      INTEGER, DIMENSION( : ), intent( in ), target :: COLC
-      ! Local variables
-      INTEGER :: U_INOD, COUNT, P_JNOD, IPHASE, I1, IDIM, COUNT_DIM_PHA,j,dim_pha
-      real, dimension(NCOLC) :: ldp
-
-      !interface
-      !   real function ddot( N, dx,incx,dy, incy)
-      !     integer :: n, incx, incy
-      !     real, dimension(N) :: dx,dy
-      !   end function ddot
-      !end interface
-
-      LDP = DP( COLC )
-
-      Loop_Phase: DO IPHASE = 0, NPHASE-1
-         Loop_Dim: DO IDIM = 1, NDIM
-            DIM_PHA = (IDIM-1) + NDIM*IPHASE
-            Loop_VelNodes: DO U_INOD = 1, U_NONODS 
-               CDP( U_INOD + DIM_PHA * U_NONODS ) = &
-                    DOT_PRODUCT( &
-                    C( FINDC( U_INOD ) + NCOLC * DIM_PHA : FINDC( U_INOD + 1 ) - 1 + NCOLC * DIM_PHA ), &
-                    LDP( FINDC( U_INOD ) : FINDC( U_INOD + 1 ) - 1 ) )
-            END DO Loop_VelNodes
-         END DO Loop_Dim
-      END DO Loop_Phase
-
-      RETURN
-    END SUBROUTINE C_MULT
-
-
-
-
-
-
-
-
-
 
     SUBROUTINE C_MULT_MANY( CDP, DP, CV_NONODS, U_NONODS, NDIM, NPHASE, NBLOCK, &
          C, NCOLC, FINDC, COLC ) 
@@ -2051,8 +1874,6 @@
     type(petsc_csr_matrix) :: a
     type(tensor_field)     :: x
     type(vector_field)     :: b
-
-    type(tensor_field)     ::  x_bcs
 
     character(len=FIELD_NAME_LEN)  :: bc_type
     logical, dimension(x%dim(1),x%dim(2)) :: applies

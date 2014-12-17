@@ -192,14 +192,26 @@ contains
     return
   end subroutine petsc_solve_scalar_petsc_csr_mp
 
+    !Clone of the same subroutine in femtools/Solvers.F90
   subroutine petsc_solve_destroy_petsc_csr( y, b, ksp, solver_option_path )
 
-    KSP :: ksp
-    Vec :: y, b
-    character(len=OPTION_PATH_LEN) :: solver_option_path
+      type(Vec), intent(inout):: y
+      type(Vec), intent(inout):: b
+      type(KSP), intent(inout):: ksp
+      character(len=*), intent(in):: solver_option_path
+
+      type(PC) :: pc
+      integer ierr
+
+      call VecDestroy(y, ierr)
+      call VecDestroy(b, ierr)
+      call KSPGetPC(ksp, pc, ierr)
+      call KSPDestroy(ksp, ierr)
 
   end subroutine petsc_solve_destroy_petsc_csr
 
+
+  !DO NOT REMOVE, CURRENTLY UNUSED BUT WE PLAN TO CONTINUE!!
   SUBROUTINE PRES_DG_MULTIGRID(CMC, CMC_PRECON, IGOT_CMC_PRECON, P, RHS, &
        NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
        totele, cv_nloc, x_nonods, cv_ndgln, x_ndgln )

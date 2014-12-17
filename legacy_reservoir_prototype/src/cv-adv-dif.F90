@@ -2794,40 +2794,6 @@ contains
       END IF
 
 
-!      if (.false. .and. getcv_disc) then
-!
-!         ewrite(3,*) '-----------------------------------------------------------------------------------------------------------------------------------'
-!         ewrite(3,*) '-----------------------------------------------------------------------------------------------------------------------------------'
-!
-!         ewrite(3,*)'cv_rhs_1:',cv_rhs(1:cv_nonods)
-!         ewrite(3,*)'cv_rhs_2:',cv_rhs(cv_nonods+1:2*cv_nonods)
-!
-!         ewrite(3,*) '-----------------------------------------------------------------------------------------------------------------------------------'
-!         ewrite(3,*) '-----------------------------------------------------------------------------------------------------------------------------------'
-!
-!         ewrite(3,*) '11::',0.5 * mass_cv* t(1:cv_nonods) / dt
-!         ewrite(3,*) '22::',0.5 * mass_cv * t(cv_nonods+1:2*cv_nonods) / dt
-!
-!         ewrite(3,*) '-----------------------------------------------------------------------------------------------------------------------------------'
-!         ewrite(3,*) '-----------------------------------------------------------------------------------------------------------------------------------'
-!
-!         ewrite(3,*) '11::',0.5 * mass_cv* t(1:cv_nonods) / dt - cv_rhs(1:cv_nonods)
-!         ewrite(3,*) '22::',0.5 * mass_cv * t(cv_nonods+1:2*cv_nonods) / dt - cv_rhs(cv_nonods+1:2*cv_nonods)
-!
-!         ewrite(3,*) '-----------------------------------------------------------------------------------------------------------------------------------'
-!         ewrite(3,*) '-----------------------------------------------------------------------------------------------------------------------------------'
-!
-!         ewrite(3,*) 'dT, igot_t2, thermal, getmat, cv_beta:', dT, igot_t2, thermal, getmat, cv_beta
-!         ewrite(3,*) 'MASS:', MASS_CV
-!         ewrite(3,*) 'T:', T
-!         ewrite(3,*) 'TOLD:', TOLD
-!      end if
-!
-!      ewrite(3,*)'IN cv_adv_dif a CV representation t:'
-!      CALL PRINT_CV_DIST(CV_NONODS,X_NONODS,TOTELE,CV_NLOC,X_NLOC,NPHASE, &
-!           T, X_NDGLN, CV_NDGLN, X_ALL(1,:))
-!      ewrite(3,*) 'just print out - in cv_assemb'
-
       ! Deallocating temporary working arrays
 
       IF(GETCT) THEN
@@ -3548,307 +3514,6 @@ end if
 
 
 
-  SUBROUTINE PROJ_CV_TO_FEM_4( state, &
-       FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL, &
-       IGOT_T2,T2_ALL,T2OLD_ALL, FEMT2_ALL,FEMT2OLD_ALL, &
-       XC_CV_ALL, MASS_CV, MASS_ELE, &
-       NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-       CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, NLX, NLY, NLZ, &
-       X_NONODS, X_ALL, NCOLM, FINDM, COLM, MIDM, &
-       IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC )
-
-    ! determine FEMT (finite element wise) etc from T (control volume wise)
-    IMPLICIT NONE
-    type( state_type ), dimension( : ), intent( in ) :: state
-    INTEGER, intent( in ) :: NDIM, NPHASE, CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
-         X_NONODS, NCOLM, IGOT_T2, IGETCT, NCOLCMC
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-    INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-    REAL, DIMENSION( :,: ), intent( inout ) :: FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL
-    REAL, DIMENSION( :,: ), intent( inout ) :: FEMT2_ALL, FEMT2OLD_ALL
-    REAL, DIMENSION( :, : ), intent( in ) :: T_ALL, TOLD_ALL, DEN_ALL, DENOLD_ALL
-    REAL, DIMENSION( :, : ), intent( in ) :: T2_ALL, T2OLD_ALL
-    REAL, DIMENSION( : ), intent( inout ) :: MASS_CV
-    REAL, DIMENSION( :, : ), intent( inout ) :: XC_CV_ALL ! (NDIM,X_NONODS)
-    REAL, DIMENSION( : ), intent( inout ) :: MASS_ELE
-    REAL, DIMENSION( :, : ), intent( in ) :: CVN
-    REAL, DIMENSION( : ), intent( inout ) :: CVWEIGHT
-    REAL, DIMENSION( :, : ), intent( in ) :: N, NLX, NLY, NLZ
-    REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
-    INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-    INTEGER, DIMENSION( : ), intent( in ) :: COLM
-    INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-
-    REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
-    INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
-    INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
-    ! Local variables
-    REAL, DIMENSION( : ), allocatable :: PSI, FEMPSI, PSI_AVE, PSI_INT
-    INTEGER :: NTSOL,NTSOL_AVE,NTSOL_INT,ELE,CV_ILOC,X_INOD,CV_INOD,NL,NFIELD
-    CHARACTER(len=100) :: PATH
-    INTEGER :: velocity_max_iterations, nstates, istate, iphase, k
-    LOGICAL :: solve_force_balance, have_component
-
-
-    ewrite(3,*) 'In PROJ_CV_TO_FEM_4'
-
-    nstates = option_count( "/material_phase" )
-    have_component = .false.
-    do istate = 1, nstates
-       if( have_option( '/material_phase[' // int2str( istate - 1 ) //']/is_multiphase_component/' ) ) then
-          have_component = .true.
-       end if
-    end do
-
-    solve_force_balance = .false.
-    call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations", &
-         velocity_max_iterations,  default =  500 )
-    if( velocity_max_iterations /= 0 ) solve_force_balance = .true.
-
-    if ( solve_force_balance .or. have_component ) then
-       path = '/material_phase[0]/scalar_field::Pressure'
-    else
-       path = '/material_phase[0]/scalar_field::Temperature'
-    end if
-
-    NFIELD=4 + IGOT_T2*2
-    ALLOCATE( PSI( NFIELD * CV_NONODS*NPHASE ))
-    ALLOCATE( FEMPSI( NFIELD * CV_NONODS*NPHASE ))
-    ALLOCATE( PSI_AVE( 3 * CV_NONODS ))
-    ALLOCATE( PSI_INT( 1 * CV_NONODS ))
-
-    NTSOL = NFIELD*NPHASE
-    NTSOL_AVE = 3
-    NTSOL_INT = 1
-
-    NL=CV_NONODS*NPHASE
-!    PSI( 1 + 0 * NL : NL + 0 * NL )  =      T( 1 : NL )
-!    PSI( 1 + 1 * NL : NL + 1 * NL )  =   TOLD( 1 : NL )
-!    PSI( 1 + 2 * NL : NL + 2 * NL )  =    DEN( 1 : NL )
-!    PSI( 1 + 3 * NL : NL + 3 * NL )  = DENOLD( 1 : NL )
-
-!    IF(IGOT_T2==1) THEN
-!       PSI( 1 + 4 * NL : NL + 4 * NL )  =      T2( 1 : NL )
-!       PSI( 1 + 5 * NL : NL + 5 * NL )  =   T2OLD( 1 : NL )
-!    ENDIF
-         k = 1
-         DO CV_INOD = 1, CV_NONODS
-             DO IPHASE = 1, NPHASE
-                 PSI( k ) = T_ALL( IPHASE, CV_INOD)
-                 PSI( k + NL ) = TOLD_ALL( IPHASE, CV_INOD)
-                 PSI( k + 2*NL ) = DEN_ALL( IPHASE, CV_INOD)
-                 PSI( k + 3*NL ) = DENOLD_ALL( IPHASE, CV_INOD)
-                 k = k + 1
-             END DO
-         END DO
-         if (IGOT_T2>0) then
-             k = 1
-             DO CV_INOD = 1, CV_NONODS
-                 DO IPHASE = 1, NPHASE
-                     PSI( k + 4*NL ) = T2_ALL( IPHASE, CV_INOD)
-                     PSI( k + 5*NL ) = T2OLD_ALL( IPHASE, CV_INOD)
-                     k = k + 1
-                 END DO
-             END DO
-         end if
-
-
-    DO ELE=1,TOTELE
-       DO CV_ILOC=1,CV_NLOC
-          X_INOD = X_NDGLN((ELE-1)*X_NLOC +CV_ILOC)
-          CV_INOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
-          !####TEMPORARY UNTIL WE VECTORIZE EVERYTHING####
-          select case (ndim)
-              case (1)
-                  PSI_AVE(CV_INOD)            =X_ALL(1,X_INOD)
-              case (2)
-                  PSI_AVE(CV_INOD)            =X_ALL(1,X_INOD)
-                  PSI_AVE(CV_INOD+CV_NONODS)  = X_ALL(2,X_INOD)
-              case default
-                  PSI_AVE(CV_INOD)            =X_ALL(1,X_INOD)
-                  PSI_AVE(CV_INOD+CV_NONODS)  = X_ALL(2,X_INOD)
-                  PSI_AVE(CV_INOD+2*CV_NONODS)= X_ALL(3,X_INOD)
-          end select
-          !####TEMPORARY UNTIL WE VECTORIZE EVERYTHING####
-       END DO
-    END DO
-    PSI_INT=1.0
-
-    FEMPSI = PSI
-
-    CALL PROJ_CV_TO_FEM( FEMPSI, PSI, NTSOL, NDIM, &
-         PSI_AVE,NTSOL_AVE, PSI_INT,NTSOL_INT, MASS_ELE, &
-         CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-         CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, NLX, NLY, NLZ, &
-         X_NONODS, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), NCOLM, FINDM, COLM, MIDM, &
-         IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC, PATH )
-
-         NL=CV_NONODS*NPHASE
-
-
-         k = 1
-         DO CV_INOD = 1, CV_NONODS
-             DO IPHASE = 1, NPHASE
-                 FEMT_ALL( IPHASE, CV_INOD) = FEMPSI( k )
-                 FEMTOLD_ALL( IPHASE, CV_INOD) = FEMPSI( k + NL )
-                 FEMDEN_ALL( IPHASE, CV_INOD) = FEMPSI( k + 2*NL )
-                 FEMDENOLD_ALL( IPHASE, CV_INOD) = FEMPSI( k + 3*NL )
-                 k = k + 1
-             END DO
-         END DO
-         if (IGOT_T2>0) then
-             k = 1
-             DO CV_INOD = 1, CV_NONODS
-                 DO IPHASE = 1, NPHASE
-                     FEMT2_ALL( IPHASE, CV_INOD) = FEMPSI( k + 4*NL )
-                     FEMT2OLD_ALL( IPHASE, CV_INOD) = FEMPSI( k + 5*NL )
-                     k = k + 1
-                 END DO
-             END DO
-         end if
-
-
-
-    XC_CV_ALL( 1, 1 : CV_NONODS ) = PSI_AVE( 1 : CV_NONODS )
-    IF(NDIM.GE.2) XC_CV_ALL( 2, 1 : CV_NONODS ) = PSI_AVE( 1 +CV_NONODS:   2*CV_NONODS )
-    IF(NDIM.GE.3) XC_CV_ALL( 3, 1 : CV_NONODS ) = PSI_AVE( 1 +2*CV_NONODS: 3*CV_NONODS )
-    MASS_CV( 1 : CV_NONODS ) = PSI_INT( 1 : CV_NONODS )
-
-    DEALLOCATE( PSI )
-    DEALLOCATE( FEMPSI )
-    DEALLOCATE( PSI_AVE )
-    DEALLOCATE( PSI_INT )
-
-    ewrite(3,*) 'Leaving PROJ_CV_TO_FEM_4'
-
-    RETURN
-
-  END SUBROUTINE PROJ_CV_TO_FEM_4
-
-
-
-
-  SUBROUTINE PROJ_CV_TO_FEM_2( state, &
-       FEMT, FEMDEN, T, DEN, &
-       IGOT_T2,T2, FEMT2, &
-       XC_CV,YC_CV,ZC_CV, MASS_CV, MASS_ELE, &
-       NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-       CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, NLX, NLY, NLZ, &
-       X_NONODS, X, Y, Z, NCOLM, FINDM, COLM, MIDM, &
-       IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC )
-
-    ! determine FEMT (finite element wise) etc from T (control volume wise)
-    IMPLICIT NONE
-    type( state_type ), dimension( : ), intent( in ) :: state
-    INTEGER, intent( in ) :: NDIM, NPHASE, CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
-         X_NONODS, NCOLM, IGOT_T2, IGETCT, NCOLCMC
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-    INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-    REAL, DIMENSION( : ), intent( inout ) :: FEMT, FEMDEN
-    REAL, DIMENSION( : ), intent( inout ) :: FEMT2
-    REAL, DIMENSION( : ), intent( in ) :: T,  DEN
-    REAL, DIMENSION( : ), intent( in ) :: T2
-    REAL, DIMENSION( : ), intent( inout ) :: MASS_CV, XC_CV,YC_CV,ZC_CV
-    REAL, DIMENSION( : ), intent( inout ) :: MASS_ELE
-    REAL, DIMENSION( :, : ), intent( in ) :: CVN
-    REAL, DIMENSION( : ), intent( inout ) :: CVWEIGHT
-    REAL, DIMENSION( :, : ), intent( in ) :: N, NLX, NLY, NLZ
-    REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
-    INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-    INTEGER, DIMENSION( : ), intent( in ) :: COLM
-    INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-
-    REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
-    INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
-    INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
-    ! Local variables
-    REAL, DIMENSION( : ), allocatable :: PSI, FEMPSI, PSI_AVE, PSI_INT
-    INTEGER :: NTSOL,NTSOL_AVE,NTSOL_INT,ELE,CV_ILOC,X_INOD,CV_INOD,NL,NFIELD
-    CHARACTER(len=100) :: PATH
-    INTEGER :: velocity_max_iterations, nstates, istate
-    LOGICAL :: solve_force_balance, have_component
-
-
-    ewrite(3,*) 'In PROJ_CV_TO_FEM_2'
-
-    nstates = option_count( "/material_phase" )
-    have_component = .false.
-    do istate = 1, nstates
-       if( have_option( '/material_phase[' // int2str( istate - 1 ) //']/is_multiphase_component/' ) ) then
-          have_component = .true.
-       end if
-    end do
-
-    solve_force_balance = .false.
-    call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations", &
-         velocity_max_iterations,  default =  500 )
-    if( velocity_max_iterations /= 0 ) solve_force_balance = .true.
-
-    if ( solve_force_balance .or. have_component ) then
-       path = '/material_phase[0]/scalar_field::Pressure'
-    else
-       path = '/material_phase[0]/scalar_field::Temperature'
-    end if
-
-    NFIELD=2 + IGOT_T2
-    ALLOCATE( PSI( NFIELD * CV_NONODS*NPHASE ))
-    ALLOCATE( FEMPSI( NFIELD * CV_NONODS*NPHASE ))
-    ALLOCATE( PSI_AVE( 3 * CV_NONODS ))
-    ALLOCATE( PSI_INT( 1 * CV_NONODS ))
-
-    NTSOL = NFIELD*NPHASE
-    NTSOL_AVE = 3
-    NTSOL_INT = 1
-
-    NL=CV_NONODS*NPHASE
-    PSI( 1 + 0 * NL : NL + 0 * NL )  =      T( 1 : NL )
-    PSI( 1 + 1 * NL : NL + 1 * NL )  =    DEN( 1 : NL )
-    IF(IGOT_T2==1) THEN
-       PSI( 1 + 2 * NL : NL + 2 * NL )  =      T2( 1 : NL )
-    ENDIF
-
-    DO ELE=1,TOTELE
-       DO CV_ILOC=1,CV_NLOC
-          X_INOD = X_NDGLN((ELE-1)*X_NLOC +CV_ILOC)
-          CV_INOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
-          PSI_AVE(CV_INOD)            =X(X_INOD)
-          PSI_AVE(CV_INOD+CV_NONODS)  =Y(X_INOD)
-          PSI_AVE(CV_INOD+2*CV_NONODS)=Z(X_INOD)
-       END DO
-    END DO
-    PSI_INT=1.0
-
-    FEMPSI = PSI
-
-    CALL PROJ_CV_TO_FEM( FEMPSI, PSI, NTSOL, NDIM, &
-         PSI_AVE,NTSOL_AVE, PSI_INT,NTSOL_INT, MASS_ELE, &
-         CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-         CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, NLX, NLY, NLZ, &
-         X_NONODS, X, Y, Z, NCOLM, FINDM, COLM, MIDM, &
-         IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC, PATH )
-
-    NL=CV_NONODS*NPHASE
-    FEMT( 1 : NL ) = FEMPSI( 1 + 0 * NL : NL + 0 * NL )
-    FEMDEN( 1 : NL ) = FEMPSI( 1 + 1 * NL : NL + 1 * NL )
-    IF(IGOT_T2==1) THEN
-       FEMT2( 1 : NL ) = FEMPSI( 1 + 2 * NL : NL + 2 * NL )
-    ENDIF
-
-    XC_CV( 1 : CV_NONODS ) = PSI_AVE( 1 : CV_NONODS )
-    YC_CV( 1 : CV_NONODS ) = PSI_AVE( 1 +CV_NONODS:   2*CV_NONODS )
-    ZC_CV( 1 : CV_NONODS ) = PSI_AVE( 1 +2*CV_NONODS: 3*CV_NONODS )
-    MASS_CV( 1 : CV_NONODS ) = PSI_INT( 1 : CV_NONODS )
-
-    DEALLOCATE( PSI )
-    DEALLOCATE( FEMPSI )
-    DEALLOCATE( PSI_AVE )
-    DEALLOCATE( PSI_INT )
-
-    ewrite(3,*) 'Leaving PROJ_CV_TO_FEM_2'
-
-    RETURN
-
-  END SUBROUTINE PROJ_CV_TO_FEM_2
 
 
   SUBROUTINE PROJ_CV_TO_FEM( FEMPSI, PSI, NTSOL, NDIM, &
@@ -5722,112 +5387,112 @@ deallocate(NX_ALL, X_NX_ALL)
 
 
 
-   SUBROUTINE ONVDLIMsqrt( TOTELE, &
-       TDLIM, TDCEN, INCOME, PELE, PELEOT, &
-       ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT, FIRORD, NOLIMI )
-    implicit none
-    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-    ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    ! LIBETA is the flux limiting parameter.
-    ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-    ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-    ! PELEOT=element at other side of current face.
-    ! ELEOT2=element at other side of the element ELEOTH.
-    ! ELESID=element next to oposing current face.
-    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-    !---------------------------------------------------
-    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-    !---------------------------------------------------
-    ! TAIN         THALF       TAOUT
-    !---------------------------------------------------
-    !>TEXTIN
-    !TEXOUT<
-    !---------------------------------------------------
-    INTEGER, intent( in ) :: TOTELE
-    REAL, intent( inout ) :: TDLIM
-    REAL, intent( in ) :: TDCEN, INCOME, ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, &
-         &                TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT
-    INTEGER, intent( in ) :: PELE, PELEOT
-    LOGICAL, intent( in ) :: FIRORD, NOLIMI
-    ! Local variables
-    REAL, PARAMETER :: TOLER=1.0E-10
-    INTEGER, PARAMETER :: POWER=2
-    REAL :: UCIN, UCOU, TUPWIN, TUPWI2, TDELE, DENOIN, CTILIN, DENOOU, &
-         CTILOU, FTILIN, FTILOU
-
-    IF( NOLIMI ) THEN
-       TDLIM = TDCEN
-       RETURN
-    ENDIF
-
-    Conditional_PELEOT: IF( PELEOT /= PELE ) THEN
-
-       IF( ETDNEW_PELEOT > ETDNEW_PELE ) THEN
-          TUPWIN = TDMAX_PELEOT ** POWER
-          TUPWI2 = TDMIN_PELE ** POWER
-       ELSE
-          TUPWIN = TDMIN_PELEOT ** POWER
-          TUPWI2 = TDMAX_PELE ** POWER
-       ENDIF
-
-       ! Calculate normalisation parameters for incomming velocities
-       TDELE = ETDNEW_PELE ** POWER
-       DENOIN = TDELE - TUPWIN
-
-       IF( ABS( DENOIN ) < TOLER ) DENOIN = SIGN( TOLER, DENOIN )
-
-       UCIN = ETDNEW_PELEOT ** POWER
-       CTILIN = ( UCIN - TUPWIN ) / DENOIN
-
-       ! Calculate normalisation parameters for out going velocities
-       TDELE = ETDNEW_PELEOT ** POWER
-       DENOOU = TDELE - TUPWI2
-
-       IF( ABS( DENOOU ) < TOLER) DENOOU = SIGN( TOLER, DENOOU )
-       UCOU = ETDNEW_PELE ** POWER
-       CTILOU = ( UCOU - TUPWI2 ) / DENOOU
-
-    ELSE
-
-       ! Calculate normalisation parameters for incomming velocities
-       TUPWIN = ETDNEW_PELE ** POWER
-       UCIN = ETDNEW_PELE ** POWER
-       DENOIN = 1.
-       CTILIN = 0.
-
-       ! Calculate normalisation parameters for out going velocities
-       TUPWI2 = ETDNEW_PELE ** POWER
-       UCOU = ETDNEW_PELE ** POWER
-       DENOOU = 1.
-       CTILOU = 0.
-
-    ENDIF Conditional_PELEOT
-
-    Conditional_FIRORD: IF( FIRORD ) THEN ! Velocity is pointing into element
-       !     Conditional_FIRORD: IF( .TRUE. ) THEN ! Velocity is pointing into element
-
-       ! Velocity is going out of element
-       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
-       TDLIM = MAX(TDLIM,0.0) ** (1.0/POWER)
-
-    ELSE
-
-       FTILIN = ( MAX(0.0,TDCEN) ** POWER - TUPWIN ) / DENOIN
-       FTILOU = ( MAX(0.0,TDCEN) ** POWER - TUPWI2 ) / DENOOU
-
-       ! Velocity is going out of element
-       TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEWsqrt( FTILIN, CTILIN, -1.0 ) * DENOIN ) &
-            + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEWsqrt( FTILOU, CTILOU, -1.0 ) * DENOOU )
-
-       TDLIM = MAX( TDLIM, 0.0 ) ** (1.0/POWER)
-
-    ENDIF Conditional_FIRORD
-
-    RETURN
-
-  END SUBROUTINE ONVDLIMsqrt
+!   SUBROUTINE ONVDLIMsqrt( TOTELE, &
+!       TDLIM, TDCEN, INCOME, PELE, PELEOT, &
+!       ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT, FIRORD, NOLIMI )
+!    implicit none
+!    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+!    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
+!    ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
+!    ! LIBETA is the flux limiting parameter.
+!    ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
+!    ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
+!    ! PELEOT=element at other side of current face.
+!    ! ELEOT2=element at other side of the element ELEOTH.
+!    ! ELESID=element next to oposing current face.
+!    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+!    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
+!    !---------------------------------------------------
+!    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+!    !---------------------------------------------------
+!    ! TAIN         THALF       TAOUT
+!    !---------------------------------------------------
+!    !>TEXTIN
+!    !TEXOUT<
+!    !---------------------------------------------------
+!    INTEGER, intent( in ) :: TOTELE
+!    REAL, intent( inout ) :: TDLIM
+!    REAL, intent( in ) :: TDCEN, INCOME, ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, &
+!         &                TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT
+!    INTEGER, intent( in ) :: PELE, PELEOT
+!    LOGICAL, intent( in ) :: FIRORD, NOLIMI
+!    ! Local variables
+!    REAL, PARAMETER :: TOLER=1.0E-10
+!    INTEGER, PARAMETER :: POWER=2
+!    REAL :: UCIN, UCOU, TUPWIN, TUPWI2, TDELE, DENOIN, CTILIN, DENOOU, &
+!         CTILOU, FTILIN, FTILOU
+!
+!    IF( NOLIMI ) THEN
+!       TDLIM = TDCEN
+!       RETURN
+!    ENDIF
+!
+!    Conditional_PELEOT: IF( PELEOT /= PELE ) THEN
+!
+!       IF( ETDNEW_PELEOT > ETDNEW_PELE ) THEN
+!          TUPWIN = TDMAX_PELEOT ** POWER
+!          TUPWI2 = TDMIN_PELE ** POWER
+!       ELSE
+!          TUPWIN = TDMIN_PELEOT ** POWER
+!          TUPWI2 = TDMAX_PELE ** POWER
+!       ENDIF
+!
+!       ! Calculate normalisation parameters for incomming velocities
+!       TDELE = ETDNEW_PELE ** POWER
+!       DENOIN = TDELE - TUPWIN
+!
+!       IF( ABS( DENOIN ) < TOLER ) DENOIN = SIGN( TOLER, DENOIN )
+!
+!       UCIN = ETDNEW_PELEOT ** POWER
+!       CTILIN = ( UCIN - TUPWIN ) / DENOIN
+!
+!       ! Calculate normalisation parameters for out going velocities
+!       TDELE = ETDNEW_PELEOT ** POWER
+!       DENOOU = TDELE - TUPWI2
+!
+!       IF( ABS( DENOOU ) < TOLER) DENOOU = SIGN( TOLER, DENOOU )
+!       UCOU = ETDNEW_PELE ** POWER
+!       CTILOU = ( UCOU - TUPWI2 ) / DENOOU
+!
+!    ELSE
+!
+!       ! Calculate normalisation parameters for incomming velocities
+!       TUPWIN = ETDNEW_PELE ** POWER
+!       UCIN = ETDNEW_PELE ** POWER
+!       DENOIN = 1.
+!       CTILIN = 0.
+!
+!       ! Calculate normalisation parameters for out going velocities
+!       TUPWI2 = ETDNEW_PELE ** POWER
+!       UCOU = ETDNEW_PELE ** POWER
+!       DENOOU = 1.
+!       CTILOU = 0.
+!
+!    ENDIF Conditional_PELEOT
+!
+!    Conditional_FIRORD: IF( FIRORD ) THEN ! Velocity is pointing into element
+!       !     Conditional_FIRORD: IF( .TRUE. ) THEN ! Velocity is pointing into element
+!
+!       ! Velocity is going out of element
+!       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
+!       TDLIM = MAX(TDLIM,0.0) ** (1.0/POWER)
+!
+!    ELSE
+!
+!       FTILIN = ( MAX(0.0,TDCEN) ** POWER - TUPWIN ) / DENOIN
+!       FTILOU = ( MAX(0.0,TDCEN) ** POWER - TUPWI2 ) / DENOOU
+!
+!       ! Velocity is going out of element
+!       TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEWsqrt( FTILIN, CTILIN, -1.0 ) * DENOIN ) &
+!            + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEWsqrt( FTILOU, CTILOU, -1.0 ) * DENOOU )
+!
+!       TDLIM = MAX( TDLIM, 0.0 ) ** (1.0/POWER)
+!
+!    ENDIF Conditional_FIRORD
+!
+!    RETURN
+!
+!  END SUBROUTINE ONVDLIMsqrt
 
 
 
@@ -6140,41 +5805,6 @@ deallocate(NX_ALL, X_NX_ALL)
     nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
 
   end function nvdfunnew_many_sqrt
-
-
-
-
-
-  SUBROUTINE CALC_MASS_CV( MASS_CV, CV_NONODS, X_NONODS, &
-       X, X_NDGLN, TOTELE, CV_NLOC )
-    implicit none
-    INTEGER, intent( in ) :: CV_NONODS, X_NONODS, TOTELE, CV_NLOC
-    REAL, DIMENSION( : ), intent( inout ) ::  MASS_CV
-    REAL, DIMENSION( : ), intent( in ) :: X
-    INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN
-    ! Local variables
-    INTEGER ::ELE, NOD1, NOD2, NOD3
-    REAL :: DX
-
-    DO ELE = 1, TOTELE
-
-       NOD1 = X_NDGLN(( ELE - 1 ) * CV_NLOC + 1 )
-       NOD2 = X_NDGLN(( ELE - 1 ) * CV_NLOC + 2 )
-       NOD3 = X_NDGLN(( ELE - 1 ) * CV_NLOC + 3 )
-
-       DX = X( NOD3 ) - X( NOD1 )
-
-       MASS_CV( NOD1 ) = 0.25 * DX
-       MASS_CV( NOD2 ) = 0.50 * DX
-       MASS_CV( NOD3 ) = 0.25 * DX
-
-    END DO
-
-    RETURN
-
-  END SUBROUTINE CALC_MASS_CV
-
-
 
 
   SUBROUTINE SCVDETNX_new( ELE,      GI,        &
@@ -10953,75 +10583,6 @@ CONTAINS
   END SUBROUTINE CALC_SELE
 
 
-
-
-  SUBROUTINE RE1DN3(NGI,NLOC,WEIGHT,N,NLX )
-    IMPLICIT NONE
-    ! QUADRATIC VARIATION FOR VELOCITY-2D 9 NODE BRICK ELEMENT.
-    ! LINEAR VARIATION FOR PRESSURE-2D 4 NODE BRICK ELEMENT.
-    ! NB might have to define surface elements for p and (u,v,w)
-    ! in here as well.
-    ! This is for the 2-D 27node element, which is number as follows
-    !   1   2   3
-    !      This subroutine defines the shape functions M and N and their
-    !      derivatives at the Gauss points
-    INTEGER NGI,NLOC
-    REAL, dimension(:) :: WEIGHT
-    REAL , dimension (:,:) :: N,NLX
-    !Local variables
-    REAL POSI
-    REAL LX(3),LY(3)
-    REAL WEI(3)
-    REAL XN(3)
-    REAL DXN(3)
-    INTEGER P,GPOI
-
-    INTEGER NQUAD,ILX,NL
-    ! NB LXP(I) AND LYP(I) ARE THE LOCAL X AND Y COORDS OF NODAL POINT I
-
-    POSI=0.774596669241483
-    LX(1)=-POSI
-    LY(1)=-POSI
-    LX(2)= 0.
-    LY(2)= 0.
-    LX(3)= POSI
-    LY(3)= POSI
-    WEI(1)=0.555555555555556
-    WEI(2)=0.888888888888889
-    WEI(3)=0.555555555555556
-    NQUAD=3
-    !
-    !
-    !  FIND N ETC-----
-    ! NB LXP(I) AND LYP(I) ARE THE LOCAL X AND Y COORDS OF NODAL POINT I
-    !
-    do  P=1,NQUAD! Was loop 23
-       GPOI=P
-       !
-       WEIGHT(GPOI)=WEI(P)
-       !
-       XN(1)=0.5* LX(P) * (LX(P)-1.)
-       XN(2)=1. - LX(P)*LX(P)
-       XN(3)=0.5* LX(P) * (LX(P)+1.)
-       !
-       DXN(1)=0.5* (2.*LX(P) -1.)
-       DXN(2)= - 2. * LX(P)
-       DXN(3)=0.5* (2.*LX(P) + 1.)
-       !
-       do  ILX=1,3! Was loop 10
-          NL=ILX
-          N(NL,GPOI)  = XN(ILX)
-          !
-          NLX(NL,GPOI)= DXN(ILX)
-       end do ! Was loop 10
-       !
-    end do ! Was loop 23
-  END SUBROUTINE RE1DN3
-
-
-
-
-
   SUBROUTINE PUT_IN_CT_RHS( CT, CT_RHS, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
        CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary, &
        JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC, U_SLOC2LOC,   &
@@ -11242,60 +10803,60 @@ CONTAINS
 
 
 
-  SUBROUTINE PRINT_CV_DIST(CV_NONODS,X_NONODS,TOTELE,CV_NLOC,X_NLOC,NPHASE, &
-       SATURA, X_NDGLN, CV_NDGLN, X)
-    IMPLICIT NONE
-
-    INTEGER, intent( in ) :: CV_NONODS,X_NONODS,TOTELE,CV_NLOC,X_NLOC,NPHASE
-    REAL, DIMENSION( : ), intent( in ) :: SATURA
-    REAL, DIMENSION( : ), intent( in ) :: X
-    INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-    ! Local Variables
-    INTEGER :: ELE, CV_ILOC, IPHASE
-    REAL :: x_coord
-
-    !ewrite(3,*)'satura :',satura
-
-    do iphase=1,nphase
-       ewrite(3,*)'cv REPRESENTATION OF iphase:',iphase
-       do ele=1,totele
-
-          IF(CV_NLOC==2) THEN
-             cv_iloc=1
-             ewrite(3,*)x(x_ndgln((ele-1)*x_nloc+cv_iloc)),SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
-             x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc+1)) )
-             ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
-
-             cv_iloc=cv_nloc
-             x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc-1)) )
-             ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
-             ewrite(3,*)x(x_ndgln((ele-1)*x_nloc+cv_iloc)),SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
-          ENDIF
-          IF(CV_NLOC==3) THEN
-             cv_iloc=1
-             ewrite(3,*)x(x_ndgln((ele-1)*x_nloc+cv_iloc)),SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
-             x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc+1)) )
-             ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
-
-             do cv_iloc=2,cv_nloc-1
-                x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc-1)) )
-                ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
-                x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc+1)) )
-                ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
-                !        ewrite(3,*)x(x_ndgln((ele-1)*x_nloc+cv_iloc)),DTX_ELE(cv_iloc,1,ele)
-             end do
-
-             cv_iloc=cv_nloc
-             x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc-1)) )
-             ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
-             ewrite(3,*)x(x_ndgln((ele-1)*x_nloc+cv_iloc)),SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
-          ENDIF
-
-       end do
-    end do
-    RETURN
-  END SUBROUTINE PRINT_CV_DIST
+!  SUBROUTINE PRINT_CV_DIST(CV_NONODS,X_NONODS,TOTELE,CV_NLOC,X_NLOC,NPHASE, &
+!       SATURA, X_NDGLN, CV_NDGLN, X)
+!    IMPLICIT NONE
+!
+!    INTEGER, intent( in ) :: CV_NONODS,X_NONODS,TOTELE,CV_NLOC,X_NLOC,NPHASE
+!    REAL, DIMENSION( : ), intent( in ) :: SATURA
+!    REAL, DIMENSION( : ), intent( in ) :: X
+!    INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN
+!    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+!    ! Local Variables
+!    INTEGER :: ELE, CV_ILOC, IPHASE
+!    REAL :: x_coord
+!
+!    !ewrite(3,*)'satura :',satura
+!
+!    do iphase=1,nphase
+!       ewrite(3,*)'cv REPRESENTATION OF iphase:',iphase
+!       do ele=1,totele
+!
+!          IF(CV_NLOC==2) THEN
+!             cv_iloc=1
+!             ewrite(3,*)x(x_ndgln((ele-1)*x_nloc+cv_iloc)),SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
+!             x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc+1)) )
+!             ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
+!
+!             cv_iloc=cv_nloc
+!             x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc-1)) )
+!             ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
+!             ewrite(3,*)x(x_ndgln((ele-1)*x_nloc+cv_iloc)),SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
+!          ENDIF
+!          IF(CV_NLOC==3) THEN
+!             cv_iloc=1
+!             ewrite(3,*)x(x_ndgln((ele-1)*x_nloc+cv_iloc)),SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
+!             x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc+1)) )
+!             ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
+!
+!             do cv_iloc=2,cv_nloc-1
+!                x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc-1)) )
+!                ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
+!                x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc+1)) )
+!                ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
+!                !        ewrite(3,*)x(x_ndgln((ele-1)*x_nloc+cv_iloc)),DTX_ELE(cv_iloc,1,ele)
+!             end do
+!
+!             cv_iloc=cv_nloc
+!             x_coord=0.5*( x(x_ndgln((ele-1)*x_nloc+cv_iloc)) + x(x_ndgln((ele-1)*x_nloc+cv_iloc-1)) )
+!             ewrite(3,*)x_coord,SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
+!             ewrite(3,*)x(x_ndgln((ele-1)*x_nloc+cv_iloc)),SATURA(cv_ndgln((ele-1)*cv_nloc+cv_iloc)+(iphase-1)*cv_nonods)
+!          ENDIF
+!
+!       end do
+!    end do
+!    RETURN
+!  END SUBROUTINE PRINT_CV_DIST
 
 
 
@@ -12173,99 +11734,6 @@ CONTAINS
 
     RETURN
     END SUBROUTINE CALC_ANISOTROP_LIM
-
-
-
-
-
-!##############COMMENTED SUBROUTINE SINCE IT IS NEVER CALLED####################
-!  SUBROUTINE CALC_ANISOTROP_LIM_1time(&
-!       ! Caculate the upwind values stored in matrix form...
-!       T, DEN, T2, &
-!       FEMT, FEMDEN, FEMT2, USE_FEMT, &
-!       TUPWIND_MAT, DENUPWIND_MAT, &
-!       T2UPWIND_MAT, &
-!       IGOT_T2, NPHASE, CV_NONODS,CV_NLOC, X_NLOC,TOTELE, CV_NDGLN, &
-!       SMALL_FINDRM, SMALL_CENTRM, SMALL_COLM,NSMALL_COLM, &
-!       X_NDGLN, X_NONODS, NDIM, &
-!       X, Y, Z, XC_CV, YC_CV, ZC_CV)
-!    ! For the anisotropic limiting scheme we find the upwind values
-!    ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
-!    ! value for each node pair is stored in the matrices TUPWIND AND
-!    IMPLICIT NONE
-!    INTEGER, intent( in ) :: CV_NONODS,X_NONODS,TOTELE,CV_NLOC, X_NLOC, &
-!         NSMALL_COLM, NDIM,IGOT_T2,NPHASE
-!    REAL, DIMENSION( : ), intent( in ) :: T,DEN
-!    REAL, DIMENSION( :), intent( in ) :: T2
-!    REAL, DIMENSION( :), intent( in ) :: FEMT,FEMDEN
-!    REAL, DIMENSION( :), intent( in ) :: FEMT2
-!    LOGICAL, intent( in ) :: USE_FEMT ! Use the FEM solns rather than CV's when interpolating soln
-!    REAL, DIMENSION( : ), intent( inout ) :: TUPWIND_MAT, &
-!         DENUPWIND_MAT
-!    REAL, DIMENSION( : ), intent( inout ) :: T2UPWIND_MAT
-!    INTEGER, DIMENSION(: ), intent( in ) :: X_NDGLN
-!    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-!    INTEGER, DIMENSION( : ), intent( in) :: SMALL_FINDRM
-!    INTEGER, DIMENSION( : ), intent( in ) :: SMALL_COLM
-!    INTEGER, DIMENSION( : ), intent( in) :: SMALL_CENTRM
-!    REAL, DIMENSION( : ), intent( in ) :: X,Y,Z
-!    REAL, DIMENSION( : ), intent( in ) :: XC_CV, YC_CV, ZC_CV
-!    REAL, DIMENSION(:), ALLOCATABLE :: SOL
-!
-!    ! Allocate memory
-!    INTEGER :: COUNT, COUNT2, CV_NOD
-!
-!
-!    ! Allocate memory and find upwind field values for limiting...
-!    IF(IGOT_T2.NE.0) THEN
-!
-!       allocate( sol( 3*nsmall_colm*nphase) )
-!       sol = (/TUPWIND_MAT, DENUPWIND_MAT, T2UPWIND_MAT/)
-!
-!       ! Obtain the weights
-!       CALL CALC_ANISOTROP_LIM_VALS( &
-!            ! Caculate the upwind values stored in matrix form...
-!            (/T,DEN,T2/), &
-!            (/FEMT,FEMDEN,FEMT2/), USE_FEMT, &
-!            SOL,  &
-!            NPHASE*3,CV_NONODS,CV_NLOC,X_NLOC,TOTELE,CV_NDGLN, &
-!            SMALL_FINDRM,SMALL_COLM,NSMALL_COLM, &
-!            X_NDGLN,X_NONODS,NDIM, &
-!            X,Y,Z, XC_CV, YC_CV, ZC_CV )
-!
-!       TUPWIND_MAT = sol( 1 : nsmall_colm*nphase )
-!       DENUPWIND_MAT = sol( 1+nsmall_colm*nphase : 2*nsmall_colm*nphase )
-!       T2UPWIND_MAT = sol( 1+2*nsmall_colm*nphase : 3*nsmall_colm*nphase )
-!
-!       deallocate( sol )
-!
-!    ELSE
-!
-!       allocate( sol( 2*nsmall_colm*nphase ) )
-!       sol = (/TUPWIND_MAT, DENUPWIND_MAT/)
-!
-!       CALL CALC_ANISOTROP_LIM_VALS( &
-!            ! Caculate the upwind values stored in matrix form...
-!            (/T,DEN/),&
-!            (/FEMT,FEMDEN/), USE_FEMT, &
-!            SOL,  &
-!            NPHASE*2,CV_NONODS,CV_NLOC,X_NLOC,TOTELE,CV_NDGLN, &
-!            SMALL_FINDRM,SMALL_COLM,NSMALL_COLM, &
-!            X_NDGLN,X_NONODS,NDIM, &
-!            X,Y,Z, XC_CV, YC_CV, ZC_CV )
-!
-!       TUPWIND_MAT = sol( 1 : nsmall_colm*nphase )
-!       DENUPWIND_MAT = sol( 1+nsmall_colm*nphase : 2*nsmall_colm*nphase )
-!
-!       deallocate( sol )
-!
-!    ENDIF
-!
-!  END SUBROUTINE CALC_ANISOTROP_LIM_1time
-
-
-
-
 
   SUBROUTINE CALC_ANISOTROP_LIM_VALS( &
        ! Caculate the upwind values stored in matrix form...
@@ -14232,74 +13700,6 @@ deallocate(NX_ALL)
     return
 
   end function vtolfun
-
-!   subroutine Get_int_vel_cache(state, indx, Storname, ELE, GI, NPHASE, NDIM, TOTELE, SCVNGI, INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
-!    !This subroutine only associates the pointers with the memory
-!    !Later on it will be decided whether we need to recalculate or not
-!        Implicit none
-!     INTEGER, intent( in ) :: ELE, TOTELE, NPHASE, SCVNGI, NDIM, GI
-!      REAL, DIMENSION( : ), pointer, intent( inout ) :: INCOMEOLD, NDOTQOLD
-!      REAL, DIMENSION( :, : ), pointer, intent( inout ) ::  NUOLDGI_ALL
-!      type( state_type ), intent( inout ), dimension(:) :: state
-!      character(len=*), intent(in) :: StorName
-!      integer, intent(inout) :: indx
-!      ! Local variables
-!      integer :: from, to, jump, LELE
-!      !Variables to store things in state
-!      type(mesh_type), pointer :: fl_mesh
-!      type(mesh_type) :: Auxmesh
-!      type(scalar_field), target :: targ_NX_ALL
-!
-!      !#########Storing area#################################
-!      !If new mesh or mesh moved indx will be zero (set in Multiphase_TimeLoop)
-!      if (indx==0 .and. ELE==1) then !The first time we need to introduce the targets in state
-!         if (has_scalar_field(state(1), trim(Storname))) then
-!            !If we are recalculating due to a mesh modification then
-!            !we return to the original situation
-!            call remove_scalar_field(state(1), trim(Storname))
-!         end if
-!         !Get mesh file just to be able to allocate the fields we want to store
-!         fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
-!         Auxmesh = make_mesh(fl_mesh,name=trim(Storname))
-!         !The number of nodes I want does not coincide
-!         Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*&
-!            (NPHASE*SCVNGI + NPHASE*SCVNGI + NPHASE*SCVNGI*NDIM)
-!         call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
-!
-!         !Now we insert them in state and store the indexes
-!         call insert(state(1), Targ_NX_ALL, trim(Storname))
-!         !Store index with a negative value, because if the index is
-!         !zero or negative then we have to calculate stuff
-!         !robust way to get the indx
-!         do indx = 1, size(state(1)%scalar_fields)
-!             if (trim(state(1)%scalar_names(indx)) == trim(Storname)) exit
-!         end do
-!          indx = - indx
-!
-!         call deallocate (Targ_NX_ALL)
-!         call deallocate (Auxmesh)
-!      end if
-!      !Get from state, indx is an input
-!      LELE=merge(ele,1,btest(cache_level,0))
-!
-!      from = 1+(LELE-1)*(SCVNGI*nphase)+nphase*(GI-1); to = from-1 + nphase
-!      INCOMEOLD(1:nphase) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
-!      jump = NPHASE*SCVNGI*merge(totele,1,btest(cache_level,0))
-!      from = jump + 1 + (LELE-1)*(SCVNGI*nphase)+nphase*(GI-1); to = from-1 + nphase
-!      NDOTQOLD(1:nphase) => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
-!      jump = jump + NPHASE*SCVNGI*merge(totele,1,btest(cache_level,0))
-!      from = jump + 1 + (LELE-1)*(SCVNGI*nphase*ndim)+nphase*ndim*(GI-1); to = from-1 + nphase*ndim
-!      call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
-!      NUOLDGI_ALL, NDIM, NPHASE)
-!
-!      IF (indx>0 .and. not(cache_level)==0) return
-!      !When all the values are obtained, the index is set to a positive value
-!      !For this case we have to change the sign outside this subroutine
-!      !if (ELE == totele) indx = abs(indx)
-!      !#########Storing area finished########################
-!
-!
-!    end subroutine Get_int_vel_cache
 
 ! -----------------------------------------------------------------------------
 
