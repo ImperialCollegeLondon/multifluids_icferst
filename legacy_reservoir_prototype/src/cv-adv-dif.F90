@@ -282,12 +282,7 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
-<<<<<<< HEAD
-      REAL, DIMENSION( :, : ), intent( in ), target :: DEN_ALL, DENOLD_ALL
-=======
       REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL, DENOLD_ALL
-      REAL, DIMENSION( :, : ), intent( in ) :: T2, T2OLD
->>>>>>> cbce9c7fe9cc670b7be186463fb953c1088f6991
       REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (NPHASE,CV_NONODS)
       REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
       REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
