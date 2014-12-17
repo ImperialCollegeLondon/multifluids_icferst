@@ -8898,9 +8898,9 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 end if
             end if
         end do
+        Artificial_Pe = .false.
         if (Phase_with_Pc>0) then
             !Get information for capillary pressure to be use
-            Artificial_Pe = .false.
             if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
                 !Get C
