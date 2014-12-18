@@ -163,7 +163,6 @@
 !!$ For output:
       real, dimension( : ), allocatable :: &
            Mean_Pore_CV
-      type( scalar_field ), pointer :: Component_State
 
 !!$ Variables that can be effectively deleted as they are not used anymore:
       integer :: noit_dim
@@ -214,7 +213,7 @@
       logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
       real, dimension(:,:,:), allocatable  :: reference_field
 
-      type( tensor_field ), pointer :: NU_s, NUOLD_s, U_s, UOLD_s, D_s, DOLD_s, DC_s, DCOLD_s
+      type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
       type( tensor_field ), pointer :: MFC_s, MFCOLD_s
 
       !! face value storage
@@ -244,7 +243,7 @@
       real, dimension(:,:), pointer :: SAT_s, OldSAT_s, FESAT_s
 
       type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
-      type(scalar_field), pointer :: pressure_field, porosity_field, tracer_field2
+      type(scalar_field), pointer :: pressure_field, porosity_field
       type(vector_field), pointer :: positions
 
       logical :: write_all_stats=.true.
@@ -307,9 +306,6 @@
            u_sndgln( stotel * u_snloc ) )
 
 
-      !      x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
-      cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
-
       call Compute_Node_Global_Numbers( state, &
            totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
            cv_snloc, p_snloc, u_snloc, &
@@ -336,8 +332,8 @@
 
       allocate( global_dense_block_acv( nphase , cv_nonods ) )
 
-      finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ;
-     findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0
+      finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0
+      findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0
       colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0
       colm = 0 ; midm = 0
 
@@ -585,23 +581,6 @@
               Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
 
 
-!!$ Update all fields from time-step 'N - 1'
-
-         U_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
-         UOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
-
-         NU_s => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedNonlinearVelocity" )
-         NUOLD_s => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldNonlinearVelocity" )
-
-         D_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
-         DOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-         if( have_component_field ) then
-            DC_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedComponentDensity" )
-            DCOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldComponentDensity" )
-            MFC_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedComponentMassFraction" )
-            MFCOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldComponentMassFraction" )
-         end if
-
          porosity_field=>extract_scalar_field(packed_state,"Porosity")
 
          ! evaluate prescribed fields at time = current_time+dt
@@ -669,8 +648,9 @@
                  have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
                ewrite(3,*)'Now advecting Temperature Field'
 
-               NU_s % val = U_s % val
-               NUOLD_s % val = UOLD_s % val
+
+               call set_nu_to_u( packed_state )
+
 
                call calculate_diffusivity( state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
                     mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
@@ -731,9 +711,7 @@
 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
             Conditional_ForceBalanceEquation: if ( solve_force_balance ) then
 
-!!$ Updating velocities:
-               NU_s % val = U_s % val
-               NUOLD_s % val = UOLD_s % val
+               call set_nu_to_u( packed_state )
 
 !!$ Diffusion-like term -- here used as part of the capillary pressure for porous media. It can also be
 !!$ extended to surface tension -like term.
@@ -863,6 +841,14 @@
 
             Conditional_Components:if( have_component_field ) then
 
+               D_s  => extract_tensor_field( packed_state, "PackedDensity" )
+
+               DC_s  => extract_tensor_field( packed_state, "PackedComponentDensity" )
+               DCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
+               MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+               MFCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentMassFraction" )
+
+
                Loop_Components: do icomp = 1, ncomp
 
                   tracer_field=>extract_tensor_field(multicomponent_state(icomp),"PackedComponentMassFraction")
@@ -950,12 +936,15 @@
                   ! We have divided through by density 
                   !do cv_inod=1,cv_nonods
                   !   do iphase=1,nphase
-                  !      ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) = ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) + THETA_GDIFF(iphase,cv_inod)
+                  !      ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) = &
+                  !               ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) + THETA_GDIFF(iphase,cv_inod)
                   !   end do
                   !end do
                   tracer_source%val(1,:,:) = tracer_source%val(1,:,:) + THETA_GDIFF
 
                end do Loop_Components
+
+
 
 
                if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // & 
@@ -975,6 +964,11 @@
                   END DO
                   DEALLOCATE( RSUM )
                end if
+
+
+
+
+
 
                DO ICOMP = 1, NCOMP
 
@@ -1033,6 +1027,7 @@
 
                END DO ! ICOMP
 
+
                if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // & 
                     ']/is_multiphase_component/Comp_Sum2One' ) .and. ( ncomp > 1 ) ) then
                   call Cal_Comp_Sum2One_Sou( packed_state, ScalarField_Source_Component, cv_nonods, nphase, ncomp, dt, its, &
@@ -1040,17 +1035,9 @@
                        Mean_Pore_CV )
                end if
 
-               !! Temporal working array:
-               !               DO CV_INOD = 1, CV_NONODS
-               !                  DO IPHASE = 1, NPHASE
-               !                     DO ICOMP = 1, NCOMP
-               !                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS ) = &
-               !                           MFC_s%val(ICOMP, IPHASE, CV_INOD)
-               !                     END DO
-               !                  END DO
-               !               END DO
 
             end if Conditional_Components
+
 
             !Check if the results are good so far and act in consequence, only does something if requested by the user
             call Adaptive_NonLinear(packed_state, reference_field, its,&
@@ -1688,6 +1675,20 @@
 
    end subroutine copy_packed_new_to_old
 
+   subroutine set_nu_to_u(packed_state)
+     type(state_type), intent(inout) :: packed_state
+     type(tensor_field), pointer :: u, uold, nu, nuold
+
+         u  => extract_tensor_field( packed_state, "PackedVelocity" )
+         uold  => extract_tensor_field( packed_state, "PackedOldVelocity" )
+
+         nu => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
+         nuold => extract_tensor_field( packed_state, "PackedOldNonlinearVelocity" )
+
+         nu % val = u % val
+         nuold % val = uold % val
+
+   end subroutine set_nu_to_u
 
 
   end module multiphase_time_loop
