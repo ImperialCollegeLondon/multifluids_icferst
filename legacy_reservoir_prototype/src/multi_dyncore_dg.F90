@@ -7412,7 +7412,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         REAL FEMT_CV_NOD(CV_NLOC)
 
         CHARACTER(LEN=OPTION_PATH_LEN) :: OPTION_PATH
-        REAL, allocatable, DIMENSION(:) :: DUMMY_ELE
 
         real, dimension(0,0,0,0):: tflux, rdum4
         real, allocatable, dimension(:,:,:) :: T_ABSORB
@@ -7428,9 +7427,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
         real, dimension(0) :: unnecessary_zero_length_array
       
-
-        ALLOCATE(DUMMY_ELE(TOTELE))
-        DUMMY_ELE = 0
 
         IGOT_T2=0
         CV_DISOPT=0
@@ -8166,7 +8162,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             ! nits_flux_lim_t
             !RZERO, &
             !option_path = '/material_phase[0]/scalar_field::Pressure', &
-            !mass_ele_transp = dummy_ele, &
             !thermal = .FALSE.,&
             !StorageIndexes=StorageIndexes, icomp=-1)
 

@@ -305,7 +305,7 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: COLELE
       REAL, DIMENSION( :, :, :, : ), target, intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
       REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
-      REAL, DIMENSION( : ), intent( inout ) :: MASS_ELE_TRANSP
+      REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
       character( len = * ), intent( in ), optional :: option_path_spatial_discretisation
       integer, dimension(:), intent(in) :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
       integer, dimension(:), intent(inout) :: StorageIndexes
@@ -1226,8 +1226,8 @@ contains
       call deallocate(psi_ave(1)%ptr)
       deallocate(psi_ave(1)%ptr)
 
-
-      MASS_ELE_TRANSP = MASS_ELE
+      IF (PRESENT(MASS_ELE_TRANSP)) &
+           MASS_ELE_TRANSP = MASS_ELE
 
       NORMALISE = .FALSE.
       IF ( NORMALISE ) THEN

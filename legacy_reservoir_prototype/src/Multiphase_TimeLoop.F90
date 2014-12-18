@@ -114,8 +114,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods
-      real :: dx
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods
 
 !!$ Node global numbers
       integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, &
@@ -173,7 +172,7 @@
       logical :: do_reallocate_fields, not_to_move_det_yet = .false., initialised
 
 !!$ Working arrays:
-      real, dimension(:), pointer :: mass_ele, dummy_ele
+      real, dimension(:), pointer :: mass_ele
 
       real, dimension( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
       real, dimension( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
@@ -293,7 +292,7 @@
            nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, dx )
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods)
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -364,7 +363,7 @@
 !!$
            suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
            Mean_Pore_CV( cv_nonods ), &
-           dummy_ele( totele ), mass_ele( totele ), &
+           mass_ele( totele ), &
 !!$
            Temperature_Source( nphase, cv_nonods ), &
            Velocity_U_Source( ndim, nphase, u_nonods ), &
@@ -394,7 +393,7 @@
       suf_sig_diagten_bc=0.
 !!$
       Mean_Pore_CV=0.
-      dummy_ele=0. ; mass_ele=0.
+      mass_ele=0.
 !!$
       PhaseVolumeFraction_Source=0. ; Velocity_U_Source=0.
       Velocity_U_Source_CV=0. ; Component_Source=0.
@@ -675,7 +674,6 @@
                     in_ele_upwind, dg_ele_upwind, &
                     Mean_Pore_CV, &
                     option_path = '/material_phase[0]/scalar_field::Temperature', &
-                    mass_ele_transp = dummy_ele, &
                     thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                     StorageIndexes=StorageIndexes )
 
@@ -888,7 +886,6 @@
                           theta_gdiff, &
                           in_ele_upwind, dg_ele_upwind, &
                           Mean_Pore_CV, &
-                          mass_ele_transp = dummy_ele, &
                           thermal = .false.,& ! the false means that we don't add an extra source term
                           theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                           StorageIndexes=StorageIndexes, icomp=icomp, saturation=saturation_field )
@@ -1194,7 +1191,7 @@
                  Component_Source, &
                  suf_sig_diagten_bc, &
                  theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
-                 mass_ele, dummy_ele, &
+                 mass_ele, &
                  Material_Absorption, Material_Absorption_Stab, &
                  Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
                  Component_Diffusion_Operator_Coefficient, &
@@ -1209,7 +1206,7 @@
                  nphase, nstate, ncomp, totele, ndim, stotel, &
                  u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
                  x_snloc, cv_snloc, u_snloc, p_snloc, &
-                 cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, dx )
+                 cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods)
 !!$ Calculating Global Node Numbers
             allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
                  u_sndgln( stotel * u_snloc ) )
@@ -1280,7 +1277,7 @@
 !!$             
                  suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
                  Mean_Pore_CV( cv_nonods ), &
-                 dummy_ele( totele ), mass_ele( totele ), &
+                 mass_ele( totele ), &
 !!$
 !!$
                  Temperature_Source( nphase, cv_nonods ), &
@@ -1426,7 +1423,7 @@
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
            Component_Source, &
            theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
-           mass_ele, dummy_ele, &
+           mass_ele,&
            Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
            Component_Diffusion_Operator_Coefficient, &
