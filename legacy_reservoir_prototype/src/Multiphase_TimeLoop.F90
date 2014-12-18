@@ -132,8 +132,6 @@
       integer, dimension(:), pointer :: colacv, colmcy, colct,colm,colc,colcmc,coldgm_pha
       integer, dimension(:), pointer :: finele, colele, midele
       integer, dimension(:), pointer :: small_finacv, small_colacv, small_midacv
-      integer, dimension(:), pointer :: block_to_global_acv
-      integer, dimension(:,:), allocatable :: global_dense_block_acv
 
 !!$ Defining element-pair type and discretisation options and coefficients
       integer :: cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type, &
@@ -164,9 +162,6 @@
       real, dimension( : ), allocatable :: &
            Mean_Pore_CV
       type( scalar_field ), pointer :: Component_State
-
-!!$ Variables that can be effectively deleted as they are not used anymore:
-      integer :: noit_dim
 
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
       integer :: iplike_grad_sou
@@ -335,8 +330,6 @@
            findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
 
 
-      allocate( global_dense_block_acv( nphase , cv_nonods ) )
-
       finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ;
      findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0
       colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0
@@ -351,7 +344,6 @@
 !!$ CV multi-phase eqns (e.g. vol frac, temp)
            mx_ncolacv, ncolacv, finacv, colacv, midacv, &
            small_finacv, small_colacv, small_midacv, &
-           block_to_global_acv, global_dense_block_acv, &
 !!$ Force balance plus cty multi-phase eqns
            nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
 !!$ Element connectivity
@@ -448,9 +440,6 @@
 !!$ Initialising Absorption terms that do not appear in the schema
 !!$
       ScalarField_Absorption = 0. ; Component_Absorption = 0. ; Temperature_Absorption = 0.
-
-!!$ Variables that can be effectively deleted as they are not used anymore:
-      noit_dim = 0
 
 !!$ Computing shape function scalars
       igot_t2 = 0 ; igot_theta_flux = 0
@@ -683,7 +672,6 @@
 
                call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                     tracer_field,velocity_field,density_field,&
-                    NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -709,9 +697,6 @@
                     t_get_theta_flux, t_use_theta_flux, &
                     THETA_GDIFF, &
                     in_ele_upwind, dg_ele_upwind, &
-!!$                    
-                    NOIT_DIM, & ! This need to be removed as it is already deprecated
-!!$
                     Mean_Pore_CV, &
                     option_path = '/material_phase[0]/scalar_field::Temperature', &
                     mass_ele_transp = dummy_ele, &
@@ -747,7 +732,6 @@
                     Velocity_U_Source_CV, Velocity_U_Source, &
                     NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
-                    block_to_global_acv, global_dense_block_acv, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, STOTEL, &
                     CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
@@ -783,7 +767,6 @@
                     NCOLDGM_PHA, &! Force balance 
                     NCOLELE, FINELE, COLELE, & ! Element connectivity.
                     NCOLCMC, FINDCMC, COLCMC, MIDCMC, & ! pressure matrix for projection method
-                    NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
                     size(small_colacv),small_FINACV, small_COLACV, small_MIDACV, &
                     NLENMCY, NCOLMCY, FINMCY, COLMCY, MIDMCY, & ! Force balance plus cty multi-phase eqns
                     NCOLCT, FINDCT, COLCT, & ! CT sparsity - global cty eqn.
@@ -801,9 +784,6 @@
                     igot_theta_flux, scvngi_theta, volfra_use_theta_flux, &
                     sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
                     in_ele_upwind, dg_ele_upwind, &
-!!$
-                    NOIT_DIM, & ! This need to be removed as it is already deprecated
-!!$
                     iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
                     scale_momentum_by_volume_fraction,&
                     StorageIndexes=StorageIndexes )
@@ -816,7 +796,6 @@
 
             Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                call VolumeFraction_Assemble_Solve( state, packed_state, &
-                    NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -840,9 +819,6 @@
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                     igot_theta_flux,scvngi_theta, volfra_use_theta_flux, &
                     in_ele_upwind, dg_ele_upwind, &
-!!$                    
-                    NOIT_DIM, & ! This need to be removed as it is already deprecated
-!!$
                     option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                     mass_ele_transp = mass_ele,&
                     theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
@@ -905,7 +881,6 @@
 
                      call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
                           tracer_field,velocity_field,density_field,&
-                          NCOLACV, FINACV, COLACV, MIDACV, & ! CV sparsity pattern matrix
                           SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
                           NCOLCT, FINDCT, COLCT, &
                           CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -930,9 +905,6 @@
                           comp_get_theta_flux, comp_use_theta_flux, &
                           theta_gdiff, &
                           in_ele_upwind, dg_ele_upwind, &
-!!$
-                          NOIT_DIM, & ! This need to be removed as it is already deprecated
-!!$
                           Mean_Pore_CV, &
                           mass_ele_transp = dummy_ele, &
                           thermal = .false.,& ! the false means that we don't add an extra source term
@@ -1224,7 +1196,6 @@
                  finacv, colacv, midacv,&
                  small_finacv, small_colacv, small_midacv, &
                  finmcy, colmcy, midmcy, &
-                 block_to_global_acv, global_dense_block_acv, &
                  findgm_pha, coldgm_pha, middgm_pha, findct, &
                  colct, findc, colc, findcmc, colcmc, midcmc, findm, &
                  colm, midm, &
@@ -1286,7 +1257,6 @@
                  findcmc( cv_nonods + 1 ), colcmc( mx_ncolcmc ), midcmc( cv_nonods ), &
                  findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
 
-            allocate( global_dense_block_acv (nphase,cv_nonods) )
             finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; &
                  findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
                  colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0 ; &
@@ -1301,7 +1271,6 @@
 !!$ CV multi-phase eqns (e.g. vol frac, temp)
                  mx_ncolacv, ncolacv, finacv, colacv, midacv, &
                  small_finacv, small_colacv, small_midacv, &
-                 block_to_global_acv, global_dense_block_acv, &
 !!$ Force balance plus cty multi-phase eqns
                  nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
 !!$ Element connectivity
@@ -1392,9 +1361,6 @@
             ScalarField_Absorption = 0. ; Component_Absorption = 0. ; Temperature_Absorption = 0.
 
 
-!!$ Variables that can be effectively deleted as they are not used anymore:
-            noit_dim = 0
-
 !!$ Computing shape function scalars
             igot_t2 = 0 ; igot_theta_flux = 0
             if( ncomp /= 0 )then
@@ -1462,7 +1428,6 @@
            finacv, colacv, midacv,&
            small_finacv, small_colacv, small_midacv, &
            finmcy, colmcy, midmcy, &
-           block_to_global_acv, global_dense_block_acv, &
            findgm_pha, coldgm_pha, middgm_pha, findct, &
            colct, findc, colc, findcmc, colcmc, midcmc, findm, &
            colm, midm, &

@@ -77,7 +77,6 @@ contains
 
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
        tracer, velocity, density, &
-       NCOLACV, FINACV, COLACV, MIDACV, &
        SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
        NCOLCT, FINDCT, COLCT, &
        CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -98,7 +97,6 @@ contains
        IGOT_T2, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
        THETA_GDIFF, &
        IN_ELE_UPWIND, DG_ELE_UPWIND, &
-       NOIT_DIM, &
        MEAN_PORE_CV, &
        option_path, &
        mass_ele_transp, &
@@ -113,7 +111,7 @@ contains
         type(tensor_field), intent(inout) :: tracer
         type(tensor_field), intent(in) :: velocity, density
 
-    INTEGER, intent( in ) :: NCOLACV, NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
+    INTEGER, intent( in ) :: NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
          U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, NPHASE, CV_NLOC, U_NLOC, X_NLOC,  MAT_NLOC, &
          CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, NCOLM, NCOLELE, &
          IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux
@@ -126,9 +124,6 @@ contains
     INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
-    INTEGER, DIMENSION( : ), intent( in ) :: FINACV
-    INTEGER, DIMENSION( : ), intent( in ) :: COLACV
-    INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
     INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV
     INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
     INTEGER, DIMENSION( : ), intent( in ) :: COLCT
@@ -152,7 +147,6 @@ contains
     INTEGER, DIMENSION( : ), intent( in ) :: FINELE
     INTEGER, DIMENSION( : ), intent( in ) :: COLELE
     REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-    INTEGER, INTENT(IN) :: NOIT_DIM
     REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
     character( len = * ), intent( in ), optional :: option_path
     real, dimension( : ), intent( inout ), optional :: mass_ele_transp
@@ -263,7 +257,7 @@ contains
             call CV_ASSEMB( state, packed_state, &
                  tracer, velocity, density, &
             CV_RHS_field, &
-            NCOLACV, petsc_acv, &
+            petsc_acv, &
             SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
             NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
             CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -285,7 +279,6 @@ contains
             IGOT_T2,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
             IN_ELE_UPWIND, DG_ELE_UPWIND, &
-            NOIT_DIM, &
             MEAN_PORE_CV, &
             SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
             mass_ele_transp, &
@@ -302,12 +295,12 @@ contains
                          + CV_RHS_field%val(iphase,:)
                 END DO
 
-                NCOLACV_SUB = FINACV( CV_NONODS + 1) - 1 - CV_NONODS *( NPHASE - 1 )
-
-                ALLOCATE( ACV_SUB( NCOLACV_SUB ))
-                ALLOCATE( COLACV_SUB( NCOLACV_SUB ))
-                ALLOCATE( FINACV_SUB( CV_NONODS + 1 ))
-                ALLOCATE( MIDACV_SUB( CV_NONODS ))
+!!$                NCOLACV_SUB = FINACV( CV_NONODS + 1) - 1 - CV_NONODS *( NPHASE - 1 )
+!!$
+!!$                ALLOCATE( ACV_SUB( NCOLACV_SUB ))
+!!$                ALLOCATE( COLACV_SUB( NCOLACV_SUB ))
+!!$                ALLOCATE( FINACV_SUB( CV_NONODS + 1 ))
+!!$                ALLOCATE( MIDACV_SUB( CV_NONODS ))
 
                 !CALL LUMP_ENERGY_EQNS( CV_NONODS, NPHASE, &
                 !NCOLACV, NCOLACV_SUB, &
@@ -414,7 +407,6 @@ contains
 
 
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
-         NCOLACV, FINACV, COLACV, MIDACV, &
          SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
          NCOLCT, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -434,7 +426,6 @@ contains
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
          igot_theta_flux, SCVNGI_THETA, USE_THETA_FLUX, &
          IN_ELE_UPWIND, DG_ELE_UPWIND, &
-         NOIT_DIM, &
          option_path, &
          mass_ele_transp,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -443,7 +434,7 @@ contains
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ) :: packed_state
-      INTEGER, intent( in ) :: NCOLACV, NCOLCT, &
+      INTEGER, intent( in ) :: NCOLCT, &
            CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
            CV_ELE_TYPE, &
            NPHASE, CV_NLOC, U_NLOC, X_NLOC, &
@@ -458,9 +449,6 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
       INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
       INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
-      INTEGER, DIMENSION( : ), intent( in ) :: FINACV
-      INTEGER, DIMENSION( : ), intent( in ) :: COLACV
-      INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
       integer, dimension(:), intent(in)  :: small_finacv,small_colacv,small_midacv
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
@@ -480,7 +468,6 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINELE
       INTEGER, DIMENSION( : ), intent( in ) :: COLELE
       REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-      INTEGER, INTENT( IN ) :: NOIT_DIM
       character(len= * ), intent(in), optional :: option_path
       real, dimension( : ), intent( inout ) :: mass_ele_transp
       integer, dimension(:), intent(inout) :: StorageIndexes
@@ -585,7 +572,7 @@ contains
          call CV_ASSEMB( state, packed_state, &
               tracer, velocity, density, &
               CV_RHS_field, &
-              NCOLACV, petsc_acv, &
+              petsc_acv, &
               SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
               NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
               CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -608,7 +595,6 @@ contains
               IGOT_T2, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
               THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
               IN_ELE_UPWIND, DG_ELE_UPWIND, &
-              NOIT_DIM, &
               MEAN_PORE_CV, &
               SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
               mass_ele_transp,&
@@ -672,7 +658,6 @@ contains
     NCOLDGM_PHA, &! Force balance
     NCOLELE, FINELE, COLELE, & ! Element connectivity.
     NCOLCMC, FINDCMC, COLCMC, MIDCMC, & ! pressure matrix for projection method
-    NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
     NCOLSMALL,SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
     NLENMCY, NCOLMCY, FINMCY, COLMCY, MIDMCY, & ! Force balance plus cty multi-phase eqns
     NCOLCT, FINDCT, COLCT, & ! CT sparcity - global cty eqn.
@@ -687,7 +672,6 @@ contains
     IGOT_THETA_FLUX, SCVNGI_THETA, USE_THETA_FLUX, &
     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
-    NOIT_DIM, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
     scale_momentum_by_volume_fraction, &
     StorageIndexes )
@@ -702,7 +686,7 @@ contains
         U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
         STOTEL, U_SNLOC, P_SNLOC, &
         CV_SNLOC, &
-        NCOLC, NCOLDGM_PHA, NCOLELE, NCOLCMC, NCOLACV, ncolsmall, NLENMCY, NCOLMCY, NCOLCT, &
+        NCOLC, NCOLDGM_PHA, NCOLELE, NCOLCMC, ncolsmall, NLENMCY, NCOLMCY, NCOLCT, &
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, XU_NLOC, &
         IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
         IPLIKE_GRAD_SOU, IDIVID_BY_VOL_FRAC
@@ -735,9 +719,6 @@ contains
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDCMC
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLCMC
         INTEGER, DIMENSION(  :  ), intent( in ) :: MIDCMC
-        INTEGER, DIMENSION(  :  ), intent( in ) :: FINACV
-        INTEGER, DIMENSION(  :  ), intent( in ) :: COLACV
-        INTEGER, DIMENSION(  :  ), intent( in ) :: MIDACV
         integer, dimension(  :  ), intent( in ) :: small_finacv
         integer, dimension(  :  ), intent( in ) :: small_colacv
         integer, dimension(  :  ), intent( in ) :: small_midacv
@@ -758,7 +739,6 @@ contains
         REAL, DIMENSION(  :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-        INTEGER, INTENT( IN ) :: NOIT_DIM
         REAL, DIMENSION( :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         integer, dimension(:), intent(inout) :: StorageIndexes
         ! Local Variables
@@ -986,7 +966,6 @@ contains
         MAT, NO_MATRIX_STORE, &! Force balance
         NCOLELE, FINELE, COLELE, & ! Element connectivity.
         NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & ! pressure matrix for projection method
-        NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
         NCOLCT, FINDCT, COLCT, &
         CV_ELE_TYPE, &
@@ -1002,7 +981,7 @@ contains
         IGOT_THETA_FLUX, SCVNGI_THETA, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
-        NOIT_DIM, RETRIEVE_SOLID_CTY, &
+        RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,scale_momentum_by_volume_fraction ,&
         StorageIndexes)
 
@@ -1447,7 +1426,6 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
     DGM_PETSC, NO_MATRIX_STORE, &! Force balance
     NCOLELE, FINELE, COLELE, & ! Element connectivity.
     NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & ! pressure matrix for projection method
-    NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
     SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
     NCOLCT, FINDCT, COLCT, &
     CV_ELE_TYPE, &
@@ -1463,7 +1441,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
     IGOT_THETA_FLUX, SCVNGI_THETA, USE_THETA_FLUX, &
     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
-    NOIT_DIM, RETRIEVE_SOLID_CTY, &
+    RETRIEVE_SOLID_CTY, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL ,scale_momentum_by_volume_fraction,&
     StorageIndexes)
         implicit none
@@ -1480,7 +1458,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
         STOTEL, U_SNLOC, P_SNLOC, &
         CV_SNLOC, &
-        NCOLC, NCOLELE, NCOLCMC, NCOLACV, NCOLCT, &
+        NCOLC, NCOLELE, NCOLCMC, NCOLCT, &
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, XU_NLOC, &
         NLENMCY, NCOLMCY, IGOT_THETA_FLUX, SCVNGI_THETA, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, IPLIKE_GRAD_SOU,  IDIVID_BY_VOL_FRAC
@@ -1515,9 +1493,6 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLELE
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDCMC
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLCMC
-        INTEGER, DIMENSION(  :  ), intent( in ) :: FINACV
-        INTEGER, DIMENSION(  :  ), intent( in ) :: COLACV
-        INTEGER, DIMENSION(  :  ), intent( in ) :: MIDACV
         integer, dimension(:), intent(in) :: SMALL_FINACV, SMALL_COLACV, small_midacv
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDCT
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLCT
@@ -1547,7 +1522,6 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-        INTEGER, INTENT( IN ) :: NOIT_DIM
         REAL, DIMENSION( :, :), intent( in ) :: PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL
         integer, dimension(:), intent(inout) :: StorageIndexes
         ! Local variables
@@ -1661,7 +1635,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         call CV_ASSEMB( state, packed_state, &
              tracer, velocity, density, &
         CV_RHS, &
-        NCOLACV,  ACV, &
+        ACV, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
         NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
         CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -1683,7 +1657,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
-        NOIT_DIM, &
         MEAN_PORE_CV, &
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
         dummy_transp, &
@@ -6979,7 +6952,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
     U_SOURCE_CV, U_SOURCE, &
     NCOLACV, FINACV, COLACV, MIDACV, &
     SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-    block_to_global_acv, global_dense_block_acv, &
     NCOLCT, FINDCT, COLCT, &
     CV_NONODS, U_NONODS, X_NONODS, TOTELE, STOTEL, &
     CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
@@ -7015,8 +6987,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         integer, dimension( : ), intent( in ) :: COLACV
         integer, dimension( : ), intent( in ) :: MIDACV
         integer, dimension(:), intent(in) :: small_finacv,small_colacv,small_midacv
-        integer, dimension(:), intent(in) :: block_to_global_acv
-        integer, dimension(:,:), intent(in) :: global_dense_block_acv
         integer, dimension( : ), intent( in ) :: FINDCT
         integer, dimension( : ), intent( in ) :: COLCT
 
@@ -7111,7 +7081,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     IPHASE*CV_NONODS + (ICOMP-1)*NPHASE*CV_NONODS ), &
                     NCOLACV, FINACV, COLACV, MIDACV, &
                     SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-                    block_to_global_acv, global_dense_block_acv, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, STOTEL, &
                     CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
@@ -7162,7 +7131,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
     SUF_TENSION_COEF, VOLUME_FRAC, &
     NCOLACV, FINACV, COLACV, MIDACV, &
     SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-    block_to_global_acv, global_dense_block_acv, &
     NCOLCT, FINDCT, COLCT, &
     CV_NONODS, U_NONODS, X_NONODS, TOTELE, STOTEL, &
     CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
@@ -7322,9 +7290,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         INTEGER, DIMENSION( : ), intent( in ) :: COLACV
         INTEGER, DIMENSION( : ), intent( in ) :: MIDACV
         integer, dimension(:), intent(in) :: small_finacv,small_colacv,small_midacv
-        integer, dimension(:), intent(in) :: block_to_global_acv
-        integer, dimension(:, :), intent(in) :: global_dense_block_acv
-
         INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
         INTEGER, DIMENSION( : ), intent( in ) :: COLCT
 
@@ -7430,7 +7395,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
         REAL, PARAMETER :: W_SUM_ONE = 1.0, TOLER=1.0E-10
 
-        integer :: cv_inod_ipha, IGETCT, U_NODK_IPHA, NOIT_DIM, &
+        integer :: cv_inod_ipha, IGETCT, U_NODK_IPHA, &
         CV_DG_VEL_INT_OPT, IN_ELE_UPWIND, DG_ELE_UPWIND, &
         CV_DISOPT, IGOT_THETA_FLUX, scvngi_theta,SMOOTH_ITS
         ! Functions...
@@ -8166,7 +8131,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             DT=1.0
             T_THETA=0.0
             T_BETA=0.0
-            NOIT_DIM=1
             LUMP_EQNS=.FALSE.
 
             IGOT_THERM_VIS=0
@@ -8176,9 +8140,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
             !CALL INTENERGE_ASSEM_SOLVE( state, packed_state, &
             !     tfield, tfield,tfield,&
-            !NCOLACV, FINACV, COLACV, MIDACV, &
             !SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-            !block_to_global_acv, global_dense_block_acv, &
             !NCOLCT, FINDCT, COLCT, &
             !CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
             !U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
@@ -8199,7 +8161,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             !IGOT_T2, CURVATURE, VOLUME_FRAC,IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             !DUMMY_THETA_GDIFF, &
             !IN_ELE_UPWIND, DG_ELE_UPWIND, &
-            !NOIT_DIM, &
             ! nits_flux_lim_t
             !RZERO, &
             !option_path = '/material_phase[0]/scalar_field::Pressure', &
