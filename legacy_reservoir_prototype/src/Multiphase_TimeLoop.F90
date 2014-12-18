@@ -180,9 +180,7 @@
 
 !!$ Working arrays:
       real, dimension( : ), pointer :: &
-           Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
-           Component_Source, &
-           ScalarField_Source_Store, ScalarField_Source_Component, &
+           Velocity_U_Source, Velocity_U_Source_CV, &
            mass_ele, dummy_ele
 
       real, dimension( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
@@ -192,7 +190,8 @@
 
       real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
 !!$
-      real, dimension( :, : ), pointer :: PhaseVolumeFraction_Source
+      real, dimension( :, : ), pointer :: PhaseVolumeFraction_Source, Temperature_Source, &
+           ScalarField_Source_Store, ScalarField_Source_Component, Component_Source
       real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
 !!$
@@ -382,9 +381,9 @@
            Mean_Pore_CV( cv_nonods ), &
            dummy_ele( totele ), mass_ele( totele ), &
 !!$
-           Temperature_Source( nphase * cv_nonods ), &
+           Temperature_Source( nphase, cv_nonods ), &
            Velocity_U_Source( u_nonods * nphase * ndim ), &
-           Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
+           Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( nphase, cv_nonods ), &
 !!$
            PhaseVolumeFraction_Source( nphase, cv_nonods ), &
            Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -469,8 +468,8 @@
            sum_one_m_theta_flux( nphase, ncv_faces * igot_theta_flux ), &
            sum_theta_flux_j( nphase, ncv_faces * igot_theta_flux ), &
            sum_one_m_theta_flux_j( nphase, ncv_faces * igot_theta_flux ), &
-           theta_gdiff( nphase, cv_nonods ), ScalarField_Source_Store( cv_nonods * nphase ), &
-           ScalarField_Source_Component( cv_nonods * nphase ) )
+           theta_gdiff( nphase, cv_nonods ), ScalarField_Source_Store( nphase, cv_nonods ), &
+           ScalarField_Source_Component( nphase, cv_nonods ) )
 
       sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.
       sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
@@ -1330,9 +1329,9 @@
                  Mean_Pore_CV( cv_nonods ), &
                  dummy_ele( totele ), mass_ele( totele ), &
 !!$
-                 Temperature_Source( cv_nonods * nphase ), &
+                 Temperature_Source( nphase, cv_nonods ), &
                  Velocity_U_Source( u_nonods * nphase * ndim ), &
-                 Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
+                 Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( nphase, cv_nonods ), &
 !!$
                  PhaseVolumeFraction_Source( nphase, cv_nonods ), &
                  Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -1412,8 +1411,8 @@
                  sum_one_m_theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                  sum_theta_flux_j( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                  sum_one_m_theta_flux_j( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
-                 theta_gdiff( nphase, cv_nonods ), ScalarField_Source_Store( cv_nonods * nphase ), &
-                 ScalarField_Source_Component( cv_nonods * nphase ) )
+                 theta_gdiff( nphase, cv_nonods ), ScalarField_Source_Store( nphase, cv_nonods ), &
+                 ScalarField_Source_Component( nphase, cv_nonods ) )
 
             sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.  
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.  

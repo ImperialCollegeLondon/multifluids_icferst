@@ -296,7 +296,7 @@ contains
       REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
       REAL, DIMENSION(: , : ), intent( in ) :: DERIV
       REAL, DIMENSION( : ), intent( in ) :: CV_P
-      REAL, DIMENSION( : ), intent( in ) :: SOURCT
+      REAL, DIMENSION( :, : ), intent( in ) :: SOURCT
       REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT
       REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
       LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY

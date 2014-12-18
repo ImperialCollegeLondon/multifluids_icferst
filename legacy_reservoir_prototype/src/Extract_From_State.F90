@@ -721,11 +721,9 @@
       type( state_type ), intent( inout ) :: packed_state
 
       logical, intent( in ) :: initialised
-      real, dimension( : ), intent( inout ) :: &
-           Component_Source, &
-           Velocity_U_Source, &
-           Temperature_Source
-      real, dimension(:,:), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source
+      real, dimension( : ), intent( inout ) :: Velocity_U_Source
+      real, dimension( :, : ), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source, &
+           Temperature_Source, Component_Source
       real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption
       real, dimension( :, :, : ), optional, intent( inout ) :: Permeability
 

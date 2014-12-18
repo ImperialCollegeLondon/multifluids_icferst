@@ -143,7 +143,7 @@ contains
     REAL, intent( in ) :: T_BETA
     REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
     REAL, DIMENSION( :, : ), intent( in ) :: DERIV
-    REAL, DIMENSION( : ), intent( in ) :: T_SOURCE
+    REAL, DIMENSION( :, : ), intent( in ) :: T_SOURCE
     REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
     REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
     INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -471,7 +471,7 @@ contains
       REAL, intent( inout ) :: V_BETA
       REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
       REAL, DIMENSION( :, : ), intent( in ) :: DERIV
-      REAL, DIMENSION( : ), intent( in ) :: V_SOURCE
+      REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
       REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
       REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
       INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -747,7 +747,7 @@ contains
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDCT
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLCT
         REAL, intent( in ) :: V_THETA
-        REAL, DIMENSION(  :  ), intent( in ) :: V_SOURCE
+        REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         REAL, DIMENSION(  : ,  : ,: ), intent( in ) :: V_ABSORB
         REAL, DIMENSION(  :  ), intent( in ) :: VOLFRA_PORE
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDM
@@ -1523,7 +1523,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLCT
         REAL, intent( in ) :: V_THETA
         REAL, DIMENSION(  : , : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-        REAL, DIMENSION(  :  ), intent( in ) :: V_SOURCE
+        REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
         REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
         INTEGER, DIMENSION( : ), intent( in ) :: FINDM
