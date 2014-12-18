@@ -718,8 +718,8 @@ contains
         INTEGER, DIMENSION(  : ), intent( in ) :: CV_SNDGLN
         INTEGER, DIMENSION(  : ), intent( in ) :: XU_NDGLN
         REAL, DIMENSION(  :, :, :  ), intent( inout ) :: U_ABS_STAB, U_ABSORBIN, MAT_ABSORB
-        REAL, DIMENSION(  :  ), intent( in ) :: U_SOURCE
-        REAL, DIMENSION(  :  ), intent( inout ) :: U_SOURCE_CV
+        REAL, DIMENSION(  :, :, :  ), intent( in ) :: U_SOURCE
+        REAL, DIMENSION(  :, :, :  ), intent( inout ) :: U_SOURCE_CV
 
 !        REAL, DIMENSION(  :  ), intent( in ) :: SATURAOLD
 !        REAL, DIMENSION(  :  ), intent( inout ) :: SATURA
@@ -930,13 +930,15 @@ contains
         ALLOCATE( U_SOURCE_CV_ALL( NDIM, NPHASE, CV_NONODS ) )
         DO IPHASE = 1, NPHASE
             DO IDIM = 1, NDIM
-                S = 1 + (IDIM-1)*U_NONODS + (IPHASE-1)*NDIM*U_NONODS
-                E = IDIM*U_NONODS + (IPHASE-1)*NDIM*U_NONODS
-                U_SOURCE_ALL( IDIM, IPHASE, : ) = U_SOURCE( S:E )
+                !S = 1 + (IDIM-1)*U_NONODS + (IPHASE-1)*NDIM*U_NONODS
+                !E = IDIM*U_NONODS + (IPHASE-1)*NDIM*U_NONODS
+                !U_SOURCE_ALL( IDIM, IPHASE, : ) = U_SOURCE( S:E )
+                U_SOURCE_ALL( IDIM, IPHASE, : ) = U_SOURCE( IDIM, IPHASE, : )
 
-                S = 1 + (IDIM-1)*CV_NONODS + (IPHASE-1)*NDIM*CV_NONODS
-                E = IDIM*CV_NONODS + (IPHASE-1)*NDIM*CV_NONODS
-                U_SOURCE_CV_ALL( IDIM, IPHASE, : ) = U_SOURCE_CV( S:E )
+                !S = 1 + (IDIM-1)*CV_NONODS + (IPHASE-1)*NDIM*CV_NONODS
+                !E = IDIM*CV_NONODS + (IPHASE-1)*NDIM*CV_NONODS
+                !U_SOURCE_CV_ALL( IDIM, IPHASE, : ) = U_SOURCE_CV( S:E )
+                U_SOURCE_CV_ALL( IDIM, IPHASE, : ) = U_SOURCE_CV( IDIM, IPHASE, : )
             END DO
         END DO
 

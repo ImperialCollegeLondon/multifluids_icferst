@@ -178,9 +178,7 @@
       logical :: do_reallocate_fields, not_to_move_det_yet = .false., initialised
 
 !!$ Working arrays:
-      real, dimension( : ), pointer :: &
-           Velocity_U_Source, Velocity_U_Source_CV, &
-           mass_ele, dummy_ele
+      real, dimension( : ), pointer :: mass_ele, dummy_ele
 
       real, dimension( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
       real, dimension( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
@@ -191,6 +189,7 @@
 !!$
       real, dimension( :, : ), pointer :: PhaseVolumeFraction_Source, Temperature_Source, &
            ScalarField_Source_Store, ScalarField_Source_Component, Component_Source
+      real, dimension( :, :, : ), pointer :: Velocity_U_Source, Velocity_U_Source_CV
       real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
 !!$
@@ -378,8 +377,8 @@
            dummy_ele( totele ), mass_ele( totele ), &
 !!$
            Temperature_Source( nphase, cv_nonods ), &
-           Velocity_U_Source( u_nonods * nphase * ndim ), &
-           Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( nphase, cv_nonods ), &
+           Velocity_U_Source( ndim, nphase, u_nonods ), &
+           Velocity_U_Source_CV( ndim, nphase, cv_nonods ), Component_Source( nphase, cv_nonods ), &
 !!$
            PhaseVolumeFraction_Source( nphase, cv_nonods ), &
            Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -1317,8 +1316,8 @@
                  dummy_ele( totele ), mass_ele( totele ), &
 !!$
                  Temperature_Source( nphase, cv_nonods ), &
-                 Velocity_U_Source( u_nonods * nphase * ndim ), &
-                 Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( nphase, cv_nonods ), &
+                 Velocity_U_Source( ndim, nphase, u_nonods ), &
+                 Velocity_U_Source_CV( ndim, nphase, cv_nonods ), Component_Source( nphase, cv_nonods ), &
 !!$
                  PhaseVolumeFraction_Source( nphase, cv_nonods ), &
                  Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &

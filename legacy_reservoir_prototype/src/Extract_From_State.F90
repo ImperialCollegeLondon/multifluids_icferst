@@ -721,9 +721,9 @@
       type( state_type ), intent( inout ) :: packed_state
 
       logical, intent( in ) :: initialised
-      real, dimension( : ), intent( inout ) :: Velocity_U_Source
       real, dimension( :, : ), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source, &
            Temperature_Source, Component_Source
+      real, dimension( :, :, : ), intent( inout ) :: Velocity_U_Source
       real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption
       real, dimension( :, :, : ), optional, intent( inout ) :: Permeability
 
@@ -1395,7 +1395,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       type( vector_field ), pointer :: field, field_prot_bc
       !     real, dimension( : ), intent( inout ) :: field_u_prot, field_v_prot, field_w_prot, &
       !          field_nu_prot, field_nv_prot, field_nw_prot
-      real, dimension( : ), intent( inout ), optional :: field_prot_source
+      real, dimension( :, :, : ), intent( inout ), optional :: field_prot_source
       real, dimension( : , :, : ), intent( inout ), optional :: field_prot_absorption
       integer, dimension( : ), intent( inout ), optional :: wic_bc, wic_momu_bc 
       real, dimension( : ), intent( inout ), optional :: suf_u_bc, suf_v_bc, suf_w_bc
