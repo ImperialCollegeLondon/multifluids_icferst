@@ -1283,6 +1283,9 @@
                  dummy_ele( totele ), mass_ele( totele ), &
 !!$
 !!$
+                 Temperature_Source( nphase, cv_nonods ), &
+                 Velocity_U_Source( ndim, nphase, u_nonods ), &
+                 Velocity_U_Source_CV( ndim, nphase, cv_nonods ), &
                  PhaseVolumeFraction_Source( nphase, cv_nonods ), &
                  Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                  Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
