@@ -2466,7 +2466,7 @@ ewrite(3,*)'lll:', option_path_len
       end do
 ! 
 ! the below does not seem correct - Chris look at **************
-   if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc==6).and.(cv_nloc==10)) then ! make sure its a quadratic tet...
+   if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc_cells==6).and.(cv_nloc_cells==10)) then ! make sure its a quadratic tet...
 !   if(.false.) then
              sbcvfen( 1:cv_snloc, 1:sbcvngi ) = scvfen( 1:cv_snloc, 1:sbcvngi )
              sbcvfenslx( 1:cv_snloc, 1:sbcvngi ) = scvfenslx( 1:cv_snloc, 1:sbcvngi )
