@@ -2673,6 +2673,36 @@ ewrite(3,*)'lll:', option_path_len
             end do
          end do
 
+
+         if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_nloc==10).and.(ndim==3)) then
+! Exterior faces :  1,3,6  ----James is this face the face with the 1st 6 surface quadrature points and the 1st 6 CV's.
+!                     This is only the exterior surface faces on the triangle with 1,2,3,4,5,6 
+       cvfem_on_face=.false.
+       cvfem_on_face(1:6,1:6)=.true.
+! Exterior faces :  1,3,10
+      cvfem_on_face(1,7:12)=.true.
+      cvfem_on_face(2,7:17)=.true.
+      cvfem_on_face(3,7:12)=.true.
+      cvfem_on_face(7,7:12)=.true.
+      cvfem_on_face(8,7:12)=.true.
+      cvfem_on_face(10,7:12)=.true.
+! Exterior faces :  1,6,10
+      cvfem_on_face(1,13:18)=.true.
+      cvfem_on_face(4,13:18)=.true.
+      cvfem_on_face(6,13:18)=.true.
+      cvfem_on_face(7,13:18)=.true.
+      cvfem_on_face(9,13:18)=.true.
+      cvfem_on_face(10,13:18)=.true.
+! Exterior faces :  3,6,10
+      cvfem_on_face(3,19:24)=.true.
+      cvfem_on_face(5,19:24)=.true.
+      cvfem_on_face(6,19:24)=.true.
+      cvfem_on_face(8,19:24)=.true.
+      cvfem_on_face(9,19:24)=.true.
+      cvfem_on_face(10,19:24)=.true.
+         endif
+
+
       end if
 
       do iloc = 1, u_nloc
