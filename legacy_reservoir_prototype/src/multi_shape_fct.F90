@@ -2456,6 +2456,7 @@ ewrite(3,*)'lll:', option_path_len
 
       ! The CV_SNLOC surface nodes are the only nodes that are candidates.
 
+   if(.true.) then
       do cv_sgi = 1, scvngi
          candidate_gi2( cv_sgi ) = .true.
          do cv_iloc_cells = 1, cv_snloc_cells
@@ -2464,9 +2465,22 @@ ewrite(3,*)'lll:', option_path_len
             !     cv_iloc_cells,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
          end do
       end do
+   else
+      do cv_sgi = 1, scvngi
+         candidate_gi2( cv_sgi ) = .false.
+         do cv_iloc_cells = 1, cv_snloc_cells
+            if( cvfem_on_face(cv_iloc_cells,cv_sgi) ) candidate_gi2( cv_sgi ) = .true.
+            !ewrite(3,*)'cv_iloc_cells, cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi):', &
+            !     cv_iloc_cells,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
+         end do
+      end do
+   endif
 ! 
 ! the below does not seem correct - Chris look at **************
+           print *,'NEW_QUADRATIC_ELE_QUADRATURE,cv_snloc,cv_nloc:',NEW_QUADRATIC_ELE_QUADRATURE,cv_snloc,cv_nloc
    if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc==6).and.(cv_nloc==10)) then ! make sure its a quadratic tet...
+!   if(NEW_QUADRATIC_ELE_QUADRATURE.and.((cv_snloc==6).or.(cv_nloc==10))) then ! make sure its a quadratic tet...
+!   if(NEW_QUADRATIC_ELE_QUADRATURE.and.((cv_nloc==4).or.(cv_nloc==10))) then ! make sure its a quadratic tet...
 !   if(.false.) then
              sbcvfen( 1:cv_snloc, 1:sbcvngi ) = scvfen( 1:cv_snloc, 1:sbcvngi )
              sbcvfenslx( 1:cv_snloc, 1:sbcvngi ) = scvfenslx( 1:cv_snloc, 1:sbcvngi )
@@ -2500,10 +2514,20 @@ ewrite(3,*)'lll:', option_path_len
          end do Loop_SGI2
       end do Loop_SNLOC
 
+!         ewrite(3,*)'cv_bsgi,sbcvngi:',cv_bsgi,sbcvngi
+!         ewrite(3,*)'candidate_gi2:',candidate_gi2
+!         ewrite(3,*)'cvfem_on_face:',cvfem_on_face
+!         do cv_sgi = 1, scvngi
+!            print *,'cvfem_on_face(:,cv_sgi):',cvfem_on_face(:,cv_sgi) 
+!         end do
+
       if(cv_bsgi/=sbcvngi) then
          ewrite(3,*)'cv_bsgi,sbcvngi:',cv_bsgi,sbcvngi
+         ewrite(3,*)'candidate_gi2:',candidate_gi2
+         ewrite(3,*)'cvfem_on_face:',cvfem_on_face
          FLAbort("cv_bsgi/=sbcvngi")
       endif
+!         stop 921
    endif
 
 
