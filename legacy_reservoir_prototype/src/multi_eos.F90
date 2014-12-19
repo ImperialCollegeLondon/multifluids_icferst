@@ -1838,7 +1838,7 @@
       type(state_type), dimension(:), intent(in) :: state
       integer, intent(in) :: cv_nonods, ndim, nphase
       real, dimension(:,:), intent(in) :: den
-      real, dimension(:), intent(inout) :: u_source_cv
+      real, dimension(:,:,:), intent(inout) :: u_source_cv
 
       type(vector_field), pointer :: gravity_direction
       real, dimension(ndim) :: g
@@ -1854,11 +1854,12 @@
          g = node_val(gravity_direction, 1) * gravity_magnitude
 
          u_source_cv = 0.
-         do idim = 1, ndim
+         do nod = 1, cv_nonods
             do iphase = 1, nphase
-               do nod = 1, cv_nonods
-                  u_source_cv( nod + (idim-1)*cv_nonods + ndim*cv_nonods*(iphase-1) ) = &
-                       den( iphase, nod ) * g( idim )
+               do idim = 1, ndim
+                  !u_source_cv( nod + (idim-1)*cv_nonods + ndim*cv_nonods*(iphase-1) ) = &
+                  !     den( iphase, nod ) * g( idim )
+                  u_source_cv( idim, iphase, nod) = den( iphase, nod ) * g( idim )
                end do
             end do
          end do

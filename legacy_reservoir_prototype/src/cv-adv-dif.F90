@@ -99,8 +99,7 @@ contains
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
          tracer, velocity, density, &
-         CV_RHS_field, &
-         NCOLACV, PETSC_ACV,&
+         CV_RHS_field, PETSC_ACV,&
          SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
          NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -122,7 +121,6 @@ contains
          IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
          IN_ELE_UPWIND, DG_ELE_UPWIND, &
-         NOIT_DIM, &
          MEAN_PORE_CV, &
          FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
          MASS_ELE_TRANSP, &
@@ -256,7 +254,7 @@ contains
       type(tensor_field), intent(in), target :: density
       type(tensor_field), intent(in) :: velocity
 
-      INTEGER, intent( in ) :: NCOLACV, NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, &
+      INTEGER, intent( in ) :: NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, &
            TOTELE, &
            CV_ELE_TYPE, &
            NPHASE, CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, &
@@ -296,7 +294,7 @@ contains
       REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
       REAL, DIMENSION(: , : ), intent( in ) :: DERIV
       REAL, DIMENSION( : ), intent( in ) :: CV_P
-      REAL, DIMENSION( : ), intent( in ) :: SOURCT
+      REAL, DIMENSION( :, : ), intent( in ) :: SOURCT
       REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT
       REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
       LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY
@@ -306,7 +304,6 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINELE
       INTEGER, DIMENSION( : ), intent( in ) :: COLELE
       REAL, DIMENSION( :, :, :, : ), target, intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-      INTEGER, INTENT( IN ) :: NOIT_DIM
       REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
       REAL, DIMENSION( : ), intent( inout ) :: MASS_ELE_TRANSP
       character( len = * ), intent( in ), optional :: option_path_spatial_discretisation
@@ -414,7 +411,6 @@ contains
            CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
            CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
            CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
-           ICOUNT_IPHA, JCOUNT_IPHA, &
            NFACE, X_NODI,  &
            CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, &
            XNOD, NSMALL_COLM, COUNT2, NOD
@@ -1661,14 +1657,14 @@ contains
 
                   DO COUNT = SMALL_FINDRM( CV_NODI ), SMALL_FINDRM( CV_NODI + 1 ) - 1
                      IF ( SMALL_COLM( COUNT ) == CV_NODJ ) THEN 
-                        JCOUNT_IPHA = COUNT
+                        count_out = COUNT
                         EXIT
                      END IF
                   END DO
 
                   DO COUNT = SMALL_FINDRM( CV_NODJ ), SMALL_FINDRM( CV_NODJ + 1 ) - 1
                      IF ( SMALL_COLM( COUNT ) == CV_NODI ) THEN 
-                        ICOUNT_IPHA = COUNT
+                        count_in = COUNT
                         EXIT
                      END IF
                   END DO
@@ -1782,8 +1778,6 @@ contains
 ! local surface information***********
 
 ! limiting VALUES*************: 
-          COUNT_OUT=JCOUNT_IPHA
-          COUNT_IN =ICOUNT_IPHA
           
           IPT_IN =1
           IPT_OUT=1

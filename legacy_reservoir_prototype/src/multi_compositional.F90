@@ -801,7 +801,7 @@
       type( state_type ) :: packed_state
       integer, intent( in ) :: cv_nonods, nphase, ncomp2, its, nits
       real, intent( in ) :: dt
-      real, dimension( : ), intent( inout ) :: V_SOURCE_COMP
+      real, dimension( :, : ), intent( inout ) :: V_SOURCE_COMP
       real, dimension( : ), intent( in ) :: MEAN_PORE_CV
 !      real, dimension( : ), intent( in ) :: SATURA
 !      real, dimension( : ), intent( in ) :: COMP, COMPOLD

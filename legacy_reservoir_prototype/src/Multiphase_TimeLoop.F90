@@ -132,8 +132,6 @@
       integer, dimension(:), pointer :: colacv, colmcy, colct,colm,colc,colcmc,coldgm_pha
       integer, dimension(:), pointer :: finele, colele, midele
       integer, dimension(:), pointer :: small_finacv, small_colacv, small_midacv
-      integer, dimension(:), pointer :: block_to_global_acv
-      integer, dimension(:,:), allocatable :: global_dense_block_acv
 
 !!$ Defining element-pair type and discretisation options and coefficients
       integer :: cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type, &
@@ -163,10 +161,6 @@
 !!$ For output:
       real, dimension( : ), allocatable :: &
            Mean_Pore_CV
-      type( scalar_field ), pointer :: Component_State
-
-!!$ Variables that can be effectively deleted as they are not used anymore:
-      integer :: noit_dim
 
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
       integer :: iplike_grad_sou
@@ -179,11 +173,7 @@
       logical :: do_reallocate_fields, not_to_move_det_yet = .false., initialised
 
 !!$ Working arrays:
-      real, dimension( : ), pointer :: &
-           Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
-           Component_Source, &
-           ScalarField_Source_Store, ScalarField_Source_Component, &
-           mass_ele, dummy_ele
+      real, dimension(:), pointer :: mass_ele, dummy_ele
 
       real, dimension( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
       real, dimension( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
@@ -192,7 +182,9 @@
 
       real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
 !!$
-      real, dimension( :, : ), pointer :: PhaseVolumeFraction_Source
+      real, dimension( :, : ), pointer :: PhaseVolumeFraction_Source, Temperature_Source, &
+           ScalarField_Source_Store, ScalarField_Source_Component, Component_Source
+      real, dimension( :, :, : ), pointer :: Velocity_U_Source, Velocity_U_Source_CV
       real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
 !!$
@@ -215,7 +207,7 @@
       logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
       real, dimension(:,:,:), allocatable  :: reference_field
 
-      type( tensor_field ), pointer :: NU_s, NUOLD_s, U_s, UOLD_s, D_s, DOLD_s, DC_s, DCOLD_s
+      type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
       type( tensor_field ), pointer :: MFC_s, MFCOLD_s
 
       !! face value storage
@@ -245,7 +237,7 @@
       real, dimension(:,:), pointer :: SAT_s, OldSAT_s, FESAT_s
 
       type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
-      type(scalar_field), pointer :: pressure_field, porosity_field, tracer_field2
+      type(scalar_field), pointer :: pressure_field, porosity_field
       type(vector_field), pointer :: positions
 
       logical :: write_all_stats=.true.
@@ -308,9 +300,6 @@
            u_sndgln( stotel * u_snloc ) )
 
 
-      !      x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
-      cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
-
       call Compute_Node_Global_Numbers( state, &
            totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
            cv_snloc, p_snloc, u_snloc, &
@@ -335,10 +324,6 @@
            findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
 
 
-      allocate( global_dense_block_acv( nphase , cv_nonods ) )
-
-      finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ;
-     findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0
       colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0
       colm = 0 ; midm = 0
 
@@ -351,7 +336,6 @@
 !!$ CV multi-phase eqns (e.g. vol frac, temp)
            mx_ncolacv, ncolacv, finacv, colacv, midacv, &
            small_finacv, small_colacv, small_midacv, &
-           block_to_global_acv, global_dense_block_acv, &
 !!$ Force balance plus cty multi-phase eqns
            nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
 !!$ Element connectivity
@@ -382,9 +366,9 @@
            Mean_Pore_CV( cv_nonods ), &
            dummy_ele( totele ), mass_ele( totele ), &
 !!$
-           Temperature_Source( nphase * cv_nonods ), &
-           Velocity_U_Source( u_nonods * nphase * ndim ), &
-           Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
+           Temperature_Source( nphase, cv_nonods ), &
+           Velocity_U_Source( ndim, nphase, u_nonods ), &
+           Velocity_U_Source_CV( ndim, nphase, cv_nonods ), Component_Source( nphase, cv_nonods ), &
 !!$
            PhaseVolumeFraction_Source( nphase, cv_nonods ), &
            Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -449,9 +433,6 @@
 !!$
       ScalarField_Absorption = 0. ; Component_Absorption = 0. ; Temperature_Absorption = 0.
 
-!!$ Variables that can be effectively deleted as they are not used anymore:
-      noit_dim = 0
-
 !!$ Computing shape function scalars
       igot_t2 = 0 ; igot_theta_flux = 0
       if( ncomp /= 0 )then
@@ -469,8 +450,8 @@
            sum_one_m_theta_flux( nphase, ncv_faces * igot_theta_flux ), &
            sum_theta_flux_j( nphase, ncv_faces * igot_theta_flux ), &
            sum_one_m_theta_flux_j( nphase, ncv_faces * igot_theta_flux ), &
-           theta_gdiff( nphase, cv_nonods ), ScalarField_Source_Store( cv_nonods * nphase ), &
-           ScalarField_Source_Component( cv_nonods * nphase ) )
+           theta_gdiff( nphase, cv_nonods ), ScalarField_Source_Store( nphase, cv_nonods ), &
+           ScalarField_Source_Component( nphase, cv_nonods ) )
 
       sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.
       sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
@@ -586,23 +567,6 @@
               Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
 
 
-!!$ Update all fields from time-step 'N - 1'
-
-         U_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
-         UOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
-
-         NU_s => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedNonlinearVelocity" )
-         NUOLD_s => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldNonlinearVelocity" )
-
-         D_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
-         DOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-         if( have_component_field ) then
-            DC_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedComponentDensity" )
-            DCOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldComponentDensity" )
-            MFC_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedComponentMassFraction" )
-            MFCOLD_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldComponentMassFraction" )
-         end if
-
          porosity_field=>extract_scalar_field(packed_state,"Porosity")
 
          ! evaluate prescribed fields at time = current_time+dt
@@ -670,8 +634,9 @@
                  have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
                ewrite(3,*)'Now advecting Temperature Field'
 
-               NU_s % val = U_s % val
-               NUOLD_s % val = UOLD_s % val
+
+               call set_nu_to_u( packed_state )
+
 
                call calculate_diffusivity( state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
                     mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
@@ -683,7 +648,6 @@
 
                call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                     tracer_field,velocity_field,density_field,&
-                    NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -709,9 +673,6 @@
                     t_get_theta_flux, t_use_theta_flux, &
                     THETA_GDIFF, &
                     in_ele_upwind, dg_ele_upwind, &
-!!$                    
-                    NOIT_DIM, & ! This need to be removed as it is already deprecated
-!!$
                     Mean_Pore_CV, &
                     option_path = '/material_phase[0]/scalar_field::Temperature', &
                     mass_ele_transp = dummy_ele, &
@@ -732,9 +693,7 @@
 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
             Conditional_ForceBalanceEquation: if ( solve_force_balance ) then
 
-!!$ Updating velocities:
-               NU_s % val = U_s % val
-               NUOLD_s % val = UOLD_s % val
+               call set_nu_to_u( packed_state )
 
 !!$ Diffusion-like term -- here used as part of the capillary pressure for porous media. It can also be
 !!$ extended to surface tension -like term.
@@ -747,7 +706,6 @@
                     Velocity_U_Source_CV, Velocity_U_Source, &
                     NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
-                    block_to_global_acv, global_dense_block_acv, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, STOTEL, &
                     CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
@@ -783,7 +741,6 @@
                     NCOLDGM_PHA, &! Force balance 
                     NCOLELE, FINELE, COLELE, & ! Element connectivity.
                     NCOLCMC, FINDCMC, COLCMC, MIDCMC, & ! pressure matrix for projection method
-                    NCOLACV, FINACV, COLACV, MIDACV, & ! For CV discretisation method
                     size(small_colacv),small_FINACV, small_COLACV, small_MIDACV, &
                     NLENMCY, NCOLMCY, FINMCY, COLMCY, MIDMCY, & ! Force balance plus cty multi-phase eqns
                     NCOLCT, FINDCT, COLCT, & ! CT sparsity - global cty eqn.
@@ -801,9 +758,6 @@
                     igot_theta_flux, scvngi_theta, volfra_use_theta_flux, &
                     sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
                     in_ele_upwind, dg_ele_upwind, &
-!!$
-                    NOIT_DIM, & ! This need to be removed as it is already deprecated
-!!$
                     iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
                     scale_momentum_by_volume_fraction,&
                     StorageIndexes=StorageIndexes )
@@ -816,7 +770,6 @@
 
             Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                call VolumeFraction_Assemble_Solve( state, packed_state, &
-                    NCOLACV, FINACV, COLACV, MIDACV, &
                     small_FINACV, small_COLACV, small_MIDACV, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -840,9 +793,6 @@
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                     igot_theta_flux,scvngi_theta, volfra_use_theta_flux, &
                     in_ele_upwind, dg_ele_upwind, &
-!!$                    
-                    NOIT_DIM, & ! This need to be removed as it is already deprecated
-!!$
                     option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                     mass_ele_transp = mass_ele,&
                     theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
@@ -863,6 +813,14 @@
 
 
             Conditional_Components:if( have_component_field ) then
+
+               D_s  => extract_tensor_field( packed_state, "PackedDensity" )
+
+               DC_s  => extract_tensor_field( packed_state, "PackedComponentDensity" )
+               DCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
+               MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+               MFCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentMassFraction" )
+
 
                Loop_Components: do icomp = 1, ncomp
 
@@ -905,7 +863,6 @@
 
                      call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
                           tracer_field,velocity_field,density_field,&
-                          NCOLACV, FINACV, COLACV, MIDACV, & ! CV sparsity pattern matrix
                           SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
                           NCOLCT, FINDCT, COLCT, &
                           CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -930,9 +887,6 @@
                           comp_get_theta_flux, comp_use_theta_flux, &
                           theta_gdiff, &
                           in_ele_upwind, dg_ele_upwind, &
-!!$
-                          NOIT_DIM, & ! This need to be removed as it is already deprecated
-!!$
                           Mean_Pore_CV, &
                           mass_ele_transp = dummy_ele, &
                           thermal = .false.,& ! the false means that we don't add an extra source term
@@ -951,12 +905,15 @@
                   ! We have divided through by density 
                   !do cv_inod=1,cv_nonods
                   !   do iphase=1,nphase
-                  !      ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) = ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) + THETA_GDIFF(iphase,cv_inod)
+                  !      ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) = &
+                  !               ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) + THETA_GDIFF(iphase,cv_inod)
                   !   end do
                   !end do
                   tracer_source%val(1,:,:) = tracer_source%val(1,:,:) + THETA_GDIFF
 
                end do Loop_Components
+
+
 
 
                if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // & 
@@ -976,6 +933,11 @@
                   END DO
                   DEALLOCATE( RSUM )
                end if
+
+
+
+
+
 
                DO ICOMP = 1, NCOMP
 
@@ -1034,6 +996,7 @@
 
                END DO ! ICOMP
 
+
                if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // & 
                     ']/is_multiphase_component/Comp_Sum2One' ) .and. ( ncomp > 1 ) ) then
                   call Cal_Comp_Sum2One_Sou( packed_state, ScalarField_Source_Component, cv_nonods, nphase, ncomp, dt, its, &
@@ -1041,17 +1004,9 @@
                        Mean_Pore_CV )
                end if
 
-               !! Temporal working array:
-               !               DO CV_INOD = 1, CV_NONODS
-               !                  DO IPHASE = 1, NPHASE
-               !                     DO ICOMP = 1, NCOMP
-               !                      COMPONENT( CV_INOD + ( IPHASE - 1 ) * CV_NONODS + ( ICOMP - 1 ) * NPHASE * CV_NONODS ) = &
-               !                           MFC_s%val(ICOMP, IPHASE, CV_INOD)
-               !                     END DO
-               !                  END DO
-               !               END DO
 
             end if Conditional_Components
+
 
             !Check if the results are good so far and act in consequence, only does something if requested by the user
             call Adaptive_NonLinear(packed_state, reference_field, its,&
@@ -1224,7 +1179,6 @@
                  finacv, colacv, midacv,&
                  small_finacv, small_colacv, small_midacv, &
                  finmcy, colmcy, midmcy, &
-                 block_to_global_acv, global_dense_block_acv, &
                  findgm_pha, coldgm_pha, middgm_pha, findct, &
                  colct, findc, colc, findcmc, colcmc, midcmc, findm, &
                  colm, midm, &
@@ -1286,7 +1240,6 @@
                  findcmc( cv_nonods + 1 ), colcmc( mx_ncolcmc ), midcmc( cv_nonods ), &
                  findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
 
-            allocate( global_dense_block_acv (nphase,cv_nonods) )
             finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; &
                  findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
                  colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0 ; &
@@ -1301,7 +1254,6 @@
 !!$ CV multi-phase eqns (e.g. vol frac, temp)
                  mx_ncolacv, ncolacv, finacv, colacv, midacv, &
                  small_finacv, small_colacv, small_midacv, &
-                 block_to_global_acv, global_dense_block_acv, &
 !!$ Force balance plus cty multi-phase eqns
                  nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
 !!$ Element connectivity
@@ -1330,10 +1282,11 @@
                  Mean_Pore_CV( cv_nonods ), &
                  dummy_ele( totele ), mass_ele( totele ), &
 !!$
-                 Temperature_Source( cv_nonods * nphase ), &
-                 Velocity_U_Source( u_nonods * nphase * ndim ), &
-                 Velocity_U_Source_CV( cv_nonods * nphase * ndim ), Component_Source( cv_nonods * nphase ), &
 !!$
+                 Temperature_Source( nphase, cv_nonods ), &
+                 Velocity_U_Source( ndim, nphase, u_nonods ), &
+                 Velocity_U_Source_CV( ndim, nphase, cv_nonods ), &
+                 Component_Source( nphase, cv_nonods ), &
                  PhaseVolumeFraction_Source( nphase, cv_nonods ), &
                  Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                  Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -1392,9 +1345,6 @@
             ScalarField_Absorption = 0. ; Component_Absorption = 0. ; Temperature_Absorption = 0.
 
 
-!!$ Variables that can be effectively deleted as they are not used anymore:
-            noit_dim = 0
-
 !!$ Computing shape function scalars
             igot_t2 = 0 ; igot_theta_flux = 0
             if( ncomp /= 0 )then
@@ -1412,8 +1362,8 @@
                  sum_one_m_theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                  sum_theta_flux_j( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                  sum_one_m_theta_flux_j( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
-                 theta_gdiff( nphase, cv_nonods ), ScalarField_Source_Store( cv_nonods * nphase ), &
-                 ScalarField_Source_Component( cv_nonods * nphase ) )
+                 theta_gdiff( nphase, cv_nonods ), ScalarField_Source_Store( nphase, cv_nonods ), &
+                 ScalarField_Source_Component( nphase, cv_nonods ) )
 
             sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.  
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.  
@@ -1462,7 +1412,6 @@
            finacv, colacv, midacv,&
            small_finacv, small_colacv, small_midacv, &
            finmcy, colmcy, midmcy, &
-           block_to_global_acv, global_dense_block_acv, &
            findgm_pha, coldgm_pha, middgm_pha, findct, &
            colct, findc, colc, findcmc, colcmc, midcmc, findm, &
            colm, midm, &
@@ -1689,6 +1638,20 @@
 
    end subroutine copy_packed_new_to_old
 
+   subroutine set_nu_to_u(packed_state)
+     type(state_type), intent(inout) :: packed_state
+     type(tensor_field), pointer :: u, uold, nu, nuold
+
+         u  => extract_tensor_field( packed_state, "PackedVelocity" )
+         uold  => extract_tensor_field( packed_state, "PackedOldVelocity" )
+
+         nu => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
+         nuold => extract_tensor_field( packed_state, "PackedOldNonlinearVelocity" )
+
+         nu % val = u % val
+         nuold % val = uold % val
+
+   end subroutine set_nu_to_u
 
 
   end module multiphase_time_loop
