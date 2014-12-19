@@ -893,6 +893,8 @@
                           theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                           StorageIndexes=StorageIndexes, icomp=icomp, saturation=saturation_field )
 
+                      tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
+
                   end do Loop_NonLinearIteration_Components
 
                   sum_theta_flux = sum_theta_flux + theta_flux
