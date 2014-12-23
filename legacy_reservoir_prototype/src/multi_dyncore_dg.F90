@@ -1076,13 +1076,6 @@ contains
 
                 call petsc_solve( packed_vel, mat, RHS )
 
-!                UP_VEL=0.0
-
-!!               CALL SOLVER( DGM_PHA, UP_VEL, U_RHS_CDP, &
-!                FINDGM_PHA, COLDGM_PHA, &
-!                option_path = '/material_phase[0]/vector_field::Velocity', &
-!                block_size = NDIM*NPHASE*U_NLOC )
-
 #ifndef USING_GFORTRAN
                 velocity%val(:,:,:)=reshape(packed_vel%val,[size(velocity%val,1),size(velocity%val,2),size(velocity%val,3)])
 #endif
@@ -1191,14 +1184,7 @@ contains
             call halo_update(p_all)
 
             call deallocate(rhs_p)
-            call deallocate(sparsity)
-            call deallocate(cmc_petsc)
-!               CALL SOLVER( CMC, DP, rhs_p%val, &
-!                    FINDCMC, COLCMC, &
-!                    option_path = '/material_phase[0]/scalar_field::Pressure' )
-!            else ! a discontinuous pressure multi-grid solver
-  
-
+            call deallocate(cmc_petsc)  
              
 !!         ####This solver is not yet parallel safe! #### 
 !!                  CALL PRES_DG_MULTIGRID(CMC, CMC_PRECON, IGOT_CMC_PRECON, DP, P_RHS, &
