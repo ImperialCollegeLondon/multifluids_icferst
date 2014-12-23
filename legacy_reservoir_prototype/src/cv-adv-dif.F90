@@ -45,6 +45,7 @@ module cv_advection
   use sparsity_patterns
 
   use petsc_tools
+  use vtk_interfaces
 
 
   use shape_functions_Linear_Quadratic
@@ -113,7 +114,7 @@ contains
          CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, SECOND_THETA, CV_BETA, &
          SUF_SIG_DIAGTEN_BC, &
          DERIV, CV_P, &
-         SOURCT, ABSORBT, VOLFRA_PORE, &
+         SOURCT, ABSORBT_ALL, VOLFRA_PORE, &
          NDIM, GETCV_DISC, GETCT, &
          NCOLM, FINDM, COLM, MIDM, &
          XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
@@ -295,7 +296,7 @@ contains
       REAL, DIMENSION(: , : ), intent( in ) :: DERIV
       REAL, DIMENSION( : ), intent( in ) :: CV_P
       REAL, DIMENSION( :, : ), intent( in ) :: SOURCT
-      REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT
+      REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT_ALL
       REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
       LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY
       INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -463,8 +464,6 @@ contains
       INTEGER :: LOC_WIC_T_BC_ALL(NPHASE)
       REAL , DIMENSION( :, : ), allocatable :: NUOLDGI_ALL
       REAL, DIMENSION( : ), allocatable :: NDOTQOLD, INCOMEOLD
-
-      REAL, DIMENSION( :, :, : ), ALLOCATABLE :: ABSORBT_ALL
       REAL, DIMENSION( :, : ), ALLOCATABLE, target :: &
            FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, SOURCT_ALL
       LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
@@ -901,13 +900,10 @@ contains
       ALLOCATE( FEMDEN_ALL( NPHASE, CV_NONODS ), FEMDENOLD_ALL( NPHASE, CV_NONODS ) )
       ALLOCATE( FEMT2_ALL( NPHASE, CV_NONODS ), FEMT2OLD_ALL( NPHASE, CV_NONODS ) )
 
-      ALLOCATE( SOURCT_ALL( NPHASE, CV_NONODS ), ABSORBT_ALL( NPHASE, NPHASE, CV_NONODS ) )
+      ALLOCATE( SOURCT_ALL( NPHASE, CV_NONODS ) )
       DO IPHASE = 1, NPHASE
          tracer_source=>extract_tensor_field(packed_state,trim(tracer%name)//"Source")
          SOURCT_ALL = tracer_source%val(1,:,:)
-         DO JPHASE = 1, NPHASE
-            ABSORBT_ALL( JPHASE, IPHASE, : ) = ABSORBT( :, JPHASE, IPHASE )
-         END DO
       END DO
 
       IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
@@ -2779,6 +2775,57 @@ end if
 
 #endif
       RETURN
+
+    contains 
+
+      subroutine dump_multiphase(prefix,icp)
+        
+        character(len=*), intent(in) :: prefix
+        
+        integer, optional :: icp
+
+        integer, save :: its=0
+
+        integer :: ip, lcomp
+        
+
+        type( scalar_field ), dimension(2*nphase) :: tcr
+        type( vector_field ), dimension(2*nphase) :: vel
+        type( vector_field ), pointer :: position
+
+        position=>extract_vector_field(state(1),"Coordinate")
+
+        if (present(icp)) then
+           lcomp=icp
+        else
+           lcomp=0
+        end if
+
+        do ip=1,nphase
+
+           tcr(ip)=wrap_scalar_field(tracer%mesh,T_ALL(ip,:),&
+                'TracerPhase'//int2str(ip))
+           tcr(ip+nphase)=wrap_scalar_field(tracer%mesh,TOLD_ALL(ip,:),&
+                'OldTracerPhase'//int2str(ip))
+           vel(ip)=wrap_vector_field(velocity%mesh,NU_ALL(:,ip,:),&
+                'NLVelocityPhase'//int2str(ip))
+           vel(ip+nphase)=wrap_vector_field(velocity%mesh,NUOLD_ALL(:,ip,:),&
+                'OldNLVelocityPhase'//int2str(ip))
+        end do
+
+        call vtk_write_fields(prefix//trim(tracer%name)&
+             //'Component'//int2str(lcomp),&
+             its,position,tracer%mesh,sfields=tcr,vfields=vel)
+
+        do ip=1,2*nphase
+           call deallocate(tcr(ip))
+           call deallocate(vel(ip))
+        end do
+
+        its=its+1
+
+      end subroutine dump_multiphase
+
 
     END SUBROUTINE CV_ASSEMB
 
@@ -7460,12 +7507,12 @@ deallocate(NX_ALL, X_NX_ALL)
 ! determine stress form of viscocity...
       IMPLICIT NONE
       INTEGER, intent( in )  :: NDIM
-      REAL, DIMENSION( NDIM, NDIM  ), intent( inOUT ) :: STRESS_IJ
-      REAL, DIMENSION( NDIM ), intent( in ) :: UFENX_ILOC
-      REAL, DIMENSION( NDIM,NDIM ), intent( in ) :: TEN_XX
+      REAL, DIMENSION( :, :  ), intent( inOUT ) :: STRESS_IJ
+      REAL, DIMENSION( : ), intent( in ) :: UFENX_ILOC
+      REAL, DIMENSION( :,: ), intent( in ) :: TEN_XX
 ! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
       REAL, intent( in ) :: TEN_VOL
-      REAL, DIMENSION( NDIM ), intent( in ) :: UFENX_JLOC
+      REAL, DIMENSION( : ), intent( in ) :: UFENX_JLOC
       REAL, intent( in ) :: ZERO_OR_TWO_THIRDS
 ! Local variables...
       REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM)
