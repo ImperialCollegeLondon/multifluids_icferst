@@ -2864,6 +2864,8 @@ end if
       LOGICAL, PARAMETER :: ENO_ALL_THREE = .FALSE.
 ! If FOR_DG_ONLY_BETWEEN_ELE use fem INSIDE element for DG
       LOGICAL, PARAMETER :: FOR_DG_ONLY_BETWEEN_ELE = .TRUE.
+! Use ENO only where there is an oscillation as it can be a bit dissipative. 
+      LOGICAL, PARAMETER :: ENO_ONLY_WHERE_OSCILLATE = .FALSE.
 
       INTEGER, intent(in) :: ELE,CV_NONODS,X_NONODS,CV_NLOC,TOTELE,NDIM,NPHASE,NFACE,GI
       INTEGER, intent(in) :: CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC
@@ -2889,11 +2891,11 @@ end if
       REAL :: TGI_ELE(NPHASE*2),TGI_IN(NPHASE*2),TGI_OUT(NPHASE*2)
       REAL :: TGI(NPHASE*2),TUP(NPHASE*2),TGI_NEI(NPHASE*2)
       REAL :: ENO_ELE_MATWEI_IN(CV_NLOC),ENO_ELE_MATWEI_OUT(CV_NLOC),ENO_ELE_MATWEI(CV_NLOC,2)
-      REAL :: RUP_WIN,MIN_TGI,MAX_TGI
+      REAL :: RUP_WIN,MIN_TGI,MAX_TGI, W
       LOGICAL :: QUADRATIC_ELEMENT,IS_CORNER_NOD_J,DISTCONTINUOUS_METHOD
       INTEGER :: ENO_ELE_NEI(2),LOCNODS(NDIM+1)
       INTEGER :: ELE2,SELE2,ELEWIC,ENO_ELE_NEI_IN,ENO_ELE_NEI_OUT,IPHASE2,CV_KLOC,IUP_DOWN
-      INTEGER :: IFACE,NPHASE2,IPT, cv_nodk, cv_nodk_IN, cv_nodk_OUT, X_KNOD
+      INTEGER :: IFACE,NPHASE2,IPT, cv_nodk, cv_nodk_IN, cv_nodk_OUT, X_KNOD, I_OLD_NEW, IPHASE
 
       QUADRATIC_ELEMENT=( (NDIM==2).AND.(CV_NLOC==6) ) .OR. ( (NDIM==3).AND.(CV_NLOC==10) )
       NPHASE2=NPHASE*2
@@ -3066,6 +3068,23 @@ end if
                      ENDIF
                   ENDIF
                END DO
+            ENDIF
+
+            IF(ENO_ONLY_WHERE_OSCILLATE) THEN
+! Use ENO only where there is an oscillation as it can be a bit dissipative. 
+               IPT=1
+               DO I_OLD_NEW=1,2
+               DO IPHASE=1,NPHASE
+                  IF(IGOT_T_PACK(IPHASE,1)) THEN
+                     IPHASE2=IPHASE + (I_OLD_NEW-1)*NPHASE
+                     W=(TUP(IPHASE2)-LIMF(IPT))/TOLFUN(TUP(IPHASE2)-TGI_ELE(IPHASE2))
+                     W=MAX(0.0,MIN(1.0,W))
+! W=0.0(full upwind);  W=1.0(high order no limiting)
+                     TGI(IPHASE2) = (1.0-W)*TGI(IPHASE2) + W*TGI_ELE(IPHASE2)
+                     IPT=IPT+1
+                  ENDIF
+               END DO ! ENDOF DO IPHASE=1,NPHASE
+               END DO ! ENDOF DO I_OLD_NEW=1,2
             ENDIF
 
             IPT=1
