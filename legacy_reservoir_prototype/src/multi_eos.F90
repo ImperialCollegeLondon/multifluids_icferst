@@ -49,6 +49,9 @@
 
     use Field_Options, only: get_external_coordinate_field
     use initialise_fields_module, only: initialise_field_over_regions
+
+    implicit none
+
     type corey_options
        REAL :: S_GC
        real :: S_OR
@@ -1882,6 +1885,7 @@
       type(tensor_field), pointer :: diffusivity
       integer, dimension(:), pointer :: element_nodes
       integer :: icomp, iphase, idim, stat, ele
+      integer :: iloc,mat_iloc
 
       ScalarAdvectionField_Diffusion = 0.
 
@@ -1954,6 +1958,7 @@
 
       character( len = python_func_len ) :: pycode
       real :: dt, current_time
+      integer :: iloc
 
 
 
