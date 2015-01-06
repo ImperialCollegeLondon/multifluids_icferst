@@ -1193,6 +1193,24 @@ tidal_harmonic_algorithm =
 
 # Multiphase diagnostic algorithms
 
+scalar_gaussian_algorithm =
+   (
+      ## Simple gaussian for interface adaptivity
+      element algorithm {
+         attribute name { "scalar_gaussian" },
+         attribute material_phase_support { "single" },
+         scalar_source_field,
+	 ## Centre of Gaussian 
+         element centre {
+            real
+         },
+         ## Scale factor
+         element scale {
+            real
+         }
+      }
+   )
+
 particle_reynolds_number_algorithm = 
    (
       ## Diagnostic algorithm used in multiphase simulations.
@@ -1347,6 +1365,7 @@ scalar_diagnostic_algorithms |= scalar_sum_algorithm
 scalar_diagnostic_algorithms |= scalar_squared_time_averaged_algorithm
 scalar_diagnostic_algorithms |= scalar_potential_algorithm
 scalar_diagnostic_algorithms |= scalar_laplacian_algorithm
+scalar_diagnostic_algorithms |= scalar_gaussian_algorithm
 scalar_diagnostic_algorithms |= scalar_galerkin_projection_algorithm
 scalar_diagnostic_algorithms |= scalar_difference_algorithm
 scalar_diagnostic_algorithms |= scalar_copy_algorithm
