@@ -54,7 +54,7 @@ implicit none
   public :: make_element_shape, make_mesh, make_mesh_periodic, make_submesh, &
     & create_surface_mesh, make_fake_mesh_linearnonconforming
   public :: extract_scalar_field, wrap_mesh, wrap_scalar_field, &
-    & wrap_tensor_field
+    & wrap_vector_field, wrap_tensor_field
   public :: add_lists, extract_lists, add_nnlist, extract_nnlist, add_nelist, &
     & extract_nelist, add_eelist, extract_eelist, remove_lists, remove_nnlist, &
     & remove_nelist, remove_eelist, extract_elements, remove_boundary_conditions
@@ -1075,6 +1075,38 @@ contains
     call addref(field)
 
   end function wrap_scalar_field
+
+  function wrap_vector_field(mesh, val, name, val_stride) result (field)
+    !!< Return a vector field wrapped around the arrays provided.
+    type(vector_field) :: field
+    
+    type(mesh_type), target, intent(in) :: mesh
+    real, dimension(:,:), target, intent(in) :: val
+    character(len=*), intent(in) :: name
+    !! has to be provided if the val array is non-contiguous in memory!
+    integer, optional:: val_stride
+    
+    field%val=>val
+    field%mesh=mesh
+    field%dim=size(val,1)
+    
+    field%name=name
+    if (present(val_stride)) then
+      field%val_stride=val_stride
+    else
+      field%val_stride=1
+    end if
+    
+    allocate(field%picker)
+
+    field%wrapped = .true.
+    call incref(mesh)
+    allocate(field%bc)
+    nullify(field%refcount) ! Hack for gfortran component initialisation
+    !                         bug.
+    call addref(field)
+
+  end function wrap_vector_field
 
   function wrap_tensor_field(mesh, val, name) result (field)
     !!< Return a tensor field wrapped around the arrays provided.

@@ -45,6 +45,7 @@ module cv_advection
   use sparsity_patterns
 
   use petsc_tools
+  use vtk_interfaces
 
 
   use shape_functions_Linear_Quadratic
@@ -113,7 +114,7 @@ contains
          CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, SECOND_THETA, CV_BETA, &
          SUF_SIG_DIAGTEN_BC, &
          DERIV, CV_P, &
-         SOURCT, ABSORBT, VOLFRA_PORE, &
+         SOURCT, ABSORBT_ALL, VOLFRA_PORE, &
          NDIM, GETCV_DISC, GETCT, &
          NCOLM, FINDM, COLM, MIDM, &
          XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
@@ -295,7 +296,7 @@ contains
       REAL, DIMENSION(: , : ), intent( in ) :: DERIV
       REAL, DIMENSION( : ), intent( in ) :: CV_P
       REAL, DIMENSION( :, : ), intent( in ) :: SOURCT
-      REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT
+      REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT_ALL
       REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
       LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY
       INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -305,7 +306,7 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: COLELE
       REAL, DIMENSION( :, :, :, : ), target, intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
       REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
-      REAL, DIMENSION( : ), intent( inout ) :: MASS_ELE_TRANSP
+      REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
       character( len = * ), intent( in ), optional :: option_path_spatial_discretisation
       integer, dimension(:), intent(in) :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
       integer, dimension(:), intent(inout) :: StorageIndexes
@@ -336,6 +337,8 @@ contains
 ! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
 ! Zhi try THETA_VEL_HAT = 1.0
       real, PARAMETER :: THETA_VEL_HAT = 0.0
+! if APPLY_ENO then apply ENO method to T and TOLD
+      LOGICAL, PARAMETER :: APPLY_ENO = .FALSE. 
 !
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE 
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
@@ -411,7 +414,7 @@ contains
            CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
            CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
            CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
-           NFACE, X_NODI,  &
+           NFACE, X_NODI,  X_NODJ, &
            CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, &
            XNOD, NSMALL_COLM, COUNT2, NOD
       !        ===>  REALS  <===
@@ -463,8 +466,6 @@ contains
       INTEGER :: LOC_WIC_T_BC_ALL(NPHASE)
       REAL , DIMENSION( :, : ), allocatable :: NUOLDGI_ALL
       REAL, DIMENSION( : ), allocatable :: NDOTQOLD, INCOMEOLD
-
-      REAL, DIMENSION( :, :, : ), ALLOCATABLE :: ABSORBT_ALL
       REAL, DIMENSION( :, : ), ALLOCATABLE, target :: &
            FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, SOURCT_ALL
       LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
@@ -901,13 +902,10 @@ contains
       ALLOCATE( FEMDEN_ALL( NPHASE, CV_NONODS ), FEMDENOLD_ALL( NPHASE, CV_NONODS ) )
       ALLOCATE( FEMT2_ALL( NPHASE, CV_NONODS ), FEMT2OLD_ALL( NPHASE, CV_NONODS ) )
 
-      ALLOCATE( SOURCT_ALL( NPHASE, CV_NONODS ), ABSORBT_ALL( NPHASE, NPHASE, CV_NONODS ) )
+      ALLOCATE( SOURCT_ALL( NPHASE, CV_NONODS ) )
       DO IPHASE = 1, NPHASE
          tracer_source=>extract_tensor_field(packed_state,trim(tracer%name)//"Source")
          SOURCT_ALL = tracer_source%val(1,:,:)
-         DO JPHASE = 1, NPHASE
-            ABSORBT_ALL( JPHASE, IPHASE, : ) = ABSORBT( :, JPHASE, IPHASE )
-         END DO
       END DO
 
       IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
@@ -1226,8 +1224,8 @@ contains
       call deallocate(psi_ave(1)%ptr)
       deallocate(psi_ave(1)%ptr)
 
-
-      MASS_ELE_TRANSP = MASS_ELE
+      IF (PRESENT(MASS_ELE_TRANSP)) &
+           MASS_ELE_TRANSP = MASS_ELE
 
       NORMALISE = .FALSE.
       IF ( NORMALISE ) THEN
@@ -1538,9 +1536,11 @@ contains
 
                   IF ( between_elements ) THEN
                      CV_NODJ = CV_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_JLOC )
+                     X_NODJ = X_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_JLOC )
                      MAT_NODJ = MAT_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_JLOC )
                   ELSE
                      CV_NODJ = CV_NDGLN( ( ELE - 1 )  * CV_NLOC + CV_JLOC )
+                     X_NODJ = X_NDGLN( ( ELE - 1 )  * CV_NLOC + CV_JLOC )
                      MAT_NODJ = MAT_NDGLN( ( ELE - 1 )  * CV_NLOC + CV_JLOC )
                   END IF
 
@@ -2125,6 +2125,16 @@ contains
            FUPWIND_IN, FUPWIND_OUT, DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, SHAPE_CV_SNL, DOWNWIND_EXTRAP_INDIVIDUAL, &
            F_CV_NODI, F_CV_NODJ)
 
+       ENDIF
+
+       IF(APPLY_ENO) THEN 
+! Apply a simple ENO scheme to T,TOLD only which is not bounded but gets rid of most of the osillations. 
+! Put the results in LIMF.
+           CALL APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
+              CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
+              ELE, CV_NONODS, X_NONODS, NDIM, NPHASE,  &
+              CV_NLOC,TOTELE, X_NDGLN, CV_NDGLN,  &
+              X_ALL,XC_CV_ALL,FACE_ELE,NFACE,BETWEEN_ELEMENTS, integrate_other_side, SCVFEN, GI)
        ENDIF
        ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
        FVT(:)=T_ALL(:,CV_NODI)*(1.0-INCOME(:)) + T_ALL(:,CV_NODJ)*INCOME(:)
@@ -2780,7 +2790,348 @@ end if
 #endif
       RETURN
 
+    contains 
+
+      subroutine dump_multiphase(prefix,icp)
+        
+        character(len=*), intent(in) :: prefix
+        
+        integer, optional :: icp
+
+        integer, save :: its=0
+
+        integer :: ip, lcomp
+        
+
+        type( scalar_field ), dimension(2*nphase) :: tcr
+        type( vector_field ), dimension(2*nphase) :: vel
+        type( vector_field ), pointer :: position
+
+        position=>extract_vector_field(state(1),"Coordinate")
+
+        if (present(icp)) then
+           lcomp=icp
+        else
+           lcomp=0
+        end if
+
+        do ip=1,nphase
+
+           tcr(ip)=wrap_scalar_field(tracer%mesh,T_ALL(ip,:),&
+                'TracerPhase'//int2str(ip))
+           tcr(ip+nphase)=wrap_scalar_field(tracer%mesh,TOLD_ALL(ip,:),&
+                'OldTracerPhase'//int2str(ip))
+           vel(ip)=wrap_vector_field(velocity%mesh,NU_ALL(:,ip,:),&
+                'NLVelocityPhase'//int2str(ip))
+           vel(ip+nphase)=wrap_vector_field(velocity%mesh,NUOLD_ALL(:,ip,:),&
+                'OldNLVelocityPhase'//int2str(ip))
+        end do
+
+        call vtk_write_fields(prefix//trim(tracer%name)&
+             //'Component'//int2str(lcomp),&
+             its,position,tracer%mesh,sfields=tcr,vfields=vel)
+
+        do ip=1,2*nphase
+           call deallocate(tcr(ip))
+           call deallocate(vel(ip))
+        end do
+
+        its=its+1
+
+      end subroutine dump_multiphase
+
+
     END SUBROUTINE CV_ASSEMB
+
+
+
+
+
+
+         SUBROUTINE APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
+           CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
+           ELE, CV_NONODS, X_NONODS, NDIM, NPHASE,  &
+           CV_NLOC,TOTELE, X_NDGLN, CV_NDGLN,  &
+           X_ALL,XC_CV_ALL,FACE_ELE,NFACE,BETWEEN_ELEMENTS, integrate_other_side, SCVFEN, GI)
+! Apply ENO method to T and TOLD_ALL and put the limited values in LIMF
+      IMPLICIT NONE
+      REAL INFINY
+      INTEGER ngi_one
+      PARAMETER(INFINY=1.E+20)
+      PARAMETER(ngi_one=1)
+! If ENO_ALL_THREE use all 3 to find TGI ENO value...
+! else use the upwind value and current element value. 
+      LOGICAL, PARAMETER :: ENO_ALL_THREE = .FALSE.
+! If FOR_DG_ONLY_BETWEEN_ELE use fem INSIDE element for DG
+      LOGICAL, PARAMETER :: FOR_DG_ONLY_BETWEEN_ELE = .TRUE.
+! Use ENO only where there is an oscillation as it can be a bit dissipative. 
+      LOGICAL, PARAMETER :: ENO_ONLY_WHERE_OSCILLATE = .FALSE.
+
+      INTEGER, intent(in) :: ELE,CV_NONODS,X_NONODS,CV_NLOC,TOTELE,NDIM,NPHASE,NFACE,GI
+      INTEGER, intent(in) :: CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC
+      REAL, dimension(:), intent(inout) :: LIMF
+      REAL, dimension(:,:), intent(in) :: T_ALL,TOLD_ALL,FEMT_ALL,FEMTOLD_ALL
+      REAL, dimension(:), intent(in) :: INCOME,INCOMEOLD
+      INTEGER, dimension(:), intent(in) :: X_NDGLN,CV_NDGLN
+      REAL, dimension(:,:), intent(in) :: X_ALL
+      REAL, dimension(:,:), intent(in) :: XC_CV_ALL
+      REAL, dimension(:,:), intent(in) :: SCVFEN
+      INTEGER, dimension(:,:), intent(in) :: FACE_ELE
+      LOGICAL, dimension(:,:), intent(in) :: IGOT_T_PACK
+      LOGICAL, intent(in) :: BETWEEN_ELEMENTS, integrate_other_side
+!
+!     Local variables...
+      REAL, dimension(NDIM+1):: LOCCORDS
+      REAL :: MINCOR,MINCORK
+      !The dimension of the variables below should be NDIM, however, due to cross products
+      !we need three dimensions
+      REAL :: XVEC(NDIM),XPT(NDIM),XPT_GI(NDIM)
+      REAL :: n(cv_nloc,ngi_one), nlx(cv_nloc,ngi_one), nly(cv_nloc,ngi_one), nlz(cv_nloc,ngi_one)
+      REAL :: l1(ngi_one), l2(ngi_one), l3(ngi_one), l4(ngi_one), weight(ngi_one)
+      REAL :: TGI_ELE(NPHASE*2),TGI_IN(NPHASE*2),TGI_OUT(NPHASE*2)
+      REAL :: TGI(NPHASE*2),TUP(NPHASE*2),TGI_NEI(NPHASE*2)
+      REAL :: ENO_ELE_MATWEI_IN(CV_NLOC),ENO_ELE_MATWEI_OUT(CV_NLOC),ENO_ELE_MATWEI(CV_NLOC,2)
+      REAL :: RUP_WIN,MIN_TGI,MAX_TGI, W
+      LOGICAL :: QUADRATIC_ELEMENT,IS_CORNER_NOD_J,DISTCONTINUOUS_METHOD
+      INTEGER :: ENO_ELE_NEI(2),LOCNODS(NDIM+1)
+      INTEGER :: ELE2,SELE2,ELEWIC,ENO_ELE_NEI_IN,ENO_ELE_NEI_OUT,IPHASE2,CV_KLOC,IUP_DOWN
+      INTEGER :: IFACE,NPHASE2,IPT, cv_nodk, cv_nodk_IN, cv_nodk_OUT, X_KNOD, I_OLD_NEW, IPHASE
+
+      QUADRATIC_ELEMENT=( (NDIM==2).AND.(CV_NLOC==6) ) .OR. ( (NDIM==3).AND.(CV_NLOC==10) )
+      NPHASE2=NPHASE*2
+      DISTCONTINUOUS_METHOD=( CV_NONODS == TOTELE * CV_NLOC )
+
+      IF ( between_elements ) THEN
+         XVEC(:)=0.5*(XC_CV_ALL(:,CV_NODI)-XC_CV_ALL(:,CV_NODJ))
+      else
+         XVEC(:)=0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
+         IS_CORNER_NOD_J=.TRUE.
+         IF(QUADRATIC_ELEMENT) THEN
+! Is CV_JLOC a corner node...
+            IS_CORNER_NOD_J = (CV_JLOC==1).OR.(CV_JLOC==3).OR.(CV_JLOC==6).OR.(CV_JLOC==10)
+            IF(IS_CORNER_NOD_J) XVEC(:)=-0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
+         ENDIF
+      endif
+
+      xpt_GI=0.0 
+      do cv_kloc=1,cv_nloc
+         X_knod=x_ndgln((ele-1)*cv_nloc+cv_kloc) 
+         xpt_GI(:)=xpt_GI(:)+SCVFEN(cv_kloc,gi)*x_all(:,X_kNOD)
+      end do
+
+      DO IUP_DOWN=1,2 ! Consider both both directions...
+
+         RUP_WIN=REAL(IUP_DOWN-1)*2.0 - 1.0 
+         XPT(:) = XPT_GI(:) + RUP_WIN*XVEC(:) 
+         IF(QUADRATIC_ELEMENT.AND.IS_CORNER_NOD_J) XPT(:) = XPT_GI(:) + XVEC(:) 
+         IF(BETWEEN_ELEMENTS) XPT(:) = XPT_GI(:) + XVEC(:) ! FOR DG...
+
+! Search for element this pt belongs to or nearest element excluding current element. 
+         MINCORK=-INFINY
+         ELEWIC=0
+
+         DO IFACE = 1, NFACE
+            ELE2 = FACE_ELE( IFACE, ELE )
+            SELE2 = MAX( 0, - ELE2 )
+            ELE2 = MAX( 0, + ELE2 )
+            IF(ELE2.NE.0) THEN
+
+! Neighbouring element...
+               IF(QUADRATIC_ELEMENT) THEN
+                  LOCNODS(1)=X_NDGLN((ELE2-1)*CV_NLOC+1)
+                  LOCNODS(2)=X_NDGLN((ELE2-1)*CV_NLOC+3)
+                  LOCNODS(3)=X_NDGLN((ELE2-1)*CV_NLOC+6)
+                  IF (NDIM==3) THEN
+            !Two coordinates missing if 3D
+                     LOCNODS(4)=X_NDGLN((ELE2-1)*CV_NLOC+10)
+                  ENDIF
+               ELSE
+                  LOCNODS(1:CV_NLOC)=X_NDGLN((ELE2-1)*CV_NLOC+1:(ELE2-1)*CV_NLOC+CV_NLOC)
+               ENDIF
+
+               CALL TRI_tet_LOCCORDS(Xpt, LOCCORDS,  &
+                 !     The 3 corners of the tri...
+                 &        X_ALL(:,LOCNODS(:)),NDIM,CV_NLOC)
+
+               MINCOR=MINVAL( LOCCORDS(1:CV_NLOC) )
+
+               IF(MINCOR.GT.MINCORK) THEN
+                  MINCORK=MINCOR
+                  ELEWIC=ELE2
+               ENDIF
+
+           ENDIF ! ENDOF IF(ELE2.NE.0) THEN
+
+        END DO ! ENDOF DO IFACE=1,NFACE
+
+
+! FOR ELEMENT ELEWIC FIND THE VOLN COORD OF POINT
+        IF(ELEWIC==0) ELEWIC=ELE
+        ELE2=ELEWIC
+
+! nEIGHBOURING element ELE2...
+
+            IF(QUADRATIC_ELEMENT) THEN
+               LOCNODS(1)=X_NDGLN((ELE2-1)*CV_NLOC+1)
+               LOCNODS(2)=X_NDGLN((ELE2-1)*CV_NLOC+3)
+               LOCNODS(3)=X_NDGLN((ELE2-1)*CV_NLOC+6)
+               IF (NDIM==3) THEN
+            !Two coordinates missing if 3D
+                  LOCNODS(4)=X_NDGLN((ELE2-1)*CV_NLOC+10)
+               ENDIF
+            ELSE
+               LOCNODS(1:CV_NLOC)=X_NDGLN((ELE2-1)*CV_NLOC+1:(ELE2-1)*CV_NLOC+CV_NLOC)
+            ENDIF
+
+            CALL TRI_tet_LOCCORDS(Xpt_GI, LOCCORDS,&
+                 !     The 3 corners of the tri...
+                 &        X_ALL(:,LOCNODS(:)),NDIM,CV_NLOC)
+
+            L1(1) = LOCCORDS(1)
+            L2(1) = LOCCORDS(2)
+            L3(1) = LOCCORDS(3)
+            L4(1) = LOCCORDS(NDIM+1)
+
+
+! From  the local coordinates find the shape function value...
+            call shatri( l1, l2, l3, l4, weight, (NDIM==3), &
+            cv_nloc, ngi_one, &
+            n, nlx, nly, nlz )
+
+! could store these as STORE_ENO_ELE_NEI(IUP_DOWN,GI), ENO_ELE_MATWEI(CV_NLOC,IUP_DOWN,GI)
+            ENO_ELE_NEI(IUP_DOWN)  = ELEWIC 
+            ENO_ELE_MATWEI(:,IUP_DOWN) = N(:,1)
+
+        END DO ! DO IUP_DOWN=1,2
+
+
+
+! now calculate ENO values at the quadrature pt **********************************...
+! now calculate ENO values at the quadrature pt **********************************...
+!
+            TGI_ELE(:)=0.0
+            TGI_IN(:)=0.0
+            TGI_OUT(:)=0.0
+            ENO_ELE_NEI_IN =ENO_ELE_NEI(1)
+            ENO_ELE_NEI_OUT=ENO_ELE_NEI(2)
+            IF(.not.integrate_other_side) THEN
+               IF(CV_NODI.GT.CV_NODJ) THEN
+                  ENO_ELE_MATWEI_IN(:) =ENO_ELE_MATWEI(:,2)
+                  ENO_ELE_MATWEI_OUT(:)=ENO_ELE_MATWEI(:,1)
+               ENDIF
+            ENDIF
+            do cv_kloc=1,cv_nloc
+               cv_nodk = CV_NDGLN((ELE-1)*CV_NLOC + cv_kloc) 
+               cv_nodk_IN  = CV_NDGLN((ENO_ELE_NEI_IN -1)*CV_NLOC + cv_kloc) 
+               cv_nodk_OUT = CV_NDGLN((ENO_ELE_NEI_OUT-1)*CV_NLOC + cv_kloc) 
+
+               TGI_ELE(1:NPHASE)=TGI_ELE(1:NPHASE) + SCVFEN(cv_Kloc,gi)*FEMT_ALL(:,cv_nodk)
+               TGI_IN(1:NPHASE)=TGI_IN(1:NPHASE) + ENO_ELE_MATWEI_IN(CV_KLOC)*FEMT_ALL(:,cv_nodk_IN)
+               TGI_OUT(1:NPHASE)=TGI_OUT(1:NPHASE) + ENO_ELE_MATWEI_OUT(CV_KLOC)*FEMT_ALL(:,cv_nodk_OUT)
+
+               TGI_ELE(1+NPHASE:2*NPHASE)=TGI_ELE(1+NPHASE:2*NPHASE) + SCVFEN(cv_Kloc,gi)*femTOLD_ALL(:,cv_nodk)
+               TGI_IN(1+NPHASE:2*NPHASE)=TGI_IN(1+NPHASE:2*NPHASE) + ENO_ELE_MATWEI_IN(CV_KLOC)*femTOLD_ALL(:,cv_nodk_IN)
+               TGI_OUT(1+NPHASE:2*NPHASE)=TGI_OUT(1+NPHASE:2*NPHASE) + ENO_ELE_MATWEI_OUT(CV_KLOC)*femTOLD_ALL(:,cv_nodk_OUT)
+            end do
+
+            TUP(1:NPHASE)=INCOME(1:NPHASE)*T_ALL(1:NPHASE,CV_NODI) + (1.-INCOME(1:NPHASE))*T_ALL(1:NPHASE,CV_NODJ)
+            TUP(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)*TOLD_ALL(1:NPHASE,CV_NODI) + (1.-INCOMEOLD(1:NPHASE))*TOLD_ALL(1:NPHASE,CV_NODJ)
+            
+            IF(DISTCONTINUOUS_METHOD.AND.(.NOT.BETWEEN_ELEMENTS).AND.FOR_DG_ONLY_BETWEEN_ELE) THEN ! Use fem INSIDE element for DG method...
+               TGI = TGI_ELE
+            ELSE IF(ENO_ALL_THREE) THEN ! Use all 3 to find TGI ENO value...
+               DO IPHASE2=1,NPHASE2
+                  MIN_TGI=MIN(TGI_ELE(IPHASE2),TGI_IN(IPHASE2),TGI_OUT(IPHASE2))
+                  MAX_TGI=MAX(TGI_ELE(IPHASE2),TGI_IN(IPHASE2),TGI_OUT(IPHASE2))
+                  IF((TUP(IPHASE2)-MIN_TGI)*(TUP(IPHASE2)-MAX_TGI)>0) THEN
+                     TGI(IPHASE2)=TUP(IPHASE2)
+                  ELSE ! Choose the clostest
+                     IF(ABS(TUP(IPHASE2)-MIN_TGI)<ABS(TUP(IPHASE2)-MAX_TGI)) THEN
+                        TGI(IPHASE2)=MIN_TGI
+                     ELSE
+                        TGI(IPHASE2)=MAX_TGI
+                     ENDIF
+                  ENDIF
+               END DO
+            ELSE ! Give an upwind bias (the Default)...
+               TGI_NEI(1:NPHASE)=INCOME(1:NPHASE)*TGI_IN(1:NPHASE) + (1.0-INCOME(1:NPHASE))*TGI_OUT(1:NPHASE)
+               TGI_NEI(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)*TGI_IN(1+NPHASE:2*NPHASE) + (1.0-INCOMEOLD(1:NPHASE))*TGI_OUT(1+NPHASE:2*NPHASE)
+! Choose TGI that is closest to TUP...
+               DO IPHASE2=1,NPHASE2
+                  IF(  (TUP(IPHASE2)-TGI_ELE(IPHASE2))*(TUP(IPHASE2)-TGI_NEI(IPHASE2))  >0 ) THEN
+                     TGI(IPHASE2)=TUP(IPHASE2)
+                  ELSE ! Choose the clostest
+                     IF( ABS(TUP(IPHASE2)-TGI_ELE(IPHASE2)) < ABS(TUP(IPHASE2)-TGI_NEI(IPHASE2))  ) THEN
+                        TGI(IPHASE2)=TGI_ELE(IPHASE2)
+                     ELSE
+                        TGI(IPHASE2)=TGI_NEI(IPHASE2)
+                     ENDIF
+                  ENDIF
+               END DO
+            ENDIF
+
+            IF(ENO_ONLY_WHERE_OSCILLATE) THEN
+! Use ENO only where there is an oscillation as it can be a bit dissipative. 
+               IPT=1
+               DO I_OLD_NEW=1,2
+               DO IPHASE=1,NPHASE
+                  IF(IGOT_T_PACK(IPHASE,1)) THEN
+                     IPHASE2=IPHASE + (I_OLD_NEW-1)*NPHASE
+                     W=(TUP(IPHASE2)-LIMF(IPT))/TOLFUN(TUP(IPHASE2)-TGI_ELE(IPHASE2))
+                     W=MAX(0.0,MIN(1.0,W))
+! W=0.0(full upwind);  W=1.0(high order no limiting)
+                     TGI(IPHASE2) = (1.0-W)*TGI(IPHASE2) + W*TGI_ELE(IPHASE2)
+                     IPT=IPT+1
+                  ENDIF
+               END DO ! ENDOF DO IPHASE=1,NPHASE
+               END DO ! ENDOF DO I_OLD_NEW=1,2
+            ENDIF
+
+            IPT=1
+            CALL PACK_LOC( LIMF(:), TGI( 1:NPHASE ),    NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,1) ) ! t
+            CALL PACK_LOC( LIMF(:), TGI( 1+NPHASE:2*NPHASE ), NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,2) ) ! TOLD_ALL
+              
+            RETURN
+            END SUBROUTINE APPLY_ENO_2_T         
+!             
+!       
+! 
+!
+
+            SUBROUTINE TRI_tet_LOCCORDS(Xpt, LOCCORDS,  &
+                 !     The 3 corners of the tri...
+                          X_CORNERS_ALL, NDIM,CV_NLOC)
+! obtain the local coordinates LOCCORDS from a pt in or outside the tet/triangle Xpt 
+! with corner nodes X_CORNERS_ALL
+            IMPLICIT NONE
+            INTEGER, intent(in) :: NDIM,CV_NLOC
+            REAL, dimension(NDIM), intent(in) :: Xpt
+            REAL, dimension(NDIM), intent(inout) :: LOCCORDS
+            REAL, dimension(NDIM,CV_NLOC), intent(in) :: X_CORNERS_ALL
+
+         IF (NDIM==3) THEN
+
+            CALL TRILOCCORDS(Xpt(1),Xpt(2),Xpt(3), &
+                 &        LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
+                 !     The 4 corners of the tet...
+                 &        X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),X_CORNERS_ALL(3,1),&
+                 &        X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),X_CORNERS_ALL(3,2),&
+                 &        X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3),X_CORNERS_ALL(3,3),&
+                 &        X_CORNERS_ALL(1,4),X_CORNERS_ALL(2,4),X_CORNERS_ALL(3,4) )
+         ELSE
+            CALL TRILOCCORDS2D(Xpt(1),Xpt(2), &
+                 &        LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
+                 !     The 3 corners of the tri...
+                 &        X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),&
+                 &        X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),&
+                 &        X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3) )
+         END IF
+! From  the local coordinates find the shape function value...      
+            RETURN  
+            END SUBROUTINE TRI_tet_LOCCORDS
+
+
+
 
 
 
@@ -7460,12 +7811,12 @@ deallocate(NX_ALL, X_NX_ALL)
 ! determine stress form of viscocity...
       IMPLICIT NONE
       INTEGER, intent( in )  :: NDIM
-      REAL, DIMENSION( NDIM, NDIM  ), intent( inOUT ) :: STRESS_IJ
-      REAL, DIMENSION( NDIM ), intent( in ) :: UFENX_ILOC
-      REAL, DIMENSION( NDIM,NDIM ), intent( in ) :: TEN_XX
+      REAL, DIMENSION( :, :  ), intent( inOUT ) :: STRESS_IJ
+      REAL, DIMENSION( : ), intent( in ) :: UFENX_ILOC
+      REAL, DIMENSION( :,: ), intent( in ) :: TEN_XX
 ! TEN_VOL is volumetric viscocity - mostly set to zero other than q-scheme or use with kinetic theory
       REAL, intent( in ) :: TEN_VOL
-      REAL, DIMENSION( NDIM ), intent( in ) :: UFENX_JLOC
+      REAL, DIMENSION( : ), intent( in ) :: UFENX_JLOC
       REAL, intent( in ) :: ZERO_OR_TWO_THIRDS
 ! Local variables...
       REAL :: FEN_TEN_XX(NDIM,NDIM),FEN_TEN_VOL(NDIM)
@@ -11929,8 +12280,11 @@ CONTAINS
     INTEGER NOD,COUNT,ELEWIC,ILOC,INOD,IFIELD
     INTEGER KNOD,COUNT2,JNOD
     REAL RMATPSI
-    REAL, DIMENSION(NFIELD, TOTELE)::MINPSI
-    REAL, DIMENSION(NFIELD, TOTELE)::MAXPSI
+    REAL, ALLOCATABLE, DIMENSION(:,:)::MINPSI
+    REAL, ALLOCATABLE, DIMENSION(:,:)::MAXPSI
+
+    ALLOCATE(MINPSI(NFIELD, TOTELE))
+    ALLOCATE(MAXPSI(NFIELD, TOTELE))
 
     if ( bound ) then
 
@@ -11967,7 +12321,7 @@ CONTAINS
     END DO
 
 !    if ( bound ) then
-!       DEALLOCATE( MINPSI, MAXPSI )
+       DEALLOCATE( MINPSI, MAXPSI )
 !    end if
 
     RETURN

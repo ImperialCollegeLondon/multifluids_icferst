@@ -282,7 +282,7 @@ contains
             MEAN_PORE_CV, &
             SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
             mass_ele_transp, &
-            StorageIndexes, Field_selector, &
+            StorageIndexes, Field_selector,icomp, &
             saturation=saturation )
 
             Conditional_Lumping: IF ( LUMP_EQNS ) THEN
@@ -1076,13 +1076,6 @@ contains
 
                 call petsc_solve( packed_vel, mat, RHS )
 
-!                UP_VEL=0.0
-
-!!               CALL SOLVER( DGM_PHA, UP_VEL, U_RHS_CDP, &
-!                FINDGM_PHA, COLDGM_PHA, &
-!                option_path = '/material_phase[0]/vector_field::Velocity', &
-!                block_size = NDIM*NPHASE*U_NLOC )
-
 #ifndef USING_GFORTRAN
                 velocity%val(:,:,:)=reshape(packed_vel%val,[size(velocity%val,1),size(velocity%val,2),size(velocity%val,3)])
 #endif
@@ -1191,14 +1184,7 @@ contains
             call halo_update(p_all)
 
             call deallocate(rhs_p)
-            call deallocate(sparsity)
-            call deallocate(cmc_petsc)
-!               CALL SOLVER( CMC, DP, rhs_p%val, &
-!                    FINDCMC, COLCMC, &
-!                    option_path = '/material_phase[0]/scalar_field::Pressure' )
-!            else ! a discontinuous pressure multi-grid solver
-  
-
+            call deallocate(cmc_petsc)  
              
 !!         ####This solver is not yet parallel safe! #### 
 !!                  CALL PRES_DG_MULTIGRID(CMC, CMC_PRECON, IGOT_CMC_PRECON, DP, P_RHS, &
@@ -1484,7 +1470,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
 !        REAL, DIMENSION(  :  ), intent( in ) :: SATURA, SATURAOLD
         REAL, DIMENSION(  :, :  ), intent( in ) :: FEM_VOL_FRAC!, DEN_ALL, DENOLD_ALL
         REAL, DIMENSION(  :, :  ), intent( in ), pointer :: DEN_ALL, DENOLD_ALL
-        REAL, DIMENSION(  NPHASE, CV_NONODS  ), intent( in ) :: DERIV
+        REAL, DIMENSION(  : , :  ), intent( in ) :: DERIV
         REAL, DIMENSION(  : ,  :   ), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, intent( in ) :: DT
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDC
@@ -1907,7 +1893,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL, NU_ALL, NUOLD_ALL
 
         REAL, DIMENSION( :, : ), intent( in ) :: UDEN, UDENOLD,DERIV
-        REAL, DIMENSION( NPHASE, CV_NONODS*max(1,IDIVID_BY_VOL_FRAC+IGOT_VOL_X_PRESSURE) ), intent( in ) :: FEM_VOL_FRAC
+        REAL, DIMENSION( :, : ), intent( in ) :: FEM_VOL_FRAC
         REAL, intent( in ) :: DT
         REAL, DIMENSION( :, :, : ), intent( inout ) :: U_RHS
         REAL, DIMENSION( :, :, : ), pointer, intent( inout ) :: C
@@ -5679,6 +5665,26 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
     END SUBROUTINE ASSEMB_FORCE_CTY
 
+          subroutine nan_check(a,k)
+
+            real :: a
+            integer :: k
+
+            if (a/=a) then
+               print*, 'nan found! loop:', k
+            end if
+
+          end subroutine nan_check
+          subroutine nan_check_arr(a,k)
+
+            real, dimension(:,:) :: a
+            integer :: k
+
+            if (any(a/=a)) then
+               print*, 'nan found! loop:', k
+            end if
+
+          end subroutine nan_check_arr
 
 
 
@@ -6419,10 +6425,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
         INTEGER, DIMENSION(: ), intent( in ) :: FINELE
         INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-        ! NEW_ORDERING then order the matrix: IDIM,IPHASE,UILOC,ELE
-        ! else use the original ordering...
-        LOGICAL, PARAMETER :: NEW_ORDERING = .false.
-        LOGICAL, PARAMETER :: tempory_order=.true.
         type( tensor_field) :: velocity
         type(vector_field) :: position
         type(scalar_field) ::pressure
@@ -6472,52 +6474,24 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     LOC_DGM_PHA(:,:,:, :,:,:) = BIGM_CON(:,:,:, :,:,:, COUNT_ELE)
                 ENDIF
 
-                DO U_ILOC=1,U_NLOC
-                    DO U_JLOC=1,U_NLOC
-                        DO IPHASE=1,NPHASE
-                            DO JPHASE=1,NPHASE
-                                DO IDIM=1,NDIM_VEL
-                                    DO JDIM=1,NDIM_VEL
-
-
-                                        IF ( NEW_ORDERING ) THEN
-
-                                            ! New for rapid code ordering of variables...
-                                            I=IDIM + (IPHASE-1)*NDIM_VEL + (U_ILOC-1)*NDIM_VEL*NPHASE
-                                            J=JDIM + (JPHASE-1)*NDIM_VEL + (U_JLOC-1)*NDIM_VEL*NPHASE
-                                            GLOBI=(ELE-1)*U_NLOC + U_ILOC
-                                            GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-                                            COUNT = (COUNT_ELE-1)*(NDIM_VEL*NPHASE)**2 + (I-1)*NDIM_VEL*NPHASE*U_NLOC + J
-                                            call addto(dgm_petsc, I , J , globi , globj , &
-                                                 LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
-
-                                        ELSE
-
-                                            ! Old ordering of the variables BIGM...
-                                            GLOBI=(ELE-1)*U_NLOC + U_ILOC
-                                            GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
-
-                                            if ( tempory_order ) then
-                                                I=IDIM + (IPHASE-1)*NDIM_VEL + (U_ILOC-1)*NDIM_VEL*NPHASE
-                                                J=JDIM + (JPHASE-1)*NDIM_VEL + (U_JLOC-1)*NDIM_VEL*NPHASE
-                                                U_INOD_IDIM_IPHA = I + (ELE-1)*NDIM_VEL*NPHASE*U_NLOC
-                                                U_JNOD_JDIM_JPHA = J + (JCOLELE-1)*NDIM_VEL*NPHASE*U_NLOC
-                                            else
-                                                U_INOD_IDIM_IPHA = GLOBI + (IDIM-1)*U_NONODS + ( IPHASE - 1 ) * NDIM_VEL*U_NONODS
-                                                U_JNOD_JDIM_JPHA = GLOBJ + (JDIM-1)*U_NONODS + ( JPHASE - 1 ) * NDIM_VEL*U_NONODS
-                                            end if
-
-                                            call addto(dgm_petsc,idim+ ( IPHASE - 1 ) * NDIM_VEL,&
-                                                 jdim+ ( JPHASE - 1 ) * NDIM_VEL, globi,globj, &
-                                                 LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
-
-                                        END IF
-
-                                    END DO
-                                END DO
+                DO U_JLOC=1,U_NLOC
+                   DO U_ILOC=1,U_NLOC
+                      DO JPHASE=1,NPHASE
+                         DO IPHASE=1,NPHASE
+                            DO JDIM=1,NDIM_VEL
+                               DO IDIM=1,NDIM_VEL
+                                  ! New for rapid code ordering of variables...
+                                  I=IDIM + (IPHASE-1)*NDIM_VEL
+                                  J=JDIM + (JPHASE-1)*NDIM_VEL
+                                  GLOBI=(ELE-1)*U_NLOC + U_ILOC
+                                  GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+                                  call addto(dgm_petsc, I , J , globi , globj , &
+                                       LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
+                               END DO
                             END DO
-                        END DO
-                    END DO
+                         END DO
+                      END DO
+                   END DO
                 END DO
 
 
@@ -7412,7 +7386,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         REAL FEMT_CV_NOD(CV_NLOC)
 
         CHARACTER(LEN=OPTION_PATH_LEN) :: OPTION_PATH
-        REAL, allocatable, DIMENSION(:) :: DUMMY_ELE
 
         real, dimension(0,0,0,0):: tflux, rdum4
         real, allocatable, dimension(:,:,:) :: T_ABSORB
@@ -7428,9 +7401,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
         real, dimension(0) :: unnecessary_zero_length_array
       
-
-        ALLOCATE(DUMMY_ELE(TOTELE))
-        DUMMY_ELE = 0
 
         IGOT_T2=0
         CV_DISOPT=0
@@ -8166,7 +8136,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             ! nits_flux_lim_t
             !RZERO, &
             !option_path = '/material_phase[0]/scalar_field::Pressure', &
-            !mass_ele_transp = dummy_ele, &
             !thermal = .FALSE.,&
             !StorageIndexes=StorageIndexes, icomp=-1)
 

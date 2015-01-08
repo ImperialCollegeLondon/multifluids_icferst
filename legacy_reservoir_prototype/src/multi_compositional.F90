@@ -134,12 +134,12 @@
                     max( 0.0, SATURA( JPHASE,CV_NOD ) * &
                     DENOLD( 1, JPHASE, CV_NOD ) ) ) / DT
 
-               COMP_ABSORB( CV_NOD, IPHASE, IPHASE ) = &
-                    COMP_ABSORB( CV_NOD, IPHASE, IPHASE ) + &
+               COMP_ABSORB( IPHASE, IPHASE, CV_NOD ) = &
+                    COMP_ABSORB( IPHASE, IPHASE, CV_NOD ) + &
                     ALPHA( CV_NOD ) * &
                     K_COMP2( ICOMP, CV_NOD, IPHASE, JPHASE ) 
 
-               COMP_ABSORB( CV_NOD, IPHASE, JPHASE ) = &
+               COMP_ABSORB( IPHASE, JPHASE, CV_NOD ) = &
                     - ALPHA( CV_NOD )
 
             END DO
@@ -157,10 +157,10 @@
                     DENOLD( 1, JPHASE, CV_NOD ) ) / &
                     K_COMP2( ICOMP, CV_NOD, JPHASE, IPHASE ) ) / DT
 
-               COMP_ABSORB( CV_NOD, IPHASE, IPHASE ) = &
-                    COMP_ABSORB( CV_NOD, IPHASE, IPHASE ) + ALPHA( CV_NOD )
+               COMP_ABSORB( IPHASE, IPHASE, CV_NOD ) = &
+                    COMP_ABSORB( IPHASE, IPHASE, CV_NOD ) + ALPHA( CV_NOD )
 
-               COMP_ABSORB( CV_NOD, IPHASE, JPHASE ) = - ALPHA( CV_NOD ) * &
+               COMP_ABSORB( IPHASE, JPHASE, CV_NOD ) = - ALPHA( CV_NOD ) * &
                     K_COMP2( ICOMP, CV_NOD, JPHASE, IPHASE ) 
 
             END DO

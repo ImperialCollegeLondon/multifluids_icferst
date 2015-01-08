@@ -79,6 +79,7 @@
     use multiphase_fractures
     use boundary_conditions_from_options
     USE multiphase_rheology
+    use vtk_interfaces
 
 
 #ifdef HAVE_ZOLTAN
@@ -114,8 +115,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods
-      real :: dx
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods
 
 !!$ Node global numbers
       integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, &
@@ -173,7 +173,7 @@
       logical :: do_reallocate_fields, not_to_move_det_yet = .false., initialised
 
 !!$ Working arrays:
-      real, dimension(:), pointer :: mass_ele, dummy_ele
+      real, dimension(:), pointer :: mass_ele
 
       real, dimension( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
       real, dimension( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
@@ -182,7 +182,7 @@
 
       real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
 !!$
-      real, dimension( :, : ), pointer :: PhaseVolumeFraction_Source, Temperature_Source, &
+      real, dimension( :, : ), pointer :: Temperature_Source, &
            ScalarField_Source_Store, ScalarField_Source_Component, Component_Source
       real, dimension( :, :, : ), pointer :: Velocity_U_Source, Velocity_U_Source_CV
       real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
@@ -234,7 +234,6 @@
       !PIVIT_MAT (inverted)          : 34
 
       !Working pointers
-      real, dimension(:,:), pointer :: SAT_s, OldSAT_s, FESAT_s
 
       type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
       type(scalar_field), pointer :: pressure_field, porosity_field
@@ -256,6 +255,20 @@
 
       !Read info for adaptive timestep based on non_linear_iterations
 
+      if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
+      if(have_option("/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt")) then
+         call get_option('/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt',nonlinear_iterations_adapt)
+         nonlinear_iterations = nonlinear_iterations_adapt
+       end if
+
+       call adapt_state_first_timestep(state)
+       call allocate_and_insert_auxilliary_fields(state)
+
+       ! Ensure that checkpoints do not adapt at first timestep.
+       call delete_option(&
+            "/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")
+    end if
+
 
       if(use_sub_state()) then
          call populate_sub_state(state,sub_state)
@@ -270,9 +283,6 @@
 
       !      call initialize_rheologies(state,rheology)
 
-      !Get from packed_state
-      call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
-           OldPhaseVolumeFraction=OldSAT_s,FEPhaseVolumeFraction = FESAT_s )
       IDIVID_BY_VOL_FRAC=0
       !call print_state( packed_state )
       !stop 78
@@ -293,7 +303,7 @@
            nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, dx )
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods)
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -364,18 +374,17 @@
 !!$
            suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
            Mean_Pore_CV( cv_nonods ), &
-           dummy_ele( totele ), mass_ele( totele ), &
+           mass_ele( totele ), &
 !!$
            Temperature_Source( nphase, cv_nonods ), &
            Velocity_U_Source( ndim, nphase, u_nonods ), &
            Velocity_U_Source_CV( ndim, nphase, cv_nonods ), Component_Source( nphase, cv_nonods ), &
 !!$
-           PhaseVolumeFraction_Source( nphase, cv_nonods ), &
            Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
            Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
            Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), & 
-           ScalarField_Absorption( cv_nonods, nphase, nphase ), Component_Absorption( cv_nonods, nphase, nphase ), &
-           Temperature_Absorption( cv_nonods, nphase, nphase ), &
+           ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
+           Temperature_Absorption( nphase, nphase, cv_nonods ), &
            Momentum_Diffusion( mat_nonods, ndim, ndim, nphase ), &
            Momentum_Diffusion_Vol( mat_nonods, nphase ), &
            ScalarAdvectionField_Diffusion( mat_nonods, ndim, ndim, nphase ), &
@@ -394,9 +403,9 @@
       suf_sig_diagten_bc=0.
 !!$
       Mean_Pore_CV=0.
-      dummy_ele=0. ; mass_ele=0.
+      mass_ele=0.
 !!$
-      PhaseVolumeFraction_Source=0. ; Velocity_U_Source=0.
+      Velocity_U_Source=0.
       Velocity_U_Source_CV=0. ; Component_Source=0.
 !!$
       Material_Absorption=0.
@@ -420,11 +429,9 @@
 !!$ Extracting Mesh Dependent Fields
       initialised = .false.
       call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-           SAT_s, PhaseVolumeFraction_Source,&
            Component_Source, &
            Velocity_U_Source, Velocity_Absorption, &
            Temperature_Source)
-      FESAT_s = 0; OldSAT_s = 0.
 !!$ Calculate diagnostic fields
       call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
       call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
@@ -675,7 +682,6 @@
                     in_ele_upwind, dg_ele_upwind, &
                     Mean_Pore_CV, &
                     option_path = '/material_phase[0]/scalar_field::Temperature', &
-                    mass_ele_transp = dummy_ele, &
                     thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                     StorageIndexes=StorageIndexes )
 
@@ -836,12 +842,12 @@
                   Conditional_SmoothAbsorption: if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                      do cv_nodi = 1, cv_nonods
-                        if( Sat_S( 1, cv_nodi ) > 0.95 ) then
+                        if(saturation_field%val(1,1, cv_nodi ) > 0.95 ) then
                            do iphase = 1, nphase
                               do jphase = min( iphase + 1, nphase ), nphase
-                                 Component_Absorption( cv_nodi, iphase, jphase ) = &
-                                      Component_Absorption( cv_nodi, iphase, jphase ) * max( 0.01, &
-                                      20. * ( 1. - Sat_S( 1, cv_nodi ) ) )
+                                 Component_Absorption( iphase, jphase, cv_nodi ) = &
+                                      Component_Absorption( iphase, jphase, cv_nodi ) * max( 0.01, &
+                                      20. * ( 1. - saturation_field%val( 1,1, cv_nodi ) ) )
                               end do
                            end do
                         end if
@@ -888,10 +894,11 @@
                           theta_gdiff, &
                           in_ele_upwind, dg_ele_upwind, &
                           Mean_Pore_CV, &
-                          mass_ele_transp = dummy_ele, &
                           thermal = .false.,& ! the false means that we don't add an extra source term
                           theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                           StorageIndexes=StorageIndexes, icomp=icomp, saturation=saturation_field )
+
+!                      tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
 
                   end do Loop_NonLinearIteration_Components
 
@@ -923,7 +930,6 @@
 
                   ALLOCATE( RSUM( NPHASE ) )
                   DO CV_INOD = 1, CV_NONODS
-                     RSUM = 0.0
                      DO IPHASE = 1, NPHASE
                         RSUM( IPHASE ) = SUM (MFC_s % val (:, IPHASE, CV_INOD) )
                      END DO
@@ -949,47 +955,36 @@
                   if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                      do cv_nodi = 1, cv_nonods
-                        if( Sat_S( 1, cv_nodi ) > 0.95 ) then
+                        if( saturation_field%val( 1, 1, cv_nodi ) > 0.95 ) then
                            do iphase = 1, nphase
                               do jphase = min( iphase + 1, nphase ), nphase
-                                 Component_Absorption( cv_nodi, iphase, jphase ) = &
-                                      Component_Absorption( cv_nodi, iphase, jphase ) * max( 0.01, &
-                                      20. * ( 1. - SAT_s(1, cv_nodi ) ) )
+                                 Component_Absorption( iphase, jphase, cv_nodi ) = &
+                                      Component_Absorption( iphase, jphase, cv_nodi ) * max( 0.01, &
+                                      20. * ( 1. - saturation_field%val (1,1, cv_nodi ) ) )
                               end do
                            end do
                         end if
                      end do
                   end if
 
-                  Loop_Phase_SourceTerm1: do iphase = 1, nphase
-                     Loop_Phase_SourceTerm2: do jphase = 1, nphase
-                        DO CV_NODI = 1, CV_NONODS
-                           !ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = &
-                           !     ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) - &
-                           !     Component_Absorption( CV_NODI, IPHASE, JPHASE ) * &
-                           !     MFC_s%val(ICOMP, JPHASE, CV_NODI) / &
-                           !     DC_s%val( icomp, iphase, cv_nodi  )
+                  DO CV_NODI = 1, CV_NONODS
+                     Loop_Phase_SourceTerm1: do iphase = 1, nphase
+                        Loop_Phase_SourceTerm2: do jphase = 1, nphase
                            tracer_source%val(1,iphase,cv_nodi)=tracer_source%val(1,iphase,cv_nodi)- &
-                                Component_Absorption( CV_NODI, IPHASE, JPHASE ) * &
+                                Component_Absorption( IPHASE, JPHASE, CV_NODI ) * &
                                 MFC_s%val(ICOMP, JPHASE, CV_NODI) / &
                                 DC_s%val( icomp, iphase, cv_nodi  )
-                        END DO
-                     end do Loop_Phase_SourceTerm2
-                  end do Loop_Phase_SourceTerm1
+                        end do Loop_Phase_SourceTerm2
+                     end do Loop_Phase_SourceTerm1
+                  END DO
 
                   ! For compressibility
                   DO IPHASE = 1, NPHASE
                      DO CV_NODI = 1, CV_NONODS
-                        !ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = &
-                        !     ScalarField_Source_Component( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) &
-                        !     + Mean_Pore_CV( CV_NODI ) * MFCOLD_s%val(ICOMP, IPHASE, CV_NODI) &
-                        !     * ( DCOLD_s%val( ICOMP, IPHASE, CV_NODI ) - DC_s%val( ICOMP, IPHASE, CV_NODI) ) &
-                        !     * OldSAT_s( IPHASE, CV_NONODS ) &
-                        !     / ( DC_s%val( ICOMP, IPHASE, CV_NODI ) * DT )
                         tracer_source%val(1,iphase,cv_nodi)=tracer_source%val(1,iphase,cv_nodi)&
                              + Mean_Pore_CV( CV_NODI ) * MFCOLD_s%val(ICOMP, IPHASE, CV_NODI) &
                              * ( DCOLD_s%val( ICOMP, IPHASE, CV_NODI ) - DC_s%val( ICOMP, IPHASE, CV_NODI) ) &
-                             * OldSAT_s( IPHASE, CV_NONODS ) &
+                             * old_saturation_field%val( 1,IPHASE, CV_NONODS ) &
                              / ( DC_s%val( ICOMP, IPHASE, CV_NODI ) * DT )
                      END DO
                   END DO
@@ -1083,6 +1078,9 @@
          Conditional_ReallocatingFields: if( do_reallocate_fields ) then
             !The storaged variables must be recalculated
             call Clean_Storage(state, StorageIndexes)
+
+            call linearise_components()
+
             Conditional_Adaptivity: if( have_option( '/mesh_adaptivity/hr_adaptivity ') .or. have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric')) then
 
                Conditional_Adapt_by_TimeStep: if( mod( itime, adapt_time_steps ) == 0 ) then
@@ -1167,8 +1165,10 @@
             call deallocate(packed_state)
             call deallocate(multiphase_state)
             call deallocate(multicomponent_state )
+            call unlinearise_components()
             call pack_multistate(state,packed_state,&
                  multiphase_state,multicomponent_state)
+            call set_boundary_conditions_values(state, shift_time=.true.)
 
 
 !!$ Deallocating array variables:
@@ -1190,11 +1190,11 @@
                  plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
                  DRhoDPressure, &
-                 Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
+                 Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
                  Component_Source, &
                  suf_sig_diagten_bc, &
                  theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
-                 mass_ele, dummy_ele, &
+                 mass_ele, &
                  Material_Absorption, Material_Absorption_Stab, &
                  Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
                  Component_Diffusion_Operator_Coefficient, &
@@ -1209,7 +1209,7 @@
                  nphase, nstate, ncomp, totele, ndim, stotel, &
                  u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
                  x_snloc, cv_snloc, u_snloc, p_snloc, &
-                 cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, dx )
+                 cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods)
 !!$ Calculating Global Node Numbers
             allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
                  u_sndgln( stotel * u_snloc ) )
@@ -1274,25 +1274,22 @@
 !!$ Allocating space for various arrays:
             allocate( &
 !!$
-                 SAT_s( nphase , cv_nonods ), &
-                 oldSAT_s( nphase , cv_nonods ), &
                  DRhoDPressure( nphase, cv_nonods ), &
 !!$             
                  suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
                  Mean_Pore_CV( cv_nonods ), &
-                 dummy_ele( totele ), mass_ele( totele ), &
+                 mass_ele( totele ), &
 !!$
 !!$
                  Temperature_Source( nphase, cv_nonods ), &
                  Velocity_U_Source( ndim, nphase, u_nonods ), &
                  Velocity_U_Source_CV( ndim, nphase, cv_nonods ), &
                  Component_Source( nphase, cv_nonods ), &
-                 PhaseVolumeFraction_Source( nphase, cv_nonods ), &
                  Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                  Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                  Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), & 
-                 ScalarField_Absorption( cv_nonods, nphase, nphase ), Component_Absorption( cv_nonods, nphase, nphase ), &
-                 Temperature_Absorption( cv_nonods, nphase, nphase ), &
+                 ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
+                 Temperature_Absorption( nphase, nphase, cv_nonods ), &
                  Momentum_Diffusion( mat_nonods, ndim, ndim, nphase ), &
                  Momentum_Diffusion_Vol( mat_nonods, nphase ), &
                  ScalarAdvectionField_Diffusion( mat_nonods, ndim, ndim, nphase ), & 
@@ -1311,8 +1308,7 @@
             Component_Source=0.
             Component_Diffusion=0. ; Component_Absorption=0.
 !!$
-!!$
-            PhaseVolumeFraction_Source=0.
+
 !!$
             ScalarAdvectionField_Diffusion=0. ; ScalarField_Absorption=0.
 !!$
@@ -1327,14 +1323,9 @@
 !!$ Extracting Mesh Dependent Fields
             initialised = .true.
             call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-                 SAT_s, PhaseVolumeFraction_Source, &
                  Component_Source, &
                  Velocity_U_Source, Velocity_Absorption, &
                  Temperature_Source )
-
-            call get_var_from_packed_state(packed_state,PhaseVolumeFraction = SAT_s,&
-                 OldPhaseVolumeFraction=OldSAT_s,FEPhaseVolumeFraction = FESAT_s )
-
 
             ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
 
@@ -1373,6 +1364,9 @@
             allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
             allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
 
+            call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
+                 cv_ndgln, DRhoDPressure )
+
          end if Conditional_ReallocatingFields
 
 !!$ Simple adaptive time stepping algorithm
@@ -1402,7 +1396,7 @@
 
       end do Loop_Time
 
-      if (has_references(metric_tensor)) call deallocate(metric_tensor)
+       if (has_references(metric_tensor)) call deallocate(metric_tensor)
 
 !!$ Now deallocating arrays:
       deallocate( &
@@ -1423,10 +1417,10 @@
            plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
            DRhoDPressure, FEM_VOL_FRAC, &
-           Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, PhaseVolumeFraction_Source, &
+           Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
            Component_Source, &
            theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
-           mass_ele, dummy_ele, &
+           mass_ele,&
            Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
            Component_Diffusion_Operator_Coefficient, &
@@ -1548,6 +1542,107 @@
 
       end subroutine temp_mem_hacks
 
+      subroutine linearise_components()
+        
+        integer :: ist,ip,ele
+        type( scalar_field ), pointer :: cmp, cmp_p1_cg
+        type( mesh_type ), pointer   :: cmesh, mesh
+        type ( scalar_field ), pointer :: nfield 
+        type ( scalar_field ) :: sfield
+        integer, dimension(:), pointer :: nodes
+        real, allocatable, dimension(:) :: comp
+
+        if (ncomp>1) then
+           do ist=1,size(state)
+              if (has_scalar_field(state(ist),"Density")) then
+                 nfield=>extract_scalar_field(state(ist),"Density")
+                 allocate(comp(ele_loc(nfield,1)))
+                 if (nfield%mesh%shape%degree==2) then
+                    select case(mesh_dim(nfield))
+                    case(1)
+                       do ele=1,ele_count(nfield)
+                          nodes=>ele_nodes(nfield,ele)
+                          comp=ele_val(nfield,ele)
+                          call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
+                       end do
+                    case(2)
+                       do ele=1,ele_count(nfield)
+                          nodes=>ele_nodes(nfield,ele)
+                          comp=ele_val(nfield,ele)
+                          call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
+                          call set(nfield,nodes(4),0.5*(comp(1)+comp(6)))
+                          call set(nfield,nodes(5),0.5*(comp(3)+comp(6)))
+                       end do
+                    case(3)
+                       do ele=1,ele_count(nfield)
+                          nodes=>ele_nodes(nfield,ele)
+                          comp=ele_val(nfield,ele)
+                          call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
+                          call set(nfield,nodes(4),0.5*(comp(1)+comp(6)))
+                          call set(nfield,nodes(5),0.5*(comp(3)+comp(6)))
+                          call set(nfield,nodes(7),0.5*(comp(1)+comp(10)))
+                          call set(nfield,nodes(8),0.5*(comp(3)+comp(10)))
+                          call set(nfield,nodes(9),0.5*(comp(6)+comp(10)))
+                       end do
+                    end select
+                    deallocate(comp)
+                 end if
+              end if
+           end do
+         end if
+
+        do ist=1,size(state)
+           if (has_scalar_field(state(ist),"ComponentMassFractionPhase1")) then
+              do ip=1,nphase
+                 nfield=>extract_scalar_field(state(ist),&
+                      "ComponentMassFractionPhase"//int2str(ip))
+                 allocate(comp(ele_loc(nfield,1)))
+                 if (nfield%mesh%shape%degree==2) then
+                    select case(mesh_dim(nfield))
+                    case(1)
+                       do ele=1,ele_count(nfield)
+                          nodes=>ele_nodes(nfield,ele)
+                          comp=ele_val(nfield,ele)
+                          call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
+                       end do
+                    case(2)
+                       do ele=1,ele_count(nfield)
+                          nodes=>ele_nodes(nfield,ele)
+                          comp=ele_val(nfield,ele)
+                          call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
+                          call set(nfield,nodes(4),0.5*(comp(1)+comp(6)))
+                          call set(nfield,nodes(5),0.5*(comp(3)+comp(6)))
+                       end do
+                    case(3)
+                       do ele=1,ele_count(nfield)
+                          nodes=>ele_nodes(nfield,ele)
+                          comp=ele_val(nfield,ele)
+                          call set(nfield,nodes(2),0.5*(comp(1)+comp(3)))
+                          call set(nfield,nodes(4),0.5*(comp(1)+comp(6)))
+                          call set(nfield,nodes(5),0.5*(comp(3)+comp(6)))
+                          call set(nfield,nodes(7),0.5*(comp(1)+comp(10)))
+                          call set(nfield,nodes(8),0.5*(comp(3)+comp(10)))
+                          call set(nfield,nodes(9),0.5*(comp(6)+comp(10)))
+                       end do
+                    end select
+                    deallocate(comp)
+                 end if
+              end do
+           end if
+        end do
+        
+
+      end subroutine linearise_components
+
+      subroutine unlinearise_components()
+        
+        integer :: ist, ip
+        type( scalar_field ), pointer :: cmp, cmp_p1_cg
+        type( mesh_type ), pointer   :: cmesh, mesh
+        type ( scalar_field ), pointer :: nfield 
+        type ( scalar_field ) :: sfield
+        
+      end subroutine unlinearise_components
 
     end subroutine MultiFluids_SolveTimeLoop
 

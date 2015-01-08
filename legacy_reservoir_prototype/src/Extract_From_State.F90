@@ -146,7 +146,7 @@
       if( present( p_nonods ) ) p_nonods = node_count( pressure )
       if( present( cv_nloc ) ) cv_nloc = p_nloc
       if( present( cv_snloc ) ) cv_snloc = p_snloc
-      if( present( cv_nonods ) ) cv_nonods = p_nonods
+      if( present( cv_nonods ) ) cv_nonods = node_count( pressure )
       if( present( mat_nloc ) ) mat_nloc = cv_nloc
       if( present( mat_nonods ) ) mat_nonods = mat_nloc * totele
 
@@ -711,7 +711,6 @@
 
 
     subroutine Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-         PhaseVolumeFraction, PhaseVolumeFraction_Source, &
          Component_Source, &
          Velocity_U_Source, Velocity_Absorption, &
          Temperature_Source, &
@@ -721,7 +720,7 @@
       type( state_type ), intent( inout ) :: packed_state
 
       logical, intent( in ) :: initialised
-      real, dimension( :, : ), intent(inout) :: PhaseVolumeFraction, PhaseVolumeFraction_Source, &
+      real, dimension( :, : ), intent(inout) ::&
            Temperature_Source, Component_Source
       real, dimension( :, :, : ), intent( inout ) :: Velocity_U_Source
       real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption
@@ -784,20 +783,6 @@
 
       !Get the coordinates of the nodes from the mesh
       x_all => extract_vector_field( packed_state, "PressureCoordinate" )
-
-!!$
-!!$ Extracting Volume Fraction (or Saturation) Field:
-!!$
-      Loop_VolumeFraction: do iphase = 1, nphase
-         scalarfield => extract_scalar_field( state( iphase ), 'PhaseVolumeFraction' )
-         knod = ( iphase - 1 ) * node_count( scalarfield )
-         !         call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
-         !              PhaseVolumeFraction( knod + 1 : knod + node_count( scalarfield ) ), &
-         !              field_prot_source = PhaseVolumeFraction_Source )
-         call Get_ScalarFields_Outof_State2( state, initialised, iphase, scalarfield, &
-              PhaseVolumeFraction( iphase,:), &
-              field_prot_source = PhaseVolumeFraction_Source )
-      end do Loop_VolumeFraction
 
 !!$
 !!$ Extracting Pressure Field:
@@ -2319,6 +2304,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             call unpack_component_sfield(state(i),packed_state,"OldComponentDensity",icomp,prefix='Old')
             call unpack_component_sfield(state(i),packed_state,"OldComponentMassFraction",icomp,prefix='Old')
             call unpack_component_sfield(state(i),packed_state,"ComponentDensity",icomp)
+            call unpack_component_sfield(state(i),packed_state,"IteratedComponentMassFraction",icomp,prefix='Iterated')
             call unpack_component_sfield(state(i),packed_state,"ComponentMassFraction",icomp)
 
             call insert_components_in_multi_state(multi_state(icomp,:),state(i))
@@ -2657,12 +2643,15 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         end if
 
         call allocate(mfield,lmesh,"Packed"//name,dim=[ncomp,nphase])
+        call zero(mfield)
         call insert(mstate,mfield,"Packed"//name)
         call deallocate(mfield)
         call allocate(mfield,lmesh,"PackedOld"//name,dim=[ncomp,nphase])
+        call zero(mfield)
         call insert(mstate,mfield,"PackedOld"//name)
         call deallocate(mfield)
         call allocate(mfield,lmesh,"PackedIterated"//name,dim=[ncomp,nphase])
+        call zero(mfield)
         call insert(mstate,mfield,"PackedIterated"//name)
         call deallocate(mfield)
 
@@ -2836,6 +2825,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
            end if
            nfield%val=>mfield%val(:,iphase,:)
            nfield%wrapped=.true.
+        else
+           call zero(mfield)
         end if
 
 
@@ -2866,7 +2857,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
               else
                  free=.true.
               end if
-
 
 
 

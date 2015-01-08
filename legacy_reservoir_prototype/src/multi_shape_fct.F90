@@ -2456,6 +2456,7 @@ ewrite(3,*)'lll:', option_path_len
 
       ! The CV_SNLOC surface nodes are the only nodes that are candidates.
 
+   if(.true.) then
       do cv_sgi = 1, scvngi
          candidate_gi2( cv_sgi ) = .true.
          do cv_iloc_cells = 1, cv_snloc_cells
@@ -2464,9 +2465,20 @@ ewrite(3,*)'lll:', option_path_len
             !     cv_iloc_cells,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
          end do
       end do
+   else
+      do cv_sgi = 1, scvngi
+         candidate_gi2( cv_sgi ) = .false.
+         do cv_iloc_cells = 1, cv_snloc_cells
+            if( cvfem_on_face(cv_iloc_cells,cv_sgi) ) candidate_gi2( cv_sgi ) = .true.
+            !ewrite(3,*)'cv_iloc_cells, cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi):', &
+            !     cv_iloc_cells,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
+         end do
+      end do
+   endif
 ! 
 ! the below does not seem correct - Chris look at **************
-   if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc_cells==6).and.(cv_nloc_cells==10)) then ! make sure its a quadratic tet...
+!   if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc_cells==6).and.(cv_nloc_cells==10)) then ! make sure its a quadratic tet...
+   if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc==6).and.(cv_nloc==10)) then ! make sure its a quadratic tet...
 !   if(.false.) then
              sbcvfen( 1:cv_snloc, 1:sbcvngi ) = scvfen( 1:cv_snloc, 1:sbcvngi )
              sbcvfenslx( 1:cv_snloc, 1:sbcvngi ) = scvfenslx( 1:cv_snloc, 1:sbcvngi )
@@ -2500,10 +2512,20 @@ ewrite(3,*)'lll:', option_path_len
          end do Loop_SGI2
       end do Loop_SNLOC
 
+!         ewrite(3,*)'cv_bsgi,sbcvngi:',cv_bsgi,sbcvngi
+!         ewrite(3,*)'candidate_gi2:',candidate_gi2
+!         ewrite(3,*)'cvfem_on_face:',cvfem_on_face
+!         do cv_sgi = 1, scvngi
+!            print *,'cvfem_on_face(:,cv_sgi):',cvfem_on_face(:,cv_sgi) 
+!         end do
+
       if(cv_bsgi/=sbcvngi) then
          ewrite(3,*)'cv_bsgi,sbcvngi:',cv_bsgi,sbcvngi
+         ewrite(3,*)'candidate_gi2:',candidate_gi2
+         ewrite(3,*)'cvfem_on_face:',cvfem_on_face
          FLAbort("cv_bsgi/=sbcvngi")
       endif
+!         stop 921
    endif
 
 
@@ -2650,6 +2672,36 @@ ewrite(3,*)'lll:', option_path_len
                     cvfem_on_face( iloc, gi ) = .true. 
             end do
          end do
+
+
+         if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_nloc==10).and.(ndim==3)) then
+! Exterior faces :  1,3,6  ----James is this face the face with the 1st 6 surface quadrature points and the 1st 6 CV's.
+!                     This is only the exterior surface faces on the triangle with 1,2,3,4,5,6 
+       cvfem_on_face=.false.
+       cvfem_on_face(1:6,1:6)=.true.
+! Exterior faces :  1,3,10
+      cvfem_on_face(1,7:12)=.true.
+      cvfem_on_face(2,7:17)=.true.
+      cvfem_on_face(3,7:12)=.true.
+      cvfem_on_face(7,7:12)=.true.
+      cvfem_on_face(8,7:12)=.true.
+      cvfem_on_face(10,7:12)=.true.
+! Exterior faces :  1,6,10
+      cvfem_on_face(1,13:18)=.true.
+      cvfem_on_face(4,13:18)=.true.
+      cvfem_on_face(6,13:18)=.true.
+      cvfem_on_face(7,13:18)=.true.
+      cvfem_on_face(9,13:18)=.true.
+      cvfem_on_face(10,13:18)=.true.
+! Exterior faces :  3,6,10
+      cvfem_on_face(3,19:24)=.true.
+      cvfem_on_face(5,19:24)=.true.
+      cvfem_on_face(6,19:24)=.true.
+      cvfem_on_face(8,19:24)=.true.
+      cvfem_on_face(9,19:24)=.true.
+      cvfem_on_face(10,19:24)=.true.
+         endif
+
 
       end if
 
