@@ -24,7 +24,7 @@ linear_solver_options_asym =
          pcilu_options|
          pclu_options|
          pcmg_options|
-         pcprometheus_options|
+         pcgamg_options|
          pchypre_options|
          pcbjacobi_options|
          pcpbjacobi_options|
@@ -55,7 +55,7 @@ linear_solver_options_sym =
          pcicc_options|
          pclu_options|
          pcmg_options|
-         pcprometheus_options|
+         pcgamg_options|
          pchypre_options|
          pcbjacobi_options|
          pcpbjacobi_options|
@@ -292,7 +292,7 @@ subpc_options =
          pcicc_options|
          pclu_options|
          pcmg_options|
-         pcprometheus_options|
+         pcgamg_options|
          pchypre_options|
          pcother_options
       )
@@ -354,7 +354,7 @@ pc_ksp_solver_options =
          pclu_options|
          pcicc_options|
          pcmg_options|
-         pcprometheus_options|
+         pcgamg_options|
          pchypre_options|
          pcbjacobi_options|
          pcasm_options|
@@ -362,7 +362,17 @@ pc_ksp_solver_options =
       ),
       generic_solver_options
    )
-
+pcgamg_options =
+    (
+        ## GAMG preconditioner.
+        ## For vector solves, this preconditioner should be used in conjunction
+        ## with the multigrid_near_null_space option to improve convergence. The
+        ## near null-space option is not applicable for scalar solves.
+        ## Requires a PETSC version >= 3.3
+        element preconditioner {
+            attribute name { "gamg" }
+        }
+    )
 # ####################################################################
 #
 # all the other solver options

@@ -2478,8 +2478,8 @@ ewrite(3,*)'lll:', option_path_len
 ! 
 ! the below does not seem correct - Chris look at **************
 !   if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc_cells==6).and.(cv_nloc_cells==10)) then ! make sure its a quadratic tet...
-   if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc==6).and.(cv_nloc==10)) then ! make sure its a quadratic tet...
-!   if(.false.) then
+   if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc==6).and.(cv_nloc==10).and.(sbcvngi==6)) then ! make sure its a quadratic tet
+                                                                                              !without QUAD_OVER_WHOLE_ELE=.true...
              sbcvfen( 1:cv_snloc, 1:sbcvngi ) = scvfen( 1:cv_snloc, 1:sbcvngi )
              sbcvfenslx( 1:cv_snloc, 1:sbcvngi ) = scvfenslx( 1:cv_snloc, 1:sbcvngi )
              sbcvfensly( 1:cv_snloc, 1:sbcvngi ) = scvfensly( 1:cv_snloc, 1:sbcvngi )
@@ -2487,10 +2487,7 @@ ewrite(3,*)'lll:', option_path_len
              sbcvfenly( 1:cv_snloc, 1:sbcvngi ) = scvfenly( 1:cv_snloc, 1:sbcvngi )
              sbcvfenlz( 1:cv_snloc, 1:sbcvngi ) = scvfenlz( 1:cv_snloc, 1:sbcvngi )
              sbcvfeweigh( 1:sbcvngi ) = scvfeweigh( 1:sbcvngi )
-             if(sbcvngi.ne.6) then
-               ewrite(3,*)'sbcvngi:',sbcvngi
-               FLAbort("sbcvngi should be 6")
-             endif
+
    else
       Loop_SNLOC: do cv_siloc = 1, cv_snloc
          cv_iloc = cv_siloc
