@@ -2888,30 +2888,59 @@ end if
       REAL :: XVEC(NDIM),XPT(NDIM),XPT_GI(NDIM)
       REAL :: n(cv_nloc,ngi_one), nlx(cv_nloc,ngi_one), nly(cv_nloc,ngi_one), nlz(cv_nloc,ngi_one)
       REAL :: l1(ngi_one), l2(ngi_one), l3(ngi_one), l4(ngi_one), weight(ngi_one)
-      REAL :: TGI_ELE(NPHASE*2),TGI_IN(NPHASE*2),TGI_OUT(NPHASE*2)
+      REAL :: TGI_ELE(NPHASE*2),TGI_IN(NPHASE*2),TGI_OUT(NPHASE*2),W(NPHASE*2)
       REAL :: TGI(NPHASE*2),TUP(NPHASE*2),TGI_NEI(NPHASE*2)
       REAL :: ENO_ELE_MATWEI_IN(CV_NLOC),ENO_ELE_MATWEI_OUT(CV_NLOC),ENO_ELE_MATWEI(CV_NLOC,2)
-      REAL :: RUP_WIN,MIN_TGI,MAX_TGI, W
-      LOGICAL :: QUADRATIC_ELEMENT,IS_CORNER_NOD_J,DISTCONTINUOUS_METHOD
+      REAL :: RUP_WIN,MIN_TGI,MAX_TGI
+      LOGICAL :: QUADRATIC_ELEMENT,IS_CORNER_NOD_I,IS_CORNER_NOD_J,DISTCONTINUOUS_METHOD, GOT_AN_OSC
       INTEGER :: ENO_ELE_NEI(2),LOCNODS(NDIM+1)
       INTEGER :: ELE2,SELE2,ELEWIC,ENO_ELE_NEI_IN,ENO_ELE_NEI_OUT,IPHASE2,CV_KLOC,IUP_DOWN
       INTEGER :: IFACE,NPHASE2,IPT, cv_nodk, cv_nodk_IN, cv_nodk_OUT, X_KNOD, I_OLD_NEW, IPHASE
+
 
       QUADRATIC_ELEMENT=( (NDIM==2).AND.(CV_NLOC==6) ) .OR. ( (NDIM==3).AND.(CV_NLOC==10) )
       NPHASE2=NPHASE*2
       DISTCONTINUOUS_METHOD=( CV_NONODS == TOTELE * CV_NLOC )
 
-      IF ( between_elements ) THEN
-         XVEC(:)=0.5*(XC_CV_ALL(:,CV_NODI)-XC_CV_ALL(:,CV_NODJ))
-      else
-         XVEC(:)=0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
-         IS_CORNER_NOD_J=.TRUE.
-         IF(QUADRATIC_ELEMENT) THEN
-! Is CV_JLOC a corner node...
-            IS_CORNER_NOD_J = (CV_JLOC==1).OR.(CV_JLOC==3).OR.(CV_JLOC==6).OR.(CV_JLOC==10)
-            IF(IS_CORNER_NOD_J) XVEC(:)=-0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
-         ENDIF
-      endif
+
+            TGI_ELE=0.0
+            do cv_kloc=1,cv_nloc
+               cv_nodk = CV_NDGLN((ELE-1)*CV_NLOC + cv_kloc) 
+
+               TGI_ELE(1:NPHASE)=TGI_ELE(1:NPHASE) + SCVFEN(cv_Kloc,gi)*FEMT_ALL(:,cv_nodk)
+               TGI_ELE(1+NPHASE:2*NPHASE)=TGI_ELE(1+NPHASE:2*NPHASE) + SCVFEN(cv_Kloc,gi)*femTOLD_ALL(:,cv_nodk)
+            end do
+
+            TUP(1:NPHASE)=INCOME(1:NPHASE)*T_ALL(1:NPHASE,CV_NODI) + (1.-INCOME(1:NPHASE))*T_ALL(1:NPHASE,CV_NODJ)
+            TUP(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)*TOLD_ALL(1:NPHASE,CV_NODI) + (1.-INCOMEOLD(1:NPHASE))*TOLD_ALL(1:NPHASE,CV_NODJ)
+
+
+            W(:)=0.0 ! =0 means always apply ENO. 
+            IF(ENO_ONLY_WHERE_OSCILLATE) THEN
+! Use ENO only where there is an oscillation as it can be a bit dissipative. 
+               GOT_AN_OSC=.FALSE.
+               IPT=1
+               DO I_OLD_NEW=1,2
+               DO IPHASE=1,NPHASE
+                  IF(IGOT_T_PACK(IPHASE,1)) THEN
+                     IPHASE2=IPHASE + (I_OLD_NEW-1)*NPHASE
+                     W(IPHASE2)=(TUP(IPHASE2)-LIMF(IPT))/TOLFUN(TUP(IPHASE2)-TGI_ELE(IPHASE2))
+                     W(IPHASE2)=MAX(0.0,MIN(1.0,W(IPHASE2) ))
+! W=0.0(full upwind);  W=1.0(high order no limiting)
+                     IF(W(IPHASE2)<0.99) GOT_AN_OSC=.TRUE.
+                     IPT=IPT+1
+                  ENDIF
+               END DO ! ENDOF DO IPHASE=1,NPHASE
+               END DO ! ENDOF DO I_OLD_NEW=1,2
+! Nothing to do if no oscillations detected...
+               IF(.NOT.GOT_AN_OSC) RETURN
+            ENDIF
+
+
+
+  IF(DISTCONTINUOUS_METHOD.AND.(.NOT.BETWEEN_ELEMENTS).AND.FOR_DG_ONLY_BETWEEN_ELE) THEN ! Use fem INSIDE element for DG method...
+     TGI = TGI_ELE
+  ELSE 
 
       xpt_GI=0.0 
       do cv_kloc=1,cv_nloc
@@ -2919,12 +2948,32 @@ end if
          xpt_GI(:)=xpt_GI(:)+SCVFEN(cv_kloc,gi)*x_all(:,X_kNOD)
       end do
 
-      DO IUP_DOWN=1,2 ! Consider both both directions...
+      IS_CORNER_NOD_I=.TRUE.
+      IS_CORNER_NOD_J=.TRUE.
+      IF ( between_elements ) THEN
+         XVEC(:)=0.0
+      else
+         XVEC(:)=0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
+         IF(QUADRATIC_ELEMENT) THEN
+! Is CV_JLOC a corner node...
+            IS_CORNER_NOD_I = (CV_ILOC==1).OR.(CV_ILOC==3).OR.(CV_ILOC==6).OR.(CV_ILOC==10)
+            IS_CORNER_NOD_J = (CV_JLOC==1).OR.(CV_JLOC==3).OR.(CV_JLOC==6).OR.(CV_JLOC==10)
+            IF(IS_CORNER_NOD_J) XVEC(:)=-0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
+         ENDIF
+      endif
 
-         RUP_WIN=REAL(IUP_DOWN-1)*2.0 - 1.0 
+      DO IUP_DOWN=1,2 ! Consider both directions...
+
+         RUP_WIN=REAL(2.-IUP_DOWN)*2.0 - 1.0 
          XPT(:) = XPT_GI(:) + RUP_WIN*XVEC(:) 
-         IF(QUADRATIC_ELEMENT.AND.IS_CORNER_NOD_J) XPT(:) = XPT_GI(:) + XVEC(:) 
-         IF(BETWEEN_ELEMENTS) XPT(:) = XPT_GI(:) + XVEC(:) ! FOR DG...
+         IF(IUP_DOWN==2) THEN ! we might just consider the 2 neighbouring elements.
+            IF(  BETWEEN_ELEMENTS  & 
+            .OR. (QUADRATIC_ELEMENT.AND.(IS_CORNER_NOD_I.or.IS_CORNER_NOD_J)) ) THEN
+               ENO_ELE_NEI(IUP_DOWN)  = ELEWIC 
+               ENO_ELE_MATWEI(:,IUP_DOWN) = N(:,1)
+               CYCLE ! Jump out of IUP_DOWN loop
+            ENDIF
+         ENDIF
 
 ! Search for element this pt belongs to or nearest element excluding current element. 
          MINCORK=-INFINY
@@ -2941,7 +2990,7 @@ end if
                   LOCNODS(1)=X_NDGLN((ELE2-1)*CV_NLOC+1)
                   LOCNODS(2)=X_NDGLN((ELE2-1)*CV_NLOC+3)
                   LOCNODS(3)=X_NDGLN((ELE2-1)*CV_NLOC+6)
-                  IF (NDIM==3) THEN
+                  IF(NDIM==3) THEN
             !Two coordinates missing if 3D
                      LOCNODS(4)=X_NDGLN((ELE2-1)*CV_NLOC+10)
                   ENDIF
@@ -2975,7 +3024,7 @@ end if
                LOCNODS(1)=X_NDGLN((ELE2-1)*CV_NLOC+1)
                LOCNODS(2)=X_NDGLN((ELE2-1)*CV_NLOC+3)
                LOCNODS(3)=X_NDGLN((ELE2-1)*CV_NLOC+6)
-               IF (NDIM==3) THEN
+               IF(NDIM==3) THEN
             !Two coordinates missing if 3D
                   LOCNODS(4)=X_NDGLN((ELE2-1)*CV_NLOC+10)
                ENDIF
@@ -3009,37 +3058,26 @@ end if
 ! now calculate ENO values at the quadrature pt **********************************...
 ! now calculate ENO values at the quadrature pt **********************************...
 !
-            TGI_ELE(:)=0.0
             TGI_IN(:)=0.0
             TGI_OUT(:)=0.0
             ENO_ELE_NEI_IN =ENO_ELE_NEI(1)
             ENO_ELE_NEI_OUT=ENO_ELE_NEI(2)
-            IF(.not.integrate_other_side) THEN
-               IF(CV_NODI.GT.CV_NODJ) THEN
-                  ENO_ELE_MATWEI_IN(:) =ENO_ELE_MATWEI(:,2)
-                  ENO_ELE_MATWEI_OUT(:)=ENO_ELE_MATWEI(:,1)
-               ENDIF
-            ENDIF
+
+            ENO_ELE_MATWEI_IN(:) =ENO_ELE_MATWEI(:,1)
+            ENO_ELE_MATWEI_OUT(:)=ENO_ELE_MATWEI(:,2)
+
             do cv_kloc=1,cv_nloc
-               cv_nodk = CV_NDGLN((ELE-1)*CV_NLOC + cv_kloc) 
                cv_nodk_IN  = CV_NDGLN((ENO_ELE_NEI_IN -1)*CV_NLOC + cv_kloc) 
                cv_nodk_OUT = CV_NDGLN((ENO_ELE_NEI_OUT-1)*CV_NLOC + cv_kloc) 
 
-               TGI_ELE(1:NPHASE)=TGI_ELE(1:NPHASE) + SCVFEN(cv_Kloc,gi)*FEMT_ALL(:,cv_nodk)
                TGI_IN(1:NPHASE)=TGI_IN(1:NPHASE) + ENO_ELE_MATWEI_IN(CV_KLOC)*FEMT_ALL(:,cv_nodk_IN)
                TGI_OUT(1:NPHASE)=TGI_OUT(1:NPHASE) + ENO_ELE_MATWEI_OUT(CV_KLOC)*FEMT_ALL(:,cv_nodk_OUT)
 
-               TGI_ELE(1+NPHASE:2*NPHASE)=TGI_ELE(1+NPHASE:2*NPHASE) + SCVFEN(cv_Kloc,gi)*femTOLD_ALL(:,cv_nodk)
                TGI_IN(1+NPHASE:2*NPHASE)=TGI_IN(1+NPHASE:2*NPHASE) + ENO_ELE_MATWEI_IN(CV_KLOC)*femTOLD_ALL(:,cv_nodk_IN)
                TGI_OUT(1+NPHASE:2*NPHASE)=TGI_OUT(1+NPHASE:2*NPHASE) + ENO_ELE_MATWEI_OUT(CV_KLOC)*femTOLD_ALL(:,cv_nodk_OUT)
             end do
-
-            TUP(1:NPHASE)=INCOME(1:NPHASE)*T_ALL(1:NPHASE,CV_NODI) + (1.-INCOME(1:NPHASE))*T_ALL(1:NPHASE,CV_NODJ)
-            TUP(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)*TOLD_ALL(1:NPHASE,CV_NODI) + (1.-INCOMEOLD(1:NPHASE))*TOLD_ALL(1:NPHASE,CV_NODJ)
             
-            IF(DISTCONTINUOUS_METHOD.AND.(.NOT.BETWEEN_ELEMENTS).AND.FOR_DG_ONLY_BETWEEN_ELE) THEN ! Use fem INSIDE element for DG method...
-               TGI = TGI_ELE
-            ELSE IF(ENO_ALL_THREE) THEN ! Use all 3 to find TGI ENO value...
+            IF(ENO_ALL_THREE) THEN ! Use all 3 to find TGI ENO value...
                DO IPHASE2=1,NPHASE2
                   MIN_TGI=MIN(TGI_ELE(IPHASE2),TGI_IN(IPHASE2),TGI_OUT(IPHASE2))
                   MAX_TGI=MAX(TGI_ELE(IPHASE2),TGI_IN(IPHASE2),TGI_OUT(IPHASE2))
@@ -3070,22 +3108,10 @@ end if
                END DO
             ENDIF
 
-            IF(ENO_ONLY_WHERE_OSCILLATE) THEN
 ! Use ENO only where there is an oscillation as it can be a bit dissipative. 
-               IPT=1
-               DO I_OLD_NEW=1,2
-               DO IPHASE=1,NPHASE
-                  IF(IGOT_T_PACK(IPHASE,1)) THEN
-                     IPHASE2=IPHASE + (I_OLD_NEW-1)*NPHASE
-                     W=(TUP(IPHASE2)-LIMF(IPT))/TOLFUN(TUP(IPHASE2)-TGI_ELE(IPHASE2))
-                     W=MAX(0.0,MIN(1.0,W))
-! W=0.0(full upwind);  W=1.0(high order no limiting)
-                     TGI(IPHASE2) = (1.0-W)*TGI(IPHASE2) + W*TGI_ELE(IPHASE2)
-                     IPT=IPT+1
-                  ENDIF
-               END DO ! ENDOF DO IPHASE=1,NPHASE
-               END DO ! ENDOF DO I_OLD_NEW=1,2
-            ENDIF
+            TGI(:) = (1.0-W(:))*TGI(:) + W(:)*TGI_ELE(:)
+
+    ENDIF ! ENDOF IF(DISTCONTINUOUS_METHOD.AND.(.NOT.BETWEEN_ELEMENTS).AND.FOR_DG_ONLY_BETWEEN_ELE) THEN else
 
             IPT=1
             CALL PACK_LOC( LIMF(:), TGI( 1:NPHASE ),    NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,1) ) ! t
