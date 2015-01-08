@@ -407,19 +407,17 @@ contains
 
   !----------------------------------------------------------------------------------------------------------
 
-  subroutine calculate_phi( states, totele, vf, porosity )
+  subroutine calculate_phi( states, vf, porosity )
 
     implicit none
 
     type( state_type ), dimension( : ), intent( in ) :: states
-    integer, intent( in ) :: totele
     real, dimension( : ), intent( in ) :: vf
 
     real, dimension( : ), intent( inout ) :: porosity
     !Local variables
     real :: phi_rock
     type( scalar_field ), pointer :: phi_matrix
-    integer :: ele
 
     ewrite(3,*) "inside calculate_phi"
 
@@ -431,9 +429,7 @@ contains
     porosity = ( 1. - vf ) * phi_matrix % val + vf * phi_rock 
 
     ! bound...
-    do ele = 1, totele
-       porosity( ele ) = max( 0., min( 1., porosity( ele ) ) )
-    end do
+    porosity = max( 0., min( 1., porosity ) )
 
     ewrite(3,*) "leaving calculate_phi"
 
@@ -918,12 +914,14 @@ contains
     real, dimension( :, : ), intent( in ) :: du_s, u_s
 
     !Local variables
-    type( mesh_type ), pointer :: fl_mesh, u_mesh
-    type( scalar_field ), pointer :: solid, old_solid, f
+    type( mesh_type ), pointer :: p0_fl_mesh, fl_mesh, u_mesh
+    type( scalar_field ), pointer :: solid, old_solid, f !, d
     type( scalar_field ) :: field_fl_du, field_fl_dv, &
          &                  field_fl_us, field_fl_vs, &
          &                  field_ext_du, field_ext_dv, &
-         &                  field_ext_us, field_ext_vs, f2
+         &                  field_ext_us, field_ext_vs, f2, &
+         &                  field_fl_solid, field_ext_solid, &
+         &                  dummy
     type( vector_field ), pointer :: fl_positions, delta_u, solid_u
     type( state_type ) :: alg_ext, alg_fl
     integer :: stat, idim
@@ -942,6 +940,7 @@ contains
 
     path = "/tmp"
 
+    p0_fl_mesh => extract_mesh( packed_state, "P0DG" )
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
     fl_positions => extract_vector_field( packed_state, "Coordinate" )
 
@@ -969,6 +968,11 @@ contains
     field_fl_vs % option_path = path
     call insert( alg_fl, field_fl_vs, "SolidVelocity2" )
 
+    call allocate( field_fl_solid, fl_positions%mesh, "SolidConcentration" )
+    call zero( field_fl_solid )
+    field_fl_solid % option_path = path
+    call insert( alg_fl, field_fl_solid, "SolidConcentration" )
+
 
     ! solid volume state
     call insert( alg_ext, positions_v%mesh, "Mesh" )
@@ -990,18 +994,37 @@ contains
     field_ext_vs % val = u_s( 2, : )
     call insert( alg_ext, field_ext_vs, "SolidVelocity2" )
 
+    call allocate( field_ext_solid, positions_v%mesh, "SolidConcentration" )
+    field_ext_solid % val = 1.0
+    call insert( alg_ext, field_ext_solid, "SolidConcentration" )
+
+    ! interpolate
+    call allocate( dummy, p0_fl_mesh, "dummy" )
+    call interpolation_galerkin_femdem( alg_ext, alg_fl, field = dummy )
+
+
+    ! deal with SolidConcentration
     solid => extract_scalar_field( packed_state, "SolidConcentration" )
     old_solid => extract_scalar_field( packed_state, "OldSolidConcentration" )
 
     call set( old_solid, solid )
 
-    call zero( solid )
+    ! this is a P1 field
+    f => extract_scalar_field( alg_fl, "SolidConcentration" )
 
-    ! interpolate
-    call interpolation_galerkin_femdem( alg_ext, alg_fl, field = solid )
+    ! bound f
+    !call bound_volume_fraction( f % val )
 
-    ! bound volume fraction
-    call bound_volume_fraction( solid % val )
+    ! get the P2 field
+    call linear2quadratic_field( f, solid )
+
+
+    !d => extract_scalar_field( packed_state, "Dummy" )
+    !call project_field( dummy, d, fl_positions )
+    !call bound_volume_fraction( d % val )
+    !d % val = dummy % val
+
+
 
     u_mesh => extract_mesh( packed_state, "VelocityMesh" )
     call allocate( f2, u_mesh, "dummy" )
@@ -1028,11 +1051,13 @@ contains
     call deallocate( field_fl_dv )
     call deallocate( field_fl_us )
     call deallocate( field_fl_vs )
-    
+    call deallocate( field_fl_solid )
+
     call deallocate( field_ext_du )
     call deallocate( field_ext_dv )
     call deallocate( field_ext_us )
     call deallocate( field_ext_vs )
+    call deallocate( field_ext_solid )
 
     call deallocate( alg_fl )
     call deallocate( alg_ext )
@@ -1146,15 +1171,15 @@ contains
 
     f_x => extract_vector_field( packed_state, "f_x" )
     do idim = 1, ndim
-       f => extract_scalar_field( alg_fl, "f" // int2str( idim ) )       
-       call linear2quadratic_field(f, f2)       
+       f => extract_scalar_field( alg_fl, "f" // int2str( idim ) )
+       call linear2quadratic_field(f, f2)
        f_x % val( idim, : ) = f2 % val
     end do
 
     a_xx => extract_tensor_field( packed_state, "a_xx" )
     do idim = 1, ndim
-       f => extract_scalar_field( alg_fl, "a1" // int2str( idim ) )         
-       call linear2quadratic_field(f, f2)       
+       f => extract_scalar_field( alg_fl, "a1" // int2str( idim ) )
+       call linear2quadratic_field(f, f2)
        a_xx % val( 1, idim, : ) = f2 % val
     end do
     f => extract_scalar_field( alg_fl, "a22" )
@@ -1528,15 +1553,12 @@ contains
     real, dimension( : ), intent( inout ) :: v
     real, intent( in ), optional :: v_min, v_max
     real :: vmin, vmax
-    integer :: i
 
     vmin = 0. ; vmax = 1.
     if ( present( v_min ) ) vmin = v_min
     if ( present( v_max ) ) vmax = v_max
 
-    do i = 1, size( v )
-       v( i ) = max( vmin, min( vmax, v( i ) ) )
-    end do
+    v = max( vmin, min( vmax, v ) )
 
     return
   end subroutine bound_volume_fraction
@@ -1599,25 +1621,20 @@ contains
   end function triangle_area
 
 
-!from p1 to p
     subroutine linear2quadratic_field( field_in, field_out )
         implicit none
         type( scalar_field ), intent( in ) :: field_in
         type( scalar_field ), intent( inout ) :: field_out
-        
 
         integer, dimension( : ), pointer :: p1_ndglno, p2_ndglno,  p1_nods
-        integer :: n1, n2,  totele, p1_nloc, p2_nloc, p1_nonods, p2_nonods, ele, p2_iloc, p2_nod
+        integer :: n1, n2,  totele, p1_nloc, p2_nloc, ele, p2_iloc, p2_nod
         real, dimension( : ), allocatable :: field_p1_loc, field_p2_loc
-
-        ! This sub will linearise a p2 field
-
 
 
         n1 = field_in%mesh%shape%degree
         n2 = field_out%mesh%shape%degree
 
-        if ( n1==1 .AND. n2==2) then
+        if ( n1==1 .and. n2==2) then
 
             p1_ndglno => get_ndglno( field_in%mesh )
             p2_ndglno => get_ndglno( field_out%mesh )
@@ -1626,8 +1643,8 @@ contains
             p1_nloc = field_in%mesh%shape%loc
             p2_nloc = field_out%mesh%shape%loc
 
-            allocate( field_p1_loc( p1_nloc) ) 
-            allocate( field_p2_loc( p2_nloc ) ) 
+            allocate( field_p1_loc( p1_nloc ) )
+            allocate( field_p2_loc( p2_nloc ) )
 
             do ele = 1, totele
 
@@ -1635,19 +1652,19 @@ contains
                 field_p1_loc =  field_in % val( p1_nods )
 
 
-                field_p2_loc(  1 ) =field_p1_loc(  1 ) !!!nedit 
-                field_p2_loc( 3 ) =field_p1_loc(  2 ) 
-                field_p2_loc(  6 ) =field_p1_loc(  3 ) 
+                field_p2_loc( 1 ) =field_p1_loc( 1 )
+                field_p2_loc( 3 ) =field_p1_loc( 2 )
+                field_p2_loc( 6 ) =field_p1_loc( 3 )
 
-                field_p2_loc(  2 ) = 0.5 * ( field_p1_loc(  1 ) + field_p1_loc( 2) )
-                field_p2_loc(  4 ) = 0.5 * ( field_p1_loc(  1 ) + field_p1_loc(  3 ) )
-                field_p2_loc(  5 ) = 0.5 * ( field_p1_loc( 2) + field_p1_loc(  3 ) )
+                field_p2_loc( 2 ) = 0.5 * ( field_p1_loc( 1 ) + field_p1_loc( 2 ) )
+                field_p2_loc( 4 ) = 0.5 * ( field_p1_loc( 1 ) + field_p1_loc( 3 ) )
+                field_p2_loc( 5 ) = 0.5 * ( field_p1_loc( 2 ) + field_p1_loc( 3 ) )
 
                 if ( p2_nloc == 10 ) then
-                    field_p2_loc(  7 ) = 0.5 * ( field_p1_loc(  1 ) + field_p1_loc(  4 ) )
-                    field_p2_loc(  8 ) = 0.5 * ( field_p1_loc(  2 ) + field_p1_loc(  4 ) )
-                    field_p2_loc(  9 ) = 0.5 * ( field_p1_loc(  3 ) + field_p1_loc(  4 ) )
-                    field_p2_loc(  10 ) =field_p1_loc(  4 ) 
+                    field_p2_loc( 7 ) = 0.5 * ( field_p1_loc(  1 ) + field_p1_loc(  4 ) )
+                    field_p2_loc( 8 ) = 0.5 * ( field_p1_loc(  2 ) + field_p1_loc(  4 ) )
+                    field_p2_loc( 9 ) = 0.5 * ( field_p1_loc(  3 ) + field_p1_loc(  4 ) )
+                    field_p2_loc( 10 ) = field_p1_loc(  4 )
                 end if
 
                 do p2_iloc = 1, p2_nloc
