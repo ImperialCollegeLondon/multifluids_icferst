@@ -53,7 +53,8 @@ module simple_diagnostics
   public :: calculate_temporalmax, calculate_temporalmin, calculate_l2norm, &
             calculate_time_averaged_scalar, calculate_time_averaged_vector, &
             calculate_time_averaged_scalar_squared, calculate_time_averaged_vector_squared, &
-            calculate_time_averaged_vector_times_scalar
+            calculate_time_averaged_vector_times_scalar, &
+            calculate_scalar_gaussian
 
 contains
   subroutine calculate_temporalmax(state, s_field)
@@ -388,5 +389,22 @@ contains
       call set(t_field, read_field)
     end if
   end subroutine initialise_diagnostic_tensor_from_checkpoint
+
+  subroutine calculate_scalar_gaussian(state, s_field)
+    type(state_type), intent(in) :: state
+    type(scalar_field), intent(inout) :: s_field
+    type(scalar_field), pointer :: source_field
+
+    real :: s0,lambda
+
+    source_field => scalar_source_field(state, s_field)
+
+    call get_option(trim(s_field%option_path)//"/diagnostic/algorithm/centre",s0)
+    call get_option(trim(s_field%option_path)//"/diagnostic/algorithm/scale",lambda)
+    
+    s_field%val=exp(-lambda**2*(source_field%val-s0)**2)
+
+  end subroutine calculate_scalar_gaussian
+
 
  end module simple_diagnostics

@@ -26,7 +26,7 @@ by the PETSc library. Many more methods are provided.
       <ref name="pcilu_options"/>
       <ref name="pclu_options"/>
       <ref name="pcmg_options"/>
-      <ref name="pcprometheus_options"/>
+      <ref name="pcgamg_options"/>
       <ref name="pchypre_options"/>
       <ref name="pcbjacobi_options"/>
       <ref name="pcpbjacobi_options"/>
@@ -55,7 +55,7 @@ by the PETSc library. Many more methods are provided.
       <ref name="pcicc_options"/>
       <ref name="pclu_options"/>
       <ref name="pcmg_options"/>
-      <ref name="pcprometheus_options"/>
+      <ref name="pcgamg_options"/>
       <ref name="pchypre_options"/>
       <ref name="pcbjacobi_options"/>
       <ref name="pcpbjacobi_options"/>
@@ -308,7 +308,7 @@ than with bjacobi.</a:documentation>
       <ref name="pcicc_options"/>
       <ref name="pclu_options"/>
       <ref name="pcmg_options"/>
-      <ref name="pcprometheus_options"/>
+      <ref name="pcgamg_options"/>
       <ref name="pchypre_options"/>
       <ref name="pcother_options"/>
     </choice>
@@ -368,13 +368,25 @@ by the PETSc library. Many more methods are provided.
       <ref name="pclu_options"/>
       <ref name="pcicc_options"/>
       <ref name="pcmg_options"/>
-      <ref name="pcprometheus_options"/>
+      <ref name="pcgamg_options"/>
       <ref name="pchypre_options"/>
       <ref name="pcbjacobi_options"/>
       <ref name="pcasm_options"/>
       <ref name="pcother_options"/>
     </choice>
     <ref name="generic_solver_options"/>
+  </define>
+  <define name="pcgamg_options">
+    <element name="preconditioner">
+      <a:documentation>GAMG preconditioner.
+For vector solves, this preconditioner should be used in conjunction
+with the multigrid_near_null_space option to improve convergence. The
+near null-space option is not applicable for scalar solves.
+Requires a PETSC version &gt;= 3.3</a:documentation>
+      <attribute name="name">
+        <value>gamg</value>
+      </attribute>
+    </element>
   </define>
   <!--
     ####################################################################
