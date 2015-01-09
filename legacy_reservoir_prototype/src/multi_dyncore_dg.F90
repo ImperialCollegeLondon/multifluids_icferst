@@ -605,7 +605,6 @@ contains
          vtracer=as_vector(tracer,dim=2)
          call zero(vtracer)
          call zero_non_owned(cv_rhs_field)
-
          call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
          satura(:,:)=tracer%val(1,:,:)
@@ -1050,9 +1049,8 @@ contains
 
 !            call halo_update(cdp_tensor)
 
-
             IF ( JUST_BL_DIAG_MAT .OR. NO_MATRIX_STORE ) THEN
-
+                !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
                 U_RHS_CDP2 = U_RHS + CDP_tensor%val
 
                 ! DU = BLOCK_MAT * CDP
@@ -1073,9 +1071,7 @@ contains
                 call zero(velocity)
                 packed_vel=as_packed_vector(velocity)
 
-
                 call petsc_solve( packed_vel, mat, RHS )
-
 #ifndef USING_GFORTRAN
                 velocity%val(:,:,:)=reshape(packed_vel%val,[size(velocity%val,1),size(velocity%val,2),size(velocity%val,3)])
 #endif
