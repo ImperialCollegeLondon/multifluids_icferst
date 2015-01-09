@@ -1770,11 +1770,6 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
     
     call get_option(trim(option_path)//'/name', pctype)
 
-!#if PETSC_VERSION_MINOR>=3
-!    !Temporary hack to get GAMG working by introducing the name manually in diamond
-!    call get_option(trim(option_path)//'/name', pcname)
-!    if (trim(pcname)=='gamg') pctype = PCGAMG
-!#endif
     if (pctype==PCMG) then
       call SetupMultigrid(pc, pmat, ierr, &
             external_prolongators=prolongators, &
@@ -1877,6 +1872,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
 
        ! this doesn't work for hypre
        call PCSetType(pc, pctype, ierr)
+
        ! set options that may have been supplied via the
        ! PETSC_OPTIONS env. variable for the preconditioner
        call PCSetFromOptions(pc, ierr)
@@ -1888,11 +1884,27 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
           call PCFactorSetMatSolverPackage(pc, matsolverpackage, ierr)
        end if
 
+
 #if PETSC_VERSION_MINOR>=3
       if (pctype==PCGAMG) then
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
         call PCGAMGSetThreshold(pc, 0.01, ierr)
+        !Improves the efficiency of the solver
+        call PCGAMGSetUseASMAggs(pc, .true., ierr)!Use aggregation agragates for GASM smoother. By default is false
+
+        !More options we can tweak, consider adding them into diamond
+        !Number of smoothing steps
+!        call PCGAMGSetNSmooths(pc, 1, ierr)!Number of smoothing steps, 1 is default
+
+!        call PCGAMGSetReuseProl(pc, .false., ierr)!Reuse prolongation
+
+!        call PCGAMGSetSquareGraph(pc, .true., ierr)!For faster coarsening and lower coarse grid complexity
+!        call PCGAMGSetSymGraph(pc, .true., ierr)!For unsymmetric matrices
+
+!        call PCGAMGSetType(pc, PCGAMGAGG, ierr)!Types: PCGAMGAGG(plain aggregation, default), PCGAMGGEO (geometric aggregation)
+
+
       end if
 #endif
       
