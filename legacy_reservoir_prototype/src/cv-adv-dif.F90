@@ -68,7 +68,8 @@ module cv_advection
        WIC_U_BC_ROBIN = 2, &
        WIC_U_BC_DIRI_ADV_AND_ROBIN = 3, &
        WIC_U_BC_DIRICHLET_INOUT = 2, &
-       WIC_P_BC_DIRICHLET = 1
+       WIC_P_BC_DIRICHLET = 1, &
+       WIC_P_BC_FREE = 1
 
   interface my_size
      module procedure my_size_integer, my_size_real
