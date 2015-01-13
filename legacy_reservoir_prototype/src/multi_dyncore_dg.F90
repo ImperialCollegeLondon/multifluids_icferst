@@ -172,7 +172,7 @@ contains
     character( len = option_path_len ) :: path
     type(vector_field) :: cv_rhs_field
     type(scalar_field) :: ct_rhs
-    type( tensor_field ), pointer :: den_all2, denold_all2
+    type( tensor_field ), pointer :: den_all2, denold_all2, a, aold
     integer :: lcomp, Field_selector
 
     type(petsc_csr_matrix) :: petsc_acv
@@ -186,20 +186,29 @@ contains
     end if
 
     call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
-    
     sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-    call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
+    call allocate(petsc_acv,sparsity,[nphase,nphase],"ACV",.false.,.false.)
+    call zero(petsc_acv)
+
 
     allocate( den_all( nphase, cv_nonods ), denold_all( nphase, cv_nonods ) )
-
     allocate(Ct(0,0,0),DIAG_SCALE_PRES(0))
 
         if ( thermal ) then
            p => extract_scalar_field( packed_state, "CVPressure" )
            den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
            denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
-           den_all    = den_all2    % val ( 1, :, : )
+           den_all    = den_all2 % val ( 1, :, : )
            denold_all = denold_all2 % val ( 1, :, : )
+
+           if ( .false. ) then ! don't the divide int. energy equation by the volume fraction
+              a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+              den_all = den_all * a%val(1,:,:)
+
+              aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
+              denold_all = denold_all * a%val(1,:,:)
+           end if
+
         else if ( lcomp > 0 ) then
            p => extract_scalar_field( packed_state, "FEPressure" )
            den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
@@ -317,7 +326,6 @@ contains
                    call zero(vtracer)
 
                    call petsc_solve(vtracer,petsc_acv,cv_rhs_field,'/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic')
-
                 ELSE
                    vtracer=as_vector(tracer,dim=2)
                    call zero_non_owned(cv_rhs_field)
@@ -325,7 +333,10 @@ contains
 
                    call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
-
+                   do iphase = 1, nphase
+                      ewrite(2,*) 'T phase min_max:', iphase, &
+                         minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
+                   end do
                 END IF
 
              END IF Conditional_Lumping
@@ -490,10 +501,8 @@ contains
       LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
       real, dimension(:), allocatable :: X
       type( tensor_field ), pointer :: den_all2, denold_all2
-      !type( scalar_field ), pointer :: p
       !Working pointers
       real, dimension(:), pointer :: p
-      real, dimension(:,:), pointer :: satura,saturaold
       type(tensor_field), pointer :: tracer, velocity, density
 
       type(petsc_csr_matrix) :: petsc_acv
@@ -507,8 +516,7 @@ contains
       integer :: Phase_with_Pc
 
       !Extract variables from packed_state
-      call get_var_from_packed_state(packed_state,FEPressure = P,&
-           PhaseVolumeFraction = satura,OldPhaseVolumeFraction = saturaold)
+      call get_var_from_packed_state(packed_state,FEPressure = P)
 
       !Get information for capillary pressure to be use in CV_ASSEMB
       call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes)
@@ -557,8 +565,6 @@ contains
       ALLOCATE( THERM_U_DIFFUSION(NDIM,NDIM,NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
       ALLOCATE( THERM_U_DIFFUSION_VOL(NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
 
-!         p => extract_scalar_field( packed_state, "FEPressure" )
-
       tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
       velocity=>extract_tensor_field(packed_state,"PackedVelocity")
       density=>extract_tensor_field(packed_state,"PackedDensity")
@@ -566,6 +572,7 @@ contains
       call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
 
       call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
+
 
       Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, 1 !nits_flux_lim
 
@@ -607,15 +614,11 @@ contains
          call zero_non_owned(cv_rhs_field)
          call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
-         satura(:,:)=tracer%val(1,:,:)
       END DO Loop_NonLinearFlux
 
       !Set saturation to be between bounds
       call Set_Saturation_between_bounds(packed_state)
-      !        satura = min(max(satura,0.0), 1.0)
-
-
-
+      !satura = min(max(satura,0.0), 1.0)
 
 
       DEALLOCATE( mass_mn_pres )
@@ -1181,6 +1184,9 @@ contains
 
             call deallocate(rhs_p)
             call deallocate(cmc_petsc)  
+
+            ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
+
              
 !!         ####This solver is not yet parallel safe! #### 
 !!                  CALL PRES_DG_MULTIGRID(CMC, CMC_PRECON, IGOT_CMC_PRECON, DP, P_RHS, &
@@ -1203,7 +1209,7 @@ contains
 
             call deallocate(deltaP)
             call halo_update(cdp_tensor)
-            
+
 
             ! Correct velocity...
             ! DU = BLOCK_MAT * CDP
@@ -2472,11 +2478,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 ! VIRTUAL_MASS_ADV_CUR DEFINES THE VELOCITY IN THE TOTAL DERIVATIVE = 1 and use the velocity that 
 ! one is advecting, else =0 use the velocity of the current phase. 
            ALLOCATE( VIRTUAL_MASS( NPHASE, NPHASE, CV_NONODS), VIRTUAL_MASS_OLD( NPHASE, NPHASE, CV_NONODS), VIRTUAL_MASS_ADV_CUR( NPHASE, NPHASE) )
-!           VIRTUAL_MASS=0.0
-!           VIRTUAL_MASS(2,1,:) = -UDEN(1,:)*0.5
-!           VIRTUAL_MASS(2,2,:) =  UDEN(1,:)*0.5
-!           VIRTUAL_MASS_OLD=VIRTUAL_MASS
-!           VIRTUAL_MASS_ADV_CUR=1.0
+           VIRTUAL_MASS=0.0
+           VIRTUAL_MASS(2,1,:) = -UDEN(1,:)*0.5
+           VIRTUAL_MASS(2,2,:) =  UDEN(1,:)*0.5
+           VIRTUAL_MASS_OLD=VIRTUAL_MASS
+           VIRTUAL_MASS_ADV_CUR=1.0
 ! For the time being VIRTUAL_MASS & VIRTUAL_MASS_OLD can be the same. 
 
            ALLOCATE( LOC_VIRTUAL_MASS( NPHASE, NPHASE, MAT_NLOC), LOC_VIRTUAL_MASS_OLD( NPHASE, NPHASE, MAT_NLOC) )
@@ -5506,7 +5512,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !  ewrite(3,*)'i,c:',i,c(i)
         !end do
         !ewrite(3,*)'U_RHS:',u_rhs
-        !ewrite(3,*)'PIVIT_MAT:', PIVIT_MAT
+        !ewrite(3,*)'*****PIVIT_MAT:', minval(PIVIT_MAT),maxval(PIVIT_MAT)
         !ewrite(3,*)'JUST_BL_DIAG_MAT:',JUST_BL_DIAG_MAT
         !stop 27
 

@@ -903,10 +903,13 @@ contains
       ALLOCATE( FEMT2_ALL( NPHASE, CV_NONODS ), FEMT2OLD_ALL( NPHASE, CV_NONODS ) )
 
       ALLOCATE( SOURCT_ALL( NPHASE, CV_NONODS ) )
-      DO IPHASE = 1, NPHASE
-         tracer_source=>extract_tensor_field(packed_state,trim(tracer%name)//"Source")
-         SOURCT_ALL = tracer_source%val(1,:,:)
-      END DO
+      !DO IPHASE = 1, NPHASE
+      !   tracer_source=>extract_tensor_field(packed_state,trim(tracer%name)//"Source")
+      !   SOURCT_ALL = tracer_source%val(1,:,:)
+      !END DO
+
+      SOURCT_ALL = SOURCT
+
 
       IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
                                        PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )

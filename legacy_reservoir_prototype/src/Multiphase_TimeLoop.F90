@@ -183,7 +183,7 @@
       real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
 !!$
       real, dimension( :, : ), pointer :: Temperature_Source, &
-           ScalarField_Source_Store, ScalarField_Source_Component, Component_Source
+           ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, Component_Source
       real, dimension( :, :, : ), pointer :: Velocity_U_Source, Velocity_U_Source_CV
       real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
@@ -457,12 +457,13 @@
            sum_one_m_theta_flux( nphase, ncv_faces * igot_theta_flux ), &
            sum_theta_flux_j( nphase, ncv_faces * igot_theta_flux ), &
            sum_one_m_theta_flux_j( nphase, ncv_faces * igot_theta_flux ), &
-           theta_gdiff( nphase, cv_nonods ), ScalarField_Source_Store( nphase, cv_nonods ), &
+           theta_gdiff( nphase, cv_nonods ), ScalarField_Source( nphase, cv_nonods ), &
+           ScalarField_Source_Store( nphase, cv_nonods ), &
            ScalarField_Source_Component( nphase, cv_nonods ) )
 
       sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.
       sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
-      ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
+      ScalarField_Source=0. ; ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
 
 !!$ Defining discretisation options
       call Get_Discretisation_Options( state, &
@@ -602,6 +603,10 @@
             !To force the recalculation of all the stored variables uncomment the following line:
 !           call Clean_Storage(state, StorageIndexes)
 
+            !call set_nu_to_u( packed_state )
+            !call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
+            !   ScalarField_Source, velocity_absorption, temperature_source, temperature_absorption )
+
 
             if( have_temperature_field .and. &
                  have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
@@ -637,17 +642,17 @@
                end if
             end if
 !!$ Solve advection of the scalar 'Temperature':
+
+
+
             Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
                  have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
                ewrite(3,*)'Now advecting Temperature Field'
 
-
                call set_nu_to_u( packed_state )
-
 
                call calculate_diffusivity( state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
                     mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
-
 
                tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -690,7 +695,7 @@
 
             end if Conditional_ScalarAdvectionField
 
-            ScalarField_Source_Store = ScalarField_Source_Component
+            ScalarField_Source_Store = ScalarField_Source + ScalarField_Source_Component
             tracer_source => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource")
 
             volfra_use_theta_flux = .true.
@@ -994,9 +999,8 @@
 
                if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // & 
                     ']/is_multiphase_component/Comp_Sum2One' ) .and. ( ncomp > 1 ) ) then
-                  call Cal_Comp_Sum2One_Sou( packed_state, ScalarField_Source_Component, cv_nonods, nphase, ncomp, dt, its, &
-                       NonLinearIteration, &
-                       Mean_Pore_CV )
+                  call Cal_Comp_Sum2One_Sou( packed_state, cv_nonods, nphase, ncomp, dt, its, &
+                       NonLinearIteration, Mean_Pore_CV )
                end if
 
 
@@ -1193,7 +1197,7 @@
                  Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
                  Component_Source, &
                  suf_sig_diagten_bc, &
-                 theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
+                 theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
                  mass_ele, &
                  Material_Absorption, Material_Absorption_Stab, &
                  Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
@@ -1353,12 +1357,13 @@
                  sum_one_m_theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                  sum_theta_flux_j( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                  sum_one_m_theta_flux_j( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
-                 theta_gdiff( nphase, cv_nonods ), ScalarField_Source_Store( nphase, cv_nonods ), &
+                 theta_gdiff( nphase, cv_nonods ), ScalarField_Source( nphase, cv_nonods ), &
+                 ScalarField_Source_Store( nphase, cv_nonods ), &
                  ScalarField_Source_Component( nphase, cv_nonods ) )
 
             sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.  
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.  
-            ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
+            ScalarField_Source=0. ; ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
 
             allocate( Component_Diffusion_Operator_Coefficient( ncomp, ncomp_diff_coef, nphase ) )  
             allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
@@ -1419,7 +1424,7 @@
            DRhoDPressure, FEM_VOL_FRAC, &
            Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
            Component_Source, &
-           theta_gdiff,  ScalarField_Source_Store, ScalarField_Source_Component, &
+           theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
            mass_ele,&
            Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
@@ -1490,7 +1495,6 @@
         call insert(packed_state,sparsity,'CMCSparsity')
         call deallocate(sparsity)
 
-
         if (associated( sfield%mesh%halos)) then
            sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity",&
                 row_halo=sfield%mesh%halos(2),&
@@ -1500,6 +1504,7 @@
         end if
         call insert(packed_state,sparsity,"ACVSparsity")
         call deallocate(sparsity)
+
 
         tfield=>extract_tensor_field(packed_state,"PackedVelocity")
         if (associated(tfield%mesh%halos)) then

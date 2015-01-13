@@ -2484,7 +2484,7 @@
         real :: top_limit
         real, dimension(:,:), pointer :: satura
         real, dimension(:), allocatable :: immobile_fractions
-        real, parameter :: tolerance = 5d-3
+        real, parameter :: tolerance = 0.0
 
         call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
 
@@ -2509,5 +2509,586 @@
         end do
         deallocate(immobile_fractions)
     end subroutine Set_Saturation_between_bounds
+
+
+
+
+    subroutine boiling( states, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
+         ScalarField_Source, velocity_absorption, temperature_source, temperature_absorption )
+      implicit none
+
+         type( state_type ), dimension(:), intent( inout ) :: states
+         type( state_type ), intent( in ) :: packed_state
+      integer, intent( in ) :: cv_nonods, mat_nonods, nphase, ndim
+      real, dimension( :, : ), intent( inout ) :: ScalarField_Source, temperature_source
+      real, dimension( :, :, : ), intent( inout ) :: velocity_absorption, temperature_absorption
+
+      type( tensor_field ), pointer :: temperature
+      real, dimension( :, : ), allocatable :: A
+      real, dimension( : ), allocatable :: S_lg_l, S_lg_g, S_ls_l, S_gs_g, &
+           T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, &
+           St_gl, St_sl, St_sg
+      integer :: iphase, jphase, idim
+      real, parameter :: Le0=2375.7e3, Cp_l = 4200.0, Cp_g = 1996.0
+
+      ewrite(3,*) 'inside boiling routine'
+
+      ScalarField_Source=0.0 ; temperature_source=0.0
+      velocity_absorption=0.0 ; temperature_absorption=0.0
+
+      allocate( S_lg_l(mat_nonods), S_lg_g(mat_nonods), S_ls_l(mat_nonods), S_gs_g(mat_nonods), A(nphase,mat_nonods) )
+      allocate( T_sat(cv_nonods), Svap_l(cv_nonods), Svap_g(cv_nonods), &
+           &    Gamma_l(cv_nonods), Gamma_g(cv_nonods), h_l(cv_nonods), h_g(cv_nonods), &
+           &    St_gl(cv_nonods), St_sl(cv_nonods), St_sg(cv_nonods) )
+
+
+      call calculate_boiling_drag( states, packed_state, S_lg_l, S_lg_g, S_ls_l, S_gs_g, A )
+
+      ! Momentum absorption
+
+      iphase=1 ; jphase=1
+      do idim = 1, ndim
+         velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = S_lg_l + S_ls_l
+      end do
+      iphase=1 ; jphase=2
+      do idim = 1, ndim
+         velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_lg_l
+      end do
+      iphase=1 ; jphase=3
+      do idim = 1, ndim
+         velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_ls_l
+      end do
+
+      iphase=2 ; jphase=1
+      do idim = 1, ndim
+         velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_lg_g
+      end do
+      iphase=2 ; jphase=2
+      do idim = 1, ndim
+         velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = S_lg_g + S_gs_g
+      end do
+      iphase=2 ; jphase=3
+      do idim = 1, ndim
+         velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_gs_g
+      end do
+
+      iphase=3 ; jphase=1
+      do idim = 1, ndim
+         velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = 0.0
+      end do
+      iphase=3 ; jphase=2
+      do idim = 1, ndim
+         velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = 0.0
+      end do
+      iphase=3 ; jphase=3
+      do idim = 1, ndim
+         velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = 1.0e+15
+      end do
+
+
+      call calculate_boiling_variables( states, packed_state, ndim, nphase, T_sat, Svap_l, Svap_g, &
+           Gamma_l, Gamma_g, h_l, h_g, St_gl, St_sl, St_sg )
+
+      temperature => extract_tensor_field( packed_state, "PackedTemperature" )
+
+      ! Temperature absorption
+
+      iphase=1 ; jphase=1
+      temperature_absorption( iphase, jphase, : ) =  St_gl + St_sl + Svap_l + Cp_l*Gamma_l
+      iphase=1 ; jphase=2
+      temperature_absorption( iphase, jphase, : ) = -St_gl
+      iphase=1 ; jphase=3
+      temperature_absorption( iphase, jphase, : ) = -St_sl
+
+      iphase=2 ; jphase=1
+      temperature_absorption( iphase, jphase, : ) = -St_gl
+      iphase=2 ; jphase=2
+      temperature_absorption( iphase, jphase, : ) =  St_gl + St_sg + Svap_g + Cp_g*Gamma_g + 1.0e+6
+      iphase=2 ; jphase=3
+      temperature_absorption( iphase, jphase, : ) = -St_sg
+
+      iphase=3 ; jphase=1
+      temperature_absorption( iphase, jphase, : ) = -St_sl
+      iphase=3 ; jphase=2
+      temperature_absorption( iphase, jphase, : ) = -St_sg
+      iphase=3 ; jphase=3
+      temperature_absorption( iphase, jphase, : ) =  St_sl + St_sg
+
+
+      ! Temperature source
+
+      iphase=1
+      temperature_source( iphase, : ) = Svap_l*T_sat + Gamma_l*h_l + Gamma_l*Le0
+
+      iphase=2
+      temperature_source( iphase, : ) = Svap_g*T_sat + Gamma_g*h_g + 1.0e+6 * temperature%val(1,2,:)
+
+
+      ! Mass source
+
+      iphase=1
+      ScalarField_Source( iphase, : ) = Gamma_l
+
+      iphase=2
+      ScalarField_Source( iphase, : ) = Gamma_g
+
+
+      ! deallocate
+      deallocate( S_lg_l, S_lg_g, S_ls_l, S_gs_g, A )
+      deallocate( T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, St_gl, St_sl, St_sg )
+
+      ewrite(3,*) 'leaving boiling routine'
+
+      return
+    end subroutine boiling
+
+
+
+
+    subroutine calculate_boiling_drag( states, packed_state, S_lg_l, S_lg_g, S_ls_l, S_gs_g, A )
+      implicit none
+
+      type( state_type ), dimension( : ), intent( inout ) :: states
+      type( state_type ), intent( in ) :: packed_state
+      real, dimension( : ), intent( inout ) :: S_lg_l, S_lg_g, S_ls_l, S_gs_g
+      real, dimension( :, : ), intent( inout ) :: A
+
+      type( scalar_field ), pointer :: pressure, dummy
+      type( tensor_field ), pointer :: density, velocity, volume_fraction
+
+      integer, dimension( : ), pointer :: mat_ndgln, cv_ndgln, u_ndgln
+
+      real :: rho_l, rho_g, u_l, u_g, u_s, u_gs, u_ls, u_gl, a_l, a_g, a_s, &
+           a_sg, a_gs, a_sl, a_ls, a_lg, a_gl, d_b, Re_gl, Re_lg, CD
+
+      real, dimension( : ), allocatable :: ul, ug, us
+
+      integer :: ele, totele, mat_iloc, mat_nloc, u_nloc, mat_inod, cv_inod, &
+           u_inod, u_inod1, u_inod2, ndim, stat
+
+      real, parameter :: &
+           mu_l = 3.0e-4, mu_g = 1.0e-5, &
+           d_p = 0.005
+
+      pressure => extract_scalar_field( packed_state, "CVPressure" )
+      density => extract_tensor_field( packed_state, "PackedDensity" )
+      velocity => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
+
+      volume_fraction => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+
+      mat_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh_Discontinuous" ) )
+      cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
+      u_ndgln => get_ndglno( extract_mesh( packed_state, "VelocityMesh" ) )
+
+      totele = ele_count( pressure )
+      mat_nloc = ele_loc( pressure, 1 )
+      u_nloc = ele_loc( velocity, 1 )
+      ndim = size(velocity%val,1)
+
+      S_lg_l=0.0 ; S_lg_g=0.0 ; S_ls_l=0.0 ; S_gs_g=0.0 ; A=0.0
+
+      allocate( ul(ndim), ug(ndim), us(ndim) ) ; ul=0.0 ; ug=0.0 ; us=0.0
+
+      do ele = 1, totele
+
+         do mat_iloc = 1, mat_nloc
+
+            mat_inod = mat_ndgln( ( ele - 1 ) * mat_nloc + mat_iloc )
+            cv_inod = cv_ndgln( ( ele - 1 ) * mat_nloc + mat_iloc )
+
+            rho_l = density%val(1,1,cv_inod) ; rho_g = density%val(1,2,cv_inod)
+
+            if ( mat_iloc==1  ) then
+               u_inod = u_ndgln( ( ele - 1 ) * u_nloc + 1 )
+               ul = velocity%val(:,1,u_inod) ; ug = velocity%val(:,2,u_inod) ; us = velocity%val(:,3,u_inod)
+            end if
+            if ( mat_iloc==3 ) then
+               u_inod = u_ndgln( ( ele - 1 ) * u_nloc + 2 )
+               ul = velocity%val(:,1,u_inod) ; ug = velocity%val(:,2,u_inod) ; us = velocity%val(:,3,u_inod)
+            end if
+            if ( mat_iloc==6 ) then
+               u_inod = u_ndgln( ( ele - 1 ) * u_nloc + 3 )
+               ul = velocity%val(:,1,u_inod) ; ug = velocity%val(:,2,u_inod) ; us = velocity%val(:,3,u_inod)
+            end if
+            if ( mat_iloc==10 ) then
+               u_inod = u_ndgln( ( ele - 1 ) * u_nloc + 4 )
+               ul = velocity%val(:,1,u_inod) ; ug = velocity%val(:,2,u_inod) ; us = velocity%val(:,3,u_inod)
+            end if
+            u_inod1=-666 ; u_inod2=-666
+            if ( mat_iloc==2 ) then
+               u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 1 )
+               u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 2 )
+            end if
+            if ( mat_iloc==4 ) then
+               u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 1 )
+               u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 3 )
+            end if
+            if ( mat_iloc==5 ) then
+               u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 2 )
+               u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 3 )
+            end if
+            if ( mat_iloc==7 ) then
+               u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 1 )
+               u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 4 )
+            end if
+            if ( mat_iloc==8 ) then
+               u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 2 )
+               u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 4 )
+            end if
+            if ( mat_iloc==9 ) then
+               u_inod1 = u_ndgln( ( ele - 1 ) * u_nloc + 3 )
+               u_inod2 = u_ndgln( ( ele - 1 ) * u_nloc + 4 )
+            end if
+            if ( u_inod1>0 ) then
+               ul = (velocity%val(:,1,u_inod1)+velocity%val(:,1,u_inod2))/2.0
+               ug = (velocity%val(:,2,u_inod1)+velocity%val(:,2,u_inod2))/2.0
+               us = (velocity%val(:,3,u_inod1)+velocity%val(:,3,u_inod2))/2.0
+            end if
+
+            u_l = sqrt( sum( ul**2 ) )
+            u_g = sqrt( sum( ug**2 ) )
+            u_s = sqrt( sum( us**2 ) )
+
+            u_gs=abs(u_g-u_s) ; u_ls=abs(u_l-u_s) ; u_gl=abs(u_g-u_l)
+
+            a_l = volume_fraction%val(1,1,cv_inod)
+            a_g = volume_fraction%val(1,2,cv_inod)
+            a_s = volume_fraction%val(1,3,cv_inod)
+
+            A(1,mat_inod)=a_l ;  A(2,mat_inod)=a_g ; A(3,mat_inod)=a_s
+
+            a_sg=a_s/(a_s+a_g) ; a_gs=1.0-a_sg
+            a_sl=a_s/(a_s+a_l) ; a_ls=1.0-a_sl
+            a_lg=a_l/(a_l+a_g) ; a_gl=1.0-a_lg
+
+            d_b = 5.0*0.06/max((rho_l*u_gl**2),1.0e-5) ; d_b=min(0.5*d_p,max(1.0e-7,d_b))
+            !d_b = 1.0*d_p
+
+            Re_gl = max(rho_l*u_gl*d_b/mu_l,1.0e-5) ; Re_lg=Re_gl
+            if(a_lg*Re_lg<1.0e3)then
+               CD=(24.0/(max(a_lg,1.0e-5)*Re_lg))*(1.0+0.15*(a_lg*Re_lg)**0.687)
+            else
+               CD=0.44
+            end if
+
+            S_gs_g(mat_inod) = 150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
+            S_ls_l(mat_inod) = 150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))
+
+            S_lg_l(mat_inod) = 0.75 * CD * ( (a_gl*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) * max(a_lg,1.0e-5)**(-2.65)
+            S_lg_g(mat_inod) = 0.75 * CD * ( (a_lg*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) * max(a_lg,1.0e-5)**(-2.65)
+
+         end do
+
+      end do
+
+
+      !dummy => extract_scalar_field( states(1), "S_gs", stat )
+      !if (stat==0) dummy%val = S_gs
+      !dummy => extract_scalar_field( states(1), "S_ls", stat )
+      !if (stat==0) dummy%val = S_ls
+      !dummy => extract_scalar_field( states(1), "S_lg", stat )
+      !if (stat==0) dummy%val = S_lg
+
+
+      ewrite(3,*) 'S_gs_g min/max:', minval(S_gs_g), maxval(S_gs_g)
+      ewrite(3,*) 'S_ls_l min/max:', minval(S_ls_l), maxval(S_ls_l)
+      ewrite(3,*) 'S_lg_g min/max:', minval(S_lg_g), maxval(S_lg_g)
+      ewrite(3,*) 'S_lg_l min/max:', minval(S_lg_l), maxval(S_lg_l)
+
+
+      deallocate( ul, ug, us )
+
+      return
+    end subroutine calculate_boiling_drag
+
+
+
+
+    subroutine calculate_boiling_variables( states, packed_state, ndim, nphase, &
+         T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, St_gl, St_sl, St_sg )
+      implicit none
+
+      type( state_type ), dimension( : ), intent( inout ) :: states
+      type( state_type ), intent( in ) :: packed_state
+      integer, intent( in ) :: ndim, nphase
+      real, dimension( : ), intent( inout ) :: T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, St_gl, St_sl, St_sg
+
+      type( scalar_field ), pointer :: pressure, dummy
+      type( tensor_field ), pointer :: density, velocity, temperature, volume_fraction
+
+      integer, dimension( : ), pointer :: cv_ndgln, u_ndgln, xu_ndgln
+
+
+      real :: p, rho_l, rho_g, u_l, u_g, u_s, t_l, t_g, Tsat, a_l, a_g, a_lg, a_gl, &
+           &  a_b, Lh, d_b, dtr, rho_v, Svap_l_max, Svap_g_max, Svap_l1, Svap_l2, &
+           &  C, phi, F5, Re_sl, Re_sg, Re_gl, Re_lg, Pr_l, Pr_g
+
+      real, dimension( : ), allocatable :: ul, ug, us, cnt
+      real, dimension( :, :, : ), allocatable :: uc
+
+      integer :: ele, totele, cv_iloc, cv_nloc, u_nloc, cv_inod, &
+           u_inod, u_inod1, u_inod2, u_iloc, xu_inod, &
+           iphase, idim, xu_nonods, stat
+
+      real, parameter :: &
+           k_l = 0.58, k_g = 0.016, k_s = 16.2, &
+           Cp_l = 4200.0, Cp_g = 1996.0, Cp_s = 500.0, &
+           mu_l = 3.0e-4, mu_g = 1.0e-5, &
+           d_p = 0.005, &
+           Le0 = 2375.7e3, Csf = 0.006, g = 9.81
+
+      pressure => extract_scalar_field( packed_state, "CVPressure" )
+      density => extract_tensor_field( packed_state, "PackedDensity" )
+      velocity => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
+      temperature => extract_tensor_field( packed_state, "PackedTemperature" )
+      volume_fraction => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+
+      cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
+      u_ndgln => get_ndglno( extract_mesh( packed_state, "VelocityMesh" ) )
+      xu_ndgln => get_ndglno( extract_mesh( packed_state, "VelocityMesh_Continuous" ) )
+
+
+      totele = ele_count( pressure )
+      cv_nloc = ele_loc( pressure, 1 )
+      u_nloc = ele_loc( velocity, 1 )
+      xu_nonods = node_count( extract_mesh( packed_state, "VelocityMesh_Continuous" )  )
+
+      allocate( uc(ndim,nphase,xu_nonods), cnt(xu_nonods) ) ; uc=0.0 ; cnt=0
+      do ele = 1, totele
+         do u_iloc = 1, u_nloc
+            xu_inod = xu_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
+            u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
+            do iphase = 1, nphase
+               uc( :, iphase, xu_inod ) = uc( :, iphase, xu_inod ) + velocity%val(:,iphase,u_inod)
+            end do
+            cnt( xu_inod ) = cnt( xu_inod ) + 1
+         end do
+      end do
+      do iphase = 1, nphase
+         do idim = 1, ndim
+            uc(idim,iphase,:) = uc(idim,iphase,:) / cnt
+         end do
+      end do
+
+      allocate( ul(ndim), ug(ndim), us(ndim) ) ; ul=0.0 ; ug=0.0 ; us=0.0
+
+      do ele = 1, totele
+
+         do cv_iloc = 1, cv_nloc
+
+            cv_inod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+
+            Svap_l(cv_inod)=0.0 ; Svap_g(cv_inod)=0.0
+            Gamma_l(cv_inod)=0.0 ; Gamma_g(cv_inod)=0.0
+            h_l(cv_inod)=0.0 ; h_g(cv_inod)=0.0
+            St_gl(cv_inod)=0.0 ; St_sl(cv_inod)=0.0 ; St_sg(cv_inod)=0.0
+
+            p = pressure%val(cv_inod)
+
+            rho_l = density%val(1,1,cv_inod) ; rho_g = density%val(1,2,cv_inod)
+
+            if ( cv_iloc==1  ) then
+               u_inod = xu_ndgln( ( ele - 1 ) * u_nloc + 1 )
+               ul = uc(:,1,u_inod) ; ug = uc(:,2,u_inod) ; us = uc(:,3,u_inod)
+            end if
+            if ( cv_iloc==3 ) then
+               u_inod = xu_ndgln( ( ele - 1 ) * u_nloc + 2 )
+               ul = uc(:,1,u_inod) ; ug = uc(:,2,u_inod) ; us = uc(:,3,u_inod)
+            end if
+            if ( cv_iloc==6 ) then
+               u_inod = xu_ndgln( ( ele - 1 ) * u_nloc + 3 )
+               ul = uc(:,1,u_inod) ; ug = uc(:,2,u_inod) ; us = uc(:,3,u_inod)
+            end if
+            if ( cv_iloc==10 ) then
+               u_inod = xu_ndgln( ( ele - 1 ) * u_nloc + 4 )
+               ul = uc(:,1,u_inod) ; ug = uc(:,2,u_inod) ; us = uc(:,3,u_inod)
+            end if
+            u_inod1=-666 ; u_inod2=-666
+            if ( cv_iloc==2 ) then
+               u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 1 )
+               u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 2 )
+            end if
+            if ( cv_iloc==4 ) then
+               u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 1 )
+               u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 3 )
+            end if
+            if ( cv_iloc==5 ) then
+               u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 2 )
+               u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 3 )
+            end if
+            if ( cv_iloc==7 ) then
+               u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 1 )
+               u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 4 )
+            end if
+            if ( cv_iloc==8 ) then
+               u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 2 )
+               u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 4 )
+            end if
+            if ( cv_iloc==9 ) then
+               u_inod1 = xu_ndgln( ( ele - 1 ) * u_nloc + 3 )
+               u_inod2 = xu_ndgln( ( ele - 1 ) * u_nloc + 4 )
+            end if
+            if ( u_inod1>0 ) then
+               ul = (uc(:,1,u_inod1)+uc(:,1,u_inod2))/2.0
+               ug = (uc(:,2,u_inod1)+uc(:,2,u_inod2))/2.0
+               us = (uc(:,3,u_inod1)+uc(:,3,u_inod2))/2.0
+            end if
+
+            u_l = sqrt( sum( ul**2 ) )
+            u_g = sqrt( sum( ug**2 ) )
+            u_s = sqrt( sum( us**2 ) )
+
+            t_l = temperature%val(1,1,cv_inod) ; t_g = temperature%val(1,2,cv_inod)
+            Tsat = saturation_temperature( p )
+            T_sat(cv_inod) = Tsat
+
+            a_l = volume_fraction%val(1,1,cv_inod) ; a_g = volume_fraction%val(1,2,cv_inod)
+            a_lg=a_l/(a_l+a_g) ; a_gl=1.0-a_lg
+            a_b = max(a_g,1.0e-5)
+
+            if (Tsat<t_l) then
+               h_l(cv_inod) = -Le0 + Cp_l*t_l + p/rho_l
+            else
+               h_l(cv_inod) = -Le0 + Cp_l*Tsat + p/rho_l
+            end if
+
+            if (Tsat<t_g) then
+               h_g(cv_inod) = Cp_g*Tsat + p/rho_g
+            else
+               h_g(cv_inod) = Cp_g*t_g  + p/rho_g
+            end if
+
+            Lh = h_g(cv_inod) - h_l(cv_inod)
+
+            !h_l(cv_inod) = -Le0 + Cp_l*Tsat + p/rho_l
+            !h_g(cv_inod) = h_l(cv_inod) + Lh
+
+            d_b = 5.0*0.06/max((rho_l*abs(u_g-u_l)**2),1.0e-5) ; d_b=min(0.5*d_p,max(1.0e-7,d_b))
+            !d_b = 1.0*d_p
+
+            Re_sl = rho_l*abs(u_s-u_l)*d_p/mu_l
+            Re_sg = rho_g*abs(u_s-u_g)*d_p/mu_g
+            Re_gl = rho_l*abs(u_g-u_l)*d_b/mu_l ; Re_lg=Re_gl
+
+            Pr_l = Cp_l*mu_l/k_l ; Pr_g = Cp_g*mu_g/k_g
+
+            St_gl(cv_inod) = (k_l/d_b)*(2.0+0.6*Re_gl**0.5*Pr_l**0.3333) + 1.0e+7 * a_lg**10
+            St_sl(cv_inod) = (k_l/d_p)*(2.0+0.6*Re_sl**0.5*Pr_l**0.3333)
+            St_sg(cv_inod) = (k_g/d_p)*(2.0+0.6*Re_sg**0.5*Pr_g**0.3333)
+
+            dtr = 1.0e-2 ; rho_v = 1.0 * rho_g
+            if (Tsat<t_l) then
+               Svap_l_max = ((min(rho_v,a_l*rho_l)/dtr)*Lh)/max(1.0e-10,abs(Tsat-t_l))
+            else
+               Svap_l_max = (((a_g*rho_v)/dtr)*Lh)/max(1.0e-10,abs(Tsat-t_l))
+            end if
+            if (Tsat<t_g) then
+               Svap_g_max = ((min(rho_v,a_l*rho_l)/dtr)*Lh)/max(1.0e-10,abs(Tsat-t_g))
+            else
+               Svap_g_max = (((a_g*rho_v)/dtr)*Lh)/max(1.0e-10,abs(Tsat-t_g))
+            end if
+
+            if(Tsat<t_l) then
+               Svap_l1 = (k_l/d_b)*(12.0/pi)*abs(Tsat-t_l)*(rho_l*Cp_l)/(rho_g*Lh)
+               Svap_l2 = (k_l/d_b)*(2.0+0.74*(a_l*Re_lg)**0.5)
+               Svap_l(cv_inod) = max(Svap_l1,Svap_l2)*3.6*a_b/d_b
+            else
+               if(p<=1.1272*1.0e6) then
+                  C=65.0-5.69e-5*(p-1.0e5)
+               else
+                  C=2.5e9*p**(-1.418)
+               end if
+
+               if(abs(u_g-u_l)<=0.61) then
+                  phi=1.0
+               else
+                  phi=(1.639344*abs(u_g-u_l))**0.47
+               end if
+
+               if(a_g<0.25) then
+                  F5=0.075+1.8*phi*C*exp(-45.0*a_b)
+               else
+                  F5=0.075
+               end if
+
+               Svap_l(cv_inod) = F5*Lh*rho_g*rho_l*a_g/(rho_l-rho_g)
+               Svap_l(cv_inod) = min( Svap_l(cv_inod), 17539.0*max(4.724,472.4*a_g*a_l)*max(0.0,min(1.0,a_g/0.1)) )
+
+            end if
+
+            Svap_g(cv_inod) = 1.0e4*3.6*a_b/d_b
+
+            Svap_l(cv_inod) = min( Svap_l(cv_inod), Svap_l_max)
+            Svap_g(cv_inod) = min( Svap_g(cv_inod), Svap_g_max)
+
+            Gamma_g(cv_inod) = (Svap_l(cv_inod)*(t_l-Tsat)+Svap_g(cv_inod)*(t_g-Tsat))/Lh
+            Gamma_l(cv_inod) = -Gamma_g(cv_inod)
+
+         end do
+      end do
+
+
+      dummy => extract_scalar_field( states(1), "Gamma_l", stat )
+      if (stat==0) dummy%val = Gamma_l
+      dummy => extract_scalar_field( states(1), "Gamma_g", stat )
+      if (stat==0) dummy%val = Gamma_g
+
+      dummy => extract_scalar_field( states(1), "Svap_l", stat )
+      if (stat==0) dummy%val = Svap_l
+      dummy => extract_scalar_field( states(1), "Svap_g", stat )
+      if (stat==0) dummy%val = Svap_g
+
+      dummy => extract_scalar_field( states(1), "h_l", stat )
+      if (stat==0) dummy%val = h_l
+      dummy => extract_scalar_field( states(1), "h_g", stat )
+      if (stat==0) dummy%val = h_g
+
+      dummy => extract_scalar_field( states(1), "St_gl", stat )
+      if (stat==0) dummy%val = St_gl
+      dummy => extract_scalar_field( states(1), "St_sl", stat )
+      if (stat==0) dummy%val = St_sl
+      dummy => extract_scalar_field( states(1), "St_sg", stat )
+      if (stat==0) dummy%val = St_sg
+
+
+      ewrite(3,*) 'Gamma_l min/max:', minval(Gamma_l), maxval(Gamma_l)
+      ewrite(3,*) 'Gamma_g min/max:', minval(Gamma_g), maxval(Gamma_g)
+
+      ewrite(3,*) 'Svap_l min/max:', minval(Svap_l), maxval(Svap_l)
+      ewrite(3,*) 'Svap_g min/max:', minval(Svap_g), maxval(Svap_g)
+
+
+      ewrite(3,*) 'h_l min/max:', minval(h_l), maxval(h_l)
+      ewrite(3,*) 'h_g min/max:', minval(h_g), maxval(h_g)
+
+      ewrite(3,*) 'T_sat min/max:', minval(T_sat), maxval(T_sat)
+
+      ewrite(3,*) 'St_gl min/max:', minval(St_gl), maxval(St_gl)
+      ewrite(3,*) 'St_sl min/max:', minval(St_sl), maxval(St_sl)
+      ewrite(3,*) 'St_sg min/max:', minval(St_sg), maxval(St_sg)
+
+      deallocate( ul, ug, us )
+
+      return
+    end subroutine calculate_boiling_variables
+
+
+
+    real function saturation_temperature( pressure )
+      implicit none
+      real :: pressure
+      real :: p, c, pr
+
+      p = pressure*10.0
+      c=0.5
+      if (p>1.0e6) c=0.3
+      pr = 1.56e6 + c*(p - 1.0e6)
+      saturation_temperature = (500.0*2.0/pi)*atan(0.5*pi*(pr-5.0e4)*1.0e-6)-273.15
+
+      return
+    end function saturation_temperature
+
+
+
 
   end module multiphase_EOS

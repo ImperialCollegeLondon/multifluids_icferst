@@ -794,14 +794,13 @@
 
 
 
-    SUBROUTINE CAL_COMP_SUM2ONE_SOU( packed_state, V_SOURCE_COMP, CV_NONODS, NPHASE, NCOMP2, DT, ITS, NITS, &
-         MEAN_PORE_CV )
+    SUBROUTINE CAL_COMP_SUM2ONE_SOU( packed_state, CV_NONODS, NPHASE, NCOMP2, DT, ITS, NITS, MEAN_PORE_CV )
       ! make sure the composition sums to 1.0 
       implicit none
       type( state_type ) :: packed_state
       integer, intent( in ) :: cv_nonods, nphase, ncomp2, its, nits
       real, intent( in ) :: dt
-      real, dimension( :, : ), intent( inout ) :: V_SOURCE_COMP
+!      real, dimension( :, : ), intent( inout ) :: V_SOURCE_COMP
       real, dimension( : ), intent( in ) :: MEAN_PORE_CV
 !      real, dimension( : ), intent( in ) :: SATURA
 !      real, dimension( : ), intent( in ) :: COMP, COMPOLD
