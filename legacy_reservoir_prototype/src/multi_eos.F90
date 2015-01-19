@@ -1672,25 +1672,30 @@
         integer, intent(in) :: iphase
         !Local variables
         real, dimension(3) :: satura, relperm, KR, Krmax
-        real :: auxVisc, auxKrmax, Beta_w, Beta_g, aux
+        real :: auxVisc, auxKrmax, aux, Krow, Krog
         real, parameter :: epsilon = 1d-10
 
         !Prepare data
         Krmax(1) = opt%kr1_exp; Krmax(2) = opt%kr2_exp; Krmax(3) = opt%kr3_exp
-        !Calculate normalized saturations
-        aux = 1. - opt%s_gc - opt%s_or
-        satura(1) = ( sat(1) - opt%s_gc) /( aux )!Water
-        satura(2) = ( sat(2) - opt%s_or) /( aux )!oil
-        satura(3) = sat(3)/aux!Gas
-        !For phase 1 and 3 (water and gas respectively) we can use the Brooks Corey model
-        relperm(1) = Krmax(1)*( ( satura(1) - opt%s_gc) /( aux )) ** opt%kr1_exp!Water
-        relperm(3) = Krmax(3)*( ( satura(3) - opt%s_3) /( aux )) ** opt%kr3_exp!Gas
 
-        !For the second phase, oil, we calculate the relative permeability as a function of the other relperms
-        !Kro = So * Beta_w * Beta_g
-        Beta_w = relperm(1) / (1- satura(1))!water
-        Beta_g = relperm(3) / (1-satura(3))!Gas
-        relperm(2) = satura(2) * Beta_w * Beta_g
+        !We consider two models for two phase flow, water-oil and oil-gas
+        if (iphase /= 3) then
+            satura(1) = ( sat(1) - opt%s_gc) /( 1. - opt%s_gc - opt%s_or )!Water
+            relperm(1) = Krmax(1)* satura(1) ** opt%kr1_exp!Water, Krw
+        end if
+        if (iphase /= 1) then
+            satura(3) = ( sat(3) - opt%s_3 ) /(1. - opt%s_3 - opt%s_or)!Gas
+            !For phase 1 and 3 (water and gas respectively) we can use the Brooks Corey model
+            relperm(3) = Krmax(3)* satura(3) ** opt%kr3_exp!Gas, Krg
+        end if
+
+        !Oil relperm is obtained as a combination
+        if (iphase ==2 ) then
+            Krow = ( 1.0 - satura(1)) ** opt%kr2_exp!Oil, Krow
+            Krog = ( 1.0 - satura(3)) ** opt%kr2_exp!Oil, Krog
+            !For the second phase, oil, we need to recalculate the real value(Stone model 2)
+            relperm(2) = Krmax(2)*( (Krow/Krmax(2) + relperm(1))*(Krog/Krmax(2) + relperm(3)) - (relperm(1) + relperm(3)) )
+        end if
 
         !Make sure that the relperm is between bounds
         KR(iphase) = min(max(epsilon, relperm(iphase)),Krmax(iphase))!Lower value just to make sure we do not divide by zero.
