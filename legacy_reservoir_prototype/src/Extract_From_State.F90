@@ -2121,13 +2121,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       end if
 #endif
 
-      ! Memory for python diagnostics...
-      sfield => extract_scalar_field( state(1), "Dummy", stat )
-      if ( stat == 0 ) call insert( packed_state, sfield, "Dummy" )
-
-      tfield => extract_tensor_field( state(1), "Dummy", stat )
-      if ( stat == 0 ) call insert( packed_state, tfield, "Dummy" )
-
 
       if (has_scalar_field(state(1),"Porosity")) then
          sfield=>extract_scalar_field(state(1),"Porosity")
@@ -2158,6 +2151,10 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       call add_new_memory(packed_state,pressure,"OldFEPressure")
       call add_new_memory(packed_state,pressure,"CVPressure")
       call add_new_memory(packed_state,pressure,"OldCVPressure")
+
+      ! dummy field on the pressure mesh, used for evaluating python eos's.
+      ! this could be cleaned up in the future.
+      call add_new_memory(packed_state,pressure,"Dummy")
 
       p2=>extract_scalar_field(packed_state,"FEPressure")
       call set( p2, pressure )

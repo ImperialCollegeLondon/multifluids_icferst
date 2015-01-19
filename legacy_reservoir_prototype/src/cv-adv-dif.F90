@@ -485,11 +485,7 @@ contains
       type(tensor_field) :: velocity_BCs,tracer_BCs, density_BCs, saturation_BCs
       type(tensor_field) :: tracer_BCs_robin2, saturation_BCs_robin2
 
-      INTEGER, DIMENSION( 1 , nphase , surface_element_count(tracer) ) :: WIC_T_BC_ALL
-      INTEGER, DIMENSION( 1 , nphase , surface_element_count(tracer) ) ::&
-           WIC_D_BC_ALL
-      INTEGER, DIMENSION( 1 , nphase , igot_t2*surface_element_count(tracer) ) ::&
-           WIC_T2_BC_ALL
+      INTEGER, DIMENSION( 1 , nphase , surface_element_count(tracer) ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_T2_BC_ALL
       INTEGER, DIMENSION( ndim , nphase , surface_element_count(tracer) ) :: WIC_U_BC_ALL
       REAL, DIMENSION( :,:,: ), pointer :: SUF_T_BC_ALL,&
            SUF_T_BC_ROB1_ALL, SUF_T_BC_ROB2_ALL
@@ -553,234 +549,134 @@ contains
             GetOldName(saturation))
     end if
 
-    if (.true.) then ! new modification for the input
-       T_ALL =>tracer%val(1,:,:)
-       TOLD_ALL =>old_tracer%val(1,:,:)
+    T_ALL =>tracer%val(1,:,:)
+    TOLD_ALL =>old_tracer%val(1,:,:)
 
-       if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
+    if (tracer%name == "PackedPhaseVolumeFraction") call get_var_from_packed_state(packed_state,Velocity = U_ALL)
 
-       T_ALL_KEEP = T_ALL
+    T_ALL_KEEP = T_ALL
 
-       IF( GETCT ) THEN
-          IF( RETRIEVE_SOLID_CTY ) THEN
-             ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
-             ALLOCATE(U_HAT_ALL(NDIM,U_NONODS))
+    IF( GETCT ) THEN
+       IF( RETRIEVE_SOLID_CTY ) THEN
+          ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
+          ALLOCATE(U_HAT_ALL(NDIM,U_NONODS))
 
-             delta_u_all => extract_vector_field( packed_state, "delta_U" )
-             u_hat_all = delta_u_all%val + u_all( :, 1, :) ! ndim, u_nonods
+          delta_u_all => extract_vector_field( packed_state, "delta_U" )
+          u_hat_all = delta_u_all%val + u_all( :, 1, :) ! ndim, u_nonods
 
-             us_all => extract_vector_field( packed_state, "solid_U" )
+          us_all => extract_vector_field( packed_state, "solid_U" )
 
-             Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
-             VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! cv_nonods
+          Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
+          VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! cv_nonods
 
 
-             ALLOCATE(T_TEMP(NPHASE,CV_NONODS), TOLD_TEMP(NPHASE,CV_NONODS))
+          ALLOCATE(T_TEMP(NPHASE,CV_NONODS), TOLD_TEMP(NPHASE,CV_NONODS))
 
-             IF(NPHASE==1) THEN
-                T_ALL_KEEP = 1.0 
-                do cv_inod = 1, cv_nonods
-                   do iphase = 1, nphase
-                      ! Amend the saturations to produce the real voln fractions -only is we have just one phase.
-                      T_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
-                      TOLD_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
-                   end do
+          IF(NPHASE==1) THEN
+             T_ALL_KEEP = 1.0 
+             do cv_inod = 1, cv_nonods
+                do iphase = 1, nphase
+                   ! Amend the saturations to produce the real voln fractions -only is we have just one phase.
+                   T_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
+                   TOLD_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
                 end do
-             ELSE
-                T_TEMP= T_ALL
-                TOLD_TEMP=TOLD_ALL
-             ENDIF
-
-             ! switch off caching of CV face values as this will be wrong.
-             T_ALL=>T_TEMP
-             TOLD_ALL=>TOLD_TEMP
-             ! CONV = A*B ! conV is an allocatable target
-             ! T_ALL=>CONV ! conV is an allocatable target
-
-             call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
-
+             end do
+          ELSE
+             T_TEMP= T_ALL
+             TOLD_TEMP=TOLD_ALL
           ENDIF
+
+          ! switch off caching of CV face values as this will be wrong.
+          T_ALL=>T_TEMP
+          TOLD_ALL=>TOLD_TEMP
+          ! CONV = A*B ! conV is an allocatable target
+          ! T_ALL=>CONV ! conV is an allocatable target
+
+          call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
+
        ENDIF
+    ENDIF
 
-    else
-       !      if (.not.present(T_input)) then!<==TEMPORARY
-       select case (Field_selector)
-       case (1)!Temperature
-          call get_var_from_packed_state(packed_state,Temperature = T_ALL,&
-               OldTemperature = TOLD_ALL, FETemperature =FEMT_ALL,OldFETemperature = FEMTOLD_ALL)
-          T_ALL_KEEP = T_ALL
-       case (2)!Component mass fraction
-          if (present(icomp)) then
-             call get_var_from_packed_state(packed_state,ComponentMassFraction = comp, &
-                  OldComponentMassFraction = comp_old, FEComponentMassFraction = fecomp, &
-                  OldFEComponentMassFraction = fecomp_old )
-             T_ALL => comp(icomp,:,:)
-             TOLD_ALL => comp_old(icomp,:,:)
-             FEMT_ALL => fecomp(icomp,:,:)
-             FEMTOLD_ALL => fecomp_old(icomp,:,:)
-             T_ALL_KEEP = T_ALL
-          else
-             FLAbort('Component field require to introduce icomp')
-          end if
-       case (3)!Saturation
-          call get_var_from_packed_state(packed_state,PhaseVolumeFraction = T_ALL,&
-               OldPhaseVolumeFraction = TOLD_ALL, Velocity = U_ALL,&
-               FEPhaseVolumeFraction = FEMT_ALL, OldFEPhaseVolumeFraction = FEMTOLD_ALL)
-
-          !If getting pressure matrix then U_ALL has to be set to be NU_ALL
-          if (GETCT) call get_var_from_packed_state(packed_state,NonlinearVelocity = U_ALL)
-
-          T_ALL_KEEP = T_ALL
-
-          IF( GETCT ) THEN
-             IF( RETRIEVE_SOLID_CTY ) THEN
-                ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
-                ALLOCATE(U_HAT_ALL(NDIM,U_NONODS))
-
-                delta_u_all => extract_vector_field( packed_state, "delta_U" )
-                u_hat_all = delta_u_all%val + u_all( :, 1, :) ! ndim, u_nonods
-
-                us_all => extract_vector_field( packed_state, "solid_U" )
-
-                Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
-                VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! cv_nonods
-
-
-                ALLOCATE(T_TEMP(NPHASE,CV_NONODS), TOLD_TEMP(NPHASE,CV_NONODS))
-
-                IF(NPHASE==1) THEN
-                   T_ALL_KEEP = 1.0 
-                   do cv_inod = 1, cv_nonods
-                      do iphase = 1, nphase
-                         ! Amend the saturations to produce the real voln fractions -only is we have just one phase.
-                         T_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
-                         TOLD_TEMP(iphase, cv_inod) = VOL_FRA_FLUID(cv_inod)
-                      end do
-                   end do
-                ELSE
-                   T_TEMP= T_ALL
-                   TOLD_TEMP=TOLD_ALL
-                ENDIF
-
-                ! switch off caching of CV face values as this will be wrong.
-                T_ALL=>T_TEMP
-                TOLD_ALL=>TOLD_TEMP
-                ! CONV = A*B ! conV is an allocatable target
-                ! T_ALL=>CONV ! conV is an allocatable target
-
-                call get_option( '/blasting/theta_cty_solid', theta_cty_solid, default=1.  )
-
-             ENDIF
-          ENDIF
-       case default
-          FLAbort('Invalid field_selector value')
-       end select
-
-    end if
     !##################END OF SET VARIABLES##################
 
 
-      !! Get boundary conditions from field
-      call get_entire_boundary_condition(tracer,&
-           ['weakdirichlet','robin        '],&
-           tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
-      call get_entire_boundary_condition(density,&
-           ['weakdirichlet'],&
-           density_BCs,WIC_D_BC_ALL)
-      if (present(saturation))&
-           call get_entire_boundary_condition(saturation,&
-           ['weakdirichlet','robin        '],&
-           saturation_BCs,WIC_T2_BC_ALL,&
-           boundary_second_value=saturation_BCs_robin2)
-      call get_entire_boundary_condition(velocity,&
-           ['weakdirichlet'],&
-           velocity_BCs,WIC_U_BC_ALL)
-      
-      !! reassignments to old arrays, to be discussed
+    !! Get boundary conditions from field
+    call get_entire_boundary_condition(tracer,&
+         ['weakdirichlet','robin        '],&
+         tracer_BCs,WIC_T_BC_ALL,boundary_second_value=tracer_BCs_robin2)
+    call get_entire_boundary_condition(density,&
+         ['weakdirichlet'],&
+         density_BCs,WIC_D_BC_ALL)
+    if (present(saturation))&
+         call get_entire_boundary_condition(saturation,&
+         ['weakdirichlet','robin        '],&
+         saturation_BCs,WIC_T2_BC_ALL,&
+         boundary_second_value=saturation_BCs_robin2)
+    call get_entire_boundary_condition(velocity,&
+         ['weakdirichlet'],&
+         velocity_BCs,WIC_U_BC_ALL)
 
-      SUF_T_BC_ALL=>tracer_BCs%val
-      SUF_T_BC_ROB1_ALL=>tracer_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
-      SUF_T_BC_ROB2_ALL=>tracer_BCs_robin2%val
-      SUF_D_BC_ALL=>density_BCs%val
-      SUF_U_BC_ALL=>velocity_BCs%val
-      if(present(saturation)) then
-         SUF_T2_BC_ALL=>saturation_BCs%val
-         SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
-         SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
-      end if
+    !! reassignments to old arrays, to be discussed
 
-
-!      if ( Field_selector == 1 ) then ! Temperature
-      if (tracer%name == "PackedTemperature")  then
-         allocate( suf_t_bc( 1,nphase,cv_snloc*stotel ), suf_t_bc_rob1( 1,nphase,cv_snloc*stotel ), &
-                   suf_t_bc_rob2( 1,nphase,cv_snloc*stotel ) )
-         call update_boundary_conditions( state, stotel, cv_snloc, nphase, &
-                                          suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
-         SUF_T_BC_ALL=>suf_t_bc
-         SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
-         SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
-      end if
+    SUF_T_BC_ALL=>tracer_BCs%val
+    SUF_T_BC_ROB1_ALL=>tracer_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
+    SUF_T_BC_ROB2_ALL=>tracer_BCs_robin2%val
+    SUF_D_BC_ALL=>density_BCs%val
+    SUF_U_BC_ALL=>velocity_BCs%val
+    if(present(saturation)) then
+       SUF_T2_BC_ALL=>saturation_BCs%val
+       SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
+       SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
+    end if
 
 
-     ! LOCAL VARIABLE FOR INDIRECT ADDRESSING----------------------------------------------
-!     REAL, DIMENSION ( :, :, : ), allocatable :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
-!     ALLOCATE( UGI_COEF_ELE_ALL( NDIM, NPHASE, U_NLOC) )
-!     ALLOCATE( UGI_COEF_ELE2_ALL( NDIM, NPHASE, U_NLOC) )
-     !-------------------------------------------------------------------------------------
-
-!         print *,'just entered sub'
-      IDUM = 0
-      RDUM = 0.
-
-      ewrite(3,*) 'In CV_ASSEMB'
+    if (tracer%name == "PackedTemperature")  then
+       allocate( suf_t_bc( 1,nphase,cv_snloc*stotel ), suf_t_bc_rob1( 1,nphase,cv_snloc*stotel ), &
+            suf_t_bc_rob2( 1,nphase,cv_snloc*stotel ) )
+       call update_boundary_conditions( state, stotel, cv_snloc, nphase, &
+            suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
+       SUF_T_BC_ALL=>suf_t_bc
+       SUF_T_BC_ROB1_ALL=>suf_t_bc_rob1
+       SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
+    end if
 
 
-      GOT_VIS = .FALSE. 
-      IF(IGOT_THERM_VIS==1) GOT_VIS = ( R2NORM( THERM_U_DIFFUSION, MAT_NONODS * NDIM * NDIM * NPHASE ) /= 0 ) &
+    IDUM = 0
+    RDUM = 0.
+
+    ewrite(3,*) 'In CV_ASSEMB'
+
+
+    GOT_VIS = .FALSE. 
+    IF(IGOT_THERM_VIS==1) GOT_VIS = ( R2NORM( THERM_U_DIFFUSION, MAT_NONODS * NDIM * NDIM * NPHASE ) /= 0 ) &
                                  .OR. ( R2NORM( THERM_U_DIFFUSION_VOL, MAT_NONODS * NPHASE ) /= 0 ) 
 
-      GOT_DIFFUS = ( R2NORM( TDIFFUSION, MAT_NONODS * NDIM * NDIM * NPHASE ) /= 0 )
+    GOT_DIFFUS = ( R2NORM( TDIFFUSION, MAT_NONODS * NDIM * NDIM * NPHASE ) /= 0 )
 
-     call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
-
-!      print *,'SECOND_THETA=',SECOND_THETA
-!         stop 2821
-      ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS:', &
-           CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS
-      ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
-
-
-!      ndotq = 0. ; ndotqold = 0.
-
-!         print *,'just entered sub -1.1'
-      QUAD_OVER_WHOLE_ELE=.FALSE.
-      ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-      call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-           cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
-
+    call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
     
-      ! Allocate memory for the control volume surface shape functions, etc.
-
-      IF(GETCT) THEN
-         ALLOCATE( JCOUNT_KLOC( U_NLOC ))   
-         ALLOCATE( JCOUNT_KLOC2( U_NLOC ))
-         ALLOCATE( ICOUNT_KLOC( U_NLOC )) 
-         ALLOCATE( ICOUNT_KLOC2( U_NLOC )) 
-      ENDIF
+    ewrite(3,*)'CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS:', &
+         CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS
+    ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
 
 
-!      QUAD_OVER_WHOLE_ELE=.FALSE.
-      ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-!      call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-!           cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+    QUAD_OVER_WHOLE_ELE=.FALSE.
+    ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
+    call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
+         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
 
-  
-!    DISTCONTINUOUS_METHOD=.false.  
-!    IF(X_NONODS.NE.CV_NONODS) DISTCONTINUOUS_METHOD=.true.  ! *****need to change this...
+    ! Allocate memory for the control volume surface shape functions, etc.
+
+    IF(GETCT) THEN
+       ALLOCATE( JCOUNT_KLOC( U_NLOC ))   
+       ALLOCATE( JCOUNT_KLOC2( U_NLOC ))
+       ALLOCATE( ICOUNT_KLOC( U_NLOC )) 
+       ALLOCATE( ICOUNT_KLOC2( U_NLOC )) 
+    ENDIF
+
+
     DISTCONTINUOUS_METHOD = ( CV_NONODS == TOTELE * CV_NLOC )
-!     print *,'DISTCONTINUOUS_METHOD,X_NONODS,CV_NONODS:',DISTCONTINUOUS_METHOD,X_NONODS,CV_NONODS
-!       stop 281
-! Quadratic elements
+    ! Quadratic elements
     QUAD_ELEMENTS = ( ((NDIM==2).AND.(CV_NLOC==6)).or.((NDIM==3).AND.(CV_NLOC==10)) ) 
 
 
@@ -802,7 +698,6 @@ contains
       DUMMY_ZERO_NDIM_NDIM_NPHASE=0.0
 
       ALLOCATE( CV_SLOC2LOC( CV_SNLOC ))
-!      ALLOCATE( temp_CV_SLOC2LOC( CV_SNLOC ))
       ALLOCATE( U_SLOC2LOC( U_SNLOC ))
 
       ALLOCATE( UGI_COEF_ELE_ALL(NDIM,NPHASE,U_NLOC) )
@@ -818,9 +713,6 @@ contains
          ! solve for porosity * actual velocity
          ONE_PORE = 1.0
       END IF
-!       PRINT *,'VOLFRA_PORE:',VOLFRA_PORE
-!       PRINT *,'ONE_PORE:',ONE_PORE
-!       STOP 22
 
       D1 = ( NDIM == 1 )
       D3 = ( NDIM == 3 )
@@ -858,7 +750,6 @@ contains
            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
            state, "Press_mesh" , StorageIndexes(1) )
 
-
       !ewrite(3,*)'back in cv-adv-dif'
       !do iphase = 1, nphase
       !   ewrite(3,*) 'Phase', iphase, ',', 'suf_t_bc:', &
@@ -891,12 +782,11 @@ contains
       IGETCT = 0
       IF ( GETCT ) IGETCT = 1
 
-! Change this for thermal...
       GOT_T2=( IGOT_T2 == 1 )
-      use_volume_frac_T2=( IGOT_T2 == 1 )
-      i_use_volume_frac_t2=IGOT_T2
+      use_volume_frac_T2=( GOT_T2 .or. thermal )
+      i_use_volume_frac_t2= 0
+      if (use_volume_frac_T2) i_use_volume_frac_t2= 1
 
-! TEMP STUFF HERE
 
       nullify(FEMT_ALL); nullify(FEMTOLD_ALL);
       ALLOCATE( FEMT_ALL( NPHASE, CV_NONODS ), FEMTOLD_ALL( NPHASE, CV_NONODS ) )
@@ -926,48 +816,43 @@ contains
           IF( GETCT .AND. RETRIEVE_SOLID_CTY) STORE=.FALSE. ! Avoid storing and retrieving solids voln frac. until we have sorted the code for this. 
 
           IGOT_T_PACK=.TRUE.
-          IGOT_T_CONST      =.FALSE.
+          IGOT_T_CONST=.FALSE.
           IGOT_T_CONST_VALUE=0.0
-! If we have any b.c then assume we ave a non-uniform field... 
+          ! If we have any bc's then assume we ave a non-uniform field...
           DO IPHASE=1,NPHASE
              IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                          CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),CV_NONODS)
+                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,1), IGOT_T_CONST_VALUE(IPHASE,1), T_ALL(IPHASE,:),CV_NONODS)
           END DO
           DO IPHASE=1,NPHASE
              IF( SUM(  WIC_T_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                          CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),CV_NONODS)
+                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,2), IGOT_T_CONST_VALUE(IPHASE,2), TOLD_ALL(IPHASE,:),CV_NONODS)
           END DO
           DO IPHASE=1,NPHASE
              IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                          CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),CV_NONODS)
+                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,3), IGOT_T_CONST_VALUE(IPHASE,3), DEN_ALL(IPHASE,:),CV_NONODS)
           END DO
           DO IPHASE=1,NPHASE
              IF( SUM(  WIC_D_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                          CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),CV_NONODS)
+                  CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,4), IGOT_T_CONST_VALUE(IPHASE,4), DENOLD_ALL(IPHASE,:),CV_NONODS)
           END DO
-
-! ******change the below for thermal Dimitrios WIC_T2_BC_ALL
           DO IPHASE=1,NPHASE
-!             IF(IGOT_T2==1) THEN
              IF(use_volume_frac_t2) THEN
                 IF( SUM(  WIC_T2_BC_ALL(:,  IPHASE, : ) ) == 0)  &
-                          CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),CV_NONODS)
+                     CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,5), IGOT_T_CONST_VALUE(IPHASE,5), T2_ALL(IPHASE,:),CV_NONODS)
              ELSE
                 IGOT_T_CONST(IPHASE,5)=.TRUE. 
                 IGOT_T_CONST_VALUE(IPHASE,5)=1.0
              ENDIF
           END DO
           DO IPHASE=1,NPHASE
-!             IF(IGOT_T2==1) THEN
              IF(use_volume_frac_t2) THEN
                 IF( SUM(  WIC_T2_BC_ALL( :, IPHASE, : ) ) == 0)  &
-                          CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),CV_NONODS)
+                     CALL IS_FIELD_CONSTANT(IGOT_T_CONST(IPHASE,6), IGOT_T_CONST_VALUE(IPHASE,6), T2OLD_ALL(IPHASE,:),CV_NONODS)
              ELSE
                 IGOT_T_CONST(IPHASE,6)=.TRUE. 
                 IGOT_T_CONST_VALUE(IPHASE,6)=1.0
              ENDIF
           END DO
-! ******change the below for thermal Dimitrios WIC_T2_BC_ALL
 
           NFIELD=0
           DO IFI=1,6
@@ -978,7 +863,6 @@ contains
 
           ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) )
 
-          
 
 ! Determine IGOT_T_PACK(IPHASE,:): 
           IGOT_T_PACK=.FALSE.
@@ -994,7 +878,6 @@ contains
           DOWNWIND_EXTRAP_INDIVIDUAL=.FALSE.
           IPT=1
           IF( cv_disopt>=8 ) THEN
-!             IF(IGOT_T2==1) THEN
              IF(GOT_T2) THEN
                 DO IPHASE=1,NPHASE
                    IF(.NOT.IGOT_T_CONST(IPHASE,1)) THEN
@@ -1003,7 +886,6 @@ contains
                    ENDIF
                 END DO
              ENDIF
-!             IF(IGOT_T2==1) THEN
              IF(GOT_T2) THEN
                 DO IPHASE=1,NPHASE
                    IF(.NOT.IGOT_T_CONST(IPHASE,2)) THEN
@@ -1014,38 +896,29 @@ contains
              ENDIF
           ENDIF
 
-!         print *,'DOWNWIND_EXTRAP_INDIVIDUAL:',DOWNWIND_EXTRAP_INDIVIDUAL
-! FOR packing as well as for detemining which variables to apply interface tracking**********
 
-           IF ( is_compact_overlapping ) THEN
+          IF ( is_compact_overlapping ) THEN
 
-              ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE,MAT_NONODS) )
-              !Calculate inverse of sigma
-              INV_V_OPT_VEL_UPWIND_COEFS = opt_vel_upwind_coefs_new
-              DO MAT_NODI=1,MAT_NONODS
-                 DO IPHASE=1,NPHASE
-                    call invert(INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI))
-                 END DO
-              END DO
-           ENDIF
+             ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE,MAT_NONODS) )
+             !Calculate inverse of sigma
+             INV_V_OPT_VEL_UPWIND_COEFS = opt_vel_upwind_coefs_new
+             DO MAT_NODI=1,MAT_NONODS
+                DO IPHASE=1,NPHASE
+                   call invert(INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI))
+                END DO
+             END DO
+          ENDIF
 
 
-           IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
-               IF(THERMAL) THEN
-                     IF( RETRIEVE_SOLID_CTY ) THEN
-                        ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
-!                        ALLOCATE(U_HAT_ALL(NDIM,U_NONODS))
-
-!                        delta_u_all => extract_vector_field( packed_state, "delta_U" )
-!                        u_hat_all = delta_u_all%val + u_all( :, 1, :) ! ndim, u_nonods
-
-!                        us_all => extract_vector_field( packed_state, "solid_U" )
-
-                        Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
-                        VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! cv_nonods
-                      endif
-               ENDIF
-           ENDIF
+          IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
+             IF(THERMAL) THEN
+                IF( RETRIEVE_SOLID_CTY ) THEN
+                   ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
+                   Solid_vol_fra => extract_scalar_field( packed_state, "SolidConcentration" )
+                   VOL_FRA_FLUID = 1.0 - 1.0 * solid_vol_fra%val   ! cv_nonods
+                ENDIF
+             ENDIF
+          ENDIF
 
 
 
@@ -3211,7 +3084,6 @@ end if
 
              DO IPHASE=1,NPHASE
                 IF(IGOT_T_PACK(IPHASE)) THEN ! Put into packing vector LOC_F
-!                   print *,'nphase,nfield,ipt:',nphase,nfield,ipt
                    LOC_F(IPT) = T_ALL(IPHASE)
                    IPT=IPT+1
                 ENDIF
@@ -5414,12 +5286,6 @@ deallocate(NX_ALL, X_NX_ALL)
 
     ENDIF Conditional_FIRORD
 
-!     if((PELE==433).and.(PELEOT==435)) then
-!          print *,'***INCOME,TUPWIN,TUPWI2,TDCEN,ETDNEW_PELE,ETDNEW_PELEOT:',INCOME,TUPWIN,TUPWI2,TDCEN,ETDNEW_PELE,ETDNEW_PELEOT
-!          print *,'***FTILOU, CTILOU, COURANT_OR_MINUS_ONE, TDLIM:',FTILOU, CTILOU, COURANT_OR_MINUS_ONE, TDLIM
-!          print *,'***NOLIMI, FIRORD, TUPWIN2, TUPWI22:', NOLIMI, FIRORD, TUPWIN2, TUPWI22
-!     endif
-
     RETURN
 
   END SUBROUTINE ONVDLIM_ANO
@@ -7597,8 +7463,6 @@ deallocate(NX_ALL, X_NX_ALL)
                       DO I=1,U_SNLOC
                           DO IPHASE=1,NPHASE
                           DO IDIM=1,NDIM
-!                            print *,'IDIM, IPHASE, U_SILOC, U_JLOC12:',IDIM, IPHASE, U_SILOC, U_JLOC12
-!                          STRESS_IJ_ELE_EXT( IDIM, IDIM, IPHASE, U_SILOC, U_JLOC12 ) = STRESS_IJ_ELE_EXT( IDIM, IDIM, IPHASE, U_SILOC, U_JLOC12 ) &
                              STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) = STRESS_IJ_ELE_EXT( 1,1, IPHASE, U_SILOC, U_JLOC12 ) &
                                - SNORMXN_ALL(IDIM,SGI)*SBUFEN_REVERSED(SGI,U_SILOC)* SBUFEN_REVERSED(SGI,I)*SDETWEI( SGI )  &
                                     * SUM( DIFF_GI( IDIM, :, IPHASE, SGI ) *  S_INV_NNX_MAT12( :, I, U_JLOC12 ) )
@@ -8935,12 +8799,11 @@ deallocate(NX_ALL, X_NX_ALL)
 
                 RSHAPE    = SCVFEN( CV_KLOC, GI ) + RGRAY
                 FEMTGI    = FEMTGI     +  RSHAPE     * FEMT( CV_NODK_IPHA )
-!       if((cv_nodi_ipha==67).and.(cv_nodj_ipha==736)) then
-!            print *,'--cv_kloc,FEMTGI, RSHAPE,FEMT( CV_NODK_IPHA ):',cv_kloc,FEMTGI, RSHAPE,FEMT( CV_NODK_IPHA )
-!       endif
+
              ELSE
 
                 FEMTGI    = FEMTGI     +  SCVFEN( CV_KLOC, GI ) * FEMT( CV_NODK_IPHA )
+
              END IF
 
              FEMDGI    = FEMDGI     +  SCVFEN( CV_KLOC, GI ) * FEMDEN( CV_NODK_IPHA )
@@ -9263,13 +9126,8 @@ deallocate(NX_ALL, X_NX_ALL)
             T2MAX_2ND_MC, T2MIN_2ND_MC, &
             LIMT, LIMD, LIMT2 )
 
-!        if( (CV_NODI_IPHA-(iphase-1)*cv_nonods==433) .and. (CV_NODJ_IPHA-(iphase-1)*cv_nonods==435) ) then
-!            print *,'iphase, LIMT, FEMTGI:',iphase, LIMT, FEMTGI
-!        endif
-
     END IF
 
-!         print *,'before fvd,limd:',fvd,limd
     ! Amend for porosity...
     IF ( ELE2 /= 0 ) THEN
        FVD    = 0.5 * ( VOLFRA_PORE(ELE) + VOLFRA_PORE(ELE2) ) * FVD
@@ -9278,8 +9136,6 @@ deallocate(NX_ALL, X_NX_ALL)
        FVD    = VOLFRA_PORE(ELE) * FVD
        LIMD   = VOLFRA_PORE(ELE) * LIMD
     END IF
-!         print *,'after fvd,limd,VOLFRA_PORE(ELE):',fvd,limd,VOLFRA_PORE(ELE)
-!          stop  2911
 
     IF ( HI_ORDER_HALF ) THEN
        RELAX = MIN ( 2.*ABS(FEMTGI-0.5), 1.0 )
@@ -9289,15 +9145,6 @@ deallocate(NX_ALL, X_NX_ALL)
     LIMDT = LIMD * LIMT
 
     LIMDTT2 = LIMD * LIMT * LIMT2
-
-!       if(sele=26) then
-!           print *,'iphase, FEMDGI, LIMT, FIRSTORD, NOLIMI, CV_NODI_IPHA, CV_NODJ_IPHA
-!       IF ( (CV_NODI_IPHA-(iphase-1)*cv_nonods==26).and.(CV_NODJ_IPHA-(iphase-1)*cv_nonods==26) )  then
-!           print *,'iphase, FEMTGI, LIMT, FIRSTORD, NOLIMI, CV_NODI_IPHA, CV_NODJ_IPHA, income, FVT:', &
-!                    iphase, FEMTGI, LIMT, FIRSTORD, NOLIMI, CV_NODI_IPHA, CV_NODJ_IPHA, income, FVT
-!       endif
-
-!    DEALLOCATE( SE_CV_NODK_IPHA, SE_CV_SNODK_IPHA )
 
     RETURN
 
@@ -9409,13 +9256,6 @@ deallocate(NX_ALL, X_NX_ALL)
          T( S:E ), TMIN( S:E ), TMAX( S:E ), &
          TMIN_2ND_MC( S:E ), TMAX_2ND_MC( S:E ), FIRSTORD, NOLIMI, LIMIT_USE_2ND, COURANT_OR_MINUS_ONE_NEW, &
          IANISOTROPIC, TUPWIN, TUPWI2 )
-
-!       if((cv_nodi==433).and.(cv_nodj==435)) then
-!!       if((cv_nodi==67).and.(cv_nodj==736)) then
-!       if((cv_nodi==26).and.(cv_nodj==26)) then
-!          print *,'iphase,TUPWIN, TUPWI2,T(CV_NODI_IPHA), t(CV_NODj_IPHA), LIMT, FEMTGI,INCOME:', &
-!                   iphase,TUPWIN, TUPWI2,T(CV_NODI_IPHA), t(CV_NODj_IPHA), LIMT, FEMTGI,INCOME
-!       endif
 
     CALL ONVDLIM_ALL( CV_NONODS, &
          LIMD, FEMDGI, INCOME, CV_NODI, CV_NODJ, &
@@ -9917,13 +9757,7 @@ CONTAINS
        TDLIM = MAX( TDLIM, 0.0 ) ** (1.0/POWER)
 
     ENDIF Conditional_FIRORD
-!       if(( PELE==433).and.( PELEOT==435))  print *,'++ firord,TDLIM, INCOME, TUPWI2, FTILOU, CTILOU, COURANT_OR_MINUS_ONE:', &
-!                                                        firord,TDLIM, INCOME, TUPWI2, FTILOU, CTILOU, COURANT_OR_MINUS_ONE
-!     if((PELE==433).and.(PELEOT==435)) then
-!          print *,'---new INCOME,TUPWIN,TUPWI2,TDCEN,ETDNEW_PELE,ETDNEW_PELEOT:',INCOME,TUPWIN,TUPWI2,TDCEN,ETDNEW_PELE,ETDNEW_PELEOT
-!          print *,'---new FTILOU, CTILOU, COURANT_OR_MINUS_ONE, TDLIM:',FTILOU, CTILOU, COURANT_OR_MINUS_ONE, TDLIM
-!          print *,'---new NOLIMI, FIRORD, TUPWIN2, TUPWI22:', NOLIMI, FIRORD, TUPWIN2, TUPWI22
-!     endif
+
     RETURN
 
   END SUBROUTINE ONVDLIM_ANO
@@ -11976,6 +11810,7 @@ CONTAINS
 ! Pack all the variables in:
 ! Always pack in the T & TOLD & T2, T2OLD variables
     NFIELD=(4 + 2*IGOT_T2)*NPHASE
+
     ALLOCATE( FUPWIND_MAT_ALL(NFIELD,NSMALL_COLM) )
     ALLOCATE( F_ALL(NFIELD, CV_NONODS), FEMF_ALL(NFIELD, CV_NONODS)  )
     F_ALL(1:NPHASE,            :)=T_ALL(1:NPHASE, :)
@@ -13966,13 +13801,6 @@ deallocate(NX_ALL)
        TDLIM = MAX( TDLIM, 0.0 ) ** (1.0/POWER)
 
     ENDIF Conditional_FIRORD
-!       if(( PELE==433).and.( PELEOT==435))  print *,'++ firord,TDLIM, INCOME, TUPWI2, FTILOU, CTILOU, COURANT_OR_MINUS_ONE:', &
-!                                                        firord,TDLIM, INCOME, TUPWI2, FTILOU, CTILOU, COURANT_OR_MINUS_ONE
-!     if((PELE==433).and.(PELEOT==435)) then
-!          print *,'---new INCOME,TUPWIN,TUPWI2,TDCEN,ETDNEW_PELE,ETDNEW_PELEOT:',INCOME,TUPWIN,TUPWI2,TDCEN,ETDNEW_PELE,ETDNEW_PELEOT
-!          print *,'---new FTILOU, CTILOU, COURANT_OR_MINUS_ONE, TDLIM:',FTILOU, CTILOU, COURANT_OR_MINUS_ONE, TDLIM
-!          print *,'---new NOLIMI, FIRORD, TUPWIN2, TUPWI22:', NOLIMI, FIRORD, TUPWIN2, TUPWI22
-!     endif
     RETURN
 
   END SUBROUTINE ONVDLIM_ANO_SQRT

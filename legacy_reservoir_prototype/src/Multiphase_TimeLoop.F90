@@ -657,6 +657,7 @@
                tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+               saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
                call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                     tracer_field,velocity_field,density_field,&
@@ -688,7 +689,7 @@
                     Mean_Pore_CV, &
                     option_path = '/material_phase[0]/scalar_field::Temperature', &
                     thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                    StorageIndexes=StorageIndexes )
+                    StorageIndexes=StorageIndexes, saturation=saturation_field )
 
                call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                     cv_ndgln, DRhoDPressure )
