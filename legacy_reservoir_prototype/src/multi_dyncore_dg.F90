@@ -8803,7 +8803,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 Cap_exp = 1.!Linear exponent
             end if
             !We consider only the corey options for capillary pressure
-            call get_corey_options(options)
+            call get_corey_options(options, nphase)
             select case (Phase_with_Pc)
                 case (2)
                     aux_Sr = options%S_or
