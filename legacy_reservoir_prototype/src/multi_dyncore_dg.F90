@@ -8807,9 +8807,9 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             select case (Phase_with_Pc)
                 case (2)
                     aux_Sr = options%S_or
-                    aux_Sr_other = options%S_gc
+                    aux_Sr_other = options%S_wr
                 case default
-                    aux_Sr = options%S_gc
+                    aux_Sr = options%S_wr
                     aux_Sr_other = options%S_or
             end select
             !Calculate the Overrelaxation

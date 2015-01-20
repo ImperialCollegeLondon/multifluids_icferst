@@ -53,7 +53,7 @@
     implicit none
 
     type corey_options
-       REAL :: S_GC
+       REAL :: S_wr
        real :: S_OR
        real :: s_gr
        real :: c
@@ -1567,7 +1567,7 @@
 
 
       call get_option("/material_phase[0]/multiphase_properties/immobile_fraction", &
-      options%s_gc, default=0.0)
+      options%s_wr, default=0.0)
       call get_option("/material_phase[0]/multiphase_properties/relperm_type/Corey/relperm_max", &
       options%kr1_max, default=1.0)
       call get_option("/material_phase[0]/multiphase_properties/relperm_type/Corey/relperm_exponent", &
@@ -1629,11 +1629,11 @@
         real :: derivative, aux
 
 
-        aux = 1. - opt%s_gc - opt%s_or
+        aux = 1. - opt%s_wr - opt%s_or
 
         IF( IPHASE == 1 ) THEN
             krmax = opt%kr1_max
-            get_relperm_Brooks_Corey = krmax*( ( sat - opt%s_gc) /&
+            get_relperm_Brooks_Corey = krmax*( ( sat - opt%s_wr) /&
                  ( aux )) ** opt%kr1_exp
             Visc = visc_phase1
         else
@@ -1660,25 +1660,26 @@
         integer, intent(in) :: iphase
         !Local variables
         real, dimension(3) :: satura, relperm, KR, Krmax
-        real :: auxVisc, auxKrmax, aux, Krow, Krog
+        real :: Krow, Krog
         real, parameter :: epsilon = 1d-10
 
         !Prepare data
-        Krmax(1) = opt%kr1_exp; Krmax(2) = opt%kr2_exp; Krmax(3) = opt%kr3_exp
+        Krmax(1) = opt%kr1_max; Krmax(2) = opt%kr2_max; Krmax(3) = opt%kr3_max
         !We consider two models for two phase flow, water-oil and oil-gas
         if (iphase /= 3) then
-            satura(1) = ( sat(1) - opt%s_gc) /( 1. - opt%s_gc - opt%s_or )!Water
+            satura(1) = ( sat(1) - opt%s_wr) /( 1. - opt%s_wr - opt%s_or)!Water
             relperm(1) = Krmax(1)* satura(1) ** opt%kr1_exp!Water, Krw
         end if
         if (iphase /= 1) then
-            satura(3) = ( sat(3) - opt%s_gr ) /(1. - opt%s_gr - opt%s_or)!Gas
+            satura(3) = ( sat(3) - opt%s_gr) /(1. - opt%s_or - opt%s_gr)!Gas
             !For phase 1 and 3 (water and gas respectively) we can use the Brooks Corey model
             relperm(3) = Krmax(3)* satura(3) ** opt%kr3_exp!Gas, Krg
         end if
         !Oil relperm is obtained as a combination
-        if (iphase ==2 ) then
-            Krow = ( 1.0 - satura(1)) ** opt%kr2_exp!Oil, Krow
-            Krog = ( 1.0 - satura(3)) ** opt%kr2_exp!Oil, Krog
+        if (iphase == 2 ) then
+
+            Krow = Krmax(2)* (1.0 - satura(1)) ** opt%kr2_exp!Oil, Krow
+            Krog = Krmax(2)* (1.0 - satura(3)) ** opt%kr2_exp!Oil, Krog
             !For the second phase, oil, we need to recalculate the real value(Stone model 2)
             relperm(2) = Krmax(2)*( (Krow/Krmax(2) + relperm(1))*(Krog/Krmax(2) + relperm(3)) - (relperm(1) + relperm(3)) )
         end if
@@ -1704,7 +1705,7 @@
       logical, intent(in) :: Sat_in_FEM
       ! Local Variables
       INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase, useful_phases
-      real ::  S_OR, S_GC, auxO, auxW!c, a,
+      real ::  S_OR, s_wr, auxO, auxW!c, a,
       character(len=OPTION_PATH_LEN):: option_path, phase_name, cap_path
       logical :: Pc_imbibition
       !Corey options
@@ -1725,7 +1726,7 @@
       !Get corey options
       nphase =size(Satura,1)
       call get_corey_options(options, nphase)
-      s_gc=options%s_gc
+      s_wr=options%s_wr
       s_or=options%s_or
 
       CapPressure = 0.
@@ -1754,11 +1755,11 @@
             end if
 
               if (IPHASE==1) then
-                  auxW = S_GC
+                  auxW = s_wr
                   auxO = S_OR
               else
                   auxW = S_OR
-                  auxO = S_GC
+                  auxO = s_wr
               end if
 !              call get_option(trim(option_path)//"/c", c)
 !              call get_option(trim(option_path)//"/a", a)
