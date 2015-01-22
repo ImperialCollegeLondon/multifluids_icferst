@@ -1182,6 +1182,11 @@ contains
             call scale(cmc_petsc, 1.0/rescaleVal)
             rhs_p%val = rhs_p%val / rescaleVal
             !End of re-scaling
+
+            !Solver that agglomerates all the DG informaton into a CG mesh
+!            call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
+!              NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
+!              totele, cv_nloc, x_nonods, x_ndgln,  trim(pressure%option_path))
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
 
             P_all % val = P_all % val + deltap%val
@@ -1193,7 +1198,6 @@ contains
 
             ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
 
-             
 !!         ####This solver is not yet parallel safe! #### 
 !!                  CALL PRES_DG_MULTIGRID(CMC, CMC_PRECON, IGOT_CMC_PRECON, DP, P_RHS, &
 !!                       NCOLCMC, cv_NONODS, FINDCMC, COLCMC, MIDCMC, &
