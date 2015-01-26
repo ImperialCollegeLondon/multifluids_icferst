@@ -4147,6 +4147,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             ! copy local memory
             DO U_ILOC = 1, U_NLOC
                 U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+                if (.not. node_owned(velocity,u_inod)) cycle
                 U_RHS( :, :, U_INOD ) = U_RHS( :, :, U_INOD ) + LOC_U_RHS( :, :, U_ILOC )
             END DO
 
@@ -6497,6 +6498,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                   J=JDIM + (JPHASE-1)*NDIM_VEL
                                   GLOBI=(ELE-1)*U_NLOC + U_ILOC
                                   GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+                                  if (.not. node_owned(velocity,globi)) cycle
                                   call addto(dgm_petsc, I , J , globi , globj , &
                                        LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
                                END DO
