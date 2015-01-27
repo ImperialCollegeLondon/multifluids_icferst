@@ -643,11 +643,8 @@ contains
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
     fl_positions => extract_vector_field( packed_state, "Coordinate" )
 
-  
-    
-        
     viscosity => extract_tensor_field( packed_state, "Viscosity", stat )
-   
+
     !have_viscosity = ( stat == 0 )
 
     totele = ele_count( fl_mesh )
@@ -718,7 +715,7 @@ contains
     call zero( u_dg )
     call allocate( v_dg, u_mesh, "v_dg" )
     call zero( v_dg )
-    u_dg % val = u_tmp( 1, 1, : ) ; v_dg % val = u_tmp( 2, 1, : ) 
+    u_dg % val = u_tmp( 1, 1, : ) ; v_dg % val = u_tmp( 2, 1, : )
 
     call project_field( u_dg, field_fl_u, fl_positions )
     call project_field( v_dg, field_fl_v, fl_positions )
@@ -915,7 +912,7 @@ contains
 
     !Local variables
     type( mesh_type ), pointer :: p0_fl_mesh, fl_mesh, u_mesh
-    type( scalar_field ), pointer :: solid, old_solid, f !, d
+    type( scalar_field ), pointer :: solid, old_solid, f
     type( scalar_field ) :: field_fl_du, field_fl_dv, &
          &                  field_fl_us, field_fl_vs, &
          &                  field_ext_du, field_ext_dv, &
@@ -998,33 +995,18 @@ contains
     field_ext_solid % val = 1.0
     call insert( alg_ext, field_ext_solid, "SolidConcentration" )
 
-    ! interpolate
-    call allocate( dummy, p0_fl_mesh, "dummy" )
-    call interpolation_galerkin_femdem( alg_ext, alg_fl, field = dummy )
-
-
     ! deal with SolidConcentration
     solid => extract_scalar_field( packed_state, "SolidConcentration" )
     old_solid => extract_scalar_field( packed_state, "OldSolidConcentration" )
 
     call set( old_solid, solid )
+    call zero( solid )
 
-    ! this is a P1 field
-    f => extract_scalar_field( alg_fl, "SolidConcentration" )
+    ! interpolate
+    call interpolation_galerkin_femdem( alg_ext, alg_fl, field = solid )
 
-    ! bound f
-    !call bound_volume_fraction( f % val )
-
-    ! get the P2 field
-    call linear2quadratic_field( f, solid )
-
-
-    !d => extract_scalar_field( packed_state, "Dummy" )
-    !call project_field( dummy, d, fl_positions )
-    !call bound_volume_fraction( d % val )
-    !d % val = dummy % val
-
-
+    ! bound solid concentration
+    call bound_volume_fraction( solid % val )
 
     u_mesh => extract_mesh( packed_state, "VelocityMesh" )
     call allocate( f2, u_mesh, "dummy" )
@@ -1183,9 +1165,9 @@ contains
        a_xx % val( 1, idim, : ) = f2 % val
     end do
     f => extract_scalar_field( alg_fl, "a22" )
-    call linear2quadratic_field(f, f2)    
+    call linear2quadratic_field(f, f2)
     a_xx % val( 2, 2, : ) = f2 % val
-    a_xx % val( 2, 1, :)=a_xx % val(1, 2, :)
+    a_xx % val( 2, 1, :) = a_xx % val(1, 2, :)
 
 
     ! deallocate
