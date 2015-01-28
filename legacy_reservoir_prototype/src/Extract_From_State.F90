@@ -3795,5 +3795,125 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
     end subroutine Clean_Storage
 
 
+    !UNTESTED!!
+    subroutine CheckElementAngles(X_ALL, x_ndgln, X_nloc, MaxAngle, MinAngle, Quality_list)
+        !This function checks the angles of an input element. If one angle is above
+        !the Maxangle or below the MinAngle it will be true in the list
+        Implicit none
+        !Global variables
+        integer, dimension(:), intent(inout) :: Quality_list
+        real, dimension(:,:), intent(in):: X_ALL
+        real, intent (in) :: MaxAngle, MinAngle
+        integer, dimension(:), intent(in) :: x_ndgln
+        integer, intent(in) :: x_nloc
+        !Local variables
+        integer :: ELE, i
+        logical, dimension(4) :: auxLogic
+        real :: MxAngl, MnAngl
+        !Definition of Pi
+        real, parameter :: pi = acos(0.d0) * 2d0
+
+        !Prepare data
+        Quality_list = -1!Initialize with negative values
+        !Convert input angles to radians
+        MxAngl = pi/180. * MaxAngle
+        MnAngl = pi/180. * MinAngle
+        i = 1
+        if (size(X_ALL,1)==2) then!2D triangles
+            do ELE = 1, size(Quality_list)
+                auxLogic(1) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc)),&
+                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc)), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc)), MxAngl, MnANgl)
+
+                 if (auxLogic(1)) then
+                    if (size(Quality_list)< i) Quality_list(i) = ele
+                    i = i + 1
+                end if
+
+            end do
+        else if(size(X_ALL,1)==3) then!3D tetrahedra
+            do ELE = 1, size(Quality_list)
+                !We check the 4 triangles that form a tet
+                auxLogic(1) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc)),&
+                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc)), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc)), &
+                 MxAngl, MnANgl, X_ALL(:, 4+x_ndgln((ele-1)*X_nloc)))
+                 auxLogic(2) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc)),&
+                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc)), X_ALL(:, 4+x_ndgln((ele-1)*X_nloc)), &
+                 MxAngl, MnANgl, X_ALL(:, 3+x_ndgln((ele-1)*X_nloc)))
+                 auxLogic(3) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc)),&
+                 X_ALL(:, 3+x_ndgln((ele-1)*X_nloc)), X_ALL(:, 4+x_ndgln((ele-1)*X_nloc)), &
+                 MxAngl, MnANgl, X_ALL(:, 2+x_ndgln((ele-1)*X_nloc)))
+                 auxLogic(4) = Check_element( X_ALL(:, 4+x_ndgln((ele-1)*X_nloc)),&
+                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc)), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc)), &
+                 MxAngl, MnANgl, X_ALL(:, 1+x_ndgln((ele-1)*X_nloc)))
+
+                 if (auxLogic(1) .or. auxLogic(2) .or. auxLogic(3) .or. auxLogic(4)) then
+                    if (size(Quality_list)< i) Quality_list(i) = ele
+                    i = i + 1
+                 end if
+            end do
+        end if
+
+        contains
+
+            logical function Check_element(X1, X2, X3, MaxAngle, MinAngle, X4)
+                !Introduce X4 for 3D, X4 is the forth vertex of the tet
+                implicit none
+                real, intent(in) :: MaxAngle, MinAngle
+                real, dimension(:), intent(in):: X1, X2, X3
+                real, dimension(:), optional, intent(in) :: X4
+                !Local variables
+                real, dimension(3) :: alpha, lenght, lenght2
+                !For 3D to project values
+                real :: ha, hd, ad, beta, s
+                !Definition of Pi
+                real, parameter :: pi = acos(0.d0) * 2d0
+
+                Check_element = .false.
+
+                !Calculate the lenght of the edges
+                lenght(1) = sqrt(dot_product(X1(:)-X3(:), X1(:)-X3(:)))
+                lenght(2) = sqrt(dot_product(X1(:)-X2(:), X1(:)-X2(:)))
+                lenght(3) = sqrt(dot_product(X2(:)-X3(:), X2(:)-X3(:)))
+
+                !if 3D we have to project the triangle
+                if (present(X4)) then!3D
+                    s = sum(lenght)/2.
+                    !Calculate height to node 3
+                    ha = 2. * sqrt(s * (s - lenght(1)) * (s - lenght(2)) * (s - lenght(3))) / lenght(2)
+                    !Calculate the lenght of the edges to node 4
+                    lenght2(1) = sqrt(dot_product(X1(:)-X4(:), X1(:)-X4(:)))
+                    lenght2(2) = lenght(2)
+                    lenght2(3) = sqrt(dot_product(X2(:)-X4(:), X2(:)-X4(:)))
+                    s = sum(lenght2)/2.
+                    !Calculate height to node 4
+                    hd = 2. * sqrt(s * (s - lenght2(1)) * (s - lenght2(2)) * (s - lenght2(3))) / lenght2(2)
+                    !distance between 3 and 4
+                    ad = sqrt(dot_product(X3(:)-X4(:), X3(:)-X4(:)))
+                    !Obtain the angle
+                    beta = acos((hd**2+ha**2-ad**2)/(2. *hd*ha))
+                    !Project the edges
+                    lenght(1) = sin(beta) * lenght(1)
+                    lenght(3) = sin(beta) * lenght(3)
+                end if
+
+
+                !Alphas
+                alpha(2) = acos((lenght(3)**2+lenght(2)**2-lenght(1)**2)/(2. *lenght(3)*lenght(2)))
+                alpha(1) = acos((lenght(1)**2+lenght(2)**2-lenght(3)**2)/(2. *lenght(1)*lenght(2)))
+                alpha(3) = pi - alpha(1)-alpha(2)
+
+                if (alpha(1)>=MaxAngle .or. alpha(2)>= MaxAngle .or. alpha(3) >= MaxAngle) then
+                    Check_element = .true.
+                    return
+                end if
+
+                if (alpha(1)<=MinAngle .or. alpha(2)<= MinAngle .or. alpha(3) <= MinAngle) then
+                    Check_element = .true.
+                    return
+                end if
+            end function Check_element
+
+    end subroutine CheckElementAngles
+
   end module Copy_Outof_State
 

@@ -509,6 +509,7 @@ contains
       type( tensor_field ), pointer :: den_all2, denold_all2
       !Working pointers
       real, dimension(:), pointer :: p
+      real, dimension(:, :), pointer :: satura
       type(tensor_field), pointer :: tracer, velocity, density
 
       type(petsc_csr_matrix) :: petsc_acv
@@ -523,7 +524,7 @@ contains
 
       !Extract variables from packed_state
       call get_var_from_packed_state(packed_state,FEPressure = P)
-
+      call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
       !Get information for capillary pressure to be use in CV_ASSEMB
       call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes)
 
@@ -623,8 +624,8 @@ contains
       END DO Loop_NonLinearFlux
 
       !Set saturation to be between bounds
-      call Set_Saturation_between_bounds(packed_state)
-      !satura = min(max(satura,0.0), 1.0)
+!      call Set_Saturation_between_bounds(packed_state)
+      satura = min(max(satura,0.0), 1.0)
 
 
       DEALLOCATE( mass_mn_pres )
@@ -1183,12 +1184,19 @@ contains
             rhs_p%val = rhs_p%val / rescaleVal
             !End of re-scaling
 
-            !Solver that agglomerates all the DG informaton into a CG mesh
-!            call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
-!              NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
-!              totele, cv_nloc, x_nonods, x_ndgln,  trim(pressure%option_path))
-            call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
+            !We add a term in the CMC matrix to move mass from low pressure to high pressure nodes
+            !in bad elements to reduce the bad conditioning of the matrix
+!            call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC, COLCMC, MIDCMC, &
+!                totele, p_nloc, P_NDGLN)
 
+            !Solver that agglomerates all the DG informaton into a CG mesh
+!            if (x_nonods /= cv_nonods) then!For discontinuous mesh
+!                call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
+!                    NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
+!                    totele, cv_nloc, x_nonods, x_ndgln, trim(pressure%option_path))
+!            else
+                call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
+!            end if
             P_all % val = P_all % val + deltap%val
 
             call halo_update(p_all)
