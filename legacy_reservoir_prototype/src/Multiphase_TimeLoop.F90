@@ -182,8 +182,8 @@
 
       real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
 !!$
-      real, dimension( :, : ), pointer :: Temperature_Source, &
-           ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, Component_Source
+      real, dimension( :, : ), pointer :: &
+           ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component
       real, dimension( :, :, : ), pointer :: Velocity_U_Source, Velocity_U_Source_CV
       real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
@@ -376,9 +376,8 @@
            Mean_Pore_CV( cv_nonods ), &
            mass_ele( totele ), &
 !!$
-           Temperature_Source( nphase, cv_nonods ), &
            Velocity_U_Source( ndim, nphase, u_nonods ), &
-           Velocity_U_Source_CV( ndim, nphase, cv_nonods ), Component_Source( nphase, cv_nonods ), &
+           Velocity_U_Source_CV( ndim, nphase, cv_nonods ), &
 !!$
            Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
            Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -399,14 +398,13 @@
 !!$
       DRhoDPressure=0.
 !!$
-      Temperature_Source=0.
       suf_sig_diagten_bc=0.
 !!$
       Mean_Pore_CV=0.
       mass_ele=0.
 !!$
       Velocity_U_Source=0.
-      Velocity_U_Source_CV=0. ; Component_Source=0.
+      Velocity_U_Source_CV=0.
 !!$
       Material_Absorption=0.
       Velocity_Absorption=0.
@@ -429,9 +427,7 @@
 !!$ Extracting Mesh Dependent Fields
       initialised = .false.
       call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-           Component_Source, &
-           Velocity_U_Source, Velocity_Absorption, &
-           Temperature_Source)
+           Velocity_U_Source, Velocity_Absorption )
 !!$ Calculate diagnostic fields
       call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
       call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
@@ -674,7 +670,7 @@
                     t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                     suf_sig_diagten_bc,&
                     DRhoDPressure, &
-                    Temperature_Source, Temperature_Absorption, Porosity_field%val, &
+                    Temperature_Absorption, Porosity_field%val, &
                     ndim, &
 !!$
                     NCOLM, FINDM, COLM, MIDM, &
@@ -888,7 +884,7 @@
                           v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                           SUF_SIG_DIAGTEN_BC,&
                           DRhoDPressure, &
-                          Component_Source, Component_Absorption, Porosity_field%val, &
+                          Component_Absorption, Porosity_field%val, &
 !!$
                           NDIM,  &
                           NCOLM, FINDM, COLM, MIDM, &
@@ -1170,7 +1166,7 @@
             call deallocate(packed_state)
             call deallocate(multiphase_state)
             call deallocate(multicomponent_state )
-            call unlinearise_components()
+            !call unlinearise_components()
             call pack_multistate(state,packed_state,&
                  multiphase_state,multicomponent_state)
             call set_boundary_conditions_values(state, shift_time=.true.)
@@ -1195,8 +1191,7 @@
                  plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
                  DRhoDPressure, &
-                 Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
-                 Component_Source, &
+                 Velocity_U_Source, Velocity_U_Source_CV, &
                  suf_sig_diagten_bc, &
                  theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
                  mass_ele, &
@@ -1286,10 +1281,8 @@
                  mass_ele( totele ), &
 !!$
 !!$
-                 Temperature_Source( nphase, cv_nonods ), &
                  Velocity_U_Source( ndim, nphase, u_nonods ), &
                  Velocity_U_Source_CV( ndim, nphase, cv_nonods ), &
-                 Component_Source( nphase, cv_nonods ), &
                  Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                  Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                  Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), & 
@@ -1307,10 +1300,8 @@
             Momentum_Diffusion=0.
             Momentum_Diffusion_Vol=0.
 !!$
-            Temperature_Source=0. ; 
             Temperature_Absorption=0.
 !!$
-            Component_Source=0.
             Component_Diffusion=0. ; Component_Absorption=0.
 !!$
 
@@ -1328,9 +1319,7 @@
 !!$ Extracting Mesh Dependent Fields
             initialised = .true.
             call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-                 Component_Source, &
-                 Velocity_U_Source, Velocity_Absorption, &
-                 Temperature_Source )
+                 Velocity_U_Source, Velocity_Absorption )
 
             ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
 
@@ -1423,8 +1412,7 @@
            plike_grad_sou_grad, plike_grad_sou_coef, &
 !!$ Working arrays
            DRhoDPressure, FEM_VOL_FRAC, &
-           Velocity_U_Source, Velocity_U_Source_CV, Temperature_Source, &
-           Component_Source, &
+           Velocity_U_Source, Velocity_U_Source_CV, &
            theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
            mass_ele,&
            Material_Absorption, Material_Absorption_Stab, &
@@ -1551,10 +1539,7 @@
       subroutine linearise_components()
         
         integer :: ist,ip,ele
-        type( scalar_field ), pointer :: cmp, cmp_p1_cg
-        type( mesh_type ), pointer   :: cmesh, mesh
-        type ( scalar_field ), pointer :: nfield 
-        type ( scalar_field ) :: sfield
+        type ( scalar_field ), pointer :: nfield
         integer, dimension(:), pointer :: nodes
         real, allocatable, dimension(:) :: comp
 
@@ -1640,15 +1625,15 @@
 
       end subroutine linearise_components
 
-      subroutine unlinearise_components()
-        
-        integer :: ist, ip
-        type( scalar_field ), pointer :: cmp, cmp_p1_cg
-        type( mesh_type ), pointer   :: cmesh, mesh
-        type ( scalar_field ), pointer :: nfield 
-        type ( scalar_field ) :: sfield
-        
-      end subroutine unlinearise_components
+      !subroutine unlinearise_components()
+      !
+      !  integer :: ist, ip
+      !  type( scalar_field ), pointer :: cmp, cmp_p1_cg
+      !  type( mesh_type ), pointer   :: cmesh, mesh
+      !  type ( scalar_field ), pointer :: nfield
+      !  type ( scalar_field ) :: sfield
+      !
+      !end subroutine unlinearise_components
 
     end subroutine MultiFluids_SolveTimeLoop
 

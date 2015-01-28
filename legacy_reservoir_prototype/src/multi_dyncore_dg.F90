@@ -89,7 +89,7 @@ contains
        T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
        SUF_SIG_DIAGTEN_BC, &
        DERIV, &
-       T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+       T_ABSORB, VOLFRA_PORE, &
        NDIM, &
        NCOLM, FINDM, COLM, MIDM, &
        XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
@@ -138,7 +138,6 @@ contains
     REAL, intent( in ) :: T_BETA
     REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
     REAL, DIMENSION( :, : ), intent( in ) :: DERIV
-    REAL, DIMENSION( :, : ), intent( in ) :: T_SOURCE
     REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
     REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
     INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -161,9 +160,9 @@ contains
     REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES
     real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
     REAL, DIMENSION( : , : , : ), allocatable :: dense_block_matrix, CT
-    REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all
+    REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
     REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB, ACV_SUB
-    type( scalar_field ), pointer :: P
+    type( scalar_field ), pointer :: P, Q
     INTEGER, DIMENSION( : ), allocatable :: COLACV_SUB, FINACV_SUB, MIDACV_SUB
     INTEGER :: NCOLACV_SUB, IPHASE, I, J
     REAL :: SECOND_THETA
@@ -193,6 +192,9 @@ contains
 
     allocate( den_all( nphase, cv_nonods ), denold_all( nphase, cv_nonods ) )
     allocate(Ct(0,0,0),DIAG_SCALE_PRES(0))
+
+    allocate( T_SOURCE( nphase, cv_nonods ) ) ; T_SOURCE=0.0
+
 
     IGOT_T2_loc = 0
 
@@ -226,7 +228,7 @@ contains
     end if
 
 
-    if( present( option_path ) ) then
+    if( present( option_path ) ) then ! solving for Temperature or Internal Energy
 
        if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
           call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
@@ -239,7 +241,12 @@ contains
 
        Field_selector = 1
 
-    else
+       do iphase = 1, nphase
+          Q => extract_scalar_field( state( iphase ), "TemperatureSource", stat )
+          if ( stat==0 ) T_source( iphase, : ) = Q % val
+       end do
+
+    else ! solving for Composition
 
        call get_option( '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
             'prognostic/temporal_discretisation/control_volumes/number_advection_iterations', nits_flux_lim, default = 1 )
