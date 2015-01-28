@@ -711,17 +711,13 @@
 
 
     subroutine Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-         Component_Source, &
          Velocity_U_Source, Velocity_Absorption, &
-         Temperature_Source, &
          Permeability )
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
 
       logical, intent( in ) :: initialised
-      real, dimension( :, : ), intent(inout) ::&
-           Temperature_Source, Component_Source
       real, dimension( :, :, : ), intent( inout ) :: Velocity_U_Source
       real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption
       real, dimension( :, :, : ), optional, intent( inout ) :: Permeability
