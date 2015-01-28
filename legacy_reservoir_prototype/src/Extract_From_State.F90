@@ -2112,7 +2112,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          call insert( packed_state, tfield, "a_xx" )
 
          tfield => extract_tensor_field( state(1), "Viscosity" )
-         call insert( packed_state, tfield, "Viscosity" )          
+         call insert( packed_state, tfield, "Viscosity" )
 
       end if
 #endif

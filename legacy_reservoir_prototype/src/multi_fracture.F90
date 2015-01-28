@@ -631,6 +631,7 @@ contains
     integer, dimension( : ), pointer :: fl_ele_nodes, cv_ndgln
     integer :: ele, totele, u_nloc, cv_nloc, u_nonods, &
          &     stat
+    logical :: constant_mu
     character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
 
     p_r = 0. ; u_r = 0. ; mu_r = 0.
@@ -646,6 +647,9 @@ contains
     viscosity => extract_tensor_field( packed_state, "Viscosity", stat )
 
     !have_viscosity = ( stat == 0 )
+
+    constant_mu = .false.
+    if ( is_constant( viscosity ) ) constant_mu = .true.
 
     totele = ele_count( fl_mesh )
 
@@ -674,8 +678,7 @@ contains
     call allocate( field_fl_mu, fl_mesh, "Viscosity" )
     call zero( field_fl_mu )
 
-
-    ! deal with pressure
+    ! deal with pressure and viscosity
     if ( cv_nloc == 6 ) then
        ! linearise pressure for p2
        do ele = 1, totele
@@ -684,10 +687,15 @@ contains
           field_fl_p % val( fl_ele_nodes( 2 ) ) = pressure % val( cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
           field_fl_p % val( fl_ele_nodes( 3 ) ) = pressure % val( cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
 
-          ! this is only valid for continuous simulations, i.e. when \mu lives on the pressure mesh...
-          field_fl_mu % val(fl_ele_nodes( 1 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 1 ) )
-          field_fl_mu % val(fl_ele_nodes( 2 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
-          field_fl_mu % val(fl_ele_nodes( 3 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
+          if ( constant_mu ) then
+             field_fl_mu % val(fl_ele_nodes( 1 ) ) = viscosity % val( 1, 1, 1 )
+             field_fl_mu % val(fl_ele_nodes( 2 ) ) = viscosity % val( 1, 1, 1 )
+             field_fl_mu % val(fl_ele_nodes( 3 ) ) = viscosity % val( 1, 1, 1 )
+          else
+             field_fl_mu % val(fl_ele_nodes( 1 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 1 ) )
+             field_fl_mu % val(fl_ele_nodes( 2 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
+             field_fl_mu % val(fl_ele_nodes( 3 ) ) = viscosity % val( 1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
+          end if
        end do
     else
        ! just copy memory for p1
@@ -911,8 +919,7 @@ contains
          &                  field_fl_us, field_fl_vs, &
          &                  field_ext_du, field_ext_dv, &
          &                  field_ext_us, field_ext_vs, f2, &
-         &                  field_fl_solid, field_ext_solid, &
-         &                  dummy
+         &                  field_fl_solid, field_ext_solid
     type( vector_field ), pointer :: fl_positions, delta_u, solid_u
     type( state_type ) :: alg_ext, alg_fl
     integer :: stat, idim
