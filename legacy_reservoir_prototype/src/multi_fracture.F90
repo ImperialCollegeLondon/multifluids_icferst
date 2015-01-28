@@ -674,12 +674,6 @@ contains
     call allocate( field_fl_mu, fl_mesh, "Viscosity" )
     call zero( field_fl_mu )
 
-   !this part need to be changed, take the value from state
-    viscosity % val(1, 1, :)=0.1
-    viscosity % val(1, 2, :)=0.1
-    viscosity % val(2, 1, :)=0.1
-    viscosity % val(2, 2, :)=0.1
-
 
     ! deal with pressure
     if ( cv_nloc == 6 ) then
