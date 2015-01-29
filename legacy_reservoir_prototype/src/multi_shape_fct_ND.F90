@@ -45,6 +45,7 @@
     use fields_data_types, only: mesh_type, scalar_field
     use multiphase_caching, only: cache_level, reshape_vector2pointer
 
+    logical :: NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE = .false.
     logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
 !    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.
 
@@ -1045,7 +1046,11 @@
 
                if( NEW_QUADRATIC_ELE_QUADRATURE ) then
 ! new 1 pt quadrature...
-                  cv_ngi=10
+                  if( NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE ) then
+                     cv_ngi=10*4 ! 1 pt quadrature put CV in an element
+                  else
+                     cv_ngi=10 ! 1 pt quadrature put CV in an element
+                  endif
                   scvngi = 60 - 24
 !                  scvngi = 60
 !                  if (surface_order==1) sbcvngi = 12
@@ -2453,10 +2458,11 @@
 
 
 
+
     subroutine new_pt_qua_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
          n, nlx, nly, nlz, &
          un, unlx, unly, unlz )
-! new 1 pt quadrature set for quadratic tetrahedra .....
+! new 1 or 4 pt quadrature set on each CV of a quadratic tetrahedra .....
       ! Compute shape functions N, UN etc for linear trianles. Shape functions 
       ! associated with volume integration using both CV basis functions CVN, as 
       ! well as FEM basis functions N (and its derivatives NLX, NLY, NLZ). Also 
@@ -2476,7 +2482,7 @@
       integer, parameter :: max_totele = 10000, max_x_nonods = 10000
       logical :: d1, dcyl, d3
       integer :: ele, quad_cv_ngi, quad_cv_nloc, totele, x_nonods, &
-           cv_gj, cv_gk, cv_iloc, cv_gi, totele_sub, gi_max, gi
+           cv_gj, cv_gk, cv_iloc, cv_gi, totele_sub, gi_max, gi, ngi_in_a_cv
       real :: rsum, rmax
 
       REAL, PARAMETER :: Pi=atan(1.0)*4.0
@@ -2520,6 +2526,11 @@
       allocate( quad_l4( cv_ngi ) ) ; quad_l4 = 0.
       allocate( rdummy( cv_ngi ) ) ; rdummy = 0.
 
+      if(NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE) then
+!****************James insert new quadrature set here****************start
+            stop 2999
+!****************James insert new quadrature set here****************end
+      else
 !
 !Volumetric points
 !Node :  quadrature point  :   volume
@@ -2555,6 +2566,8 @@
   cvweigh(8) = w2
   cvweigh(9) = w2
   cvweigh(10)= w1
+! endof if(NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE) then
+       endif 
 
 ! scale taking into account we have a volume of 1./6. of the tet
 !  cvweigh(:) = cvweigh(:) * 6.0
@@ -2583,9 +2596,10 @@
 !         end do
 !         cvn(cv_iloc,gi_max)=1.0
 !      end do
+      ngi_in_a_cv=ngi/cv_nloc
       cvn=0.0
       do cv_iloc=1,cv_nloc
-         cvn(cv_iloc,cv_iloc)=1.0
+         cvn(cv_iloc,   1+(cv_iloc-1)*ngi_in_a_cv : cv_iloc*ngi_in_a_cv) = 1.0
       end do
       
       
