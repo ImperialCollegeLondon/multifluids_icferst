@@ -2596,7 +2596,7 @@
 !         end do
 !         cvn(cv_iloc,gi_max)=1.0
 !      end do
-      ngi_in_a_cv=ngi/cv_nloc
+      ngi_in_a_cv=cv_ngi/cv_nloc
       cvn=0.0
       do cv_iloc=1,cv_nloc
          cvn(cv_iloc,   1+(cv_iloc-1)*ngi_in_a_cv : cv_iloc*ngi_in_a_cv) = 1.0
