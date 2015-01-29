@@ -89,7 +89,7 @@ contains
        T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
        SUF_SIG_DIAGTEN_BC, &
        DERIV, &
-       T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+       T_ABSORB, VOLFRA_PORE, &
        NDIM, &
        NCOLM, FINDM, COLM, MIDM, &
        XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
@@ -138,7 +138,6 @@ contains
     REAL, intent( in ) :: T_BETA
     REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
     REAL, DIMENSION( :, : ), intent( in ) :: DERIV
-    REAL, DIMENSION( :, : ), intent( in ) :: T_SOURCE
     REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
     REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
     INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -161,9 +160,9 @@ contains
     REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES
     real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
     REAL, DIMENSION( : , : , : ), allocatable :: dense_block_matrix, CT
-    REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all
+    REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
     REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB, ACV_SUB
-    type( scalar_field ), pointer :: P
+    type( scalar_field ), pointer :: P, Q
     INTEGER, DIMENSION( : ), allocatable :: COLACV_SUB, FINACV_SUB, MIDACV_SUB
     INTEGER :: NCOLACV_SUB, IPHASE, I, J
     REAL :: SECOND_THETA
@@ -173,7 +172,7 @@ contains
     type(vector_field) :: cv_rhs_field
     type(scalar_field) :: ct_rhs
     type( tensor_field ), pointer :: den_all2, denold_all2, a, aold
-    integer :: lcomp, Field_selector
+    integer :: lcomp, Field_selector, IGOT_T2_loc
 
     type(petsc_csr_matrix) :: petsc_acv
     type(vector_field)  :: vtracer
@@ -194,77 +193,91 @@ contains
     allocate( den_all( nphase, cv_nonods ), denold_all( nphase, cv_nonods ) )
     allocate(Ct(0,0,0),DIAG_SCALE_PRES(0))
 
-        if ( thermal ) then
-           p => extract_scalar_field( packed_state, "CVPressure" )
-           den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-           denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
-           den_all    = den_all2 % val ( 1, :, : )
-           denold_all = denold_all2 % val ( 1, :, : )
-
-           if ( .false. ) then ! don't the divide int. energy equation by the volume fraction
-              a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-              den_all = den_all * a%val(1,:,:)
-
-              aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
-              denold_all = denold_all * a%val(1,:,:)
-           end if
-
-        else if ( lcomp > 0 ) then
-           p => extract_scalar_field( packed_state, "FEPressure" )
-           den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
-           denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
-           den_all = den_all2 % val ( 1, :, : )
-           denold_all = denold_all2 % val ( 1,  :, : )
-        else
-           p => extract_scalar_field( packed_state, "FEPressure" )
-           den_all=1.0
-           denold_all=1.0
-        end if
+    allocate( T_SOURCE( nphase, cv_nonods ) ) ; T_SOURCE=0.0
 
 
-        if( present( option_path ) ) then
+    IGOT_T2_loc = 0
 
-            if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
-                call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
-                'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
-            end if
+    if ( thermal ) then
+       p => extract_scalar_field( packed_state, "CVPressure" )
+       den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+       denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
+       den_all    = den_all2 % val ( 1, :, : )
+       denold_all = denold_all2 % val ( 1, :, : )
 
-            path='/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation' // &
+       if ( .false. ) then ! don't the divide int. energy equation by the volume fraction
+          a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+          den_all = den_all * a%val(1,:,:)
+
+          aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
+          denold_all = denold_all * a%val(1,:,:)
+       end if
+
+       IGOT_T2_loc = 1
+
+    else if ( lcomp > 0 ) then
+       p => extract_scalar_field( packed_state, "FEPressure" )
+       den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
+       denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
+       den_all = den_all2 % val ( 1, :, : )
+       denold_all = denold_all2 % val ( 1,  :, : )
+    else
+       p => extract_scalar_field( packed_state, "FEPressure" )
+       den_all=1.0
+       denold_all=1.0
+    end if
+
+
+    if( present( option_path ) ) then ! solving for Temperature or Internal Energy
+
+       if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
+          call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
+               'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+       end if
+
+       path='/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation' // &
             '/control_volumes/second_theta'
-            call get_option( path, second_theta, default=1. )
+       call get_option( path, second_theta, default=1. )
 
-            Field_selector = 1
+       Field_selector = 1
 
-        else
+       do iphase = 1, nphase
+          Q => extract_scalar_field( state( iphase ), "TemperatureSource", stat )
+          if ( stat==0 ) T_source( iphase, : ) = Q % val
+       end do
 
-            call get_option( '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
+    else ! solving for Composition
+
+       call get_option( '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
             'prognostic/temporal_discretisation/control_volumes/number_advection_iterations', nits_flux_lim, default = 1 )
 
-            path= '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
+       path= '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
             'prognostic/temporal_discretisation/control_volumes/second_theta'
 
-            call get_option( path, second_theta, default=1. )
+       call get_option( path, second_theta, default=1. )
 
-            Field_selector = 2
+       Field_selector = 2
 
-        end if
+       IGOT_T2_loc = IGOT_T2
 
-        lump_eqns = have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/' // &
-        'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
+    end if
 
-! let the coupling work
-         if ( have_option( '/blasting' ) ) then
-            RETRIEVE_SOLID_CTY = .true.
-         else
-            RETRIEVE_SOLID_CTY = .false.
-         end if
+    lump_eqns = have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/' // &
+         'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
+
+    ! let the coupling work
+    if ( have_option( '/blasting' ) ) then
+       RETRIEVE_SOLID_CTY = .true.
+    else
+       RETRIEVE_SOLID_CTY = .false.
+    end if
 
 
-        Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
+    Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
 
-            call CV_ASSEMB( state, packed_state, &
-                 tracer, velocity, density, &
+       call CV_ASSEMB( state, packed_state, &
+            tracer, velocity, density, &
             CV_RHS_field, &
             petsc_acv, &
             SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
@@ -285,7 +298,7 @@ contains
             NCOLM, FINDM, COLM, MIDM, &
             XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-            IGOT_T2,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+            IGOT_T2_loc,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
             IN_ELE_UPWIND, DG_ELE_UPWIND, &
             MEAN_PORE_CV, &
@@ -294,15 +307,15 @@ contains
             StorageIndexes, Field_selector,icomp, &
             saturation=saturation )
 
-            Conditional_Lumping: IF ( LUMP_EQNS ) THEN
-                ! Lump the multi-phase flow eqns together
-                ALLOCATE( CV_RHS_SUB( CV_NONODS ) )
+       Conditional_Lumping: IF ( LUMP_EQNS ) THEN
+          ! Lump the multi-phase flow eqns together
+          ALLOCATE( CV_RHS_SUB( CV_NONODS ) )
 
-                CV_RHS_SUB = 0.0
-                DO IPHASE = 1, NPHASE
-                    CV_RHS_SUB( : ) = CV_RHS_SUB( : )&
-                         + CV_RHS_field%val(iphase,:)
-                END DO
+          CV_RHS_SUB = 0.0
+          DO IPHASE = 1, NPHASE
+             CV_RHS_SUB( : ) = CV_RHS_SUB( : )&
+                  + CV_RHS_field%val(iphase,:)
+          END DO
 
 !!$                NCOLACV_SUB = FINACV( CV_NONODS + 1) - 1 - CV_NONODS *( NPHASE - 1 )
 !!$
@@ -318,38 +331,38 @@ contains
                 !FINACV_SUB, COLACV_SUB, &
                 !trim(option_path))
 
-             ELSE
+       ELSE
 
-                IF ( IGOT_T2 == 1) THEN
-                   vtracer=as_vector(tracer,dim=2)
-                   call zero_non_owned(cv_rhs_field)
-                   call zero(vtracer)
+          IF ( IGOT_T2 == 1) THEN
+             vtracer=as_vector(tracer,dim=2)
+             call zero_non_owned(cv_rhs_field)
+             call zero(vtracer)
 
-                   call petsc_solve(vtracer,petsc_acv,cv_rhs_field,'/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic')
-                ELSE
-                   vtracer=as_vector(tracer,dim=2)
-                   call zero_non_owned(cv_rhs_field)
-                   call zero(vtracer)
+             call petsc_solve(vtracer,petsc_acv,cv_rhs_field,'/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic')
+          ELSE
+             vtracer=as_vector(tracer,dim=2)
+             call zero_non_owned(cv_rhs_field)
+             call zero(vtracer)
 
-                   call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
+             call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
-                   do iphase = 1, nphase
-                      ewrite(2,*) 'T phase min_max:', iphase, &
-                         minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
-                   end do
-                END IF
+             do iphase = 1, nphase
+                ewrite(2,*) 'T phase min_max:', iphase, &
+                     minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
+             end do
+          END IF
 
-             END IF Conditional_Lumping
+       END IF Conditional_Lumping
 
 
-        END DO Loop_NonLinearFlux
+    END DO Loop_NonLinearFlux
 
-        call deallocate(petsc_acv)
-        call deallocate(cv_RHS_FIELD)
+    call deallocate(petsc_acv)
+    call deallocate(cv_RHS_FIELD)
 
-        ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
+    ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
-    END SUBROUTINE INTENERGE_ASSEM_SOLVE
+  END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
     SUBROUTINE SIMPLE_SOLVER( CMC, P, RHS,  &
     NCMC, NONODS, FINCMC, COLCMC, MIDCMC,  &
@@ -503,6 +516,7 @@ contains
       type( tensor_field ), pointer :: den_all2, denold_all2
       !Working pointers
       real, dimension(:), pointer :: p
+      real, dimension(:, :), pointer :: satura
       type(tensor_field), pointer :: tracer, velocity, density
 
       type(petsc_csr_matrix) :: petsc_acv
@@ -517,7 +531,7 @@ contains
 
       !Extract variables from packed_state
       call get_var_from_packed_state(packed_state,FEPressure = P)
-
+      call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
       !Get information for capillary pressure to be use in CV_ASSEMB
       call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes)
 
@@ -617,8 +631,8 @@ contains
       END DO Loop_NonLinearFlux
 
       !Set saturation to be between bounds
-      call Set_Saturation_between_bounds(packed_state)
-      !satura = min(max(satura,0.0), 1.0)
+!      call Set_Saturation_between_bounds(packed_state)
+      satura = min(max(satura,0.0), 1.0)
 
 
       DEALLOCATE( mass_mn_pres )
@@ -1176,8 +1190,20 @@ contains
             call scale(cmc_petsc, 1.0/rescaleVal)
             rhs_p%val = rhs_p%val / rescaleVal
             !End of re-scaling
-            call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
 
+            !We add a term in the CMC matrix to move mass from low pressure to high pressure nodes
+            !in bad elements to reduce the bad conditioning of the matrix
+!            call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC, COLCMC, MIDCMC, &
+!                totele, p_nloc, P_NDGLN)
+
+            !Solver that agglomerates all the DG informaton into a CG mesh
+!            if (x_nonods /= cv_nonods) then!For discontinuous mesh
+!                call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
+!                    NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
+!                    totele, cv_nloc, x_nonods, x_ndgln, trim(pressure%option_path))
+!            else
+                call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
+!            end if
             P_all % val = P_all % val + deltap%val
 
             call halo_update(p_all)
@@ -1187,7 +1213,6 @@ contains
 
             ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
 
-             
 !!         ####This solver is not yet parallel safe! #### 
 !!                  CALL PRES_DG_MULTIGRID(CMC, CMC_PRECON, IGOT_CMC_PRECON, DP, P_RHS, &
 !!                       NCOLCMC, cv_NONODS, FINDCMC, COLCMC, MIDCMC, &
@@ -4137,6 +4162,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             ! copy local memory
             DO U_ILOC = 1, U_NLOC
                 U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+                if (.not. node_owned(velocity,u_inod)) cycle
                 U_RHS( :, :, U_INOD ) = U_RHS( :, :, U_INOD ) + LOC_U_RHS( :, :, U_ILOC )
             END DO
 
@@ -6487,6 +6513,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                   J=JDIM + (JPHASE-1)*NDIM_VEL
                                   GLOBI=(ELE-1)*U_NLOC + U_ILOC
                                   GLOBJ=(JCOLELE-1)*U_NLOC + U_JLOC
+                                  if (.not. node_owned(velocity,globi)) cycle
                                   call addto(dgm_petsc, I , J , globi , globj , &
                                        LOC_DGM_PHA(IDIM,JDIM,IPHASE,JPHASE,U_ILOC,U_JLOC))
                                END DO
@@ -8797,13 +8824,13 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 Cap_exp = 1.!Linear exponent
             end if
             !We consider only the corey options for capillary pressure
-            call get_corey_options(options)
+            call get_corey_options(options, nphase)
             select case (Phase_with_Pc)
                 case (2)
                     aux_Sr = options%S_or
-                    aux_Sr_other = options%S_gc
+                    aux_Sr_other = options%S_wr
                 case default
-                    aux_Sr = options%S_gc
+                    aux_Sr = options%S_wr
                     aux_Sr_other = options%S_or
             end select
             !Calculate the Overrelaxation

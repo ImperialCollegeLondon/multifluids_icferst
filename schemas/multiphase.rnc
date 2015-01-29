@@ -663,9 +663,7 @@ start =
                      ## Relative permeability exponent
                      ##
                      ## Default value 2.0
-                     element relperm_exponent {real}?,
-                     ## Option to boost the absorption at zero saturation
-                     element boost_at_zero_saturation { comment }?
+                     element relperm_exponent {real}?
                   }
                 }?,
 		## Mark phase as being the continuous phase in dispersed fluid-fluid flow

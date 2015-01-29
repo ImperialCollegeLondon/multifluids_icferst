@@ -37,6 +37,8 @@ module solvers_module
   use global_parameters, only: OPTION_PATH_LEN
   use spud
 
+  use state_module
+  use halo_data_types
 #ifdef HAVE_PETSC_MODULES
   use petsc 
 #if PETSC_VERSION_MINOR==0
@@ -67,7 +69,7 @@ module solvers_module
 
   private
 
-  public :: solver, PRES_DG_MULTIGRID
+  public :: solver, PRES_DG_MULTIGRID, CMC_Agglomerator_solver, Fix_to_bad_elements
 
   interface solver
      module procedure solve_via_copy_to_petsc_csr_matrix
@@ -545,6 +547,172 @@ contains
     RETURN
   END SUBROUTINE PRES_DG_MULTIGRID
 
+  SUBROUTINE CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
+  NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
+  totele, cv_nloc, x_nonods, x_ndgln,  option_path)
+      !
+      ! Solve CMC * P = RHS for RHS.
+      ! form a discontinuous pressure mesh for pressure...
+      implicit none
+      INTEGER, intent( in ) ::  NCOLCMC, CV_NONODS, totele, cv_nloc, x_nonods
+      ! IGOT_CMC_PRECON=1 or 0 (1 if we have a preconditioning matrix)
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type(petsc_csr_matrix), intent(in)::  CMC_petsc
+      type( scalar_field ), intent(inout) :: deltap
+      type( scalar_field ), intent(in) :: rhs_p
+      INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
+      INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
+      INTEGER, DIMENSION( : ), intent( in ) :: MIDCMC
+      INTEGER, DIMENSION( : ), intent( in ) :: x_ndgln
+      character(len=*), intent(in) :: option_path
+
+
+
+      integer, dimension( : ), allocatable :: findcmc_small, colcmc_small, midcmc_small, &
+      MAP_DG2CTY
+      integer :: ele,cv_iloc, dg_nod, cty_nod, jcolcmc, jcolcmc_small
+      integer :: mx_ncmc_small, ncmc_small, count, count2, count3, GL_ITS, col
+      real :: OPT_STEP
+
+      integer :: ierr, i
+      real, dimension(1) :: auxR
+      !Variables for CMC_Small_petsc
+      type(petsc_csr_matrix)::  CMC_Small_petsc
+      type(mesh_type), pointer :: pmesh
+      type( scalar_field ) :: deltap_small, RHS_small
+      integer, dimension( x_nonods ) :: dnnz
+      type(halo_type), pointer :: halo
+
+      ! obtain sparcity of a new matrix
+      mx_ncmc_small = ncolcmc * 4
+      allocate( FINDcmc_small(x_nonods+1) )
+      allocate( colcmc_small(mx_ncmc_small) )
+      allocate( midcmc_small(x_nonods) )
+      allocate( MAP_DG2CTY(cv_nonods) )
+
+      ! lump the pressure nodes to take away the discontinuity...
+      DO ELE = 1, TOTELE
+          DO CV_ILOC = 1, CV_NLOC
+              dg_nod = (ele-1) * cv_nloc + cv_iloc
+              cty_nod = x_ndgln( (ele-1) * cv_nloc + cv_iloc)
+              MAP_DG2CTY(dg_nod) = cty_nod
+          END DO
+      END DO
+
+      CALL GET_SPAR_CMC_SMALL(FINDCMC_SMALL, COLCMC_SMALL, MIDCMC_SMALL, &
+      MX_NCMC_SMALL, NCMC_SMALL, CV_NONODS, X_NONODS, MAP_DG2CTY, &
+      FINDCMC, COLCMC, NCOLCMC)
+
+
+
+      !Prepare variables related to CMC_Small_PETSC
+      pmesh => extract_mesh(state(1), "PressureMesh_Continuous")
+      !halo => pmesh%halos(1)
+       ! find the number of non zeros per row
+       do i = 1, size( dnnz )
+           dnnz( i ) =FINDCMC_SMALL( i+1 ) - FINDCMC_SMALL( i )
+       end do
+
+      call allocate( CMC_Small_petsc, size(dnnz), size(dnnz), dnnz, dnnz,(/1, 1/)&
+            ,name = 'CMC_Small_petsc')!, halo = halo)
+      !Allocate P_small and rhs_small
+      call allocate(deltap_small,pmesh,"deltap_small")
+      call allocate(RHS_small,pmesh,"RHS_small")
+      call zero(CMC_Small_petsc); call zero(deltap_small); call zero(RHS_small)
+
+
+      !We create CMC_Small_petsc from CMC_petsc
+      DO dg_nod = 1, CV_NONODS
+          cty_nod = MAP_DG2CTY(dg_nod)
+          ! add row dg_nod to row cty_nod of cty mesh
+          DO COUNT = FINDCMC(DG_NOD), FINDCMC(DG_NOD+1) - 1
+              jcolcmc_small = MAP_DG2CTY(COLCMC(COUNT))
+              count2 = 0
+              DO COUNT3 = FINDCMC_small(cty_NOD), FINDCMC_small(cty_NOD+1) - 1
+                  if(colcmc_small(count3)==jcolcmc_small) count2=count3
+              end do
+              call MatGetValues(cmc_petsc%M, 1, (/ dg_nod-1 /), 1, (/ COLCMC(COUNT)-1 /),  auxR, ierr)
+              call addto( CMC_Small_petsc, blocki = 1, blockj = 1, i = cty_nod, j = colcmc_small(count2),val = auxR(1))
+          END DO
+      END DO
+    call assemble( CMC_Small_petsc )
+
+    !call MatView(cmc_petsc%M,PETSC_VIEWER_STDOUT_SELF)
+    !call MatView(CMC_Small_petsc%M,PETSC_VIEWER_STDOUT_SELF)
+
+    !We create now RHS_Small
+    do dg_nod = 1, cv_nonods
+        cty_nod = MAP_DG2CTY(dg_nod)
+        RHS_small%val(cty_nod) = RHS_small%val(cty_nod) + RHS_p%val(dg_nod)
+    end do
+
+    !We solve the system
+    call petsc_solve(deltap_small,CMC_Small_petsc,RHS_small,trim(option_path))
+    !We map back the results
+    do dg_nod = 1, cv_nonods
+        cty_nod = MAP_DG2CTY(dg_nod)
+        deltap%val(dg_nod) = deltap_small%val(cty_nod)
+    end do
+
+    call deallocate(CMC_Small_petsc)
+    call deallocate(deltap_small)
+    call deallocate(RHS_small)
+    deallocate( FINDcmc_small, &
+    colcmc_small, &
+    midcmc_small, &
+    MAP_DG2CTY )
+
+    RETURN
+  END SUBROUTINE CMC_Agglomerator_solver
+
+
+
+  SUBROUTINE Fix_to_bad_elements(cmc_petsc, &
+      NCOLCMC, FINDCMC, COLCMC, MIDCMC, &
+      totele, p_nloc, P_NDGLN)
+      !We add a term in the CMC matrix to move mass from low pressure to high pressure nodes
+      implicit none
+      INTEGER, intent( in ) ::  NCOLCMC, totele, p_nloc
+      type(petsc_csr_matrix), intent(inout)::  CMC_petsc
+      INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC, COLCMC, MIDCMC, P_NDGLN
+!      integer, dimension (:), intent(in) :: Quality_list
+      !Local variables
+      real, parameter :: alpha = 1d-1
+      integer :: i, i_node, j_node, ele, COUNT, P_ILOC, i_node_min, i_node_max
+      real :: auxR, weigth
+
+
+      !Initialize variables
+      !The weight will have to be different depending on the number of the nodes per element
+      weigth = 1 / 2.
+
+      i = 1
+!      do while (Quality_list(i)>0)
+          ele = 2!Quality_list(i)
+          !I am giving for granted that the numbering of the nodes in an element does not have jumps
+          i_node_min = minval(P_NDGLN((ele-1) * p_nloc + 1: ele * p_nloc))
+          i_node_max = maxval(P_NDGLN((ele-1) * p_nloc + 1: ele * p_nloc))
+          DO P_ILOC = 1, P_NLOC
+              i_node = P_NDGLN((ele-1) * p_nloc + P_ILOC)
+!              COUNT = FINDCMC(i_node)
+              ! add row dg_nod to row cty_nod of cty mesh
+              DO COUNT = FINDCMC(i_node), FINDCMC(i_node+1) - 1
+                  j_node = COLCMC(COUNT)
+                  if (j_node <= i_node_max .and. j_node >= i_node_min) then
+                      !Correspond to ones in the diagonal
+                      auxR = alpha
+                      !Corresponds to 0.5 out of the diagonal (for linear 2D elements only)
+                      if (i_node /= j_node) auxR = - auxR * weigth
+                      !Add the new data to the matrix
+                      call addto( cmc_petsc, blocki = 1, blockj = 1, i = i_node, j = j_node,val = auxR)
+                  end if
+              END DO
+          end do
+!      end do
+        !Just in case
+        call assemble( cmc_petsc )
+
+      end subroutine Fix_to_bad_elements
 
   SUBROUTINE GET_SPAR_CMC_SMALL(FINDCMC_SMALL,COLCMC_SMALL,MIDCMC_SMALL, &
        MX_NCMC_SMALL,NCMC_SMALL, CV_NONODS,X_NONODS, MAP_DG2CTY, &
@@ -754,7 +922,6 @@ contains
 
       RETURN
     END SUBROUTINE SIMPLE_SOLVER
-
 
 
 end module solvers_module
