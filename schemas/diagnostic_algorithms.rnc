@@ -1274,6 +1274,32 @@ universal_column_id_algorithm =
       }
    )
 
+scalar_distance_function =
+   (
+      ## distance from zeor contour of source field
+      element algorithm {
+         attribute name { "scalar_distance_function" },
+         attribute material_phase_support { "multiple" },
+         scalar_source_field,
+	 (
+	 element method {
+	    attribute name { "HamiltonJacobi" }
+	 }|
+	 element method {
+	    attribute name { "Hybrid" }
+	 }|
+	 element method {
+	    attribute name { "MarchingMethod" }
+	 }
+	 ),
+         element depends {
+            anystring
+         },
+	 element zero_level {
+            real
+         }
+      }
+   )
 
 # Time averaged fields
 
@@ -1367,6 +1393,7 @@ scalar_diagnostic_algorithms |= scalar_potential_algorithm
 scalar_diagnostic_algorithms |= scalar_laplacian_algorithm
 scalar_diagnostic_algorithms |= scalar_gaussian_algorithm
 scalar_diagnostic_algorithms |= scalar_galerkin_projection_algorithm
+scalar_diagnostic_algorithms |= scalar_distance_function
 scalar_diagnostic_algorithms |= scalar_difference_algorithm
 scalar_diagnostic_algorithms |= scalar_copy_algorithm
 scalar_diagnostic_algorithms |= scalar_advection_algorithm
