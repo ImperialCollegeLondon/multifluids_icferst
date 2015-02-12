@@ -2104,7 +2104,10 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
          vfield => extract_vector_field( state(1), "solid_U" )
          call insert( packed_state, vfield, "solid_U" )
-
+         
+         vfield => extract_vector_field( state(1), "perm_frac" )
+         call insert( packed_state, vfield, "perm_frac" )
+         
          vfield => extract_vector_field( state(1), "f_x" )
          call insert( packed_state, vfield, "f_x" )         
 
