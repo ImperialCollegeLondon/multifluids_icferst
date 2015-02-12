@@ -3283,6 +3283,20 @@ vector_field_choice =
          }|
          element vector_field {
              attribute rank { "1" },
+             attribute name { "perm_frac" },
+             (
+                element diagnostic {
+                   internal_algorithm,
+                   mesh_choice,
+                   diagnostic_vector_field
+                }|
+                element aliased {
+                   generic_aliased_field
+                }
+             )
+         }|
+         element vector_field {
+             attribute rank { "1" },
              attribute name { "f_x" },
              (
                 element diagnostic {
