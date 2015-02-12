@@ -235,7 +235,7 @@
 
       !Working pointers
 
-      type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
+      type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source, tfield
       type(scalar_field), pointer :: pressure_field, porosity_field
       type(vector_field), pointer :: positions
 
@@ -601,7 +601,7 @@
 
             !call set_nu_to_u( packed_state )
             !call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
-            !   ScalarField_Source, velocity_absorption, temperature_source, temperature_absorption )
+            !   ScalarField_Source, velocity_absorption, temperature_absorption )
 
 
             if( have_temperature_field .and. &
@@ -1080,32 +1080,26 @@
             !The storaged variables must be recalculated
             call Clean_Storage(state, StorageIndexes)
 
-            call linearise_components()
+!            call linearise_components()
+
+!            tfield => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+!            call linearise( tfield )
+
+!            tfield => extract_tensor_field( packed_state, "PackedDensity" )
+!            call linearise( tfield )
+
+!            tfield => extract_tensor_field( packed_state, "PackedTemperature" )
+!            call linearise( tfield )
+
+!            tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+!            call linearise( tfield )
+
 
             Conditional_Adaptivity: if( have_option( '/mesh_adaptivity/hr_adaptivity ') .or. have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric')) then
 
                Conditional_Adapt_by_TimeStep: if( mod( itime, adapt_time_steps ) == 0 ) then
 
-                  ! linearise compositional fields:
-                !  Conditional_Components_Linearisation2: if ( ncomp > 1 ) then
-                !     do icomp = 1, ncomp
-                !        do iphase = 1, nphase
-                !           Component_State => extract_scalar_field( state( icomp + nphase ), & 
-                !                'ComponentMassFractionPhase' // int2str( iphase ) )
-                !           if (.not. have_option(trim(Component_State%option_path)//"/prognostic/consistent_interpolation")) then
-                !              call Updating_Linearised_Components( totele, ndim, cv_nloc, cv_nonods, cv_ndgln,& 
-                !                   component ( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
-                !                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods ) )
-                !              Component_State % val = component( 1 + ( iphase - 1 ) * cv_nonods + ( icomp - 1 ) * &
-                !                   nphase * cv_nonods : iphase * cv_nonods + ( icomp - 1 ) * nphase * cv_nonods )
-                !           end if
-                !        end do
-                !     end do
-                !  end if Conditional_Components_Linearisation2
-
-
                   call pre_adapt_tasks( sub_state )
-
 
                   if (have_option('/mesh_adaptivity/hr_adaptivity_prescribed_metric')) then
                      positions=>extract_vector_field(state(1),"Coordinate")
@@ -1738,6 +1732,66 @@
          nuold % val = uold % val
 
    end subroutine set_nu_to_u
+
+
+
+   subroutine linearise( field )
+     implicit none
+     type( tensor_field ), intent( inout ) :: field
+
+     integer, dimension( : ), pointer :: ndglno, cv_nods
+     integer :: n, totele, cv_nloc, ncomp, nphase, cv_nonods, ele, cv_iloc, cv_nod
+     real, dimension( :, :, : ), allocatable :: field_tmp, field_cv_nod
+
+     ! This sub will linearise a p2 field
+
+     n = field%mesh%shape%degree
+
+     if ( n==2 ) then
+
+        ndglno => get_ndglno( field%mesh )
+
+        totele = field%mesh%elements
+        cv_nloc = field%mesh%shape%loc
+        cv_nonods =  field%mesh%nodes
+
+        ncomp = size( field%val, 1 )
+        nphase = size( field%val, 2 )
+
+        allocate( field_tmp( ncomp, nphase, cv_nonods ) ) ; field_tmp = field % val
+        allocate( field_cv_nod( ncomp, nphase, cv_nloc ) ) ; field_cv_nod = 0.0
+
+        do ele = 1, totele
+
+           cv_nods => ndglno( ( ele - 1 ) * cv_nloc + 1 : ele * cv_nloc )
+           field_cv_nod =  field_tmp( :, :, cv_nods )
+
+           field_cv_nod( :, :, 2 ) = 0.5 * ( field_cv_nod( :, :, 1 ) + field_cv_nod( :, :, 3 ) )
+           field_cv_nod( :, :, 4 ) = 0.5 * ( field_cv_nod( :, :, 1 ) + field_cv_nod( :, :, 6 ) )
+           field_cv_nod( :, :, 5 ) = 0.5 * ( field_cv_nod( :, :, 3 ) + field_cv_nod( :, :, 6 ) )
+
+           if ( cv_nloc == 10 ) then
+              field_cv_nod( :, :, 7 ) = 0.5 * ( field_cv_nod( :, :, 1 ) + field_cv_nod( :, :, 10 ) )
+              field_cv_nod( :, :, 8 ) = 0.5 * ( field_cv_nod( :, :, 3 ) + field_cv_nod( :, :, 10 ) )
+              field_cv_nod( :, :, 9 ) = 0.5 * ( field_cv_nod( :, :, 6 ) + field_cv_nod( :, :, 10 ) )
+           end if
+
+           do cv_iloc = 1, cv_nloc
+              cv_nod = ndglno( ( ele - 1 ) * cv_nloc + cv_iloc )
+              field%val( :, :, cv_nod ) = field_cv_nod( :, :, cv_iloc )
+           end do
+
+        end do
+
+        deallocate( field_tmp, field_cv_nod )
+
+     end if
+
+     return
+   end subroutine linearise
+
+
+
 
 
   end module multiphase_time_loop

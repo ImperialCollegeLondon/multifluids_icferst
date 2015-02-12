@@ -2556,16 +2556,16 @@
 
 
     subroutine boiling( states, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
-         ScalarField_Source, velocity_absorption, temperature_source, temperature_absorption )
+         ScalarField_Source, velocity_absorption, temperature_absorption )
       implicit none
 
-         type( state_type ), dimension(:), intent( inout ) :: states
-         type( state_type ), intent( in ) :: packed_state
+      type( state_type ), dimension(:), intent( inout ) :: states
+      type( state_type ), intent( in ) :: packed_state
       integer, intent( in ) :: cv_nonods, mat_nonods, nphase, ndim
-      real, dimension( :, : ), intent( inout ) :: ScalarField_Source, temperature_source
+      real, dimension( :, : ), intent( inout ) :: ScalarField_Source
       real, dimension( :, :, : ), intent( inout ) :: velocity_absorption, temperature_absorption
 
-      type( tensor_field ), pointer :: temperature
+      type( tensor_field ), pointer :: temperature, temperature_source
       real, dimension( :, : ), allocatable :: A
       real, dimension( : ), allocatable :: S_lg_l, S_lg_g, S_ls_l, S_gs_g, &
            T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, &
@@ -2575,7 +2575,7 @@
 
       ewrite(3,*) 'inside boiling routine'
 
-      ScalarField_Source=0.0 ; temperature_source=0.0
+      ScalarField_Source=0.0
       velocity_absorption=0.0 ; temperature_absorption=0.0
 
       allocate( S_lg_l(mat_nonods), S_lg_g(mat_nonods), S_ls_l(mat_nonods), S_gs_g(mat_nonods), A(nphase,mat_nonods) )
@@ -2631,7 +2631,6 @@
       call calculate_boiling_variables( states, packed_state, ndim, nphase, T_sat, Svap_l, Svap_g, &
            Gamma_l, Gamma_g, h_l, h_g, St_gl, St_sl, St_sg )
 
-      temperature => extract_tensor_field( packed_state, "PackedTemperature" )
 
       ! Temperature absorption
 
@@ -2659,11 +2658,14 @@
 
       ! Temperature source
 
+      temperature => extract_tensor_field( packed_state, "PackedTemperature" )
+      temperature_source => extract_tensor_field( packed_state, "PackedTemperatureSource" )
+
       iphase=1
-      temperature_source( iphase, : ) = Svap_l*T_sat + Gamma_l*h_l + Gamma_l*Le0
+      temperature_source%val( 1, iphase, : ) = Svap_l*T_sat + Gamma_l*h_l + Gamma_l*Le0
 
       iphase=2
-      temperature_source( iphase, : ) = Svap_g*T_sat + Gamma_g*h_g + 1.0e+6 * temperature%val(1,2,:)
+      temperature_source%val( 1, iphase, : ) = Svap_g*T_sat + Gamma_g*h_g + 1.0e+6 * temperature%val( 1, iphase, : )
 
 
       ! Mass source

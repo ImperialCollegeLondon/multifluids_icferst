@@ -162,7 +162,8 @@ contains
     REAL, DIMENSION( : , : , : ), allocatable :: dense_block_matrix, CT
     REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
     REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB, ACV_SUB
-    type( scalar_field ), pointer :: P, Q
+    type( scalar_field ), pointer :: P
+    type( tensor_field ), pointer :: Q
     INTEGER, DIMENSION( : ), allocatable :: COLACV_SUB, FINACV_SUB, MIDACV_SUB
     INTEGER :: NCOLACV_SUB, IPHASE, I, J
     REAL :: SECOND_THETA
@@ -241,10 +242,8 @@ contains
 
        Field_selector = 1
 
-       do iphase = 1, nphase
-          Q => extract_scalar_field( state( iphase ), "TemperatureSource", stat )
-          if ( stat==0 ) T_source( iphase, : ) = Q % val
-       end do
+       Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
+       T_source( :, : ) = Q % val( 1, :, : )
 
     else ! solving for Composition
 
