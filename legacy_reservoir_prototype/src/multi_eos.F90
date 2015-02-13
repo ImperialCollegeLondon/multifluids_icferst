@@ -729,7 +729,9 @@
          end do
          mobility = visc_phases(2) / visc_phases(1)!For backwards compatibility only
       elseif( nphase == 1 ) then
-         mobility = 0.
+         viscosity_ph => extract_tensor_field( state( 1 ), 'Viscosity' )
+         visc_phases(1) = viscosity_ph%val( 1, 1, 1 )
+         mobility = visc_phases(1)
       end if
 
 
@@ -2249,7 +2251,9 @@
          end do
          mobility = visc_phases(2) / visc_phases(1)
       elseif( nphase == 1 ) then
-         mobility = 0.
+         viscosity_ph => extract_tensor_field( state( 1 ), 'Viscosity' )
+         visc_phases(1) = viscosity_ph%val( 1, 1, 1 )
+         mobility = visc_phases(1)
       end if
 
       suf_sig_diagten_bc = 1.
