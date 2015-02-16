@@ -3898,7 +3898,18 @@ end if
     type(petsc_csr_matrix) :: pmat
     type(csr_sparsity), pointer :: sparsity
 
+    logical :: do_not_project=.false., cv_test_space=.false.
+    character (len=*), parameter :: projection_options='/projections/control_volume_projections'
+    character (len=option_path_len) :: option_path
+
     ewrite(3,*) 'In PROJ_CV_TO_FEM_state'
+
+    if (have_option(projection_options//'/do_not_project')) then
+       do_not_project=.true.
+    end if
+    if (have_option(projection_options//'/test_function_space::ControlVolume')) then
+       cv_test_space=.true.
+    end if
 
     tfield=>psi(1)%ptr
     call allocate(cv_mass,psi(1)%ptr%mesh,'CV_mass')
@@ -3992,8 +4003,12 @@ end if
 
                 MASS_MN_PRES( COUNT ) = MASS_MN_PRES( COUNT ) + MN
              ENDIF
-
-             call addto(mat,cv_nodi,cv_nodj,NN)
+             
+             if (cv_test_space) then
+                call addto(mat,cv_nodi,cv_nodj,MN)
+             else
+                call addto(mat,cv_nodi,cv_nodj,NN)
+             end if
 
              call addto(CV_MASS, CV_NODI,  MM )
 
@@ -4031,31 +4046,33 @@ end if
 
     ! Solve...
 
-    call get_option( trim(PSI(1)%ptr%option_path)//"/prognostic/solver/max_iterations", &
-         max_iterations,  default =  500 )
-    if (max_iterations ==0) THEN
+    if (do_not_project) then
+       DO IT = 1, size(fempsi)
+          call set(fempsi(it)%ptr,psi(it)%ptr)
+       end DO
+    else
+       
+       if (have_option(projection_options//'/solver')) then
+          option_path=projection_options//'/solver'
+       else
+          call get_option( trim(PSI(1)%ptr%option_path)//"/prognostic/solver/max_iterations", &
+               max_iterations,  default =  500 )
+          if (max_iterations ==0) then
+             option_path="/material_phase[0]/scalar_field::Pressure/prognostic"
+          else
+             option_path=trim(PSI(1)%ptr%option_path)//"/prognostic"
+          end if
+       end if
+       
        DO IT = 1, size(fempsi)
           call zero_non_owned(fempsi_rhs(it))
           CALL petsc_solve(  FEMPSI(IT)%ptr,  &
                MAT,  &
                FEMPSI_RHS(IT),  &
-               option_path = "/material_phase[0]/scalar_field::Pressure/prognostic" )
-!          FEMPSI(IT)%ptr%val(:,:,:)=PSI(IT)%ptr%val(:,:,:)
+               option_path = option_path )
        END DO
-    ELSE
-       DO IT = 1, size(fempsi)
-          call zero_non_owned(fempsi_rhs(it))
-          CALL petsc_solve(  FEMPSI(IT)%ptr,  &
-               MAT,  &
-               FEMPSI_RHS(IT),  &
-               option_path = trim(PSI(1)%ptr%option_path)//"/prognostic" )
-
-!          FEMPSI(IT)%ptr%val(:,:,:)=PSI(IT)%ptr%val(:,:,:)
-       END DO
-     END IF
-
+    end if
     
-
     call DEALLOCATE( cv_MASS )
     DO IT = 1, size(fempsi_RHS)
        CALL DEALLOCATE( FEMPSI_RHS(it) )
