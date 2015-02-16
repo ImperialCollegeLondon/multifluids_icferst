@@ -3914,5 +3914,59 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
     end subroutine CheckElementAngles
 
+    subroutine BoundedSolutionCorrections( packed_state )
+      implicit none
+
+      type( state_type ), intent( inout ) :: packed_state
+      type ( tensor_field ), pointer :: field
+
+      type ( tensor_field ) :: field_dev, field_alt
+      real, dimension( :, : ), allocatable :: field_min, field_max
+      integer :: ndim1, ndim2, cv_nonods, i, j, k
+
+      field => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+      ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ; cv_nonods = size( field%val, 3 )
+
+      call allocate( field_dev, field%mesh, "Deviation", dim=[ndim1,ndim2] )
+      call allocate( field_alt, field%mesh, "Alternative", dim=[ndim1,ndim2] )
+
+      allocate( field_min( ndim1, ndim2 ), field_max( ndim1, ndim2 ) )
+
+      do j = 1, ndim2
+        do i = 1, ndim1
+          field_min( i, j ) = minval( field%val( i, j, : ) )
+          field_max( i, j ) = maxval( field%val( i, j, : ) )
+        end do
+      end do
+
+      do k = 1, cv_nonods
+        do j = 1, ndim2
+          do i = 1, ndim1
+            if ( field%val( i, j, k ) > field_max( i, j ) ) then
+              field_dev%val( i, j, k ) = field%val( i, j, k ) - field_max( i, j )
+            else if ( field%val( i, j, k ) < field_min( i, j ) ) then
+              field_dev%val( i, j, k ) = field%val( i, j, k ) - field_min( i, j )
+            else
+              field_dev%val( i, j, k ) = 0.0
+            end if
+          end do
+        end do
+      end do
+
+
+
+
+
+
+
+
+      deallocate( field_min, field_max )
+
+      call deallocate( field_dev )
+      call deallocate( field_alt )
+
+      return
+    end subroutine BoundedSolutionCorrections
+
   end module Copy_Outof_State
 
