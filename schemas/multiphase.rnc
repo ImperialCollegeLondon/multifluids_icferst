@@ -512,6 +512,26 @@ start =
 	    empty
 	    }?
 	 },
+	 element projections {
+	    ## Options applicable to the projections used in
+	    ## the multiphase prototype code
+	    element control_volume_projections {
+	       element do_not_project {
+	          empty
+	       }?,
+	       (
+	       element test_function_space {
+	          attribute name {"FiniteElement"}
+	       }|
+	       element test_function_space {
+	          attribute name {"ControlVolume"}
+	       }
+               ),
+	       element solver {
+                    linear_solver_options_asym
+               }?	        
+	    }?
+	 }?,
          physical_parameter_options?,
          ## The material or phase options
          element material_phase {
