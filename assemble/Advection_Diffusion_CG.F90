@@ -39,13 +39,20 @@ module advection_diffusion_cg
   use boundary_conditions_from_options
   use field_options
   use fldebug
-  use global_parameters, only : FIELD_NAME_LEN, OPTION_PATH_LEN
+  use global_parameters, only : FIELD_NAME_LEN, OPTION_PATH_LEN, COLOURING_CG1
   use profiler
   use spud
   use petsc_solve_state_module
   use state_module
   use upwind_stabilisation
   use sparsity_patterns_meshes
+  use porous_media
+  use multiphase_module
+  use sparse_tools_petsc
+  use colouring
+#ifdef _OPENMP
+  use omp_lib
+#endif
   
   implicit none
   
@@ -110,17 +117,16 @@ module advection_diffusion_cg
 
 contains
 
-  subroutine solve_field_equation_cg(field_name, state, dt, velocity_name, &
-                                     extra_discretised_source, iterations_taken)
+  subroutine solve_field_equation_cg(field_name, state, istate, dt, velocity_name, iterations_taken)
     !!< Construct and solve the advection-diffusion equation for the given
     !!< field using a continuous Galerkin discretisation. Based on
     !!< Advection_Diffusion_DG and Momentum_CG.
     
     character(len = *), intent(in) :: field_name
-    type(state_type), intent(inout) :: state
+    type(state_type), dimension(:), intent(inout) :: state
+    integer, intent(in) :: istate
     real, intent(in) :: dt
     character(len = *), optional, intent(in) :: velocity_name
-    type(scalar_field), intent(in), optional :: extra_discretised_source
     integer, intent(out), optional :: iterations_taken
     
     type(csr_matrix) :: matrix
@@ -130,17 +136,23 @@ contains
     ewrite(1, *) "In solve_field_equation_cg"
     
     ewrite(2, *) "Solving advection-diffusion equation for field " // &
-      & trim(field_name) // " in state " // trim(state%name)
+      & trim(field_name) // " in state " // trim(state(istate)%name)
 
-    call initialise_advection_diffusion_cg(field_name, t, delta_t, matrix, rhs, state)
+    call initialise_advection_diffusion_cg(field_name, t, delta_t, matrix, rhs, state(istate))
     
     call profiler_tic(t, "assembly")
-    call assemble_advection_diffusion_cg(t, matrix, rhs, state, dt, velocity_name = velocity_name, &
-                                         extra_discretised_source = extra_discretised_source)    
+    call assemble_advection_diffusion_cg(t, matrix, rhs, state(istate), dt, velocity_name = velocity_name)    
+    
+    ! Note: the assembly of the heat transfer term is done here to avoid 
+    ! passing in the whole state array to assemble_advection_diffusion_cg.
+    if(have_option("/multiphase_interaction/heat_transfer") .and. &
+       equation_type_index(trim(t%option_path)) == FIELD_EQUATION_INTERNALENERGY) then
+      call add_heat_transfer(state, istate, t, matrix, rhs)
+    end if
     call profiler_toc(t, "assembly")
-
+    
     call profiler_tic(t, "solve_total")
-    call solve_advection_diffusion_cg(t, delta_t, matrix, rhs, state, &
+    call solve_advection_diffusion_cg(t, delta_t, matrix, rhs, state(istate), &
                                       iterations_taken = iterations_taken)
     call profiler_toc(t, "solve_total")
 

@@ -56,6 +56,14 @@ module futils
 #endif
   end type real_vector
 
+  type real_matrix
+#ifdef DDEBUG
+     real, dimension(:,:), pointer :: ptr=>null()
+#else
+     real, dimension(:,:), pointer :: ptr
+#endif
+  end type real_matrix
+
   type integer_vector
 #ifdef DDEBUG
      integer, dimension(:), pointer :: ptr=>null()
@@ -414,6 +422,7 @@ contains
       end if
       tokens(i) = string(start_index:end_index)
       start_index = end_index + len(delimiter) + 1
+      tokens(i) = adjustl(tokens(i))
     end do
     assert(start_index == len(string) + 1 + len(delimiter))
     
