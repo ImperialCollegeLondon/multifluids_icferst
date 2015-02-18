@@ -612,6 +612,38 @@ at the first timestep or not.</a:documentation>
         </optional>
       </element>
       <optional>
+        <element name="projections">
+          <optional>
+            <element name="control_volume_projections">
+              <a:documentation>Options applicable to the projections used in
+the multiphase prototype code</a:documentation>
+              <optional>
+                <element name="do_not_project">
+                  <empty/>
+                </element>
+              </optional>
+              <choice>
+                <element name="test_function_space">
+                  <attribute name="name">
+                    <value>FiniteElement</value>
+                  </attribute>
+                </element>
+                <element name="test_function_space">
+                  <attribute name="name">
+                    <value>ControlVolume</value>
+                  </attribute>
+                </element>
+              </choice>
+              <optional>
+                <element name="solver">
+                  <ref name="linear_solver_options_asym"/>
+                </element>
+              </optional>
+            </element>
+          </optional>
+        </element>
+      </optional>
+      <optional>
         <ref name="physical_parameter_options"/>
       </optional>
       <oneOrMore>
@@ -4136,6 +4168,24 @@ less accurate but faster and might give smoother result.                  </a:do
         </attribute>
         <attribute name="name">
           <value>solid_U</value>
+        </attribute>
+        <choice>
+          <element name="diagnostic">
+            <ref name="internal_algorithm"/>
+            <ref name="mesh_choice"/>
+            <ref name="diagnostic_vector_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="vector_field">
+        <attribute name="rank">
+          <value>1</value>
+        </attribute>
+        <attribute name="name">
+          <value>perm_frac</value>
         </attribute>
         <choice>
           <element name="diagnostic">

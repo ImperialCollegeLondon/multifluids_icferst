@@ -63,8 +63,8 @@ print getLog(logpath)
 logpath = path + '/Grav_cap_competing_fast/log'
 print getLog(logpath)
 
-logpath = path + '/BL_with_gravity/log'
-print getLog(logpath)
+#logpath = path + '/BL_with_gravity/log'
+#print getLog(logpath)
 
 logpath = path + '/Collapsing_Water_Column/log'
 print getLog(logpath)

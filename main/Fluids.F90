@@ -174,9 +174,6 @@ contains
 
     INTEGER :: adapt_count
 
-    ! the particle type for the radiation model 
-    type(particle_type), dimension(:), allocatable :: particles
-
     ! Absolute first thing: check that the options, if present, are valid.
     call check_options
     ewrite(1,*) "Options sanity check successful"
@@ -194,12 +191,6 @@ contains
 
     call initialise_qmesh
     call initialise_write_state
-
-
-    ! Initialise sediments
-    if (have_option("/material_phase[0]/sediment")) then
-        call sediment_init()
-    end if
 
     ! Initialise Hyperlight
 #ifdef HAVE_HYPERLIGHT
@@ -399,12 +390,6 @@ contains
        call calculate_biology_terms(state(1))
     end if
 
-    ! Initialise radiation specific data types and register radiation diagnostics
-    if(have_option("/embedded_models/radiation")) then
-        call radiation_initialise(state, &
-                                  particles)
-    end if
-
     call initialise_diagnostics(filename, state)
 
     ! Initialise ice_meltrate, read constatns, allocate surface, and calculate melt rate
@@ -442,24 +427,6 @@ contains
     ! Initialise GLS
     if (have_option("/material_phase[0]/subgridscale_parameterisations/GLS/option")) then
         call gls_init(state(1))
-    end if
-
-    ! Initialise k_epsilon
-    if (have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon/")) then
-        call keps_init(state(1))
-    end if
-
-
-
-
-    ! radiation eigenvalue run solve
-    if(have_option("/embedded_models/radiation")) then
-       call radiation_solve(particles, &
-                            invoke_eigenvalue_solve=.true.)
-      
-      ! write the radiation eigenvalue diagnostics
-      call write_diagnostics(state, current_time, dt, timestep)
-      
     end if
 
     ! ******************************
@@ -719,7 +686,7 @@ contains
                 else if(have_option(trim(field_optionpath_list(it)) // &
                      & "/prognostic/spatial_discretisation/continuous_galerkin")) then
 
-                   call solve_field_equation_cg(field_name_list(it), state(field_state_list(it)), dt)
+                   call solve_field_equation_cg(field_name_list(it), state, field_state_list(it), dt)
                 else
 
                    ewrite(2, *) "Not solving scalar field " // trim(field_name_list(it)) // " in state " // trim(state(field_state_list(it))%name) //" in an advdif-like subroutine."
@@ -869,12 +836,6 @@ contains
        ! calculate and write diagnostics before the timestep gets changed
        call calculate_diagnostic_variables(State, exclude_nonrecalculated=.true.)
        call calculate_diagnostic_variables_new(state, exclude_nonrecalculated = .true.)
-
-       ! radiation time run solve - which may be coupled to fluids via diagnostic fields
-       if( have_option("/embedded_models/radiation") ) then
-          call radiation_solve(particles, &
-                               invoke_eigenvalue_solve=.false.)
-       end if
           
        ! Call the modern and significantly less satanic version of study
        call write_diagnostics(state, current_time, dt, timestep)
@@ -976,10 +937,6 @@ contains
         call sediment_cleanup()
     end if
 
-    ! radiation cleanup
-    if( have_option("/embedded_models/radiation") ) then
-       call radiation_cleanup(particles)
-    end if
 
     ! closing .stat, .convergence and .detector files
     call close_diagnostic_files()

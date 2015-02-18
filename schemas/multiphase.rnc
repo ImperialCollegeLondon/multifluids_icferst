@@ -512,6 +512,26 @@ start =
 	    empty
 	    }?
 	 },
+	 element projections {
+	    ## Options applicable to the projections used in
+	    ## the multiphase prototype code
+	    element control_volume_projections {
+	       element do_not_project {
+	          empty
+	       }?,
+	       (
+	       element test_function_space {
+	          attribute name {"FiniteElement"}
+	       }|
+	       element test_function_space {
+	          attribute name {"ControlVolume"}
+	       }
+               ),
+	       element solver {
+                    linear_solver_options_asym
+               }?	        
+	    }?
+	 }?,
          physical_parameter_options?,
          ## The material or phase options
          element material_phase {
@@ -3270,6 +3290,20 @@ vector_field_choice =
          element vector_field {
              attribute rank { "1" },
              attribute name { "solid_U" },
+             (
+                element diagnostic {
+                   internal_algorithm,
+                   mesh_choice,
+                   diagnostic_vector_field
+                }|
+                element aliased {
+                   generic_aliased_field
+                }
+             )
+         }|
+         element vector_field {
+             attribute rank { "1" },
+             attribute name { "perm_frac" },
              (
                 element diagnostic {
                    internal_algorithm,
