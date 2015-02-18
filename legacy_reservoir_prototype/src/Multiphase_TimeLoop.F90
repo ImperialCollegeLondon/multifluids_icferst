@@ -207,9 +207,11 @@
       logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
       real, dimension(:,:,:), allocatable  :: reference_field
 
+      !List to store bad elements
+      type(bad_elements), allocatable, dimension(:) :: Quality_list
+
       type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
       type( tensor_field ), pointer :: MFC_s, MFCOLD_s
-
       !! face value storage
       integer :: ncv_faces
       real::  second_theta
@@ -522,6 +524,11 @@
       end if
 
 
+      !Look for bad elements! IF THIS WORKS, I HAVE TO SET IT TO DO IT AFTER ADAPTING THE MESH AND ALSO DEALLOCATE Quality_list
+      !and deallocate weights inside it.
+      allocate(Quality_list(totele))!this number is not well thought...
+      call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, 115.0, 1.0, Quality_list)
+
 !!$ Starting Time Loop
       itime = 0
       dtime = 0
@@ -621,7 +628,6 @@
 
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
-
             if( solve_force_balance ) then
                call Calculate_AbsorptionTerm( state, packed_state,&
                     cv_ndgln, mat_ndgln, &
@@ -768,7 +774,7 @@
                     in_ele_upwind, dg_ele_upwind, &
                     iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
                     scale_momentum_by_volume_fraction,&
-                    StorageIndexes=StorageIndexes )
+                    StorageIndexes=StorageIndexes, Quality_list = Quality_list )
 !!$ Calculate Density_Component for compositional
                if( have_component_field ) &
                     call Calculate_Component_Rho( state, packed_state, &
