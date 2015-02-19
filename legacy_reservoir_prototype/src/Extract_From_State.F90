@@ -3910,7 +3910,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                 lenght(3) = sqrt(dot_product(X2(:)-X3(:), X2(:)-X3(:)))
 
 !                !if 3D we have to project the triangle, not sure if this is necessary
-!i don't know if this is necessary  http://stackoverflow.com/questions/27672882/how-to-find-the-angles-of-the-faces-of-a-scalene-tetrahedron-given-lengths-of-ed
 !                if (present(Pos4)) then!3D
 !                    X4 = X_ALL(:, x_ndgln(ele_Pos+Pos4))
 !                    s = sum(lenght)/2.
