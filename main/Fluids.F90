@@ -99,7 +99,6 @@ module fluids_module
   use reduced_model_runtime
   use implicit_solids
   use sediment
-  use radiation
 #ifdef HAVE_HYPERLIGHT
   use hyperlight
 #endif

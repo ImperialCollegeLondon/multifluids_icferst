@@ -3916,19 +3916,20 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
 
 
-    subroutine BoundedSolutionCorrections( packed_state )
+    subroutine BoundedSolutionCorrections( packed_state, small_findrm, small_colm )
       implicit none
 
       type( state_type ), intent( inout ) :: packed_state
+      integer, dimension( : ), intent( in ) :: small_findrm, small_colm
       type ( tensor_field ), pointer :: field
 
       type ( tensor_field ) :: field_dev, field_alt
 
       real, dimension( :, : ), allocatable :: field_min, field_max
       real, dimension( : ), allocatable :: mass_cv
-      integer, dimension( : ), pointer :: cv_ndgln
       real :: f_i, f_j
-      integer :: ndim1, ndim2, cv_nonods, i, j, k, totele, cv_nloc, ele, iloc, jloc, inod, jnod
+      integer :: ndim1, ndim2, cv_nonods, i, j, k, totele, cv_nloc, ele, &
+                 iloc, jloc, inod, jnod, count
 
       field => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
       ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ; cv_nonods = size( field%val, 3 )
@@ -3958,45 +3959,39 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       totele = ele_count( field ) ; cv_nloc = ele_loc( field, 1 )
 
       allocate( mass_cv( cv_nonods ) ) ; mass_cv=1.0
-      cv_ndgln => field%mesh%ndglno
 
-      do ele = 1, totele
-        do iloc = 1, cv_nloc
-          do jloc = 1, cv_nloc
+      do inod = 1, cv_nonods
+        do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
+          jnod = small_colm( count )
 
-            inod = cv_ndgln( ( ele - 1 ) * cv_nloc + iloc )
-            jnod = cv_ndgln( ( ele - 1 ) * cv_nloc + jloc )
+          do j = 1, ndim2
+            do i = 1, ndim1
 
-            do j = 1, ndim2
-              do i = 1, ndim1
+              f_i = field_alt%val( i, j, inod ) * mass_cv( inod )
+              f_j = field_alt%val( i, j, jnod ) * mass_cv( jnod )
 
-                f_i = field_alt%val( i, j, inod ) * mass_cv( inod )
-                f_j = field_alt%val( i, j, jnod ) * mass_cv( jnod )
+              if ( f_i > f_j ) then
 
-                if ( f_i > f_j ) then
+                field_alt%val( i, j, inod ) = ( f_i + f_j ) / mass_cv( inod )
+                field_alt%val( i, j, jnod ) = 0.0
 
-                  field_alt%val( i, j, inod ) = 66.66
-                  field_alt%val( i, j, jnod ) = 0.0
+              else
 
-                else
+                field_alt%val( i, j, inod ) = 0.0
+                field_alt%val( i, j, jnod ) = ( f_i + f_j ) / mass_cv( jnod )
 
-                  field_alt%val( i, j, inod ) = 0.0
-                  field_alt%val( i, j, jnod ) = 66.66
+              end if
 
-                end if
+              field%val( i, j, inod ) = field%val( i, j, inod ) &
+                - field_dev%val( i, j, inod ) + field_alt%val( i, j, inod )
+              field%val( i, j, jnod ) = field%val( i, j, jnod ) &
+                - field_dev%val( i, j, inod ) + field_alt%val( i, j, inod )
 
-                field%val( i, j, inod ) = field%val( i, j, inod ) &
-                  - field_dev%val( i, j, inod ) + field_alt%val( i, j, inod )
-                field%val( i, j, jnod ) = field%val( i, j, jnod ) &
-                  - field_dev%val( i, j, inod ) + field_alt%val( i, j, inod )
-
-              end do
             end do
-
           end do
+
         end do
       end do
-
 
 
 
