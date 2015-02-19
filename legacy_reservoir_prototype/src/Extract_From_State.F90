@@ -64,7 +64,8 @@
     public :: Get_Primary_Scalars, Compute_Node_Global_Numbers, Extracting_MeshDependentFields_From_State, &
          Extract_TensorFields_Outof_State, Extract_Position_Field, Get_Ele_Type, Get_Discretisation_Options, &
          print_from_state, update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
-         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage
+         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
+         CheckElementAngles, bad_elements
 
     interface Get_Ndgln
        module procedure Get_Scalar_Ndgln, Get_Vector_Ndgln, Get_Mesh_Ndgln
@@ -74,6 +75,14 @@
        module procedure Get_Scalar_SNdgln, Get_Vector_SNdgln
     end interface Get_SNdgln
 
+    !This structure is to store data associated with a bad element
+    !We store the corresponding element, the node that is in the bad angle
+    !and the weights are the values to use to diffuse the bad node to the other nodes
+    type bad_elements
+       integer :: ele
+       integer, allocatable, dimension(:) :: nodes
+       real, allocatable, dimension(:) :: weights
+    end type bad_elements
 
   contains
 
@@ -3794,78 +3803,95 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
     end subroutine Clean_Storage
 
 
-    !UNTESTED!!
-    subroutine CheckElementAngles(X_ALL, x_ndgln, X_nloc, MaxAngle, MinAngle, Quality_list)
+    subroutine CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, MaxAngle, MinAngle, Quality_list)
         !This function checks the angles of an input element. If one angle is above
         !the Maxangle or below the MinAngle it will be true in the list
         Implicit none
         !Global variables
-        integer, dimension(:), intent(inout) :: Quality_list
-        real, dimension(:,:), intent(in):: X_ALL
+        type(state_type), intent(inout) :: packed_state
+        type(bad_elements), dimension(:), intent(inout) :: Quality_list
         real, intent (in) :: MaxAngle, MinAngle
         integer, dimension(:), intent(in) :: x_ndgln
-        integer, intent(in) :: x_nloc
+        integer, intent(in) :: x_nloc, totele
         !Local variables
         integer :: ELE, i
         logical, dimension(4) :: auxLogic
         real :: MxAngl, MnAngl
         !Definition of Pi
+        real, dimension(:,:), pointer:: X_ALL
         real, parameter :: pi = acos(0.d0) * 2d0
 
         !Prepare data
-        Quality_list = -1!Initialize with negative values
+        do i = 1, size(Quality_list)
+            Quality_list(i)%ele = -1!Initialize with negative values
+            allocate(Quality_list(i)%nodes(x_nloc))!Allocate
+            Quality_list(i)%nodes = -1!Initialize with negative values
+            allocate(Quality_list(i)%weights(x_nloc-1))!Allocate
+            Quality_list(i)%weights = 0.!Initialize with zeros
+        end do
+        call get_var_from_packed_state(packed_state, Coordinate = X_ALL)
+
         !Convert input angles to radians
         MxAngl = pi/180. * MaxAngle
         MnAngl = pi/180. * MinAngle
         i = 1
         if (size(X_ALL,1)==2) then!2D triangles
-            do ELE = 1, size(Quality_list)
-                auxLogic(1) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc)),&
-                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc)), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc)), MxAngl, MnANgl)
-
+            do ELE = 1, totele
+                !bad_node enters as the
+                auxLogic(1) = Check_element( X_ALL(:, x_ndgln((ele-1)*X_nloc+1)),&
+                 X_ALL(:, x_ndgln((ele-1)*X_nloc+2)), X_ALL(:, x_ndgln((ele-1)*X_nloc+3)), MxAngl, MnAngl,&
+                 Quality_list(i))
                  if (auxLogic(1)) then
-                    if (size(Quality_list)< i) Quality_list(i) = ele
+                    if (size(Quality_list)>= i) then
+                        Quality_list(i)%ele = ele
+                    end if
+
                     i = i + 1
                 end if
 
             end do
         else if(size(X_ALL,1)==3) then!3D tetrahedra
-            do ELE = 1, size(Quality_list)
-                !We check the 4 triangles that form a tet
-                auxLogic(1) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc)),&
-                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc)), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc)), &
-                 MxAngl, MnANgl, X_ALL(:, 4+x_ndgln((ele-1)*X_nloc)))
-                 auxLogic(2) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc)),&
-                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc)), X_ALL(:, 4+x_ndgln((ele-1)*X_nloc)), &
-                 MxAngl, MnANgl, X_ALL(:, 3+x_ndgln((ele-1)*X_nloc)))
-                 auxLogic(3) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc)),&
-                 X_ALL(:, 3+x_ndgln((ele-1)*X_nloc)), X_ALL(:, 4+x_ndgln((ele-1)*X_nloc)), &
-                 MxAngl, MnANgl, X_ALL(:, 2+x_ndgln((ele-1)*X_nloc)))
-                 auxLogic(4) = Check_element( X_ALL(:, 4+x_ndgln((ele-1)*X_nloc)),&
-                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc)), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc)), &
-                 MxAngl, MnANgl, X_ALL(:, 1+x_ndgln((ele-1)*X_nloc)))
-
-                 if (auxLogic(1) .or. auxLogic(2) .or. auxLogic(3) .or. auxLogic(4)) then
-                    if (size(Quality_list)< i) Quality_list(i) = ele
-                    i = i + 1
-                 end if
-            end do
+        !adjust to match the 2D case once that one works properly
+!            do ELE = 1, totele
+!                !We check the 4 triangles that form a tet
+!                auxLogic(1) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc + 1)),&
+!                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc + 1)), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc + 1)), &
+!                 MxAngl, MnANgl, Quality_list(i), 1+x_ndgln((ele-1)*X_nloc+1), X_ALL(:, 4+x_ndgln((ele-1)*X_nloc + 1)))
+!
+!                 auxLogic(2) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc + 1)),&
+!                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc + 1)), X_ALL(:, 4+x_ndgln((ele-1)*X_nloc + 1)), &
+!                 MxAngl, MnANgl, Quality_list(i), 1+x_ndgln((ele-1)*X_nloc+1), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc + 1)))
+!
+!                 auxLogic(3) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc + 1)),&
+!                 X_ALL(:, 3+x_ndgln((ele-1)*X_nloc + 1)), X_ALL(:, 4+x_ndgln((ele-1)*X_nloc + 1)), &
+!                 MxAngl, MnANgl, Quality_list(i), 1+x_ndgln((ele-1)*X_nloc+1), X_ALL(:, 2+x_ndgln((ele-1)*X_nloc + 1)))
+!
+!                 auxLogic(4) = Check_element( X_ALL(:, 4+x_ndgln((ele-1)*X_nloc + 1)),&
+!                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc + 1)), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc + 1)), &
+!                 MxAngl, MnANgl, Quality_list(i), 1+x_ndgln((ele-1)*X_nloc+1),  X_ALL(:, 1+x_ndgln((ele-1)*X_nloc + 1)))
+!
+!                 if (auxLogic(1) .or. auxLogic(2) .or. auxLogic(3) .or. auxLogic(4)) then
+!                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+!                    i = i + 1
+!                 end if
+!            end do
         end if
 
         contains
 
-            logical function Check_element(X1, X2, X3, MaxAngle, MinAngle, X4)
+            logical function Check_element(X1, X2, X3, MaxAngle, MinAngle, Quality_list, X4)
                 !Introduce X4 for 3D, X4 is the forth vertex of the tet
                 implicit none
                 real, intent(in) :: MaxAngle, MinAngle
                 real, dimension(:), intent(in):: X1, X2, X3
+                type(bad_elements), intent(inout) :: Quality_list
                 real, dimension(:), optional, intent(in) :: X4
                 !Local variables
                 real, dimension(3) :: alpha, lenght, lenght2
                 !For 3D to project values
                 real :: ha, hd, ad, beta, s
                 !Definition of Pi
-                real, parameter :: pi = acos(0.d0) * 2d0
+                real, parameter :: pi = acos(0.0) * 2.0
 
                 Check_element = .false.
 
@@ -3901,16 +3927,88 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                 alpha(1) = acos((lenght(1)**2+lenght(2)**2-lenght(3)**2)/(2. *lenght(1)*lenght(2)))
                 alpha(3) = pi - alpha(1)-alpha(2)
 
-                if (alpha(1)>=MaxAngle .or. alpha(2)>= MaxAngle .or. alpha(3) >= MaxAngle) then
+                !Check angles and if necessary calculate weights and bad node, I don't know if this work for 3D...
+                !for the time being just 2D
+                if (alpha(1)>=MaxAngle) then
+                    !We calculate weights considering a right triangle formed by the bad node, its projection and the other
+                    !corner. So the cosine of the angles time their sides sum the side in which we are projecting the bad node
+                    Quality_list%weights(1) = abs(cos(alpha(2)) * lenght(2) / lenght(3))
+                    Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(1) / lenght(3))
+                    !Store nodes, the first one is the bad node
+                    Quality_list%nodes(1) = 1
+                    Quality_list%nodes(2) = 2
+                    Quality_list%nodes(3) = 3
+                    Check_element = .true.
+                    return
+                else if (alpha(2)>= MaxAngle) then
+                    Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(2) / lenght(1))
+                    Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(3) / lenght(1))
+                    !Store nodes, the first one is the bad node
+                    Quality_list%nodes(1) = 2
+                    Quality_list%nodes(2) = 1
+                    Quality_list%nodes(3) = 3
+                    Check_element = .true.
+                    return
+                else if (alpha(3) >= MaxAngle) then
+                    Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(1) / lenght(2))
+                    Quality_list%weights(2) = abs(cos(alpha(2)) * lenght(3) / lenght(2))
+                    !Store nodes, the first one is the bad node
+                    Quality_list%nodes(1) = 3
+                    Quality_list%nodes(2) = 1
+                    Quality_list%nodes(3) = 2
                     Check_element = .true.
                     return
                 end if
 
-                if (alpha(1)<=MinAngle .or. alpha(2)<= MinAngle .or. alpha(3) <= MinAngle) then
-                    Check_element = .true.
-                    return
-                end if
+
+!                if (alpha(1)<=MinAngle) then
+!                    !We calculate weights considering a right triangle formed by the bad node, its projection and the other
+!                    !corner
+!                    Quality_list%weights(1) = 1.0
+!                    Quality_list%weights(2) = 0.0
+!
+!                    Quality_list%nodes(1) = 3
+!                    Quality_list%nodes(2) = 2
+!                    Quality_list%nodes(3) = 1
+!                    Check_element = .true.
+!                    return
+!                else if (alpha(2)<=MinAngle) then
+!                    Quality_list%weights(1) = 1.0
+!                    Quality_list%weights(2) = 0.0
+!                    Quality_list%nodes(1) = 3
+!                    Quality_list%nodes(2) = 1
+!                    Quality_list%nodes(3) = 2
+!                    Check_element = .true.
+!                    return
+!                else if (alpha(3) <= MinAngle) then
+!                    Quality_list%weights(1) = 1.0
+!                    Quality_list%weights(2) = 0.0
+!                    Quality_list%nodes(1) = 1
+!                    Quality_list%nodes(2) = 2
+!                    Quality_list%nodes(3) = 3
+!                    Check_element = .true.
+!                    return
+!                end if
+
+
+
             end function Check_element
+
+!            subroutine getVoronoiCenter2D(X1,X2,X3,Xv)
+!                !returns the voronoi point given the three corners of a triangle
+!                Implicit none
+!                !Global variables
+!                real, dimension(:), intent (in) :: X1, X2, X3
+!                real, dimension(:), intent (out) :: Xv
+!                !Local variables
+!                real :: aux
+!
+!                aux = ((X2(1)-X1(1))*(X3(1)-X1(1)) + (X2(2)-X1(2))*(X3(2)-X1(2))) &
+!                /(2d0*((X3(2)-X2(2))*(X3(1)-X1(1))-(X3(1)-X2(1))*(X3(2)-X1(2))))
+!
+!                Xv(1) = (X2(1) + X3(1)) / 2.0 - aux * (X3(2) - X2(2))
+!                Xv(2) = (X2(2) + X3(2)) / 2.0 + aux * (X3(1) - X2(1))
+!            end subroutine
 
     end subroutine CheckElementAngles
 

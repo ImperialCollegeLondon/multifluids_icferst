@@ -49,6 +49,7 @@ module solvers_module
 #endif
 #endif
 
+  use Copy_Outof_State
   implicit none
 
 #include "petscversion.h"
@@ -557,7 +558,7 @@ contains
       INTEGER, intent( in ) ::  NCOLCMC, CV_NONODS, totele, cv_nloc, x_nonods
       ! IGOT_CMC_PRECON=1 or 0 (1 if we have a preconditioning matrix)
       type( state_type ), dimension( : ), intent( inout ) :: state
-      type(petsc_csr_matrix), intent(in)::  CMC_petsc
+      type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       type( scalar_field ), intent(inout) :: deltap
       type( scalar_field ), intent(in) :: rhs_p
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
@@ -567,21 +568,25 @@ contains
       character(len=*), intent(in) :: option_path
 
 
-
+      !Local variables
+      logical, parameter :: DG_correction = .true.! "Post-smoothing" using the DG formulation
+      integer, parameter :: multi_level_its = 1!Solve for the residual and then run a couple of iterations of the DG pressure
+      !With more than 1 iteration it does not work very well...
+      character(len=OPTION_PATH_LEN) :: solv_options = "/tmp/pressure"
       integer, dimension( : ), allocatable :: findcmc_small, colcmc_small, midcmc_small, &
       MAP_DG2CTY
       integer :: ele,cv_iloc, dg_nod, cty_nod, jcolcmc, jcolcmc_small
       integer :: mx_ncmc_small, ncmc_small, count, count2, count3, GL_ITS, col
-      real :: OPT_STEP
+      real :: OPT_STEP, k
 
       integer :: ierr, i
       real, dimension(1) :: auxR
       !Variables for CMC_Small_petsc
       type(petsc_csr_matrix)::  CMC_Small_petsc
       type(mesh_type), pointer :: pmesh
-      type( scalar_field ) :: deltap_small, RHS_small
+      type( scalar_field ) :: deltap_small, RHS_small, Residual_DG
       integer, dimension( x_nonods ) :: dnnz
-      type(halo_type), pointer :: halo
+      !type(halo_type), pointer :: halo
 
       ! obtain sparcity of a new matrix
       mx_ncmc_small = ncolcmc * 4
@@ -608,18 +613,20 @@ contains
       !Prepare variables related to CMC_Small_PETSC
       pmesh => extract_mesh(state(1), "PressureMesh_Continuous")
       !halo => pmesh%halos(1)
-       ! find the number of non zeros per row
-       do i = 1, size( dnnz )
-           dnnz( i ) =FINDCMC_SMALL( i+1 ) - FINDCMC_SMALL( i )
-       end do
+      ! find the number of non zeros per row
+      do i = 1, size( dnnz )
+          dnnz( i ) =FINDCMC_SMALL( i+1 ) - FINDCMC_SMALL( i )
+      end do
 
       call allocate( CMC_Small_petsc, size(dnnz), size(dnnz), dnnz, dnnz,(/1, 1/)&
-            ,name = 'CMC_Small_petsc')!, halo = halo)
+      ,name = 'CMC_Small_petsc')!, halo = halo)
       !Allocate P_small and rhs_small
       call allocate(deltap_small,pmesh,"deltap_small")
       call allocate(RHS_small,pmesh,"RHS_small")
-      call zero(CMC_Small_petsc); call zero(deltap_small); call zero(RHS_small)
-
+      call zero(CMC_Small_petsc)!; call zero(deltap_small); call zero(RHS_small)
+      !Allocate Residual_DG
+      pmesh => extract_mesh(state(1), "PressureMesh_Discontinuous")
+      call allocate(Residual_DG,pmesh,"Residual_DG")
 
       !We create CMC_Small_petsc from CMC_petsc
       DO dg_nod = 1, CV_NONODS
@@ -635,82 +642,157 @@ contains
               call addto( CMC_Small_petsc, blocki = 1, blockj = 1, i = cty_nod, j = colcmc_small(count2),val = auxR(1))
           END DO
       END DO
-    call assemble( CMC_Small_petsc )
+      call assemble( CMC_Small_petsc )
 
-    !call MatView(cmc_petsc%M,PETSC_VIEWER_STDOUT_SELF)
-    !call MatView(CMC_Small_petsc%M,PETSC_VIEWER_STDOUT_SELF)
+      !call MatView(cmc_petsc%M,PETSC_VIEWER_STDOUT_SELF)
+      !call MatView(CMC_Small_petsc%M,PETSC_VIEWER_STDOUT_SELF)
 
-    !We create now RHS_Small
-    do dg_nod = 1, cv_nonods
-        cty_nod = MAP_DG2CTY(dg_nod)
-        RHS_small%val(cty_nod) = RHS_small%val(cty_nod) + RHS_p%val(dg_nod)
-    end do
 
-    !We solve the system
-    call petsc_solve(deltap_small,CMC_Small_petsc,RHS_small,trim(option_path))
-    !We map back the results
-    do dg_nod = 1, cv_nonods
-        cty_nod = MAP_DG2CTY(dg_nod)
-        deltap%val(dg_nod) = deltap_small%val(cty_nod)
-    end do
+      if (DG_correction) then !Configure the discontinuous solver
 
-    call deallocate(CMC_Small_petsc)
-    call deallocate(deltap_small)
-    call deallocate(RHS_small)
-    deallocate( FINDcmc_small, &
-    colcmc_small, &
-    midcmc_small, &
-    MAP_DG2CTY )
+          call get_option( '/material_phase[0]/scalar_field::Pressure/prognostic/' // &
+          'solver/max_iterations', i)
+          call set_solver_options(solv_options, &!maybe I should add restart with 60 or more
+          ksptype = "gmres", &
+          pctype = "none", &!the pc has to be one that does not start from zero
+          rtol = 1.e-10, &
+          atol = 1.e-15, &
+          max_its = 3)!Since it is a smoother, only 3 iterations are needed
 
-    RETURN
+          !Make the GMRES method more robust than usually
+          call add_option( trim(solv_options)//"/solver/iterative_method/restart", ierr)
+          call set_option( trim(solv_options)//"/solver/iterative_method/restart", 200)
+          !Ignore solver failures since we are not looking for its convergence
+          call add_option(trim(solv_options)//"/solver/ignore_all_solver_failures", ierr)
+!          !Plot the residual, for debugging purposes only
+!          call add_option(trim(solv_options)//"/solver/diagnostics/monitors/preconditioned_residual", ierr)
+      end if
+
+      !Multi-level solver
+      do k = 1, multi_level_its
+
+          !Calculate the residual
+          if (k > 1) then
+              do dg_nod = 1, cv_nonods
+                  DO COUNT = FINDCMC(dg_NOD), FINDCMC(dg_NOD+1) - 1
+                      col=COLCMC(COUNT)
+                      cty_nod = MAP_DG2CTY(dg_nod)
+                      call MatGetValues(cmc_petsc%M, 1, (/ dg_nod-1 /), 1, (/ COLCMC(COUNT)-1 /),  auxR, ierr)
+                      !Project residual to RHS_Small
+                      Residual_DG%val(dg_nod) = rhs_p%val(dg_nod) - auxR(1) * deltap%val(Col)
+                  END DO
+              end do
+          end if
+
+          !Restric the residual to the CG mesh
+          call zero(RHS_small)
+          do dg_nod = 1, cv_nonods
+              cty_nod = MAP_DG2CTY(dg_nod)
+              if (k > 1) then
+                  RHS_small%val(cty_nod) = RHS_small%val(cty_nod) + Residual_DG%val(dg_nod)
+              else!If first itetation, or most likely only one iteration, the residual is the RHS
+                  RHS_small%val(cty_nod) = RHS_small%val(cty_nod) + RHS_p%val(dg_nod)
+              end if
+          end do
+
+          !We solve the system (equivalent to solve in the coarsest mesh)
+          call zero(deltap_small)
+          call petsc_solve(deltap_small, CMC_Small_petsc, RHS_small, trim(option_path))
+
+          !We map back the results (equivalent to project the values from coarse to fine meshes)
+          do dg_nod = 1, cv_nonods
+              cty_nod = MAP_DG2CTY(dg_nod)
+              deltap%val(dg_nod) = deltap%val(dg_nod) + deltap_small%val(cty_nod)
+          end do
+
+          !Some smoothings in the finest mesh to finish the loop
+          if (DG_correction) then
+              call petsc_solve(deltap,CMC_petsc,RHS_p,trim(solv_options))
+          end if
+
+      end do
+      call deallocate(CMC_Small_petsc)
+      call deallocate(deltap_small)
+      call deallocate(RHS_small)
+      call deallocate(Residual_DG)
+      deallocate( FINDcmc_small, colcmc_small, midcmc_small, MAP_DG2CTY )
+
+      RETURN
   END SUBROUTINE CMC_Agglomerator_solver
-
 
 
   SUBROUTINE Fix_to_bad_elements(cmc_petsc, &
       NCOLCMC, FINDCMC, COLCMC, MIDCMC, &
-      totele, p_nloc, P_NDGLN)
+      totele, p_nloc, P_NDGLN, Quality_list)
       !We add a term in the CMC matrix to move mass from low pressure to high pressure nodes
       implicit none
       INTEGER, intent( in ) ::  NCOLCMC, totele, p_nloc
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC, COLCMC, MIDCMC, P_NDGLN
-!      integer, dimension (:), intent(in) :: Quality_list
+      type(bad_elements), DIMENSION(:), intent( in ) :: Quality_list
       !Local variables
-      real, parameter :: alpha = 1d-1
-      integer :: i, i_node, j_node, ele, COUNT, P_ILOC, i_node_min, i_node_max
-      real :: auxR, weigth
-
-
+      real, parameter :: alpha = 1d-4!should it depend on the illness of the element?
+      integer :: i, i_node, j_node, ele, COUNT, P_ILOC, bad_node, k
+      real :: auxR
+      integer, dimension(2) :: counter
+      logical :: nodeFound
       !Initialize variables
-      !The weight will have to be different depending on the number of the nodes per element
-      weigth = 1 / 2.
 
       i = 1
-!      do while (Quality_list(i)>0)
-          ele = 2!Quality_list(i)
-          !I am giving for granted that the numbering of the nodes in an element does not have jumps
-          i_node_min = minval(P_NDGLN((ele-1) * p_nloc + 1: ele * p_nloc))
-          i_node_max = maxval(P_NDGLN((ele-1) * p_nloc + 1: ele * p_nloc))
+      do while (Quality_list(i)%ele>0)
+          ele = Quality_list(i)%ele
+          counter = 1!restart the counter
+          !Bad node
+          bad_node = P_NDGLN((ele-1) * p_nloc + Quality_list(i)%nodes(1))
           DO P_ILOC = 1, P_NLOC
               i_node = P_NDGLN((ele-1) * p_nloc + P_ILOC)
-!              COUNT = FINDCMC(i_node)
-              ! add row dg_nod to row cty_nod of cty mesh
               DO COUNT = FINDCMC(i_node), FINDCMC(i_node+1) - 1
-                  j_node = COLCMC(COUNT)
-                  if (j_node <= i_node_max .and. j_node >= i_node_min) then
-                      !Correspond to ones in the diagonal
-                      auxR = alpha
-                      !Corresponds to 0.5 out of the diagonal (for linear 2D elements only)
-                      if (i_node /= j_node) auxR = - auxR * weigth
-                      !Add the new data to the matrix
-                      call addto( cmc_petsc, blocki = 1, blockj = 1, i = i_node, j = j_node,val = auxR)
+                j_node = COLCMC(COUNT)
+
+                !Check that we are touching the element we want to...
+                nodefound = .false.
+                do k = 1, size(Quality_list(i)%nodes)
+                    if (P_NDGLN((ele-1) * p_nloc + Quality_list(i)%nodes(k)) == j_node) then
+                        nodefound = .true.
+                        exit
+                    end if
+                end do
+                !...otherwise we cycle to the next node
+                if (.not.nodefound) cycle
+
+                  if (i_node == bad_node) then!Row of the bad element
+                      if ( j_node== i_node) then!diagonal of bad node
+                          auxR = 1.0
+                      else!not the diagonals
+                          auxR = -Quality_list(i)%weights(counter(1))
+                          counter(1) = counter(1) + 1
+                      end if
+                  else
+                      if (i_node == j_node) then!diagonal of the other nodes
+!                          auxR = Quality_list(i)%weights(counter(3))
+!                          auxR = Quality_list(i)%weights(counter(3))**2
+!                          counter(3) = counter(3) + 1
+!                          auxR = 0.
+
+                           auxR = 1.0
+                      else if (j_node == bad_node) then!The column of the bad node
+!                         auxR = 0.0
+                          auxR = -Quality_list(i)%weights(counter(2))
+                          counter(2) = counter(2) + 1
+                      else
+!                        auxR = Quality_list(i)%weights(1)*Quality_list(i)%weights(2)
+                       auxR = 0.0
+                      end if
                   end if
-              END DO
+                  !Add the new data to the matrix
+                  call addto( cmc_petsc, blocki = 1, blockj = 1, i = i_node, j = j_node,val = alpha*auxR)
+              end do
           end do
-!      end do
-        !Just in case
-        call assemble( cmc_petsc )
+          !Advance one element
+          i = i + 1
+      end do
+      !Just in case
+      call assemble( cmc_petsc )
 
       end subroutine Fix_to_bad_elements
 

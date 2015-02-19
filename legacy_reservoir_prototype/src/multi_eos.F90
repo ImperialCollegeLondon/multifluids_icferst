@@ -820,7 +820,6 @@
          inv_perm( :, :, ele)=inverse(perm( :, :, ele))
       end do
       U_ABSORB = 0.0
-
       Loop_NPHASE: DO IPHASE = 1, NPHASE
 
           is_Corey=.false.
@@ -842,7 +841,6 @@
 
                           CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * CV_NONODS
                           SATURATION = SATURA( IPHASE,CV_NOD )
-
                           IPHA_IDIM = ( IPHASE - 1 ) * NDIM + IDIM
                           JPHA_JDIM = ( IPHASE - 1 ) * NDIM + JDIM
                           if (is_corey) then
@@ -850,6 +848,7 @@
                                   case (1)!No relperm needed, we calculate directly the result
                                       U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = INV_PERM( IDIM, JDIM, ELE ) *&
                                       visc_phases(1) * min(1.0,max(1d-5,SATURA(1,CV_NOD)))
+!print *,    U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), SATURA(1,CV_NOD), visc_phases(1), INV_PERM( IDIM, JDIM, ELE )
                                   case (2)
                                       CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), visc_phases(1), visc_phases(2), &
                                       INV_PERM( IDIM, JDIM, ELE ), min(1.0,max(0.0,SATURA(1,CV_NOD))), IPHASE,&

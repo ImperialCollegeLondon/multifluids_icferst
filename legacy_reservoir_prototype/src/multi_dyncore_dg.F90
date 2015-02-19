@@ -689,7 +689,7 @@ contains
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
     scale_momentum_by_volume_fraction, &
-    StorageIndexes )
+    StorageIndexes, Quality_list )
 
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -756,6 +756,7 @@ contains
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, DIMENSION( :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         integer, dimension(:), intent(inout) :: StorageIndexes
+        type(bad_elements), optional, dimension(:), intent(in) :: Quality_list
         ! Local Variables
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
@@ -1172,8 +1173,11 @@ contains
 
             !Solve the system
             call zero(deltaP)
-             !We solve (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p
+
+
+
              !The condition number improves but the solver seems more sensitive
+             !We solve (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p
 !            call Rescale_and_solve(CMC_petsc, FINDCMC, rhs_p, deltap, trim(pressure%option_path))
 
             !Re-scale of the matrix to allow working with small values of sigma
@@ -1190,11 +1194,10 @@ contains
             rhs_p%val = rhs_p%val / rescaleVal
             !End of re-scaling
 
-            !We add a term in the CMC matrix to move mass from low pressure to high pressure nodes
-            !in bad elements to reduce the bad conditioning of the matrix
-!            call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC, COLCMC, MIDCMC, &
-!                totele, p_nloc, P_NDGLN)
-
+!            !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
+!            !inside the same element to reduce the ill conditioning of the matrix
+!            if (is_compact_overlapping .and. present(Quality_list)) call Fix_to_bad_elements(&
+!                  cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
             !Solver that agglomerates all the DG informaton into a CG mesh
 !            if (x_nonods /= cv_nonods) then!For discontinuous mesh
 !                call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
@@ -1211,21 +1214,6 @@ contains
             call deallocate(cmc_petsc)  
 
             ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
-
-!!         ####This solver is not yet parallel safe! #### 
-!!                  CALL PRES_DG_MULTIGRID(CMC, CMC_PRECON, IGOT_CMC_PRECON, DP, P_RHS, &
-!!                       NCOLCMC, cv_NONODS, FINDCMC, COLCMC, MIDCMC, &
-!!                      totele, cv_nloc, x_nonods, cv_ndgln, x_ndgln )
-!!                  
-!!                  ewrite(3,*) 'after pressure solve DP:', DP
-!!               
-!!                  P_all % val = P_all % val + DP
-!!
-!!               end if
-!!
-!!         end if
-              !!dp=0.5*dp
-
 
             ! Use a projection method
             ! CDP = C * DP
