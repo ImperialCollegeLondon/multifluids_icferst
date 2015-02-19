@@ -725,6 +725,7 @@ contains
       NCOLCMC, FINDCMC, COLCMC, MIDCMC, &
       totele, p_nloc, P_NDGLN, Quality_list)
       !We add a term in the CMC matrix to move mass from low pressure to high pressure nodes
+      !Only for linear pressure for the time being
       implicit none
       INTEGER, intent( in ) ::  NCOLCMC, totele, p_nloc
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
@@ -764,8 +765,9 @@ contains
                       if ( j_node== i_node) then!diagonal of bad node
                           auxR = 1.0
                       else!not the diagonals
-                          auxR = -Quality_list(i)%weights(counter(1))
-                          counter(1) = counter(1) + 1
+!                          auxR = -Quality_list(i)%weights(counter(1))
+!                          counter(1) = counter(1) + 1
+                            auxR = 0.
                       end if
                   else
                       if (i_node == j_node) then!diagonal of the other nodes
@@ -773,12 +775,12 @@ contains
 !                          auxR = Quality_list(i)%weights(counter(3))**2
 !                          counter(3) = counter(3) + 1
 !                          auxR = 0.
-
+!
                            auxR = 1.0
                       else if (j_node == bad_node) then!The column of the bad node
-!                         auxR = 0.0
-                          auxR = -Quality_list(i)%weights(counter(2))
-                          counter(2) = counter(2) + 1
+                         auxR = 0.0
+!                          auxR = -Quality_list(i)%weights(counter(2))
+!                          counter(2) = counter(2) + 1
                       else
 !                        auxR = Quality_list(i)%weights(1)*Quality_list(i)%weights(2)
                        auxR = 0.0

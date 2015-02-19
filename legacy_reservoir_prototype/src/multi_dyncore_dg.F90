@@ -758,6 +758,7 @@ contains
         integer, dimension(:), intent(inout) :: StorageIndexes
         type(bad_elements), optional, dimension(:), intent(in) :: Quality_list
         ! Local Variables
+        LOGICAL, PARAMETER :: use_continuous_pressure_solver = .FALSE.!For DG pressure, convert to CG to accelerate the convergence
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
         INTEGER, PARAMETER :: IGOT_CMC_PRECON = 0
@@ -1194,18 +1195,18 @@ contains
             rhs_p%val = rhs_p%val / rescaleVal
             !End of re-scaling
 
-!            !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
-!            !inside the same element to reduce the ill conditioning of the matrix
+            !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
+            !inside the same element to reduce the ill conditioning of the matrix
 !            if (is_compact_overlapping .and. present(Quality_list)) call Fix_to_bad_elements(&
 !                  cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
-            !Solver that agglomerates all the DG informaton into a CG mesh
-!            if (x_nonods /= cv_nonods) then!For discontinuous mesh
-!                call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
-!                    NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
-!                    totele, cv_nloc, x_nonods, x_ndgln, trim(pressure%option_path))
-!            else
+            if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver) then!For discontinuous mesh
+                !Solver that agglomerates all the DG informaton into a CG mesh
+                call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
+                    NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
+                    totele, cv_nloc, x_nonods, x_ndgln, trim(pressure%option_path))
+            else
                 call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
-!            end if
+            end if
             P_all % val = P_all % val + deltap%val
 
             call halo_update(p_all)

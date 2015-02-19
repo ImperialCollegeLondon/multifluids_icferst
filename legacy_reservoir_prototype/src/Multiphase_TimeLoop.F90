@@ -526,7 +526,7 @@
 
       !Look for bad elements! IF THIS WORKS, I HAVE TO SET IT TO DO IT AFTER ADAPTING THE MESH AND ALSO DEALLOCATE Quality_list
       !and deallocate weights inside it.
-      allocate(Quality_list(totele))!this number is not well thought...
+      allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
       call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, 115.0, 1.0, Quality_list)
 
 !!$ Starting Time Loop

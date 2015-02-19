@@ -3815,7 +3815,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         integer, intent(in) :: x_nloc, totele
         !Local variables
         integer :: ELE, i
-        logical, dimension(4) :: auxLogic
+        logical :: Bad_founded
         real :: MxAngl, MnAngl
         !Definition of Pi
         real, dimension(:,:), pointer:: X_ALL
@@ -3824,7 +3824,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         !Prepare data
         do i = 1, size(Quality_list)
             Quality_list(i)%ele = -1!Initialize with negative values
-            allocate(Quality_list(i)%nodes(x_nloc))!Allocate
+            allocate(Quality_list(i)%nodes(3))!Allocate, we always consider triangles
             Quality_list(i)%nodes = -1!Initialize with negative values
             allocate(Quality_list(i)%weights(x_nloc-1))!Allocate
             Quality_list(i)%weights = 0.!Initialize with zeros
@@ -3837,56 +3837,56 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         i = 1
         if (size(X_ALL,1)==2) then!2D triangles
             do ELE = 1, totele
-                !bad_node enters as the
-                auxLogic(1) = Check_element( X_ALL(:, x_ndgln((ele-1)*X_nloc+1)),&
-                 X_ALL(:, x_ndgln((ele-1)*X_nloc+2)), X_ALL(:, x_ndgln((ele-1)*X_nloc+3)), MxAngl, MnAngl,&
-                 Quality_list(i))
-                 if (auxLogic(1)) then
-                    if (size(Quality_list)>= i) then
-                        Quality_list(i)%ele = ele
-                    end if
-
+                !bad_node enters as the first entry
+                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i))
+                 if (Bad_founded) then
+                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                     i = i + 1
                 end if
 
             end do
         else if(size(X_ALL,1)==3) then!3D tetrahedra
         !adjust to match the 2D case once that one works properly
-!            do ELE = 1, totele
-!                !We check the 4 triangles that form a tet
-!                auxLogic(1) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc + 1)),&
-!                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc + 1)), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc + 1)), &
-!                 MxAngl, MnANgl, Quality_list(i), 1+x_ndgln((ele-1)*X_nloc+1), X_ALL(:, 4+x_ndgln((ele-1)*X_nloc + 1)))
-!
-!                 auxLogic(2) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc + 1)),&
-!                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc + 1)), X_ALL(:, 4+x_ndgln((ele-1)*X_nloc + 1)), &
-!                 MxAngl, MnANgl, Quality_list(i), 1+x_ndgln((ele-1)*X_nloc+1), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc + 1)))
-!
-!                 auxLogic(3) = Check_element( X_ALL(:, 1+x_ndgln((ele-1)*X_nloc + 1)),&
-!                 X_ALL(:, 3+x_ndgln((ele-1)*X_nloc + 1)), X_ALL(:, 4+x_ndgln((ele-1)*X_nloc + 1)), &
-!                 MxAngl, MnANgl, Quality_list(i), 1+x_ndgln((ele-1)*X_nloc+1), X_ALL(:, 2+x_ndgln((ele-1)*X_nloc + 1)))
-!
-!                 auxLogic(4) = Check_element( X_ALL(:, 4+x_ndgln((ele-1)*X_nloc + 1)),&
-!                 X_ALL(:, 2+x_ndgln((ele-1)*X_nloc + 1)), X_ALL(:, 3+x_ndgln((ele-1)*X_nloc + 1)), &
-!                 MxAngl, MnANgl, Quality_list(i), 1+x_ndgln((ele-1)*X_nloc+1),  X_ALL(:, 1+x_ndgln((ele-1)*X_nloc + 1)))
-!
-!                 if (auxLogic(1) .or. auxLogic(2) .or. auxLogic(3) .or. auxLogic(4)) then
-!                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-!                    i = i + 1
-!                 end if
-!            end do
-        end if
+            do ELE = 1, totele
+                !FOR 3D THE WAY WE STORE THE Quality_list%nodes(1) HAS TO BE DIFFERENT,
+                !WE HAVE TO INTRODUCE x_ndgln, ELE AND X_NLOC IN THE SUBROUTINE AND THE 3 INDEXES AND STORE THE INDEXES
 
+                !We check the 4 triangles that form a tet
+                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i), 4)
+                if (Bad_founded) then
+                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                end if
+                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, Quality_list(i), 3)
+                if (Bad_founded) then
+                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                end if
+                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 3, 2, MxAngl, Quality_list(i), 2)
+                if (Bad_founded) then
+                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                end if
+                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 2, 3, MxAngl, Quality_list(i), 1)
+                if (Bad_founded) then
+                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                end if
+            end do
+        end if
         contains
 
-            logical function Check_element(X1, X2, X3, MaxAngle, MinAngle, Quality_list, X4)
-                !Introduce X4 for 3D, X4 is the forth vertex of the tet
+            logical function Check_element(X_ALL, x_ndgln, ele_Pos, Pos1, Pos2, Pos3, MaxAngle, Quality_list, Pos4)
+                !Introduce Pos4 for 3D, Pos4 is the forth vertex of the tet
                 implicit none
-                real, intent(in) :: MaxAngle, MinAngle
-                real, dimension(:), intent(in):: X1, X2, X3
+                real, dimension(:,:), intent(in) :: X_ALL
+                integer, intent(in) :: ele_Pos, Pos1, Pos2, Pos3
+                real, intent(in) :: MaxAngle
+                integer, dimension(:), intent(in) :: x_ndgln
                 type(bad_elements), intent(inout) :: Quality_list
-                real, dimension(:), optional, intent(in) :: X4
+                integer, optional, intent(in) :: Pos4
                 !Local variables
+                real, dimension(size(X_ALL,1)) :: X1, X2, X3, X4
                 real, dimension(3) :: alpha, lenght, lenght2
                 !For 3D to project values
                 real :: ha, hd, ad, beta, s
@@ -3894,32 +3894,39 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                 real, parameter :: pi = acos(0.0) * 2.0
 
                 Check_element = .false.
+                !Define the vertexes
+                X1 = X_ALL(:, x_ndgln(ele_Pos+Pos1))
+                X2 = X_ALL(:, x_ndgln(ele_Pos+Pos2))
+                X3 = X_ALL(:, x_ndgln(ele_Pos+Pos3))
+
 
                 !Calculate the lenght of the edges
                 lenght(1) = sqrt(dot_product(X1(:)-X3(:), X1(:)-X3(:)))
                 lenght(2) = sqrt(dot_product(X1(:)-X2(:), X1(:)-X2(:)))
                 lenght(3) = sqrt(dot_product(X2(:)-X3(:), X2(:)-X3(:)))
 
-                !if 3D we have to project the triangle
-                if (present(X4)) then!3D
-                    s = sum(lenght)/2.
-                    !Calculate height to node 3
-                    ha = 2. * sqrt(s * (s - lenght(1)) * (s - lenght(2)) * (s - lenght(3))) / lenght(2)
-                    !Calculate the lenght of the edges to node 4
-                    lenght2(1) = sqrt(dot_product(X1(:)-X4(:), X1(:)-X4(:)))
-                    lenght2(2) = lenght(2)
-                    lenght2(3) = sqrt(dot_product(X2(:)-X4(:), X2(:)-X4(:)))
-                    s = sum(lenght2)/2.
-                    !Calculate height to node 4
-                    hd = 2. * sqrt(s * (s - lenght2(1)) * (s - lenght2(2)) * (s - lenght2(3))) / lenght2(2)
-                    !distance between 3 and 4
-                    ad = sqrt(dot_product(X3(:)-X4(:), X3(:)-X4(:)))
-                    !Obtain the angle
-                    beta = acos((hd**2+ha**2-ad**2)/(2. *hd*ha))
-                    !Project the edges
-                    lenght(1) = sin(beta) * lenght(1)
-                    lenght(3) = sin(beta) * lenght(3)
-                end if
+!                !if 3D we have to project the triangle, not sure if this is necessary
+!i don't know if this is necessary  http://stackoverflow.com/questions/27672882/how-to-find-the-angles-of-the-faces-of-a-scalene-tetrahedron-given-lengths-of-ed
+!                if (present(Pos4)) then!3D
+!                    X4 = X_ALL(:, x_ndgln(ele_Pos+Pos4))
+!                    s = sum(lenght)/2.
+!                    !Calculate height to node 3
+!                    ha = 2. * sqrt(s * (s - lenght(1)) * (s - lenght(2)) * (s - lenght(3))) / lenght(2)
+!                    !Calculate the lenght of the edges to node 4
+!                    lenght2(1) = sqrt(dot_product(X1(:)-X4(:), X1(:)-X4(:)))
+!                    lenght2(2) = lenght(2)
+!                    lenght2(3) = sqrt(dot_product(X2(:)-X4(:), X2(:)-X4(:)))
+!                    s = sum(lenght2)/2.
+!                    !Calculate height to node 4
+!                    hd = 2. * sqrt(s * (s - lenght2(1)) * (s - lenght2(2)) * (s - lenght2(3))) / lenght2(2)
+!                    !distance between 3 and 4
+!                    ad = sqrt(dot_product(X3(:)-X4(:), X3(:)-X4(:)))
+!                    !Obtain the angle
+!                    beta = acos((hd**2+ha**2-ad**2)/(2. *hd*ha))
+!                    !Project the edges
+!                    lenght(1) = sin(beta) * lenght(1)
+!                    lenght(3) = sin(beta) * lenght(3)
+!                end if
 
 
                 !Alphas
@@ -3935,27 +3942,27 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     Quality_list%weights(1) = abs(cos(alpha(2)) * lenght(2) / lenght(3))
                     Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(1) / lenght(3))
                     !Store nodes, the first one is the bad node
-                    Quality_list%nodes(1) = 1
-                    Quality_list%nodes(2) = 2
-                    Quality_list%nodes(3) = 3
+                    Quality_list%nodes(1) = Pos1
+                    Quality_list%nodes(2) = Pos2
+                    Quality_list%nodes(3) = Pos3
                     Check_element = .true.
                     return
                 else if (alpha(2)>= MaxAngle) then
                     Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(2) / lenght(1))
                     Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(3) / lenght(1))
                     !Store nodes, the first one is the bad node
-                    Quality_list%nodes(1) = 2
-                    Quality_list%nodes(2) = 1
-                    Quality_list%nodes(3) = 3
+                    Quality_list%nodes(1) = Pos2
+                    Quality_list%nodes(2) = Pos1
+                    Quality_list%nodes(3) = Pos3
                     Check_element = .true.
                     return
                 else if (alpha(3) >= MaxAngle) then
                     Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(1) / lenght(2))
                     Quality_list%weights(2) = abs(cos(alpha(2)) * lenght(3) / lenght(2))
                     !Store nodes, the first one is the bad node
-                    Quality_list%nodes(1) = 3
-                    Quality_list%nodes(2) = 1
-                    Quality_list%nodes(3) = 2
+                    Quality_list%nodes(1) = Pos3
+                    Quality_list%nodes(2) = Pos1
+                    Quality_list%nodes(3) = Pos2
                     Check_element = .true.
                     return
                 end if
@@ -3967,48 +3974,30 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 !                    Quality_list%weights(1) = 1.0
 !                    Quality_list%weights(2) = 0.0
 !
-!                    Quality_list%nodes(1) = 3
-!                    Quality_list%nodes(2) = 2
-!                    Quality_list%nodes(3) = 1
+!                    Quality_list%nodes(1) = Pos3
+!                    Quality_list%nodes(2) = Pos2
+!                    Quality_list%nodes(3) = Pos1
 !                    Check_element = .true.
 !                    return
 !                else if (alpha(2)<=MinAngle) then
 !                    Quality_list%weights(1) = 1.0
 !                    Quality_list%weights(2) = 0.0
-!                    Quality_list%nodes(1) = 3
-!                    Quality_list%nodes(2) = 1
-!                    Quality_list%nodes(3) = 2
+!                    Quality_list%nodes(1) = Pos3
+!                    Quality_list%nodes(2) = Pos1
+!                    Quality_list%nodes(3) = Pos2
 !                    Check_element = .true.
 !                    return
 !                else if (alpha(3) <= MinAngle) then
 !                    Quality_list%weights(1) = 1.0
 !                    Quality_list%weights(2) = 0.0
-!                    Quality_list%nodes(1) = 1
-!                    Quality_list%nodes(2) = 2
-!                    Quality_list%nodes(3) = 3
+!                    Quality_list%nodes(1) = Pos1
+!                    Quality_list%nodes(2) = Pos2
+!                    Quality_list%nodes(3) = Pos3
 !                    Check_element = .true.
 !                    return
 !                end if
 
-
-
             end function Check_element
-
-!            subroutine getVoronoiCenter2D(X1,X2,X3,Xv)
-!                !returns the voronoi point given the three corners of a triangle
-!                Implicit none
-!                !Global variables
-!                real, dimension(:), intent (in) :: X1, X2, X3
-!                real, dimension(:), intent (out) :: Xv
-!                !Local variables
-!                real :: aux
-!
-!                aux = ((X2(1)-X1(1))*(X3(1)-X1(1)) + (X2(2)-X1(2))*(X3(2)-X1(2))) &
-!                /(2d0*((X3(2)-X2(2))*(X3(1)-X1(1))-(X3(1)-X2(1))*(X3(2)-X1(2))))
-!
-!                Xv(1) = (X2(1) + X3(1)) / 2.0 - aux * (X3(2) - X2(2))
-!                Xv(2) = (X2(2) + X3(2)) / 2.0 + aux * (X3(1) - X2(1))
-!            end subroutine
 
     end subroutine CheckElementAngles
 
