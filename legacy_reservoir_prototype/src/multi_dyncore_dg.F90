@@ -794,7 +794,7 @@ contains
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2
         type( vector_field ), pointer :: x_all2
-        type( scalar_field ), pointer :: p_all, cvp_all, pressure_state, sf, soldf
+        type( scalar_field ), pointer :: p_all, cvp_all, pressure_state, sf, soldf, field
 
         type( vector_field ) :: packed_vel, rhs
         type( scalar_field ) :: deltap, rhs_p
@@ -1254,6 +1254,11 @@ contains
         ! update prssure field in trunk state
         pressure_state => extract_scalar_field(state(1),"Pressure")
         pressure_state % val = CVP_all % val
+
+
+        ! store the cv mass
+        field => extract_scalar_field(packed_state,"CVMass")
+        field % val = mass_cv
 
 
         DEALLOCATE( CT )

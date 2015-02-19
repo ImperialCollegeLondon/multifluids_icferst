@@ -2160,6 +2160,10 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       call add_new_memory(packed_state,pressure,"CVPressure")
       call add_new_memory(packed_state,pressure,"OldCVPressure")
 
+      ! field for storing the cv mass
+      ! this is calculated at then of FORCE_BAL_CTY_ASSEM_SOLVE
+      call add_new_memory(packed_state,pressure,"CVMass")
+
       ! dummy field on the pressure mesh, used for evaluating python eos's.
       ! this could be cleaned up in the future.
       call add_new_memory(packed_state,pressure,"Dummy")
@@ -4003,19 +4007,18 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
 
 
-    subroutine BoundedSolutionCorrections( packed_state )
+    subroutine BoundedSolutionCorrections( packed_state, small_findrm, small_colm )
       implicit none
 
       type( state_type ), intent( inout ) :: packed_state
+      integer, dimension( : ), intent( in ) :: small_findrm, small_colm
+
       type ( tensor_field ), pointer :: field
-
+      type ( scalar_field ), pointer :: mass_cv
       type ( tensor_field ) :: field_dev, field_alt
-
       real, dimension( :, : ), allocatable :: field_min, field_max
-      real, dimension( : ), allocatable :: mass_cv
-      integer, dimension( : ), pointer :: cv_ndgln
       real :: f_i, f_j
-      integer :: ndim1, ndim2, cv_nonods, i, j, k, totele, cv_nloc, ele, iloc, jloc, inod, jnod
+      integer :: ndim1, ndim2, cv_nonods, i, j, k, inod, jnod, count
 
       field => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
       ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ; cv_nonods = size( field%val, 3 )
@@ -4025,8 +4028,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
       allocate( field_min( ndim1, ndim2 ), field_max( ndim1, ndim2 ) )
 
-      field_min( i, j ) = 0.0
-      field_max( i, j ) = 1.0
+      field_min( :, : ) = 0.0
+      field_max( :, : ) = 1.0
 
       do k = 1, cv_nonods
         do j = 1, ndim2
@@ -4042,33 +4045,32 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         end do
       end do
 
-      totele = ele_count( field ) ; cv_nloc = ele_loc( field, 1 )
+      mass_cv => extract_scalar_field( packed_state, "CVMass" )
 
-      allocate( mass_cv( cv_nonods ) ) ; mass_cv=1.0
-      cv_ndgln => field%mesh%ndglno
+      do inod = 1, cv_nonods
+        do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
+          jnod = small_colm( count )
 
-      do ele = 1, totele
-        do iloc = 1, cv_nloc
-          do jloc = 1, cv_nloc
+          do j = 1, ndim2
+            do i = 1, ndim1
 
-            inod = cv_ndgln( ( ele - 1 ) * cv_nloc + iloc )
-            jnod = cv_ndgln( ( ele - 1 ) * cv_nloc + jloc )
+              field_alt%val( i, j, inod ) = field_dev%val( i, j, inod )
+              field_alt%val( i, j, jnod ) = field_dev%val( i, j, jnod )
 
-            do j = 1, ndim2
-              do i = 1, ndim1
+              if ( field_alt%val( i, j, inod ) * field_alt%val( i, j, jnod ) < 0.0 ) then
 
-                f_i = field_alt%val( i, j, inod ) * mass_cv( inod )
-                f_j = field_alt%val( i, j, jnod ) * mass_cv( jnod )
+                f_i = field_alt%val( i, j, inod ) * mass_cv%val( inod )
+                f_j = field_alt%val( i, j, jnod ) * mass_cv%val( jnod )
 
                 if ( f_i > f_j ) then
 
-                  field_alt%val( i, j, inod ) = 66.66
+                  field_alt%val( i, j, inod ) = ( f_i + f_j ) / mass_cv%val( inod )
                   field_alt%val( i, j, jnod ) = 0.0
 
                 else
 
                   field_alt%val( i, j, inod ) = 0.0
-                  field_alt%val( i, j, jnod ) = 66.66
+                  field_alt%val( i, j, jnod ) = ( f_i + f_j ) / mass_cv%val( jnod )
 
                 end if
 
@@ -4077,17 +4079,16 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                 field%val( i, j, jnod ) = field%val( i, j, jnod ) &
                   - field_dev%val( i, j, inod ) + field_alt%val( i, j, inod )
 
-              end do
-            end do
+              end if
 
+            end do
           end do
+
         end do
       end do
 
 
-
-
-      deallocate( field_min, field_max, mass_cv )
+      deallocate( field_min, field_max )
 
       call deallocate( field_dev )
       call deallocate( field_alt )

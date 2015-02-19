@@ -4013,11 +4013,18 @@ end if
              call addto(CV_MASS, CV_NODI,  MM )
 
 
-
-             DO IT = 1, size(fempsi_rhs)
-                FEMPSI_RHS(it)%val(:,:,CV_NODI) = FEMPSI_RHS(it)%val(:,:,CV_NODI) &
-                     + NM * PSI(IT)%ptr%val(:,:,CV_NODJ)
-             END DO
+             if (cv_test_space) then
+                DO IT = 1, size(fempsi_rhs)
+                   FEMPSI_RHS(it)%val(:,:,CV_NODI) = FEMPSI_RHS(it)%val(:,:,CV_NODI) &
+                        + MM * PSI(IT)%ptr%val(:,:,CV_NODJ)
+                END DO
+             else
+                DO IT = 1, size(fempsi_rhs)
+                   FEMPSI_RHS(it)%val(:,:,CV_NODI) = FEMPSI_RHS(it)%val(:,:,CV_NODI) &
+                        + NM * PSI(IT)%ptr%val(:,:,CV_NODJ)
+                END DO
+             end if
+                
              DO IT = 1, size(psi_ave)
                 call addto( PSI_AVE(IT)%PTR, node_number=CV_NODI, val=MN * PSI_AVE_TEMP(IT)%val( : , CV_NODJ ) )
              END DO
