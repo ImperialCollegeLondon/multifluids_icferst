@@ -4037,7 +4037,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       integer, dimension( :, : ), allocatable :: ii_min, ii_max
       real, dimension( : ), allocatable :: mass_cv_sur
       integer :: ndim1, ndim2, cv_nonods, i, j, knod, inod, jnod, count, ii, jj, loc_its, loc_its2, its, gl_its
-      logical :: changed
+      logical :: changed, changed_something
       real :: max_change, error_changed, scalar_field_dev, mass_off, alt_max, alt_min
 
       ndim1 = size( field_val, 1 ) ; ndim2 = size( field_val, 2 ) ; cv_nonods = size( field_val, 3 )
@@ -4065,7 +4065,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 ! This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
          max_change=0.0
          do loc_its=1,nloc_its
-         do knod = 1, cv_nonods
+         changed_something=.false.
+         do knod = 1, cv_nonods ! exclude the halo values of knod for parallel
 
             do its=1,nits_nod
 
@@ -4133,6 +4134,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                         field_val( i, j, jj ) = field_val( i, j, jj ) - scalar_field_dev_min(i,j) + alt_min
                  
                         changed = .true.
+                        changed_something=.true.
                      endif
 
                   end do
@@ -4143,6 +4145,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             end do ! end of do its=1,nits_nod
 
          end do ! end of do knod = 1, cv_nonods
+         if( .not. changed_something ) cycle ! stop iterating and move onto next stage of iteration...
          end do ! do loc_its=1,nloc_its
               
               
@@ -4168,20 +4171,20 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
 ! matrix vector...
             field_alt_val = 0.0
-            do inod = 1, cv_nonods
-
+            do inod = 1, cv_nonods ! exclude the halo values of knod for parallel
                do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
                   jnod = small_colm( count )
 
-!                  mass_off = (mass_cv(jnod) * mass_diag / mass_cv_sur(inod) )/mass_cv(inod)
-                  mass_off = mass_cv(jnod) / mass_cv_sur(inod) 
+!                  mass_off = (mass_cv(jnod) * mass_diag / mass_cv_sur(jnod) )/mass_cv(inod)
+                  mass_off = mass_cv(jnod) / mass_cv_sur(jnod) 
 
                   field_alt_val( :, :, inod ) = field_alt_val( :, :, inod ) + mass_off * field_dev_val( :, :, jnod ) 
 
                end do ! do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
             end do  ! do inod = 1, cv_nonods
 
-! relax: - this relaxation is used because we have used a mass matrix which is not diagonally dominant =0.5 is suggested. 
+! w_relax\in[0,1]: - this relaxation is used because we have used a mass matrix which is not diagonally dominant =0.5 is suggested. 
+! =1.0 is no relaxation. 
             field_alt_val( :, :, : ) = w_relax * field_alt_val( :, :, : ) + (1.-w_relax)* field_dev_val( :, :, : )
 ! adjust the values...
             error_changed=maxval( abs( - field_dev_val( :, :, : ) + field_alt_val( :, :, : ) ) )
