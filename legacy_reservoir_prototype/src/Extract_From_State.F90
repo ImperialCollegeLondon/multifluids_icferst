@@ -4012,12 +4012,12 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       implicit none
 ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
 ! The sparcity of the local CV connectivity is in: small_findrm, small_colm. 
+! ngl_its=max no of global iterations e.g. 100.
+! error_tol = tolerance on the iterations. 
 !
 ! nloc_its: This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
 ! nloc_its2: This iteration is very good at avoiding stagnating but does spread the modifcations far.
 ! us a single iteration because of this as default...
-! ngl_its=max no of global iterations e.g. 100.
-! error = tolerance on the iterations. 
 ! nits_nod: iterations at a nod - this iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
       integer, parameter :: nloc_its=5,  nloc_its2=1, nits_nod=100
       real, parameter :: w_relax=0.5
