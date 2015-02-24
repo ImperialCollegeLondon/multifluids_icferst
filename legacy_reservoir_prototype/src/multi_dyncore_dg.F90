@@ -1255,12 +1255,6 @@ contains
         pressure_state => extract_scalar_field(state(1),"Pressure")
         pressure_state % val = CVP_all % val
 
-
-        ! store the cv mass
-        field => extract_scalar_field(packed_state,"CVMass")
-        field % val = mass_cv
-
-
         DEALLOCATE( CT )
         DEALLOCATE( DIAG_SCALE_PRES )
         DEALLOCATE( U_RHS )

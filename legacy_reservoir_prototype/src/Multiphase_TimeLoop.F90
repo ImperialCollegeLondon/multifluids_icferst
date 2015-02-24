@@ -219,7 +219,7 @@
       integer :: checkpoint_number
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-      integer, dimension (34) :: StorageIndexes
+      integer, dimension (35) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
       !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
       !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
@@ -234,10 +234,11 @@
       !PROJ_CV_TO_FEM_state          : 31 (disabled)
       !Capillary pressure            : 32 (Pe), 33 (exponent a)
       !PIVIT_MAT (inverted)          : 34
+      !Bound                         : 35
 
       !Working pointers
 
-      type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source, tfield
+      type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
       type(scalar_field), pointer :: pressure_field, porosity_field
       type(vector_field), pointer :: positions
 
@@ -526,8 +527,8 @@
 
       !Look for bad elements! IF THIS WORKS, I HAVE TO SET IT TO DO IT AFTER ADAPTING THE MESH AND ALSO DEALLOCATE Quality_list
       !and deallocate weights inside it.
-      allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-      call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, 115.0, 1.0, Quality_list)
+      !allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+      !call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, 115.0, 1.0, Quality_list)
 
 !!$ Starting Time Loop
       itime = 0
@@ -1358,6 +1359,11 @@
             allocate( Component_Diffusion_Operator_Coefficient( ncomp, ncomp_diff_coef, nphase ) )  
             allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
             allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
+
+
+
+            !!call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv, StorageIndexes, cv_ele_type )
+
 
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
