@@ -875,27 +875,9 @@ contains
              END DO
           END DO
 
-          DOWNWIND_EXTRAP_INDIVIDUAL=.FALSE.
-          IPT=1
-          IF( cv_disopt>=8 ) THEN
-             IF(GOT_T2) THEN
-                DO IPHASE=1,NPHASE
-                   IF(.NOT.IGOT_T_CONST(IPHASE,1)) THEN
-                      DOWNWIND_EXTRAP_INDIVIDUAL(IPT)=.TRUE.
-                      IPT=IPT+1
-                   ENDIF
-                END DO
-             ENDIF
-             IF(GOT_T2) THEN
-                DO IPHASE=1,NPHASE
-                   IF(.NOT.IGOT_T_CONST(IPHASE,2)) THEN
-                      DOWNWIND_EXTRAP_INDIVIDUAL(IPT)=.TRUE.
-                      IPT=IPT+1
-                   ENDIF
-                END DO
-             ENDIF
-          ENDIF
-
+          ! This logical needs to be expanded...
+          DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
+          IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
 
           IF ( is_compact_overlapping ) THEN
 
