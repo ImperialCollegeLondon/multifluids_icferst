@@ -8059,7 +8059,7 @@ deallocate(NX_ALL, X_NX_ALL)
     ! =5 is isotropic downwind diffusion with magnitude of =0 option.
     ! In tests they all produce similar results.
     !      INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 5
-    INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 0   !3
+    INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 3
     real, parameter :: tolerance = 1.e-10
 
     LOGICAL :: NOLIMI, RESET_STORE, LIM_VOL_ADJUST
