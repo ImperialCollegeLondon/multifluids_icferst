@@ -630,9 +630,13 @@ contains
       END DO Loop_NonLinearFlux
 
       !Set saturation to be between bounds
-!      call Set_Saturation_between_bounds(packed_state)
-      satura = min(max(satura,0.0), 1.0)
-
+      if (have_option('/material_phase[0]/multiphase_properties/Impose_saturation_limits')) then
+        !In this case we impose that the saturation has to be between physical limits
+        !conservation of mass might be lost
+        call Set_Saturation_between_bounds(packed_state)
+      else
+        satura = min(max(satura,0.0), 1.0)
+      end if
 
       DEALLOCATE( mass_mn_pres )
       DEALLOCATE( CT )
