@@ -420,7 +420,6 @@
 !!$ Local variables:
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, iphase
       character( len = option_path_len ) :: option_path, option_path2, option_path3
-      logical :: Impose_first_order
 !!$ DISOPT Options:
 !!$ =0      1st order in space          Theta=specified    UNIVERSAL
 !!$ =1      1st order in space          Theta=non-linear   UNIVERSAL
@@ -505,20 +504,6 @@
 !!$ IN/DG_ELE_UPWIND are options for optimisation of upwinding across faces in the compact_overlapping
 !!$ formulation. The data structure and options for this formulation need to be added later. 
       in_ele_upwind = 3 ; dg_ele_upwind = 3
-
-      ! simplify things...
-      Impose_first_order = .false.
-      do iphase =1, nphase
-         Impose_first_order = Impose_first_order .or. have_option("/material_phase["// int2str( iphase - 1 ) //&
-              "]/Impose_first_order")
-      end do
-      !We impose the lowest discretisation technique for everything.
-      if (Impose_first_order) then
-         in_ele_upwind = 1 ; dg_ele_upwind = 1
-         u_dg_vel_int_opt = 1
-         v_dg_vel_int_opt = 1
-         v_disopt = 0 ; t_disopt = 0
-      end if
 
       return
     end subroutine Get_Discretisation_Options

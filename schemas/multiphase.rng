@@ -736,8 +736,8 @@ to sum to 1 by adding constraint into compositional source term.</a:documentatio
             </element>
           </optional>
           <optional>
-            <element name="Impose_first_order">
-              <a:documentation>(Debug) Impose low order discretisation for everything</a:documentation>
+            <element name="Impose_saturation_limits">
+              <a:documentation>The saturation is imposed to be between physical limits, conservation of mass might be lost. However the time step can be increased severily. (Activate for the first phase)</a:documentation>
               <ref name="comment"/>
             </element>
           </optional>
