@@ -1,6 +1,6 @@
 
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -74,12 +74,13 @@
     use Compositional_Terms
     use Copy_Outof_State
     use cv_advection, only : cv_count_faces
-    use multiphase_1D_engine 
+    use multiphase_1D_engine
 
     use multiphase_fractures
     use boundary_conditions_from_options
     USE multiphase_rheology
     use vtk_interfaces
+
 
 
 #ifdef HAVE_ZOLTAN
@@ -91,10 +92,10 @@
 
     implicit none
     private
-    public :: MultiFluids_SolveTimeLoop, rheology
+    public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
 
 
-    type(rheology_type), dimension(:), allocatable :: rheology 
+    type(rheology_type), dimension(:), allocatable :: rheology
 
   contains
 
@@ -244,11 +245,13 @@
 
       logical :: write_all_stats=.true.
 
+      real, dimension(:),  allocatable  :: intflux
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
 
-      ierr = Zoltan_Initialize(ver)  
+      ierr = Zoltan_Initialize(ver)
       assert(ierr == ZOLTAN_OK)
 #endif
 
@@ -293,8 +296,8 @@
       !  Access boundary conditions via a call like
       !  call get_entire_boundary_condition(extract_tensor_field(packed_state,"Packed"//name),["weakdirichlet"],tfield,bc_type_list)
       !  where tfield is type(tensor_field) and bc_type_list is integer, dimension(tfield%dim(1),tfield%dim(2),nonods)
-      !  Then values are in tfield%val(1/ndim/ncomp,nphase,nonods) 
-      !  Type ids are in bc_type_list(1/ndim/ncomp,nphase,stotel) 
+      !  Then values are in tfield%val(1/ndim/ncomp,nphase,nonods)
+      !  Type ids are in bc_type_list(1/ndim/ncomp,nphase,stotel)
       !
       !A deallocate tfield when finished!!
 
@@ -302,7 +305,7 @@
       nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear')
 
 !!$ Compute primary scalars used in most of the code
-      call Get_Primary_Scalars( state, &         
+      call Get_Primary_Scalars( state, &
            nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
@@ -321,7 +324,7 @@
 
 !!$
 !!$ Computing Sparsity Patterns Matrices
-!!$ 
+!!$
 !!$ Defining lengths and allocating space for the matrices
       call Defining_MaxLengths_for_Sparsity_Matrices( ndim, nphase, totele, u_nloc, cv_nloc, cv_nonods, &
            mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
@@ -340,11 +343,11 @@
       colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0
       colm = 0 ; midm = 0
 
-!!$ Defining element-pair type 
+!!$ Defining element-pair type
       call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
            mat_ele_type, u_sele_type, cv_sele_type )
 
-!!$ Sparsity Patterns Matrices 
+!!$ Sparsity Patterns Matrices
       call Get_Sparsity_Patterns( state, &
 !!$ CV multi-phase eqns (e.g. vol frac, temp)
            mx_ncolacv, ncolacv, finacv, colacv, midacv, &
@@ -384,7 +387,7 @@
 !!$
            Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
            Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
-           Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), & 
+           Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), &
            ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
            Temperature_Absorption( nphase, nphase, cv_nonods ), &
            Momentum_Diffusion( mat_nonods, ndim, ndim, nphase ), &
@@ -423,7 +426,7 @@
 !!$
       plike_grad_sou_grad=0.
       plike_grad_sou_coef=0.
-      iplike_grad_sou=0 
+      iplike_grad_sou=0
 
 
 
@@ -476,7 +479,7 @@
       allocate( Component_Diffusion_Operator_Coefficient( ncomp, ncomp_diff_coef, nphase ) )
       Component_Diffusion_Operator_Coefficient = 0.
 
-!!$ Option not currently set up in the schema and zeroed from the begining. It is used to control 
+!!$ Option not currently set up in the schema and zeroed from the begining. It is used to control
 !!$ the upwinding rate (in the absorption term) during advection/assembling.
 
       allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
@@ -490,7 +493,7 @@
 
       solve_force_balance = .false. ; solve_PhaseVolumeFraction = .false.
       if( velocity_max_iterations /= 0 ) solve_force_balance = .true.
-      if( PhaseVolumeFraction_max_iterations /= 0 ) solve_PhaseVolumeFraction = .true. 
+      if( PhaseVolumeFraction_max_iterations /= 0 ) solve_PhaseVolumeFraction = .true.
 
 !!$ Setting up variables for the Time- and NonLinear Iterations-Loops:
       call get_option( '/timestepping/current_time', acctim )
@@ -533,6 +536,12 @@
 !!$ Starting Time Loop
       itime = 0
       dtime = 0
+
+      ! Initialise time integrated fluxes
+
+      allocate(intflux(nphase))
+      intflux = 0.
+
       checkpoint_number=1
       Loop_Time: do
 !!$
@@ -560,7 +569,7 @@
          call set_option( '/timestepping/current_time', acctim )
          new_lim = .true.
 
-         if ( acctim > finish_time ) then 
+         if ( acctim > finish_time ) then
             ewrite(1,*) "Passed final time"
             exit Loop_Time
          end if
@@ -752,8 +761,8 @@
                     DRhoDPressure, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
                     dt, &
 !!$
-                    NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn 
-                    NCOLDGM_PHA, &! Force balance 
+                    NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
+                    NCOLDGM_PHA, &! Force balance
                     NCOLELE, FINELE, COLELE, & ! Element connectivity.
                     NCOLCMC, FINDCMC, COLCMC, MIDCMC, & ! pressure matrix for projection method
                     size(small_colacv),small_FINACV, small_COLACV, small_MIDACV, &
@@ -844,7 +853,7 @@
 
 !!$ Computing the absorption term for the multi-components equation
                   call Calculate_ComponentAbsorptionTerm( state, packed_state, &
-                       icomp, cv_ndgln, & 
+                       icomp, cv_ndgln, &
                        D_s%val, Porosity_field%val, mass_ele, &
                        Component_Absorption )
 
@@ -918,7 +927,7 @@
                   sum_one_m_theta_flux_j = sum_one_m_theta_flux_j + one_m_theta_flux_j
 
 
-                  ! We have divided through by density 
+                  ! We have divided through by density
                   !do cv_inod=1,cv_nonods
                   !   do iphase=1,nphase
                   !      ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) = &
@@ -932,7 +941,7 @@
 
 
 
-               if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // & 
+               if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                     ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
                   ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
                   MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
@@ -957,7 +966,7 @@
                DO ICOMP = 1, NCOMP
 
                   call Calculate_ComponentAbsorptionTerm( state, packed_state,&
-                       icomp, cv_ndgln, & 
+                       icomp, cv_ndgln, &
                        D_s%val, Porosity_field%val, mass_ele, &
                        Component_Absorption )
 
@@ -1001,7 +1010,7 @@
                END DO ! ICOMP
 
 
-               if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // & 
+               if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                     ']/is_multiphase_component/Comp_Sum2One' ) .and. ( ncomp > 1 ) ) then
                   call Cal_Comp_Sum2One_Sou( packed_state, cv_nonods, nphase, ncomp, dt, its, &
                        NonLinearIteration, Mean_Pore_CV )
@@ -1043,6 +1052,11 @@
 
          if (write_all_stats) call write_diagnostics( state, current_time, dt, itime )  ! Write stat file
 
+         ! Dump boundary outfluxes to file
+
+         call dump_outflux(current_time,itime,totout,intflux)
+         print *, totout
+
          Conditional_TimeDump: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
 
             dtime=dtime+1
@@ -1052,7 +1066,7 @@
                checkpoint_number=checkpoint_number+1
             end if
 
-            call get_option( '/timestepping/current_time', current_time ) ! Find the current time 
+            call get_option( '/timestepping/current_time', current_time ) ! Find the current time
 
             if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
             not_to_move_det_yet = .false. ; dump_no = itime/dump_period_in_timesteps ! Sync dump_no with itime
@@ -1160,7 +1174,7 @@
 
                end if Conditional_Adapt_by_Time
 
-               not_to_move_det_yet = .false.         
+               not_to_move_det_yet = .false.
 
             end if Conditional_Adaptivity
 
@@ -1206,7 +1220,7 @@
 
 
 !!$  Compute primary scalars used in most of the code
-            call Get_Primary_Scalars( state, &         
+            call Get_Primary_Scalars( state, &
                  nphase, nstate, ncomp, totele, ndim, stotel, &
                  u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
                  x_snloc, cv_snloc, u_snloc, p_snloc, &
@@ -1233,7 +1247,7 @@
                  mx_ncolacv, mx_ncolm )
             nlenmcy = u_nonods * nphase * ndim + cv_nonods
             allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
-                 finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &         
+                 finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
                  findgm_pha( u_nonods * nphase * ndim + 1 ), coldgm_pha( mx_ncoldgm_pha ), &
                  middgm_pha( u_nonods * nphase * ndim ), &
                  findct( cv_nonods + 1 ), colct( mx_nct ), &
@@ -1246,11 +1260,11 @@
                  colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0 ; &
                  colm = 0 ; midm = 0
 
-!!$ Defining element-pair type 
+!!$ Defining element-pair type
             call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
                  mat_ele_type, u_sele_type, cv_sele_type )
 
-!!$ Sparsity Patterns Matrices 
+!!$ Sparsity Patterns Matrices
             call Get_Sparsity_Patterns( state, &
 !!$ CV multi-phase eqns (e.g. vol frac, temp)
                  mx_ncolacv, ncolacv, finacv, colacv, midacv, &
@@ -1276,7 +1290,7 @@
             allocate( &
 !!$
                  DRhoDPressure( nphase, cv_nonods ), &
-!!$             
+!!$
                  suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
                  Mean_Pore_CV( cv_nonods ), &
                  mass_ele( totele ), &
@@ -1286,18 +1300,18 @@
                  Velocity_U_Source_CV( ndim, nphase, cv_nonods ), &
                  Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                  Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
-                 Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), & 
+                 Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), &
                  ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
                  Temperature_Absorption( nphase, nphase, cv_nonods ), &
                  Momentum_Diffusion( mat_nonods, ndim, ndim, nphase ), &
                  Momentum_Diffusion_Vol( mat_nonods, nphase ), &
-                 ScalarAdvectionField_Diffusion( mat_nonods, ndim, ndim, nphase ), & 
+                 ScalarAdvectionField_Diffusion( mat_nonods, ndim, ndim, nphase ), &
                  Component_Diffusion( mat_nonods, ndim, ndim, nphase ), &
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                  plike_grad_sou_grad( cv_nonods * nphase ), &
-                 plike_grad_sou_coef( cv_nonods * nphase ) )    
+                 plike_grad_sou_coef( cv_nonods * nphase ) )
 !!$
-            Velocity_U_Source = 0. ; Velocity_Absorption = 0. ; Velocity_U_Source_CV = 0. 
+            Velocity_U_Source = 0. ; Velocity_Absorption = 0. ; Velocity_U_Source_CV = 0.
             Momentum_Diffusion=0.
             Momentum_Diffusion_Vol=0.
 !!$
@@ -1341,9 +1355,9 @@
                  cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
 
             allocate( theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
-                 one_m_theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), & 
+                 one_m_theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                  theta_flux_j( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
-                 one_m_theta_flux_j( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), & 
+                 one_m_theta_flux_j( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                  sum_theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                  sum_one_m_theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                  sum_theta_flux_j( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
@@ -1352,11 +1366,11 @@
                  ScalarField_Source_Store( nphase, cv_nonods ), &
                  ScalarField_Source_Component( nphase, cv_nonods ) )
 
-            sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.  
-            sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.  
+            sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.
+            sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
             ScalarField_Source=0. ; ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
 
-            allocate( Component_Diffusion_Operator_Coefficient( ncomp, ncomp_diff_coef, nphase ) )  
+            allocate( Component_Diffusion_Operator_Coefficient( ncomp, ncomp_diff_coef, nphase ) )
             allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
             allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
 
@@ -1443,7 +1457,7 @@
 
       return
 
-    contains 
+    contains
 
 
       subroutine temp_mem_hacks()
@@ -1543,7 +1557,7 @@
       end subroutine temp_mem_hacks
 
       subroutine linearise_components()
-        
+
         integer :: ist,ip,ele
         type ( scalar_field ), pointer :: nfield
         integer, dimension(:), pointer :: nodes
@@ -1627,7 +1641,7 @@
               end do
            end if
         end do
-        
+
 
       end subroutine linearise_components
 
@@ -1689,7 +1703,7 @@
 
    subroutine copy_packed_new_to_old(packed_state)
      type(state_type), intent(inout) :: packed_state
-     
+
      type(scalar_field), pointer :: sfield, nsfield
      type(vector_field), pointer :: vfield, nvfield
      type(tensor_field), pointer :: tfield, ntfield
@@ -1711,7 +1725,7 @@
            vfield%val=nvfield%val
         end if
      end do
-     
+
      do i=1,size(packed_state%tensor_fields)
         tfield=>packed_state%tensor_fields(i)%ptr
         if (tfield%name(1:9)=="PackedOld") then
@@ -1802,7 +1816,33 @@
      return
    end subroutine linearise
 
+   subroutine dump_outflux(current_time, itime, outflux, intflux)
 
+   real,intent(in) :: current_time
+   integer, intent(in) :: itime
+   real, dimension(:), intent(inout) :: outflux, intflux
+
+
+   type(stat_type), target :: default_stat
+
+   intflux = intflux + outflux
+
+   outflux = outflux/sum(outflux)
+
+   default_stat%conv_unit=free_unit()
+   open(unit=default_stat%conv_unit, file="outfluxes.txt", action="write", position="append")
+
+   if(itime.eq.1) then
+     write(default_stat%conv_unit,*) "Current Time", "***********Phase1 boundary flux", "**********Phase2 boundary flux", "***********Phase 1 Integrated Flux", "***********Phase 2 Integrated Flux"
+   endif
+
+   write(default_stat%conv_unit,*) current_time,  outflux,  intflux
+
+
+
+   close (default_stat%conv_unit)
+
+   end subroutine dump_outflux
 
 
 
