@@ -2230,9 +2230,6 @@
       ALLOCATE( SMLX( SMLOC, scvngi ) )
       ALLOCATE( SMLY( SMLOC, scvngi ) )
 
-ewrite(3,*)'lll:', option_path_len
-
-
 
       sele_overlap_scale = 1.
 
