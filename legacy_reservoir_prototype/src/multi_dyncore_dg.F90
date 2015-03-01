@@ -890,9 +890,11 @@ contains
 
 
          if ( have_option( '/blasting' ) ) then
-            RETRIEVE_SOLID_CTY = .true.
-            call get_option( '/blasting/Gidaspow_model', opt )
-            if ( trim( opt ) == "A" ) SOLID_FLUID_MODEL_B = .false.
+!            if( sum(DEN_ALL).ne.0.0) then
+               RETRIEVE_SOLID_CTY = .true.
+               call get_option( '/blasting/Gidaspow_model', opt )
+               if ( trim( opt ) == "A" ) SOLID_FLUID_MODEL_B = .false.
+!            endif
          end if
 
 
