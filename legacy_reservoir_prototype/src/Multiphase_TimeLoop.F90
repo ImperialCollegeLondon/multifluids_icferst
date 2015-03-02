@@ -542,6 +542,8 @@
       allocate(intflux(nphase))
       intflux = 0.
 
+      totout = 0.
+
       checkpoint_number=1
       Loop_Time: do
 !!$
@@ -1054,7 +1056,12 @@
 
          ! Dump boundary outfluxes to file
 
+         if(getprocno() == 1) then
+
          call dump_outflux(current_time,itime,totout,intflux)
+
+         endif
+
          print *, totout
 
          Conditional_TimeDump: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
@@ -1454,6 +1461,7 @@
       call deallocate(packed_state)
       call deallocate(multiphase_state)
       call deallocate(multicomponent_state )
+      deallocate(intflux)
 
       return
 
@@ -1837,8 +1845,6 @@
    endif
 
    write(default_stat%conv_unit,*) current_time,  outflux,  intflux
-
-
 
    close (default_stat%conv_unit)
 

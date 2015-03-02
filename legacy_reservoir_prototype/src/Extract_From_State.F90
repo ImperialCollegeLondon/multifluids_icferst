@@ -85,6 +85,7 @@
        real, allocatable, dimension(:) :: weights
     end type bad_elements
 
+    ! Will need to generalise this to have an arbitrary dimension.
     integer, dimension(1) :: outlet_id
 
   contains
@@ -114,13 +115,15 @@
 
       ewrite(3,*)' In Get_Primary_Scalars'
 
-      ! Read in the surface IDs of the outlet boundary in the problem into the (1D array) variable outlet_ids
+      ! Read in the surface IDs of the outlet boundary into the (1D array) variable outlet_ids. Need to generalise this to deal with
+      ! arrays that are not 1D and also to have a fail safe in case this quantity does not exist. Will be better to add a separate option into diamond
+      ! when the user wants to do an integral.
 
-      if (have_option( "/material_phase::phase1/scalar_field::Pressure/prognostic/boundary_conditions::outlet/surface_ids")) then
+      !if (have_option( "/material_phase::phase1/scalar_field::Pressure/prognostic/boundary_conditions::outlet/surface_ids")) then
 
       call get_option( "/material_phase::phase1/scalar_field::Pressure/prognostic/boundary_conditions::outlet/surface_ids", outlet_id)
 
-      endif
+      !endif
 
 !!$ Defining dimension and nstate
       call get_option( '/geometry/dimension', ndim )
@@ -4002,8 +4005,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
 ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
 
-! Note that ndotqnew is an array since it stores this scalar quantity for each phase (CHECK THIS!!!)
-
 ! Input/Output variables
 
        type(state_type), intent(in) :: packed_state
@@ -4011,16 +4012,10 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
        integer, intent(in) :: sele
        integer, dimension(:), intent(in) :: surface_ids
        real, dimension(:), intent(inout) :: totoutflux
-
-
        integer, intent(in) :: ele
-
-       ! Note need to make x_ndgln a TARGET (see nodes pointer below) when we use the NODES variable below
-
        integer, dimension(:), intent( in ) ::  x_ndgln
        integer, intent(in) :: cv_nloc
        real, dimension( : , : ), intent(in), pointer :: SCVFEN
-       !real, dimension( : , : ),intent(in), pointer :: x_all
        integer, intent(in) :: gi
        integer, intent(in) :: cv_nonods
        integer, intent(in) :: nphase
@@ -4032,19 +4027,11 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
        type(scalar_field), pointer :: sfield
        real, dimension(:), pointer :: CVPressure
        logical :: test
-
-
        type(tensor_field), pointer :: tfield
-
-       !type(vector_field), pointer :: vfield
-
        integer  :: x_knod
        integer  :: cv_kloc
-       !real  :: xpt_GI(NDIM)
        real, dimension( : , : ), allocatable :: phaseV
        real, dimension( : , : ), allocatable :: phaseVG
-
-       !integer, dimension(:), pointer :: nodes
 
        allocate(phaseV(nphase,cv_nonods), phaseVG(nphase,cv_nonods))
 
@@ -4058,16 +4045,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
       phaseV = tfield%val(1,:,:)
 
-
-      !vfield => extract_vector_field( packed_state, "PressureCoordinate" )
-
 ! Having extracted the saturation field (phase volume fraction) at control volume nodes, need to calculate it at quadrature points gi.
-
-      !xpt_GI=0.0
-      !do cv_kloc=1,cv_nloc
-      !   x_knod=x_ndgln((ele-1)*cv_nloc+cv_kloc)
-      !   xpt_GI(:)=xpt_GI(:)+SCVFEN(cv_kloc,gi)*x_all(:,x_knod)
-      !end do
 
       phaseVG = 0.0
       do cv_kloc=1,cv_nloc
@@ -4088,13 +4066,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
           if(test) then
 
-              !nodes => x_ndgln( (ele-1)*cv_nloc +1 : ele*cv_nloc )
-
               totoutflux(:) = totoutflux(:) + ndotqnew(:)*phaseVG(:,gi)*detwei(gi)
-
-              !print *, totoutflux
-
-              !sumdetwei = sumdetwei + detwei(gi)
 
           endif
 

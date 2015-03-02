@@ -2179,12 +2179,9 @@ contains
 
                     if ( GETCT ) then
 
-                    !call calculate_outflux(packed_state, ndotqnew, sele, (/8/), totoutflux, ele , x_ndgln, cv_nloc, SCVFEN, gi,cv_nonods, nphase,SCVDETWEI,sumdetwei)
-
                     call calculate_outflux(packed_state, ndotqnew, sele, outlet_id, totoutflux, ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI, sumdetwei)
 
                     end if
-
 
 
                   Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
@@ -2595,6 +2592,10 @@ contains
        totout(:) = totoutflux(:)
 
        endif
+
+
+       call allsum(totout)
+
 
       ! Deallocating temporary working arrays
 
