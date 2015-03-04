@@ -1077,6 +1077,13 @@ contains
 
       ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ; cv_nonods = size( field%val, 3 )
 
+      ewrite(3,*) 'Bounding correction input: iphase, icomp, min, max:'
+      do j = 1, ndim2
+         do i = 1, ndim1
+            ewrite(3,*) i, j, minval( field%val( i, j, : ) ), maxval( field%val( i, j, : ) )
+         end do
+      end do
+
       allocate( field_dev_val( ndim1, ndim2, cv_nonods ), field_alt_val( ndim1, ndim2, cv_nonods ) )
       allocate( field_min( ndim1, ndim2, cv_nonods ), field_max( ndim1, ndim2, cv_nonods ) )
       allocate( scalar_field_dev_max( ndim1, ndim2 ), scalar_field_dev_min( ndim1, ndim2 ) )
@@ -1292,6 +1299,13 @@ contains
         if ( max( max_change, error_changed ) < error_tol ) cycle
 
       end do ! gl_its
+
+      ewrite(3,*) 'Bounding correction output: iphase, icomp, min, max:'
+      do j = 1, ndim2
+         do i = 1, ndim1
+            ewrite(3,*) i, j, minval( field%val( i, j, : ) ), maxval( field%val( i, j, : ) )
+         end do
+      end do
 
       deallocate( field_dev_val, field_alt_val )
       deallocate( field_min, field_max )

@@ -8185,8 +8185,9 @@ deallocate(NX_ALL, X_NX_ALL)
                                       RESIDGI(IFIELD) = SQRT ( SUM( UDGI_ALL(:,IFIELD)**2 )  ) / HDC
 
                                       VEC_VEL2(1:NDIM,IFIELD) = matmul( INV_JAC(:,:,GI), A_STAR_X_ALL(1:NDIM,IFIELD) )
-
+! Needs 0.25 for quadratic elements...Chris
                                       P_STAR(IFIELD) = 0.5 * HDC / PTOLFUN( SQRT( SUM( A_STAR_X_ALL(:,IFIELD)**2 )))
+!                                      IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD) 
 
 
                                       select case (NON_LIN_PETROV_INTERFACE)
@@ -8198,6 +8199,30 @@ deallocate(NX_ALL, X_NX_ALL)
                                               DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                           case ( 4 )     ! anisotropic diffusion in the A* direction.
                                               COEF2(IFIELD) =  SUM( CVNORMX_ALL(:,GI)*A_STAR_X_ALL(:,IFIELD) )
+                                          case ( 6 )     ! accurate...
+                                              P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
+                                              IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD) 
+                                              RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                              DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
+                                          case ( 7 )     ! accurate (could be positive or negative)...
+                                              P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
+                                              IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD) 
+                                              RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                              DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
+                                                        / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
+                                          case ( 8 )     ! accurate (force to be positive)...
+                                              P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
+                                              IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD) 
+                                              RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                              DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
+                                                        / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
+                                              DIFF_COEF(IFIELD) = abs(   DIFF_COEF(IFIELD)  )
+                                          case ( 9 )     ! accurate (simplified residual squared)...
+                                              P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
+                                              IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD) 
+                                              RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                              DIFF_COEF(IFIELD) = P_STAR(IFIELD) * (SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc))**2 &
+                                                        / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                           case default   ! isotropic diffusion with u magnitide
                                               DIFF_COEF(IFIELD) = SQRT( SUM( UDGI_ALL(:,IFIELD)**2 )) * P_STAR(IFIELD)
                                       END select
