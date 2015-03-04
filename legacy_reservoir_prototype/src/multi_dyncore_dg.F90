@@ -628,9 +628,8 @@ contains
          call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
       END DO Loop_NonLinearFlux
-
       !Set saturation to be between bounds
-      if (have_option('/material_phase[0]/multiphase_properties/Impose_saturation_limits')) then
+      if (have_option('/material_phase[0]/Impose_saturation_limits')) then
         !In this case we impose that the saturation has to be between physical limits
         !conservation of mass might be lost
         call Set_Saturation_between_bounds(packed_state)

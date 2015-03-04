@@ -527,8 +527,8 @@
 
       !Look for bad elements! IF THIS WORKS, I HAVE TO SET IT TO DO IT AFTER ADAPTING THE MESH AND ALSO DEALLOCATE Quality_list
       !and deallocate weights inside it.
-      !allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-      !call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, 115.0, 1.0, Quality_list)
+!      allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+!      call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, 115.0, 1.0, Quality_list)
 
 !!$ Starting Time Loop
       itime = 0
@@ -1172,6 +1172,7 @@
                  multiphase_state,multicomponent_state)
             call set_boundary_conditions_values(state, shift_time=.true.)
 
+            if (allocated(Quality_list) ) deallocate(Quality_list)
 
 !!$ Deallocating array variables:
             deallocate( &
@@ -1269,6 +1270,8 @@
                  mx_ncolcmc, ncolcmc, findcmc, colcmc, midcmc, &
 !!$ CV-FEM matrix
                  mx_ncolm, ncolm, findm, colm, midm, mx_nface_p1 )
+
+!            allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
 
             call temp_mem_hacks()
 
@@ -1440,6 +1443,8 @@
       call deallocate(packed_state)
       call deallocate(multiphase_state)
       call deallocate(multicomponent_state )
+
+      if (allocated(Quality_list)) deallocate(Quality_list)
 
       return
 

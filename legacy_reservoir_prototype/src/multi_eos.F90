@@ -1789,7 +1789,7 @@
         real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
         logical, intent(in) :: Pc_imbibition
         !Local
-        real, parameter :: tol = 1d-5
+        real, parameter :: tol = 1d-3!Small values requires smaller
 
         if ( Pc_imbibition ) then
            Get_capPressure = &
