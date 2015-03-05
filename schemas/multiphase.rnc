@@ -451,13 +451,13 @@ start =
                         real
                         }?,
                         ## If the ratio between non-linear iterations is smaller, then the timestep can be increased.
-                        ## By default 1e-3.
+                        ## By default nonlinear_iterations_automatic / 10.
                         element increase_ts_switch{
                         real
                         }?,
                         ## If the ratio between non-linear iterations is bigger, then the timestep has to be decreased.
                         ## Note that if the number of maximum non-linear iterations is reached then the timestep will be also decreased.
-                        ## By default 1e-1.
+                        ## By default nonlinear_iterations_automatic * 10.
                         element decrease_ts_switch{
                         real
                         }?

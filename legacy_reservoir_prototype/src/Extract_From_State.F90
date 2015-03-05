@@ -3249,10 +3249,22 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
            max_ts, default = huge(min_ts) )
       call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/min_timestep', &
            min_ts, default = -1. )
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch', &
-           increase_ts_switch, default = 1d-3 )
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch', &
-           decrease_ts_switch, default = 1d-1 )
+
+      !Switches are relative to the input value unless otherwise stated
+      if (have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch')) then
+          call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch', &
+          increase_ts_switch, default = 1d-3 )
+      else
+          increase_ts_switch = tolerance_between_non_linear / 10.
+      end if
+
+      if (have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch')) then
+          call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch', &
+          decrease_ts_switch, default = 1d-1 )
+      else
+          decrease_ts_switch = min(tolerance_between_non_linear * 10.,1.0)
+      end if
+
       !Get irresidual water saturation and irreducible oil to repeat a timestep if the saturation goes out of these values
       call get_option("/material_phase[0]/multiphase_properties/immobile_fraction", &
            s_gc, default=0.0)

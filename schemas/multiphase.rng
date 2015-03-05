@@ -532,7 +532,7 @@ By default dt*1e-10.</a:documentation>
                       <optional>
                         <element name="increase_ts_switch">
                           <a:documentation>If the ratio between non-linear iterations is smaller, then the timestep can be increased.
-By default 1e-3.</a:documentation>
+By default nonlinear_iterations_automatic / 10.</a:documentation>
                           <ref name="real"/>
                         </element>
                       </optional>
@@ -540,7 +540,7 @@ By default 1e-3.</a:documentation>
                         <element name="decrease_ts_switch">
                           <a:documentation>If the ratio between non-linear iterations is bigger, then the timestep has to be decreased.
 Note that if the number of maximum non-linear iterations is reached then the timestep will be also decreased.
-By default 1e-1.</a:documentation>
+By default nonlinear_iterations_automatic * 10.</a:documentation>
                           <ref name="real"/>
                         </element>
                       </optional>
