@@ -1180,13 +1180,10 @@ contains
             mass_cv_sur(inod) = mass_cv_sur(inod) + mass_cv( jnod )
          end do
       end do
+! Obtain the halos of mass_cv_sur: 
       mass_cv_sur_halo%val(:)=mass_cv_sur(:)
-! get halo...
       call halo_update(mass_cv_sur_halo)
       mass_cv_sur(:)=mass_cv_sur_halo%val(:)
-     
-
-! Obtain the halos of mass_cv_sur: 
 
 
       do gl_its = 1, ngl_its
