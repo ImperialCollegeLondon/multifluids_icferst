@@ -1064,7 +1064,7 @@ contains
       logical, dimension( :, : ), allocatable :: u_on_face, ufem_on_face, &
            &                                     cv_on_face, cvfem_on_face
       integer, pointer :: ncolgpts
-      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln
+      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln
       integer, dimension( :, : ), pointer :: cv_neiloc, cv_sloclist, u_sloclist
       logical :: quad_over_whole_ele, d1, d3, dcyl
       type( vector_field ), pointer :: x
@@ -1109,32 +1109,32 @@ contains
       allocate( u_on_face( u_nloc, scvngi ), ufem_on_face( u_nloc, scvngi ) )
 
       call cv_fem_shape_funs_plus_storage( &
-           ! volume shape functions...
+                                ! volume shape functions...
            ndim, cv_ele_type,  &
            cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
            cvweight, cvfen, cvfenlx_all, &
            cvweight_short, cvfen_short, cvfenlx_short_all, &
            ufen, ufenlx_all, &
-           ! surface of each cv shape functions...
+                                ! surface of each cv shape functions...
            scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
            scvfen, scvfenslx, scvfensly, scvfeweigh, &
            scvfenlx_all,  &
            sufen, sufenslx, sufensly,  &
            sufenlx_all,  &
-           ! surface element shape funcs...
+                                ! surface element shape funcs...
            u_on_face, ufem_on_face, nface, &
            sbcvngi, sbcvn, sbcvfen,sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx_all, &
            sbufen, sbufenslx, sbufensly, sbufenlx_all, &
            cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-           ! define the gauss points that lie on the surface of the cv...
+                                ! define the gauss points that lie on the surface of the cv...
            findgpts, colgpts, ncolgpts, &
            sele_overlap_scale, quad_over_whole_ele,&
            state, "bound", storageindexes( 35 ) )
 
       totele = ele_count( field )
       x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+      cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
       x_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
-
       x => extract_vector_field( packed_state, "PressureCoordinate" )
 
       d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
@@ -1154,6 +1154,7 @@ contains
          detwei => detwei2
 
          do iloc = 1, cv_nloc
+            inod = cv_ndgln( ( ele - 1 ) * cv_nloc + iloc )
             do jloc = 1, cv_nloc
                mm = sum( cvn( iloc, : ) * cvn( jloc, : ) * detwei( : ) )
                mass_cv( inod ) = mass_cv( inod ) + mm
@@ -1164,139 +1165,139 @@ contains
 
       mass_cv_sur = 0.0
       do inod = 1, cv_nonods
-        do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
-          jnod = small_colm( count )
-          mass_cv_sur( inod ) = mass_cv_sur( inod ) + mass_cv( jnod )
-        end do
+         do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
+            jnod = small_colm( count )
+            mass_cv_sur( inod ) = mass_cv_sur( inod ) + mass_cv( jnod )
+         end do
       end do
 
 
       do gl_its = 1, ngl_its
 
-        ! This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
-        max_change = 0.0
-        do loc_its = 1, nloc_its
-          changed_something = .false.
-          do knod = 1, cv_nonods ! exclude the halo values of knod for parallel
+         ! This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
+         max_change = 0.0
+         do loc_its = 1, nloc_its
+            changed_something = .false.
+            do knod = 1, cv_nonods ! exclude the halo values of knod for parallel
 
-            do its = 1, nits_nod
+               do its = 1, nits_nod
 
-              r_min = 0.0 ; r_max = 0.0
-              ii_min = 0 ; ii_max = 0
-              scalar_field_dev_max = 0.0 ; scalar_field_dev_min = 0.0
+                  r_min = 0.0 ; r_max = 0.0
+                  ii_min = 0 ; ii_max = 0
+                  scalar_field_dev_max = 0.0 ; scalar_field_dev_min = 0.0
 
-              ! Find the max and min deviation from the limited values....
-              do count = small_findrm( knod ), small_findrm( knod + 1 ) - 1
-                jnod = small_colm( count )
+                  ! Find the max and min deviation from the limited values....
+                  do count = small_findrm( knod ), small_findrm( knod + 1 ) - 1
+                     jnod = small_colm( count )
 
-                do j = 1, ndim2
-                  do i = 1, ndim1
+                     do j = 1, ndim2
+                        do i = 1, ndim1
 
-                    if ( field%val( i, j, jnod ) > field_max( i, j, jnod ) ) then
-                      scalar_field_dev = field%val( i, j, jnod ) - field_max( i, j, jnod )
-                    else if ( field%val( i, j, jnod ) < field_min( i, j, jnod ) ) then
-                      scalar_field_dev = field%val( i, j, jnod ) - field_min( i, j, jnod )
-                    else
-                      scalar_field_dev = 0.0
-                    end if
+                           if ( field%val( i, j, jnod ) > field_max( i, j, jnod ) ) then
+                              scalar_field_dev = field%val( i, j, jnod ) - field_max( i, j, jnod )
+                           else if ( field%val( i, j, jnod ) < field_min( i, j, jnod ) ) then
+                              scalar_field_dev = field%val( i, j, jnod ) - field_min( i, j, jnod )
+                           else
+                              scalar_field_dev = 0.0
+                           end if
 
-                    if ( scalar_field_dev * mass_cv ( jnod ) > r_max( i, j ) ) then
-                      scalar_field_dev_max( i, j ) = scalar_field_dev
-                      r_max( i, j ) = scalar_field_dev * mass_cv( jnod )
-                      ii_max( i, j ) = jnod
-                    end if
+                           if ( scalar_field_dev * mass_cv ( jnod ) > r_max( i, j ) ) then
+                              scalar_field_dev_max( i, j ) = scalar_field_dev
+                              r_max( i, j ) = scalar_field_dev * mass_cv( jnod )
+                              ii_max( i, j ) = jnod
+                           end if
 
-                    if ( scalar_field_dev * mass_cv ( jnod ) < r_min( i, j ) ) then
-                      scalar_field_dev_min( i, j ) = scalar_field_dev
-                      r_min( i, j ) = scalar_field_dev * mass_cv( jnod )
-                      ii_min( i, j ) = jnod
-                    end if
+                           if ( scalar_field_dev * mass_cv ( jnod ) < r_min( i, j ) ) then
+                              scalar_field_dev_min( i, j ) = scalar_field_dev
+                              r_min( i, j ) = scalar_field_dev * mass_cv( jnod )
+                              ii_min( i, j ) = jnod
+                           end if
 
+                        end do
+                     end do
+
+                  end do ! do count = small_findrm( knod ), small_findrm( knod + 1 ) - 1
+
+
+                  changed=.false.
+                  ! Change the max and min limited deviation by sharing the deviation between them...
+                  do j = 1, ndim2
+                     do i = 1, ndim1
+
+                        ii = ii_max( i, j )
+                        jj = ii_min( i, j )
+
+                        if ( ii /= 0 .and. jj /= 0 ) then
+                           if ( abs( r_max( i, j ) ) > abs( r_min( i, j ) ) ) then
+                              alt_max = ( r_max( i, j ) + r_min( i, j ) ) / mass_cv( ii )
+                              alt_min = 0.0
+                           else
+                              alt_max = 0.0
+                              alt_min = ( r_max( i, j ) + r_min( i, j ) ) / mass_cv( jj )
+                           end if
+                           max_change = max( max_change, abs( -scalar_field_dev_max( i, j ) + alt_max ) )
+                           max_change = max( max_change, abs( -scalar_field_dev_min( i, j ) + alt_min ) )
+
+                           field%val( i, j, ii ) = field%val( i, j, ii ) - scalar_field_dev_max( i, j ) + alt_max
+                           field%val( i, j, jj ) = field%val( i, j, jj ) - scalar_field_dev_min( i, j ) + alt_min
+
+                           changed = .true.
+                           changed_something = .true.
+                        end if
+
+                     end do
                   end do
-                end do
 
-              end do ! do count = small_findrm( knod ), small_findrm( knod + 1 ) - 1
+                  if ( .not. changed ) exit ! stop iterating and move onto next node/CV...
+               end do ! do its=1,nits_nod
 
-
-              changed=.false.
-              ! Change the max and min limited deviation by sharing the deviation between them...
-              do j = 1, ndim2
-                do i = 1, ndim1
-
-                  ii = ii_max( i, j )
-                  jj = ii_min( i, j )
-
-                  if ( ii /= 0 .and. jj /= 0 ) then
-                    if ( abs( r_max( i, j ) ) > abs( r_min( i, j ) ) ) then
-                      alt_max = (r_max( i, j ) + r_min( i, j )) / mass_cv( ii )
-                      alt_min = 0.0
-                    else
-                      alt_max = 0.0
-                      alt_min = ( r_max( i, j ) + r_min( i, j ) ) / mass_cv( jj )
-                    end if
-                    max_change = max( max_change, abs( -scalar_field_dev_max( i, j ) + alt_max ) )
-                    max_change = max( max_change, abs( -scalar_field_dev_min( i, j ) + alt_min ) )
-
-                    field%val( i, j, ii ) = field%val( i, j, ii ) - scalar_field_dev_max( i, j ) + alt_max
-                    field%val( i, j, jj ) = field%val( i, j, jj ) - scalar_field_dev_min( i, j ) + alt_min
-
-                    changed = .true.
-                    changed_something = .true.
-                  end if
-
-                end do
-              end do
-
-              if ( .not. changed ) cycle ! stop iterating and move onto next node/CV...
-            end do ! do its=1,nits_nod
-
-          end do ! do knod = 1, cv_nonods
-          if ( .not. changed_something ) cycle ! stop iterating and move onto next stage of iteration...
-        end do ! do loc_its=1,nloc_its
+            end do ! do knod = 1, cv_nonods
+            if ( .not. changed_something ) exit ! stop iterating and move onto next stage of iteration...
+         end do ! do loc_its=1,nloc_its
 
 
-        ! This iteration is very good at avoiding stagnating but does spread the modifcations far.
-        ! us a single iteration because of this as default...
-        do loc_its2 = 1, nloc_its2
-          do knod = 1, cv_nonods
-            do j = 1, ndim2
-              do i = 1, ndim1
-                if ( field%val( i, j, knod ) > field_max( i, j, knod ) ) then
-                  field_dev_val( i, j, knod ) = field%val( i, j, knod ) - field_max( i, j, knod )
-                else if ( field%val( i, j, knod ) < field_min( i, j, knod ) ) then
-                  field_dev_val( i, j, knod ) = field%val( i, j, knod ) - field_min( i, j, knod )
-                else
-                  field_dev_val( i, j, knod ) = 0.0
-                end if
-              end do
+         ! This iteration is very good at avoiding stagnating but does spread the modifcations far.
+         ! use a single iteration because of this as default...
+         do loc_its2 = 1, nloc_its2
+            do knod = 1, cv_nonods
+               do j = 1, ndim2
+                  do i = 1, ndim1
+                     if ( field%val( i, j, knod ) > field_max( i, j, knod ) ) then
+                        field_dev_val( i, j, knod ) = field%val( i, j, knod ) - field_max( i, j, knod )
+                     else if ( field%val( i, j, knod ) < field_min( i, j, knod ) ) then
+                        field_dev_val( i, j, knod ) = field%val( i, j, knod ) - field_min( i, j, knod )
+                     else
+                        field_dev_val( i, j, knod ) = 0.0
+                     end if
+                  end do
+               end do
             end do
-          end do
 
-          ! matrix vector...
-          field_alt_val = 0.0
-          do inod = 1, cv_nonods ! exclude the halo values of knod for parallel
-            do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
-              jnod = small_colm( count )
-              mass_off = mass_cv( jnod ) / mass_cv_sur( jnod )
-              field_alt_val( :, :, inod ) = field_alt_val( :, :, inod ) + mass_off * field_dev_val( :, :, jnod )
-            end do ! do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
-          end do ! do inod = 1, cv_nonods
+            ! matrix vector...
+            field_alt_val = 0.0
+            do inod = 1, cv_nonods ! exclude the halo values of knod for parallel
+               do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
+                  jnod = small_colm( count )
+                  mass_off = mass_cv( jnod ) / mass_cv_sur( jnod )
+                  field_alt_val( :, :, inod ) = field_alt_val( :, :, inod ) + mass_off * field_dev_val( :, :, jnod )
+               end do ! do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
+            end do ! do inod = 1, cv_nonods
 
-          ! w_relax\in[0,1]: - This relaxation is used because we
-          ! have used a mass matrix which is not diagonally dominant
-          ! =0.5 is suggested.
-          ! =1.0 is no relaxation.
-          field_alt_val = w_relax * field_alt_val + ( 1.0 - w_relax ) * field_dev_val
+            ! w_relax\in[0,1]: - This relaxation is used because we
+            ! have used a mass matrix which is not diagonally dominant
+            ! =0.5 is suggested.
+            ! =1.0 is no relaxation.
+            field_alt_val = w_relax * field_alt_val + ( 1.0 - w_relax ) * field_dev_val
 
-          ! adjust the values...
-          error_changed = maxval( abs( -field_dev_val + field_alt_val ) )
-          field%val( :, :, : ) = field%val( :, :, : ) - field_dev_val( :, :, : ) + field_alt_val( :, :, : )
+            ! adjust the values...
+            error_changed = maxval( abs( -field_dev_val + field_alt_val ) )
+            field%val( :, :, : ) = field%val( :, :, : ) - field_dev_val( :, :, : ) + field_alt_val( :, :, : )
 
-        end do ! loc_its2
+         end do ! loc_its2
 
-        ! ********** Parallel communicate halo values of field **********
+         ! ********** Parallel communicate halo values of field **********
 
-        if ( max( max_change, error_changed ) < error_tol ) cycle
+         if ( max( max_change, error_changed ) < error_tol ) exit
 
       end do ! gl_its
 
@@ -1316,7 +1317,6 @@ contains
 
       deallocate( cv_on_face, cvfem_on_face, u_on_face, ufem_on_face )
       deallocate( detwei2, ra2, nx_all2 )
-
 
       return
     end subroutine BoundedSolutionCorrections
