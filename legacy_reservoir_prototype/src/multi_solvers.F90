@@ -1309,8 +1309,8 @@ contains
          call halo_update( field )
 ! communicate the errors ( max_change, error_changed ) ...
 ! this could be more efficient sending a vector...
-          call all_max( max_change ) 
-          call all_max( error_changed) 
+          call allmax( max_change ) 
+          call allmax( error_changed) 
 
          if ( max( max_change, error_changed ) < error_tol ) exit
 
