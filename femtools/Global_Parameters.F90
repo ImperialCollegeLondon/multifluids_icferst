@@ -171,6 +171,6 @@ module global_parameters
   integer, parameter :: NUM_COLOURINGS = 4
 
   !! Overlapping method
-  logical :: is_compact_overlapping = .false.
+  logical :: is_porous_media = .false.
 
 end module global_parameters

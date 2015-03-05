@@ -38,7 +38,7 @@
          check_diagnostic_dependencies
     use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
                                simulation_start_wall_time, &
-                               topology_mesh_name, current_time, is_compact_overlapping
+                               topology_mesh_name, current_time, is_porous_media
     use fldebug
     use reference_counting
     use state_module
@@ -637,7 +637,7 @@
                ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
                ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
                ! is diagonal
-               if( is_compact_overlapping ) then
+               if( is_porous_media ) then
                   call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
                        cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                        finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &

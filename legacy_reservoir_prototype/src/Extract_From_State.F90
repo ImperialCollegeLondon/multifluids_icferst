@@ -40,7 +40,7 @@
     use diagnostic_variables
     use diagnostic_fields
     use diagnostic_fields_wrapper
-    use global_parameters, only: option_path_len, is_compact_overlapping
+    use global_parameters, only: option_path_len, is_porous_media
     use diagnostic_fields_wrapper_new
     use element_numbering
     use shape_functions
@@ -130,9 +130,9 @@
       call get_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/element_type', &
            vel_element_type )
 
-      is_compact_overlapping = .false.
+      is_porous_media = .false.
       if (trim(vel_element_type)=='lagrangian') &
-           is_compact_overlapping = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Compact_overlapping')
+           is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
 
       positions => extract_vector_field( state, 'Coordinate' )
       pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -495,7 +495,7 @@
 
 !!$ Options below are hardcoded and need to be added into the schema
       t_dg_vel_int_opt = 1 ; u_dg_vel_int_opt = 4 ; v_dg_vel_int_opt = 4 ; w_dg_vel_int_opt = 0
-      if( .not. is_compact_overlapping) v_dg_vel_int_opt = 1
+      if( .not. is_porous_media) v_dg_vel_int_opt = 1
       comp_diffusion_opt = 0 ; ncomp_diff_coef = 0
       volfra_use_theta_flux = .false. ; volfra_get_theta_flux = .true.
       comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
