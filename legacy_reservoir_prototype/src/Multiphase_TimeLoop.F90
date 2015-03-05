@@ -207,7 +207,9 @@
       logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
       real, dimension(:,:,:), allocatable  :: reference_field
 
-      !List to store bad elements
+      !Variables related to the deteccion and correction of bad elements
+      real, parameter :: Max_bad_angle = 180.0!115.0<=disabled
+      real, parameter :: Min_bad_angle = 0.0
       type(bad_elements), allocatable, dimension(:) :: Quality_list
 
       type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
@@ -525,10 +527,11 @@
       end if
 
 
-      !Look for bad elements! IF THIS WORKS, I HAVE TO SET IT TO DO IT AFTER ADAPTING THE MESH AND ALSO DEALLOCATE Quality_list
-      !and deallocate weights inside it.
-!      allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-!      call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, 115.0, 1.0, Quality_list)
+      !Look for bad elements to apply a correction on them
+      if (is_porous_media) then
+          allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+          call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
+      end if
 
 
 
@@ -1273,8 +1276,11 @@
 !!$ CV-FEM matrix
                  mx_ncolm, ncolm, findm, colm, midm, mx_nface_p1 )
 
-!            allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-
+            !Look again for bad elements
+            if (is_porous_media) then
+                allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+                call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
+            end if
             call temp_mem_hacks()
 
 !!$ Allocating space for various arrays:
