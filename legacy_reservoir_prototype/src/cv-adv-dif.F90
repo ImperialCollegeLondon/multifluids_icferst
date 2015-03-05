@@ -4023,13 +4023,14 @@ end if
     call halo_update(cv_mass)
     call invert(cv_mass)
 
+! The below does not seem superefficient in terms of updating halo information. 
     ! Form average...
     DO IT = 1, size(psi_ave)
        call halo_update(PSI_AVE(it)%PTR)
        call scale(PSI_AVE(it)%PTR,cv_mass)
     END DO
 
-    DO IT= 1, size(psi_int)
+    DO IT= 1, size(psi_int) ! this seems a really bad way to do halo updates. 
        call halo_update(PSI_int(it)%PTR)
     end do
 
