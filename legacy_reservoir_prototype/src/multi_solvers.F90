@@ -1027,7 +1027,7 @@ contains
       ! us a single iteration because of this as default...
       ! nits_nod: iterations at a nod - this iteration is very good at avoiding spreading the modifications too far -
       ! however it can stagnate.
-      integer, parameter :: nloc_its = 5, nloc_its2 = 1, nits_nod = 100, ngl_its = 5
+      integer, parameter :: nloc_its = 5, nloc_its2 = 1, nits_nod = 100, ngl_its = 500
       real, parameter :: w_relax = 0.5, error_tol = 1.0e-5
 
       type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1073,7 +1073,12 @@ contains
       real, target :: volume2
 
 
-      field => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+      !field => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+
+      field => extract_tensor_field( packed_state, "PackedTemperature" )
+
+
+
 
       ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ; cv_nonods = size( field%val, 3 )
 
@@ -1295,7 +1300,7 @@ contains
 
          end do ! loc_its2
 
-         ! ********** Parallel communicate halo values of field **********
+         call halo_update( field )
 
          if ( max( max_change, error_changed ) < error_tol ) exit
 
