@@ -1172,6 +1172,7 @@ contains
       do inod = 1, cv_nonods
          do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
             jnod = small_colm( count )
+            if ( .not. node_owned( field, jnod ) ) cycle
             mass_cv_sur( inod ) = mass_cv_sur( inod ) + mass_cv( jnod )
          end do
       end do
@@ -1184,6 +1185,7 @@ contains
          do loc_its = 1, nloc_its
             changed_something = .false.
             do knod = 1, cv_nonods ! exclude the halo values of knod for parallel
+               if ( .not. node_owned( field, knod ) ) cycle
 
                do its = 1, nits_nod
 
@@ -1194,6 +1196,7 @@ contains
                   ! Find the max and min deviation from the limited values....
                   do count = small_findrm( knod ), small_findrm( knod + 1 ) - 1
                      jnod = small_colm( count )
+                     if ( .not. node_owned( field, jnod ) ) cycle
 
                      do j = 1, ndim2
                         do i = 1, ndim1
@@ -1265,6 +1268,7 @@ contains
          ! use a single iteration because of this as default...
          do loc_its2 = 1, nloc_its2
             do knod = 1, cv_nonods
+               if ( .not. node_owned( field, knod ) ) cycle
                do j = 1, ndim2
                   do i = 1, ndim1
                      if ( field%val( i, j, knod ) > field_max( i, j, knod ) ) then
@@ -1281,8 +1285,10 @@ contains
             ! matrix vector...
             field_alt_val = 0.0
             do inod = 1, cv_nonods ! exclude the halo values of knod for parallel
+               if ( .not. node_owned( field, inod ) ) cycle
                do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
                   jnod = small_colm( count )
+                  if ( .not. node_owned( field, jnod ) ) cycle
                   mass_off = mass_cv( jnod ) / mass_cv_sur( jnod )
                   field_alt_val( :, :, inod ) = field_alt_val( :, :, inod ) + mass_off * field_dev_val( :, :, jnod )
                end do ! do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
@@ -1301,6 +1307,10 @@ contains
          end do ! loc_its2
 
          call halo_update( field )
+! communicate the errors ( max_change, error_changed ) ...
+! this could be more efficient sending a vector...
+          call all_max( max_change ) 
+          call all_max( error_changed) 
 
          if ( max( max_change, error_changed ) < error_tol ) exit
 
