@@ -33,7 +33,7 @@
     use state_module
     use fields
     use state_module
-    use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI, is_compact_overlapping
+    use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI, is_porous_media
     use spud
     use futils, only: int2str
     use vector_tools
@@ -1789,7 +1789,7 @@
         real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
         logical, intent(in) :: Pc_imbibition
         !Local
-        real, parameter :: tol = 1d-5
+        real, parameter :: tol = 1d-3!Small values requires smaller
 
         if ( Pc_imbibition ) then
            Get_capPressure = &
@@ -1992,7 +1992,7 @@
 
 
 
-      if ( have_option( '/physical_parameters/mobility' ) .or. is_compact_overlapping ) then
+      if ( have_option( '/physical_parameters/mobility' ) .or. is_porous_media ) then
 
          ! if solving for porous media and mobility is calculated
          ! through the viscosity ratio this code will fail

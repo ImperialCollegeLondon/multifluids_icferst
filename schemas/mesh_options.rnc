@@ -48,10 +48,8 @@ mesh_info =
                  "lagrangian" | "bubble" | "trace" 
               }
             }?,
-             ## If lagrangian elements are selected, this option implements
-             ## a light version of overlapping finite elements. Velocity only.
-             ## (Recommended)
-             element Compact_overlapping { comment }?
+             ## Activate for porous media. It allows the use of lagrangian shape functions for porous media flow. Velocity only.
+             element Porous_media { comment }?
          }?,
          element mesh_continuity {
             element string_value{

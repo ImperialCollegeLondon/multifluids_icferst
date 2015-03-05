@@ -38,7 +38,7 @@ module cv_advection
 
   use solvers_module
   use spud
-  use global_parameters, only: option_path_len, field_name_len, timestep, is_compact_overlapping
+  use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media
   use futils, only: int2str
   use adapt_state_prescribed_module
   use sparse_tools
@@ -879,7 +879,7 @@ contains
           DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
           IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
 
-          IF ( is_compact_overlapping ) THEN
+          IF ( is_porous_media ) THEN
 
              ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE,MAT_NONODS) )
              !Calculate inverse of sigma
@@ -1757,7 +1757,7 @@ contains
 !       IF(IGOT_T2==1) THEN
        IF( GOT_T2 ) THEN
 
-           IF( is_compact_overlapping ) THEN
+           IF( is_porous_media ) THEN
 
                CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&
@@ -1837,7 +1837,7 @@ contains
 
        ELSE
 
-           IF( is_compact_overlapping ) THEN
+           IF( is_porous_media ) THEN
 
                CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&

@@ -33,7 +33,7 @@ module multiphase_1D_engine
     use field_options
     use state_module
     use spud
-    use global_parameters, only: option_path_len, is_compact_overlapping
+    use global_parameters, only: option_path_len, is_porous_media
     use futils, only: int2str
 
     use Fields_Allocates, only : allocate
@@ -628,9 +628,8 @@ contains
          call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
       END DO Loop_NonLinearFlux
-
       !Set saturation to be between bounds
-      if (have_option('/material_phase[0]/multiphase_properties/Impose_saturation_limits')) then
+      if (have_option('/material_phase[0]/Impose_saturation_limits')) then
         !In this case we impose that the saturation has to be between physical limits
         !conservation of mass might be lost
         call Set_Saturation_between_bounds(packed_state)
@@ -839,7 +838,7 @@ contains
 
 
 
-        if (storageIndexes(34)<=0 .or. .not.is_compact_overlapping) then
+        if (storageIndexes(34)<=0 .or. .not.is_porous_media) then
             nullify(PIVIT_MAT)
             ALLOCATE( PIVIT_MAT( NDIM * NPHASE * U_NLOC, NDIM * NPHASE * U_NLOC, TOTELE )); PIVIT_MAT=0.0
         end if
@@ -968,7 +967,7 @@ contains
         !##########TEMPORARY ADAPT FROM OLD VARIABLES TO NEW############
 
         !Calculate the RHS for compact_overlapping
-        if (is_compact_overlapping) then
+        if (is_porous_media) then
            !FEM representation
            call get_var_from_packed_state(packed_state, FEDensity = den_fem)
            call calculate_u_source( state, den_fem, U_SOURCE_ALL )
@@ -1012,7 +1011,7 @@ contains
 
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
-            if (is_compact_overlapping) then
+            if (is_porous_media) then
 !                deallocate(PIVIT_MAT)!Temporary until everything has been set up
 !                nullify(PIVIT_MAT)
                 !PIVIT_MAT is the same unless the mesh changes
@@ -1203,7 +1202,7 @@ contains
 
             !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
             !inside the same element to reduce the ill conditioning of the matrix
-!            if (is_compact_overlapping .and. present(Quality_list)) call Fix_to_bad_elements(&
+!            if (is_porous_media .and. present(Quality_list)) call Fix_to_bad_elements(&
 !                  cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
             if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver) then!For discontinuous mesh
                 !Solver that agglomerates all the DG informaton into a CG mesh
@@ -1275,13 +1274,13 @@ contains
         DEALLOCATE( DU_VEL )
         DEALLOCATE( UP_VEL )
 
-        if (.not.is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
+        if (.not.is_porous_media) DEALLOCATE( PIVIT_MAT )
 
 #ifdef USING_GFORTRAN
 !Nothing to do
 #else!deallocate the C and PIVIT_MAT matrices
 DEALLOCATE( C )
-if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
+if (is_porous_media) DEALLOCATE( PIVIT_MAT )
 #endif
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
 
@@ -2309,7 +2308,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !        PRINT *,'DIFF_MIN_FRAC, DIFF_MAX_FRAC, SIMPLE_DIFF_CALC:', DIFF_MIN_FRAC, DIFF_MAX_FRAC, SIMPLE_DIFF_CALC
 !        STOP 2811
         !If we have calculated already the PIVIT_MAT and stored then we don't need to calculate it again
-        Porous_media_PIVIT_not_stored_yet = (.not.is_compact_overlapping .or. StorageIndexes(34) <= 0)
+        Porous_media_PIVIT_not_stored_yet = (.not.is_porous_media .or. StorageIndexes(34) <= 0)
 
         !If we do not have an index where we have stored C, then we need to calculate it
         got_c_matrix  = StorageIndexes(12)/=0
@@ -2432,7 +2431,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !For Porous media to make QUAD_OVER_WHOLE_ELE = .false. to work, the element pair
         !has to be of the type PnDGPnDG
         ! Do NOT divide element into CV's to form quadrature.
-        QUAD_OVER_WHOLE_ELE = is_compact_overlapping
+        QUAD_OVER_WHOLE_ELE = is_porous_media
 
 
         call retrieve_ngi( ndim, u_ele_type, cv_nloc, u_nloc, &
@@ -3054,7 +3053,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             DO MAT_ILOC = 1, MAT_NLOC
                 MAT_INOD = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_ILOC )
 
-                IF(is_compact_overlapping) THEN ! Set to the identity - NOT EFFICIENT BUT GOOD ENOUGH FOR NOW AS ITS SIMPLE...
+                IF(is_porous_media) THEN ! Set to the identity - NOT EFFICIENT BUT GOOD ENOUGH FOR NOW AS ITS SIMPLE...
                    DO I=1,NDIM_VEL* NPHASE
                       LOC_U_ABSORB( I, I, MAT_ILOC ) = 1.0 
                    END DO
@@ -3272,7 +3271,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
             SIGMAGI = 0.0 ; SIGMAGI_STAB = 0.0
             TEN_XX  = 0.0 ; TEN_VOL  = 0.0
-            if (is_compact_overlapping) then
+            if (is_porous_media) then
                DO IPHA_IDIM = 1, NDIM_VEL * NPHASE
                     SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
                end do
@@ -3487,7 +3486,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 END DO
             end if ! endof if (Porous_media_PIVIT_not_stored_yet) then
 
-            if (.not.is_compact_overlapping) then
+            if (.not.is_porous_media) then
                 !###LOOP Loop_DGNods1 IS NOT NECESSARY FOR POROUS MEDIA###
                 Loop_DGNods1: DO U_ILOC = 1, U_NLOC
                     !GLOBI = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )

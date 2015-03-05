@@ -32,7 +32,7 @@ AutomaticLine = 0
 
 
 AutomaticFile = 'QuickTest_DG'
-AutomaticVTU_Number = 45
+AutomaticVTU_Number = 23
 
 #Plot the results in 2d?
 showPlot = False
