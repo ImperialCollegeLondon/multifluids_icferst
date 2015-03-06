@@ -82,6 +82,7 @@
        integer :: ele
        integer, allocatable, dimension(:) :: nodes
        real, allocatable, dimension(:) :: weights
+       real :: angle
     end type bad_elements
 
   contains
@@ -3941,6 +3942,9 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     Quality_list%nodes(1) = Pos1
                     Quality_list%nodes(2) = Pos2
                     Quality_list%nodes(3) = Pos3
+                    !Store angle so later the over-relaxation can depend on this
+                    Quality_list%angle = alpha(1) * 180 / pi
+
                     Check_element = .true.
                     return
                 else if (alpha(2)>= MaxAngle) then
@@ -3950,6 +3954,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     Quality_list%nodes(1) = Pos2
                     Quality_list%nodes(2) = Pos1
                     Quality_list%nodes(3) = Pos3
+                    !Store angle so later the over-relaxation can depend on this
+                    Quality_list%angle = alpha(2) * 180 / pi
                     Check_element = .true.
                     return
                 else if (alpha(3) >= MaxAngle) then
@@ -3959,6 +3965,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     Quality_list%nodes(1) = Pos3
                     Quality_list%nodes(2) = Pos1
                     Quality_list%nodes(3) = Pos2
+                    !Store angle so later the over-relaxation can depend on this
+                    Quality_list%angle = alpha(3) * 180 / pi
                     Check_element = .true.
                     return
                 end if

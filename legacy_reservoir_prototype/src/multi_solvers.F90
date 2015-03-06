@@ -735,15 +735,19 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC, COLCMC, MIDCMC, P_NDGLN
       type(bad_elements), DIMENSION(:), intent( in ) :: Quality_list
       !Local variables
-      real, parameter :: alpha = 5d-4!should it depend on the illness of the element?
+      real, parameter :: alpha = 1d-4
       integer :: i, i_node, j_node, ele, COUNT, P_ILOC, bad_node, k, ierr
-      real :: auxR
+      real :: auxR, adapted_alpha
       real, dimension(1) :: rescal
 !      integer, dimension(2) :: counter
       logical :: nodeFound
       !Initialize variables
 
       i = 1
+
+      !Depending on the angle of the element we consider different alphas
+      !for 90 it is 0.5 * alpha and for 180 it is 2 * alpha
+      adapted_alpha = (1.5/90.0 * Quality_list(i)%angle - 1.0) * alpha
 
       do while (Quality_list(i)%ele>0)
           ele = Quality_list(i)%ele
@@ -752,7 +756,7 @@ contains
           bad_node = P_NDGLN((ele-1) * p_nloc + Quality_list(i)%nodes(1))
           !We get the diagonal value to use it as a reference when adding the over-relaxation
           call MatGetValues(cmc_petsc%M, 1, (/ bad_node - 1 /), 1, (/ bad_node - 1 /),  rescal, ierr)
-          rescal(1) = alpha * rescal(1)
+          rescal(1) = adapted_alpha * rescal(1)
 
           DO P_ILOC = 1, P_NLOC
               i_node = P_NDGLN((ele-1) * p_nloc + P_ILOC)
