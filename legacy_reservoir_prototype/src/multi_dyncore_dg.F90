@@ -628,14 +628,17 @@ contains
          call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
       END DO Loop_NonLinearFlux
-      !Set saturation to be between bounds
-      if (have_option('/material_phase[0]/Impose_saturation_limits')) then
-        !In this case we impose that the saturation has to be between physical limits
-        !conservation of mass might be lost
-        call Set_Saturation_between_bounds(packed_state)
-      else
-        satura = min(max(satura,0.0), 1.0)
-      end if
+
+      !While ensuring global conservation of mass, force the saturation to be between bounds
+      call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv,&
+       StorageIndexes, cv_ele_type, for_sat = .true. )
+
+
+!      !Set saturation to be between bounds
+!      !In this case we impose that the saturation has to be between physical limits
+!      !conservation of mass might be lost
+!      call Set_Saturation_between_bounds(packed_state)
+!      !satura = min(max(satura,0.0), 1.0)
 
       DEALLOCATE( mass_mn_pres )
       DEALLOCATE( CT )

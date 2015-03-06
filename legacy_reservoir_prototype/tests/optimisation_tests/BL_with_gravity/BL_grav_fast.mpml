@@ -179,7 +179,6 @@
     </mobility>
   </physical_parameters>
   <material_phase name="phase1">
-    <Impose_saturation_limits/>
     <equation_of_state>
       <incompressible>
         <linear>
@@ -267,7 +266,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
@@ -313,7 +312,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
           <relaxation>
             <real_value rank="0">1</real_value>
@@ -479,7 +478,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <solver>
@@ -571,7 +570,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
@@ -616,7 +615,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
           <relaxation>
             <real_value rank="0">1.0</real_value>
@@ -764,7 +763,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <solver>

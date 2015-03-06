@@ -185,7 +185,6 @@
     </gravity>
   </physical_parameters>
   <material_phase name="phase1">
-    <Impose_saturation_limits/>
     <equation_of_state>
       <incompressible>
         <linear>

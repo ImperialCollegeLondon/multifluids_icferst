@@ -1027,7 +1027,7 @@ contains
 
 
 
-    subroutine BoundedSolutionCorrections( state, packed_state, small_findrm, small_colm, StorageIndexes, cv_ele_type )
+    subroutine BoundedSolutionCorrections( state, packed_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, for_sat )
 
       implicit none
       ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
@@ -1048,7 +1048,7 @@ contains
       integer, dimension( : ), intent( in ) :: small_findrm, small_colm
       integer, intent( in ) :: cv_ele_type
       integer, dimension( : ), intent( inout ) :: StorageIndexes
-
+      logical, optional, intent(in) :: for_sat
       ! local variables...
       type ( tensor_field ), pointer :: field, ufield
       ! ( ndim1, ndim2, cv_nonods )
@@ -1056,7 +1056,7 @@ contains
       real, dimension( :, : ), allocatable :: scalar_field_dev_max, scalar_field_dev_min
       real, dimension( :, : ), allocatable :: r_min, r_max
       integer, dimension( :, : ), allocatable :: ii_min, ii_max
-      real, dimension( : ), allocatable :: mass_cv, mass_cv_sur
+      real, dimension( : ), allocatable :: mass_cv, mass_cv_sur, inmobi
       integer :: ndim1, ndim2, cv_nonods, i, j, knod, inod, jnod, count, ii, jj, loc_its, loc_its2, its, gl_its
       logical :: changed, changed_something
       real :: max_change, error_changed, max_max_error, scalar_field_dev, mass_off, alt_max, alt_min
@@ -1090,10 +1090,12 @@ contains
 
       !field => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
 
-      field => extract_tensor_field( packed_state, "PackedTemperature" )
 
-
-
+      if (present_and_true(for_sat)) then
+        field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+      else
+        field => extract_tensor_field( packed_state, "PackedTemperature" )
+      end if
 
       ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ; cv_nonods = size( field%val, 3 )
 
@@ -1113,7 +1115,22 @@ contains
 
       call allocate(mass_cv_sur_halo,field%mesh,'mass_cv_sur_halo')
 
-      field_min = 0.0 ; field_max = 1.0
+      if (present_and_true(for_sat)) then
+        allocate(inmobi(ndim2))
+        !Define the inmmobile fractions for each phase
+        do j = 1, ndim2
+          !Get immobile fractions for all the phases
+          call get_option("/material_phase["//int2str(j-1)//"]/multiphase_properties/immobile_fraction", &
+               inmobi(j), default=0.0)
+          field_min(:,j,:) = inmobi(j)
+        end do
+        !Now set the maximum as the phase that phase j cannot displace of the other phases
+        do j = 1, ndim2
+            field_max(:,j,:) = (1.0 - sum(inmobi) ) + inmobi(j)
+        end do
+      else
+        field_min = 0.0 ; field_max = 1.0
+      end if
 
       call get_option( '/geometry/dimension', ndim )
 
@@ -1151,7 +1168,8 @@ contains
                                 ! define the gauss points that lie on the surface of the cv...
            findgpts, colgpts, ncolgpts, &
            sele_overlap_scale, quad_over_whole_ele,&
-           state, "bound", storageindexes( 35 ) )
+           state, "Press_mesh" , storageindexes(1))
+           !state, "bound", storageindexes( 35 ) )
 
       totele = ele_count( field )
       x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
@@ -1355,6 +1373,8 @@ contains
       deallocate( cv_on_face, cvfem_on_face, u_on_face, ufem_on_face )
       deallocate( detwei2, ra2, nx_all2 )
 
+      call deallocate(mass_cv_sur_halo)
+      if (present_and_true(for_sat)) deallocate(inmobi)
       return
     end subroutine BoundedSolutionCorrections
 
