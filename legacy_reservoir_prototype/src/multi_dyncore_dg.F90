@@ -692,7 +692,7 @@ contains
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
     scale_momentum_by_volume_fraction, &
-    StorageIndexes, Quality_list )
+    StorageIndexes, Quality_list, nonlinear_iteration )
 
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -760,8 +760,10 @@ contains
         REAL, DIMENSION( :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         integer, dimension(:), intent(inout) :: StorageIndexes
         type(bad_elements), optional, dimension(:), intent(in) :: Quality_list
+        integer, intent(in) :: nonlinear_iteration
         ! Local Variables
-        LOGICAL, PARAMETER :: use_continuous_pressure_solver = .FALSE.!For DG pressure, convert to CG to accelerate the convergence
+        LOGICAL, PARAMETER :: use_continuous_pressure_solver = .false.!For DG pressure,the first non linear iteration we
+                                                                        !use a continuous pressure
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
         INTEGER, PARAMETER :: IGOT_CMC_PRECON = 0
@@ -1202,9 +1204,12 @@ contains
 
             !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
             !inside the same element to reduce the ill conditioning of the matrix
-!            if (is_porous_media .and. present(Quality_list)) call Fix_to_bad_elements(&
-!                  cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
-            if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver) then!For discontinuous mesh
+            if (is_porous_media .and. present(Quality_list)) call Fix_to_bad_elements(&
+                  cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
+
+            if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver &
+                 .and. nonlinear_iteration == 1) then!For discontinuous mesh
+            !We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
                 !Solver that agglomerates all the DG informaton into a CG mesh
                 call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
                     NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &

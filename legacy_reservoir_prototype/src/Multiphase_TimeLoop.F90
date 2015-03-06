@@ -208,7 +208,7 @@
       real, dimension(:,:,:), allocatable  :: reference_field
 
       !Variables related to the deteccion and correction of bad elements
-      real, parameter :: Max_bad_angle = 180.0!115.0<=disabled
+      real, parameter :: Max_bad_angle = 95.0
       real, parameter :: Min_bad_angle = 0.0
       type(bad_elements), allocatable, dimension(:) :: Quality_list
 
@@ -779,7 +779,8 @@
                     in_ele_upwind, dg_ele_upwind, &
                     iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
                     scale_momentum_by_volume_fraction,&
-                    StorageIndexes=StorageIndexes, Quality_list = Quality_list )
+                    StorageIndexes=StorageIndexes, Quality_list = Quality_list,&
+                    nonlinear_iteration = its )
 !!$ Calculate Density_Component for compositional
                if( have_component_field ) &
                     call Calculate_Component_Rho( state, packed_state, &
