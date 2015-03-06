@@ -785,11 +785,11 @@ contains
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ele, x_nod1, x_nod2, x_nod3, cv_iloc, &
         cv_nod1, cv_nod2, cv_nod3, mat_nod1, u_iloc, u_nod, u_nod_pha, ndpset, ierr
-        REAL :: der1, der2, der3, uabs, rsum, xc, yc, rescaleVal
+        REAL :: der1, der2, der3, uabs, rsum, xc, yc
         LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, SCALE_P_MATRIX, LINEARISE_DENSITY
-
         INTEGER :: I, J, IDIM, U_INOD
-
+        !Re-scale parameter can be re-used
+        real, save :: rescaleVal = -1.0
         !CMC using petsc format
         type(petsc_csr_matrix)::  CMC_petsc
         real, dimension(1):: aij
@@ -800,7 +800,7 @@ contains
         REAL, DIMENSION( :, :, :, : ), allocatable :: UDIFFUSION_ALL
         REAL, DIMENSION( :, : ), allocatable :: UDIFFUSION_VOL_ALL
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
-        type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2
+        type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield
         type( vector_field ), pointer :: x_all2
         type( scalar_field ), pointer :: p_all, cvp_all, pressure_state, sf, soldf, field
 
@@ -1187,24 +1187,23 @@ contains
 
 
 
-             !The condition number improves but the solver seems more sensitive
-             !We solve (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p
-!            call Rescale_and_solve(CMC_petsc, FINDCMC, rhs_p, deltap, trim(pressure%option_path))
-
             !Re-scale of the matrix to allow working with small values of sigma
-            ! this is a hack to deal with bad preconditioners and divide by zero errors.
-            rescaleVal = 0.0        
-            row=cmc_petsc%row_numbering%gnn2unn(1,1)
-            call MatGetValues(cmc_petsc%M, 1, [row], 1,[row],  aij, ierr)
-            rescaleVal = abs(aij(1))
-            !Make average
-            rescaleVal = max(rescaleVal, 1d-30)
-            !If it is parallel then we want to be consistent between cpus
-            if (IsParallel()) call allmin(rescaleVal)
-            call scale(cmc_petsc, 1.0/rescaleVal)
-            rhs_p%val = rhs_p%val / rescaleVal
-            !End of re-scaling
-
+            !this is a hack to deal with bad preconditioners and divide by zero errors.
+            if (is_porous_media) then
+                !The condition number improves but the solver seems more sensitive
+                !We solve (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p
+                !            call Rescale_and_solve(CMC_petsc, FINDCMC, rhs_p, deltap, trim(pressure%option_path))
+                !Since we save the parameter, we only do this one time
+                if (rescaleVal < 0.) then
+                    tfield => extract_tensor_field(packed_state,"Permeability")
+                    rescaleVal = minval(tfield%val, MASK = tfield%val > 1d-30)
+                    !If it is parallel then we want to be consistent between cpus
+                    if (IsParallel()) call allmin(rescaleVal)
+                end if
+                call scale(cmc_petsc, 1.0/rescaleVal)
+                rhs_p%val = rhs_p%val / rescaleVal
+                !End of re-scaling
+            end if
             !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
             !inside the same element to reduce the ill conditioning of the matrix
             if (is_porous_media .and. present(Quality_list)) call Fix_to_bad_elements(&
