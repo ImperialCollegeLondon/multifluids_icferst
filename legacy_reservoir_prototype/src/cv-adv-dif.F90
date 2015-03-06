@@ -340,6 +340,8 @@ contains
       real, PARAMETER :: THETA_VEL_HAT = 0.0
 ! if APPLY_ENO then apply ENO method to T and TOLD
       LOGICAL, PARAMETER :: APPLY_ENO = .FALSE. 
+! CT will not change with this option...
+      LOGICAL, PARAMETER :: CT_DO_NOT_CHANGE = .FALSE. 
 !
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE 
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
@@ -2146,6 +2148,14 @@ contains
 
                      !====================== ACV AND RHS ASSEMBLY ===================
                      Conditional_GETCT2 : IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS
+
+                        IF(CT_DO_NOT_CHANGE) THEN ! CT will not change with this option...
+                           FTHETA_T2=1.0
+                           ONE_M_FTHETA_T2OLD=0.0
+                           FTHETA_T2_J=1.0
+                           ONE_M_FTHETA_T2OLD_J=0.0
+                        ENDIF
+
                         CALL PUT_IN_CT_RHS( CT, CT_RHS, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
                              CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary,  &
                              JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, &
@@ -2830,7 +2840,7 @@ end if
             .OR. (QUADRATIC_ELEMENT.AND.(IS_CORNER_NOD_I.or.IS_CORNER_NOD_J)) ) THEN
                ENO_ELE_NEI(IUP_DOWN)  = ELEWIC 
                ENO_ELE_MATWEI(:,IUP_DOWN) = N(:,1)
-               CYCLE ! Jump out of IUP_DOWN loop
+               EXIT ! Jump out of IUP_DOWN loop
             ENDIF
          ENDIF
 
@@ -3944,7 +3954,7 @@ end if
 
     Loop_Elements: DO ELE = 1, TOTELE
        if (isParallel()) then
-          if (.not. assemble_ele(psi_int(1)%ptr,ele)) cycle
+          if (.not. assemble_ele(psi_int(1)%ptr,ele)) cycle ! IS THIS A PROBLEM? 
        end if
 
        if (present(state) .and. present(StorageIndexes)) then!This part does not work yet
@@ -4023,13 +4033,14 @@ end if
     call halo_update(cv_mass)
     call invert(cv_mass)
 
+! The below does not seem superefficient in terms of updating halo information. 
     ! Form average...
     DO IT = 1, size(psi_ave)
        call halo_update(PSI_AVE(it)%PTR)
        call scale(PSI_AVE(it)%PTR,cv_mass)
     END DO
 
-    DO IT= 1, size(psi_int)
+    DO IT= 1, size(psi_int) ! this seems a really bad way to do halo updates. 
        call halo_update(PSI_int(it)%PTR)
     end do
 

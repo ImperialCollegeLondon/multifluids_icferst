@@ -1040,7 +1040,7 @@ contains
       ! us a single iteration because of this as default...
       ! nits_nod: iterations at a nod - this iteration is very good at avoiding spreading the modifications too far -
       ! however it can stagnate.
-      integer, parameter :: nloc_its = 5, nloc_its2 = 1, nits_nod = 100, ngl_its = 5
+      integer, parameter :: nloc_its = 5, nloc_its2 = 1, nits_nod = 100, ngl_its = 500
       real, parameter :: w_relax = 0.5, error_tol = 1.0e-5
 
       type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1059,7 +1059,7 @@ contains
       real, dimension( : ), allocatable :: mass_cv, mass_cv_sur
       integer :: ndim1, ndim2, cv_nonods, i, j, knod, inod, jnod, count, ii, jj, loc_its, loc_its2, its, gl_its
       logical :: changed, changed_something
-      real :: max_change, error_changed, scalar_field_dev, mass_off, alt_max, alt_min
+      real :: max_change, error_changed, max_max_error, scalar_field_dev, mass_off, alt_max, alt_min
 
 
       ! variables for cv_fem_shape_funs_plus_storage
@@ -1080,13 +1080,20 @@ contains
       integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln
       integer, dimension( :, : ), pointer :: cv_neiloc, cv_sloclist, u_sloclist
       logical :: quad_over_whole_ele, d1, d3, dcyl
+
+      type(scalar_field) :: mass_cv_sur_halo
       type( vector_field ), pointer :: x
       real, dimension( : ), allocatable, target :: detwei2, ra2
       real, dimension( :, : , :), allocatable, target :: nx_all2
       real, target :: volume2
 
 
-      field => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+      !field => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+
+      field => extract_tensor_field( packed_state, "PackedTemperature" )
+
+
+
 
       ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ; cv_nonods = size( field%val, 3 )
 
@@ -1103,6 +1110,8 @@ contains
       allocate( r_min( ndim1, ndim2 ), r_max( ndim1, ndim2 ) )
       allocate( ii_min( ndim1, ndim2 ), ii_max( ndim1, ndim2 ) )
       allocate( mass_cv( cv_nonods ), mass_cv_sur( cv_nonods ) )
+
+      call allocate(mass_cv_sur_halo,field%mesh,'mass_cv_sur_halo')
 
       field_min = 0.0 ; field_max = 1.0
 
@@ -1178,11 +1187,16 @@ contains
 
       mass_cv_sur = 0.0
       do inod = 1, cv_nonods
+         if ( .not. node_owned( field, inod ) ) cycle
          do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
             jnod = small_colm( count )
-            mass_cv_sur( inod ) = mass_cv_sur( inod ) + mass_cv( jnod )
+            mass_cv_sur(inod) = mass_cv_sur(inod) + mass_cv( jnod )
          end do
       end do
+! Obtain the halos of mass_cv_sur: 
+      mass_cv_sur_halo%val(:)=mass_cv_sur(:)
+      call halo_update(mass_cv_sur_halo)
+      mass_cv_sur(:)=mass_cv_sur_halo%val(:)
 
 
       do gl_its = 1, ngl_its
@@ -1192,6 +1206,7 @@ contains
          do loc_its = 1, nloc_its
             changed_something = .false.
             do knod = 1, cv_nonods ! exclude the halo values of knod for parallel
+               if ( .not. node_owned( field, knod ) ) cycle
 
                do its = 1, nits_nod
 
@@ -1202,6 +1217,7 @@ contains
                   ! Find the max and min deviation from the limited values....
                   do count = small_findrm( knod ), small_findrm( knod + 1 ) - 1
                      jnod = small_colm( count )
+                     if ( .not. node_owned( field, jnod ) ) cycle
 
                      do j = 1, ndim2
                         do i = 1, ndim1
@@ -1268,11 +1284,14 @@ contains
             if ( .not. changed_something ) exit ! stop iterating and move onto next stage of iteration...
          end do ! do loc_its=1,nloc_its
 
+         call halo_update( field )
+
 
          ! This iteration is very good at avoiding stagnating but does spread the modifcations far.
          ! use a single iteration because of this as default...
          do loc_its2 = 1, nloc_its2
             do knod = 1, cv_nonods
+!               if ( .not. node_owned( field, knod ) ) cycle
                do j = 1, ndim2
                   do i = 1, ndim1
                      if ( field%val( i, j, knod ) > field_max( i, j, knod ) ) then
@@ -1289,6 +1308,7 @@ contains
             ! matrix vector...
             field_alt_val = 0.0
             do inod = 1, cv_nonods ! exclude the halo values of knod for parallel
+               if ( .not. node_owned( field, inod ) ) cycle
                do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
                   jnod = small_colm( count )
                   mass_off = mass_cv( jnod ) / mass_cv_sur( jnod )
@@ -1305,12 +1325,16 @@ contains
             ! adjust the values...
             error_changed = maxval( abs( -field_dev_val + field_alt_val ) )
             field%val( :, :, : ) = field%val( :, :, : ) - field_dev_val( :, :, : ) + field_alt_val( :, :, : )
+            call halo_update( field )
 
          end do ! loc_its2
 
-         ! ********** Parallel communicate halo values of field **********
+! communicate the errors ( max_change, error_changed ) ...
+! this could be more efficient sending a vector...
+          max_max_error= max( max_change, error_changed )
+          call allmax( max_max_error ) 
 
-         if ( max( max_change, error_changed ) < error_tol ) exit
+         if ( max_max_error < error_tol ) exit
 
       end do ! gl_its
 
