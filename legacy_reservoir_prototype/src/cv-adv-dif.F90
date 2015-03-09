@@ -60,6 +60,14 @@ module cv_advection
 
   implicit none
 
+   public ::  totout
+
+   !real, dimension(:), allocatable :: totout
+   real, dimension(2) :: totout
+   ! To get the allocatable version to work need to know where we can deallocate totout in Multiphase Time Loop. This is probably not a good idea
+   ! don't want to be allocating/deallocating deep in cv-adv div/time loops etc. Better off just making nphase a global variable so we
+   ! define real, dimension(nphase) :: totout.
+
 #include "petsc_legacy.h"
 
   INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1, WIC_T_BC_ROBIN = 2, &
@@ -323,6 +331,10 @@ contains
       integer, optional ::indx
       character(len=*), optional :: Storname
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
+
+
+      real, dimension(nphase) :: totoutflux
+      real :: sumdetwei
 
 
       ! Local variables
@@ -612,6 +624,9 @@ contains
 
     !##################END OF SET VARIABLES##################
 
+      ! Totoutflux stores the integral of n.q across a specified boundary and is calculated through the subroutine calculate_outflux(). It's initialised to zero in the line below
+      totoutflux = 0
+      sumdetwei = 0
 
     !! Get boundary conditions from field
     call get_entire_boundary_condition(tracer,&
@@ -2213,6 +2228,11 @@ contains
 
 
 
+                    if ( GETCT ) then
+
+                    call calculate_outflux(packed_state, ndotqnew, sele, outlet_id, totoutflux, ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI, sumdetwei)
+
+                    end if
 
 
                   Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
@@ -2616,6 +2636,16 @@ contains
 
 
       END IF
+
+
+       if(GETCT) then
+
+       totout(:) = totoutflux(:)
+
+       endif
+
+
+       call allsum(totout)
 
 
       ! Deallocating temporary working arrays
