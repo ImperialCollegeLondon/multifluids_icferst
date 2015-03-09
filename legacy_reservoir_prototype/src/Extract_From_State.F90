@@ -4032,8 +4032,11 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
        integer  :: cv_kloc
        real, dimension( : , : ), allocatable :: phaseV
        real, dimension( : , : ), allocatable :: phaseVG
+       real, dimension( : , : ), allocatable :: Dens
+       real, dimension( : , : ), allocatable :: DensVG
 
        allocate(phaseV(nphase,cv_nonods), phaseVG(nphase,cv_nonods))
+       allocate(Dens(nphase,cv_nonods), DensVG(nphase,cv_nonods))
 
 ! Extract the pressure
 
@@ -4045,6 +4048,12 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
       phaseV = tfield%val(1,:,:)
 
+ ! Extract the density
+
+         tfield => extract_tensor_field( packed_state, "PackedDensity" )
+         Dens =  tfield%val(1,:,:)
+
+
 ! Having extracted the saturation field (phase volume fraction) at control volume nodes, need to calculate it at quadrature points gi.
 
       phaseVG = 0.0
@@ -4053,6 +4062,13 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       phaseVG(:,gi) = phaseVG(:,gi) + phaseV(:,x_knod)*SCVFEN(cv_kloc,gi)
       end do
 
+! Having extracted the density at control volume nodes, need to calculate it at quadrature points gi.
+
+      DensVG = 0.0
+      do cv_kloc=1,cv_nloc
+      x_knod=x_ndgln((ele-1)*cv_nloc+cv_kloc)
+      DensVG(:,gi) = DensVG(:,gi) + Dens(:,x_knod)*SCVFEN(cv_kloc,gi)
+      end do
 
 ! This function will return true for surfaces we should be integrating over (this entire subroutine is called in a loop over ele,(sele),gi in cv-adv-dif)
 ! Need the condition that sele > 0 Check why it can be zero/negative.
@@ -4066,7 +4082,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
           if(test) then
 
-              totoutflux(:) = totoutflux(:) + ndotqnew(:)*phaseVG(:,gi)*detwei(gi)
+              totoutflux(:) = totoutflux(:) + ndotqnew(:)*phaseVG(:,gi)*detwei(gi)*DensVG(:,gi)
 
           endif
 
@@ -4074,6 +4090,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
       deallocate(phaseV)
       deallocate(phaseVG)
+      deallocate(dens)
+      deallocate(densVG)
 
       return
 

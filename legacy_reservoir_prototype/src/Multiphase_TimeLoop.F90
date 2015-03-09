@@ -542,10 +542,36 @@
       allocate(intflux(nphase))
       intflux = 0.
 
+      ! May want to initialise this to equal to the totout on the initial data and not zero so that you don't always get zero at time zero.
       totout = 0.
 
       checkpoint_number=1
       Loop_Time: do
+
+      ! Better to do these calculations here rather than in the subroutine dump_outflux
+
+      intflux = intflux + totout*dt
+
+      if(itime > 0) then
+
+      totout = totout/sum(totout)
+
+      endif
+
+      ! Dump boundary outfluxes to file - may want to change the dumping routine so that it just dumps values. Currently also sums intflux and normalises totout
+      ! This can cause confusion as when commenting out this routine call here, you'll get different results for totout. JUST CHANGED IT - see above
+
+      if(getprocno() == 1) then
+
+        call dump_outflux(current_time,itime,totout,intflux, dt)
+
+        ! Note in the current version on Vader - this printout is outside of the getprocno() loop. This will give incorrectly normalised printout to screen
+        ! of totout on all processors except processor 1. This needs to be inside the loop. Doesn't matter for the outfluxes file.
+
+        print *, totout
+
+      endif
+
 !!$
 
          ewrite(2,*) '    NEW DT', itime+1
@@ -561,7 +587,6 @@
          dtime=dtime+1
 
 
-
          itime = itime + 1
          timestep = itime
          call get_option( '/timestepping/timestep', dt )
@@ -570,6 +595,8 @@
          acctim = acctim + dt
          call set_option( '/timestepping/current_time', acctim )
          new_lim = .true.
+
+   !call dump_outflux(acctim,itime,totout,intflux, dt) - RIGHT TIME, WRONG FLUX
 
          if ( acctim > finish_time ) then
             ewrite(1,*) "Passed final time"
@@ -1029,6 +1056,22 @@
 
          end do Loop_NonLinearIteration
 
+
+         ! Dump boundary outfluxes to file - may want to change the dumping routine so that it just dumps values. Currently also sums intflux and normalises totout
+         ! This can cause confusion as when commenting out this routine call here, you'll get different results for totout
+
+         !if(getprocno() == 1) then
+
+         !call dump_outflux(current_time,itime,totout,intflux, dt)
+
+         ! Note in the current version on Vader - this printout is outside of the getprocno() loop. This will give incorrectly normalised printout to screen
+         ! of totout on all processors except processor 1. This needs to be inside the loop. Doesn't matter for the outfluxes file.
+
+         !print *, totout
+
+         !endif
+
+
          if (nonLinearAdaptTs) then
             !As the value of dt and acctim may have changed we retrieve their values
             !to make sure that everything is coherent
@@ -1054,15 +1097,6 @@
 
          if (write_all_stats) call write_diagnostics( state, current_time, dt, itime )  ! Write stat file
 
-         ! Dump boundary outfluxes to file
-
-         if(getprocno() == 1) then
-
-         call dump_outflux(current_time,itime,totout,intflux)
-
-         endif
-
-         print *, totout
 
          Conditional_TimeDump: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
 
@@ -1824,23 +1858,25 @@
      return
    end subroutine linearise
 
-   subroutine dump_outflux(current_time, itime, outflux, intflux)
+   subroutine dump_outflux(current_time, itime, outflux, intflux,ts)
 
    real,intent(in) :: current_time
    integer, intent(in) :: itime
    real, dimension(:), intent(inout) :: outflux, intflux
+   real,intent(in) :: ts
 
 
    type(stat_type), target :: default_stat
 
-   intflux = intflux + outflux
+   !intflux = intflux + outflux*ts
 
-   outflux = outflux/sum(outflux)
+   !outflux = outflux/sum(outflux)
 
    default_stat%conv_unit=free_unit()
    open(unit=default_stat%conv_unit, file="outfluxes.txt", action="write", position="append")
 
-   if(itime.eq.1) then
+   ! Disable the column headings in the final version, they just cause annoyance during post-processing
+   if(itime.eq.0) then
      write(default_stat%conv_unit,*) "Current Time", "***********Phase1 boundary flux", "**********Phase2 boundary flux", "***********Phase 1 Integrated Flux", "***********Phase 2 Integrated Flux"
    endif
 
