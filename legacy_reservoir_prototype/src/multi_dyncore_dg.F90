@@ -302,6 +302,7 @@ contains
             IN_ELE_UPWIND, DG_ELE_UPWIND, &
             MEAN_PORE_CV, &
             SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
+            .false.,  mass_Mn_pres, &
             mass_ele_transp, &
             StorageIndexes, Field_selector,icomp, &
             saturation=saturation )
@@ -617,6 +618,7 @@ contains
               IN_ELE_UPWIND, DG_ELE_UPWIND, &
               MEAN_PORE_CV, &
               SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
+              .false.,  mass_Mn_pres, &
               mass_ele_transp,&
               StorageIndexes, 3 ,&
               OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc)!Capillary variables
@@ -774,12 +776,14 @@ contains
         LOGICAL :: SOLID_FLUID_MODEL_B = .TRUE.
 ! switch on solid fluid coupling (THE ONLY SWITCH THAT NEEDS TO BE SWITCHED ON FOR SOLID-FLUID COUPLING)...
         LOGICAL :: RETRIEVE_SOLID_CTY = .FALSE.
+! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
+        LOGICAL :: got_free_surf = .FALSE.
         character( len = option_path_len ) :: opt
 
         type( scalar_field ) :: ct_rhs
         REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES, &
         MCY_RHS, MCY, &
-        CMC_PRECON, MASS_MN_PRES, MASS_CV, UP, U_RHS_CDP, &
+        CMC_PRECON, MASS_MN_PRES, MASS_SUF, MASS_CV, UP, U_RHS_CDP, &
         UP_VEL, DIAG_P_SQRT
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
@@ -802,7 +806,7 @@ contains
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield
         type( vector_field ), pointer :: x_all2
-        type( scalar_field ), pointer :: p_all, cvp_all, pressure_state, sf, soldf, field
+        type( scalar_field ), pointer :: p_all, pold_all, cvp_all, pressure_state, sf, soldf, field
 
         type( vector_field ) :: packed_vel, rhs
         type( scalar_field ) :: deltap, rhs_p
@@ -828,7 +832,12 @@ contains
         ALLOCATE( MCY_RHS( NDIM * NPHASE * U_NONODS + CV_NONODS )) ; MCY_RHS=0.
         ALLOCATE( MCY( NCOLMCY )) ; MCY=0.
         ALLOCATE( CMC_PRECON( NCOLCMC*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
-        ALLOCATE( MASS_MN_PRES( NCOLCMC )) ;MASS_MN_PRES=0.
+        ALLOCATE( MASS_MN_PRES( NCOLCMC )) ; MASS_MN_PRES=0.
+        IF(got_free_surf) THEN
+           ALLOCATE( MASS_SUF( NCOLCMC )) ; MASS_SUF=0.
+        ELSE
+           ALLOCATE( MASS_SUF( 1 )) ; MASS_SUF=0.
+        ENDIF
         ALLOCATE( MASS_CV( CV_NONODS )) ; MASS_CV=0.
         ALLOCATE( UP( NLENMCY )) ; UP=0.
         ALLOCATE( U_RHS_CDP( NDIM * NPHASE * U_NONODS )) ; U_RHS_CDP=0.
@@ -995,6 +1004,7 @@ contains
         MAT, NO_MATRIX_STORE, &! Force balance
         NCOLELE, FINELE, COLELE, & ! Element connectivity.
         NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & ! pressure matrix for projection method
+        got_free_surf,  MASS_SUF, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
         NCOLCT, FINDCT, COLCT, &
         CV_ELE_TYPE, &
@@ -1042,7 +1052,8 @@ contains
             PIVIT_MAT, &
             TOTELE, U_NLOC, U_NDGLN, &
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
-            CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+            CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & 
+            got_free_surf,  MASS_SUF, &
             C, CT, state, StorageIndexes(11), halo )
 
         END IF
@@ -1134,12 +1145,18 @@ contains
 
             rhs_p%val = -rhs_p%val + CT_RHS%val
 
+            if(got_free_surf) POLD_ALL => EXTRACT_SCALAR_FIELD( PACKED_STATE, "OldFEPressure" )
+
             ! Matrix vector involving the mass diagonal term
             DO CV_NOD = 1, CV_NONODS
                 DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                     CV_JNOD = COLCMC( COUNT )
                     rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
                     -DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( CV_JNOD )
+                        if(got_free_surf) then
+                    rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
+                    -MASS_SUF( COUNT ) * (P_ALL%VAL( CV_JNOD ) -POLD_ALL%VAL( CV_JNOD )) 
+                        endif
                 END DO
             END DO
             call zero_non_owned(rhs_p)
@@ -1440,6 +1457,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     DGM_PETSC, NO_MATRIX_STORE, &! Force balance
     NCOLELE, FINELE, COLELE, & ! Element connectivity.
     NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & ! pressure matrix for projection method
+    got_free_surf,  MASS_SUF, &
     SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
     NCOLCT, FINDCT, COLCT, &
     CV_ELE_TYPE, &
@@ -1476,7 +1494,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, XU_NLOC, &
         NLENMCY, NCOLMCY, IGOT_THETA_FLUX, SCVNGI_THETA, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, IPLIKE_GRAD_SOU,  IDIVID_BY_VOL_FRAC
-        LOGICAL, intent( in ) :: USE_THETA_FLUX,scale_momentum_by_volume_fraction, RETRIEVE_SOLID_CTY
+        LOGICAL, intent( in ) :: USE_THETA_FLUX,scale_momentum_by_volume_fraction, RETRIEVE_SOLID_CTY,got_free_surf
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
         INTEGER, DIMENSION( :  ), intent( in ) :: P_NDGLN
         INTEGER, DIMENSION(  :  ), intent( in ) :: CV_NDGLN
@@ -1523,6 +1541,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, :, : ), pointer, intent( inout ) :: C
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: CT
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
+        REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         type(scalar_field), intent( inout ) :: CT_RHS
         REAL, DIMENSION( : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
         LOGICAL, intent( in ) :: GLOBAL_SOLVE
@@ -1673,6 +1692,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
         MEAN_PORE_CV, &
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
+        got_free_surf,  MASS_SUF, &
         dummy_transp, &
         StorageIndexes, 3)
 

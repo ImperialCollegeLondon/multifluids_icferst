@@ -69,7 +69,7 @@ module cv_advection
        WIC_U_BC_DIRI_ADV_AND_ROBIN = 3, &
        WIC_U_BC_DIRICHLET_INOUT = 2, &
        WIC_P_BC_DIRICHLET = 1, &
-       WIC_P_BC_FREE = 1
+       WIC_P_BC_FREE = 2
 
   interface my_size
      module procedure my_size_integer, my_size_real
@@ -125,6 +125,7 @@ contains
          IN_ELE_UPWIND, DG_ELE_UPWIND, &
          MEAN_PORE_CV, &
          FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
+         got_free_surf,  MASS_SUF, &
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
          option_path_spatial_discretisation, &
@@ -282,6 +283,7 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
+      REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
       REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL, DENOLD_ALL
       REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF ! (NPHASE,CV_NONODS)
       REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -299,7 +301,8 @@ contains
       REAL, DIMENSION( :, : ), intent( in ) :: SOURCT
       REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT_ALL
       REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
-      LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY
+      LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
+! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
       INTEGER, DIMENSION( : ), intent( in ) :: FINDM
       INTEGER, DIMENSION( : ), intent( in ) :: COLM
       INTEGER, DIMENSION( : ), intent( in ) :: MIDM
@@ -342,6 +345,8 @@ contains
       LOGICAL, PARAMETER :: APPLY_ENO = .FALSE. 
 ! CT will not change with this option...
       LOGICAL, PARAMETER :: CT_DO_NOT_CHANGE = .FALSE. 
+! GRAVTY is used in the free surface method only...
+      REAL, PARAMETER :: GRAVTY = 9.8/1000.0
 !
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE 
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
@@ -485,10 +490,15 @@ contains
 
       !! boundary_condition fields
       type(tensor_field) :: velocity_BCs,tracer_BCs, density_BCs, saturation_BCs
+      type(scalar_field) :: pressure_BCs
       type(tensor_field) :: tracer_BCs_robin2, saturation_BCs_robin2
 
       INTEGER, DIMENSION( 1 , nphase , surface_element_count(tracer) ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_T2_BC_ALL
       INTEGER, DIMENSION( ndim , nphase , surface_element_count(tracer) ) :: WIC_U_BC_ALL
+
+      type( scalar_field ), pointer ::  pressure
+      INTEGER, DIMENSION ( surface_element_count(tracer) ) :: WIC_P_BC_ALL
+
       REAL, DIMENSION( :,:,: ), pointer :: SUF_T_BC_ALL,&
            SUF_T_BC_ROB1_ALL, SUF_T_BC_ROB2_ALL
       REAL, DIMENSION(:,:,: ), pointer :: SUF_D_BC_ALL,&
@@ -527,7 +537,8 @@ contains
       logical :: capillary_pressure_activated, between_elements, on_domain_boundary, Pc_imbibition
 
       real, dimension(nphase):: rsum_nodi, rsum_nodj
-      integer :: x_nod
+      integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD
+      REAL :: MM_GRAVTY
 
       !Check capillary pressure options
       capillary_pressure_activated = .false.
@@ -617,6 +628,12 @@ contains
     call get_entire_boundary_condition(velocity,&
          ['weakdirichlet'],&
          velocity_BCs,WIC_U_BC_ALL)
+    if(got_free_surf) then
+        pressure => EXTRACT_SCALAR_FIELD( PACKED_STATE, "FEPressure" )
+        call get_entire_boundary_condition(pressure,&
+           ['weakdirichlet'],&
+           pressure_BCs,WIC_P_BC_ALL)
+    endif
 
     !! reassignments to old arrays, to be discussed
 
@@ -1188,6 +1205,7 @@ contains
       IF ( GETCT ) THEN ! Obtain the CV discretised CT eqns plus RHS
          call zero(CT_RHS)
          CT = 0.0
+         if(got_free_surf) MASS_SUF=0.0
       END IF
 
       IF ( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion eqns
@@ -1970,6 +1988,7 @@ contains
              !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
              ! Calculate T and DEN on the CV face at quadrature point GI.
        IF(NFIELD.GT.0) THEN
+
            CALL GET_INT_T_DEN_new( LIMF(:), &
            CV_DISOPT, CV_NONODS, NPHASE, NFIELD, CV_NODI, CV_NODJ, CV_ILOC, CV_JLOC, CV_SILOC, ELE, ELE2, GI,   &
            between_elements, on_domain_boundary, &
@@ -2155,6 +2174,28 @@ contains
                            FTHETA_T2_J=1.0
                            ONE_M_FTHETA_T2OLD_J=0.0
                         ENDIF
+
+                        if(got_free_surf) then
+                           if(on_domain_boundary) then 
+                              if(WIC_P_BC_ALL( SELE )==WIC_P_BC_FREE) then ! on the free surface...
+                                 DO P_JLOC=1,CV_NLOC
+                                    P_JNOD=CV_NDGLN( (ELE-1)*CV_NLOC + P_JLOC ) 
+! Use the same sparcity as the MN matrix...
+                                    COUNT_SUF=0
+                                    DO COUNT=FINDCMC(CV_INOD),FINDCMC(CV_INOD+1)-1
+                                       IF(COLCMC(COUNT)==P_JNOD) THEN
+                                          COUNT_SUF=COUNT
+                                          EXIT
+                                       ENDIF
+                                    END DO
+
+                                    MM_GRAVTY = CVNORMX_ALL(3, GI)*SCVFEN(GI,CV_JLOC)/(DT**2 *GRAVTY) 
+                                    MASS_SUF(COUNT_SUF) = MASS_SUF(COUNT_SUF) + MM_GRAVTY
+
+                                 END DO
+                              endif
+                           endif
+                        endif
 
                         CALL PUT_IN_CT_RHS( CT, CT_RHS, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
                              CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary,  &
@@ -2614,6 +2655,7 @@ contains
       call deallocate(tracer_BCs_robin2)
       call deallocate(density_BCs)
       call deallocate(velocity_BCs)
+      if(got_free_surf) call deallocate(pressure_BCs)
       if (present(saturation)) then
          call deallocate(saturation_BCs)
          call deallocate(saturation_BCs_robin2)
