@@ -70,10 +70,8 @@ enforcing continuity by Lagrange multipliers).</a:documentation>
               </element>
             </optional>
             <optional>
-              <element name="Compact_overlapping">
-                <a:documentation>If lagrangian elements are selected, this option implements
-a light version of overlapping finite elements. Velocity only.
-(Recommended)</a:documentation>
+              <element name="Porous_media">
+                <a:documentation>Activate for porous media. It allows the use of lagrangian shape functions for porous media flow. Velocity only.</a:documentation>
                 <ref name="comment"/>
               </element>
             </optional>

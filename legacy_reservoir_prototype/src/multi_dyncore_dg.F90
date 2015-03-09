@@ -33,7 +33,7 @@ module multiphase_1D_engine
     use field_options
     use state_module
     use spud
-    use global_parameters, only: option_path_len, is_compact_overlapping
+    use global_parameters, only: option_path_len, is_porous_media
     use futils, only: int2str
 
     use Fields_Allocates, only : allocate
@@ -302,6 +302,7 @@ contains
             IN_ELE_UPWIND, DG_ELE_UPWIND, &
             MEAN_PORE_CV, &
             SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
+            .false.,  mass_Mn_pres, &
             mass_ele_transp, &
             StorageIndexes, Field_selector,icomp, &
             saturation=saturation )
@@ -617,6 +618,7 @@ contains
               IN_ELE_UPWIND, DG_ELE_UPWIND, &
               MEAN_PORE_CV, &
               SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
+              .false.,  mass_Mn_pres, &
               mass_ele_transp,&
               StorageIndexes, 3 ,&
               OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc)!Capillary variables
@@ -629,14 +631,16 @@ contains
 
       END DO Loop_NonLinearFlux
 
-      !Set saturation to be between bounds
-      if (have_option('/material_phase[0]/multiphase_properties/Impose_saturation_limits')) then
-        !In this case we impose that the saturation has to be between physical limits
-        !conservation of mass might be lost
-        call Set_Saturation_between_bounds(packed_state)
-      else
-        satura = min(max(satura,0.0), 1.0)
-      end if
+      !While ensuring global conservation of mass, force the saturation to be between bounds
+      call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv,&
+       StorageIndexes, cv_ele_type, for_sat = .true. )
+
+
+!      !Set saturation to be between bounds
+!      !In this case we impose that the saturation has to be between physical limits
+!      !conservation of mass might be lost
+!      call Set_Saturation_between_bounds(packed_state)
+!      !satura = min(max(satura,0.0), 1.0)
 
       DEALLOCATE( mass_mn_pres )
       DEALLOCATE( CT )
@@ -693,7 +697,7 @@ contains
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
     scale_momentum_by_volume_fraction, &
-    StorageIndexes, Quality_list )
+    StorageIndexes, Quality_list, nonlinear_iteration )
 
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -761,8 +765,10 @@ contains
         REAL, DIMENSION( :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         integer, dimension(:), intent(inout) :: StorageIndexes
         type(bad_elements), optional, dimension(:), intent(in) :: Quality_list
+        integer, intent(in) :: nonlinear_iteration
         ! Local Variables
-        LOGICAL, PARAMETER :: use_continuous_pressure_solver = .FALSE.!For DG pressure, convert to CG to accelerate the convergence
+        LOGICAL, PARAMETER :: use_continuous_pressure_solver = .false.!For DG pressure,the first non linear iteration we
+                                                                        !use a continuous pressure
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
         INTEGER, PARAMETER :: IGOT_CMC_PRECON = 0
@@ -770,22 +776,24 @@ contains
         LOGICAL :: SOLID_FLUID_MODEL_B = .TRUE.
 ! switch on solid fluid coupling (THE ONLY SWITCH THAT NEEDS TO BE SWITCHED ON FOR SOLID-FLUID COUPLING)...
         LOGICAL :: RETRIEVE_SOLID_CTY = .FALSE.
+! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
+        LOGICAL :: got_free_surf = .FALSE.
         character( len = option_path_len ) :: opt
 
         type( scalar_field ) :: ct_rhs
         REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES, &
         MCY_RHS, MCY, &
-        CMC_PRECON, MASS_MN_PRES, MASS_CV, UP, U_RHS_CDP, &
+        CMC_PRECON, MASS_MN_PRES, MASS_SUF, MASS_CV, UP, U_RHS_CDP, &
         UP_VEL, DIAG_P_SQRT
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ele, x_nod1, x_nod2, x_nod3, cv_iloc, &
         cv_nod1, cv_nod2, cv_nod3, mat_nod1, u_iloc, u_nod, u_nod_pha, ndpset, ierr
-        REAL :: der1, der2, der3, uabs, rsum, xc, yc, rescaleVal
+        REAL :: der1, der2, der3, uabs, rsum, xc, yc
         LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, SCALE_P_MATRIX, LINEARISE_DENSITY
-
         INTEGER :: I, J, IDIM, U_INOD
-
+        !Re-scale parameter can be re-used
+        real, save :: rescaleVal = -1.0
         !CMC using petsc format
         type(petsc_csr_matrix)::  CMC_petsc
         real, dimension(1):: aij
@@ -796,9 +804,9 @@ contains
         REAL, DIMENSION( :, :, :, : ), allocatable :: UDIFFUSION_ALL
         REAL, DIMENSION( :, : ), allocatable :: UDIFFUSION_VOL_ALL
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
-        type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2
+        type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield
         type( vector_field ), pointer :: x_all2
-        type( scalar_field ), pointer :: p_all, cvp_all, pressure_state, sf, soldf, field
+        type( scalar_field ), pointer :: p_all, pold_all, cvp_all, pressure_state, sf, soldf, field
 
         type( vector_field ) :: packed_vel, rhs
         type( scalar_field ) :: deltap, rhs_p
@@ -824,7 +832,12 @@ contains
         ALLOCATE( MCY_RHS( NDIM * NPHASE * U_NONODS + CV_NONODS )) ; MCY_RHS=0.
         ALLOCATE( MCY( NCOLMCY )) ; MCY=0.
         ALLOCATE( CMC_PRECON( NCOLCMC*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
-        ALLOCATE( MASS_MN_PRES( NCOLCMC )) ;MASS_MN_PRES=0.
+        ALLOCATE( MASS_MN_PRES( NCOLCMC )) ; MASS_MN_PRES=0.
+        IF(got_free_surf) THEN
+           ALLOCATE( MASS_SUF( NCOLCMC )) ; MASS_SUF=0.
+        ELSE
+           ALLOCATE( MASS_SUF( 1 )) ; MASS_SUF=0.
+        ENDIF
         ALLOCATE( MASS_CV( CV_NONODS )) ; MASS_CV=0.
         ALLOCATE( UP( NLENMCY )) ; UP=0.
         ALLOCATE( U_RHS_CDP( NDIM * NPHASE * U_NONODS )) ; U_RHS_CDP=0.
@@ -839,7 +852,7 @@ contains
 
 
 
-        if (storageIndexes(34)<=0 .or. .not.is_compact_overlapping) then
+        if (storageIndexes(34)<=0 .or. .not.is_porous_media) then
             nullify(PIVIT_MAT)
             ALLOCATE( PIVIT_MAT( NDIM * NPHASE * U_NLOC, NDIM * NPHASE * U_NLOC, TOTELE )); PIVIT_MAT=0.0
         end if
@@ -894,9 +907,11 @@ contains
 
 
          if ( have_option( '/blasting' ) ) then
-            RETRIEVE_SOLID_CTY = .true.
-            call get_option( '/blasting/Gidaspow_model', opt )
-            if ( trim( opt ) == "A" ) SOLID_FLUID_MODEL_B = .false.
+!            if( sum(DEN_ALL).ne.0.0) then
+               RETRIEVE_SOLID_CTY = .true.
+               call get_option( '/blasting/Gidaspow_model', opt )
+               if ( trim( opt ) == "A" ) SOLID_FLUID_MODEL_B = .false.
+!            endif
          end if
 
 
@@ -966,7 +981,7 @@ contains
         !##########TEMPORARY ADAPT FROM OLD VARIABLES TO NEW############
 
         !Calculate the RHS for compact_overlapping
-        if (is_compact_overlapping) then
+        if (is_porous_media) then
            !FEM representation
            call get_var_from_packed_state(packed_state, FEDensity = den_fem)
            call calculate_u_source( state, den_fem, U_SOURCE_ALL )
@@ -989,6 +1004,7 @@ contains
         MAT, NO_MATRIX_STORE, &! Force balance
         NCOLELE, FINELE, COLELE, & ! Element connectivity.
         NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & ! pressure matrix for projection method
+        got_free_surf,  MASS_SUF, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
         NCOLCT, FINDCT, COLCT, &
         CV_ELE_TYPE, &
@@ -1010,7 +1026,7 @@ contains
 
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
-            if (is_compact_overlapping) then
+            if (is_porous_media) then
 !                deallocate(PIVIT_MAT)!Temporary until everything has been set up
 !                nullify(PIVIT_MAT)
                 !PIVIT_MAT is the same unless the mesh changes
@@ -1036,7 +1052,8 @@ contains
             PIVIT_MAT, &
             TOTELE, U_NLOC, U_NDGLN, &
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
-            CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+            CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & 
+            got_free_surf,  MASS_SUF, &
             C, CT, state, StorageIndexes(11), halo )
 
         END IF
@@ -1128,12 +1145,18 @@ contains
 
             rhs_p%val = -rhs_p%val + CT_RHS%val
 
+            if(got_free_surf) POLD_ALL => EXTRACT_SCALAR_FIELD( PACKED_STATE, "OldFEPressure" )
+
             ! Matrix vector involving the mass diagonal term
             DO CV_NOD = 1, CV_NONODS
                 DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                     CV_JNOD = COLCMC( COUNT )
                     rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
                     -DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( CV_JNOD )
+                        if(got_free_surf) then
+                    rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
+                    -MASS_SUF( COUNT ) * (P_ALL%VAL( CV_JNOD ) -POLD_ALL%VAL( CV_JNOD )) 
+                        endif
                 END DO
             END DO
             call zero_non_owned(rhs_p)
@@ -1181,29 +1204,31 @@ contains
 
 
 
-             !The condition number improves but the solver seems more sensitive
-             !We solve (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p
-!            call Rescale_and_solve(CMC_petsc, FINDCMC, rhs_p, deltap, trim(pressure%option_path))
-
             !Re-scale of the matrix to allow working with small values of sigma
-            ! this is a hack to deal with bad preconditioners and divide by zero errors.
-            rescaleVal = 0.0        
-            row=cmc_petsc%row_numbering%gnn2unn(1,1)
-            call MatGetValues(cmc_petsc%M, 1, [row], 1,[row],  aij, ierr)
-            rescaleVal = abs(aij(1))
-            !Make average
-            rescaleVal = max(rescaleVal, 1d-30)
-            !If it is parallel then we want to be consistent between cpus
-            if (IsParallel()) call allmin(rescaleVal)
-            call scale(cmc_petsc, 1.0/rescaleVal)
-            rhs_p%val = rhs_p%val / rescaleVal
-            !End of re-scaling
-
+            !this is a hack to deal with bad preconditioners and divide by zero errors.
+            if (is_porous_media) then
+                !The condition number improves but the solver seems more sensitive
+                !We solve (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p
+                !            call Rescale_and_solve(CMC_petsc, FINDCMC, rhs_p, deltap, trim(pressure%option_path))
+                !Since we save the parameter rescaleVal, we only do this one time
+                if (rescaleVal < 0.) then
+                    tfield => extract_tensor_field(packed_state,"Permeability")
+                    rescaleVal = minval(tfield%val, MASK = tfield%val > 1d-30)
+                    !If it is parallel then we want to be consistent between cpus
+                    if (IsParallel()) call allmin(rescaleVal)
+                end if
+                call scale(cmc_petsc, 1.0/rescaleVal)
+                rhs_p%val = rhs_p%val / rescaleVal
+                !End of re-scaling
+            end if
             !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
             !inside the same element to reduce the ill conditioning of the matrix
-!            if (is_compact_overlapping .and. present(Quality_list)) call Fix_to_bad_elements(&
-!                  cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
-            if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver) then!For discontinuous mesh
+            if (is_porous_media .and. present(Quality_list)) call Fix_to_bad_elements(&
+                  cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
+
+            if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver &
+                 .and. nonlinear_iteration == 1) then!For discontinuous mesh
+            !We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
                 !Solver that agglomerates all the DG informaton into a CG mesh
                 call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
                     NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
@@ -1273,13 +1298,13 @@ contains
         DEALLOCATE( DU_VEL )
         DEALLOCATE( UP_VEL )
 
-        if (.not.is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
+        if (.not.is_porous_media) DEALLOCATE( PIVIT_MAT )
 
 #ifdef USING_GFORTRAN
 !Nothing to do
 #else!deallocate the C and PIVIT_MAT matrices
 DEALLOCATE( C )
-if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
+if (is_porous_media) DEALLOCATE( PIVIT_MAT )
 #endif
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
 
@@ -1432,6 +1457,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
     DGM_PETSC, NO_MATRIX_STORE, &! Force balance
     NCOLELE, FINELE, COLELE, & ! Element connectivity.
     NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & ! pressure matrix for projection method
+    got_free_surf,  MASS_SUF, &
     SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
     NCOLCT, FINDCT, COLCT, &
     CV_ELE_TYPE, &
@@ -1468,7 +1494,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, XU_NLOC, &
         NLENMCY, NCOLMCY, IGOT_THETA_FLUX, SCVNGI_THETA, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, IPLIKE_GRAD_SOU,  IDIVID_BY_VOL_FRAC
-        LOGICAL, intent( in ) :: USE_THETA_FLUX,scale_momentum_by_volume_fraction, RETRIEVE_SOLID_CTY
+        LOGICAL, intent( in ) :: USE_THETA_FLUX,scale_momentum_by_volume_fraction, RETRIEVE_SOLID_CTY,got_free_surf
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
         INTEGER, DIMENSION( :  ), intent( in ) :: P_NDGLN
         INTEGER, DIMENSION(  :  ), intent( in ) :: CV_NDGLN
@@ -1515,6 +1541,7 @@ if (is_compact_overlapping) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, :, : ), pointer, intent( inout ) :: C
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: CT
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
+        REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         type(scalar_field), intent( inout ) :: CT_RHS
         REAL, DIMENSION( : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
         LOGICAL, intent( in ) :: GLOBAL_SOLVE
@@ -1665,6 +1692,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
         MEAN_PORE_CV, &
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
+        got_free_surf,  MASS_SUF, &
         dummy_transp, &
         StorageIndexes, 3)
 
@@ -2307,7 +2335,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !        PRINT *,'DIFF_MIN_FRAC, DIFF_MAX_FRAC, SIMPLE_DIFF_CALC:', DIFF_MIN_FRAC, DIFF_MAX_FRAC, SIMPLE_DIFF_CALC
 !        STOP 2811
         !If we have calculated already the PIVIT_MAT and stored then we don't need to calculate it again
-        Porous_media_PIVIT_not_stored_yet = (.not.is_compact_overlapping .or. StorageIndexes(34) <= 0)
+        Porous_media_PIVIT_not_stored_yet = (.not.is_porous_media .or. StorageIndexes(34) <= 0)
 
         !If we do not have an index where we have stored C, then we need to calculate it
         got_c_matrix  = StorageIndexes(12)/=0
@@ -2430,7 +2458,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !For Porous media to make QUAD_OVER_WHOLE_ELE = .false. to work, the element pair
         !has to be of the type PnDGPnDG
         ! Do NOT divide element into CV's to form quadrature.
-        QUAD_OVER_WHOLE_ELE = is_compact_overlapping
+        QUAD_OVER_WHOLE_ELE = is_porous_media
 
 
         call retrieve_ngi( ndim, u_ele_type, cv_nloc, u_nloc, &
@@ -3052,7 +3080,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             DO MAT_ILOC = 1, MAT_NLOC
                 MAT_INOD = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_ILOC )
 
-                IF(is_compact_overlapping) THEN ! Set to the identity - NOT EFFICIENT BUT GOOD ENOUGH FOR NOW AS ITS SIMPLE...
+                IF(is_porous_media) THEN ! Set to the identity - NOT EFFICIENT BUT GOOD ENOUGH FOR NOW AS ITS SIMPLE...
                    DO I=1,NDIM_VEL* NPHASE
                       LOC_U_ABSORB( I, I, MAT_ILOC ) = 1.0 
                    END DO
@@ -3270,7 +3298,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
             SIGMAGI = 0.0 ; SIGMAGI_STAB = 0.0
             TEN_XX  = 0.0 ; TEN_VOL  = 0.0
-            if (is_compact_overlapping) then
+            if (is_porous_media) then
                DO IPHA_IDIM = 1, NDIM_VEL * NPHASE
                     SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
                end do
@@ -3485,7 +3513,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 END DO
             end if ! endof if (Porous_media_PIVIT_not_stored_yet) then
 
-            if (.not.is_compact_overlapping) then
+            if (.not.is_porous_media) then
                 !###LOOP Loop_DGNods1 IS NOT NECESSARY FOR POROUS MEDIA###
                 Loop_DGNods1: DO U_ILOC = 1, U_NLOC
                     !GLOBI = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )

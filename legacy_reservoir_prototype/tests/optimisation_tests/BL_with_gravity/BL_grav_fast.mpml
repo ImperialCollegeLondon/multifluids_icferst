@@ -25,7 +25,7 @@
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
-          <Compact_overlapping/>
+          <Porous_media/>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -266,7 +266,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
@@ -312,7 +312,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
           <relaxation>
             <real_value rank="0">1</real_value>
@@ -478,7 +478,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <solver>
@@ -570,7 +570,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
@@ -615,7 +615,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
           <relaxation>
             <real_value rank="0">1.0</real_value>
@@ -763,7 +763,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <solver>

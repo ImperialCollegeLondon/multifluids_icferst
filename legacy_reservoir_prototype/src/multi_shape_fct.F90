@@ -40,7 +40,7 @@
     use shape_functions
     use state_module
     use spud
-    use global_parameters, only: option_path_len, is_compact_overlapping
+    use global_parameters, only: option_path_len, is_porous_media
     use shape_functions_Linear_Quadratic
     use shape_functions_NDim
     use Fields_Allocates, only : allocate, make_mesh
@@ -1752,7 +1752,7 @@
             IF(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_nloc==10).and.(ndim==3)) THEN
                 cvn_short2 = cvn2
             ELSE
-              if (is_compact_overlapping)  then
+              if (is_porous_media)  then
                 call get_CVN_compact_overlapping( CV_ELE_TYPE, NDIM, CV_NGI, CV_NLOC, cvn2, cvweight2)
                 cvn_short2 = cvn2
               end if

@@ -40,7 +40,7 @@
     use diagnostic_variables
     use diagnostic_fields
     use diagnostic_fields_wrapper
-    use global_parameters, only: option_path_len, is_compact_overlapping
+    use global_parameters, only: option_path_len, is_porous_media
     use diagnostic_fields_wrapper_new
     use element_numbering
     use shape_functions
@@ -83,6 +83,7 @@
        integer :: ele
        integer, allocatable, dimension(:) :: nodes
        real, allocatable, dimension(:) :: weights
+       real :: angle
     end type bad_elements
 
     ! Will need to generalise this to have an arbitrary dimension.
@@ -144,9 +145,9 @@
       call get_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/element_type', &
            vel_element_type )
 
-      is_compact_overlapping = .false.
+      is_porous_media = .false.
       if (trim(vel_element_type)=='lagrangian') &
-           is_compact_overlapping = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Compact_overlapping')
+       is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
 
       positions => extract_vector_field( state, 'Coordinate' )
       pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -509,7 +510,7 @@
 
 !!$ Options below are hardcoded and need to be added into the schema
       t_dg_vel_int_opt = 1 ; u_dg_vel_int_opt = 4 ; v_dg_vel_int_opt = 4 ; w_dg_vel_int_opt = 0
-      if( .not. is_compact_overlapping) v_dg_vel_int_opt = 1
+      if( .not. is_porous_media) v_dg_vel_int_opt = 1
       comp_diffusion_opt = 0 ; ncomp_diff_coef = 0
       volfra_use_theta_flux = .false. ; volfra_get_theta_flux = .true.
       comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
@@ -3263,10 +3264,22 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
            max_ts, default = huge(min_ts) )
       call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/min_timestep', &
            min_ts, default = -1. )
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch', &
-           increase_ts_switch, default = 1d-3 )
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch', &
-           decrease_ts_switch, default = 1d-1 )
+
+      !Switches are relative to the input value unless otherwise stated
+      if (have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch')) then
+          call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch', &
+          increase_ts_switch, default = 1d-3 )
+      else
+          increase_ts_switch = tolerance_between_non_linear / 10.
+      end if
+
+      if (have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch')) then
+          call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch', &
+          decrease_ts_switch, default = 1d-1 )
+      else
+          decrease_ts_switch = min(tolerance_between_non_linear * 10.,1.0)
+      end if
+
       !Get irresidual water saturation and irreducible oil to repeat a timestep if the saturation goes out of these values
       call get_option("/material_phase[0]/multiphase_properties/immobile_fraction", &
            s_gc, default=0.0)
@@ -3847,8 +3860,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         else if(size(X_ALL,1)==3) then!3D tetrahedra
         !adjust to match the 2D case once that one works properly
             do ELE = 1, totele
-                !FOR 3D THE WAY WE STORE THE Quality_list%nodes(1) HAS TO BE DIFFERENT,
-                !WE HAVE TO INTRODUCE x_ndgln, ELE AND X_NLOC IN THE SUBROUTINE AND THE 3 INDEXES AND STORE THE INDEXES
 
                 !We check the 4 triangles that form a tet
                 Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i), 4)
@@ -3904,29 +3915,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                 lenght(2) = sqrt(dot_product(X1(:)-X2(:), X1(:)-X2(:)))
                 lenght(3) = sqrt(dot_product(X2(:)-X3(:), X2(:)-X3(:)))
 
-!                !if 3D we have to project the triangle, not sure if this is necessary
-!                if (present(Pos4)) then!3D
-!                    X4 = X_ALL(:, x_ndgln(ele_Pos+Pos4))
-!                    s = sum(lenght)/2.
-!                    !Calculate height to node 3
-!                    ha = 2. * sqrt(s * (s - lenght(1)) * (s - lenght(2)) * (s - lenght(3))) / lenght(2)
-!                    !Calculate the lenght of the edges to node 4
-!                    lenght2(1) = sqrt(dot_product(X1(:)-X4(:), X1(:)-X4(:)))
-!                    lenght2(2) = lenght(2)
-!                    lenght2(3) = sqrt(dot_product(X2(:)-X4(:), X2(:)-X4(:)))
-!                    s = sum(lenght2)/2.
-!                    !Calculate height to node 4
-!                    hd = 2. * sqrt(s * (s - lenght2(1)) * (s - lenght2(2)) * (s - lenght2(3))) / lenght2(2)
-!                    !distance between 3 and 4
-!                    ad = sqrt(dot_product(X3(:)-X4(:), X3(:)-X4(:)))
-!                    !Obtain the angle
-!                    beta = acos((hd**2+ha**2-ad**2)/(2. *hd*ha))
-!                    !Project the edges
-!                    lenght(1) = sin(beta) * lenght(1)
-!                    lenght(3) = sin(beta) * lenght(3)
-!                end if
-
-
                 !Alphas
                 alpha(2) = acos((lenght(3)**2+lenght(2)**2-lenght(1)**2)/(2. *lenght(3)*lenght(2)))
                 alpha(1) = acos((lenght(1)**2+lenght(2)**2-lenght(3)**2)/(2. *lenght(1)*lenght(2)))
@@ -3943,8 +3931,10 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     Quality_list%nodes(1) = Pos1
                     Quality_list%nodes(2) = Pos2
                     Quality_list%nodes(3) = Pos3
+                    !Store angle so later the over-relaxation can depend on this
+                    Quality_list%angle = alpha(1) * 180 / pi
+
                     Check_element = .true.
-                    return
                 else if (alpha(2)>= MaxAngle) then
                     Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(2) / lenght(1))
                     Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(3) / lenght(1))
@@ -3952,8 +3942,9 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     Quality_list%nodes(1) = Pos2
                     Quality_list%nodes(2) = Pos1
                     Quality_list%nodes(3) = Pos3
+                    !Store angle so later the over-relaxation can depend on this
+                    Quality_list%angle = alpha(2) * 180 / pi
                     Check_element = .true.
-                    return
                 else if (alpha(3) >= MaxAngle) then
                     Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(1) / lenght(2))
                     Quality_list%weights(2) = abs(cos(alpha(2)) * lenght(3) / lenght(2))
@@ -3961,39 +3952,10 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     Quality_list%nodes(1) = Pos3
                     Quality_list%nodes(2) = Pos1
                     Quality_list%nodes(3) = Pos2
+                    !Store angle so later the over-relaxation can depend on this
+                    Quality_list%angle = alpha(3) * 180 / pi
                     Check_element = .true.
-                    return
                 end if
-
-
-!                if (alpha(1)<=MinAngle) then
-!                    !We calculate weights considering a right triangle formed by the bad node, its projection and the other
-!                    !corner
-!                    Quality_list%weights(1) = 1.0
-!                    Quality_list%weights(2) = 0.0
-!
-!                    Quality_list%nodes(1) = Pos3
-!                    Quality_list%nodes(2) = Pos2
-!                    Quality_list%nodes(3) = Pos1
-!                    Check_element = .true.
-!                    return
-!                else if (alpha(2)<=MinAngle) then
-!                    Quality_list%weights(1) = 1.0
-!                    Quality_list%weights(2) = 0.0
-!                    Quality_list%nodes(1) = Pos3
-!                    Quality_list%nodes(2) = Pos1
-!                    Quality_list%nodes(3) = Pos2
-!                    Check_element = .true.
-!                    return
-!                else if (alpha(3) <= MinAngle) then
-!                    Quality_list%weights(1) = 1.0
-!                    Quality_list%weights(2) = 0.0
-!                    Quality_list%nodes(1) = Pos1
-!                    Quality_list%nodes(2) = Pos2
-!                    Quality_list%nodes(3) = Pos3
-!                    Check_element = .true.
-!                    return
-!                end if
 
             end function Check_element
 

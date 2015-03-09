@@ -38,7 +38,7 @@
          check_diagnostic_dependencies
     use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
                                simulation_start_wall_time, &
-                               topology_mesh_name, current_time, is_compact_overlapping
+                               topology_mesh_name, current_time, is_porous_media
     use fldebug
     use reference_counting
     use state_module
@@ -208,7 +208,9 @@
       logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
       real, dimension(:,:,:), allocatable  :: reference_field
 
-      !List to store bad elements
+      !Variables related to the deteccion and correction of bad elements
+      real, parameter :: Max_bad_angle = 95.0
+      real, parameter :: Min_bad_angle = 0.0
       type(bad_elements), allocatable, dimension(:) :: Quality_list
 
       type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
@@ -528,10 +530,13 @@
       end if
 
 
-      !Look for bad elements! IF THIS WORKS, I HAVE TO SET IT TO DO IT AFTER ADAPTING THE MESH AND ALSO DEALLOCATE Quality_list
-      !and deallocate weights inside it.
-      !allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-      !call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, 115.0, 1.0, Quality_list)
+      !Look for bad elements to apply a correction on them
+      if (is_porous_media) then
+          allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+          call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
+      end if
+
+
 
 !!$ Starting Time Loop
       itime = 0
@@ -675,7 +680,7 @@
                ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
                ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
                ! is diagonal
-               if( is_compact_overlapping ) then
+               if( is_porous_media ) then
                   call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
                        cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                        finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
@@ -813,7 +818,8 @@
                     in_ele_upwind, dg_ele_upwind, &
                     iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
                     scale_momentum_by_volume_fraction,&
-                    StorageIndexes=StorageIndexes, Quality_list = Quality_list )
+                    StorageIndexes=StorageIndexes, Quality_list = Quality_list,&
+                    nonlinear_iteration = its )
 !!$ Calculate Density_Component for compositional
                if( have_component_field ) &
                     call Calculate_Component_Rho( state, packed_state, &
@@ -1227,6 +1233,7 @@
                  multiphase_state,multicomponent_state)
             call set_boundary_conditions_values(state, shift_time=.true.)
 
+            if (allocated(Quality_list) ) deallocate(Quality_list)
 
 !!$ Deallocating array variables:
             deallocate( &
@@ -1325,6 +1332,11 @@
 !!$ CV-FEM matrix
                  mx_ncolm, ncolm, findm, colm, midm, mx_nface_p1 )
 
+            !Look again for bad elements
+            if (is_porous_media) then
+                allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+                call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
+            end if
             call temp_mem_hacks()
 
 !!$ Allocating space for various arrays:
@@ -1496,6 +1508,8 @@
       call deallocate(multiphase_state)
       call deallocate(multicomponent_state )
       deallocate(intflux)
+
+      if (allocated(Quality_list)) deallocate(Quality_list)
 
       return
 

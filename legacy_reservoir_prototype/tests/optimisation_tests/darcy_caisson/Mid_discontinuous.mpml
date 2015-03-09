@@ -23,8 +23,9 @@
             <integer_value rank="0">2</integer_value>
           </polynomial_degree>
           <element_type>
-            <string_value>overlapping</string_value>
+            <string_value>lagrangian</string_value>
           </element_type>
+          <Porous_media/>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -146,6 +147,7 @@
       <integer_value rank="0">3</integer_value>
     </nonlinear_iterations>
   </timestepping>
+  <caching/>
   <physical_parameters>
     <mobility>
       <real_value rank="0">10.</real_value>
@@ -200,6 +202,7 @@
             <integer_value shape="1" rank="1">22</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">0</real_value>
             </constant>
@@ -263,6 +266,7 @@
             <mass_terms/>
             <viscosity_scheme>
               <compact_discontinuous_galerkin/>
+              <nonlinear_scheme/>
             </viscosity_scheme>
             <advection_scheme>
               <upwind/>
@@ -310,6 +314,7 @@
             <integer_value shape="1" rank="1">21</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -329,6 +334,7 @@
             <integer_value shape="1" rank="1">23</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -447,6 +453,7 @@
             <integer_value shape="1" rank="1">21</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">1</real_value>
             </constant>
@@ -528,6 +535,7 @@
           <discontinuous_galerkin>
             <viscosity_scheme>
               <compact_discontinuous_galerkin/>
+              <nonlinear_scheme/>
             </viscosity_scheme>
             <advection_scheme>
               <upwind/>
@@ -575,6 +583,7 @@
             <integer_value shape="1" rank="1">21</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -594,6 +603,7 @@
             <integer_value shape="1" rank="1">23</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -712,6 +722,7 @@
             <integer_value shape="1" rank="1">21</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">0</real_value>
             </constant>

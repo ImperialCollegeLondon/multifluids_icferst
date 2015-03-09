@@ -32,7 +32,7 @@
     use fldebug
 
     use spud
-    use global_parameters, only: option_path_len, is_compact_overlapping
+    use global_parameters, only: option_path_len, is_porous_media
 
   contains
 
@@ -1522,7 +1522,7 @@
 
 !!$ Assuming the DG representation requires the more storage space
       mx_ncolcmc = mx_nface_p1 **3 * cv_nloc * cv_nloc * totele 
-      if(is_compact_overlapping) then
+      if(is_porous_media) then
          mx_ncoldgm_pha = 1
          mx_ncolmcy     = 1
       !   mx_ncolm = 1
@@ -1639,7 +1639,7 @@ integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha
 
       ncolele=size(colele)
 
-      if(.not.(is_compact_overlapping)) then
+      if(.not.(is_porous_media)) then
       !-
       !- Computing sparsity for force balance
       !-
@@ -1744,7 +1744,7 @@ integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha
       !-
       !- Computing the sparsity for the force balance plus cty multi-phase eqns
       !- 
-    if(.not.(is_compact_overlapping .or. mx_ncolmcy==0)) then
+    if(.not.(is_porous_media .or. mx_ncolmcy==0)) then
       finmcy = 0 ; colmcy = 0 ; midmcy = 0
       call exten_sparse_mom_cty( ndim, findgm_pha, coldgm_pha, nphase * u_nonods * ndim, ncoldgm_pha, ncolct, &
            cv_nonods, findct, colct, &
