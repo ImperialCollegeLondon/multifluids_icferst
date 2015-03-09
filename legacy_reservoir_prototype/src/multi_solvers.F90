@@ -580,10 +580,11 @@ contains
       MAP_DG2CTY
       integer :: ele,cv_iloc, dg_nod, cty_nod, jcolcmc, jcolcmc_small
       integer :: mx_ncmc_small, ncmc_small, count, count2, count3, GL_ITS, col
-      real :: OPT_STEP, k
+      real :: opt_step, k
 
       integer :: ierr, i
       real, dimension(1) :: auxR
+      real, dimension(CV_NONODS) :: DP_DG, USTEP
       !Variables for CMC_Small_petsc
       type(petsc_csr_matrix)::  CMC_Small_petsc
       type(mesh_type), pointer :: pmesh
@@ -675,7 +676,7 @@ contains
       do k = 1, multi_level_its
 
           !Calculate the residual
-          if (k > 1) then
+          if (multi_level_its > 1) then
               do dg_nod = 1, cv_nonods
                   DO COUNT = FINDCMC(dg_NOD), FINDCMC(dg_NOD+1) - 1
                       col=COLCMC(COUNT)
@@ -702,14 +703,41 @@ contains
           call zero(deltap_small)
           call petsc_solve(deltap_small, CMC_Small_petsc, RHS_small, trim(option_path))
 
+
           !We map back the results (equivalent to project the values from coarse to fine meshes)
+          DP_DG = 0.
           do dg_nod = 1, cv_nonods
               cty_nod = MAP_DG2CTY(dg_nod)
-              deltap%val(dg_nod) = deltap%val(dg_nod) + deltap_small%val(cty_nod)
+              DP_DG(dg_nod) = DP_DG(dg_nod) + deltap_small%val(cty_nod)
+!              deltap%val(dg_nod) = deltap%val(dg_nod) + deltap_small%val(cty_nod)
           end do
 
-          !Some smoothings in the finest mesh to finish the loop
-          if (DG_correction) then
+          opt_step=1.0
+          !If we are iterating then try to get the best from the CG pressure mesh
+          if(multi_level_its > 1) then
+              ! Determine optimal step length...
+              ustep=0.0
+              do dg_nod = 1, cv_nonods
+                  DO COUNT = FINDCMC(dg_NOD), FINDCMC(dg_NOD+1) - 1
+                      call MatGetValues(cmc_petsc%M, 1, (/ dg_nod-1 /), 1, (/ COLCMC(COUNT)-1 /),  auxR, ierr)
+                      USTEP(dg_nod) = USTEP(dg_nod) + auxR(1) * DP_DG(COLCMC(COUNT))
+                  END DO
+              end do
+              opt_step = - sum(-ustep(:) * Residual_DG%val(:) ) / max(1d-15, dot_product(ustep, ustep))
+              ! Make sure the step length is between [0,1]
+              opt_step=min(1.0,max(0.,opt_step))
+              print *, OPT_STEP
+          endif
+          !Update the DG solution with a dumped value of CG
+          deltap%val = deltap%val + DP_DG * opt_step
+
+          !Depending on whether the CG solution is helping or not we either solve or continue
+          if (opt_step < 1d-2) then
+              !The CG solver cannot do anymore, solve what remains to be done
+              call petsc_solve(deltap,CMC_petsc,RHS_p,trim(option_path))
+              exit!Exit the loop
+          else if (DG_correction) then !Some smoothings in the finest mesh to finish the loop
+
               call petsc_solve(deltap,CMC_petsc,RHS_p,trim(solv_options))
           end if
 
@@ -782,29 +810,6 @@ contains
                 end if
                 !Add the new data to the matrix
                 call addto( cmc_petsc, blocki = 1, blockj = 1, i = i_node, j = j_node,val = rescal(1) * auxR)
-
-!                    !TYPE 1
-!                  if (i_node == bad_node) then!Row of the bad element
-!                      if ( j_node== i_node) then!diagonal of bad node
-!                          auxR = 1.0
-!                      else!not the diagonals
-!                          auxR = -Quality_list(i)%weights(counter(1))
-!                          counter(1) = counter(1) + 1
-!                      end if
-!                  else
-!                      if (i_node == j_node) then!diagonal of the other nodes
-!                           auxR = 1.0
-!                      else if (j_node == bad_node) then!The column of the bad node
-!                          auxR = -Quality_list(i)%weights(counter(2))
-!                          counter(2) = counter(2) + 1
-!                      else
-!                       auxR = 0.0
-!                      end if
-!                  end if
-!                  !Add the new data to the matrix
-!                  call addto( cmc_petsc, blocki = 1, blockj = 1, i = i_node, j = j_node,val = rescal(1) * auxR)
-
-
 
               end do
           end do

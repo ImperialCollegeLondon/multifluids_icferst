@@ -1193,7 +1193,7 @@ contains
                 !The condition number improves but the solver seems more sensitive
                 !We solve (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p
                 !            call Rescale_and_solve(CMC_petsc, FINDCMC, rhs_p, deltap, trim(pressure%option_path))
-                !Since we save the parameter, we only do this one time
+                !Since we save the parameter rescaleVal, we only do this one time
                 if (rescaleVal < 0.) then
                     tfield => extract_tensor_field(packed_state,"Permeability")
                     rescaleVal = minval(tfield%val, MASK = tfield%val > 1d-30)
