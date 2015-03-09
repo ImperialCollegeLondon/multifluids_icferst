@@ -348,6 +348,7 @@
          TOTELE, U_NLOC, U_NDGLN, &
          NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+         got_free_surf,  MASS_SUF, &
          C, CT, state, indx, halos)
       !use multiphase_1D_engine
       !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
@@ -355,6 +356,7 @@
       ! form pressure matrix CMC using a colouring approach
       INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC, &
            TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
+      LOGICAL, intent( in ) :: got_free_surf
       INTEGER, DIMENSION( : ), intent( in ) ::FINDC
       INTEGER, DIMENSION( : ), intent( in ) :: COLC
       REAL, DIMENSION( :, :, : ), intent( in ) :: INV_PIVIT_MAT
@@ -365,6 +367,7 @@
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       REAL, DIMENSION( : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
+      REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( :, :, : ), intent( in ) :: C
@@ -412,6 +415,7 @@
               TOTELE, U_NLOC, U_NDGLN, &
               NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
               CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+              got_free_surf,  MASS_SUF, &
               C, CT, ndpset, state, indx)
       ELSE
          ! Slow but memory efficient...
@@ -421,6 +425,7 @@
               TOTELE, U_NLOC, U_NDGLN, &
               NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
               CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+              got_free_surf,  MASS_SUF, &
               C, CT, ndpset)
       END IF
 
@@ -439,12 +444,14 @@
             TOTELE, U_NLOC, U_NDGLN, &
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+            got_free_surf,  MASS_SUF, &
             C, CT, ndpset, state, indx )
 
          implicit none
          ! form pressure matrix CMC using a colouring approach
          INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC, &
               TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
+         LOGICAL, intent( in ) :: got_free_surf
          INTEGER, intent( in ) :: ndpset 
          INTEGER, DIMENSION( : ), intent( in ) ::FINDC
          INTEGER, DIMENSION( : ), intent( in ) :: COLC
@@ -456,6 +463,7 @@
          type(petsc_csr_matrix), intent(inout)::  CMC_petsc
          REAL, DIMENSION( : ), intent( inout ) :: CMC_PRECON
          REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
+         REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
          INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
          INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
          REAL, DIMENSION( :, :, : ), intent( in ) :: C
@@ -475,7 +483,7 @@
          INTEGER :: CV_NOD, CV_JNOD, COUNT, COUNT2, COUNT3, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
          INTEGER :: MAX_COLOR_IN_ROW, ICHOOSE, KVEC, I, ELE, U_INOD, U_NOD, ICAN_COLOR, MX_COLOR, NOD_COLOR
          INTEGER :: NCOLOR, ierr, j
-         REAL :: RSUM
+         REAL :: RSUM, RSUM_SUF
          !Variables to store things in state
          type(mesh_type), pointer :: fl_mesh
          type(mesh_type) :: Auxmesh
@@ -624,17 +632,23 @@
          ! Matrix vector involving the mass diagonal term
          DO CV_NOD = 1, CV_NONODS
             RSUM = 0.0
+            RSUM_SUF = 0.0
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
 
                CMC_COLOR_VEC_MANY( :, CV_NOD ) = CMC_COLOR_VEC_MANY( :, CV_NOD ) +&
                  DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+                        if(got_free_surf) then
+               CMC_COLOR_VEC_MANY( :, CV_NOD ) = CMC_COLOR_VEC_MANY( :, CV_NOD ) +&
+                 MASS_SUF( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+               RSUM_SUF = RSUM_SUF + MASS_SUF( COUNT )
+                        endif
 
                RSUM = RSUM + MASS_MN_PRES( COUNT )
             END DO
-            IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES...
+            IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
               CMC_COLOR_VEC2_MANY( :, CV_NOD ) = CMC_COLOR_VEC2_MANY( :, CV_NOD ) &
-                   +  DIAG_SCALE_PRES( CV_NOD ) * RSUM * COLOR_VEC_MANY( :, CV_NOD )
+                   +  (DIAG_SCALE_PRES( CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC_MANY( :, CV_NOD )
             END IF
          END DO
 
@@ -794,6 +808,7 @@
          TOTELE, U_NLOC, U_NDGLN, &
          NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+         got_free_surf,  MASS_SUF, &
          C, CT, ndpset )
       !use multiphase_1D_engine
 
@@ -801,6 +816,7 @@
       ! form pressure matrix CMC using a colouring approach
       INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC, &
            TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
+      LOGICAL, intent( in ) :: got_free_surf
       INTEGER, intent( in ) :: ndpset 
       INTEGER, DIMENSION( : ), intent( in ) ::FINDC
       INTEGER, DIMENSION( : ), intent( in ) :: COLC
@@ -812,6 +828,7 @@
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       REAL, DIMENSION( : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
+      REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( :, :, : ), intent( in ) :: C
@@ -828,7 +845,7 @@
       REAL, DIMENSION( :, :, : ), allocatable :: CDP
       INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
       INTEGER :: I, ELE,u_inod,u_nod, ierr
-      REAL :: RSUM
+      REAL :: RSUM, RSUM_SUF
 
       ALLOCATE( NEED_COLOR( CV_NONODS ) )
       ALLOCATE( COLOR_VEC( CV_NONODS ) )
@@ -903,16 +920,24 @@
          ! Matrix vector involving the mass diagonal term
          DO CV_NOD = 1, CV_NONODS
             RSUM = 0.0
+            RSUM_SUF = 0.0
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
                CMC_COLOR_VEC( CV_NOD ) = CMC_COLOR_VEC( CV_NOD ) &
                     + DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
                RSUM = RSUM + MASS_MN_PRES( COUNT )
+
+                        if(got_free_surf) then
+               CMC_COLOR_VEC( CV_NOD ) = CMC_COLOR_VEC( CV_NOD ) +&
+                 MASS_SUF( COUNT ) * COLOR_VEC( CV_JNOD )
+               RSUM_SUF = RSUM_SUF + MASS_SUF( COUNT )
+                        endif
+
             END DO
            
-            IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES...
+            IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
                CMC_COLOR_VEC2( CV_NOD ) = CMC_COLOR_VEC2( CV_NOD ) &
-                    + DIAG_SCALE_PRES( CV_NOD ) * RSUM * COLOR_VEC( CV_NOD )
+                    + (DIAG_SCALE_PRES( CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC( CV_NOD )
             END IF
          END DO
 
