@@ -87,7 +87,7 @@
     end type bad_elements
 
     ! Will need to generalise this to have an arbitrary dimension.
-    integer, dimension(1) :: outlet_id
+    integer, dimension(:), allocatable :: outlet_id
 
   contains
 
@@ -120,11 +120,11 @@
       ! arrays that are not 1D and also to have a fail safe in case this quantity does not exist. Will be better to add a separate option into diamond
       ! when the user wants to do an integral.
 
-      !if (have_option( "/material_phase::phase1/scalar_field::Pressure/prognostic/boundary_conditions::outlet/surface_ids")) then
+      if (have_option( "/io/dump_boundaryflux/surface_ids")) then
 
-      call get_option( "/material_phase::phase1/scalar_field::Pressure/prognostic/boundary_conditions::outlet/surface_ids", outlet_id)
+        call get_option( "/io/dump_boundaryflux/surface_ids", outlet_id)
 
-      !endif
+      endif
 
 !!$ Defining dimension and nstate
       call get_option( '/geometry/dimension', ndim )
@@ -3962,7 +3962,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
     end subroutine CheckElementAngles
 
 
-    subroutine calculate_outflux(packed_state, ndotqnew, sele, surface_ids, totoutflux, ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, detwei, sumdetwei)
+    subroutine calculate_outflux(packed_state, ndotqnew, sele, surface_ids, totoutflux, ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, detwei)
        implicit none
 
 ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
@@ -3972,7 +3972,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
        type(state_type), intent(in) :: packed_state
        real, dimension(:), intent(in) :: ndotqnew
        integer, intent(in) :: sele
-       integer, dimension(:), intent(in) :: surface_ids
+       integer, dimension(1), intent(in) :: surface_ids
        real, dimension(:), intent(inout) :: totoutflux
        integer, intent(in) :: ele
        integer, dimension(:), intent( in ) ::  x_ndgln
@@ -3982,7 +3982,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
        integer, intent(in) :: cv_nonods
        integer, intent(in) :: nphase
        real, pointer, dimension( : ), intent(in) :: detwei
-       real, intent(inout) :: sumdetwei
 
 ! Local variables
 

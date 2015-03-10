@@ -63,7 +63,7 @@ module cv_advection
    public ::  totout
 
    !real, dimension(:), allocatable :: totout
-   real, dimension(2) :: totout
+   real, allocatable, dimension(:,:) :: totout
    ! To get the allocatable version to work need to know where we can deallocate totout in Multiphase Time Loop. This is probably not a good idea
    ! don't want to be allocating/deallocating deep in cv-adv div/time loops etc. Better off just making nphase a global variable so we
    ! define real, dimension(nphase) :: totout.
@@ -333,8 +333,8 @@ contains
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
 
-      real, dimension(nphase) :: totoutflux
-      real :: sumdetwei
+      real, dimension(nphase, size(outlet_id)) :: totoutflux
+      integer :: ioutlet
 
 
       ! Local variables
@@ -552,6 +552,13 @@ contains
       integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD
       REAL :: MM_GRAVTY
 
+      !Variables to calculate flux across boundaries
+      logical :: calculate_flux
+
+      !We only allocate outlet_id if you actually want to calculate fluxes
+      calculate_flux = allocated(outlet_id)
+
+
       !Check capillary pressure options
       capillary_pressure_activated = .false.
       if (GOT_CAPDIFFUS) then
@@ -625,8 +632,11 @@ contains
     !##################END OF SET VARIABLES##################
 
       ! Totoutflux stores the integral of n.q across a specified boundary and is calculated through the subroutine calculate_outflux(). It's initialised to zero in the line below
-      totoutflux = 0
-      sumdetwei = 0
+      if (calculate_flux) then
+          do ioutlet = 1, size(outlet_id)
+              totoutflux(:,ioutlet) = 0
+          enddo
+      end if
 
     !! Get boundary conditions from field
     call get_entire_boundary_condition(tracer,&
@@ -2227,10 +2237,12 @@ contains
                      ENDIF Conditional_GETCT2
 
 
+                    if ( GETCT .and. calculate_flux ) then
 
-                    if ( GETCT ) then
+                        do ioutlet = 1, size(outlet_id)
+                            call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI)
 
-                    call calculate_outflux(packed_state, ndotqnew, sele, outlet_id, totoutflux, ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI, sumdetwei)
+                        enddo
 
                     end if
 
@@ -2638,14 +2650,14 @@ contains
       END IF
 
 
-       if(GETCT) then
-
-       totout(:) = totoutflux(:)
-
+       if(GETCT .and. calculate_flux) then
+           totout = totoutflux
+           do ioutlet = 1,size(outlet_id)
+           call allsum(totout(:,ioutlet))
+           enddo
        endif
 
 
-       call allsum(totout)
 
 
       ! Deallocating temporary working arrays

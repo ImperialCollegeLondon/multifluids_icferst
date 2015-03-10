@@ -220,6 +220,8 @@
       real::  second_theta
 
       integer :: checkpoint_number
+      ! Loop index over the number of boundaries to calculate flux across
+      integer :: ioutlet
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
       integer, dimension (35) :: StorageIndexes
@@ -247,7 +249,10 @@
 
       logical :: write_all_stats=.true.
 
-      real, dimension(:),  allocatable  :: intflux
+      real, dimension(:,:),  allocatable  :: intflux
+
+      logical :: calculate_flux
+
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -257,6 +262,8 @@
       assert(ierr == ZOLTAN_OK)
 #endif
 
+      !We only allocate outlet_id if you actually want to calculate fluxes
+      calculate_flux = allocated(outlet_id)
       !Initially we set to use Stored data and that we have a new mesh
       StorageIndexes = 0!Initialize them as zero !
 
@@ -543,18 +550,23 @@
       dtime = 0
 
       ! Initialise time integrated fluxes
+      if(calculate_flux) then
+      allocate(intflux(nphase,size(outlet_id)))
+      allocate(totout(nphase, size(outlet_id)))
 
-      allocate(intflux(nphase))
-      intflux = 0.
+      do ioutlet = 1, size(outlet_id)
+      intflux(:, ioutlet) = 0.
 
       ! May want to initialise this to equal to the totout on the initial data and not zero so that you don't always get zero at time zero.
-      totout = 0.
+      totout(:, ioutlet) = 0.
+      enddo
+      endif
 
       checkpoint_number=1
       Loop_Time: do
 
       ! Better to do these calculations here rather than in the subroutine dump_outflux
-
+       if(calculate_flux) then
       intflux = intflux + totout*dt
 
       if(itime > 0) then
@@ -563,9 +575,11 @@
 
       endif
 
+      endif
+
       ! Dump boundary outfluxes to file - may want to change the dumping routine so that it just dumps values. Currently also sums intflux and normalises totout
       ! This can cause confusion as when commenting out this routine call here, you'll get different results for totout. JUST CHANGED IT - see above
-
+      if(calculate_flux) then
       if(getprocno() == 1) then
 
         call dump_outflux(current_time,itime,totout,intflux, dt)
@@ -573,8 +587,9 @@
         ! Note in the current version on Vader - this printout is outside of the getprocno() loop. This will give incorrectly normalised printout to screen
         ! of totout on all processors except processor 1. This needs to be inside the loop. Doesn't matter for the outfluxes file.
 
-        print *, totout
+        !print *, totout
 
+      endif
       endif
 
 !!$
@@ -1507,9 +1522,10 @@
       call deallocate(packed_state)
       call deallocate(multiphase_state)
       call deallocate(multicomponent_state )
-      deallocate(intflux)
 
       if (allocated(Quality_list)) deallocate(Quality_list)
+
+      if (calculate_flux) deallocate(outlet_id, totout, intflux)
 
       return
 
@@ -1876,25 +1892,30 @@
 
    real,intent(in) :: current_time
    integer, intent(in) :: itime
-   real, dimension(:), intent(inout) :: outflux, intflux
+   real, dimension(:,:), intent(inout) :: outflux, intflux
    real,intent(in) :: ts
 
 
+   integer :: ioutlet
    type(stat_type), target :: default_stat
 
-   !intflux = intflux + outflux*ts
-
-   !outflux = outflux/sum(outflux)
-
    default_stat%conv_unit=free_unit()
+
    open(unit=default_stat%conv_unit, file="outfluxes.txt", action="write", position="append")
 
    ! Disable the column headings in the final version, they just cause annoyance during post-processing
    if(itime.eq.0) then
-     write(default_stat%conv_unit,*) "Current Time", "***********Phase1 boundary flux", "**********Phase2 boundary flux", "***********Phase 1 Integrated Flux", "***********Phase 2 Integrated Flux"
-   endif
+     write(default_stat%conv_unit,*) "Current Time"
+     do ioutlet =1, size(outflux,2)
+        write(default_stat%conv_unit,*) "Surface id:", outlet_id(ioutlet), "********Phase1 boundary flux", "*******Phase2 boundary flux", "********Phase 1 Integrated Flux", "********Phase 2 Integrated Flux"
+     end do
 
-   write(default_stat%conv_unit,*) current_time,  outflux,  intflux
+   endif
+   write(default_stat%conv_unit,*) current_time
+
+     do ioutlet =1, size(outflux,2)
+       write(default_stat%conv_unit,*) outflux(:, ioutlet),  intflux(:, ioutlet)
+     end do
 
    close (default_stat%conv_unit)
 
