@@ -138,7 +138,7 @@ contains
                uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ))
              
 
-    p_r=0. ; uf_r=0. ; muf_r=0. ; f=0. ; a=0. ; uf_v=0. ; du_s=0. ; u_s=0.
+    p_r=0.0 ; uf_r=0.0 ; muf_r=0.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0
 
     call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r )
     call interpolate_fields_out_v( packed_state, nphase, uf_v )
@@ -368,7 +368,7 @@ contains
     call interpolation_galerkin_femdem( alg_ext, alg_fl, field = volume_fraction )
 
 
-    ! ensure vf is between 0. and 1.
+    ! ensure vf is between 0.0 and 1.0
     call bound_volume_fraction( volume_fraction%val )
 
     ! deallocate
@@ -445,9 +445,10 @@ contains
 
     character( len = OPTION_PATH_LEN ) :: &
          path = "/tmp/galerkin_projection/continuous"
-    integer :: stat
+    integer :: stat, totele, ele
+    real, dimension( : ), allocatable :: scale
 
-    real, parameter :: tol = 1.e-10
+    real, parameter :: tol = 1.0e-10, matrix_perm = 1.0e-5
 
     ewrite(3,*) "inside calculate_phi_and_perm"
 
@@ -463,8 +464,8 @@ contains
     call set_solver_options( path, &
          ksptype = "gmres", &
          pctype = "hypre", &
-         rtol = 1.e-10, &
-         atol = 0., &
+         rtol = 1.0e-10, &
+         atol = 0.0, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -525,21 +526,31 @@ contains
     ! bound ring volume fraction
     call bound_volume_fraction( rvf % val )
 
-
-    porosity => extract_scalar_field( packed_state, "Porosity" )
-    permeability => extract_tensor_field( packed_state, "Permeability" )
-
-    call zero( porosity ) ; call zero( permeability )
-
+    ! calculate phi and perm
     ! only fractures are permeable and porous
-    porosity % val = rvf % val 
+    ! perm is non-zero only in fractures
+    ! also add an isotropic, background/matrix permeability
+    permeability => extract_tensor_field( packed_state, "Permeability" )
+    porosity => extract_scalar_field( packed_state, "Porosity" )
 
-    permeability % val( 1, 1, : ) = field_fl_p11 % val
+    call zero( permeability ) ; call zero( porosity )
+
+    permeability % val( 1, 1, : ) = field_fl_p11 % val + matrix_perm
     permeability % val( 1, 2, : ) = field_fl_p12 % val
     permeability % val( 2, 1, : ) = field_fl_p21 % val
-    permeability % val( 2, 2, : ) = field_fl_p22 % val
+    permeability % val( 2, 2, : ) = field_fl_p22 % val + matrix_perm
+
+    totele = ele_count( fl_mesh )
+    allocate( scale( totele ) ) ; scale = 0.0
+    do ele = 1, totele
+       if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0 
+    end do
+
+    porosity % val = rvf % val * scale 
+
 
     ! deallocate
+    deallocate( scale )
     call deallocate( fl_positions )
     call deallocate( rvf )
 
@@ -583,7 +594,7 @@ contains
     logical :: constant_mu
     character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
 
-    p_r = 0. ; u_r = 0. ; mu_r = 0.
+    p_r = 0.0 ; u_r = 0.0 ; mu_r = 0.0
 
     cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
 
@@ -605,8 +616,8 @@ contains
     call set_solver_options( path, &
          ksptype = "gmres", &
          pctype = "hypre", &
-         rtol = 1.e-10, &
-         atol = 0., &
+         rtol = 1.0e-10, &
+         atol = 0.0, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -762,7 +773,7 @@ contains
     integer :: stat, u_nonods
     character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
 
-    u_v = 0.
+    u_v = 0.0
 
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
     fl_positions => extract_vector_field( packed_state, "Coordinate" )
@@ -770,8 +781,8 @@ contains
     call set_solver_options( path, &
          ksptype = "gmres", &
          pctype = "hypre", &
-         rtol = 1.e-10, &
-         atol = 0., &
+         rtol = 1.0e-10, &
+         atol = 0.0, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -877,8 +888,8 @@ contains
     call set_solver_options( path, &
          ksptype = "gmres", &
          pctype = "hypre", &
-         rtol = 1.e-10, &
-         atol = 0., &
+         rtol = 1.0e-10, &
+         atol = 0.0, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -1025,8 +1036,8 @@ contains
     call set_solver_options( path, &
          ksptype = "gmres", &
          pctype = "hypre", &
-         rtol = 1.e-10, &
-         atol = 0., &
+         rtol = 1.0e-10, &
+         atol = 0.0, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -1290,7 +1301,7 @@ contains
                f % val( 1, ele_nodes( 1 ) ), f % val( 2, ele_nodes( 1 ) ), &
                f % val( 1, ele_nodes( 2 ) ), f % val( 2, ele_nodes( 2 ) ), &
                f % val( 1, ele_nodes( 3 ) ), f % val( 2, ele_nodes( 3 ) ) )
-          if ( area < 0. ) then
+          if ( area < 0.0 ) then
              ! swap 2nd and 3rd nodes
              ndglno_s( ( ele - 1 ) * nloc + 2 : ele * nloc ) = (/ ele_nodes( 3 ), ele_nodes( 2 ) /) 
           end if
@@ -1486,7 +1497,7 @@ contains
     real, intent( in ), optional :: v_min, v_max
     real :: vmin, vmax
 
-    vmin = 0. ; vmax = 1.
+    vmin = 0.0 ; vmax = 1.0
     if ( present( v_min ) ) vmin = v_min
     if ( present( v_max ) ) vmax = v_max
 
