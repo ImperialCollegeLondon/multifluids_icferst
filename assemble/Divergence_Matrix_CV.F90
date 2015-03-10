@@ -46,6 +46,7 @@ module divergence_matrix_cv
   use global_parameters, only: OPTION_PATH_LEN
   use field_options, only: get_coordinate_field
   use sparsity_patterns_meshes
+  use multiphase_module
   implicit none
 
   private
@@ -56,7 +57,7 @@ contains
     !************************************************************************
     subroutine assemble_divergence_matrix_cv(CT_m, state, ct_rhs, & 
                                              test_mesh, field, &
-                                             get_ct, exclude_boundaries)
+                                             get_ct, exclude_boundaries, include_vfrac)
 
       ! inputs/outputs
       ! bucket full of fields
@@ -73,6 +74,7 @@ contains
       
       logical, intent(in), optional :: get_ct
       logical, intent(in), optional :: exclude_boundaries
+      logical, intent(in), optional :: include_vfrac
 
       ! local
       ! degree of quadrature over cv faces
@@ -106,9 +108,25 @@ contains
       type(vector_field) :: field_bc
 
       real, dimension(:,:,:), allocatable :: ct_mat_local, ct_mat_local_bdy
-      real, dimension(:), allocatable :: ct_rhs_local
+      real, dimension(:,:), allocatable :: ct_rhs_local
 
-      logical :: l_get_ct
+      logical :: l_get_ct, l_include_vfrac
+
+      !! Multiphase variables
+      logical :: multiphase
+      ! Volume fraction fields
+      type(scalar_field), pointer :: vfrac
+      type(scalar_field) :: nvfrac
+      ! Values of nvfrac at the elements and faces
+      real, dimension(:), allocatable :: nvfrac_gi, nvfrac_gi_f
+      ! CV shape functions for nvfrac (computed only if the Coordinate and
+      ! PhaseVolumeFraction meshes are different, otherwise they are
+      ! assigned x_cvshape and x_cvbdyshape)
+      type(element_type) :: nvfrac_cvshape, nvfrac_cvbdyshape
+
+      ! Boundary condition types
+      integer, parameter :: BC_TYPE_WEAKDIRICHLET = 1, BC_TYPE_NO_NORMAL_FLOW = 2, BC_TYPE_INTERNAL = 3, &
+                            BC_TYPE_FREE_SURFACE = 4
 
       ! =============================================================
       ! Subroutine to construct the matrix CT_m (a.k.a. C1/2/3T).
@@ -120,6 +138,17 @@ contains
         l_get_ct = get_ct
       else
         l_get_ct = .true.
+      end if
+      
+      ! In some cases we might not want to include the PhaseVolumeFraction
+      ! field in the divergence matrix, even though we are running a multiphase
+      ! flow simulation.
+      ! For example, in the InternalEnergy equation we just want
+      ! div(u), not div(vfrac*u).
+      if(present(include_vfrac)) then
+        l_include_vfrac = include_vfrac
+      else
+        l_include_vfrac = .true.
       end if
 
       x=>extract_vector_field(state, "Coordinate")
@@ -136,6 +165,22 @@ contains
                             polydegree=test_mesh%shape%degree, &
                             quaddegree=quaddegree)
 
+      ! Check if we need to multiply through by the non-linear volume fraction
+      if(option_count("/material_phase/vector_field::Velocity/prognostic") > 1 .and. l_include_vfrac) then
+         multiphase = .true.
+
+         vfrac => extract_scalar_field(state, "PhaseVolumeFraction")
+         call allocate(nvfrac, vfrac%mesh, "NonlinearPhaseVolumeFraction")
+         call zero(nvfrac)
+         call get_nonlinear_volume_fraction(state, nvfrac)
+
+         ewrite_minmax(nvfrac)
+
+      else
+         multiphase = .false.
+         nullify(vfrac)
+      end if
+
       if(l_get_ct) then
       
         call zero(CT_m)
@@ -145,12 +190,25 @@ contains
         x_cvshape=make_cv_element_shape(cvfaces, x%mesh%shape)
         test_cvshape=make_cv_element_shape(cvfaces, test_mesh%shape)
         field_cvshape=make_cv_element_shape(cvfaces, field%mesh%shape)
-  
+
+        if(multiphase) then
+           ! If the Coordinate and PhaseVolumeFraction meshes are different, then we need to
+           ! get the PhaseVolumeFraction CV shape functions.
+           if(.not.(nvfrac%mesh == x%mesh)) then
+              nvfrac_cvshape = make_cv_element_shape(cvfaces, nvfrac%mesh%shape)
+           else
+              nvfrac_cvshape = x_cvshape
+              call incref(nvfrac_cvshape)
+           end if
+
+           allocate(nvfrac_gi(nvfrac_cvshape%ngi))
+        end if
+
         allocate(x_f(x%dim, x_cvshape%ngi), &
                 detwei(x_cvshape%ngi), &
                 normal(x%dim, x_cvshape%ngi), &
                 normgi(x%dim), &
-                ct_mat_local(x%dim, test_mesh%shape%loc, field%mesh%shape%loc))
+                ct_mat_local(x%dim, test_mesh%shape%loc, field%mesh%shape%loc))                
   
         allocate(notvisited(x_cvshape%ngi))
 
@@ -160,7 +218,11 @@ contains
           test_nodes=>ele_nodes(test_mesh, ele)
           field_nodes=>ele_nodes(field, ele)
           x_test_nodes=>ele_nodes(x_test, ele)
-  
+
+          if(multiphase) then
+             nvfrac_gi = ele_val_at_quad(nvfrac, ele, nvfrac_cvshape)
+          end if
+
           call transform_cvsurf_to_physical(x_ele, x_cvshape, &
                                             detwei, normal, cvfaces)
           notvisited=.true.
@@ -187,10 +249,17 @@ contains
   
                       inner_dimension_loop: do dim = 1, size(normgi)
   
-                        ct_mat_local(dim, iloc, jloc) = ct_mat_local(dim, iloc, jloc) &
-                                                      + field_cvshape%n(jloc, ggi)*detwei(ggi)*normgi(dim)
-                        ct_mat_local(dim, oloc, jloc) = ct_mat_local(dim, oloc, jloc) &
-                                                      + field_cvshape%n(jloc, ggi)*detwei(ggi)*(-normgi(dim)) ! notvisited
+                        if(multiphase) then
+                           ct_mat_local(dim, iloc, jloc) = ct_mat_local(dim, iloc, jloc) &
+                                                         + field_cvshape%n(jloc, ggi)*detwei(ggi)*nvfrac_gi(ggi)*normgi(dim)
+                           ct_mat_local(dim, oloc, jloc) = ct_mat_local(dim, oloc, jloc) &
+                                                         + field_cvshape%n(jloc, ggi)*detwei(ggi)*nvfrac_gi(ggi)*(-normgi(dim)) ! notvisited
+                        else
+                           ct_mat_local(dim, iloc, jloc) = ct_mat_local(dim, iloc, jloc) &
+                                                         + field_cvshape%n(jloc, ggi)*detwei(ggi)*normgi(dim)
+                           ct_mat_local(dim, oloc, jloc) = ct_mat_local(dim, oloc, jloc) &
+                                                         + field_cvshape%n(jloc, ggi)*detwei(ggi)*(-normgi(dim)) ! notvisited
+                        end if
   
                       end do inner_dimension_loop
   
@@ -220,6 +289,10 @@ contains
         deallocate(x_f, detwei, normal, normgi)
         deallocate(notvisited)
         call deallocate(x_test)
+        if(multiphase) then
+           deallocate(nvfrac_gi)
+           call deallocate(nvfrac_cvshape)
+        end if
       end if
 
       if(.not.present_and_true(exclude_boundaries)) then
@@ -227,6 +300,19 @@ contains
         x_cvbdyshape=make_cvbdy_element_shape(cvfaces, x%mesh%faces%shape)
         test_cvbdyshape=make_cvbdy_element_shape(cvfaces, test_mesh%faces%shape)
         field_cvbdyshape=make_cvbdy_element_shape(cvfaces, field%mesh%faces%shape)
+
+        if(multiphase) then
+           ! If the Coordinate and PhaseVolumeFraction meshes are different, then we need to
+           ! generate the PhaseVolumeFraction CV shape functions.
+           if(.not.(nvfrac%mesh == x%mesh)) then
+              nvfrac_cvbdyshape = make_cvbdy_element_shape(cvfaces, nvfrac%mesh%faces%shape)
+           else
+              nvfrac_cvbdyshape = x_cvbdyshape
+              call incref(nvfrac_cvbdyshape)
+           end if
+
+           allocate(nvfrac_gi_f(nvfrac_cvbdyshape%ngi))
+        end if
   
         assert(surface_element_count(test_mesh)==surface_element_count(field))
         allocate(field_bc_type(field%dim, surface_element_count(test_mesh)))
@@ -242,16 +328,17 @@ contains
         allocate(field_nodes_bdy(field%mesh%faces%shape%loc))
         allocate(test_nodes_bdy(test_mesh%faces%shape%loc))
         allocate(ct_mat_local_bdy(x%dim, test_mesh%faces%shape%loc, field%mesh%faces%shape%loc), &
-                ct_rhs_local(test_mesh%faces%shape%loc))
+                 ct_rhs_local(x%dim, test_mesh%faces%shape%loc))
   
         surface_element_loop: do sele = 1, surface_element_count(test_mesh)
   
           ! cycle if this is a no_normal_flow or a periodic or a free_surface boundary then cycle
-          if(any(field_bc_type(:,sele)==2).or.any(field_bc_type(:,sele)==3).or.any(field_bc_type(:,sele)==4)) cycle
+          if(any(field_bc_type(:,sele)==BC_TYPE_NO_NORMAL_FLOW).or.any(field_bc_type(:,sele)==BC_TYPE_INTERNAL)&
+             .or.any(field_bc_type(:,sele)==BC_TYPE_FREE_SURFACE)) cycle
           
           ! cycle if there's no rhs present or there's no weakdirichlet conditions or we're not
           ! assembling the matrix
-          if(.not.(present(ct_rhs).and.any(field_bc_type(:,sele)==1)).and..not.l_get_ct) cycle
+          if(.not.(present(ct_rhs).and.any(field_bc_type(:,sele)==BC_TYPE_WEAKDIRICHLET)).and..not.l_get_ct) cycle
   
           ele = face_ele(x, sele)
           x_ele = ele_val(x, ele)
@@ -259,10 +346,14 @@ contains
           test_nodes_bdy=face_global_nodes(test_mesh, sele)
           field_nodes_bdy=face_global_nodes(field, sele)
   
-          if(any(field_bc_type(:, sele)==1)) then
+          if(any(field_bc_type(:, sele)==BC_TYPE_WEAKDIRICHLET)) then
             field_bc_val = ele_val(field_bc, sele)
           else
             field_bc_val = 0.0
+          end if
+
+          if(multiphase) then
+             nvfrac_gi_f = face_val_at_quad(nvfrac, sele, nvfrac_cvbdyshape)
           end if
   
           call transform_cvsurf_facet_to_physical(x_ele, x_ele_bdy, &
@@ -284,15 +375,27 @@ contains
   
                     surface_inner_dimension_loop: do dim = 1, size(normal_bdy,1)
   
-                      if((present(ct_rhs)).and.(field_bc_type(dim, sele)==1)) then
+                      if((present(ct_rhs)).and.(field_bc_type(dim, sele)==BC_TYPE_WEAKDIRICHLET)) then
   
-                        ct_rhs_local(iloc) = ct_rhs_local(iloc) + &
-                              field_cvbdyshape%n(jloc,ggi)*detwei_bdy(ggi)*normal_bdy(dim,ggi)*field_bc_val(dim, jloc)
+                        if(multiphase) then
+                           ct_rhs_local(dim, iloc) = ct_rhs_local(dim, iloc) - &
+                                 field_cvbdyshape%n(jloc,ggi)*detwei_bdy(ggi)*nvfrac_gi_f(ggi)*&
+                                 normal_bdy(dim,ggi)*field_bc_val(dim, jloc)
+                        else
+                           ct_rhs_local(dim, iloc) = ct_rhs_local(dim, iloc) - &
+                                 field_cvbdyshape%n(jloc,ggi)*detwei_bdy(ggi)*normal_bdy(dim,ggi)*&
+                                 field_bc_val(dim, jloc)
+                        end if
   
                       else
-  
-                        ct_mat_local_bdy(dim, iloc, jloc) =  ct_mat_local_bdy(dim, iloc, jloc) + &
-                              field_cvbdyshape%n(jloc,ggi)*detwei_bdy(ggi)*normal_bdy(dim, ggi)
+
+                        if(multiphase) then
+                           ct_mat_local_bdy(dim, iloc, jloc) =  ct_mat_local_bdy(dim, iloc, jloc) + &
+                                 field_cvbdyshape%n(jloc,ggi)*detwei_bdy(ggi)*nvfrac_gi_f(ggi)*normal_bdy(dim, ggi)
+                        else
+                           ct_mat_local_bdy(dim, iloc, jloc) =  ct_mat_local_bdy(dim, iloc, jloc) + &
+                                 field_cvbdyshape%n(jloc,ggi)*detwei_bdy(ggi)*normal_bdy(dim, ggi)
+                        end if
   
                       end if
   
@@ -310,9 +413,9 @@ contains
   
           surface_outer_dimension_loop: do dim = 1, size(normal_bdy,1)
   
-            if((present(ct_rhs)).and.(field_bc_type(dim, sele)==1)) then
+            if((present(ct_rhs)).and.(field_bc_type(dim, sele)==BC_TYPE_WEAKDIRICHLET)) then
   
-              call addto(ct_rhs, test_nodes_bdy, ct_rhs_local)
+              call addto(ct_rhs, test_nodes_bdy, ct_rhs_local(dim,:))
   
             elseif(l_get_ct) then
   
@@ -331,11 +434,19 @@ contains
         call deallocate(field_cvbdyshape)
         deallocate(x_ele_bdy, detwei_bdy, normal_bdy)
         deallocate(test_nodes_bdy, field_nodes_bdy)
+        if(multiphase) then
+           deallocate(nvfrac_gi_f)
+           call deallocate(nvfrac_cvbdyshape)
+        end if
         
       end if
 
       call deallocate(cvfaces)
       deallocate(x_ele)
+
+      if(multiphase) then
+         call deallocate(nvfrac)
+      end if
       
     end subroutine assemble_divergence_matrix_cv
     !************************************************************************
@@ -388,10 +499,8 @@ contains
       real :: dens_theta_val
       real :: dens_face_val
       real :: olddens_face_val
-      real, dimension(:), allocatable :: dens_ele, olddens_ele, &
-                                         norm_ele
-      real, dimension(:), allocatable :: dens_ele_bdy, olddens_ele_bdy, &
-                                         norm_ele_bdy
+      real, dimension(:), allocatable :: dens_ele, olddens_ele
+      real, dimension(:), allocatable :: dens_ele_bdy, olddens_ele_bdy
       real, dimension(:), allocatable :: ghost_dens_ele_bdy, ghost_olddens_ele_bdy
 
       logical, dimension(:), allocatable :: notvisited
@@ -428,10 +537,6 @@ contains
       real :: dt
 
       type(cv_options_type) :: dens_options
-
-      type(scalar_field), pointer :: normalisation
-      character(len=FIELD_NAME_LEN) :: normalisation_field
-      integer :: norm_stat
 
       integer, dimension(:,:), allocatable :: velocity_bc_type
       real, dimension(:,:), allocatable :: velocity_bc_val
@@ -499,18 +604,6 @@ contains
 
       end if
 
-      call get_option(trim(p%option_path)//"/prognostic/scheme/use_compressible_projection_method/normalisation/name", &
-                      normalisation_field, stat=norm_stat)
-
-      ! get the normalisation field (if we need one)
-      if(norm_stat==0) then
-        normalisation=>extract_scalar_field(state, trim(normalisation_field))
-      else
-        allocate(normalisation)
-        call allocate(normalisation, p%mesh, name="DummyNormalisation", field_type=FIELD_TYPE_CONSTANT)
-        call set(normalisation, 1.0)
-      end if
-
       ! find courant number (if needed)
       option_path_array(1) = trim(dens%option_path)  ! temporary hack for compiler failure
       call cv_disc_get_cfl_no(option_path_array, &
@@ -528,8 +621,7 @@ contains
                normgi(x%dim))
       allocate(cfl_ele(ele_loc(p,1)), &
                dens_ele(ele_loc(p,1)), &
-               olddens_ele(ele_loc(p,1)), &
-               norm_ele(ele_loc(normalisation,1)))
+               olddens_ele(ele_loc(p,1)))
       allocate(notvisited(x_cvshape%ngi))
       allocate(ctp_mat_local(x%dim, p%mesh%shape%loc, u_cvshape%loc))
 
@@ -547,8 +639,6 @@ contains
 
         dens_ele = ele_val(dens, ele)
         olddens_ele = ele_val(olddens, ele)
-
-        norm_ele = ele_val(normalisation, ele)
 
         notvisited=.true.
 
@@ -599,9 +689,9 @@ contains
                     inner_dimension_loop: do dim = 1, size(normgi)
 
                       ctp_mat_local(dim, iloc, jloc) = ctp_mat_local(dim, iloc, jloc) &
-                                                      + face_value*normgi(dim)/norm_ele(iloc)
+                                                      + face_value*normgi(dim)
                       ctp_mat_local(dim, oloc, jloc) = ctp_mat_local(dim, oloc, jloc) &
-                                                      + face_value*(-normgi(dim))/norm_ele(oloc) ! notvisited
+                                                      + face_value*(-normgi(dim)) ! notvisited
 
                     end do inner_dimension_loop
 
@@ -632,8 +722,7 @@ contains
                dens_ele_bdy(face_loc(dens,1)), &
                olddens_ele_bdy(face_loc(dens,1)), &
                ghost_dens_ele_bdy(face_loc(dens,1)), &
-               ghost_olddens_ele_bdy(face_loc(dens,1)), &
-               norm_ele_bdy(face_loc(normalisation,1)))
+               ghost_olddens_ele_bdy(face_loc(dens,1)))
       allocate(dens_bc_type(surface_element_count(dens)), &
                u_nodes_bdy(face_loc(u,1)), &
                p_nodes_bdy(face_loc(p,1)), &
@@ -687,8 +776,6 @@ contains
         dens_ele_bdy=face_val(dens, sele)
         olddens_ele_bdy=face_val(olddens, sele)
 
-        norm_ele_bdy=face_val(normalisation, sele)
-
         ctp_mat_local_bdy = 0.0
         ct_rhs_local = 0.0
 
@@ -710,8 +797,7 @@ contains
                   income=1.0
                 end if
 
-                face_value = (income*ghost_dens_ele_bdy(iloc) + (1.-income)*dens_ele_bdy(iloc))/&
-                              norm_ele_bdy(iloc)
+                face_value = (income*ghost_dens_ele_bdy(iloc) + (1.-income)*dens_ele_bdy(iloc))
 
                 surface_nodal_loop_j: do jloc = 1, u_cvbdyshape%loc
 
@@ -765,7 +851,7 @@ contains
       call deallocate(dens_cvbdyshape)
       deallocate(x_ele_bdy, detwei_bdy, normal_bdy, u_bdy_f)
       deallocate(u_nodes_bdy, p_nodes_bdy)
-      deallocate(dens_ele_bdy, olddens_ele_bdy, norm_ele_bdy)
+      deallocate(dens_ele_bdy, olddens_ele_bdy)
       deallocate(ghost_dens_ele_bdy, ghost_olddens_ele_bdy)
       call deallocate(dens_bc)
       deallocate(dens_bc_type)
@@ -777,16 +863,12 @@ contains
       call deallocate(cvfaces)
       call deallocate(relu)
       deallocate(x_ele, x_f, detwei, normal, normgi, u_f)
-      deallocate(cfl_ele, dens_ele, olddens_ele, norm_ele)
+      deallocate(cfl_ele, dens_ele, olddens_ele)
       deallocate(notvisited)
 
       call deallocate(dens_upwind)
       call deallocate(olddens_upwind)
       call deallocate(cfl_no)
-      if(norm_stat/=0) then
-        call deallocate(normalisation)
-        deallocate(normalisation)
-      end if
       call deallocate(x_p)
 
     end subroutine assemble_1mat_compressible_divergence_matrix_cv
@@ -816,11 +898,9 @@ contains
       real :: matvfrac_face_val, matdens_face_val
       real :: oldmatvfrac_face_val, oldmatdens_face_val
       real, dimension(:), allocatable :: matdens_ele, oldmatdens_ele, &
-                                         matvfrac_ele, oldmatvfrac_ele, &
-                                         norm_ele
+                                         matvfrac_ele, oldmatvfrac_ele
       real, dimension(:), allocatable :: matdens_ele_bdy, oldmatdens_ele_bdy, &
-                                         matvfrac_ele_bdy, oldmatvfrac_ele_bdy, &
-                                         norm_ele_bdy
+                                         matvfrac_ele_bdy, oldmatvfrac_ele_bdy
       real, dimension(:), allocatable :: ghost_matdens_ele_bdy, ghost_oldmatdens_ele_bdy, &
                                          ghost_matvfrac_ele_bdy, ghost_oldmatvfrac_ele_bdy
 
@@ -867,10 +947,6 @@ contains
 
       type(cv_options_type) :: matvfrac_options
       type(cv_options_type) :: matdens_options
-
-      type(scalar_field), pointer :: normalisation, dummyones
-      character(len=FIELD_NAME_LEN) :: normalisation_field
-      integer :: norm_stat
 
       integer, dimension(:,:), allocatable :: velocity_bc_type
       type(vector_field) :: velocity_bc
@@ -923,8 +999,7 @@ contains
                matvfrac_ele(ele_loc(p,1)), &
                oldmatvfrac_ele(ele_loc(p,1)), &
                matdens_ele(ele_loc(p,1)), &
-               oldmatdens_ele(ele_loc(p,1)), &
-               norm_ele(ele_loc(x,1)))
+               oldmatdens_ele(ele_loc(p,1)))
       allocate(visited(x_cvshape%ngi))
       allocate(ctp_mat_local(x%dim, p%mesh%shape%loc, u_cvshape%loc))
 
@@ -938,13 +1013,6 @@ contains
       allocate(dummyvfrac)
       call allocate(dummyvfrac, p%mesh, name="DummyVFrac", field_type=FIELD_TYPE_CONSTANT)
       call set(dummyvfrac, 1.0)
-
-      allocate(dummyones)
-      call allocate(dummyones, p%mesh, name="DummyOnes", field_type=FIELD_TYPE_CONSTANT)
-      call set(dummyones, 1.0)
-
-      call get_option(trim(p%option_path)//"/prognostic/scheme/use_compressible_projection_method/normalisation/name", &
-                      normalisation_field, stat=norm_stat)
 
       allocate(dummyvfrac_bc_type(surface_element_count(dummyvfrac)))
       bc_mesh=>get_dg_surface_mesh(p%mesh)
@@ -1067,13 +1135,6 @@ contains
             matvfrac_options = get_cv_options(vfrac_option_path, matvfrac%mesh%shape%numbering%family, mesh_dim(matvfrac))
           end if
 
-          ! get the normalisation field (if we need one)
-          if(norm_stat==0) then
-            normalisation=>extract_scalar_field(state(i), trim(normalisation_field))
-          else
-            normalisation=>dummyones
-          end if
-
           do ele=1, element_count(p)
             x_ele=ele_val(x, ele)
             x_f=ele_val_at_quad(x, ele, x_cvshape)
@@ -1090,8 +1151,6 @@ contains
 
             matdens_ele = ele_val(matdens, ele)
             oldmatdens_ele = ele_val(oldmatdens, ele)
-
-            norm_ele = ele_val(normalisation, ele)
 
             visited=0
 
@@ -1176,9 +1235,9 @@ contains
                         do dim = 1, size(normgi)
 
                           ctp_mat_local(dim, iloc, jloc) = ctp_mat_local(dim, iloc, jloc) &
-                                                         + face_value*normgi(dim)/norm_ele(iloc)
+                                                         + face_value*normgi(dim)
                           ctp_mat_local(dim, oloc, jloc) = ctp_mat_local(dim, oloc, jloc) &
-                                                         + face_value*(-normgi(dim))/norm_ele(oloc) ! notvisited
+                                                         + face_value*(-normgi(dim)) ! notvisited
 
                         end do
 
@@ -1213,8 +1272,7 @@ contains
                   ghost_matdens_ele_bdy(face_loc(p,1)), &
                   ghost_oldmatdens_ele_bdy(face_loc(p,1)), &
                   ghost_matvfrac_ele_bdy(face_loc(p,1)), &
-                  ghost_oldmatvfrac_ele_bdy(face_loc(p,1)), &
-                  norm_ele_bdy(face_loc(x,1)))
+                  ghost_oldmatvfrac_ele_bdy(face_loc(p,1)))
           allocate(matvfrac_bc_type(surface_element_count(matvfrac)), &
                     matdens_bc_type(surface_element_count(matdens)), &
                     nodes_bdy(face_loc(u,1)), &
@@ -1276,8 +1334,6 @@ contains
             matdens_ele_bdy=face_val(matdens, sele)
             oldmatdens_ele_bdy=face_val(oldmatdens, sele)
 
-            norm_ele_bdy=face_val(normalisation, sele)
-
             ctp_mat_local_bdy = 0.0
 
             do iloc = 1, p%mesh%faces%shape%loc
@@ -1299,8 +1355,7 @@ contains
                     end if
 
                     face_value = (income*ghost_matvfrac_ele_bdy(iloc) + (1.-income)*matvfrac_ele_bdy(iloc))* &
-                                  (income*ghost_matdens_ele_bdy(iloc) + (1.-income)*matdens_ele_bdy(iloc))/&
-                                  norm_ele_bdy(iloc)
+                                  (income*ghost_matdens_ele_bdy(iloc) + (1.-income)*matdens_ele_bdy(iloc))
 
                     do jloc = 1, u_cvbdyshape%loc
 
@@ -1337,7 +1392,7 @@ contains
           call deallocate(p_cvbdyshape)
           deallocate(x_ele_bdy, detwei_bdy, normal_bdy, u_bdy_f)
           deallocate(nodes_bdy)
-          deallocate(matdens_ele_bdy, oldmatdens_ele_bdy, matvfrac_ele_bdy, oldmatvfrac_ele_bdy, norm_ele_bdy)
+          deallocate(matdens_ele_bdy, oldmatdens_ele_bdy, matvfrac_ele_bdy, oldmatvfrac_ele_bdy)
           deallocate(ghost_matdens_ele_bdy, ghost_oldmatdens_ele_bdy, &
                       ghost_matvfrac_ele_bdy, ghost_oldmatvfrac_ele_bdy)
           call deallocate(matvfrac_bc)
@@ -1355,7 +1410,7 @@ contains
       call deallocate(cvfaces)
       call deallocate(relu)
       deallocate(x_ele, x_f, detwei, normal, normgi, u_f)
-      deallocate(cfl_ele, matvfrac_ele, oldmatvfrac_ele, matdens_ele, oldmatdens_ele, norm_ele)
+      deallocate(cfl_ele, matvfrac_ele, oldmatvfrac_ele, matdens_ele, oldmatdens_ele)
       deallocate(visited)
 
       call deallocate(matdens_upwind)
@@ -1369,8 +1424,6 @@ contains
       call deallocate(dummyvfrac)
       deallocate(dummyvfrac)
       deallocate(dummyvfrac_bc_type)
-      call deallocate(dummyones)
-      deallocate(dummyones)
       call deallocate(x_p)
 
       call clean_deferred_deletion(state)

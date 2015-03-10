@@ -1,48 +1,30 @@
-BIN=../../../bin
-SCRIPTS=../../../scripts
-RE=1290
-JOB=high
-preprocess: 
-	@echo **********Generating a 2D mesh:
-	@$(foreach NN,coarse med fine, \
-		echo **********Installing directory for $(NN) simulation.; \
-		install -d $(RE)-$(JOB)-$(NN); \
-		cd $(RE)-$(JOB)-$(NN); \
-		ln -s ../backward_facing_step_2d-$(RE)-$(JOB)-$(NN).flml .; \
-		echo **********Generating mesh for $(NN) simulation.; \
-		gmsh -2 -optimize -o step2d-$(NN).msh ../src/step2d-$(NN).geo; \
-		$(SCRIPTS)/gmsh2triangle -2 step2d-$(NN).msh ; \
-		cd ..; \
-	)
+include envcheck.mk
+NPROCS=1
 
-run:
-	@echo **********Running the test on different meshes:
-	@$(foreach NN,coarse med fine, \
-		echo Running $(NN) case; \
-		cd $(RE)-$(JOB)-$(NN); \
-		echo **********Running simulation for $(NN) mesh.; \
-		$(BIN)/fluidity -v2 -l backward_facing_step_2d-$(RE)-$(JOB)-$(NN).flml; \
-		cd ..; \
-	)
+preprocess: envcheck
+	install -d "simulation"; \
+	cd simulation; \
+	ln -s ../backward_facing_step_2d.flml .; \
+	echo **********Generating mesh; \
+	gmsh -2 -o step2d-kim-med.msh ../src/step2d-kim-med.geo; \
+	${BINPREFIX}gmsh2triangle -2 step2d-kim-med.msh; \
+	cd ..
 
-postprocess:
+run: envcheck
+	@echo **********Running simulation:
+	cd simulation &&  ${BINPREFIX}fluidity -v2 -l backward_facing_step_2d.flml &&  cd ..
+
+postprocess: envcheck
 	@echo **********Calling the velocity data extraction and reattachment length calculation python script:
-	@$(foreach NN,coarse med fine, \
-		cd $(RE)-$(JOB)-$(NN); \
-		ln -s ../postprocessor_2d.py .; \
-		./postprocessor_2d.py $(RE) $(JOB) $(NN); \
-		cd ..; \
-	)
+	cd simulation; \
+	ln -s ../postprocessor_2d.py .; \
+	./postprocessor_2d.py; \
+	cd ..
 
-post-postprocess:
-	./post_postprocessor_2d.py
-
-input: clean preprocess
+input: clean
+	$(MAKE) preprocess 
 
 clean:
 	@echo **********Cleaning the output from previous fluidity runs
-	@$(foreach NN,coarse med fine, \
-		cd $(RE)-$(JOB)-$(NN); \
-		rm -rf *; \
-		cd ..; \
-	)
+	rm -rf simulation *.pdf *flredecomp*
+

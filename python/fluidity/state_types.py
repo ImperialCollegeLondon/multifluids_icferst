@@ -1,3 +1,12 @@
+#########################################
+#
+# Note for future develoeprs: Wrap any
+#  scipy calls in try blocks. Scipy
+#  is not avaiable on many supercomputers
+#  but we still want state_types
+#
+##########################################
+
 import numpy,sys,copy,operator
 
 class State:
@@ -5,12 +14,14 @@ class State:
     self.scalar_fields = {}
     self.vector_fields = {}
     self.tensor_fields = {}
+    self.csr_matrices = {}
     self.meshes = {}
     self.name = n
   def __repr__(self):
     return '(State) %s' % self.name
   def print_fields(self):
-    print "scalar: ",self.scalar_fields,"\nvector:",self.vector_fields,"\ntensor:",self.tensor_fields,"\n"
+    print "scalar: ",self.scalar_fields,"\nvector:",self.vector_fields,"\ntensor:", \
+    self.tensor_fields,"\ncsr_matrices:", self.csr_matrices
 
 class Field:
   def __init__(self,n,ft,op,description):
@@ -139,6 +150,23 @@ class TensorField(Field):
     self.dimension = numpy.array([dim0,dim1])
     self.node_count=self.val.shape[0]
 
+### This is an example of wrapping up a class in a try block
+# to prevent scipy being imported
+try:
+    import scipy
+    import scipy.sparse
+    class CsrMatrix(scipy.sparse.csr_matrix):
+      "A csr matrix"
+      def __init__(self, *args, **kwargs):
+        try:
+          scipy.sparse.csr_matrix.__init__(self, *args, **kwargs)
+          self.format = 'csr'
+        except TypeError: # old version of scipy
+          pass
+except ImportError:
+  class CsrMatrix(object):
+    def __init__(self, *args, **kwargs):
+      raise ImportError("No such module scipy.sparse")
 
 class Mesh:
   "A mesh"

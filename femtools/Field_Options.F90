@@ -106,7 +106,8 @@ module field_options
                                 FIELD_EQUATION_REDUCEDCONSERVATIONOFMASS = 3, &
                                 FIELD_EQUATION_INTERNALENERGY            = 4, &
                                 FIELD_EQUATION_HEATTRANSFER              = 5, &
-                                FIELD_EQUATION_ELECTRICALPOTENTIAL       = 6
+                                FIELD_EQUATION_ELECTRICALPOTENTIAL       = 6, &
+                                FIELD_EQUATION_KEPSILON       = 7
 
 contains
 
@@ -414,8 +415,8 @@ contains
             ! no mesh derived from it
             ewrite(0,*) "Can't find a suitable unperiodic coordinate field for periodic mesh ", &
               trim(mesh%name)
-            ewrite(0,*) "This probably means the operation you want to do on this field &
-               &is not supported for a horizontal periodic mesh"
+            ewrite(0,*) "This probably means the operation you want to do on this field "//&
+               &"is not supported for a horizontal periodic mesh"
             FLExit("No suitable coordinate field found.")
          else
             positions=extract_vector_field(state, trim(mesh%name)//"Coordinate")
@@ -512,8 +513,8 @@ contains
       
       ewrite(0,*) "Can't find a suitable coordinate field for mesh ", &
           trim(mesh%name)
-      ewrite(0,*) "This probably means the operation you want to do is not&
-           &supported for this mesh"
+      ewrite(0,*) "This probably means the operation you want to do is not "//&
+           &"supported for this mesh"
       FLExit("No suitable coordinate field found.")      
       
     end subroutine give_up
@@ -546,7 +547,7 @@ contains
          ! can remap from coordinate field
          call allocate(positions, coordinate_field%dim, mesh, name="Coordinate")
          
-         if (mesh_periodic(mesh)) then
+         if (mesh_periodic(mesh) .and. continuity(mesh)>=0) then
             call remap_field(coordinate_field, positions, stat=stat)
             if (stat/=REMAP_ERR_UNPERIODIC_PERIODIC) then
               FLAbort("Error remapping coordinate field")
@@ -818,8 +819,10 @@ contains
       initialisation_path=trim(option_path)//'/prescribed/value'
     else
       ! diagnostic fields are not initialised/prescribed anyway
-      needs_initial_mesh_options=.false.
-      return
+      if(.not. have_option(trim(option_path)//'/diagnostic/output/checkpoint')) then
+        needs_initial_mesh_options=.false.
+        return
+      end if
     end if
     
     ! return .true. if any of the regions are initialised from file
@@ -944,6 +947,8 @@ contains
       equation_type_index = FIELD_EQUATION_INTERNALENERGY
     case ( "ElectricalPotential" )
       equation_type_index = FIELD_EQUATION_ELECTRICALPOTENTIAL
+    case ( "KEpsilon" )
+      equation_type_index = FIELD_EQUATION_KEPSILON
     case default
       equation_type_index = FIELD_EQUATION_UNKNOWN
     end select
@@ -1235,8 +1240,14 @@ contains
                           trim(mat_name)//"."
             FLExit("Selected equation type only compatible with control volume spatial_discretisation")
           end if
+        case(FIELD_EQUATION_KEPSILON)
+          if(.not.cg_disc) then
+            ewrite(-1,*) "Options checking field "//&
+                          trim(field_name)//" in material_phase "//&
+                          trim(mat_name)//"."
+            FLExit("Selected equation type only compatible with continuous galerkin spatial_discretisation")
+          end if  
         end select
-
       end do
     end do
 

@@ -25,9 +25,10 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 #    USA
 SHELL = @SHELL@
-PACKAGE_NAME = fluidity
 
+PACKAGE_NAME = @PACKAGE_NAME@
 FLUIDITY = $(PACKAGE_NAME)
+
 FC      = @FC@
 FCFLAGS = -I../include @MOD_FLAG@../include @CPPFLAGS@ @FCFLAGS@ -I/usr/local/include -I./
 
@@ -73,7 +74,7 @@ OBJS = Populate_State.o Populate_Sub_State.o Reserve_State.o Field_Priority_List
 
 $(LIB): $(OBJS)
 	@mkdir -p ../lib
-	@$(AR) $(ARFLAGS) $(LIB) $(OBJS)
+
 default: $(LIB)
 
 # This gets run last by the fluidity build process.
@@ -81,14 +82,14 @@ check_options.o: check_options.F90
 	@echo "        FC $<"
 	$(FC) $(FCFLAGS) -c $<
 	mkdir -p ../lib
-	$(AR) $(ARFLAGS) $(LIB) check_options.o &> check.log
+
 
 # This gets run last by the fluidity build process.
 register_diagnostics.o: register_diagnostics.F90
 	@echo "        FC $<"
 	$(FC) $(FCFLAGS) -c $<
 	mkdir -p ../lib
-	$(AR) $(ARFLAGS) $(LIB) register_diagnostics.o &> register_diagnostics.log
+
 
 clean:
 	rm -f *.o *.d *.mod

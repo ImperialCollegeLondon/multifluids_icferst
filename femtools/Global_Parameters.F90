@@ -173,4 +173,16 @@ module global_parameters
   !! Overlapping method
   logical :: is_porous_media = .false.
 
+  contains
+
+  function get_surface_radius() bind(c)
+    !C-inter-operable subroutine for making the value of surface_radius availabe
+    ! to C functions.
+    implicit none
+
+    real(kind=c_double) :: get_surface_radius
+
+    get_surface_radius = real(surface_radius, kind=c_double)
+  end function get_surface_radius
+
 end module global_parameters

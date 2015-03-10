@@ -75,6 +75,7 @@ module implicit_solids
   use boundary_conditions
   use data_structures
   use edge_length_module
+  use detector_tools, only: set_detector_coords_from_python
 
   implicit none
 
@@ -2120,7 +2121,7 @@ contains
           ! finite precision arithmetic). Geometry is hard!
           ! So let's go all arbitrary precision on its ass.
           ! Data, Warp 0!
-#ifdef HAVE_CGAL
+#ifdef HAVE_LIBCGAL
           ewrite(0,*) "Using CGAL to try to fix conservation error"
           call intersector_set_exactness(.true.)
           call galerkin_projection_inner_loop(ele_B, little_mass_matrix, detJ, local_rhs, conservation_tolerance, stat, &

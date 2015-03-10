@@ -26,9 +26,10 @@
 #    USA
 
 SHELL = @SHELL@
-PACKAGE_NAME = fluidity
 
+PACKAGE_NAME = @PACKAGE_NAME@
 FLUIDITY = $(PACKAGE_NAME)
+
 LIB = ../lib/lib$(FLUIDITY).a
 
 AR = @AR@

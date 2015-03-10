@@ -137,10 +137,6 @@ module sparse_tools_petsc
      module procedure addref_petsc_csr_matrix
   end interface decrrf
 
-  interface petsc_must_assemble_by_column
-     module procedure petsc_must_assemble_by_column_array, &
-          &petsc_must_assemble_by_column_scalar
-  end interface petsc_must_assemble_by_column
 #include "Reference_count_interface_petsc_csr_matrix.F90"
 
   public :: petsc_csr_matrix, petsc_csr_matrix_pointer, &
@@ -211,10 +207,8 @@ contains
     
       if (associated(sparsity%row_halo)) then
         if (sparsity%row_halo%data_type==HALO_TYPE_CG_NODE) then
-          ! Mask out non-local rows, as the assembled bits in those
-          ! will be incomplete and need to be thrown out. In the case
-          ! of DG assembly however the local bits are proper contributions
-          ! and need to be added in the global matrix
+          ! Mask out non-local rows.  FIXME: with local assembly this
+          ! shouldn't be needed
           nprows=matrix%row_numbering%nprivatenodes
           matrix%row_numbering%gnn2unn(nprows+1:,:)=-1
         end if
@@ -231,6 +225,9 @@ contains
     ! the provided n/o nonzeros the assembly will become very slow!!!
     call MatSetOption(matrix%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
 
+    ! Necessary for local assembly: we don't want to communicate non-local dofs
+    call MatSetOption(matrix%M, MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE, ierr)
+
     ! to make sure we're not underestimating the number of nonzeros ever, make
     ! petsc fail if new allocations are necessary. If uncommenting the setting of this
     ! option fixes your problem the number of no
@@ -242,14 +239,16 @@ contains
     if (associated(sparsity%row_halo)) then
       ! these are also pointed to in the row_numbering
       ! but only refcounted here
-      matrix%row_halo => sparsity%row_halo
+      allocate(matrix%row_halo)
+      matrix%row_halo = sparsity%row_halo
       call incref(matrix%row_halo)
     end if
     
     if (associated(sparsity%column_halo)) then
       ! these are also pointed to in the column_numbering
       ! but only refcounted here
-      matrix%column_halo => sparsity%column_halo
+      allocate(matrix%column_halo)
+      matrix%column_halo = sparsity%column_halo
       call incref(matrix%column_halo)
     end if
     
@@ -360,10 +359,8 @@ contains
       npcols=matrix%column_numbering%nprivatenodes
       if (associated(lrow_halo)) then
         if (lrow_halo%data_type==HALO_TYPE_CG_NODE) then
-          ! Mask out non-local rows, as the assembled bits in those
-          ! will be incomplete and need to be thrown out. In the case
-          ! of DG assembly however the local bits are proper contributions
-          ! and need to be added in the global matrix
+          ! Mask out non-local rows.  FIXME: with local assembly this
+          ! shouldn't be needed
           matrix%row_numbering%gnn2unn(nprows+1:,:)=-1
         end if
       end if
@@ -414,6 +411,9 @@ contains
       call MatSetOption(matrix%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
     end if
 
+    ! Necessary for local assembly: we don't want to communicate non-local dofs
+    call MatSetOption(matrix%M, MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE, ierr)
+
     ! to make sure we're not underestimating the number of nonzeros ever, make
     ! petsc fail if new allocations are necessary. If uncommenting the setting of this
     ! option fixes your problem the number of no
@@ -429,14 +429,16 @@ contains
     if (associated(lrow_halo)) then
       ! these are also pointed to in the row_numbering
       ! but only refcounted here
-      matrix%row_halo => lrow_halo
+      allocate(matrix%row_halo)
+      matrix%row_halo = lrow_halo
       call incref(matrix%row_halo)
     end if
     
     if (associated(lcolumn_halo)) then
       ! these are also pointed to in the column_numbering
       ! but only refcounted here
-      matrix%column_halo => lcolumn_halo
+      allocate(matrix%column_halo)
+      matrix%column_halo = lcolumn_halo
       call incref(matrix%column_halo)
     end if
     
@@ -478,12 +480,14 @@ contains
     call incref(matrix%column_numbering)
     
     if (associated(row_numbering%halo)) then
-      matrix%row_halo => row_numbering%halo
+      allocate(matrix%row_halo)
+      matrix%row_halo = row_numbering%halo
       call incref(row_numbering%halo)
     end if
     
     if (associated(column_numbering%halo)) then
-      matrix%column_halo => column_numbering%halo
+      allocate(matrix%column_halo)
+      matrix%column_halo = column_numbering%halo
       call incref(column_numbering%halo)
     end if
     
@@ -493,6 +497,9 @@ contains
     ! that try to add zeros outside the provided sparsity; if we go outside
     ! the provided n/o nonzeros the assembly will become very slow!!!
     call MatSetOption(matrix%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
+
+    ! Necessary for local assembly: we don't want to communicate non-local dofs
+    call MatSetOption(matrix%M, MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE, ierr)
 
     ! to make sure we're not underestimating the number of nonzeros ever, make
     ! petsc fail if new allocations are necessary. If uncommenting the setting of this
@@ -537,10 +544,12 @@ contains
     
     if (associated(matrix%row_halo)) then
        call deallocate(matrix%row_halo)
+       deallocate(matrix%row_halo)
     end if
     
     if (associated(matrix%column_halo)) then
        call deallocate(matrix%column_halo)
+       deallocate(matrix%column_halo)
     end if
     
 42  if (present(stat)) then
@@ -581,40 +590,15 @@ contains
     logical :: ret
     type(petsc_csr_matrix), intent(in) :: matrix
     integer, dimension(:), intent(in) :: i
-#if PETSC_VERSION_MAJOR >= 3 && (PETSC_VERSION_MINOR >= 1 || (PETSC_VERSION_MINOR == 0 && PETSC_VERSION_SUBMINOR == 0 && PETSC_VERSION_PATCH >= 8))
+
     ret = .false.
-#else
-    ! due to a bug in petsc, the option MAT_IGNORE_ZERO_ENTRIES causes
-    ! an entire non-owned row to be dropped if only its first entry is
-    ! zero therefore we have to assemble column by column.  Fixed in
-    ! PETSc 3.0.0-p8 and later.  (see
-    ! http://lists.mcs.anl.gov/pipermail/petsc-users/2009-July/004772.html)
-    if (IsParallel() .and. maxval(i)>matrix%row_numbering%nprivatenodes) then
-       ret = .true.
-    else
-       ret = .false.
-    end if
-#endif
   end function petsc_must_assemble_by_column_array
 
   function petsc_must_assemble_by_column_scalar(matrix, i) result(ret)
     logical :: ret
     type(petsc_csr_matrix), intent(in) :: matrix
     integer, intent(in) :: i
-#if PETSC_VERSION_MAJOR >= 3 && (PETSC_VERSION_MINOR >= 1 || (PETSC_VERSION_MINOR == 0 && PETSC_VERSION_SUBMINOR == 0 && PETSC_VERSION_PATCH >= 8))
     ret = .false.
-#else
-    ! due to a bug in petsc, the option MAT_IGNORE_ZERO_ENTRIES causes
-    ! an entire non-owned row to be dropped if only its first entry is
-    ! zero therefore we have to assemble column by column.  Fixed in
-    ! PETSc 3.0.0-p8 and later.  (see
-    ! http://lists.mcs.anl.gov/pipermail/petsc-users/2009-July/004772.html)
-    if (IsParallel() .and. i>matrix%row_numbering%nprivatenodes) then
-       ret = .true.
-    else
-       ret = .false.
-    end if
-#endif
   end function petsc_must_assemble_by_column_scalar
 
   pure function petsc_csr_block_size(matrix, dim)
@@ -739,7 +723,7 @@ contains
     
     row=matrix%row_numbering%gnn2unn(i,blocki)
     col=matrix%column_numbering%gnn2unn(j,blockj)
-
+    
     call MatSetValue(matrix%M, row, col, val, ADD_VALUES, ierr)
     matrix%is_assembled=.false.
 
@@ -756,22 +740,12 @@ contains
     PetscInt, dimension(size(j)):: idxn
     PetscErrorCode:: ierr
     
-    integer:: k
-    
     idxm=matrix%row_numbering%gnn2unn(i,blocki)
     idxn=matrix%column_numbering%gnn2unn(j,blockj)
     
-    if (petsc_must_assemble_by_column(matrix, i)) then
-      do k=1, size(j)
-        ! luckily columns are contiguous in memory in fortran, so no copy, required
-        call MatSetValues(matrix%M, size(i), idxm, 1, idxn(k:k), real(val(:,k), kind=PetscScalar_kind), &
+    call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, real(val, kind=PetscScalar_kind), &
           ADD_VALUES, ierr)
-      end do
-    else
     
-      call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, real(val, kind=PetscScalar_kind), &
-        ADD_VALUES, ierr)
-    end if
     matrix%is_assembled=.false.
 
   end subroutine petsc_csr_vaddto
@@ -787,20 +761,13 @@ contains
     PetscInt, dimension(size(matrix%row_numbering%gnn2unn,2)):: idxm
     PetscInt, dimension(size(matrix%column_numbering%gnn2unn,2)):: idxn
     PetscErrorCode:: ierr
-    integer:: blockj
     
     idxm=matrix%row_numbering%gnn2unn(i,:)
     idxn=matrix%column_numbering%gnn2unn(j,:)
     
-    if (petsc_must_assemble_by_column(matrix, i)) then
-      do blockj=1, size(matrix%column_numbering%gnn2unn,2)
-        call MatSetValues(matrix%M, size(idxm), idxm, 1, idxn(blockj:blockj), &
-                  real(val(:,blockj), kind=PetscScalar_kind), ADD_VALUES, ierr)
-      end do
-    else
       call MatSetValues(matrix%M, size(idxm), idxm, size(idxn), idxn, &
                   real(val, kind=PetscScalar_kind), ADD_VALUES, ierr)
-    end if
+
     matrix%is_assembled=.false.
 
   end subroutine petsc_csr_block_addto
@@ -818,10 +785,7 @@ contains
     PetscInt, dimension(size(i)):: idxm
     PetscInt, dimension(size(j)):: idxn
     PetscErrorCode:: ierr
-    integer:: blocki, blockj, k
-    logical:: insert_per_column
-    
-    insert_per_column=petsc_must_assemble_by_column(matrix, i)
+    integer:: blocki, blockj
 
     do blocki=1, size(matrix%row_numbering%gnn2unn,2)
       idxm=matrix%row_numbering%gnn2unn(i,blocki)
@@ -829,18 +793,11 @@ contains
         idxn=matrix%column_numbering%gnn2unn(j,blockj)
         ! unfortunately we need a copy here to pass contiguous memory
         value=val(blocki, blockj, :, :)
-        if (insert_per_column) then
-          do k=1, size(j)
-            ! luckily columns are contiguous in memory in fortran, so no copy, required
-            call MatSetValues(matrix%M, size(i), idxm, 1, idxn(k:k), &
-                value(:,k), ADD_VALUES, ierr)
-          end do
-        else
           call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, &
               value, ADD_VALUES, ierr)
-        end if
       end do
     end do
+
     matrix%is_assembled=.false.
 
   end subroutine petsc_csr_blocks_addto
@@ -859,10 +816,7 @@ contains
     PetscInt, dimension(size(i)):: idxm
     PetscInt, dimension(size(j)):: idxn
     PetscErrorCode:: ierr
-    integer:: blocki, blockj, k
-    logical:: insert_per_column
-    
-    insert_per_column=petsc_must_assemble_by_column(matrix, i)
+    integer:: blocki, blockj
 
     do blocki=1, size(matrix%row_numbering%gnn2unn,2)
       idxm=matrix%row_numbering%gnn2unn(i,blocki)
@@ -871,19 +825,12 @@ contains
           idxn=matrix%column_numbering%gnn2unn(j,blockj)
           ! unfortunately we need a copy here to pass contiguous memory
           value=val(blocki, blockj, :, :)
-          if (insert_per_column) then
-            do k=1, size(j)
-              ! luckily columns are contiguous in memory in fortran, so no copy, required
-              call MatSetValues(matrix%M, size(i), idxm, 1, idxn(k:k), &
-                  value(:,k), ADD_VALUES, ierr)
-            end do
-          else
             call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, &
                 value, ADD_VALUES, ierr)
           end if
-        end if
       end do
     end do
+
     matrix%is_assembled=.false.
 
   end subroutine petsc_csr_blocks_addto_withmask
@@ -991,13 +938,15 @@ contains
     call incref(c%column_numbering)
     
     if (associated(a%row_halo)) then
-      c%row_halo => a%row_halo
+      allocate(c%row_halo)
+      c%row_halo = a%row_halo
       call incref(c%row_halo)
     else
       nullify(c%row_halo)
     end if
     if (associated(a%column_halo)) then
-      c%column_halo => a%column_halo
+      allocate(c%column_halo)
+      c%column_halo = a%column_halo
       call incref(c%column_halo)
     else
       nullify(c%column_halo)

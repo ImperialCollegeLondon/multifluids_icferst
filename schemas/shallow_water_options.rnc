@@ -267,19 +267,9 @@ start =
                      pressure_mesh_choice,
                      prognostic_layerthickness_field
                   }
-               },        
-               ## Lagrange multiplier for hybridised solver
-               element scalar_field {
-                  attribute rank { "0" },
-                  attribute name { "LagrangeMultiplier" },
-                  element prognostic {
-                     mesh_choice,
-                     prognostic_lagrangemultiplier_field
-                  }
                }?,
                scalar_field_choice*,
                vector_field_choice*
-               #tensor_field_choice*
             )
          },
         element mesh_adaptivity {
@@ -502,9 +492,17 @@ input_choice_initial_condition_vector =
       }|
       ## Set balanced velocity from height field
       element balanced {
-         empty
-      }
-   )  
+               ## Solver
+         element solver {
+            linear_solver_options_sym
+         }?
+      }|
+      ## project velocity from a DG field
+      element dg_projection {
+         ## Field to project from
+         attribute source_field { xsd:string }
+      }         
+   )
 
 # Choice of input method for initial/boundary conditions
 # version for real symmetric tensor
@@ -638,7 +636,7 @@ prognostic_velocity_field =
       },
       ## Solver
       element solver {
-         linear_solver_options_asym
+         linear_solver_options_asym_vector
       },
       (
          ## Initial condition for WholeMesh
@@ -737,7 +735,7 @@ prognostic_layerthickness_field =
       },
       ## Solver
       element solver {
-         linear_solver_options_asym
+         linear_solver_options_asym_scalar
       },
       (
          ## Initial condition for WholeMesh
@@ -788,7 +786,7 @@ prognostic_lagrangemultiplier_field =
       },
       ## Solver
       element solver {
-         linear_solver_options_asym
+         linear_solver_options_asym_scalar
       },
       ## Initial condition is not used for shallow water or Helmholtz 
       ## solves but is required for test_trace_space.
@@ -1299,25 +1297,6 @@ velocity_boundary_conditions =
          element type {
             attribute name { "no_normal_flow" },
             empty
-         }|
-
-         ## Implements a penalty function for the near wall region.
-         ## Using this option coarse meshes can
-         ## be used in the near wall region.
-         ##
-         ## Should be used in combination with a no_normal_flow condition. 
-         ##
-         ## See Bazilevs et al. 2007
-         element type{
-            attribute name { "near_wall_treatment" },
-            element tolerance {real}
-         }|
-         ## Log law of the wall
-         ##
-         ## Should be used in combination with a no_normal_flow condition. 
-         element type{
-            attribute name { "log_law_of_wall" },
-            element surface_roughness {real}
          }
       )
    )
@@ -1900,28 +1879,9 @@ scalar_field_choice =
             )
          }|
          ## Free Surface
-         ## NOTE: the prognostic FreeSurface field only works with the
-         ## legacy_continuous_galerkin code path
-         ## NOTE: if you are using the free_surface boundary condition
-         ## applied to the Velocity field (recommended), you should not 
-         ## use the prognostic FreeSurface field. In this case you may 
-         ## (optionally) add a diagnostic FreeSurface field.
          element scalar_field {
             attribute rank { "0" },
             attribute name { "FreeSurface" },
-            (
-               ## Free Surface
-               ## NOTE: the prognostic FreeSurface field only works with the
-               ## legacy_continuous_galerkin code path
-               element prognostic {
-                  ## Note that this is not the quadratic mesh balance pressure is
-                  ## actually calculated on, but the linear mesh it is projected back
-                  ## on for output purposes.
-                  element mesh {
-                     attribute name { "VelocityMesh" }
-                  },
-                  prognostic_free_surface_field
-               }|
                ## Free Surface
                ## NOTE: the diagnostic FreeSurface field only works in combination
                ## with the free_surface boundary condition applied to the Velocity
@@ -1938,8 +1898,6 @@ scalar_field_choice =
                   },
                   diagnostic_scalar_field
                }
-               
-            )
          }|
          ## Second Fluid
          element scalar_field {
@@ -2776,26 +2734,6 @@ scalar_field_choice =
                }
             )
          }|
-
-         ## Vorticity for a 2D field:
-         ##
-         ##  du   dv
-         ##  -- - --
-         ##  dy   dx
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "Vorticity2D" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
          
          ## Kinetic energy density:
          ##
@@ -2933,23 +2871,6 @@ scalar_field_choice =
               element diagnostic {
                   internal_algorithm,
                   velocity_mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|         
-         ## Local average mesh edge lengths
-         element scalar_field {
-          attribute rank { "0" },
-            attribute name { "MeshEdgeLengths" },
-            (
-              element diagnostic {
-                  internal_algorithm,
-                  element mesh {
-                     attribute name { "CoordinateMesh" }
-                  },
                   diagnostic_scalar_field
                }|
                element aliased {
@@ -3149,34 +3070,6 @@ scalar_field_choice =
                   internal_algorithm,
                   velocity_mesh_choice,
                   diagnostic_scalar_field_tidal_range
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "MaxFreeSurface" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "MinFreeSurface" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  diagnostic_scalar_field
                }|
                element aliased {
                   generic_aliased_field
@@ -3515,23 +3408,6 @@ scalar_field_choice =
                element diagnostic {
                   internal_algorithm,
                   mesh_choice,
-                  diagnostic_scalar_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Primary production of Phytoplankton. This is calculated by
-         ## the ocean biology module and will not be calculated unless
-         ## ocean biology is being simulated.
-         element scalar_field {
-            attribute rank { "0" },
-            attribute name { "HarmonicPhaseSSa" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
                   diagnostic_scalar_field
                }|
                element aliased {
@@ -3966,53 +3842,6 @@ vector_field_choice =
                 }
              )
          }|
-         ## Calculate the control volume auxiliary gradient for a particular field.
-         ## The related field must be a scalar field in this material_phase.
-         element vector_field {
-            attribute rank { "0" },
-            attribute name { "ControlVolumeAuxiliaryGradient" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  attribute gradient_of_field { string },
-                  diagnostic_vector_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Calculate the dg (Bassi Rebay) auxiliary gradient for a particular field.
-         ## The related field must be a scalar field in this material_phase.
-         element vector_field {
-            attribute rank { "0" },
-            attribute name { "DGAuxiliaryGradient" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  velocity_mesh_choice,
-                  attribute gradient_of_field { string },
-                  diagnostic_vector_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
-         }|
-         ## Experimental geostrophic source field to be used in combination with
-         ## a free surface. Does not solve a vertical balance yet.
-         element vector_field {
-            attribute rank { "1" },
-            attribute name { "GeostrophicSource" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  mesh_choice,
-                  diagnostic_vector_field
-               }
-            )
-         }|
 
          ## Absolute Difference between two vector fields.
          ##
@@ -4096,22 +3925,6 @@ vector_field_choice =
             element spin_up_time {
                real
             }
-         }|
-
-         ## Displacement
-         element vector_field {
-             attribute rank { "1" },
-             attribute name { "Displacement" },
-             (
-                element diagnostic {
-                   internal_algorithm,
-                   velocity_mesh_choice,
-                   diagnostic_vector_field
-                }|
-                element aliased {
-                   generic_aliased_field
-                }
-             )
          }|
          ## Galerkin projection of one field onto another mesh.
          ##
@@ -4269,27 +4082,8 @@ tensor_field_choice =
          ## Diagnostic tensor fields below this
          element ___Diagnostic_Fields_Below___ {
             empty
-         }|
-         ## From a field on a mesh, diagnose the anisotropic
-         ## interpolation weight that would give the mesh back.
-         ## It is computed as:
-         ## \Eps = M^-1 |H|
-         element tensor_field {
-            attribute rank { "2" },
-            attribute name { "FieldTolerance" },
-            (
-               element diagnostic {
-                  internal_algorithm,
-                  element source_field_name { string },
-                  velocity_mesh_choice,
-                  diagnostic_tensor_field
-               }|
-               element aliased {
-                  generic_aliased_field
-               }
-            )
          }
-
+         
 # Insert new diagnostic tensor field here using the template:
 #        element tensor_field {
 #            attribute name { "NewFieldName" },
@@ -5457,7 +5251,7 @@ prognostic_photosynthetic_radiation =
       (
          ## Solver
          element solver {
-            linear_solver_options_asym
+            linear_solver_options_asym_scalar
          }
       ),
       ## Coefficients of absorption of photosynthetically active

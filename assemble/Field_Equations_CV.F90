@@ -46,8 +46,8 @@ module field_equations_cv
   use boundary_conditions
   use boundary_conditions_from_options
   use divergence_matrix_cv, only: assemble_divergence_matrix_cv
-  use global_parameters, only: OPTION_PATH_LEN
-  use fefields, only: compute_lumped_mass
+  use global_parameters, only: OPTION_PATH_LEN, FIELD_NAME_LEN
+  use fefields, only: compute_cv_mass
   use petsc_solve_state_module
   use transform_elements, only: transform_cvsurf_to_physical, &
                                 transform_cvsurf_facet_to_physical
@@ -55,6 +55,8 @@ module field_equations_cv
   use halos
   use field_options
   use state_fields_module
+  use porous_media
+  use multiphase_module
 
   implicit none
 
@@ -75,6 +77,8 @@ module field_equations_cv
   logical :: include_density = .false.
   ! are we including a souce?
   logical :: include_source = .false.
+  ! Add source directly to the right hand side?
+  logical :: add_src_directly_to_rhs = .false.
   ! are we including an absorption?
   logical :: include_absorption = .false.
   ! are we including diffusion?
@@ -88,11 +92,13 @@ module field_equations_cv
   logical :: assemble_advection_matrix = .true.
   ! diffusion?
   logical :: assemble_diffusion = .false.
+  ! Are we running a multiphase flow simulation?
+  logical :: multiphase = .false.
 
 contains
     !************************************************************************
     ! solution wrapping subroutines
-    subroutine solve_field_eqn_cv(field_name, state, global_it)
+    subroutine solve_field_eqn_cv(field_name, state, istate, global_it)
       !!< Construct and solve the advection-diffusion equation for the given
       !!< field using control volumes.
 
@@ -100,6 +106,7 @@ contains
       character(len=*), intent(in) :: field_name
       !! Collection of fields defining system state.
       type(state_type), dimension(:), intent(inout) :: state
+      integer, intent(in) :: istate ! The material_phase index in which the field called field_name is in.
       ! global iteration number - passed in so it can be output to file
       integer, intent(in) :: global_it
 
@@ -127,15 +134,20 @@ contains
       type(csr_sparsity), pointer :: mesh_sparsity_1, mesh_sparsity, &
                                      mesh_sparsity_x, grad_m_t_sparsity
 
-      ! Right hand side vector, lumped mass matrix, 
+      ! Right hand side vector, cv mass matrix, 
       ! locally iterated field (for advection iterations) 
       ! and local old field (for subcycling)
-      type(scalar_field), pointer :: t_lumpedmass, q_lumpedmass
-      type(scalar_field) :: t_lumpedmass_old, t_lumpedmass_new
-      type(scalar_field) :: rhs, lumpedmass, advit_tfield, l_old_tfield
+      type(scalar_field), pointer :: t_cvmass, q_cvmass, t_abs_src_cvmass
+      type(scalar_field) :: t_cvmass_old, t_cvmass_new
+      type(scalar_field) :: rhs, cvmass, advit_tfield, l_old_tfield
       ! Diffusion contribution to rhs
       type(scalar_field) :: diff_rhs
-
+      
+      ! Porosity field
+      type(scalar_field) :: porosity_theta 
+      type(scalar_field), target :: t_cvmass_with_porosity
+      logical :: include_porosity
+              
       ! local copy of option_path for solution field
       character(len=OPTION_PATH_LEN) :: option_path, tdensity_option_path
 
@@ -167,15 +179,15 @@ contains
       type(cv_options_type) :: tfield_options, tdensity_options
 
       ! a dummy density in case we're solving for Advection
-      type(scalar_field), pointer :: dummyscalar
+      type(scalar_field), pointer :: dummyscalar, dummydensity
       type(vector_field), pointer :: dummyvector
       type(tensor_field), pointer :: dummytensor
       ! somewhere to put strings temporarily
       character(len=FIELD_NAME_LEN) :: tmpstring
       ! what equation type are we solving for?
       integer :: equation_type
-      ! success indicator and iterators
-      integer :: stat, i, j
+      ! success indicator
+      integer :: stat
       ! the courant number field
       type(scalar_field) :: cfl_no
       ! nonlinear and grid velocities
@@ -186,6 +198,12 @@ contains
       type(scalar_field), pointer :: sink
       !! Direction of gravity
       type(vector_field), pointer :: gravity
+      !! Temporary pointer to the material_phase's Velocity field
+      type(vector_field), pointer :: temp_velocity_ptr
+      character(len=FIELD_NAME_LEN) :: velocity_equation_type
+      ! Volume fraction fields for multiphase flow simulation
+      type(scalar_field), pointer :: vfrac, oldvfrac
+      type(scalar_field) :: nvfrac ! Non-linear version
 
       ! assume explicitness?
       logical :: explicit
@@ -197,20 +215,20 @@ contains
       character(len=OPTION_PATH_LEN), dimension(1) :: tdensity_option_path_array
 
       ewrite(2,*) 'in solve_field_eqn_cv'
-      ewrite(2,*) 'solving for '//field_name//' in state '//trim(state(1)%name)
+      ewrite(2,*) 'solving for '//field_name//' in state '//trim(state(istate)%name)
 
       ! extract lots of fields:
       ! the actual thing we're trying to solve for
-      tfield=>extract_scalar_field(state(1), trim(field_name))
+      tfield=>extract_scalar_field(state(istate), trim(field_name))
       ewrite_minmax(tfield)
       option_path=tfield%option_path
       ! its previous timelevel - if we're doing more than one iteration per timestep!
-      oldtfield=>extract_scalar_field(state(1), "Old"//trim(field_name))
+      oldtfield=>extract_scalar_field(state(istate), "Old"//trim(field_name))
       ! because fluidity resets tfield to oldtfield at the start of every
       ! global iteration we need to undo this so that the control volume faces
       ! are discretised using the most up to date values
       ! therefore extract the iterated values:
-      it_tfield=>extract_scalar_field(state(1), "Iterated"//trim(field_name))
+      it_tfield=>extract_scalar_field(state(istate), "Iterated"//trim(field_name))
       ! and set tfield to them:
       call set(tfield, it_tfield)
       ewrite_minmax(tfield)
@@ -233,6 +251,29 @@ contains
       call allocate(dummytensor, tfield%mesh, name="DummyTensor", field_type=FIELD_TYPE_CONSTANT)
       call zero(dummytensor)
       dummytensor%option_path = " "
+      
+      ! Allocate a dummy density field set to 1.0 in case we are using KEpsilon, 
+      ! but have a Boussinesq or Drainage equation_type for Velocity.
+      allocate(dummydensity)
+      call allocate(dummydensity, tfield%mesh, name="DummyDensity", field_type=FIELD_TYPE_CONSTANT)
+      call set(dummydensity, 1.0)
+      dummydensity%option_path = " "
+      
+      ! PhaseVolumeFraction for multiphase flow simulations
+      if(option_count("/material_phase/vector_field::Velocity/prognostic") > 1) then
+         multiphase = .true.
+         vfrac => extract_scalar_field(state(istate), "PhaseVolumeFraction")
+         call allocate(nvfrac, vfrac%mesh, "NonlinearPhaseVolumeFraction")
+         call zero(nvfrac)
+         call get_nonlinear_volume_fraction(state(istate), nvfrac)
+         
+         ewrite_minmax(nvfrac)
+         
+         oldvfrac => extract_scalar_field(state(istate), "OldPhaseVolumeFraction")
+      else
+         multiphase = .false.
+         oldvfrac => dummyscalar
+      end if
 
       ! find out equation type and hence if density is needed or not
       equation_type=equation_type_index(trim(option_path))
@@ -244,6 +285,26 @@ contains
         tdensity=>dummyscalar
         oldtdensity=>dummyscalar
 
+      case(FIELD_EQUATION_KEPSILON)
+        ! Depending on the equation type, extract the density or set it to some dummy field allocated above
+        temp_velocity_ptr => extract_vector_field(state(istate), "Velocity")
+        call get_option(trim(temp_velocity_ptr%option_path)//"/prognostic/equation[0]/name", velocity_equation_type)
+        select case(velocity_equation_type)
+           case("LinearMomentum")
+              include_density = .true.
+              tdensity=>extract_scalar_field(state(istate), "Density")
+              oldtdensity=>extract_scalar_field(state(istate), "OldDensity")
+           case("Boussinesq")
+              tdensity => dummydensity
+              oldtdensity => dummydensity
+           case("Drainage")
+              tdensity => dummydensity
+              oldtdensity => dummydensity
+           case default
+              ! developer error... out of sync options input and code
+              FLAbort("Unknown equation type for velocity")
+        end select
+
       case(FIELD_EQUATION_CONSERVATIONOFMASS, FIELD_EQUATION_REDUCEDCONSERVATIONOFMASS, &
            FIELD_EQUATION_INTERNALENERGY, FIELD_EQUATION_HEATTRANSFER )
         call get_option(trim(option_path)//'/prognostic/equation[0]/density[0]/name', &
@@ -252,19 +313,32 @@ contains
         ! density needed so extract the type specified in the input
         ! ?? are there circumstances where this should be "Iterated"... need to be
         ! careful with priority ordering
-        tdensity=>extract_scalar_field(state(1), trim(tmpstring))
+        tdensity=>extract_scalar_field(state(istate), trim(tmpstring))
         ewrite_minmax(tdensity)
+
         ! halo exchange? - not currently necessary when suboptimal halo exchange if density
         ! is solved for with this subroutine and the correct priority ordering.
-        oldtdensity=>extract_scalar_field(state(1), "Old"//trim(tmpstring))
+        oldtdensity=>extract_scalar_field(state(istate), "Old"//trim(tmpstring))
         ewrite_minmax(oldtdensity)
+           
       end select
 
-      ! get the density option path
-      if(have_option(trim(option_path)//'/prognostic/equation[0]/density[0]/discretisation_options')) then
-        tdensity_option_path = trim(option_path)//'/prognostic/equation[0]/density[0]/discretisation_options'
+      ! get the tdensity discretisation options from:
+      ! 1) the user specified options for the coefficient of this field
+      ! 2) the options underneath the density field itself if it is prognostic and cv
+      ! 3) throw an error as otherwise it would default to poorly defined options
+      if(include_density) then
+        if(have_option(trim(option_path)//'/prognostic/equation[0]/density[0]/discretisation_options')) then
+          tdensity_option_path = trim(option_path)//'/prognostic/equation[0]/density[0]/discretisation_options'
+        else
+          if(have_option(trim(tdensity%option_path)//"/prognostic/spatial_discretisation/control_volumes")) then
+            tdensity_option_path = trim(tdensity%option_path)
+          else
+            FLExit("Additional discretisation options required for the density coefficient. Please set equation/density/discretisation_options.")
+          end if
+        end if
       else
-        tdensity_option_path = trim(tdensity%option_path)
+        tdensity_option_path = ""
       end if
 
       ! now we can get the options for these fields
@@ -272,13 +346,15 @@ contains
       tfield_options=get_cv_options(tfield%option_path, tfield%mesh%shape%numbering%family, mesh_dim(tfield))
       if(include_density) then
         tdensity_options=get_cv_options(tdensity_option_path, tdensity%mesh%shape%numbering%family, mesh_dim(tdensity),  coefficient_field=.true.)
+      else
+        tdensity_options=tfield_options  ! dummy so we don't leave variables undefined but shouldn't get used
       end if
 
       ! extract fields from state
       ! the base Coordinate field
-      x=>extract_vector_field(state(1), "Coordinate")
+      x=>extract_vector_field(state(istate), "Coordinate")
       ! the Coordinate field on the same mesh as tfield
-      x_tfield=get_coordinate_field(state(1), tfield%mesh)
+      x_tfield=get_coordinate_field(state(istate), tfield%mesh)
 
       ! are we including the mass (generally yes)?
       include_mass = .not.have_option(trim(tfield%option_path)//"/prognostic/spatial_discretisation/control_volumes/mass_terms/exclude_mass_terms")
@@ -286,7 +362,7 @@ contains
       ! are we inclulding advection (generally yes)?
       include_advection = .not.(tfield_options%facevalue==CV_FACEVALUE_NONE)
       if(include_advection) then
-        nu=>extract_vector_field(state(1), "NonlinearVelocity")
+        nu=>extract_vector_field(state(istate), "NonlinearVelocity")
         ewrite_minmax(nu)
         ! find relative velocity
         allocate(advu)
@@ -299,18 +375,18 @@ contains
             ewrite(2,*) "Removing velocity from ", trim(field_name)
         end if
         ! add in sinking velocity
-        sink=>extract_scalar_field(state(1), trim(field_name)//"SinkingVelocity"&
+        sink=>extract_scalar_field(state(istate), trim(field_name)//"SinkingVelocity"&
             &, stat=stat)
         if(stat==0) then
-          gravity=>extract_vector_field(state(1), "GravityDirection")
-          ! this may perform a "remap" internally from CoordinateMesh to VelocitMesh
+          gravity=>extract_vector_field(state(istate), "GravityDirection")
+          ! this may perform a "remap" internally from CoordinateMesh to VelocityMesh
           call addto(advu, gravity, scale=sink)
         end if
         ewrite_minmax(advu)
       else
         ewrite(2,*) 'Excluding advection'
         advu => dummyvector
-        if(has_scalar_field(state(1), trim(field_name)//"SinkingVelocity")) then
+        if(has_scalar_field(state(istate), trim(field_name)//"SinkingVelocity")) then
             ewrite(-1,*) "No advection in "//trim(field_name)
             FLExit("But you have a sinking velocity on. Can't have that")
         end if
@@ -319,7 +395,7 @@ contains
       ! do we have a diffusivity - this will control whether we construct an auxiliary
       ! eqn or not (if BassiRebay is selected) or whether we construct gradients (if ElementGradient
       ! is selected)
-      diffusivity=>extract_tensor_field(state(1), trim(field_name)//"Diffusivity", stat=stat)
+      diffusivity=>extract_tensor_field(state(istate), trim(field_name)//"Diffusivity", stat=stat)
       include_diffusion = (stat==0).and.(tfield_options%diffusionscheme/=CV_DIFFUSION_NONE)
       if(.not.include_diffusion) then
         diffusivity => dummytensor
@@ -328,23 +404,30 @@ contains
       end if
       
       ! do we have a source?
-      source=>extract_scalar_field(state(1), trim(field_name)//"Source", stat=stat)
+      source=>extract_scalar_field(state(istate), trim(field_name)//"Source", stat=stat)
       include_source = (stat==0)
       if(.not.include_source) then
         source=>dummyscalar
       else
+        add_src_directly_to_rhs = have_option(trim(source%option_path)//'/diagnostic/add_directly_to_rhs')
+      
+        if (add_src_directly_to_rhs) then 
+          ewrite(2, *) "Adding Source field directly to the right hand side"
+          assert(node_count(source) == node_count(tfield))
+        end if
+
         ewrite_minmax(source)
       end if
       
       ! do we have an absorption?
-      absorption=>extract_scalar_field(state(1), trim(field_name)//"Absorption", stat=stat)
+      absorption=>extract_scalar_field(state(istate), trim(field_name)//"Absorption", stat=stat)
       include_absorption = (stat==0)
       if(.not.include_absorption) then
         absorption=>dummyscalar
       else
         ewrite_minmax(absorption)
       end if
-
+      
       ! create control volume shape functions
       call get_option("/geometry/quadrature/controlvolume_surface_degree", &
                      quaddegree, default=1)
@@ -409,7 +492,7 @@ contains
       option_path_array(1) = trim(option_path)                  ! temporary hack for compiler failure
       tdensity_option_path_array(1) = tdensity_option_path
       call cv_disc_get_cfl_no(option_path_array, &
-                      state(1), tfield%mesh, cfl_no, &
+                      state(istate), tfield%mesh, cfl_no, &
                       tdensity_option_path_array)
 
       ! get the mesh sparsity for the matrices
@@ -470,9 +553,9 @@ contains
           FLExit("Can't be explicit and exclude the mass terms.")
         end if
         
-        ! allocate a local lumpedmass field because it will get modified by bc etc.
-        call allocate(lumpedmass, tfield%mesh, name=trim(field_name)//"LumpedMass")
-        call zero(lumpedmass)
+        ! allocate a local cvmass field because it will get modified by bc etc.
+        call allocate(cvmass, tfield%mesh, name=trim(field_name)//"CVMass")
+        call zero(cvmass)
       end if
 
       if(include_diffusion) then
@@ -485,37 +568,56 @@ contains
 
       ! allocate the rhs of the equation
       call allocate(rhs, tfield%mesh, name=trim(field_name)//"RHS")
+      
+      ! are we including a porosity coefficient on the time term?
+      if (have_option(trim(complete_field_path(tfield%option_path))//'/porosity')) then
+         include_porosity = .true.
 
-      if(tfield%mesh%shape%degree>1) then
-        ! try lumping on the submesh
-        t_lumpedmass => get_lumped_mass_on_submesh(state, tfield%mesh)
+         ! get the porosity theta averaged field - this will allocate it
+         call form_porosity_theta(porosity_theta, state(istate), &
+             &option_path = trim(complete_field_path(tfield%option_path))//'/porosity')       
+                  
+         call allocate(t_cvmass_with_porosity, tfield%mesh, name="CVMassWithPorosity")
+         call compute_cv_mass(x, t_cvmass_with_porosity, porosity_theta)
+         ewrite_minmax(t_cvmass_with_porosity)
+         
+         call deallocate(porosity_theta)
       else
-        ! then find the lumped mass
-        ! (this replaces hart2/3d etc. in old code!!)
-        t_lumpedmass => get_lumped_mass(state, tfield%mesh)
+         include_porosity = .false.
       end if
-      ewrite_minmax(t_lumpedmass)
+
+      ! find the cv mass that is used for the absorption and source terms
+      t_abs_src_cvmass => get_cv_mass(state, tfield%mesh)
+      ewrite_minmax(t_abs_src_cvmass)
+      
+      ! find the cv mass that is used for the time term derivative
+      if (include_porosity) then
+         t_cvmass => t_cvmass_with_porosity
+      else
+         t_cvmass => t_abs_src_cvmass      
+      end if
+      ewrite_minmax(t_cvmass)
 
       move_mesh = have_option("/mesh_adaptivity/mesh_movement")
       if(move_mesh) then
         if(.not.include_advection) then
           FLExit("Moving the mesh but not including advection is not possible yet.")
         end if
-        ewrite(2,*) "Moving mesh."
-        x_old=>extract_vector_field(state(1), "OldCoordinate")
-        x_new=>extract_vector_field(state(1), "IteratedCoordinate")
-        call allocate(t_lumpedmass_old, tfield%mesh, name=trim(field_name)//"OldLumpedMass")
-        call allocate(t_lumpedmass_new, tfield%mesh, name=trim(field_name)//"NewLumpedMass")
-        if(tfield%mesh%shape%degree>1) then
-          FLExit("Lumping on submesh while moving the mesh not set up.")
-        else
-          call compute_lumped_mass(x_old, t_lumpedmass_old)
-          call compute_lumped_mass(x_new, t_lumpedmass_new)
+        if (include_porosity) then
+           FLExit("Moving mesh not set up to work when including porosity")
         end if
-        ewrite_minmax(t_lumpedmass_old)
-        ewrite_minmax(t_lumpedmass_new)
+        ewrite(2,*) "Moving mesh."
+        x_old=>extract_vector_field(state(istate), "OldCoordinate")
+        x_new=>extract_vector_field(state(istate), "IteratedCoordinate")
+        call allocate(t_cvmass_old, tfield%mesh, name=trim(field_name)//"OldCVMass")
+        call allocate(t_cvmass_new, tfield%mesh, name=trim(field_name)//"NewCVMass")
+
+        call compute_cv_mass(x_old, t_cvmass_old)
+        call compute_cv_mass(x_new, t_cvmass_new)
+        ewrite_minmax(t_cvmass_old)
+        ewrite_minmax(t_cvmass_new)
         
-        ug=>extract_vector_field(state(1), "GridVelocity")
+        ug=>extract_vector_field(state(istate), "GridVelocity")
         ewrite_minmax(ug)
 
         ug_cvshape=make_cv_element_shape(cvfaces, ug%mesh%shape)
@@ -531,12 +633,12 @@ contains
 
       if(include_diffusion.and.(tfield_options%diffusionscheme==CV_DIFFUSION_BASSIREBAY)) then
         if(.not.(tfield%mesh==diffusivity%mesh)) then
-          q_lumpedmass => get_lumped_mass(state, diffusivity%mesh)
+          q_cvmass => get_cv_mass(state, diffusivity%mesh)
         else
-          q_lumpedmass => t_lumpedmass
+          q_cvmass => t_cvmass
         end if
       else
-        q_lumpedmass => t_lumpedmass
+        q_cvmass => t_cvmass
       end if
 
       ! allocate a field to store the locally iterated values in
@@ -576,6 +678,9 @@ contains
           ! yes, we're subcycling
           ! we should have already calculated the courant number (or aborted in the attempt)
           no_subcycles=ceiling(max_cfl/max_sub_cfl)
+          if(include_diffusion.or.include_source.or.include_absorption) then
+            no_subcycles = max(no_subcycles, 1)
+          end if
           if(no_subcycles>1) then
             sub_dt=dt/real(no_subcycles)
             call scale(cfl_no, 1.0/real(no_subcycles))
@@ -618,33 +723,37 @@ contains
             ! diffusion matrix then assemble A_m, D_m and rhs here
             call assemble_advectiondiffusion_m_cv(A_m, rhs, D_m, diff_rhs, &
                                         tfield, l_old_tfield, tfield_options, &
-                                        tdensity, oldtdensity, tdensity_options, &
-                                        cvfaces, x_cvshape, x_cvbdyshape, &
+                                        tdensity, oldtdensity, nvfrac, oldvfrac, &
+                                        tdensity_options, cvfaces, x_cvshape, x_cvbdyshape, &
                                         u_cvshape, u_cvbdyshape, t_cvshape, &
                                         ug_cvshape, ug_cvbdyshape, &
                                         x_cvshape_full, x_cvbdyshape_full, &
                                         t_cvshape_full, t_cvbdyshape_full, &
                                         diff_cvshape_full, diff_cvbdyshape_full, &
-                                        state, advu, ug, x, x_tfield, cfl_no, sub_dt, &
-                                        diffusivity, q_lumpedmass, &
+                                        state(istate:istate), advu, ug, x, x_tfield, cfl_no, sub_dt, &
+                                        diffusivity, q_cvmass, &
                                         mesh_sparsity_x, grad_m_t_sparsity)
           end if
 
           ! assemble it all into a coherent equation
-          call assemble_field_eqn_cv(M, A_m, lumpedmass, rhs, &
+          call assemble_field_eqn_cv(M, A_m, cvmass, rhs, &
                                     tfield, l_old_tfield, &
                                     tdensity, oldtdensity, tdensity_options, &
                                     source, absorption, tfield_options%theta, &
-                                    state, advu, sub_dt, explicit, &
-                                    t_lumpedmass, t_lumpedmass_old, t_lumpedmass_new, & 
-                                    D_m, diff_rhs)
+                                    state(istate:istate), advu, sub_dt, explicit, &
+                                    t_cvmass, t_abs_src_cvmass, t_cvmass_old, t_cvmass_new, & 
+                                    D_m, diff_rhs, nvfrac, oldvfrac)
 
+          if(have_option("/multiphase_interaction/heat_transfer") .and. &
+             equation_type_index(trim(tfield%option_path)) == FIELD_EQUATION_INTERNALENERGY) then
+            call add_heat_transfer(state, istate, tfield, M, rhs)
+          end if
 
           ! Solve for the change in tfield.
           if(explicit) then
-            call apply_dirichlet_conditions(lumpedmass, rhs, tfield, sub_dt)
+            call apply_dirichlet_conditions(cvmass, rhs, tfield, sub_dt)
 
-            delta_tfield%val = rhs%val/lumpedmass%val
+            delta_tfield%val = rhs%val/cvmass%val
           else
             ! apply strong dirichlet boundary conditions (if any)
             ! note that weak conditions (known as control volume boundary conditions)
@@ -652,7 +761,7 @@ contains
             call apply_dirichlet_conditions(M, rhs, tfield, sub_dt)
 
             call zero(delta_tfield)
-            call petsc_solve(delta_tfield, M, rhs, state(1))
+            call petsc_solve(delta_tfield, M, rhs, state(istate))
           end if
 
           ! reset tfield to l_old_tfield before applying change
@@ -662,8 +771,8 @@ contains
 
           call halo_update(tfield)  ! exchange the extended halos
 
-          call test_and_write_advection_convergence(tfield, advit_tfield, x, &
-                                    filename=trim(state(1)%name)//"__"//trim(tfield%name), &
+          call test_and_write_advection_convergence(tfield, advit_tfield, x, t_cvmass, &
+                                    filename=trim(state(istate)%name)//"__"//trim(tfield%name), &
                                     time=time+sub_dt, dt=sub_dt, it=global_it, adv_it=adv_it, &
                                     subcyc=sub, error=error)
 
@@ -682,7 +791,7 @@ contains
       call deallocate(rhs)
       if(.not.explicit) call deallocate(A_m)
       if(.not.explicit) call deallocate(M)
-      if(explicit) call deallocate(lumpedmass)
+      if(explicit) call deallocate(cvmass)
       call deallocate(cfl_no)
       call deallocate(x_cvbdyshape)
       call deallocate(x_cvbdyshape_full)
@@ -706,30 +815,38 @@ contains
       deallocate(dummyvector)
       call deallocate(dummytensor)
       deallocate(dummytensor)
+      call deallocate(dummydensity)
+      deallocate(dummydensity)
       if (include_diffusion) then
         call deallocate(D_m)
         call deallocate(diff_rhs)
       end if
       call deallocate(x_tfield)
       if(move_mesh) then
-        call deallocate(t_lumpedmass_new)
-        call deallocate(t_lumpedmass_old)
+        call deallocate(t_cvmass_new)
+        call deallocate(t_cvmass_old)
       end if
       call deallocate(ug_cvshape)
       call deallocate(ug_cvbdyshape)
+      if (include_porosity) then
+        call deallocate(t_cvmass_with_porosity)
+      end if
+      if(multiphase) then
+         call deallocate(nvfrac)
+      end if
 
     end subroutine solve_field_eqn_cv
     ! end of solution wrapping subroutines
     !************************************************************************
     !************************************************************************
     ! equation wrapping subroutines
-    subroutine assemble_field_eqn_cv(M, A_m, m_lumpedmass, rhs, &
+    subroutine assemble_field_eqn_cv(M, A_m, m_cvmass, rhs, &
                                     tfield, oldtfield, &
                                     tdensity, oldtdensity, tdensity_options, &
                                     source, absorption, theta, &
                                     state, advu, dt, explicit, &
-                                    lumpedmass, lumpedmass_old, lumpedmass_new, &
-                                    D_m, diff_rhs)
+                                    cvmass, abs_src_cvmass, cvmass_old, cvmass_new, &
+                                    D_m, diff_rhs, nvfrac, oldvfrac)
 
       ! This subroutine assembles the equation
       ! M(T^{n+1}-T^{n})/\Delta T = rhs
@@ -744,8 +861,8 @@ contains
       ! matrix containing advective terms - to be incorporated
       ! into M during this subroutine
       type(csr_matrix), intent(inout) :: A_m
-      ! rhs of equation
-      type(scalar_field), intent(inout) :: m_lumpedmass, rhs
+      ! explicit lhs and rhs of equation
+      type(scalar_field), intent(inout) :: m_cvmass, rhs
       ! the field we are solving for
       type(scalar_field), intent(inout) :: tfield
       type(scalar_field), intent(inout) :: oldtfield, tdensity, oldtdensity
@@ -762,13 +879,19 @@ contains
       real, intent(in) :: dt
       ! are we assuming this is a fully explicit equation?
       logical, intent(in) :: explicit
+      ! cv mass to use for time derivative term
+      type(scalar_field), intent(in) :: cvmass
       ! moving mesh stuff
-      type(scalar_field), intent(in) :: lumpedmass
-      type(scalar_field), intent(in) :: lumpedmass_old
-      type(scalar_field), intent(in) :: lumpedmass_new
+      type(scalar_field), intent(in) :: cvmass_old
+      type(scalar_field), intent(in) :: cvmass_new
+      ! cv mass to use for absorption and source
+      type(scalar_field), intent(in) :: abs_src_cvmass      
+      
       ! diffusion:
       type(csr_matrix), intent(inout), optional :: D_m
       type(scalar_field), intent(inout), optional :: diff_rhs
+      
+      type(scalar_field), intent(inout), optional :: nvfrac, oldvfrac
 
       ! local memory:
       ! for all equation types:
@@ -809,7 +932,7 @@ contains
 
       ! zero the "matrices" being assembled
       if(explicit) then
-        call zero(m_lumpedmass)
+        call zero(m_cvmass)
       else
         call zero(M)
       end if
@@ -818,36 +941,36 @@ contains
       if(include_mass) then
         if(move_mesh) then
           if(explicit) then
-            call set(m_lumpedmass, lumpedmass_new)
+            call set(m_cvmass, cvmass_new)
           else
-            call addto_diag(M, lumpedmass_new)
+            call addto_diag(M, cvmass_new)
           end if
         else
           if(explicit) then
-            call set(m_lumpedmass, lumpedmass)
+            call set(m_cvmass, cvmass)
           else
-            call addto_diag(M, lumpedmass)
+            call addto_diag(M, cvmass)
           end if
         end if
       end if
 
       ! allocate some memory for assembly
       call allocate(MT_old, rhs%mesh, name="MT_oldProduct" )
-      if(include_source) then
+      if(include_source .and. (.not. add_src_directly_to_rhs)) then
         call allocate(masssource, rhs%mesh, name="MassSourceProduct" )
-        call set(masssource, lumpedmass)
+        call set(masssource, abs_src_cvmass)
         call scale(masssource, source)
       end if
       if(include_absorption) then
         call allocate(massabsorption, rhs%mesh, name="MassAbsorptionProduct" )
-        call set(massabsorption, lumpedmass)
+        call set(massabsorption, abs_src_cvmass)
         call scale(massabsorption, absorption)
       end if
       
       if(move_mesh) then
         call allocate(massconservation, rhs%mesh, name="MovingMeshMassConservation")
-        call set(massconservation, lumpedmass_old)
-        call addto(massconservation, lumpedmass_new, scale=-1.0)
+        call set(massconservation, cvmass_old)
+        call addto(massconservation, cvmass_new, scale=-1.0)
         call scale(massconservation, 1./dt)
         call scale(massconservation, oldtfield)
       end if
@@ -875,7 +998,7 @@ contains
         end if
 
 
-        if(include_source) call addto(rhs, masssource)
+        if(include_source .and. (.not. add_src_directly_to_rhs)) call addto(rhs, masssource)
 
         if(include_absorption) then
           ! massabsorption has already been added to the matrix so it can now be scaled
@@ -909,7 +1032,7 @@ contains
           call addto(consterm, oldtdensity, -1.0)
           call scale(consterm, oldtfield)
           call scale(consterm, 1./dt)
-          call scale(consterm, lumpedmass)
+          call scale(consterm, cvmass)
 
           call addto(rhs, consterm, -1.0)
 
@@ -920,7 +1043,7 @@ contains
         ! multiply the diagonal of M by the up to date density
         if(explicit) then
           if(include_mass) then
-            call scale(m_lumpedmass, tdensity)
+            call scale(m_cvmass, tdensity)
           end if
         else
           if(include_mass) then
@@ -936,7 +1059,7 @@ contains
           end if
         end if
         
-        if(include_source) call addto(rhs, masssource)
+        if(include_source .and. (.not. add_src_directly_to_rhs)) call addto(rhs, masssource)
 
         if(include_absorption) then
           ! massabsorption has already been added to the matrix so it can now be scaled
@@ -968,7 +1091,7 @@ contains
         ! multiply the diagonal by the previous timesteps density
         if(explicit) then
           if(include_mass) then
-            m_lumpedmass%val = m_lumpedmass%val*(tdensity_theta*tdensity%val+(1.0-tdensity_theta)*oldtdensity%val)
+            m_cvmass%val = m_cvmass%val*(tdensity_theta*tdensity%val+(1.0-tdensity_theta)*oldtdensity%val)
           end if
         else
           if(include_mass) then 
@@ -984,7 +1107,7 @@ contains
           end if
         end if
 
-        if(include_source) call addto(rhs, masssource)
+        if(include_source .and. (.not. add_src_directly_to_rhs)) call addto(rhs, masssource)
 
         if(include_absorption) then
           ! massabsorption has already been added to the matrix so it can now be scaled
@@ -1016,7 +1139,7 @@ contains
         ! multiply the diagonal by the previous timesteps density
         if(explicit) then
           if(include_mass) then
-            m_lumpedmass%val = m_lumpedmass%val*(tdensity_theta*tdensity%val+(1.0-tdensity_theta)*oldtdensity%val)
+            m_cvmass%val = m_cvmass%val*(tdensity_theta*tdensity%val+(1.0-tdensity_theta)*oldtdensity%val)
           end if
         else
           if(include_mass) then 
@@ -1032,7 +1155,7 @@ contains
           end if
         end if
 
-        if(include_source) call addto(rhs, masssource)
+        if(include_source .and. (.not. add_src_directly_to_rhs)) call addto(rhs, masssource)
 
         if(include_absorption) then
           ! massabsorption has already been added to the matrix so it can now be scaled
@@ -1060,34 +1183,91 @@ contains
         ! [\rho^{n+1}M + dt*A_m + dt*theta*D_m](T^{n+1}-T^{n})/dt = rhs - [A_m + D_m]*T^{n} - diff_rhs - (p+atm_p)*CT_m*u
 
         ! construct rhs
-        p=>extract_scalar_field(state(1), "Pressure")
-        ewrite_minmax(p)
-        assert(p%mesh==tfield%mesh)
-        ! halo exchange not necessary as it is done straight after solve
-        call get_option(trim(p%option_path)//'/prognostic/atmospheric_pressure', &
-                              atmospheric_pressure, default=0.0)
-        gradient_sparsity => get_csr_sparsity_firstorder(state, p%mesh, advu%mesh)
+        if(have_option(trim(state(1)%option_path)//'/equation_of_state/compressible')) then
+           p=>extract_scalar_field(state(1), "Pressure")
+           ewrite_minmax(p)
+           assert(p%mesh==tfield%mesh)
+           ! halo exchange not necessary as it is done straight after solve
+           call get_option(trim(p%option_path)//'/prognostic/atmospheric_pressure', &
+                                   atmospheric_pressure, default=0.0)
+           gradient_sparsity => get_csr_sparsity_firstorder(state, p%mesh, advu%mesh)
 
-        call allocate(CT_m, gradient_sparsity, (/1, advu%dim/), name="DivergenceMatrix" )
-        call assemble_divergence_matrix_cv(CT_m, state(1), &
-                                           test_mesh=p%mesh, field=advu)
+           call allocate(CT_m, gradient_sparsity, (/1, advu%dim/), name="DivergenceMatrix" )
+           call assemble_divergence_matrix_cv(CT_m, state(1), &
+                                                test_mesh=p%mesh, field=advu, include_vfrac=.false.)
+                                                
+           call allocate(pterm, p%mesh, "PressureTerm")
+            
+           ! construct the pressure term
+           call mult(pterm, CT_m, advu) 
+           if(multiphase) then
+              call scale(pterm, nvfrac) ! We need vfrac*p*div(u) for the multiphase InternalEnergy equation
+           end if
+            
+                                   ! should this really be the advection velocity or just the relative or the nonlinear?
+           pterm%val = pterm%val*(p%val+atmospheric_pressure)
 
-        call allocate(pterm, p%mesh, "PressureTerm")
+           call addto(rhs, pterm, -1.0)
 
-        ! construct the pressure term
-        call mult(pterm, CT_m, advu) 
-                                ! should this really be the advection velocity or just the relative or the nonlinear?
-        pterm%val = pterm%val*(p%val+atmospheric_pressure)
+           call deallocate(CT_m)
+           call deallocate(pterm)
+        end if
+         
+        ! construct M
+        if(explicit) then
+          if(include_mass) then
+            call scale(m_cvmass, tdensity)
+            if(multiphase) then
+               call scale(m_cvmass, nvfrac) 
+            end if
+          end if
+        else
+          if(include_mass) then
+            call mult_diag(M, tdensity)
+            if(multiphase) then
+               call mult_diag(M, nvfrac) 
+            end if
+          end if
+          if(include_advection) call addto(M, A_m, dt)
+          if(include_absorption) call addto_diag(M, massabsorption, theta*dt)
+        
+          if(include_advection) then
+            call mult(MT_old, A_m, oldtfield)
+            call addto(rhs, MT_old, -1.0)
+          end if
+        end if
 
-        call addto(rhs, pterm, -1.0)
+        if(include_source .and. (.not. add_src_directly_to_rhs)) call addto(rhs, masssource)
 
-        call deallocate(CT_m)
-        call deallocate(pterm)
+        if(include_absorption) then
+          ! massabsorption has already been added to the matrix so it can now be scaled
+          ! by the old field value to add it to the rhs
+          call scale(massabsorption, oldtfield)
+          call addto(rhs, massabsorption, -1.0)
+        end if
+
+        if(include_diffusion) then
+          call mult(MT_old, D_m, oldtfield)
+          call addto(rhs, MT_old, -1.0)
+          call addto(rhs, diff_rhs, -1.0)
+
+          if(.not.explicit) then
+            call addto(M, D_m, theta*dt)
+          end if
+        end if
+        
+        if(move_mesh) then
+          FLExit("Moving mesh with this equation type not yet supported.")
+        end if
+
+      case (FIELD_EQUATION_KEPSILON)
+
+        ! [\rho^{n+1}M + dt*A_m + dt*theta*D_m](T^{n+1}-T^{n})/dt = rhs - [A_m + D_m]*T^{n} - diff_rhs
 
         ! construct M
         if(explicit) then
           if(include_mass) then
-            call scale(m_lumpedmass, tdensity)
+            call scale(m_cvmass, tdensity)
           end if
         else
           if(include_mass) then
@@ -1102,7 +1282,7 @@ contains
           end if
         end if
 
-        if(include_source) call addto(rhs, masssource)
+        if(include_source .and. (.not. add_src_directly_to_rhs)) call addto(rhs, masssource)
 
         if(include_absorption) then
           ! massabsorption has already been added to the matrix so it can now be scaled
@@ -1127,7 +1307,11 @@ contains
 
       end select
 
-      if(include_source) call deallocate(masssource)
+      ! Add the source directly to the rhs if required 
+      ! which must be included before dirichlet BC's.
+      if (add_src_directly_to_rhs) call addto(rhs, source)
+
+      if(include_source .and. (.not. add_src_directly_to_rhs)) call deallocate(masssource)
       if(include_absorption) call deallocate(massabsorption)
       call deallocate(MT_old)
       if(move_mesh) call deallocate(massconservation)
@@ -1141,15 +1325,15 @@ contains
     ! assembly subroutines 
     subroutine assemble_advectiondiffusion_m_cv(A_m, rhs, D_m, diff_rhs, &
                                        tfield, oldtfield, tfield_options, &
-                                       tdensity, oldtdensity, tdensity_options, &
-                                       cvfaces, x_cvshape, x_cvbdyshape, &
+                                       tdensity, oldtdensity, nvfrac, oldvfrac, &
+                                       tdensity_options, cvfaces, x_cvshape, x_cvbdyshape, &
                                        u_cvshape, u_cvbdyshape, t_cvshape, &
                                        ug_cvshape, ug_cvbdyshape, &
                                        x_cvshape_full, x_cvbdyshape_full, &
                                        t_cvshape_full, t_cvbdyshape_full, &
                                        diff_cvshape_full, diff_cvbdyshape_full, &
                                        state, advu, ug, x, x_tfield, cfl_no, dt, &
-                                       diffusivity, q_lumpedmass, &
+                                       diffusivity, q_cvmass, &
                                        mesh_sparsity, grad_m_t_sparsity)
 
       ! This subroutine assembles the advection and diffusion matrices and rhs(s) for
@@ -1204,14 +1388,17 @@ contains
       type(scalar_field), intent(in) :: cfl_no
       ! timestep
       real, intent(in) :: dt
+      
+      type(scalar_field), intent(in) :: nvfrac, oldvfrac
+      real, dimension(x_cvshape%ngi) :: nvfrac_gi
 
       ! mesh sparsity for upwind value matrices
       type(csr_sparsity), intent(in) :: mesh_sparsity
 
       ! the diffusivity tensor
       type(tensor_field), intent(in) :: diffusivity
-      ! the lumped mass = the mass matrix for the auxilliary diffusion equation
-      type(scalar_field), intent(in) :: q_lumpedmass
+      ! the cv mass = the mass matrix for the auxilliary diffusion equation
+      type(scalar_field), intent(in) :: q_cvmass
       ! sparsity pattern for the gradient transposed operator
       type(csr_sparsity), intent(inout) :: grad_m_t_sparsity
 
@@ -1219,6 +1406,7 @@ contains
       ! memory for coordinates, velocity, normals, determinants, nodes
       ! and the cfl number at the gauss pts and nodes
       real, dimension(x%dim,ele_loc(x,1)) :: x_ele
+      real, dimension(x%dim,ele_loc(tfield,1)) :: xt_ele
       real, dimension(x%dim,face_loc(x,1)) :: x_ele_bdy
       real, dimension(x%dim,x_cvshape%ngi) :: x_f
       real, dimension(advu%dim,u_cvshape%ngi) :: u_f
@@ -1254,6 +1442,9 @@ contains
 
       ! loop integers
       integer :: ele, sele, iloc, oloc, dloc, face, gi, ggi, dim
+      
+      ! what equation type are we solving for?
+      integer :: equation_type
 
       ! upwind value matrices for the fields and densities
       type(csr_matrix)  :: tfield_upwind, &
@@ -1268,7 +1459,7 @@ contains
       ! the type of the bc if integrating over domain boundaries
       integer, dimension(:), allocatable :: tfield_bc_type, tdensity_bc_type
       ! fields for the bcs over the entire surface mesh
-      type(scalar_field) :: tfield_bc, tdensity_bc
+      type(scalar_field) :: tfield_bc, tfield_bc2, tdensity_bc
 
       ! local element matrices - allow the assembly of an entire face without multiple calls to csr_pos
       real, dimension(mesh_dim(tfield), ele_loc(tfield,1), ele_loc(tfield,1)) :: grad_mat_local
@@ -1277,6 +1468,11 @@ contains
       real, dimension(mesh_dim(tfield), face_loc(tfield,1)) :: grad_mat_local_bdy, grad_rhs_local_bdy
       real, dimension(face_loc(tfield,1)) :: mat_local_bdy, rhs_local_bdy, div_rhs_local_bdy
       real, dimension(ele_loc(tfield,1)) :: rhs_local
+      
+      ! Data associated with Robin BC's.
+      real, dimension(face_loc(tfield,1)) :: robin_diff_mat_local_bdy
+      real, dimension(face_loc(tfield,1)) :: robin_diff_rhs_local_bdy
+      real, dimension(face_loc(tfield,1)) :: robin_bc_val1_ele_bdy, robin_bc_val2_ele_bdy
 
       ! the auxilliary gradient matrix (assembled as a divergence confusingly)
       type(block_csr_matrix) :: div_m
@@ -1290,6 +1486,10 @@ contains
       ! a dummy array to potentially store multiple copies of the diffusivity nodes
       integer, dimension(ele_loc(tfield,1)) :: diffusivity_lglno
       integer, dimension(face_loc(tfield,1)) :: diffusivity_lglno_bdy
+
+      ! Boundary condition types
+      integer, parameter :: BC_TYPE_WEAKDIRICHLET = 1, BC_TYPE_NEUMANN = 2, BC_TYPE_INTERNAL = 3, &
+                            BC_TYPE_ZEROFLUX = 4, BC_TYPE_FLUX = 5, BC_TYPE_ROBIN = 6
 
       ewrite(1, *) "In assemble_advectiondiffusion_m_cv"
 
@@ -1357,10 +1557,12 @@ contains
       ! some temporal discretisation options for clarity
       ptheta = tfield_options%ptheta
       beta = tfield_options%beta
+      equation_type = equation_type_index(trim(tfield%option_path))
 
       ! loop over elements
       element_loop: do ele=1, element_count(tfield)
         x_ele=ele_val(x, ele)
+        xt_ele=ele_val(x_tfield, ele)
         x_f=ele_val_at_quad(x, ele, x_cvshape)
         nodes=>ele_nodes(tfield, ele)
         ! the nodes in this element from the coordinate mesh projected
@@ -1398,6 +1600,11 @@ contains
           call transform_to_physical(X, ele, x_shape=x_cvshape_full, &
                                     shape=t_cvshape_full, dshape=dt_t)
           diffusivity_gi = ele_val_at_quad(diffusivity, ele, diff_cvshape_full)
+          
+          if(multiphase .and. equation_type==FIELD_EQUATION_INTERNALENERGY) then
+            nvfrac_gi = ele_val_at_quad(nvfrac, ele, diff_cvshape_full)
+          end if
+          
         end if
 
         cfl_ele = ele_val(cfl_no, ele)
@@ -1408,6 +1615,11 @@ contains
         if(include_density) then
           tdensity_ele = ele_val(tdensity, ele)
           oldtdensity_ele = ele_val(oldtdensity, ele)
+          
+          if(multiphase) then
+            tdensity_ele = tdensity_ele*ele_val(nvfrac,ele)
+            oldtdensity_ele = oldtdensity_ele*ele_val(oldvfrac,ele)
+          end if
         end if
 
         notvisited=.true.
@@ -1473,7 +1685,7 @@ contains
                                         tfield_face_val, &
                                         oldtfield_face_val, &
                                         tfield_options%theta, dt, udotn, &
-                                        x_ele, tfield_options%limit_theta, &
+                                        xt_ele, tfield_options%limit_theta, &
                                         tfield_ele, oldtfield_ele, &
                                         ftheta=ftheta)
 
@@ -1481,28 +1693,25 @@ contains
                       ! do the same for the density but save some effort if it's just a dummy
                       select case (tdensity%field_type)
                       case(FIELD_TYPE_CONSTANT)
-
                           tdensity_face_val = tdensity_ele(iloc)
                           oldtdensity_face_val = oldtdensity_ele(iloc)
 
                       case default
-
                           call evaluate_face_val(tdensity_face_val, oldtdensity_face_val, &
-                                                iloc, oloc, ggi, upwind_nodes, &
-                                                t_cvshape,&
-                                                tdensity_ele, oldtdensity_ele, &
-                                                tdensity_upwind, oldtdensity_upwind, &
-                                                inflow, cfl_ele, &
-                                                tdensity_options)
+                                                   iloc, oloc, ggi, upwind_nodes, &
+                                                   t_cvshape,&
+                                                   tdensity_ele, oldtdensity_ele, &
+                                                   tdensity_upwind, oldtdensity_upwind, &
+                                                   inflow, cfl_ele, &
+                                                   tdensity_options)
 
                       end select
-
                       tdensity_theta_val=theta_val(iloc, oloc, &
-                                          tdensity_face_val, &
-                                          oldtdensity_face_val, &
-                                          tdensity_options%theta, dt, udotn, &
-                                          x_ele, tdensity_options%limit_theta, &
-                                          tdensity_ele, oldtdensity_ele)
+                                             tdensity_face_val, &
+                                             oldtdensity_face_val, &
+                                             tdensity_options%theta, dt, udotn, &
+                                             xt_ele, tdensity_options%limit_theta, &
+                                             tdensity_ele, oldtdensity_ele)
 
                       if(assemble_advection_matrix) then
                         mat_local(iloc, oloc) = mat_local(iloc, oloc) &
@@ -1578,16 +1787,35 @@ contains
                       end do dimension_loop1
 
                     case(CV_DIFFUSION_ELEMENTGRADIENT)
+                    
+                     if(multiphase .and. equation_type==FIELD_EQUATION_INTERNALENERGY) then
+                        ! This allows us to use the Diffusivity term as the heat flux term
+                        ! in the multiphase InternalEnergy equation: div( (k/Cv) * vfrac * grad(ie) ).
+                        ! The user needs to input k/Cv for the prescribed diffusivity,
+                        ! where k is the effective conductivity and Cv is the specific heat
+                        ! at constant volume. The division by Cv is needed because the heat flux
+                        ! is defined in terms of temperature T = ie/Cv.
+                     
+                        do dloc=1,size(dt_t,1)
+                           ! n_i K_{ij} dT/dx_j
+                           diff_mat_local(iloc,dloc) = diff_mat_local(iloc,dloc) - &
+                           sum(matmul(diffusivity_gi(:,:,ggi), dt_t(dloc, ggi, :))*normgi, 1)*detwei(ggi)*nvfrac_gi(ggi)
 
-                      do dloc=1,size(dt_t,1)
-                        ! n_i K_{ij} dT/dx_j
-                        diff_mat_local(iloc,dloc) = diff_mat_local(iloc,dloc) - &
-                          sum(matmul(diffusivity_gi(:,:,ggi), dt_t(dloc, ggi, :))*normgi, 1)*detwei(ggi)
+                           ! notvisited
+                           diff_mat_local(oloc, dloc) = diff_mat_local(oloc,dloc) - &
+                           sum(matmul(diffusivity_gi(:,:,ggi), dt_t(dloc, ggi, :))*(-normgi), 1)*detwei(ggi)*nvfrac_gi(ggi)
+                        end do
+                     else       
+                        do dloc=1,size(dt_t,1)
+                           ! n_i K_{ij} dT/dx_j
+                           diff_mat_local(iloc,dloc) = diff_mat_local(iloc,dloc) - &
+                           sum(matmul(diffusivity_gi(:,:,ggi), dt_t(dloc, ggi, :))*normgi, 1)*detwei(ggi)
 
-                        ! notvisited
-                        diff_mat_local(oloc, dloc) = diff_mat_local(oloc,dloc) - &
-                          sum(matmul(diffusivity_gi(:,:,ggi), dt_t(dloc, ggi, :))*(-normgi), 1)*detwei(ggi)
-                      end do
+                           ! notvisited
+                           diff_mat_local(oloc, dloc) = diff_mat_local(oloc,dloc) - &
+                           sum(matmul(diffusivity_gi(:,:,ggi), dt_t(dloc, ggi, :))*(-normgi), 1)*detwei(ggi)
+                        end do
+                     end if
 
                     end select
                   end if
@@ -1632,7 +1860,9 @@ contains
         "weakdirichlet", &
         "neumann      ", &
         "internal     ", &
-        "zero_flux    "/), tfield_bc, tfield_bc_type)
+        "zero_flux    ", &
+        "flux         ", &
+        "robin        "/), tfield_bc, tfield_bc_type, boundary_second_value = tfield_bc2)
       if(include_density) then
         allocate(tdensity_bc_type(surface_element_count(tdensity)))
         call get_entire_boundary_condition(tdensity, (/"weakdirichlet"/), tdensity_bc, tdensity_bc_type)
@@ -1641,7 +1871,7 @@ contains
       ! loop over the surface elements
       surface_element_loop: do sele = 1, surface_element_count(tfield)
         
-        if((tfield_bc_type(sele)==3)) cycle
+        if((tfield_bc_type(sele)==BC_TYPE_INTERNAL)) cycle
 
         ele = face_ele(x, sele)
         x_ele = ele_val(x, ele)
@@ -1675,13 +1905,13 @@ contains
         end if
 
         ! deal with bcs for tfield
-        if(tfield_bc_type(sele)==1) then
+        if(tfield_bc_type(sele)==BC_TYPE_WEAKDIRICHLET .or. tfield_bc_type(sele)==BC_TYPE_FLUX) then
           ghost_tfield_ele_bdy=ele_val(tfield_bc, sele)
         else
           ghost_tfield_ele_bdy=face_val(tfield, sele)
         end if
 
-        if(tfield_bc_type(sele)==1) then
+        if(tfield_bc_type(sele)==BC_TYPE_WEAKDIRICHLET) then
           ghost_oldtfield_ele_bdy=ele_val(tfield_bc, sele) ! not considering time varying bcs yet
         else
           ghost_oldtfield_ele_bdy=face_val(oldtfield, sele)
@@ -1696,25 +1926,48 @@ contains
 
           if(include_density) then
             ! deal with bcs for tdensity
-            if(tdensity_bc_type(sele)==1) then
+            if(tdensity_bc_type(sele)==BC_TYPE_WEAKDIRICHLET) then
               ghost_tdensity_ele_bdy=ele_val(tdensity_bc, sele)
             else
-              ghost_tdensity_ele_bdy=face_val(tdensity, sele)
+              if(multiphase) then
+                 ghost_tdensity_ele_bdy=face_val(tdensity, sele)*face_val(nvfrac, sele)
+              else
+                 ghost_tdensity_ele_bdy=face_val(tdensity, sele)
+              end if
             end if
 
-            if(tdensity_bc_type(sele)==1) then
+            if(tdensity_bc_type(sele)==BC_TYPE_WEAKDIRICHLET) then
               ghost_oldtdensity_ele_bdy=ele_val(tdensity_bc, sele) ! not considering time varying bcs yet
             else
-              ghost_oldtdensity_ele_bdy=face_val(oldtdensity, sele)
+              if(multiphase) then
+                 ghost_oldtdensity_ele_bdy=face_val(oldtdensity, sele)*face_val(oldvfrac, sele)
+              else
+                 ghost_oldtdensity_ele_bdy=face_val(oldtdensity, sele)
+              end if
             end if
 
             tdensity_ele_bdy=face_val(tdensity, sele)
             oldtdensity_ele_bdy=face_val(oldtdensity, sele)
+            
+            if(multiphase) then
+               tdensity_ele_bdy=tdensity_ele_bdy*face_val(nvfrac, sele)
+               oldtdensity_ele_bdy=oldtdensity_ele_bdy*face_val(oldvfrac, sele)
+            end if
           end if
         end if
 
         if(assemble_diffusion) then
-          ghost_gradtfield_ele_bdy = ele_val(tfield_bc, sele)
+          if (tfield_bc_type(sele)==BC_TYPE_ROBIN) then
+             if (.not. tfield_options%diffusionscheme == CV_DIFFUSION_ELEMENTGRADIENT) then
+                FLExit('Can only use CV robin BC with ElementGradient diffusion scheme')
+             end if
+             robin_bc_val1_ele_bdy    = ele_val(tfield_bc, sele)
+             robin_bc_val2_ele_bdy    = ele_val(tfield_bc2, sele)
+             robin_diff_mat_local_bdy = 0.0
+             robin_diff_rhs_local_bdy = 0.0
+          else
+             ghost_gradtfield_ele_bdy = ele_val(tfield_bc, sele)
+           end if
         end if
 
         ! zero small matrices for assembly
@@ -1745,14 +1998,15 @@ contains
                   ! u.n
                   if(move_mesh) then
                     divudotn = dot_product(u_bdy_f(:,ggi), normal_bdy(:,ggi))
-                    if((tfield_bc_type(sele)==4)) then
+                    if((tfield_bc_type(sele)==BC_TYPE_ZEROFLUX .or. tfield_bc_type(sele)==BC_TYPE_FLUX)) then
+                      ! If we have zero flux, or a flux BC, set u.n = 0
                       udotn = 0.0
                     else
                       udotn = dot_product((u_bdy_f(:,ggi)-ug_bdy_f(:,ggi)), normal_bdy(:,ggi))
                     end if
                   else
                     divudotn = dot_product(u_bdy_f(:,ggi), normal_bdy(:,ggi))
-                    if((tfield_bc_type(sele)==4)) then
+                    if((tfield_bc_type(sele)==BC_TYPE_ZEROFLUX .or. tfield_bc_type(sele)==BC_TYPE_FLUX)) then
                       udotn = 0.0
                     else
                       udotn = divudotn
@@ -1809,12 +2063,20 @@ contains
                   end if
                 end if
 
+                ! If we have a flux boundary condition, then we need to set up the equation so that
+                ! d(field)/dt = flux_val_at_boundary
+                ! We add the flux_val_at_boundary contribution to rhs_local_bdy, after setting the advection
+                ! and diffusion terms to zero at the boundary.
+                if(tfield_bc_type(sele)==BC_TYPE_FLUX) then
+                   rhs_local_bdy(iloc) = rhs_local_bdy(iloc) + detwei_bdy(ggi)*ghost_tfield_ele_bdy(iloc)
+                end if
+
                 if(assemble_diffusion) then
 
                   select case(tfield_options%diffusionscheme)
                   case(CV_DIFFUSION_BASSIREBAY)
 
-                    if(tfield_bc_type(sele)==1) then
+                    if(tfield_bc_type(sele)==BC_TYPE_WEAKDIRICHLET) then
                       ! assemble grad_rhs
 
                       grad_rhs_local_bdy(:, iloc) = grad_rhs_local_bdy(:,iloc) &
@@ -1830,7 +2092,7 @@ contains
 
                     else
 
-                      if(tfield_bc_type(sele)==2) then
+                      if(tfield_bc_type(sele)==BC_TYPE_NEUMANN) then
 
                         ! assemble div_rhs
                         div_rhs_local_bdy(iloc) = div_rhs_local_bdy(iloc) &
@@ -1850,11 +2112,23 @@ contains
 
                   case(CV_DIFFUSION_ELEMENTGRADIENT)
 
-                    if(tfield_bc_type(sele)==2) then
+                    if(tfield_bc_type(sele)==BC_TYPE_NEUMANN) then
 
                       div_rhs_local_bdy(iloc) = div_rhs_local_bdy(iloc) &
                                   -detwei_bdy(ggi)*ghost_gradtfield_ele_bdy(iloc)
 
+                    else if (tfield_bc_type(sele)==BC_TYPE_ROBIN) then
+                        
+                        ! Add first coeff term to rhs
+                        robin_diff_rhs_local_bdy(iloc) = robin_diff_rhs_local_bdy(iloc) - &
+                                                         detwei_bdy(ggi) * &
+                                                         robin_bc_val1_ele_bdy(iloc)
+                                                
+                        ! Add implicit second coeff * tfield term to matrix
+                        robin_diff_mat_local_bdy(iloc) = robin_diff_mat_local_bdy(iloc) + &
+                                                         detwei_bdy(ggi) * &
+                                                         robin_bc_val2_ele_bdy(iloc)
+                    
                     else
 
                       ! because transform to physical doesn't give the full gradient at a face
@@ -1904,15 +2178,21 @@ contains
 
           case(CV_DIFFUSION_ELEMENTGRADIENT)
 
-            if(tfield_bc_type(sele)==1) then
+            if(tfield_bc_type(sele)==BC_TYPE_WEAKDIRICHLET) then
 
             ! assume zero neumann for the moment
             ! call addto(diff_rhs, nodes_bdy, -matmul(diff_mat_local_bdy, ghost_gradtfield_ele_bdy))
 
-            elseif(tfield_bc_type(sele)==2) then
+            elseif(tfield_bc_type(sele)==BC_TYPE_NEUMANN) then
 
               call addto(diff_rhs, nodes_bdy, div_rhs_local_bdy)
 
+            else if (tfield_bc_type(sele)==BC_TYPE_ROBIN) then
+              
+               call addto(diff_rhs, nodes_bdy, robin_diff_rhs_local_bdy)
+               
+               call addto_diag(D_m, nodes_bdy, robin_diff_mat_local_bdy)
+              
             else
 
             !    assume zero neumann for the moment
@@ -1923,8 +2203,10 @@ contains
           end select
         end if
 
-        ! assemble rhs
-        if(include_advection) then
+        ! assemble RHS - this contains the advection boundary terms, or
+        ! a RHS term from the flux boundary condition, so that
+        ! we have the equation in the form d(field)/dt = flux_val
+        if(include_advection .or. tfield_bc_type(sele)==BC_TYPE_FLUX) then
           call addto(rhs, nodes_bdy, rhs_local_bdy)
         end if
 
@@ -1932,21 +2214,23 @@ contains
 
       if(assemble_diffusion.and.(tfield_options%diffusionscheme==CV_DIFFUSION_BASSIREBAY)) then
 
-        ! assemble div_m and q_lumpedmass into the final D_m
+        ! assemble div_m and q_cvmass into the final D_m
         call assemble_bassirebay_diffusion_m_cv(D_m, diff_rhs, &
                                      div_m, grad_rhs, &
-                                     diffusivity, q_lumpedmass)
+                                     diffusivity, q_cvmass)
         ! ElementGradient assembles D_m directly so no need for a step like this
 
       end if
 
       deallocate(tfield_bc_type)
       call deallocate(tfield_bc)
+      call deallocate(tfield_bc2)
       call deallocate(tfield_upwind)
       call deallocate(oldtfield_upwind)
       if(include_density) then
         deallocate(tdensity_bc_type)
         call deallocate(tdensity_bc)
+
         call deallocate(tdensity_upwind)
         call deallocate(oldtdensity_upwind)
       end if
@@ -1962,7 +2246,7 @@ contains
 
     subroutine assemble_bassirebay_diffusion_m_cv(D_m, diff_rhs, &
                                        div_m, grad_rhs, &
-                                       diffusivity, q_lumpedmass)
+                                       diffusivity, q_cvmass)
 
       type(csr_matrix), intent(inout) :: D_m
       type(scalar_field), intent(inout) :: diff_rhs
@@ -1971,7 +2255,7 @@ contains
       type(vector_field), intent(inout) :: grad_rhs
 
       type(tensor_field), intent(in) :: diffusivity
-      type(scalar_field), intent(in) :: q_lumpedmass
+      type(scalar_field), intent(in) :: q_cvmass
 
       logical :: isotropic
 
@@ -1980,10 +2264,10 @@ contains
       ! an optimisation that reduces the number of matrix multiplies if we're isotropic
       isotropic=isotropic_field(diffusivity)
 
-      call mult_div_tensorinvscalar_div_T(D_m, div_m, diffusivity, q_lumpedmass, div_m, &
+      call mult_div_tensorinvscalar_div_T(D_m, div_m, diffusivity, q_cvmass, div_m, &
                                           isotropic)
 
-      call mult_div_tensorinvscalar_vector(diff_rhs, div_m, diffusivity, q_lumpedmass, grad_rhs, &
+      call mult_div_tensorinvscalar_vector(diff_rhs, div_m, diffusivity, q_cvmass, grad_rhs, &
                                            isotropic)
 
     end subroutine assemble_bassirebay_diffusion_m_cv
@@ -2099,14 +2383,20 @@ contains
       ! sparsity structure to construct the matrices with
       type(csr_sparsity), pointer :: mesh_sparsity, mesh_sparsity_x
 
-      ! Right hand side vector, lumped mass matrix, 
+      ! Right hand side vector, cv mass matrix, 
       ! locally iterated field (for advection iterations) 
       ! and local old field (for subcycling)
       type(scalar_field), dimension(nfields) :: rhs, advit_tfield
       type(scalar_field_pointer), dimension(nfields) :: l_old_tfield
-      type(scalar_field), dimension(nfields) :: lumpedmass
-      type(scalar_field), pointer :: t_lumpedmass
-      type(scalar_field) :: t_lumpedmass_old, t_lumpedmass_new
+      type(scalar_field), dimension(nfields) :: cvmass
+      type(scalar_field), pointer :: t_abs_src_cvmass
+      type(scalar_field_pointer), dimension(nfields) :: t_cvmass
+      type(scalar_field) :: t_cvmass_old, t_cvmass_new
+      
+      ! Porosity field
+      type(scalar_field) :: porosity_theta 
+      type(scalar_field), dimension(nfields), target :: t_cvmass_with_porosity
+      logical, dimension(nfields) :: include_porosity
 
       ! local copy of option_path for solution field
       character(len=OPTION_PATH_LEN), dimension(nfields) :: option_path
@@ -2248,23 +2538,40 @@ contains
           ! is solved for with this subroutine and the correct priority ordering.
           oldtdensity(f)%ptr=>extract_scalar_field(state(state_indices(f)), "Old"//trim(tmpstring))
         end select
-        ! its option path
-        if(have_option(trim(option_path(f))//'/prognostic/equation[0]/density[0]/discretisation_options')) then
-          tdensity_option_path(f)=trim(option_path(f))//'/prognostic/equation[0]/density[0]/discretisation_options'
+
+        ! get the tdensity discretisation options from:
+        ! 1) the user specified options for the coefficient of this field
+        ! 2) the options underneath the density field itself if it is prognostic and cv
+        ! 3) throw an error as otherwise it would default to poorly defined options
+        if(include_density) then
+          if(have_option(trim(option_path(f))//'/prognostic/equation[0]/density[0]/discretisation_options')) then
+            tdensity_option_path(f) = trim(option_path(f))//'/prognostic/equation[0]/density[0]/discretisation_options'
+          else
+            if(have_option(trim(tdensity(f)%ptr%option_path)//"/prognostic/spatial_discretisation/control_volumes")) then
+              tdensity_option_path(f) = trim(tdensity(f)%ptr%option_path)
+            else
+              FLExit("Additional discretisation options required for the density coefficient. Please set equation/density/discretisation_options.")
+            end if
+          end if
         else
-          tdensity_option_path(f)=tdensity(f)%ptr%option_path
+          tdensity_option_path(f) = ""
         end if
-        
+
         ! now we can get the options for these fields
         ! handily wrapped in a new type...
         tfield_options(f)=get_cv_options(tfield(f)%ptr%option_path, tfield(f)%ptr%mesh%shape%numbering%family, mesh_dim(tfield(f)%ptr))
         if(include_density) then
-          tdensity_options(f)=get_cv_options(tdensity_option_path(f), tdensity(f)%ptr%mesh%shape%numbering%family, mesh_dim(tdensity(f)%ptr), coefficient_field=.true.)
+          tdensity_options(f)=get_cv_options(tdensity_option_path(f), tdensity(f)%ptr%mesh%shape%numbering%family, mesh_dim(tdensity(f)%ptr),  coefficient_field=.true.)
+        else
+          tdensity_options(f)=tfield_options(f)  ! dummy so we don't leave variables undefined but shouldn't get used
         end if
 
         source(f)%ptr=>extract_scalar_field(state(state_indices(f)), trim(field_name)//"Source", stat=stat)
         if(stat==0) then
           FLExit("Coupled CV broken with Sources")
+          ! If Coupled CV is ever fixed to work with Sources then the 
+          ! option source(f)%option_path//'/diagnostic/add_directly_to_rhs'
+          ! should be accounted for.
         end if
         if(stat/=0) source(f)%ptr=>dummyscalar
         absorption(f)%ptr=>extract_scalar_field(state(state_indices(f)), trim(field_name)//"Absorption", stat=stat)
@@ -2342,23 +2649,40 @@ contains
           call allocate(A_m(f), mesh_sparsity, name=trim(field_name)//int2str(f)//"AdvectionMatrix")
           call zero(A_m(f))
         else
-          call allocate(lumpedmass(f), tfield(1)%ptr%mesh, name=trim(field_name)//"LocalLumpedMass")
-          call zero(lumpedmass(f)) 
+          call allocate(cvmass(f), tfield(1)%ptr%mesh, name=trim(field_name)//"LocalCVMass")
+          call zero(cvmass(f)) 
         end if
 
         ! allocate the rhs of the equation
         call allocate(rhs(f), tfield(f)%ptr%mesh, name=trim(field_name)//int2str(f)//"RHS")
       end do
 
-      if(element_degree(tfield(1)%ptr, 1)>1) then
-        ! try lumping on the submesh
-        t_lumpedmass => get_lumped_mass_on_submesh(state, tfield(1)%ptr%mesh)
-      else
-        ! then find the lumped mass
-        ! (this replaces hart2/3d etc. in old code!!)
-        t_lumpedmass => get_lumped_mass(state, tfield(1)%ptr%mesh)
-      end if
-      ewrite_minmax(t_lumpedmass)
+      ! find the cv mass that is used for the absorption and source terms
+      t_abs_src_cvmass => get_cv_mass(state, tfield(1)%ptr%mesh)
+      ewrite_minmax(t_abs_src_cvmass)
+      
+      ! find the cv mass that is used for the time term derivative - which may include the porosity
+      do f = 1,nfields                  
+         if (have_option(trim(complete_field_path(tfield(f)%ptr%option_path))//'/porosity')) then            
+            include_porosity(f) = .true.
+
+            ! get the porosity theta averaged field - this will allocate it
+            call form_porosity_theta(porosity_theta, state(state_indices(f)), &
+                &option_path = trim(complete_field_path(tfield(f)%ptr%option_path))//'/porosity')       
+                     
+            call allocate(t_cvmass_with_porosity(f), tfield(f)%ptr%mesh, name="CVMassWithPorosity")
+            call compute_cv_mass(x, t_cvmass_with_porosity(f), porosity_theta)
+            
+            call deallocate(porosity_theta)
+            
+            t_cvmass(f)%ptr => t_cvmass_with_porosity(f)                    
+         else 
+            include_porosity(f) = .false.
+
+            t_cvmass(f)%ptr => t_abs_src_cvmass
+         end if
+         ewrite_minmax(t_cvmass(f)%ptr)
+      end do
 
       move_mesh = have_option("/mesh_adaptivity/mesh_movement")
       if(move_mesh) then
@@ -2366,19 +2690,19 @@ contains
         if(.not.include_advection) then
           FLExit("Moving the mesh but not including advection is not possible yet.")
         end if
+        if (any(include_porosity)) then
+           FLExit("Moving mesh not set up to work when including porosity")
+        end if
         ewrite(2,*) "Moving mesh."
         x_old=>extract_vector_field(state(1), "OldCoordinate")
         x_new=>extract_vector_field(state(1), "IteratedCoordinate")
-        call allocate(t_lumpedmass_old, tfield(1)%ptr%mesh, name=trim(field_name)//"OldLumpedMass")
-        call allocate(t_lumpedmass_new, tfield(1)%ptr%mesh, name=trim(field_name)//"NewLumpedMass")
-        if(tfield(1)%ptr%mesh%shape%degree>1) then
-          FLExit("Lumping on submesh while moving the mesh not set up.")
-        else
-          call compute_lumped_mass(x_old, t_lumpedmass_old)
-          call compute_lumped_mass(x_new, t_lumpedmass_new)
-        end if
-        ewrite_minmax(t_lumpedmass_old)
-        ewrite_minmax(t_lumpedmass_new)
+        call allocate(t_cvmass_old, tfield(1)%ptr%mesh, name=trim(field_name)//"OldCVMass")
+        call allocate(t_cvmass_new, tfield(1)%ptr%mesh, name=trim(field_name)//"NewCVMass")
+        
+        call compute_cv_mass(x_old, t_cvmass_old)
+        call compute_cv_mass(x_new, t_cvmass_new)
+        ewrite_minmax(t_cvmass_old)
+        ewrite_minmax(t_cvmass_new)
         
         ug=>extract_vector_field(state(1), "GridVelocity")
         ewrite_minmax(ug)
@@ -2501,18 +2825,18 @@ contains
           do f = 1, nfields
 
             ! assemble it all into a coherent equation
-            call assemble_field_eqn_cv(M(f), A_m(f), lumpedmass(f), rhs(f), &
+            call assemble_field_eqn_cv(M(f), A_m(f), cvmass(f), rhs(f), &
                                       tfield(f)%ptr, l_old_tfield(f)%ptr, &
                                       tdensity(f)%ptr, oldtdensity(f)%ptr, tdensity_options(f), &
                                       source(f)%ptr, absorption(f)%ptr, tfield_options(f)%theta, &
                                       state(state_indices(f):state_indices(f)), advu, sub_dt, explicit(f), &
-                                      t_lumpedmass, t_lumpedmass_old, t_lumpedmass_new)
+                                      t_cvmass(f)%ptr, t_abs_src_cvmass, t_cvmass_old, t_cvmass_new)
 
             ! Solve for the change in tfield.
             if(explicit(f)) then
-              call apply_dirichlet_conditions(lumpedmass(f), rhs(f), tfield(f)%ptr, sub_dt)
+              call apply_dirichlet_conditions(cvmass(f), rhs(f), tfield(f)%ptr, sub_dt)
 
-              delta_tfield(f)%val = rhs(f)%val/lumpedmass(f)%val
+              delta_tfield(f)%val = rhs(f)%val/cvmass(f)%val
             else
               ! apply strong dirichlet boundary conditions (if any)
               ! note that weak conditions (known as control volume boundary conditions)
@@ -2532,7 +2856,7 @@ contains
 
             call halo_update(tfield(f)%ptr)  ! exchange the extended halos
 
-            call test_and_write_advection_convergence(tfield(f)%ptr, advit_tfield(f), x, &
+            call test_and_write_advection_convergence(tfield(f)%ptr, advit_tfield(f), x, t_cvmass(f)%ptr, &
                                       filename=trim(state(state_indices(f))%name)//"__"//trim(tfield(f)%ptr%name), &
                                       time=time+sub_dt, dt=sub_dt, it=global_it, adv_it=adv_it, &
                                       subcyc=sub, error=error(f))
@@ -2558,7 +2882,7 @@ contains
         deallocate(l_old_tfield(f)%ptr)
         call deallocate(rhs(f))
         if(.not.explicit(f)) call deallocate(A_m(f))
-        if(explicit(f)) call deallocate(lumpedmass(f))
+        if(explicit(f)) call deallocate(cvmass(f))
         if(.not.explicit(f)) call deallocate(M(f))
       end do
       call deallocate(cfl_no)
@@ -2575,12 +2899,15 @@ contains
       deallocate(dummyscalar)
       call deallocate(x_tfield)
       if(move_mesh) then
-        call deallocate(t_lumpedmass_new)
-        call deallocate(t_lumpedmass_old)
+        call deallocate(t_cvmass_new)
+        call deallocate(t_cvmass_old)
       end if
       call deallocate(ug_cvshape)
       call deallocate(ug_cvbdyshape)
-
+      do f = 1,nfields
+         if (include_porosity(f)) call deallocate(t_cvmass_with_porosity(f))
+      end do
+      
     end subroutine solve_coupled_cv
 
     ! coupled assembly:
@@ -2689,6 +3016,9 @@ contains
       type(scalar_field), dimension(size(tfield)) :: tfield_bc, tdensity_bc
 
       integer :: f, f2, nfields, upwind_pos
+
+      ! Boundary condition types
+      integer, parameter :: BC_TYPE_WEAKDIRICHLET = 1, BC_TYPE_INTERNAL = 2, BC_TYPE_ZEROFLUX = 3
 
       ewrite(2,*) 'in assemble_coupled_advection_m_cv'
 
@@ -2991,7 +3321,7 @@ contains
       ! loop over the surface elements
       surface_element_loop: do sele = 1, surface_element_count(tfield(1)%ptr)
 
-        if(any(tfield_bc_type(:,sele)==2)) cycle
+        if(any(tfield_bc_type(:,sele)==BC_TYPE_INTERNAL)) cycle
         
         ele = face_ele(x, sele)
         x_ele = ele_val(x, ele)
@@ -3006,13 +3336,13 @@ contains
 
         do f = 1, nfields
           ! deal with bcs for tfield
-          if(tfield_bc_type(f,sele)==1) then
+          if(tfield_bc_type(f,sele)==BC_TYPE_WEAKDIRICHLET) then
             ghost_tfield_ele_bdy(f,:)=ele_val(tfield_bc(f), sele)
           else
             ghost_tfield_ele_bdy(f,:)=face_val(tfield(f)%ptr, sele)
           end if
 
-          if(tfield_bc_type(f,sele)==1) then
+          if(tfield_bc_type(f,sele)==BC_TYPE_WEAKDIRICHLET) then
             ghost_oldtfield_ele_bdy(f,:)=ele_val(tfield_bc(f), sele) ! not considering time varying bcs yet
           else
             ghost_oldtfield_ele_bdy(f,:)=face_val(oldtfield(f)%ptr, sele)
@@ -3022,13 +3352,13 @@ contains
           oldtfield_ele_bdy(f,:)=face_val(oldtfield(f)%ptr, sele)
 
           ! deal with bcs for tdensity
-          if(tdensity_bc_type(f,sele)==1) then
+          if(tdensity_bc_type(f,sele)==BC_TYPE_WEAKDIRICHLET) then
             ghost_tdensity_ele_bdy(f,:)=ele_val(tdensity_bc(f), sele)
           else
             ghost_tdensity_ele_bdy(f,:)=face_val(tdensity(f)%ptr, sele)
           end if
 
-          if(tdensity_bc_type(f,sele)==1) then
+          if(tdensity_bc_type(f,sele)==BC_TYPE_WEAKDIRICHLET) then
             ghost_oldtdensity_ele_bdy(f,:)=ele_val(tdensity_bc(f), sele) ! not considering time varying bcs yet
           else
             ghost_oldtdensity_ele_bdy(f,:)=face_val(oldtdensity(f)%ptr, sele)
@@ -3070,7 +3400,7 @@ contains
 
                 surface_field_loop: do f = 1, nfields
                   
-                  if((tfield_bc_type(f,sele)==3)) then
+                  if((tfield_bc_type(f,sele)==BC_TYPE_ZEROFLUX)) then
                     ! zero_flux
                     udotn = 0.0
                   else
@@ -3245,12 +3575,13 @@ contains
 
     end subroutine initialise_advection_convergence
 
-    subroutine test_and_write_advection_convergence(field, nlfield, coordinates, filename, &
+    subroutine test_and_write_advection_convergence(field, nlfield, coordinates, cv_mass, filename, &
                                                     time, dt, it, subcyc, adv_it, &
                                                     error)
 
        type(scalar_field), intent(inout) :: field, nlfield
        type(vector_field), intent(in) :: coordinates
+       type(scalar_field), intent(in) :: cv_mass
        character(len=*), intent(in) :: filename
        real, intent(in) :: time, dt
        integer, intent(in) :: it, subcyc, adv_it
@@ -3268,7 +3599,7 @@ contains
 
        error = 0.0
        call field_con_stats(field, nlfield, error, &
-                            convergence_norm, coordinates)
+                            convergence_norm, coordinates, cv_mass)
 
        format='(e15.6e3)'
        iformat='(i4)'
@@ -3315,8 +3646,8 @@ contains
     !************************************************************************
     ! control volume options checking
     subroutine field_equations_cv_check_options
-      integer :: nmat, nfield, m, f
-      character(len=OPTION_PATH_LEN) :: mat_name, field_name, diff_scheme
+      integer :: nmat, nfield, m, f, stat
+      character(len=OPTION_PATH_LEN) :: mat_name, field_name, mesh_0, mesh_1, diff_scheme
       integer :: weakdirichlet_count
       logical :: cv_disc, mmat_cv_disc, diff, conv_file, subcycle, cv_temp_disc, tolerance, explicit
       real :: theta, p_theta
@@ -3445,6 +3776,23 @@ contains
                               trim(mat_name)//"."
                 FLExit("Only pure control volume or coupled_cv discretisations can solve explicitly")
               end if
+            end if
+                 
+            if(mmat_cv_disc .or. cv_disc) then
+               if (have_option("/material_phase["//int2str(m)//"]/scalar_field["//int2str(f)//&
+                    "]/prognostic/scalar_field::SinkingVelocity")) then
+                  call get_option(trim(complete_field_path("/material_phase["//&
+                       int2str(m)//"]/scalar_field["//int2str(f)//&
+                       "]/prognostic/scalar_field::SinkingVelocity"))//"/mesh[0]/name", mesh_0, stat)
+                  if(stat == 0) then
+                     call get_option(trim(complete_field_path("/material_phase[" // int2str(m) // &
+                          "]/vector_field::Velocity")) // "/mesh[0]/name", mesh_1)
+                     if(trim(mesh_0) /= trim(mesh_1)) then
+                        ewrite(0, *) "SinkingVelocity for "//trim(field_name)//&
+                             " is on a different mesh to the Velocity field this could cause problems"
+                     end if
+                  end if
+               end if
             end if
 
          end do

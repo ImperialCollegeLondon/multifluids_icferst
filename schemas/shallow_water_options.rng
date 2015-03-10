@@ -322,31 +322,18 @@ This is usually disabled.</a:documentation>
               </element>
             </choice>
           </element>
-          <element name="scalar_field">
-            <a:documentation>Free surface elevation</a:documentation>
-            <attribute name="rank">
-              <value>0</value>
-            </attribute>
-            <attribute name="name">
-              <value>LayerThickness</value>
-            </attribute>
-            <element name="prognostic">
-              <ref name="pressure_mesh_choice"/>
-              <ref name="prognostic_layerthickness_field"/>
-            </element>
-          </element>
           <optional>
             <element name="scalar_field">
-              <a:documentation>Lagrange multiplier for hybridised solver</a:documentation>
+              <a:documentation>Free surface elevation</a:documentation>
               <attribute name="rank">
                 <value>0</value>
               </attribute>
               <attribute name="name">
-                <value>LagrangeMultiplier</value>
+                <value>LayerThickness</value>
               </attribute>
               <element name="prognostic">
-                <ref name="mesh_choice"/>
-                <ref name="prognostic_lagrangemultiplier_field"/>
+                <ref name="pressure_mesh_choice"/>
+                <ref name="prognostic_layerthickness_field"/>
               </element>
             </element>
           </optional>
@@ -357,7 +344,6 @@ This is usually disabled.</a:documentation>
             <ref name="vector_field_choice"/>
           </zeroOrMore>
         </group>
-        <!-- tensor_field_choice* -->
       </element>
       <optional>
         <element name="mesh_adaptivity">
@@ -632,7 +618,19 @@ where X and the return value are tuples of length geometry dimension.</a:documen
       </element>
       <element name="balanced">
         <a:documentation>Set balanced velocity from height field</a:documentation>
-        <empty/>
+        <optional>
+          <element name="solver">
+            <a:documentation>Solver</a:documentation>
+            <ref name="linear_solver_options_sym"/>
+          </element>
+        </optional>
+      </element>
+      <element name="dg_projection">
+        <a:documentation>project velocity from a DG field</a:documentation>
+        <attribute name="source_field">
+          <a:documentation>Field to project from</a:documentation>
+          <data type="string"/>
+        </attribute>
       </element>
     </choice>
   </define>
@@ -781,7 +779,7 @@ a discontinuous velocity field for this to work!</a:documentation>
     </element>
     <element name="solver">
       <a:documentation>Solver</a:documentation>
-      <ref name="linear_solver_options_asym"/>
+      <ref name="linear_solver_options_asym_vector"/>
     </element>
     <oneOrMore>
       <choice>
@@ -894,7 +892,7 @@ conservative_advection below).</a:documentation>
     </element>
     <element name="solver">
       <a:documentation>Solver</a:documentation>
-      <ref name="linear_solver_options_asym"/>
+      <ref name="linear_solver_options_asym_scalar"/>
     </element>
     <choice>
       <element name="initial_condition">
@@ -949,7 +947,7 @@ Will be replaced by a field in due course</a:documentation>
     </element>
     <element name="solver">
       <a:documentation>Solver</a:documentation>
-      <ref name="linear_solver_options_asym"/>
+      <ref name="linear_solver_options_asym_scalar"/>
     </element>
     <optional>
       <element name="initial_condition">
@@ -1522,32 +1520,6 @@ boundary condition on the surface_ids specified.</a:documentation>
           <value>no_normal_flow</value>
         </attribute>
         <empty/>
-      </element>
-      <element name="type">
-        <a:documentation>Implements a penalty function for the near wall region.
-Using this option coarse meshes can
-be used in the near wall region.
-
-Should be used in combination with a no_normal_flow condition. 
-
-See Bazilevs et al. 2007</a:documentation>
-        <attribute name="name">
-          <value>near_wall_treatment</value>
-        </attribute>
-        <element name="tolerance">
-          <ref name="real"/>
-        </element>
-      </element>
-      <element name="type">
-        <a:documentation>Log law of the wall
-
-Should be used in combination with a no_normal_flow condition. </a:documentation>
-        <attribute name="name">
-          <value>log_law_of_wall</value>
-        </attribute>
-        <element name="surface_roughness">
-          <ref name="real"/>
-        </element>
       </element>
     </choice>
   </define>
@@ -2204,55 +2176,33 @@ fields.</a:documentation>
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>Free Surface
-NOTE: the prognostic FreeSurface field only works with the
-legacy_continuous_galerkin code path
-NOTE: if you are using the free_surface boundary condition
-applied to the Velocity field (recommended), you should not 
-use the prognostic FreeSurface field. In this case you may 
-(optionally) add a diagnostic FreeSurface field.</a:documentation>
+        <a:documentation>Free Surface</a:documentation>
         <attribute name="rank">
           <value>0</value>
         </attribute>
         <attribute name="name">
           <value>FreeSurface</value>
         </attribute>
-        <choice>
-          <element name="prognostic">
-            <a:documentation>Free Surface
-NOTE: the prognostic FreeSurface field only works with the
-legacy_continuous_galerkin code path</a:documentation>
-            <element name="mesh">
-              <a:documentation>Note that this is not the quadratic mesh balance pressure is
-actually calculated on, but the linear mesh it is projected back
-on for output purposes.</a:documentation>
-              <attribute name="name">
-                <value>VelocityMesh</value>
-              </attribute>
-            </element>
-            <ref name="prognostic_free_surface_field"/>
-          </element>
-          <element name="diagnostic">
-            <a:documentation>Free Surface
+        <element name="diagnostic">
+          <a:documentation>Free Surface
 NOTE: the diagnostic FreeSurface field only works in combination
 with the free_surface boundary condition applied to the Velocity
 field. It gives you a 3D field (constant over the vertical)
 of the free surface elevation.</a:documentation>
-            <ref name="internal_algorithm"/>
-            <!--
-              this is hard-coded on the PressureMesh as long as the Pressure is
-              if this is no longer true, it should be option-checked to be on the
-              same mesh as Pressure
-            -->
-            <element name="mesh">
-              <a:documentation>Must be on the same mesh as Pressure</a:documentation>
-              <attribute name="name">
-                <value>PressureMesh</value>
-              </attribute>
-            </element>
-            <ref name="diagnostic_scalar_field"/>
+          <ref name="internal_algorithm"/>
+          <!--
+            this is hard-coded on the PressureMesh as long as the Pressure is
+            if this is no longer true, it should be option-checked to be on the
+            same mesh as Pressure
+          -->
+          <element name="mesh">
+            <a:documentation>Must be on the same mesh as Pressure</a:documentation>
+            <attribute name="name">
+              <value>PressureMesh</value>
+            </attribute>
           </element>
-        </choice>
+          <ref name="diagnostic_scalar_field"/>
+        </element>
       </element>
       <element name="scalar_field">
         <a:documentation>Second Fluid</a:documentation>
@@ -3270,29 +3220,6 @@ div velocity
         </choice>
       </element>
       <element name="scalar_field">
-        <a:documentation>Vorticity for a 2D field:
-
- du   dv
- -- - --
- dy   dx</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>Vorticity2D</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
         <a:documentation>Kinetic energy density:
 
  1/2 rho_0*|u|^2
@@ -3456,29 +3383,6 @@ Limitations:
           <element name="diagnostic">
             <ref name="internal_algorithm"/>
             <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Local average mesh edge lengths</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>MeshEdgeLengths</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <element name="mesh">
-              <attribute name="name">
-                <value>CoordinateMesh</value>
-              </attribute>
-            </element>
             <ref name="diagnostic_scalar_field"/>
           </element>
           <element name="aliased">
@@ -3737,42 +3641,6 @@ ocean biology is being simulated.</a:documentation>
             <ref name="internal_algorithm"/>
             <ref name="velocity_mesh_choice"/>
             <ref name="diagnostic_scalar_field_tidal_range"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>MaxFreeSurface</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>MinFreeSurface</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
           </element>
           <element name="aliased">
             <ref name="generic_aliased_field"/>
@@ -4207,27 +4075,6 @@ ocean biology is being simulated.</a:documentation>
           <element name="diagnostic">
             <ref name="internal_algorithm"/>
             <ref name="mesh_choice"/>
-            <ref name="diagnostic_scalar_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="scalar_field">
-        <a:documentation>Primary production of Phytoplankton. This is calculated by
-the ocean biology module and will not be calculated unless
-ocean biology is being simulated.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>HarmonicPhaseSSa</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
             <ref name="diagnostic_scalar_field"/>
           </element>
           <element name="aliased">
@@ -4756,67 +4603,6 @@ FEMDEM or DEM to the fluid mesh. </a:documentation>
         </choice>
       </element>
       <element name="vector_field">
-        <a:documentation>Calculate the control volume auxiliary gradient for a particular field.
-The related field must be a scalar field in this material_phase.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>ControlVolumeAuxiliaryGradient</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <attribute name="gradient_of_field">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <a:documentation>Calculate the dg (Bassi Rebay) auxiliary gradient for a particular field.
-The related field must be a scalar field in this material_phase.</a:documentation>
-        <attribute name="rank">
-          <value>0</value>
-        </attribute>
-        <attribute name="name">
-          <value>DGAuxiliaryGradient</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <attribute name="gradient_of_field">
-              <data type="string" datatypeLibrary=""/>
-            </attribute>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
-      </element>
-      <element name="vector_field">
-        <a:documentation>Experimental geostrophic source field to be used in combination with
-a free surface. Does not solve a vertical balance yet.</a:documentation>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>GeostrophicSource</value>
-        </attribute>
-        <element name="diagnostic">
-          <ref name="internal_algorithm"/>
-          <ref name="mesh_choice"/>
-          <ref name="diagnostic_vector_field"/>
-        </element>
-      </element>
-      <element name="vector_field">
         <a:documentation>Absolute Difference between two vector fields.
 
 Both fields must be in this material_phase.
@@ -4922,25 +4708,6 @@ Note that you need BedShearStress turned on for this to work.</a:documentation>
 applied to the bed shear stress.</a:documentation>
           <ref name="real"/>
         </element>
-      </element>
-      <element name="vector_field">
-        <a:documentation>Displacement</a:documentation>
-        <attribute name="rank">
-          <value>1</value>
-        </attribute>
-        <attribute name="name">
-          <value>Displacement</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_vector_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
       </element>
       <element name="vector_field">
         <a:documentation>Galerkin projection of one field onto another mesh.
@@ -5126,31 +4893,6 @@ in a multimaterial simulation.</a:documentation>
       <element name="___Diagnostic_Fields_Below___">
         <a:documentation>Diagnostic tensor fields below this</a:documentation>
         <empty/>
-      </element>
-      <element name="tensor_field">
-        <a:documentation>From a field on a mesh, diagnose the anisotropic
-interpolation weight that would give the mesh back.
-It is computed as:
-\Eps = M^-1 |H|</a:documentation>
-        <attribute name="rank">
-          <value>2</value>
-        </attribute>
-        <attribute name="name">
-          <value>FieldTolerance</value>
-        </attribute>
-        <choice>
-          <element name="diagnostic">
-            <ref name="internal_algorithm"/>
-            <element name="source_field_name">
-              <data type="string" datatypeLibrary=""/>
-            </element>
-            <ref name="velocity_mesh_choice"/>
-            <ref name="diagnostic_tensor_field"/>
-          </element>
-          <element name="aliased">
-            <ref name="generic_aliased_field"/>
-          </element>
-        </choice>
       </element>
     </choice>
     <!--
@@ -6518,7 +6260,7 @@ galerkin formulation will result. </a:documentation>
     </element>
     <element name="solver">
       <a:documentation>Solver</a:documentation>
-      <ref name="linear_solver_options_asym"/>
+      <ref name="linear_solver_options_asym_scalar"/>
     </element>
     <element name="absorption_coefficients">
       <a:documentation>Coefficients of absorption of photosynthetically active

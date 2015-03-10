@@ -41,6 +41,7 @@ module solvers
   use profiler
   use vtk_interfaces
   use parallel_tools
+  use MeshDiagnostics
 #ifdef HAVE_PETSC_MODULES
   use petsc 
 #endif
@@ -672,11 +673,10 @@ integer, dimension(:), optional, intent(in) :: surface_node_list
 integer, optional, intent(in) :: internal_smoothing_option
 !! positions field is only used with remove_null_space/ or multigrid_near_null_space/ with rotational components
 type(vector_field), intent(in), optional :: positions
-
+  
   logical, dimension(:), pointer:: inactive_mask
   integer, dimension(:), allocatable:: ghost_nodes
   Mat:: pmat
-  MatStructure:: matrix_structure
   ! one of the PETSc supplied orderings see
   ! http://www-unix.mcs.anl.gov/petsc/petsc-as/snapshots/petsc-current/docs/manualpages/MatOrderings/MatGetOrdering.html
   MatOrderingType:: ordering_type
@@ -687,7 +687,7 @@ type(vector_field), intent(in), optional :: positions
   type(halo_type), pointer ::  halo
   integer i, j
   KSP, pointer:: ksp_pointer
-
+  
   ! Initialise profiler
   if(present(sfield)) then
      call profiler_tic(sfield, "petsc_setup")
@@ -744,7 +744,7 @@ type(vector_field), intent(in), optional :: positions
   
   if (ksp/=PETSC_NULL_OBJECT) then
     ! oh goody, we've been left something useful!
-    call KSPGetOperators(ksp, A, Pmat, matrix_structure, ierr)
+    call KSPGetOperators(ksp, A, Pmat, ierr)
     have_cache=.true.
     
     if (have_option(trim(solver_option_path)// &
@@ -760,7 +760,7 @@ type(vector_field), intent(in), optional :: positions
   end if
   
   ewrite(1, *) 'Assembling matrix.'
- 
+  
   ! Note the explicitly-described options rcm, 1wd and natural are now not
   ! listed explicitly in the schema (but can still be used by adding the
   ! appropriate string in the solver reordering node).
@@ -833,7 +833,7 @@ type(vector_field), intent(in), optional :: positions
       end if
       
       halo=>block_matrix%sparsity%column_halo
-
+      
   else
   
      ewrite(-1,*) "So what am I going to solve???"
@@ -1009,7 +1009,7 @@ Mat, intent(in), optional:: rotation_matrix
     ewrite(2,*) 'Ignoring setting from solver option.'
     startfromzero=.true.
   end if
-
+  
   if (IsParallel()) then
     parallel= associated(matrix%row_halo)
   else
@@ -1025,7 +1025,7 @@ Mat, intent(in), optional:: rotation_matrix
   
   b=PetscNumberingCreateVec(matrix%column_numbering)
   call VecDuplicate(b, y, ierr)
-
+  
   if (timing) then
     call cpu_time(time2)
     ewrite(2,*) "Time spent in Petsc setup: ", time2-time1
@@ -1675,7 +1675,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
        end if
        if (size(petsc_numbering%gnn2unn,2)==1) then
          ! scalar case, only constant null space
-         ewrite(2,*) 'Adding null-space removal options to KSP'
+       ewrite(2,*) 'Adding null-space removal options to KSP'
          call MatNullSpaceCreate(MPI_COMM_FEMTOOLS, PETSC_TRUE, 0, PETSC_NULL_OBJECT_ARRAY, null_space, ierr)
        else
          null_space = create_null_space_from_options(mat, trim(solver_option_path)//"/remove_null_space", &
@@ -1760,8 +1760,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
   logical, optional, intent(in) :: is_subpc
   ! option to "mg" to tell it not to do a direct solve at the coarsest level
   logical, optional, intent(in) :: has_null_space
-  character(len=50) :: pcname
-
+    
     KSP:: subksp
     PC:: subpc
     PCType:: pctype, hypretype
@@ -1858,7 +1857,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
        call PCBJACOBIGetSubKSP(pc, PETSC_NULL_INTEGER, PETSC_NULL_INTEGER, subksp, ierr)
        call KSPGetPC(subksp, subpc, ierr)
        call PCSetType(subpc, pctype, ierr)
-
+       
     else if (pctype==PCFIELDSPLIT) then
 
        if (.not. present(petsc_numbering)) then
@@ -1869,21 +1868,19 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
             petsc_numbering=petsc_numbering)
 
     else
-
+       
        ! this doesn't work for hypre
        call PCSetType(pc, pctype, ierr)
-
        ! set options that may have been supplied via the
        ! PETSC_OPTIONS env. variable for the preconditioner
        call PCSetFromOptions(pc, ierr)
        ! set pctype again to enforce flml choice
        call PCSetType(pc, pctype, ierr)
 
-!       if (pctype==PCLU) then
-!          call get_option(trim(option_path)//'/factorization_package/name', matsolverpackage)
-!          call PCFactorSetMatSolverPackage(pc, matsolverpackage, ierr)
-!       end if
-
+       if (pctype==PCLU) then
+          call get_option(trim(option_path)//'/factorization_package/name', matsolverpackage)
+          call PCFactorSetMatSolverPackage(pc, matsolverpackage, ierr)
+       end if
 
 #if PETSC_VERSION_MINOR>=3
       if (pctype==PCGAMG) then
@@ -1909,14 +1906,14 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
 #endif
       
     end if
-
+    
     ewrite(2, *) 'pc_type: ', trim(pctype)
     if (pctype=='hypre') then
       ewrite(2,*) 'pc_hypre_type:', trim(hypretype)
     end if
     
   end subroutine setup_pc_from_options
-
+    
   recursive subroutine setup_fieldsplit_preconditioner(pc, pmat, option_path, &
     petsc_numbering)
   PC, intent(inout):: pc
@@ -2284,7 +2281,6 @@ subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
   
   PetscScalar :: rnorm
   PetscLogDouble :: flops
-  MatStructure:: flag
   Mat:: Amat, Pmat
   PC:: pc
   Vec:: dummy_vec, r, rhs
@@ -2313,7 +2309,7 @@ subroutine MyKSPMonitor(ksp,n,rnorm,dummy,ierr)
       call petsc2field(petsc_monitor_x, petsc_monitor_numbering, petsc_monitor_vfields(1))
     end if
     call KSPGetRhs(ksp, rhs, ierr)
-    call KSPGetOperators(ksp, Amat, Pmat, flag, ierr)
+    call KSPGetOperators(ksp, Amat, Pmat, ierr)
     call VecDuplicate(petsc_monitor_x, r, ierr)
     call MatMult(Amat, petsc_monitor_x, r, ierr)
     call VecAXPY(r, real(-1.0, kind = PetscScalar_kind), rhs, ierr)
