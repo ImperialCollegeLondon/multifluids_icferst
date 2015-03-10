@@ -640,7 +640,7 @@ contains
 !      !In this case we impose that the saturation has to be between physical limits
 !      !conservation of mass might be lost
 !      call Set_Saturation_between_bounds(packed_state)
-!      !satura = min(max(satura,0.0), 1.0)
+!      satura = min(max(satura,0.0), 1.0)
 
       DEALLOCATE( mass_mn_pres )
       DEALLOCATE( CT )
