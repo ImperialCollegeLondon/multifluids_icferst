@@ -424,8 +424,8 @@ contains
     !! If present, only write for processes 1:number_of_partitions (assumes the other partitions are empty)
     integer, optional, intent(in):: number_of_partitions
 
-    call checkpoint_meshes(state, prefix, postfix, cp_no, keep_initial_data=keep_initial_data)
-    call checkpoint_fields(state, prefix, postfix, cp_no, keep_initial_data=keep_initial_data)
+    call checkpoint_meshes(state, prefix, postfix, cp_no, keep_initial_data=keep_initial_data, number_of_partitions=number_of_partitions)
+    call checkpoint_fields(state, prefix, postfix, cp_no, keep_initial_data=keep_initial_data, number_of_partitions=number_of_partitions)
 
   end subroutine checkpoint_state
 
@@ -450,10 +450,14 @@ contains
     integer :: i, n_meshes, stat1, stat2, nparts
     type(mesh_type), pointer :: mesh, external_mesh
     logical :: from_file, extruded
-    
-    character(len = OPTION_PATH_LEN) :: currentMeshFormat
 
     assert(len_trim(prefix) > 0)
+
+    if (present(number_of_partitions)) then
+      nparts = number_of_partitions
+    else
+      nparts = getnprocs()
+    end if
 
     n_meshes = option_count("/geometry/mesh")
     do i = 0, n_meshes - 1
@@ -482,7 +486,6 @@ contains
           call set_option_attribute(trim(mesh_path) // "/from_file/file_name", trim(mesh_filename))
           call get_option(trim(mesh_path) // "/from_file/format/name", mesh_format)
         else if (extruded) then
-
 
           ! the mesh format is determined from the external mesh
           external_mesh => get_external_mesh(state)
@@ -544,7 +547,6 @@ contains
     !! If present, only write for processes 1:number_of_partitions (assumes the other partitions are empty)
     integer, optional, intent(in):: number_of_partitions
 
-
     character(len = OPTION_PATH_LEN) :: vtu_filename
     integer :: i, j, k, nparts, n_ps_fields_on_mesh, n_pv_fields_on_mesh, n_pt_fields_on_mesh
     type(mesh_type), pointer :: mesh
@@ -566,7 +568,24 @@ contains
     end if
 
     do i = 1, size(state)
+      if (have_option("/mesh_adaptivity/mesh_movement/free_surface")) then
+        ! we don't want/need to checkpoint the moved mesh, as the mesh movement will again be applied after the restart
+        ! based on the checkpointed FreeSurface field.
+        positions => extract_vector_field(state(i), "OriginalCoordinate", stat=stat)
+        if (stat/=0) then
+          ! some cases (e.g. flredecomp) OriginalCoordinate doesn't exist
+          positions => extract_vector_field(state(1), "Coordinate")
+        end if
+      else
+        if (have_option("/mesh_adaptivity/mesh_movement")) then
+          ! for other mesh movement schemes we should probably write out the "moved" mesh to retain that information
+          ! However if the checkpointed mesh is not the "CoordinateMesh", it will have its own MeshNameCoordinate field
+          ! that hasn't moved; leading to a failure to restart from the checkpoint. This is only one of the possible problems
+          ! generally this functionality is untested.
+          ewrite(0,*) "WARNING: using mesh_movement with checkpointing is untested and likely broken."
+        end if
       positions => extract_vector_field(state(i), "Coordinate")
+      end if
       do j = 1, size(state(i)%meshes)
         mesh => state(i)%meshes(j)%ptr
 
@@ -600,52 +619,73 @@ contains
         n_ps_fields_on_mesh = 0
         n_pv_fields_on_mesh = 0
         n_pt_fields_on_mesh = 0
+
         if(associated(state(i)%scalar_fields)) then
           do k = 1, size(state(i)%scalar_fields)
             s_field => state(i)%scalar_fields(k)%ptr
-            if(trim(s_field%mesh%name) == trim(mesh%name) .and. s_field%mesh == mesh &
-              & .and. (have_option(trim(s_field%option_path) // "/prognostic") &
+            ! If the mesh names match
+            if(trim(s_field%mesh%name) == trim(mesh%name)) then
+              ! and the meshes are the same
+              if(s_field%mesh == mesh) then
+                ! and either the field is prognostic, prescribed and interpolated, or diagnostic and checkpointed
+                if(have_option(trim(s_field%option_path) // "/prognostic") &
               & .or. (have_option(trim(s_field%option_path) // "/prescribed") &
-                & .and. interpolate_field(s_field))) &
-              & .and. .not. aliased(s_field) &
+                    & .and. interpolate_field(s_field)) & 
               & .or. have_option(trim(s_field%option_path) // "/diagnostic/output/checkpoint") ) then
+                  ! but not aliased
+                  if(.not. aliased(s_field)) then
+
               if(have_option(trim(complete_field_path(s_field%option_path)) // "/exclude_from_checkpointing")) cycle
               ! needs_initial_mesh indicates the field is from_file (i.e. we're dealing with a checkpoint)
-              if(present_and_true(keep_initial_data) .and. .not. needs_initial_mesh(s_field)) cycle
+                    if(present_and_true(keep_initial_data) .and. (.not. needs_initial_mesh(s_field) .and. .not. have_option(trim(s_field%option_path) // "/diagnostic/output/checkpoint"))) cycle
 
-              ewrite(2, *) "Checkpointing field " // trim(s_field%name) // " in state " // trim(state(i)%name)
+                    ewrite(2, *) "Checkpointing scalar field " // trim(s_field%name) // " in state " // trim(state(i)%name) &
+                        & // "on the " // trim(mesh%name)
 
               n_ps_fields_on_mesh = n_ps_fields_on_mesh + 1
               ps_fields_on_mesh(n_ps_fields_on_mesh) = s_field
 
               if(have_option(trim(s_field%option_path) // "/prognostic")) then
+                      ewrite(2, *) "Updating initial conditions for " // trim(s_field%name)
                 call update_initial_condition_options(trim(s_field%option_path), trim(vtu_filename), "vtu")
               else if (have_option(trim(s_field%option_path) // "/prescribed").and.&
-                       interpolate_field(s_field)) then
+                        & interpolate_field(s_field)) then
+                      ewrite(2, *) "Updating values for " // trim(s_field%name)
                 call update_value_options(trim(s_field%option_path), trim(vtu_filename), "vtu")
               else if (have_option(trim(s_field%option_path) // "/diagnostic/output/checkpoint").and.&
-                       interpolate_field(s_field)) then
+	                      & interpolate_field(s_field)) then
                 ewrite(2, *) "... diagnostic field"
               else
                 FLAbort("Can only checkpoint prognostic or prescribed (with interpolation options) fields.")
+                    end if
+                  end if
+                end if
               end if
             end if
           end do
         end if
+
         if(associated(state(i)%vector_fields)) then
           do k = 1, size(state(i)%vector_fields)
             v_field => state(i)%vector_fields(k)%ptr
-            if(trim(v_field%mesh%name) == trim(mesh%name) .and. v_field%mesh == mesh &
-              & .and. (have_option(trim(v_field%option_path) // "/prognostic") &
+            ! If the mesh names match
+            if(trim(v_field%mesh%name) == trim(mesh%name)) then
+              ! and the meshes are the same
+              if(v_field%mesh == mesh) then
+                ! and either the field is prognostic, prescribed and interpolated, or diagnostic and checkpointed
+                if(have_option(trim(v_field%option_path) // "/prognostic") &
               & .or. (have_option(trim(v_field%option_path) // "/prescribed") &
-                & .and. interpolate_field(v_field, first_time_step=keep_initial_data))) &
-              & .and. .not. aliased(v_field) &
+                    & .and. interpolate_field(v_field)) &
               & .or. have_option(trim(v_field%option_path) // "/diagnostic/output/checkpoint") ) then
+                  ! but not aliased
+                  if(.not. aliased(v_field)) then
+
               if(have_option(trim(complete_field_path(v_field%option_path)) // "/exclude_from_checkpointing")) cycle
               ! needs_initial_mesh indicates the field is from_file (i.e. we're dealing with a checkpoint)
-              if(present_and_true(keep_initial_data) .and. .not. needs_initial_mesh(v_field)) cycle
+                    if(present_and_true(keep_initial_data) .and. (.not. needs_initial_mesh(v_field) .and. .not. have_option(trim(v_field%option_path) // "/diagnostic/output/checkpoint"))) cycle
 
-              ewrite(2, *) "Checkpointing field " // trim(v_field%name) // " in state " // trim(state(i)%name)
+                    ewrite(2, *) "Checkpointing vector field " // trim(v_field%name) // " in state " // trim(state(i)%name) &
+                        & // "on the " // trim(mesh%name)
 
               n_pv_fields_on_mesh = n_pv_fields_on_mesh + 1
               pv_fields_on_mesh(n_pv_fields_on_mesh) = v_field
@@ -662,45 +702,60 @@ contains
                 FLAbort("Can only checkpoint prognostic or prescribed (with interpolation options) fields.")
               end if
             end if
-          end do
-        end if
-        if(associated(state(i)%tensor_fields)) then
-          do k = 1, size(state(i)%tensor_fields)
-            t_field => state(i)%tensor_fields(k)%ptr
-            if(trim(t_field%mesh%name) == trim(mesh%name) .and. t_field%mesh == mesh &
-              & .and. (have_option(trim(t_field%option_path) // "/prognostic") &
-              & .or. (have_option(trim(t_field%option_path) // "/prescribed") &
-                & .and. interpolate_field(t_field, first_time_step=keep_initial_data))) &
-              & .and. .not. aliased(s_field) &
-              & .or. have_option(trim(t_field%option_path) // "/diagnostic/output/checkpoint") ) then
-              if(have_option(trim(complete_field_path(t_field%option_path)) // "/exclude_from_checkpointing")) cycle
-              ! needs_initial_mesh indicates the field is from_file (i.e. we're dealing with a checkpoint)
-              if(present_and_true(keep_initial_data) .and. .not. needs_initial_mesh(t_field)) cycle
-            
-              ewrite(2, *) "Checkpointing field " // trim(t_field%name) // " in state " // trim(state(i)%name)
-
-              n_pt_fields_on_mesh = n_pt_fields_on_mesh + 1
-              pt_fields_on_mesh(n_pt_fields_on_mesh) = t_field
-
-              if(have_option(trim(t_field%option_path) // "/prognostic")) then
-                call update_initial_condition_options(trim(t_field%option_path), trim(vtu_filename), "vtu")
-              else if (have_option(trim(t_field%option_path) // "/prescribed").and.&
-                       interpolate_field(t_field)) then
-                call update_value_options(trim(t_field%option_path), trim(vtu_filename), "vtu")
-              else if (have_option(trim(t_field%option_path) // "/diagnostic/output/checkpoint").and.&
-                       interpolate_field(t_field)) then
-                ewrite(2, *) "... diagnostic field"
-              else
-                FLAbort("Can only checkpoint prognostic or prescribed (with interpolation options) fields.")
+                end if
               end if
             end if
           end do
         end if
 
+        if(associated(state(i)%tensor_fields)) then
+          do k = 1, size(state(i)%tensor_fields)
+            t_field => state(i)%tensor_fields(k)%ptr
+            ! If the mesh names match
+            if(trim(t_field%mesh%name) == trim(mesh%name)) then
+              ! and the meshes are the same
+              if(t_field%mesh == mesh) then
+                ! and either the field is prognostic, prescribed and interpolated, or diagnostic and checkpointed
+                if(have_option(trim(t_field%option_path) // "/prognostic") &
+              & .or. (have_option(trim(t_field%option_path) // "/prescribed") &
+                    & .and. interpolate_field(t_field)) &
+              & .or. have_option(trim(t_field%option_path) // "/diagnostic/output/checkpoint") ) then
+                  ! but not aliased
+                  if(.not. aliased(t_field)) then
+
+              if(have_option(trim(complete_field_path(t_field%option_path)) // "/exclude_from_checkpointing")) cycle
+              ! needs_initial_mesh indicates the field is from_file (i.e. we're dealing with a checkpoint)
+                    if(present_and_true(keep_initial_data) .and. (.not. needs_initial_mesh(t_field) .and. .not. have_option(trim(t_field%option_path) // "/diagnostic/output/checkpoint"))) cycle
+            
+                    ewrite(2, *) "Checkpointing tensor field " // trim(t_field%name) // " in state " // trim(state(i)%name) &
+                        & // "on the " // trim(mesh%name)
+
+              n_pt_fields_on_mesh = n_pt_fields_on_mesh + 1
+              pt_fields_on_mesh(n_pt_fields_on_mesh) = t_field
+
+              if(have_option(trim(t_field%option_path) // "/prognostic")) then
+                      ewrite(2, *) "Updating initial conditions for " // trim(t_field%name)
+                call update_initial_condition_options(trim(t_field%option_path), trim(vtu_filename), "vtu")
+              else if (have_option(trim(t_field%option_path) // "/prescribed").and.&
+                        & interpolate_field(t_field)) then
+                      ewrite(2, *) "Updating values for " // trim(t_field%name)
+                call update_value_options(trim(t_field%option_path), trim(vtu_filename), "vtu")
+              else if (have_option(trim(t_field%option_path) // "/diagnostic/output/checkpoint").and.&
+                        & interpolate_field(t_field)) then
+                ewrite(2, *) "... diagnostic field"
+              else
+                FLAbort("Can only checkpoint prognostic or prescribed (with interpolation options) fields.")
+                    end if
+                  end if
+                end if
+              end if
+            end if
+          end do
+        end if
         if(n_ps_fields_on_mesh + n_pv_fields_on_mesh + n_pt_fields_on_mesh > 0) then
           call vtk_write_fields(vtu_filename, position = positions, model = mesh, &
             & sfields = ps_fields_on_mesh(:n_ps_fields_on_mesh), vfields = pv_fields_on_mesh(:n_pv_fields_on_mesh), &
-            & tfields = pt_fields_on_mesh(:n_pt_fields_on_mesh), stat=stat)
+            & tfields = pt_fields_on_mesh(:n_pt_fields_on_mesh), number_of_partitions=number_of_partitions, stat=stat)
         end if
 
         deallocate(ps_fields_on_mesh)
