@@ -80,7 +80,6 @@ implicit none
           real_addto_real, vector_field_addto_field_scale_field
   end interface
 
-
   interface set_from_function
      module procedure set_from_function_scalar, set_from_function_vector,&
           & set_from_function_tensor 
@@ -641,7 +640,7 @@ implicit none
             (lscale%field_type==FIELD_TYPE_CONSTANT)) then
        
           do i=1,field1%dim
-             field1%val(i,:)=field1%val(i,:)+scale%val*lfield2%val(i,:)
+             field1%val(i,:)=field1%val(i,:)+lscale%val*lfield2%val(i,:)
           end do
 
        else
@@ -657,28 +656,28 @@ implicit none
             (lscale%field_type==FIELD_TYPE_CONSTANT)) then
        
           do i=1,field1%dim
-             field1%val(i,:)=field1%val(i,:)+scale%val(1)*lfield2%val(i,1)
+             field1%val(i,:)=field1%val(i,:)+lscale%val(1)*lfield2%val(i,1)
           end do
 
        else if ((lfield2%field_type==FIELD_TYPE_NORMAL) .and. &
             (lscale%field_type==FIELD_TYPE_CONSTANT)) then
 
           do i=1,field1%dim
-             field1%val(i,:)=field1%val(i,:)+scale%val(1)*lfield2%val(i,:)
+             field1%val(i,:)=field1%val(i,:)+lscale%val(1)*lfield2%val(i,:)
           end do
 
        else if ((lfield2%field_type==FIELD_TYPE_CONSTANT) .and. &
             (lscale%field_type==FIELD_TYPE_NORMAL)) then
 
           do i=1,field1%dim
-             field1%val(i,:)=field1%val(i,:)+scale%val*lfield2%val(i,1)
+             field1%val(i,:)=field1%val(i,:)+lscale%val*lfield2%val(i,1)
           end do
 
        else if ((lfield2%field_type==FIELD_TYPE_NORMAL) .and. &
             (lscale%field_type==FIELD_TYPE_NORMAL)) then
 
           do i=1,field1%dim
-             field1%val(i,:)=field1%val(i,:)+scale%val*lfield2%val(i,:)
+             field1%val(i,:)=field1%val(i,:)+lscale%val*lfield2%val(i,:)
           end do
 
        else
@@ -1927,7 +1926,7 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
     !!< field. 
     type(scalar_field), intent(in) :: from_field
     type(scalar_field), intent(inout) :: to_field
-    integer, intent(inout), optional :: stat
+    integer, intent(out), optional :: stat
 
     real, dimension(to_field%mesh%shape%loc, from_field%mesh%shape%loc) :: locweight
 
@@ -1945,41 +1944,7 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
       select case(from_field%field_type)
       case(FIELD_TYPE_NORMAL)
 
-        if((continuity(from_field)<0).and.(.not.(continuity(to_field)<0))) then
-          if(present(stat)) then
-            stat = REMAP_ERR_DISCONTINUOUS_CONTINUOUS
-          else
-            FLAbort("Trying to remap from discontinuous to continuous scalar field.")
-          end if
-        end if
-        
-        ! this test currently assumes that the shape function degree is constant over the mesh
-        if((.not.(continuity(from_field)<0)).and.(.not.(continuity(to_field)<0))&
-            .and.(element_degree(from_field, 1)>element_degree(to_field, 1))) then
-          if(present(stat)) then
-            stat = REMAP_ERR_HIGHER_LOWER_CONTINUOUS
-          else
-            FLAbort("Trying to remap from higher order to lower order continuous scalar field")
-          end if
-        end if
-          
-        if((.not.(continuity(from_field)<0)).and.(.not.(continuity(to_field)<0))&
-            .and.(.not.mesh_periodic(from_field)).and.(mesh_periodic(to_field))) then
-          if(present(stat)) then
-            stat = REMAP_ERR_UNPERIODIC_PERIODIC
-          else
-            FLAbort("Trying to remap from an unperiodic to a periodic continuous scalar field")
-          end if
-        end if
-
-        if((from_field%mesh%shape%numbering%type==ELEMENT_BUBBLE).and.&
-           (to_field%mesh%shape%numbering%type==ELEMENT_LAGRANGIAN)) then
-          if(present(stat)) then
-            stat = REMAP_ERR_BUBBLE_LAGRANGE
-          else
-            FLAbort("Trying to remap from a bubble to a lagrange scalar field")
-          end if
-        end if
+        call test_remap_validity(from_field, to_field, stat=stat)
 
         ! First construct remapping weights.
         do toloc=1,size(locweight,1)
