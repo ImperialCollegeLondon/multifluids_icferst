@@ -52,6 +52,7 @@
     use memory_diagnostics
     use initialise_fields_module, only: initialise_field_over_regions
     use halos
+    ! Need to use surface integrals since a function from here is called in the calculate_outflux() subroutine
     use surface_integrals
 
     !use printout
@@ -86,7 +87,7 @@
        real :: angle
     end type bad_elements
 
-    ! Will need to generalise this to have an arbitrary dimension.
+    ! Used in calculations of the outflux - array of integers containing the gmesh IDs of each boundary that you wish to integrate over
     integer, dimension(:), allocatable :: outlet_id
 
   contains
@@ -116,12 +117,11 @@
 
       ewrite(3,*)' In Get_Primary_Scalars'
 
-      ! Read in the surface IDs of the outlet boundary into the (1D array) variable outlet_ids. Need to generalise this to deal with
-      ! arrays that are not 1D and also to have a fail safe in case this quantity does not exist. Will be better to add a separate option into diamond
-      ! when the user wants to do an integral.
+      ! Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outlet_id.
+      ! No need to explicitly allocate outlet_id (done here internally)
 
-      if (have_option( "/io/dump_boundaryflux/surface_ids")) then
-
+      if (have_option( "/io/dump_boundaryflux/surface_ids") .and..not.(allocated(outlet_id))) then
+        allocate(outlet_id(1))
         call get_option( "/io/dump_boundaryflux/surface_ids", outlet_id)
 
       endif
@@ -3986,7 +3986,9 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 ! Local variables
 
        type(scalar_field), pointer :: sfield
+       type(scalar_field), pointer :: s2field
        real, dimension(:), pointer :: CVPressure
+       real, dimension(:), pointer :: Por
        logical :: test
        type(tensor_field), pointer :: tfield
        integer  :: x_knod
@@ -3995,9 +3997,11 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
        real, dimension( : , : ), allocatable :: phaseVG
        real, dimension( : , : ), allocatable :: Dens
        real, dimension( : , : ), allocatable :: DensVG
+       real, dimension( : ), allocatable :: PorG
 
        allocate(phaseV(nphase,cv_nonods), phaseVG(nphase,cv_nonods))
        allocate(Dens(nphase,cv_nonods), DensVG(nphase,cv_nonods))
+       allocate(PorG(cv_nonods))
 
 ! Extract the pressure
 
@@ -4011,9 +4015,13 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
  ! Extract the density
 
-         tfield => extract_tensor_field( packed_state, "PackedDensity" )
-         Dens =  tfield%val(1,:,:)
+      tfield => extract_tensor_field( packed_state, "PackedDensity" )
+      Dens =  tfield%val(1,:,:)
 
+! Extract the porosity (still should confirm whether or not totoutflux needs to be divided by the porosity - matter of which velocity to use : q or v)
+
+      s2field => extract_scalar_field( packed_state, "Porosity" )
+      Por =>  s2field%val(:)
 
 ! Having extracted the saturation field (phase volume fraction) at control volume nodes, need to calculate it at quadrature points gi.
 
@@ -4031,6 +4039,14 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       DensVG(:,gi) = DensVG(:,gi) + Dens(:,x_knod)*SCVFEN(cv_kloc,gi)
       end do
 
+! Having extracted the porosity at control volume nodes, need to calculate it at quadrature points gi.
+
+      PorG = 0.0
+      do cv_kloc=1,cv_nloc
+      x_knod=x_ndgln((ele-1)*cv_nloc+cv_kloc)
+      PorG(gi) = PorG(gi) + Por(x_knod)*SCVFEN(cv_kloc,gi)
+      end do
+
 ! This function will return true for surfaces we should be integrating over (this entire subroutine is called in a loop over ele,(sele),gi in cv-adv-dif)
 ! Need the condition that sele > 0 Check why it can be zero/negative.
 
@@ -4039,11 +4055,11 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
           test = integrate_over_surface_element(sfield, sele, surface_ids)
 
 ! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
-! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral.
+! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
 
           if(test) then
 
-              totoutflux(:) = totoutflux(:) + ndotqnew(:)*phaseVG(:,gi)*detwei(gi)*DensVG(:,gi)
+              totoutflux(:) = totoutflux(:) + ndotqnew(:)*phaseVG(:,gi)*detwei(gi)*DensVG(:,gi)/PorG(gi)
 
           endif
 
@@ -4053,6 +4069,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       deallocate(phaseVG)
       deallocate(dens)
       deallocate(densVG)
+      deallocate(PorG)
 
       return
 

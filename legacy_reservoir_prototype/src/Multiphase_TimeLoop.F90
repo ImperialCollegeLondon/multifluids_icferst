@@ -220,8 +220,6 @@
       real::  second_theta
 
       integer :: checkpoint_number
-      ! Loop index over the number of boundaries to calculate flux across
-      integer :: ioutlet
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
       integer, dimension (35) :: StorageIndexes
@@ -249,6 +247,11 @@
 
       logical :: write_all_stats=.true.
 
+      ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
+      ! Ioutlet counts the number of boundaries over which to calculate the outflux
+
+      integer :: ioutlet
+
       real, dimension(:,:),  allocatable  :: intflux
 
       logical :: calculate_flux
@@ -262,8 +265,6 @@
       assert(ierr == ZOLTAN_OK)
 #endif
 
-      !We only allocate outlet_id if you actually want to calculate fluxes
-      calculate_flux = allocated(outlet_id)
       !Initially we set to use Stored data and that we have a new mesh
       StorageIndexes = 0!Initialize them as zero !
 
@@ -549,48 +550,26 @@
       itime = 0
       dtime = 0
 
-      ! Initialise time integrated fluxes
+      ! When outlet_id is allocated, calculate_flux is true and we want to calculate outfluxes
+
+      calculate_flux = allocated(outlet_id)
+
+      ! If calculating boundary fluxes, initialise to zero time integrated fluxes (intflux) and the quantity (totout) used to calculate them.
+
       if(calculate_flux) then
-      allocate(intflux(nphase,size(outlet_id)))
-      allocate(totout(nphase, size(outlet_id)))
 
-      do ioutlet = 1, size(outlet_id)
-      intflux(:, ioutlet) = 0.
+          allocate(intflux(nphase,size(outlet_id)))
+          allocate(totout(nphase, size(outlet_id)))
 
-      ! May want to initialise this to equal to the totout on the initial data and not zero so that you don't always get zero at time zero.
-      totout(:, ioutlet) = 0.
-      enddo
+          do ioutlet = 1, size(outlet_id)
+              intflux(:, ioutlet) = 0.
+
+              totout(:, ioutlet) = 0.
+          enddo
       endif
 
       checkpoint_number=1
       Loop_Time: do
-
-      ! Better to do these calculations here rather than in the subroutine dump_outflux
-       if(calculate_flux) then
-      intflux = intflux + totout*dt
-
-      if(itime > 0) then
-
-      totout = totout/sum(totout)
-
-      endif
-
-      endif
-
-      ! Dump boundary outfluxes to file - may want to change the dumping routine so that it just dumps values. Currently also sums intflux and normalises totout
-      ! This can cause confusion as when commenting out this routine call here, you'll get different results for totout. JUST CHANGED IT - see above
-      if(calculate_flux) then
-      if(getprocno() == 1) then
-
-        call dump_outflux(current_time,itime,totout,intflux, dt)
-
-        ! Note in the current version on Vader - this printout is outside of the getprocno() loop. This will give incorrectly normalised printout to screen
-        ! of totout on all processors except processor 1. This needs to be inside the loop. Doesn't matter for the outfluxes file.
-
-        !print *, totout
-
-      endif
-      endif
 
 !!$
 
@@ -616,12 +595,27 @@
          call set_option( '/timestepping/current_time', acctim )
          new_lim = .true.
 
-   !call dump_outflux(acctim,itime,totout,intflux, dt) - RIGHT TIME, WRONG FLUX
+         ! Added a tolerance of 0.001dt to the condition below that stops us exiting the loop before printing the last time step.
 
-         if ( acctim > finish_time ) then
-            ewrite(1,*) "Passed final time"
-            exit Loop_Time
-         end if
+          if(calculate_flux) then
+            if ( acctim > finish_time + 0.001*dt) then
+              ewrite(1,*) "Passed final time"
+              exit Loop_Time
+            end if
+
+          else
+
+            if ( acctim > finish_time) then
+              ewrite(1,*) "Passed final time"
+              exit Loop_Time
+            end if
+
+         endif
+
+!         if ( acctim > finish_time) then
+!            ewrite(1,*) "Passed final time"
+!            exit Loop_Time
+!         end if
 
          call get_option( '/timestepping/final_timestep', final_timestep, stat )
          if( stat == spud_no_error ) then
@@ -1078,19 +1072,26 @@
          end do Loop_NonLinearIteration
 
 
-         ! Dump boundary outfluxes to file - may want to change the dumping routine so that it just dumps values. Currently also sums intflux and normalises totout
-         ! This can cause confusion as when commenting out this routine call here, you'll get different results for totout
+         ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
 
-         !if(getprocno() == 1) then
+         if(calculate_flux) then
+             intflux = intflux + totout*dt
 
-         !call dump_outflux(current_time,itime,totout,intflux, dt)
+                 ! We will output totout normalised as a fractional flow
 
-         ! Note in the current version on Vader - this printout is outside of the getprocno() loop. This will give incorrectly normalised printout to screen
-         ! of totout on all processors except processor 1. This needs to be inside the loop. Doesn't matter for the outfluxes file.
+                 totout = totout/sum(totout)
 
-         !print *, totout
+         endif
 
-         !endif
+         ! If calculating boundary fluxes, dump them to outfluxes.txt
+
+         if(calculate_flux) then
+             if(getprocno() == 1) then
+
+                 call dump_outflux(acctim,itime,totout,intflux, dt)
+
+             endif
+         endif
 
 
          if (nonLinearAdaptTs) then
@@ -1516,6 +1517,16 @@
          call write_state(dump_no, state)
       end if
 
+      ! If calculating boundary fluxes, dump them to outfluxes.txt at the very end to get the values at the last time step
+
+!      if(calculate_flux) then
+!         if(getprocno() == 1) then
+!
+!            call dump_outflux(acctim,itime,totout,intflux, dt)
+!
+!         endif
+!      endif
+
 
       call tag_references()
 
@@ -1890,6 +1901,11 @@
 
    subroutine dump_outflux(current_time, itime, outflux, intflux,ts)
 
+   ! Subroutine that dumps the total flux at a given timestep across all specified boudaries to a file  called 'outfluxes.txt'. In addition, the time integrated flux
+   ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
+   ! (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
+   !to integrate over).
+
    real,intent(in) :: current_time
    integer, intent(in) :: itime
    real, dimension(:,:), intent(inout) :: outflux, intflux
@@ -1898,29 +1914,58 @@
 
    integer :: ioutlet
    type(stat_type), target :: default_stat
+   character (len=1000000) :: whole_line
+   character (len=1000) :: numbers
+
 
    default_stat%conv_unit=free_unit()
 
    open(unit=default_stat%conv_unit, file="outfluxes.txt", action="write", position="append")
 
-   ! Disable the column headings in the final version, they just cause annoyance during post-processing
-   if(itime.eq.0) then
-     write(default_stat%conv_unit,*) "Current Time"
-     do ioutlet =1, size(outflux,2)
-        write(default_stat%conv_unit,*) "Surface id:", outlet_id(ioutlet), "********Phase1 boundary flux", "*******Phase2 boundary flux", "********Phase 1 Integrated Flux", "********Phase 2 Integrated Flux"
-     end do
+   ! Write column headings to file
+   !   if(itime.eq.1) then
+   !       whole_line = "Current Time"
+   !       do ioutlet =1, size(outflux,2)
+   !           write(numbers,*), outlet_id(ioutlet)
+   !           whole_line = trim(whole_line) // "Surface id:"// trim(numbers)// "Phase1 boundary flux"// &
+   !           "Phase2 boundary flux"// "Phase1 integrated flux"// "Phase2 integrated flux "
+   !       end do
+   !        !Write a line
+   !       write(default_stat%conv_unit,*), trim(whole_line)
+   !   endif
 
-   endif
-   write(default_stat%conv_unit,*) current_time
+   write(whole_line,*), current_time
+   do ioutlet =1, size(outflux,2)
+       write(numbers,*), outflux(:, ioutlet),  intflux(:, ioutlet)
+       whole_line = trim(whole_line) //" "// trim(numbers)//" "
+   end do
+    !Write a line
+   write(default_stat%conv_unit,*), trim(whole_line)
 
-     do ioutlet =1, size(outflux,2)
-       write(default_stat%conv_unit,*) outflux(:, ioutlet),  intflux(:, ioutlet)
-     end do
+
+!   if(itime.eq.1) then
+!       write(default_stat%conv_unit,*) "Current Time"
+!       do ioutlet =1, size(outflux,2)
+!           write(default_stat%conv_unit,*) "Surface id:",outlet_id(ioutlet),"""", &
+!           "Phase1 boundary flux","Phase2 boundary flux","Phase1 integrated flux","Phase2 integrated flux"
+!       end do
+!
+!   endif
+
+
+!write(default_stat%conv_unit,*) current_time
+!
+!
+!do ioutlet =1, size(outflux,2)
+!  write(default_stat%conv_unit,*) outflux(:, ioutlet),  intflux(:, ioutlet)
+!end do
+
 
    close (default_stat%conv_unit)
+
 
    end subroutine dump_outflux
 
 
 
-  end module multiphase_time_loop
+   end module multiphase_time_loop

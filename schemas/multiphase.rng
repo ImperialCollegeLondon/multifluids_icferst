@@ -130,6 +130,18 @@ interpolated for VTK output.</a:documentation>
           </element>
         </optional>
         <optional>
+          <element name="dump_boundaryflux">
+            <a:documentation>Surface to Integrate Over</a:documentation>
+            <attribute name="name">
+              <data type="string" datatypeLibrary=""/>
+            </attribute>
+            <element name="surface_ids">
+              <a:documentation>Surface id:</a:documentation>
+              <ref name="integer_vector"/>
+            </element>
+          </element>
+        </optional>
+        <optional>
           <element name="initial_condition_overwrites_boundary">
             <a:documentation>Do not overwrite initial condition with boundary condition.
 Important for checkpointed runs! </a:documentation>

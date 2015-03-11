@@ -60,13 +60,12 @@ module cv_advection
 
   implicit none
 
+  ! Public totout needed when calculating outfluxes across a specified boundary. Will store the sum of totoutflux across all elements contained in the boundary.
+  ! Multiphase_TimeLoop needs to access this variable so easiest to make it public.
+
    public ::  totout
 
-   !real, dimension(:), allocatable :: totout
    real, allocatable, dimension(:,:) :: totout
-   ! To get the allocatable version to work need to know where we can deallocate totout in Multiphase Time Loop. This is probably not a good idea
-   ! don't want to be allocating/deallocating deep in cv-adv div/time loops etc. Better off just making nphase a global variable so we
-   ! define real, dimension(nphase) :: totout.
 
 #include "petsc_legacy.h"
 
@@ -332,6 +331,8 @@ contains
       character(len=*), optional :: Storname
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
+      ! Variables needed when calculating boundary outfluxes. Totoutflux will be used to sum up over elements for each phase the outflux through a specified boundary
+      ! Ioutlet counts the number of boundaries that are integrated over for the 'totoutflux calculation'.
 
       real, dimension(nphase, size(outlet_id)) :: totoutflux
       integer :: ioutlet
@@ -2240,6 +2241,8 @@ contains
                     if ( GETCT .and. calculate_flux ) then
 
                         do ioutlet = 1, size(outlet_id)
+                            ! Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
+
                             call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI)
 
                         enddo
@@ -2651,14 +2654,17 @@ contains
 
 
        if(GETCT .and. calculate_flux) then
+
+           ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
+
            totout = totoutflux
            do ioutlet = 1,size(outlet_id)
-           call allsum(totout(:,ioutlet))
+
+           ! Ensure all processors have the correct value of totout for parallel runs
+            call allsum(totout(:,ioutlet))
+
            enddo
        endif
-
-
-
 
       ! Deallocating temporary working arrays
 
