@@ -130,6 +130,18 @@ interpolated for VTK output.</a:documentation>
           </element>
         </optional>
         <optional>
+          <element name="dump_boundaryflux">
+            <a:documentation>Surface to Integrate Over</a:documentation>
+            <attribute name="name">
+              <data type="string" datatypeLibrary=""/>
+            </attribute>
+            <element name="surface_ids">
+              <a:documentation>Surface id:</a:documentation>
+              <ref name="integer_vector"/>
+            </element>
+          </element>
+        </optional>
+        <optional>
           <element name="initial_condition_overwrites_boundary">
             <a:documentation>Do not overwrite initial condition with boundary condition.
 Important for checkpointed runs! </a:documentation>
@@ -736,6 +748,12 @@ to sum to 1 by adding constraint into compositional source term.</a:documentatio
             </element>
           </optional>
           <optional>
+            <element name="Impose_saturation_limits">
+              <a:documentation>The saturation is imposed to be between physical limits, conservation of mass is kept. However dispersion is introduced. This option allows to increase the time step severily. (Activate it for the first phase)</a:documentation>
+              <ref name="comment"/>
+            </element>
+          </optional>
+          <optional>
             <ref name="equation_of_state">
               <a:documentation>The equation of state</a:documentation>
             </ref>
@@ -1207,6 +1225,19 @@ Tip: You may need to disable this option if the capillary pressure is enabled.</
               <a:documentation>Solve for the actual velocity, not
 the Darcy velocity (=porosity*velocity)</a:documentation>
               <empty/>
+            </element>
+          </optional>
+        </element>
+      </optional>
+      <optional>
+        <element name="femdem_fracture">
+          <a:documentation>Fracking options</a:documentation>
+          <optional>
+            <element name="femdem_file">
+              <a:documentation>Specify FEMDEM input file</a:documentation>
+              <attribute name="name">
+                <data type="string"/>
+              </attribute>
             </element>
           </optional>
         </element>

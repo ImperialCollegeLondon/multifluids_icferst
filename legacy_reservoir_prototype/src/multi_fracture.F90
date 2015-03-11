@@ -105,7 +105,7 @@ module multiphase_fractures
   integer, save :: ndim
 
   private
-  public :: blasting, update_blasting_memory
+  public :: fracking, blasting, update_blasting_memory
 
 contains
 
@@ -138,7 +138,7 @@ contains
                uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ))
              
 
-    p_r=0. ; uf_r=0. ; muf_r=0. ; f=0. ; a=0. ; uf_v=0. ; du_s=0. ; u_s=0.
+    p_r=0.0 ; uf_r=0.0 ; muf_r=0.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0
 
     call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r )
     call interpolate_fields_out_v( packed_state, nphase, uf_v )
@@ -158,6 +158,27 @@ contains
 
     return
   end subroutine blasting
+
+  !----------------------------------------------------------------------------------------------------------
+
+  subroutine fracking( packed_state )
+
+    implicit none
+
+    type( state_type ), intent( inout ) :: packed_state
+
+    ! read in ring and solid volume meshes
+    ! and simplify the volume mesh
+    call initialise_femdem
+
+    ! calculate porosity and permeability
+    call calculate_phi_and_perm( packed_state )
+
+    ! deallocate
+    call deallocate_femdem
+
+    return
+  end subroutine fracking
 
   !----------------------------------------------------------------------------------------------------------
   !----------------------------------------------------------------------------------------------------------
@@ -183,8 +204,13 @@ contains
 
     ewrite(3,*) "inside initialise_femdem"
 
-    call get_option( "/blasting/femdem_input_file/name", femdem_mesh_name )
+    if (have_option('/femdem_fracture') ) then
+    call get_option( "/femdem_fracture/femdem_file/name", femdem_mesh_name ) !!-ao changed name 
     femdem_mesh_name = trim( femdem_mesh_name ) // ".y"
+    elseif ( have_option('/blasting') ) then
+    call get_option( "/blasting/femdem_input_file/name", femdem_mesh_name ) 
+    femdem_mesh_name = trim( femdem_mesh_name ) // ".y"
+    end if
 
     call get_option( "/geometry/quadrature/degree", quad_degree )
     call get_option( "/geometry/dimension", ndim )
@@ -313,33 +339,32 @@ contains
 
   !----------------------------------------------------------------------------------------------------------
 
-  subroutine calculate_volume_fraction( states, vf )
+  subroutine calculate_volume_fraction( packed_state )
 
     implicit none
 
-    type( state_type ), dimension( : ), intent( in ) :: states
-    real, dimension( : ), intent( inout ) :: vf
+    type( state_type ), intent( inout ) :: packed_state
     !Local variables
     type( state_type ) :: alg_ext, alg_fl
     type( mesh_type ), pointer :: fl_mesh, p0_fl_mesh
     type( vector_field ) :: fl_positions
-    type( scalar_field ) :: volume_fraction
+    type( scalar_field ), pointer :: volume_fraction
 
     ewrite(3,*) "inside calculate_volume_fraction"
 
     call insert( alg_ext, positions_vc % mesh, "Mesh" )
     call insert( alg_ext, positions_vc, "Coordinate" )
 
-    fl_mesh => extract_mesh( states( 1 ), "CoordinateMesh" )
-    fl_positions = extract_vector_field( states(1), "Coordinate" )
+    fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
+    fl_positions = extract_vector_field( packed_state, "Coordinate" )
 
     call insert( alg_fl, fl_mesh, "Mesh" )
     call insert( alg_fl, fl_positions, "Coordinate" )
 
-    p0_fl_mesh => extract_mesh( states( 1 ), "P0DG" )
+    p0_fl_mesh => extract_mesh( packed_state, "P0DG" )
 
     ! volume fraction, i.e. porosity...
-    call allocate( volume_fraction, p0_fl_mesh, "VolumeFraction" )
+    volume_fraction => extract_scalar_field( packed_state, "SolidConcentration" )
     call zero( volume_fraction )
 
     ewrite(3,*) "...interpolating"
@@ -347,14 +372,12 @@ contains
     ! interpolate
     call interpolation_galerkin_femdem( alg_ext, alg_fl, field = volume_fraction )
 
-    vf = volume_fraction % val
 
-    ! ensure vf is between 0. and 1.
-    call bound_volume_fraction( vf )
+    ! ensure vf is between 0.0 and 1.0
+    call bound_volume_fraction( volume_fraction%val )
 
-    ! now deallocate
+    ! deallocate
     call deallocate( fl_positions )
-    call deallocate( volume_fraction )
     call deallocate( alg_fl )
     call deallocate( alg_ext )
 
@@ -407,75 +430,38 @@ contains
 
   !----------------------------------------------------------------------------------------------------------
 
-  subroutine calculate_phi( states, vf, porosity )
+  subroutine calculate_phi_and_perm( packed_state )
 
     implicit none
 
-    type( state_type ), dimension( : ), intent( in ) :: states
-    real, dimension( : ), intent( in ) :: vf
+    type( state_type ), intent( inout ) :: packed_state
 
-    real, dimension( : ), intent( inout ) :: porosity
-    !Local variables
-    real :: phi_rock
-    type( scalar_field ), pointer :: phi_matrix
-
-    ewrite(3,*) "inside calculate_phi"
-
-    ! rock mass porosity
-    phi_rock = 0.
-    ! matrix (background) porosity
-    phi_matrix => extract_scalar_field( states( 1 ), "Porosity" )
-
-    porosity = ( 1. - vf ) * phi_matrix % val + vf * phi_rock 
-
-    ! bound...
-    porosity = max( 0., min( 1., porosity ) )
-
-    ewrite(3,*) "leaving calculate_phi"
-
-    return
-  end subroutine calculate_phi
-
-  !----------------------------------------------------------------------------------------------------------
-
-  subroutine calculate_perm( states, totele, vf, perm )
-
-    implicit none
-
-    integer, intent( in ) :: totele
-    type( state_type ), dimension( : ), intent( in ) :: states
-    real, dimension( : ), intent( in ) :: vf
-
-    real, dimension( :, :, : ), intent( inout ) :: perm
     !Local variables
     type( state_type ) :: alg_ext, alg_fl
     type( mesh_type ), pointer :: fl_mesh, p0_fl_mesh
     type( vector_field ) :: fl_positions
     type( scalar_field ) :: rvf
 
-    type( tensor_field ), pointer :: permeability_bg_t
-    type( scalar_field ), pointer :: permeability_bg_s
+    type( tensor_field ), pointer :: permeability
+    type( scalar_field ), pointer :: porosity
 
     type( scalar_field ) :: field_fl_p11, field_fl_p12, field_fl_p21, field_fl_p22, &
          &                  field_ext_p11, field_ext_p12, field_ext_p21, field_ext_p22
 
-    real :: ring, solid, bg
-    real, dimension( :, : ), allocatable :: permeability_v
-    real, dimension( :, :, : ), allocatable :: permeability_bg, permeability_rl 
-
     character( len = OPTION_PATH_LEN ) :: &
          path = "/tmp/galerkin_projection/continuous"
-    integer :: ele, idim, jdim, stat
+    integer :: stat, totele, ele
+    real, dimension( : ), allocatable :: scale
 
-    real, parameter :: tol = 1.e-10
+    real, parameter :: tol = 1.0e-10, matrix_perm = 1.0e-5
 
-    ewrite(3,*) "inside calculate_perm"
+    ewrite(3,*) "inside calculate_phi_and_perm"
 
     call insert( alg_ext, positions_r%mesh, "Mesh" )
     call insert( alg_ext, positions_r, "Coordinate" )
 
-    fl_mesh => extract_mesh( states( 1 ), "CoordinateMesh" )
-    fl_positions = extract_vector_field( states( 1 ), "Coordinate" )
+    fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
+    fl_positions = extract_vector_field( packed_state, "Coordinate" )
 
     call insert( alg_fl, fl_mesh, "Mesh" )
     call insert( alg_fl, fl_positions, "Coordinate" )
@@ -483,8 +469,8 @@ contains
     call set_solver_options( path, &
          ksptype = "gmres", &
          pctype = "hypre", &
-         rtol = 1.e-10, &
-         atol = 0., &
+         rtol = 1.0e-10, &
+         atol = 0.0, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -493,7 +479,7 @@ contains
 
     path = "/tmp"
 
-    p0_fl_mesh => extract_mesh( states( 1 ), "P0DG" )
+    p0_fl_mesh => extract_mesh( packed_state, "P0DG" )
 
     ewrite(3,*) "...generating fluids state"
 
@@ -545,52 +531,31 @@ contains
     ! bound ring volume fraction
     call bound_volume_fraction( rvf % val )
 
-    allocate( permeability_rl(totele, ndim, ndim) ) ; permeability_rl = 0.
-    permeability_rl(:, 1, 1) = field_fl_p11 % val
-    permeability_rl(:, 1, 2) = field_fl_p12 % val
-    permeability_rl(:, 2, 1) = field_fl_p21 % val
-    permeability_rl(:, 2, 2) = field_fl_p22 % val
+    ! calculate phi and perm
+    ! only fractures are permeable and porous
+    ! perm is non-zero only in fractures
+    ! also add an isotropic, background/matrix permeability
+    permeability => extract_tensor_field( packed_state, "Permeability" )
+    porosity => extract_scalar_field( packed_state, "Porosity" )
 
-    ! background and solid permeabilities
-    allocate( permeability_bg(totele, ndim, ndim) ) ; permeability_bg = 0.
-    if( have_option( "/porous_media/scalar_field::Permeability" ) ) then
+    call zero( permeability ) ; call zero( porosity )
 
-       permeability_bg_s => extract_scalar_field( states( 1 ), "Permeability" )
-       do ele = 1, element_count( permeability_bg_s ) 
-          forall( idim = 1 : ndim ) permeability_bg( ele, idim, idim ) = permeability_bg_s % val( ele )
-       end do
+    permeability % val( 1, 1, : ) = field_fl_p11 % val + matrix_perm
+    permeability % val( 1, 2, : ) = field_fl_p12 % val
+    permeability % val( 2, 1, : ) = field_fl_p21 % val
+    permeability % val( 2, 2, : ) = field_fl_p22 % val + matrix_perm
 
-    elseif( have_option( "/porous_media/tensor_field::Permeability" ) ) then
-
-       permeability_bg_t => extract_tensor_field( states( 1 ), "Permeability" )
-       path = "/porous_media/tensor_field::Permeability"
-       call Extract_TensorFields_Outof_State( states, 1, &
-            permeability_bg_t, path, permeability_bg )
-    end if
-
-    allocate( permeability_v(ndim, ndim) ) ; permeability_v = 0.
-    forall( idim = 1:ndim ) permeability_v( idim, idim ) = 0.3 
-
+    totele = ele_count( fl_mesh )
+    allocate( scale( totele ) ) ; scale = 0.0
     do ele = 1, totele
-
-       ! solid, ring and background volume fractions
-       solid = vf( ele )
-       ring = rvf % val( ele )
-       ! if the ring permeability is zero we are not in a fracture
-       ! so permeability is a combination of the solid and matrix 
-       ! (background) permeabilities
-       if ( permeability_rl( ele, 1, 1 ) <= tol ) ring = 0.
-       bg = max( 0., 1. - solid - ring )
-
-       forall( idim = 1:ndim, jdim = 1:ndim ) &
-            perm( ele, idim, jdim ) = bg * permeability_bg( ele, idim, jdim ) &
-            &                       + solid * permeability_v( idim, jdim ) &
-            &                       + permeability_rl( ele, idim, jdim )
-
+       if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0 
     end do
 
-    deallocate( permeability_bg, permeability_v, permeability_rl )
+    porosity % val = rvf % val * scale 
 
+
+    ! deallocate
+    deallocate( scale )
     call deallocate( fl_positions )
     call deallocate( rvf )
 
@@ -602,10 +567,10 @@ contains
     call deallocate( alg_fl )
     call deallocate( alg_ext )
 
-    ewrite(3,*) "leaving calculate_perm"
+    ewrite(3,*) "leaving calculate_phi_and_perm"
 
     return
-  end subroutine calculate_perm
+  end subroutine calculate_phi_and_perm
 
   !----------------------------------------------------------------------------------------------------------
 
@@ -634,7 +599,7 @@ contains
     logical :: constant_mu
     character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
 
-    p_r = 0. ; u_r = 0. ; mu_r = 0.
+    p_r = 0.0 ; u_r = 0.0 ; mu_r = 0.0
 
     cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
 
@@ -656,8 +621,8 @@ contains
     call set_solver_options( path, &
          ksptype = "gmres", &
          pctype = "hypre", &
-         rtol = 1.e-10, &
-         atol = 0., &
+         rtol = 1.0e-10, &
+         atol = 0.0, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -813,7 +778,7 @@ contains
     integer :: stat, u_nonods
     character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
 
-    u_v = 0.
+    u_v = 0.0
 
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
     fl_positions => extract_vector_field( packed_state, "Coordinate" )
@@ -821,8 +786,8 @@ contains
     call set_solver_options( path, &
          ksptype = "gmres", &
          pctype = "hypre", &
-         rtol = 1.e-10, &
-         atol = 0., &
+         rtol = 1.0e-10, &
+         atol = 0.0, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -928,8 +893,8 @@ contains
     call set_solver_options( path, &
          ksptype = "gmres", &
          pctype = "hypre", &
-         rtol = 1.e-10, &
-         atol = 0., &
+         rtol = 1.0e-10, &
+         atol = 0.0, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -1076,8 +1041,8 @@ contains
     call set_solver_options( path, &
          ksptype = "gmres", &
          pctype = "hypre", &
-         rtol = 1.e-10, &
-         atol = 0., &
+         rtol = 1.0e-10, &
+         atol = 0.0, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -1341,7 +1306,7 @@ contains
                f % val( 1, ele_nodes( 1 ) ), f % val( 2, ele_nodes( 1 ) ), &
                f % val( 1, ele_nodes( 2 ) ), f % val( 2, ele_nodes( 2 ) ), &
                f % val( 1, ele_nodes( 3 ) ), f % val( 2, ele_nodes( 3 ) ) )
-          if ( area < 0. ) then
+          if ( area < 0.0 ) then
              ! swap 2nd and 3rd nodes
              ndglno_s( ( ele - 1 ) * nloc + 2 : ele * nloc ) = (/ ele_nodes( 3 ), ele_nodes( 2 ) /) 
           end if
@@ -1537,7 +1502,7 @@ contains
     real, intent( in ), optional :: v_min, v_max
     real :: vmin, vmax
 
-    vmin = 0. ; vmax = 1.
+    vmin = 0.0 ; vmax = 1.0
     if ( present( v_min ) ) vmin = v_min
     if ( present( v_max ) ) vmax = v_max
 

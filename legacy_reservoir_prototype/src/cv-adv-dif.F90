@@ -60,6 +60,13 @@ module cv_advection
 
   implicit none
 
+  ! Public totout needed when calculating outfluxes across a specified boundary. Will store the sum of totoutflux across all elements contained in the boundary.
+  ! Multiphase_TimeLoop needs to access this variable so easiest to make it public.
+
+   public ::  totout
+
+   real, allocatable, dimension(:,:) :: totout
+
 #include "petsc_legacy.h"
 
   INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1, WIC_T_BC_ROBIN = 2, &
@@ -324,6 +331,12 @@ contains
       character(len=*), optional :: Storname
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
+      ! Variables needed when calculating boundary outfluxes. Totoutflux will be used to sum up over elements for each phase the outflux through a specified boundary
+      ! Ioutlet counts the number of boundaries that are integrated over for the 'totoutflux calculation'.
+
+      real, dimension(nphase, size(outlet_id)) :: totoutflux
+      integer :: ioutlet
+
 
       ! Local variables
       REAL :: ZERO_OR_TWO_THIRDS
@@ -540,6 +553,13 @@ contains
       integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD
       REAL :: MM_GRAVTY
 
+      !Variables to calculate flux across boundaries
+      logical :: calculate_flux
+
+      !We only allocate outlet_id if you actually want to calculate fluxes
+      calculate_flux = allocated(outlet_id)
+
+
       !Check capillary pressure options
       capillary_pressure_activated = .false.
       if (GOT_CAPDIFFUS) then
@@ -612,6 +632,12 @@ contains
 
     !##################END OF SET VARIABLES##################
 
+      ! Totoutflux stores the integral of n.q across a specified boundary and is calculated through the subroutine calculate_outflux(). It's initialised to zero in the line below
+      if (calculate_flux) then
+          do ioutlet = 1, size(outlet_id)
+              totoutflux(:,ioutlet) = 0
+          enddo
+      end if
 
     !! Get boundary conditions from field
     call get_entire_boundary_condition(tracer,&
@@ -2212,7 +2238,16 @@ contains
                      ENDIF Conditional_GETCT2
 
 
+                    if ( GETCT .and. calculate_flux ) then
 
+                        do ioutlet = 1, size(outlet_id)
+                            ! Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
+
+                            call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI)
+
+                        enddo
+
+                    end if
 
 
                   Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
@@ -2617,6 +2652,19 @@ contains
 
       END IF
 
+
+       if(GETCT .and. calculate_flux) then
+
+           ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
+
+           totout = totoutflux
+           do ioutlet = 1,size(outlet_id)
+
+           ! Ensure all processors have the correct value of totout for parallel runs
+            call allsum(totout(:,ioutlet))
+
+           enddo
+       endif
 
       ! Deallocating temporary working arrays
 
