@@ -1224,6 +1224,19 @@ the Darcy velocity (=porosity*velocity)</a:documentation>
         </element>
       </optional>
       <optional>
+        <element name="femdem_fracture">
+          <a:documentation>Femdem options</a:documentation>
+          <optional>
+            <element name="femdem_file">
+              <a:documentation>Specify FEMDEM input file</a:documentation>
+              <attribute name="name">
+                <data type="string"/>
+              </attribute>
+            </element>
+          </optional>
+        </element>
+      </optional>
+      <optional>
         <element name="blasting">
           <a:documentation>Blasting options</a:documentation>
           <element name="femdem_input_file">
