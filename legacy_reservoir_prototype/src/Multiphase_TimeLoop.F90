@@ -650,10 +650,12 @@
 
 !!$ FEMDEM...
 #ifdef USING_FEMDEM
-         if ( have_option( '/blasting' ) ) then
+        if ( have_option( '/femdem_fracture' ) ) then
+            call fracking(packed_state) 
+        elseif ( have_option( '/blasting') ) then 
             call blasting( packed_state, nphase )
-            call update_blasting_memory( packed_state, state, timestep )
-         end if
+            call update_blasting_memory( packed_state, state, timestep )  
+        end if
 #endif
 
 !!$ Start non-linear loop

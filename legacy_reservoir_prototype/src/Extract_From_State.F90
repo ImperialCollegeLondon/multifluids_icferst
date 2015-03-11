@@ -2126,6 +2126,15 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          tfield => extract_tensor_field( state(1), "Viscosity" )
          call insert( packed_state, tfield, "Viscosity" )
 
+
+     elseif ( have_option( '/femdem_fracture' ) ) then
+         sfield => extract_scalar_field( state(1), "SolidConcentration" )
+         call insert( packed_state, sfield, "SolidConcentration" )
+         call add_new_memory(packed_state,sfield,"OldSolidConcentration")
+         
+         tfield => extract_tensor_field( state(1), "Viscosity" )
+         call insert( packed_state, tfield, "Viscosity" )
+
       end if
 #endif
 
@@ -3355,7 +3364,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                call get_option( '/timestepping/timestep', dt )
                dt = dt * increaseFactor
                call set_option( '/timestepping/timestep', dt )
-               print *, "Time step increased to:", dt
+               ewrite(0,*) "Time step increased to:", dt
                ExitNonLinearLoop = .true.
                return
             end if
@@ -3385,7 +3394,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                call set_option( '/timestepping/current_time', acctim )
                dt = dt / decreaseFactor
                call set_option( '/timestepping/timestep', dt )
-               print *, "Time step decreased to:", dt
+               ewrite(0,*) "Time step decreased to:", dt
                Repeat_time_step = .true.
                ExitNonLinearLoop = .true.
             end if
