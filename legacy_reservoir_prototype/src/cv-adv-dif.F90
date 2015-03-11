@@ -8309,13 +8309,16 @@ deallocate(NX_ALL, X_NX_ALL)
                                       RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
                                   END IF
 
+!                                  FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (SCVFEN( CV_KLOC, GI )*0.0 + RGRAY(IFIELD)*0.0)   * LOC_FEMF( IFIELD, CV_KLOC)
                                   FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (SCVFEN( CV_KLOC, GI ) + RGRAY(IFIELD))   * LOC_FEMF( IFIELD, CV_KLOC)
                               END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
+!                              FEMFGI(:)    = FEMFGI(:) + 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
                           ELSE
 
                               DO CV_KLOC = 1, CV_NLOC
                                   FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  SCVFEN( CV_KLOC, GI ) * LOC_FEMF( IFIELD, CV_KLOC)
                               END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
+!                              FEMFGI(:)    = 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
                           END IF
 
                       END DO ! ENDOF DO IFIELD=1,NPHASE
