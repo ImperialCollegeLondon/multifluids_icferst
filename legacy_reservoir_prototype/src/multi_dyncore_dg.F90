@@ -8869,4 +8869,322 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
     end subroutine getOverrelaxation_parameter
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    subroutine high_order_pressure_solve( state, packed_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, nphase )
+
+      implicit none
+
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      integer, dimension( : ), intent( in ) :: small_findrm, small_colm
+      integer, intent( in ) :: cv_ele_type, nphase
+      integer, dimension( : ), intent( inout ) :: StorageIndexes
+
+      ! local variables...
+      type ( tensor_field ), pointer :: ufield
+      integer :: ndim, ph_ngi, ph_ngi_short, ph_nloc, ph_snloc, &
+           &     u_nloc, u_snloc, sphngi, sbphngi, nface, &
+           &     totele, x_nonods, ele, iloc, jloc, x_nloc, &
+           &     cv_snloc, ph_ele_type, iloop, u_nonods, cv_nonods, &
+           &     cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, cv_nloc, &
+           &     ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod
+      real, dimension( : ), pointer :: phweight, phweight_short, sphfeweigh, sbphfeweigh, &
+           &                           sele_overlap_scale
+      real, dimension( :, : ), pointer :: phn, phn_short, phfen, phfen_short, ufen, &
+           &                              sphfen, sphfenslx, sphfensly, sufen, sufenslx, sufensly, &
+           &                              sbphn, sbphfen, sbphfenslx, sbphfensly, sbufen, sbufenslx, sbufensly
+      real, dimension( :, :, : ), pointer :: phfenlx_all, phfenlx_short_all, ufenlx_all, &
+           &                                 sphfenlx_all, sufenlx_all, sbphfenlx_all, sbufenlx_all
+      logical, dimension( :, : ), allocatable :: u_on_face, ufem_on_face, &
+           &                                     ph_on_face, phfem_on_face
+      integer, pointer :: ncolgpts
+      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, ph_ndgln, u_ndgln
+      integer, dimension( :, : ), pointer :: ph_neiloc, ph_sloclist, u_sloclist
+      logical :: quad_over_whole_ele, d1, d3, dcyl
+      type( vector_field ), pointer :: x
+
+      real, dimension( : ), pointer :: detwei, ra
+      real, pointer :: volume
+      real, dimension(:,:,:), pointer :: phfenx_all, ufenx_all
+
+      real, dimension( :, :, : ), allocatable :: u_ph_source_short, u_s_short_gi, dx_alpha_short_gi
+      real, dimension( :, : ), allocatable :: alpha_short, coef_alpha_short, coef_alpha_short_gi
+
+      real, dimension( :, :, : ), allocatable :: u_ph_source_long, u_s_long_gi, dx_ph_gi, dx_alpha_long_gi
+      real, dimension( :, : ), allocatable :: alpha_long, coef_alpha_long, coef_alpha_long_gi, ph
+
+      real, dimension( :, :, : ), allocatable :: u_s_gi, dx_alpha_gi
+      real, dimension( :, : ), allocatable :: coef_alpha_gi
+
+      real, dimension( :, : ), pointer :: tmp_cvfen
+      real, dimension( :, :, : ), pointer :: tmp_cvfenx_all
+
+      real, dimension( : ), allocatable :: rhs_ph
+      real :: nxnx
+      real, dimension( :, :, : ), allocatable :: u_rhs
+
+
+
+
+
+      call get_option( '/geometry/dimension', ndim )
+
+      ufield => extract_tensor_field( packed_state, "PackedVelocity" )
+
+      u_nloc = ele_loc( ufield, 1 ) ; u_snloc = face_loc( ufield, 1 )
+
+      u_nonods = node_count( ufield )
+
+      quad_over_whole_ele = .false.
+
+      ! P2 elements
+      if ( ndim == 2 ) then
+         ph_ele_type = 4
+         ph_nloc = 6 ; ph_snloc = 3
+      else if ( ndim == 3 ) then
+         ph_ele_type = 8
+         ph_nloc = 10 ; ph_snloc = 6
+      else
+         stop 567
+      end if
+
+      call retrieve_ngi( ndim, ph_ele_type, ph_nloc, u_nloc, &
+           ph_ngi, ph_ngi_short, sphngi, sbphngi, nface, quad_over_whole_ele )
+
+      allocate( ph_on_face( ph_nloc, sphngi ), phfem_on_face( ph_nloc, sphngi ) )
+      allocate( u_on_face( u_nloc, sphngi ), ufem_on_face( u_nloc, sphngi ) )
+
+      call cv_fem_shape_funs_plus_storage( &
+                                ! volume shape functions...
+           ndim, ph_ele_type,  &
+           ph_ngi, ph_ngi_short, ph_nloc, u_nloc, phn, phn_short, &
+           phweight, phfen, phfenlx_all, &
+           phweight_short, phfen_short, phfenlx_short_all, &
+           ufen, ufenlx_all, &
+                                ! surface of each P_h shape functions...
+           sphngi, ph_neiloc, ph_on_face, phfem_on_face, &
+           sphfen, sphfenslx, sphfensly, sphfeweigh, &
+           sphfenlx_all,  &
+           sufen, sufenslx, sufensly, &
+           sufenlx_all, &
+                                ! surface element shape funcs...
+           u_on_face, ufem_on_face, nface, &
+           sbphngi, sbphn, sbphfen, sbphfenslx, sbphfensly, sbphfeweigh, sbphfenlx_all, &
+           sbufen, sbufenslx, sbufensly, sbufenlx_all, &
+           ph_sloclist, u_sloclist, ph_snloc, u_snloc, &
+                                ! define the gauss points that lie on the surface of the P_h...
+           findgpts, colgpts, ncolgpts, &
+           sele_overlap_scale, quad_over_whole_ele, &
+           state, "P_h" , storageindexes(1) )
+
+      totele = ele_count( ufield )
+      x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+      cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+      x_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+      x => extract_vector_field( packed_state, "PressureCoordinate" )
+
+
+      u_ndgln => get_ndglno( extract_mesh( state( 1 ), "VelocityMesh" ) )
+
+      x_nloc = ele_loc( x, 1 )
+      cv_nloc = x_nloc
+
+
+      cv_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh" ) )
+
+      ph_ndgln => get_ndglno( extract_mesh( state( 1 ), "P2" ) )
+
+      ph_nonods = node_count( extract_mesh( state( 1 ), "P2" ) )
+
+
+      d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
+
+      if ( cv_nloc == u_nloc ) then
+         tmp_cvfen => ufen
+         tmp_cvfenx_all => ufenx_all
+      else if ( cv_nloc == ph_nloc ) then
+         tmp_cvfen => phfen
+         tmp_cvfenx_all => phfenx_all
+      else
+         stop 7555
+      end if
+
+      allocate( u_ph_source_short( ndim, nphase, u_nonods ), &
+           &    alpha_short( nphase, cv_nonods ), &
+           &    coef_alpha_short( nphase, cv_nonods ) )
+
+      allocate( u_s_short_gi( ph_ngi, ndim, nphase ), &
+           &    dx_alpha_short_gi( ph_ngi, ndim, nphase ), &
+           &    coef_alpha_short_gi( ph_ngi, nphase ) )
+
+      allocate( u_ph_source_long( ndim, nphase, u_nonods ), &
+           &    alpha_long( nphase, ph_nonods ), &
+           &    ph( nphase, ph_nonods ), &
+           &    coef_alpha_long( nphase, ph_nonods ) )
+
+      allocate( u_s_long_gi( ph_ngi, ndim, nphase ), &
+           &    dx_ph_gi( ph_ngi, ndim, nphase ), &
+           &    dx_alpha_long_gi( ph_ngi, ndim, nphase ), &
+           &    coef_alpha_long_gi( ph_ngi, nphase ) )
+
+      allocate( u_s_gi( ph_ngi, ndim, nphase ), &
+           &    dx_alpha_gi( ph_ngi, ndim, nphase ), &
+           &    coef_alpha_gi( ph_ngi, nphase ) )
+
+
+
+      allocate( rhs_ph( ph_nonods ) ) ; rhs_ph = 0.0
+      allocate( u_rhs( ndim, nphase, u_nonods ) ) ; u_rhs = 0.0
+
+
+      do iloop = 1, 2
+
+         ! iloop=1 form the rhs of the pressure matrix and pressure matrix and solve it.
+         ! iloop=2 put the residual into the rhs of the momentum eqn.
+
+         u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
+
+         do  ele = 1, totele
+
+            ! calculate detwei,ra,nx,ny,nz for element ele
+            call detnlxr_plus_u_with_storage( ele, x%val(1,:), x%val(2,:), x%val(3,:), x_ndgln, totele, x_nonods, &
+                 x_nloc, ph_nloc, ph_ngi, &
+                 phfen, phfenlx_all(1,:,:), phfenlx_all(2,:,:), phfenlx_all(3,:,:), phweight, detwei, ra, volume, d1, d3, dcyl, &
+                 phfenx_all, &
+                 u_nloc, ufenlx_all(1,:,:), ufenlx_all(2,:,:), ufenlx_all(3,:,:), ufenx_all , &
+                 state ,"C_1", StorageIndexes( 14 ) )
+
+            u_s_short_gi = 0.0 ; dx_alpha_short_gi = 0.0 ; coef_alpha_short_gi = 0.0
+
+            do u_iloc = 1, u_nloc
+               u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
+               do iphase = 1, nphase
+                  do idim = 1, ndim
+                     u_s_short_gi( :, idim, iphase ) = u_s_short_gi( :, idim, iphase ) + &
+                          ufen( u_iloc, : ) * u_ph_source_short( idim, iphase, u_inod )
+                  end do
+               end do
+            end do
+            do cv_iloc = 1, cv_nloc
+               cv_inod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+               do iphase = 1, nphase
+                  do idim = 1, ndim
+                     dx_alpha_short_gi( :, idim, iphase ) = dx_alpha_short_gi( :, idim, iphase ) + &
+                          tmp_cvfenx_all( idim, u_iloc, : ) * alpha_short( iphase, cv_inod )
+                  end do
+                  coef_alpha_short_gi( :, iphase ) = coef_alpha_short_gi( :, iphase ) + &
+                       tmp_cvfen( u_iloc, : ) * coef_alpha_short( iphase, cv_inod )
+               end do
+            end do
+
+
+            u_s_long_gi = 0.0 ; dx_ph_gi = 0.0 ; dx_alpha_long_gi = 0.0 ; coef_alpha_long_gi = 0.0
+
+            do ph_iloc = 1, ph_nloc
+               ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
+               do iphase = 1, nphase
+                  do idim = 1, ndim
+                     u_s_long_gi( :, idim, iphase ) = u_s_long_gi( :, idim, iphase ) + &
+                          phfen( u_iloc, : ) * u_ph_source_long( idim, iphase, u_inod )
+                     dx_alpha_long_gi( :, idim, iphase ) = dx_alpha_long_gi( :, idim, iphase ) + &
+                          phfenx_all( idim, ph_iloc, : ) * alpha_long( iphase, ph_inod )
+                     dx_ph_gi( :, idim, iphase ) = dx_ph_gi( :, idim, iphase ) + &
+                          phfenx_all( idim, ph_iloc, : ) * ph( iphase, ph_inod )
+                  end do
+                  coef_alpha_long_gi( :, iphase ) = coef_alpha_long_gi( :, iphase ) + &
+                       phfen( ph_iloc, : ) * coef_alpha_long( iphase, ph_inod )
+               end do
+            end do
+
+            u_s_gi = u_s_long_gi + u_s_short_gi
+            dx_alpha_gi = dx_alpha_long_gi + dx_alpha_short_gi
+            coef_alpha_gi = coef_alpha_long_gi + coef_alpha_short_gi
+
+
+
+            if ( iloop == 1 ) then
+
+               ! form the hydrostatic pressure eqn...
+
+               do ph_iloc = 1, ph_nloc
+                  ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
+                  do ph_jloc = 1, ph_nloc
+                     ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
+                     nxnx = 0.0
+                     do idim = 1, ndim
+                        nxnx = sum( phfenlx_all( idim, ph_iloc, : ) * phfenlx_all( idim, ph_jloc, : ) * detwei )
+                     end do
+                     do iphase = 1, nphase
+                        do idim = 1, ndim
+                           rhs_ph( ph_inod ) = rhs_ph( ph_inod ) - &
+                                sum( phfenlx_all( idim, ph_iloc, : ) * ( &
+                                u_s_gi( :, idim, iphase ) + coef_alpha_gi( :, iphase ) * &
+                                dx_alpha_gi( :, idim, iphase ) ) * detwei )
+                        end do
+                     end do
+                     !call findcount(count,
+                     !matrix_ph(count)=matrix_ph(count) + nxnx
+                  end do
+               end do
+
+            else
+
+               ! form rhs of the momentum eqn...
+
+               do u_iloc = 1, u_nloc
+                  u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
+                  do ph_jloc = 1, ph_nloc
+                     ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
+
+                     do iphase = 1, nphase
+                        do idim = 1, ndim
+                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) - &
+                                sum( ufen( u_iloc, : ) * ( dx_ph_gi( :, idim, iphase )  + &
+                                u_s_gi( :, idim, iphase ) + coef_alpha_gi( :, iphase ) * &
+                                dx_alpha_gi( :, idim, iphase ) ) * detwei )
+                        end do
+                     end do
+
+                  end do
+               end do
+
+
+            end if
+
+
+         end do ! ele loop
+
+         if ( iloop == 1 ) then
+            ! solver for pressure ph
+            !call solver( matrix_ph, rhs_ph )
+         end if
+
+      end do
+
+      ! deallocate
+
+
+      return
+    end subroutine high_order_pressure_solve
+
+
 end module multiphase_1D_engine
