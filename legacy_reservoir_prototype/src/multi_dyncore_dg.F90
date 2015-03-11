@@ -631,10 +631,12 @@ contains
 
       END DO Loop_NonLinearFlux
 
-      !While ensuring global conservation of mass, force the saturation to be between bounds
-      call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv,&
-       StorageIndexes, cv_ele_type, for_sat = .true. )
 
+      !While ensuring global conservation of mass, force the saturation to be between bounds
+        if (have_option('/material_phase[0]/Impose_saturation_limits')) then
+          call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv,&
+           StorageIndexes, cv_ele_type, for_sat = .true. )
+        end if
 
 !      !Set saturation to be between bounds
 !      !In this case we impose that the saturation has to be between physical limits
