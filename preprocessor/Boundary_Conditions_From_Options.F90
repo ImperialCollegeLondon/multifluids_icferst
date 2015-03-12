@@ -515,6 +515,7 @@ contains
           call add_boundary_condition(field, trim(bc_name), trim(bc_type), surface_ids, option_path=bc_path_i, &
                                        & applies=(/ .true., .true., .true. /),suppress_warnings=suppress_warnings )
           deallocate(surface_ids) 
+ 
        case default
           FLAbort("Incorrect boundary condition type for field")
        end select
@@ -2100,8 +2101,7 @@ contains
 
     ! dump normals when debugging
     if (debugging_mode) then
-      call allocate(bc_position, normal%dim, normal%mesh, "BoundaryPosition")
-      call remap_field_to_surface(x, bc_position, surface_element_list)
+      bc_position = get_coordinates_remapped_to_surface(x, normal%mesh, surface_element_list) 
       call vtk_write_fields( "normals", 0, bc_position, bc_position%mesh, &
                 vfields=(/ normal, tangent_1, tangent_2/))
       call deallocate(bc_position)
