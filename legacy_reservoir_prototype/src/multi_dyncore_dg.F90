@@ -8908,7 +8908,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
            &     totele, x_nonods, ele, iloc, jloc, x_nloc, &
            &     cv_snloc, ph_ele_type, iloop, u_nonods, cv_nonods, &
            &     cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, cv_nloc, &
-           &     ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod
+           &     ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
       real, dimension( : ), pointer :: phweight, phweight_short, sphfeweigh, sbphfeweigh, &
            &                           sele_overlap_scale
       real, dimension( :, : ), pointer :: phn, phn_short, phfen, phfen_short, ufen, &
@@ -8937,8 +8937,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       real, dimension( :, :, : ), allocatable :: u_s_gi, dx_alpha_gi
       real, dimension( :, : ), allocatable :: coef_alpha_gi
 
+      real, dimension( : ), pointer :: tmp_cv_weight
       real, dimension( :, : ), pointer :: tmp_cvfen
+      real, dimension( :, :, : ), pointer :: tmp_cvfenlx_all
       real, dimension( :, :, : ), pointer :: tmp_cvfenx_all
+
+      real, dimension( :, : ), pointer :: other_fen
+      real, dimension( :, :, : ), pointer :: other_fenlx_all
+      real, dimension( :, :, : ), pointer :: other_fenx_all
 
       real, dimension( : ), allocatable :: rhs_ph
       real :: nxnx
@@ -8956,7 +8962,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       u_nonods = node_count( ufield )
 
-      quad_over_whole_ele = .false.
+      quad_over_whole_ele = .true.
 
       ! P2 elements
       if ( ndim == 2 ) then
@@ -9021,14 +9027,30 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
 
       if ( cv_nloc == u_nloc ) then
+         tmp_cv_weight=>phweight_short
+         tmp_cv_nloc=u_nloc
          tmp_cvfen => ufen
-         tmp_cvfenx_all => ufenx_all
+         tmp_cvfenlx_all => ufenlx_all
       else if ( cv_nloc == ph_nloc ) then
+         tmp_cv_weight=phweight_short
+         tmp_cv_nloc=ph_nloc
          tmp_cvfen => phfen
-         tmp_cvfenx_all => phfenx_all
+         tmp_cvfenlx_all => phfenlx_all
       else
          stop 7555
       end if
+
+      if(tmp_cv_nloc.ne.u_nloc) then
+         other_nloc = u_nloc
+         other_fen => ufen
+         other_fenlx_all => ufenlx_all
+      else
+         other_nloc = tmp_cv_nloc
+         other_fen => tmp_cvfen 
+         other_fenlx_all=> tmp_cvfenlx_all
+      endif
+
+
 
       allocate( u_ph_source_short( ndim, nphase, u_nonods ), &
            &    alpha_short( nphase, cv_nonods ), &
@@ -9063,17 +9085,28 @@ deallocate(CVFENX_ALL, UFENX_ALL)
          ! iloop=1 form the rhs of the pressure matrix and pressure matrix and solve it.
          ! iloop=2 put the residual into the rhs of the momentum eqn.
 
-         u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
 
          do  ele = 1, totele
 
             ! calculate detwei,ra,nx,ny,nz for element ele
             call detnlxr_plus_u_with_storage( ele, x%val(1,:), x%val(2,:), x%val(3,:), x_ndgln, totele, x_nonods, &
-                 x_nloc, ph_nloc, ph_ngi, &
-                 phfen, phfenlx_all(1,:,:), phfenlx_all(2,:,:), phfenlx_all(3,:,:), phweight, detwei, ra, volume, d1, d3, dcyl, &
-                 phfenx_all, &
-                 u_nloc, ufenlx_all(1,:,:), ufenlx_all(2,:,:), ufenlx_all(3,:,:), ufenx_all , &
+                 x_nloc, tmp_cv_nloc, ph_ngi, &
+                 tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, &
+                 tmp_cvfenx_all, &
+                 other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), other_fenx_all, &
                  state ,"C_1", StorageIndexes( 14 ) )
+
+            if(u_nloc==tmp_cv_nloc) then
+                ufenx_all=tmp_cvfenx_all
+            else
+                ufenx_all=other_fenx_all
+            endif
+            if(ph_nloc==tmp_cv_nloc) then
+                phfenx_all=tmp_cvfenx_all
+            else
+                phfenx_all=other_fenx_all
+            endif
+
 
             u_s_short_gi = 0.0 ; dx_alpha_short_gi = 0.0 ; coef_alpha_short_gi = 0.0
 
@@ -9091,10 +9124,10 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                do iphase = 1, nphase
                   do idim = 1, ndim
                      dx_alpha_short_gi( :, idim, iphase ) = dx_alpha_short_gi( :, idim, iphase ) + &
-                          tmp_cvfenx_all( idim, u_iloc, : ) * alpha_short( iphase, cv_inod )
+                          ufenx_all( idim, u_iloc, : ) * alpha_short( iphase, cv_inod )
                   end do
                   coef_alpha_short_gi( :, iphase ) = coef_alpha_short_gi( :, iphase ) + &
-                       tmp_cvfen( u_iloc, : ) * coef_alpha_short( iphase, cv_inod )
+                       ufen( u_iloc, : ) * coef_alpha_short( iphase, cv_inod )
                end do
             end do
 
