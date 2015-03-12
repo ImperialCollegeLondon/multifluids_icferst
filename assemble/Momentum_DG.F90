@@ -47,7 +47,8 @@ module momentum_DG
   use boundary_conditions_from_options
   use solvers
   use dgtools
-  use global_parameters, only: OPTION_PATH_LEN, FIELD_NAME_LEN
+  use global_parameters, only: OPTION_PATH_LEN, FIELD_NAME_LEN, COLOURING_DG2, &
+       COLOURING_DG0
   use coriolis_module
   use halos
   use sparsity_patterns
@@ -55,14 +56,15 @@ module momentum_DG
   use turbine
   use diagnostic_fields
   use slope_limiters_dg
-  use les_viscosity_module
   use smoothing_module
   use fields_manipulation
   use field_options
   use sparsity_patterns_meshes
   use colouring
   use Profiler
+#ifdef _OPENMP
   use omp_lib
+#endif
   use multiphase_module
 
 
@@ -79,7 +81,7 @@ module momentum_DG
 
   ! Module private variables for model options. This prevents us having to
   ! do dictionary lookups for every element (or element face!)
-  real :: dt, theta
+  real :: dt, theta, theta_nl
   logical :: lump_mass, lump_abs, lump_source, subcycle
 
   ! Whether the advection term is only integrated by parts once.
@@ -110,10 +112,10 @@ module momentum_DG
   real :: Interior_Penalty_Parameter, edge_length_power, h0
 
   ! Flag indicating whether equations are being solved in acceleration form.
-  logical :: acceleration=.true.
+  logical :: acceleration
 
-  ! Flag indicating whether pressure is continuous.
-  logical :: l_cg_pressure=.true.
+  ! Flag indicating whether to include pressure bcs (not for cv pressure)
+  logical :: l_include_pressure_bcs
   
   ! which terms do we have?
   logical :: have_mass
@@ -124,6 +126,7 @@ module momentum_DG
   logical :: have_vertical_stabilization
   logical :: have_implicit_buoyancy
   logical :: have_vertical_velocity_relaxation
+  logical :: have_swe_bottom_drag
   ! implicit absorption is corrected by the pressure correction
   ! by combining the implicit part of absorption with the mass term of u^{n+1}
   logical :: pressure_corrected_absorption
@@ -133,6 +136,7 @@ module momentum_DG
   logical :: have_advection
   logical :: move_mesh
   logical :: have_pressure_bc
+  logical :: subtract_out_reference_profile
   
   real :: gravity_magnitude
 
@@ -140,10 +144,6 @@ module momentum_DG
   real, dimension(3) :: switch_g
   logical :: CDG_penalty
   logical :: remove_penalty_fluxes
-
-  ! DG LES
-  logical :: have_dg_les
-  real :: smagorinsky_coefficient
 
   ! Are we running a multi-phase flow simulation?
   logical :: multiphase
@@ -153,7 +153,7 @@ contains
   subroutine construct_momentum_dg(u, p, rho, x, &
        & big_m, rhs, state, &
        & inverse_masslump, inverse_mass, mass, &
-       & acceleration_form, cg_pressure,&
+       & acceleration_form, include_pressure_bcs,&
        & subcycle_m)
     !!< Construct the momentum equation for discontinuous elements in
     !!< acceleration form. If acceleration_form is present and false, the
@@ -186,8 +186,8 @@ contains
     !! NOTE2: diagonal blocks may be different due to dirichlet bcs and/or absorption
     type(block_csr_matrix), intent(inout), optional :: inverse_mass
 
-    !! Assemble the pressure gradient matrix? and is it continuous galerkin
-    logical, intent(in), optional :: cg_pressure
+    !! whether to include the dirichlet pressure bc integrals to the rhs
+    logical, intent(in), optional :: include_pressure_bcs
 
     !! Optional indicator of whether we are solving in acceleration form.
     !!
@@ -217,6 +217,12 @@ contains
     !! Surface tension field
     type(tensor_field) :: surfacetension
 
+    ! Dummy fields in case state doesn't contain the above fields
+    type(scalar_field), pointer :: dummyscalar
+
+    ! Fields for the subtract_out_reference_profile option under the Velocity field
+    type(scalar_field), pointer :: hb_density, hb_pressure
+
     !! field over the entire surface mesh, giving bc values
     type(vector_field) :: velocity_bc
     type(scalar_field) :: pressure_bc
@@ -225,7 +231,6 @@ contains
     integer, dimension(:,:), allocatable :: velocity_bc_type
     integer, dimension(:), allocatable :: pressure_bc_type
     
-
     !! Sparsity for inverse mass
     type(csr_sparsity):: mass_sparsity
     
@@ -247,28 +252,29 @@ contains
     ! Min vertical density gradient for implicit buoyancy
     real :: ib_min_grad
    
-    !! DG LES
-    type(mesh_type), pointer :: cg_mesh
-    type(vector_field) :: u_cg, u_nl_cg
-
     !! Wetting and drying
     type(scalar_field), pointer :: wettingdrying_alpha
     type(scalar_field) :: alpha_u_field
     logical :: have_wd_abs
     real, dimension(u%dim) :: abs_wd_const
 
+    !! shallow water bottom drag
+    type(scalar_field) :: swe_bottom_drag, old_pressure
+    type(vector_field) :: swe_u_nl
+
     !! 
-    type(mesh_type) :: p0_mesh
-    type(csr_sparsity), pointer :: dependency_sparsity
-    type(scalar_field) :: node_colour
-    type(integer_set), dimension(:), allocatable :: clr_sets
-    integer :: clr, nnid, no_colours, len
-    logical :: compact_stencil
+    type(integer_set), dimension(:), pointer :: colours
+    integer :: len, clr, nnid
+    !! Is the transform_to_physical cache we prepopulated valid
+    logical :: cache_valid
     integer :: num_threads
 
     ! Volume fraction fields for multi-phase flow simulation
     type(scalar_field), pointer :: vfrac
     type(scalar_field) :: nvfrac ! Non-linear approximation to the PhaseVolumeFraction
+
+    ! Partial stress - sp911
+    logical :: partial_stress 
 
     ewrite(1, *) "In construct_momentum_dg"
 
@@ -278,29 +284,29 @@ contains
     acceleration= .not. present_and_false(acceleration_form)
     ewrite(2, *) "Acceleration form? ", acceleration
 
-    if(present(cg_pressure)) then
-      l_cg_pressure = cg_pressure
+    if(present(include_pressure_bcs)) then
+      l_include_pressure_bcs = include_pressure_bcs
     else
-      l_cg_pressure = .true.
+      l_include_pressure_bcs = .true.
     end if
     
     ! These names are based on the CGNS SIDS.
-    if (.not.have_option(trim(U%option_path)//"/prognostic&
-         &/spatial_discretisation/discontinuous_galerkin&
-         &/advection_scheme/none")) then
+    if (.not.have_option(trim(U%option_path)//"/prognostic"//&
+         &"/spatial_discretisation/discontinuous_galerkin"//&
+         &"/advection_scheme/none")) then
        U_nl=extract_vector_field(state, "NonlinearVelocity")
        call incref(U_nl)
 
-       if(have_option(trim(U%option_path)//"/prognostic/&
-            &spatial_discretisation/discontinuous_galerkin/&
-            &advection_scheme/project_velocity_to_continuous")) then
+       if(have_option(trim(U%option_path)//"/prognostic"//&
+            &"/spatial_discretisation/discontinuous_galerkin"//&
+            &"/advection_scheme/project_velocity_to_continuous")) then
           ewrite(3,*) 'CREATING PROJECTEDNONLINEARVELOCITY, cjc'
           if(.not.has_scalar_field(state, "ProjectedNonlinearVelocity")) then
           
-             call get_option(trim(U%option_path)//"/prognostic/&
-                  &spatial_discretisation/discontinuous_galerkin/&
-                  &advection_scheme/project_velocity_to_continuous&
-                  &/mesh/name",pmesh_name)
+             call get_option(trim(U%option_path)//"/prognostic"//&
+                  &"/spatial_discretisation/discontinuous_galerkin"//&
+                  &"/advection_scheme/project_velocity_to_continuous"//&
+                  &"/mesh/name",pmesh_name)
              pmesh = extract_mesh(state, pmesh_name)
              call allocate(pvelocity, U_nl%dim, pmesh, &
                   &"ProjectedNonlinearVelocity")
@@ -329,6 +335,11 @@ contains
        advecting_velocity => U_nl
     end if
     ewrite(2, *) "Include advection? ", have_advection
+
+    allocate(dummyscalar)
+    call allocate(dummyscalar, u%mesh, "DummyScalar", field_type=FIELD_TYPE_CONSTANT)
+    call zero(dummyscalar)
+    dummyscalar%option_path=""
 
     Source=extract_vector_field(state, "VelocitySource", stat)
     have_source = (stat==0)
@@ -384,8 +395,28 @@ contains
     call get_option(trim(U%option_path)//"/prognostic/vertical_stabilization/implicit_buoyancy/min_gradient"&
             , ib_min_grad, default=0.0)
 
+    have_swe_bottom_drag = have_option(trim(u%option_path)//'/prognostic/equation::ShallowWater/bottom_drag')
+    if (have_swe_bottom_drag) then
+      ! Note that we don't do this incref business, instead we just pass uninitialised fields if .not. have_swe_bottom_drag
+      swe_bottom_drag = extract_scalar_field(state, "BottomDragCoefficient")
+      assert(.not. have_vertical_stabilization)
+      depth = extract_scalar_field(state, "BottomDepth") ! we reuse the field that's already passed for VVR
+      old_pressure = extract_scalar_field(state, "OldPressure")
+      call get_option(trim(U%option_path)//&
+            &"/prognostic/temporal_discretisation/relaxation", theta_nl)
+      ! because of the kludge above with advecting velocity, let's just have our own u_nl
+      ! can be on whatever mesh
+      swe_u_nl = extract_vector_field(state, "NonlinearVelocity")
+    end if
+
     call get_option("/physical_parameters/gravity/magnitude", gravity_magnitude, stat)
     have_gravity = stat==0
+    if (have_option(trim(u%option_path)//'/prognostic/equation::ShallowWater')) then
+      ! for the swe there's no buoyancy term
+      have_gravity = .false.
+      assert(stat==0) ! we should have a gravity_magnitude though
+    end if
+
     if(have_gravity) then
       buoyancy=extract_scalar_field(state, "VelocityBuoyancyDensity")
       call incref(buoyancy)
@@ -393,13 +424,30 @@ contains
       call incref(gravity)
 
     else
-      gravity_magnitude = 0.0
       call allocate(buoyancy, u%mesh, "VelocityBuoyancyDensity", FIELD_TYPE_CONSTANT)
       call zero(buoyancy)
       call allocate(gravity, u%dim, u%mesh, "GravityDirection", FIELD_TYPE_CONSTANT)
       call zero(gravity)
     end if
     ewrite_minmax(buoyancy)
+
+    ! Splits up the Density and Pressure fields into a hydrostatic component (') and a perturbed component (''). 
+    ! The hydrostatic components, denoted p' and rho', should satisfy the balance: grad(p') = rho'*g
+    ! We subtract the hydrostatic component from the density used in the buoyancy term of the momentum equation.
+    if (have_option(trim(state%option_path)//'/equation_of_state/compressible/subtract_out_reference_profile')) then
+       subtract_out_reference_profile = .true.
+       hb_density => extract_scalar_field(state, "HydrostaticReferenceDensity")
+
+       if(l_include_pressure_bcs) then
+          hb_pressure => extract_scalar_field(state, "HydrostaticReferencePressure")
+       else
+          hb_pressure => dummyscalar
+       end if
+    else
+       subtract_out_reference_profile = .false.
+       hb_density => dummyscalar
+       hb_pressure => dummyscalar
+    end if
 
     Viscosity=extract_tensor_field(state, "Viscosity", stat)
     have_viscosity = (stat==0)
@@ -410,16 +458,6 @@ contains
       ! Grab an extra reference to cause the deallocate below to be safe.
       call incref(Viscosity)
       ewrite_minmax(viscosity)
-    end if
-
-    have_dg_les=.false.
-    if (have_option(trim(u%option_path)//&
-        &"/prognostic/spatial_discretisation&
-        &/discontinuous_galerkin/les_model")) have_dg_les=.true.
-    if (have_dg_les) then
-      call get_option(trim(u%option_path)//&
-        &"/prognostic/spatial_discretisation&
-        &/discontinuous_galerkin/les_model/smagorinsky_coefficient", smagorinsky_coefficient)
     end if
 
     surfacetension = extract_tensor_field(state, "VelocitySurfaceTension", stat)
@@ -465,17 +503,17 @@ contains
     end if
 
     have_mass = .not. have_option(trim(u%option_path)//&
-        &"/prognostic/spatial_discretisation&
-        &/discontinuous_galerkin/mass_terms/exclude_mass_terms")
+        &"/prognostic/spatial_discretisation"//&
+        &"/discontinuous_galerkin/mass_terms/exclude_mass_terms")
     lump_mass=have_option(trim(U%option_path)//&
-         &"/prognostic/spatial_discretisation&
-         &/discontinuous_galerkin/mass_terms/lump_mass_matrix")
+         &"/prognostic/spatial_discretisation"//&
+         &"/discontinuous_galerkin/mass_terms/lump_mass_matrix")
     lump_abs=have_option(trim(U%option_path)//&
-         &"/prognostic/vector_field::Absorption&
-         &/lump_absorption")
+         &"/prognostic/vector_field::Absorption"//&
+         &"/lump_absorption")
     pressure_corrected_absorption=have_option(trim(u%option_path)//&
-        &"/prognostic/vector_field::Absorption&
-        &/include_pressure_correction") .or. (have_vertical_stabilization)
+        &"/prognostic/vector_field::Absorption"//&
+        &"/include_pressure_correction") .or. (have_vertical_stabilization)
         
     if (pressure_corrected_absorption) then
        ! as we add the absorption into the mass matrix
@@ -483,10 +521,10 @@ contains
        lump_abs = lump_mass
     end if
     lump_source=have_option(trim(u%option_path)//&
-         &"/prognostic/vector_field::Source&
-         &/lump_source")
-    call get_option(trim(U%option_path)//"/prognostic/spatial_discretisation/&
-         &conservative_advection", beta)
+         &"/prognostic/vector_field::Source"//&
+         &"/lump_source")
+    call get_option(trim(U%option_path)//"/prognostic/spatial_discretisation"//&
+         &"/conservative_advection", beta)
 
     ! mesh movement here only matters for the mass terms
     ! other terms are evaluated using "Coordinate" which is evaluated at t+theta*dt
@@ -524,51 +562,58 @@ contains
        remove_penalty_fluxes = .true.
        interior_penalty_parameter = 0.0
        if(have_option(trim(U%option_path)//&
-            &"/prognostic/spatial_discretisation/&
-            &discontinuous_galerkin/viscosity_scheme&
-            &/compact_discontinuous_galerkin/penalty_parameter")) then
+            &"/prognostic/spatial_discretisation"//&
+            &"/discontinuous_galerkin/viscosity_scheme"//&
+            &"/compact_discontinuous_galerkin/penalty_parameter")) then
           remove_penalty_fluxes = .false.
           edge_length_power = 0.0
           call get_option(trim(U%option_path)//&
-               &"/prognostic/spatial_discretisation/&
-               &discontinuous_galerkin/viscosity_scheme&
-               &/compact_discontinuous_galerkin/penalty_parameter"&
+               &"/prognostic/spatial_discretisation"//&
+               &"/discontinuous_galerkin/viscosity_scheme"//&
+               &"/compact_discontinuous_galerkin/penalty_parameter"&
                &,Interior_Penalty_Parameter)
        end if
 
        CDG_penalty = .true.
        edge_length_option = USE_FACE_INTEGRALS
 
-    else if (have_option(trim(U%option_path)//"/prognostic/spatial_discretisation/&
-         &discontinuous_galerkin/viscosity_scheme/arbitrary_upwind")) then
+    else if (have_option(trim(U%option_path)//"/prognostic/spatial_discretisation"//&
+         &"/discontinuous_galerkin/viscosity_scheme/arbitrary_upwind")) then
        viscosity_scheme=ARBITRARY_UPWIND
     else if (have_option(trim(U%option_path)//&
-         &"/prognostic/spatial_discretisation/&
-         &discontinuous_galerkin/viscosity_scheme/interior_penalty")) then
+         &"/prognostic/spatial_discretisation"//&
+         &"/discontinuous_galerkin/viscosity_scheme/interior_penalty")) then
        remove_penalty_fluxes = .false.
        viscosity_scheme=IP
        CDG_penalty = .false.
        call get_option(trim(U%option_path)//&
-            &"/prognostic/spatial_discretisation/&
-            &discontinuous_galerkin/viscosity_scheme&
-            &/interior_penalty/penalty_parameter",Interior_Penalty_Parameter)
+            &"/prognostic/spatial_discretisation"//&
+            &"/discontinuous_galerkin/viscosity_scheme"//&
+            &"/interior_penalty/penalty_parameter",Interior_Penalty_Parameter)
        call get_option(trim(U%option_path)//&
-            &"/prognostic/spatial_discretisation/&
-            &discontinuous_galerkin/viscosity_scheme&
-            &/interior_penalty/edge_length_power",edge_length_power)
+            &"/prognostic/spatial_discretisation"//&
+            &"/discontinuous_galerkin/viscosity_scheme"//&
+            &"/interior_penalty/edge_length_power",edge_length_power)
        edge_length_option = USE_FACE_INTEGRALS
        if(have_option(trim(U%option_path)//&
-            &"/prognostic/spatial_discretisation/&
-            &discontinuous_galerkin/viscosity_scheme&
-            &/interior_penalty/edge_length_option/use_element_centres")) &
-            & edge_length_option = USE_ELEMENT_CENTRES
+            &"/prognostic/spatial_discretisation"//&
+            &"/discontinuous_galerkin/viscosity_scheme"//&
+            &"/interior_penalty/edge_length_option/use_element_centres")) then 
+          edge_length_option = USE_ELEMENT_CENTRES
+       end if
     else
        FLAbort("Unknown viscosity scheme - Options tree corrupted?")
     end if
 
+    partial_stress = have_option(trim(u%option_path)//&
+         &"/prognostic/spatial_discretisation"//&
+         &"/discontinuous_galerkin/viscosity_scheme"//&
+         &"/partial_stress_form")
+    ewrite(2,*) 'partial stress? ', partial_stress
+
     integrate_surfacetension_by_parts = have_option(trim(u%option_path)//&
-      &"/prognostic/tensor_field::SurfaceTension&
-      &/diagnostic/integrate_by_parts")
+      &"/prognostic/tensor_field::SurfaceTension"//&
+      &"/diagnostic/integrate_by_parts")
 
     assert(has_faces(X%mesh))
     assert(has_faces(P%mesh))
@@ -625,22 +670,6 @@ contains
       "dirichlet    "/), pressure_bc, pressure_bc_type)
     have_pressure_bc = any(pressure_bc_type>0)
 
-    ! dg les hack
-    call find_linear_parent_mesh(state, u%mesh, cg_mesh, stat)
-    if (stat==0) then
-      call allocate(u_cg, u%dim, cg_mesh, "U_CG")
-      call zero(u_cg)
-      call allocate(u_nl_cg, u%dim, cg_mesh, "U_CG_NL")
-      call zero(u_nl_cg)
-    else
-      FLAbort("CG parent mesh required for the LES  remap could not be found")
-    end if
-
-    if (have_dg_les) then
-      call lumped_mass_galerkin_projection_vector(state, u_cg, u)
-      call lumped_mass_galerkin_projection_vector(state, u_nl_cg, advecting_velocity)
-    end if
-
     if (have_wd_abs) then
       if (.not. has_scalar_field(state, "WettingDryingAlpha")) then
         FLExit("Wetting and drying needs the diagnostic field WettingDryingAlpha activated.")
@@ -651,96 +680,58 @@ contains
       call remap_field(wettingdrying_alpha, alpha_u_field)
     end if
 
-      call profiler_tic("element_loop")
-      
+    call profiler_tic(u, "element_loop-omp_overhead")
 
 #ifdef _OPENMP
-      num_threads = omp_get_max_threads()
+    num_threads = omp_get_max_threads()
 #else 
-      num_threads=1
+    num_threads=1
 #endif
 
-    if(num_threads>1) then
-
-      !! working out the options for different schemes of different terms
-      call set_coriolis_parameters
-      compact_stencil = have_option(trim(u%option_path)//&
-            "/prognostic/spatial_discretisation&
-            &/discontinuous_galerkin/viscosity_scheme&
-            &/interior_penalty") .or. &
-            &have_option(trim(u%option_path)//&
-            "/prognostic/spatial_discretisation&
-            &/discontinuous_galerkin/viscosity_scheme&
-            &/compact_discontinuous_galerkin")
-
-      compact_stencil=.false.
-      !! generate the dual graph of the mesh
-      p0_mesh = piecewise_constant_mesh(x%mesh, trim(x%name)//"P0Mesh")
-
-       !! the sparse pattern of the dual graph.
-       if ((have_viscosity.or.have_dg_les) .and. (.not. compact_stencil)) then
-          dependency_sparsity => get_csr_sparsity_secondorder(state, p0_mesh, p0_mesh)
-       else
-          dependency_sparsity =>get_csr_sparsity_compactdgdouble(state, p0_mesh)
-       end if
-       
-       dependency_sparsity => get_csr_sparsity_secondorder(state, p0_mesh, p0_mesh)
-
-       !! colouring dual graph according the sparsity pattern with greedy
-       !! colouring algorithm
-       !! "colours" is an array of type(integer_set)
-       call colour_sparsity(dependency_sparsity, p0_mesh, node_colour, no_colours)
-
-       if(.not. verify_colour_sparsity(dependency_sparsity, node_colour)) then
-        FLAbort("The neighbours are using same colours, wrong!!.")
-       endif 
-
-       allocate(clr_sets(no_colours))
-       clr_sets=colour_sets(dependency_sparsity, node_colour, no_colours)
-       PRINT *, "colouring passed"
+    if (have_viscosity) then
+       call get_mesh_colouring(state, u%mesh, COLOURING_DG2, colours)
     else
-       no_colours = 1
-       allocate(clr_sets(no_colours))
-       call allocate(clr_sets)
-       do ELE=1,element_count(U)
-          call insert(clr_sets(1), ele)
-       end do
+       call get_mesh_colouring(state, u%mesh, COLOURING_DG0, colours)
     end if
+#ifdef _OPENMP
+    cache_valid = prepopulate_transform_cache(X)
+    assert(cache_valid)
+    if (have_coriolis) then
+       call set_coriolis_parameters
+    end if
+#endif
+    call profiler_toc(u, "element_loop-omp_overhead")
+    
+    call profiler_tic(u, "element_loop")
 
-    colour_loop: do clr = 1, no_colours
-      len = key_count(clr_sets(clr))
-      !$OMP PARALLEL DO DEFAULT(SHARED) &
-      !$OMP SCHEDULE(STATIC) &
-      !$OMP PRIVATE(nnid, ele)
-      element_loop: do nnid = 1, len 
-       ele = fetch(clr_sets(clr), nnid)       
+    !$OMP PARALLEL DEFAULT(SHARED) &
+    !$OMP PRIVATE(clr, nnid, ele, len)
+
+    colour_loop: do clr = 1, size(colours) 
+      len = key_count(colours(clr))
+
+      !$OMP DO SCHEDULE(STATIC)
+      element_loop: do nnid = 1, len
+       ele = fetch(colours(clr), nnid)
        call construct_momentum_element_dg(ele, big_m, rhs, &
             & X, U, advecting_velocity, U_mesh, X_old, X_new, &
-            & Source, Buoyancy, gravity, Abs, Viscosity, &
-            & P, Rho, surfacetension, q_mesh, &
+            & Source, Buoyancy, hb_density, hb_pressure, gravity, Abs, Viscosity, &
+            & swe_bottom_drag, swe_u_nl, &
+            & P, old_pressure, Rho, surfacetension, q_mesh, &
             & velocity_bc, velocity_bc_type, &
             & pressure_bc, pressure_bc_type, &
-            & u_cg, u_nl_cg, &
             & turbine_conn_mesh, on_sphere, depth, have_wd_abs, &
             & alpha_u_field, Abs_wd, vvr_sf, ib_min_grad, nvfrac, &
             & inverse_mass=inverse_mass, &
             & inverse_masslump=inverse_masslump, &
-            & mass=mass, subcycle_m=subcycle_m)
-      
+            & mass=mass, subcycle_m=subcycle_m, partial_stress=partial_stress)
       end do element_loop
-      !$OMP END PARALLEL DO
+      !$OMP END DO
 
     end do colour_loop
+    !$OMP END PARALLEL
 
-    call deallocate(clr_sets)
-    deallocate(clr_sets)
-
-    if(num_threads > 1) then
-    call deallocate(node_colour)
-    call deallocate(p0_mesh)
-    endif
-    
-    call profiler_toc("element_loop")
+    call profiler_toc(u, "element_loop")
 
     if (have_wd_abs) then
       ! the remapped field is not needed anymore.
@@ -771,11 +762,11 @@ contains
     call deallocate(surfacetension)
     call deallocate(buoyancy)
     call deallocate(gravity)
-    call deallocate(u_cg)
-    call deallocate(u_nl_cg)
     if(multiphase) then
       call deallocate(nvfrac)
     end if
+    call deallocate(dummyscalar)
+    deallocate(dummyscalar)
     
     ewrite(1, *) "Exiting construct_momentum_dg"
 
@@ -784,14 +775,13 @@ contains
   end subroutine construct_momentum_dg
 
   subroutine construct_momentum_element_dg(ele, big_m, rhs, &
-       &X, U, U_nl, U_mesh, X_old, X_new, Source, Buoyancy, gravity, Abs, &
-       &Viscosity, P, Rho, surfacetension, q_mesh, &
+       &X, U, U_nl, U_mesh, X_old, X_new, Source, Buoyancy, hb_density, hb_pressure, gravity, Abs, &
+       &Viscosity, swe_bottom_drag, swe_u_nl, P, old_pressure, Rho, surfacetension, q_mesh, &
        &velocity_bc, velocity_bc_type, &
        &pressure_bc, pressure_bc_type, &
-       &u_cg, u_nl_cg, &
        &turbine_conn_mesh, on_sphere, depth, have_wd_abs, alpha_u_field, Abs_wd, &
        &vvr_sf, ib_min_grad, nvfrac, &
-       &inverse_mass, inverse_masslump, mass, subcycle_m)
+       &inverse_mass, inverse_masslump, mass, subcycle_m, partial_stress)
 
     !!< Construct the momentum equation for discontinuous elements in
     !!< acceleration form.
@@ -815,6 +805,7 @@ contains
     !! Viscosity
     type(tensor_field) :: Viscosity
     type(scalar_field) :: P, Rho
+    type(scalar_field), intent(in) :: hb_density, hb_pressure
     !! surfacetension
     type(tensor_field) :: surfacetension
     !! field containing the bc values of velocity
@@ -824,6 +815,9 @@ contains
     !! same for pressure
     type(scalar_field), intent(in) :: pressure_bc
     integer, dimension(:), intent(in) :: pressure_bc_type
+    !! fields only used for swe bottom drag (otherwise unitialised)
+    type(scalar_field), intent(in) :: swe_bottom_drag, old_pressure
+    type(vector_field), intent(in) :: swe_u_nl
     
     !! Inverse mass matrix
     type(block_csr_matrix), intent(inout), optional :: inverse_mass
@@ -859,7 +853,7 @@ contains
     real, dimension(ele_loc(q_mesh,ele), ele_loc(q_mesh,ele)) :: Q_inv 
     real, dimension(U%dim, ele_loc(q_mesh,ele), ele_and_faces_loc(U,ele)) ::&
          & Grad_u_mat_q, Div_u_mat_q 
-    real, dimension(U%dim,ele_and_faces_loc(U,ele),ele_and_faces_loc(U,ele)) ::&
+    real, dimension(U%dim,U%dim,ele_and_faces_loc(U,ele),ele_and_faces_loc(U,ele)) ::&
          & Viscosity_mat
     real, dimension(Viscosity%dim(1), Viscosity%dim(2), &
          & ele_loc(Viscosity,ele)) :: Viscosity_ele
@@ -881,14 +875,14 @@ contains
     ! Neighbour element, face, neighbour face, no. internal element nodes
     integer :: ele_2, ele_2_X, face, face_2, loc
     ! Count variable for loops over dimension.
-    integer :: dim, dim1, dim2
+    integer :: dim, dim1, dim2, dim3, dim4
     ! Loops over faces.
     integer :: ni
     ! Array bounds for faces of the 2nd order element.
     integer :: start, finish
     
     ! Variable transform times quadrature weights.
-    real, dimension(ele_ngi(U,ele)) :: detwei, detwei_old, detwei_new
+    real, dimension(ele_ngi(U,ele)) :: detwei, detwei_old, detwei_new, coefficient_detwei
     ! Transformed gradient function for velocity.
     real, dimension(ele_loc(U, ele), ele_ngi(U, ele), mesh_dim(U)) :: du_t
     ! Transformed gradient function for grid velocity.
@@ -931,9 +925,9 @@ contains
     !Switch to select if we are assembling the primal or dual form
     logical :: primal
 
-    ! In parallel, we only assemble the mass terms for the halo elements. All
-    ! other terms are only assembled on elements we own.
-    logical :: owned_element
+    ! In parallel, we assemble terms on elements we own, and those in
+    ! the L1 element halo
+    logical :: assemble_element
 
     ! If on the sphere evaluate gravity direction at the gauss points
     logical :: on_sphere
@@ -974,27 +968,21 @@ contains
          & face_centre, face_centre_2
     real :: turbine_fluxfac
 
-    ! dg les continuous fields
-    type(vector_field) :: u_cg, u_nl_cg
-    type(element_type), pointer :: u_cg_shape
-    real, dimension(ele_ngi(u_cg, ele)) :: detwei_cg
-    real, dimension(ele_loc(u_cg, ele), ele_ngi(u_cg, ele), u_cg%dim) :: du_t_cg
-    real, dimension(X%dim, X%dim, ele_ngi(u_cg,ele)) :: les_tensor_gi
-    real, dimension(ele_ngi(u_cg, ele)) :: les_coef_gi
-    integer :: toloc, fromloc, j, gi
-    real, dimension(u%mesh%shape%loc, u_cg%mesh%shape%loc) :: locweight
-    integer, dimension(:), pointer :: from_ele, to_ele
-    real, dimension(u%dim, u%dim, ele_loc(u, ele)) :: dg_les_loc
-    real, dimension(u%dim, u%dim, ele_loc(u_cg, ele)) :: cg_les_rhs, cg_les_loc
-
-    real, dimension(ele_loc(u,ele), ele_loc(u,ele)) :: v_mass
     real, dimension(ele_ngi(u,ele)) :: alpha_u_quad
+
+    ! added for partial stress form (sp911)
+    logical, intent(in) :: partial_stress
 
     dg=continuity(U)<0
     p0=(element_degree(u,ele)==0)
     
-    ! In parallel, we only construct the equations on elements we own.
-    owned_element=element_owned(U,ele).or..not.dg
+    ! In parallel, we construct terms on elements we own and those in
+    ! the L1 element halo.
+    ! Note that element_neighbour_owned(U, ele) may return .false. if
+    ! ele is owned.  For example, if ele is the only owned element on
+    ! this process.  Hence we have to check for element ownership
+    ! directly as well.
+    assemble_element = .not.dg.or.element_neighbour_owned(U, ele).or.element_owned(U, ele)
 
     primal = .not.dg
     if(viscosity_scheme == CDG) primal = .true.
@@ -1070,7 +1058,7 @@ contains
       end if
     end if
 
-    if((have_viscosity.or.have_dg_les).and.(.not.(q_mesh==u%mesh))) then
+    if(have_viscosity.and.(.not.(q_mesh==u%mesh))) then
       ! Transform q derivatives into physical space.
       call transform_to_physical(X, ele,&
           & q_shape , dshape=dq_t)
@@ -1102,77 +1090,13 @@ contains
       deallocate(dnvfrac_t)
     end if
 
-    les_tensor_gi=0.0
-    dg_les_loc=0.0
-    ! dg les hack
-    if (have_dg_les) then
-      ! In most cases (and probably all at the current time) u_cg_shape will
-      ! be the same as the dg shape functions, but it's possible in some future
-      ! scenario that this wont be the case so leave it like this for now.
-      u_cg_shape=>ele_shape(u_cg, ele)
-      call transform_to_physical(X, ele, &
-           u_cg_shape, dshape=du_t_cg, detwei=detwei_cg)
-
-      les_tensor_gi=length_scale_tensor(du_t_cg, ele_shape(u_cg, ele))
-      les_coef_gi=les_viscosity_strength(du_t_cg, ele_val(u_nl_cg, ele))
-
-      do gi=1, ele_ngi(u_cg, ele)
-         ! eddy-viscosity on the cg (hence dg) gauss points
-         les_tensor_gi(:,:,gi)=4.*les_coef_gi(gi)*les_tensor_gi(:,:,gi)* &
-              smagorinsky_coefficient**2
-      end do     
-
-      ! **********************************************
-
-      ! *** eddy-viscosity on the cg nodes ***
-      ! Note :: les_tensor_gi will also be used later in the construction of
-      !         Viscosity_mat
-
-      ! Make sure u and viscosity are on the same mesh
-      if (.not.(u%mesh==viscosity%mesh)) then
-         FLExit("DG LES currently requires u and viscosity to be on the same mesh.")
-      end if
-
-      cg_les_rhs=shape_tensor_rhs(u_cg_shape, les_tensor_gi, detwei_cg)
-
-      v_mass=shape_shape(u_cg_shape, u_cg_shape, detwei_cg)
-      
-      call invert(v_mass)
-
-      do i=1,u%dim
-        do j=1,u%dim
-          cg_les_loc(i,j,:) = matmul(v_mass,cg_les_rhs(i,j,:))
-        end do
-      end do
-
-      ! **************************************
-
-      do toloc=1,size(locweight,1)
-         do fromloc=1,size(locweight,2)
-            locweight(toloc,fromloc)=eval_shape(u_cg%mesh%shape, fromloc, &
-                 local_coords(toloc, u%mesh%shape))
-         end do
-      end do
-      from_ele=>ele_nodes(u_cg, ele)
-      to_ele=>ele_nodes(u, ele)
-      
-      do i=1,u_cg%dim
-         do j=1,u_cg%dim
-            ! eddy-viscosity on the dg nodes
-            dg_les_loc(i, j, :) = matmul(locweight, cg_les_loc(i, j, :))
-         end do
-      end do
-      
-    end if
-   
-    if ((have_viscosity.or.have_dg_les).and.owned_element) then
+    if ((have_viscosity).and.assemble_element) then
       Viscosity_ele = ele_val(Viscosity,ele)
-      if (have_dg_les) Viscosity_ele = Viscosity_ele + dg_les_loc
     end if
    
-    if (owned_element) then
+    if (assemble_element) then
        u_val = ele_val(u, ele)
-   end if
+    end if
 
     !----------------------------------------------------------------------
     ! Construct bilinear forms.
@@ -1202,7 +1126,7 @@ contains
        ! NOTE: this doesn't deal with mesh movement
        call addto(mass, u_ele, u_ele, Rho_mat)
     else
-      if(have_mass.and.owned_element) then
+      if(have_mass.and.assemble_element) then
         if(lump_mass) then        
           do dim = 1, u%dim
             big_m_diag_addto(dim, :loc) = big_m_diag_addto(dim, :loc) + l_masslump
@@ -1213,7 +1137,7 @@ contains
           end do
         end if
       end if
-      if (move_mesh.and.owned_element) then
+      if (move_mesh.and.assemble_element) then
         ! In the unaccelerated form we solve:
         !  /
         !  |  N^{n+1} u^{n+1}/dt - N^{n} u^n/dt + ... = f
@@ -1238,7 +1162,7 @@ contains
       end if
     end if
     
-    if(have_coriolis.and.(rhs%dim>1).and.owned_element) then
+    if(have_coriolis.and.(rhs%dim>1).and.assemble_element) then
       Coriolis_q=coriolis(ele_val_at_quad(X,ele))
     
       ! Element Coriolis parameter matrix.
@@ -1254,7 +1178,7 @@ contains
       end if
     end if
 
-    if(have_advection.and.(.not.p0).and.owned_element) then
+    if(have_advection.and.(.not.p0).and.assemble_element) then
       ! Advecting velocity at quadrature points.
       U_nl_q=ele_val_at_quad(U_nl,ele)
 
@@ -1370,7 +1294,7 @@ contains
 
     end if
 
-    if(have_source.and.acceleration.and.owned_element) then
+    if(have_source.and.acceleration.and.assemble_element) then
       ! Momentum source matrix.
       Source_mat = shape_shape(U_shape, ele_shape(Source,ele), detwei*Rho_q)
       if(lump_source) then
@@ -1387,30 +1311,37 @@ contains
       end if
     end if
 
-    if(have_gravity.and.acceleration.and.owned_element) then
+    if(have_gravity.and.acceleration.and.assemble_element) then
       ! buoyancy
+      if(subtract_out_reference_profile) then
+         coefficient_detwei = detwei*gravity_magnitude*(ele_val_at_quad(buoyancy, ele)-ele_val_at_quad(hb_density, ele))
+      else
+         coefficient_detwei = detwei*gravity_magnitude*ele_val_at_quad(buoyancy, ele)
+      end if
+
       if (on_sphere) then
       ! If were on a spherical Earth evaluate the direction of the gravity vector
       ! exactly at quadrature points.
         rhs_addto(:, :loc) = rhs_addto(:, :loc) + shape_vector_rhs(u_shape, &
                                     sphere_inward_normal_at_quad_ele(X, ele), &
-                                    detwei*gravity_magnitude*ele_val_at_quad(buoyancy, ele))
+                                    coefficient_detwei)
       else
       
         if(multiphase) then
           rhs_addto(:, :loc) = rhs_addto(:, :loc) + shape_vector_rhs(u_shape, &
                                     ele_val_at_quad(gravity, ele), &
-                                    detwei*gravity_magnitude*ele_val_at_quad(buoyancy, ele)*nvfrac_gi)
+                                    coefficient_detwei*nvfrac_gi)
         else
           rhs_addto(:, :loc) = rhs_addto(:, :loc) + shape_vector_rhs(u_shape, &
                                     ele_val_at_quad(gravity, ele), &
-                                    detwei*gravity_magnitude*ele_val_at_quad(buoyancy, ele))
+                                    coefficient_detwei)
         end if
         
       end if
     end if
 
-    if((have_absorption.or.have_vertical_stabilization.or.have_wd_abs) .and. (owned_element .or. pressure_corrected_absorption)) then
+    if((have_absorption.or.have_vertical_stabilization.or.have_wd_abs .or. have_swe_bottom_drag) .and. &
+         (assemble_element .or. pressure_corrected_absorption)) then
 
       absorption_gi=0.0
       tensor_absorption_gi=0.0
@@ -1458,7 +1389,7 @@ contains
         end if
 
         do i=1,ele_ngi(U,ele)
-          drho_dz(i)=dot_product(grad_rho(i,:),grav_at_quads(:,i)) ! Divide this by rho_0 for non-Boussinesq?
+          drho_dz(i)=dot_product(grad_rho(:,i),grav_at_quads(:,i)) ! Divide this by rho_0 for non-Boussinesq?
           if (drho_dz(i) < ib_min_grad) drho_dz(i)=ib_min_grad ! Default ib_min_grad=0.0
         end do
 
@@ -1484,6 +1415,17 @@ contains
         absorption_gi=absorption_gi-vvr_abs_diag-ib_abs_diag
       end if
 
+      if (have_swe_bottom_drag) then
+        ! first compute total water depth H
+        depth_at_quads = ele_val_at_quad(depth, ele) + (theta_nl*ele_val_at_quad(p, ele) + (1.0-theta_nl)*ele_val_at_quad(old_pressure, ele))/gravity_magnitude
+        ! now reuse depth_at_quads to be the absorption coefficient: C_D*|u|/H
+        depth_at_quads = (ele_val_at_quad(swe_bottom_drag, ele)*sqrt(sum(ele_val_at_quad(swe_u_nl, ele)**2, dim=1)))/depth_at_quads
+        do i=1, u%dim
+          absorption_gi(i,:) = absorption_gi(i,:) + depth_at_quads
+        end do
+      
+      end if
+
       ! If on the sphere then use 'tensor' absorption. Note that using tensor absorption means that, currently,
       ! the absorption cannot be used in the pressure correction. 
       if (on_sphere) then
@@ -1497,7 +1439,7 @@ contains
         if(lump_abs) then
 
           Abs_lump_sphere = sum(Abs_mat_sphere, 4)
-          if (owned_element) then          
+          if (assemble_element) then
             do dim = 1, U%dim
               do dim2 = 1, U%dim
                 do i = 1, ele_loc(U, ele)
@@ -1531,7 +1473,7 @@ contains
 
         else
 
-          if (owned_element) then
+          if (assemble_element) then
             do dim = 1, u%dim
               do dim2 = 1, u%dim
                 big_m_tensor_addto(dim, dim2, :loc, :loc) = big_m_tensor_addto(dim, dim2, :loc, :loc) + &
@@ -1576,7 +1518,7 @@ contains
         if(lump_abs) then        
           abs_lump = sum(Abs_mat, 3)
           do dim = 1, u%dim
-            if (owned_element) then
+            if (assemble_element) then
               big_m_diag_addto(dim, :loc) = big_m_diag_addto(dim, :loc) + dt*theta*abs_lump(dim,:)
               if(acceleration) then
                 rhs_addto(dim, :loc) = rhs_addto(dim, :loc) - abs_lump(dim,:)*u_val(dim,:)
@@ -1597,7 +1539,7 @@ contains
         else
       
           do dim = 1, u%dim
-            if (owned_element) then
+            if (assemble_element) then
               big_m_tensor_addto(dim, dim, :loc, :loc) = big_m_tensor_addto(dim, dim, :loc, :loc) + &
                 & dt*theta*Abs_mat(dim,:,:)
               if(acceleration) then
@@ -1645,18 +1587,18 @@ contains
     
     ! Viscosity.
     Viscosity_mat=0
-    if((have_viscosity.or.have_dg_les).and.owned_element) then
+    if(have_viscosity.and.assemble_element) then
        if (primal) then
           do dim = 1, u%dim
              if(multiphase) then
                ! Viscosity matrix is \int{grad(N_A)*viscosity*vfrac*grad(N_B)} for multiphase.
-               Viscosity_mat(dim,:loc,:loc)= &
-                  dshape_tensor_dshape(du_t, ele_val_at_quad(Viscosity,ele)+les_tensor_gi, &
-                  &                    du_t, detwei*nvfrac_gi)
+               Viscosity_mat(dim,dim,:loc,:loc) = &
+                    dshape_tensor_dshape(du_t, ele_val_at_quad(Viscosity,ele), &
+                    &                    du_t, detwei*nvfrac_gi)
              else
-               Viscosity_mat(dim,:loc,:loc)= &
-                  dshape_tensor_dshape(du_t, ele_val_at_quad(Viscosity,ele)+les_tensor_gi, &
-                  &                    du_t, detwei)
+               Viscosity_mat(dim,dim,:loc,:loc) = &
+                    dshape_tensor_dshape(du_t, ele_val_at_quad(Viscosity,ele), &
+                    &                    du_t, detwei)
              end if
           end do
 
@@ -1680,10 +1622,10 @@ contains
              if(multiphase) then
                ! kappa = mu*vfrac for multiphase
                kappa_mat = shape_shape_tensor(u_shape,u_shape,detwei*nvfrac_gi, &
-                     & ele_val_at_quad(Viscosity,ele)+les_tensor_gi)
+                     & ele_val_at_quad(Viscosity,ele))
              else
                kappa_mat = shape_shape_tensor(u_shape,u_shape,detwei, &
-                     & ele_val_at_quad(Viscosity,ele)+les_tensor_gi)
+                     & ele_val_at_quad(Viscosity,ele))
              end if
           end if
 
@@ -1722,7 +1664,7 @@ contains
        end if
     end if
 
-    if(have_surfacetension.and.(.not.p0).and.owned_element) then
+    if(have_surfacetension.and.(.not.p0).and.assemble_element) then
       if(integrate_surfacetension_by_parts) then
         tension = ele_val_at_quad(surfacetension, ele)
         
@@ -1740,7 +1682,7 @@ contains
     ! Interface integrals
     !-------------------------------------------------------------------
     
-    if(dg.and.((have_viscosity.or.have_dg_les).or.have_advection.or.have_pressure_bc).and.owned_element) then
+    if(dg.and.(have_viscosity.or.have_advection.or.have_pressure_bc).and.assemble_element) then
       neigh=>ele_neigh(U, ele)
       ! x_neigh/=t_neigh only on periodic boundaries.
       x_neigh=>ele_neigh(X, ele)
@@ -1770,9 +1712,9 @@ contains
             ! Internal faces.
             face_2=ele_face(U, ele_2, ele)
         ! Check if face is turbine face (note: get_entire_boundary_condition only returns "applied" boundaries and we reset the apply status in each timestep)
-        elseif (velocity_bc_type(1,face)==4 .or. velocity_bc_type(1,face)==5) then  
-            face_2=face_neigh(turbine_conn_mesh, face)
-            turbine_face=.true.
+        elseif (velocity_bc_type(1,face)==4 .or. velocity_bc_type(1,face)==5) then
+           face_2=face_neigh(turbine_conn_mesh, face)
+           turbine_face=.true.
         else 
            ! External face.
            face_2=face
@@ -1827,12 +1769,11 @@ contains
                         & rhs_addto, Grad_U_mat_q, Div_U_mat_q, X,&
                         & Rho, U, U_nl, U_mesh, P, q_mesh, surfacetension, &
                         & velocity_bc, velocity_bc_type, &
-                        & pressure_bc, pressure_bc_type, &
+                        & pressure_bc, pressure_bc_type, hb_pressure, &
                         & subcycle_m_tensor_addto, nvfrac, &
                         & ele2grad_mat=ele2grad_mat, kappa_mat=kappa_mat, &
                         & inverse_mass_mat=inverse_mass_mat, &
-                        & viscosity=viscosity, viscosity_mat=viscosity_mat, &
-                        & dg_les_loc=dg_les_loc)
+                        & viscosity=viscosity, viscosity_mat=viscosity_mat)
            end if
         else
             if(.not. turbine_face .or. turbine_fluxfac>=0) then
@@ -1841,7 +1782,7 @@ contains
                         & rhs_addto, Grad_U_mat_q, Div_U_mat_q, X,&
                         & Rho, U, U_nl, U_mesh, P, q_mesh, surfacetension, &
                         & velocity_bc, velocity_bc_type, &
-                        & pressure_bc, pressure_bc_type, &
+                        & pressure_bc, pressure_bc_type, hb_pressure, &
                         & subcycle_m_tensor_addto, nvfrac)
             end if
         end if
@@ -1856,95 +1797,98 @@ contains
       ! Construct local diffusivity operator for DG.
       !----------------------------------------------------------------------
 
-      if(have_viscosity.or.have_dg_les) then
+      if(have_viscosity) then
 
         select case(viscosity_scheme)
         case(ARBITRARY_UPWIND)
             call local_assembly_arbitrary_upwind
         case(BASSI_REBAY)
+          if (partial_stress) then
+            call local_assembly_bassi_rebay_stress_form
+          else
             call local_assembly_bassi_rebay
+          end if
         end select
         
         if (boundary_element) then
-  
-            do dim=1,U%dim
-  
-              ! Weak application of dirichlet conditions on viscosity term.
-              ! Note that this necessitates per dimenson Viscosity matrices as
-              ! the boundary condition may vary between dimensions.
-              
-              weak_dirichlet_loop: do i=1,2
-                ! this is done in 2 passes
-                ! iteration 1: wipe the rows corresponding to weak dirichlet boundary faces
-                ! iteration 2: for columns corresponding to weak dirichlet boundary faces,
-                !               move this coefficient multiplied with the bc value to the rhs
-                !               then wipe the column
-                ! The 2 iterations are necessary for elements with more than one weak dirichlet boundary face
-                ! as we should not try to move the coefficient in columns corresponding to boundary face 1
-                ! in rows correspoding to face 2 to the rhs, i.e. we need to wipe *all* boundary rows first.
-                
-                ! Local node map counter.
-                start=loc+1
 
-                boundary_neighbourloop: do ni=1,size(neigh)
-                    ele_2=neigh(ni)
-                
-                    ! Note that although face is calculated on field U, it is in fact
-                    ! applicable to any field which shares the same mesh topology.
-                    if (ele_2>0) then
-                      ! Interior face - we need the neighbouring face to
-                      ! calculate the new start
-                      face=ele_face(U, ele_2, ele)
-                    else   
-                    ! Boundary face
-                      face=ele_face(U, ele, ele_2)
-                      if (velocity_bc_type(dim,face)==1) then
-                          ! Dirichlet condition.
-                          
-                          finish=start+face_loc(U, face)-1
-                      
-                          if (i==1) then
-                            ! Wipe out boundary condition's coupling to itself.
-                            Viscosity_mat(dim,start:finish,:)=0.0
-                          else
-                        
-                            ! Add BC into RHS
-                            !
-                            rhs_addto(dim,:) = rhs_addto(dim,:) &
-                                & -matmul(Viscosity_mat(dim,:,start:finish), &
-                                & ele_val(velocity_bc,dim,face))
-                        
-                            ! Ensure it is not used again.
-                            Viscosity_mat(dim,:,start:finish)=0.0
-                            
-                          end if
-                      ! Check if face is turbine face (note: get_entire_boundary_condition only returns "applied" boundaries and we reset the apply status in each timestep)
-                      elseif (velocity_bc_type(dim,face)==4 .or. velocity_bc_type(dim,face)==5) then  
-                           face=face_neigh(turbine_conn_mesh, face)
-                      end if
-                    end if               
-                    start=start+face_loc(U, face)
-                
-                end do boundary_neighbourloop
-                
-              end do weak_dirichlet_loop
-                
+          ! Weak application of dirichlet conditions on viscosity term.
+
+          weak_dirichlet_loop: do i=1,2
+            ! this is done in 2 passes
+            ! iteration 1: wipe the rows corresponding to weak dirichlet boundary faces
+            ! iteration 2: for columns corresponding to weak dirichlet boundary faces,
+            !               move this coefficient multiplied with the bc value to the rhs
+            !               then wipe the column
+            ! The 2 iterations are necessary for elements with more than one weak dirichlet boundary face
+            ! as we should not try to move the coefficient in columns corresponding to boundary face 1
+            ! in rows correspoding to face 2 to the rhs, i.e. we need to wipe *all* boundary rows first.
+
+            do dim=1,u%dim
+
+              ! Local node map counter.
+              start=loc+1
+
+              boundary_neighbourloop: do ni=1,size(neigh)
+                ele_2=neigh(ni)
+
+                ! Note that although face is calculated on field U, it is in fact
+                ! applicable to any field which shares the same mesh topology.
+                if (ele_2>0) then
+                  ! Interior face - we need the neighbouring face to
+                  ! calculate the new start
+                  face=ele_face(U, ele_2, ele)
+                else   
+                  ! Boundary face
+                  face=ele_face(U, ele, ele_2)
+                  if (velocity_bc_type(dim,face)==1) then
+
+                    ! Dirichlet condition.
+
+                    finish=start+face_loc(U, face)-1
+
+                    if (i==1) then
+                      ! Wipe out boundary condition's coupling to itself.
+                      Viscosity_mat(:,dim,start:finish,:)=0.0
+                    else
+                      ! Add BC into RHS
+                      !
+                      do dim1=1,u%dim
+                        rhs_addto(dim1,:) = rhs_addto(dim1,:) &
+                             & -matmul(Viscosity_mat(dim1,dim,:,start:finish), &
+                             & ele_val(velocity_bc,dim,face))
+                      end do
+                      ! Ensure it is not used again.
+                      Viscosity_mat(:,dim,:,start:finish)=0.0
+                    end if
+                    ! Check if face is turbine face (note: get_entire_boundary_condition only returns 
+                    ! "applied" boundaries and we reset the apply status in each timestep)
+                  elseif (velocity_bc_type(dim,face)==4 .or. velocity_bc_type(dim,face)==5) then  
+                    face=face_neigh(turbine_conn_mesh, face)
+                  end if
+                end if
+                start=start+face_loc(U, face)
+
+              end do boundary_neighbourloop
+
             end do
-          
+
+          end do weak_dirichlet_loop
+
         end if
   
         ! Insert viscosity in matrix.
-        do dim=1,U%dim
-           big_m_tensor_addto(dim, dim, :, :) = &
-                big_m_tensor_addto(dim, dim, :, :) + &
-                  Viscosity_mat(dim,:,:)*theta*dt
-          
-          if (acceleration) then
-              rhs_addto(dim, :) = rhs_addto(dim, :) &
-                    -matmul(Viscosity_mat(dim,:,:), &
-                    node_val(U, dim, local_glno))
-          end if
-        end do
+        big_m_tensor_addto = big_m_tensor_addto + Viscosity_mat*theta*dt
+        
+        if (acceleration) then
+          do dim1=1,U%dim
+            do dim2=1, U%dim
+              rhs_addto(dim1, :) = rhs_addto(dim1, :) &
+                   - matmul(Viscosity_mat(dim1,dim2,:,:), &
+                   node_val(U, dim2, local_glno))
+            end do
+          end do
+        end if
         
      end if !have_viscosity
     
@@ -1954,21 +1898,26 @@ contains
     ! Perform global assembly.
     !----------------------------------------------------------------------
     
-    if (owned_element) then
+    if (assemble_element) then
 
        ! add lumped terms to the diagonal of the matrix
        call add_diagonal_to_tensor(big_m_diag_addto, big_m_tensor_addto)
        
-       if(dg.and.((have_viscosity.or.have_dg_les).or.have_advection)) then
+       if(dg.and.(have_viscosity.or.have_advection)) then
          
           ! first the diagonal blocks, i.e. the coupling within the element
           ! and neighbouring face nodes but with the same component
-          if(have_viscosity.or.have_dg_les) then
-             ! add to the matrix
-             call addto(big_m, local_glno, local_glno, big_m_tensor_addto, &
-                block_mask=diagonal_block_mask)
-             ! add to the rhs
-             call addto(rhs, local_glno, rhs_addto)
+          if(have_viscosity) then
+            if(partial_stress) then
+              call addto(big_m, local_glno, local_glno, &
+                   big_m_tensor_addto)
+            else
+              ! add to the matrix
+              call addto(big_m, local_glno, local_glno, big_m_tensor_addto, &
+                   block_mask=diagonal_block_mask)
+            end if
+            ! add to the rhs
+            call addto(rhs, local_glno, rhs_addto)
           else
              ! add to the matrix
              call addto(big_m, u_ele, local_glno, big_m_tensor_addto(:,:,:loc,:), &
@@ -1981,11 +1930,11 @@ contains
                   &subcycle_m_tensor_addto(:,:,:loc,:), &
                   &block_mask=diagonal_block_mask)
           end if
-          if(have_coriolis) then
-             ! add in coupling between different components, but only within the element
-             call addto(big_m, u_ele, u_ele, &
-                  big_m_tensor_addto(:,:,:loc,:loc), block_mask&
-                  &=off_diagonal_block_mask)
+          if(.not. partial_stress .and. have_coriolis) then
+            ! add in coupling between different components, but only within the element
+            call addto(big_m, u_ele, u_ele, &
+                 big_m_tensor_addto(:,:,:loc,:loc), block_mask&
+                 &=off_diagonal_block_mask)
           end if
        else
           ! in this case we only have coupling between nodes within the element
@@ -2013,7 +1962,7 @@ contains
             do d3 = 1, mesh_dim(U)
                ! Div U * G^U * Viscosity * G * Grad U
                ! Where G^U*G = inverse(Q_mass)
-               Viscosity_mat(d3,:,:)=Viscosity_mat(d3,:,:)&
+               Viscosity_mat(d3,d3,:,:)=Viscosity_mat(d3,d3,:,:)&
                     +0.5*( &
                     +matmul(matmul(transpose(grad_U_mat_q(dim1,:,:))&
                     &         ,mat_diag_mat(Q_inv, Viscosity_ele(dim1,dim2,:)))&
@@ -2035,17 +1984,53 @@ contains
       do dim1=1, Viscosity%dim(1)
          do dim2=1,Viscosity%dim(2)
             do d3 = 1, mesh_dim(U)
+
                ! Div U * G^U * Viscosity * G * Grad U
                ! Where G^U*G = inverse(Q_mass)
-               Viscosity_mat(d3,:,:)=Viscosity_mat(d3,:,:)&
+               Viscosity_mat(d3,d3,:,:)=Viscosity_mat(d3,d3,:,:)&
                   +matmul(matmul(transpose(grad_U_mat_q(dim1,:,:))&
                   &         ,mat_diag_mat(Q_inv, Viscosity_ele(dim1,dim2,:)))&
                   &     ,grad_U_mat_q(dim2,:,:))
+
             end do
          end do
       end do
       
     end subroutine local_assembly_bassi_rebay
+    
+    subroutine local_assembly_bassi_rebay_stress_form
+
+      ! Instead of:
+      !   M_v = G^T_m (\nu Q^{-1})_mn G_n
+      ! We construct:
+      !   M_v_rs = G^T_m A_rmsn Q^{-1} G_n
+      ! where A is a dim x dim x dim x dim linear operator:
+      !   A_rmsn = \partial ( \nu ( u_{r,m} + u_{m,r} ) ) / \partial u_{s,n}
+      !   where a_{b,c} = \partial a_b / \partial x_c
+      ! off diagonal terms define the coupling between the velocity components
+
+      real, dimension(size(Q_inv,1), size(Q_inv,2)) :: Q_visc
+
+      ! isotropic viscosity (just take the first component as scalar value)
+      Q_visc = mat_diag_mat(Q_inv, Viscosity_ele(1,1,:))
+
+      do dim1=1,u%dim
+        do dim2=1,u%dim
+          do dim3=1,u%dim 
+            do dim4=1,u%dim
+              if (dim1==dim2 .and. dim2==dim3 .and. dim3==dim4) then
+                Viscosity_mat(dim1,dim3,:,:) = Viscosity_mat(dim1,dim3,:,:) &
+                     + 2.0 * matmul(matmul(transpose(grad_U_mat_q(dim2,:,:)),Q_visc),grad_U_mat_q(dim4,:,:))
+              else if  ((dim1==dim3 .and. dim2==dim4) .or. (dim2==dim3 .and. dim1==dim4)) then
+                Viscosity_mat(dim1,dim3,:,:) = Viscosity_mat(dim1,dim3,:,:) &
+                     + matmul(matmul(transpose(grad_U_mat_q(dim2,:,:)),Q_visc),grad_U_mat_q(dim4,:,:))
+              end if
+            end do
+          end do
+        end do
+      end do
+      
+    end subroutine local_assembly_bassi_rebay_stress_form
 
     subroutine add_diagonal_to_tensor(big_m_diag_addto, big_m_tensor_addto)
       real, dimension(u%dim, ele_and_faces_loc(u, ele)), intent(in) :: big_m_diag_addto
@@ -2066,10 +2051,10 @@ contains
        & rhs_addto, Grad_U_mat, Div_U_mat, X, Rho, U,&
        & U_nl, U_mesh, P, q_mesh, surfacetension, &
        & velocity_bc, velocity_bc_type, &
-       & pressure_bc, pressure_bc_type, &
+       & pressure_bc, pressure_bc_type, hb_pressure, &
        & subcycle_m_tensor_addto, nvfrac, &
        & ele2grad_mat, kappa_mat, inverse_mass_mat, &
-       & viscosity, viscosity_mat, dg_les_loc)
+       & viscosity, viscosity_mat)
     !!< Construct the DG element boundary integrals on the ni-th face of
     !!< element ele.
     implicit none
@@ -2095,6 +2080,7 @@ contains
     integer, dimension(:,:), intent(in) :: velocity_bc_type
     type(scalar_field), intent(in) :: pressure_bc
     integer, dimension(:), intent(in) :: pressure_bc_type
+    type(scalar_field), intent(in) :: hb_pressure
 
     !! Computation of primal fluxes and penalty fluxes
     real, intent(in), optional, dimension(:,:,:) :: ele2grad_mat
@@ -2108,7 +2094,7 @@ contains
     type(tensor_field), intent(in), optional :: viscosity
 
     !! Local viscosity matrix for assembly.
-    real, intent(inout), dimension(:,:,:), optional :: viscosity_mat
+    real, intent(inout), dimension(:,:,:,:), optional :: viscosity_mat
 
     ! Matrix for assembling primal fluxes
     ! Note that this assumes same order polys in each element
@@ -2166,12 +2152,6 @@ contains
 
     logical :: p0
 
-    ! DG les variables
-    real, dimension(U%dim, U%dim, ele_loc(U, ele)), intent(in), optional :: dg_les_loc
-    type(tensor_field) :: Combined_Viscosity
-    integer :: i
-    integer, dimension(:), pointer :: nodelist
-
     integer :: d1, d2
 
     floc = face_loc(u, face)
@@ -2193,31 +2173,18 @@ contains
        allocate( kappa_gi(Viscosity%dim(1), Viscosity%dim(2), &
             face_ngi(Viscosity,face)) )
 
-       ! If have_dg_les create a temp viscosity tensor field that includes the
-       ! les viscosities
-       if (have_dg_les) then
-         call allocate(Combined_Viscosity, U%mesh, "CombinedViscosity", FIELD_TYPE_NORMAL)
-         call zero(Combined_Viscosity)
-         nodelist => ele_nodes(U, ele)
-         do i=1,size(nodelist)
-           call set(Combined_Viscosity, nodelist(i), node_val(Viscosity,nodelist(i))+dg_les_loc(:,:,i))
-         end do
-         kappa_gi = face_val_at_quad(Combined_Viscosity, face)
-         call deallocate(Combined_Viscosity)
-       else
-         kappa_gi = face_val_at_quad(Viscosity, face)
+       kappa_gi = face_val_at_quad(Viscosity, face)
 
-         if(multiphase) then
-            ! Multiply the viscosity tensor by the PhaseVolumeFraction 
-            ! since kappa = viscosity*vfrac for multiphase flow simulations.
-            do d1=1,Viscosity%dim(1)
-               do d2=1,Viscosity%dim(2)
-                  kappa_gi(d1,d2,:) = kappa_gi(d1,d2,:)*nvfrac_gi
-               end do
-            end do
-         end if
+       if(multiphase) then
+          ! Multiply the viscosity tensor by the PhaseVolumeFraction 
+          ! since kappa = viscosity*vfrac for multiphase flow simulations.
+          do d1=1,Viscosity%dim(1)
+             do d2=1,Viscosity%dim(2)
+                kappa_gi(d1,d2,:) = kappa_gi(d1,d2,:)*nvfrac_gi
+             end do
+          end do
        end if
-
+       
     end if
 
     u_face_l=face_local_nodes(U, face)
@@ -2239,7 +2206,7 @@ contains
     if (boundary) then
        do dim=1,U%dim
           if (velocity_bc_type(dim,face)==1) then
-            dirichlet(dim)=.true.
+             dirichlet(dim)=.true.
           end if
        end do
        ! free surface b.c. is set for the 1st (normal) component
@@ -2371,7 +2338,7 @@ contains
                ! Neumann boundary it's necessary to apply downwinding here
                ! to maintain the surface integral. Fortunately, since
                ! face_2==face for a boundary this is automagic.
-               
+
                if (acceleration) then
                   rhs_addto(dim,u_face_l) = rhs_addto(dim,u_face_l) &
                        ! Outflow boundary integral.
@@ -2381,7 +2348,7 @@ contains
                end if
                
             else
-               
+
                rhs_addto(dim,u_face_l) = rhs_addto(dim,u_face_l) &
                     ! Outflow boundary integral.
                     -matmul(nnAdvection_out,face_val(U,dim,face))&
@@ -2389,11 +2356,11 @@ contains
                     -matmul(nnAdvection_in,ele_val(velocity_bc,dim,face))
             end if
          end if
-       end do
+      end do
         
     end if
 
-    if (have_viscosity.or.have_dg_les) then
+    if (have_viscosity) then
        ! Boundary term in grad_U.
        !   /
        !   | q, u, normal dx
@@ -2434,7 +2401,7 @@ contains
     !----------------------------------------------------------------------
 
     ! Insert pressure boundary integral.
-    if (l_cg_pressure .and. boundary .and. l_have_pressure_bc) then
+    if (l_include_pressure_bcs .and. boundary .and. l_have_pressure_bc) then
     
        if(multiphase) then
           mnCT(1,:,:,:) = shape_shape_vector(P_shape, U_shape_2, detwei*nvfrac_gi, normal)
@@ -2446,8 +2413,13 @@ contains
        ! add -|  N_i M_j \vec n p_j, where p_j are the prescribed bc values
        !      /
        do dim = 1, U%dim
-          rhs_addto(dim,u_face_l) = rhs_addto(dim,u_face_l) - &
-               matmul( ele_val(pressure_bc, face), mnCT(1,dim,:,:) )
+          if(subtract_out_reference_profile) then
+            rhs_addto(dim,u_face_l) = rhs_addto(dim,u_face_l) - &
+                 matmul( ele_val(pressure_bc, face) - face_val(hb_pressure, face), mnCT(1,dim,:,:) )
+          else
+            rhs_addto(dim,u_face_l) = rhs_addto(dim,u_face_l) - &
+                 matmul( ele_val(pressure_bc, face), mnCT(1,dim,:,:) )
+          end if
        end do
     end if
 
@@ -2770,16 +2742,16 @@ contains
                
                !penalty flux
                
-               Viscosity_mat(d,u_face_loc,u_face_loc) = &
-                    Viscosity_mat(d,u_face_loc,u_face_loc) + &
+               Viscosity_mat(d,d,u_face_loc,u_face_loc) = &
+                    Viscosity_mat(d,d,u_face_loc,u_face_loc) + &
                     penalty_fluxes_mat(1,:,:)
 
                !! External Degrees of Freedom
                
                !!penalty fluxes
 
-               Viscosity_mat(d,u_face_loc,start:finish) = &
-                    Viscosity_mat(d,u_face_loc,start:finish) + &
+               Viscosity_mat(d,d,u_face_loc,start:finish) = &
+                    Viscosity_mat(d,d,u_face_loc,start:finish) + &
                     penalty_fluxes_mat(2,:,:)
                
             end if
@@ -2790,16 +2762,16 @@ contains
             
             !penalty flux
             
-            Viscosity_mat(d,u_face_loc,u_face_loc) = &
-                 Viscosity_mat(d,u_face_loc,u_face_loc) + &
+            Viscosity_mat(d,d,u_face_loc,u_face_loc) = &
+                 Viscosity_mat(d,d,u_face_loc,u_face_loc) + &
                  penalty_fluxes_mat(1,:,:)
             
             !! External Degrees of Freedom
             
             !!penalty fluxes
             
-            Viscosity_mat(d,u_face_loc,start:finish) = &
-                 Viscosity_mat(d,u_face_loc,start:finish) + &
+            Viscosity_mat(d,d,u_face_loc,start:finish) = &
+                 Viscosity_mat(d,d,u_face_loc,start:finish) + &
                  penalty_fluxes_mat(2,:,:)
 
          end do
@@ -2827,20 +2799,20 @@ contains
                
                !primal fluxes
                
-               Viscosity_mat(d,u_face_loc,1:nele) = &
-                    Viscosity_mat(d,u_face_loc,1:nele) + &
+               Viscosity_mat(d,d,u_face_loc,1:nele) = &
+                    Viscosity_mat(d,d,u_face_loc,1:nele) + &
                     primal_fluxes_mat(1,:,:)
                
                do j = 1, size(u_face_loc)
-                  Viscosity_mat(d,1:nele,u_face_loc(j)) = &
-                       Viscosity_mat(d,1:nele,u_face_loc(j)) + &
+                  Viscosity_mat(d,d,1:nele,u_face_loc(j)) = &
+                       Viscosity_mat(d,d,1:nele,u_face_loc(j)) + &
                        primal_fluxes_mat(1,j,:) 
                end do
 
                !primal fluxes
 
-               Viscosity_mat(d,1:nele,start:finish) = &
-                    Viscosity_mat(d,1:nele,start:finish) + &
+               Viscosity_mat(d,d,1:nele,start:finish) = &
+                    Viscosity_mat(d,d,1:nele,start:finish) + &
                     transpose(primal_fluxes_mat(2,:,:)) 
                
             end if
@@ -2851,13 +2823,13 @@ contains
             
             !primal fluxes
             
-            Viscosity_mat(d,u_face_loc,1:nele) = &
-                 Viscosity_mat(d,u_face_loc,1:nele) + &
+            Viscosity_mat(d,d,u_face_loc,1:nele) = &
+                 Viscosity_mat(d,d,u_face_loc,1:nele) + &
                  primal_fluxes_mat(1,:,:)
             
             do j = 1, size(u_face_loc)
-               Viscosity_mat(d,1:nele,u_face_loc(j)) = &
-                    Viscosity_mat(d,1:nele,u_face_loc(j)) + &
+               Viscosity_mat(d,d,1:nele,u_face_loc(j)) = &
+                    Viscosity_mat(d,d,1:nele,u_face_loc(j)) + &
                     primal_fluxes_mat(1,j,:) 
             end do
             
@@ -2865,12 +2837,12 @@ contains
             
             !primal fluxes
             
-            Viscosity_mat(d,start:finish,1:nele) = &
-              Viscosity_mat(d,start:finish,1:nele) + &
+            Viscosity_mat(d,d,start:finish,1:nele) = &
+              Viscosity_mat(d,d,start:finish,1:nele) + &
               primal_fluxes_mat(2,:,:)
             
-            Viscosity_mat(d,1:nele,start:finish) = &
-                 Viscosity_mat(d,1:nele,start:finish) + &
+            Viscosity_mat(d,d,1:nele,start:finish) = &
+                 Viscosity_mat(d,d,1:nele,start:finish) + &
                  transpose(primal_fluxes_mat(2,:,:))
             
          end do
@@ -3032,26 +3004,26 @@ contains
 
          !face1 = 1, face2 = 1
          
-         Viscosity_mat(d,u_face_loc,u_face_loc) = &
-              &Viscosity_mat(d,u_face_loc,u_face_loc) + &
+         Viscosity_mat(d,d,u_face_loc,u_face_loc) = &
+              &Viscosity_mat(d,d,u_face_loc,u_face_loc) + &
               &add_mat(1,1,:,:)
          
          !face1 = 1, face2 = 2
          
-         Viscosity_mat(d,u_face_loc,start:finish) = &
-              &Viscosity_mat(d,u_face_loc,start:finish) + &
+         Viscosity_mat(d,d,u_face_loc,start:finish) = &
+              &Viscosity_mat(d,d,u_face_loc,start:finish) + &
               &add_mat(1,2,:,:)
          
          !face1 = 2, face2 = 1
          
-         Viscosity_mat(d,start:finish,u_face_loc) = &
-              Viscosity_mat(d,start:finish,u_face_loc) + &
+         Viscosity_mat(d,d,start:finish,u_face_loc) = &
+              Viscosity_mat(d,d,start:finish,u_face_loc) + &
               &add_mat(2,1,:,:)
          
          !face1 = 2, face2 = 2
          
-         Viscosity_mat(d,start:finish,start:finish) = &
-              &Viscosity_mat(d,start:finish,start:finish) + &
+         Viscosity_mat(d,d,start:finish,start:finish) = &
+              &Viscosity_mat(d,d,start:finish,start:finish) + &
               &add_mat(2,2,:,:)
       end do
 
@@ -3079,8 +3051,8 @@ contains
     limit_slope = .true.
     
     call get_option(trim(u%option_path)//&
-        "/prognostic/temporal_discretisation/&
-        &discontinuous_galerkin/maximum_courant_number_per_subcycle",&
+        &"/prognostic/temporal_discretisation"//&
+        &"/discontinuous_galerkin/maximum_courant_number_per_subcycle",&
         &max_courant_number)
     courant_number_field => &
         extract_scalar_field(state, "DG_CourantNumber")
@@ -3211,30 +3183,34 @@ contains
     type(halo_type), pointer:: halo
     integer, dimension(:), pointer:: neighbours, neighbours2, nodes
     integer, dimension(:), allocatable:: dnnz, onnz
-    logical:: compact_stencil, have_viscosity, have_coriolis, have_advection, have_turbine
+    logical:: compact_stencil, have_viscosity, have_coriolis, have_advection, have_turbine, partial_stress
     integer:: rows_per_dim, rows, nonods, elements
-    integer:: owned_neighbours, foreign_neighbours, coupled_components
+    integer:: owned_neighbours, foreign_neighbours, coupled_components, coupled_components_ele
     integer:: i, j, dim, ele, nloc
     type(mesh_type) :: neigh_mesh
       
     assert( continuity(u)<0 )
     
     compact_stencil = have_option(trim(u%option_path)//&
-                "/prognostic/spatial_discretisation&
-                &/discontinuous_galerkin/viscosity_scheme&
-                &/interior_penalty") .or. &
+                &"/prognostic/spatial_discretisation"//&
+                &"/discontinuous_galerkin/viscosity_scheme"//&
+                &"/interior_penalty") .or. &
                 &have_option(trim(u%option_path)//&
-                "/prognostic/spatial_discretisation&
-                &/discontinuous_galerkin/viscosity_scheme&
-                &/compact_discontinuous_galerkin")
+                &"/prognostic/spatial_discretisation"//&
+                &"/discontinuous_galerkin/viscosity_scheme"//&
+                &"/compact_discontinuous_galerkin")
                 
-    ! NOTE: this only sets the local have_viscosity, have_advection and have_coriolis
+    ! NOTE: this only sets the local have_viscosity, have_advection, have_coriolis and partial stress
     have_viscosity = have_option(trim(u%option_path)//&
           &"/prognostic/tensor_field::Viscosity")
-    have_advection = .not. have_option(trim(u%option_path)//"/prognostic&
-         &/spatial_discretisation/discontinuous_galerkin&
-         &/advection_scheme/none")
+    have_advection = .not. have_option(trim(u%option_path)//"/prognostic"//&
+         &"/spatial_discretisation/discontinuous_galerkin"//&
+         &"/advection_scheme/none")
     have_coriolis = have_option("/physical_parameters/coriolis")
+    partial_stress = have_option(trim(u%option_path)//&
+         &"/prognostic/spatial_discretisation"//&
+         &"/discontinuous_galerkin/viscosity_scheme"//&
+         &"/partial_stress_form")
 
     ! It would be enough to set this variable to true only if there is a flux turbine. 
     ! However, for performance reasons, this is done whenever a turbine model is in use.
@@ -3263,16 +3239,17 @@ contains
     rows=rows_per_dim*u%dim
     allocate( dnnz(1:rows), onnz(1:rows) )
     
-    if (have_coriolis) then
-      coupled_components = u%dim -1
-    else
-      coupled_components = 0
+    coupled_components = 0
+    coupled_components_ele = 0
+    if (partial_stress) then
+      coupled_components = u%dim - 1
+    else if (have_coriolis) then
+      coupled_components_ele = u%dim -1
     end if
     
     ! we first work everything out for rows corresponding to the first component
     do ele=1, element_count(u)
-      ! we only have to provide nnz for owned rows
-      ! eventhough we do non-local assembly. The owner
+      ! we only have to provide nnz for owned rows. The owner
       ! therefore needs to specify the correct nnzs including
       ! contributions from others.
       ! NOTE: that the allocate interface assumes a contiguous
@@ -3285,7 +3262,7 @@ contains
       owned_neighbours = 0
       foreign_neighbours = 0
       
-      if ((have_viscosity.or.have_dg_les) .or. have_advection) then
+      if (have_viscosity .or. have_advection) then
         ! start with first order
         neighbours => ele_neigh(neigh_mesh, ele)
         do i=1, size(neighbours)
@@ -3300,7 +3277,7 @@ contains
       end if
       
       ! Added brackes around (.not. compact_stencil), check this
-      if ((have_viscosity.or.have_dg_les) .and. (.not. compact_stencil)) then
+      if (have_viscosity .and. (.not. compact_stencil)) then
         ! traverse the second order neighbours
         do i=1, size(neighbours)
           ! skip boundaries
@@ -3330,20 +3307,21 @@ contains
         nloc = size(nodes)
         do i=1, nloc
           ! this break down as follows:
-          ! 1                   for node-node coupling of the same component within the element
-          ! owned_neighbours    for node-node coupling of the same component with 1st or 2nd order neighbours
-          ! coupled components  for node-node coupling with different components within the element
+          ! 1                       for node-node coupling of the same component within the element
+          ! owned_neighbours        for node-node coupling of the same component with 1st or 2nd order neighbours
+          ! coupled components_ele  for node-node coupling with different components only within the element
           ! note: no coupling with different components of neighbouring elements as long as we're in tensor form
-          dnnz( nodes(i) ) = (1+owned_neighbours+coupled_components) * nloc
+          ! coupled components      for node-node coupling with different components
+          dnnz( nodes(i) ) = ( (1+owned_neighbours)*(coupled_components+1) + coupled_components_ele) * nloc
           ! this breaks down as follows:
           ! foreign_neighbours  for node-node coupling of the same component with neighbours that are owned by an other process
           ! note: coriolis only couples within the element and is therefore always completely local
-          onnz( nodes(i) ) = foreign_neighbours * nloc
+          onnz( nodes(i) ) = foreign_neighbours*(coupled_components+1) * nloc
         end do
       else
         ! see above for reasoning
-        dnnz(ele)=1+owned_neighbours+coupled_components
-        onnz(ele)=foreign_neighbours
+        dnnz(ele)=(1+owned_neighbours)*(coupled_components+1) + coupled_components_ele
+        onnz(ele)=foreign_neighbours*(coupled_components+1)
       end if
     end do
       
@@ -3460,90 +3438,6 @@ contains
 
   end subroutine assemble_poisson_rhs_dg
 
-  subroutine lumped_mass_galerkin_projection_vector(state, field, projected_field)
-    type(state_type), intent(in) :: state
-    type(vector_field), intent(inout) :: field
-    type(vector_field), intent(inout) :: projected_field
-    type(vector_field), pointer :: positions
-    type(vector_field) :: rhs
-    type(scalar_field) :: mass_lumped, inverse_mass_lumped
-
-    integer :: ele
- 
-    positions => extract_vector_field(state, "Coordinate")
-
-    ! Assuming they're on the same quadrature
-    assert(ele_ngi(field, 1) == ele_ngi(projected_field, 1))
-
-    call allocate(mass_lumped, field%mesh, name="GalerkinProjectionMassLumped")
-    call zero(mass_lumped)
-     
-    call allocate(rhs, field%dim, field%mesh, name="GalerkinProjectionRHS")
-    call zero(rhs)
-
-    do ele=1,ele_count(field)
-      call assemble_galerkin_projection(field, projected_field, positions, &
-                                     &  rhs, ele)
-    end do
-
-    call allocate(inverse_mass_lumped, field%mesh, &
-       name="GalerkinProjectionInverseMassLumped")
-    call invert(mass_lumped, inverse_mass_lumped)
-    call set(field, rhs)
-    call scale(field, inverse_mass_lumped)
-    call deallocate(mass_lumped)
-    call deallocate(inverse_mass_lumped)
-    call deallocate(rhs)
-
-    contains
-     
-      subroutine assemble_galerkin_projection(field, projected_field, positions, rhs, ele)
-        type(vector_field), intent(inout) :: field
-        type(vector_field), intent(in) :: projected_field
-        type(vector_field), intent(in) :: positions
-        type(vector_field), intent(inout) :: rhs
-        integer, intent(in) :: ele
-
-        type(element_type), pointer :: field_shape, proj_field_shape
-
-        real, dimension(ele_loc(field, ele), field%dim) :: little_rhs
-        real, dimension(ele_loc(field, ele), ele_loc(field, ele)) :: little_mass
-        real, dimension(ele_loc(field, ele), ele_loc(projected_field, ele)) :: little_mba
-        real, dimension(ele_loc(field, ele), ele_loc(projected_field, ele)) :: little_mba_int
-        real, dimension(ele_ngi(field, ele)) :: detwei
-        real, dimension(field%dim, ele_loc(projected_field, ele)) :: proj_field_val
-
-        integer :: i, j, k
-
-        field_shape => ele_shape(field, ele)
-        proj_field_shape => ele_shape(projected_field, ele)
-
-        call transform_to_physical(positions, ele, detwei=detwei)
-
-        little_mass = shape_shape(field_shape, field_shape, detwei)
-
-        ! And compute the product of the basis functions
-        little_mba = 0
-        do i=1,ele_ngi(field, ele)
-          forall(j=1:ele_loc(field, ele), k=1:ele_loc(projected_field, ele))
-            little_mba_int(j, k) = field_shape%n(j, i) * proj_field_shape%n(k, i)
-          end forall
-          little_mba = little_mba + little_mba_int * detwei(i)
-        end do
-
-        proj_field_val = ele_val(projected_field, ele)
-        do i=1,field%dim
-          little_rhs(:, i) = matmul(little_mba, proj_field_val(i, :))
-        end do
-
-        call addto(mass_lumped, ele_nodes(field, ele), &
-          sum(little_mass,2))
-        call addto(rhs, ele_nodes(field, ele), transpose(little_rhs))
-         
-      end subroutine assemble_galerkin_projection
-         
-   end subroutine lumped_mass_galerkin_projection_vector
-
   subroutine momentum_DG_check_options
     
     character(len=OPTION_PATH_LEN) :: phase_path, velocity_path, dg_path
@@ -3570,7 +3464,6 @@ contains
                 &"/vector_field::Velocity"
              ewrite(0,*) "which is probably an asymmetric matrix"
           end if
-    
        end if
 
        if (((have_option(trim(velocity_path)//"vertical_stabilization/vertical_velocity_relaxation") .or. &
@@ -3580,6 +3473,11 @@ contains
          ewrite(0,*) "Warning: You have selected a vertical stabilization but have not set"
          ewrite(0,*) "include_pressure_correction under your absorption field."
          ewrite(0,*) "This option will now be turned on by default."
+       end if
+
+       if (have_option(trim(dg_path)//"/viscosity_scheme/partial_stress_form") .and. .not. &
+            have_option(trim(dg_path)//"/viscosity_scheme/bassi_rebay")) then
+         FLAbort("partial stress form is only implemented for the bassi-rebay viscosity scheme in DG")
        end if
 
     end do state_loop

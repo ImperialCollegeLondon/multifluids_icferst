@@ -1,6 +1,8 @@
 input: clean
-	../../scripts/gmsh2triangle --2d src/square.msh
-	../../bin/fldecomp -n 2  square
+	../../bin/gmsh2triangle --2d src/square.msh
 
 clean:
-	rm -f  *.ele *.edge *.node *.poly *.halo *.vtu *.pvtu fluidity.* *.s *.d.1 *.stat
+	rm -fr *.ele *.edge *.node *.poly *.halo *.vtu *.pvtu	\
+	fluidity.* *.s *.d.1 *.stat heat_* \
+	matrixdump matrixdump.info
+	rm -rf *flredecomp*

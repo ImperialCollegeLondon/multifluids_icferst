@@ -25,9 +25,10 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 #    USA
 SHELL = @SHELL@
-PACKAGE_NAME = fluidity
 
+PACKAGE_NAME = @PACKAGE_NAME@
 FLUIDITY = $(PACKAGE_NAME)
+
 LIB = ../lib/lib$(FLUIDITY).a
 
 AR = @AR@
@@ -68,16 +69,10 @@ OBJS = NetCDF_reader.o SampleNetCDF2.o import_bath_data.o read_netcdf_interface.
 
 $(LIB): $(OBJS)
 	@mkdir -p ../lib
-	@$(AR) $(ARFLAGS) $(LIB) $(OBJS)
+
 default: $(LIB)
 
 DEPTH_OBJS=import_bath_data.cpp
-
-dtest: $(DEPTH_OBJS)
-	$(CXX) $(CXXFLAGS) -DDEPTH_UNITTEST -o $@ $(DEPTH_OBJS) $(LIBFLUIDITY) $(LIBS)
-
-dtest2: $(DEPTH_OBJS)
-	$(CXX) $(CXXFLAGS) -DDEPTH_UNITTEST2 -o $@ $(DEPTH_OBJS) $(LIBFLUIDITY) $(LIBS)
 
 install:
 

@@ -25,17 +25,27 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 #    USA
 SHELL = @SHELL@
-PACKAGE_NAME = fluidity
+
+PACKAGE_NAME = @PACKAGE_NAME@
 
 FLUIDITY = $(PACKAGE_NAME)
+
 PROGRAM	 = ./bin/$(FLUIDITY)
 FLDECOMP = ./bin/fldecomp
 
 LIB_FLUIDITY = ./lib/lib$(FLUIDITY).a
 SLIB_FLUIDITY = lib$(FLUIDITY).so
 
+# Follow: www.gnu.org/prep/standards/html_node/Directory-Variables.html
+PACKAGE_NAME = @PACKAGE_NAME@
 prefix  = @prefix@
-FLUIDITY_ROOT=$(DESTDIR)@prefix@
+exec_prefix  = @exec_prefix@
+bindir = @bindir@
+libdir = @libdir@
+datadir = @datadir@
+docdir = @docdir@/
+htmldir = @htmldir@/
+pdfdir = @pdfdir@/
 
 FC      = @FC@
 FCFLAGS = @FCFLAGS@
@@ -50,22 +60,22 @@ CFLAGS	= @CPPFLAGS@ @CFLAGS@
 CXX	= @CXX@
 CXXFLAGS= @CPPFLAGS@ @CXXFLAGS@ -I./include
 
-LINKER  = @LINKER@ @LDFLAGS@
+LINKER  = @LINKER@ @LDFLAGS@ $(CXXFLAGS)
 
-LIBS    = -L./lib -l$(FLUIDITY) @BLAS_LIBS@ @LIB_FEMDEM@ ./lib/libadaptivity.a \
+FLLINKER = @FLLINKER@ @LDFLAGS@ $(FCFLAGS)
+
+LIBS    = -L./lib -l$(FLUIDITY) @LIB_FEMDEM@ ./lib/libadaptivity.a \
            ./lib/libvtkfortran.a ./lib/libspatialindex.a ./lib/libspud.a ./lib/libjudy.a \
-           @LIBS@
+           @LIBS@ @BLAS_LIBS@
 
 OBJS = $(shell find . -mindepth 2 -maxdepth 2 -name '*.c' -o -name '*.cpp' -o -name '*.[fF]' -o -name '*.F90' | grep -v ^./lib | xargs)
 MAKE = @MAKE@ -s
 
 AR = @AR@
 
-ARFLAGS	= @ARFLAGS@
+ARFLAGS	= -cr
 
-EVAL = scripts/silenteval
-
-VERSION = $(shell bzr revision-info)
+EVAL = tools/silenteval.sh
 
 ifeq (@MBA2D@,yes)
 LIBMBA2D = lib/libmba2d.a
@@ -73,19 +83,27 @@ endif
 ifeq (@MBA3D@,yes)
 LIBMBA3D = lib/libmba3d.a
 endif
-ifeq (@ALGENCAN@,yes)
-LIBALGENCAN = lib/libalgencan.a
-endif
 
 # Thread count for make test.
 THREADS=1
 
 EXCLUDE_TAGS =
-ifneq (@ZOLTAN@,yes)
+ifneq (@HAVE_ZOLTAN@,yes)
 	EXCLUDE_TAGS := $(EXCLUDE_TAGS) -e zoltan
+else
+	EXCLUDE_TAGS := $(EXCLUDE_TAGS) -e nozoltan
 endif
 ifneq (@HAVE_ADJOINT@,yes)
 	EXCLUDE_TAGS := $(EXCLUDE_TAGS) -e adjoint
+endif
+ifneq (@MBA2D@,yes)
+	EXCLUDE_TAGS := $(EXCLUDE_TAGS) -e 2dadapt
+endif
+ifneq (@HAVE_EXODUSII@,yes)
+	EXCLUDE_TAGS := $(EXCLUDE_TAGS) -e exodusii
+endif
+ifneq (@HAVE_PETSC33@,yes)
+	EXCLUDE_TAGS := $(EXCLUDE_TAGS) -e petsc33
 endif
 
 .SUFFIXES: .f90 .F90 .c .cpp .o .a
@@ -96,55 +114,66 @@ endif
 
 default: bin/$(FLUIDITY)
 
-sub_system: $(LIBMBA2D) $(LIBMBA3D) $(LIBALGENCAN)  @LIB_FEMDEM@ \
+sub_system: $(LIBMBA2D) $(LIBMBA3D) @LIB_FEMDEM@ \
 	lib/libadaptivity.a lib/libvtkfortran.a lib/libspatialindex.a \
-	lib/libspud.a lib/libjudy.a
- 
+	lib/libspud.a lib/libjudy.a include/version.h
+
 lib/libjudy.a:
 	@echo '    MKDIR lib'; mkdir -p lib
-	@cd libjudy; echo '    MAKE libjudy'; $(MAKE) > make.log ; $(MAKE) install >> make.log ; cd ..
+	echo '    MAKE libjudy'; $(MAKE) -C libjudy > make.log && $(MAKE) -C libjudy install >> make.log
 
 lib/libmba2d.a:
 	@echo '    MKDIR lib'; mkdir -p lib
-	@cd libmba2d; echo '    MAKE libmba2d'; $(MAKE) ; cd ..
+	echo '    MAKE libmba2d'; $(MAKE) -C libmba2d
 
 lib/libmba3d.a:
 	@echo '    MKDIR lib'; mkdir -p lib
-	@cd libmba3d; echo '    MAKE libmba3d'; $(MAKE) ; cd ..
-
-lib/libalgencan.a:
-	@echo '    MKDIR lib'; mkdir -p lib
-	@cd libalgencan; echo '    MAKE libalgencan'; $(MAKE) ; cd ..
+	echo '    MAKE libmba3d'; $(MAKE) -C libmba3d
 
 lib/libadaptivity.a:
 	@echo '    MKDIR lib'; mkdir -p lib
-	@echo '    MKDIR libadaptivity/lib'; mkdir -p libadaptivity/lib
 	@BUILD_LIBADAPT@
 
 lib/libvtkfortran.a:
 	@echo '    MKDIR lib'; mkdir -p lib
-	@cd libvtkfortran; echo '    MAKE libvtkfortran'; $(MAKE) 2>make.log 2>&1 ; cp libvtkfortran.a ../lib/; cp *.mod ../include/; cd ..
+	echo '    MAKE libvtkfortran'; $(MAKE) -C libvtkfortran 2>make.log 2>&1 && cp libvtkfortran/libvtkfortran.a lib/ && cp libvtkfortran/*.mod include/
 
 lib/libspatialindex.a:
 	@echo '    MKDIR lib'; mkdir -p lib
-	@cd @SPATIALINDEXDIR@ ; echo '    MAKE libspatialindex'; $(MAKE); $(MAKE) install >> make.log 2>&1
+	echo '    MAKE libspatialindex'; $(MAKE) -C @SPATIALINDEXDIR@ && $(MAKE) -C @SPATIALINDEXDIR@ install >> make.log 2>&1
 
 lib/libspud.a:
 	@echo '    MKDIR lib'; mkdir -p lib
-	@cd libspud;  echo '    MAKE libspud'; $(MAKE) ; $(MAKE) install; cp python/libspud.py ../python
+ifeq (@SPUD_ONLY@,yes)
+	echo '    MAKE libspud'; $(MAKE) -C libspud && $(MAKE) -C libspud install-libspud
+else
+	echo '    MAKE libspud'; $(MAKE) -C libspud &&  $(MAKE) -C libspud install-libspud && cd libspud/python && python setup.py build && cd ../.. && cp libspud/python/build/lib*/libspud.so python/
+endif
 
 libfemtools: sub_system
 	@echo '    MKDIR lib'; mkdir -p lib
 	@echo '    MAKE debug'
-	@cd debug; $(MAKE)
+	@$(MAKE) -C debug
 	@echo '    MAKE libwm'
-	@cd libwm; $(MAKE)
-	@cd femtools; echo '    MAKE libfemtools'; $(MAKE) libfemtools ; cp libfemtools.a ../lib/; cd ..
+	@$(MAKE) -C libwm
+	echo '    MAKE libfemtools'; $(MAKE) -C femtools libfemtools && cp femtools/libfemtools.a lib/
 ifeq (@FEMDEM@,yes)
 @LIB_FEMDEM@:
 	@echo '    MAKE 3dfemdem library'
-	@cd @FLFEMDEM_PATH@;$(MAKE)
+	@$(MAKE) -C @FLFEMDEM_PATH@
 endif
+
+include/spud.h: lib/libspud.a
+
+main.o: include/version.h include/spud.h
+
+include/version.h: version-info
+	@bin/version-info $@
+
+version-info:
+	@$(MAKE) -C tools install-version-info
+
+.PHONY: version-info
 
 bin/$(FLUIDITY): main.o lib/lib$(FLUIDITY).a
 	@echo "BUILD fluidity"
@@ -155,23 +184,25 @@ bin/$(FLUIDITY): main.o lib/lib$(FLUIDITY).a
 
 sw: bin/shallow_water
 be: bin/burgers_equation
+hh: bin/hybridized_helmholtz_solver
 mp: bin/multiphase_prototype
 
-bin/shallow_water: fluidity_library main/Shallow_Water.F90
+bin/shallow_water: fluidity_library bin/hybridized_helmholtz_solver main/Shallow_Water.F90
 	@cd main; $(MAKE) Shallow_Water.o
 	@echo "BUILD shallow_water"
 	@echo "    MKDIR bin"
 	@mkdir -p bin
 	@echo "    LD shallow_water"
-	@$(EVAL) $(LINKER) -o bin/shallow_water main/Shallow_Water.o $(LIBS)
+	@$(EVAL) $(FLLINKER) -o bin/hybridized_helmholtz_solver main/Hybridized_Helmholtz_Solver.o $(LIBS)
+	@$(EVAL) $(FLLINKER) -o bin/shallow_water main/Shallow_Water.o $(LIBS)
 
-bin/shallow_water_legacy: fluidity_library main/Shallow_Water_Legacy.F90
-	@cd main; $(MAKE) Shallow_Water_Legacy.o
-	@echo "BUILD shallow_water_legacy"
+bin/hybridized_helmholtz_solver: fluidity_library main/Hybridized_Helmholtz_Solver.F90
+	@cd main; $(MAKE) Hybridized_Helmholtz_Solver.o
+	@echo "BUILD hybridized_helmholtz_solver"
 	@echo "    MKDIR bin"
 	@mkdir -p bin
-	@echo "    LD shallow_water_legacy"
-	@$(EVAL) $(LINKER) -o bin/shallow_water_legacy main/Shallow_Water_Legacy.o $(LIBS)
+	@echo "    LD hybridized_helmholtz_solver"
+	@$(EVAL) $(FLLINKER) -o bin/hybridized_helmholtz_solver main/Hybridized_Helmholtz_Solver.o $(LIBS)
 
 bin/burgers_equation: fluidity_library main/Burgers_Equation.F90
 	@cd main; $(MAKE) Burgers_Equation.o
@@ -179,7 +210,7 @@ bin/burgers_equation: fluidity_library main/Burgers_Equation.F90
 	@echo "    MKDIR bin"
 	@mkdir -p bin
 	@echo "    LD burgers_equation"
-	@$(EVAL) $(FC) -o bin/burgers_equation main/Burgers_Equation.o $(FCFLAGS) $(LIBS)
+	@$(EVAL) $(FLLINKER) -o bin/burgers_equation main/Burgers_Equation.o $(FCFLAGS) $(LIBS)
 
 ifeq (@ENABLE_PSMILE@,yes)
 LIBPSMILE=@FLPSMILE_PATH@/lib/libpsmile_oa4.MPI1.a @FLPSMILE_PATH@/lib/libcommon_oa4.a @FLPSMILE_PATH@/lib/libmpp_io.a -lxml2
@@ -204,15 +235,7 @@ bin/multiphase_prototype: fluidity_library
 	@echo "    MKDIR legacy_reservoir_prototype"
 	@mkdir -p bin
 	@echo "    LD multiphase_prototype"
-	@$(EVAL) $(LINKER) -o bin/multiphase_prototype legacy_reservoir_prototype/main.o $(FCFLAGS) $(LIBS)
-
-bin/simple_shallow_water: fluidity_library main/Simple_Shallow_Water.F90
-	@cd main; $(MAKE) Simple_Shallow_Water.o
-	@echo "BUILD simple_shallow_water"
-	@echo "    MKDIR bin"
-	@mkdir -p bin
-	@echo "    LD simple_shallow_water"
-	@$(EVAL) $(LINKER) -o bin/simple_shallow_water main/Simple_Shallow_Water.o $(LIBS)
+	@$(EVAL) $(FLLINKER) -o bin/multiphase_prototype legacy_reservoir_prototype/main.o $(FCFLAGS) $(LIBS)
 
 bin/form_pod_basis: fluidity_library reduced_modelling/Form_Pod_Basis_Main.F90
 	@cd reduced_modelling; $(MAKE) Form_Pod_Basis_Main.o
@@ -262,10 +285,14 @@ python_clean:
 	@cd python; rm -rf build
 	@cd python/fluidity; find . -type l -name '*.so' -exec rm -f {} \;
 
+.PHONY: scripts
+
+scripts:
+	@echo "INSTALL local scripts"
+	@cd tools ; $(MAKE) scripts
+
 fluidity_library: lib/lib$(FLUIDITY).a
-lib/lib$(FLUIDITY).a: $(OBJS) python_build sub_system 
-	@echo "DEFINE __FLUIDITY_VERSION__"
-	@grep "$(VERSION)" include/confdefs.h >/dev/null 2>&1 || (echo "#undef __FLUIDITY_VERSION__" >> include/confdefs.h && echo "#define __FLUIDITY_VERSION__ \"$(VERSION)\"" >> include/confdefs.h)
+lib/lib$(FLUIDITY).a: $(OBJS) python_build sub_system scripts
 	@echo "BUILD libfluidity"
 	@echo "    MKDIR lib"
 	@mkdir -p lib
@@ -295,8 +322,6 @@ endif
 	@cd preprocessor; $(MAKE)
 	@echo "    MAKE error_measures"
 	@cd error_measures;   	$(MAKE)
-	@echo "    MAKE decomp"
-	@cd decomp;   	$(MAKE)
 	@echo "    MAKE assemble"
 	@cd assemble;   	$(MAKE)
 	@echo "    MAKE diagnostics"
@@ -308,24 +333,40 @@ endif
 	@echo "    MAKE main"
 	@cd main; $(MAKE)
 	@echo "    MAKE options_check"
-	@./scripts/make_check_options
+	@./tools/make_check_options.py
 	@cd preprocessor; $(MAKE) check_options.o
 	@echo "    MAKE register_diagnostics"
-	@./scripts/make_register_diagnostics
+	@./tools/make_register_diagnostics.py
 	@cd preprocessor; $(MAKE) register_diagnostics.o
+	@echo "    BUILDING fluidity_library"
+	@$(AR) $(ARFLAGS) lib/libfluidity.a \
+debug/*.o \
+libwm/*.o \
+femtools/*.o \
+bathymetry/*.o \
+ocean_forcing/*.o \
+sediments/*.o \
+parameterisation/*.o \
+forward_interfaces/*.o \
+horizontal_adaptivity/*.o \
+preprocessor/*.o \
+error_measures/*.o \
+assemble/*.o \
+diagnostics/*.o \
+reduced_modelling/*.o \
+adjoint/*.o \
+main/*.o
+ifeq (@HYPERLIGHT@,yes)
+	@$(AR) $(ARFLAGS) lib/libfluidity.a hyperlight/*.o
+endif
+
+
 
 fldecomp: fluidity_library 
 	@echo "BUILD fldecomp"
 	@echo "    MKDIR bin"
 	@mkdir -p bin
 	@cd fldecomp; $(MAKE)
-
-.PHONY: doc
-
-doc:
-	@mkdir -p doc
-	./scripts/f90_extract_docs --dir=doc --project=fluidity */*.F90 --cppflags="$(FCLAGS) -I./include"
-	@cp include/fortran.css doc/
 
 all:
 	$(MAKE) default
@@ -348,18 +389,12 @@ clean-light:
 	@cd sediments; $(MAKE) clean
 	@echo "    CLEAN parameterisation/tests"
 	@cd parameterisation/tests; $(MAKE) clean
-	@echo "    CLEAN radiation"
-	@cd radiation; $(MAKE) clean
-	@echo "    CLEAN radiation/tests"
-	@cd radiation/tests; $(MAKE) clean
 	@echo "    CLEAN assemble"
 	@cd assemble;   $(MAKE) clean
 	@echo "    CLEAN assemble/tests"
 	@cd assemble/tests;   $(MAKE) clean
 	@echo "    CLEAN diagnostics"
 	@cd diagnostics;   $(MAKE) clean
-	@echo "    CLEAN decomp"
-	@cd decomp;   $(MAKE) clean
 	@echo "    CLEAN preprocessor"
 	@cd preprocessor; $(MAKE) clean
 	@echo "    CLEAN error_measures/tests"
@@ -372,6 +407,9 @@ clean-light:
 	@cd horizontal_adaptivity/tests;   $(MAKE) clean
 	@echo "    CLEAN tools"
 	@cd tools;    $(MAKE) clean
+	@echo "    CLEAN adjoint"
+	@cd adjoint;    $(MAKE) clean
+	@cd adjoint/tests;    $(MAKE) clean
 	@echo "    CLEAN bathymetry"
 	@cd bathymetry;  $(MAKE) clean
 	@echo "    CLEAN ocean_forcing"
@@ -393,13 +431,9 @@ endif
 	@cd legacy_reservoir_prototype; $(MAKE) clean
 	@echo "    CLEAN legacy_reservoir_prototype"
 	@cd main; $(MAKE) clean
-	@echo "    CLEAN qg_strat"
-	@cd qg_strat; $(MAKE) clean
-	@echo "    CLEAN qg_strat/unittests"
-	@cd qg_strat/unittests; $(MAKE) clean
-	@rm -fr bin/* lib
+	@rm -fr bin lib
 
-clean: clean-light clean-test python_clean
+clean: clean-light clean-test python_clean clean-debian
 	@echo "    CLEAN libvtkfortran"
 	@cd libvtkfortran; $(MAKE) clean
 	@echo "    CLEAN libjudy"
@@ -412,65 +446,83 @@ clean: clean-light clean-test python_clean
 	@cd libmba2d; $(MAKE) clean
 	@echo "    CLEAN libmba3d"
 	@cd libmba3d; $(MAKE) clean
-	@echo "    CLEAN libalgencan"
-	@cd libalgencan; $(MAKE) clean
 	@echo "    CLEAN libwm"
 	@cd libwm; $(MAKE) clean
+	@echo "    CLEAN manual"
+	@cd manual; $(MAKE) clean
 	@CLEAN_LIBADAPT@
-	@rm -fr doc include/*.mod *.cache core *.o config.status
+	@rm -fr lib*/configure.lineno include/*.mod *.cache core *.o config.status
 	@find ./ \( -name work.pc \) -exec rm {} \;
 	@find ./ \( -name work.pcl \) -exec rm {} \;
 
+clean-debian:
+	@echo "    CLEAN debian"
+	@cd debian; rm -rf files tmp fluidity python-fluidity *.substvars *.debhelper* 
+
 clean-test:      
 	@echo "    CLEAN tests"
-	@cd tests; ../tools/testharness.py --clean >/dev/null
+	@cd tests; PYTHONPATH=../python ../tools/testharness.py --clean >/dev/null
+	@cd tests/data; $(MAKE) clean
 
-test: fltools bin/$(FLUIDITY) bin/shallow_water serialtest bin/burgers_equation
+clean-all-tests: clean-test     
+	@echo "    CLEAN parallel/special/long tests"
+	@PYTHONPATH=python tools/testharness.py --parallelism=parallel --clean >/dev/null
+	@PYTHONPATH=python tools/testharness.py --length=special --clean >/dev/null
+	@PYTHONPATH=python tools/testharness.py --length=special --parallelism=parallel --clean >/dev/null
+	@PYTHONPATH=python tools/testharness.py --length=long --clean >/dev/null
+	@PYTHONPATH=python tools/testharness.py --length=long --parallelism=parallel --clean >/dev/null
 
-serialtest:
-ifeq (@MBA2D@,yes)
-        ifeq (@ZOLTAN@,yes)
-	        @cd tests; ../tools/testharness.py -l short -p serial -e nozoltan -n $(THREADS)
-        else
-	        @cd tests; ../tools/testharness.py -l short -p serial -e zoltan -n $(THREADS)
-        endif
-else
-        ifeq (@ZOLTAN@,yes)
-	        @cd tests; ../tools/testharness.py -l short -p serial -e "2dadapt nozoltan" -n $(THREADS)
-        else
-	        @cd tests; ../tools/testharness.py -l short -p serial -e "2dadapt zoltan" -n $(THREADS)
-        endif
-endif
+distclean: clean
+	@echo "    DISTCLEAN"
+	@cd @SPATIALINDEXDIR@ ; make distclean > /dev/null ; rm -rf	\
+	 test/mvrtree/.deps test/rtree/.deps test/tprtree/.deps         \
+         make.log > /dev/null
+	@cd libadaptivity ; make distclean > /dev/null
+	@cd libjudy ; make distclean > /dev/null
+	@cd libvtkfortran ; make distclean > /dev/null
+	@cd libspud ; make distclean > /dev/null ; rm -rf		\
+	 libspud.so.0 libtool diamond/build python/build > /dev/null
+	@cd tools ; make distclean > /dev/null
+	@rm -fr `find ./ -name config.status` `find ./ -name		\
+	 config.log` share include/Judy.h include/Wm4Command.h		\
+	 include/Wm4FoundationLIB.h include/Wm4FoundationPCH.h		\
+	 include/Wm4Intersector.h include/Wm4Intersector1.h		\
+	 include/Wm4IntrBox3Box3.h include/Wm4IntrQuad2Quad2.h		\
+	 include/Wm4IntrTetrahedron3Tetrahedron3.h			\
+	 include/Wm4IntrTriangle2Triangle2.h				\
+	 include/Wm4IntrUtility3.h include/Wm4LinComp.h			\
+	 include/Wm4Math.h include/Wm4MathMCR.h include/Wm4Memory.h	\
+	 include/Wm4Plane3.h include/Wm4Platforms.h			\
+	 include/Wm4Quad2.h include/Wm4Segment3.h include/Wm4System.h	\
+	 include/Wm4THashSet.h include/Wm4THashTable.h			\
+	 include/Wm4TMinHeap.h include/Wm4TSmallUnorderedSet.h		\
+	 include/Wm4TStringHashTable.h include/Wm4TTuple.h		\
+	 include/Wm4Tetrahedron3.h include/Wm4Triangle2.h		\
+	 include/Wm4Triangle3.h include/Wm4Vector2.h			\
+	 include/Wm4Vector3.h include/confdefs.h include/config.h	\
+	 include/spatialindex include/spud include/spud.h		\
+	 include/spud_enums.h include/tinystr.h include/tinyxml.h	\
+	 include/version.h include/vtk.h				\
+	 preprocessor/check_options.F90 schemas/flml			\
+	 preprocessor/register_diagnostics.F90 python/setup.py >	\
+	 /dev/null
+	@for i in `find ./*/ -name Makefile.in`; do rm -f `echo $$i | sed 's/.in$$//'`; done > /dev/null
+	@find ./ \( -name make.log \) -exec rm -f {} \; > /dev/null
+	@rm -f Makefile > /dev/null
 
-mediumtest: bin/burgers_equation
-	@cd tests; ../tools/testharness.py -l medium $(EXCLUDE_TAGS) -n $(THREADS)
+test: serialtest
 
-mediumzoltantest:
-ifeq (@ZOLTAN@,yes)
-	@cd tests; ../tools/testharness.py -l medium -t zoltan -n $(THREADS)
-else
-	@echo "Warning: build did not have zoltan enabled, make mediumzoltantest will not run" -n $(THREADS)
-endif
+serialtest: fltools bin/$(FLUIDITY) bin/shallow_water
+	@cd tests; ../bin/testharness -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
-test-mp: fltools bin/multiphase_prototype serialtest-mp
+mediumtest: fltools bin/$(FLUIDITY) manual bin/burgers_equation bin/shallow_water spudtools
+	@cd tests; ../bin/testharness -l medium $(EXCLUDE_TAGS) -n $(THREADS)
 
-serialtest-mp:
-ifeq (@MBA2D@,yes)
-        ifeq (@ZOLTAN@,yes)
-	        @cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short -p serial -e nozoltan -n $(THREADS)
-        else
-	        @cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short -p serial -e zoltan -n $(THREADS)
-        endif
-else
-        ifeq (@ZOLTAN@,yes)
-	        @cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short -p serial -e "2dadapt nozoltan" -n $(THREADS)
-        else
-	        @cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short -p serial -e "2dadapt zoltan" -n $(THREADS)
-        endif
-endif
+.PHONY: spudtools
 
-mediumtest-mp:
-	@cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l medium $(EXCLUDE_TAGS) -n $(THREADS)
+spudtools:
+	@cd libspud ; $(MAKE) install-spudtools
+	@echo "    INSTALL spudtools"
 
 setuputs: 
 	@echo "SETUP tests"
@@ -479,7 +531,6 @@ setuputs:
 	@echo "    MKDIR bin/tests"
 	@mkdir -p bin/tests
 	@ln -sf ../../tests/data bin/tests/data
-
 
 build_unittest: fluidity_library libfemtools setuputs
 	@echo "    UNITTEST libspud"
@@ -502,19 +553,19 @@ build_unittest: fluidity_library libfemtools setuputs
 
 unittest: build_unittest
 	@echo "RUN bin/tests"
-	@tools/unittestharness.py bin/tests
+	@bin/unittestharness bin/tests
 
-gcov:
-	@echo "RUN gcov"
-	@scripts/options_test_options_report.sh  .
+bin/spud-preprocess:
+	@echo "Installing spudtools"
+	@$(MAKE) -C libspud install-spudtools
 
-schema:
+schema: bin/spud-preprocess
 	@echo "Rebuilding schema fluidity_options.rng"
 	@./bin/spud-preprocess schemas/fluidity_options.rnc
 
 .PHONY: makefiles
 
-makefiles: sub_system
+makefiles: sub_system scripts
 ifneq (@GFORTRAN_4_5_OR_NEWER@,yes)
 	@echo "makefile dependency generation requires gfortran (>=4.5)"
 	@false
@@ -528,44 +579,71 @@ ifneq (@HAVE_ADJOINT@,yes)
 	@false
 endif
 	@echo "    Generating debug dependencies"
-	@cd debug; 	../scripts/create_makefile.py $(TESTOPTS)
+	@cd debug; 	../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating libwm dependencies"
-	@cd libwm; ../scripts/create_makefile.py $(TESTOPTS)
+	@cd libwm; ../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating femtools dependencies"
-	@cd femtools;	../scripts/create_makefile.py --exclude \
+	@cd femtools;	../bin/create_makefile --exclude \
 	"Refcount_interface_templates.F90 Refcount_templates.F90" $(TESTOPTS)
 	@echo "    Generating bathymetry dependencies"
-	@cd bathymetry; ../scripts/create_makefile.py $(TESTOPTS)
+	@cd bathymetry; ../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating ocean_forcing dependencies"
-	@cd ocean_forcing; ../scripts/create_makefile.py $(TESTOPTS)
+	@cd ocean_forcing; ../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating sediments dependencies"
-	@cd sediments; ../scripts/create_makefile.py $(TESTOPTS)
+	@cd sediments; ../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating parameterisation dependencies"
-	@cd parameterisation; ../scripts/create_makefile.py $(TESTOPTS)
+	@cd parameterisation; ../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating forward_interfaces dependencies"
-	@cd forward_interfaces;	../scripts/create_makefile.py $(TESTOPTS)
+	@cd forward_interfaces;	../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating horizontal_adaptivity dependencies"
-	@cd horizontal_adaptivity;   	../scripts/create_makefile.py $(TESTOPTS)
+	@cd horizontal_adaptivity;   	../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating preprocessor dependencies"
-	@cd preprocessor; ../scripts/create_makefile.py --exclude \
+	@cd preprocessor; ../bin/create_makefile --exclude \
 	"register_diagnostics.F90 check_options.F90" $(TESTOPTS)
 	@echo "    Generating error_measures dependencies"
-	@cd error_measures;   	../scripts/create_makefile.py $(TESTOPTS)
-	@echo "    Generating decomp dependencies"
-	@cd decomp;   	../scripts/create_makefile.py $(TESTOPTS)
+	@cd error_measures;   	../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating assemble dependencies"
-	@cd assemble;   	../scripts/create_makefile.py $(TESTOPTS)
+	@cd assemble;   	../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating diagnostics dependencies"
-	@cd diagnostics;   	../scripts/create_makefile.py --exclude \
+	@cd diagnostics;   	../bin/create_makefile --exclude \
 	"Diagnostic_Fields_Interfaces.F90 Diagnostic_Fields_New.F90" $(TESTOPTS)
 	@cd diagnostics;   	$(MAKE) Diagnostic_Fields_Interfaces.o \
 	Diagnostic_Fields_New.o 
 	@echo "    Generating reduced_modelling dependencies"
-	@cd reduced_modelling;   	../scripts/create_makefile.py $(TESTOPTS)
+	@cd reduced_modelling;   	../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating adjoint dependencies"
-	@cd adjoint; ../scripts/create_makefile.py $(TESTOPTS)
+	@cd adjoint; ../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating main dependencies"
-	@cd main; ../scripts/create_makefile.py --exclude test_coupler.F90 $(TESTOPTS)
+	@cd main; ../bin/create_makefile --exclude test_coupler.F90 $(TESTOPTS)
 	@echo "    Cleaning up the mess"
 	$(MAKE) clean-light
 	@echo "    Congratulations, make makefiles succeeded!"
+
+install: default fltools bin/shallow_water bin/burgers_equation
+	@mkdir -p $(DESTDIR)$(bindir) $(DESTDIR)$(docdir)/fluidity
+	find bin/ -maxdepth 1 -type f -exec cp '{}' $(DESTDIR)$(bindir) \;
+	rm -f $(DESTDIR)$(bindir)/spud-* $(DESTDIR)$(bindir)/diamond $(DESTDIR)$(bindir)/silenteval $(DESTDIR)$(bindir)/runut
+	[ -f manual/fluidity_manual.pdf ] && cp manual/fluidity_manual.pdf $(DESTDIR)$(docdir)/fluidity || true
+	mkdir -p $(DESTDIR)$(datadir)/fluidity
+	cp -r schemas/ $(DESTDIR)$(datadir)/fluidity/
+	mkdir -p $(DESTDIR)$(datadir)/diamond/schemata
+	cp schemas/flml $(DESTDIR)$(datadir)/diamond/schemata
+	cd python ; python setup.py install --root=$(shell echo ${DESTDIR} | sed 's/^$$/\//') --prefix="$(prefix)" $$FLUIDITY_PYTHON_INSTALL_ARGS
+	cp -r examples/ $(DESTDIR)$(docdir)/fluidity
+	find $(DESTDIR)$(docdir)/fluidity/examples -type f -exec sed -i "s/\.\.\/\.\.\/\.\.\/bin\///" '{}' \;
+	find $(DESTDIR)$(docdir)/fluidity/examples -type f -exec sed -i "s/\.\.\/\.\.\/bin\///" '{}' \;
+	cd $(DESTDIR)$(docdir)/fluidity ; tar -czvf $(DESTDIR)$(docdir)/fluidity/examples.tar.gz examples/
+	rm -rf $(DESTDIR)$(docdir)/fluidity/examples/
+
+install-diamond: 
+	cd libspud; ./configure --prefix=@prefix@; cd ../..
+	cd libspud; $(MAKE) clean; cd ../..
+	cd libspud; $(MAKE) install-diamond; cd ../..
+	cd libspud; $(MAKE) install-dxdiff; cd ../..
+	cd libspud; $(MAKE) install-spudtools; cd ../..
+	cd libspud; ./configure --prefix=$(PWD); cd ../..
+
+install-user-schemata:
+	mkdir -p $(HOME)/.diamond/schemata/
+	echo "Fluidity Markup Language" > $(HOME)/.diamond/schemata/flml
+	echo "$(PWD)/schemas/fluidity_options.rng" >> $(HOME)/.diamond/schemata/flml

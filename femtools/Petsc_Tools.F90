@@ -96,7 +96,7 @@ module Petsc_Tools
   interface petsc2field
     module procedure Petsc2VectorFields, Petsc2ScalarFields, Petsc2VectorField, Petsc2ScalarField
   end interface
-
+    
   interface petsc_numbering_create_is
     module procedure petsc_numbering_create_is_dim
   end interface
@@ -119,6 +119,9 @@ module Petsc_Tools
   public petsc_test_error_handler
 #if PETSC_VERSION_MINOR>=3
   public MatCreateSeqAIJ, MatCreateMPIAIJ, MatCreateSeqBAIJ, MatCreateMPIBAIJ
+#endif
+#if PETSC_VERSION_MINOR<5
+  public mykspgetoperators
 #endif
 contains
 
@@ -153,7 +156,7 @@ contains
     !! for parallel: halo information
     type(halo_type), pointer, optional :: halo
     !! If supplied number these as -1, so they'll be skipped by Petsc
-    integer, dimension(:), optional, intent(in):: ghost_nodes
+    integer, dimension(:), optional, intent(in):: ghost_nodes 
     logical, optional, intent(in) :: fluidity_ordering 
     integer, dimension(:), allocatable:: ghost_marker
     integer i, g, f, start, offset
@@ -183,12 +186,12 @@ contains
           petsc_numbering%gnn2unn=transpose(reshape([(i,i=0,nfields*nnodes-1)],[nfields,nnodes]))
        else
        ! standard, trivial numbering, starting at 0:
-          start=0 ! start of each field -1
-          do g=1, nfields
-             petsc_numbering%gnn2unn(:, g )= &
-                  (/ ( start+i, i=0, nnodes-1 ) /)
-             start=start+nnodes
-          end do
+       start=0 ! start of each field -1
+       do g=1, nfields
+          petsc_numbering%gnn2unn(:, g )= &
+               (/ ( start+i, i=0, nnodes-1 ) /)
+          start=start+nnodes
+       end do
        end if
 
        if (isParallel()) then
@@ -372,7 +375,6 @@ contains
   Vec, intent(inout) :: vec
   
     integer ierr, nnodp, start, b, nfields, nnodes
-    integer :: insert_rows, insert_action
 
     ! number of nodes owned by this process:
     nnodp=petsc_numbering%nprivatenodes
@@ -387,34 +389,22 @@ contains
     start=0
     
     if (associated(petsc_numbering%halo)) then
-       select case(petsc_numbering%halo%data_type)
-       case (HALO_TYPE_CG_NODE)
-          insert_rows=nnodp
-          insert_action=INSERT_VALUES 
-       case (HALO_TYPE_DG_NODE) 
-          insert_rows=nnodes
-          insert_action=ADD_VALUES          
-          call VecZeroEntries(vec, ierr)
-       case default
+       if (.not. ((petsc_numbering%halo%data_type .eq. HALO_TYPE_CG_NODE) &
+            .or. (petsc_numbering%halo%data_type .eq. HALO_TYPE_DG_NODE))) then
           FLAbort("Matrices can only be assembled on the basis of node halos")
-       end select
-    else
-       ! Serial case
-       insert_rows=nnodp
-       insert_action=INSERT_VALUES 
     end if
-
+    end if
 
     do b=1, nfields
       
 #ifdef DOUBLEP
-      call VecSetValues(vec, insert_rows, &
-        petsc_numbering%gnn2unn( 1:insert_rows, b ), &
-        array( start+1:start+insert_rows ), insert_action, ierr)
+      call VecSetValues(vec, nnodp, &
+        petsc_numbering%gnn2unn( 1:nnodp, b ), &
+        array( start+1:start+nnodp ), INSERT_VALUES, ierr)
 #else
-      call VecSetValues(vec, insert_rows, &
-        petsc_numbering%gnn2unn( 1:insert_rows, b ), &
-        real(array( start+1:start+insert_rows ), kind = PetscScalar_kind), insert_action, ierr)
+      call VecSetValues(vec, nnodp, &
+        petsc_numbering%gnn2unn( 1:nnodp, b ), &
+        real(array( start+1:start+nnodp ), kind = PetscScalar_kind), INSERT_VALUES, ierr)
 #endif
         
       ! go to next field:
@@ -428,7 +418,7 @@ contains
   end subroutine Array2Petsc
   
   subroutine VectorFields2Petsc(fields, petsc_numbering, vec)
-  !!< Assembles contiguis petsc array using the specified numbering from the given fields.
+    !!< Assembles contiguous petsc array using the specified numbering from the given fields.
   !!< Allocates a petsc Vec that should be destroyed with VecDestroy
   type(vector_field), dimension(:), intent(in):: fields
   type(petsc_numbering_type), intent(in):: petsc_numbering
@@ -436,7 +426,6 @@ contains
   
     integer ierr, nnodp, b, nfields, nnodes
     integer i, j
-    integer :: insert_rows, insert_action
 
     ! number of nodes owned by this process:
     nnodp=petsc_numbering%nprivatenodes
@@ -449,21 +438,10 @@ contains
     assert( nfields==sum(fields%dim) )
     
     if (associated(petsc_numbering%halo)) then
-       select case(petsc_numbering%halo%data_type)
-       case (HALO_TYPE_CG_NODE)
-          insert_rows=nnodp
-          insert_action=INSERT_VALUES 
-       case (HALO_TYPE_DG_NODE) 
-          insert_rows=nnodes
-          insert_action=ADD_VALUES          
-          call VecZeroEntries(vec, ierr)
-       case default
+       if (.not. ((petsc_numbering%halo%data_type .eq. HALO_TYPE_CG_NODE) &
+            .or. (petsc_numbering%halo%data_type .eq. HALO_TYPE_DG_NODE))) then
           FLAbort("Matrices can only be assembled on the basis of node halos")
-       end select
-    else
-       ! Serial case
-       insert_rows=nnodp
-       insert_action=INSERT_VALUES 
+       end if
     end if
 
     b=1
@@ -471,13 +449,13 @@ contains
       
        do j=1, fields(i)%dim
 #ifdef DOUBLEP
-         call VecSetValues(vec, insert_rows, &
-            petsc_numbering%gnn2unn( 1:insert_rows, b ), &
-            fields(i)%val(j, 1:insert_rows ), insert_action, ierr)
+         call VecSetValues(vec, nnodp, &
+            petsc_numbering%gnn2unn( 1:nnodp, b ), &
+            fields(i)%val(j, 1:nnodp ), INSERT_VALUES, ierr)
 #else
-         call VecSetValues(vec, insert_rows, &
-            petsc_numbering%gnn2unn( 1:insert_rows, b ), &
-            real(fields(i)%val(j, 1:insert_rows ), kind = PetscScalar_kind), insert_action, ierr)
+         call VecSetValues(vec, nnodp, &
+            petsc_numbering%gnn2unn( 1:nnodp, b ), &
+            real(fields(i)%val(j, 1:nnodp ), kind = PetscScalar_kind), INSERT_VALUES, ierr)
 #endif
         b=b+1
         
@@ -491,7 +469,7 @@ contains
   end subroutine VectorFields2Petsc
   
   subroutine VectorField2Petsc(field, petsc_numbering, vec)
-  !!< Assembles contiguis petsc array using the specified numbering from the given field.
+    !!< Assembles contiguous petsc array using the specified numbering from the given field.
   type(vector_field), intent(in):: field
   type(petsc_numbering_type), intent(in):: petsc_numbering
   Vec, intent(out) :: vec
@@ -501,13 +479,12 @@ contains
   end subroutine VectorField2Petsc
   
   subroutine ScalarFields2Petsc(fields, petsc_numbering, vec)
-  !!< Assembles contiguis petsc array using the specified numbering from the given fields.
+    !!< Assembles contiguous petsc array using the specified numbering from the given fields.
   type(scalar_field), dimension(:), intent(in):: fields
   type(petsc_numbering_type), intent(in):: petsc_numbering
   Vec, intent(inout) :: vec
   
     integer ierr, nnodp, b, nfields, nnodes
-    integer :: insert_rows, insert_action
 
     ! number of nodes owned by this process:
     nnodp=petsc_numbering%nprivatenodes
@@ -520,33 +497,22 @@ contains
     assert(nfields==size(fields))
 
     if (associated(petsc_numbering%halo)) then
-       select case(petsc_numbering%halo%data_type)
-       case (HALO_TYPE_CG_NODE)
-          insert_rows=nnodp
-          insert_action=INSERT_VALUES 
-       case (HALO_TYPE_DG_NODE) 
-          insert_rows=nnodes
-          insert_action=ADD_VALUES          
-          call VecZeroEntries(vec, ierr)
-       case default
+       if (.not. ((petsc_numbering%halo%data_type .eq. HALO_TYPE_CG_NODE) &
+            .or. (petsc_numbering%halo%data_type .eq. HALO_TYPE_DG_NODE))) then
           FLAbort("Matrices can only be assembled on the basis of node halos")
-       end select
-    else
-       ! Serial case
-       insert_rows=nnodp
-       insert_action=INSERT_VALUES 
+       end if
     end if
 
     do b=1, nfields
       
 #ifdef DOUBLEP
-       call VecSetValues(vec, insert_rows, &
-            petsc_numbering%gnn2unn( 1:insert_rows, b ), &
-            fields(b)%val( 1:insert_rows ), insert_action, ierr)
+       call VecSetValues(vec, nnodp, &
+            petsc_numbering%gnn2unn( 1:nnodp, b ), &
+            fields(b)%val( 1:nnodp ), INSERT_VALUES, ierr)
 #else
-       call VecSetValues(vec, insert_rows, &
-            petsc_numbering%gnn2unn( 1:insert_rows, b ), &
-            real(fields(b)%val( 1:insert_rows ), kind = PetscScalar_kind), insert_action, ierr)
+       call VecSetValues(vec, nnodp, &
+            petsc_numbering%gnn2unn( 1:nnodp, b ), &
+            real(fields(b)%val( 1:nnodp ), kind = PetscScalar_kind), INSERT_VALUES, ierr)
 #endif
             
     end do
@@ -600,9 +566,10 @@ contains
     end if
 
     call VecSetOption(vec, VEC_IGNORE_NEGATIVE_INDICES, PETSC_TRUE, ierr)
+    call VecSetOption(vec, VEC_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE, ierr)
 
   end function PetscNumberingCreateVec
-
+  
   function petsc_numbering_create_is_dim(petsc_numbering, dim) result (index_set)
     IS:: index_set
     type(petsc_numbering_type), intent(in):: petsc_numbering
@@ -650,9 +617,12 @@ contains
 #ifdef DOUBLEP
     do b=1, nfields
       
+      ! this check should be unnecessary but is a work around for a bug in petsc, fixed in 18ae1927 (pops up with intel 15)
+      if (nnodp>0) then
       call VecGetValues(vec, nnodp, &
         petsc_numbering%gnn2unn( 1:nnodp, b ), &
         array( start+1:start+nnodp ), ierr)
+      end if
         
       ! go to next field:
       start=start+nnodes
@@ -668,10 +638,12 @@ contains
     allocate(vals(nnodp))
     do b=1, nfields
       
+      if (nnodp>0) then
       call VecGetValues(vec, nnodp, &
         petsc_numbering%gnn2unn( 1:nnodp, b ), &
         vals, ierr)
       array( start+1:start+nnodp ) = vals
+      end if
         
       ! go to next field:
       start=start+nnodes
@@ -715,9 +687,12 @@ contains
     do b=1, nfields
       
       call profiler_tic(fields(b), "petsc2field")
+      ! this check should be unnecessary but is a work around for a bug in petsc, fixed in 18ae1927 (pops up with intel 15)
+      if (nnodp>0) then
       call VecGetValues(vec, nnodp, &
         petsc_numbering%gnn2unn( 1:nnodp, b ), &
         fields(b)%val( 1:nnodp ), ierr)
+      end if
       call profiler_toc(fields(b), "petsc2field")
         
     end do
@@ -726,9 +701,11 @@ contains
     do b=1, nfields
       
       call profiler_tic(fields(b), "petsc2field")
+      if (nnodp>0) then
       call VecGetValues(vec, nnodp, &
         petsc_numbering%gnn2unn( 1:nnodp, b ), &
         vals, ierr)
+      end if
       fields(b)%val( 1:nnodp ) = vals
       call profiler_toc(fields(b), "petsc2field")
         
@@ -813,9 +790,12 @@ contains
       
       call profiler_tic(fields(i), "petsc2field")
       do j=1, fields(i)%dim
+         ! this check should be unnecessary but is a work around for a bug in petsc, fixed in 18ae1927 (pops up with intel 15)
+         if (nnodp>0) then
          call VecGetValues(vec, nnodp, &
            petsc_numbering%gnn2unn( 1:nnodp, b ), &
            fields(i)%val(j, 1:nnodp ), ierr)
+         end if
          b=b+1
       end do
       call profiler_toc(fields(i), "petsc2field")
@@ -828,9 +808,11 @@ contains
       
       call profiler_tic(fields(i), "petsc2field")
       do j=1, fields(i)%dim
+         if (nnodp>0) then
          call VecGetValues(vec, nnodp, &
            petsc_numbering%gnn2unn( 1:nnodp, b ), &
            vals, ierr)
+         end if
          fields(i)%val(j, 1:nnodp ) = vals
          b=b+1
       end do
@@ -868,7 +850,8 @@ contains
     
   end subroutine Petsc2VectorField
     
-  function csr2petsc(A, petsc_numbering, column_petsc_numbering, use_inodes) result(M)
+  function csr2petsc(A, petsc_numbering, column_petsc_numbering, &
+       use_inodes) result(M)
   !!< Converts a csr_matrix from Sparse_Tools into a PETSc matrix.
   !!< Note: this function creates a PETSc matrix, it has to be deallocated
   !!< with MatDestroy by the user.
@@ -890,13 +873,15 @@ contains
     block_matrix=wrap(A%sparsity, (/ 1, 1 /), A%val, name="TemporaryMatrix_csr2petsc")
     
     M=block_csr2petsc(block_matrix, petsc_numbering=petsc_numbering, &
-        column_petsc_numbering=column_petsc_numbering, use_inodes=use_inodes)
+        column_petsc_numbering=column_petsc_numbering, &
+        use_inodes=use_inodes)
         
     call deallocate(block_matrix)
     
   end function csr2petsc
   
-  function block_csr2petsc(A, petsc_numbering, column_petsc_numbering, use_inodes) result(M)
+  function block_csr2petsc(A, petsc_numbering, column_petsc_numbering, &
+       use_inodes) result(M)
   !!< Converts a block_csr_matrix from Sparse_Tools into a PETSc matrix.
   !!< Note: this function creates a PETSc matrix, it has to be deallocated
   !!< with MatDestroy by the user. 
@@ -923,7 +908,6 @@ contains
     integer nbrowsp, nbcolsp
     integer rows(1)
     integer len, bh, bv, i, g, row, ierr
-    integer :: loop_rows, insert_action
    
     if (present(petsc_numbering)) then
       row_numbering=petsc_numbering
@@ -1007,30 +991,20 @@ contains
       ! Create parallel matrix:
       M=csr2petsc_CreateMPIAIJ(A%sparsity, row_numbering, col_numbering, A%diagonal, use_inodes=use_inodes)
       
+      call MatSetOption(M, MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE, ierr)
     endif 
 
     allocate(colidx(1:nbcols))
     
     if (associated(row_numbering%halo)) then
-       select case(row_numbering%halo%data_type)
-       case (HALO_TYPE_CG_NODE)
-          loop_rows=nbrowsp
-          insert_action=INSERT_VALUES 
-       case (HALO_TYPE_DG_NODE) 
-          loop_rows=nbrows
-          insert_action=ADD_VALUES          
-          call MatZeroEntries(M, ierr)
-       case default
+       if (.not. ((row_numbering%halo%data_type .eq. HALO_TYPE_CG_NODE) &
+            .or. (row_numbering%halo%data_type .eq. HALO_TYPE_DG_NODE))) then
           FLAbort("Matrices can only be assembled on the basis of node halos")
-       end select
-    else
-       ! Serial case
-       loop_rows=nbrowsp
-       insert_action=INSERT_VALUES 
+       end if
     end if
 
     ! loop over rows within a block:
-    do i=1, loop_rows
+    do i=1, nbrowsp
       
       if (row2ghost(i)==0) then
          cols => row_m_ptr(A, i)
@@ -1051,10 +1025,10 @@ contains
                vals => row_val_ptr(A, bv, bh, i)
 #ifdef DOUBLEP
                call MatSetValues(M, 1, rows, len, colidx(1:len), vals, &
-                   insert_action, ierr)
+                   INSERT_VALUES, ierr)
 #else
                call MatSetValues(M, 1, rows, len, colidx(1:len), real(vals, kind = PetscScalar_kind), &
-                   insert_action, ierr)
+                   INSERT_VALUES, ierr)
 #endif
             end do
 
@@ -1067,9 +1041,9 @@ contains
          do bv=1, nblocksv
             row=row_numbering%ghost2unn(g, bv)
 #ifdef DOUBLEP
-            call MatSetValue(M, row, row, ghost_pivot, insert_action, ierr)
+            call MatSetValue(M, row, row, ghost_pivot, INSERT_VALUES, ierr)
 #else
-            call MatSetValue(M, row, row, real(ghost_pivot, kind = PetscScalar_kind), insert_action, ierr)
+            call MatSetValue(M, row, row, real(ghost_pivot, kind = PetscScalar_kind), INSERT_VALUES, ierr)
 #endif
          end do
           
@@ -1527,9 +1501,6 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
       do i=0, rows-1
         sparsity%findrm(i+1)=j
         call MatGetRow(matrix, offset+i, ncols, row_cols, row_vals, ierr)
-        ! This is stupid, we were given copies in MatGetRow so it could
-        ! have restored its internal tmp arrays straight away, anyway:
-        call MatRestoreRow(matrix, offset+i, ncols, row_cols, row_vals, ierr)
         do k=1, ncols
           if (row_cols(k)>=offset .and. row_cols(k)<offset+rows) then
             ! only local->local entries get inserted
@@ -1544,6 +1515,9 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
             j=j+1
           end if
         end do
+        ! This is stupid, we were given copies in MatGetRow so it could
+        ! have restored its internal tmp arrays straight away, anyway:
+        call MatRestoreRow(matrix, offset+i, ncols, row_cols, row_vals, ierr)
       end do
       A%sparsity%findrm(i+1)=j
 
@@ -1555,6 +1529,7 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
         sparsity%findrm(i+1)=j
 #ifdef DOUBLEP
         call MatGetRow(matrix, offset+i, ncols, sparsity%colm(j:), A%val(j:), ierr)
+        j=j+ncols
         ! This is stupid, we were given copies in MatGetRow so it could
         ! have restored its internal tmp arrays straight away, anyway:
         call MatRestoreRow(matrix, offset+i, ncols, sparsity%colm(j:), A%val(j:), ierr)
@@ -1562,12 +1537,12 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
         allocate(row_vals(size(A%val) - j + 1))
         call MatGetRow(matrix, offset+i, ncols, sparsity%colm(j:), row_vals, ierr)
         A%val(j:) = row_vals
+        j=j+ncols
         ! This is stupid, we were given copies in MatGetRow so it could
         ! have restored its internal tmp arrays straight away, anyway:
         call MatRestoreRow(matrix, offset+i, ncols, sparsity%colm(j:), row_vals, ierr)
         deallocate(row_vals)
 #endif
-        j=j+ncols
       end do
       A%sparsity%findrm(i+1)=j
       
@@ -1650,7 +1625,7 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
     PetscErrorCode :: ierr
     call PetscInitialize(PETSC_NULL_CHARACTER, ierr); CHKERRQ(ierr);
   end subroutine Initialize_Petsc
-
+  
 ! Simple dummy error handler that just tracks whether it's been called or not
 ! Useful for unittesting to see that petsc gives error messages at the right moment
 #if PETSC_VERSION_MINOR>=2
@@ -1736,6 +1711,24 @@ end subroutine petsc_test_error_handler
   end subroutine MatCreateMPIBAIJ
 #endif
 
+! this is a wrapper around KSPGetOperators, that in petsc <3.5
+! has an extra mat_structure flag. We need to wrap this because
+! we need a local variable.
+! in include/petsc_legacy.h we #define KSPGetOperators -> mykspgetoperators
+#if PETSC_VERSION_MINOR<5
+subroutine mykspgetoperators(ksp, amat, pmat, ierr)
+  KSP, intent(in):: ksp
+  Mat, intent(in):: amat, pmat
+  PetscErrorCode, intent(out):: ierr
+
+  MatStructure:: mat_structure
+  
+  ! need small caps, to avoid #define from include/petsc_legacy.h
+  call  kspgetoperators(ksp, amat, pmat, mat_structure, ierr)
+
+end subroutine mykspgetoperators
+#endif
+
 #include "Reference_count_petsc_numbering_type.F90"
 end module Petsc_Tools
 
@@ -1745,9 +1738,6 @@ end module Petsc_Tools
 ! this routine calls MatGetInfo with an implicit interface.
 subroutine myMatGetInfo(A, flag, info, ierr)
 #include "finclude/petsc.h"
-#if PETSC_VERSION_MINOR==0
-#include "finclude/petscmat.h"
-#endif
 Mat, intent(in):: A
 MatInfoType, intent(in):: flag
 double precision, dimension(:), intent(out):: info
@@ -1756,3 +1746,4 @@ PetscErrorCode, intent(out):: ierr
   call MatGetInfo(A, flag, info, ierr)
   
 end subroutine myMatGetInfo
+

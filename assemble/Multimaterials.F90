@@ -28,12 +28,12 @@
 
 module multimaterial_module
   !! This module contains the options and material properties used
-  !! when running FLUIDITY in the SOLIDITY mode
+  !! when running a multimaterial simulation.
   use fldebug
   use state_module
   use fields
   use spud
-  use fefields, only: compute_lumped_mass
+  use fefields, only: compute_cv_mass
   use global_parameters, only: OPTION_PATH_LEN
   use field_priority_lists
   use field_options
@@ -219,28 +219,32 @@ contains
     
     !locals
     type(scalar_field), pointer :: materialvolumefraction
-    integer :: i, stat, diagnostic_count
+    integer :: i, stat, diagnostic_count, diagnostic_state_index
     type(scalar_field) :: sumvolumefractions
     type(scalar_field), pointer :: sfield
     logical :: diagnostic
 
-    diagnostic_count = option_count("/material_phase/scalar_field::MaterialVolumeFraction/diagnostic")
+    ! How many diagnostic MaterialVolumeFraction fields do we have in state?
+    ! Note that state contains all the submaterials of the current phase, including the phase itself.
+    ! Therefore, if the only material is the phase itself, diagnostic_count should be 0. Otherwise,
+    ! it should be 1.
+    diagnostic_count = 0
+    do i = 1, size(state)
+       if(have_option(trim(state(i)%option_path)//"/scalar_field::MaterialVolumeFraction/diagnostic")) then
+          diagnostic_count = diagnostic_count + 1
+          ! Record the index of the state containing the diagnostic MaterialVolumeFraction field
+          diagnostic_state_index = i 
+       end if
+    end do
+
     if(diagnostic_count>1) then
       ewrite(0,*) diagnostic_count, ' diagnostic MaterialVolumeFractions'
       FLExit("Only one diagnostic MaterialVolumeFraction permitted.")
     end if
 
     if(diagnostic_count==1) then
-      ! find the diagnostic volume fraction
-      state_loop: do i = 1, size(state)
-        materialvolumefraction=>extract_scalar_field(state(i), 'MaterialVolumeFraction', stat)
-        if (stat==0) then
-          diagnostic = (have_option(trim(materialvolumefraction%option_path)//'/diagnostic'))
-          if((.not. aliased(materialvolumefraction)).and. diagnostic) then
-            exit state_loop
-          end if
-        end if
-      end do state_loop
+      ! Extract the diagnostic volume fraction
+      materialvolumefraction => extract_scalar_field(state(diagnostic_state_index), 'MaterialVolumeFraction')
       
       call allocate(sumvolumefractions, materialvolumefraction%mesh, 'Sum of volume fractions')
       call zero(sumvolumefractions)
@@ -304,23 +308,40 @@ contains
 
   end subroutine order_states_priority
 
-  subroutine calculate_bulk_scalar_property(state,bulkfield,materialname,momentum_diagnostic)
+  subroutine calculate_bulk_scalar_property(state,bulkfield,materialname,mean_type,momentum_diagnostic)
 
     type(state_type), dimension(:), intent(inout) :: state
     type(scalar_field), intent(inout) :: bulkfield
     character(len=*), intent(in) :: materialname
+    character(len=*), intent(in), optional :: mean_type
     logical, intent(in), optional ::momentum_diagnostic
 
     !locals
     integer :: i, stat
+    character(len=OPTION_PATH_LEN) :: l_mean_type
     type(scalar_field), pointer :: sfield
  
     integer, dimension(size(state)) :: state_order
     type(scalar_field) :: sumvolumefractionsbound
 
-    ewrite(1,*) 'In calculate_bulk_scalar_property'
+    ewrite(1,*) 'In calculate_bulk_scalar_property:', trim(bulkfield%name)
 
-    call zero(bulkfield)
+    if (present(mean_type)) then
+      l_mean_type = mean_type
+    else
+      l_mean_type = "arithmetic"
+    end if
+
+    select case(l_mean_type)
+      case("arithmetic")
+        call zero(bulkfield)
+      case("harmonic")
+        call zero(bulkfield)
+      case("geometric")
+        call set(bulkfield, 1.0)
+      case default
+        FLExit("Invalid mean_type in calculate_bulk_property")
+    end select
 
     call order_states_priority(state, state_order)
 
@@ -334,33 +355,57 @@ contains
       if(stat==0) then
         call add_scaled_material_property(state(state_order(i)), bulkfield, sfield, &
                                           sumvolumefractionsbound=sumvolumefractionsbound, &
-                                          momentum_diagnostic=momentum_diagnostic)
+                                          mean_type=l_mean_type, momentum_diagnostic=momentum_diagnostic)
       end if
 
     end do
+
+    select case(l_mean_type)
+      case("harmonic")
+        call invert(bulkfield, tolerance=tiny(0.0))
+    end select
     
     call deallocate(sumvolumefractionsbound)
     
   end subroutine calculate_bulk_scalar_property
 
-  subroutine calculate_bulk_vector_property(state,bulkfield,materialname,momentum_diagnostic)
+  subroutine calculate_bulk_vector_property(state,bulkfield,materialname,mean_type,momentum_diagnostic)
 
     type(state_type), dimension(:), intent(inout) :: state
     type(vector_field), intent(inout) :: bulkfield
     character(len=*), intent(in) :: materialname
+    character(len=*), intent(in), optional :: mean_type
     logical, intent(in), optional :: momentum_diagnostic
 
     !locals
     integer :: i, stat
+    character(len=OPTION_PATH_LEN) :: l_mean_type
     type(vector_field), pointer :: vfield
  
     integer, dimension(size(state)) :: state_order
     type(scalar_field) :: sumvolumefractionsbound
 
-    ewrite(1,*) 'In calculate_bulk_vector_property'
+    ewrite(1,*) 'In calculate_bulk_vector_property:', trim(bulkfield%name)
 
-    call zero(bulkfield)
-    
+    if (present(mean_type)) then
+      l_mean_type = mean_type
+    else
+      l_mean_type = "arithmetic"
+    end if
+
+    select case(l_mean_type)
+      case("arithmetic")
+        call zero(bulkfield)
+      case("harmonic")
+        call zero(bulkfield)
+      case("geometric")
+        do i = 1, bulkfield%dim
+          call set(bulkfield, i, 1.0)
+        end do
+      case default
+        FLExit("Invalid mean_type in calculate_bulk_property")
+    end select
+
     call order_states_priority(state, state_order)
     
     call allocate(sumvolumefractionsbound, bulkfield%mesh, "SumMaterialVolumeFractionsBound")
@@ -373,33 +418,59 @@ contains
       if(stat==0) then
         call add_scaled_material_property(state(state_order(i)), bulkfield, vfield, &
                                           sumvolumefractionsbound=sumvolumefractionsbound, &
-                                          momentum_diagnostic=momentum_diagnostic)
+                                          mean_type=l_mean_type, momentum_diagnostic=momentum_diagnostic)
       end if
 
     end do
+    
+    select case(l_mean_type)
+      case("harmonic")
+        call invert(bulkfield, tolerance=tiny(0.0))
+    end select
     
     call deallocate(sumvolumefractionsbound)
 
   end subroutine calculate_bulk_vector_property
 
-  subroutine calculate_bulk_tensor_property(state,bulkfield,materialname,momentum_diagnostic)
+  subroutine calculate_bulk_tensor_property(state,bulkfield,materialname,mean_type,momentum_diagnostic)
 
     type(state_type), dimension(:), intent(inout) :: state
     type(tensor_field), intent(inout) :: bulkfield
     character(len=*), intent(in) :: materialname
+    character(len=*), intent(in), optional :: mean_type
     logical, intent(in), optional :: momentum_diagnostic
 
     !locals
-    integer :: i, stat
+    integer :: i, j, stat
+    character(len=OPTION_PATH_LEN) :: l_mean_type
     type(tensor_field), pointer :: tfield
  
     integer, dimension(size(state)) :: state_order
     type(scalar_field) :: sumvolumefractionsbound
 
-    ewrite(1,*) 'In calculate_bulk_tensor_property'
+    ewrite(1,*) 'In calculate_bulk_tensor_property:', trim(bulkfield%name)
 
-    call zero(bulkfield)
-    
+    if (present(mean_type)) then
+      l_mean_type = mean_type
+    else
+      l_mean_type = "arithmetic"
+    end if
+
+    select case(l_mean_type)
+      case("arithmetic")
+        call zero(bulkfield)
+      case("harmonic")
+        call zero(bulkfield)
+      case("geometric")
+        do i = 1, bulkfield%dim(1)
+          do j = 1, bulkfield%dim(2)
+            call set(bulkfield, i, j, 1.0)
+          end do
+        end do
+      case default
+        FLExit("Invalid mean_type in calculate_bulk_property")
+    end select
+
     call order_states_priority(state, state_order)
     
     call allocate(sumvolumefractionsbound, bulkfield%mesh, "SumMaterialVolumeFractionsBound")
@@ -412,11 +483,16 @@ contains
       if(stat==0) then
         call add_scaled_material_property(state(state_order(i)), bulkfield, tfield, &
                                           sumvolumefractionsbound=sumvolumefractionsbound, &
-                                          momentum_diagnostic=momentum_diagnostic)
+                                          mean_type=l_mean_type, momentum_diagnostic=momentum_diagnostic)
       end if
     
     end do
 
+    select case(l_mean_type)
+      case("harmonic")
+        call invert(bulkfield, tolerance=tiny(0.0))
+    end select
+    
     call deallocate(sumvolumefractionsbound)
     
   end subroutine calculate_bulk_tensor_property
@@ -448,7 +524,7 @@ contains
         call get_option(trim(velocity%option_path)//'/prognostic/temporal_discretisation/theta', &
                         theta, stat)
         if(stat==0) then
-          call allocate(remapvfrac, scaledvfrac%mesh, "RemppedMaterialVolumeFraction")
+          call allocate(remapvfrac, scaledvfrac%mesh, "RemappedMaterialVolumeFraction")
           
           oldvolumefraction => extract_scalar_field(state, 'OldMaterialVolumeFraction')
           call remap_field(oldvolumefraction, remapvfrac)
@@ -487,17 +563,25 @@ contains
  
   end subroutine get_scalable_volume_fraction
 
-  subroutine add_scaled_material_property_scalar(state,bulkfield,field,sumvolumefractionsbound,momentum_diagnostic)
+  subroutine add_scaled_material_property_scalar(state,bulkfield,field,sumvolumefractionsbound,mean_type,momentum_diagnostic)
 
     type(state_type), intent(inout) :: state
     type(scalar_field), intent(inout) :: bulkfield, field
     type(scalar_field), intent(inout), optional :: sumvolumefractionsbound
     logical, intent(in), optional :: momentum_diagnostic
+    character(len=*), intent(in), optional :: mean_type
 
     !locals
+    character(len=OPTION_PATH_LEN) :: l_mean_type
     type(scalar_field) :: scaledvfrac
     type(scalar_field) :: tempfield
     
+    if (present(mean_type)) then
+      l_mean_type = mean_type
+    else
+      l_mean_type = "arithmetic"
+    end if
+
     call allocate(tempfield, bulkfield%mesh, "Temp"//trim(bulkfield%name))
     call allocate(scaledvfrac, bulkfield%mesh, "ScaledMaterialVolumeFraction")
 
@@ -506,24 +590,44 @@ contains
                                       momentum_diagnostic=momentum_diagnostic)
 
     call remap_field(field, tempfield)
-    call scale(tempfield, scaledvfrac)
-    call addto(bulkfield, tempfield)
+    select case(l_mean_type)
+      case("arithmetic")
+        call scale(tempfield, scaledvfrac)
+        call addto(bulkfield, tempfield)
+      case("harmonic")
+        call invert(tempfield, tolerance=tiny(0.0))
+        call scale(tempfield, scaledvfrac)
+        call addto(bulkfield, tempfield)
+      case("geometric")
+        call power(tempfield, scaledvfrac)
+        call scale(bulkfield, tempfield)
+      case default
+        FLExit("Invalid mean_type in add_scaled_material_property")
+    end select
 
     call deallocate(tempfield)
     call deallocate(scaledvfrac)
 
   end subroutine add_scaled_material_property_scalar
 
-  subroutine add_scaled_material_property_vector(state,bulkfield,field,sumvolumefractionsbound,momentum_diagnostic)
+  subroutine add_scaled_material_property_vector(state,bulkfield,field,sumvolumefractionsbound,mean_type,momentum_diagnostic)
 
     type(state_type), intent(inout) :: state
     type(vector_field), intent(inout) :: bulkfield, field
     type(scalar_field), intent(inout), optional :: sumvolumefractionsbound
     logical, intent(in), optional :: momentum_diagnostic
+    character(len=*), intent(in), optional :: mean_type
 
     !locals
+    character(len=OPTION_PATH_LEN) :: l_mean_type
     type(scalar_field) :: scaledvfrac
     type(vector_field) :: tempfield
+
+    if (present(mean_type)) then
+      l_mean_type = mean_type
+    else
+      l_mean_type = "arithmetic"
+    end if
 
     call allocate(tempfield, bulkfield%dim, bulkfield%mesh, "Temp"//trim(bulkfield%name))
     call allocate(scaledvfrac, bulkfield%mesh, "ScaledMaterialVolumeFraction")
@@ -533,24 +637,44 @@ contains
                                       momentum_diagnostic=momentum_diagnostic)
           
     call remap_field(field, tempfield)
-    call scale(tempfield, scaledvfrac)
-    call addto(bulkfield, tempfield)
+    select case(l_mean_type)
+      case("arithmetic")
+        call scale(tempfield, scaledvfrac)
+        call addto(bulkfield, tempfield)
+      case("harmonic")
+        call invert(tempfield, tolerance=tiny(0.0))
+        call scale(tempfield, scaledvfrac)
+        call addto(bulkfield, tempfield)
+      case("geometric")
+        call power(tempfield, scaledvfrac)
+        call scale(bulkfield, tempfield)
+      case default
+        FLExit("Invalid mean_type in add_scaled_material_property")
+    end select
           
     call deallocate(tempfield)
     call deallocate(scaledvfrac)
 
   end subroutine add_scaled_material_property_vector
 
-  subroutine add_scaled_material_property_tensor(state,bulkfield,field,sumvolumefractionsbound,momentum_diagnostic)
+  subroutine add_scaled_material_property_tensor(state,bulkfield,field,sumvolumefractionsbound,mean_type,momentum_diagnostic)
 
     type(state_type), intent(inout) :: state
     type(tensor_field), intent(inout) :: bulkfield, field
     type(scalar_field), intent(inout), optional :: sumvolumefractionsbound
     logical, intent(in), optional :: momentum_diagnostic
+    character(len=*), intent(in), optional :: mean_type
 
     !locals
+    character(len=OPTION_PATH_LEN) :: l_mean_type
     type(scalar_field) :: scaledvfrac
     type(tensor_field) :: tempfield
+
+    if (present(mean_type)) then
+      l_mean_type = mean_type
+    else
+      l_mean_type = "arithmetic"
+    end if
 
     call allocate(tempfield, bulkfield%mesh, "Temp"//trim(bulkfield%name))
     call allocate(scaledvfrac, bulkfield%mesh, "ScaledMaterialVolumeFraction")
@@ -560,8 +684,20 @@ contains
                                       momentum_diagnostic=momentum_diagnostic)
     
     call remap_field(field, tempfield)
-    call scale(tempfield, scaledvfrac)
-    call addto(bulkfield, tempfield)
+    select case(l_mean_type)
+      case("arithmetic")
+        call scale(tempfield, scaledvfrac)
+        call addto(bulkfield, tempfield)
+      case("harmonic")
+        call invert(tempfield, tolerance=tiny(0.0))
+        call scale(tempfield, scaledvfrac)
+        call addto(bulkfield, tempfield)
+      case("geometric")
+        call power(tempfield, scaledvfrac)
+        call scale(bulkfield, tempfield)
+      case default
+        FLExit("Invalid mean_type in add_scaled_material_property")
+    end select
           
     call deallocate(tempfield)
     call deallocate(scaledvfrac)
@@ -574,22 +710,22 @@ contains
     type(scalar_field), intent(inout) :: materialvolume
   
     ! local
-    type(scalar_field) :: lumpedmass
+    type(scalar_field) :: cvmass
     type(scalar_field), pointer :: volumefraction
     type(vector_field), pointer :: coordinates
   
     coordinates=>extract_vector_field(state, "Coordinate")
   
-    call allocate(lumpedmass, materialvolume%mesh, "Lumped mass")
-    call zero(lumpedmass)
+    call allocate(cvmass, materialvolume%mesh, "CV mass")
+    call zero(cvmass)
   
-    call compute_lumped_mass(coordinates, lumpedmass)
+    call compute_cv_mass(coordinates, cvmass)
   
     volumefraction=>extract_scalar_field(state,"MaterialVolumeFraction")
   
-    materialvolume%val=volumefraction%val*lumpedmass%val
+    materialvolume%val=volumefraction%val*cvmass%val
   
-    call deallocate(lumpedmass)
+    call deallocate(cvmass)
 
   end subroutine calculate_material_volume
 
@@ -600,21 +736,21 @@ contains
   
     ! local
     integer :: stat
-    type(scalar_field) :: lumpedmass
+    type(scalar_field) :: cvmass
     type(scalar_field), pointer :: volumefraction, materialdensity
     type(vector_field), pointer :: coordinates
     real :: rho_0
   
     coordinates=>extract_vector_field(state, "Coordinate")
   
-    call allocate(lumpedmass, materialmass%mesh, "Lumped mass")
-    call zero(lumpedmass)
+    call allocate(cvmass, materialmass%mesh, "CV mass")
+    call zero(cvmass)
   
-    call compute_lumped_mass(coordinates, lumpedmass)
+    call compute_cv_mass(coordinates, cvmass)
 
     volumefraction=>extract_scalar_field(state,"MaterialVolumeFraction")
     call set(materialmass, volumefraction)
-    call scale(materialmass, lumpedmass)
+    call scale(materialmass, cvmass)
   
     materialdensity=>extract_scalar_field(state,"MaterialDensity", stat=stat)
     if(stat==0) then
@@ -625,7 +761,7 @@ contains
       call scale(materialmass, rho_0)
     end if
   
-    call deallocate(lumpedmass)
+    call deallocate(cvmass)
 
   end subroutine calculate_material_mass
 

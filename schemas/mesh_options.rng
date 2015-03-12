@@ -30,6 +30,16 @@ surface or region IDs.</a:documentation>
             </attribute>
             <ref name="comment"/>
           </element>
+          <element name="format">
+            <a:documentation>ExodusII mesh format.
+
+&lt;b&gt;Note: Only works for serial mesh files and 
+Checkpoints are dumped in the GMSH file format.&lt;/b&gt;</a:documentation>
+            <attribute name="name">
+              <value>exodusii</value>
+            </attribute>
+            <ref name="comment"/>
+          </element>
         </choice>
         <attribute name="file_name">
           <data type="string"/>
@@ -87,6 +97,26 @@ enforcing continuity by Lagrange multipliers).</a:documentation>
             </element>
           </element>
         </optional>
+        <optional>
+          <element name="constraint_type">
+            <element name="string_value">
+              <a:documentation>Set the constraint type. This is used to implement
+div-conforming elements such as RT0 in a hybridised
+solver.</a:documentation>
+              <choice>
+                <value>BDM</value>
+                <value>BDFM</value>
+                <value>RT</value>
+              </choice>
+            </element>
+            <element name="solver">
+              <ref name="linear_solver_options_sym">
+                <a:documentation>Solver is used to apply projections to div-conforming
+space, and in elliptic solvers</a:documentation>
+              </ref>
+            </element>
+          </element>
+        </optional>
         <zeroOrMore>
           <element name="periodic_boundary_conditions">
             <a:documentation>Make mesh periodic</a:documentation>
@@ -107,7 +137,14 @@ boundary node and returns the coordinate of a physical
 boundary node.
 Note that in adaptive simulations this will be applied to
 arbitrary points in space, not just those on the original aliased
-boundary.</a:documentation>
+boundary.
+Python function prescribing real input. Functions should be of the form:
+
+ def val(X, t):
+    # Function code
+    return # Return value
+
+where X is a tuple of length geometry dimension and t is time</a:documentation>
               <ref name="python_code"/>
             </element>
             <optional>
@@ -116,7 +153,14 @@ boundary.</a:documentation>
 boundary node and returns the coordinate of an aliased
 boundary node. This is used in adaptive simulations to
 keep the adapted domain inside the bounding box of the
-original domain.</a:documentation>
+original domain.
+Python function prescribing real input. Functions should be of the form:
+
+ def val(X, t):
+    # Function code
+    return # Return value
+
+where X is a tuple of length geometry dimension and t is time</a:documentation>
                 <ref name="python_code"/>
               </element>
             </optional>

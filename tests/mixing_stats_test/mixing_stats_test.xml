@@ -1,21 +1,26 @@
 <?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE testproblem SYSTEM "regressiontest.dtd">
 
 <testproblem>
 
   <name>Control volume, multi-material flow test for testing mixing stats</name>
   
-  <owner userid="hhiester"/>
+  <owner userid="piggt01"/>
   
   <tags>flml parallel</tags>
   
-    <problem_definition length="medium" nprocs="1">
-    <command_line>fluidity -v3 -l mixing_stats_test_serial.flml;
-                  mpiexec -n 3 ../../bin/fluidity -v3 -l mixing_stats_test_parallel.flml;
+    <problem_definition length="medium" nprocs="3">
+      <command_line>mpiexec ../../bin/flredecomp -i 1 -o 3 -v -l mixing_stats_test_parallel mixing_stats_test_parallel_flredecomp &amp;&amp;
+        fluidity -v3 -l mixing_stats_test_serial.flml;
+                  mpiexec ../../bin/fluidity -v3 -l mixing_stats_test_parallel_flredecomp.flml;
      </command_line>
   </problem_definition> 
    
   <variables>  
+    <variable name="solvers_converged" language="python">
+import os
+files = os.listdir("./")
+solvers_converged = not "matrixdump" in files and not "matrixdump.info" in files
+    </variable>
   
     <variable name = "matvolume_serial" language = "python">
 import vtktools
@@ -41,7 +46,7 @@ filename_ids = ['1','4','7']
 # 7 is after adapt
 for i in range(len(filenames)):
   print 'pvtu2vtu'
-  os.system('../../scripts/pvtu2vtu '+filename_base+' '+filename_ids[i])
+  os.system('../../bin/pvtu2vtu '+filename_base+' '+filename_ids[i])
   # take pvtus -> vtus as otherwise will count multiple nodes in halo regions more than once and make the sum used below incorrect
   matvolume_parallel[0].append(sum(vtktools.vtu(filenames[i]).GetScalarField("Material1::MaterialVolume"))) 
   matvolume_parallel[1].append(sum(vtktools.vtu(filenames[i]).GetScalarField("Material2::MaterialVolume")))  
@@ -146,6 +151,9 @@ for i in range(len(stat['Material2']['MaterialVolumeFraction']['mixing_bins%cv']
   </variables>
   
     <pass_tests>  
+      <test name="Solvers converged" language="python">
+        assert(solvers_converged)
+      </test>
     
     <test name = "check serial and parallel volumes are same in vtus/pvtus" language = "python">
 material = ['mat1', 'mat2']

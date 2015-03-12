@@ -110,7 +110,7 @@ module geostrophic_pressure
     !! Mass option path
     character(len = OPTION_PATH_LEN) :: mass_option_path
     !! Divergence matrix
-    type(block_csr_matrix) :: ct_m
+    type(block_csr_matrix), pointer :: ct_m
     !! RHS terms from integrating the divergence operator by parts
     type(scalar_field) :: ct_rhs
     !! Mass matrix. Only used when not lumping mass for continuous u_mesh.
@@ -785,6 +785,7 @@ contains
     ewrite(2, *) "Boundary conditions field: ", trim(lbcfield%name)
     
     ct_sparsity => get_csr_sparsity_firstorder(state, matrices%p_mesh, matrices%u_mesh)
+    allocate(matrices%ct_m)
     call allocate(matrices%ct_m, ct_sparsity, blocks = (/1, dim/), name = "CT")
     call allocate(matrices%ct_rhs, matrices%p_mesh, "CTRHS")
     
@@ -1197,6 +1198,7 @@ contains
       end select
     end if
     call deallocate(matrices%ct_m)
+    deallocate(matrices%ct_m)
     call deallocate(matrices%ct_rhs)
     
     if(matrices%have_cmc_m) then
@@ -1434,7 +1436,7 @@ contains
     !!< Compute the divergence of a field
   
     type(vector_field), intent(in) :: field
-    type(block_csr_matrix), intent(in) :: ct_m
+    type(block_csr_matrix), pointer :: ct_m
     type(csr_matrix), intent(in) :: mass
     type(scalar_field), intent(inout) :: div
     
@@ -1822,7 +1824,7 @@ contains
 
       if(lump_rhs) then
         little_lumped_l = sum(shape_shape(shape, shape, detwei * two_omega(ele_val_at_quad(positions, ele))), 2)
-        assert(any(size(little_rhs, 1) == (/2, 3/)))
+        assert(any(size(little_rhs, 2) == (/2, 3/)))
         little_rhs(:, U_) = -little_lumped_l * ele_val(velocity, V_, ele)
         little_rhs(:, V_) = little_lumped_l * ele_val(velocity, U_, ele)
         if(size(little_rhs, 2) == 3) little_rhs(:, W_) = 0.0
@@ -3129,8 +3131,8 @@ contains
     end if
     
     do i = 0, option_count("/material_phase") - 1
-      if(have_option("/material_phase/scalar_field::" // hp_name) .and. &
-        & have_option("/material_phase/vector_field::" // hpg_name)) then
+      if(have_option("/material_phase["//int2str(i)//"]/scalar_field::" // hp_name) .and. &
+        & have_option("/material_phase["//int2str(i)//"/vector_field::" // hpg_name)) then
         FLExit("Cannot use both HydrostaticPressure and HydrostaticPressureGradient")
       end if
     end do

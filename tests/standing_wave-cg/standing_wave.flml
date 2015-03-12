@@ -110,6 +110,7 @@
           <real_value shape="3" dim1="dim" rank="1">5e5 5e4 990</real_value>
         </location>
       </static_detector>
+      <fail_outside_domain/>
     </detectors>
   </io>
   <timestepping>
@@ -195,7 +196,7 @@
         </solver>
         <initial_condition name="WholeMesh">
           <python>
-            <string_value lines="20" type="python">def val(X,t):
+            <string_value lines="20" type="code" language="python">def val(X,t):
   import math
   length=1.0e+6
   g=10.0

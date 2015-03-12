@@ -33,10 +33,13 @@ PACKAGE_NAME = fluidity
 
 FLUIDITY = $(PACKAGE_NAME)
 
+PACKAGE_NAME = @PACKAGE_NAME@
+FLUIDITY = $(PACKAGE_NAME)
+
 FC      = @FC@
 FCFLAGS = -I../include @MOD_FLAG@../include @FCFLAGS@
 
-UTFC    = ../scripts/unittest_f90
+UTFC    = ../bin/unittest_f90
 
 CC      = @CC@
 CFLAGS  = @CFLAGS@
@@ -66,7 +69,7 @@ OBJS = Extrude.o Extrude_radially.o Advancing_front.o Metric_based_extrude.o Com
 
 $(LIB): $(OBJS)
 	@mkdir -p ../lib
-	@$(AR) $(ARFLAGS) $(LIB) $(OBJS)
+
 default: $(LIB)
 
 clean:

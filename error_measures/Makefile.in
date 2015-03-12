@@ -25,13 +25,14 @@
 #    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 #    USA
 SHELL = @SHELL@
-PACKAGE_NAME = fluidity
 
+PACKAGE_NAME = @PACKAGE_NAME@
 FLUIDITY = $(PACKAGE_NAME)
+
 FC      = @FC@
 FCFLAGS = -I../include @MOD_FLAG@../include @FCFLAGS@
 
-UTFC    = ../scripts/unittest_f90
+UTFC    = ../bin/unittest_f90
 
 CC      = @CC@
 CFLAGS  = @CFLAGS@
@@ -67,7 +68,7 @@ OBJS = Form_metric.o Assemble_metric.o Interpolation_metric.o Edge_lengths.o \
 
 $(LIB): $(OBJS)
 	@mkdir -p ../lib
-	@$(AR) $(ARFLAGS) $(LIB) $(OBJS)
+
 default: $(LIB)
 
 clean:

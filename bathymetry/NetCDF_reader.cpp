@@ -21,7 +21,7 @@
 using namespace std;
 
 NetCDF_reader::NetCDF_reader(const char *filename, bool _verbose){
-#ifdef HAVE_NETCDF
+#ifdef HAVE_LIBNETCDF
   verbose = _verbose;
  
   if(verbose)
@@ -148,7 +148,8 @@ NetCDF_reader::NetCDF_reader(const char *filename, bool _verbose){
     dimension[1] = y;
     xysize = x*y;
     NetCDFErrorCheckingOn();
-  }else{
+  }else if(data_source==gebco){
+    cout<<"in else"<<endl;
     int varid = ncdimid(ncid, "xysize");
     if(ncerr!=NC_NOERR){
       cout.flush();
@@ -184,6 +185,33 @@ NetCDF_reader::NetCDF_reader(const char *filename, bool _verbose){
     }
     if(verbose) 
       cout<<"dimension = "<<dimension[0]<<", "<<dimension[1]<<endl;    
+  }else{
+    // This bit could, at the moment, be lumped in the coards stuff, but we may want 
+    // to create a 'fluidity reader' format so I'll keep it separate for now.
+    cout << "Warning: File convention is unknown, trying 'x,y,z(y,x)' format." << endl;
+    int id = ncdimid(ncid, "x");
+    if(ncerr!=NC_NOERR){
+      cout.flush();
+      cerr<<__FILE__<<", "<<__LINE__<<": ERROR - dimension variable x does not exist\n";
+      exit(-1);
+    }
+    long x;
+    ncdiminq(ncid, id, (char *)0, &x);
+    
+    id = ncdimid(ncid, "y");
+    if(ncerr!=NC_NOERR){
+      cout.flush();
+      cerr<<__FILE__<<", "<<__LINE__<<": ERROR - dimension variable y does not exist\n";
+      exit(-1);
+    }
+    long y;
+    ncdiminq(ncid, id, (char *)0, &y);
+    
+    dimension[0] = x;
+    dimension[1] = y;
+    xysize = x*y;
+    if(verbose) 
+      cout<<"dimension = "<<dimension[0]<<", "<<dimension[1]<<endl;
   }
   
   if(verbose)
@@ -286,7 +314,7 @@ NetCDF_reader::NetCDF_reader(const char *filename, bool _verbose){
       exit(-1);
     }
     NetCDFErrorCheckingOn();
-  }else{    
+  }else if(data_source==gebco){    
     // -
         long side;
         int varid = ncdimid(ncid, "side");
@@ -335,10 +363,89 @@ NetCDF_reader::NetCDF_reader(const char *filename, bool _verbose){
     }
     if(verbose)
       cout<<"y_range = "<<y_range[0]<<", "<<y_range[1]<<endl;
+  }else{
+    std::vector<double> x, y;    
+    {
+      // x variable
+      nc_type xtypep;                 /* variable type */
+      int ndims;                      /* number of dims */
+      int dims[MAX_VAR_DIMS];         /* variable shape */
+      
+      int varid = ncvarid(ncid, "x");
+      if(ncerr!=NC_NOERR){
+        cout.flush();
+        cerr<<__FILE__<<", "<<__LINE__<<": ERROR - variable x does not exist.\n";
+        exit(-1);
+      }
+      ncvarinq(ncid, varid, 0, &xtypep, &ndims, dims, NULL);
+    
+      long start[]={0}, count[1];
+      count[0] = dimension[0];
+
+      long len = dimension[0];
+      x.resize(len);
+      if(xtypep==NC_FLOAT){ // single precision floating point number
+        vector<float> fvar(len);
+        ncvarget(ncid, varid, start, count, &(fvar[0]));
+        for(long i=0;i<len;i++)
+          x[i] = fvar[i];
+        fvar.clear();
+      }else if(xtypep==NC_DOUBLE){ // double precision floating point number
+        ncvarget(ncid, varid, start, count, &(x[0]));
+      }else{
+        cerr<<"ERROR: unknown data type\n";
+        exit (-1);
+      }
+    }
+
+    {
+      // y variable
+      nc_type ytypep;                 /* variable type */
+      int ndims;                      /* number of dims */
+      int dims[MAX_VAR_DIMS];         /* variable shape */      
+      
+      int varid = ncvarid(ncid, "y");
+      if(ncerr!=NC_NOERR){
+        cout.flush();
+        cerr<<__FILE__<<", "<<__LINE__<<": ERROR - variable y does not exist.\n";
+        exit(-1);
+      }
+      ncvarinq(ncid, varid, 0, &ytypep, &ndims, dims, NULL);
+    
+      long start[]={0}, count[1];
+      count[0] = dimension[1];
+
+      long len = dimension[1];
+      y.resize(len);
+      if(ytypep==NC_FLOAT){ // single precision floating point number
+        vector<float> fvar(len);
+        ncvarget(ncid, varid, start, count, &(fvar[0]));
+        for(long i=0;i<len;i++)
+          y[i] = fvar[i];
+        fvar.clear();
+      }else if(ytypep==NC_DOUBLE){ // double precision floating point number
+        ncvarget(ncid, varid, start, count, &(y[0]));
+      }else{
+        cerr<<"ERROR: unknown data type\n";
+        exit (-1);
+      }
+    }
+    x_range[0] = x[0];
+    x_range[1] = x[dimension[0]-1];
+    
+    y_range[0] = y[0];
+    y_range[1] = y[dimension[1]-1];
+    
+    // If we've got to here, the data should hopefully be in CF-1.0 format but is missing
+    // some descriptors.
+    data_source=coards_cf10;
+
   }
 
   spacing[0] = (x_range[1] - x_range[0])/(dimension[0]-1);
   spacing[1] = (y_range[1] - y_range[0])/(dimension[1]-1);
+  
+  cout << "spacing" << '\t' << spacing[0] << '\t' << spacing[1] << endl;
   
   return;
 #else
@@ -348,7 +455,7 @@ NetCDF_reader::NetCDF_reader(const char *filename, bool _verbose){
 }
 
 NetCDF_reader::~NetCDF_reader(){
-#ifdef HAVE_NETCDF
+#ifdef HAVE_LIBNETCDF
   // Close the netCDF file.
   ncclose(ncid);
 #else
@@ -388,7 +495,7 @@ bool NetCDF_reader::IsColatitude() const{
 }
 
 int NetCDF_reader::Read(vector<double> &z) const{
-#ifdef HAVE_NETCDF
+#ifdef HAVE_LIBNETCDF
   if(verbose)
     cout<<"int NetCDF_reader::Read(vector<double> &z) const\n";
 
@@ -396,9 +503,12 @@ int NetCDF_reader::Read(vector<double> &z) const{
   if((data_source==coards)||(data_source==coards_cf10)){
     count[0] = dimension[1];
     count[1] = dimension[0];
-  }else{
+  }else if(data_source==gebco){
     count[0] = xysize;
     count[1] = 0;
+  }else{
+    cerr<<"ERROR: unknown file convention\n";
+    exit (-1);
   }
 
   nc_type xtypep;                 /* variable type */
@@ -450,7 +560,7 @@ int NetCDF_reader::Read(vector<double> &z) const{
 }
 
 void NetCDF_reader::NetCDFErrorCheckingOff(){
-#ifdef HAVE_NETCDF
+#ifdef HAVE_LIBNETCDF
   ncopts = 0;
 #else
   cerr << "No NetCDF support" << endl;
@@ -459,7 +569,7 @@ void NetCDF_reader::NetCDFErrorCheckingOff(){
 }
 
 void NetCDF_reader::NetCDFErrorCheckingOn(){
-#ifdef HAVE_NETCDF
+#ifdef HAVE_LIBNETCDF
   // Make NetCDF errors verbose and fatal
   ncopts = NC_VERBOSE | NC_FATAL;
 #else
