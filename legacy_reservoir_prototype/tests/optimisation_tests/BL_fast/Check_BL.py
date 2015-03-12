@@ -31,7 +31,7 @@ os.system(binpath + ' ' + path + '/*mpml')
 Tolerance_L1_NORM = 0.019
 Tolerance_L2_NORM = 0.0014
 
-AutomaticLine = 1
+AutomaticLine = 0
 
 
 AutomaticFile = 'QuickTest_DG'
@@ -44,10 +44,10 @@ showPlot = False
 data_name = 'phase1::PhaseVolumeFraction'
 
 #Initial and last coordinate of the probe
-x0 = 0.0
-x1 = 1.0
+x0 = -0.5
+x1 = 0.5
 
-y0 = 0.033333333333333333 # 1.0/float(NUMBER)
+y0 = 0.0 # 1.0/float(NUMBER)
 y1 = y0 #<==Temporary, it can handle different values
 
 z0 = 0.0
@@ -195,7 +195,7 @@ for i in range(len(Experimental_X)):
         L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i])
         L2_sum = L2_sum + (Analytical_Y[i] - Experimental_Y[i])**2
         continue
-    
+    Experimental_X[i] = Experimental_X[i] + 0.5#In this test case the origin is in -0.5
     position = Experimental_X[i]
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
@@ -232,7 +232,7 @@ if (showPlot):
     x = []
     y = []
     for i in range(len(detector)):
-        x.append(float(detector[i][0]))
+        x.append(float(detector[i][0])+0.5)#In this test case the origin is in -0.5
         y.append(float(FS[i][0]))
     line = plt.Line2D(x, y, color='red', linewidth=2)
     #line.text.set_color('red')
