@@ -547,7 +547,8 @@ contains
       type( scalar_field ), pointer :: sfield
 
       !Variables for Capillary pressure
-      logical :: capillary_pressure_activated, between_elements, on_domain_boundary, Pc_imbibition
+      logical :: capillary_pressure_activated, between_elements, on_domain_boundary, Pc_imbibition, Diffusive_cap_only
+      real :: Diffusive_cap_only_real
 
       real, dimension(nphase):: rsum_nodi, rsum_nodj
       integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD
@@ -562,9 +563,14 @@ contains
 
       !Check capillary pressure options
       capillary_pressure_activated = .false.
+      Diffusive_cap_only_real = 0.
+      Diffusive_cap_only = .false.
       if (GOT_CAPDIFFUS) then
-        if (present(OvRelax_param) .and. present(Phase_with_Pc)) &
-            capillary_pressure_activated = Phase_with_Pc >0
+          if (present(OvRelax_param) .and. present(Phase_with_Pc)) then
+              capillary_pressure_activated = Phase_with_Pc >0
+              Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', nphase)
+              if(Diffusive_cap_only) Diffusive_cap_only_real = 1.
+          end if
       end if
 
     !#################SET WORKING VARIABLES#################
@@ -1972,8 +1978,8 @@ contains
                    CVNORMX_ALL(:, GI)))
                    rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(INV_V_OPT_VEL_UPWIND_COEFS(:,:,iphase,MAT_NODJ),&
                    CVNORMX_ALL(:, GI) ))
-               end do
-               IF(UPWIND_CAP_DIFFUSION) THEN
+               end do!If we are using the non-consistent capillary pressure we want to use the central...
+               IF(UPWIND_CAP_DIFFUSION .and. .not. Diffusive_cap_only ) THEN!...method to foster a normal diffusion
                    CAP_DIFF_COEF_DIVDX( : ) = (CAP_DIFFUSION( :, MAT_NODI )&
                    * rsum_nodi(:)*(1.-INCOME(:))  +&
                    CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) * INCOME(:)) /HDC
@@ -2380,7 +2386,7 @@ contains
                         ! Diffusion contribution
                              + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
                              * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) ) &
-                             - SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &  ! capillary pressure stabilization term..
+                             - (1.-Diffusive_cap_only_real) * SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &  ! capillary pressure stabilization term..
                              * ( T_ALL(:, CV_NODJ) - T_ALL(:, CV_NODI) ) &
 !                                ! Robin bc
                              + SCVDETWEI( GI ) * ROBIN2(:)
@@ -2403,7 +2409,7 @@ contains
                         ! Diffusion contribution
                              + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
                              * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) ) &
-                             - SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) & ! capilary pressure stabilization term..
+                             - (1.-Diffusive_cap_only_real) *SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) & ! capillary pressure stabilization term..
                              * ( T_ALL(:, CV_NODI) - T_ALL(:, CV_NODJ) )
                      endif
 

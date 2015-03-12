@@ -820,6 +820,8 @@ contains
         integer :: row
 
         type(halo_type), pointer :: halo
+        real :: degree_of_pressure
+
 
         ALLOCATE( U_ALL( NDIM, NPHASE, U_NONODS ), UOLD_ALL( NDIM, NPHASE, U_NONODS ), &
         X_ALL( NDIM, X_NONODS ), UDEN_ALL( NPHASE, CV_NONODS ), UDENOLD_ALL( NPHASE, CV_NONODS ))
@@ -1225,9 +1227,10 @@ contains
             end if
             !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
             !inside the same element to reduce the ill conditioning of the matrix
-            if (is_porous_media .and. present(Quality_list)) call Fix_to_bad_elements(&
+            if (is_porous_media .and. present(Quality_list)) then
+                if (P_ALL%mesh%shape%degree < 2) call Fix_to_bad_elements(& !not tested yet for quadratic elements
                   cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
-
+            end if
             if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver &
                  .and. nonlinear_iteration == 1) then!For discontinuous mesh
             !We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
@@ -2237,7 +2240,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         type(mesh_type) :: Auxmesh
         type(scalar_field), target :: Targ_C_Mat
         !Capillary pressure variables
-        logical :: capillary_pressure_activated
+        logical :: capillary_pressure_activated, Diffusive_cap_only
 !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: sf
@@ -2267,8 +2270,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
         position=>extract_vector_field(packed_state,"PressureCoordinate")
 
-        capillary_pressure_activated = have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) .or.&
-            have_option( '/material_phase[1]/multiphase_properties/capillary_pressure' )
+        !Check capillary options
+        capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', nphase)
+        Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', nphase)
 
         !We set the value of logicals
         PIVIT_ON_VISC = .false.
@@ -4370,9 +4374,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
-                if (capillary_pressure_activated) call Introduce_Cap_press_term(state, packed_state,&
-                X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele,&
-                x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes, QUAD_OVER_WHOLE_ELE, ncolm, findm,&
+                if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
+                state, packed_state,X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,cv_ndgln, cv_nloc, cv_snloc, u_snloc, &
+                totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes, QUAD_OVER_WHOLE_ELE, ncolm, findm,&
                 colm, midm, mass_ele, ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
 
 
@@ -8787,7 +8791,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         character(len=250) :: cap_path
         real :: Pe_aux, aux_Sr, aux_Sr_other
         real, dimension(:), pointer ::c_regions, a_regions, Pe, Cap_exp
-        logical :: Artificial_Pe, Pc_imbibition
+        logical :: Artificial_Pe, Pc_imbibition, Diffusive_cap_only
         real, dimension(:), pointer :: p
         real, dimension(:,:), pointer :: satura
 
@@ -8833,7 +8837,10 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 Cap_exp => a_regions
             end if
             !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
-            if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab") ) then
+            !Unless we are using the non-consistent form of the capillary pressure
+            Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', nphase)
+            if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab")&
+              .and..not.Diffusive_cap_only) then
                 allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
                 Artificial_Pe = .true.
                 call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab", Pe_aux)

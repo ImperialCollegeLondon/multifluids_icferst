@@ -540,7 +540,9 @@
 
       !Look for bad elements to apply a correction on them
       if (is_porous_media) then
+          pressure_field=>extract_scalar_field(packed_state,"FEPressure")
           allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+          if (pressure_field%mesh%shape%degree < 2) &!Does not work yet for quadratic elements
           call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
       end if
 

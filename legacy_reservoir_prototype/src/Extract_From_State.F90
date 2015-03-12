@@ -67,7 +67,7 @@
          Extract_TensorFields_Outof_State, Extract_Position_Field, Get_Ele_Type, Get_Discretisation_Options, &
          print_from_state, update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
          get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
-         CheckElementAngles, bad_elements, calculate_outflux, outlet_id
+         CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase
 
     interface Get_Ndgln
        module procedure Get_Scalar_Ndgln, Get_Vector_Ndgln, Get_Mesh_Ndgln
@@ -4084,6 +4084,22 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
     end subroutine calculate_outflux
 
+    logical function have_option_for_any_phase(path, nphase)
+    !The path must be the part of the path inside the phase, i.e. /multiphase_properties/capillary_pressure
+        implicit none
+        character (len=*), intent(in) :: path
+        integer, intent(in) :: nphase
+        !Local variables
+        integer :: iphase
+
+        have_option_for_any_phase = .false.
+        do iphase = 1, nphase
+            have_option_for_any_phase = have_option_for_any_phase .or. have_option( '/material_phase['// int2str( iphase -1 ) //']'&
+                 //trim(path) )
+        end do
+
+
+    end function have_option_for_any_phase
 
   end module Copy_Outof_State
 

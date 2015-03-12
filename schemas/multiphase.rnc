@@ -789,6 +789,9 @@ start =
 	       element coarse_graining {integer}?,	      
                ## Option for capillary pressure				 
                element capillary_pressure {
+            ## Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
+            ## The capillary pressure term is introduced only in the saturation equation, acting as a pure diffusive term. 
+            element Diffusive_cap_only { comment }?,
                   ## Brooks-Corey equation
                   ##
                   ## Pc = c * ((S_w-Swir)/(1-Swirr-Sor)) ** -a
@@ -799,11 +802,8 @@ start =
                        attribute name { "C" },
                        (
                           element prescribed {
-                             velocity_mesh_choice,
+                             material_mesh_choice,
                              prescribed_scalar_field
-                          }|
-                          element aliased {
-                             generic_aliased_field
                           }
                        )
                     },
@@ -812,11 +812,8 @@ start =
                        attribute name { "a" },
                        (
                           element prescribed {
-                             velocity_mesh_choice,
+                             material_mesh_choice,
                              prescribed_scalar_field
-                          }|
-                          element aliased {
-                             generic_aliased_field
                           }
                        )
                     },
@@ -830,15 +827,18 @@ start =
                }?,
                ## Immobile volume of fluid phase
                element immobile_fraction {real}?,
-               ## Introduce artificial diffusion in the transport equation. 
-               ## It is treated as a Capillary pressure term. The input value is the entry pressure.
-               ## Recommended value: Two orders of magnitude smaller that the Pressure of the system.
-               ## To use automatic values based on the pressure of each node set a negative value.
+               ## Introduce over-relaxation based on how the method is converging in the saturation equation. 
+               ## The input value is the entry pressure.
+               ##
+               ## Recommended value: Maximum Pressure of the system * 10-2
+               ##
+               ## Tip: For automatic set up introduce a negative value.
+               ##
                ## You should specify this ONLY for the wetting phase.
                ## 
-               ## To introduce no artificial diffusion set Pe_stab = 0
-               ## 
                ## Tip: You may need to disable this option if the capillary pressure is enabled.
+               ##
+               ## Tip: if Diffusive_cap_only is activated Pe is ignored.
                element Pe_stab {real}?
             }?
          }+,
@@ -850,7 +850,7 @@ start =
                attribute name { "Porosity" },
                (
                   element prescribed {
-                     velocity_mesh_choice,
+                     material_mesh_choice,
                      prescribed_scalar_field
                   }|
                   element aliased {
@@ -864,7 +864,7 @@ start =
                   attribute name { "Permeability" },
                   (
                      element prescribed {
-                        velocity_mesh_choice,
+                        material_mesh_choice,
                         prescribed_scalar_field
                      }|
                      element aliased {
@@ -875,14 +875,14 @@ start =
                element vector_field {
                   attribute name { "Permeability" },
                   element prescribed {
-                     velocity_mesh_choice,
+                     material_mesh_choice,
                      prescribed_vector_field
                   }
                }|
                element tensor_field {
                   attribute name { "Permeability" },
                   element prescribed { 
-                     velocity_mesh_choice,
+                     material_mesh_choice,
                      prescribed_tensor_field
                   }
                }|
