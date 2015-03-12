@@ -9022,10 +9022,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       if ( cv_nloc == u_nloc ) then
          tmp_cvfen => ufen
-         tmp_cvfenx_all => ufenx_all
       else if ( cv_nloc == ph_nloc ) then
          tmp_cvfen => phfen
-         tmp_cvfenx_all => phfenx_all
       else
          stop 7555
       end if
@@ -9074,6 +9072,17 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  phfenx_all, &
                  u_nloc, ufenlx_all(1,:,:), ufenlx_all(2,:,:), ufenlx_all(3,:,:), ufenx_all , &
                  state ,"C_1", StorageIndexes( 14 ) )
+
+
+            if ( cv_nloc == u_nloc ) then
+               tmp_cvfenx_all => ufenx_all
+            else
+               tmp_cvfenx_all => phfenx_all
+            end if
+
+
+
+
 
             u_s_short_gi = 0.0 ; dx_alpha_short_gi = 0.0 ; coef_alpha_short_gi = 0.0
 
