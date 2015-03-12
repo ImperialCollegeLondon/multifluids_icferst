@@ -114,6 +114,13 @@ start =
             element output_scalars_fem {
                empty
             }?,
+            ## Surface to Integrate Over
+            element dump_boundaryflux {
+            attribute name { string },
+            ## Surface id:
+            element surface_ids {
+            integer_vector
+            }}?,
 	    ## Do not overwrite initial condition with boundary condition.
 	    ## Important for checkpointed runs! 
             element initial_condition_overwrites_boundary {
@@ -157,6 +164,7 @@ start =
                }?,
                comment
             },
+
             ## Specification of detectors. Note that when running in parallel the detector output is in binary format even if binary_output is not enabled. When running in serial, although the output is in principle still generated in ascii format if binary_output is not enabled, it is not certain that it is working well. Hence, it is recommended to enable binary_output and work with binary files. 
             element detectors {
                (
