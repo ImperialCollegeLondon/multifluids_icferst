@@ -8933,7 +8933,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       integer, dimension( :, : ), pointer :: ph_neiloc, ph_sloclist, u_sloclist
       logical :: quad_over_whole_ele, d1, d3, dcyl
       type( vector_field ), pointer :: x
-      type( mesh_type ), pointer :: p2mesh
+      type( mesh_type ), pointer :: phmesh
 
       real, dimension( : ), pointer :: detwei, ra
       real, pointer :: volume
@@ -8974,7 +8974,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       quad_over_whole_ele = .true.
 
-      ! P2 elements
+      ! ph elements
       if ( ndim == 2 ) then
          ph_ele_type = 4
          ph_nloc = 6 ; ph_snloc = 3
@@ -8998,7 +8998,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
            phweight, phfen, phfenlx_all, &
            phweight_short, phfen_short, phfenlx_short_all, &
            ufen, ufenlx_all, &
-                                ! surface of each P_h shape functions...
+                                ! surface of each ph shape functions...
            sphngi, ph_neiloc, ph_on_face, phfem_on_face, &
            sphfen, sphfenslx, sphfensly, sphfeweigh, &
            sphfenlx_all,  &
@@ -9009,10 +9009,10 @@ deallocate(CVFENX_ALL, UFENX_ALL)
            sbphngi, sbphn, sbphfen, sbphfenslx, sbphfensly, sbphfeweigh, sbphfenlx_all, &
            sbufen, sbufenslx, sbufensly, sbufenlx_all, &
            ph_sloclist, u_sloclist, ph_snloc, u_snloc, &
-                                ! define the gauss points that lie on the surface of the P_h...
+                                ! define the gauss points that lie on the surface of the ph...
            findgpts, colgpts, ncolgpts, &
            sele_overlap_scale, quad_over_whole_ele, &
-           state, "P_h" , storageindexes(1) )
+           state, "ph" , storageindexes(1) )
 
       totele = ele_count( ufield )
       x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
@@ -9030,11 +9030,11 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       cv_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh" ) )
 
 
-      p2mesh => extract_mesh( state( 1 ), "P2" )
+      phmesh => extract_mesh( state( 1 ), "ph" )
 
-      ph_ndgln => get_ndglno( p2mesh )
+      ph_ndgln => get_ndglno( phmesh )
 
-      ph_nonods = node_count( p2mesh )
+      ph_nonods = node_count( phmesh )
 
 
       d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
@@ -9091,13 +9091,13 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       allocate( u_rhs( ndim, nphase, u_nonods ) ) ; u_rhs = 0.0
 
 
-      sparsity => extract_csr_sparsity( packed_state, "p2sparsity" )
+      sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
       call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. )
       call zero( matrix )
 
-      call allocate( rhs, p2mesh, "rhs" )
+      call allocate( rhs, phmesh, "rhs" )
       call zero ( rhs )
-      call allocate( sol, p2mesh, "sol" )
+      call allocate( sol, phmesh, "sol" )
       call zero( sol )
 
       do iloop = 1, 2
