@@ -2249,7 +2249,8 @@ contains
                         do ioutlet = 1, size(outlet_id)
                             ! Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
 
-                            call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI)
+                            !call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI)
+                            call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, SCVDETWEI)
 
                         enddo
 

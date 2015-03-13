@@ -3971,7 +3971,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
     end subroutine CheckElementAngles
 
 
-    subroutine calculate_outflux(packed_state, ndotqnew, sele, surface_ids, totoutflux, ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, detwei)
+    subroutine calculate_outflux(packed_state, ndotqnew, sele, surface_ids, totoutflux, ele , x_ndgln, cv_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, detwei)
        implicit none
 
 ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
@@ -3985,10 +3985,13 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
        real, dimension(:), intent(inout) :: totoutflux
        integer, intent(in) :: ele
        integer, dimension(:), intent( in ) ::  x_ndgln
+       ! Added cv_ndgln
+       integer, dimension(:), intent( in ) ::  cv_ndgln
        integer, intent(in) :: cv_nloc
        real, dimension( : , : ), intent(in), pointer :: SCVFEN
        integer, intent(in) :: gi
        integer, intent(in) :: cv_nonods
+       integer, intent(in) :: totele
        integer, intent(in) :: nphase
        real, pointer, dimension( : ), intent(in) :: detwei
 
@@ -4000,17 +4003,22 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
        real, dimension(:), pointer :: Por
        logical :: test
        type(tensor_field), pointer :: tfield
+       type(tensor_field), pointer :: t2field
        integer  :: x_knod
+       ! Added cv_knod, x_ele below
+       integer  :: cv_knod
+       integer :: x_ele
        integer  :: cv_kloc
        real, dimension( : , : ), allocatable :: phaseV
        real, dimension( : , : ), allocatable :: phaseVG
        real, dimension( : , : ), allocatable :: Dens
        real, dimension( : , : ), allocatable :: DensVG
-       real, dimension( : ), allocatable :: PorG
+       !real, dimension( : ), allocatable :: PorG
+       real :: PorG
 
        allocate(phaseV(nphase,cv_nonods), phaseVG(nphase,cv_nonods))
        allocate(Dens(nphase,cv_nonods), DensVG(nphase,cv_nonods))
-       allocate(PorG(cv_nonods))
+       !allocate(PorG(totele))
 
 ! Extract the pressure
 
@@ -4024,8 +4032,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
  ! Extract the density
 
-      tfield => extract_tensor_field( packed_state, "PackedDensity" )
-      Dens =  tfield%val(1,:,:)
+      t2field => extract_tensor_field( packed_state, "PackedDensity" )
+      Dens =  t2field%val(1,:,:)
 
 ! Extract the porosity (still should confirm whether or not totoutflux needs to be divided by the porosity - matter of which velocity to use : q or v)
 
@@ -4033,28 +4041,34 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       Por =>  s2field%val(:)
 
 ! Having extracted the saturation field (phase volume fraction) at control volume nodes, need to calculate it at quadrature points gi.
+! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes). Therefore need cv_ndgln below
 
       phaseVG = 0.0
       do cv_kloc=1,cv_nloc
-      x_knod=x_ndgln((ele-1)*cv_nloc+cv_kloc)
-      phaseVG(:,gi) = phaseVG(:,gi) + phaseV(:,x_knod)*SCVFEN(cv_kloc,gi)
+      cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_kloc)
+      phaseVG(:,gi) = phaseVG(:,gi) + phaseV(:,cv_knod)*SCVFEN(cv_kloc,gi)
       end do
 
 ! Having extracted the density at control volume nodes, need to calculate it at quadrature points gi.
+! Density is a function of pressure and therefore lives on the pressure mesh. It is therefore stored at
+! control volume nodes (easiest to see in a diagram of the elements). Hence, the global variable we need in the calculation below is cv_ndgln
 
       DensVG = 0.0
       do cv_kloc=1,cv_nloc
-      x_knod=x_ndgln((ele-1)*cv_nloc+cv_kloc)
-      DensVG(:,gi) = DensVG(:,gi) + Dens(:,x_knod)*SCVFEN(cv_kloc,gi)
+      cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_kloc)
+      DensVG(:,gi) = DensVG(:,gi) + Dens(:,cv_knod)*SCVFEN(cv_kloc,gi)
       end do
 
-! Having extracted the porosity at control volume nodes, need to calculate it at quadrature points gi.
 
-      PorG = 0.0
-      do cv_kloc=1,cv_nloc
-      x_knod=x_ndgln((ele-1)*cv_nloc+cv_kloc)
-      PorG(gi) = PorG(gi) + Por(x_knod)*SCVFEN(cv_kloc,gi)
-      end do
+! Porosity is on the P0DG mesh. The value is constant across an element. Can calculate it at any point in an element and assign this to be the value
+! at the Gauss point. (Strictly this last bit is unnecessary - may tidy up in the future). x_ndgln((ele-1)*cvnloc +1) allows us to extract the
+! x-coordinate of the '1st physical' triangle node for each element. We then calculate the porosity at this value of x and assign it to PorG(ele).
+! [Check that porosity is constant across an element and not across a control volume - else this needs modification].
+
+      ! x_ele calculates a coordinate on each element
+      x_ele=x_ndgln((ele-1)*cv_nloc+1)
+      !PorG(ele) = Por(x_ele)
+      PorG = Por(x_ele)
 
 ! This function will return true for surfaces we should be integrating over (this entire subroutine is called in a loop over ele,(sele),gi in cv-adv-dif)
 ! Need the condition that sele > 0 Check why it can be zero/negative.
@@ -4065,10 +4079,12 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
 ! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
 ! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
+! Divide by porosity to get a physical flux (check this)
 
           if(test) then
 
-              totoutflux(:) = totoutflux(:) + ndotqnew(:)*phaseVG(:,gi)*detwei(gi)*DensVG(:,gi)/PorG(gi)
+              !totoutflux(:) = totoutflux(:) + ndotqnew(:)*phaseVG(:,gi)*detwei(gi)*DensVG(:,gi)/PorG(ele)
+              totoutflux(:) = totoutflux(:) + ndotqnew(:)*phaseVG(:,gi)*detwei(gi)*DensVG(:,gi)/PorG
 
           endif
 
@@ -4078,7 +4094,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       deallocate(phaseVG)
       deallocate(dens)
       deallocate(densVG)
-      deallocate(PorG)
+      !deallocate(PorG)
 
       return
 
