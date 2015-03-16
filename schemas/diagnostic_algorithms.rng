@@ -1127,24 +1127,6 @@ Automatic when not using P1P1.</a:documentation>
       </element>
     </element>
   </define>
-  <define name="vector_potential_algorithm">
-    <element name="algorithm">
-      <a:documentation>Computes the vector potential A where:
-  F = nabla phi + nabla x A + H
-with a strong Dirichlet boundary condition of zero on all boundaries.</a:documentation>
-      <attribute name="name">
-        <value>vector_potential</value>
-      </attribute>
-      <attribute name="material_phase_support">
-        <value>single</value>
-      </attribute>
-      <ref name="vector_source_field"/>
-      <element name="solver">
-        <a:documentation>Linear solver options.</a:documentation>
-        <ref name="linear_solver_options_sym"/>
-      </element>
-    </element>
-  </define>
   <define name="geostrophic_velocity_algorithm">
     <element name="algorithm">
       <a:documentation>Compute the velocity in geostrophic balance with a pressure field</a:documentation>
@@ -1799,26 +1781,6 @@ No. 1 pp. 243--268, 1980</a:documentation>
     </element>
   </define>
   <!-- Multiphase diagnostic algorithms -->
-  <define name="scalar_gaussian_algorithm">
-    <element name="algorithm">
-      <a:documentation>Simple gaussian for interface adaptivity</a:documentation>
-      <attribute name="name">
-        <value>scalar_gaussian</value>
-      </attribute>
-      <attribute name="material_phase_support">
-        <value>single</value>
-      </attribute>
-      <ref name="scalar_source_field"/>
-      <element name="centre">
-        <a:documentation>Centre of Gaussian </a:documentation>
-        <ref name="real"/>
-      </element>
-      <element name="scale">
-        <a:documentation>Scale factor</a:documentation>
-        <ref name="real"/>
-      </element>
-    </element>
-  </define>
   <define name="particle_reynolds_number_algorithm">
     <element name="algorithm">
       <a:documentation>Diagnostic algorithm used in multiphase simulations.
@@ -1898,41 +1860,6 @@ The mesh must be directly extruded.</a:documentation>
       <attribute name="material_phase_support">
         <value>single</value>
       </attribute>
-    </element>
-  </define>
-  <define name="scalar_distance_function">
-    <element name="algorithm">
-      <a:documentation>distance from zeor contour of source field</a:documentation>
-      <attribute name="name">
-        <value>scalar_distance_function</value>
-      </attribute>
-      <attribute name="material_phase_support">
-        <value>multiple</value>
-      </attribute>
-      <ref name="scalar_source_field"/>
-      <choice>
-        <element name="method">
-          <attribute name="name">
-            <value>HamiltonJacobi</value>
-          </attribute>
-        </element>
-        <element name="method">
-          <attribute name="name">
-            <value>Hybrid</value>
-          </attribute>
-        </element>
-        <element name="method">
-          <attribute name="name">
-            <value>MarchingMethod</value>
-          </attribute>
-        </element>
-      </choice>
-      <element name="depends">
-        <ref name="anystring"/>
-      </element>
-      <element name="zero_level">
-        <ref name="real"/>
-      </element>
     </element>
   </define>
   <define name="viscous_dissipation_algorithm">
@@ -2059,26 +1986,6 @@ This field needs to be interpolated between adapts.</a:documentation>
       </optional>
     </element>
   </define>
-  <define name="vector_squared_time_averaged_algorithm">
-    <element name="algorithm">
-      <a:documentation>Algorithm for time averaging vector fields.
-This includes cross-products.
-This field needs to be interpolated between adapts.</a:documentation>
-      <attribute name="name">
-        <value>time_averaged_vector_squared</value>
-      </attribute>
-      <attribute name="material_phase_support">
-        <value>single</value>
-      </attribute>
-      <ref name="vector_source_field"/>
-      <optional>
-        <element name="spin_up_time">
-          <a:documentation>When to start sampling?  Defaults to simulation start time.</a:documentation>
-          <ref name="real"/>
-        </element>
-      </optional>
-    </element>
-  </define>
   <define name="vector_scalar_time_averaged_algorithm">
     <element name="algorithm">
       <a:documentation>Algorithm for time averaging vector times scalar fields.
@@ -2142,13 +2049,7 @@ This field needs to be interpolated between adapts.</a:documentation>
     <ref name="scalar_laplacian_algorithm"/>
   </define>
   <define name="scalar_diagnostic_algorithms" combine="choice">
-    <ref name="scalar_gaussian_algorithm"/>
-  </define>
-  <define name="scalar_diagnostic_algorithms" combine="choice">
     <ref name="scalar_galerkin_projection_algorithm"/>
-  </define>
-  <define name="scalar_diagnostic_algorithms" combine="choice">
-    <ref name="scalar_distance_function"/>
   </define>
   <define name="scalar_diagnostic_algorithms" combine="choice">
     <ref name="scalar_difference_algorithm"/>
@@ -2238,9 +2139,6 @@ This field needs to be interpolated between adapts.</a:documentation>
     <ref name="vector_scalar_time_averaged_algorithm"/>
   </define>
   <define name="vector_diagnostic_algorithms" combine="choice">
-    <ref name="vector_potential_algorithm"/>
-  </define>
-  <define name="vector_diagnostic_algorithms" combine="choice">
     <ref name="vector_laplacian_algorithm"/>
   </define>
   <define name="vector_diagnostic_algorithms" combine="choice">
@@ -2286,9 +2184,6 @@ This field needs to be interpolated between adapts.</a:documentation>
     <ref name="vector_python_diagnostic_algorithm"/>
   </define>
   <define name="tensor_diagnostic_algorithms">
-    <ref name="vector_squared_time_averaged_algorithm"/>
-  </define>
-  <define name="tensor_diagnostic_algorithms" combine="choice">
     <ref name="tensor_copy_algorithm"/>
   </define>
   <define name="tensor_diagnostic_algorithms" combine="choice">

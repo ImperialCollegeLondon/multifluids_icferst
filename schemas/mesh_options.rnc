@@ -53,11 +53,9 @@ mesh_info =
                ## and is undefined on the element interior (used for 
                ## enforcing continuity by Lagrange multipliers).
               element string_value{
-                 "lagrangian" | "bubble" | "trace" 
+                 "lagrangian" | "bubble" | "trace"
               }
-            }?,
-             ## Activate for porous media. It allows the use of lagrangian shape functions for porous media flow. Velocity only.
-             element Porous_media { comment }?
+            }?
          }?,
          element mesh_continuity {
             element string_value{
@@ -326,25 +324,6 @@ coordinate_mesh_choice =
       }|
       element mesh {
          attribute name { "PressureMesh" }
-      }|
-      element mesh {
-         attribute name { string }
-      }
-   )
-# Same choices, but with P0DG offered first
-material_mesh_choice =
-   (
-      element mesh {
-         attribute name { "P0DG" }
-      }|
-      element mesh {
-         attribute name { "VelocityMesh" }
-      }|
-      element mesh {
-         attribute name { "PressureMesh" }
-      }|
-      element mesh {
-         attribute name { "CoordinateMesh" }
       }|
       element mesh {
          attribute name { string }

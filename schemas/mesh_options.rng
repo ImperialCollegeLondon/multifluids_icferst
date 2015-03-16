@@ -79,12 +79,6 @@ enforcing continuity by Lagrange multipliers).</a:documentation>
                 </element>
               </element>
             </optional>
-            <optional>
-              <element name="Porous_media">
-                <a:documentation>Activate for porous media. It allows the use of lagrangian shape functions for porous media flow. Velocity only.</a:documentation>
-                <ref name="comment"/>
-              </element>
-            </optional>
           </element>
         </optional>
         <optional>
@@ -422,36 +416,6 @@ Default is 1e-3.</a:documentation>
       <element name="mesh">
         <attribute name="name">
           <value>PressureMesh</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <data type="string" datatypeLibrary=""/>
-        </attribute>
-      </element>
-    </choice>
-  </define>
-  <!-- Same choices, but with P0DG offered first -->
-  <define name="material_mesh_choice">
-    <choice>
-      <element name="mesh">
-        <attribute name="name">
-          <value>P0DG</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <value>VelocityMesh</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <value>PressureMesh</value>
-        </attribute>
-      </element>
-      <element name="mesh">
-        <attribute name="name">
-          <value>CoordinateMesh</value>
         </attribute>
       </element>
       <element name="mesh">

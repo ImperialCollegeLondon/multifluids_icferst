@@ -1,6 +1,6 @@
 SHELL = sh
 
-SIM = Sloshing_Water_Tank
+SIM = Checkpointing
 
 input:  clean
 
@@ -14,4 +14,5 @@ clean:
 	rm -f mirror_new.dat matrixdump*
 	rm -f *.ele *.bound *.face *.node *.edge
 	rm -f src/*.msh
+	rm -f *.msh *checkpoint.mpml
 	rm -f *_20layers.mpml *_50layers.mpml
