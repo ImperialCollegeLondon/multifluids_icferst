@@ -116,7 +116,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods
 
 !!$ Node global numbers
       integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, &
@@ -124,14 +124,14 @@
 
 !!$ Sparsity patterns
       integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
-           mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, &
-           ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, ncolcmc, ncolm
+           mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, &
+           ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, ncolcmc, ncolm, ncolph
       integer, dimension( : ), allocatable :: finacv, midacv, finmcy,  midmcy, &
            findgm_pha, middgm_pha, findct, &
            findc, findcmc, midcmc, findm, &
            midm
       integer, dimension(:), pointer :: colacv, colmcy, colct,colm,colc,colcmc,coldgm_pha
-      integer, dimension(:), pointer :: finele, colele, midele
+      integer, dimension(:), pointer :: finele, colele, midele, findph, colph
       integer, dimension(:), pointer :: small_finacv, small_colacv, small_midacv
 
 !!$ Defining element-pair type and discretisation options and coefficients
@@ -319,7 +319,7 @@
            nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods)
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods )
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -336,9 +336,9 @@
 !!$ Computing Sparsity Patterns Matrices
 !!$
 !!$ Defining lengths and allocating space for the matrices
-      call Defining_MaxLengths_for_Sparsity_Matrices( ndim, nphase, totele, u_nloc, cv_nloc, cv_nonods, &
-           mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
-           mx_ncolacv, mx_ncolm )
+      call Defining_MaxLengths_for_Sparsity_Matrices( state, ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
+           ph_nonods, mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
+           mx_ncolacv, mx_ncolm, mx_ncolph )
       nlenmcy = u_nonods * nphase * ndim + cv_nonods
       allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
            finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
@@ -347,7 +347,8 @@
            findct( cv_nonods + 1 ), colct( mx_nct ), &
            findc( u_nonods + 1 ), colc( mx_nc ), &
            findcmc( cv_nonods + 1 ), colcmc( 0 ), midcmc( cv_nonods ), &
-           findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
+           findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ), &
+           findph( ph_nonods + 1 ), colph( mx_ncolph ) )
 
 
       colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0
@@ -375,7 +376,12 @@
 !!$ pressure matrix for projection method
            mx_ncolcmc, ncolcmc, findcmc, colcmc, midcmc, &
 !!$ CV-FEM matrix
-           mx_ncolm, ncolm, findm, colm, midm, mx_nface_p1 )
+           mx_ncolm, ncolm, findm, colm, midm, &
+!!$ ph matrix
+           mx_ncolph, ncolph, findph, colph, &
+!!$ misc
+           mx_nface_p1 )
+
 
       call temp_mem_hacks()
 
@@ -1292,7 +1298,7 @@
                  nphase, nstate, ncomp, totele, ndim, stotel, &
                  u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
                  x_snloc, cv_snloc, u_snloc, p_snloc, &
-                 cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods)
+                 cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods )
 !!$ Calculating Global Node Numbers
             allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
                  u_sndgln( stotel * u_snloc ) )
@@ -1310,9 +1316,9 @@
 !!$
 
 !!$ Defining lengths and allocating space for the matrices
-            call Defining_MaxLengths_for_Sparsity_Matrices( ndim, nphase, totele, u_nloc, cv_nloc, cv_nonods, &
-                 mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
-                 mx_ncolacv, mx_ncolm )
+            call Defining_MaxLengths_for_Sparsity_Matrices( state, ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
+                 ph_nonods, mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
+                 mx_ncolacv, mx_ncolm, mx_ncolph )
             nlenmcy = u_nonods * nphase * ndim + cv_nonods
             allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
                  finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
@@ -1321,7 +1327,8 @@
                  findct( cv_nonods + 1 ), colct( mx_nct ), &
                  findc( u_nonods + 1 ), colc( mx_nc ), &
                  findcmc( cv_nonods + 1 ), colcmc( mx_ncolcmc ), midcmc( cv_nonods ), &
-                 findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
+                 findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ), &
+                 findph( ph_nonods + 1 ), colph( mx_ncolph ) )
 
             finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; &
                  findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
@@ -1350,7 +1357,11 @@
 !!$ pressure matrix for projection method
                  mx_ncolcmc, ncolcmc, findcmc, colcmc, midcmc, &
 !!$ CV-FEM matrix
-                 mx_ncolm, ncolm, findm, colm, midm, mx_nface_p1 )
+                 mx_ncolm, ncolm, findm, colm, midm, &
+!!$ ph matrix
+                 mx_ncolph, ncolph, findph, colph, &
+!!$ misc
+                 mx_nface_p1 )
 
             !Look again for bad elements
             if (is_porous_media) then
