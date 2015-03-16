@@ -60,13 +60,12 @@ module cv_advection
 
   implicit none
 
+  ! Public totout needed when calculating outfluxes across a specified boundary. Will store the sum of totoutflux across all elements contained in the boundary.
+  ! Multiphase_TimeLoop needs to access this variable so easiest to make it public.
+
    public ::  totout
 
-   !real, dimension(:), allocatable :: totout
    real, allocatable, dimension(:,:) :: totout
-   ! To get the allocatable version to work need to know where we can deallocate totout in Multiphase Time Loop. This is probably not a good idea
-   ! don't want to be allocating/deallocating deep in cv-adv div/time loops etc. Better off just making nphase a global variable so we
-   ! define real, dimension(nphase) :: totout.
 
 #include "petsc_legacy.h"
 
@@ -332,6 +331,8 @@ contains
       character(len=*), optional :: Storname
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
+      ! Variables needed when calculating boundary outfluxes. Totoutflux will be used to sum up over elements for each phase the outflux through a specified boundary
+      ! Ioutlet counts the number of boundaries that are integrated over for the 'totoutflux calculation'.
 
       real, dimension(nphase, size(outlet_id)) :: totoutflux
       integer :: ioutlet
@@ -546,7 +547,8 @@ contains
       type( scalar_field ), pointer :: sfield
 
       !Variables for Capillary pressure
-      logical :: capillary_pressure_activated, between_elements, on_domain_boundary, Pc_imbibition
+      logical :: capillary_pressure_activated, between_elements, on_domain_boundary, Pc_imbibition, Diffusive_cap_only
+      real :: Diffusive_cap_only_real
 
       real, dimension(nphase):: rsum_nodi, rsum_nodj
       integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD
@@ -561,9 +563,14 @@ contains
 
       !Check capillary pressure options
       capillary_pressure_activated = .false.
+      Diffusive_cap_only_real = 0.
+      Diffusive_cap_only = .false.
       if (GOT_CAPDIFFUS) then
-        if (present(OvRelax_param) .and. present(Phase_with_Pc)) &
-            capillary_pressure_activated = Phase_with_Pc >0
+          if (present(OvRelax_param) .and. present(Phase_with_Pc)) then
+              capillary_pressure_activated = Phase_with_Pc >0
+              Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', nphase)
+              if(Diffusive_cap_only) Diffusive_cap_only_real = 1.
+          end if
       end if
 
     !#################SET WORKING VARIABLES#################
@@ -1971,8 +1978,8 @@ contains
                    CVNORMX_ALL(:, GI)))
                    rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(INV_V_OPT_VEL_UPWIND_COEFS(:,:,iphase,MAT_NODJ),&
                    CVNORMX_ALL(:, GI) ))
-               end do
-               IF(UPWIND_CAP_DIFFUSION) THEN
+               end do!If we are using the non-consistent capillary pressure we want to use the central...
+               IF(UPWIND_CAP_DIFFUSION .and. .not. Diffusive_cap_only ) THEN!...method to foster a normal diffusion
                    CAP_DIFF_COEF_DIVDX( : ) = (CAP_DIFFUSION( :, MAT_NODI )&
                    * rsum_nodi(:)*(1.-INCOME(:))  +&
                    CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) * INCOME(:)) /HDC
@@ -2240,7 +2247,10 @@ contains
                     if ( GETCT .and. calculate_flux ) then
 
                         do ioutlet = 1, size(outlet_id)
-                            call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI)
+                            ! Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
+
+                            !call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI)
+                            call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, SCVDETWEI)
 
                         enddo
 
@@ -2377,7 +2387,7 @@ contains
                         ! Diffusion contribution
                              + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
                              * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) ) &
-                             - SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &  ! capillary pressure stabilization term..
+                             - (1.-Diffusive_cap_only_real) * SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &  ! capillary pressure stabilization term..
                              * ( T_ALL(:, CV_NODJ) - T_ALL(:, CV_NODI) ) &
 !                                ! Robin bc
                              + SCVDETWEI( GI ) * ROBIN2(:)
@@ -2400,7 +2410,7 @@ contains
                         ! Diffusion contribution
                              + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
                              * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) ) &
-                             - SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) & ! capilary pressure stabilization term..
+                             - (1.-Diffusive_cap_only_real) *SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) & ! capillary pressure stabilization term..
                              * ( T_ALL(:, CV_NODI) - T_ALL(:, CV_NODJ) )
                      endif
 
@@ -2651,14 +2661,17 @@ contains
 
 
        if(GETCT .and. calculate_flux) then
+
+           ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
+
            totout = totoutflux
            do ioutlet = 1,size(outlet_id)
-           call allsum(totout(:,ioutlet))
+
+           ! Ensure all processors have the correct value of totout for parallel runs
+            call allsum(totout(:,ioutlet))
+
            enddo
        endif
-
-
-
 
       ! Deallocating temporary working arrays
 
@@ -8351,13 +8364,16 @@ deallocate(NX_ALL, X_NX_ALL)
                                       RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
                                   END IF
 
+!                                  FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (SCVFEN( CV_KLOC, GI )*0.0 + RGRAY(IFIELD)*0.0)   * LOC_FEMF( IFIELD, CV_KLOC)
                                   FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (SCVFEN( CV_KLOC, GI ) + RGRAY(IFIELD))   * LOC_FEMF( IFIELD, CV_KLOC)
                               END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
+!                              FEMFGI(:)    = FEMFGI(:) + 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
                           ELSE
 
                               DO CV_KLOC = 1, CV_NLOC
                                   FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  SCVFEN( CV_KLOC, GI ) * LOC_FEMF( IFIELD, CV_KLOC)
                               END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
+!                              FEMFGI(:)    = 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
                           END IF
 
                       END DO ! ENDOF DO IFIELD=1,NPHASE

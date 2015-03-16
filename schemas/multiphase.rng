@@ -130,6 +130,18 @@ interpolated for VTK output.</a:documentation>
           </element>
         </optional>
         <optional>
+          <element name="dump_boundaryflux">
+            <a:documentation>Surface to Integrate Over</a:documentation>
+            <attribute name="name">
+              <data type="string" datatypeLibrary=""/>
+            </attribute>
+            <element name="surface_ids">
+              <a:documentation>Surface id:</a:documentation>
+              <ref name="integer_vector"/>
+            </element>
+          </element>
+        </optional>
+        <optional>
           <element name="initial_condition_overwrites_boundary">
             <a:documentation>Do not overwrite initial condition with boundary condition.
 Important for checkpointed runs! </a:documentation>
@@ -736,6 +748,12 @@ to sum to 1 by adding constraint into compositional source term.</a:documentatio
             </element>
           </optional>
           <optional>
+            <element name="Impose_saturation_limits">
+              <a:documentation>The saturation is imposed to be between physical limits, conservation of mass is kept. However dispersion is introduced. This option allows to increase the time step severily. (Activate it for the first phase)</a:documentation>
+              <ref name="comment"/>
+            </element>
+          </optional>
+          <optional>
             <ref name="equation_of_state">
               <a:documentation>The equation of state</a:documentation>
             </ref>
@@ -1065,6 +1083,13 @@ Default value 2.0</a:documentation>
               <optional>
                 <element name="capillary_pressure">
                   <a:documentation>Option for capillary pressure				 </a:documentation>
+                  <optional>
+                    <element name="Diffusive_cap_only">
+                      <a:documentation>Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
+The capillary pressure term is introduced only in the saturation equation, acting as a pure diffusive term. </a:documentation>
+                      <ref name="comment"/>
+                    </element>
+                  </optional>
                   <element name="type_Brooks_Corey">
                     <a:documentation>Brooks-Corey equation
 
@@ -1075,30 +1100,20 @@ You should specify this ONLY for the wetting phase</a:documentation>
                       <attribute name="name">
                         <value>C</value>
                       </attribute>
-                      <choice>
-                        <element name="prescribed">
-                          <ref name="velocity_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                        <element name="aliased">
-                          <ref name="generic_aliased_field"/>
-                        </element>
-                      </choice>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                      </element>
                     </element>
                     <element name="scalar_field">
                       <a:documentation>exponent -a</a:documentation>
                       <attribute name="name">
                         <value>a</value>
                       </attribute>
-                      <choice>
-                        <element name="prescribed">
-                          <ref name="velocity_mesh_choice"/>
-                          <ref name="prescribed_scalar_field"/>
-                        </element>
-                        <element name="aliased">
-                          <ref name="generic_aliased_field"/>
-                        </element>
-                      </choice>
+                      <element name="prescribed">
+                        <ref name="material_mesh_choice"/>
+                        <ref name="prescribed_scalar_field"/>
+                      </element>
                     </element>
                     <optional>
                       <element name="Pc_imbibition">
@@ -1122,15 +1137,18 @@ This option is by default disabled.</a:documentation>
               </optional>
               <optional>
                 <element name="Pe_stab">
-                  <a:documentation>Introduce artificial diffusion in the transport equation. 
-It is treated as a Capillary pressure term. The input value is the entry pressure.
-Recommended value: Two orders of magnitude smaller that the Pressure of the system.
-To use automatic values based on the pressure of each node set a negative value.
+                  <a:documentation>Introduce over-relaxation based on how the method is converging in the saturation equation. 
+The input value is the entry pressure.
+
+Recommended value: Maximum Pressure of the system * 10-2
+
+Tip: For automatic set up introduce a negative value.
+
 You should specify this ONLY for the wetting phase.
 
-To introduce no artificial diffusion set Pe_stab = 0
+Tip: You may need to disable this option if the capillary pressure is enabled.
 
-Tip: You may need to disable this option if the capillary pressure is enabled.</a:documentation>
+Tip: if Diffusive_cap_only is activated Pe is ignored.</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>
@@ -1151,7 +1169,7 @@ Tip: You may need to disable this option if the capillary pressure is enabled.</
             </attribute>
             <choice>
               <element name="prescribed">
-                <ref name="velocity_mesh_choice"/>
+                <ref name="material_mesh_choice"/>
                 <ref name="prescribed_scalar_field"/>
               </element>
               <element name="aliased">
@@ -1167,7 +1185,7 @@ Tip: You may need to disable this option if the capillary pressure is enabled.</
               </attribute>
               <choice>
                 <element name="prescribed">
-                  <ref name="velocity_mesh_choice"/>
+                  <ref name="material_mesh_choice"/>
                   <ref name="prescribed_scalar_field"/>
                 </element>
                 <element name="aliased">
@@ -1180,7 +1198,7 @@ Tip: You may need to disable this option if the capillary pressure is enabled.</
                 <value>Permeability</value>
               </attribute>
               <element name="prescribed">
-                <ref name="velocity_mesh_choice"/>
+                <ref name="material_mesh_choice"/>
                 <ref name="prescribed_vector_field"/>
               </element>
             </element>
@@ -1189,7 +1207,7 @@ Tip: You may need to disable this option if the capillary pressure is enabled.</
                 <value>Permeability</value>
               </attribute>
               <element name="prescribed">
-                <ref name="velocity_mesh_choice"/>
+                <ref name="material_mesh_choice"/>
                 <ref name="prescribed_tensor_field"/>
               </element>
             </element>
@@ -1207,6 +1225,19 @@ Tip: You may need to disable this option if the capillary pressure is enabled.</
               <a:documentation>Solve for the actual velocity, not
 the Darcy velocity (=porosity*velocity)</a:documentation>
               <empty/>
+            </element>
+          </optional>
+        </element>
+      </optional>
+      <optional>
+        <element name="femdem_fracture">
+          <a:documentation>Fracking options</a:documentation>
+          <optional>
+            <element name="femdem_file">
+              <a:documentation>Specify FEMDEM input file</a:documentation>
+              <attribute name="name">
+                <data type="string"/>
+              </attribute>
             </element>
           </optional>
         </element>

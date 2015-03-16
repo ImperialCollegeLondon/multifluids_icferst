@@ -631,10 +631,12 @@ contains
 
       END DO Loop_NonLinearFlux
 
-      !While ensuring global conservation of mass, force the saturation to be between bounds
-      call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv,&
-       StorageIndexes, cv_ele_type, for_sat = .true. )
 
+      !While ensuring global conservation of mass, force the saturation to be between bounds
+        if (have_option('/material_phase[0]/Impose_saturation_limits')) then
+          call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv,&
+           StorageIndexes, cv_ele_type, for_sat = .true. )
+        end if
 
 !      !Set saturation to be between bounds
 !      !In this case we impose that the saturation has to be between physical limits
@@ -818,6 +820,8 @@ contains
         integer :: row
 
         type(halo_type), pointer :: halo
+        real :: degree_of_pressure
+
 
         ALLOCATE( U_ALL( NDIM, NPHASE, U_NONODS ), UOLD_ALL( NDIM, NPHASE, U_NONODS ), &
         X_ALL( NDIM, X_NONODS ), UDEN_ALL( NPHASE, CV_NONODS ), UDENOLD_ALL( NPHASE, CV_NONODS ))
@@ -1223,9 +1227,10 @@ contains
             end if
             !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
             !inside the same element to reduce the ill conditioning of the matrix
-            if (is_porous_media .and. present(Quality_list)) call Fix_to_bad_elements(&
+            if (is_porous_media .and. present(Quality_list)) then
+                if (P_ALL%mesh%shape%degree < 2) call Fix_to_bad_elements(& !not tested yet for quadratic elements
                   cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
-
+            end if
             if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver &
                  .and. nonlinear_iteration == 1) then!For discontinuous mesh
             !We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
@@ -2235,7 +2240,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         type(mesh_type) :: Auxmesh
         type(scalar_field), target :: Targ_C_Mat
         !Capillary pressure variables
-        logical :: capillary_pressure_activated
+        logical :: capillary_pressure_activated, Diffusive_cap_only
 !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: sf
@@ -2265,8 +2270,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
         position=>extract_vector_field(packed_state,"PressureCoordinate")
 
-        capillary_pressure_activated = have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) .or.&
-            have_option( '/material_phase[1]/multiphase_properties/capillary_pressure' )
+        !Check capillary options
+        capillary_pressure_activated = have_option_for_any_phase('/multiphase_properties/capillary_pressure', nphase)
+        Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', nphase)
 
         !We set the value of logicals
         PIVIT_ON_VISC = .false.
@@ -4368,9 +4374,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
-                if (capillary_pressure_activated) call Introduce_Cap_press_term(state, packed_state,&
-                X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele,&
-                x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes, QUAD_OVER_WHOLE_ELE, ncolm, findm,&
+                if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
+                state, packed_state,X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,cv_ndgln, cv_nloc, cv_snloc, u_snloc, &
+                totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes, QUAD_OVER_WHOLE_ELE, ncolm, findm,&
                 colm, midm, mass_ele, ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
 
 
@@ -8785,7 +8791,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         character(len=250) :: cap_path
         real :: Pe_aux, aux_Sr, aux_Sr_other
         real, dimension(:), pointer ::c_regions, a_regions, Pe, Cap_exp
-        logical :: Artificial_Pe, Pc_imbibition
+        logical :: Artificial_Pe, Pc_imbibition, Diffusive_cap_only
         real, dimension(:), pointer :: p
         real, dimension(:,:), pointer :: satura
 
@@ -8831,7 +8837,10 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 Cap_exp => a_regions
             end if
             !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
-            if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab") ) then
+            !Unless we are using the non-consistent form of the capillary pressure
+            Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', nphase)
+            if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab")&
+              .and..not.Diffusive_cap_only) then
                 allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
                 Artificial_Pe = .true.
                 call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
@@ -8868,5 +8877,373 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         nullify(Pe, Cap_exp)
 
     end subroutine getOverrelaxation_parameter
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    subroutine high_order_pressure_solve( state, packed_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, nphase )
+
+      implicit none
+
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      integer, dimension( : ), intent( in ) :: small_findrm, small_colm
+      integer, intent( in ) :: cv_ele_type, nphase
+      integer, dimension( : ), intent( inout ) :: StorageIndexes
+
+      ! output
+      real, dimension( :, :, : ), allocatable :: u_rhs
+
+      ! local variables...
+      type ( tensor_field ), pointer :: ufield
+      integer :: ndim, ph_ngi, ph_ngi_short, ph_nloc, ph_snloc, &
+           &     u_nloc, u_snloc, sphngi, sbphngi, nface, &
+           &     totele, x_nonods, ele, iloc, jloc, x_nloc, &
+           &     cv_snloc, ph_ele_type, iloop, u_nonods, cv_nonods, &
+           &     cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, cv_nloc, &
+           &     ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
+      real, dimension( : ), pointer :: phweight, phweight_short, sphfeweigh, sbphfeweigh, &
+           &                           sele_overlap_scale
+      real, dimension( :, : ), pointer :: phn, phn_short, phfen, phfen_short, ufen, &
+           &                              sphfen, sphfenslx, sphfensly, sufen, sufenslx, sufensly, &
+           &                              sbphn, sbphfen, sbphfenslx, sbphfensly, sbufen, sbufenslx, sbufensly
+      real, dimension( :, :, : ), pointer :: phfenlx_all, phfenlx_short_all, ufenlx_all, &
+           &                                 sphfenlx_all, sufenlx_all, sbphfenlx_all, sbufenlx_all
+      logical, dimension( :, : ), allocatable :: u_on_face, ufem_on_face, &
+           &                                     ph_on_face, phfem_on_face
+      integer, pointer :: ncolgpts
+      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, ph_ndgln, u_ndgln
+      integer, dimension( :, : ), pointer :: ph_neiloc, ph_sloclist, u_sloclist
+      logical :: quad_over_whole_ele, d1, d3, dcyl
+      type( vector_field ), pointer :: x
+      type( mesh_type ), pointer :: phmesh
+
+      real, dimension( : ), pointer :: detwei, ra
+      real, pointer :: volume
+      real, dimension(:,:,:), pointer :: phfenx_all, ufenx_all
+
+      real, dimension( :, :, : ), allocatable :: u_ph_source_short, u_s_short_gi, dx_alpha_short_gi
+      real, dimension( :, : ), allocatable :: alpha_short, coef_alpha_short, coef_alpha_short_gi
+
+      real, dimension( :, :, : ), allocatable :: u_ph_source_long, u_s_long_gi, dx_ph_gi, dx_alpha_long_gi
+      real, dimension( :, : ), allocatable :: alpha_long, coef_alpha_long, coef_alpha_long_gi, ph
+
+      real, dimension( :, :, : ), allocatable :: u_s_gi, dx_alpha_gi
+      real, dimension( :, : ), allocatable :: coef_alpha_gi
+
+      real, dimension( : ), pointer :: tmp_cv_weight
+      real, dimension( :, : ), pointer :: tmp_cvfen
+      real, dimension( :, :, : ), pointer :: tmp_cvfenlx_all
+      real, dimension( :, :, : ), pointer :: tmp_cvfenx_all
+
+      real, dimension( :, : ), pointer :: other_fen
+      real, dimension( :, :, : ), pointer :: other_fenlx_all
+      real, dimension( :, :, : ), pointer :: other_fenx_all
+
+      real :: nxnx, nm
+
+      type( scalar_field ) :: rhs, sol
+      type( petsc_csr_matrix ) :: matrix
+      type( csr_sparsity ), pointer :: sparsity
+
+
+      call get_option( '/geometry/dimension', ndim )
+
+      ufield => extract_tensor_field( packed_state, "PackedVelocity" )
+
+      u_nloc = ele_loc( ufield, 1 ) ; u_snloc = face_loc( ufield, 1 )
+
+      u_nonods = node_count( ufield )
+
+      quad_over_whole_ele = .true.
+
+      ! ph elements
+      if ( ndim == 2 ) then
+         ph_ele_type = 4
+         ph_nloc = 6 ; ph_snloc = 3
+      else if ( ndim == 3 ) then
+         ph_ele_type = 8
+         ph_nloc = 10 ; ph_snloc = 6
+      else
+         stop 567
+      end if
+
+      call retrieve_ngi( ndim, ph_ele_type, ph_nloc, u_nloc, &
+           ph_ngi, ph_ngi_short, sphngi, sbphngi, nface, quad_over_whole_ele )
+
+      allocate( ph_on_face( ph_nloc, sphngi ), phfem_on_face( ph_nloc, sphngi ) )
+      allocate( u_on_face( u_nloc, sphngi ), ufem_on_face( u_nloc, sphngi ) )
+
+      call cv_fem_shape_funs_plus_storage( &
+                                ! volume shape functions...
+           ndim, ph_ele_type,  &
+           ph_ngi, ph_ngi_short, ph_nloc, u_nloc, phn, phn_short, &
+           phweight, phfen, phfenlx_all, &
+           phweight_short, phfen_short, phfenlx_short_all, &
+           ufen, ufenlx_all, &
+                                ! surface of each ph shape functions...
+           sphngi, ph_neiloc, ph_on_face, phfem_on_face, &
+           sphfen, sphfenslx, sphfensly, sphfeweigh, &
+           sphfenlx_all,  &
+           sufen, sufenslx, sufensly, &
+           sufenlx_all, &
+                                ! surface element shape funcs...
+           u_on_face, ufem_on_face, nface, &
+           sbphngi, sbphn, sbphfen, sbphfenslx, sbphfensly, sbphfeweigh, sbphfenlx_all, &
+           sbufen, sbufenslx, sbufensly, sbufenlx_all, &
+           ph_sloclist, u_sloclist, ph_snloc, u_snloc, &
+                                ! define the gauss points that lie on the surface of the ph...
+           findgpts, colgpts, ncolgpts, &
+           sele_overlap_scale, quad_over_whole_ele, &
+           state, "ph" , storageindexes(1) )
+
+      totele = ele_count( ufield )
+      x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+      cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+      x_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+      x => extract_vector_field( packed_state, "PressureCoordinate" )
+
+
+      u_ndgln => get_ndglno( extract_mesh( state( 1 ), "VelocityMesh" ) )
+
+      x_nloc = ele_loc( x, 1 )
+      cv_nloc = x_nloc
+
+
+      cv_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh" ) )
+
+
+      phmesh => extract_mesh( state( 1 ), "ph" )
+
+      ph_ndgln => get_ndglno( phmesh )
+
+      ph_nonods = node_count( phmesh )
+
+
+      d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
+
+      if ( cv_nloc == u_nloc ) then
+
+         tmp_cv_nloc = u_nloc
+         tmp_cvfen => ufen
+         tmp_cvfenlx_all => ufenlx_all
+         tmp_cv_weight => phweight_short
+
+         other_nloc = ph_nloc
+         other_fen => phfen
+         other_fenlx_all => phfenlx_all
+
+      else if ( cv_nloc == ph_nloc ) then
+
+         tmp_cv_nloc = ph_nloc
+         tmp_cvfen => phfen
+         tmp_cvfenlx_all => phfenlx_all
+         tmp_cv_weight = phweight_short
+
+         other_nloc = u_nloc
+         other_fen => ufen
+         other_fenlx_all => ufenlx_all
+
+      else
+         stop 7555
+      end if
+
+      allocate( u_ph_source_short( ndim, nphase, u_nonods ), &
+           &    alpha_short( nphase, cv_nonods ), &
+           &    coef_alpha_short( nphase, cv_nonods ) )
+
+      allocate( u_s_short_gi( ph_ngi, ndim, nphase ), &
+           &    dx_alpha_short_gi( ph_ngi, ndim, nphase ), &
+           &    coef_alpha_short_gi( ph_ngi, nphase ) )
+
+      allocate( u_ph_source_long( ndim, nphase, u_nonods ), &
+           &    alpha_long( nphase, ph_nonods ), &
+           &    ph( nphase, ph_nonods ), &
+           &    coef_alpha_long( nphase, ph_nonods ) )
+
+      allocate( u_s_long_gi( ph_ngi, ndim, nphase ), &
+           &    dx_ph_gi( ph_ngi, ndim, nphase ), &
+           &    dx_alpha_long_gi( ph_ngi, ndim, nphase ), &
+           &    coef_alpha_long_gi( ph_ngi, nphase ) )
+
+      allocate( u_s_gi( ph_ngi, ndim, nphase ), &
+           &    dx_alpha_gi( ph_ngi, ndim, nphase ), &
+           &    coef_alpha_gi( ph_ngi, nphase ) )
+
+
+      allocate( u_rhs( ndim, nphase, u_nonods ) ) ; u_rhs = 0.0
+
+
+      sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
+      call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. )
+      call zero( matrix )
+
+      call allocate( rhs, phmesh, "rhs" )
+      call zero ( rhs )
+      call allocate( sol, phmesh, "sol" )
+      call zero( sol )
+
+      do iloop = 1, 2
+
+         ! iloop=1 form the rhs of the pressure matrix and pressure matrix and solve it.
+         ! iloop=2 put the residual into the rhs of the momentum eqn.
+
+
+         do  ele = 1, totele
+
+            ! calculate detwei,ra,nx,ny,nz for element ele
+            call detnlxr_plus_u_with_storage( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
+                 x_ndgln, totele, x_nonods, x_nloc, tmp_cv_nloc, ph_ngi, &
+                 tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
+                 tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
+                 other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
+                 other_fenx_all, state ,"C_1", StorageIndexes( 14 ) )
+
+            if ( cv_nloc == u_nloc ) then
+                ufenx_all => tmp_cvfenx_all ! u
+                phfenx_all => other_fenx_all ! ph
+            else
+                ufenx_all => other_fenx_all ! u
+                phfenx_all => tmp_cvfenx_all ! ph
+            end if
+
+
+
+            u_s_short_gi = 0.0 ; dx_alpha_short_gi = 0.0 ; coef_alpha_short_gi = 0.0
+
+            do u_iloc = 1, u_nloc
+               u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
+               do iphase = 1, nphase
+                  do idim = 1, ndim
+                     u_s_short_gi( :, idim, iphase ) = u_s_short_gi( :, idim, iphase ) + &
+                          ufen( u_iloc, : ) * u_ph_source_short( idim, iphase, u_inod )
+                  end do
+               end do
+            end do
+            do cv_iloc = 1, cv_nloc
+               cv_inod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+               do iphase = 1, nphase
+                  do idim = 1, ndim
+                     dx_alpha_short_gi( :, idim, iphase ) = dx_alpha_short_gi( :, idim, iphase ) + &
+                          ufenx_all( idim, u_iloc, : ) * alpha_short( iphase, cv_inod )
+                  end do
+                  coef_alpha_short_gi( :, iphase ) = coef_alpha_short_gi( :, iphase ) + &
+                       ufen( u_iloc, : ) * coef_alpha_short( iphase, cv_inod )
+               end do
+            end do
+
+
+            u_s_long_gi = 0.0 ; dx_ph_gi = 0.0 ; dx_alpha_long_gi = 0.0 ; coef_alpha_long_gi = 0.0
+
+            do ph_iloc = 1, ph_nloc
+               ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
+               do iphase = 1, nphase
+                  do idim = 1, ndim
+                     u_s_long_gi( :, idim, iphase ) = u_s_long_gi( :, idim, iphase ) + &
+                          phfen( u_iloc, : ) * u_ph_source_long( idim, iphase, u_inod )
+                     dx_alpha_long_gi( :, idim, iphase ) = dx_alpha_long_gi( :, idim, iphase ) + &
+                          phfenx_all( idim, ph_iloc, : ) * alpha_long( iphase, ph_inod )
+                     dx_ph_gi( :, idim, iphase ) = dx_ph_gi( :, idim, iphase ) + &
+                          phfenx_all( idim, ph_iloc, : ) * ph( iphase, ph_inod )
+                  end do
+                  coef_alpha_long_gi( :, iphase ) = coef_alpha_long_gi( :, iphase ) + &
+                       phfen( ph_iloc, : ) * coef_alpha_long( iphase, ph_inod )
+               end do
+            end do
+
+            u_s_gi = u_s_long_gi + u_s_short_gi
+            dx_alpha_gi = dx_alpha_long_gi + dx_alpha_short_gi
+            coef_alpha_gi = coef_alpha_long_gi + coef_alpha_short_gi
+
+
+
+            if ( iloop == 1 ) then
+
+               ! form the hydrostatic pressure eqn...
+
+               do ph_iloc = 1, ph_nloc
+                  ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
+                  do ph_jloc = 1, ph_nloc
+                     ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
+                     nxnx = 0.0
+                     do idim = 1, ndim
+                        nxnx = sum( phfenlx_all( idim, ph_iloc, : ) * phfenlx_all( idim, ph_jloc, : ) * detwei )
+                     end do
+                     do iphase = 1, nphase
+                        do idim = 1, ndim
+                           call addto( rhs, ph_inod, &
+                                -sum( phfenlx_all( idim, ph_iloc, : ) * ( &
+                                u_s_gi( :, idim, iphase ) + coef_alpha_gi( :, iphase ) * &
+                                dx_alpha_gi( :, idim, iphase ) ) * detwei ) )
+                        end do
+                     end do
+
+                     call addto( matrix, 1, 1, &
+                          ph_inod, ph_jnod, nxnx )
+
+                  end do
+               end do
+
+            else
+
+               ! form rhs of the momentum eqn...
+
+               do u_iloc = 1, u_nloc
+                  u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
+                  do ph_jloc = 1, ph_nloc
+                     ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
+
+                     nm = sum( ufen( u_iloc, : ) * phfen( ph_jloc, : ) * detwei )
+
+                     do iphase = 1, nphase
+                        do idim = 1, ndim
+                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
+                                nm * sol % val( ph_jnod )
+                        end do
+                     end do
+
+                  end do
+               end do
+
+
+            end if
+
+
+         end do ! ele loop
+
+         if ( iloop == 1 ) then
+            ! solver for pressure ph
+
+            call petsc_solve( sol, matrix, rhs, trim( ufield % option_path ) )
+
+         end if
+
+      end do
+
+      ! deallocate
+      call deallocate( rhs )
+      call deallocate( sol )
+      call deallocate( matrix )
+
+      return
+    end subroutine high_order_pressure_solve
+
 
 end module multiphase_1D_engine

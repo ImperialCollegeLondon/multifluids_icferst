@@ -105,7 +105,7 @@ module multiphase_fractures
   integer, save :: ndim
 
   private
-  public :: blasting, update_blasting_memory
+  public :: fracking, blasting, update_blasting_memory
 
 contains
 
@@ -204,8 +204,13 @@ contains
 
     ewrite(3,*) "inside initialise_femdem"
 
-    call get_option( "/blasting/femdem_input_file/name", femdem_mesh_name )
+    if (have_option('/femdem_fracture') ) then
+    call get_option( "/femdem_fracture/femdem_file/name", femdem_mesh_name ) !!-ao changed name 
     femdem_mesh_name = trim( femdem_mesh_name ) // ".y"
+    elseif ( have_option('/blasting') ) then
+    call get_option( "/blasting/femdem_input_file/name", femdem_mesh_name ) 
+    femdem_mesh_name = trim( femdem_mesh_name ) // ".y"
+    end if
 
     call get_option( "/geometry/quadrature/degree", quad_degree )
     call get_option( "/geometry/dimension", ndim )
