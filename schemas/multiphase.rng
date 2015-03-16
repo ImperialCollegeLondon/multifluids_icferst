@@ -2604,7 +2604,7 @@ i.e. excluding the components</a:documentation>
           <a:documentation>Field type</a:documentation>
           <element name="prognostic">
             <ref name="velocity_mesh_choice"/>
-            <ref name="prognostic_scalar_field"/>
+            <ref name="prognostic_scalar_field_multiphase"/>
           </element>
           <element name="prescribed">
             <ref name="velocity_mesh_choice"/>
@@ -2641,7 +2641,7 @@ i.e. excluding the components</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="velocity_mesh_choice"/>
-            <ref name="prognostic_scalar_field"/>
+            <ref name="prognostic_scalar_field_multiphase"/>
           </element>
           <element name="prescribed">
             <ref name="velocity_mesh_choice"/>
@@ -2663,7 +2663,7 @@ i.e. excluding the components</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="velocity_mesh_choice"/>
-            <ref name="prognostic_scalar_field"/>
+            <ref name="prognostic_scalar_field_multiphase"/>
           </element>
           <element name="prescribed">
             <ref name="velocity_mesh_choice"/>
@@ -2698,7 +2698,7 @@ i.e. excluding the components</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="velocity_mesh_choice"/>
-            <ref name="prognostic_scalar_field"/>
+            <ref name="prognostic_scalar_field_multiphase"/>
           </element>
           <element name="prescribed">
             <ref name="velocity_mesh_choice"/>
@@ -2729,7 +2729,7 @@ for fields within the same material_phase.</a:documentation>
           <attribute name="copy_from_field">
             <data type="string" datatypeLibrary=""/>
           </attribute>
-          <ref name="prognostic_scalar_field"/>
+          <ref name="prognostic_scalar_field_multiphase"/>
         </element>
       </element>
       <element name="scalar_field">
@@ -2759,7 +2759,7 @@ Required in porous_media and multiphase problem types</a:documentation>
         <choice>
           <element name="prognostic">
             <ref name="velocity_mesh_choice"/>
-            <ref name="prognostic_scalar_field"/>
+            <ref name="prognostic_scalar_field_multiphase"/>
             <optional>
               <ref name="cap_option"/>
             </optional>
@@ -2801,7 +2801,7 @@ even if the problem is one-phase</a:documentation>
           <element name="prognostic">
             <ref name="velocity_mesh_choice"/>
             <ref name="equation_of_state"/>
-            <ref name="prognostic_scalar_field"/>
+            <ref name="prognostic_scalar_field_multiphase"/>
             <optional>
               <ref name="cap_option"/>
             </optional>
@@ -2843,7 +2843,7 @@ even if the problem is one-phase</a:documentation>
           <element name="prognostic">
             <ref name="velocity_mesh_choice"/>
             <ref name="equation_of_state"/>
-            <ref name="prognostic_scalar_field"/>
+            <ref name="prognostic_scalar_field_multiphase"/>
             <optional>
               <ref name="cap_option"/>
             </optional>
@@ -2885,7 +2885,7 @@ even if the problem is one-phase</a:documentation>
           <element name="prognostic">
             <ref name="velocity_mesh_choice"/>
             <ref name="equation_of_state"/>
-            <ref name="prognostic_scalar_field"/>
+            <ref name="prognostic_scalar_field_multiphase"/>
             <optional>
               <ref name="cap_option"/>
             </optional>
@@ -2924,7 +2924,7 @@ mass fraction with a particular phase</a:documentation>
           <element name="prognostic">
             <ref name="velocity_mesh_choice"/>
             <ref name="equation_of_state"/>
-            <ref name="prognostic_scalar_field"/>
+            <ref name="prognostic_scalar_field_multiphase"/>
             <optional>
               <ref name="cap_option"/>
             </optional>
@@ -2951,7 +2951,7 @@ mass fraction with a particular phase</a:documentation>
                    (
                       element prognostic {
                          velocity_mesh_choice,
-                         prognostic_scalar_field
+                         prognostic_scalar_field_multiphase
                       }|
                       element prescribed {
                          velocity_mesh_choice,

@@ -2049,7 +2049,7 @@ scalar_field_choice =
             (
                element prognostic {
                   velocity_mesh_choice,
-                  prognostic_scalar_field
+                  prognostic_scalar_field_multiphase
                }|
                element prescribed {
                   velocity_mesh_choice,
@@ -2082,7 +2082,7 @@ scalar_field_choice =
             (
                element prognostic {
                   velocity_mesh_choice,
-                  prognostic_scalar_field
+                  prognostic_scalar_field_multiphase
                }|
                element prescribed {
                   velocity_mesh_choice,
@@ -2100,7 +2100,7 @@ scalar_field_choice =
             (
                element prognostic {
                   velocity_mesh_choice,
-                  prognostic_scalar_field
+                  prognostic_scalar_field_multiphase
                }|
                element prescribed {
                   velocity_mesh_choice,
@@ -2129,7 +2129,7 @@ scalar_field_choice =
             (
                element prognostic {
                   velocity_mesh_choice,
-                  prognostic_scalar_field
+                  prognostic_scalar_field_multiphase
                }|
                element prescribed {
                   velocity_mesh_choice,
@@ -2155,7 +2155,7 @@ scalar_field_choice =
                element prognostic {
                   velocity_mesh_choice,
                   attribute copy_from_field { string },
-                  prognostic_scalar_field
+                  prognostic_scalar_field_multiphase
                }
             )
          }|
@@ -2180,7 +2180,7 @@ scalar_field_choice =
             (
                element prognostic {
                   velocity_mesh_choice,
-                  prognostic_scalar_field,
+                  prognostic_scalar_field_multiphase,
                   cap_option?
                }|
                element prescribed {
@@ -2212,7 +2212,7 @@ scalar_field_choice =
                element prognostic {
                   velocity_mesh_choice,
                   equation_of_state,
-                  prognostic_scalar_field,
+                  prognostic_scalar_field_multiphase,
                   cap_option?
                }|
                element prescribed {
@@ -2244,7 +2244,7 @@ scalar_field_choice =
                element prognostic {
                   velocity_mesh_choice,
                   equation_of_state,
-                  prognostic_scalar_field,
+                  prognostic_scalar_field_multiphase,
                   cap_option?
                }|
                element prescribed {
@@ -2276,7 +2276,7 @@ scalar_field_choice =
                element prognostic {
                   velocity_mesh_choice,
                   equation_of_state,
-                  prognostic_scalar_field,
+                  prognostic_scalar_field_multiphase,
                   cap_option?
                }|
                element prescribed {
@@ -2305,7 +2305,7 @@ scalar_field_choice =
                element prognostic {
                   velocity_mesh_choice,
                   equation_of_state,
-                  prognostic_scalar_field,
+                  prognostic_scalar_field_multiphase,
                   cap_option?
                }|
                element prescribed {
@@ -2327,7 +2327,7 @@ scalar_field_choice =
          #            (
          #               element prognostic {
          #                  velocity_mesh_choice,
-         #                  prognostic_scalar_field
+         #                  prognostic_scalar_field_multiphase
          #               }|
          #               element prescribed {
          #                  velocity_mesh_choice,

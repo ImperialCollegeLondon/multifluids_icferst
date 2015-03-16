@@ -672,6 +672,15 @@ vector_laplacian_algorithm =
          vector_source_field
       }
    )
+grad_vector_algorithm =
+   (
+      ## algorithm for the full tensor gradient of a vector field
+       element algorithm {
+         attribute name { "grad_vector" },
+         attribute material_phase_support { "single "},
+         vector_source_field
+      }
+   )
 strain_rate_algorithm =
    (
       ## algorithm for the strain rate of a vector field
