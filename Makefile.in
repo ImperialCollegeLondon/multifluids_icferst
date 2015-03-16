@@ -235,7 +235,7 @@ bin/multiphase_prototype: fluidity_library
 	@echo "    MKDIR legacy_reservoir_prototype"
 	@mkdir -p bin
 	@echo "    LD multiphase_prototype"
-	@$(EVAL) $(FLLINKER) -o bin/multiphase_prototype legacy_reservoir_prototype/main.o $(FCFLAGS) $(LIBS)
+	@$(EVAL) $(FLLINKER) -o bin/multiphase_prototype legacy_reservoir_prototype/main.o ./legacy_reservoir_prototype/lib/libmphase.a $(FCFLAGS) $(LIBS)
 
 bin/form_pod_basis: fluidity_library reduced_modelling/Form_Pod_Basis_Main.F90
 	@cd reduced_modelling; $(MAKE) Form_Pod_Basis_Main.o
@@ -613,6 +613,8 @@ endif
 	@cd reduced_modelling;   	../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating adjoint dependencies"
 	@cd adjoint; ../bin/create_makefile $(TESTOPTS)
+	@echo "    Generating multiphase dependencies"
+	@cd legacy_reservoir_prototype/src;  ../../bin/create_makefile $(TESTOPTS)
 	@echo "    Generating main dependencies"
 	@cd main; ../bin/create_makefile --exclude test_coupler.F90 $(TESTOPTS)
 	@echo "    Cleaning up the mess"

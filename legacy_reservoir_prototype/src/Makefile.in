@@ -29,7 +29,7 @@ PACKAGE_NAME = @PACKAGE_NAME@
 
 FLUIDITY = $(PACKAGE_NAME)
 FC      = @FC@
-FCFLAGS = -I../include @CPPFLAGS@ @FCFLAGS@ -I/usr/local/include -I./
+FCFLAGS = -I../../include -I../include -J../include @CPPFLAGS@ @FCFLAGS@ -I/usr/local/include -I./
 
 MPIF90  = @MPIF90@
 
@@ -41,22 +41,26 @@ CXXFLAGS= @CPPFLAGS@ @CXXFLAGS@ -I../include -I/usr/local/include
 
 LINKER  = @LINKER@ @LDFLAGS@
 
-FLLINKER = @FLLINKER@ @FLFLAGS@
-
 MAKE    = @MAKE@
+
 AR  = @AR@
 ARFLAGS = @ARFLAGS@
 
-OBJS = $(shell find . -mindepth 2 -maxdepth 2 -name '*.c' -o -name '*.cpp' -o -name '*.[fF]' -o -name '*.F90' | grep -v ^./lib | xargs)
+OBJS = Extract_From_State.o multi_matrix_operations.o \
+multi_shape_fct_ND.o multi_shape_fct.o multi_sparsity.o multi_eos.o cv-adv-dif.o multi_solvers.o \
+multi_compositional.o multi_dyncore_dg.o Multiphase_TimeLoop.o \
+Multiphase_Prototype_Wrapper.o multi_IO.o multi_fracture.o multi_caching.o multi_rheology.o
 
 .SUFFIXES: .f90 .F90 .c .cpp .o .a
 
 .f90.o:
 	@echo "        FC $<"
-	$(FC) $(FCFLAGS) -c $<
+	@ mkdir -p ../include
+	$(FC) $(FCFLAGS) $(GENFLAGS) -c $<
 .F90.o:
 	@echo "        FC $<"
-	$(FC) $(FCFLAGS) -c $<
+	@ mkdir -p ../include
+	$(FC) $(FCFLAGS) $(GENFLAGS) -c $<
 .c.o:
 	@echo "        CC $<"
 	$(CC) $(CFLAGS) -c $<
@@ -64,21 +68,12 @@ OBJS = $(shell find . -mindepth 2 -maxdepth 2 -name '*.c' -o -name '*.cpp' -o -n
 	@echo "        CXX $<"
 	$(CXX) $(CXXFLAGS) -c $<
 
-default: lib/libmphase.a  main.o
+default: $(OBJS)
 
 # cancel implicit rule that tries to make .o from .mod with m2c:
 %.o: %.mod
 
-lib/libmphase.a: $(OBJS)
-	@echo "BUILD libmphase"
-	@echo "    MKDIR lib"
-	@mkdir -p lib
-	@echo "    MAKE src"
-	@cd src; 	$(MAKE)
-	@$(AR) $(ARFLAGS) lib/libmphase.a src/*.o
-
 clean:
-	@rm -f *.o *.d include/*.mod $(PROG_EXEC) lib/*.a
-	@cd src;   make clean
-	@cd tests; make clean
-	@cd unittest; make clean
+	@rm -f *.o *.d *.mod $(PROG_EXEC)
+
+include Makefile.dependencies
