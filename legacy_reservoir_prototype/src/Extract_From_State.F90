@@ -4073,9 +4073,9 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 ! [Check that porosity is constant across an element and not across a control volume - else this needs modification].
 
       ! x_ele calculates a coordinate on each element
-      x_ele=x_ndgln((ele-1)*cv_nloc+1)
+      !x_ele=x_ndgln((ele-1)*cv_nloc+1)
       !PorG(ele) = Por(x_ele)
-      PorG = Por(x_ele)
+      PorG = Por(ele)
 
 ! This function will return true for surfaces we should be integrating over (this entire subroutine is called in a loop over ele,(sele),gi in cv-adv-dif)
 ! Need the condition that sele > 0 Check why it can be zero/negative.
