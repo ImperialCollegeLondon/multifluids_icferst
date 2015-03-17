@@ -97,7 +97,7 @@
          nphase, nstate, ncomp, totele, ndim, stotel, &
          u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
          x_snloc, cv_snloc, u_snloc, p_snloc, &
-         cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, dx )
+         cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, ph_nloc, ph_nonods )
 !!$ This subroutine extracts all primary variables associated with the mesh from state,
 !!$ and associated them with the variables used in the MultiFluids model.
       implicit none
@@ -105,15 +105,14 @@
       integer, intent( inout ) :: nphase, nstate, ncomp, totele, ndim, stotel
       integer, intent( inout ), optional :: u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, &
            mat_nloc, x_snloc, cv_snloc, u_snloc, p_snloc, cv_nonods, mat_nonods, u_nonods, &
-           xu_nonods, x_nonods, x_nonods_p1, p_nonods
-      real, intent( inout ), optional :: dx
+           xu_nonods, x_nonods, x_nonods_p1, p_nonods, ph_nloc, ph_nonods
 
 !!$ Local variables
       character( len = option_path_len ) :: vel_element_type
       type( vector_field ), pointer :: positions, velocity
       type( scalar_field ), pointer :: pressure
-      type( mesh_type ), pointer :: velocity_cg_mesh, pressure_cg_mesh
-      integer :: i, degree
+      type( mesh_type ), pointer :: velocity_cg_mesh, pressure_cg_mesh, ph_mesh
+      integer :: i, degree, stat
 
       ewrite(3,*)' In Get_Primary_Scalars'
 
@@ -185,8 +184,16 @@
       if( present( xu_nloc ) ) xu_nloc = ele_loc( velocity_cg_mesh, 1 )
       if( present( xu_nonods ) ) xu_nonods = max(( xu_nloc - 1 ) * totele + 1, totele )
 
-!!$ Used just for 1D:
-      if( present( dx ) ) dx = maxval( positions % val( 1, : ) ) - minval( positions % val( 1, : ) )
+      if( present( ph_nloc ) ) then
+         ph_mesh => extract_mesh( state, 'ph', stat )
+         if ( stat == 0 ) then
+            ph_nloc = ele_loc( ph_mesh, 1 )
+            ph_nonods = node_count( ph_mesh )
+         else
+            ph_nloc = 0
+            ph_nonods = 0
+         end if
+      end if
 
       return
     end subroutine Get_Primary_Scalars
@@ -754,7 +761,7 @@
            nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, dx )
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods )
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -1889,7 +1896,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
            nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, dx )
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods )
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -4066,9 +4073,9 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 ! [Check that porosity is constant across an element and not across a control volume - else this needs modification].
 
       ! x_ele calculates a coordinate on each element
-      x_ele=x_ndgln((ele-1)*cv_nloc+1)
+      !x_ele=x_ndgln((ele-1)*cv_nloc+1)
       !PorG(ele) = Por(x_ele)
-      PorG = Por(x_ele)
+      PorG = Por(ele)
 
 ! This function will return true for surfaces we should be integrating over (this entire subroutine is called in a loop over ele,(sele),gi in cv-adv-dif)
 ! Need the condition that sele > 0 Check why it can be zero/negative.
