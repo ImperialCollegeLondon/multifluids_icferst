@@ -4066,7 +4066,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       DensVG(:,gi) = DensVG(:,gi) + Dens(:,cv_knod)*SCVFEN(cv_kloc,gi)
       end do
 
-
 ! Porosity is on the P0DG mesh. The value is constant across an element. Can calculate it at any point in an element and assign this to be the value
 ! at the Gauss point. (Strictly this last bit is unnecessary - may tidy up in the future). x_ndgln((ele-1)*cvnloc +1) allows us to extract the
 ! x-coordinate of the '1st physical' triangle node for each element. We then calculate the porosity at this value of x and assign it to PorG(ele).
