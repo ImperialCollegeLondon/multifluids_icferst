@@ -147,6 +147,7 @@
       <integer_value rank="0">3</integer_value>
     </nonlinear_iterations>
   </timestepping>
+  <caching/>
   <physical_parameters>
     <mobility>
       <real_value rank="0">10.</real_value>
@@ -237,6 +238,7 @@
             <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">1.0</real_value>
             </constant>
@@ -247,6 +249,7 @@
             <integer_value shape="1" rank="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">1.0</real_value>
             </constant>
@@ -275,6 +278,7 @@
             <mass_terms/>
             <viscosity_scheme>
               <compact_discontinuous_galerkin/>
+              <nonlinear_scheme/>
             </viscosity_scheme>
             <advection_scheme>
               <upwind/>
@@ -323,6 +327,7 @@
             <integer_value shape="1" rank="1">6</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -342,6 +347,7 @@
             <integer_value shape="1" rank="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -361,6 +367,7 @@
             <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -380,6 +387,7 @@
             <integer_value shape="1" rank="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
@@ -480,6 +488,7 @@
             <integer_value shape="1" rank="1">6</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">1.</real_value>
             </constant>
@@ -490,6 +499,7 @@
             <integer_value shape="1" rank="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">1.</real_value>
             </constant>
@@ -619,6 +629,7 @@ def val(X, t):
             <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">0.</real_value>
             </constant>
@@ -629,6 +640,7 @@ def val(X, t):
             <integer_value shape="1" rank="1">9</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">0.</real_value>
             </constant>
@@ -639,6 +651,7 @@ def val(X, t):
             <integer_value shape="1" rank="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">0.</real_value>
             </constant>
@@ -650,6 +663,7 @@ def val(X, t):
             <comment>left boundary</comment>
           </surface_ids>
           <type name="dirichlet">
+            <apply_weakly/>
             <constant>
               <real_value rank="0">0.0</real_value>
             </constant>
