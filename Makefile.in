@@ -532,6 +532,9 @@ else
         endif
 endif
 
+mediumtest: fltools bin/$(FLUIDITY) manual bin/burgers_equation bin/shallow_water spudtools
+	@cd tests; ../bin/testharness -l medium $(EXCLUDE_TAGS) -n $(THREADS)
+
 spudtools:
 	@cd libspud ; $(MAKE) install-spudtools
 	@echo "    INSTALL spudtools"
