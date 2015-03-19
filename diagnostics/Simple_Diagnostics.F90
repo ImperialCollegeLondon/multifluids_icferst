@@ -54,7 +54,8 @@ module simple_diagnostics
             calculate_time_averaged_scalar, calculate_time_averaged_vector, &
             calculate_time_averaged_scalar_squared, &
             calculate_time_averaged_vector_squared, &
-            calculate_time_averaged_vector_times_scalar, calculate_period_averaged_scalar
+            calculate_time_averaged_vector_times_scalar, calculate_period_averaged_scalar, &
+            calculate_scalar_gaussian
 
   ! for the period_averaged_scalar routine
   real, save :: last_output_time
@@ -526,7 +527,23 @@ contains
       read_field => vtk_cache_read_tensor_field(filename, trim(t_field%name))
       call set(t_field, read_field)
     end if
-
   end subroutine initialise_diagnostic_tensor_from_checkpoint
+
+  subroutine calculate_scalar_gaussian(state, s_field)
+    type(state_type), intent(in) :: state
+    type(scalar_field), intent(inout) :: s_field
+    type(scalar_field), pointer :: source_field
+
+    real :: s0,lambda
+
+    source_field => scalar_source_field(state, s_field)
+
+    call get_option(trim(s_field%option_path)//"/diagnostic/algorithm/centre",s0)
+    call get_option(trim(s_field%option_path)//"/diagnostic/algorithm/scale",lambda)
+    
+    s_field%val=exp(-lambda**2*(source_field%val-s0)**2)
+
+  end subroutine calculate_scalar_gaussian
+
 
  end module simple_diagnostics
