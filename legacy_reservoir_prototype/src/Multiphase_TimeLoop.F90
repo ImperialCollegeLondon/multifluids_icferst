@@ -1567,10 +1567,10 @@
         type(scalar_field), pointer :: sfield
         type(tensor_field), pointer :: tfield
 
-        integer ic
+        integer ic, stat
 
         type(halo_type), pointer :: halo
-
+        type(mesh_type), pointer :: ph_mesh
 
 
         allocate(sparsity)
@@ -1627,17 +1627,11 @@
         call insert(packed_state,sparsity,"MomentumSparsity")
         call deallocate(sparsity)
 
-
-
         sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
              "PressureMassMatrixSparsity")
         call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
         call deallocate(sparsity)
-
-
         deallocate(sparsity)
-
-
 
         sparsity=> extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
         do ic=1,size(multicomponent_state)
@@ -1650,6 +1644,14 @@
 
         sparsity=> extract_csr_sparsity(state(1),"ElementConnectivity")
         call insert(packed_state,sparsity,"ElementConnectivity")
+
+        ph_mesh => extract_mesh( state( 1 ), "ph", stat )
+        if ( stat == 0 ) then
+           sparsity = wrap( findph, colm = colph, name = "phsparsity" )
+           call insert( packed_state, sparsity, "phsparsity" )
+           call deallocate( sparsity )
+        end if
+
 
       end subroutine temp_mem_hacks
 
