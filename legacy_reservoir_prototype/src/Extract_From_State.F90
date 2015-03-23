@@ -185,7 +185,7 @@
       if( present( xu_nonods ) ) xu_nonods = max(( xu_nloc - 1 ) * totele + 1, totele )
 
       if( present( ph_nloc ) ) then
-         ph_mesh => extract_mesh( state, 'ph', stat )
+         ph_mesh => extract_mesh( state( 1 ), 'ph', stat )
          if ( stat == 0 ) then
             ph_nloc = ele_loc( ph_mesh, 1 )
             ph_nonods = node_count( ph_mesh )
