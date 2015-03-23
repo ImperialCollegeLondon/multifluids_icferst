@@ -6,7 +6,7 @@ input: clean
 
 	gmsh -2 src/2d_mesh_20by20.geo
 
-	../../../scripts/gmsh2triangle --2d src/2d_mesh_20by20.msh
+	../../../bin/gmsh2triangle --2d src/2d_mesh_20by20.msh
 
 clean:
 	rm -f *.d.* fluidity.* ocvn

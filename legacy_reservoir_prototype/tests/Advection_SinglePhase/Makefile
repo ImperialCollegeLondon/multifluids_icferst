@@ -5,7 +5,7 @@ SIM = Advection_SinglePhase
 input: clean
 
 	gmsh -2 src/2d_mesh.geo
-	../../../scripts/gmsh2triangle --2d src/2d_mesh.msh
+	../../../bin/gmsh2triangle --2d src/2d_mesh.msh
 
 clean:
 	rm -f *.d.* fluidity.* ocvn

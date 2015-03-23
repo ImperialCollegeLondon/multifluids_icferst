@@ -8,9 +8,9 @@ input: clean
 	gmsh -2 src/2d_mesh_20layers.geo
 	gmsh -2 src/2d_mesh_50layers.geo
 
-	../../../scripts/gmsh2triangle --2d src/2d_mesh_10layers.msh
-	../../../scripts/gmsh2triangle --2d src/2d_mesh_20layers.msh
-	../../../scripts/gmsh2triangle --2d src/2d_mesh_50layers.msh
+	../../../bin/gmsh2triangle --2d src/2d_mesh_10layers.msh
+	../../../bin/gmsh2triangle --2d src/2d_mesh_20layers.msh
+	../../../bin/gmsh2triangle --2d src/2d_mesh_50layers.msh
 
 clean:
 	rm -f *.d.* fluidity.*

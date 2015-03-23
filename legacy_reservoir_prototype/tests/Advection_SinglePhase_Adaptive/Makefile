@@ -7,9 +7,9 @@ input: clean
 	gmsh -2 src/2d_mesh_unstructured.geo
 	gmsh -2 src/2d_mesh_adaptive.geo
 	gmsh -2 src/2d_mesh_square.geo
-	../../../scripts/gmsh2triangle --2d src/2d_mesh_adaptive.msh
-	../../../scripts/gmsh2triangle --2d src/2d_mesh_unstructured.msh
-	../../../scripts/gmsh2triangle --2d src/2d_mesh_square.msh
+	../../../bin/gmsh2triangle --2d src/2d_mesh_adaptive.msh
+	../../../bin/gmsh2triangle --2d src/2d_mesh_unstructured.msh
+	../../../bin/gmsh2triangle --2d src/2d_mesh_square.msh
 
 clean:
 	rm -f *.d.* fluidity.* ocvn
