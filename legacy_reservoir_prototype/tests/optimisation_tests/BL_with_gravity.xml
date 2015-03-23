@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE testproblem SYSTEM "regressiontest.dtd">
+
+<testproblem>
+  <name>Check_BL_with_gravity</name>
+  <owner userid="pablo.salinas"/>
+  <tags>mpml</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>
+        cd ./BL_with_gravity/
+        python ./Check_BL_with_gravity.py
+    </command_line>
+    <!-- Porous media test cases -->
+  </problem_definition>
+
+
+  <pass_tests>
+    <test name="Check_BL_with_gravity" language="python">
+Check_BL_with_gravity = False
+Log=file('BL_with_gravity/log','r')
+while True:
+    cadena=Log.readline()
+    if len(cadena) ==0:
+        break # EOF
+
+if 'OK' in cadena: Check_BL_with_gravity = True
+
+Log.close
+    </test>
+
+  </pass_tests>
+  <warn_tests>
+  </warn_tests>
+</testproblem>

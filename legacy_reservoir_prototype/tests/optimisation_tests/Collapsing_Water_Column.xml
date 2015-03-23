@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE testproblem SYSTEM "regressiontest.dtd">
+
+<testproblem>
+  <name>Collapsing_Water_Column</name>
+  <owner userid="pablo.salinas"/>
+  <tags>mpml</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>
+        cd ./Collapsing_Water_Column/
+        python ./Check_CWC.py
+    </command_line>
+    <!-- Porous media test cases -->
+  </problem_definition>
+
+
+  <pass_tests>
+    <test name="Collapsing_Water_Column" language="python">
+Collapsing_Water_Column = False
+Log=file('Collapsing_Water_Column/log','r')
+while True:
+    cadena=Log.readline()
+    if len(cadena) ==0:
+        break # EOF
+
+if 'OK' in cadena: Collapsing_Water_Column = True
+
+Log.close
+    </test>
+
+  </pass_tests>
+  <warn_tests>
+  </warn_tests>
+</testproblem>
