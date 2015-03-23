@@ -1363,10 +1363,10 @@
                  mx_nface_p1 )
 
             !Look again for bad elements
-            if (is_porous_media) then
-                allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-                call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
-            end if
+!            if (is_porous_media) then
+!                allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+!                call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
+!            end if
             call temp_mem_hacks()
 
 !!$ Allocating space for various arrays:
