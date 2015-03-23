@@ -319,12 +319,11 @@
            nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods )
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
            u_sndgln( stotel * u_snloc ) )
-
 
       call Compute_Node_Global_Numbers( state, &
            totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
@@ -1298,7 +1297,7 @@
                  nphase, nstate, ncomp, totele, ndim, stotel, &
                  u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
                  x_snloc, cv_snloc, u_snloc, p_snloc, &
-                 cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods )
+                 cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
 !!$ Calculating Global Node Numbers
             allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
                  u_sndgln( stotel * u_snloc ) )
