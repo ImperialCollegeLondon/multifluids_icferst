@@ -911,11 +911,9 @@ contains
 
 
          if ( have_option( '/blasting' ) ) then
-!            if( sum(DEN_ALL).ne.0.0) then
                RETRIEVE_SOLID_CTY = .true.
                call get_option( '/blasting/Gidaspow_model', opt )
                if ( trim( opt ) == "A" ) SOLID_FLUID_MODEL_B = .false.
-!            endif
          end if
 
 
@@ -1031,9 +1029,6 @@ contains
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
             if (is_porous_media) then
-!                deallocate(PIVIT_MAT)!Temporary until everything has been set up
-!                nullify(PIVIT_MAT)
-                !PIVIT_MAT is the same unless the mesh changes
                 call PHA_BLOCK_INV_plus_storage( PIVIT_MAT, TOTELE,&
                     U_NLOC * NPHASE * NDIM, state, 'stored_PIVIT_MAT', StorageIndexes(34))
             else
@@ -1086,11 +1081,12 @@ contains
 
             ! Put pressure in rhs of force balance eqn: CDP = C * P
             CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC)
-!
-!            call mult(CDP_TENSOR, C_petsc, P_ALL)
 
 
-!            call halo_update(cdp_tensor)
+
+            !call high_order_pressure_solve( cdp_tensor, state, packed_state, &
+            !                      small_findrm, small_colm, StorageIndexes, cv_ele_type, nphase )
+
 
             IF ( JUST_BL_DIAG_MAT .OR. NO_MATRIX_STORE ) THEN
                 !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
@@ -1122,11 +1118,8 @@ contains
 
                 U_ALL2 % VAL=velocity%val
 
-!                print*,  sum(abs(UP_VEL-[velocity%val]))
-
                 UP_VEL=[velocity%val]
 
-!                U_ALL2 % VAL = RESHAPE( UP_VEL, (/ NDIM, NPHASE, U_NONODS /) )
 
                 call deallocate(mat)
                 call deallocate(rhs)
@@ -8963,6 +8956,9 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       character( len = OPTION_PATH_LEN ) :: path
 
+      type( tensor_field ), pointer :: rho
+
+
 
       call get_option( '/geometry/dimension', ndim )
 
@@ -9087,6 +9083,21 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       allocate( u_s_gi( ph_ngi, ndim, nphase ), &
            &    dx_alpha_gi( ph_ngi, ndim, nphase ), &
            &    coef_alpha_gi( ph_ngi, nphase ) )
+
+      u_s_short_gi = 0.0 ; dx_alpha_short_gi = 0.0 ; coef_alpha_short_gi = 0.0
+      u_s_long_gi = 0.0 ; dx_ph_gi = 0.0 ; dx_alpha_long_gi = 0.0 ; coef_alpha_long_gi = 0.0
+      u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
+
+      ! initialise memory
+      u_ph_source_short = 0.0 ; alpha_short = 0.0 ; coef_alpha_short = 0.0
+      u_ph_source_long = 0.0 ; alpha_long = 0.0 ; coef_alpha_long = 0.0
+
+
+      ! set the gravity term
+
+      rho => extract_tensor_field( packed_state, "PackedDensity" )
+      u_ph_source_long( 2, 1, : ) = rho % val( 1, 1, : ) * 9.8
+
 
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
@@ -9247,7 +9258,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             call petsc_solve( ph_sol, matrix, rhs, trim( path ) )
 
             do iphase = 1, nphase
-               ph(iphase,:)=ph_sol%val(:) ! assume 1 phase for the time being
+               ph( iphase, : ) = ph_sol % val ! assume 1 phase for the time being
             end do
 
          end if
