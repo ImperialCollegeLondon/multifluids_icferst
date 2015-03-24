@@ -40,7 +40,7 @@
     use diagnostic_variables
     use diagnostic_fields
     use diagnostic_fields_wrapper
-    use global_parameters, only: option_path_len, is_porous_media
+    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat
     use diagnostic_fields_wrapper_new
     use element_numbering
     use shape_functions
@@ -67,7 +67,7 @@
          Extract_TensorFields_Outof_State, Extract_Position_Field, Get_Ele_Type, Get_Discretisation_Options, &
          print_from_state, update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
          get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
-         CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase
+         CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase, get_saturation_limits
 
     interface Get_Ndgln
        module procedure Get_Scalar_Ndgln, Get_Vector_Ndgln, Get_Mesh_Ndgln
@@ -89,7 +89,6 @@
 
     ! Used in calculations of the outflux - array of integers containing the gmesh IDs of each boundary that you wish to integrate over
     integer, dimension(:), allocatable :: outlet_id
-
   contains
 
 
@@ -3237,7 +3236,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
 
     subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
-         Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order)
+         Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order, help_convergence)
       !This subroutine either store variables before the nonlinear timeloop starts, or checks
       !how the nonlinear iterations are going and depending on that increase the timestep
       !or decreases the timestep and repeats that timestep
@@ -3247,6 +3246,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
       logical, intent(in) :: nonLinearAdaptTs
       integer, intent(in) :: its, order
+      logical, optional, intent(inout) :: help_convergence
       !Local variables
       real :: dt
       real, parameter :: check_sat_threshold = 1d-6
@@ -3316,23 +3316,46 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          !If  Repeat_time_step then we recover values, else we store them
          call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
       case (2)!Calculate and store reference_field
-         if (its==1) then
             !Store variable to check afterwards
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
                  phasevolumefraction = phasevolumefraction)
-            if (allocated(reference_field)) deallocate(reference_field)
+
             select case (variable_selection)
             case (1)
-               allocate (reference_field(1,1,size(pressure,1) ))
+                if (allocated(reference_field)) then
+                    if (size(reference_field,3) /= size(pressure,1) ) then
+                        deallocate(reference_field)
+                        allocate (reference_field(1,1,size(pressure,1) ))
+                    end if
+                else
+                    allocate (reference_field(1,1,size(pressure,1) ))
+                end if
                reference_field(1,1, :) = pressure
             case (2)
-               allocate (reference_field(size(velocity,1),size(velocity,2),size(velocity,3) ))
+                if (allocated(reference_field)) then
+                    if (size(reference_field,1) /= size(velocity,1) .or. &
+                        size(reference_field,2) /= size(velocity,2) .or. &
+                        size(reference_field,3) /= size(velocity,3) ) then
+                        deallocate(reference_field)
+                        allocate (reference_field(size(velocity,1),size(velocity,2),size(velocity,3) ))
+                    end if
+                else
+                    allocate (reference_field(size(velocity,1),size(velocity,2),size(velocity,3) ))
+                end if
                reference_field(:,:,:) = velocity
             case default
-               allocate (reference_field(1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
+
+                if (allocated(reference_field)) then
+                    if (size(reference_field,2) /= size(phasevolumefraction,1) .or. &
+                        size(reference_field,3) /= size(phasevolumefraction,2) ) then
+                        deallocate(reference_field)
+                        allocate (reference_field(1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
+                    end if
+                else
+                    allocate (reference_field(1,size(phasevolumefraction,1),size(phasevolumefraction,2) ))
+                end if
                reference_field(1,:,:) = phasevolumefraction
             end select
-         end if
 
       case default!Check how is the process going on and decide
          !If Automatic_NonLinerIterations then we compare the variation of the a property from one time step to the next one
@@ -3351,12 +3374,24 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             case default
                ts_ref_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))
             end select
+
+            !Rescale using the dumping in saturation to get a more efficient number to compare with
+            !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
+            ts_ref_val = ts_ref_val / dumping_in_sat
+
+            !If we are helping the convergence we just check if we still need to help
+            !or the result is good already, if it is the latter then stop helping
+            if (present_and_true(help_convergence)) then
+                help_convergence = ts_ref_val > tolerance_between_non_linear
+                return
+            end if
+
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call allmax(ts_ref_val)
             !If only non-linear iterations
             if (.not.nonLinearAdaptTs) then
                !Automatic non-linear iteration checking
-               if (ts_ref_val < tolerance_between_non_linear)  ExitNonLinearLoop = .true.
+                ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
                return
             end if
             !Check that saturation is between bounds, works for two phases only!!
@@ -3374,6 +3409,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                ewrite(0,*) "Time step increased to:", dt
                ExitNonLinearLoop = .true.
                return
+            else !Maybe it is not enough to increase the time step, but we could go to the next time step
+                ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
             end if
 
             !                    !Exit loop section
@@ -4116,12 +4153,33 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
         have_option_for_any_phase = .false.
         do iphase = 1, nphase
-            have_option_for_any_phase = have_option_for_any_phase .or. have_option( '/material_phase['// int2str( iphase -1 ) //']'&
+            have_option_for_any_phase = have_option_for_any_phase .or. have_option( '/material_phase['// int2str( iphase -1 ) //']/'&
                  //trim(path) )
         end do
 
 
     end function have_option_for_any_phase
+
+
+    subroutine get_saturation_limits(maxsat, minsat, iphase, nphase)
+    !This subroutine returns the upper and lower values for a phase, considering the values introduced in diamond
+        implicit none
+        integer, intent(in) :: iphase, nphase
+        real, intent(inout) :: maxsat, minsat
+        !Local variables
+        integer :: j
+        real, dimension(nphase) :: inmobi
+
+        !We save the value to avoid reading from diamond many time
+        do j = 1, nphase
+            !Get immobile fractions for all the phases
+            call get_option("/material_phase["//int2str(j-1)//"]/multiphase_properties/immobile_fraction", &
+            inmobi(j), default=0.0)
+        end do
+        minsat = inmobi(iphase)
+        maxsat = (1.0 - sum(inmobi) ) + inmobi(iphase)
+
+    end subroutine
 
   end module Copy_Outof_State
 
