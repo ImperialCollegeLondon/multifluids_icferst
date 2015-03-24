@@ -9066,6 +9066,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
          stop 7555
       end if
 
+
       allocate( u_ph_source_short( ndim, nphase, u_nonods ), &
            &    alpha_short( nphase, cv_nonods ), &
            &    coef_alpha_short( nphase, cv_nonods ) )
@@ -9118,14 +9119,16 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
                  other_fenx_all, state ,"C_1", StorageIndexes( 14 ) )
 
-            if ( cv_nloc == u_nloc ) then
-                ufenx_all => tmp_cvfenx_all ! u
-                phfenx_all => other_fenx_all ! ph
+            if(u_nloc == tmp_cv_nloc) then
+                ufenx_all => tmp_cvfenx_all
             else
-                ufenx_all => other_fenx_all ! u
-                phfenx_all => tmp_cvfenx_all ! ph
-            end if
-
+                ufenx_all => other_fenx_all
+            endif
+            if(ph_nloc == tmp_cv_nloc) then
+                phfenx_all => tmp_cvfenx_all
+            else
+                phfenx_all => other_fenx_all
+            endif
 
 
             u_s_short_gi = 0.0 ; dx_alpha_short_gi = 0.0 ; coef_alpha_short_gi = 0.0
