@@ -33,7 +33,7 @@ module multiphase_1D_engine
     use field_options
     use state_module
     use spud
-    use global_parameters, only: option_path_len, is_porous_media
+    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat
     use futils, only: int2str
 
     use Fields_Allocates, only : allocate
@@ -444,7 +444,7 @@ contains
          SUF_SIG_DIAGTEN_BC, &
          DERIV, &
          V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-         NDIM, &
+         NDIM, nface, &
          NCOLM, FINDM, COLM, MIDM, &
          XU_NLOC, XU_NDGLN ,FINELE, COLELE, NCOLELE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -453,7 +453,7 @@ contains
          option_path, &
          mass_ele_transp,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-         StorageIndexes)
+         StorageIndexes, Material_Absorption,nonlinear_iteration , help_convergence)
 
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
@@ -464,7 +464,8 @@ contains
            NPHASE, CV_NLOC, U_NLOC, X_NLOC, &
            CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, &
            NCOLM, NCOLELE, &
-           MAT_NLOC, MAT_NONODS, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND,igot_theta_flux
+           MAT_NLOC, MAT_NONODS, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND,igot_theta_flux,&
+           nface
       LOGICAL, intent( in ) :: USE_THETA_FLUX
       INTEGER, DIMENSION(: ), intent( in ) :: CV_NDGLN
       INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
@@ -481,7 +482,7 @@ contains
       INTEGER, intent( in ) :: V_DISOPT, V_DG_VEL_INT_OPT
       REAL, intent( in ) :: DT, V_THETA
       REAL, intent( inout ) :: V_BETA
-      REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
+      REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
       REAL, DIMENSION( :, : ), intent( in ) :: DERIV
       REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
       REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
@@ -491,13 +492,18 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: MIDM
       INTEGER, DIMENSION( : ), intent( in ) :: FINELE
       INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-      REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
+      REAL, DIMENSION( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
       character(len= * ), intent(in), optional :: option_path
       real, dimension( : ), intent( inout ) :: mass_ele_transp
       integer, dimension(:), intent(inout) :: StorageIndexes
+      real, dimension( :, :, : ), intent(inout) :: Material_Absorption
+      integer, intent(in) :: nonlinear_iteration
+      logical, optional, intent(in) :: help_convergence
       ! Local Variables
+      INTEGER, PARAMETER :: nits_flux_lim = 1
+      REAL, PARAMETER :: Max_updating = 0.99!Disabled iterating here
       LOGICAL, PARAMETER :: THERMAL= .false.
-      integer :: nits_flux_lim, its_flux_lim, igot_t2
+      integer :: its_flux_lim, igot_t2
       REAL, DIMENSION( : ), allocatable :: ACV, mass_mn_pres, DIAG_SCALE_PRES
       REAL, DIMENSION( :,:,: ), allocatable :: CT
       REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
@@ -518,6 +524,8 @@ contains
       real, dimension(:), pointer :: p
       real, dimension(:, :), pointer :: satura
       type(tensor_field), pointer :: tracer, velocity, density
+      !Variables for global convergence method
+      real :: Dumping_factor
 
       type(petsc_csr_matrix) :: petsc_acv
       type(vector_field)  :: vtracer
@@ -529,11 +537,19 @@ contains
       real, dimension(cv_nonods) :: OvRelax_param
       integer :: Phase_with_Pc
 
+      !Variables to stabilize the non-linear iteration solver
+      real, dimension(nphase, cv_nonods) :: sat_bak
+      real :: updating
+
       !Extract variables from packed_state
       call get_var_from_packed_state(packed_state,FEPressure = P)
       call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
       !Get information for capillary pressure to be use in CV_ASSEMB
       call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes)
+
+      !Get variable for global convergence method
+      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/Dumping_factor',&
+        Dumping_factor, default = 1.1)
 
       GET_THETA_FLUX = .FALSE.
       IGOT_T2 = 0
@@ -572,9 +588,8 @@ contains
       path = '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/temporal_discretisation/' // &
            'control_volumes/'
       call get_option( trim( path ) // 'second_theta', second_theta, stat , default = 1.0)
-      call get_option( trim( path ) // 'number_advection_iterations', nits_flux_lim, default = 1 )
+!      call get_option( trim( path ) // 'number_advection_iterations', nits_flux_lim, default = 1 )
 
-      ! THIS DOES NOT WORK FOR NITS_FLUX_LIM>1 (NOBODY KNOWS WHY)
       IGOT_THERM_VIS=0
       ALLOCATE( THERM_U_DIFFUSION(NDIM,NDIM,NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
       ALLOCATE( THERM_U_DIFFUSION_VOL(NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
@@ -583,64 +598,104 @@ contains
       velocity=>extract_tensor_field(packed_state,"PackedVelocity")
       density=>extract_tensor_field(packed_state,"PackedDensity")
       sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-      call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
 
-      call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
+      !This variable accounts for 1 - the total update we have been performing in this loop
+      !being the minimum 0.0
+      updating = 1.0
+      dumping_in_sat = 0.0 !Public variable to be used in Adaptive_NonLinear to re-scale the convergence
+!      Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, nits_flux_lim
+      Loop_NonLinearFlux: do while (updating > Max_updating)
 
+          call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
+          call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
 
-      Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, 1 !nits_flux_lim
+          !Assemble the matrix and the RHS
+          call CV_ASSEMB( state, packed_state, &
+          tracer, velocity, density, &
+          CV_RHS_field, &
+          petsc_acv, &
+          SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
+          NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
+          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
+          CV_ELE_TYPE,  &
+          NPHASE, &
+          CV_NLOC, U_NLOC, X_NLOC, &
+          CV_NDGLN, X_NDGLN, U_NDGLN, &
+          CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
+          DEN_ALL, DENOLD_ALL, &
+          MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+          V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, SECOND_THETA, V_BETA, &
+          SUF_SIG_DIAGTEN_BC, &
+          DERIV, P, &
+          V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+          NDIM, GETCV_DISC, GETCT, &
+          NCOLM, FINDM, COLM, MIDM, &
+          XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+          !IGOT_T2, T2, T2OLD, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &!
+          IGOT_T2, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+          IN_ELE_UPWIND, DG_ELE_UPWIND, &
+          MEAN_PORE_CV, &
+          SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
+          .false.,  mass_Mn_pres, &
+          mass_ele_transp,&
+          StorageIndexes, 3 ,&
+          OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc)!Capillary variables
 
-         call CV_ASSEMB( state, packed_state, &
-              tracer, velocity, density, &
-              CV_RHS_field, &
-              petsc_acv, &
-              SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-              NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
-              CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-              CV_ELE_TYPE,  &
-              NPHASE, &
-              CV_NLOC, U_NLOC, X_NLOC, &
-              CV_NDGLN, X_NDGLN, U_NDGLN, &
-              CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-              DEN_ALL, DENOLD_ALL, &
-              MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-              V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, SECOND_THETA, V_BETA, &
-              SUF_SIG_DIAGTEN_BC, &
-              DERIV, P, &
-              V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-              NDIM, GETCV_DISC, GETCT, &
-              NCOLM, FINDM, COLM, MIDM, &
-              XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-              opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-              !IGOT_T2, T2, T2OLD, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &!
-              IGOT_T2, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
-              THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-              IN_ELE_UPWIND, DG_ELE_UPWIND, &
-              MEAN_PORE_CV, &
-              SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
-              .false.,  mass_Mn_pres, &
-              mass_ele_transp,&
-              StorageIndexes, 3 ,&
-              OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc)!Capillary variables
+          !Solve the system
+          vtracer=as_vector(tracer,dim=2)
+          !Backup of the saturation field, to adjust the solution
+          if (Dumping_factor < 1.0) sat_bak = satura
 
+          call zero(vtracer)
+          call zero_non_owned(cv_rhs_field)
+          call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
-         vtracer=as_vector(tracer,dim=2)
-         call zero(vtracer)
-         call zero_non_owned(cv_rhs_field)
-         call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
+          call deallocate(cv_rhs_field)
+          call deallocate(petsc_acv)
+
+          !Correct the solution obtained to make sure we are on track towards the final solution
+          if (Dumping_factor < 1.0) then
+              !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
+              call Trust_region_correction(packed_state, sat_bak, Dumping_factor, dumping_in_sat)
+              !Store the accumulated updated done
+              updating = updating - dumping_in_sat
+
+            !For the final non linear iteration we only do here one loop
+            if (present_and_false(help_convergence)) exit Loop_NonLinearFlux
+
+              !For the non-linear iteration inside this loop we need to update the velocities
+              !and that is done through the sigmas, hence we have to update them
+              if (updating > Max_updating) then!Recalculate sigmas, only if we are performing another loop
+                  call Calculate_AbsorptionTerm( state, packed_state,cv_ndgln, mat_ndgln, &
+                  opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption )
+                  call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
+                  cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+                  finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state,x_nonods)
+              end if
+          else!Just one iteration
+            exit Loop_NonLinearFlux
+          end if
 
       END DO Loop_NonLinearFlux
 
+      if (Dumping_factor < 1.0) then
+          !Final effective dumping to calculate properly the non linear convergence is:
+          dumping_in_sat = 1.0 - updating
+      else
+          dumping_in_sat = 1
+      end if
 
       !While ensuring global conservation of mass, force the saturation to be between bounds
-        if (have_option('/material_phase[0]/Impose_saturation_limits')) then
+      if (have_option_for_any_phase('Impose_saturation_limits', nphase)) then
           call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv,&
-           StorageIndexes, cv_ele_type, for_sat = .true. )
-        end if
+          StorageIndexes, cv_ele_type, for_sat = .true. )
+      end if
 
-!      !Set saturation to be between bounds
-!      !In this case we impose that the saturation has to be between physical limits
-!      !conservation of mass might be lost
+      !Set saturation to be between bounds
+      !In this case we impose that the saturation has to be between physical limits
+      !conservation of mass might be lost
 !      call Set_Saturation_between_bounds(packed_state)
 !      satura = min(max(satura,0.0), 1.0)
 
@@ -653,8 +708,8 @@ contains
          DEALLOCATE( T2OLD )
       END IF
       DEALLOCATE( THETA_GDIFF )
-      call deallocate(cv_rhs_field)
-      call deallocate(petsc_acv)
+!      call deallocate(cv_rhs_field)
+!      call deallocate(petsc_acv)
 
        !Deallocate pointers only if not pointing to something in packed state
         if (IGOT_THETA_FLUX == 1) then
@@ -1909,7 +1964,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
          
     P, NDIM_VEL,&
-    StorageIndexes )
+    StorageIndexes)
 
         implicit none
 

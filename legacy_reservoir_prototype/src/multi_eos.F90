@@ -2518,46 +2518,6 @@
 
     end subroutine extract_scalar_from_diamond
 
-    subroutine Set_Saturation_between_bounds(packed_state)
-        !This subroutines eliminates the oscillations in the saturation that are bigger than a
-        !certain tolerance
-        Implicit none
-        !Global variables
-        type( state_type ), intent(inout) :: packed_state
-        !Local variables
-        integer :: iphase, jphase, nphase
-        real :: top_limit
-        real, dimension(:,:), pointer :: satura
-        real, dimension(:), allocatable :: immobile_fractions
-        real, parameter :: tolerance = 0.0
-
-        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
-
-        nphase = size(satura,1)
-        allocate(immobile_fractions(nphase))
-
-        !Get immobile fractions for all the phases
-        do iphase = 1, nphase
-          call get_option("/material_phase["//int2str(iphase-1)//"]/multiphase_properties/immobile_fraction", &
-               immobile_fractions(iphase), default=0.0)
-        end do
-        !Set saturation to be between bounds
-        do iphase = 1, nphase
-            top_limit = 0.
-            !Get the upper limit of saturation for iphase
-            do jphase = 1, nphase
-                if (jphase/=iphase) top_limit = top_limit + immobile_fractions(jphase)
-            end do
-            top_limit = 1.0 + tolerance - top_limit
-            !Limit the saturation, allowing small oscillations
-            satura(iphase,:) =  min(max(immobile_fractions(iphase)-tolerance, satura(iphase,:)),top_limit)
-        end do
-        deallocate(immobile_fractions)
-    end subroutine Set_Saturation_between_bounds
-
-
-
-
     subroutine boiling( states, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
          ScalarField_Source, velocity_absorption, temperature_absorption )
       implicit none
@@ -3134,8 +3094,6 @@
 
       return
     end function saturation_temperature
-
-
 
 
   end module multiphase_EOS

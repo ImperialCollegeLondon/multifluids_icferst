@@ -212,6 +212,9 @@
       real, parameter :: Max_bad_angle = 95.0
       real, parameter :: Min_bad_angle = 0.0
       type(bad_elements), allocatable, dimension(:) :: Quality_list
+      !Variable related to help convergence
+      logical :: help_convergence
+
 
       type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
       type( tensor_field ), pointer :: MFC_s, MFCOLD_s
@@ -573,6 +576,9 @@
       checkpoint_number=1
       Loop_Time: do
 
+!Always help to converge in the first non-linear iteration if it is adaptive
+help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic')
+
 !!$
 
          ewrite(2,*) '    NEW DT', itime+1
@@ -858,7 +864,7 @@
                     DRhoDPressure, &
                     ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
 !!$
-                    NDIM, &
+                    NDIM,nface, &
                     NCOLM, FINDM, COLM, MIDM, &
                     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
@@ -869,7 +875,8 @@
                     mass_ele_transp = mass_ele,&
                     theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                     theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j,&
-                    StorageIndexes=StorageIndexes )
+                    StorageIndexes=StorageIndexes, Material_Absorption=Material_Absorption,&
+                    nonlinear_iteration = its, help_convergence = help_convergence)
 
             end if Conditional_PhaseVolumeFraction
 
@@ -1070,7 +1077,7 @@
 
             !Check if the results are good so far and act in consequence, only does something if requested by the user
             call Adaptive_NonLinear(packed_state, reference_field, its,&
-                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3)
+                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, help_convergence = help_convergence)
             if (ExitNonLinearLoop) exit Loop_NonLinearIteration
 
          end do Loop_NonLinearIteration
