@@ -8952,7 +8952,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       type( petsc_csr_matrix ) :: matrix
       type( csr_sparsity ), pointer :: sparsity
 
-      character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
+      character( len = OPTION_PATH_LEN ) :: path = "/tmp"
 
       type( tensor_field ), pointer :: rho
 
@@ -9085,7 +9085,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       ! set the gravity term
 
       rho => extract_tensor_field( packed_state, "PackedDensity" )
-      u_ph_source_cv( 2, 1, : ) = -rho % val( 1, 1, : ) * 9.8
+      u_ph_source_cv( 1, 1, : ) = -1.0 !-rho % val( 1, 1, : ) * 9.8
 
 
 
@@ -9173,25 +9173,29 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
                ! form the hydrostatic pressure eqn...
 
+               print *, "phfenx_all=", phfenx_all(1,:,:)
+               print *, "phfeny_all=", phfenx_all(2,:,:)
+               
                do ph_iloc = 1, ph_nloc
                   ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
                   do ph_jloc = 1, ph_nloc
                      ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
                      nxnx = 0.0
                      do idim = 1, ndim
-                        nxnx = sum( phfenlx_all( idim, ph_iloc, : ) * phfenlx_all( idim, ph_jloc, : ) * detwei(:) )
+                        nxnx = sum( phfenx_all( idim, ph_iloc, : ) * phfenx_all( idim, ph_jloc, : ) * detwei(:) )
                      end do
                      do iphase = 1, nphase
                         do idim = 1, ndim
                            call addto( rhs, ph_inod, &
-                                +sum( phfenlx_all( idim, ph_iloc, : ) * ( &
+                                +sum( phfenx_all( idim, ph_iloc, : ) * ( &
                                 u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
                                 dx_alpha_gi( :, idim, iphase ) ) * detwei(:) ) )
                         end do
                      end do
+                     
+                     print *,'ph_inod,ph_jnod,nxnx:',ph_inod,ph_jnod,nxnx
 
-                     call addto( matrix, 1, 1, &
-                          ph_inod, ph_jnod, nxnx )
+                     call addto( matrix, 1, 1, ph_inod, ph_jnod, nxnx )
 
                   end do
                end do
@@ -9237,13 +9241,12 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
             call add_option( &
                  trim( path ) // "/solver/remove_null_space", stat )
-            path = "/tmp"
-
-
             ph_sol%option_path = path
 
+print *, "rhs_MINMAX=",minval(rhs%val),maxval(rhs%val)
+print *, "rhs=",rhs%val
 
-            call petsc_solve( ph_sol, matrix, rhs, path )
+            call petsc_solve( ph_sol, matrix, rhs )
 
             do iphase = 1, nphase
                ph( iphase, : ) = ph_sol % val ! assume 1 phase for the time being
@@ -9257,11 +9260,12 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       call deallocate( rhs )
       call deallocate( ph_sol )
       call deallocate( matrix )
-
       deallocate( ph )
 
       ewrite(3,*) "leaving high_order_pressure_solve"
 
+
+stop 678
       return
     end subroutine high_order_pressure_solve
 
