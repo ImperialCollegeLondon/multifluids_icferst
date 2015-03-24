@@ -1085,7 +1085,8 @@ Default value 2.0</a:documentation>
                   <a:documentation>Option for capillary pressure				 </a:documentation>
                   <optional>
                     <element name="Diffusive_cap_only">
-                      <a:documentation>Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
+                      <a:documentation>Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant.
+i.e. when the darcy capillary number is below 1.
 The capillary pressure term is introduced only in the saturation equation, acting as a pure diffusive term. </a:documentation>
                       <ref name="comment"/>
                     </element>

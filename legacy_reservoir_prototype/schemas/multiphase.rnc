@@ -789,7 +789,8 @@ start =
 	       element coarse_graining {integer}?,	      
                ## Option for capillary pressure				 
                element capillary_pressure {
-            ## Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
+            ## Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant.
+            ## i.e. when the darcy capillary number is below 1.
             ## The capillary pressure term is introduced only in the saturation equation, acting as a pure diffusive term. 
             element Diffusive_cap_only { comment }?,
                   ## Brooks-Corey equation
