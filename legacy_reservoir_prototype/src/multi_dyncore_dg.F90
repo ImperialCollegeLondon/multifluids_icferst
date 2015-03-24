@@ -9210,12 +9210,16 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                   do ph_jloc = 1, ph_nloc
                      ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
 
-                     nm = sum( ufen( u_iloc, : ) * phfen( ph_jloc, : ) * detwei )
+!                     nm = sum( ufen( u_iloc, : ) * phfen( ph_jloc, : ) * detwei )
 
                      do iphase = 1, nphase
                         do idim = 1, ndim
-                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
-                                nm * sol % val( ph_jnod )
+!                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
+!                                nm * sol % val( ph_jnod )
+                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) - &
+                                sum( ufen( u_iloc, : ) * ( dx_ph_gi( :, idim, iphase )  + &
+                                u_s_gi( :, idim, iphase ) + coef_alpha_gi( :, iphase ) * &
+                                dx_alpha_gi( :, idim, iphase ) ) * detwei )
                         end do
                      end do
 
