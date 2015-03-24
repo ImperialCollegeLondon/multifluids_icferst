@@ -222,7 +222,7 @@
       integer :: checkpoint_number
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-      integer, dimension (35) :: StorageIndexes
+      integer, dimension (37) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
       !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
       !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
@@ -238,6 +238,9 @@
       !Capillary pressure            : 32 (Pe), 33 (exponent a)
       !PIVIT_MAT (inverted)          : 34
       !Bound                         : 35
+      !Ph 1                          : 36
+      !Ph 2                          : 37
+
 
       !Working pointers
 

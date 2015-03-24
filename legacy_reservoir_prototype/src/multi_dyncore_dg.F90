@@ -1084,8 +1084,7 @@ contains
 
 
 
-            !call high_order_pressure_solve( cdp_tensor, state, packed_state, &
-            !                      small_findrm, small_colm, StorageIndexes, cv_ele_type, nphase )
+            !call high_order_pressure_solve( cdp_tensor, state, packed_state, StorageIndexes, cv_ele_type, nphase )
 
 
             IF ( JUST_BL_DIAG_MAT .OR. NO_MATRIX_STORE ) THEN
@@ -8891,14 +8890,13 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
 
-    subroutine high_order_pressure_solve( u_rhs, state, packed_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, nphase )
+    subroutine high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase )
 
       implicit none
 
       type( tensor_field ), intent( inout ) :: u_rhs
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
-      integer, dimension( : ), intent( in ) :: small_findrm, small_colm
       integer, intent( in ) :: cv_ele_type, nphase
       integer, dimension( : ), intent( inout ) :: StorageIndexes
 
@@ -8954,10 +8952,12 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       type( petsc_csr_matrix ) :: matrix
       type( csr_sparsity ), pointer :: sparsity
 
-      character( len = OPTION_PATH_LEN ) :: path
+      character( len = OPTION_PATH_LEN ) :: path = "/tmp/galerkin_projection/continuous"
 
       type( tensor_field ), pointer :: rho
 
+
+      ewrite(3,*) "inside high_order_pressure_solve"
 
 
       call get_option( '/geometry/dimension', ndim )
@@ -9008,7 +9008,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                 ! define the gauss points that lie on the surface of the ph...
            findgpts, colgpts, ncolgpts, &
            sele_overlap_scale, quad_over_whole_ele, &
-           state, "ph" , storageindexes(1) )
+           state, "ph_1" , storageindexes(36) )
 
       totele = ele_count( ufield )
       x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
@@ -9085,7 +9085,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       ! set the gravity term
 
       rho => extract_tensor_field( packed_state, "PackedDensity" )
-      u_ph_source_cv( 2, 1, : ) = rho % val( 1, 1, : ) * 9.8
+      u_ph_source_cv( 2, 1, : ) = -rho % val( 1, 1, : ) * 9.8
 
 
 
@@ -9112,7 +9112,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
                  tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
                  other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
-                 other_fenx_all, state ,"C_1", StorageIndexes( 14 ) )
+                 other_fenx_all, state ,"ph_2", StorageIndexes( 37 ) )
 
             if ( u_nloc == tmp_cv_nloc ) then
                 ufenx_all => tmp_cvfenx_all
@@ -9144,12 +9144,12 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                do iphase = 1, nphase
                   do idim = 1, ndim
                      dx_alpha_gi( :, idim, iphase ) = dx_alpha_gi( :, idim, iphase ) + &
-                          ufenx_all( idim, u_iloc, : ) * alpha_cv( iphase, cv_inod )
+                          tmp_cvfenx_all( idim, cv_iloc, : ) * alpha_cv( iphase, cv_inod )
                      u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
                           tmp_cvfen( cv_iloc, : ) * u_ph_source_cv( idim, iphase, cv_inod )
                   end do
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
-                       ufen( u_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
+                       tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
                end do
             end do
 
@@ -9236,10 +9236,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             call set_option( &
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
             call add_option( &
-                 trim( path ) // "/solver/remove_null_space" )
+                 trim( path ) // "/solver/remove_null_space", stat )
             path = "/tmp"
 
-            call petsc_solve( ph_sol, matrix, rhs, trim( path ) )
+
+            ph_sol%option_path = path
+
+
+            call petsc_solve( ph_sol, matrix, rhs, path )
 
             do iphase = 1, nphase
                ph( iphase, : ) = ph_sol % val ! assume 1 phase for the time being
@@ -9255,6 +9259,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       call deallocate( matrix )
 
       deallocate( ph )
+
+      ewrite(3,*) "leaving high_order_pressure_solve"
 
       return
     end subroutine high_order_pressure_solve
