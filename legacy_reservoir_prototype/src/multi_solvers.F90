@@ -642,7 +642,8 @@ contains
               DO COUNT3 = FINDCMC_small(cty_NOD), FINDCMC_small(cty_NOD+1) - 1
                   if(colcmc_small(count3)==jcolcmc_small) count2=count3
               end do
-              call MatGetValues(cmc_petsc%M, 1, (/ dg_nod-1 /), 1, (/ COLCMC(COUNT)-1 /),  auxR, ierr)
+              call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(dg_nod-1,1) /), 1,&
+                 (/cmc_petsc%column_numbering%gnn2unn(COLCMC(COUNT)-1,1) /),  auxR, ierr)
               call addto( CMC_Small_petsc, blocki = 1, blockj = 1, i = cty_nod, j = colcmc_small(count2),val = auxR(1))
           END DO
       END DO
@@ -681,7 +682,8 @@ contains
                   DO COUNT = FINDCMC(dg_NOD), FINDCMC(dg_NOD+1) - 1
                       col=COLCMC(COUNT)
                       cty_nod = MAP_DG2CTY(dg_nod)
-                      call MatGetValues(cmc_petsc%M, 1, (/ dg_nod-1 /), 1, (/ COLCMC(COUNT)-1 /),  auxR, ierr)
+                      call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(dg_nod-1,1) /), 1,&
+                       (/ cmc_petsc%column_numbering%gnn2unn(COLCMC(COUNT)-1,1) /),  auxR, ierr)
                       !Project residual to RHS_Small
                       Residual_DG%val(dg_nod) = rhs_p%val(dg_nod) - auxR(1) * deltap%val(Col)
                   END DO
@@ -719,7 +721,8 @@ contains
               ustep=0.0
               do dg_nod = 1, cv_nonods
                   DO COUNT = FINDCMC(dg_NOD), FINDCMC(dg_NOD+1) - 1
-                      call MatGetValues(cmc_petsc%M, 1, (/ dg_nod-1 /), 1, (/ COLCMC(COUNT)-1 /),  auxR, ierr)
+                      call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(dg_nod-1,1) /), 1,&
+                       (/ cmc_petsc%column_numbering%gnn2unn(COLCMC(COUNT)-1,1) /),  auxR, ierr)
                       USTEP(dg_nod) = USTEP(dg_nod) + auxR(1) * DP_DG(COLCMC(COUNT))
                   END DO
               end do
@@ -769,7 +772,6 @@ contains
       real, dimension(1) :: rescal
       logical :: nodeFound
       !Initialize variables
-
       i = 1
 
       !Depending on the angle of the element we consider different alphas
@@ -782,9 +784,8 @@ contains
           !Bad node
           bad_node = P_NDGLN((ele-1) * p_nloc + Quality_list(i)%nodes(1))
           !We get the diagonal value to use it as a reference when adding the over-relaxation
-          !I HAVE TO USE HERE THE GLOBAL PETSC NUMBERING TO MAKE IT PARALLEL SAFE (GNN2 SOMETHING)
-          !FIX ALSO THE CMC_AGGLOMERATOR_SOLVER
-          call MatGetValues(cmc_petsc%M, 1, (/ bad_node - 1 /), 1, (/ bad_node - 1 /),  rescal, ierr)
+          call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(bad_node - 1,1) /), 1, &
+            (/ cmc_petsc%column_numbering%gnn2unn(bad_node - 1,1) /),  rescal, ierr)
           rescal(1) = adapted_alpha * rescal(1)
           DO P_ILOC = 1, P_NLOC
               i_node = P_NDGLN((ele-1) * p_nloc + P_ILOC)

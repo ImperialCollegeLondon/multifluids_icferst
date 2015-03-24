@@ -3903,6 +3903,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         if (size(X_ALL,1)==2) then!2D triangles
             do ELE = 1, totele
                 !bad_node enters as the first entry
+                if (i > size(Quality_list)) exit!We cannot add more elements
                 Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i))
                  if (Bad_founded) then
                     if (size(Quality_list)>= i) Quality_list(i)%ele = ele
@@ -3913,7 +3914,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         else if(size(X_ALL,1)==3) then!3D tetrahedra
         !adjust to match the 2D case once that one works properly
             do ELE = 1, totele
-
+                if (i > size(Quality_list)) exit!We cannot add more elements
                 !We check the 4 triangles that form a tet
                 Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i), 4)
                 if (Bad_founded) then

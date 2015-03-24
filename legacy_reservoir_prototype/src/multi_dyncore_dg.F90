@@ -1274,10 +1274,11 @@ contains
             end if
             !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
             !inside the same element to reduce the ill conditioning of the matrix
-!            if (is_porous_media .and. present(Quality_list)) then
-!                if (P_ALL%mesh%shape%degree < 2) call Fix_to_bad_elements(& !not tested yet for quadratic elements
-!                  cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
-!            end if
+            if (is_porous_media .and. present(Quality_list)) then
+                if (P_ALL%mesh%shape%degree < 2) call Fix_to_bad_elements(& !not tested yet for quadratic elements
+                  cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
+            end if
+
             if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver &
                  .and. nonlinear_iteration == 1) then!For discontinuous mesh
             !We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
@@ -8800,7 +8801,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         call zero(Diagonal)
         !Create D^-0.5
         do i = 1, size(rhs_p%val)
-            call MatGetValues(cmc_petsc%M, 1, (/ i-1 /), 1, (/ i-1 /),  D(i), ierr)
+            call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(i-1,1) /),&
+             1, (/ cmc_petsc%column_numbering%gnn2unn(i-1,1) /),  D(i), ierr)
             D(i) = abs(D(i))**(-0.5)
            call addto( Diagonal, blocki = 1, blockj = 1, i = i, j = i,val = D(i))
         end do
