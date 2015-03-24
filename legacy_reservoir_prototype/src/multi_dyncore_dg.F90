@@ -8930,11 +8930,11 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       real, pointer :: volume
       real, dimension(:,:,:), pointer :: phfenx_all, ufenx_all
 
-      real, dimension( :, :, : ), allocatable :: u_ph_source_short, u_s_short_gi, dx_alpha_short_gi
-      real, dimension( :, : ), allocatable :: alpha_short, coef_alpha_short, coef_alpha_short_gi
+      real, dimension( :, :, : ), allocatable :: u_ph_source_vel, u_ph_source_cv
+      real, dimension( :, : ), allocatable :: alpha_cv, coef_alpha_cv
 
-      real, dimension( :, :, : ), allocatable :: u_ph_source_long, u_s_long_gi, dx_ph_gi, dx_alpha_long_gi
-      real, dimension( :, : ), allocatable :: alpha_long, coef_alpha_long, coef_alpha_long_gi, ph
+      real, dimension( :, :, : ), allocatable :: u_ph_source_ph, dx_ph_gi
+      real, dimension( :, : ), allocatable :: alpha_ph, coef_alpha_ph, ph
 
       real, dimension( :, :, : ), allocatable :: u_s_gi, dx_alpha_gi
       real, dimension( :, : ), allocatable :: coef_alpha_gi
@@ -9062,41 +9062,30 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       end if
 
 
-      allocate( u_ph_source_short( ndim, nphase, u_nonods ), &
-           &    alpha_short( nphase, cv_nonods ), &
-           &    coef_alpha_short( nphase, cv_nonods ) )
+      allocate( u_ph_source_vel( ndim, nphase, u_nonods ), u_ph_source_cv( ndim, nphase, cv_nonods ), &
+           &    alpha_cv( nphase, cv_nonods ), &
+           &    coef_alpha_cv( nphase, cv_nonods ) )
 
-      allocate( u_s_short_gi( ph_ngi, ndim, nphase ), &
-           &    dx_alpha_short_gi( ph_ngi, ndim, nphase ), &
-           &    coef_alpha_short_gi( ph_ngi, nphase ) )
-
-      allocate( u_ph_source_long( ndim, nphase, ph_nonods ), &
-           &    alpha_long( nphase, ph_nonods ), &
+      allocate( u_ph_source_ph( ndim, nphase, ph_nonods ), &
+           &    alpha_ph( nphase, ph_nonods ), &
            &    ph( nphase, ph_nonods ), &
-           &    coef_alpha_long( nphase, ph_nonods ) )
+           &    coef_alpha_ph( nphase, ph_nonods ) )
 
-      allocate( u_s_long_gi( ph_ngi, ndim, nphase ), &
-           &    dx_ph_gi( ph_ngi, ndim, nphase ), &
-           &    dx_alpha_long_gi( ph_ngi, ndim, nphase ), &
-           &    coef_alpha_long_gi( ph_ngi, nphase ) )
+      allocate( dx_ph_gi( ph_ngi, ndim, nphase ) )
 
       allocate( u_s_gi( ph_ngi, ndim, nphase ), &
            &    dx_alpha_gi( ph_ngi, ndim, nphase ), &
            &    coef_alpha_gi( ph_ngi, nphase ) )
 
-      u_s_short_gi = 0.0 ; dx_alpha_short_gi = 0.0 ; coef_alpha_short_gi = 0.0
-      u_s_long_gi = 0.0 ; dx_ph_gi = 0.0 ; dx_alpha_long_gi = 0.0 ; coef_alpha_long_gi = 0.0
-      u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
-
       ! initialise memory
-      u_ph_source_short = 0.0 ; alpha_short = 0.0 ; coef_alpha_short = 0.0
-      u_ph_source_long = 0.0 ; alpha_long = 0.0 ; coef_alpha_long = 0.0
-
+      u_ph_source_vel = 0.0 ; alpha_cv = 0.0 ; coef_alpha_cv = 0.0
+      u_ph_source_ph = 0.0 ; alpha_ph = 0.0 ; coef_alpha_ph = 0.0
+      u_ph_source_cv = 0.0
 
       ! set the gravity term
 
       rho => extract_tensor_field( packed_state, "PackedDensity" )
-      u_ph_source_long( 2, 1, : ) = rho % val( 1, 1, : ) * 9.8
+      u_ph_source_cv( 2, 1, : ) = rho % val( 1, 1, : ) * 9.8
 
 
 
@@ -9137,51 +9126,46 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             end if
 
 
-            u_s_short_gi = 0.0 ; dx_alpha_short_gi = 0.0 ; coef_alpha_short_gi = 0.0
+            u_s_gi = 0.0;  dx_alpha_gi = 0.0;  coef_alpha_gi = 0.0
+            dx_ph_gi = 0.0
 
             do u_iloc = 1, u_nloc
                u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
                do iphase = 1, nphase
                   do idim = 1, ndim
-                     u_s_short_gi( :, idim, iphase ) = u_s_short_gi( :, idim, iphase ) + &
-                          ufen( u_iloc, : ) * u_ph_source_short( idim, iphase, u_inod )
+                     u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
+                          ufen( u_iloc, : ) * u_ph_source_vel( idim, iphase, u_inod )
                   end do
                end do
             end do
+
             do cv_iloc = 1, cv_nloc
                cv_inod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
                do iphase = 1, nphase
                   do idim = 1, ndim
-                     dx_alpha_short_gi( :, idim, iphase ) = dx_alpha_short_gi( :, idim, iphase ) + &
-                          ufenx_all( idim, u_iloc, : ) * alpha_short( iphase, cv_inod )
+                     dx_alpha_gi( :, idim, iphase ) = dx_alpha_gi( :, idim, iphase ) + &
+                          ufenx_all( idim, u_iloc, : ) * alpha_cv( iphase, cv_inod )
+                     u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
+                          tmp_cvfen( cv_iloc, : ) * u_ph_source_cv( idim, iphase, cv_inod )
                   end do
-                  coef_alpha_short_gi( :, iphase ) = coef_alpha_short_gi( :, iphase ) + &
-                       ufen( u_iloc, : ) * coef_alpha_short( iphase, cv_inod )
+                  coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
+                       ufen( u_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
                end do
             end do
-
-
-            u_s_long_gi = 0.0 ; dx_ph_gi = 0.0 ; dx_alpha_long_gi = 0.0 ; coef_alpha_long_gi = 0.0
 
             do ph_iloc = 1, ph_nloc
                ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
                do iphase = 1, nphase
                   do idim = 1, ndim
-                     u_s_long_gi( :, idim, iphase ) = u_s_long_gi( :, idim, iphase ) + &
-                          phfen( u_iloc, : ) * u_ph_source_long( idim, iphase, ph_inod )
-                     dx_alpha_long_gi( :, idim, iphase ) = dx_alpha_long_gi( :, idim, iphase ) + &
-                          phfenx_all( idim, ph_iloc, : ) * alpha_long( iphase, ph_inod )
+                     dx_alpha_gi( :, idim, iphase ) = dx_alpha_gi( :, idim, iphase ) + &
+                          phfenx_all( idim, ph_iloc, : ) * alpha_ph( iphase, ph_inod )
                      dx_ph_gi( :, idim, iphase ) = dx_ph_gi( :, idim, iphase ) + &
                           phfenx_all( idim, ph_iloc, : ) * ph( iphase, ph_inod )
                   end do
-                  coef_alpha_long_gi( :, iphase ) = coef_alpha_long_gi( :, iphase ) + &
-                       phfen( ph_iloc, : ) * coef_alpha_long( iphase, ph_inod )
+                  coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
+                       phfen( ph_iloc, : ) * coef_alpha_ph( iphase, ph_inod )
                end do
             end do
-
-            u_s_gi = u_s_long_gi + u_s_short_gi
-            dx_alpha_gi = dx_alpha_long_gi + dx_alpha_short_gi
-            coef_alpha_gi = coef_alpha_long_gi + coef_alpha_short_gi
 
 
 
