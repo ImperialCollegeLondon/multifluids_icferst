@@ -9189,14 +9189,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                      ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
                      nxnx = 0.0
                      do idim = 1, ndim
-                        nxnx = sum( phfenlx_all( idim, ph_iloc, : ) * phfenlx_all( idim, ph_jloc, : ) * detwei )
+                        nxnx = sum( phfenlx_all( idim, ph_iloc, : ) * phfenlx_all( idim, ph_jloc, : ) * detwei(:) )
                      end do
                      do iphase = 1, nphase
                         do idim = 1, ndim
                            call addto( rhs, ph_inod, &
-                                -sum( phfenlx_all( idim, ph_iloc, : ) * ( &
-                                u_s_gi( :, idim, iphase ) + coef_alpha_gi( :, iphase ) * &
-                                dx_alpha_gi( :, idim, iphase ) ) * detwei ) )
+                                +sum( phfenlx_all( idim, ph_iloc, : ) * ( &
+                                u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
+                                dx_alpha_gi( :, idim, iphase ) ) * detwei(:) ) )
                         end do
                      end do
 
@@ -9221,10 +9221,10 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                         do idim = 1, ndim
 !                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
 !                                nm * ph_sol % val( ph_jnod )
-                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) - &
-                                sum( ufen( u_iloc, : ) * ( dx_ph_gi( :, idim, iphase )  + &
-                                u_s_gi( :, idim, iphase ) + coef_alpha_gi( :, iphase ) * &
-                                dx_alpha_gi( :, idim, iphase ) ) * detwei )
+                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
+                                sum( ufen( u_iloc, : ) * (  - dx_ph_gi( :, idim, iphase )   &
+                               + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
+                                dx_alpha_gi( :, idim, iphase ) ) * detwei(:) )
                         end do
                      end do
 
@@ -9244,7 +9244,9 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
             call petsc_solve( ph_sol, matrix, rhs, trim( ufield % option_path ) )
 
-            ph(1,:)=ph_sol%val(:) ! assume 1 phase for the time being
+            do iphase = 1, nphase
+               ph(iphase,:)=ph_sol%val(:) ! assume 1 phase for the time being
+            end do
 
          end if
 
