@@ -9143,7 +9143,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       u_ph_source_cv( 1, 1, : ) = -1.0 !-rho % val( 1, 1, : ) * 9.8
 
 
-
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
       call allocate( matrix, sparsity, [ 1, 1 ], "M", .true. )
       call zero( matrix )
@@ -9226,18 +9225,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
             if ( iloop == 1 ) then
 
-               ! form the hydrostatic pressure eqn...
-
-               print *, "phfenx_all=", phfenx_all(1,:,:)
-               print *, "phfeny_all=", phfenx_all(2,:,:)
-               
+               ! form the hydrostatic pressure eqn...   
                do ph_iloc = 1, ph_nloc
                   ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
                   do ph_jloc = 1, ph_nloc
                      ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
                      nxnx = 0.0
                      do idim = 1, ndim
-                        nxnx = sum( phfenx_all( idim, ph_iloc, : ) * phfenx_all( idim, ph_jloc, : ) * detwei(:) )
+                        nxnx = nxnx + sum( phfenx_all( idim, ph_iloc, : ) * phfenx_all( idim, ph_jloc, : ) * detwei(:) )
                      end do
                      do iphase = 1, nphase
                         do idim = 1, ndim
@@ -9247,8 +9242,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                 dx_alpha_gi( :, idim, iphase ) ) * detwei(:) ) )
                         end do
                      end do
-                     
-                     print *,'ph_inod,ph_jnod,nxnx:',ph_inod,ph_jnod,nxnx
 
                      call addto( matrix, 1, 1, ph_inod, ph_jnod, nxnx )
 
@@ -9297,9 +9290,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             call add_option( &
                  trim( path ) // "/solver/remove_null_space", stat )
             ph_sol%option_path = path
-
-print *, "rhs_MINMAX=",minval(rhs%val),maxval(rhs%val)
-print *, "rhs=",rhs%val
 
             call petsc_solve( ph_sol, matrix, rhs )
 
