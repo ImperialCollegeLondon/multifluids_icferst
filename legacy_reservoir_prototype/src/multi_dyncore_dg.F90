@@ -8902,20 +8902,17 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       implicit none
 
+      type( tensor_field ), intent( inout ) :: u_rhs
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
       integer, dimension( : ), intent( in ) :: small_findrm, small_colm
       integer, intent( in ) :: cv_ele_type, nphase
       integer, dimension( : ), intent( inout ) :: StorageIndexes
 
-      ! output
-      real, dimension( :, :, : ) :: u_rhs ! type vector field
-! calculate u_rhs by solving for the balanced pressure.
-
       ! local variables...
       type ( tensor_field ), pointer :: ufield
       integer :: ndim, ph_ngi, ph_ngi_short, ph_nloc, ph_snloc, &
-           &     u_nloc, u_snloc, sphngi, sbphngi, nface, &
+           &     u_nloc, u_snloc, sphngi, sbphngi, nface, stat, &
            &     totele, x_nonods, ele, iloc, jloc, x_nloc, &
            &     cv_snloc, ph_ele_type, iloop, u_nonods, cv_nonods, &
            &     cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, cv_nloc, &
@@ -8963,6 +8960,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       type( scalar_field ) :: rhs, ph_sol
       type( petsc_csr_matrix ) :: matrix
       type( csr_sparsity ), pointer :: sparsity
+
+      character( len = OPTION_PATH_LEN ) :: path
 
 
       call get_option( '/geometry/dimension', ndim )
@@ -9075,7 +9074,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
            &    dx_alpha_short_gi( ph_ngi, ndim, nphase ), &
            &    coef_alpha_short_gi( ph_ngi, nphase ) )
 
-      allocate( u_ph_source_long( ndim, nphase, u_nonods ), &
+      allocate( u_ph_source_long( ndim, nphase, ph_nonods ), &
            &    alpha_long( nphase, ph_nonods ), &
            &    ph( nphase, ph_nonods ), &
            &    coef_alpha_long( nphase, ph_nonods ) )
@@ -9088,10 +9087,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       allocate( u_s_gi( ph_ngi, ndim, nphase ), &
            &    dx_alpha_gi( ph_ngi, ndim, nphase ), &
            &    coef_alpha_gi( ph_ngi, nphase ) )
-
-
-!      allocate( u_rhs( ndim, nphase, u_nonods ) ) ; 
-!      u_rhs = 0.0
 
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
@@ -9119,16 +9114,16 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
                  other_fenx_all, state ,"C_1", StorageIndexes( 14 ) )
 
-            if(u_nloc == tmp_cv_nloc) then
+            if ( u_nloc == tmp_cv_nloc ) then
                 ufenx_all => tmp_cvfenx_all
             else
                 ufenx_all => other_fenx_all
-            endif
-            if(ph_nloc == tmp_cv_nloc) then
+            end if
+            if ( ph_nloc == tmp_cv_nloc ) then
                 phfenx_all => tmp_cvfenx_all
             else
                 phfenx_all => other_fenx_all
-            endif
+            end if
 
 
             u_s_short_gi = 0.0 ; dx_alpha_short_gi = 0.0 ; coef_alpha_short_gi = 0.0
@@ -9162,7 +9157,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                do iphase = 1, nphase
                   do idim = 1, ndim
                      u_s_long_gi( :, idim, iphase ) = u_s_long_gi( :, idim, iphase ) + &
-                          phfen( u_iloc, : ) * u_ph_source_long( idim, iphase, u_inod )
+                          phfen( u_iloc, : ) * u_ph_source_long( idim, iphase, ph_inod )
                      dx_alpha_long_gi( :, idim, iphase ) = dx_alpha_long_gi( :, idim, iphase ) + &
                           phfenx_all( idim, ph_iloc, : ) * alpha_long( iphase, ph_inod )
                      dx_ph_gi( :, idim, iphase ) = dx_ph_gi( :, idim, iphase ) + &
@@ -9215,16 +9210,13 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                   do ph_jloc = 1, ph_nloc
                      ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
 
-!                     nm = sum( ufen( u_iloc, : ) * phfen( ph_jloc, : ) * detwei )
-
                      do iphase = 1, nphase
                         do idim = 1, ndim
-!                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
-!                                nm * ph_sol % val( ph_jnod )
-                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) - &
-                                sum( ufen( u_iloc, : ) * ( dx_ph_gi( :, idim, iphase )  + &
+
+                           call addto( u_rhs, idim, iphase, u_inod, &
+                                -sum( ufen( u_iloc, : ) * ( dx_ph_gi( :, idim, iphase )  + &
                                 u_s_gi( :, idim, iphase ) + coef_alpha_gi( :, iphase ) * &
-                                dx_alpha_gi( :, idim, iphase ) ) * detwei )
+                                dx_alpha_gi( :, idim, iphase ) ) * detwei ) )
                         end do
                      end do
 
@@ -9239,12 +9231,23 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
          if ( iloop == 1 ) then
             ! solver for pressure ph
+            call set_solver_options( path, &
+                 ksptype = "cg", &
+                 pctype = "hypre", &
+                 rtol = 1.0e-10, &
+                 atol = 0.0, &
+                 max_its = 10000 )
+            call add_option( &
+                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
+            call set_option( &
+                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
+            call add_option( &
+                 trim( path ) // "/solver/remove_null_space" )
+            path = "/tmp"
 
-! take out the null space using PETSc options...
+            call petsc_solve( ph_sol, matrix, rhs, trim( path ) )
 
-            call petsc_solve( ph_sol, matrix, rhs, trim( ufield % option_path ) )
-
-            ph(1,:)=ph_sol%val(:) ! assume 1 phase for the time being
+            ph( 1 , : ) = ph_sol % val ! assume 1 phase for the time being
 
          end if
 
