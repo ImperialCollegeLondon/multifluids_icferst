@@ -28,8 +28,8 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.019
-Tolerance_L2_NORM = 0.0014
+Tolerance_L1_NORM = 0.0185
+Tolerance_L2_NORM = 0.0012
 
 AutomaticLine = 0
 
