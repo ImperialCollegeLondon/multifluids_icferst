@@ -116,7 +116,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods
 
 !!$ Node global numbers
       integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, &
@@ -124,14 +124,14 @@
 
 !!$ Sparsity patterns
       integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
-           mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, &
-           ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, ncolcmc, ncolm
+           mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, &
+           ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, ncolcmc, ncolm, ncolph
       integer, dimension( : ), allocatable :: finacv, midacv, finmcy,  midmcy, &
            findgm_pha, middgm_pha, findct, &
            findc, findcmc, midcmc, findm, &
            midm
       integer, dimension(:), pointer :: colacv, colmcy, colct,colm,colc,colcmc,coldgm_pha
-      integer, dimension(:), pointer :: finele, colele, midele
+      integer, dimension(:), pointer :: finele, colele, midele, findph, colph
       integer, dimension(:), pointer :: small_finacv, small_colacv, small_midacv
 
 !!$ Defining element-pair type and discretisation options and coefficients
@@ -225,7 +225,7 @@
       integer :: checkpoint_number
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-      integer, dimension (35) :: StorageIndexes
+      integer, dimension (37) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
       !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
       !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
@@ -241,6 +241,9 @@
       !Capillary pressure            : 32 (Pe), 33 (exponent a)
       !PIVIT_MAT (inverted)          : 34
       !Bound                         : 35
+      !Ph 1                          : 36
+      !Ph 2                          : 37
+
 
       !Working pointers
 
@@ -322,12 +325,11 @@
            nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
-           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods)
+           cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
            u_sndgln( stotel * u_snloc ) )
-
 
       call Compute_Node_Global_Numbers( state, &
            totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
@@ -339,9 +341,9 @@
 !!$ Computing Sparsity Patterns Matrices
 !!$
 !!$ Defining lengths and allocating space for the matrices
-      call Defining_MaxLengths_for_Sparsity_Matrices( ndim, nphase, totele, u_nloc, cv_nloc, cv_nonods, &
-           mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
-           mx_ncolacv, mx_ncolm )
+      call Defining_MaxLengths_for_Sparsity_Matrices( state, ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
+           ph_nonods, mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
+           mx_ncolacv, mx_ncolm, mx_ncolph )
       nlenmcy = u_nonods * nphase * ndim + cv_nonods
       allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
            finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
@@ -350,7 +352,8 @@
            findct( cv_nonods + 1 ), colct( mx_nct ), &
            findc( u_nonods + 1 ), colc( mx_nc ), &
            findcmc( cv_nonods + 1 ), colcmc( 0 ), midcmc( cv_nonods ), &
-           findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
+           findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ), &
+           findph( ph_nonods + 1 ), colph( mx_ncolph ) )
 
 
       colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0
@@ -378,7 +381,12 @@
 !!$ pressure matrix for projection method
            mx_ncolcmc, ncolcmc, findcmc, colcmc, midcmc, &
 !!$ CV-FEM matrix
-           mx_ncolm, ncolm, findm, colm, midm, mx_nface_p1 )
+           mx_ncolm, ncolm, findm, colm, midm, &
+!!$ ph matrix
+           mx_ncolph, ncolph, findph, colph, &
+!!$ misc
+           mx_nface_p1 )
+
 
       call temp_mem_hacks()
 
@@ -542,12 +550,12 @@
 
 
       !Look for bad elements to apply a correction on them
-      if (is_porous_media) then
-          pressure_field=>extract_scalar_field(packed_state,"FEPressure")
-          allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-          if (pressure_field%mesh%shape%degree < 2) &!Does not work yet for quadratic elements
-          call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
-      end if
+!      if (is_porous_media) then
+!          pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+!          allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+!          if (pressure_field%mesh%shape%degree < 2) &!Does not work yet for quadratic elements
+!          call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
+!      end if
 
 
 
@@ -1299,7 +1307,7 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                  nphase, nstate, ncomp, totele, ndim, stotel, &
                  u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
                  x_snloc, cv_snloc, u_snloc, p_snloc, &
-                 cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods)
+                 cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
 !!$ Calculating Global Node Numbers
             allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
                  u_sndgln( stotel * u_snloc ) )
@@ -1317,9 +1325,9 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
 !!$
 
 !!$ Defining lengths and allocating space for the matrices
-            call Defining_MaxLengths_for_Sparsity_Matrices( ndim, nphase, totele, u_nloc, cv_nloc, cv_nonods, &
-                 mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
-                 mx_ncolacv, mx_ncolm )
+            call Defining_MaxLengths_for_Sparsity_Matrices( state, ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
+                 ph_nonods, mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
+                 mx_ncolacv, mx_ncolm, mx_ncolph )
             nlenmcy = u_nonods * nphase * ndim + cv_nonods
             allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
                  finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
@@ -1328,7 +1336,8 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                  findct( cv_nonods + 1 ), colct( mx_nct ), &
                  findc( u_nonods + 1 ), colc( mx_nc ), &
                  findcmc( cv_nonods + 1 ), colcmc( mx_ncolcmc ), midcmc( cv_nonods ), &
-                 findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ) )
+                 findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ), &
+                 findph( ph_nonods + 1 ), colph( mx_ncolph ) )
 
             finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; &
                  findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
@@ -1357,13 +1366,17 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
 !!$ pressure matrix for projection method
                  mx_ncolcmc, ncolcmc, findcmc, colcmc, midcmc, &
 !!$ CV-FEM matrix
-                 mx_ncolm, ncolm, findm, colm, midm, mx_nface_p1 )
+                 mx_ncolm, ncolm, findm, colm, midm, &
+!!$ ph matrix
+                 mx_ncolph, ncolph, findph, colph, &
+!!$ misc
+                 mx_nface_p1 )
 
             !Look again for bad elements
-            if (is_porous_media) then
-                allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-                call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
-            end if
+!            if (is_porous_media) then
+!                allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+!                call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
+!            end if
             call temp_mem_hacks()
 
 !!$ Allocating space for various arrays:
@@ -1564,10 +1577,10 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
         type(scalar_field), pointer :: sfield
         type(tensor_field), pointer :: tfield
 
-        integer ic
+        integer ic, stat
 
         type(halo_type), pointer :: halo
-
+        type(mesh_type), pointer :: ph_mesh
 
 
         allocate(sparsity)
@@ -1624,17 +1637,11 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
         call insert(packed_state,sparsity,"MomentumSparsity")
         call deallocate(sparsity)
 
-
-
         sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
              "PressureMassMatrixSparsity")
         call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
         call deallocate(sparsity)
-
-
         deallocate(sparsity)
-
-
 
         sparsity=> extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
         do ic=1,size(multicomponent_state)
@@ -1647,6 +1654,14 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
 
         sparsity=> extract_csr_sparsity(state(1),"ElementConnectivity")
         call insert(packed_state,sparsity,"ElementConnectivity")
+
+        ph_mesh => extract_mesh( state( 1 ), "ph", stat )
+        if ( stat == 0 ) then
+           sparsity = wrap( findph, colm = colph, name = "phsparsity" )
+           call insert( packed_state, sparsity, "phsparsity" )
+           call deallocate( sparsity )
+        end if
+
 
       end subroutine temp_mem_hacks
 

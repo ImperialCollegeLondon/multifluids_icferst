@@ -1796,7 +1796,7 @@
            Pe * (1.0 - max(min((sat - Own_irr) / (1.0 - Own_irr - Other_irr), 1.0), tol)) ** (-a)
         else
            Get_capPressure = &
-           Pe * max(min((sat - Own_irr) / (1.0 - Own_irr), 1.0), tol) ** (-a)
+           Pe * max(min((sat - Own_irr+1d-2) / (1.0 - Own_irr), 1.0), tol) ** (-a)
         end if
 
     end function Get_capPressure
