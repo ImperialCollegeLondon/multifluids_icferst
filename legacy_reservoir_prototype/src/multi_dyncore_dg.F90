@@ -8898,7 +8898,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
 
-    subroutine high_order_pressure_solve( state, packed_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, nphase )
+    subroutine high_order_pressure_solve( u_rhs, state, packed_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, nphase )
 
       implicit none
 
@@ -8909,7 +8909,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       integer, dimension( : ), intent( inout ) :: StorageIndexes
 
       ! output
-      real, dimension( :, :, : ), allocatable :: u_rhs
+      real, dimension( :, :, : ) :: u_rhs ! type vector field
+! calculate u_rhs by solving for the balanced pressure.
 
       ! local variables...
       type ( tensor_field ), pointer :: ufield
@@ -8959,7 +8960,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       real :: nxnx, nm
 
-      type( scalar_field ) :: rhs, sol
+      type( scalar_field ) :: rhs, ph_sol
       type( petsc_csr_matrix ) :: matrix
       type( csr_sparsity ), pointer :: sparsity
 
@@ -9088,7 +9089,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
            &    coef_alpha_gi( ph_ngi, nphase ) )
 
 
-      allocate( u_rhs( ndim, nphase, u_nonods ) ) ; u_rhs = 0.0
+!      allocate( u_rhs( ndim, nphase, u_nonods ) ) ; 
+!      u_rhs = 0.0
 
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
@@ -9097,8 +9099,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       call allocate( rhs, phmesh, "rhs" )
       call zero ( rhs )
-      call allocate( sol, phmesh, "sol" )
-      call zero( sol )
+      call allocate( ph_sol, phmesh, "ph_sol" )
+      call zero( ph_sol )
 
       do iloop = 1, 2
 
@@ -9215,7 +9217,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                      do iphase = 1, nphase
                         do idim = 1, ndim
 !                           u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
-!                                nm * sol % val( ph_jnod )
+!                                nm * ph_sol % val( ph_jnod )
                            u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) - &
                                 sum( ufen( u_iloc, : ) * ( dx_ph_gi( :, idim, iphase )  + &
                                 u_s_gi( :, idim, iphase ) + coef_alpha_gi( :, iphase ) * &
@@ -9235,7 +9237,11 @@ deallocate(CVFENX_ALL, UFENX_ALL)
          if ( iloop == 1 ) then
             ! solver for pressure ph
 
-            call petsc_solve( sol, matrix, rhs, trim( ufield % option_path ) )
+! take out the null space using PETSc options...
+
+            call petsc_solve( ph_sol, matrix, rhs, trim( ufield % option_path ) )
+
+            ph(1,:)=ph_sol%val(:) ! assume 1 phase for the time being
 
          end if
 
@@ -9243,8 +9249,10 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       ! deallocate
       call deallocate( rhs )
-      call deallocate( sol )
+      call deallocate( ph_sol )
       call deallocate( matrix )
+
+      deallocate( ph )
 
       return
     end subroutine high_order_pressure_solve
