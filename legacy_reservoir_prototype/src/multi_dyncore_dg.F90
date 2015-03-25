@@ -1139,7 +1139,7 @@ contains
 
 
 
-            !call high_order_pressure_solve( cdp_tensor, state, packed_state, StorageIndexes, cv_ele_type, nphase )
+            !call high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase )
 
 
             IF ( JUST_BL_DIAG_MAT .OR. NO_MATRIX_STORE ) THEN
@@ -8951,7 +8951,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       implicit none
 
-      type( tensor_field ), intent( inout ) :: u_rhs
+      real, dimension( :, :, : ), intent( inout ) :: u_rhs
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
       integer, intent( in ) :: cv_ele_type, nphase
@@ -9012,9 +9012,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       character( len = OPTION_PATH_LEN ) :: path = "/tmp"
 
       type( tensor_field ), pointer :: rho
-
+      type( scalar_field ), pointer :: printf
+      type( vector_field ), pointer :: printu
 
       ewrite(3,*) "inside high_order_pressure_solve"
+
+
+      printu => extract_vector_field( state( 1 ), "f_x", stat )
+      call zero( printu  )
 
 
       call get_option( '/geometry/dimension', ndim )
@@ -9065,31 +9070,20 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                 ! define the gauss points that lie on the surface of the ph...
            findgpts, colgpts, ncolgpts, &
            sele_overlap_scale, quad_over_whole_ele, &
-           state, "ph_1" , storageindexes(36) )
+           state, "ph_1" , storageindexes( 36 ) )
 
       totele = ele_count( ufield )
       x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
       cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
       x_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
       x => extract_vector_field( packed_state, "PressureCoordinate" )
-
-
       u_ndgln => get_ndglno( extract_mesh( state( 1 ), "VelocityMesh" ) )
-
       x_nloc = ele_loc( x, 1 )
       cv_nloc = x_nloc
-
-
       cv_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh" ) )
-
-
       phmesh => extract_mesh( state( 1 ), "ph" )
-
       ph_ndgln => get_ndglno( phmesh )
-
       ph_nonods = node_count( phmesh )
-
-
       d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
 
       if ( cv_nloc == u_nloc ) then
@@ -9119,7 +9113,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       end if
 
 
-      allocate( u_ph_source_vel( ndim, nphase, u_nonods ), u_ph_source_cv( ndim, nphase, cv_nonods ), &
+      allocate( u_ph_source_vel( ndim, nphase, u_nonods ), &
+           &    u_ph_source_cv( ndim, nphase, cv_nonods ), &
            &    alpha_cv( nphase, cv_nonods ), &
            &    coef_alpha_cv( nphase, cv_nonods ) )
 
@@ -9142,7 +9137,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       ! set the gravity term
 
       rho => extract_tensor_field( packed_state, "PackedDensity" )
-      u_ph_source_cv( 1, 1, : ) = -1.0 !-rho % val( 1, 1, : ) * 9.8
+      u_ph_source_cv( 2, 1, : ) =  -rho % val( 1, 1, : ) * 9.8
 
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
@@ -9159,7 +9154,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
          ! iloop=1 form the rhs of the pressure matrix and pressure matrix and solve it.
          ! iloop=2 put the residual into the rhs of the momentum eqn.
 
-
          do  ele = 1, totele
 
             ! calculate detwei,ra,nx,ny,nz for element ele
@@ -9168,7 +9162,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
                  tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
                  other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
-                 other_fenx_all, state ,"ph_2", StorageIndexes( 37 ) )
+                 other_fenx_all, state , "ph_2", StorageIndexes( 37 ) )
 
             if ( u_nloc == tmp_cv_nloc ) then
                 ufenx_all => tmp_cvfenx_all
@@ -9181,8 +9175,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 phfenx_all => other_fenx_all
             end if
 
-
-            u_s_gi = 0.0;  dx_alpha_gi = 0.0;  coef_alpha_gi = 0.0
+            u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
             dx_ph_gi = 0.0
 
             do u_iloc = 1, u_nloc
@@ -9224,7 +9217,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             end do
 
 
-
             if ( iloop == 1 ) then
 
                ! form the hydrostatic pressure eqn...   
@@ -9234,50 +9226,50 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                      ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
                      nxnx = 0.0
                      do idim = 1, ndim
-                        nxnx = nxnx + sum( phfenx_all( idim, ph_iloc, : ) * phfenx_all( idim, ph_jloc, : ) * detwei(:) )
+                        nxnx = nxnx + sum( phfenx_all( idim, ph_iloc, : ) * &
+                             phfenx_all( idim, ph_jloc, : ) * detwei )
                      end do
-                     do iphase = 1, nphase
-                        do idim = 1, ndim
-                           call addto( rhs, ph_inod, &
-                                +sum( phfenx_all( idim, ph_iloc, : ) * ( &
-                                u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                                dx_alpha_gi( :, idim, iphase ) ) * detwei(:) ) )
-                        end do
-                     end do
-
                      call addto( matrix, 1, 1, ph_inod, ph_jnod, nxnx )
-
+                  end do
+                  do iphase = 1, nphase
+                     do idim = 1, ndim
+                        call addto( rhs, ph_inod, &
+                             sum( phfenx_all( idim, ph_iloc, : ) * ( &
+                             u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
+                             dx_alpha_gi( :, idim, iphase ) ) * detwei ) )
+                     end do
                   end do
                end do
 
             else
 
                ! form rhs of the momentum eqn...
-
                do u_iloc = 1, u_nloc
                   u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
-                  do ph_jloc = 1, ph_nloc
-                     ph_jnod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_jloc )
+                  do iphase = 1, nphase
+                     do idim = 1, ndim
+                        u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
+                             sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase )  &
+                             + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
+                             dx_alpha_gi( :, idim, iphase ) ) * detwei )
+                     
 
-                     do iphase = 1, nphase
-                        do idim = 1, ndim
-                           call addto( u_rhs, idim, iphase, u_inod, &
-                               sum( ufen( u_iloc, : ) * (  - dx_ph_gi( :, idim, iphase )   &
-                               + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                                dx_alpha_gi( :, idim, iphase ) ) * detwei(:) ) )
-                        end do
+                        printu%val(idim,u_inod) =printu%val(idim,u_inod)+&
+                             sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase )  &
+                             + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
+                             dx_alpha_gi( :, idim, iphase ) ) * detwei )
+                        
+
                      end do
-
                   end do
                end do
 
-
             end if
-
 
          end do ! ele loop
 
          if ( iloop == 1 ) then
+            
             ! solver for pressure ph
             call set_solver_options( path, &
                  ksptype = "cg", &
@@ -9291,9 +9283,12 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
             call add_option( &
                  trim( path ) // "/solver/remove_null_space", stat )
-            ph_sol%option_path = path
+            ph_sol % option_path = path
 
             call petsc_solve( ph_sol, matrix, rhs )
+
+            printf => extract_scalar_field( state( 1 ), "Ph", stat )
+            if ( stat == 0 ) printf%val = ph_sol%val
 
             do iphase = 1, nphase
                ph( iphase, : ) = ph_sol % val ! assume 1 phase for the time being
@@ -9303,6 +9298,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       end do
 
+
       ! deallocate
       call deallocate( rhs )
       call deallocate( ph_sol )
@@ -9311,8 +9307,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       ewrite(3,*) "leaving high_order_pressure_solve"
 
-
-stop 678
       return
     end subroutine high_order_pressure_solve
 
