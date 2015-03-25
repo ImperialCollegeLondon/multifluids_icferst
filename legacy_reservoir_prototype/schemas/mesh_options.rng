@@ -62,23 +62,18 @@ Checkpoints are dumped in the GMSH file format.&lt;/b&gt;</a:documentation>
                 <ref name="integer"/>
               </element>
             </optional>
-            <optional>
-              <element name="element_type">
-                <element name="string_value">
-                  <a:documentation>Select the element type. "lagrangian" means the usual
+            <element name="element_type">
+              <element name="string_value">
+                <a:documentation>Select the element type. "lagrangian" means the usual
 Pn element type. "bubble" adds bubble functions that
 vanish on the element boundaries, and
 trace defines an element that is only defined on faces
 and is undefined on the element interior (used for 
 enforcing continuity by Lagrange multipliers).</a:documentation>
-                  <choice>
-                    <value>lagrangian</value>
-                    <value>bubble</value>
-                    <value>trace</value>
-                  </choice>
-                </element>
+                <!--                 "lagrangian" | "bubble" | "trace" -->
+                <value>lagrangian</value>
               </element>
-            </optional>
+            </element>
             <optional>
               <element name="Porous_media">
                 <a:documentation>Activate for porous media. It allows the use of lagrangian shape functions for porous media flow. Velocity only.</a:documentation>
@@ -97,52 +92,46 @@ enforcing continuity by Lagrange multipliers).</a:documentation>
             </element>
           </element>
         </optional>
-        <zeroOrMore>
-          <element name="periodic_boundary_conditions">
-            <a:documentation>Make mesh periodic</a:documentation>
-            <attribute name="name">
-              <data type="string"/>
-            </attribute>
-            <element name="physical_boundary_ids">
-              <a:documentation>List of boundary ids that are aliased to</a:documentation>
-              <ref name="integer_vector"/>
-            </element>
-            <element name="aliased_boundary_ids">
-              <a:documentation>List of boundary ids that are aliased</a:documentation>
-              <ref name="integer_vector"/>
-            </element>
-            <element name="coordinate_map">
-              <a:documentation>Python code which takes coordinate of an aliased
-boundary node and returns the coordinate of a physical
-boundary node.
-Note that in adaptive simulations this will be applied to
-arbitrary points in space, not just those on the original aliased
-boundary.</a:documentation>
-              <ref name="python_code"/>
-            </element>
-            <optional>
-              <element name="inverse_coordinate_map">
-                <a:documentation>Python code which takes coordinate of a physical
-boundary node and returns the coordinate of an aliased
-boundary node. This is used in adaptive simulations to
-keep the adapted domain inside the bounding box of the
-original domain.</a:documentation>
-                <ref name="python_code"/>
-              </element>
-            </optional>
-            <optional>
-              <element name="remove_periodicity">
-                <a:documentation>&lt;b&gt;Don't turn this on by hand!&lt;/b&gt;
-This option gets set by the periodise tool, to indicate
-that this mesh should have the periodic boundary conditions
-&lt;b&gt;removed&lt;/b&gt;. See the discussion on the wiki about 
-parallel periodic boundary conditions.</a:documentation>
-                <empty/>
-              </element>
-            </optional>
-          </element>
-        </zeroOrMore>
         <optional>
+          <!--
+                    ## Make mesh periodic
+                    element periodic_boundary_conditions {
+                       attribute name { xsd:string },
+                       ## List of boundary ids that are aliased to
+                       element physical_boundary_ids {
+                          integer_vector
+                       },
+                       ## List of boundary ids that are aliased
+                       element  aliased_boundary_ids {
+                          integer_vector
+                       },
+                       ## Python code which takes coordinate of an aliased
+                       ## boundary node and returns the coordinate of a physical
+                       ## boundary node.
+                       ## Note that in adaptive simulations this will be applied to
+                       ## arbitrary points in space, not just those on the original aliased
+                       ## boundary.
+                       element coordinate_map {
+                          python_code
+                       },
+                       ## Python code which takes coordinate of a physical
+                       ## boundary node and returns the coordinate of an aliased
+                       ## boundary node. This is used in adaptive simulations to
+                       ## keep the adapted domain inside the bounding box of the
+                       ## original domain.
+                       element inverse_coordinate_map {
+                          python_code
+                       }?,
+                       ## <b>Don't turn this on by hand!</b>
+                       ## This option gets set by the periodise tool, to indicate
+                       ## that this mesh should have the periodic boundary conditions
+                       ## <b>removed</b>. See the discussion on the wiki about 
+                       ## parallel periodic boundary conditions.
+                       element remove_periodicity {
+                          empty
+                       }?
+                    }*,
+          -->
           <element name="extrude">
             <a:documentation>Extrude a horizontal (1D or 2D) mesh in the vertical</a:documentation>
             <oneOrMore>

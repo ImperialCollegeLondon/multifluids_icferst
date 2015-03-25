@@ -1,22 +1,15 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE testproblem SYSTEM "regressiontest.dtd">
-
+<?xml version='1.0' encoding='utf-8'?>
 <testproblem>
   <name>Collapsing_Water_Column</name>
   <owner userid="pablo.salinas"/>
   <tags>mpml</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>
-        cd ./Collapsing_Water_Column/
-        python ./Check_CWC.py
-    </command_line>
-    <!-- Porous media test cases -->
+    <command_line>cd ./Collapsing_Water_Column/
+        python ./Check_CWC.py</command_line>
   </problem_definition>
-
-
+  <variables/>
   <pass_tests>
-    <test name="Collapsing_Water_Column" language="python">
-Collapsing_Water_Column = False
+    <test name="Collapsing_Water_Column" language="python">Collapsing_Water_Column = False
 Log=file('Collapsing_Water_Column/log','r')
 while True:
     cadena=Log.readline()
@@ -25,10 +18,7 @@ while True:
 
 if 'OK' in cadena: Collapsing_Water_Column = True
 
-Log.close
-    </test>
-
+Log.close</test>
   </pass_tests>
-  <warn_tests>
-  </warn_tests>
+  <warn_tests/>
 </testproblem>

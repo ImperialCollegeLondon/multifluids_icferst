@@ -53,9 +53,10 @@ mesh_info =
                ## and is undefined on the element interior (used for 
                ## enforcing continuity by Lagrange multipliers).
               element string_value{
-                 "lagrangian" | "bubble" | "trace" 
+#                 "lagrangian" | "bubble" | "trace" 
+                 "lagrangian"
               }
-            }?,
+            },
              ## Activate for porous media. It allows the use of lagrangian shape functions for porous media flow. Velocity only.
              element Porous_media { comment }?
          }?,
@@ -64,43 +65,43 @@ mesh_info =
                "continuous" | "discontinuous"
             }
          }?,
-         ## Make mesh periodic
-         element periodic_boundary_conditions {
-            attribute name { xsd:string },
-            ## List of boundary ids that are aliased to
-            element physical_boundary_ids {
-               integer_vector
-            },
-            ## List of boundary ids that are aliased
-            element  aliased_boundary_ids {
-               integer_vector
-            },
-            ## Python code which takes coordinate of an aliased
-            ## boundary node and returns the coordinate of a physical
-            ## boundary node.
-            ## Note that in adaptive simulations this will be applied to
-            ## arbitrary points in space, not just those on the original aliased
-            ## boundary.
-            element coordinate_map {
-               python_code
-            },
-            ## Python code which takes coordinate of a physical
-            ## boundary node and returns the coordinate of an aliased
-            ## boundary node. This is used in adaptive simulations to
-            ## keep the adapted domain inside the bounding box of the
-            ## original domain.
-            element inverse_coordinate_map {
-               python_code
-            }?,
-            ## <b>Don't turn this on by hand!</b>
-            ## This option gets set by the periodise tool, to indicate
-            ## that this mesh should have the periodic boundary conditions
-            ## <b>removed</b>. See the discussion on the wiki about 
-            ## parallel periodic boundary conditions.
-            element remove_periodicity {
-               empty
-            }?
-         }*,
+#         ## Make mesh periodic
+#         element periodic_boundary_conditions {
+#            attribute name { xsd:string },
+#            ## List of boundary ids that are aliased to
+#            element physical_boundary_ids {
+#               integer_vector
+#            },
+#            ## List of boundary ids that are aliased
+#            element  aliased_boundary_ids {
+#               integer_vector
+#            },
+#            ## Python code which takes coordinate of an aliased
+#            ## boundary node and returns the coordinate of a physical
+#            ## boundary node.
+#            ## Note that in adaptive simulations this will be applied to
+#            ## arbitrary points in space, not just those on the original aliased
+#            ## boundary.
+#            element coordinate_map {
+#               python_code
+#            },
+#            ## Python code which takes coordinate of a physical
+#            ## boundary node and returns the coordinate of an aliased
+#            ## boundary node. This is used in adaptive simulations to
+#            ## keep the adapted domain inside the bounding box of the
+#            ## original domain.
+#            element inverse_coordinate_map {
+#               python_code
+#            }?,
+#            ## <b>Don't turn this on by hand!</b>
+#            ## This option gets set by the periodise tool, to indicate
+#            ## that this mesh should have the periodic boundary conditions
+#            ## <b>removed</b>. See the discussion on the wiki about 
+#            ## parallel periodic boundary conditions.
+#            element remove_periodicity {
+#               empty
+#            }?
+#         }*,
          ## Extrude a horizontal (1D or 2D) mesh in the vertical
          element extrude {
             (

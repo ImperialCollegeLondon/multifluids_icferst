@@ -1,22 +1,15 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE testproblem SYSTEM "regressiontest.dtd">
-
+<?xml version='1.0' encoding='utf-8'?>
 <testproblem>
   <name>BL_fast_thicker</name>
   <owner userid="pablo.salinas"/>
   <tags>mpml</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>
-        cd ./BL_fast_thicker/
-        python ./Check_BL.py
-    </command_line>
-    <!-- Porous media test cases -->
+    <command_line>cd ./BL_fast_thicker/
+        python ./Check_BL.py</command_line>
   </problem_definition>
-
-
+  <variables/>
   <pass_tests>
-    <test name="BL_fast_thicker" language="python">
-BL_fast_thicker = False
+    <test name="BL_fast_thicker" language="python">BL_fast_thicker = False
 Log=file('BL_fast_thicker/log','r')
 while True:
     cadena=Log.readline()
@@ -25,10 +18,7 @@ while True:
 
 if 'OK' in cadena: BL_fast_thicker = True
 
-Log.close
-    </test>
-
+Log.close</test>
   </pass_tests>
-  <warn_tests>
-  </warn_tests>
+  <warn_tests/>
 </testproblem>

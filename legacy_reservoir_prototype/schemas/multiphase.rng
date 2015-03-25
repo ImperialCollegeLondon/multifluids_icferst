@@ -425,21 +425,19 @@ then this is the initial time step size.</a:documentation>
           </element>
         </optional>
         <optional>
-          <element name="cpu_time_limit">
-            <a:documentation>Maximum CPU time (in seconds) before the simulation terminates</a:documentation>
-            <ref name="real"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="wall_time_limit">
-            <a:documentation>Maximum wall time (secs) taken up before
-simulation terminates writing results to disc.
-
-This is usually disabled.</a:documentation>
-            <ref name="real"/>
-          </element>
-        </optional>
-        <optional>
+          <!--
+                       ## Maximum CPU time (in seconds) before the simulation terminates
+                       element cpu_time_limit {
+                          real
+                       }?,
+                       ## Maximum wall time (secs) taken up before
+                       ## simulation terminates writing results to disc.
+                       ## 
+                       ## This is usually disabled.
+                       element wall_time_limit {
+                          real
+                       }?,
+          -->
           <element name="nonlinear_iterations">
             <a:documentation>maximum number of non-linear iterations.
 
@@ -1557,33 +1555,31 @@ not the number of gauss points</a:documentation>
           <ref name="integer"/>
         </element>
         <optional>
-          <element name="surface_degree">
-            <a:documentation>Surface quadrature degree
-
-note: this specifies the degree of surface
-quadrature not the number of surface gauss points</a:documentation>
-            <ref name="integer"/>
-          </element>
-        </optional>
-        <optional>
-          <element name="controlvolume_surface_degree">
-            <a:documentation>Sets the degree of quadrature on each quadrilateral
-face of the control volume. 
-
-Defaults to 1 if
-unselected which is the same as pre-new options
-behaviour.</a:documentation>
-            <ref name="integer"/>
-          </element>
-        </optional>
-        <optional>
+          <!--
+                       ## Surface quadrature degree
+                       ## 
+                       ## note: this specifies the degree of surface
+                       ## quadrature not the number of surface gauss points
+                       element surface_degree {
+                          integer
+                       }?,
+                       ## Sets the degree of quadrature on each quadrilateral
+                       ## face of the control volume. 
+                       ##
+                       ## Defaults to 1 if
+                       ## unselected which is the same as pre-new options
+                       ## behaviour.
+                       element controlvolume_surface_degree {
+                          integer
+                       }?,
+                       ## Select which family of quadrature rules to use.
+                       ## The default is family_cools.
+                       ## family_wandzura allows for degree up to 30
+                       ## on triangular meshes.
+                       ## family_grundmann_moeller allows for degree up to
+                       ## 29 on simplicial meshes in arbitrary dimension.
+          -->
           <element name="quadrature_family">
-            <a:documentation>Select which family of quadrature rules to use.
-The default is family_cools.
-family_wandzura allows for degree up to 30
-on triangular meshes.
-family_grundmann_moeller allows for degree up to
-29 on simplicial meshes in arbitrary dimension.</a:documentation>
             <element name="string_value">
               <choice>
                 <value>family_cools</value>

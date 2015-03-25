@@ -1,15 +1,10 @@
-<?xml version="1.0" encoding="UTF-8" ?>
-<!DOCTYPE testproblem SYSTEM "regressiontest.dtd">
-
+<?xml version='1.0' encoding='utf-8'?>
 <testproblem>
   <name>Compositional_Model_2D</name>
   <owner userid="dimitrios.pavlidis"/>
   <tags>mpml</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>
-
-
-cp  CM_2D_2P3C_P1DGP1_10layers.mpml CM_2D_2P3C_P1DGP1_50layers.mpml
+    <command_line>cp  CM_2D_2P3C_P1DGP1_10layers.mpml CM_2D_2P3C_P1DGP1_50layers.mpml
 sed -i 's/_10layers/_50layers/' CM_2D_2P3C_P1DGP1_50layers.mpml
 
 cp  CM_2D_2P3C_P1DGP1DG_10layers.mpml CM_2D_2P3C_P1DGP1DG_50layers.mpml
@@ -149,20 +144,9 @@ sed -i 's/1e-2/1e-4/' CM_2D_2P3C_LVI_P1DGP2_500layers.mpml
 ../../../bin/multiphase_prototype CM_2D_2P3C_LVI_P1DGP2_50layers.mpml
 ../../../bin/multiphase_prototype CM_2D_2P3C_LVI_P1DGP2_100layers.mpml
 ../../../bin/multiphase_prototype CM_2D_2P3C_LVI_P1DGP2_250layers.mpml
-../../../bin/multiphase_prototype CM_2D_2P3C_LVI_P1DGP2_500layers.mpml
-
-
-    </command_line>
-    <!-- Two-dimensional Compositional problem - evaluate different mesh resolutions and element pairs -->
+../../../bin/multiphase_prototype CM_2D_2P3C_LVI_P1DGP2_500layers.mpml</command_line>
   </problem_definition>
-
-  <variables>
-  </variables>
-
-  <pass_tests>
-  </pass_tests>
-
-  <warn_tests>
-  </warn_tests>
-
+  <variables/>
+  <pass_tests/>
+  <warn_tests/>
 </testproblem>

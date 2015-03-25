@@ -13,8 +13,8 @@ import diamond.schema as schema
 def Help():
   debug.dprint("Usage: update_options [OPTIONS] ... [FILES]\n" + \
                "\n" + \
-               "Updates flml, bml, swml and adml files. If FILES is not specified, all .flml, .bml, .swml and .adml files in\n" + \
-               "tests/*/., tests/*/*/., longtests/*/., longtests/*/*/. and examples/*/. will be updated. Options:\n" + \
+               "Updates flml, bml, swml and adml files. If FILES is not specified, all .xml and mpml files in\n" + \
+               "tests/*/., tests/*/*/. and examples/*/. will be updated. Options:\n" + \
                "\n" + \
                "-h  Display this help\n" + \
                "-v  Verbose mode", 0)
@@ -39,10 +39,7 @@ testDir = os.path.join(rootDir, "tests")
 longtestDir = os.path.join(rootDir, "longtests")
 examplesDir = os.path.join(rootDir, "examples")
 
-extdict = {"flml" : "fluidity_options.rng", 
-           "bml"  : "burgers_equation.rng", 
-           "swml" : "shallow_water_options.rng", 
-           "adml" : "test_advection_diffusion_options.rng",
+extdict = {"xml"  : "test_options.rng",
            "mpml" : "multiphase.rng"}
 
 # cache parsed schema files
@@ -56,8 +53,6 @@ if len(filenames) == 0:
   for k,v in extdict.items():
     filenames += glob.glob(os.path.join(testDir, "*", "*."+k))
     filenames += glob.glob(os.path.join(testDir, "*", "*", "*."+k))
-    filenames += glob.glob(os.path.join(longtestDir, "*", "*."+k))
-    filenames += glob.glob(os.path.join(longtestDir, "*", "*", "*."+k))
     filenames += glob.glob(os.path.join(examplesDir, "*", "*."+k))
 
 invalidFiles = []
