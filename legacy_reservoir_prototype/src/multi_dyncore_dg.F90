@@ -1132,10 +1132,8 @@ contains
         ELSE ! solve using a projection method
 
 
-
             ! Put pressure in rhs of force balance eqn: CDP = C * P
             CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC)
-
 
             !call high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase )
 
@@ -2509,6 +2507,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !has to be of the type PnDGPnDG
         ! Do NOT divide element into CV's to form quadrature.
         QUAD_OVER_WHOLE_ELE = is_porous_media
+        !QUAD_OVER_WHOLE_ELE = .true.
+
 
 
         call retrieve_ngi( ndim, u_ele_type, cv_nloc, u_nloc, &
@@ -2903,6 +2903,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
            state, 'Vel_mesh', StorageIndexes(13))
 
+        if ( quad_over_whole_ele ) then
+           cvn => cvfen
+           cvn_short => cvfen_short
+           sbcvn => sbcvfen
+        end if
+
+
+
 ! ALLOCATE reversed ordering for computational speed****************
            ALLOCATE( CVFENX_ALL_REVERSED(NDIM,CV_NGI,CV_NLOC), UFENX_ALL_REVERSED(NDIM,CV_NGI,U_NLOC) ) ! NOT CALCULATED IN SUB cv_fem_shape_funs_plus_storage
 
@@ -3257,7 +3265,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
             DO CV_ILOC = 1, CV_NLOC
                 DO GI = 1, CV_NGI_SHORT
-!                    IF ( .FALSE. ) then ! FEM DEN...
                     IF ( FEM_DEN ) then ! FEM DEN...
                         DENGI( :, GI ) = DENGI( :, GI ) + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_UDEN( :, CV_ILOC )
                         DENGIOLD( :, GI ) = DENGIOLD( :, GI ) &
@@ -9009,7 +9016,25 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       type( tensor_field ), pointer :: rho
       type( scalar_field ), pointer :: printf
-      type( vector_field ), pointer :: printu
+      type( vector_field ), pointer :: printu, x_p2
+
+
+      logical :: on_boundary
+      integer :: ph_jnod2, ierr, count, count2, i,j
+      integer, dimension(:), pointer :: findph, colph
+
+
+
+
+
+
+
+
+
+
+
+
+
 
       ewrite(3,*) "inside high_order_pressure_solve"
 
@@ -9133,7 +9158,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       ! set the gravity term
 
       rho => extract_tensor_field( packed_state, "PackedDensity" )
-      u_ph_source_cv( 2, 1, : ) =  -rho % val( 1, 1, : ) * 9.8
+      u_ph_source_cv( 2, 1, : ) = -rho % val( 1, 1, : ) * 9.8
 
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
@@ -9244,11 +9269,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                   u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
                   do iphase = 1, nphase
                      do idim = 1, ndim
-                        u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
-                             sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase )  &
-                             + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                             dx_alpha_gi( :, idim, iphase ) ) * detwei )
+                     !   u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
+                     !        sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
+                     !        + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
+                     !        dx_alpha_gi( :, idim, iphase ) ) * detwei )
                      
+                        u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
+                             sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
+                             + u_s_gi( :, idim, iphase )   ) * detwei )
 
                         printu%val(idim,u_inod) =printu%val(idim,u_inod)+&
                              sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase )  &
@@ -9266,6 +9294,54 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
          if ( iloop == 1 ) then
             
+         
+            FINDPH => sparsity%findrm
+            COLPH => SPARSITY%COLM
+
+
+            X_p2 => extract_vector_field(  state(1), "DiagnosticCoordinate"  )
+
+
+            do PH_Inod = 1, ph_nonods
+
+               on_boundary = .false.
+               if (   X_p2%val(2,ph_inod ) > 0.999  ) on_boundary = .true.
+
+               if ( on_boundary ) then
+
+                  rhs%val(PH_inod)=0.0
+
+                  DO COUNT = FINDPH( PH_INOD ), FINDPH( PH_INOD + 1 ) - 1
+                     PH_JNOD = COLPH( COUNT )
+                     IF ( PH_JNOD /= PH_INOD ) THEN
+                        i = matrix%row_numbering%gnn2unn( PH_Inod, 1 )
+                        j = matrix%column_numbering%gnn2unn( PH_jnod, 1 )
+                        call MatSetValue( MATRIX%M, i, j, 0.0, INSERT_VALUES, ierr )
+      
+                        DO COUNT2 = FINDPH( PH_JNOD ), FINDPH( PH_JNOD + 1 ) - 1
+                           PH_JNOD2 = COLPH( COUNT2 )
+                           IF ( ph_JNOD2 == ph_iNOD ) then
+                              i = matrix%row_numbering%gnn2unn( PH_jnod, 1 )
+                              j = matrix%column_numbering%gnn2unn( PH_JNOD2, 1 )
+                              call MatSetValue( MATRIX%M, i, j, 0.0, INSERT_VALUES, ierr )
+                           end if
+
+                        end do
+       
+                     end if
+
+                  end do
+
+               end if
+
+            end do
+
+
+
+
+
+
+
             ! solver for pressure ph
             call set_solver_options( path, &
                  ksptype = "cg", &
@@ -9277,8 +9353,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
             call set_option( &
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
-            call add_option( &
-                 trim( path ) // "/solver/remove_null_space", stat )
+            !call add_option( &
+            !     trim( path ) // "/solver/remove_null_space", stat )
             ph_sol % option_path = path
 
             call petsc_solve( ph_sol, matrix, rhs )
