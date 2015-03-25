@@ -840,7 +840,7 @@ contains
         type( scalar_field ) :: ct_rhs
         REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES, &
         MCY_RHS, MCY, &
-        CMC_PRECON, MASS_MN_PRES, MASS_SUF, MASS_CV, UP, U_RHS_CDP, &
+        CMC_PRECON, MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL, DIAG_P_SQRT
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
@@ -899,7 +899,6 @@ contains
         ENDIF
         ALLOCATE( MASS_CV( CV_NONODS )) ; MASS_CV=0.
         ALLOCATE( UP( NLENMCY )) ; UP=0.
-        ALLOCATE( U_RHS_CDP( NDIM * NPHASE * U_NONODS )) ; U_RHS_CDP=0.
         ALLOCATE( U_RHS_CDP2( NDIM, NPHASE, U_NONODS )) ; U_RHS_CDP2=0.
 
         call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim)
@@ -1138,7 +1137,6 @@ contains
             CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC)
 
 
-
             !call high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase )
 
 
@@ -1153,9 +1151,8 @@ contains
                 U_ALL2 % VAL = RESHAPE( UP_VEL, (/ NDIM, NPHASE, U_NONODS /) )
 
             ELSE
-
-                U_RHS_CDP = RESHAPE( U_RHS + CDP_tensor%val, (/ NDIM * NPHASE * U_NONODS /) )
-                call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
+                
+               call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
 
                 rhs%val=RESHAPE( U_RHS + CDP_tensor%val, (/ NDIM * NPHASE , U_NONODS /) )
               
@@ -1345,7 +1342,6 @@ contains
         DEALLOCATE( MCY )
         DEALLOCATE( MASS_MN_PRES )
         DEALLOCATE( UP )
-        DEALLOCATE( U_RHS_CDP )
         call deallocate(ct_rhs)
         call DEALLOCATE( CDP_tensor )
         DEALLOCATE( DU_VEL )
