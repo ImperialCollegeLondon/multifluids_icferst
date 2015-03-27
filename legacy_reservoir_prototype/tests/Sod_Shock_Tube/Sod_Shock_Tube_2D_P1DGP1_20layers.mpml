@@ -143,11 +143,7 @@
     </nonlinear_iterations>
   </timestepping>
   <caching/>
-  <physical_parameters>
-    <mobility>
-      <real_value rank="0">10</real_value>
-    </mobility>
-  </physical_parameters>
+  <physical_parameters/>
   <material_phase name="phase1">
     <equation_of_state>
       <compressible>
