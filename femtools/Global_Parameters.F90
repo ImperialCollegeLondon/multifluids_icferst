@@ -173,6 +173,9 @@ module global_parameters
   !! Overlapping method
   logical :: is_porous_media = .false.
 
+  !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
+  real :: dumping_in_sat
+
   contains
 
   function get_surface_radius() bind(c)

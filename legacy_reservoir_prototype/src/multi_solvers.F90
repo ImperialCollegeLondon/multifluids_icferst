@@ -48,7 +48,6 @@ module solvers_module
   use petscpc
 #endif
 #endif
-
   use Copy_Outof_State
   use shape_functions_Linear_Quadratic
   use shape_functions_prototype
@@ -73,7 +72,8 @@ module solvers_module
 
   private
 
-  public :: solver, PRES_DG_MULTIGRID, CMC_Agglomerator_solver, Fix_to_bad_elements, BoundedSolutionCorrections
+  public :: solver, PRES_DG_MULTIGRID, CMC_Agglomerator_solver, Fix_to_bad_elements,&
+         BoundedSolutionCorrections, Trust_region_correction
 
   interface solver
      module procedure solve_via_copy_to_petsc_csr_matrix
@@ -642,7 +642,8 @@ contains
               DO COUNT3 = FINDCMC_small(cty_NOD), FINDCMC_small(cty_NOD+1) - 1
                   if(colcmc_small(count3)==jcolcmc_small) count2=count3
               end do
-              call MatGetValues(cmc_petsc%M, 1, (/ dg_nod-1 /), 1, (/ COLCMC(COUNT)-1 /),  auxR, ierr)
+              call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(dg_nod-1,1) /), 1,&
+                 (/cmc_petsc%column_numbering%gnn2unn(COLCMC(COUNT)-1,1) /),  auxR, ierr)
               call addto( CMC_Small_petsc, blocki = 1, blockj = 1, i = cty_nod, j = colcmc_small(count2),val = auxR(1))
           END DO
       END DO
@@ -681,7 +682,8 @@ contains
                   DO COUNT = FINDCMC(dg_NOD), FINDCMC(dg_NOD+1) - 1
                       col=COLCMC(COUNT)
                       cty_nod = MAP_DG2CTY(dg_nod)
-                      call MatGetValues(cmc_petsc%M, 1, (/ dg_nod-1 /), 1, (/ COLCMC(COUNT)-1 /),  auxR, ierr)
+                      call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(dg_nod-1,1) /), 1,&
+                       (/ cmc_petsc%column_numbering%gnn2unn(COLCMC(COUNT)-1,1) /),  auxR, ierr)
                       !Project residual to RHS_Small
                       Residual_DG%val(dg_nod) = rhs_p%val(dg_nod) - auxR(1) * deltap%val(Col)
                   END DO
@@ -719,7 +721,8 @@ contains
               ustep=0.0
               do dg_nod = 1, cv_nonods
                   DO COUNT = FINDCMC(dg_NOD), FINDCMC(dg_NOD+1) - 1
-                      call MatGetValues(cmc_petsc%M, 1, (/ dg_nod-1 /), 1, (/ COLCMC(COUNT)-1 /),  auxR, ierr)
+                      call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(dg_nod-1,1) /), 1,&
+                       (/ cmc_petsc%column_numbering%gnn2unn(COLCMC(COUNT)-1,1) /),  auxR, ierr)
                       USTEP(dg_nod) = USTEP(dg_nod) + auxR(1) * DP_DG(COLCMC(COUNT))
                   END DO
               end do
@@ -769,7 +772,6 @@ contains
       real, dimension(1) :: rescal
       logical :: nodeFound
       !Initialize variables
-
       i = 1
 
       !Depending on the angle of the element we consider different alphas
@@ -782,7 +784,8 @@ contains
           !Bad node
           bad_node = P_NDGLN((ele-1) * p_nloc + Quality_list(i)%nodes(1))
           !We get the diagonal value to use it as a reference when adding the over-relaxation
-          call MatGetValues(cmc_petsc%M, 1, (/ bad_node - 1 /), 1, (/ bad_node - 1 /),  rescal, ierr)
+          call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(bad_node - 1,1) /), 1, &
+            (/ cmc_petsc%column_numbering%gnn2unn(bad_node - 1,1) /),  rescal, ierr)
           rescal(1) = adapted_alpha * rescal(1)
           DO P_ILOC = 1, P_NLOC
               i_node = P_NDGLN((ele-1) * p_nloc + P_ILOC)
@@ -1402,6 +1405,151 @@ contains
       if (present_and_true(for_sat)) deallocate(inmobi)
       return
     end subroutine BoundedSolutionCorrections
+
+
+    subroutine Trust_region_correction(packed_state, sat_bak, Dumping_from_schema, dumping)
+    !In this subroutine we applied some corrections and dumping on the saturations obtained from the saturation equation
+    !this is based on the paper SPE-173267-MS.
+    !The method ensures convergence independent on the time step.
+    !NOTE: FOR THE TIME BEING IT CONSIDERS VISCOSITY INDEPENDENT OF THE SATURATION
+        implicit none
+        !Global variables
+        type( state_type ), intent(inout) :: packed_state
+        real, dimension(:, :), intent(in) :: sat_bak
+        real, intent(in) :: Dumping_from_schema
+        real, optional, intent(inout) :: dumping!this is the dumping_factor used
+        !Local variables
+        real, parameter :: offset_inflection = 0.1!This is what we allow the jump to surpass an inflection
+        real, parameter :: offset_kink = 0.05!This is what we allow the jump to surpass a kink
+        real, dimension(:, :), pointer :: dSat
+        real, dimension(size(sat_bak,1)) :: imobile_fractions
+        real :: dumping_factor, aux, D, C
+        integer :: iphase, inode
+
+
+        !First, impose physical constrains
+        call Set_Saturation_to_sum_one(packed_state)
+
+        !We get the dumping by divinding AD/AB where A is sat_bak, B is the new solution and D is the inflection/kink point +
+        !an offset
+
+        !We re-use the phase volume fraction to reduce the ram consumption
+        call get_var_from_packed_state(packed_state,PhaseVolumeFraction = dSat)
+        dSat = dSat - sat_bak
+
+
+        if (Dumping_from_schema < 0.0) then!Automatic method
+            !***INFLECTION SECTION***
+            !Get immobile fractions, they happen to be the inflection points
+            do iphase = 1, size(dSat,1)
+                call get_saturation_limits(aux, imobile_fractions(iphase), iphase, size(dSat,1))
+            end do
+
+            !Here we calculate the lenght of the acceptable jump, we allow an overpass of offset_inflection
+            !over the inflection point, this might be an option for the user to choose
+            dumping_factor = 1.0; aux = 1.0
+            do inode = 1, size(dSat, 2)
+                do iphase = 1, size(dSat,1)
+                    C = imobile_fractions(iphase)
+                    D = C + sign(offset_inflection, dSat(iphase,inode))
+                    !Do something only if we are crossing an inflection point
+                    if (( dSat(iphase,inode) > 0 .and. sat_bak(iphase,inode) <= D) .or.&!THESE SHOULD BE C
+                        ( dSat(iphase,inode) < 0 .and. sat_bak(iphase,inode) >= D) ) then
+                        aux = abs(( D - sat_bak(iphase,inode)) /max(dSat(iphase,inode),1d-10))
+                        if (aux < dumping_factor .and. aux > 5d-2) then!If steps are too small we are not interested, also avoid rounding errors
+                            dumping_factor = aux
+                        end if
+                    end if
+                end do
+            end do
+            !This seems to help a lot, but it is probably because I am not dumping correctly
+            dumping_factor = min(dumping_factor, 0.5)
+
+
+            !***KINK SECTION***, only if gravity is present
+
+        else!Use the value introduced by the user
+            dumping_factor = Dumping_from_schema
+        end if
+
+
+        !Update, if necessary, the dumping to make sure we don't overshoot. i.e: if looping we don't update over 1.0
+        if (present(dumping)) then
+            if (dumping + dumping_factor > 1.0) dumping_factor = 1.0 - dumping
+            dumping = dumping_factor
+        end if
+        !***SATURATION DUMPING SECTION***
+        !Calculate the new saturation (dSat is pointing to packed_state) using a global dumping parameter as it is more conservative
+        !In the paper they say that local dumping could severily improve convergence...
+        dSat = sat_bak + dumping_factor * dSat
+
+    end subroutine Trust_region_correction
+
+    subroutine Set_Saturation_to_sum_one(packed_state)
+        !This subroutines eliminates the oscillations in the saturation that are bigger than a
+        !certain tolerance and also sets the saturation to be between bounds
+        Implicit none
+        !Global variables
+        type( state_type ), intent(inout) :: packed_state
+        !Local variables
+        integer :: nphase, inod, iphase
+        real :: sum_of_phases
+        real, dimension(:,:), pointer :: satura
+        real, dimension(:), allocatable :: maxsats, minsats
+
+        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
+
+        nphase = size(satura,1)
+
+        allocate(maxsats(nphase), minsats(nphase))
+
+        do iphase = 1, nphase
+            !Get the upper and lower limit of saturation for iphase
+            call get_saturation_limits(maxsats(iphase), minsats(iphase), iphase, nphase)
+        end do
+        !Impose that the sum of the saturations is equal to one
+        do inod = 1, size(satura,2)
+            sum_of_phases = sum(satura(:,inod))
+            do iphase = 1, nphase
+                !We enforce the sum to one by spreading the error to all the phases
+                if (sum_of_phases /= 1.0 ) then
+                    satura(iphase, inod) = satura(iphase, inod) + (1.0 - sum_of_phases) / nphase
+                    satura(iphase, inod) = min(max(minsats(iphase), satura(iphase, inod)),maxsats(iphase))
+                end if
+            end do
+        end do
+
+        deallocate(maxsats, minsats)
+    end subroutine Set_Saturation_to_sum_one
+
+
+    subroutine Set_Saturation_between_bounds(packed_state)
+        !This subroutines eliminates the oscillations in the saturation that are bigger than a
+        !certain tolerance
+        Implicit none
+        !Global variables
+        type( state_type ), intent(inout) :: packed_state
+        !Local variables
+        integer :: iphase, jphase, nphase
+        real :: maxsat, minsat
+        real, dimension(:,:), pointer :: satura
+        real, dimension(:), allocatable :: immobile_fractions
+        real, parameter :: tolerance = 0.0
+
+        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
+
+        nphase = size(satura,1)
+
+        !Set saturation to be between bounds
+        do iphase = 1, nphase
+            !Get the upper and lower limit of saturation for iphase
+            call get_saturation_limits(maxsat, minsat, iphase, nphase)
+            maxsat = maxsat + tolerance; minsat = minsat - tolerance
+            !Limit the saturation, allowing small oscillations
+            satura(iphase,:) =  min(max(minsat, satura(iphase,:)),maxsat)
+        end do
+
+    end subroutine Set_Saturation_between_bounds
 
 end module solvers_module
 

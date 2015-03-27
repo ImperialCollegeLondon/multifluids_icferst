@@ -212,6 +212,9 @@
       real, parameter :: Max_bad_angle = 95.0
       real, parameter :: Min_bad_angle = 0.0
       type(bad_elements), allocatable, dimension(:) :: Quality_list
+      !Variable related to help convergence
+      logical :: help_convergence
+
 
       type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
       type( tensor_field ), pointer :: MFC_s, MFCOLD_s
@@ -222,7 +225,7 @@
       integer :: checkpoint_number
 
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-      integer, dimension (35) :: StorageIndexes
+      integer, dimension (37) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
       !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
       !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
@@ -238,6 +241,9 @@
       !Capillary pressure            : 32 (Pe), 33 (exponent a)
       !PIVIT_MAT (inverted)          : 34
       !Bound                         : 35
+      !Ph 1                          : 36
+      !Ph 2                          : 37
+
 
       !Working pointers
 
@@ -544,12 +550,12 @@
 
 
       !Look for bad elements to apply a correction on them
-!      if (is_porous_media) then
-!          pressure_field=>extract_scalar_field(packed_state,"FEPressure")
-!          allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-!          if (pressure_field%mesh%shape%degree < 2) &!Does not work yet for quadratic elements
-!          call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
-!      end if
+      if (is_porous_media) then
+          pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+          allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+          if (pressure_field%mesh%shape%degree < 2) &!Does not work yet for quadratic elements
+            call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
+      end if
 
 
 
@@ -577,6 +583,9 @@
 
       checkpoint_number=1
       Loop_Time: do
+
+!Always help to converge in the first non-linear iteration if it is adaptive
+help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic')
 
 !!$
 
@@ -863,7 +872,7 @@
                     DRhoDPressure, &
                     ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
 !!$
-                    NDIM, &
+                    NDIM,nface, &
                     NCOLM, FINDM, COLM, MIDM, &
                     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
 !!$
@@ -874,7 +883,8 @@
                     mass_ele_transp = mass_ele,&
                     theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                     theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j,&
-                    StorageIndexes=StorageIndexes )
+                    StorageIndexes=StorageIndexes, Material_Absorption=Material_Absorption,&
+                    nonlinear_iteration = its, help_convergence = help_convergence)
 
             end if Conditional_PhaseVolumeFraction
 
@@ -1075,7 +1085,7 @@
 
             !Check if the results are good so far and act in consequence, only does something if requested by the user
             call Adaptive_NonLinear(packed_state, reference_field, its,&
-                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3)
+                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, help_convergence = help_convergence)
             if (ExitNonLinearLoop) exit Loop_NonLinearIteration
 
          end do Loop_NonLinearIteration
@@ -1363,10 +1373,12 @@
                  mx_nface_p1 )
 
             !Look again for bad elements
-!            if (is_porous_media) then
-!                allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-!                call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
-!            end if
+            if (is_porous_media) then
+              pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+              allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
+              if (pressure_field%mesh%shape%degree < 2) &!Does not work yet for quadratic elements
+                call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
+            end if
             call temp_mem_hacks()
 
 !!$ Allocating space for various arrays:
