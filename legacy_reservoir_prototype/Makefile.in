@@ -80,5 +80,5 @@ lib/libmphase.a: $(OBJS)
 clean:
 	@rm -f *.o *.d include/*.mod $(PROG_EXEC) lib/*.a
 	@cd src;   make clean
-	@cd tests; make clean
+	@cd tests; PYTHONPATH=../python ../tools/testharness_MultiphasePrototype.py --clean >/dev/null
 	@cd unittest; make clean
