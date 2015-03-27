@@ -5,7 +5,7 @@
   <tags>mpml</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>cd ./BL_fast_thicker/
-        python ./Check_BL.py</command_line>
+        python ./Check_BL.py > log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>
