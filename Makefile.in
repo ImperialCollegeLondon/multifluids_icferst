@@ -520,15 +520,19 @@ test-mp: fltools bin/multiphase_prototype serialtest-mp
 serialtest-mp:
 ifeq (@MBA2D@,yes)
         ifeq (@ZOLTAN@,yes)
-	        @cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short -p serial -e nozoltan -n $(THREADS)
+	        @cd legacy_reservoir_prototype/tests;
+	        @PYTHONPATH=python../tools/testharness_MultiphasePrototype.py -l short -p serial -e nozoltan -n $(THREADS)
         else
-	        @cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short -p serial -e zoltan -n $(THREADS)
+	        @cd legacy_reservoir_prototype/tests;
+		@PYTHONPATH=python  ../tools/testharness_MultiphasePrototype.py -l short -p serial -e zoltan -n $(THREADS)
         endif
 else
         ifeq (@ZOLTAN@,yes)
-	        @cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short -p serial -e "2dadapt nozoltan" -n $(THREADS)
+	        @cd legacy_reservoir_prototype/tests;
+		@PYTHONPATH=python  ../tools/testharness_MultiphasePrototype.py -l short -p serial -e "2dadapt nozoltan" -n $(THREADS)
         else
-	        @cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short -p serial -e "2dadapt zoltan" -n $(THREADS)
+	        @cd legacy_reservoir_prototype/tests;
+		@PYTHONPATH=python ../tools/testharness_MultiphasePrototype.py -l short -p serial -e "2dadapt zoltan" -n $(THREADS)
         endif
 endif
 
