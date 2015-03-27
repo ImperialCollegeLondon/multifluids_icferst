@@ -1135,7 +1135,7 @@ contains
             ! Put pressure in rhs of force balance eqn: CDP = C * P
             CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC)
 
-            !call high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase )
+            if ( .false. ) call high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase )
 
 
             IF ( JUST_BL_DIAG_MAT .OR. NO_MATRIX_STORE ) THEN
@@ -9026,16 +9026,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
 
-
-
-
-
-
-
-
-
-
-
       ewrite(3,*) "inside high_order_pressure_solve"
 
 
@@ -9199,8 +9189,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             end if
 
             u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
-            dx_ph_gi = 0.0
-            den_gi = 0.0
+            dx_ph_gi = 0.0 ; den_gi = 0.0
 
             do u_iloc = 1, u_nloc
                u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
@@ -9280,18 +9269,12 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                         u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
                              sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
                              + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                             dx_alpha_gi( :, idim, iphase ) ) * detwei(:) )
-                     
-                     !   u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
-                     !        sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
-                     !        + u_s_gi( :, idim, iphase )   ) * detwei )
+                             dx_alpha_gi( :, idim, iphase ) ) * detwei )
 
-                        printu%val(idim,u_inod) =printu%val(idim,u_inod)+&
+                        printu%val(idim,u_inod) = printu%val(idim,u_inod) + &
                              sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase )  &
                              + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
                              dx_alpha_gi( :, idim, iphase ) ) * detwei )
-                        
-
                      end do
                   end do
                end do
@@ -9301,54 +9284,37 @@ deallocate(CVFENX_ALL, UFENX_ALL)
          end do ! ele loop
 
          if ( iloop == 1 ) then
-            
-         
-            FINDPH => sparsity%findrm
-            COLPH => SPARSITY%COLM
 
-
-            X_p2 => extract_vector_field(  state(1), "DiagnosticCoordinate"  )
-
-
-            do PH_Inod = 1, ph_nonods
-
-               on_boundary = .false.
-               if (   X_p2%val(2,ph_inod ) > 0.999  ) on_boundary = .true.
-
-               if ( on_boundary ) then
-
-                  rhs%val(PH_inod)=0.0
-
-                  DO COUNT = FINDPH( PH_INOD ), FINDPH( PH_INOD + 1 ) - 1
-                     PH_JNOD = COLPH( COUNT )
-                     IF ( PH_JNOD /= PH_INOD ) THEN
-                        i = matrix%row_numbering%gnn2unn( PH_Inod, 1 )
-                        j = matrix%column_numbering%gnn2unn( PH_jnod, 1 )
-                        call MatSetValue( MATRIX%M, i, j, 0.0, INSERT_VALUES, ierr )
-      
-                        DO COUNT2 = FINDPH( PH_JNOD ), FINDPH( PH_JNOD + 1 ) - 1
-                           PH_JNOD2 = COLPH( COUNT2 )
-                           IF ( ph_JNOD2 == ph_iNOD ) then
-                              i = matrix%row_numbering%gnn2unn( PH_jnod, 1 )
-                              j = matrix%column_numbering%gnn2unn( PH_JNOD2, 1 )
-                              call MatSetValue( MATRIX%M, i, j, 0.0, INSERT_VALUES, ierr )
-                           end if
-
-                        end do
-       
-                     end if
-
-                  end do
-
-               end if
-
-            end do
-
-
-
-
-
-
+            ! don't apply boundary conditions but
+            ! don't forget to remove the null space
+            if ( .false. ) then
+               findph => sparsity % findrm
+               colph => sparsity % colm
+               x_p2 => extract_vector_field( state( 1 ), "DiagnosticCoordinate" )
+               do ph_inod = 1, ph_nonods
+                  on_boundary = .false.
+                  if ( x_p2 % val( 2, ph_inod ) > 0.999 ) on_boundary = .true.
+                  if ( on_boundary ) then
+                     rhs % val( ph_inod ) = 0.0
+                     do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
+                        ph_jnod = colph( count )
+                        if ( ph_jnod /= ph_inod ) then
+                           i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
+                           j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
+                           call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                           do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
+                              ph_jnod2 = colph( count2 )
+                              if ( ph_jnod2 == ph_inod ) then
+                                 i = matrix%row_numbering % gnn2unn( ph_jnod, 1 )
+                                 j = matrix%column_numbering % gnn2unn( ph_jnod2, 1 )
+                                 call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                              end if
+                           end do
+                        end if
+                     end do
+                  end if
+               end do
+            end if
 
             ! solver for pressure ph
             call set_solver_options( path, &
@@ -9361,8 +9327,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
             call set_option( &
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
-            !call add_option( &
-            !     trim( path ) // "/solver/remove_null_space", stat )
+            call add_option( &
+                 trim( path ) // "/solver/remove_null_space", stat )
             ph_sol % option_path = path
 
             call petsc_solve( ph_sol, matrix, rhs )
