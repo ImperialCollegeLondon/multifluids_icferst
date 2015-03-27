@@ -8995,7 +8995,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       real, dimension( :, : ), allocatable :: alpha_ph, coef_alpha_ph, ph
 
       real, dimension( :, :, : ), allocatable :: u_s_gi, dx_alpha_gi
-      real, dimension( :, : ), allocatable :: coef_alpha_gi
+      real, dimension( :, : ), allocatable :: coef_alpha_gi, den_gi, inv_den_gi
 
       real, dimension( : ), pointer :: tmp_cv_weight
       real, dimension( :, : ), pointer :: tmp_cvfen
@@ -9148,7 +9148,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       allocate( u_s_gi( ph_ngi, ndim, nphase ), &
            &    dx_alpha_gi( ph_ngi, ndim, nphase ), &
-           &    coef_alpha_gi( ph_ngi, nphase ) )
+           &    coef_alpha_gi( ph_ngi, nphase ), den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ) )
 
       ! initialise memory
       u_ph_source_vel = 0.0 ; alpha_cv = 0.0 ; coef_alpha_cv = 0.0
@@ -9198,6 +9198,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
             u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
             dx_ph_gi = 0.0
+            den_gi = 0.0
 
             do u_iloc = 1, u_nloc
                u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
@@ -9220,8 +9221,13 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                   end do
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
+
+                  den_gi( :, iphase ) = den_gi( :, iphase ) + &
+                       tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
                end do
             end do
+
+            inv_den_gi=1.0/den_gi
 
             do ph_iloc = 1, ph_nloc
                ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
@@ -9248,14 +9254,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                      nxnx = 0.0
                      do idim = 1, ndim
                         nxnx = nxnx + sum( phfenx_all( idim, ph_iloc, : ) * &
-                             phfenx_all( idim, ph_jloc, : ) * detwei )
+                             phfenx_all( idim, ph_jloc, : ) * detwei(:) * inv_den_gi(:) )
                      end do
                      call addto( matrix, 1, 1, ph_inod, ph_jnod, nxnx )
                   end do
                   do iphase = 1, nphase
                      do idim = 1, ndim
                         call addto( rhs, ph_inod, &
-                             sum( phfenx_all( idim, ph_iloc, : ) * ( &
+                             sum( phfenx_all( idim, ph_iloc, : ) * inv_den_gi(:) * ( &
                              u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
                              dx_alpha_gi( :, idim, iphase ) ) * detwei ) )
                      end do
@@ -9269,14 +9275,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                   u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
                   do iphase = 1, nphase
                      do idim = 1, ndim
-                     !   u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
-                     !        sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
-                     !        + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                     !        dx_alpha_gi( :, idim, iphase ) ) * detwei )
-                     
                         u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
                              sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
-                             + u_s_gi( :, idim, iphase )   ) * detwei )
+                             + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
+                             dx_alpha_gi( :, idim, iphase ) ) * detwei(:) )
+                     
+                     !   u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
+                     !        sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
+                     !        + u_s_gi( :, idim, iphase )   ) * detwei )
 
                         printu%val(idim,u_inod) =printu%val(idim,u_inod)+&
                              sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase )  &
