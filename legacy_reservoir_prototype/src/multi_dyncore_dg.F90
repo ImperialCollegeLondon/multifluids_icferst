@@ -9148,7 +9148,9 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       allocate( u_s_gi( ph_ngi, ndim, nphase ), &
            &    dx_alpha_gi( ph_ngi, ndim, nphase ), &
-           &    coef_alpha_gi( ph_ngi, nphase ), den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ) )
+           &    coef_alpha_gi( ph_ngi, nphase ) )
+
+      allocate( den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ) )
 
       ! initialise memory
       u_ph_source_vel = 0.0 ; alpha_cv = 0.0 ; coef_alpha_cv = 0.0
@@ -9227,7 +9229,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                end do
             end do
 
-            inv_den_gi=1.0/den_gi
+            inv_den_gi = 1.0 / den_gi
 
             do ph_iloc = 1, ph_nloc
                ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
@@ -9254,14 +9256,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                      nxnx = 0.0
                      do idim = 1, ndim
                         nxnx = nxnx + sum( phfenx_all( idim, ph_iloc, : ) * &
-                             phfenx_all( idim, ph_jloc, : ) * detwei(:) * inv_den_gi(:) )
+                             phfenx_all( idim, ph_jloc, : ) * detwei * inv_den_gi( :, 1 ) )
                      end do
                      call addto( matrix, 1, 1, ph_inod, ph_jnod, nxnx )
                   end do
                   do iphase = 1, nphase
                      do idim = 1, ndim
                         call addto( rhs, ph_inod, &
-                             sum( phfenx_all( idim, ph_iloc, : ) * inv_den_gi(:) * ( &
+                             sum( phfenx_all( idim, ph_iloc, : ) * inv_den_gi( :, iphase ) * ( &
                              u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
                              dx_alpha_gi( :, idim, iphase ) ) * detwei ) )
                      end do
