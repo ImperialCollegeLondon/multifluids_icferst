@@ -4,13 +4,21 @@ import glob
 import re
 import sys
 import sha
+from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option("-b","--basename",dest="baseName",
+                  action="store",type="string",
+                  help="set base name for script",
+                  default="Diagnostic_Fields_New") 
+(options,args)=parser.parse_args()
 
 def Error(msg):
   sys.stderr.write("Diagnostics error: " + str(msg) + "\n")
   sys.stderr.flush()
   sys.exit(1)
 
-baseName = "Diagnostic_Fields_New"
+baseName = options.baseName
 disabledDiags = ["Diagnostic_Source_Fields.F90", \
   "Diagnostic_Fields_Interfaces.F90"]
 
