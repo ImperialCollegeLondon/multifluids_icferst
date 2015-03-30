@@ -247,7 +247,7 @@
       !Working pointers
 
       type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
-      type(scalar_field), pointer :: pressure_field, porosity_field
+      type(scalar_field), pointer :: pressure_field, porosity_field, cv_pressure, fe_pressure
       type(vector_field), pointer :: positions
 
       logical :: write_all_stats=.true.
@@ -567,6 +567,21 @@
 !!$ Starting Time Loop
       itime = 0
       dtime = 0
+
+      if( &
+           ! if this is not a zero timestep simulation (otherwise, there would
+           ! be two identical dump files)
+           & current_time < finish_time &
+           ! unless explicitly disabled
+           & .and. .not. have_option("/io/disable_dump_at_start") &
+           & ) then
+         call write_state(dump_no, state)
+      end if
+
+      if(have_option("/io/stat/output_at_start")) then
+         call write_diagnostics(state, current_time, dt,&
+              timestep, not_to_move_det_yet=.true.)
+      end if
 
       ! When outlet_id is allocated, calculate_flux is true and we want to calculate outfluxes
 
@@ -1119,6 +1134,9 @@
          current_time = acctim
 
 
+         call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
+              cv_ndgln, DRhoDPressure )
+
 !!$ Calculate diagnostic fields
          call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
          call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
@@ -1131,9 +1149,16 @@
 
             dtime=dtime+1
             if (do_checkpoint_simulation(dtime)) then
+               CV_Pressure=>extract_scalar_field(packed_state,"CVPressure")
+               FE_Pressure=>extract_scalar_field(packed_state,"FEPressure")
+               call set(pressure_field,FE_Pressure)
+
                call checkpoint_simulation(state,cp_no=checkpoint_number,&
                     protect_simulation_name=.true.,file_type='.mpml')
                checkpoint_number=checkpoint_number+1
+
+               call set(pressure_field,CV_Pressure)
+
             end if
 
             call get_option( '/timestepping/current_time', current_time ) ! Find the current time
