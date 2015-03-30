@@ -353,7 +353,7 @@ contains
 ! If THETA_VEL_HAT<0.0 then automatically choose THETA_VEL to be as close to THETA_VEL_HAT (e.g.=0) as possible. 
 ! This determins how implicit velocity is in the cty eqn. (from fully implciit =1.0, to do not alter the scheme =0.)
 ! Zhi try THETA_VEL_HAT = 1.0
-      real, PARAMETER :: THETA_VEL_HAT = 0.0
+      real, PARAMETER :: THETA_VEL_HAT = 1.0
 ! if APPLY_ENO then apply ENO method to T and TOLD
       LOGICAL, PARAMETER :: APPLY_ENO = .FALSE. 
 ! CT will not change with this option...

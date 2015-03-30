@@ -2507,7 +2507,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !has to be of the type PnDGPnDG
         ! Do NOT divide element into CV's to form quadrature.
         QUAD_OVER_WHOLE_ELE = is_porous_media
-        !QUAD_OVER_WHOLE_ELE = .true.
+        QUAD_OVER_WHOLE_ELE = .true.
 
 
 
@@ -9030,7 +9030,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
       printu => extract_vector_field( state( 1 ), "f_x", stat )
-      call zero( printu  )
+      if ( stat == 0 ) call zero( printu  )
 
 
       call get_option( '/geometry/dimension', ndim )
@@ -9150,7 +9150,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       ! set the gravity term
 
       rho => extract_tensor_field( packed_state, "PackedDensity" )
-      u_ph_source_cv( 2, 1, : ) = -rho % val( 1, 1, : ) * 9.8
+      u_ph_source_cv( 2, 1, : ) = -rho % val( 1, 1, : ) * 9.81
 
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
@@ -9271,10 +9271,10 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                              + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
                              dx_alpha_gi( :, idim, iphase ) ) * detwei )
 
-                        printu%val(idim,u_inod) = printu%val(idim,u_inod) + &
-                             sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase )  &
-                             + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                             dx_alpha_gi( :, idim, iphase ) ) * detwei )
+                        !printu%val(idim,u_inod) = printu%val(idim,u_inod) + &
+                        !     sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase )  &
+                        !     + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
+                        !     dx_alpha_gi( :, idim, iphase ) ) * detwei )
                      end do
                   end do
                end do
@@ -9305,8 +9305,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                            do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
                               ph_jnod2 = colph( count2 )
                               if ( ph_jnod2 == ph_inod ) then
-                                 i = matrix%row_numbering % gnn2unn( ph_jnod, 1 )
-                                 j = matrix%column_numbering % gnn2unn( ph_jnod2, 1 )
+                                 i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
+                                 j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
                                  call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
                               end if
                            end do
@@ -9349,7 +9349,11 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       call deallocate( rhs )
       call deallocate( ph_sol )
       call deallocate( matrix )
-      deallocate( ph )
+      deallocate( u_ph_source_vel, u_ph_source_cv, alpha_cv, &
+           &      coef_alpha_cv, u_ph_source_ph, alpha_ph, &
+           &      ph, coef_alpha_ph, dx_ph_gi, u_s_gi, &
+           &      dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, &
+           &      ph_on_face, phfem_on_face, u_on_face, ufem_on_face )
 
       ewrite(3,*) "leaving high_order_pressure_solve"
 

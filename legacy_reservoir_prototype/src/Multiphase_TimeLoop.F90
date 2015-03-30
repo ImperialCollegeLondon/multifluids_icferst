@@ -357,7 +357,8 @@
 
 
       colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0
-      colm = 0 ; midm = 0
+      colm = 0 ; midm = 0 ; findph = 0 ; colph = 0
+
 
 !!$ Defining element-pair type
       call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
@@ -979,7 +980,7 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                           theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                           StorageIndexes=StorageIndexes, icomp=icomp, saturation=saturation_field )
 
-!                      tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
+                      tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
 
                   end do Loop_NonLinearIteration_Components
 
@@ -1280,7 +1281,7 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                  finmcy, colmcy, midmcy, &
                  findgm_pha, coldgm_pha, middgm_pha, findct, &
                  colct, findc, colc, findcmc, colcmc, midcmc, findm, &
-                 colm, midm, &
+                 colm, midm, findph, colph, &
 !!$ Defining element-pair type and discretisation options and coefficients
                  opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
 !!$ For output:
@@ -1342,7 +1343,7 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
             finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; &
                  findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
                  colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0 ; &
-                 colm = 0 ; midm = 0
+                 colm = 0 ; midm = 0 ; findph = 0 ; colph = 0
 
 !!$ Defining element-pair type
             call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
@@ -1585,6 +1586,18 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
         type(mesh_type), pointer :: ph_mesh
 
 
+
+        ph_mesh => extract_mesh( state( 1 ), "ph", stat )
+        if ( stat == 0 ) then
+           allocate( sparsity )
+           sparsity = wrap( findph, colm = colph, name = "phsparsity" )
+           call insert( packed_state, sparsity, "phsparsity" )
+           call deallocate( sparsity )
+	   deallocate ( sparsity )
+        end if
+
+
+
         allocate(sparsity)
 
         sparsity=wrap(finacv,midacv,colm=colacv,name='PackedAdvectionSparsity')
@@ -1656,14 +1669,6 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
 
         sparsity=> extract_csr_sparsity(state(1),"ElementConnectivity")
         call insert(packed_state,sparsity,"ElementConnectivity")
-
-        ph_mesh => extract_mesh( state( 1 ), "ph", stat )
-        if ( stat == 0 ) then
-           sparsity = wrap( findph, colm = colph, name = "phsparsity" )
-           call insert( packed_state, sparsity, "phsparsity" )
-           call deallocate( sparsity )
-        end if
-
 
       end subroutine temp_mem_hacks
 
