@@ -1475,6 +1475,7 @@
          call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
          
          !Now we insert them in state and store the indexes
+         call insert(state(1), Auxmesh, trim(Storname))
          call insert(state(1), Targ_NX_ALL, trim(Storname))
 !         call deallocate (Auxmesh)
          !Store index with a negative value, because if the index is

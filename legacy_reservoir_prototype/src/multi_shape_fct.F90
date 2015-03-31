@@ -1691,14 +1691,15 @@
            SCVNGI + SBCVNGI + U_NLOC*CV_NGI * (1+ndim) + CV_NLOC * SCVNGI * (3+ndim)+ U_NLOC*SCVNGI * (3+ndim) + &
            CV_SNLOC * SBCVNGI * (4+ndim) + U_SNLOC * SBCVNGI * (3+ndim) + CV_NLOC
 
-          call allocate ( Auxmesh ,auxmesh_nodes,auxmesh_nodes ,aux_shape, name=trim(Storname) )
+          call allocate ( Auxmesh ,auxmesh_nodes,auxmesh_nodes ,aux_shape, name=Storname)
           !The number of nodes I want does not coincide
 
           call allocate (targ_Storage, Auxmesh,name=StorName)
         
           !Now we insert them in state and store the index
 
-          call insert(state(1), targ_Storage, StorName)
+          call insert(state(1),Auxmesh,StorName)
+          call insert(state(1), targ_Storage,StorName)
           call deallocate (targ_Storage)
           call deallocate( AuxMesh)
           call deallocate(aux_shape)
