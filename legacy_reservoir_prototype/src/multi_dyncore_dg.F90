@@ -101,7 +101,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       StorageIndexes, icomp, saturation )
+       StorageIndexes, icomp, saturation, IDs_ndgln )
 
         ! Solve for internal energy using a control volume method.
 
@@ -119,7 +119,7 @@ contains
     LOGICAL, intent( in ), optional ::THERMAL
     INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
     INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-    INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
+    INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN, IDs_ndgln
     INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
     INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
@@ -305,7 +305,7 @@ contains
             .false.,  mass_Mn_pres, &
             mass_ele_transp, &
             StorageIndexes, Field_selector,icomp, &
-            saturation=saturation )
+            saturation=saturation, IDs_ndgln = IDs_ndgln )
 
        Conditional_Lumping: IF ( LUMP_EQNS ) THEN
           ! Lump the multi-phase flow eqns together
@@ -453,7 +453,7 @@ contains
          option_path, &
          mass_ele_transp,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-         StorageIndexes, Material_Absorption,nonlinear_iteration , help_convergence)
+         StorageIndexes, Material_Absorption,nonlinear_iteration, IDs_ndgln, IDs2CV_ndgln)
 
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
@@ -467,16 +467,9 @@ contains
            MAT_NLOC, MAT_NONODS, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND,igot_theta_flux,&
            nface
       LOGICAL, intent( in ) :: USE_THETA_FLUX
-      INTEGER, DIMENSION(: ), intent( in ) :: CV_NDGLN
-      INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
-      INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-      INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
-      INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
-      INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
-      INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
-      integer, dimension(:), intent(in)  :: small_finacv,small_colacv,small_midacv
-      INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-      INTEGER, DIMENSION( : ), intent( in ) :: COLCT
+      INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, MAT_NDGLN, X_NDGLN, U_NDGLN, XU_NDGLN, CV_SNDGLN, U_SNDGLN, IDs_ndgln
+      integer, dimension(:), intent(in)  :: small_finacv,small_colacv,small_midacv, IDs2CV_ndgln
+      INTEGER, DIMENSION( : ), intent( in ) :: FINDCT, COLCT
 !      REAL, DIMENSION( : ), intent( inout ) :: DEN_FEMT
       REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
       INTEGER, intent( in ) :: V_DISOPT, V_DG_VEL_INT_OPT
@@ -498,7 +491,6 @@ contains
       integer, dimension(:), intent(inout) :: StorageIndexes
       real, dimension( :, :, : ), intent(inout) :: Material_Absorption
       integer, intent(in) :: nonlinear_iteration
-      logical, optional, intent(in) :: help_convergence
       ! Local Variables
       INTEGER, PARAMETER :: nits_flux_lim = 1
       REAL, PARAMETER :: Max_updating = 0.99!Disabled iterating here
@@ -545,7 +537,8 @@ contains
       call get_var_from_packed_state(packed_state,FEPressure = P)
       call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
       !Get information for capillary pressure to be use in CV_ASSEMB
-      call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes)
+      call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes, &
+        totele, cv_nloc, CV_NDGLN, IDs2CV_ndgln)
 
       !Get variable for global convergence method
       call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/Dumping_factor',&
@@ -641,8 +634,8 @@ contains
           .false.,  mass_Mn_pres, &
           mass_ele_transp,&
           StorageIndexes, 3 ,&
-          OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc)!Capillary variables
-
+          OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+          IDs_ndgln=IDs_ndgln)!Capillary variables
           !Solve the system
           vtracer=as_vector(tracer,dim=2)
           !Backup of the saturation field, to adjust the solution
@@ -658,21 +651,18 @@ contains
           !Correct the solution obtained to make sure we are on track towards the final solution
           if (Dumping_factor < 1.0) then
               !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
-              call Trust_region_correction(packed_state, sat_bak, Dumping_factor, dumping_in_sat)
+              call Trust_region_correction(packed_state, sat_bak, Dumping_factor,CV_NDGLN, IDs2CV_ndgln, dumping_in_sat)
               !Store the accumulated updated done
               updating = updating - dumping_in_sat
-
-            !For the final non linear iteration we only do here one loop
-            if (present_and_false(help_convergence)) exit Loop_NonLinearFlux
 
               !For the non-linear iteration inside this loop we need to update the velocities
               !and that is done through the sigmas, hence we have to update them
               if (updating > Max_updating) then!Recalculate sigmas, only if we are performing another loop
                   call Calculate_AbsorptionTerm( state, packed_state,cv_ndgln, mat_ndgln, &
-                  opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption )
+                  opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption,IDs_ndgln, IDs2CV_ndgln)
                   call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
                   cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
-                  finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state,x_nonods)
+                  finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state,x_nonods, IDs_ndgln )
               end if
           else!Just one iteration
             exit Loop_NonLinearFlux
@@ -690,13 +680,13 @@ contains
       !While ensuring global conservation of mass, force the saturation to be between bounds
       if (have_option_for_any_phase('Impose_saturation_limits', nphase)) then
           call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv,&
-          StorageIndexes, cv_ele_type, for_sat = .true. )
+          StorageIndexes, cv_ele_type, for_sat = .true., IDs2CV_ndgln = IDs2CV_ndgln)
       end if
 
       !Set saturation to be between bounds
       !In this case we impose that the saturation has to be between physical limits
       !conservation of mass might be lost
-!      call Set_Saturation_between_bounds(packed_state)
+!      call Set_Saturation_between_bounds(packed_state, CV_NDGLN, IDs2CV_ndgln)
 !      satura = min(max(satura,0.0), 1.0)
 
       DEALLOCATE( mass_mn_pres )
@@ -754,7 +744,7 @@ contains
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
     scale_momentum_by_volume_fraction, &
-    StorageIndexes, Quality_list, nonlinear_iteration )
+    StorageIndexes, Quality_list, nonlinear_iteration, IDs_ndgln )
 
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -771,7 +761,7 @@ contains
         IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
         IPLIKE_GRAD_SOU, IDIVID_BY_VOL_FRAC
         LOGICAL, intent( in ) :: USE_THETA_FLUX, scale_momentum_by_volume_fraction
-        INTEGER, DIMENSION(  :  ), intent( in ) :: U_NDGLN
+        INTEGER, DIMENSION(  :  ), intent( in ) :: U_NDGLN, IDs_ndgln
         INTEGER, DIMENSION(  :  ), intent( in ) :: P_NDGLN
         INTEGER, DIMENSION(  :  ), intent( in ) :: CV_NDGLN
         INTEGER, DIMENSION(  :  ), intent( in ) :: X_NDGLN
@@ -950,7 +940,7 @@ contains
         end IF
 
         !Calculate gravity source terms
-        if ( have_option ( '/material_phase[0]/multiphase_properties/relperm_type' ) )then
+        if ( is_porous_media )then
            UDEN_ALL=0.0; UDENOLD_ALL=0.0
         else
            if ( linearise_density ) then
@@ -1078,7 +1068,7 @@ contains
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,scale_momentum_by_volume_fraction ,&
-        StorageIndexes)
+        StorageIndexes, IDs_ndgln)
 
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
@@ -1088,8 +1078,6 @@ contains
             else
                 CALL PHA_BLOCK_INV( PIVIT_MAT, TOTELE, U_NLOC * NPHASE * NDIM )
             end if
-
-
             
             sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
             call allocate(CMC_petsc,sparsity,[1,1],"CMC_petsc",.true.)
@@ -1522,7 +1510,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
     RETRIEVE_SOLID_CTY, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL ,scale_momentum_by_volume_fraction,&
-    StorageIndexes)
+    StorageIndexes, IDs_ndgln)
         implicit none
 
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
@@ -1542,7 +1530,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         NLENMCY, NCOLMCY, IGOT_THETA_FLUX, SCVNGI_THETA, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, IPLIKE_GRAD_SOU,  IDIVID_BY_VOL_FRAC
         LOGICAL, intent( in ) :: USE_THETA_FLUX,scale_momentum_by_volume_fraction, RETRIEVE_SOLID_CTY,got_free_surf
-        INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
+        INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN, IDs_ndgln
         INTEGER, DIMENSION( :  ), intent( in ) :: P_NDGLN
         INTEGER, DIMENSION(  :  ), intent( in ) :: CV_NDGLN
         INTEGER, DIMENSION(  :  ), intent( in ) ::  X_NDGLN
@@ -1665,7 +1653,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         PIVIT_MAT, JUST_BL_DIAG_MAT, &
         UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, DENOLD_ALL, RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, &
-        P, NDIM, StorageIndexes=StorageIndexes )
+        P, NDIM, StorageIndexes=StorageIndexes)
         ! scale the momentum equations by the volume fraction / saturation for the matrix and rhs
 
         IF ( GLOBAL_SOLVE ) THEN
@@ -1741,7 +1729,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
         got_free_surf,  MASS_SUF, &
         dummy_transp, &
-        StorageIndexes, 3)
+        StorageIndexes, 3, IDs_ndgln=IDs_ndgln)
 
         ewrite(3,*)'Back from cv_assemb'
 
@@ -7408,7 +7396,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         FEMT, SHARP_FEMT,FEMTOLD, FEMTOLD2,FEMT2, FEMT2OLD, FEMDEN, FEMDENOLD, XC_CV, YC_CV, ZC_CV, &
         SCVDETWEI, SRA, UGI_COEF_ELE, VGI_COEF_ELE, WGI_COEF_ELE, &
         UGI_COEF_ELE2, VGI_COEF_ELE2, WGI_COEF_ELE2,  &
-        SUM_CV, ONE_PORE, SELE_OVERLAP_SCALE, &
+        SUM_CV,  SELE_OVERLAP_SCALE, &
         T2MAX, T2MIN, T2OLDMAX, &
         T2OLDMIN, &
         T2MAX_2ND_MC, T2MIN_2ND_MC, T2OLDMAX_2ND_MC, &
@@ -8827,33 +8815,37 @@ deallocate(CVFENX_ALL, UFENX_ALL)
     end subroutine Rescale_and_solve
 
 
-    subroutine getOverrelaxation_parameter(state, packed_state, Overrelaxation, Phase_with_Pc, StorageIndexes)
+    subroutine getOverrelaxation_parameter(state, packed_state, Overrelaxation, Phase_with_Pc, &
+        StorageIndexes, totele, cv_nloc, cv_ndgln, IDs2CV_ndgln)
     !This subroutine calculates the overrelaxation parameter we introduce in the saturation equation
     !It is the derivative of the capillary pressure for each node.
     !Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
         implicit none
+        integer, intent(in) :: totele, cv_nloc
         type( state_type ), dimension(:), intent(inout) :: state
         type( state_type ), intent(inout) :: packed_state
         real, dimension(:), intent(inout) :: Overrelaxation
         integer, intent(inout) :: Phase_with_Pc
+        integer, dimension(:), intent(in) :: cv_ndgln, IDs2CV_ndgln
         integer, dimension(:), intent(inout) :: StorageIndexes
         !Local variables
-        integer :: iphase, nphase, cv_nodi, cv_nonods
-        type(corey_options) :: options
+        type(tensor_field), pointer :: RockFluidProp
+        integer :: iphase, nphase, cv_nodi, cv_nonods, ele, cv_iloc
         character(len=250) :: cap_path
         real :: Pe_aux, aux_Sr, aux_Sr_other
         real, dimension(:), pointer ::c_regions, a_regions, Pe, Cap_exp
         logical :: Artificial_Pe, Pc_imbibition, Diffusive_cap_only
         real, dimension(:), pointer :: p
-        real, dimension(:,:), pointer :: satura
+        real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent
 
         !Extract variables from packed_state
         call get_var_from_packed_state(packed_state,FEPressure = P,&
-        PhaseVolumeFraction = satura)
+        PhaseVolumeFraction = satura, immobile_fraction = immobile_fraction)
 
         !Initiate local variables
         nphase = size(satura,1)
         cv_nonods = size(satura,2)
+
         !Check capillary pressure options
         Phase_with_Pc = -1
         Pc_imbibition = .false.
@@ -8870,23 +8862,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 end if
             end if
         end do
+
         Artificial_Pe = .false.
         if (Phase_with_Pc>0) then
             !Get information for capillary pressure to be use
             if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//&
             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
-                !Get C
-                cap_path = "/material_phase["//int2str(Phase_with_Pc-1)//&
-                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::CS/prescribed/value"
-                call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32), Phase_with_Pc, nphase)
-                !We point to the field
-                Pe => c_regions
-                !Get a
-                cap_path = "/material_phase["//int2str(Phase_with_Pc-1)//&
-                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-                call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), Phase_with_Pc, nphase)
-                !We point to the field
-                Cap_exp => a_regions
+                call get_var_from_packed_state(packed_state, Cap_entry_pressure = Cap_entry_pressure,&
+                     Cap_exponent = Cap_exponent)
             end if
             !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
             !Unless we are using the non-consistent form of the capillary pressure
@@ -8903,21 +8886,24 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 end if
                 Cap_exp = 1.!Linear exponent
             end if
-            !We consider only the corey options for capillary pressure
-            call get_corey_options(options, nphase)
-            select case (Phase_with_Pc)
-                case (2)
-                    aux_Sr = options%S_or
-                    aux_Sr_other = options%S_wr
-                case default
-                    aux_Sr = options%S_wr
-                    aux_Sr_other = options%S_or
-            end select
-            !Calculate the Overrelaxation
-            do CV_NODI = 1, cv_nonods
-                Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
-                Pe(CV_NODI), Cap_Exp(CV_NODI), aux_Sr, aux_Sr_other, Pc_imbibition)
-            end do
+            !Calculate the overrrelaxation parameter, the numbering might be different for Pe and real capillary
+            !values, hence we calculate it differently
+            if (Artificial_Pe) then
+                !Calculate the Overrelaxation
+                do cv_nodi = 1, size(Overrelaxation)
+                    Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
+                    Pe(CV_NODI), Cap_Exp(CV_NODI), immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc, Pc_imbibition)
+                end do
+            else
+                !Calculate the Overrelaxation
+                do cv_nodi = 1, size(Overrelaxation)
+                    Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
+                    Cap_entry_pressure(Phase_with_Pc, IDs2CV_ndgln(CV_NODI)), &
+                    Cap_entry_pressure(Phase_with_Pc, IDs2CV_ndgln(CV_NODI)),&
+                    immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc, Pc_imbibition)
+                end do
+            end if
+
         else
             Overrelaxation = 0.0
         end if

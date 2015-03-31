@@ -73,7 +73,7 @@ module solvers_module
   private
 
   public :: solver, PRES_DG_MULTIGRID, CMC_Agglomerator_solver, Fix_to_bad_elements,&
-         BoundedSolutionCorrections, Trust_region_correction
+         BoundedSolutionCorrections, Trust_region_correction, Set_Saturation_between_bounds, Set_Saturation_to_sum_one
 
   interface solver
      module procedure solve_via_copy_to_petsc_csr_matrix
@@ -1055,7 +1055,8 @@ contains
 
 
 
-    subroutine BoundedSolutionCorrections( state, packed_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, for_sat )
+    subroutine BoundedSolutionCorrections( state, packed_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, &
+        for_sat, IDs2CV_ndgln)
 
       implicit none
       ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
@@ -1077,6 +1078,7 @@ contains
       integer, intent( in ) :: cv_ele_type
       integer, dimension( : ), intent( inout ) :: StorageIndexes
       logical, optional, intent(in) :: for_sat
+      integer, optional, dimension(:) :: IDs2CV_ndgln
       ! local variables...
       type ( tensor_field ), pointer :: field, ufield
       ! ( ndim1, ndim2, cv_nonods )
@@ -1084,7 +1086,7 @@ contains
       real, dimension( :, : ), allocatable :: scalar_field_dev_max, scalar_field_dev_min
       real, dimension( :, : ), allocatable :: r_min, r_max
       integer, dimension( :, : ), allocatable :: ii_min, ii_max
-      real, dimension( : ), allocatable :: mass_cv, mass_cv_sur, inmobi
+      real, dimension( : ), allocatable :: mass_cv, mass_cv_sur
       integer :: ndim1, ndim2, cv_nonods, i, j, knod, inod, jnod, count, ii, jj, loc_its, loc_its2, its, gl_its
       logical :: changed, changed_something
       real :: max_change, error_changed, max_max_error, scalar_field_dev, mass_off, alt_max, alt_min
@@ -1114,7 +1116,7 @@ contains
       real, dimension( : ), allocatable, target :: detwei2, ra2
       real, dimension( :, : , :), allocatable, target :: nx_all2
       real, target :: volume2
-
+      real, dimension(:,:), pointer :: Immobile_fraction
 
       !field => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
 
@@ -1142,23 +1144,6 @@ contains
       allocate( mass_cv( cv_nonods ), mass_cv_sur( cv_nonods ) )
 
       call allocate(mass_cv_sur_halo,field%mesh,'mass_cv_sur_halo')
-
-      if (present_and_true(for_sat)) then
-        allocate(inmobi(ndim2))
-        !Define the inmmobile fractions for each phase
-        do j = 1, ndim2
-          !Get immobile fractions for all the phases
-          call get_option("/material_phase["//int2str(j-1)//"]/multiphase_properties/immobile_fraction", &
-               inmobi(j), default=0.0)
-          field_min(:,j,:) = inmobi(j)
-        end do
-        !Now set the maximum as the phase that phase j cannot displace of the other phases
-        do j = 1, ndim2
-            field_max(:,j,:) = (1.0 - sum(inmobi) ) + inmobi(j)
-        end do
-      else
-        field_min = 0.0 ; field_max = 1.0
-      end if
 
       call get_option( '/geometry/dimension', ndim )
 
@@ -1244,6 +1229,25 @@ contains
       call halo_update(mass_cv_sur_halo)
       mass_cv_sur(:)=mass_cv_sur_halo%val(:)
 
+      !Establish bounds
+      if (present_and_true(for_sat)) then
+        if (present(IDs2CV_ndgln)) then
+            !Define the immobile fractions for each phase
+            call get_var_from_packed_state(packed_state, immobile_fraction = immobile_fraction)
+            do inod = 1, cv_nonods
+                do ii = 1, ndim2!phases
+                    field_min(:, ii, inod) = immobile_fraction(ii,IDs2CV_ndgln(inod))
+                    field_max(:, ii, inod) = 1.0 - sum(immobile_fraction(:,IDs2CV_ndgln(inod)))&
+                         + immobile_fraction(ii,IDs2CV_ndgln(inod))
+                end do
+            end do
+        else
+            ewrite(3,*) 'IDs2CV_ndgln not passed into BoundedSolutionCorrections for SAT, default bounds set'
+            field_min = 0.0 ; field_max = 1.0
+        end if
+      else
+        field_min = 0.0 ; field_max = 1.0
+      end if
 
       do gl_its = 1, ngl_its
 
@@ -1402,12 +1406,11 @@ contains
       deallocate( detwei2, ra2, nx_all2 )
 
       call deallocate(mass_cv_sur_halo)
-      if (present_and_true(for_sat)) deallocate(inmobi)
       return
     end subroutine BoundedSolutionCorrections
 
 
-    subroutine Trust_region_correction(packed_state, sat_bak, Dumping_from_schema, dumping)
+    subroutine Trust_region_correction(packed_state, sat_bak, Dumping_from_schema, CV_NDGLN, IDs2CV_ndgln, dumping)
     !In this subroutine we applied some corrections and dumping on the saturations obtained from the saturation equation
     !this is based on the paper SPE-173267-MS.
     !The method ensures convergence independent on the time step.
@@ -1415,20 +1418,20 @@ contains
         implicit none
         !Global variables
         type( state_type ), intent(inout) :: packed_state
+        integer, dimension(:) :: CV_NDGLN, IDs2CV_ndgln
         real, dimension(:, :), intent(in) :: sat_bak
         real, intent(in) :: Dumping_from_schema
         real, optional, intent(inout) :: dumping!this is the dumping_factor used
         !Local variables
         real, parameter :: offset_inflection = 0.1!This is what we allow the jump to surpass an inflection
         real, parameter :: offset_kink = 0.05!This is what we allow the jump to surpass a kink
-        real, dimension(:, :), pointer :: dSat
-        real, dimension(size(sat_bak,1)) :: imobile_fractions
+        real, dimension(:, :), pointer :: dSat, Immobile_fraction
         real :: dumping_factor, aux, D, C
-        integer :: iphase, inode
+        integer :: iphase, inode, cv_nloc
 
 
         !First, impose physical constrains
-        call Set_Saturation_to_sum_one(packed_state)
+        call Set_Saturation_to_sum_one(packed_state, CV_NDGLN, IDs2CV_ndgln)
 
         !We get the dumping by divinding AD/AB where A is sat_bak, B is the new solution and D is the inflection/kink point +
         !an offset
@@ -1441,20 +1444,22 @@ contains
         if (Dumping_from_schema < 0.0) then!Automatic method
             !***INFLECTION SECTION***
             !Get immobile fractions, they happen to be the inflection points
-            do iphase = 1, size(dSat,1)
-                call get_saturation_limits(aux, imobile_fractions(iphase), iphase, size(dSat,1))
-            end do
-
+            call get_var_from_packed_state(packed_state,Immobile_fraction = Immobile_fraction)
             !Here we calculate the lenght of the acceptable jump, we allow an overpass of offset_inflection
             !over the inflection point, this might be an option for the user to choose
             dumping_factor = 1.0; aux = 1.0
-            do inode = 1, size(dSat, 2)
+
+
+!            do ele = 1, totele
+!                do cv_iloc = 1, cv_nloc
+!                    inode = CV_NDGLN((ele-1)*cv_nloc + cv_iloc)
+            do inode = 1, size(dSat,2)
                 do iphase = 1, size(dSat,1)
-                    C = imobile_fractions(iphase)
+                    C = Immobile_fraction(iphase, IDs2CV_ndgln(inode))
                     D = C + sign(offset_inflection, dSat(iphase,inode))
                     !Do something only if we are crossing an inflection point
                     if (( dSat(iphase,inode) > 0 .and. sat_bak(iphase,inode) <= D) .or.&!THESE SHOULD BE C
-                        ( dSat(iphase,inode) < 0 .and. sat_bak(iphase,inode) >= D) ) then
+                    ( dSat(iphase,inode) < 0 .and. sat_bak(iphase,inode) >= D) ) then
                         aux = abs(( D - sat_bak(iphase,inode)) /max(dSat(iphase,inode),1d-10))
                         if (aux < dumping_factor .and. aux > 5d-2) then!If steps are too small we are not interested, also avoid rounding errors
                             dumping_factor = aux
@@ -1462,7 +1467,10 @@ contains
                     end if
                 end do
             end do
-            !This seems to help a lot, but it is probably because I am not dumping correctly
+!                end do
+!            end do
+
+            !This seems to help, but it is probably because I am not dumping correctly
             dumping_factor = min(dumping_factor, 0.5)
 
 
@@ -1485,68 +1493,65 @@ contains
 
     end subroutine Trust_region_correction
 
-    subroutine Set_Saturation_to_sum_one(packed_state)
+    subroutine Set_Saturation_to_sum_one(packed_state, CV_NDGLN, IDs2CV_ndgln)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
         type( state_type ), intent(inout) :: packed_state
+        integer, dimension(:), intent(in) :: CV_NDGLN, IDs2CV_ndgln
         !Local variables
-        integer :: nphase, inod, iphase
-        real :: sum_of_phases
+        integer :: iphase, jphase, nphase, ele, cv_nod
+        real :: maxsat, minsat, sum_of_phases
         real, dimension(:,:), pointer :: satura
-        real, dimension(:), allocatable :: maxsats, minsats
+        real, dimension(:, :), pointer :: Immobile_fraction
 
         call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
+        !Get Immobile_fractions
+        call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
         nphase = size(satura,1)
-
-        allocate(maxsats(nphase), minsats(nphase))
-
-        do iphase = 1, nphase
-            !Get the upper and lower limit of saturation for iphase
-            call get_saturation_limits(maxsats(iphase), minsats(iphase), iphase, nphase)
-        end do
-        !Impose that the sum of the saturations is equal to one
-        do inod = 1, size(satura,2)
-            sum_of_phases = sum(satura(:,inod))
+        !Set saturation to be between bounds
+        do cv_nod = 1, size(satura,2 )
             do iphase = 1, nphase
+                minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
+                maxsat = 1 - sum(Immobile_fraction(:, IDs2CV_ndgln(cv_nod))) + minsat
+                sum_of_phases = sum(satura(:,cv_nod))
                 !We enforce the sum to one by spreading the error to all the phases
-                if (sum_of_phases /= 1.0 ) then
-                    satura(iphase, inod) = satura(iphase, inod) + (1.0 - sum_of_phases) / nphase
-                    satura(iphase, inod) = min(max(minsats(iphase), satura(iphase, inod)),maxsats(iphase))
-                end if
+                if (sum_of_phases /= 1.0 ) &
+                    satura(iphase, cv_nod) = satura(iphase, cv_nod) + (1.0 - sum_of_phases) / nphase
+                satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
             end do
         end do
 
-        deallocate(maxsats, minsats)
     end subroutine Set_Saturation_to_sum_one
 
 
-    subroutine Set_Saturation_between_bounds(packed_state)
+    subroutine Set_Saturation_between_bounds(packed_state, CV_NDGLN, IDs2CV_ndgln)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance
         Implicit none
         !Global variables
         type( state_type ), intent(inout) :: packed_state
+        integer, dimension(:), intent(in) :: CV_NDGLN, IDs2CV_ndgln
         !Local variables
-        integer :: iphase, jphase, nphase
+        integer :: iphase, jphase, nphase, ele, cv_nod
         real :: maxsat, minsat
-        real, dimension(:,:), pointer :: satura
-        real, dimension(:), allocatable :: immobile_fractions
-        real, parameter :: tolerance = 0.0
+        real, dimension(:,:), pointer :: satura, Immobile_fraction
 
         call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
+        !Get corey options
+        call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
 
         nphase = size(satura,1)
-
         !Set saturation to be between bounds
-        do iphase = 1, nphase
-            !Get the upper and lower limit of saturation for iphase
-            call get_saturation_limits(maxsat, minsat, iphase, nphase)
-            maxsat = maxsat + tolerance; minsat = minsat - tolerance
-            !Limit the saturation, allowing small oscillations
-            satura(iphase,:) =  min(max(minsat, satura(iphase,:)),maxsat)
+        do cv_nod = 1, size(satura,2 )
+            do iphase = 1, nphase
+                minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
+                maxsat = 1 - sum(Immobile_fraction(:, IDs2CV_ndgln(cv_nod))) + minsat
+                !We enforce sat to be between bounds
+                satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+            end do
         end do
 
     end subroutine Set_Saturation_between_bounds

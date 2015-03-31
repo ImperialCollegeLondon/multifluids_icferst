@@ -209,11 +209,9 @@
       real, dimension(:,:,:), allocatable  :: reference_field
 
       !Variables related to the deteccion and correction of bad elements
-      real, parameter :: Max_bad_angle = 95.0
+      real, parameter :: Max_bad_angle = 100.0
       real, parameter :: Min_bad_angle = 0.0
       type(bad_elements), allocatable, dimension(:) :: Quality_list
-      !Variable related to help convergence
-      logical :: help_convergence
 
 
       type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
@@ -223,7 +221,8 @@
       real::  second_theta
 
       integer :: checkpoint_number
-
+      !Array to map nodes to region ids
+      integer, dimension(:), allocatable :: IDs_ndgln, IDs2CV_ndgln
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
       integer, dimension (37) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
@@ -238,7 +237,7 @@
       !DETNLXR_PLUS_U_WITH_STORAGE   : 14
       !Indexes used in SURFACE_TENSION_WRAPPER (deprecated and will be removed):[15,30]
       !PROJ_CV_TO_FEM_state          : 31 (disabled)
-      !Capillary pressure            : 32 (Pe), 33 (exponent a)
+      !Capillary pressure            : 32 (Pe), 33 (exponent a) (disabled)
       !PIVIT_MAT (inverted)          : 34
       !Bound                         : 35
       !Ph 1                          : 36
@@ -559,6 +558,11 @@
 !      end if
 
 
+      !Get into packed state relative permeability, immobile fractions, ...
+      call get_RockFluidProp(state, packed_state)
+      !Convert material properties to be stored using region ids, only if porous media
+      call get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, &
+        fake_IDs_ndgln = .not. is_porous_media)
 
 !!$ Starting Time Loop
       itime = 0
@@ -585,11 +589,7 @@
       checkpoint_number=1
       Loop_Time: do
 
-!Always help to converge in the first non-linear iteration if it is adaptive
-help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic')
-
 !!$
-
          ewrite(2,*) '    NEW DT', itime+1
 
 
@@ -647,7 +647,6 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
          if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
               Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
 
-
          porosity_field=>extract_scalar_field(packed_state,"Porosity")
 
          ! evaluate prescribed fields at time = current_time+dt
@@ -671,7 +670,6 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
 
 !!$ Start non-linear loop
          Loop_NonLinearIteration: do  its = 1, NonLinearIteration
-
             ewrite(2,*) '  NEW ITS', its
 
             call calculate_rheologies(state,rheology)
@@ -703,8 +701,7 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
             if( solve_force_balance ) then
                call Calculate_AbsorptionTerm( state, packed_state,&
                     cv_ndgln, mat_ndgln, &
-                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption )
-
+                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption, ids_ndgln, IDs2CV_ndgln )
                ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
                ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
                ! is diagonal
@@ -712,12 +709,10 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                   call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
                        cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                        finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
-                       state, x_nonods )
+                       state, x_nonods, ids_ndgln )
                end if
             end if
 !!$ Solve advection of the scalar 'Temperature':
-
-
 
             Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
                  have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
@@ -763,7 +758,7 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                     Mean_Pore_CV, &
                     option_path = '/material_phase[0]/scalar_field::Temperature', &
                     thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                    StorageIndexes=StorageIndexes, saturation=saturation_field )
+                    StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
 
                call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                     cv_ndgln, DRhoDPressure )
@@ -802,9 +797,10 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                     NCOLM, FINDM, COLM, MIDM, &
                     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
                     StorageIndexes=StorageIndexes )
-
-               if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) )then
-                  call calculate_capillary_pressure( state, packed_state, .true., StorageIndexes)
+               if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) )then
+                          !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
+                  call calculate_capillary_pressure( state, packed_state, .false., StorageIndexes,&
+                     CV_NDGLN, ids_ndgln, totele, cv_nloc)
                end if
 
                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -847,12 +843,11 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                     iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
                     scale_momentum_by_volume_fraction,&
                     StorageIndexes=StorageIndexes, Quality_list = Quality_list,&
-                    nonlinear_iteration = its )
+                    nonlinear_iteration = its, IDs_ndgln=IDs_ndgln )
 !!$ Calculate Density_Component for compositional
                if( have_component_field ) &
                     call Calculate_Component_Rho( state, packed_state, &
                     ncomp, nphase, cv_nonods )
-
             end if Conditional_ForceBalanceEquation
 
             Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
@@ -885,7 +880,7 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                     theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                     theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j,&
                     StorageIndexes=StorageIndexes, Material_Absorption=Material_Absorption,&
-                    nonlinear_iteration = its, help_convergence = help_convergence)
+                    nonlinear_iteration = its, IDs_ndgln = IDs_ndgln, IDs2CV_ndgln = IDs2CV_ndgln)
 
             end if Conditional_PhaseVolumeFraction
 
@@ -919,7 +914,7 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                   call Calculate_ComponentAbsorptionTerm( state, packed_state, &
                        icomp, cv_ndgln, &
                        D_s%val, Porosity_field%val, mass_ele, &
-                       Component_Absorption )
+                       Component_Absorption, IDs_ndgln )
 
                   Conditional_SmoothAbsorption: if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
@@ -978,7 +973,7 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                           Mean_Pore_CV, &
                           thermal = .false.,& ! the false means that we don't add an extra source term
                           theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
-                          StorageIndexes=StorageIndexes, icomp=icomp, saturation=saturation_field )
+                          StorageIndexes=StorageIndexes, icomp=icomp, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
 
                       tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
 
@@ -1002,9 +997,6 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
 
                end do Loop_Components
 
-
-
-
                if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                     ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
                   ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
@@ -1022,17 +1014,12 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                   DEALLOCATE( RSUM )
                end if
 
-
-
-
-
-
                DO ICOMP = 1, NCOMP
 
                   call Calculate_ComponentAbsorptionTerm( state, packed_state,&
                        icomp, cv_ndgln, &
                        D_s%val, Porosity_field%val, mass_ele, &
-                       Component_Absorption )
+                       Component_Absorption,IDs_ndgln )
 
                   if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                        ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
@@ -1086,7 +1073,7 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
 
             !Check if the results are good so far and act in consequence, only does something if requested by the user
             call Adaptive_NonLinear(packed_state, reference_field, its,&
-                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3, help_convergence = help_convergence)
+                 Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3)
             if (ExitNonLinearLoop) exit Loop_NonLinearIteration
 
          end do Loop_NonLinearIteration
@@ -1372,6 +1359,12 @@ help_convergence = have_option('/timestepping/nonlinear_iterations/nonlinear_ite
                  mx_ncolph, ncolph, findph, colph, &
 !!$ misc
                  mx_nface_p1 )
+
+
+            !Re-calculate IDs_ndgln after adapting the mesh
+            call get_RockFluidProp(state, packed_state)
+            !Convert material properties to be stored using region ids, only if porous media
+            call get_regionIDs2nodes(state, packed_state, cv_ndgln, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
 
             !Look again for bad elements
 !            if (is_porous_media) then

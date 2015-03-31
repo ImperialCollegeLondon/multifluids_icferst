@@ -44,7 +44,7 @@
     subroutine Calculate_ComponentAbsorptionTerm( state, packed_state, &
          icomp, cv_ndgln, & 
          denold, volfra_pore, mass_ele, &
-         comp_absorb )
+         comp_absorb, IDs_ndgln )
 
 !!$ Calculate compositional model linkage between the phase expressed in COMP_ABSORB. 
 !!$ Use values from the previous time step so its easier to converge. 
@@ -54,7 +54,7 @@
       type( state_type ), dimension( : ), intent( in ) :: state
       type( state_type ), intent( inout ) :: packed_state
       integer, intent( in ) :: icomp
-      integer, dimension( : ), intent( in ) :: cv_ndgln
+      integer, dimension( : ), intent( in ) :: cv_ndgln, IDs_ndgln
       real, dimension( : ), intent( in ) :: volfra_pore, mass_ele
       real, dimension( :, :, : ), intent( in ) :: denold
       real, dimension( :, :, : ), intent( inout ) :: comp_absorb
@@ -72,10 +72,11 @@
       real, dimension( :, :, : ), allocatable :: k_comp
       real, dimension( :, :, :, : ), allocatable :: k_comp2
       !working pointers
+      type(tensor_field), pointer :: tfield
       real, dimension(:,:), pointer :: satura
 
-      call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
-
+      tfield=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+      satura => tfield%val(1,:,:)
 
       call Get_Primary_Scalars( state, &         
            nphase, nstate, ncomp, totele, ndim, stotel, &
@@ -108,7 +109,7 @@
             CV_NOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC ) 
             SUM_NOD( CV_NOD ) = SUM_NOD( CV_NOD ) + mass_ele( ele ) !1.0
             VOLFRA_PORE_NOD( CV_NOD ) = VOLFRA_PORE_NOD( CV_NOD ) + &
-                 VOLFRA_PORE( ELE ) * mass_ele( ele )
+                 VOLFRA_PORE( IDs_ndgln(ELE) ) * mass_ele( ele )
          END DO
       END DO
       VOLFRA_PORE_NOD = VOLFRA_PORE_NOD / SUM_NOD

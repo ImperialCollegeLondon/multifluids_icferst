@@ -136,7 +136,7 @@ contains
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
          option_path_spatial_discretisation, &
-         saturation,OvRelax_param, Phase_with_Pc, indx, Storname)
+         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln)
 
       !  =====================================================================
       !     In this subroutine the advection terms in the advection-diffusion
@@ -272,7 +272,7 @@ contains
            NCOLM, XU_NLOC, NCOLELE, &
            IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
            NCOLCMC, Field_selector
-      INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+      INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, IDs_ndgln
       INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
       INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
       INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
@@ -370,8 +370,7 @@ contains
       INTEGER, DIMENSION( : , : ), allocatable :: FACE_ELE
       REAL, DIMENSION( : ), allocatable ::  &
            MASS_CV, MASS_ELE,  &
-           SUM_CV, ONE_PORE, &
-           PERM_ELE
+           SUM_CV, PERM_ELE
       REAL, DIMENSION( :, : ), allocatable :: CVNORMX_ALL, XC_CV_ALL
       REAL, DIMENSION( :, :, : ), allocatable :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
       REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
@@ -755,15 +754,6 @@ contains
       ALLOCATE( UGI_COEF_ELE2_ALL(NDIM,NPHASE,U_NLOC) )
       ! The procity mapped to the CV nodes
       ALLOCATE( SUM_CV( CV_NONODS ))
-
-      ALLOCATE( ONE_PORE( TOTELE ))
-      IF ( have_option( '/porous_media/actual_velocity' ) ) THEN
-         ! solve for actual velocity
-         ONE_PORE = VOLFRA_PORE
-      ELSE
-         ! solve for porosity * actual velocity
-         ONE_PORE = 1.0
-      END IF
 
       D1 = ( NDIM == 1 )
       D3 = ( NDIM == 3 )
@@ -1153,7 +1143,7 @@ contains
             CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
             SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
             MEAN_PORE_CV( CV_INOD ) = MEAN_PORE_CV( CV_INOD ) + &
-                 MASS_ELE( ELE ) * VOLFRA_PORE( ELE )
+                 MASS_ELE( IDs_ndgln(ELE) ) * VOLFRA_PORE( IDs_ndgln(ELE) )
          END DO
       END DO
       MEAN_PORE_CV = MEAN_PORE_CV / SUM_CV
@@ -1865,8 +1855,7 @@ contains
                CVNORMX_ALL, &
                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
                SELE, U_SNLOC, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-               ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)),&
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,&
                NDIM,&
                !Working variables, to avoid having to allocate them every time we call this subroutine
                rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
@@ -1879,8 +1868,7 @@ contains
                CVNORMX_ALL, &
                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
                SELE, U_SNLOC, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-               ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)),&
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,&
                NDIM,&
                !Working variables, to avoid having to allocate them every time we call this subroutine
                rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
@@ -1945,8 +1933,7 @@ contains
                CVNORMX_ALL, &
                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
                SELE, U_SNLOC, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-               ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)),&
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,&
                NDIM,&
                !Working variables, to avoid having to allocate them every time we call this subroutine
                rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
@@ -1959,8 +1946,7 @@ contains
                CVNORMX_ALL, &
                CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
                SELE, U_SNLOC, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
-               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-               ONE_PORE(ELE), ONE_PORE(MAX(1,ELE2)),&
+               UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,&
                NDIM,&
                !Working variables, to avoid having to allocate them every time we call this subroutine
                rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
@@ -2106,19 +2092,6 @@ contains
                NDOTQ_HAT =SUM(LIMT_HAT(:)*NDOTQNEW(:))
            endif
        ENDIF
-
-    ! Amend for porosity...
-!          IF ( ELE2 /= 0 ) THEN 
-          IF ( between_elements ) THEN 
-!             FVD   = 0.5 * ( ONE_PORE(ELE) + ONE_PORE(ELE2) ) * FVD
-             LIMD   = 0.5 * ( ONE_PORE(ELE) + ONE_PORE(ELE2) ) * LIMD
-             LIMDOLD   = 0.5 * ( ONE_PORE(ELE) + ONE_PORE(ELE2) ) * LIMDOLD
-          ELSE
-!             FVD   = ONE_PORE(ELE) * FVD
-             LIMD   = ONE_PORE(ELE) * LIMD
-             LIMDOLD   = ONE_PORE(ELE) * LIMDOLD
-          END IF
-
 
           LIMDT=LIMD*LIMT
           LIMDTOLD=LIMDOLD*LIMTOLD
@@ -3401,7 +3374,7 @@ end if
       REAL, DIMENSION( : ), allocatable :: CVWEIGHT, CVWEIGHT_SHORT, SCVFEWEIGH, SBCVFEWEIGH, &
            CVNORMX, &
            CVNORMY, CVNORMZ, SCVRA, SCVDETWEI, &
-           SUM_CV, ONE_PORE, SELE_OVERLAP_SCALE, &
+           SUM_CV, SELE_OVERLAP_SCALE, &
            UP_WIND_NOD, DU, DV, DW, PERM_ELE
       REAL, DIMENSION( : , : ), allocatable :: CVN, CVN_SHORT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
            CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT,  &
@@ -11800,7 +11773,6 @@ deallocate(NX_ALL)
        CV_DG_VEL_INT_OPT, ELE, ELE2, U_OTHER_LOC, between_elements, on_domain_boundary, &
        SELE, U_SNLOC, U_SLOC2LOC, SUF_U_BC_ALL, WIC_U_BC_ALL, &
        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-       VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2,&
        NDIM,&
        DT_I,DT_J,NDOTQ_INT,UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, not_OLD_VEL)
 
@@ -11811,7 +11783,6 @@ deallocate(NX_ALL)
          SELE, U_SNLOC, &
          NDIM
     LOGICAL, intent( in ) :: between_elements, on_domain_boundary
-    REAL, intent( in ) :: VOLFRA_PORE_ELE, VOLFRA_PORE_ELE2
     REAL, DIMENSION( : ), intent( inout ) :: NDOTQ, INCOME, NDOTQNEW
     REAL, DIMENSION( :, : ), intent( inout ) :: NUGI_ALL
     INTEGER, DIMENSION( : ), intent( in ) :: U_OTHER_LOC
@@ -11892,13 +11863,6 @@ deallocate(NX_ALL)
           ELSE IF( ABS(CV_DG_VEL_INT_OPT ) == 3) THEN
              DT_I=LOC_DEN_I*LOC_T_I
              DT_J=LOC_DEN_J*LOC_T_J
-          ENDIF
-          ! Amend weighting for porosity only across elements...
-          IF(ABS(CV_DG_VEL_INT_OPT ) >= 2) THEN
-             IF(ELE /= ELE2) THEN
-                DT_I=VOLFRA_PORE_ELE *DT_I
-                DT_J=VOLFRA_PORE_ELE2*DT_J
-             ENDIF
           ENDIF
 
           DO IPHASE = 1, NPHASE

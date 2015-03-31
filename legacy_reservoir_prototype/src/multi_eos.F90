@@ -52,23 +52,6 @@
 
     implicit none
 
-    type corey_options
-       REAL :: S_wr
-       real :: S_OR
-       real :: s_gr
-       real :: c
-       real :: s_gi
-       real :: cs_gi
-       real :: kr1_max
-       real :: kr2_max
-       real :: kr3_max
-       real :: kr1_exp
-       real :: kr2_exp
-       real :: kr3_exp
-       logical :: boost_at_zero_saturation
-              
-    end type corey_options
-
     type drag_option_type
        real :: diameter
        real :: coefficient
@@ -677,13 +660,13 @@
 
     subroutine Calculate_AbsorptionTerm( state, packed_state,&
          cv_ndgln, mat_ndgln, &
-         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, u_absorb )
+         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, u_absorb, IDs_ndgln, IDs2CV_ndgln )
       ! Calculate absorption for momentum eqns
       use matrix_operations
       implicit none
       type( state_type ), dimension( : ), intent( in ) :: state
       type( state_type ), intent( inout ) :: packed_state
-      integer, dimension( : ), intent( in ) :: cv_ndgln, mat_ndgln
+      integer, dimension( : ), intent( in ) :: cv_ndgln, mat_ndgln, IDs_ndgln, IDs2CV_ndgln
       real, dimension( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
       real, dimension( :, :, : ), intent( inout ) :: u_absorb
 !!$ Local variables:
@@ -693,17 +676,18 @@
            p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
            ele, imat, icv, iphase, cv_iloc, idim, jdim, ij,i
       real :: Mobility, pert
+      real, dimension(:), allocatable :: Max_sat
       real, dimension( :, :, : ), allocatable :: u_absorb2
 !      real, dimension( : ), allocatable :: satura2
-        real, dimension( :, : ), allocatable :: satura2
+      real, dimension( :, : ), allocatable :: satura2
       real, dimension(size(state,1)) :: visc_phases
       !Working pointers
-      real, dimension(:,:), pointer :: Satura
+      real, dimension(:,:), pointer :: Satura, OldSatura, Immobile_fraction
       type( tensor_field ), pointer :: perm
 
     !Get from packed_state
-    call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
-
+    call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
+    OldPhaseVolumeFraction = OldSatura, Immobile_fraction = Immobile_fraction)
     perm=>extract_tensor_field(packed_state,"Permeability")
 
 !!$ Obtaining a few scalars that will be used in the current subroutine tree:
@@ -738,17 +722,27 @@
       allocate( u_absorb2( mat_nonods, nphase * ndim, nphase * ndim ), satura2( size(SATURA,1), size(SATURA,2) ) )
       u_absorb2 = 0. ; satura2 = 0.
 
-      CALL calculate_absorption2( MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
-           CV_NDGLN, MAT_NDGLN, U_ABSORB, PERM%val, MOBILITY, visc_phases)
+      CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
+           CV_NDGLN, MAT_NDGLN, U_ABSORB, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
-      PERT = 0.0001
+      !Introduce perturbation, positive for the increasing and negative for decreasing
+      !Make sure that the perturbation is between bounds
+      PERT = 0.0001; allocate(Max_sat(nphase))
+      do icv = 1, size(satura,2)
+        Max_sat(:) = 1. - sum(Immobile_fraction(:, IDs2CV_ndgln(icv))) + Immobile_fraction(:, IDs2CV_ndgln(icv))
+        do iphase = 1, nphase
+            SATURA2(iphase, icv) = SATURA(iphase, icv) + sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
+            !If out of bounds then we perturbate in the opposite direction
+            if (satura2(iphase, icv) > Max_sat(iphase) .or. &
+                satura2(iphase, icv) < Immobile_fraction(iphase, IDs2CV_ndgln(icv))) then
 
-      SATURA2( 1,: ) = SATURA( 1,: ) + PERT
-      IF ( NPHASE > 1 ) SATURA2( 2,: ) = SATURA( 2,: ) - PERT
+                SATURA2(iphase, icv) = SATURA2(iphase, icv) - 2. * sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
+            end if
+        end do
+      end do
 
-      CALL calculate_absorption2( MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
-           CV_NDGLN, MAT_NDGLN, &
-           U_ABSORB2, PERM%val, MOBILITY, visc_phases)
+      CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
+           CV_NDGLN, MAT_NDGLN, U_ABSORB2, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
       DO ELE = 1, TOTELE
          DO CV_ILOC = 1, CV_NLOC
@@ -762,7 +756,7 @@
                      opt_vel_upwind_coefs_new(IDIM, JDIM, IPHASE, IMAT) = &
                         U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )
 
-!                     ! This is the gradient...
+                     ! This is the gradient...
                      opt_vel_upwind_grad_new(IDIM, JDIM, IPHASE, IMAT) = &
                         (U_ABSORB2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
                         U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ))&
@@ -774,7 +768,7 @@
          END DO
       END DO
 
-      deallocate( u_absorb2, satura2 )
+      deallocate( u_absorb2, satura2, Max_sat )
       ewrite(3,*) 'Leaving calculate_absorption'
 
       RETURN
@@ -784,52 +778,48 @@
 
 
 
-    SUBROUTINE calculate_absorption2( MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
+    SUBROUTINE calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
          CV_NDGLN, MAT_NDGLN, &
-         U_ABSORB, PERM2, MOBILITY, visc_phases)
+         U_ABSORB, PERM2, MOBILITY, visc_phases, IDs_ndgln)
       ! Calculate absorption for momentum eqns
       use matrix_operations
       !    use cv_advection
       implicit none
+      type( state_type ), intent( inout ) :: packed_state
       INTEGER, intent( in ) :: MAT_NONODS, CV_NONODS, NPHASE, NDIM, TOTELE, CV_NLOC,MAT_NLOC
       REAL, DIMENSION( :, : ), intent( in ) :: SATURA
       INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-      INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
+      INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN, IDs_ndgln
       REAL, DIMENSION( :, :, : ), intent( inout ) :: U_ABSORB
       REAL, DIMENSION( :, :, : ), intent( in ) :: PERM2
       REAL, intent( in ) :: MOBILITY
       real, intent(in), dimension(:) :: visc_phases
       ! Local variable
+      type (tensor_field), pointer :: RockFluidProp
+      real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
       REAL, PARAMETER :: TOLER = 1.E-10
       INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
-           IPHA_IDIM, IDIM, JDIM, IPHASE, jphase
-      !    integer :: ii
-      REAL :: SATURATION
-      !    real :: abs_sum
+           IPHA_IDIM, IDIM, JDIM, IPHASE, jphase, id_reg
       REAL, DIMENSION( :, :, :), allocatable :: INV_PERM, PERM
-      type(corey_options) :: options
-      logical :: is_corey
 
+      RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
 
       ewrite(3,*) 'In calculate_absorption2'
-      ALLOCATE( INV_PERM(  NDIM, NDIM, TOTELE ))
-      ALLOCATE( PERM( NDIM, NDIM , TOTELE))
+      ALLOCATE( INV_PERM(  size(PERM2,1), size(PERM2,2), size(PERM2,3) ))
+      ALLOCATE( PERM( size(PERM2,1), size(PERM2,2) , size(PERM2,3)))
 
       perm=perm2
-      do ele = 1, totele
-         inv_perm( :, :, ele)=inverse(perm( :, :, ele))
+      do id_reg = 1, size(perm,3)
+         inv_perm( :, :, id_reg)=inverse(perm( :, :, id_reg))
       end do
       U_ABSORB = 0.0
       Loop_NPHASE: DO IPHASE = 1, NPHASE
 
-          is_Corey=.false.
-          if (have_option("/material_phase["// int2str(iphase-1) //&
-          "]/multiphase_properties/relperm_type/Corey")) then
-              is_Corey=.true.
-              call get_corey_options(options, nphase)
-          end if
           Loop_ELE: DO ELE = 1, TOTELE
-
+              !Get properties from packed state
+              Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
+              Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
+              Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
               Loop_CVNLOC: DO CV_ILOC = 1, CV_NLOC
 
                   MAT_NOD = MAT_NDGLN(( ELE - 1 ) * MAT_NLOC + CV_ILOC)
@@ -840,30 +830,27 @@
                       Loop_DimensionsJ: DO JDIM = 1, NDIM
 
                           CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * CV_NONODS
-                          SATURATION = SATURA( IPHASE,CV_NOD )
                           IPHA_IDIM = ( IPHASE - 1 ) * NDIM + IDIM
                           JPHA_JDIM = ( IPHASE - 1 ) * NDIM + JDIM
-                          if (is_corey) then
+                          if (is_porous_media) then
                               select case (NPHASE)
                                   case (1)!No relperm needed, we calculate directly the result
-                                      U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = INV_PERM( IDIM, JDIM, ELE ) *&
+                                      U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = INV_PERM( IDIM, JDIM, IDs_ndgln(ELE) ) *&
                                       visc_phases(1) * min(1.0,max(1d-5,SATURA(1,CV_NOD)))
-!print *,    U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), SATURA(1,CV_NOD), visc_phases(1), INV_PERM( IDIM, JDIM, ELE )
                                   case (2)
-                                      CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), visc_phases(1), visc_phases(2), &
-                                      INV_PERM( IDIM, JDIM, ELE ), min(1.0,max(0.0,SATURA(1,CV_NOD))), IPHASE,&
-                                      options)!Second phase is considered inside the subroutine
+                                      CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), visc_phases, &
+                                      INV_PERM( IDIM, JDIM, IDs_ndgln(ELE) ), SATURA(iphase,CV_NOD), IPHASE,&
+                                      Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                   case (3)!For three phases we use the Stone model. !With predefined order: Water, oil, gas
                                       call relperm_stone(U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), iphase,&
-                                      SATURA(:, CV_NOD), options, visc_phases(iphase), INV_PERM( IDIM, JDIM, ELE ))
+                                      SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, IDs_ndgln(ELE)),&
+                                      Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                   case default
                                       FLAbort("No relative permeability function implemented for more than 3 phases")
                               end select
-
                           else
-                              U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = 0.0
-
-                          endif
+                            U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = 0.
+                          end if
                       END DO Loop_DimensionsJ
 
                   END DO Loop_DimensionsI
@@ -1557,142 +1544,78 @@
       
     end subroutine clean_drag_options
 
-    subroutine get_corey_options(options, nphase)
-        implicit none
-        !Retrieves the values for the Corey model
-        !Including the inmobile fractions
-        integer, intent(in) :: nphase
-      type(corey_options), intent(inout) :: options
-      !Local variables
-      integer :: iphase
-
-
-      call get_option("/material_phase[0]/multiphase_properties/immobile_fraction", &
-      options%s_wr, default=0.0)
-      call get_option("/material_phase[0]/multiphase_properties/relperm_type/Corey/relperm_max", &
-      options%kr1_max, default=1.0)
-      call get_option("/material_phase[0]/multiphase_properties/relperm_type/Corey/relperm_exponent", &
-      options%kr1_exp, default=2.0)
-      if (nphase>=2) then
-          call get_option("/material_phase[1]/multiphase_properties/immobile_fraction", &
-          options%s_or, default=0.0)
-          call get_option("/material_phase[1]/multiphase_properties/relperm_type/Corey/relperm_max", &
-          options%kr2_max, default=1.0)
-          call get_option("/material_phase[1]/multiphase_properties/relperm_type/Corey/relperm_exponent", &
-          options%kr2_exp, default=2.0)
-      end if
-      if (nphase>=3) then
-          call get_option("/material_phase[2]/multiphase_properties/immobile_fraction", &
-          options%s_gr, default=0.0)
-          call get_option("/material_phase[2]/multiphase_properties/relperm_type/Corey/relperm_max", &
-          options%kr3_max, default=1.0)
-          call get_option("/material_phase[2]/multiphase_properties/relperm_type/Corey/relperm_exponent", &
-          options%kr3_exp, default=2.0)
-      end if
-    end subroutine get_corey_options
-
-    SUBROUTINE relperm_corey_epsilon( ABSP, visc_phase1, visc_phase2, INV_PERM, SAT, IPHASE,opt )
+    SUBROUTINE relperm_corey_epsilon( ABSP, visc_phase, INV_PERM, SAT, IPHASE,&
+            Immobile_fraction, Corey_exponent, Endpoint_relperm )
           !This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
           !when dividing it to obtain the sigma.
         IMPLICIT NONE
         REAL, intent( inout ) :: ABSP
-        REAL, intent( in ) :: visc_phase1, visc_phase2, SAT, INV_PERM
+        REAL, intent( in ) :: SAT, INV_PERM
         INTEGER, intent( in ) :: IPHASE
-        type(corey_options), intent(in) :: opt
+        real, dimension(:), intent(in) :: visc_phase, Immobile_fraction, Corey_exponent, Endpoint_relperm
         ! Local variables...
-        REAL :: KR, VISC, SATURATION, Krmax
+        REAL :: KR, VISC, Krmax, aux
         real, parameter :: epsilon = 1d-10
         !Kr_max should only multiply the wetting phase,
         !however as we do not know if it is phase 1 or 2, we let the decision to the user
         !and we multiply both phases by kr_max. By default kr_max= 1
 
-        SATURATION = sat
-        KR = get_relperm_Brooks_Corey(SATURATION, iphase, opt, visc_phase1, visc_phase2, visc, krmax)
-
+        aux = 1.0 - sum(Immobile_fraction)
+        KR = Endpoint_relperm(iphase)*( ( sat - Immobile_fraction(iphase)) / aux ) ** Corey_exponent(iphase)
         !Make sure that the relperm is between bounds
-        KR = min(max(epsilon, KR),Krmax)!Lower value just to make sure we do not divide by zero.
-        ABSP = INV_PERM * (VISC * max(1d-5,SATURATION)) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
+        KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+        ABSP = INV_PERM * (visc_phase(iphase) * max(1d-5, sat)) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
         !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
 
       RETURN
     END SUBROUTINE relperm_corey_epsilon
 
-    real function get_relperm_Brooks_Corey(sat, iphase, opt, visc_phase1, visc_phase2, visc, krmax)
-        !Calculates the Brooks-Corey relperm. If optional oldSAT
-        !is introduced, the new relperm is calculated using:
-        !Kr = Kr(SwNew) + dKr/dS(SwNew-SwOld)
-        implicit none
-        real, intent(inout) :: sat, krmax, visc
-        real, intent(in) :: visc_phase1, visc_phase2
-        integer, intent(in) :: iphase
-        type(corey_options), intent(in) :: opt
-        !Local variables
-        real :: derivative, aux
 
-
-        aux = 1. - opt%s_wr - opt%s_or
-
-        IF( IPHASE == 1 ) THEN
-            krmax = opt%kr1_max
-            get_relperm_Brooks_Corey = krmax*( ( sat - opt%s_wr) /&
-                 ( aux )) ** opt%kr1_exp
-            Visc = visc_phase1
-        else
-            sat = 1.0 - SAT
-            krmax = opt%kr2_max
-            get_relperm_Brooks_Corey = krmax * ( ( sat - opt%s_or ) /&
-                 ( aux )) ** opt%kr2_exp
-            VISC = visc_phase2
-        end if
-
-    end function get_relperm_Brooks_Corey
-
-
-    subroutine relperm_stone(ABSP, iphase, sat, opt, visc, INV_PERM)
+    subroutine relperm_stone(ABSP, iphase, sat, visc, INV_PERM, Immobile_fraction, Corey_exponent, Endpoint_relperm )
         !This subroutine calculates the relative permeability for three phases
         !First phase has to be water, second oil and the third gas
         !We use Stone's model II adapted, and for the two phases we use the Corey model
         !Model explained in: Aziz, K. And Settari, T.:“Petroleum Reservoir Simulation” Applied Science Publishers, London, 30-38, 1979.
         implicit none
         real, intent(inout) :: ABSP
-        real, intent(in) :: INV_PERM, visc
-        real, intent(in), dimension(:) :: sat
-        type(corey_options), intent(in) :: opt
+        real, intent(in) :: INV_PERM
+        real, dimension(:), intent(in) :: sat, visc, Immobile_fraction, Corey_exponent, Endpoint_relperm
         integer, intent(in) :: iphase
         !Local variables
-        real, dimension(3) :: satura, relperm, KR, Krmax
+        real, dimension(3) :: satura, relperm, KR
         real :: Krow, Krog
         real, parameter :: epsilon = 1d-10
 
         !Prepare data
-        Krmax(1) = opt%kr1_max; Krmax(2) = opt%kr2_max; Krmax(3) = opt%kr3_max
         !We consider two models for two phase flow, water-oil and oil-gas
         if (iphase /= 3) then
-            satura(1) = ( sat(1) - opt%s_wr) /( 1. - opt%s_wr - opt%s_or)!Water
-            relperm(1) = Krmax(1)* satura(1) ** opt%kr1_exp!Water, Krw
+            satura(1) = ( sat(1) - Immobile_fraction(1)) /( 1. - Immobile_fraction(1) - Immobile_fraction(2))!Water
+            relperm(1) = Endpoint_relperm(1)* satura(1) ** Corey_exponent(1)!Water, Krw
         end if
         if (iphase /= 1) then
-            satura(3) = ( sat(3) - opt%s_gr) /(1. - opt%s_or - opt%s_gr)!Gas
+            satura(3) = ( sat(3) - Immobile_fraction(3)) /(1. - Immobile_fraction(2) - Immobile_fraction(1))!Gas
             !For phase 1 and 3 (water and gas respectively) we can use the Brooks Corey model
-            relperm(3) = Krmax(3)* satura(3) ** opt%kr3_exp!Gas, Krg
+            relperm(3) = Endpoint_relperm(3)* satura(3) ** Corey_exponent(3)!Gas, Krg
         end if
         !Oil relperm is obtained as a combination
         if (iphase == 2 ) then
 
-            Krow = Krmax(2)* (1.0 - satura(1)) ** opt%kr2_exp!Oil, Krow
-            Krog = Krmax(2)* (1.0 - satura(3)) ** opt%kr2_exp!Oil, Krog
+            Krow = Endpoint_relperm(2)* (1.0 - satura(1)) ** Corey_exponent(2)!Oil, Krow
+            Krog = Endpoint_relperm(2)* (1.0 - satura(3)) ** Corey_exponent(2)!Oil, Krog
             !For the second phase, oil, we need to recalculate the real value(Stone model 2)
-            relperm(2) = Krmax(2)*( (Krow/Krmax(2) + relperm(1))*(Krog/Krmax(2) + relperm(3)) - (relperm(1) + relperm(3)) )
+            relperm(2) = Endpoint_relperm(2)*( (Krow/Endpoint_relperm(2) + relperm(1))*&
+                (Krog/Endpoint_relperm(2) + relperm(3)) - (relperm(1) + relperm(3)) )
         end if
         !Make sure that the relperm is between bounds
-        KR(iphase) = min(max(epsilon, relperm(iphase)),Krmax(iphase))!Lower value just to make sure we do not divide by zero.
-        ABSP = INV_PERM * (VISC * max(1d-5,sat(iphase))) / KR(iphase) !The value 1d-5 is only used if the boundaries have values of saturation of zero.
+        KR(iphase) = min(max(epsilon, relperm(iphase)),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+        ABSP = INV_PERM * (VISC(iphase) * max(1d-5,sat(iphase))) / KR(iphase) !The value 1d-5 is only used if the boundaries have values of saturation of zero.
         !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
 
     end subroutine relperm_stone
 
 
-   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM, StorageIndexes)
+   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM, StorageIndexes,&
+         CV_NDGLN, ids_ndgln, totele, cv_nloc)
 
       ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
       ! CAPIL_PRES_COEF( NCAPIL_PRES_COEF, NPHASE, NPHASE ) are the coefficients
@@ -1702,33 +1625,28 @@
       IMPLICIT NONE
       type(state_type), dimension(:), intent(inout) :: state
       type(state_type), intent(inout) :: packed_state
+      integer, dimension(:), intent(in) :: CV_NDGLN, ids_ndgln
       integer, dimension(:), intent(inout) :: StorageIndexes
+      integer, intent(in) :: totele, cv_nloc
       logical, intent(in) :: Sat_in_FEM
       ! Local Variables
-      INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase, useful_phases
-      real ::  S_OR, s_wr, auxO, auxW!c, a,
+      INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase, useful_phases, ele, cv_iloc, cv_nod
       character(len=OPTION_PATH_LEN):: option_path, phase_name, cap_path
       logical :: Pc_imbibition
-      !Corey options
-      type(corey_options) :: options
       !Working pointers
-      real, dimension(:,:), pointer :: Satura, CapPressure
-      type (scalar_field), pointer :: sfield
-      real, pointer, dimension(:) :: C_regions, a_regions
-      type(vector_field), pointer :: position
-
+      real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent
+      real, dimension(:), allocatable :: Cont_correction
       !Get from packed_state
       if (Sat_in_FEM) then
           call get_var_from_packed_state(packed_state,FEPhaseVolumeFraction = Satura)
       else
           call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
       end if
-      call get_var_from_packed_state(packed_state,CapPressure = CapPressure)
-      !Get corey options
+      call get_var_from_packed_state(packed_state,CapPressure = CapPressure, &
+        Immobile_fraction = Immobile_fraction, Cap_entry_pressure = Cap_entry_pressure, Cap_exponent = Cap_exponent)
+
       nphase =size(Satura,1)
-      call get_corey_options(options, nphase)
-      s_wr=options%s_wr
-      s_or=options%s_or
+      allocate(Cont_correction(size(satura,2)))
 
       CapPressure = 0.
       Pc_imbibition = .false.
@@ -1738,86 +1656,90 @@
 
           if (have_option("/material_phase["//int2str(iphase-1)//&
             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
-              option_path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
+!              option_path = "/material_phase["//int2str(iphase-1)//&
+!                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
 
-            !Get C
-            cap_path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-            call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32), iphase, nphase)
-            !Get a
-            cap_path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-            call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), iphase, nphase)
+!            !Get C
+!            cap_path = "/material_phase["//int2str(iphase-1)//&
+!                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
+!            call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32), iphase, nphase)
+!            !Get a
+!            cap_path = "/material_phase["//int2str(iphase-1)//&
+!                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
+!            call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), iphase, nphase)
 
             if (have_option("/material_phase["//int2str(iphase-1)//&
                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/Pc_imbibition") ) then
                Pc_imbibition = .true.
             end if
 
-              if (IPHASE==1) then
-                  auxW = s_wr
-                  auxO = S_OR
-              else
-                  auxW = S_OR
-                  auxO = s_wr
-              end if
-!              call get_option(trim(option_path)//"/c", c)
-!              call get_option(trim(option_path)//"/a", a)
               !Apply Brooks-Corey model
               do jphase =1, nphase
+                Cont_correction = 0
                 if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
-                  forall (k = 1:size(CapPressure,2))
-!                      CapPressure( jphase, k ) = CapPressure( jphase, k ) + &
-!                      Get_capPressure(satura(iphase,k), c, a, auxW, auxO)
-                      CapPressure( jphase, k ) = CapPressure( jphase, k ) + &
-                      Get_capPressure(satura(iphase,k), c_regions(k), a_regions(k), auxW, auxO, Pc_imbibition)
-                  end forall
+                    do ele = 1, totele
+                        do cv_iloc = 1, cv_nloc
+                            cv_nod = cv_ndgln((ele-1)*cv_nloc + cv_iloc)
+                              CapPressure( jphase, cv_nod ) = CapPressure( jphase, cv_nod ) + &
+                              Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, IDs_ndgln(ele)), &
+                                Cap_exponent(iphase, IDs_ndgln(ele)),Immobile_fraction(:,IDs_ndgln(ele)), iphase, Pc_imbibition)
+                              Cont_correction(cv_nod) = Cont_correction(cv_nod) + 1.0
+                        end do
+                    end do
+                    !In continuous formulation nodes are visited more than once, hence we need to average the values added here
+                    CapPressure(jphase, :) = CapPressure(jphase, :) / Cont_correction(:)
                 end if
               end do
+
           end if
       END DO
 
+
+        deallocate(Cont_correction)
       RETURN
     END SUBROUTINE calculate_capillary_pressure
 
 
-    pure real function Get_capPressure(sat, Pe, a, Own_irr, Other_irr, Pc_imbibition)
+    pure real function Get_capPressure(sat, Pe, a, Immobile_fraction, iphase,  Pc_imbibition)
         !This functions returns the capillary pressure for a certain input saturation
         !There is another function, its derivative in cv-adv-diff called Get_DevCapPressure
         Implicit none
-        real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
+        real, intent(in) :: sat, Pe, a
+        real, dimension(:), intent(in) :: Immobile_fraction
+        integer, intent(in) :: iphase
         logical, intent(in) :: Pc_imbibition
         !Local
-        real, parameter :: tol = 1d-2!Small values requires smaller time steps
+        real, parameter :: tol = 1d-2 !Small values requires smaller time steps
 
         if ( Pc_imbibition ) then
-           Get_capPressure = &
-           Pe * (1.0 - max(min((sat - Own_irr) / (1.0 - Own_irr - Other_irr), 1.0), tol)) ** (-a)
+           Get_capPressure = &!Two tolerances, the tol**2 should, in theory, never be reached
+           Pe * max((1.0 - min((sat - Immobile_fraction(iphase)+tol) / (1.0 - sum(Immobile_fraction)), 1.0)), tol**2) ** (-a)
         else
            Get_capPressure = &
-           Pe * max(min((sat - Own_irr+1d-2) / (1.0 - Own_irr), 1.0), tol) ** (-a)
+           Pe * max(min((sat - Immobile_fraction(iphase)+tol) / (1.0 - Immobile_fraction(iphase)), 1.0), tol**2) ** (-a)
         end if
 
     end function Get_capPressure
 
 
-    PURE real function Get_DevCapPressure(sat, Pe, a, Own_irr, Other_irr, Pc_imbibition)
+    PURE real function Get_DevCapPressure(sat, Pe, a, immobile_fraction, iphase,  Pc_imbibition)
         !This functions returns the derivative of the capillary pressure with the saturation
         Implicit none
-        real, intent(in) :: sat, Pe, a, Own_irr, Other_irr
+        integer, intent(in) :: iphase
+        real, intent(in) :: sat, Pe, a
+        real, dimension(:), intent(in) :: immobile_fraction
         logical, intent(in) :: Pc_imbibition
         !Local
         real, parameter :: tol = 1d-2
         real :: aux
 
         if ( Pc_imbibition ) then
-           aux = (1.0 - Own_irr - Other_irr)
+           aux = (1.0 - sum(immobile_fraction))
         else
-           aux = (1.0 - Own_irr)
+           aux = (1.0 - immobile_fraction(iphase))
         end if
         Get_DevCapPressure = &
-            -a * Pe * aux**a * max(min((sat - Own_irr), 1.0), tol) ** (-a-1)
+            -a * Pe * aux**a * max(min((sat - immobile_fraction(iphase)), 1.0), tol) ** (-a-1)
     end function Get_DevCapPressure
 
     subroutine calculate_u_source(state, Density_FEMT, u_source)
@@ -2179,25 +2101,21 @@
     subroutine calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
          cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
          finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
-         state, x_nonods )
+         state, x_nonods, IDs_ndgln )
 
       implicit none
       type( state_type ), intent( inout ) :: packed_state
       integer, intent(in) :: totele, stotel, cv_nloc, cv_snloc, nphase, ndim, nface, &
            mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, x_nonods
-      integer, dimension( : ), intent( in ) :: finele
-      integer, dimension( : ), intent( in ) :: colele
-      integer, dimension( : ), intent( in ) :: cv_ndgln
-      integer, dimension( : ), intent( in ) :: cv_sndgln
-      integer, dimension( : ), intent( in ) :: x_ndgln
-      integer, dimension( : ), intent( in ) :: mat_ndgln
+      integer, dimension( : ), intent( in ) :: finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, IDs_ndgln
       real, dimension( :, :, : ), intent( inout ) :: material_absorption
       type(state_type), dimension( : ) :: state  
 
       real, dimension(stotel * cv_snloc * nphase, ndim ), intent( inout ) :: suf_sig_diagten_bc
 
       ! local variables
-      type(tensor_field), pointer :: viscosity_ph
+      type(tensor_field), pointer :: viscosity_ph, RockFluidProp
+      real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
       real, dimension(nphase) :: visc_phases
       integer :: iphase, ele, sele, cv_siloc, cv_snodi, cv_snodi_ipha, iface, s, e, &
            ele2, sele2, cv_iloc, idim, jdim, i, mat_nod, cv_nodi
@@ -2217,8 +2135,6 @@
       logical, parameter :: mat_change_inside = .false.
 ! if mat_perm_bc_dg use the method that is used for DG between the elements.
       logical, parameter :: mat_perm_bc_dg = .true.
-      logical :: is_corey
-      type(corey_options) :: options
 
       type(tensor_field), pointer :: velocity, volfrac, perm
       type(tensor_field) :: velocity_BCs, volfrac_BCs
@@ -2227,6 +2143,8 @@
       volfrac=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
       velocity=>extract_tensor_field(packed_state,"PackedVelocity")
       perm=>extract_tensor_field(packed_state,"Permeability")
+      RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
+
 
     allocate(wic_u_bc(velocity%dim(1),velocity%dim(2),&
          surface_element_count(velocity)))
@@ -2272,17 +2190,13 @@
          s = ( iphase - 1 ) * ndim + 1
          e = iphase * ndim
 
-         is_corey=.false.
-
-         if ( have_option("/material_phase["// int2str(iphase-1) //&
-              "]/multiphase_properties/relperm_type/Corey") ) then
-            is_corey=.true.
-            call get_corey_options(options, nphase)
-         end if
 
          do ele = 1, totele
-
-            inv_perm = inverse( perm%val(:, :, ele) )
+            !Get properties from packed state
+            Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
+            Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
+            Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
+            inv_perm = inverse( perm%val(:, :, IDs_ndgln(ele)) )
 
             do iface = 1, nface
 
@@ -2302,27 +2216,25 @@
                         cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * stotel * cv_snloc
                         mat_nod = mat_ndgln( (ele-1)*cv_nloc + cv_iloc  )
                         ! this is the boundary condition
-                        ! of the first phase
-                        satura_bc = volfrac_BCs%val(1,1,cv_snodi)
+                        satura_bc = volfrac_BCs%val(1,iphase,cv_snodi)
 
-!                        sigma_out = 0.
                         do idim = 1, ndim
                            do jdim = 1, ndim
-                               if (is_corey) then
-                                   select case (nphase)
-                                       case (1)!No relperm needed, we calculate directly the result
-                                           sigma_out( idim, jdim ) = inv_perm( idim, jdim ) *&
-                                           visc_phases(1) * min(1.0,max(1d-5,satura_bc))
-                                       case (2)
-                                           call relperm_corey_epsilon( sigma_out( idim, jdim ), visc_phases(1), visc_phases(2), &
-                                           inv_perm( idim, jdim ), satura_bc, iphase,options)
-                                       case (3)!For three phases we use the Stone model. !With predefined order: Water, oil, gas
-                                           call relperm_stone(sigma_out( idim, jdim ), iphase,&
-                                           volfrac_BCs%val(1,:,cv_snodi), options, visc_phases(iphase), inv_perm( idim, jdim ))
-                                       case default
-                                           FLAbort("No relative permeability function implemented for more than 3 phases")
-                                   end select
-                               end if
+                               select case (nphase)
+                                   case (1)!No relperm needed, we calculate directly the result
+                                       sigma_out( idim, jdim ) = inv_perm( idim, jdim ) *&
+                                       visc_phases(1) * min(1.0,max(1d-5,satura_bc))
+                                   case (2)
+                                       call relperm_corey_epsilon( sigma_out( idim, jdim ), visc_phases, &
+                                       inv_perm( idim, jdim ), satura_bc, IPHASE,&
+                                       Immobile_fraction, Corey_exponent, Endpoint_relperm)
+                                   case (3)!For three phases we use the Stone model. !With predefined order: Water, oil, gas
+                                       call relperm_stone(sigma_out( idim, jdim ), iphase,&
+                                       volfrac_BCs%val(1,:,cv_snodi), visc_phases, inv_perm( idim, jdim ),&
+                                       Immobile_fraction, Corey_exponent, Endpoint_relperm)
+                                   case default
+                                       FLAbort("No relative permeability function implemented for more than 3 phases")
+                               end select
                            end do
                         end do
 
@@ -3095,5 +3007,98 @@
       return
     end function saturation_temperature
 
+    subroutine get_RockFluidProp(state, packed_state)
+        !Gets the relperm max, the relperm exponent and the immobile fractions and stores
+        !them into packed state
+        !The first index in the immobile fraction, the second is the relperm max
+        ! and the third is the relperm exponent
+        implicit none
+        type(state_type), dimension(:), intent(inout) :: state
+        type( state_type ), intent( inout ) :: packed_state
+        !Local variables
+        type (tensor_field), pointer :: t_field
+        type (scalar_field), target :: targ_Store
+        type (scalar_field), pointer :: s_field
+        type (vector_field), pointer :: position
+        type(mesh_type), pointer :: fl_mesh
+        type(mesh_type) :: Auxmesh
+        integer :: iphase, nphase
+        character(len=500) :: path
+
+        t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
+        nphase = size(t_field%val,2)
+        !By default the pressure mesh (position 1)
+        s_field => extract_scalar_field(state(1),1)
+        position => get_external_coordinate_field(packed_state, s_field%mesh)
+        !The number of nodes I want does not coincide
+        fl_mesh => extract_mesh( state(1), "P0DG" )
+        Auxmesh = fl_mesh
+        call allocate (targ_Store, Auxmesh, "Temporary_get_RockFluidProp")
+
+        !Retrieve Immobile fractions
+        do iphase = 1, nphase
+            path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/immobile_fraction/scalar_field::value/prescribed/value"
+            if (have_option(trim(path))) then
+                call initialise_field_over_regions(targ_Store, trim(path) , position)
+                t_field%val(1,iphase,:) = targ_Store%val(:)
+            else!default value
+                t_field%val(1,iphase,:) = 0.0
+            end if
+        end do
+
+        !Retrieve relperm max
+        do iphase = 1, nphase
+            path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
+            if (have_option(trim(path))) then
+                call initialise_field_over_regions(targ_Store, trim(path) , position)
+                t_field%val(2,iphase,:) = max(min(targ_Store%val(:), 1.0), 0.0)
+            else!default value
+                t_field%val(2,iphase,:) = 1.0
+            end if
+        end do
+
+        !Retrieve relperm exponent
+        do iphase = 1, nphase
+            path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
+            if (have_option(trim(path))) then
+                call initialise_field_over_regions(targ_Store, trim(path) , position)
+                t_field%val(3,iphase,:) = targ_Store%val(:)
+            else!default value
+                t_field%val(3,iphase,:) = 2.0
+            end if
+        end do
+
+        !Initialize capillary pressure
+        if (have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
+            !Get cap entry pressure
+            do iphase = 1, nphase
+                path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
+                if (have_option(trim(path))) then
+                    call initialise_field_over_regions(targ_Store, trim(path) , position)
+                    t_field%val(4,iphase,:) = targ_Store%val(:)
+                else!default value
+                    t_field%val(4,iphase,:) = 0.0
+                end if
+            end do
+
+            !Get cap exponent
+            do iphase = 1, nphase
+                path = "/material_phase["//int2str(iphase-1)//&
+                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
+                if (have_option(trim(path))) then
+                    call initialise_field_over_regions(targ_Store, trim(path) , position)
+                    t_field%val(5,iphase,:) = targ_Store%val(:)
+                else!default value
+                    t_field%val(5,iphase,:) = 1.0
+                end if
+            end do
+        end if
+
+        call deallocate(targ_Store)
+    end subroutine get_RockFluidProp
 
   end module multiphase_EOS
