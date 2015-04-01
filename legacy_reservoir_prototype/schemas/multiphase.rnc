@@ -447,11 +447,6 @@ start =
                     element adaptive_timestep_nonlinear{
                         integer,
                       (
-                        ## Reduce time step if saturation goes out of bounds.
-                        ## i.e. The saturation gets smaller than the irreducible one.
-                        element keep_sat_bounds{
-                        empty
-                        }?,
                         ## Multiply present timestep by this factor when increasing it.
                         ## By default 1.05
                         element increase_factor{
@@ -693,20 +688,40 @@ start =
             ## Parameters required to model multiphase flow
             element multiphase_properties {
                ## Option for relperm type in prototype code
-               element relperm_type {
-                  ## Corey relperm:
-                  ##
-                  ## relperm = relperm_max * saturation**-relperm_exponent
-                  element Corey {
-                     ## Relative permeability end point
-                     ##
-                     ## Value between 0 and 1. Default value 1.0
-                     element relperm_max {real}?,
-                     ## Relative permeability exponent
-                     ##
-                     ## Default value 2.0
-                     element relperm_exponent {real}?
-                  }
+               ## Corey relperm:
+               ##
+               ## relperm = relperm_max * saturation**-relperm_exponent
+               element Relperm_Corey {
+                 ## Relative permeability end point
+                 ##
+                 ## Value between 0 and 1. Default value 1.0
+                 element relperm_max {
+                 ## End-point relative permeability
+                    element scalar_field {
+                       attribute name { "relperm_max" },
+                       (
+                          element prescribed {
+                             material_mesh_choice,
+                             prescribed_scalar_field
+                          }
+                       )
+                    }
+                 }?,
+                 ## Relative permeability exponent
+                 ##
+                 ## Default value 2.0
+                 element relperm_exponent {
+                 ## Exponent of the formula
+                     element scalar_field {
+                        attribute name { "relperm_exponent" },
+                        (
+                           element prescribed {
+                              material_mesh_choice,
+                              prescribed_scalar_field
+                           }
+                        )
+                     }
+                }?
                 }?,
 		## Mark phase as being the continuous phase in dispersed fluid-fluid flow
 		element continuous_phase {
@@ -803,8 +818,7 @@ start =
 	       element coarse_graining {integer}?,	      
                ## Option for capillary pressure				 
                element capillary_pressure {
-            ## Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant.
-            ## i.e. when the darcy capillary number is below 1.
+            ## Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
             ## The capillary pressure term is introduced only in the saturation equation, acting as a pure diffusive term. 
             element Diffusive_cap_only { comment }?,
                   ## Brooks-Corey equation
@@ -841,7 +855,18 @@ start =
                     element Pc_imbibition { comment }?}
                }?,
                ## Immobile volume of fluid phase
-               element immobile_fraction {real}?,
+               element immobile_fraction {
+               ## Immobile fraction
+                    element scalar_field {
+                       attribute name { "value" },
+                       (
+                          element prescribed {
+                             material_mesh_choice,
+                             prescribed_scalar_field
+                          }
+                       )
+                    }
+               }?,
                ## Introduce over-relaxation based on how the method is converging in the saturation equation. 
                ## The input value is the entry pressure.
                ##
@@ -905,10 +930,7 @@ start =
                   attribute name { xsd:string },
                   element background_permeability { real }
                }
-            ),
-            ## Solve for the actual velocity, not
-            ## the Darcy velocity (=porosity*velocity)
-            element actual_velocity { empty }?
+            )
          }?,
         ## Fracking options
          element femdem_fracture {

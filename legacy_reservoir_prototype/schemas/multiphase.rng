@@ -519,13 +519,6 @@ A Variable to check has to be chosen:
                     <ref name="integer"/>
                     <group>
                       <optional>
-                        <element name="keep_sat_bounds">
-                          <a:documentation>Reduce time step if saturation goes out of bounds.
-i.e. The saturation gets smaller than the irreducible one.</a:documentation>
-                          <empty/>
-                        </element>
-                      </optional>
-                      <optional>
                         <element name="increase_factor">
                           <a:documentation>Multiply present timestep by this factor when increasing it.
 By default 1.05</a:documentation>
@@ -892,29 +885,45 @@ via a compressible equation of state.</a:documentation>
             <element name="multiphase_properties">
               <a:documentation>Parameters required to model multiphase flow</a:documentation>
               <optional>
-                <element name="relperm_type">
-                  <a:documentation>Option for relperm type in prototype code</a:documentation>
-                  <element name="Corey">
-                    <a:documentation>Corey relperm:
+                <element name="Relperm_Corey">
+                  <a:documentation>Option for relperm type in prototype code
+Corey relperm:
 
 relperm = relperm_max * saturation**-relperm_exponent</a:documentation>
-                    <optional>
-                      <element name="relperm_max">
-                        <a:documentation>Relative permeability end point
+                  <optional>
+                    <element name="relperm_max">
+                      <a:documentation>Relative permeability end point
 
 Value between 0 and 1. Default value 1.0</a:documentation>
-                        <ref name="real"/>
+                      <element name="scalar_field">
+                        <a:documentation>End-point relative permeability</a:documentation>
+                        <attribute name="name">
+                          <value>relperm_max</value>
+                        </attribute>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                        </element>
                       </element>
-                    </optional>
-                    <optional>
-                      <element name="relperm_exponent">
-                        <a:documentation>Relative permeability exponent
+                    </element>
+                  </optional>
+                  <optional>
+                    <element name="relperm_exponent">
+                      <a:documentation>Relative permeability exponent
 
 Default value 2.0</a:documentation>
-                        <ref name="real"/>
+                      <element name="scalar_field">
+                        <a:documentation>Exponent of the formula</a:documentation>
+                        <attribute name="name">
+                          <value>relperm_exponent</value>
+                        </attribute>
+                        <element name="prescribed">
+                          <ref name="material_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                        </element>
                       </element>
-                    </optional>
-                  </element>
+                    </element>
+                  </optional>
                 </element>
               </optional>
               <optional>
@@ -1097,8 +1106,7 @@ Default value 2.0</a:documentation>
                   <a:documentation>Option for capillary pressure				 </a:documentation>
                   <optional>
                     <element name="Diffusive_cap_only">
-                      <a:documentation>Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant.
-i.e. when the darcy capillary number is below 1.
+                      <a:documentation>Non-consistent implementation of the capillary pressure, increases the stability of the method and allows bigger time-steps, use only when capillary affects are not dominant. 
 The capillary pressure term is introduced only in the saturation equation, acting as a pure diffusive term. </a:documentation>
                       <ref name="comment"/>
                     </element>
@@ -1145,7 +1153,16 @@ This option is by default disabled.</a:documentation>
               <optional>
                 <element name="immobile_fraction">
                   <a:documentation>Immobile volume of fluid phase</a:documentation>
-                  <ref name="real"/>
+                  <element name="scalar_field">
+                    <a:documentation>Immobile fraction</a:documentation>
+                    <attribute name="name">
+                      <value>value</value>
+                    </attribute>
+                    <element name="prescribed">
+                      <ref name="material_mesh_choice"/>
+                      <ref name="prescribed_scalar_field"/>
+                    </element>
+                  </element>
                 </element>
               </optional>
               <optional>
@@ -1233,13 +1250,6 @@ Tip: if Diffusive_cap_only is activated Pe is ignored.</a:documentation>
               </element>
             </element>
           </choice>
-          <optional>
-            <element name="actual_velocity">
-              <a:documentation>Solve for the actual velocity, not
-the Darcy velocity (=porosity*velocity)</a:documentation>
-              <empty/>
-            </element>
-          </optional>
         </element>
       </optional>
       <optional>
