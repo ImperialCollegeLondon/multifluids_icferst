@@ -1987,6 +1987,9 @@ contains
                    CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )&
                    * rsum_nodi(:) + CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) ) /HDC
                ENDIF
+
+!CAP_DIFF_COEF_DIVDX(2) = CAP_DIFF_COEF_DIVDX(1)
+
            ELSE
                CAP_DIFF_COEF_DIVDX( : ) = 0.0
            ENDIF
@@ -2240,7 +2243,7 @@ contains
                              FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                              RETRIEVE_SOLID_CTY,theta_cty_solid, &
                              loc_u, loc2_u, THETA_VEL, & 
-                             rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3 ) 
+                             rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX )
                      ENDIF Conditional_GETCT2
 
 
@@ -9536,7 +9539,7 @@ CONTAINS
        RETRIEVE_SOLID_CTY,theta_cty_solid, &
        loc_u, loc2_u, THETA_VEL, &
 ! local memory sent down for speed...
-       UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL)
+       UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, CAP_DIFF_COEF_DIVDX)
     ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
     IMPLICIT NONE
 ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO CT MATRIX
@@ -9565,10 +9568,21 @@ CONTAINS
     REAL,  DIMENSION( NPHASE ), intent( inout ) :: RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct
     REAL,  DIMENSION( NDIM ), intent( inout ) :: UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL
 
+! Need to pass down cap_diff_coef_divdx to this routine
+    REAL, DIMENSION( nphase ) :: CAP_DIFF_COEF_DIVDX
+
 
     ! Local variables...
     INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
          U_KLOC_LEV, U_NLOC_LEV, IPHASE, U_SKLOC
+
+             ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
+
+!         do iphase = 1, nphase
+!             call addto(ct_rhs, cv_nodi, &
+!             - Diffusive_cap_only_real *SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &
+!             * ( T_ALL(:, CV_NODI) - T_ALL(:, CV_NODJ) )
+!         enddo
 
     IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
        ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the CT matrix and add what we really want)

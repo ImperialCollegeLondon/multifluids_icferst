@@ -3263,7 +3263,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       !Variables for adaptive time stepping based on non-linear iterations
       real :: increaseFactor, decreaseFactor, ts_ref_val, s_gc, s_or, acctim
       integer :: variable_selection, i, NonLinearIteration
-
+!ewrite(0,*) "entering"
       !First of all, check if the user wants to do something
       call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic', tolerance_between_non_linear, default = -1. )
       if (tolerance_between_non_linear<0) return
@@ -3379,13 +3379,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
             ts_ref_val = ts_ref_val / dumping_in_sat
 
-            !If we are helping the convergence we just check if we still need to help
-            !or the result is good already, if it is the latter then stop helping
-            if (present_and_true(help_convergence)) then
-                help_convergence = ts_ref_val > tolerance_between_non_linear
-                return
-            end if
-
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call allmax(ts_ref_val)
             !If only non-linear iterations
@@ -3445,7 +3438,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          end if
 
       end select
-
+!ewrite(0,*) "exiting"
     end subroutine Adaptive_NonLinear
 
 
