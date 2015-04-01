@@ -4039,7 +4039,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
     end subroutine CheckElementAngles
 
 
-    subroutine calculate_outflux(packed_state, ndotqnew, sele, surface_ids, totoutflux, ele , x_ndgln, cv_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, detwei)
+    subroutine calculate_outflux(packed_state, ndotqnew, sele, surface_ids, totoutflux, ele , x_ndgln,&
+         cv_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, detwei, IDs_ndgln)
        implicit none
 
 ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
@@ -4052,7 +4053,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
        integer, dimension(1), intent(in) :: surface_ids
        real, dimension(:), intent(inout) :: totoutflux
        integer, intent(in) :: ele
-       integer, dimension(:), intent( in ) ::  x_ndgln
+       integer, dimension(:), intent( in ) ::  x_ndgln, IDs_ndgln
        ! Added cv_ndgln
        integer, dimension(:), intent( in ) ::  cv_ndgln
        integer, intent(in) :: cv_nloc
@@ -4135,7 +4136,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       ! x_ele calculates a coordinate on each element
       !x_ele=x_ndgln((ele-1)*cv_nloc+1)
       !PorG(ele) = Por(x_ele)
-      PorG = Por(ele)
+      PorG = Por(IDs_ndgln(ele))
 
 ! This function will return true for surfaces we should be integrating over (this entire subroutine is called in a loop over ele,(sele),gi in cv-adv-dif)
 ! Need the condition that sele > 0 Check why it can be zero/negative.
