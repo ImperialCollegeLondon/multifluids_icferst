@@ -166,24 +166,10 @@
 
     !--------------------------------------------------------------------------------------------------------
 
-
-    if( &
-                                ! if this is not a zero timestep simulation (otherwise, there would
-                                ! be two identical dump files)
-         & current_time < finish_time &
-                                ! unless explicitly disabled
-         & .and. .not. have_option("/io/disable_dump_at_start") &
-         & ) then
-       call write_state(dump_no, state)
-    end if
-
     call initialise_convergence(filename, state)
     call initialise_steady_state(filename, state)
     call initialise_advection_convergence(state)
 
-    if(have_option("/io/stat/output_at_start")) then
-      call write_diagnostics(state, current_time, dt, timestep, not_to_move_det_yet=.true.)
-    end if
 
        ! this may already have been done in populate_state, but now
        ! we evaluate at the correct "shifted" time level:
