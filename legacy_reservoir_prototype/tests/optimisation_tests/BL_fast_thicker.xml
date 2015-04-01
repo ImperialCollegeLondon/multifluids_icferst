@@ -2,7 +2,7 @@
 <testproblem>
   <name>BL_fast_thicker</name>
   <owner userid="pablo.salinas"/>
-  <tags>mpml</tags>
+  <tags>porous mpml</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>cd ./BL_fast_thicker/
         python ./Check_BL.py > log</command_line>

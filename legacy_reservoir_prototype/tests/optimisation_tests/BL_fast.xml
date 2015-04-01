@@ -2,7 +2,7 @@
 <testproblem>
   <name>BL_fast</name>
   <owner userid="pablo.salinas"/>
-  <tags>mpml exodusii</tags>
+  <tags>porous mpml exodusii</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>cd ./BL_fast/
         python ./Check_BL.py &gt; log</command_line>

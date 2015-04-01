@@ -676,6 +676,8 @@ contains
       else
           dumping_in_sat = 1
       end if
+      !Make sure the parameter is consistent between cpus
+      if (IsParallel()) call allmin(dumping_in_sat)
 
       !While ensuring global conservation of mass, force the saturation to be between bounds
       if (have_option_for_any_phase('Impose_saturation_limits', nphase)) then

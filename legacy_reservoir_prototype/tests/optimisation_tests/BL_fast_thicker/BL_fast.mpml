@@ -20,7 +20,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">1</integer_value>
+            <integer_value rank="0">2</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -78,7 +78,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">1</integer_value>
+            <integer_value rank="0">2</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -159,7 +159,13 @@
       <real_value rank="0">0.2</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">3</integer_value>
+      <integer_value rank="0">100</integer_value>
+      <nonlinear_iterations_automatic>
+        <real_value rank="0">0.03</real_value>
+        <Dumping_factor>
+          <real_value rank="0">0.3334</real_value>
+        </Dumping_factor>
+      </nonlinear_iterations_automatic>
     </nonlinear_iterations>
   </timestepping>
   <caching/>
@@ -169,7 +175,6 @@
     </mobility>
   </physical_parameters>
   <material_phase name="phase1">
-    <Impose_saturation_limits/>
     <equation_of_state>
       <incompressible>
         <linear>
@@ -512,14 +517,25 @@
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <relperm_type>
-        <Corey/>
-      </relperm_type>
       <immobile_fraction>
-        <real_value rank="0">0.2</real_value>
+        <scalar_field name="value">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0.2</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
       </immobile_fraction>
       <Pe_stab>
-        <real_value rank="0">0.5e-2</real_value>
+        <real_value rank="0">0.25e-2</real_value>
       </Pe_stab>
     </multiphase_properties>
   </material_phase>
@@ -789,11 +805,22 @@
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <relperm_type>
-        <Corey/>
-      </relperm_type>
       <immobile_fraction>
-        <real_value rank="0">0.3</real_value>
+        <scalar_field name="value">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0.3</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
       </immobile_fraction>
     </multiphase_properties>
   </material_phase>

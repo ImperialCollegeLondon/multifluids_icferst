@@ -3255,6 +3255,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       integer, intent(in) :: its, order
       !Local variables
       real :: dt
+      real, save :: Accumulated_sol
       real, parameter :: check_sat_threshold = 1d-6
       real, dimension(:), pointer :: pressure
       real, dimension(:,:), pointer :: phasevolumefraction
@@ -3362,6 +3363,9 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          !If Automatic_NonLinerIterations then we compare the variation of the a property from one time step to the next one
          ExitNonLinearLoop = .false.
          Repeat_time_step = .false.
+
+         if (its == 1) Accumulated_sol = dumping_in_sat
+
          if (its > 1 ) then
 
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
@@ -3379,6 +3383,16 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             !Rescale using the dumping in saturation to get a more efficient number to compare with
             !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
             ts_ref_val = ts_ref_val / dumping_in_sat
+
+            ewrite(1,*) "Difference between non linear iterations:", ts_ref_val, "Non-linear iteration", its
+
+            !We cannot go to the next time step until we have performed a full time step
+            Accumulated_sol = Accumulated_sol + dumping_in_sat
+            if (IsParallel()) call allmin(Accumulated_sol)
+
+            if (Accumulated_sol < 1.0) then
+                return
+            end if
 
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call allmax(ts_ref_val)

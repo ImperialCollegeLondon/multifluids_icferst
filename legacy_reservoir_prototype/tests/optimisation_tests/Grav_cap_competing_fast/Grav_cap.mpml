@@ -153,24 +153,18 @@
       <real_value rank="0">0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">1e-3</real_value>
+      <real_value rank="0">1e-2</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">1.555</real_value>
+      <real_value rank="0">0.6</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">10</integer_value>
+      <integer_value rank="0">100</integer_value>
       <nonlinear_iterations_automatic>
         <real_value rank="0">0.1</real_value>
-        <adaptive_timestep_nonlinear>
-          <integer_value rank="0">3</integer_value>
-          <increase_factor>
-            <real_value rank="0">1.2</real_value>
-          </increase_factor>
-          <decrease_factor>
-            <real_value rank="0">1.5</real_value>
-          </decrease_factor>
-        </adaptive_timestep_nonlinear>
+        <Dumping_factor>
+          <real_value rank="0">0.1</real_value>
+        </Dumping_factor>
       </nonlinear_iterations_automatic>
     </nonlinear_iterations>
   </timestepping>
@@ -507,9 +501,6 @@
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <relperm_type>
-        <Corey/>
-      </relperm_type>
       <capillary_pressure>
         <type_Brooks_Corey>
           <scalar_field name="C">
@@ -545,11 +536,22 @@
         </type_Brooks_Corey>
       </capillary_pressure>
       <immobile_fraction>
-        <real_value rank="0">0.2</real_value>
+        <scalar_field name="value">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0.2</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
       </immobile_fraction>
-      <Pe_stab>
-        <real_value rank="0">1</real_value>
-      </Pe_stab>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
@@ -810,11 +812,22 @@
       </prognostic>
     </scalar_field>
     <multiphase_properties>
-      <relperm_type>
-        <Corey/>
-      </relperm_type>
       <immobile_fraction>
-        <real_value rank="0">0.3</real_value>
+        <scalar_field name="value">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0.3</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
       </immobile_fraction>
     </multiphase_properties>
   </material_phase>

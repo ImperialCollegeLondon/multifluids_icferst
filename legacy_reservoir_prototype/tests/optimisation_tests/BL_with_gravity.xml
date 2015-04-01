@@ -2,7 +2,7 @@
 <testproblem>
   <name>Check_BL_with_gravity</name>
   <owner userid="pablo.salinas"/>
-  <tags>mpml</tags>
+  <tags>porous gravity mpml</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>cd ./BL_with_gravity/
         python ./Check_BL_with_gravity.py > log</command_line>

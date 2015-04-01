@@ -28,8 +28,8 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.0185
-Tolerance_L2_NORM = 0.0012
+Tolerance_L1_NORM = 0.019
+Tolerance_L2_NORM = 0.0016
 
 AutomaticLine = 0
 
@@ -196,6 +196,7 @@ for i in range(len(Experimental_X)):
         L2_sum = L2_sum + (Analytical_Y[i] - Experimental_Y[i])**2
         continue
     Experimental_X[i] = Experimental_X[i] + 0.5#In this test case the origin is in -0.5
+
     position = Experimental_X[i]
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)

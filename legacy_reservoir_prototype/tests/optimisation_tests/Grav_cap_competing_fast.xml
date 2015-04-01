@@ -2,7 +2,7 @@
 <testproblem>
   <name>Grav_cap_competing_fast</name>
   <owner userid="pablo.salinas"/>
-  <tags>mpml</tags>
+  <tags>porous gravity capillary mpml</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>cd ./Grav_cap_competing_fast/
         python ./Check_grav_cap.py > log </command_line>
