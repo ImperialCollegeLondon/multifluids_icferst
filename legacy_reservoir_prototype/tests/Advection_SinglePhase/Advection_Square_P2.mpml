@@ -489,6 +489,9 @@
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -614,6 +617,9 @@ def val(X, t):
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>

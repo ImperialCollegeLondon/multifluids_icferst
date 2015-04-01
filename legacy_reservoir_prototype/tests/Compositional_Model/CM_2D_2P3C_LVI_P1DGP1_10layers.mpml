@@ -146,6 +146,7 @@
     </dump_period_in_timesteps>
     <output_mesh name="P0DG"/>
     <stat/>
+    <log_output/>
   </io>
   <timestepping>
     <current_time>
@@ -300,7 +301,7 @@
             <real_value rank="0">1e-7</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">500</integer_value>
+            <integer_value rank="0">5000</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -546,9 +547,7 @@ for i in range( field.node_count ):
       </diagnostic>
     </vector_field>
     <multiphase_properties>
-      <relperm_type>
-        <Corey/>
-      </relperm_type>
+      <Relperm_Corey/>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
@@ -1057,9 +1056,7 @@ for i in range( field.node_count ):
       </diagnostic>
     </vector_field>
     <multiphase_properties>
-      <relperm_type>
-        <Corey/>
-      </relperm_type>
+      <Relperm_Corey/>
     </multiphase_properties>
   </material_phase>
   <material_phase name="Component1">

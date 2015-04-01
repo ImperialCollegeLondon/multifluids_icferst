@@ -504,6 +504,9 @@
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -656,6 +659,9 @@ for i in range( field.node_count ):
         </tensor_field>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -784,6 +790,9 @@ for i in range( field.node_count ):
         </tensor_field>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -912,6 +921,9 @@ for i in range( field.node_count ):
         </tensor_field>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -1040,6 +1052,9 @@ for i in range( field.node_count ):
         </tensor_field>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -1168,6 +1183,9 @@ for i in range( field.node_count ):
         </tensor_field>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>

@@ -3053,12 +3053,12 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
            mfield=>extract_tensor_field(s(icomp),'Packed'//name)
            allocate(mfield%bc)
 
+           nbc=0
+
            do iphase=1,mfield%dim(2)
               sfield=>extract_scalar_field( ms(icomp,iphase),trim(name),stat)
 
               if (stat/= 0 ) cycle
-
-              nbc=0
 
               do n=1,get_boundary_condition_count(sfield)
 
@@ -3077,7 +3077,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                  allocate(tbc%applies(1,mfield%dim(2)))
                  tbc%applies= .false.
                  tbc%applies(1,iphase)=.true.
-
 
                  nbc=nbc+1
                  if (nbc>1) then
