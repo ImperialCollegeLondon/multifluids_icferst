@@ -549,11 +549,23 @@
       </diagnostic>
     </vector_field>
     <multiphase_properties>
-      <relperm_type>
-        <Corey/>
-      </relperm_type>
+      <Relperm_Corey/>
       <immobile_fraction>
-        <real_value rank="0">0.2</real_value>
+        <scalar_field name="value">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0.2</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
       </immobile_fraction>
       <Pe_stab>
         <real_value rank="0">0.5e-2</real_value>
@@ -851,11 +863,23 @@
       </diagnostic>
     </scalar_field>
     <multiphase_properties>
-      <relperm_type>
-        <Corey/>
-      </relperm_type>
+      <Relperm_Corey/>
       <immobile_fraction>
-        <real_value rank="0">0.3</real_value>
+        <scalar_field name="value">
+          <prescribed>
+            <mesh name="P0DG"/>
+            <value name="WholeMesh">
+              <constant>
+                <real_value rank="0">0.3</real_value>
+              </constant>
+            </value>
+            <output/>
+            <stat/>
+            <detectors>
+              <exclude_from_detectors/>
+            </detectors>
+          </prescribed>
+        </scalar_field>
       </immobile_fraction>
     </multiphase_properties>
   </material_phase>

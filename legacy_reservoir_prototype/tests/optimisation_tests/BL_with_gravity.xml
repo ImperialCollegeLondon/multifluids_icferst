@@ -5,7 +5,7 @@
   <tags>mpml</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>cd ./BL_with_gravity/
-        python ./Check_BL_with_gravity.py > log</command_line>
+        python ./Check_BL_with_gravity.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>
