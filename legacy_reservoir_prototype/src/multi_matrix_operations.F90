@@ -1822,9 +1822,11 @@
     mat%name="MomentumMatrix"
 
     if (associated(halo)) then
-       mat%row_halo => halo
+       allocate(mat%row_halo)
+       mat%row_halo = halo
        call incref(mat%row_halo)
-       mat%column_halo => halo
+       allocate(mat%column_halo)
+       mat%column_halo = halo
        call incref(mat%column_halo)
     else
        nullify(mat%row_halo)
