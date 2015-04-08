@@ -27,7 +27,7 @@
 
 #include "fdebug.h"
 
-module diagnostic_fields_new
+module diagnostic_fields_new_multiphase
 
   use field_options
   use fields
@@ -1071,4 +1071,4 @@ MULTIPLE_STATE_TENSOR_DIAGNOSTICS
    
   end subroutine diagnostic_fields_new_check_options
 
-end module diagnostic_fields_new
+end module diagnostic_fields_new_multiphase

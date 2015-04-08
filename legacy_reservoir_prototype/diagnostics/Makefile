@@ -76,7 +76,7 @@ $(addsuffix .o, $(filter-out Diagnostic_Source_Fields, $(basename $(wildcard *.F
 
 $(AUTO_WRAPPER).F90: $(DIAGOBJS) $(AUTO_WRAPPER).F90.in \
   ../../bin/make_diagnostic_fields
-	../../bin/make_diagnostic_fields -b $(AUTO_WRAPPER)
+	../../bin/make_diagnostic_fields -b $(AUTO_WRAPPER) -p ../../diagnostics/
 
 Diagnostic_Fields_New_Multiphase.o: $(DIAGOBJS) $(AUTO_WRAPPER).F90
 Diagnostic_Fields_Interfaces.o: Diagnostic_Fields_New.o
