@@ -46,7 +46,7 @@
          simulation_start_time, &
          simulation_start_cpu_time, &
          simulation_start_wall_time
-    use diagnostic_fields_new, only : &
+    use diagnostic_fields_new_multiphase, only : &
          & calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
          & check_diagnostic_dependencies
     use field_priority_lists
@@ -61,6 +61,9 @@
     use multiphase_time_loop
     use multiphase_rheology
     use MeshDiagnostics
+
+    use signals
+
     !use mp_prototype
     use tictoc
     implicit none
@@ -79,6 +82,9 @@
 
     real :: finish_time, nonlinear_iteration_tolerance
     
+    ! Establish signal handlers
+    call initialise_signals()
+
     call get_option("/simulation_name",filename)
     
     call set_simulation_start_times()

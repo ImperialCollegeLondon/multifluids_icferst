@@ -46,10 +46,12 @@ MAKE    = @MAKE@
 AR  = @AR@
 ARFLAGS = @ARFLAGS@
 
-OBJS = Extract_From_State.o multi_matrix_operations.o \
+OBJS_PREDIAGNOSTICS = Extract_From_State.o multi_matrix_operations.o \
 multi_shape_fct_ND.o multi_shape_fct.o multi_sparsity.o multi_eos.o cv-adv-dif.o multi_solvers.o \
-multi_compositional.o multi_dyncore_dg.o Multiphase_TimeLoop.o \
-Multiphase_Prototype_Wrapper.o multi_IO.o multi_fracture.o multi_caching.o multi_rheology.o
+multi_compositional.o multi_dyncore_dg.o \
+multi_IO.o multi_fracture.o multi_caching.o multi_rheology.o
+
+OBJS_POSTDIAGNOSTICS = Multiphase_TimeLoop.o Multiphase_Prototype_Wrapper.o
 
 .SUFFIXES: .f90 .F90 .c .cpp .o .a
 
@@ -68,7 +70,11 @@ Multiphase_Prototype_Wrapper.o multi_IO.o multi_fracture.o multi_caching.o multi
 	@echo "        CXX $<"
 	$(CXX) $(CXXFLAGS) -c $<
 
-default: $(OBJS)
+default: $(OBJS_PREDIAGNOSTICS)  $(OBJS_POSTDIAGNOSTICS) 
+
+pre_diagnostics: $(OBJS_PREDIAGNOSTICS)
+
+post_diagnostics: $(OBJS_POSTDIAGNOSTICS)
 
 # cancel implicit rule that tries to make .o from .mod with m2c:
 %.o: %.mod
