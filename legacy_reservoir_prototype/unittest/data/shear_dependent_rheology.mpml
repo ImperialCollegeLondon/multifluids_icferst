@@ -129,7 +129,7 @@
         </consistency_index>
         <tensor_field name="Viscosity">
           <diagnostic>
-            <mesh name="VelocityMesh"/>
+            <mesh name="PressureMesh"/>
             <output/>
           </diagnostic>
         </tensor_field>
@@ -157,15 +157,5 @@
         </detectors>
       </prescribed>
     </vector_field>
-    <tensor_field name="Viscosity">
-      <diagnostic>
-        <algorithm name="Internal" material_phase_support="multiple"/>
-        <mesh name="VelocityMesh"/>
-        <output/>
-        <stat>
-          <include_in_stat/>
-        </stat>
-      </diagnostic>
-    </tensor_field>
   </material_phase>
 </multiphase_options>
