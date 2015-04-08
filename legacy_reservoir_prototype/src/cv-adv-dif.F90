@@ -2147,7 +2147,7 @@ contains
                            ENDIF
                         END DO
                      ENDIF
-                     NDOTQOLD = THETA_VEL*NDOTQNEW + (1.0-THETA_VEL)*NDOTQOLD
+                     NDOTQOLD = THETA_VEL*NDOTQ + (1.0-THETA_VEL)*NDOTQOLD
 
 
 
@@ -2181,7 +2181,6 @@ contains
 
                      !====================== ACV AND RHS ASSEMBLY ===================
                      Conditional_GETCT2 : IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS
-
                         IF(CT_DO_NOT_CHANGE) THEN ! CT will not change with this option...
                            FTHETA_T2=1.0
                            ONE_M_FTHETA_T2OLD=0.0

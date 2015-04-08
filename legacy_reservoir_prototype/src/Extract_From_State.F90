@@ -108,7 +108,6 @@
            xu_nonods, x_nonods, x_nonods_p1, p_nonods, ph_nloc, ph_nonods
 
 !!$ Local variables
-      character( len = option_path_len ) :: vel_element_type
       type( vector_field ), pointer :: positions, velocity
       type( scalar_field ), pointer :: pressure
       type( mesh_type ), pointer :: velocity_cg_mesh, pressure_cg_mesh, ph_mesh
@@ -141,12 +140,7 @@
       assert( nphase > 0 ) ! Check if there is more than 0 phases
 
 !!$ Get the vel element type.
-      call get_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/element_type', &
-           vel_element_type )
-
-      is_porous_media = .false.
-      if (trim(vel_element_type)=='lagrangian') &
-       is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
+      is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
 
       positions => extract_vector_field( state, 'Coordinate' )
       pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -496,6 +490,7 @@
          if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::Sweby' ) ) v_disopt = 5
          if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::CompressiveAdvection' ) ) v_disopt = 9
       end if Conditional_VDISOPT
+
 
       call get_option( trim( option_path ) // '/prognostic/spatial_discretisation/conservative_advection', v_beta )
       call get_option( trim( option_path ) // '/prognostic/temporal_discretisation/theta', v_theta )
@@ -2095,7 +2090,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       type(mesh_type) :: lmesh,nvmesh
       type(mesh_type), pointer :: ovmesh, element_mesh
       type(element_type) :: vel_shape, element_shape
-      character( len = option_path_len ) :: vel_element_type
 
       integer, dimension( : ), pointer :: element_nodes
 
@@ -2170,9 +2164,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       call insert(packed_state,ten_field,"PackedRockFluidProp")
       call deallocate(ten_field)
 
-
-      call get_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/element_type', &
-           vel_element_type )
 
       allocate(multiphase_state(nphase))
       allocate(multicomponent_state(ncomp))
