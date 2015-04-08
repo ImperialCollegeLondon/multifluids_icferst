@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast_pressure_boundaries</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml exodusii</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>cd ./BL_fast_pressure_boundaries/
+        python ./Check_BL.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="BL_fast_pressure_boundaries" language="python">BL_fast = False
+Log=file('BL_fast_pressure_boundaries/log','r')
+while True:
+    cadena=Log.readline()
+    if len(cadena) ==0:
+        break # EOF
+
+if 'OK' in cadena: BL_fast = True
+
+Log.close</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
