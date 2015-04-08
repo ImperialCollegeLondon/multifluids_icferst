@@ -1087,6 +1087,10 @@
 
 
             !Check if the results are good so far and act in consequence, only does something if requested by the user
+            if (sig_hup .or. sig_int) then
+               ewrite(1,*) "Caught signal, exiting nonlinear loop"
+               exit Loop_NonLinearIteration
+            end if
             call Adaptive_NonLinear(packed_state, reference_field, its,&
                  Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3)
             if (ExitNonLinearLoop) exit Loop_NonLinearIteration
@@ -1522,6 +1526,12 @@
          end if
 
          call set_boundary_conditions_values(state, shift_time=.true.)
+
+        if (sig_hup .or. sig_int) then
+          ewrite(1,*) "Caught signal, exiting"
+          exit Loop_Time
+        end if
+
 
       end do Loop_Time
 
