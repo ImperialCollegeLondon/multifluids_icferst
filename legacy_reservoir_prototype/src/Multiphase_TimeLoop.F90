@@ -33,7 +33,7 @@
     use write_state_module
     use diagnostic_variables
     use diagnostic_fields_wrapper
-    use diagnostic_fields_new, only : &
+    use diagnostic_fields_new_multiphase, only : &
          calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
          check_diagnostic_dependencies
     use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
