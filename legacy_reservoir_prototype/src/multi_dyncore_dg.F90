@@ -2893,7 +2893,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
            state, 'Vel_mesh', StorageIndexes(13))
 
-        if ( quad_over_whole_ele ) then
+        if ( quad_over_whole_ele .and. .not. is_porous_media) then
            cvn => cvfen
            cvn_short => cvfen_short
            sbcvn => sbcvfen

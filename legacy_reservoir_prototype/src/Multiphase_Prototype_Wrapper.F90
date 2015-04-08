@@ -61,6 +61,9 @@
     use multiphase_time_loop
     use multiphase_rheology
     use MeshDiagnostics
+
+    use signals
+
     !use mp_prototype
     use tictoc
     implicit none
@@ -79,6 +82,9 @@
 
     real :: finish_time, nonlinear_iteration_tolerance
     
+    ! Establish signal handlers
+    call initialise_signals()
+
     call get_option("/simulation_name",filename)
     
     call set_simulation_start_times()
