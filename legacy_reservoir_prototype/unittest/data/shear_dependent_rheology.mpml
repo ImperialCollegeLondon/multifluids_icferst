@@ -22,6 +22,9 @@
           <polynomial_degree>
             <integer_value rank="0">2</integer_value>
           </polynomial_degree>
+          <element_type>
+            <string_value>lagrangian</string_value>
+          </element_type>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -38,6 +41,9 @@
           <polynomial_degree>
             <integer_value rank="0">2</integer_value>
           </polynomial_degree>
+          <element_type>
+            <string_value>lagrangian</string_value>
+          </element_type>
         </mesh_shape>
         <stat>
           <exclude_from_stat/>
@@ -51,6 +57,9 @@
           <polynomial_degree>
             <integer_value rank="0">2</integer_value>
           </polynomial_degree>
+          <element_type>
+            <string_value>lagrangian</string_value>
+          </element_type>
         </mesh_shape>
         <stat>
           <exclude_from_stat/>
@@ -64,6 +73,9 @@
           <polynomial_degree>
             <integer_value rank="0">2</integer_value>
           </polynomial_degree>
+          <element_type>
+            <string_value>lagrangian</string_value>
+          </element_type>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -103,7 +115,7 @@
     </finish_time>
   </timestepping>
   <caching/>
-  <material_phase name="Flluid">
+  <material_phase name="Fluid">
     <rheology>
       <non_newtonian name="ShearDependent">
         <yield_stress>
@@ -145,5 +157,15 @@
         </detectors>
       </prescribed>
     </vector_field>
+    <tensor_field name="Viscosity">
+      <diagnostic>
+        <algorithm name="Internal" material_phase_support="multiple"/>
+        <mesh name="VelocityMesh"/>
+        <output/>
+        <stat>
+          <include_in_stat/>
+        </stat>
+      </diagnostic>
+    </tensor_field>
   </material_phase>
 </multiphase_options>
