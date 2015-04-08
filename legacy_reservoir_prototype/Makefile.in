@@ -82,8 +82,16 @@ lib/libmphase.a: $(OBJS)
 	@$(AR) $(ARFLAGS) lib/libmphase.a src/*.o diagnostics/*.o
 
 clean:
-	@rm -f *.o *.d include/*.mod $(PROG_EXEC) lib/*.a
+	@rm -f *.o *.d include/*.mod $(PROG_EXEC) lib/*.a bin/
 	@cd src;   make clean
 	@cd diagnostics; make clean
 	@cd tests; PYTHONPATH=../python ../tools/testharness_MultiphasePrototype.py --clean >/dev/null
 	@cd unittest; make clean
+
+
+build_unittest: lib/libmphase.a
+	@cd unittest; $(MAKE)
+
+unittest: build_unittest
+	@echo "RUN bin/tests"
+	@../bin/unittestharness bin/tests

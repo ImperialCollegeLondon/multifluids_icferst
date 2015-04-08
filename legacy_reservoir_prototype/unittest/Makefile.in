@@ -52,8 +52,9 @@ DISABLED_TESTS=
 TEST_BINARIES=$(filter-out $(DISABLED_TESTS), $(basename $(wildcard *.F90)))
 
 unittest: $(TEST_BINARIES) data
-	mkdir -p ../bin
-	ln -sf $(addprefix ./,$(TEST_BINARIES)) ../bin/
+	mkdir -p ../bin/tests
+	ln -sf $(addprefix ../../unittest/,$(TEST_BINARIES)) ../bin/tests
+	cp -r ../unittest/data ../bin/tests/
 
 data:
 	cd ../../tests/data; \
