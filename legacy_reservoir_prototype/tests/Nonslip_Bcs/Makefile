@@ -1,4 +1,4 @@
-input: clean
+input:
 	gmsh -2 -clmax 0.2 box2d.geo -o box2dA.msh
 	gmsh -2 -clmax 0.1 box2d.geo -o box2dB.msh
 	gmsh -2 -clmax 0.05 box2d.geo -o box2dC.msh

@@ -22,6 +22,9 @@
           <polynomial_degree>
             <integer_value rank="0">2</integer_value>
           </polynomial_degree>
+          <element_type>
+            <string_value>lagrangian</string_value>
+          </element_type>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -38,6 +41,9 @@
           <polynomial_degree>
             <integer_value rank="0">2</integer_value>
           </polynomial_degree>
+          <element_type>
+            <string_value>lagrangian</string_value>
+          </element_type>
         </mesh_shape>
         <stat>
           <exclude_from_stat/>
@@ -51,6 +57,9 @@
           <polynomial_degree>
             <integer_value rank="0">2</integer_value>
           </polynomial_degree>
+          <element_type>
+            <string_value>lagrangian</string_value>
+          </element_type>
         </mesh_shape>
         <stat>
           <exclude_from_stat/>
@@ -64,6 +73,9 @@
           <polynomial_degree>
             <integer_value rank="0">2</integer_value>
           </polynomial_degree>
+          <element_type>
+            <string_value>lagrangian</string_value>
+          </element_type>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
