@@ -2580,9 +2580,11 @@ contains
 
                END IF Conditional_GETMAT2
 
+               !Force Sum of volume fractions to be unity
+!               if (is_porous_media)&
+!                  LOC_CV_RHS_I = LOC_CV_RHS_I + R* ( 1.0  - SUM(T_ALL( :, CV_NODI ) ))!Spreads the error to all the phases
 
                call addto(cv_rhs_field,CV_NODI,LOC_CV_RHS_I)
-
 
          END DO Loop_CVNODI2
 
@@ -2612,14 +2614,11 @@ contains
 
             ENDIF
 
-!            DO IPHASE = 1, NPHASE
-
             call addto(ct_rhs,cv_nodi,&
                     - R * SUM( &
                     + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
                     + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
                     - DERIV( :, CV_NODI ) * CV_P( CV_NODI ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL( :, CV_NODI ) ) )
-
 
                DIAG_SCALE_PRES( CV_NODI ) = DIAG_SCALE_PRES( CV_NODI )  &
                   +  MEAN_PORE_CV( CV_NODI ) * SUM( T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
