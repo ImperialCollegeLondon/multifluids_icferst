@@ -82,7 +82,8 @@ lib/libmphase.a: $(OBJS)
 	@$(AR) $(ARFLAGS) lib/libmphase.a src/*.o diagnostics/*.o
 
 clean:
-	@rm -f *.o *.d include/*.mod $(PROG_EXEC) lib/*.a bin/
+	@rm -f *.o *.d include/*.mod $(PROG_EXEC) lib/*.a 
+	@rm -rf bin/
 	@cd src;   make clean
 	@cd diagnostics; make clean
 	@cd tests; PYTHONPATH=../python ../tools/testharness_MultiphasePrototype.py --clean >/dev/null
