@@ -1149,7 +1149,7 @@ contains
             CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
             SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
             MEAN_PORE_CV( CV_INOD ) = MEAN_PORE_CV( CV_INOD ) + &
-                 MASS_ELE( IDs_ndgln(ELE) ) * VOLFRA_PORE( IDs_ndgln(ELE) )
+                 MASS_ELE( ELE ) * VOLFRA_PORE( IDs_ndgln(ELE) )
          END DO
       END DO
       MEAN_PORE_CV = MEAN_PORE_CV / SUM_CV
@@ -2589,8 +2589,6 @@ contains
       END IF Conditional_GETCV_DISC2
 
       IF ( GETCT ) THEN
-      
-      
          W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T
          W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD
 
@@ -2600,7 +2598,6 @@ contains
          DO CV_NODI = 1, CV_NONODS
 
             R = MASS_CV( CV_NODI ) * MEAN_PORE_CV( CV_NODI ) / DT
-
 ! Add constraint to force sum of volume fracts to be unity...
                   ! W_SUM_ONE==1 applies the constraint
                   ! W_SUM_ONE==0 does NOT apply the constraint
@@ -2640,7 +2637,6 @@ contains
 
 
       END IF
-
 
        if(GETCT .and. calculate_flux) then
 
