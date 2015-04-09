@@ -22,7 +22,6 @@ Extract_From_State.o ../include/copy_outof_state.mod: Extract_From_State.F90 \
 Multiphase_Prototype_Wrapper.o : Multiphase_Prototype_Wrapper.F90 \
    ../../include/boundary_conditions_from_options.mod \
    ../../include/checkpoint.mod ../../include/confdefs.h \
-   ../../include/diagnostic_fields_new.mod \
    ../../include/diagnostic_fields_wrapper.mod \
    ../../include/diagnostic_variables.mod \
    ../../include/discrete_properties_module.mod ../../include/elements.mod \
@@ -33,9 +32,11 @@ Multiphase_Prototype_Wrapper.o : Multiphase_Prototype_Wrapper.F90 \
    ../../include/multimaterial_module.mod ../../include/multiphase_module.mod \
    ../../include/parallel_tools.mod ../../include/populate_state_module.mod \
    ../../include/reference_counting.mod ../../include/reserve_state_module.mod \
-   ../../include/spud.mod ../../include/state_module.mod \
-   ../../include/tictoc.mod ../../include/timeloop_utilities.mod \
-   ../../include/timers.mod ../../include/write_state_module.mod \
+   ../../include/signals.mod ../../include/spud.mod \
+   ../../include/state_module.mod ../../include/tictoc.mod \
+   ../../include/timeloop_utilities.mod ../../include/timers.mod \
+   ../../include/write_state_module.mod \
+   ../include/diagnostic_fields_new_multiphase.mod \
    ../include/multiphase_rheology.mod ../include/multiphase_time_loop.mod
 
 ../include/multiphase_time_loop.mod: Multiphase_TimeLoop.o
@@ -47,7 +48,6 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../../include/boundary_conditions.mod \
    ../../include/boundary_conditions_from_options.mod \
    ../../include/checkpoint.mod ../../include/confdefs.h \
-   ../../include/diagnostic_fields_new.mod \
    ../../include/diagnostic_fields_wrapper.mod \
    ../../include/diagnostic_variables.mod ../../include/fdebug.h \
    ../../include/field_options.mod ../../include/fields.mod \
@@ -61,9 +61,10 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../../include/state_module.mod ../../include/vector_tools.mod \
    ../../include/vtk_interfaces.mod ../../include/write_state_module.mod \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
-   ../include/cv_advection.mod ../include/multiphase_1d_engine.mod \
-   ../include/multiphase_caching.mod ../include/multiphase_eos.mod \
-   ../include/multiphase_fractures.mod ../include/multiphase_rheology.mod \
+   ../include/cv_advection.mod ../include/diagnostic_fields_new_multiphase.mod \
+   ../include/multiphase_1d_engine.mod ../include/multiphase_caching.mod \
+   ../include/multiphase_eos.mod ../include/multiphase_fractures.mod \
+   ../include/multiphase_rheology.mod \
    ../include/shape_functions_linear_quadratic.mod ../include/spact.mod
 
 ../include/cv_advection.mod: cv-adv-dif.o

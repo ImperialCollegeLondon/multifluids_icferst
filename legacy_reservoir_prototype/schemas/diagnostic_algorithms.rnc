@@ -1301,6 +1301,17 @@ scalar_distance_function =
       }
    )
 
+darcy_velocity_algorithm =
+   (
+      ## Algorithm to calculate the phase Darcy velocity.
+      element algorithm {
+         attribute name { "darcy_velocity"},	   
+         element solver {
+           linear_solver_options_sym
+     	 }?
+      }
+   )
+
 # Time averaged fields
 
 scalar_time_averaged_algorithm =
@@ -1432,6 +1443,7 @@ vector_diagnostic_algorithms |= grad_algorithm
 vector_diagnostic_algorithms |= geostrophic_velocity_algorithm
 vector_diagnostic_algorithms |= finite_element_divergence_transpose_algorithm
 vector_diagnostic_algorithms |= eigenvalues_symmetric_algorithm
+vector_diagnostic_algorithms |= darcy_velocity_algorithm
 vector_diagnostic_algorithms |= curl_algorithm
 vector_diagnostic_algorithms |= vector_python_diagnostic_algorithm
 
