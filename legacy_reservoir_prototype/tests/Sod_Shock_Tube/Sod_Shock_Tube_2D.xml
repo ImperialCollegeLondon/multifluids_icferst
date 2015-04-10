@@ -3,7 +3,7 @@
   <name>Sod_Shock_Tube_2D</name>
   <owner userid="dimitrios.pavlidis"/>
   <tags>mpml</tags>
-  <problem_definition length="short" nprocs="1">
+  <problem_definition length="long" nprocs="1">
     <command_line>cp  Sod_Shock_Tube_2D_P1DGP1_20layers.mpml Sod_Shock_Tube_2D_P1DGP1_80layers.mpml
 sed -i 's/_20layers/_80layers/' Sod_Shock_Tube_2D_P1DGP1_80layers.mpml
 

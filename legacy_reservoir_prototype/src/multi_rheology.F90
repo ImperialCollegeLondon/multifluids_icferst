@@ -719,7 +719,9 @@
            ovmesh=make_mesh(positions%mesh,&
                 shape=pressure%mesh%shape,&
               continuity=-1,name="PressureMesh_Discontinuous")
-           call insert(state(1),ovmesh,"PressureMesh_Discontinuous")
+           do i=1,size(state)
+              call insert(state(i),ovmesh,"PressureMesh_Discontinuous")
+           end do
            call deallocate(ovmesh)
            deallocate(ovmesh)
            material_mesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")

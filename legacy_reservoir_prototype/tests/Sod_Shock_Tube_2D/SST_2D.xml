@@ -3,7 +3,7 @@
   <name>Sod_Shock_Tube_2D</name>
   <owner userid="zhihua.xie"/>
   <tags>mpml</tags>
-  <problem_definition length="short" nprocs="1">
+  <problem_definition length="long" nprocs="1">
     <command_line>../../../bin/multiphase_prototype Sod_Shock_Tube_2D_P1DGP1_20by20.mpml
 ../../../bin/multiphase_prototype Sod_Shock_Tube_2D_P1DGP2_20by20.mpml
 ../../../bin/multiphase_prototype Sod_Shock_Tube_2D_P1DGP1DG_20by20.mpml</command_line>
