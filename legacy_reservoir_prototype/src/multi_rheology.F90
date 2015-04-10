@@ -725,8 +725,11 @@
            call deallocate(ovmesh)
            deallocate(ovmesh)
            material_mesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
-           material_mesh%option_path='/geometry/mesh::PressureMesh_Discontinuous'          
-           call add_option(trim(material_mesh%option_path)// "/from_mesh",stat)
+           material_mesh%option_path='/geometry/mesh::PressureMesh_Discontinuous'
+           call copy_option('/geometry/mesh::PressureMesh',&
+                trim(material_mesh%option_path),stat)
+           call set_option(trim(material_mesh%option_path)// "/from_mesh/mesh_continuity",&
+                'discontinuous',stat)
            call add_option(trim(material_mesh%option_path)// "/stat/exclude_from_stat",stat)
         else
            material_mesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
