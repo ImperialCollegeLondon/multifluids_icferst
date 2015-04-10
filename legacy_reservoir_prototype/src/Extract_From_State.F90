@@ -4280,6 +4280,30 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     all_fields_costant = .false.
             end do
         end if
+        if (have_option('porous_media/tensor_field::Permeability')) then
+            root_path = 'porous_media/tensor_field::Permeability/prescribed/value'
+            k = option_count(trim(root_path))
+            do i = 0, k-1
+                path = trim(root_path)//'['//int2str(i)//']/isotropic/python'
+                if (have_option(trim(path)))&
+                    all_fields_costant = .false.
+                path = trim(root_path)//'['//int2str(i)//']/diagonal/python'
+                if (have_option(trim(path)))&
+                    all_fields_costant = .false.
+                path = trim(root_path)//'['//int2str(i)//']/anisotropic_symmetric/python'
+                if (have_option(trim(path)))&
+                    all_fields_costant = .false.
+                path = trim(root_path)//'['//int2str(i)//']/anisotropic_asymmetric/python'
+                if (have_option(trim(path)))&
+                    all_fields_costant = .false.
+            end do
+        end if
+        if(have_option('porous_media/vector_field::Permeability')) then
+            all_fields_costant = .false.
+        end if
+        if(have_option('porous_media/Permeability_from_femdem')) then
+            all_fields_costant = .false.
+        end if
         !Check porosity
         if (have_option('porous_media/scalar_field::Porosity')) then
             root_path = 'porous_media/scalar_field::Porosity/prescribed/value'
@@ -4290,7 +4314,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     all_fields_costant = .false.
             end do
         end if
-
 
         !If fake_IDs_ndgln, then we are not using compacted data and
         !IDs_ndgln and IDs2CV_ndgln will point to the same position

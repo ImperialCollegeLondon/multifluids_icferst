@@ -1593,8 +1593,6 @@ contains
 
 
           IF( between_elements .or. on_domain_boundary ) THEN
-!          IF( (ELE2 > 0) .OR. (SELE > 0) ) THEN
-!          IF( (ELE2 > 0) .and. (SELE > 0) ) THEN
              DO CV_SKLOC = 1, CV_SNLOC
                 CV_KLOC = CV_SLOC2LOC( CV_SKLOC )
 
@@ -1635,8 +1633,6 @@ contains
           ENDIF ! ENDOF IF( between_elements .or. on_domain_boundary ) THEN ...
 
 
-!         if(.true.) then
-!          IF( SELE > 0 ) THEN
           IF( on_domain_boundary ) THEN
 ! bcs:              
              ! Make allowances for no matrix stencil operating from outside the boundary.
@@ -1989,8 +1985,6 @@ contains
            CAP_DIFF_COEF_DIVDX( : ) = 0.0
        END IF If_GOT_CAPDIFFUS
       
-
-
        ! Pack ndotq information:
        IPT=1
        CALL PACK_LOC( F_INCOME(:), INCOME( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,1) ) ! t
@@ -2397,19 +2391,18 @@ contains
                      endif
 
 
-
-                        IF ( GET_GTHETA ) THEN
-                           THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
-                                * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) ) &
-                                ! Robin bc
-                                + SCVDETWEI( GI ) * ROBIN2(:)
-                        if(integrate_other_side_and_not_boundary) then
-                           THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
-                                * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) )
-                        endif
-                        END IF
+                     IF ( GET_GTHETA ) THEN
+                         THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
+                         + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
+                         * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) ) &
+                         ! Robin bc
+                         + SCVDETWEI( GI ) * ROBIN2(:)
+                         if(integrate_other_side_and_not_boundary) then
+                             THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
+                             + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
+                             * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) )
+                         endif
+                     END IF
 
                         ! this is for the internal energy equation source term..
                         IF ( THERMAL ) THEN
@@ -2530,12 +2523,10 @@ contains
                                 - CV_P( CV_NODI ) * ( MASS_CV( CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
                ENDIF
 !
-!               IF ( IGOT_T2 == 1 ) THEN
                IF ( GOT_T2 ) THEN
                   LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                        + MASS_CV(CV_NODI) * SOURCT_ALL( :, CV_NODI )
 
-!                  CSR_ACV( IMID_IPHA ) = CSR_ACV( IMID_IPHA ) &
                   DO IPHASE = 1,NPHASE
                      call addto(petsc_acv,iphase,iphase,&
                              cv_nodi, cv_nodi,&
@@ -2566,7 +2557,6 @@ contains
                        + (1.-CV_BETA) * DEN_ALL( :, CV_NODI ) ) &
                        * R * TOLD_ALL( :, CV_NODI )
                END IF
-
 
                Conditional_GETMAT2: IF ( GETMAT ) THEN
 
@@ -11284,7 +11274,7 @@ deallocate(NX_ALL)
           NDOTQ_TILDE = 0.5*( NDOTQ*ABS_CV_NODI_IPHA + NDOTQ2*ABS_CV_NODJ_IPHA ) /abs_tilde
           !Calculate the contribution of each side
           INCOME = MIN(1.0, MAX(0.0, (NDOTQ_TILDE - NDOTQ)/VTOLFUN( NDOTQ2 - NDOTQ ) ))
-        end if
+      end if
 
       !Finally we calculate the velocity at the interface
       DO IPHASE = 1, NPHASE
@@ -11389,8 +11379,6 @@ deallocate(NX_ALL)
     ELSE WHERE
         INCOME = 1.
     END WHERE
-
-
 
     ! Calculate NDOTQNEW from NDOTQ
     if (not_OLD_VEL) then
