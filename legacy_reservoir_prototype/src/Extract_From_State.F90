@@ -4206,9 +4206,12 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         !Re-allocate if necessary
         if (allocated(IDs_ndgln)) then
             if (size(IDs_ndgln)/=size(fl_mesh%region_ids)) then
-                deallocate(IDs_ndgln, IDs2CV_ndgln)
+                deallocate(IDs_ndgln)
                 allocate(IDs_ndgln(size(fl_mesh%region_ids)))
-                allocate(IDs2CV_ndgln(size(t_field%val,3)))
+            end if
+            if (size(IDs2CV_ndgln)/=size(t_field%val,3)) then
+               deallocate(IDs2CV_ndgln)
+               allocate(IDs2CV_ndgln(size(t_field%val,3)))
             end if
         else
             allocate(IDs2CV_ndgln(size(t_field%val,3)))
