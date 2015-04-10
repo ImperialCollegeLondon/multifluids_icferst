@@ -4205,9 +4205,9 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         nphase = size(t_field%val,2)
         !Re-allocate if necessary
         if (allocated(IDs_ndgln)) then
-            if (size(IDs_ndgln)/=size(fl_mesh%region_ids)) then
+            if (size(IDs_ndgln)/=element_count(fl_mesh)) then
                 deallocate(IDs_ndgln)
-                allocate(IDs_ndgln(size(fl_mesh%region_ids)))
+                allocate(IDs_ndgln(element_count(fl_mesh)))
             end if
             if (size(IDs2CV_ndgln)/=size(t_field%val,3)) then
                deallocate(IDs2CV_ndgln)
@@ -4215,7 +4215,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             end if
         else
             allocate(IDs2CV_ndgln(size(t_field%val,3)))
-            allocate(IDs_ndgln(size(fl_mesh%region_ids)))
+            allocate(IDs_ndgln(element_count(fl_mesh)))
         end if
 
         !Check if all the fields are constant whitin region ids, otherwise we cannot compact the data.
@@ -4321,7 +4321,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         !If fake_IDs_ndgln, then we are not using compacted data and
         !IDs_ndgln and IDs2CV_ndgln will point to the same position
         if (present_and_true(fake_IDs_ndgln) .or. .not. all_fields_costant) then
-            do i = 1, size(fl_mesh%region_ids)
+            do i = 1, size(IDs_ndgln)
                 IDs_ndgln(i) = i
             end do
 

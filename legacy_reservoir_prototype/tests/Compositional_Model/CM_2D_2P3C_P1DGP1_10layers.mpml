@@ -466,6 +466,9 @@
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -546,9 +549,7 @@ for i in range( field.node_count ):
       </diagnostic>
     </vector_field>
     <multiphase_properties>
-      <relperm_type>
-        <Corey/>
-      </relperm_type>
+      <Relperm_Corey/>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
@@ -797,6 +798,9 @@ for i in range( field.node_count ):
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -1057,9 +1061,7 @@ for i in range( field.node_count ):
       </diagnostic>
     </vector_field>
     <multiphase_properties>
-      <relperm_type>
-        <Corey/>
-      </relperm_type>
+      <Relperm_Corey/>
     </multiphase_properties>
   </material_phase>
   <material_phase name="Component1">
@@ -1145,6 +1147,9 @@ for i in range( field.node_count ):
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -1215,6 +1220,9 @@ for i in range( field.node_count ):
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -1305,6 +1313,9 @@ for i in range( field.node_count ):
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -1375,6 +1386,9 @@ for i in range( field.node_count ):
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -1465,6 +1479,9 @@ for i in range( field.node_count ):
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
@@ -1535,6 +1552,9 @@ for i in range( field.node_count ):
         </boundary_conditions>
         <output/>
         <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
         <detectors>
           <include_in_detectors/>
         </detectors>
