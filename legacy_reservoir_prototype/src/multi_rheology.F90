@@ -730,7 +730,7 @@
                 trim(material_mesh%option_path),stat)
            call set_option(trim(material_mesh%option_path)// "/from_mesh/mesh_continuity",&
                 'discontinuous',stat)
-           call add_option(trim(material_mesh%option_path)// "/stat/exclude_from_stat",stat)
+           call add_option(trim(material_mesh%option_path)// "/from_mesh/stat/exclude_from_stat",stat)
         else
            material_mesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
         end if
