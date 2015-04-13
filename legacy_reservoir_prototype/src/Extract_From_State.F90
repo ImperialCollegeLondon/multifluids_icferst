@@ -3398,7 +3398,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                call get_option( '/timestepping/timestep', dt )
                dt = dt * increaseFactor
                call set_option( '/timestepping/timestep', dt )
-               ewrite(0,*) "Time step increased to:", dt
+               ewrite(1,*) "Time step increased to:", dt
                ExitNonLinearLoop = .true.
                return
             else !Maybe it is not enough to increase the time step, but we could go to the next time step
@@ -3430,7 +3430,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                call set_option( '/timestepping/current_time', acctim )
                dt = dt / decreaseFactor
                call set_option( '/timestepping/timestep', dt )
-               ewrite(0,*) "Time step decreased to:", dt
+               ewrite(1,*) "Time step decreased to:", dt
                Repeat_time_step = .true.
                ExitNonLinearLoop = .true.
             end if
@@ -4205,14 +4205,17 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         nphase = size(t_field%val,2)
         !Re-allocate if necessary
         if (allocated(IDs_ndgln)) then
-            if (size(IDs_ndgln)/=size(fl_mesh%region_ids)) then
-                deallocate(IDs_ndgln, IDs2CV_ndgln)
-                allocate(IDs_ndgln(size(fl_mesh%region_ids)))
-                allocate(IDs2CV_ndgln(size(t_field%val,3)))
+            if (size(IDs_ndgln)/=element_count(fl_mesh)) then
+                deallocate(IDs_ndgln)
+                allocate(IDs_ndgln(element_count(fl_mesh)))
+            end if
+            if (size(IDs2CV_ndgln)/=size(t_field%val,3)) then
+               deallocate(IDs2CV_ndgln)
+               allocate(IDs2CV_ndgln(size(t_field%val,3)))
             end if
         else
             allocate(IDs2CV_ndgln(size(t_field%val,3)))
-            allocate(IDs_ndgln(size(fl_mesh%region_ids)))
+            allocate(IDs_ndgln(element_count(fl_mesh)))
         end if
 
         !Check if all the fields are constant whitin region ids, otherwise we cannot compact the data.
@@ -4280,6 +4283,30 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     all_fields_costant = .false.
             end do
         end if
+        if (have_option('porous_media/tensor_field::Permeability')) then
+            root_path = 'porous_media/tensor_field::Permeability/prescribed/value'
+            k = option_count(trim(root_path))
+            do i = 0, k-1
+                path = trim(root_path)//'['//int2str(i)//']/isotropic/python'
+                if (have_option(trim(path)))&
+                    all_fields_costant = .false.
+                path = trim(root_path)//'['//int2str(i)//']/diagonal/python'
+                if (have_option(trim(path)))&
+                    all_fields_costant = .false.
+                path = trim(root_path)//'['//int2str(i)//']/anisotropic_symmetric/python'
+                if (have_option(trim(path)))&
+                    all_fields_costant = .false.
+                path = trim(root_path)//'['//int2str(i)//']/anisotropic_asymmetric/python'
+                if (have_option(trim(path)))&
+                    all_fields_costant = .false.
+            end do
+        end if
+        if(have_option('porous_media/vector_field::Permeability')) then
+            all_fields_costant = .false.
+        end if
+        if(have_option('porous_media/Permeability_from_femdem')) then
+            all_fields_costant = .false.
+        end if
         !Check porosity
         if (have_option('porous_media/scalar_field::Porosity')) then
             root_path = 'porous_media/scalar_field::Porosity/prescribed/value'
@@ -4291,11 +4318,10 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             end do
         end if
 
-
         !If fake_IDs_ndgln, then we are not using compacted data and
         !IDs_ndgln and IDs2CV_ndgln will point to the same position
         if (present_and_true(fake_IDs_ndgln) .or. .not. all_fields_costant) then
-            do i = 1, size(fl_mesh%region_ids)
+            do i = 1, size(IDs_ndgln)
                 IDs_ndgln(i) = i
             end do
 

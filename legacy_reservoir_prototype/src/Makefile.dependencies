@@ -178,8 +178,9 @@ multi_rheology.o ../include/multiphase_rheology.mod: multi_rheology.F90 \
    ../../include/fields.mod ../../include/fldebug.mod \
    ../../include/global_parameters.mod \
    ../../include/initialise_fields_module.mod \
-   ../../include/populate_state_module.mod ../../include/spud.mod \
-   ../../include/state_module.mod
+   ../../include/populate_state_module.mod ../../include/solvers.mod \
+   ../../include/sparse_tools.mod ../../include/sparsity_patterns.mod \
+   ../../include/spud.mod ../../include/state_module.mod
 
 ../include/shape_functions_prototype.mod: multi_shape_fct.o
 	@true

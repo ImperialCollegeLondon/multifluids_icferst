@@ -688,13 +688,13 @@ start =
             ## Parameters required to model multiphase flow
             element multiphase_properties {
                ## Option for relperm type in prototype code
-               ## Corey relperm:
-               ##
-               ## relperm = relperm_max * saturation**-relperm_exponent
+                  ## Corey relperm:
+                  ##
+                  ## relperm = relperm_max * saturation**-relperm_exponent
                element Relperm_Corey {
-                 ## Relative permeability end point
-                 ##
-                 ## Value between 0 and 1. Default value 1.0
+                     ## Relative permeability end point
+                     ##
+                     ## Value between 0 and 1. Default value 1.0
                  element relperm_max {
                  ## End-point relative permeability
                     element scalar_field {
@@ -707,9 +707,9 @@ start =
                        )
                     }
                  }?,
-                 ## Relative permeability exponent
-                 ##
-                 ## Default value 2.0
+                     ## Relative permeability exponent
+                     ##
+                     ## Default value 2.0
                  element relperm_exponent {
                  ## Exponent of the formula
                      element scalar_field {
@@ -718,7 +718,7 @@ start =
                            element prescribed {
                               material_mesh_choice,
                               prescribed_scalar_field
-                           }
+                  }
                         )
                      }
                 }?
@@ -831,8 +831,11 @@ start =
                        attribute name { "C" },
                        (
                           element prescribed {
-                             material_mesh_choice,
+                             velocity_mesh_choice,
                              prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
                           }
                        )
                     },
@@ -841,18 +844,14 @@ start =
                        attribute name { "a" },
                        (
                           element prescribed {
-                             material_mesh_choice,
+                             velocity_mesh_choice,
                              prescribed_scalar_field
+                          }|
+                          element aliased {
+                             generic_aliased_field
                           }
                        )
-                    },
-                    ## Modified capillary pressure curve [see SPE-172989-MS, eq (5)]
-                    ## Pc = c * (1 - (S_w-Swir)/(1-Swir-Sor)) ** -a
-                    ##
-                    ## You should specify this ONLY for the wetting phase.
-                    ##
-                    ## This option is by default disabled.
-                    element Pc_imbibition { comment }?}
+                    }}
                }?,
                ## Immobile volume of fluid phase
                element immobile_fraction {
@@ -3485,7 +3484,7 @@ tensor_field_choice =
                }|
                element aliased {
                   generic_aliased_field
-               }
+        }
             )
         }|
         element tensor_field {
@@ -4266,6 +4265,21 @@ rheology =
 		        prescribed_output_options
                      }
                   }
+	       } |
+               element non_newtonian {	
+    	          attribute name { "Carreau"},
+		  element viscosity_at_zero_shear { real },
+		  element viscosity_at_infinite_shear { real }?,
+		  element relaxation_time { real },	
+		  element exponent { real },
+		  element tensor_field {
+		     attribute name { "Viscosity" },
+		     element diagnostic {
+		        velocity_mesh_choice,
+		        prescribed_output_options
+                     }
+                  }
+
                } 
              )
          }

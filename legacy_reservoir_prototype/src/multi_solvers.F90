@@ -1431,7 +1431,7 @@ contains
 
 
         !First, impose physical constrains
-        call Set_Saturation_to_sum_one(packed_state, CV_NDGLN, IDs2CV_ndgln)
+        call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln)
 
         !We get the dumping by divinding AD/AB where A is sat_bak, B is the new solution and D is the inflection/kink point +
         !an offset
@@ -1450,9 +1450,6 @@ contains
             dumping_factor = 1.0; aux = 1.0
 
 
-!            do ele = 1, totele
-!                do cv_iloc = 1, cv_nloc
-!                    inode = CV_NDGLN((ele-1)*cv_nloc + cv_iloc)
             do inode = 1, size(dSat,2)
                 do iphase = 1, size(dSat,1)
                     C = Immobile_fraction(iphase, IDs2CV_ndgln(inode))
@@ -1467,8 +1464,6 @@ contains
                     end if
                 end do
             end do
-!                end do
-!            end do
 
             !This seems to help, but it is probably because I am not dumping correctly
             dumping_factor = min(dumping_factor, 0.5)
@@ -1493,13 +1488,13 @@ contains
 
     end subroutine Trust_region_correction
 
-    subroutine Set_Saturation_to_sum_one(packed_state, CV_NDGLN, IDs2CV_ndgln)
+    subroutine Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
         type( state_type ), intent(inout) :: packed_state
-        integer, dimension(:), intent(in) :: CV_NDGLN, IDs2CV_ndgln
+        integer, dimension(:), intent(in) :: IDs2CV_ndgln
         !Local variables
         integer :: iphase, jphase, nphase, ele, cv_nod
         real :: maxsat, minsat, sum_of_phases
@@ -1513,10 +1508,10 @@ contains
         nphase = size(satura,1)
         !Set saturation to be between bounds
         do cv_nod = 1, size(satura,2 )
+            sum_of_phases = sum(satura(:,cv_nod))
             do iphase = 1, nphase
                 minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
                 maxsat = 1 - sum(Immobile_fraction(:, IDs2CV_ndgln(cv_nod))) + minsat
-                sum_of_phases = sum(satura(:,cv_nod))
                 !We enforce the sum to one by spreading the error to all the phases
                 if (sum_of_phases /= 1.0 ) &
                     satura(iphase, cv_nod) = satura(iphase, cv_nod) + (1.0 - sum_of_phases) / nphase
@@ -1527,13 +1522,13 @@ contains
     end subroutine Set_Saturation_to_sum_one
 
 
-    subroutine Set_Saturation_between_bounds(packed_state, CV_NDGLN, IDs2CV_ndgln)
+    subroutine Set_Saturation_between_bounds(packed_state, IDs2CV_ndgln)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance
         Implicit none
         !Global variables
         type( state_type ), intent(inout) :: packed_state
-        integer, dimension(:), intent(in) :: CV_NDGLN, IDs2CV_ndgln
+        integer, dimension(:), intent(in) :: IDs2CV_ndgln
         !Local variables
         integer :: iphase, jphase, nphase, ele, cv_nod
         real :: maxsat, minsat

@@ -3,7 +3,7 @@
   <name>Compositional_Model_2D</name>
   <owner userid="dimitrios.pavlidis"/>
   <tags>mpml</tags>
-  <problem_definition length="short" nprocs="1">
+  <problem_definition length="long" nprocs="1">
     <command_line>cp  CM_2D_2P3C_P1DGP1_10layers.mpml CM_2D_2P3C_P1DGP1_50layers.mpml
 sed -i 's/_10layers/_50layers/' CM_2D_2P3C_P1DGP1_50layers.mpml
 

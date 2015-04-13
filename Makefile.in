@@ -552,11 +552,18 @@ build_unittest: fluidity_library libfemtools setuputs
 	@cd adjoint/tests; $(MAKE) unittest
 	@echo "    UNITTEST ocean_forcing"
 	@cd ocean_forcing/tests; $(MAKE) unittest
+	@echo "    UNITTEST legacy_reservoir_prototype"
+	@cd legacy_reservoir_prototype; $(MAKE) build_unittest
 
 
 unittest: build_unittest
 	@echo "RUN bin/tests"
 	@bin/unittestharness bin/tests
+
+unittest-mp: build_unittest
+	@echo "RUN legacy_reservoir_prototype/bin/tests"
+	@bin/unittestharness legacy_reservoir_prototype/bin/tests
+
 
 bin/spud-preprocess:
 	@echo "Installing spudtools"

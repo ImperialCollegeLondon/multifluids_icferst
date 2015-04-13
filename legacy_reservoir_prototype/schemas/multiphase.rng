@@ -1121,32 +1121,31 @@ You should specify this ONLY for the wetting phase</a:documentation>
                       <attribute name="name">
                         <value>C</value>
                       </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                      </element>
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="velocity_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                        </element>
+                      </choice>
                     </element>
                     <element name="scalar_field">
                       <a:documentation>exponent -a</a:documentation>
                       <attribute name="name">
                         <value>a</value>
                       </attribute>
-                      <element name="prescribed">
-                        <ref name="material_mesh_choice"/>
-                        <ref name="prescribed_scalar_field"/>
-                      </element>
+                      <choice>
+                        <element name="prescribed">
+                          <ref name="velocity_mesh_choice"/>
+                          <ref name="prescribed_scalar_field"/>
+                        </element>
+                        <element name="aliased">
+                          <ref name="generic_aliased_field"/>
+                        </element>
+                      </choice>
                     </element>
-                    <optional>
-                      <element name="Pc_imbibition">
-                        <a:documentation>Modified capillary pressure curve [see SPE-172989-MS, eq (5)]
-Pc = c * (1 - (S_w-Swir)/(1-Swir-Sor)) ** -a
-
-You should specify this ONLY for the wetting phase.
-
-This option is by default disabled.</a:documentation>
-                        <ref name="comment"/>
-                      </element>
-                    </optional>
                   </element>
                 </element>
               </optional>
@@ -5274,6 +5273,34 @@ DEN = A * P ^ B
               <ref name="real"/>
             </element>
           </optional>
+          <element name="tensor_field">
+            <attribute name="name">
+              <value>Viscosity</value>
+            </attribute>
+            <element name="diagnostic">
+              <ref name="velocity_mesh_choice"/>
+              <ref name="prescribed_output_options"/>
+            </element>
+          </element>
+        </element>
+        <element name="non_newtonian">
+          <attribute name="name">
+            <value>Carreau</value>
+          </attribute>
+          <element name="viscosity_at_zero_shear">
+            <ref name="real"/>
+          </element>
+          <optional>
+            <element name="viscosity_at_infinite_shear">
+              <ref name="real"/>
+            </element>
+          </optional>
+          <element name="relaxation_time">
+            <ref name="real"/>
+          </element>
+          <element name="exponent">
+            <ref name="real"/>
+          </element>
           <element name="tensor_field">
             <attribute name="name">
               <value>Viscosity</value>

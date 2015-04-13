@@ -29,7 +29,7 @@ subroutine test_shear_dependent_rheology
      end function soln
   end interface
 
-  call load_options("data/carreau_rheology.mpml")
+  call load_options("data/shear_dependent_rheology.mpml")
   call populate_state(state)
   call initialize_rheologies(state,rheology)
   call calculate_rheologies(state,rheology)
@@ -53,7 +53,7 @@ subroutine test_shear_dependent_rheology
      tfields=(/ viscosity,solution,error,strain_rate_tensor /))
 
 fail = maxval( abs( error%val ))> 1e-5
-  call report_test("[shear_dependent_rheology]", fail, .false., "shear dependentrheology different from analytic solution expected")
+  call report_test("[shear_dependent_rheology]", fail, .false., "shear dependent rheology different from analytic solution expected")
 
   call deallocate(solution)
   call deallocate(error)

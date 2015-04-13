@@ -8,7 +8,7 @@
       <integer_value rank="0">2</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
-      <from_file file_name="unstructured_quartered">
+      <from_file file_name="src/unstructured_quartered">
         <format name="gmsh"/>
         <stat>
           <include_in_stat/>
