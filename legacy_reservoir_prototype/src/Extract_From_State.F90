@@ -4193,7 +4193,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         type (scalar_field), pointer :: s_field
         type (tensor_field), pointer :: t_field
         type(mesh_type), pointer :: fl_mesh
-        integer :: i, j, k, number_of_ids, nphase
+        integer :: i, j, k, number_of_ids, nphase,mtemp
         integer, dimension(:), allocatable :: region_ids
         logical :: stored, all_fields_costant
         integer, dimension(1) :: aux
@@ -4332,9 +4332,12 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         end do
 
         !Create IDs2CV_ndgln
+        mtemp = size(CV_NDGLN)/size(IDs_ndgln)
         DO i = 1, size(IDs_ndgln)
-            DO j = 1, size(CV_NDGLN)/size(IDs_ndgln)
-                k = CV_NDGLN(( i - 1 ) * size(CV_NDGLN)/size(IDs_ndgln) + j )
+            !DO j = 1, size(CV_NDGLN)/size(IDs_ndgln)
+            DO j = 1, mtemp
+                !k = CV_NDGLN(( i - 1 ) * size(CV_NDGLN)/size(IDs_ndgln) + j )
+                k = CV_NDGLN(( i - 1 )*mtemp +j )
                 IDs2CV_ndgln(k) = IDs_ndgln(i)
             end do
         end do
