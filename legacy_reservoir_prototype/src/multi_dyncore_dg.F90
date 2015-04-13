@@ -944,6 +944,8 @@ contains
         !Calculate gravity source terms
         if ( is_porous_media )then
            UDEN_ALL=0.0; UDENOLD_ALL=0.0
+           !This method for gravity for gravity works, provided we use CVFEN instead of CVN in ASSEMB_FORCE_CTY
+           call calculate_u_source_cv( state, cv_nonods, ndim, nphase, DEN_ALL, U_Source_CV )
         else
            if ( linearise_density ) then
               call linearise_field( DEN_ALL2, UDEN_ALL )
@@ -1029,11 +1031,10 @@ contains
         !##########TEMPORARY ADAPT FROM OLD VARIABLES TO NEW############
 
         !Calculate the RHS for compact_overlapping
-        if (is_porous_media) then
-           !FEM representation
-           call get_var_from_packed_state(packed_state, FEDensity = den_fem)
-           call calculate_u_source( state, den_fem, U_SOURCE_ALL )
-        end if
+!        if (is_porous_media) then
+!           call get_var_from_packed_state(packed_state, FEDensity = den_fem)
+!           call calculate_u_source( state, den_fem, U_SOURCE_ALL )
+!        end if
 
 
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
@@ -2373,6 +2374,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !        PRINT *,'DIFF_MIN_FRAC, DIFF_MAX_FRAC, SIMPLE_DIFF_CALC:', DIFF_MIN_FRAC, DIFF_MAX_FRAC, SIMPLE_DIFF_CALC
 !        STOP 2811
         !If we have calculated already the PIVIT_MAT and stored then we don't need to calculate it again
+        !Unless it is compressible flow
+        if(have_option_for_any_phase("/equation_of_state/compressible", nphase)) StorageIndexes(34) = 0
         Porous_media_PIVIT_not_stored_yet = (.not.is_porous_media .or. StorageIndexes(34) <= 0)
 
         !If we do not have an index where we have stored C, then we need to calculate it
@@ -2893,7 +2896,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
            state, 'Vel_mesh', StorageIndexes(13))
 
-        if ( quad_over_whole_ele .and. .not. is_porous_media) then
+        if ( quad_over_whole_ele ) then
            cvn => cvfen
            cvn_short => cvfen_short
            sbcvn => sbcvfen
@@ -8766,6 +8769,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             !Deallocate auxiliar variables
             deallocate(cv_on_face, cvfem_on_face, u_on_face, ufem_on_face, NMX_ALL)
     end subroutine Introduce_Cap_press_term
+
 
     subroutine Rescale_and_solve(CMC_petsc, FINDCMC, rhs_p, deltap, option_path)
         !We perform (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p

@@ -1878,9 +1878,7 @@ contains
            end if
 
        ELSE
-
            IF( is_porous_media ) THEN
-
                CALL GET_INT_VEL_POROUS_VEL( NPHASE, NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                GI, SUFEN, U_NLOC,&
                TOLD_ALL(:, CV_NODI), TOLD_ALL(:, CV_NODJ), LOC_FEMTOLD,&
@@ -11216,7 +11214,7 @@ deallocate(NX_ALL)
                                       SLOC_NU(:, IPHASE, U_SKLOC)
 
                 UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=0.5*ROW_SUM_INV_VI(:,IPHASE)
-             ELSE
+             ELSE!SHOULD NOT WE RE-SCALATE SUF_U_BC_ALL WITH THE SATURATION? TO MAKE IT CONSISTENT WITH THE REST OF THE CODE
                 UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) + SUFEN( U_KLOC, GI )*SUF_U_BC_ALL(:, IPHASE, U_SNLOC* (SELE-1) +U_SKLOC)
              END IF
           END DO
@@ -11224,7 +11222,6 @@ deallocate(NX_ALL)
 
        END IF
      END DO ! PHASE LOOP
-
     ELSE IF( .not. between_elements ) THEN!same element
 
       !vel(GI) = (vel * shape_functions)/sigma
@@ -11379,6 +11376,7 @@ deallocate(NX_ALL)
     ELSE WHERE
         INCOME = 1.
     END WHERE
+
 
     ! Calculate NDOTQNEW from NDOTQ
     if (not_OLD_VEL) then

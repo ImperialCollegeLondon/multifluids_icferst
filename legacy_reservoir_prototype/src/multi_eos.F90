@@ -1743,6 +1743,7 @@
     end function Get_DevCapPressure
 
     subroutine calculate_u_source(state, Density_FEMT, u_source)
+    !Deprecated, use calculate_u_source_cv instead
       !u_source has to be initialized before calling this subroutine
       type(state_type), dimension(:), intent(in) :: state
       real, dimension(:,:), intent(inout) :: Density_FEMT
@@ -1788,6 +1789,7 @@
 
       deallocate(g)
     end subroutine calculate_u_source
+
 
     subroutine calculate_u_source_cv(state, cv_nonods, ndim, nphase, den, u_source_cv)
       type(state_type), dimension(:), intent(in) :: state

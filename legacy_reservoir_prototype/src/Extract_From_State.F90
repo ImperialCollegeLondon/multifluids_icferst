@@ -3374,6 +3374,10 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
             ts_ref_val = ts_ref_val / dumping_in_sat
 
+         if (its == NonLinearIteration) then
+            ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
+         end if
+
             ewrite(1,*) "Difference between non linear iterations:", ts_ref_val, "Non-linear iteration", its
 
             !We cannot go to the next time step until we have performed a full time step
@@ -3411,9 +3415,9 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             !                        return
             !                    end if
 
-            !Decrease Ts section only if we have done at least the 70% of the  nonLinearIterations
+            !Decrease Ts section only if we have done at least the 90% of the  nonLinearIterations
             if ((ts_ref_val > decrease_ts_switch.or.repeat_time_step) &
-                 .and.its>=int(0.70*NonLinearIteration)) then
+                 .and.its>=int(0.90*NonLinearIteration)) then
 
                if ( dt / decreaseFactor < min_ts) then
                   !Do not decrease
