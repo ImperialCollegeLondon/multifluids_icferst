@@ -496,15 +496,11 @@ Recommended value is 0.01</a:documentation>
                 <ref name="real"/>
                 <optional>
                   <element name="Dumping_factor">
-                    <a:documentation>This is the factor by which the saturation obtained from the saturation equation is dumped, this procedure ensures the 
-stability of the system for high courant numbers.
+                    <a:documentation>Saturation obtained in the non-linear loop is dumped by this factor.
 
-The value has to be between 0 and 1. A negative value will make the program to calculate it automatically (unstable).
+The value is between 0 and 1. Negative values calculate it automatically (Unstable)
 
-Tip: The number of non-linear iteration has to be increased to around 100 to make sure it converges. 
-
-Tip: Smaller values for higher courant numbers. Small values does not mean more time to reach a good solution,
-a good value can be 0.3</a:documentation>
+Recommended settings: Non-linear iterations &gt;= 100 and Dumping_factor = 0.15</a:documentation>
                     <ref name="real"/>
                   </element>
                 </optional>
