@@ -1395,7 +1395,7 @@
             !Convert material properties to be stored using region ids, only if porous media
             call get_regionIDs2nodes(state, packed_state, cv_ndgln, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
 
-            !Look again for bad elements
+!            !Look again for bad elements
 !            if (is_porous_media) then
 !              pressure_field=>extract_scalar_field(packed_state,"FEPressure")
 !              allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...

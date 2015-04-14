@@ -491,7 +491,6 @@
          if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::CompressiveAdvection' ) ) v_disopt = 9
       end if Conditional_VDISOPT
 
-
       call get_option( trim( option_path ) // '/prognostic/spatial_discretisation/conservative_advection', v_beta )
       call get_option( trim( option_path ) // '/prognostic/temporal_discretisation/theta', v_theta )
 
@@ -3374,15 +3373,16 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
             ts_ref_val = ts_ref_val / dumping_in_sat
 
-         if (its == NonLinearIteration) then
-            ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
-         end if
-
-            ewrite(1,*) "Difference between non linear iterations:", ts_ref_val, "Non-linear iteration", its
 
             !We cannot go to the next time step until we have performed a full time step
             Accumulated_sol = Accumulated_sol + dumping_in_sat
-            if (IsParallel()) call allmin(Accumulated_sol)
+            if (IsParallel()) call allmax(Accumulated_sol)
+
+            if (its == NonLinearIteration) then
+                ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
+            end if
+
+            ewrite(1,*) "Difference between non linear iterations:", ts_ref_val, "Non-linear iteration", its
 
             if (Accumulated_sol < 1.0) then
                 return
