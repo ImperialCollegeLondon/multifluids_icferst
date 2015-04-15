@@ -9,14 +9,14 @@
   </problem_definition>
   <variables/>
   <pass_tests>
-    <test name="3D_BL" language="python">3D_BL = False
+    <test name="3D_BL" language="python">BL_3d = False
 Log=file('3D_BL/log','r')
 while True:
     cadena=Log.readline()
     if len(cadena) ==0:
         break # EOF
 
-if 'OK' in cadena: 3D_BL = True
+if 'OK' in cadena: BL_3d = True
 
 Log.close</test>
   </pass_tests>
