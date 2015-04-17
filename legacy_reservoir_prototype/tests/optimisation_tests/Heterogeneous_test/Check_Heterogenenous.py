@@ -25,8 +25,8 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.055
-Tolerance_L2_NORM = 0.0032
+Tolerance_L1_NORM = 0.025
+Tolerance_L2_NORM = 0.0018
 
 AutomaticLine = 1
 
@@ -215,7 +215,7 @@ Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
-#print L1_norm, L2_norm
+print L1_norm, L2_norm
 if (Passed): 
     print 'BL with gravity works OK'
 else:
