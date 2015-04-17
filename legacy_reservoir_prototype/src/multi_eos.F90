@@ -807,7 +807,6 @@
       ewrite(3,*) 'In calculate_absorption2'
       ALLOCATE( INV_PERM(  size(PERM2,1), size(PERM2,2), size(PERM2,3) ))
       ALLOCATE( PERM( size(PERM2,1), size(PERM2,2) , size(PERM2,3)))
-
       perm=perm2
       do id_reg = 1, size(perm,3)
          inv_perm( :, :, id_reg)=inverse(perm( :, :, id_reg))
@@ -1582,26 +1581,27 @@
         real, dimension(:), intent(in) :: sat, visc, Immobile_fraction, Corey_exponent, Endpoint_relperm
         integer, intent(in) :: iphase
         !Local variables
-        real, dimension(3) :: satura, relperm, KR
+        real, dimension(3) :: Norm_sat, relperm, KR
         real :: Krow, Krog
         real, parameter :: epsilon = 1d-10
 
         !Prepare data
         !We consider two models for two phase flow, water-oil and oil-gas
         if (iphase /= 3) then
-            satura(1) = ( sat(1) - Immobile_fraction(1)) /( 1. - Immobile_fraction(1) - Immobile_fraction(2))!Water
-            relperm(1) = Endpoint_relperm(1)* satura(1) ** Corey_exponent(1)!Water, Krw
+            Norm_sat(1) = ( sat(1) - Immobile_fraction(1)) /( 1. - Immobile_fraction(1) - Immobile_fraction(2))!Water
+            relperm(1) = Endpoint_relperm(1)* Norm_sat(1) ** Corey_exponent(1)!Water, Krw
         end if
         if (iphase /= 1) then
-            satura(3) = ( sat(3) - Immobile_fraction(3)) /(1. - Immobile_fraction(2) - Immobile_fraction(1))!Gas
+            Norm_sat(3) = ( sat(3) - Immobile_fraction(3)) /(1. - Immobile_fraction(2) - Immobile_fraction(1))!Gas
             !For phase 1 and 3 (water and gas respectively) we can use the Brooks Corey model
-            relperm(3) = Endpoint_relperm(3)* satura(3) ** Corey_exponent(3)!Gas, Krg
+            relperm(3) = Endpoint_relperm(3)* Norm_sat(3) ** Corey_exponent(3)!Gas, Krg
+
         end if
         !Oil relperm is obtained as a combination
         if (iphase == 2 ) then
 
-            Krow = Endpoint_relperm(2)* (1.0 - satura(1)) ** Corey_exponent(2)!Oil, Krow
-            Krog = Endpoint_relperm(2)* (1.0 - satura(3)) ** Corey_exponent(2)!Oil, Krog
+            Krow = Endpoint_relperm(2)* (1.0 - Norm_sat(1)) ** Corey_exponent(2)!Oil, Krow
+            Krog = Endpoint_relperm(2)* (1.0 - Norm_sat(3)) ** Corey_exponent(2)!Oil, Krog
             !For the second phase, oil, we need to recalculate the real value(Stone model 2)
             relperm(2) = Endpoint_relperm(2)*( (Krow/Endpoint_relperm(2) + relperm(1))*&
                 (Krog/Endpoint_relperm(2) + relperm(3)) - (relperm(1) + relperm(3)) )
@@ -3052,7 +3052,7 @@
         !Retrieve relperm max
         do iphase = 1, nphase
             path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_max/prescribed/value"
+                "]/multiphase_properties/Relperm_Corey/relperm_max/scalar_field::relperm_max/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
                 t_field%val(2,iphase,:) = max(min(targ_Store%val(:), 1.0), 0.0)
@@ -3064,7 +3064,7 @@
         !Retrieve relperm exponent
         do iphase = 1, nphase
             path = "/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/Relperm_Corey/scalar_field::relperm_exponent/prescribed/value"
+                "]/multiphase_properties/Relperm_Corey/relperm_exponent/scalar_field::relperm_exponent/prescribed/value"
             if (have_option(trim(path))) then
                 call initialise_field_over_regions(targ_Store, trim(path) , position)
                 t_field%val(3,iphase,:) = targ_Store%val(:)
