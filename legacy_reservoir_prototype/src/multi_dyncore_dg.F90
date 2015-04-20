@@ -595,7 +595,7 @@ contains
       !This variable accounts for 1 - the total update we have been performing in this loop
       !being the minimum 0.0
       updating = 1.0
-      dumping_in_sat = 0.0 !Public variable to be used in Adaptive_NonLinear to re-scale the convergence
+      !dumping_in_sat = 0.0 !Public variable to be used in Adaptive_NonLinear to re-scale the convergence
 !      Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, nits_flux_lim
       Loop_NonLinearFlux: do while (updating > Max_updating)
 

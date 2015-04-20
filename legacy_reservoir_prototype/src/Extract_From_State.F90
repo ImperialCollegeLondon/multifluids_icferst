@@ -3372,11 +3372,13 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             !Rescale using the dumping in saturation to get a more efficient number to compare with
             !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
             ts_ref_val = ts_ref_val / dumping_in_sat
-
-
             !We cannot go to the next time step until we have performed a full time step
             Accumulated_sol = Accumulated_sol + dumping_in_sat
             if (IsParallel()) call allmax(Accumulated_sol)
+
+
+!TEMPORARY, re-use of global variable dumping_in_sat to send information about convergence to the trust_region_method
+dumping_in_sat = ts_ref_val
 
             if (its == NonLinearIteration) then
                 ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val

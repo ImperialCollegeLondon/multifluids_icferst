@@ -557,7 +557,6 @@
                 ,pressure_field%mesh%shape%degree)
       end if
 
-
       !Get into packed state relative permeability, immobile fractions, ...
       call get_RockFluidProp(state, packed_state)
       !Convert material properties to be stored using region ids, only if porous media

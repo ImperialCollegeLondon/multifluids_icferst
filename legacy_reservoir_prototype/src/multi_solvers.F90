@@ -34,7 +34,7 @@ module solvers_module
   use Petsc_tools
   use sparse_tools_petsc
   use solvers
-  use global_parameters, only: OPTION_PATH_LEN
+  use global_parameters, only: OPTION_PATH_LEN, dumping_in_sat
   use spud
 
   use state_module
@@ -1427,48 +1427,41 @@ contains
         real, dimension(:, :), pointer :: dSat, Immobile_fraction
         real :: dumping_factor, aux, D, C
         integer :: iphase, inode, cv_nloc
-
-
+        !Parameters for the automatic dumping
+        real, save :: previous_convergence = -1
+        real, save :: stored_dumping = 0.15
+        real, save :: convergence_tol = -1
         !First, impose physical constrains
         call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln)
-
-        !We get the dumping by divinding AD/AB where A is sat_bak, B is the new solution and D is the inflection/kink point +
-        !an offset
 
         !We re-use the phase volume fraction to reduce the ram consumption
         call get_var_from_packed_state(packed_state,PhaseVolumeFraction = dSat)
         dSat = dSat - sat_bak
 
 
-        if (Dumping_from_schema < 0.0) then!Automatic method
-            !***INFLECTION SECTION***
-            !Get immobile fractions, they happen to be the inflection points
-            call get_var_from_packed_state(packed_state,Immobile_fraction = Immobile_fraction)
-            !Here we calculate the lenght of the acceptable jump, we allow an overpass of offset_inflection
-            !over the inflection point, this might be an option for the user to choose
-            dumping_factor = 1.0; aux = 1.0
+        if (Dumping_from_schema < 0.0) then!Automatic method based on the history of convergence
+            !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
+            !dumping_parameter
+            if (convergence_tol< 0) &!retrieve it just once
+                call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic',&
+                     convergence_tol, default = -1. )
 
+            !Only recalculate if the convergence is worse that the one set by the user
+            if (dumping_in_sat > convergence_tol) then
+                !dumping_in_sat contains the global convergence rate of the method
+                if (dumping_in_sat-previous_convergence < 0) then!Converging
+                   stored_dumping = min(stored_dumping * 1.05, 0.55)
+                else!Diverging
+                   stored_dumping = max(stored_dumping / 1.1, 0.05)
+                end if
+            else!At least, two non-linear iterations (0.50)
+                stored_dumping = 0.55
+            end if
 
-            do inode = 1, size(dSat,2)
-                do iphase = 1, size(dSat,1)
-                    C = Immobile_fraction(iphase, IDs2CV_ndgln(inode))
-                    D = C + sign(offset_inflection, dSat(iphase,inode))
-                    !Do something only if we are crossing an inflection point
-                    if (( dSat(iphase,inode) > 0 .and. sat_bak(iphase,inode) <= D) .or.&!THESE SHOULD BE C
-                    ( dSat(iphase,inode) < 0 .and. sat_bak(iphase,inode) >= D) ) then
-                        aux = abs(( D - sat_bak(iphase,inode)) /max(dSat(iphase,inode),1d-10))
-                        if (aux < dumping_factor .and. aux > 5d-2) then!If steps are too small we are not interested, also avoid rounding errors
-                            dumping_factor = aux
-                        end if
-                    end if
-                end do
-            end do
+            dumping_factor = stored_dumping
 
-            !This seems to help, but it is probably because I am not dumping correctly
-            dumping_factor = min(dumping_factor, 0.5)
-
-
-            !***KINK SECTION***, only if gravity is present
+            !Store this convergence
+            previous_convergence = dumping_in_sat
 
         else!Use the value introduced by the user
             dumping_factor = Dumping_from_schema
