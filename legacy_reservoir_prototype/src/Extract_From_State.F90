@@ -3885,7 +3885,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
     end subroutine Clean_Storage
 
 
-    subroutine CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, MaxAngle, MinAngle, Quality_list)
+    subroutine CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, MaxAngle, MinAngle, Quality_list, degree)
         !This function checks the angles of an input element. If one angle is above
         !the Maxangle or below the MinAngle it will be true in the list
         Implicit none
@@ -3894,7 +3894,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         type(bad_elements), dimension(:), intent(inout) :: Quality_list
         real, intent (in) :: MaxAngle, MinAngle
         integer, dimension(:), intent(in) :: x_ndgln
-        integer, intent(in) :: x_nloc, totele
+        integer, intent(in) :: x_nloc, totele, degree
         !Local variables
         integer :: ELE, i
         logical :: Bad_founded
@@ -3911,7 +3911,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             allocate(Quality_list(i)%weights(x_nloc-1))!Allocate
             Quality_list(i)%weights = 0.!Initialize with zeros
         end do
-        call get_var_from_packed_state(packed_state, Coordinate = X_ALL)
+        call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)
 
         !Convert input angles to radians
         MxAngl = pi/180. * MaxAngle
@@ -3920,44 +3920,149 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         if (size(X_ALL,1)==2) then!2D triangles
             do ELE = 1, totele
                 !bad_node enters as the first entry
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i))
-                 if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
+                if (degree == 1) then
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                else if (degree == 2) then!quadratic
+                    !Here we consider three subtriangles, the normal one, plus two formed by the midpoints plus an edge
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 5, 6, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 5, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
                 end if
-
             end do
         else if(size(X_ALL,1)==3) then!3D tetrahedra
         !adjust to match the 2D case once that one works properly
             do ELE = 1, totele
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                !We check the 4 triangles that form a tet
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i), 4)
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                if (degree == 1) then
+                    !We check the 4 triangles that form a tet
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
-                end if
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, Quality_list(i), 3)
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
-                end if
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 3, 2, MxAngl, Quality_list(i), 2)
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 4, 3, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
-                end if
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 2, 3, MxAngl, Quality_list(i), 1)
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 2, 3, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
+                    end if
+                else if (degree == 2) then!quadratic
+                    !We check the 4 triangles that form a tet, three times
+                    !First face
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 5, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 5, 6, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    !Second face
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 8, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 7, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 7, 8, 10, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    !Third face
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 4, 7, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 6, 9, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 7, 9, 10, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    !Forth face
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 10, 8, 9, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 8, 3, 5, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+                    if (i > size(Quality_list)) exit!We cannot add more elements
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 9, 5, 6, MxAngl, Quality_list(i))
+                    if (Bad_founded) then
+                        if (size(Quality_list)>= i) Quality_list(i)%ele = ele
+                        i = i + 1
+                    end if
+
                 end if
             end do
         end if
         contains
 
-            logical function Check_element(X_ALL, x_ndgln, ele_Pos, Pos1, Pos2, Pos3, MaxAngle, Quality_list, Pos4)
+            logical function Check_element(X_ALL, x_ndgln, ele_Pos, Pos1, Pos2, Pos3, MaxAngle, Quality_list)
                 !Introduce Pos4 for 3D, Pos4 is the forth vertex of the tet
                 implicit none
                 real, dimension(:,:), intent(in) :: X_ALL
@@ -3965,7 +4070,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                 real, intent(in) :: MaxAngle
                 integer, dimension(:), intent(in) :: x_ndgln
                 type(bad_elements), intent(inout) :: Quality_list
-                integer, optional, intent(in) :: Pos4
                 !Local variables
                 real, dimension(size(X_ALL,1)) :: X1, X2, X3, X4
                 real, dimension(3) :: alpha, lenght, lenght2
@@ -4002,6 +4106,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     Quality_list%nodes(1) = Pos1
                     Quality_list%nodes(2) = Pos2
                     Quality_list%nodes(3) = Pos3
+
                     !Store angle so later the over-relaxation can depend on this
                     Quality_list%angle = alpha(1) * 180 / pi
 
@@ -4027,6 +4132,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     Quality_list%angle = alpha(3) * 180 / pi
                     Check_element = .true.
                 end if
+                !Make sure it is between bounds
+                Quality_list%weights = min(Quality_list%weights,1.0)
 
             end function Check_element
 

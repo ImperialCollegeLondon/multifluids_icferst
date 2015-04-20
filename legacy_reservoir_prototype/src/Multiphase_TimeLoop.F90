@@ -209,7 +209,7 @@
       real, dimension(:,:,:), allocatable  :: reference_field
 
       !Variables related to the deteccion and correction of bad elements
-      real, parameter :: Max_bad_angle = 100.0
+      real, parameter :: Max_bad_angle = 105.0
       real, parameter :: Min_bad_angle = 0.0
       type(bad_elements), allocatable, dimension(:) :: Quality_list
 
@@ -550,12 +550,12 @@
 
 
       !Look for bad elements to apply a correction on them
-!      if (is_porous_media) then
-!          pressure_field=>extract_scalar_field(packed_state,"FEPressure")
-!          allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-!          if (pressure_field%mesh%shape%degree < 2) &!Does not work yet for quadratic elements
-!            call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
-!      end if
+      if (is_porous_media) then
+          pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+          allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
+            call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc,Max_bad_angle, Min_bad_angle, Quality_list&
+                ,pressure_field%mesh%shape%degree)
+      end if
 
 
       !Get into packed state relative permeability, immobile fractions, ...
@@ -1395,13 +1395,13 @@
             !Convert material properties to be stored using region ids, only if porous media
             call get_regionIDs2nodes(state, packed_state, cv_ndgln, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
 
-!            !Look again for bad elements
-!            if (is_porous_media) then
-!              pressure_field=>extract_scalar_field(packed_state,"FEPressure")
-!              allocate(Quality_list(totele*(NDIM-1)))!this number is not very well thought...
-!              if (pressure_field%mesh%shape%degree < 2) &!Does not work yet for quadratic elements
-!                call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list)
-!            end if
+            !Look again for bad elements
+            if (is_porous_media) then
+              pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+               allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
+                call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list,&
+                    pressure_field%mesh%shape%degree)
+            end if
             call temp_mem_hacks()
 
 !!$ Allocating space for various arrays:

@@ -1258,12 +1258,11 @@ contains
                 rhs_p%val = rhs_p%val / rescaleVal
                 !End of re-scaling
             end if
-!            !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
-!            !inside the same element to reduce the ill conditioning of the matrix
-!            if (is_porous_media .and. present(Quality_list)) then
-!                if (P_ALL%mesh%shape%degree < 2) call Fix_to_bad_elements(& !not tested yet for quadratic elements
-!                  cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
-!            end if
+            !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
+            !inside the same element to reduce the ill conditioning of the matrix
+            if (is_porous_media .and. present(Quality_list)) then
+                call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
+            end if
 
             if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver &
                  .and. nonlinear_iteration == 1) then!For discontinuous mesh

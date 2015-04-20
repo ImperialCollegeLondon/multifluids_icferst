@@ -778,7 +778,7 @@ contains
       !for 90 it is 0, for 135 it is 0.25 *alpha for 180 it is alpha
       adapted_alpha = alpha * ((Quality_list(i)%angle - 90.)/90.)**2.
 
-      do while (Quality_list(i)%ele>0)
+      do while (Quality_list(i)%ele>0 .and. i < size(Quality_list))
           counter = 1
           ele = Quality_list(i)%ele
           !Bad node
@@ -800,17 +800,16 @@ contains
                         exit
                     end if
                 end do
+
                 !...otherwise we cycle to the next node
                 if (.not.nodefound) cycle
-                !Just modify the diagonals
+!                !Just modify the diagonals
 !                !Diagonals we put a 1
 !                if (i_node == j_node) then
 !                  auxR = 1.0
 !                else!not the diagonals
 !                  auxR = 0.
 !                end if
-!                !Add the new data to the matrix
-!                call addto( cmc_petsc, blocki = 1, blockj = 1, i = i_node, j = j_node,val = rescal(1) * auxR)
 
                 !Add diffusion from bad node to neighbours
                 if (i_node == bad_node) then!Row of the bad element
