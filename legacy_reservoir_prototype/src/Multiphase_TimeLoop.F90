@@ -2011,9 +2011,11 @@
 
    ! Write column headings to file
    if(itime.eq.1) then
+   write(whole_line,*) "Current Time"
        do ioutlet =1, size(outflux,2)
            write(numbers,*) "Surface_id=", outlet_id(ioutlet)
-           write(whole_line,*)trim(numbers), "Current Time"
+           !write(whole_line,*)trim(numbers), "Current Time"
+           whole_line = trim(whole_line) //","// trim(numbers)
            do iphase = 1, size(outflux,1)
                write(fluxstring(iphase),*) "Phase", iphase, "boundary flux"
                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
@@ -2026,8 +2028,9 @@
         !Write an empty line (check this)
        write(default_stat%conv_unit,*), trim(whole_line)
    else
+   write(whole_line,*) current_time
        do ioutlet =1, size(outflux,2)
-           write(whole_line,*) current_time
+           !write(whole_line,*) current_time
            do iphase = 1, size(outflux,1)
                write(fluxstring(iphase),*) outflux(iphase,ioutlet)
                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
