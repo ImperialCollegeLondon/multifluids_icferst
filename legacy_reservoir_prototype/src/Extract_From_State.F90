@@ -57,6 +57,8 @@
 
     !use printout
     !use quicksort
+    ! Will probably need to include the one below for mesh to mesh interpolation
+    !use solvers
 
 
     implicit none
@@ -4462,6 +4464,158 @@ size(t_field%val,1)*size(t_field%val,2)*size(t_field%val,3), t_field%name)
         end subroutine convert_tensor_field
 
     end subroutine get_regionIDs2nodes
+
+
+
+!subroutine MeshToMeshInterpolate(nphase,state, packed_state, FEMPSI, NDIM, &
+!       TOTELE, CV_NDGLN, X_NDGLN, &
+!       CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, X, NLX_ALL, X_NONODS)
+!
+!    ! Check whether we need all of these
+!    use shape_functions
+!    use shape_functions_Linear_Quadratic
+!    use solvers_module
+!    use matrix_operations
+!
+!    implicit none
+!
+!    type(state_type) :: packed_state
+!    type( state_type ), dimension( : ), intent( inout ) :: state
+!
+!    ! Check fempsi, fempsi_RHS etc, etc
+!    !type(tensor_field_pointer), dimension(:) :: fempsi,psi
+!    !type(scalar_field_pointer) :: fempsi,psi
+!
+!    integer, intent( in) :: nphase
+!    integer, intent( in ) :: NDIM, TOTELE, CV_NGI, CV_NLOC, X_NONODS
+!    integer, dimension( : ), intent( in ) :: CV_NDGLN
+!    integer, dimension( : ), intent( in ) ::  X_NDGLN
+!    real, dimension( :, : ), intent( in ) :: CVN
+!    real, dimension( : ), intent( inout ) :: CVWEIGHT
+!    real, dimension( :, : ), intent( in ) :: N
+!    real, dimension( :,: ), intent( in ) :: X
+!    real, dimension(:, :, :), intent(in) :: NLX_ALL
+!
+!    ! Local variables
+!    type( mesh_type ), pointer :: phmesh
+!    integer :: iphase
+!    logical :: D1, D3, DCYL
+!    real, dimension( : ), allocatable, target :: DETWEI2, RA2
+!    real, dimension( :, : , :), allocatable, target :: NX_ALL2
+!    real, target :: VOLUME2
+!    real :: MN, MM
+!    integer :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_GI, stat
+!
+!    ! Pointers to use if storage is used
+!    real, dimension( : ), pointer :: DETWEI, RA
+!    real, dimension( :, :, :), pointer :: NX_ALL
+!    real, pointer :: volume
+!
+!    !type(tensor_field), dimension(size(psi)) :: fempsi_rhs
+!    type(scalar_field) :: fempsi_rhs, fempsi,ph_sol
+!    type(tensor_field), pointer :: tfield
+!    type(csr_matrix) :: mat
+!    type(petsc_csr_matrix) :: pmat
+!    type(csr_sparsity), pointer :: sparsity
+!
+!    character( len = OPTION_PATH_LEN ) :: path = "/tmp"
+!
+!    phmesh => extract_mesh( state( 1 ), "ph" )
+!
+!    ! This is my 'Psi' in the notes - Extract it from Packed State. In this example we're interpolating the phase volume fraction
+!    tfield=>extract_tensor_field( packed_state, "PackedPhaseVolumeFraction"  )
+!    ! tfield%val( 1, iphase, cv_nonods)
+!
+!    allocate( DETWEI2( CV_NGI ))
+!    allocate( RA2( CV_NGI ))
+!    allocate( NX_ALL2( NDIM, CV_NLOC, CV_NGI ))
+!    !Set the pointers
+!    volume =>  VOLUME2; DETWEI => DETWEI2; RA => RA2
+!    NX_ALL =>NX_ALL2
+!
+!
+!    call allocate(fempsi,tfield%mesh,"FEMPSI" )
+!    call zero(fempsi)
+!
+!    call allocate(fempsi_rhs,tfield%mesh,"RHS")
+!    call zero(fempsi_rhs)
+!
+!    !call halo_update(psi%ptr) Deal with parallel later
+!
+!    ! Check exactly which of these things need to be allocated
+!
+!    sparsity=>extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
+!    call allocate(mat,sparsity,name="ProjectionMatrix")
+!    call allocate(pmat,sparsity,[1,1],name="ProjectionMatrix")
+!    call zero(mat)
+!
+!    call allocate( ph_sol, phmesh, "ph_sol" )
+!    call zero( ph_sol )
+!
+!    !IF(IGETCT.NE.0) MASS_MN_PRES=0.0
+!
+!    D1 = ( NDIM == 1 )
+!    D3 = ( NDIM == 3 )
+!    DCYL = .false.
+!
+!   Loop_Elements: do ELE = 1, TOTELE
+!
+!           ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
+!          CALL DETNLXR( ELE, X(1,:), X(2,:), X(3,:), X_NDGLN, TOTELE, X_NONODS, CV_NLOC, CV_NGI, &
+!                N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), CVWEIGHT, DETWEI2, RA2, VOLUME2, D1, D3, DCYL, &
+!                NX_ALL2(1,:,:), NX_ALL2(2,:,:), NX_ALL2(3,:,:) )
+!
+!       Loop_CV_ILOC: do CV_ILOC = 1, CV_NLOC
+!
+!          CV_NODI = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
+!
+!          Loop_CV_JLOC: do CV_JLOC = 1, CV_NLOC
+!
+!             CV_NODJ = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_JLOC )
+!             MN = 0.0
+!             MM = 0.0
+!             do CV_GI = 1, CV_NGI
+!                MN = MN + CVN( CV_ILOC, CV_GI ) * N( CV_JLOC, CV_GI )   * DETWEI( CV_GI )
+!                MM = MM + CVN( CV_ILOC, CV_GI ) * CVN( CV_JLOC, CV_GI ) * DETWEI( CV_GI )
+!             end do
+!
+!             call addto(mat,cv_nodi,cv_nodj,MN)
+!
+!
+!             fempsi_rhs%val(cv_nodi) = fempsi_rhs%val(cv_nodi)+ MM*tfield%val(1, 1, cv_nodj)
+!
+!          end do Loop_CV_JLOC
+!
+!       end do Loop_CV_ILOC
+!
+!    end do Loop_Elements
+!
+!           call set_solver_options( path, &
+!                 ksptype = "cg", &
+!                 pctype = "hypre", &
+!                 rtol = 1.0e-10, &
+!                 atol = 0.0, &
+!                 max_its = 10000 )
+!            call add_option( &
+!                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
+!            call set_option( &
+!                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
+!            ph_sol % option_path = path
+!
+!            call petsc_solve(ph_sol, mat, fempsi_rhs )
+!
+!
+!    call deallocate(fempsi)
+!    call deallocate(fempsi_rhs)
+!
+!    call deallocate( MAT )
+!    call deallocate( PMAT )
+!
+!    deallocate( DETWEI2 )
+!    deallocate( RA2 )
+!    deallocate( NX_ALL2 )
+!
+!end subroutine
 
 
 end module Copy_Outof_State

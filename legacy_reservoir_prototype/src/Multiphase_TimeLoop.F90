@@ -1978,49 +1978,70 @@
    character (len=1000000) :: whole_line
    character (len=1000) :: numbers
 
+   character (len=1000) :: numbers1
+   character (len=1000) :: numbers2
+   character (len=1000) :: numbers3
+   character (len=1000) :: numbers4
+
+   integer :: iphase
+   character (len = 1000), dimension(size(outflux,1)) :: fluxstring
+   character (len = 1000), dimension(size(outflux,1)) :: intfluxstring
 
    default_stat%conv_unit=free_unit()
 
    open(unit=default_stat%conv_unit, file="outfluxes.txt", action="write", position="append")
 
-   ! Write column headings to file
-   !   if(itime.eq.1) then
-   !       whole_line = "Current Time"
-   !       do ioutlet =1, size(outflux,2)
-   !           write(numbers,*), outlet_id(ioutlet)
-   !           whole_line = trim(whole_line) // "Surface id:"// trim(numbers)// "Phase1 boundary flux"// &
-   !           "Phase2 boundary flux"// "Phase1 integrated flux"// "Phase2 integrated flux "
-   !       end do
-   !        !Write a line
-   !       write(default_stat%conv_unit,*), trim(whole_line)
-   !   endif
-
-   write(whole_line,*), current_time
-   do ioutlet =1, size(outflux,2)
-       write(numbers,*), outflux(:, ioutlet),  intflux(:, ioutlet)
-       whole_line = trim(whole_line) //" "// trim(numbers)//" "
-   end do
-    !Write a line
-   write(default_stat%conv_unit,*), trim(whole_line)
-
-
+!   ! Write column headings to file
 !   if(itime.eq.1) then
-!       write(default_stat%conv_unit,*) "Current Time"
+!       !write(default_stat%conv_unit,*) "Current Time"
 !       do ioutlet =1, size(outflux,2)
-!           write(default_stat%conv_unit,*) "Surface id:",outlet_id(ioutlet),"""", &
+!           write(default_stat%conv_unit,*) "Current Time","Surface id:",outlet_id(ioutlet),&
 !           "Phase1 boundary flux","Phase2 boundary flux","Phase1 integrated flux","Phase2 integrated flux"
+!           whole_line = trim(whole_line) //","// trim(numbers)//","
 !       end do
 !
 !   endif
 
+!   write(whole_line,*) current_time
+!   do ioutlet =1, size(outflux,2)
+!       write(numbers,*) outflux(:, ioutlet),  intflux(:, ioutlet)
+!       whole_line = trim(whole_line) //","// trim(numbers)//","
+!   end do
+!    !Write a line
+!   write(default_stat%conv_unit,*), trim(whole_line)
 
-!write(default_stat%conv_unit,*) current_time
-!
-!
-!do ioutlet =1, size(outflux,2)
-!  write(default_stat%conv_unit,*) outflux(:, ioutlet),  intflux(:, ioutlet)
-!end do
+   ! Write column headings to file
+   if(itime.eq.1) then
+       do ioutlet =1, size(outflux,2)
+           write(numbers,*) "Surface_id=", outlet_id(ioutlet)
+           write(whole_line,*)trim(numbers), "Current Time"
+           do iphase = 1, size(outflux,1)
+               write(fluxstring(iphase),*) "Phase", iphase, "boundary flux"
+               whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+           enddo
+           do iphase = 1, size(outflux,1)
+               write(intfluxstring(iphase),*) "Phase", iphase,  "time integrated flux"
+               whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+           enddo
+       end do
+        !Write an empty line (check this)
+       write(default_stat%conv_unit,*), trim(whole_line)
+   else
+       do ioutlet =1, size(outflux,2)
+           write(whole_line,*) current_time
+           do iphase = 1, size(outflux,1)
+               write(fluxstring(iphase),*) outflux(iphase,ioutlet)
+               whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+           enddo
+           do iphase = 1, size(outflux,1)
+               write(intfluxstring(iphase),*) intflux(iphase,ioutlet)
+               whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+           enddo
+       end do
+        !Write an empty line (check this)
+       write(default_stat%conv_unit,*), trim(whole_line)
 
+   endif
 
    close (default_stat%conv_unit)
 
