@@ -498,7 +498,7 @@ Recommended value is 0.01</a:documentation>
                   <element name="Dumping_factor">
                     <a:documentation>Saturation obtained in the non-linear loop is dumped by this factor.
 
-The value is between 0 and 1. Negative values calculate it automatically (Unstable)
+The value is between 0 and 1. Negative values calculate it automatically
 
 Recommended settings: Non-linear iterations &gt;= 100 and Dumping_factor = 0.15</a:documentation>
                     <ref name="real"/>

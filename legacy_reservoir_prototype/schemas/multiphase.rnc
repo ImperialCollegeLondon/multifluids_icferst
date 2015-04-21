@@ -426,7 +426,7 @@ start =
                   (
                     ## Saturation obtained in the non-linear loop is dumped by this factor.
                     ## 
-                    ## The value is between 0 and 1. Negative values calculate it automatically (Unstable)
+                    ## The value is between 0 and 1. Negative values calculate it automatically
                     ## 
                     ## Recommended settings: Non-linear iterations >= 100 and Dumping_factor = 0.15
                     element Dumping_factor{

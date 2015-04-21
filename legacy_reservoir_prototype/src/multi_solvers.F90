@@ -34,7 +34,7 @@ module solvers_module
   use Petsc_tools
   use sparse_tools_petsc
   use solvers
-  use global_parameters, only: OPTION_PATH_LEN
+  use global_parameters, only: OPTION_PATH_LEN, dumping_in_sat
   use spud
 
   use state_module
@@ -778,7 +778,7 @@ contains
       !for 90 it is 0, for 135 it is 0.25 *alpha for 180 it is alpha
       adapted_alpha = alpha * ((Quality_list(i)%angle - 90.)/90.)**2.
 
-      do while (Quality_list(i)%ele>0)
+      do while (Quality_list(i)%ele>0 .and. i < size(Quality_list))
           counter = 1
           ele = Quality_list(i)%ele
           !Bad node
@@ -800,17 +800,16 @@ contains
                         exit
                     end if
                 end do
+
                 !...otherwise we cycle to the next node
                 if (.not.nodefound) cycle
-                !Just modify the diagonals
+!                !Just modify the diagonals
 !                !Diagonals we put a 1
 !                if (i_node == j_node) then
 !                  auxR = 1.0
 !                else!not the diagonals
 !                  auxR = 0.
 !                end if
-!                !Add the new data to the matrix
-!                call addto( cmc_petsc, blocki = 1, blockj = 1, i = i_node, j = j_node,val = rescal(1) * auxR)
 
                 !Add diffusion from bad node to neighbours
                 if (i_node == bad_node) then!Row of the bad element
@@ -1412,9 +1411,8 @@ contains
 
     subroutine Trust_region_correction(packed_state, sat_bak, Dumping_from_schema, CV_NDGLN, IDs2CV_ndgln, dumping)
     !In this subroutine we applied some corrections and dumping on the saturations obtained from the saturation equation
-    !this is based on the paper SPE-173267-MS.
+    !this idea is based on the paper SPE-173267-MS.
     !The method ensures convergence independent on the time step.
-    !NOTE: FOR THE TIME BEING IT CONSIDERS VISCOSITY INDEPENDENT OF THE SATURATION
         implicit none
         !Global variables
         type( state_type ), intent(inout) :: packed_state
@@ -1425,51 +1423,39 @@ contains
         !Local variables
         real, parameter :: offset_inflection = 0.1!This is what we allow the jump to surpass an inflection
         real, parameter :: offset_kink = 0.05!This is what we allow the jump to surpass a kink
-        real, dimension(:, :), pointer :: dSat, Immobile_fraction
-        real :: dumping_factor, aux, D, C
-        integer :: iphase, inode, cv_nloc
-
-
+        real, dimension(:, :), pointer :: dSat
+        real :: dumping_factor
+        !Parameters for the automatic dumping
+        real, save :: Oldconvergence = -1
+        real, save :: OldOldconvergence = -1
+        real, save :: stored_dumping = 0.20
+        real, save :: OldDumping = -1
+        real, save :: OldOldDumping = -1
+        real, save :: convergence_tol = -1
         !First, impose physical constrains
         call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln)
-
-        !We get the dumping by divinding AD/AB where A is sat_bak, B is the new solution and D is the inflection/kink point +
-        !an offset
 
         !We re-use the phase volume fraction to reduce the ram consumption
         call get_var_from_packed_state(packed_state,PhaseVolumeFraction = dSat)
         dSat = dSat - sat_bak
 
 
-        if (Dumping_from_schema < 0.0) then!Automatic method
-            !***INFLECTION SECTION***
-            !Get immobile fractions, they happen to be the inflection points
-            call get_var_from_packed_state(packed_state,Immobile_fraction = Immobile_fraction)
-            !Here we calculate the lenght of the acceptable jump, we allow an overpass of offset_inflection
-            !over the inflection point, this might be an option for the user to choose
-            dumping_factor = 1.0; aux = 1.0
+        if (Dumping_from_schema < 0.0) then!Automatic method based on the history of convergence
+            !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
+            !dumping_parameter
+            if (convergence_tol< 0) &!retrieve it just once
+                call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic',&
+                     convergence_tol, default = -1. )
 
-
-            do inode = 1, size(dSat,2)
-                do iphase = 1, size(dSat,1)
-                    C = Immobile_fraction(iphase, IDs2CV_ndgln(inode))
-                    D = C + sign(offset_inflection, dSat(iphase,inode))
-                    !Do something only if we are crossing an inflection point
-                    if (( dSat(iphase,inode) > 0 .and. sat_bak(iphase,inode) <= D) .or.&!THESE SHOULD BE C
-                    ( dSat(iphase,inode) < 0 .and. sat_bak(iphase,inode) >= D) ) then
-                        aux = abs(( D - sat_bak(iphase,inode)) /max(dSat(iphase,inode),1d-10))
-                        if (aux < dumping_factor .and. aux > 5d-2) then!If steps are too small we are not interested, also avoid rounding errors
-                            dumping_factor = aux
-                        end if
-                    end if
-                end do
-            end do
-
-            !This seems to help, but it is probably because I am not dumping correctly
-            dumping_factor = min(dumping_factor, 0.5)
-
-
-            !***KINK SECTION***, only if gravity is present
+            dumping_factor = predictedDumping(stored_dumping, &
+                OldDumping, OldOldDumping, dumping_in_sat, OldConvergence, OldOldConvergence, convergence_tol)
+            !Update convegence history
+            OldOldconvergence = Oldconvergence
+            Oldconvergence = dumping_in_sat
+            !Update dumping history
+            OldOldDumping = OldDumping
+            OldDumping = stored_dumping
+            stored_dumping = dumping_factor
 
         else!Use the value introduced by the user
             dumping_factor = Dumping_from_schema
@@ -1485,6 +1471,61 @@ contains
         !Calculate the new saturation (dSat is pointing to packed_state) using a global dumping parameter as it is more conservative
         !In the paper they say that local dumping could severily improve convergence...
         dSat = sat_bak + dumping_factor * dSat
+
+    contains
+        real function predictedDumping(Dumping, OldDumping, OldOldDumping,&
+             Convergence, OldConvergence, OldOldConvergence, convergence_tol)
+            !This function calculates a dumping parameter based on the history of convergence
+            !By getting the coefficients to get the curve y = Ax^2 + Bx + C and
+            !getting the dumping that will minimize that curve
+            implicit none
+            real, intent(in) :: Dumping, OldDumping, OldOldDumping
+            real, intent(in) :: Convergence, OldConvergence, OldOldConvergence, convergence_tol
+            !Local variables
+            real, dimension(3,3) :: A
+            real, dimension(3) :: b
+
+            !Specify initialy the previous value to make sure it always returns a value
+            predictedDumping = Dumping
+
+            !Set the system
+            if (OldOldconvergence > 0) then
+                A(1,1:3) = (/OldOldDumping**2,OldOldDumping, 1.0 /)
+                A(2,1:3) = (/OldDumping**2,   OldDumping,    1.0 /)
+                A(3,1:3) = (/Dumping**2,      Dumping,       1.0 /)
+                b(1:3) = (/OldOldConvergence, OldConvergence,Convergence  /)
+                !Solve the system to get the coefficients A, B and C
+                call invert(A)
+                b = matmul(A,b)
+            end if
+
+            if (  OldOldconvergence> 0 .and. .not. ISNAN(sum(b)) .and. b(1) > 0) then
+                !Get the value that will give us the minimum convergence
+                predictedDumping = -b(2)/(2.0*b(1))
+            else if (OldDumping > 0 .and. OldConvergence > 0)then!Use a linear approach
+                !Solve the system to get the coefficients B and C
+                b(2)= (OldConvergence- Convergence)/(OldDumping - Dumping)
+                b(3) = OldConvergence - b(2) * OldDumping
+                if (b(2)> 0) then!Diverging, then minimum values are in the direction of OldConvergence
+                    predictedDumping = max(max(Dumping / 1.1, 0.09),b(2) * (OldConvergence&
+                             + (OldConvergence- Convergence)/abs(b(2)) ) + b(3))!The search range is scalated by the tangent
+                else!Converging, then minimum values are in the direction of Convergence
+                    predictedDumping = min(min(Dumping * 1.05, 0.55), b(2) * (Convergence &
+                            + (Convergence - OldConvergence)/abs(b(2))) + b(3))!The search range is scalated by the tangent
+                end if
+            else!Simplest method, increase or decrease previous dumping parameter
+                if (Convergence-Oldconvergence < 0) then!Converging
+                   predictedDumping = min(Dumping * 1.05, 0.55)
+                else if (Convergence < convergence_tol) then
+                    continue!Convergence factor very low, do not decrease the dumping parameter
+                else!Diverging, the reduce with a minimum value that will mean performing all the non-linear iterations
+                   predictedDumping = max(Dumping / 1.1, 0.09)
+                end if
+            end if
+
+            !Make sure it is bounded
+            predictedDumping = max(min(predictedDumping, 0.8), 1d-3)
+        end function predictedDumping
 
     end subroutine Trust_region_correction
 
