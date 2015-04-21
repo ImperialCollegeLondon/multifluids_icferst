@@ -38,7 +38,7 @@
          check_diagnostic_dependencies
     use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
                                simulation_start_wall_time, &
-                               topology_mesh_name, current_time, is_porous_media
+                               topology_mesh_name, current_time, is_porous_media, is_multifracture
     use fldebug
     use reference_counting
     use state_module
@@ -561,7 +561,7 @@
       call get_RockFluidProp(state, packed_state)
       !Convert material properties to be stored using region ids, only if porous media
       call get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, &
-        fake_IDs_ndgln = .not. is_porous_media .or. have_option( '/femdem_fracture' ) )
+        fake_IDs_ndgln = .not. is_porous_media .or. is_multifracture )
 
 !!$ Starting Time Loop
       itime = 0
@@ -674,8 +674,8 @@
 
 !!$ FEMDEM...
 #ifdef USING_FEMDEM
-        if ( have_option( '/femdem_fracture' ) ) then
-            call fracking(packed_state) 
+        if ( (is_multifracture ) ) then
+            call fracking(packed_state, state) 
         elseif ( have_option( '/blasting') ) then 
             call blasting( packed_state, nphase )
             call update_blasting_memory( packed_state, state, timestep )  

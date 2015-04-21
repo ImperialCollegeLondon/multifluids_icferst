@@ -40,7 +40,7 @@
     use diagnostic_variables
     use diagnostic_fields
     use diagnostic_fields_wrapper
-    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat
+    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat, is_multifracture
     use diagnostic_fields_wrapper_new
     use element_numbering
     use shape_functions
@@ -141,6 +141,7 @@
 
 !!$ Get the vel element type.
       is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
+      is_multifracture = have_option( '/femdem_fracture' )
 
       positions => extract_vector_field( state, 'Coordinate' )
       pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
@@ -2469,7 +2470,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     tfield % val( :, :, element_nodes( 1 ) )
             end do
          end if
-         call insert(packed_state,Permeability,"Permeability")
+         call insert(packed_state,permeability,"Permeability")
          call deallocate(permeability)
       else
          call allocate(permeability,element_mesh,"Permeability",&

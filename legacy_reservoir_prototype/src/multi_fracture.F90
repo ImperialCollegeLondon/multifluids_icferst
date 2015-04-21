@@ -161,18 +161,22 @@ contains
 
   !----------------------------------------------------------------------------------------------------------
 
-  subroutine fracking( packed_state )
+  subroutine fracking( packed_state, state )
 
     implicit none
 
     type( state_type ), intent( inout ) :: packed_state
+    type( state_type ), dimension( : ), intent( inout ) :: state
 
     ! read in ring and solid volume meshes
     ! and simplify the volume mesh
     call initialise_femdem
 
+    !calculate volume-fraction for mapping solid concentration
+    call calculate_volume_fraction( packed_state)
+
     ! calculate porosity and permeability
-    call calculate_phi_and_perm( packed_state )
+    call calculate_phi_and_perm( packed_state, state )
 
     ! deallocate
     call deallocate_femdem
@@ -430,11 +434,12 @@ contains
 
   !----------------------------------------------------------------------------------------------------------
 
-  subroutine calculate_phi_and_perm( packed_state )
+  subroutine calculate_phi_and_perm( packed_state, state )
 
     implicit none
 
     type( state_type ), intent( inout ) :: packed_state
+    type( state_type ), dimension( : ), intent( inout ) :: state
 
     !Local variables
     type( state_type ) :: alg_ext, alg_fl
@@ -442,8 +447,8 @@ contains
     type( vector_field ) :: fl_positions
     type( scalar_field ) :: rvf
 
-    type( tensor_field ), pointer :: permeability
-    type( scalar_field ), pointer :: porosity, vf 
+    type( tensor_field ), pointer :: permeability, perm_state
+    type( scalar_field ), pointer :: porosity, vf , poro_state
     real, dimension( :, :, : ), allocatable :: perm
 
 
@@ -453,7 +458,7 @@ contains
     character( len = OPTION_PATH_LEN ) :: &
          path = "/tmp/galerkin_projection/continuous"
     integer :: stat, totele, ele, idim, jdim
-    real, dimension( : ), allocatable :: scale, vfscale
+    real, dimension( : ), allocatable :: scale
     real, parameter :: tol = 1.0e-10
 
     ewrite(3,*) "inside calculate_phi_and_perm"
@@ -552,28 +557,26 @@ contains
     permeability % val( 2, 1, : ) =   perm( 2, 1, : )
     permeability % val( 2, 2, : ) =   perm( 2, 2, : )
 
-!    permeability % val( 1, 1, : ) = field_fl_p11 % val + matrix_perm
-!    permeability % val( 1, 2, : ) = field_fl_p12 % val 
-!    permeability % val( 2, 1, : ) = field_fl_p21 % val 
-!    permeability % val( 2, 2, : ) = field_fl_p22 % val + matrix_permtop
-
-
     porosity => extract_scalar_field( packed_state, "Porosity" )
     vf => extract_scalar_field( packed_state, "SolidConcentration" )
 
-    allocate(vfscale(totele)); vfscale =0.0
     allocate( scale( totele ) ) ; scale = 0.0
     do ele = 1, totele
       if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0
-      if (rvf % val (ele) > 0.0) porosity % val (ele) = rvf % val(ele) * scale(ele) 
-!      if (vf % val (ele) > 0.0) vfscale (ele)= porosity % val (ele)
-!      if (rvf % val (ele) == 0.0) porosity % val (ele)=porosity % val (ele) - vfscale(ele)
+      if (rvf % val (ele) > 0.0) porosity % val (ele) = 0.9 ! rvf % val(ele) * scale(ele) 
     end do
 
+    poro_state => extract_scalar_field(state(1),"Porosity")
+    call zero( poro_state )
+    poro_state % val = porosity % val
+    
+!    perm_state => extract_tensor_field(state(1),"Permeability")
+!    call zero( perm_state )
+!    perm_state % val = permeability % val 
+    
     ! deallocate    
     deallocate( perm)
     deallocate( scale )
-    deallocate( vfscale) 
     call deallocate( fl_positions )
     call deallocate( rvf )
 
