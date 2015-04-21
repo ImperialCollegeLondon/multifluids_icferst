@@ -2152,7 +2152,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          call deallocate(element_shape)
          element_mesh=>extract_mesh(packed_state,'P0DG')
       end if
-
+      call insert(packed_state,element_mesh,'P0DG')
       !If have capillary pressure, then we store 5 entries in PackedRockFluidProp, otherwise just 3
       if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
         call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[5,nphase])

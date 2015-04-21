@@ -561,7 +561,7 @@
       call get_RockFluidProp(state, packed_state)
       !Convert material properties to be stored using region ids, only if porous media
       call get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, &
-        fake_IDs_ndgln = .not. is_porous_media)
+        fake_IDs_ndgln = .not. is_porous_media .or. have_option( '/femdem_fracture' ) )
 
 !!$ Starting Time Loop
       itime = 0

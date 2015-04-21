@@ -443,17 +443,18 @@ contains
     type( scalar_field ) :: rvf
 
     type( tensor_field ), pointer :: permeability
-    type( scalar_field ), pointer :: porosity
+    type( scalar_field ), pointer :: porosity, vf 
+    real, dimension( :, :, : ), allocatable :: perm
+
 
     type( scalar_field ) :: field_fl_p11, field_fl_p12, field_fl_p21, field_fl_p22, &
          &                  field_ext_p11, field_ext_p12, field_ext_p21, field_ext_p22
 
     character( len = OPTION_PATH_LEN ) :: &
          path = "/tmp/galerkin_projection/continuous"
-    integer :: stat, totele, ele
-    real, dimension( : ), allocatable :: scale
-
-    real, parameter :: tol = 1.0e-10, matrix_perm = 1.0e-5
+    integer :: stat, totele, ele, idim, jdim
+    real, dimension( : ), allocatable :: scale, vfscale
+    real, parameter :: tol = 1.0e-10
 
     ewrite(3,*) "inside calculate_phi_and_perm"
 
@@ -470,7 +471,7 @@ contains
          ksptype = "gmres", &
          pctype = "hypre", &
          rtol = 1.0e-10, &
-         atol = 0.0, &
+         atol = 1.0e-15, &
          max_its = 10000 )
     call add_option( &
          trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
@@ -535,27 +536,44 @@ contains
     ! only fractures are permeable and porous
     ! perm is non-zero only in fractures
     ! also add an isotropic, background/matrix permeability
+
     permeability => extract_tensor_field( packed_state, "Permeability" )
+    totele=ele_count(p0_fl_mesh)
+
+    allocate( perm(ndim, ndim, totele) ) ; perm= 0.0
+
+    perm( 1, 1, : ) = field_fl_p11 % val + permeability%val(1,1,:)
+    perm( 1, 2, : ) = field_fl_p12 % val + permeability%val(1,2,:)
+    perm( 2, 1, : ) = field_fl_p21 % val + permeability%val(2,1,:)
+    perm( 2, 2, : ) = field_fl_p22 % val + permeability%val(2,2,:)
+
+    permeability % val( 1, 1, : ) =   perm( 1, 1, : )
+    permeability % val( 1, 2, : ) =   perm( 1, 2, : )
+    permeability % val( 2, 1, : ) =   perm( 2, 1, : )
+    permeability % val( 2, 2, : ) =   perm( 2, 2, : )
+
+!    permeability % val( 1, 1, : ) = field_fl_p11 % val + matrix_perm
+!    permeability % val( 1, 2, : ) = field_fl_p12 % val 
+!    permeability % val( 2, 1, : ) = field_fl_p21 % val 
+!    permeability % val( 2, 2, : ) = field_fl_p22 % val + matrix_permtop
+
+
     porosity => extract_scalar_field( packed_state, "Porosity" )
+    vf => extract_scalar_field( packed_state, "SolidConcentration" )
 
-    call zero( permeability ) ; call zero( porosity )
-
-    permeability % val( 1, 1, : ) = field_fl_p11 % val + matrix_perm
-    permeability % val( 1, 2, : ) = field_fl_p12 % val
-    permeability % val( 2, 1, : ) = field_fl_p21 % val
-    permeability % val( 2, 2, : ) = field_fl_p22 % val + matrix_perm
-
-    totele = ele_count( fl_mesh )
+    allocate(vfscale(totele)); vfscale =0.0
     allocate( scale( totele ) ) ; scale = 0.0
     do ele = 1, totele
-       if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0 
+      if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0
+      if (rvf % val (ele) > 0.0) porosity % val (ele) = rvf % val(ele) * scale(ele) 
+!      if (vf % val (ele) > 0.0) vfscale (ele)= porosity % val (ele)
+!      if (rvf % val (ele) == 0.0) porosity % val (ele)=porosity % val (ele) - vfscale(ele)
     end do
 
-    porosity % val = rvf % val * scale 
-
-
-    ! deallocate
+    ! deallocate    
+    deallocate( perm)
     deallocate( scale )
+    deallocate( vfscale) 
     call deallocate( fl_positions )
     call deallocate( rvf )
 
