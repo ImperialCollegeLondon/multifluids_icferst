@@ -3372,13 +3372,15 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             !Rescale using the dumping in saturation to get a more efficient number to compare with
             !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
             ts_ref_val = ts_ref_val / dumping_in_sat
-            !We cannot go to the next time step until we have performed a full time step
-            Accumulated_sol = Accumulated_sol + dumping_in_sat
-            if (IsParallel()) call allmax(Accumulated_sol)
+            !If it is parallel then we want to be consistent between cpus
+            if (IsParallel()) call allmax(ts_ref_val)
+!            !We cannot go to the next time step until we have performed a full time step
+!            Accumulated_sol = Accumulated_sol + dumping_in_sat
+!            if (IsParallel()) call allmax(Accumulated_sol)
 
-
-!TEMPORARY, re-use of global variable dumping_in_sat to send information about convergence to the trust_region_method
-dumping_in_sat = ts_ref_val
+            !TEMPORARY, re-use of global variable dumping_in_sat to send
+            !information about convergence to the trust_region_method
+            dumping_in_sat = ts_ref_val
 
             if (its == NonLinearIteration) then
                 ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
@@ -3386,12 +3388,10 @@ dumping_in_sat = ts_ref_val
 
             ewrite(1,*) "Difference between non linear iterations:", ts_ref_val, "Non-linear iteration", its
 
-            if (Accumulated_sol < 1.0) then
-                return
-            end if
+!            if (Accumulated_sol < 1.0) then
+!                return
+!            end if
 
-            !If it is parallel then we want to be consistent between cpus
-            if (IsParallel()) call allmax(ts_ref_val)
             !If only non-linear iterations
             if (.not.nonLinearAdaptTs) then
                !Automatic non-linear iteration checking
@@ -3411,11 +3411,11 @@ dumping_in_sat = ts_ref_val
                 ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
             end if
 
-            !                    !Exit loop section
-            !                    if ((ts_ref_val < tolerance_between_non_linear).and..not.Repeat_time_step) then
-            !                        ExitNonLinearLoop = .true.
-            !                        return
-            !                    end if
+!                    !Exit loop section
+!                    if ((ts_ref_val < tolerance_between_non_linear).and..not.Repeat_time_step) then
+!                        ExitNonLinearLoop = .true.
+!                        return
+!                    end if
 
             !Decrease Ts section only if we have done at least the 90% of the  nonLinearIterations
             if ((ts_ref_val > decrease_ts_switch.or.repeat_time_step) &
