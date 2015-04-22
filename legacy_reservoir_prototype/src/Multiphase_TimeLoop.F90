@@ -1964,7 +1964,7 @@
    ! Subroutine that dumps the total flux at a given timestep across all specified boudaries to a file  called 'outfluxes.txt'. In addition, the time integrated flux
    ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
    ! (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
-   !to integrate over).
+   !wish to integrate over).
 
    real,intent(in) :: current_time
    integer, intent(in) :: itime
@@ -1973,18 +1973,15 @@
 
 
    integer :: ioutlet
+   integer :: counter
    type(stat_type), target :: default_stat
    character (len=1000000) :: whole_line
-   character (len=1000) :: numbers
-
-   character (len=1000) :: numbers1
-   character (len=1000) :: numbers2
-   character (len=1000) :: numbers3
-   character (len=1000) :: numbers4
+   character (len=1000000) :: numbers
 
    integer :: iphase
-   character (len = 1000), dimension(size(outflux,1)) :: fluxstring
-   character (len = 1000), dimension(size(outflux,1)) :: intfluxstring
+   ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
+   character (len = 1000000), dimension(size(outflux,1)) :: fluxstring
+   character (len = 1000000), dimension(size(outflux,1)) :: intfluxstring
 
    default_stat%conv_unit=free_unit()
 
@@ -1998,7 +1995,6 @@
 !           "Phase1 boundary flux","Phase2 boundary flux","Phase1 integrated flux","Phase2 integrated flux"
 !           whole_line = trim(whole_line) //","// trim(numbers)//","
 !       end do
-!
 !   endif
 
 !   write(whole_line,*) current_time
@@ -2010,10 +2006,17 @@
 !   write(default_stat%conv_unit,*), trim(whole_line)
 
    ! Write column headings to file
+   counter = 0
    if(itime.eq.1) then
+   write(whole_line,*) "Current Time"
        do ioutlet =1, size(outflux,2)
            write(numbers,*) "Surface_id=", outlet_id(ioutlet)
-           write(whole_line,*)trim(numbers), "Current Time"
+           if(counter.eq.0) then
+           whole_line = trim(numbers) //","// trim(whole_line)
+           else
+           whole_line = trim(whole_line) //","// trim(numbers)
+           endif
+           !write(whole_line,*)trim(numbers)  //","//  "Current Time"
            do iphase = 1, size(outflux,1)
                write(fluxstring(iphase),*) "Phase", iphase, "boundary flux"
                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
@@ -2022,12 +2025,20 @@
                write(intfluxstring(iphase),*) "Phase", iphase,  "time integrated flux"
                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
            enddo
+           counter = counter + 1
        end do
-        !Write an empty line (check this)
+        ! Write out the line
        write(default_stat%conv_unit,*), trim(whole_line)
    else
+   ! Write the actual numbers to the file now
+   counter = 0
+   write(numbers,*) current_time
+   whole_line =  ","// trim(numbers)
        do ioutlet =1, size(outflux,2)
-           write(whole_line,*) current_time
+       if(counter > 0) then
+       whole_line = trim(whole_line) //","
+       endif
+           !write(whole_line,*) current_time
            do iphase = 1, size(outflux,1)
                write(fluxstring(iphase),*) outflux(iphase,ioutlet)
                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
@@ -2036,8 +2047,9 @@
                write(intfluxstring(iphase),*) intflux(iphase,ioutlet)
                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
            enddo
+           counter = counter + 1
        end do
-        !Write an empty line (check this)
+       ! Write out the line
        write(default_stat%conv_unit,*), trim(whole_line)
 
    endif
