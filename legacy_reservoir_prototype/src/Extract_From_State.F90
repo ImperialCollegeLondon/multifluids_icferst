@@ -3247,6 +3247,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       integer, intent(in) :: its, order
       !Local variables
       real :: dt
+      logical, save :: Time_step_decreased_with_dumping = .false.
+      real, save :: OldDt
       real, save :: Accumulated_sol
       real, parameter :: check_sat_threshold = 1d-6
       real, dimension(:), pointer :: pressure
@@ -3385,9 +3387,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             !information about convergence to the trust_region_method
             dumping_in_sat = ts_ref_val
 
-            if (its == NonLinearIteration) then
-                ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
-            end if
+
 
             ewrite(1,*) "Difference between non linear iterations:", ts_ref_val, "Non-linear iteration", its
 
@@ -3399,49 +3399,74 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             if (.not.nonLinearAdaptTs) then
                !Automatic non-linear iteration checking
                 ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
+                if (ExitNonLinearLoop .and. Time_step_decreased_with_dumping) then
+                    !After converging we set back the old time step and disable this check
+                    Time_step_decreased_with_dumping = .false.
+                    call set_option( '/timestepping/timestep', OldDt )
+                    ewrite(1,*) "Time step set back to:", OldDt
+                end if
                return
             end if
 
-            !Increase Ts section
-            if ((ts_ref_val < increase_ts_switch .and.dt*increaseFactor<max_ts).and..not.Repeat_time_step) then
-               call get_option( '/timestepping/timestep', dt )
-               dt = dt * increaseFactor
-               call set_option( '/timestepping/timestep', dt )
-               ewrite(1,*) "Time step increased to:", dt
-               ExitNonLinearLoop = .true.
-               return
-            else !Maybe it is not enough to increase the time step, but we could go to the next time step
-                ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
-            end if
 
-!                    !Exit loop section
-!                    if ((ts_ref_val < tolerance_between_non_linear).and..not.Repeat_time_step) then
-!                        ExitNonLinearLoop = .true.
-!                        return
-!                    end if
+            !If we have a dumping parameter we only reduce the time-step if we reach
+            !the maximum number of non-linear iterations
+            if (.not. have_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/Dumping_factor')) then
+                !Tell the user if we have not converged
+                if (its == NonLinearIteration) then
+                    ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
+                end if
+                !Increase Ts section
+                if ((ts_ref_val < increase_ts_switch .and.dt*increaseFactor<max_ts).and..not.Repeat_time_step) then
+                   call get_option( '/timestepping/timestep', dt )
+                   dt = dt * increaseFactor
+                   call set_option( '/timestepping/timestep', dt )
+                   ewrite(1,*) "Time step increased to:", dt
+                   ExitNonLinearLoop = .true.
+                   return
+                else !Maybe it is not enough to increase the time step, but we could go to the next time step
+                    ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
+                end if
 
-            !Decrease Ts section only if we have done at least the 90% of the  nonLinearIterations
-            if ((ts_ref_val > decrease_ts_switch.or.repeat_time_step) &
-                 .and.its>=int(0.90*NonLinearIteration)) then
+                !Decrease Ts section only if we have done at least the 90% of the  nonLinearIterations
+                if ((ts_ref_val > decrease_ts_switch.or.repeat_time_step) &
+                     .and.its>=int(0.90*NonLinearIteration)) then
 
-               if ( dt / decreaseFactor < min_ts) then
-                  !Do not decrease
-                  Repeat_time_step = .false.
-                  ExitNonLinearLoop = .true.
-                  deallocate(reference_field)
-                  return
-               end if
+                   if ( dt / decreaseFactor < min_ts) then
+                      !Do not decrease
+                      Repeat_time_step = .false.
+                      ExitNonLinearLoop = .true.
+                      deallocate(reference_field)
+                      return
+                   end if
 
-               !Decrease time step, reset the time and repeat!
-               call get_option( '/timestepping/timestep', dt )
-               call get_option( '/timestepping/current_time', acctim )
-               acctim = acctim - dt
-               call set_option( '/timestepping/current_time', acctim )
-               dt = dt / decreaseFactor
-               call set_option( '/timestepping/timestep', dt )
-               ewrite(1,*) "Time step decreased to:", dt
-               Repeat_time_step = .true.
-               ExitNonLinearLoop = .true.
+                   !Decrease time step, reset the time and repeat!
+                   call get_option( '/timestepping/timestep', dt )
+                   call get_option( '/timestepping/current_time', acctim )
+                   acctim = acctim - dt
+                   call set_option( '/timestepping/current_time', acctim )
+                   dt = dt / decreaseFactor
+                   call set_option( '/timestepping/timestep', dt )
+                   ewrite(1,*) "Time step decreased to:", dt
+                   Repeat_time_step = .true.
+                   ExitNonLinearLoop = .true.
+                end if
+            else!We do it one time-step and then we go back to the previous time-step
+                if (its>=int(NonLinearIteration)) then
+                   !Decrease time step, reset the time and repeat!
+                   call get_option( '/timestepping/timestep', dt )
+                   !Store this time step to return to it later on
+                   OldDt = dt
+                   call get_option( '/timestepping/current_time', acctim )
+                   acctim = acctim - dt
+                   call set_option( '/timestepping/current_time', acctim )
+                   dt = dt / decreaseFactor
+                   call set_option( '/timestepping/timestep', dt )
+                   ewrite(1,*) "Time step decreased to:", dt
+                   Repeat_time_step = .true.
+                   ExitNonLinearLoop = .true.
+                   Time_step_decreased_with_dumping = .true.
+                end if
             end if
          end if
 
