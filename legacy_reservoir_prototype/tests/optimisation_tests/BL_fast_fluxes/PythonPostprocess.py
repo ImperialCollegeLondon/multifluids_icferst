@@ -19,29 +19,25 @@ os.system('rm -f ' + path+ '/outfluxes.txt')
 os.system(binpath + ' ' + path + '/*mpml')
 
 with open('outfluxes.txt','r') as f1:
-       
-    reader = csv.reader(f1)
-        
-    for row in reader:
-        columns = row[0].split()
+# Need a slightly modified script to correctly read this file in       
+    f1.readline()
+    for row in f1:
+        columns = row.split(",")
         try:
-            tC.append(float(columns[0]))
-            f1C.append(float(columns[1]))
-            f2C.append(float(columns[2]))
-            t1C.append(float(columns[3]))
-            t2C.append(float(columns[4]))        
+            tC.append(float(columns[1]))
+            f1C.append(float(columns[2]))
+            f2C.append(float(columns[3]))
+            t1C.append(float(columns[4]))
+            t2C.append(float(columns[5]))        
         except:
             print "some error"
-
-
 
 f1.close()
 
 with open('outfluxesHighRes.txt','r') as f2:
-       
+# This file is still in the old format, so we read it in using the old method       
     reader = csv.reader(f2)
-        
-    for row in reader:
+    for row in reader:    
         columns = row[0].split()
         try:
             tCA.append(float(columns[0]))
@@ -52,18 +48,10 @@ with open('outfluxesHighRes.txt','r') as f2:
         except:
             print "some error"
 
-
-
 f2.close()
 
-a=numpy.array(t1C)
-b=numpy.array(t2C)
-
-#tes1=numpy.amax(numpy.absolute(numpy.array(f1CA)-numpy.array(f1C)))
-#tes2=numpy.amax(numpy.absolute(numpy.array(f2CA)-numpy.array(f2C)))
-#tes3=numpy.amax(numpy.absolute(numpy.array(t1CA)-numpy.array(t1C)))
-#tes4=numpy.amax(numpy.absolute(numpy.array(t2CA)-numpy.array(t2C)))
-
+#a=numpy.array(t1C)
+#b=numpy.array(t2C)
 
 fn1 = interp1d(tCA,f1CA)
 fn2 = interp1d(tCA,f2CA)
@@ -76,8 +64,9 @@ L1_sum3 = 0
 L1_sum4 = 0
 
 for i in range(len(tC)):
-    if (i==0):
-        continue    
+# This line was to omit the first row from the calculation (since it's text) but we're no longer reading it in.
+    #if (i==0): 
+        #continue    
     L1_sum1 = L1_sum1 + abs(fn1(tC[i]) - f1C[i])/len(tC)
     L1_sum2 = L1_sum2 + abs(fn2(tC[i]) - f2C[i])/len(tC)
     L1_sum3 = L1_sum3 + abs(fn3(tC[i]) - t1C[i])/len(tC)
