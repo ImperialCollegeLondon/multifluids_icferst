@@ -1554,12 +1554,6 @@ contains
         !Set saturation to be between bounds
         do cv_nod = 1, size(satura,2 )
             moveable_sat = 1 - sum(Immobile_fraction(:, IDs2CV_ndgln(cv_nod)))
-            !Make sure saturation is between bounds
-            do iphase = 1, nphase
-                minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
-                maxsat = moveable_sat + minsat
-                satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
-            end do
             !Work in normalize saturation here
             Normalized_sat = (satura(:,cv_nod) - Immobile_fraction(:, IDs2CV_ndgln(cv_nod)))/moveable_sat
             sum_of_phases = sum(Normalized_sat)
@@ -1567,6 +1561,12 @@ contains
             !Spread the error to all the phases weighted by their moveable presence in that CV
             if (correction /= 0.0) satura(:, cv_nod) = (Normalized_sat(:) * (1.0 + correction/sum_of_phases))*&
                     moveable_sat + Immobile_fraction(:, IDs2CV_ndgln(cv_nod))
+            !Make sure saturation is between bounds after the modification
+            do iphase = 1, nphase
+                minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
+                maxsat = moveable_sat + minsat
+                satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+            end do
         end do
 
         !Deallocate
