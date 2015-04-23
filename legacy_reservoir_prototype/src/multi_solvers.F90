@@ -1538,27 +1538,39 @@ contains
         integer, dimension(:), intent(in) :: IDs2CV_ndgln
         !Local variables
         integer :: iphase, jphase, nphase, ele, cv_nod
-        real :: maxsat, minsat, sum_of_phases
+        real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
+        real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
         real, dimension(:, :), pointer :: Immobile_fraction
 
         call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
         !Get Immobile_fractions
         call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
-
         nphase = size(satura,1)
+
+        !Allocate
+        allocate(Normalized_sat(nphase))
+
         !Set saturation to be between bounds
         do cv_nod = 1, size(satura,2 )
-            sum_of_phases = sum(satura(:,cv_nod))
+            moveable_sat = 1 - sum(Immobile_fraction(:, IDs2CV_ndgln(cv_nod)))
+            !Make sure saturation is between bounds
             do iphase = 1, nphase
                 minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
-                maxsat = 1 - sum(Immobile_fraction(:, IDs2CV_ndgln(cv_nod))) + minsat
-                !We enforce the sum to one by spreading the error to all the phases
-                if (sum_of_phases /= 1.0 ) &
-                    satura(iphase, cv_nod) = satura(iphase, cv_nod) + (1.0 - sum_of_phases) / nphase
+                maxsat = moveable_sat + minsat
                 satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
             end do
+            !Work in normalize saturation here
+            Normalized_sat = (satura(:,cv_nod) - Immobile_fraction(:, IDs2CV_ndgln(cv_nod)))/moveable_sat
+            sum_of_phases = sum(Normalized_sat)
+            correction = (1.0 - sum_of_phases)
+            !Spread the error to all the phases weighted by their moveable presence in that CV
+            if (correction /= 0.0) satura(:, cv_nod) = (Normalized_sat(:) * (1.0 + correction/sum_of_phases))*&
+                    moveable_sat + Immobile_fraction(:, IDs2CV_ndgln(cv_nod))
         end do
+
+        !Deallocate
+        deallocate(Normalized_sat)
 
     end subroutine Set_Saturation_to_sum_one
 
