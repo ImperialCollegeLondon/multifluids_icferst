@@ -3389,7 +3389,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             dumping_in_sat = ts_ref_val
 
 
-
             ewrite(1,*) "Difference between non linear iterations:", ts_ref_val, "Non-linear iteration", its
 
 !            if (Accumulated_sol < 1.0) then
@@ -3400,12 +3399,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             if (.not.nonLinearAdaptTs) then
                !Automatic non-linear iteration checking
                 ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
-                if (ExitNonLinearLoop .and. Time_step_decreased_with_dumping) then
-                    !After converging we set back the old time step and disable this check
-                    Time_step_decreased_with_dumping = .false.
-                    call set_option( '/timestepping/timestep', OldDt )
-                    ewrite(1,*) "Time step set back to:", OldDt
-                end if
                return
             end if
 
@@ -3452,12 +3445,24 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                    Repeat_time_step = .true.
                    ExitNonLinearLoop = .true.
                 end if
-            else!We do it one time-step and then we go back to the previous time-step
+            else
+                !Check if after decreasing the time step we can increase it again
+                if (ts_ref_val < tolerance_between_non_linear .and. Time_step_decreased_with_dumping) then
+                    !After converging we set back the old time step and disable this check
+                    call set_option( '/timestepping/timestep', OldDt )
+                    ewrite(1,*) "Time step set back to:", OldDt
+                    Time_step_decreased_with_dumping = .false.
+                    ExitNonLinearLoop = .true.
+                    Repeat_time_step = .false.
+                    return
+                end if
+                !We do it one time-step and then we go back to the previous time-step
                 if (its>=int(NonLinearIteration)) then
                    !Decrease time step, reset the time and repeat!
                    call get_option( '/timestepping/timestep', dt )
-                   !Store this time step to return to it later on
-                   OldDt = dt
+                   !Store this time step (the first time we reduce the time step) to return to it later on
+                   if (.not. Time_step_decreased_with_dumping)  OldDt = dt
+
                    call get_option( '/timestepping/current_time', acctim )
                    acctim = acctim - dt
                    call set_option( '/timestepping/current_time', acctim )
