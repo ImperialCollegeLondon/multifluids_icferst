@@ -834,15 +834,15 @@
                           if (is_porous_media) then
                               select case (NPHASE)
                                   case (1)!No relperm needed, we calculate directly the result
-                                      U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = INV_PERM( IDIM, JDIM, IDs_ndgln(ELE) ) *&
+                                      U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = INV_PERM( IDIM, JDIM, ELE ) *&
                                       visc_phases(1) * min(1.0,max(1d-5,SATURA(1,CV_NOD)))
                                   case (2)
                                       CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), visc_phases, &
-                                      INV_PERM( IDIM, JDIM, IDs_ndgln(ELE) ), SATURA(iphase,CV_NOD), IPHASE,&
+                                      INV_PERM( IDIM, JDIM, ELE ), SATURA(iphase,CV_NOD), IPHASE,&
                                       Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                   case (3)!For three phases we use the Stone model. !With predefined order: Water, oil, gas
                                       call relperm_stone(U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), iphase,&
-                                      SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, IDs_ndgln(ELE)),&
+                                      SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, ELE),&
                                       Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                   case default
                                       FLAbort("No relative permeability function implemented for more than 3 phases")
@@ -2198,7 +2198,7 @@
             Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
             Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
             Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
-            inv_perm = inverse( perm%val(:, :, IDs_ndgln(ele)) )
+            inv_perm = inverse( perm%val(:, :, ele) )
 
             do iface = 1, nface
 

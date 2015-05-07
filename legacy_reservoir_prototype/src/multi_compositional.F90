@@ -109,7 +109,7 @@
             CV_NOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC ) 
             SUM_NOD( CV_NOD ) = SUM_NOD( CV_NOD ) + mass_ele( ele ) !1.0
             VOLFRA_PORE_NOD( CV_NOD ) = VOLFRA_PORE_NOD( CV_NOD ) + &
-                 VOLFRA_PORE( IDs_ndgln(ELE) ) * mass_ele( ele )
+                 VOLFRA_PORE( ELE ) * mass_ele( ele )
          END DO
       END DO
       VOLFRA_PORE_NOD = VOLFRA_PORE_NOD / SUM_NOD
