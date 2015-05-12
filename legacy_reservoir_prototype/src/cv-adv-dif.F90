@@ -1149,7 +1149,7 @@ contains
             CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
             SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
             MEAN_PORE_CV( CV_INOD ) = MEAN_PORE_CV( CV_INOD ) + &
-                 MASS_ELE( ELE ) * VOLFRA_PORE( IDs_ndgln(ELE) )
+                 MASS_ELE( ELE ) * VOLFRA_PORE( ELE )
          END DO
       END DO
       MEAN_PORE_CV = MEAN_PORE_CV / SUM_CV

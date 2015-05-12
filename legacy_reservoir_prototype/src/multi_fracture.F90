@@ -62,13 +62,13 @@ module multiphase_fractures
   interface
      subroutine y2d_populate_femdem( ele1_r, ele2_r, ele3_r, &
           &                          face1_r, face2_r, x_r, y_r, &
-          &                          p1, p2, p3, p4, &
+          &                          p1, p2, p3, p4, isfr, &
           &                          ele1_v, ele2_v, ele3_v, &
           &                          face1_v, face2_v, x_v, y_v )
        integer, dimension( * ), intent( out ) :: ele1_r, ele2_r, ele3_r, &
             &                                    ele1_v, ele2_v, ele3_v, &
             &                                    face1_r, face2_r, face1_v, face2_v
-       real, dimension( * ), intent( out ) :: x_r, y_r, x_v, y_v, p1, p2, p3, p4
+       real, dimension( * ), intent( out ) :: x_r, y_r, x_v, y_v, p1, p2, p3, p4, isfr
      end subroutine y2d_populate_femdem
   end interface
 
@@ -198,7 +198,7 @@ contains
     integer, dimension( : ), allocatable :: ele1_r, ele2_r, ele3_r, &
          &                                  ele1_v, ele2_v, ele3_v, &
          &                                  face1_r, face2_r, face1_v, face2_v
-    real, dimension( : ), allocatable :: x_r, y_r, x_v, y_v, p1, p2, p3, p4 
+    real, dimension( : ), allocatable :: x_r, y_r, x_v, y_v, p1, p2, p3, p4 , isfr
     type( quadrature_type ) :: quad
     type( element_type ) :: shape
     integer, dimension( : ), allocatable :: sndglno_r, boundary_ids_r, &
@@ -243,9 +243,11 @@ contains
 
     allocate( p1( elements_r ), p2( elements_r ) )
     allocate( p3( elements_r ), p4( elements_r ) )
+    allocate( isfr(elements_r) )
+
 
     call y2d_populate_femdem( ele1_r, ele2_r, ele3_r, &
-         face1_r, face2_r, x_r, y_r, p1, p2, p3, p4, &
+         face1_r, face2_r, x_r, y_r, p1, p2, p3, p4, isfr, &
          ele1_v, ele2_v, ele3_v, face1_v, face2_v, x_v, y_v )
 
     quad = make_quadrature( loc, ndim, degree = quad_degree )
@@ -334,7 +336,7 @@ contains
 
     deallocate( ele1_r, ele2_r, ele3_r, face1_r, face2_r, &
          &      ele1_v, ele2_v, ele3_v, face1_v, face2_v, &
-         &      x_r, y_r, x_v, y_v, p1, p2, p3, p4 )
+         &      x_r, y_r, x_v, y_v, p1, p2, p3, p4, isfr )
 
     ewrite(3,*) "leaving initialise_femdem"
 
@@ -448,7 +450,7 @@ contains
     type( scalar_field ) :: rvf
 
     type( tensor_field ), pointer :: permeability, perm_state
-    type( scalar_field ), pointer :: porosity, vf , poro_state
+    type( scalar_field ), pointer :: porosity, vf , poro_state, dum, perm_val
     real, dimension( :, :, : ), allocatable :: perm
 
 
@@ -457,7 +459,7 @@ contains
 
     character( len = OPTION_PATH_LEN ) :: &
          path = "/tmp/galerkin_projection/continuous"
-    integer :: stat, totele, ele, idim, jdim
+    integer :: stat, totele, ele
     real, dimension( : ), allocatable :: scale
     real, parameter :: tol = 1.0e-10
 
@@ -543,14 +545,24 @@ contains
     ! also add an isotropic, background/matrix permeability
 
     permeability => extract_tensor_field( packed_state, "Permeability" )
-    totele=ele_count(p0_fl_mesh)
+    totele=ele_count(fl_mesh)
 
     allocate( perm(ndim, ndim, totele) ) ; perm= 0.0
+do ele=1, totele
+    if (rvf % val (ele) > 0.0) then
+    perm( 1, 1, ele ) = field_fl_p11 % val (ele)
+    perm( 1, 2, ele ) = field_fl_p12 % val (ele)
+    perm( 2, 1, ele ) = field_fl_p21 % val (ele)
+    perm( 2, 2, ele ) = field_fl_p22 % val (ele)
+    else
+    perm( 1, 1, ele ) =permeability%val(1,1,ele)
+    perm( 1, 2, ele ) =permeability%val(1,2,ele)
+    perm( 2, 1, ele ) =permeability%val(2,1,ele)
+    perm( 2, 2, ele ) =permeability%val(2,2,ele)
+    end if
+end do
 
-    perm( 1, 1, : ) = field_fl_p11 % val + permeability%val(1,1,:)
-    perm( 1, 2, : ) = field_fl_p12 % val + permeability%val(1,2,:)
-    perm( 2, 1, : ) = field_fl_p21 % val + permeability%val(2,1,:)
-    perm( 2, 2, : ) = field_fl_p22 % val + permeability%val(2,2,:)
+
 
     permeability % val( 1, 1, : ) =   perm( 1, 1, : )
     permeability % val( 1, 2, : ) =   perm( 1, 2, : )
@@ -563,27 +575,29 @@ contains
     allocate( scale( totele ) ) ; scale = 0.0
     do ele = 1, totele
       if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0
-      if (rvf % val (ele) > 0.0) porosity % val (ele) = 0.9 ! rvf % val(ele) * scale(ele) 
+      if (rvf % val (ele) > 0.0) porosity % val (ele) = 0.90 !rvf % val(ele) * scale(ele)
     end do
 
     poro_state => extract_scalar_field(state(1),"Porosity")
     call zero( poro_state )
     poro_state % val = porosity % val
-    
-!    perm_state => extract_tensor_field(state(1),"Permeability")
-!    call zero( perm_state )
-!    perm_state % val = permeability % val 
+
+    perm_val => extract_scalar_field( packed_state, "SolidConcentration" )
+    call zero( perm_val)
+    perm_val % val = perm (1,1,:)
+
     
     ! deallocate    
     deallocate( perm)
     deallocate( scale )
-    call deallocate( fl_positions )
-    call deallocate( rvf )
-
     call deallocate( field_fl_p22 )
     call deallocate( field_fl_p21 )
     call deallocate( field_fl_p12 )
     call deallocate( field_fl_p11 )
+
+return   
+    call deallocate( rvf )
+    call deallocate( fl_positions )
 
     call deallocate( alg_fl )
     call deallocate( alg_ext )

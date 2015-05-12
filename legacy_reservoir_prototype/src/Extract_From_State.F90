@@ -2118,8 +2118,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          vfield => extract_vector_field( state(1), "solid_U" )
          call insert( packed_state, vfield, "solid_U" )
 
-!         vfield => extract_vector_field( state(1), "perm_frac" )
-!         call insert( packed_state, vfield, "perm_frac" )
 
          vfield => extract_vector_field( state(1), "f_x" )
          call insert( packed_state, vfield, "f_x" )
@@ -2138,6 +2136,9 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          
          tfield => extract_tensor_field( state(1), "Viscosity" )
          call insert( packed_state, tfield, "Viscosity" )
+
+         sfield => extract_scalar_field( state(1), "Dummy" )
+         call insert( packed_state, sfield, "Dummy" )
 
       end if
 #endif
@@ -4301,7 +4302,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       ! x_ele calculates a coordinate on each element
       !x_ele=x_ndgln((ele-1)*cv_nloc+1)
       !PorG(ele) = Por(x_ele)
-      PorG = Por(IDs_ndgln(ele))
+      PorG = Por(ele)
 
 ! This function will return true for surfaces we should be integrating over (this entire subroutine is called in a loop over ele,(sele),gi in cv-adv-dif)
 ! Need the condition that sele > 0 Check why it can be zero/negative.
@@ -4545,16 +4546,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
 
         !###Compact fields###
-        !Porosity
-        if (has_scalar_field(packed_state,"Porosity")) then
-            s_field=>extract_scalar_field(packed_state,"Porosity")
-            call convert_scalar_field(s_field, IDs_ndgln )
-        end if
-        !Permeability
-        if (has_tensor_field(packed_state,"Permeability")) then
-            t_field=>extract_tensor_field(packed_state,"Permeability")
-            call convert_tensor_field(t_field, IDs_ndgln )
-        end if
         !Relative permeability and Immobile fractions (if cappressure, also cap parameters)
         if (has_tensor_field(packed_state,"PackedRockFluidProp")) then
             t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
