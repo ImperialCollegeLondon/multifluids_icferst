@@ -159,9 +159,9 @@
       <real_value rank="0">0.2</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">100</integer_value>
+      <integer_value rank="0">30</integer_value>
       <nonlinear_iterations_automatic>
-        <real_value rank="0">0.03</real_value>
+        <real_value rank="0">5e-8</real_value>
         <Dumping_factor>
           <real_value rank="0">0.3334</real_value>
         </Dumping_factor>

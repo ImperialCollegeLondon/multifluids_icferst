@@ -261,7 +261,6 @@
 
       logical :: calculate_flux
 
-
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -1192,7 +1191,6 @@
          elseif( have_option( '/mesh_adaptivity/prescribed_adaptivity' ) ) then
             if( do_adapt_state_prescribed( current_time ) ) do_reallocate_fields = .true.
          end if Conditional_Adaptivity_ReallocatingFields
-
          new_mesh = do_reallocate_fields
 
          Conditional_ReallocatingFields: if( do_reallocate_fields ) then

@@ -453,7 +453,8 @@ contains
          option_path, &
          mass_ele_transp,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-         StorageIndexes, Material_Absorption,nonlinear_iteration, IDs_ndgln, IDs2CV_ndgln)
+         StorageIndexes, Material_Absorption,nonlinear_iteration, IDs_ndgln,&
+         IDs2CV_ndgln)
 
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
@@ -639,7 +640,7 @@ contains
           !Solve the system
           vtracer=as_vector(tracer,dim=2)
           !Backup of the saturation field, to adjust the solution
-          if (Dumping_factor < 1.0) sat_bak = satura
+          if (Dumping_factor < 1.01) sat_bak = satura
 
           call zero(vtracer)
           call zero_non_owned(cv_rhs_field)
@@ -649,9 +650,11 @@ contains
           call deallocate(petsc_acv)
 
           !Correct the solution obtained to make sure we are on track towards the final solution
-          if (Dumping_factor < 1.0) then
+          if (Dumping_factor < 1.01) then
               !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
-              call Trust_region_correction(packed_state, sat_bak, Dumping_factor,CV_NDGLN, IDs2CV_ndgln, dumping_in_sat)
+!              call Trust_region_correction(packed_state, sat_bak, Dumping_factor,CV_NDGLN, IDs2CV_ndgln)
+
+              call Trust_region_correction_old(packed_state, sat_bak, Dumping_factor,CV_NDGLN, IDs2CV_ndgln,dumping_in_sat)
               !Store the accumulated updated done
               updating = updating - dumping_in_sat
 
@@ -2374,7 +2377,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !        STOP 2811
         !If we have calculated already the PIVIT_MAT and stored then we don't need to calculate it again
         !Unless it is compressible flow
-        if(have_option_for_any_phase("/equation_of_state/compressible", nphase)) StorageIndexes(34) = 0
+!        if(have_option_for_any_phase("/equation_of_state/compressible", nphase)) StorageIndexes(34) = 0
         Porous_media_PIVIT_not_stored_yet = (.not.is_porous_media .or. StorageIndexes(34) <= 0)
 
         !If we do not have an index where we have stored C, then we need to calculate it

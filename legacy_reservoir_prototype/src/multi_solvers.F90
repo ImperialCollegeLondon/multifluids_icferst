@@ -73,7 +73,8 @@ module solvers_module
   private
 
   public :: solver, PRES_DG_MULTIGRID, CMC_Agglomerator_solver, Fix_to_bad_elements,&
-         BoundedSolutionCorrections, Trust_region_correction, Set_Saturation_between_bounds, Set_Saturation_to_sum_one
+         BoundedSolutionCorrections, Trust_region_correction, Set_Saturation_between_bounds, Set_Saturation_to_sum_one,&
+         Trust_region_correction_old
 
   interface solver
      module procedure solve_via_copy_to_petsc_csr_matrix
@@ -1408,8 +1409,7 @@ contains
       return
     end subroutine BoundedSolutionCorrections
 
-
-    subroutine Trust_region_correction(packed_state, sat_bak, Dumping_from_schema, CV_NDGLN, IDs2CV_ndgln, dumping)
+    subroutine Trust_region_correction_old(packed_state, sat_bak, Dumping_from_schema, CV_NDGLN, IDs2CV_ndgln, dumping)
     !In this subroutine we applied some corrections and dumping on the saturations obtained from the saturation equation
     !this idea is based on the paper SPE-173267-MS.
     !The method ensures convergence independent on the time step.
@@ -1526,6 +1526,256 @@ contains
             !Make sure it is bounded
             predictedDumping = max(min(predictedDumping, 0.8), 1d-3)
         end function predictedDumping
+
+    end subroutine Trust_region_correction_old
+
+    subroutine Trust_region_correction(packed_state, sat_bak, Dumping_from_schema, CV_NDGLN, IDs2CV_ndgln)
+    !In this subroutine we applied some corrections and dumping on the saturations obtained from the saturation equation
+    !this idea is based on the paper SPE-173267-MS.
+    !The method ensures convergence independent on the time step.
+        implicit none
+        !Global variables
+        type( state_type ), intent(inout) :: packed_state
+        integer, dimension(:) :: CV_NDGLN, IDs2CV_ndgln
+        real, dimension(:, :), intent(in) :: sat_bak
+        real, intent(in) :: Dumping_from_schema
+        !Local variables
+        real, parameter :: offset_inflection = 0.1!This is what we allow the jump to surpass an inflection
+        real, parameter :: offset_kink = 0.05!This is what we allow the jump to surpass a kink
+        real, dimension(:, :), pointer :: dSat
+
+
+        real :: dumping_factor
+        integer :: i, k
+        logical :: first_attempt
+        !Parameters for the automatic dumping
+        real, save :: Oldconvergence = -1
+        real, save :: stored_dumping = 0.20
+        real, save :: convergence_tol = -1
+
+        real, dimension(5), save :: Dumpings = -1
+        real, dimension(4), save :: Convergences = -1
+        real, dimension(4) :: Coefficients
+        !First, impose physical constrains
+        call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln)
+        !To save memory we re-use dSat as Saturation
+        call get_var_from_packed_state(packed_state,PhaseVolumeFraction = dSat)
+        !Get dSat
+        dSat = dSat - sat_bak
+
+        !Automatic method based on the history of convergence
+        if (Dumping_from_schema < 0.0) then
+            !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
+            !dumping_parameter
+            if (convergence_tol< 0) then!retrieve it just once
+                call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic',&
+                     convergence_tol, default = -1. )
+                !Use the positive value introduced by the user
+                stored_dumping = max(min(abs(Dumping_from_schema), 1.0), 1d-3)
+            end if
+
+            !The convergence is based on dSat, it is independent of the dumping parameter
+            !and measures how the previous Dumping performed
+            Convergences(1) = dumping_in_sat
+            if (Oldconvergence < 0) then
+                Dumpings(1) = stored_dumping
+                Oldconvergence = Convergences(1)
+            else
+                !Calculate a curve that fits the historical data
+                call Cubic_fitting(Dumpings(2:), Convergences, Coefficients)
+                !Calculate the new optimal dumping parameter
+                Dumpings(1) = get_optimal_dumping(Dumpings(2:), Convergences, Coefficients)
+                !Update history, 1 => newest
+                do i = size(Dumpings), 2, -1
+                    Dumpings(i) = Dumpings(i-1)
+                end do
+                do i = size(Convergences), 2, -1
+                    Convergences(i) = Convergences(i-1)
+                end do
+
+            end if
+
+            !Store to check in the next iteration
+            Oldconvergence = Convergences(1)
+            dumping_factor = Dumpings(1)
+
+            !If we have finished the FPI then restart convergence
+            if (get_Convergence_Functional(sat_bak + dSat, sat_bak, 1.0) < convergence_tol) then
+                Oldconvergence = -1
+            end if
+
+            stored_dumping = Dumpings(1)
+            dumping_factor = Dumpings(1)
+
+        else!Use the value introduced by the user
+            dumping_factor = Dumping_from_schema
+
+        end if
+
+        dumping_in_sat = dumping_factor
+        ewrite(1,*) "dumping_factor",dumping_factor
+
+        !***SATURATION DUMPING SECTION***
+        !Calculate the new saturation (dSat is pointing to packed_state) using a global dumping parameter as it is more conservative
+        !In the paper they say that local dumping could severily improve convergence...
+        dSat = sat_bak + dumping_factor * dSat
+
+    contains
+
+        real function get_optimal_dumping(Dumpings, Convergences, Coefficients)
+            implicit none
+            real, dimension(:), intent(in) ::Dumpings, Convergences
+            real, dimension(:), intent(inout) :: Coefficients
+            !Local variables
+            logical :: Basic_method
+            real :: aux
+            real, dimension(2) :: X, Y2
+
+
+            Basic_method = .false.
+            get_optimal_dumping = Dumpings(1)
+            if ( ISNAN(sum(Coefficients(1:3)))) Basic_method = .true.
+            if (.not. Basic_method) then
+                select case (size(Coefficients))!quadratic
+                    case (3)!Quadratic
+                        get_optimal_dumping = -Coefficients(2)/(2.0*Coefficients(1))
+                        !If it is a maximum then go to the basic method
+                        if (Coefficients(1) > 0) Basic_method = .true.
+                    case (4)!Cubic
+                        !Get solution of quadratic system
+                        aux = 4. * Coefficients(2)**2 - 12. * Coefficients(1) * Coefficients(3)
+                        if (aux > 0) then
+                            aux = sqrt(aux)
+                        else
+                            Basic_method = .true.
+                        end if
+                        !Calculate first derivative
+                        X(1) = (-2. * Coefficients(2) + aux)/(6.0 * Coefficients(1))
+                        X(2) = (-2. * Coefficients(2) - aux)/(6.0 * Coefficients(1))
+                        Y2(:) = 6.0 * Coefficients(1) * X(:)+ 2.0 * Coefficients(2)
+
+                        if (Y2(1) > 0 .and. Y2(2) > 0) then
+                            !Get the maximum value
+                            get_optimal_dumping = maxval(X)
+                        else if (Y2(1) > 0) then
+                            get_optimal_dumping = X(1)
+                        else if(Y2(2) > 0) then
+                            get_optimal_dumping = X(2)
+                        else!No minimums, hence go for the basic method
+                            Basic_method = .true.
+                        end if
+
+                        !Test positive value
+                        if (.not. Basic_method) then
+                            aux = get_optimal_dumping
+                            aux = Coefficients(1) * aux**3  + Coefficients(2) * aux**2 + Coefficients(3) * aux + Coefficients(4)
+                            if (aux < 0) then!Just for testing purposes
+                                get_optimal_dumping = get_optimal_dumping/2.0
+                            end if
+                        end if
+
+                    case default!Linear or constant
+                        Basic_method = .true.
+                end select
+            end if
+
+            !If not possible to get a good value, then just a simple method based on the history
+            if (basic_method) then
+                if (Dumpings(3) < 0) then
+                    if (Convergences(1)-Convergences(2) < 0) then!Converging
+                       get_optimal_dumping = Dumpings(1) * 1.1
+                    else!Diverging, the reduce with a minimum value that will mean performing all the non-linear iterations
+                       get_optimal_dumping = Dumpings(1) / 1.4
+                    end if
+                else
+                    X = (/Dumpings(1), Convergences(1) /) - (/Dumpings(2), Convergences(2) /)
+                    Y2 = (/Dumpings(2), Convergences(2) /) - (/Dumpings(3), Convergences(3) /)
+                    if (X(2)/X(1) < 0) then!Negative slope => Converging
+                        if (Y2(2)/Y2(1) < 0) then!It was converging already
+                            if (abs(X(2)/X(1)) > abs(Y2(2)/Y2(1))) then!New slope is steeper => Optimal still to be reached
+                                !New value is previous value + the vector divided by the tangent, if it is very steep then
+                                !the optimal is very close
+                                get_optimal_dumping = Dumpings(1) + X(1) / abs(X(2)/X(1))
+                            else!Old slope was steeper => Optimal value in between the previous Dumping parameters
+                                get_optimal_dumping = 0.5 * (Dumpings(2) + Dumpings(3))
+                            end if
+                        else!It started to converge now, so we encourage to get away from the bad convergence value
+                            get_optimal_dumping = Dumpings(1) + 1.1 * X(1) / abs(X(2)/X(1))
+                        end if
+                    else!It is NOT converging now
+                        if (Y2(2)/Y2(1) < 0) then!It was converging before
+                            get_optimal_dumping = 0.5 * (Dumpings(2) + Dumpings(3))!So we use previous convergence factors
+                        else!It was diverging as well before
+                            get_optimal_dumping = Dumpings(1) * 0.5!We halve the Dumping parameter to return to convergence fast
+                        end if
+                    end if
+                end if
+            end if
+            !Make sure it is bounded
+            get_optimal_dumping = max(min(get_optimal_dumping, 0.95), 1.5d-1)
+
+        end function
+
+        subroutine Cubic_fitting(Dumpings, Convergences, Coefficients)
+            implicit none
+            real, dimension(:), intent(in) ::Dumpings, Convergences
+            real, dimension(:), intent(inout) :: Coefficients
+            !Local variables
+            integer :: n, i, j, m
+            real, dimension(:,:), allocatable :: A, A_inv
+            real, dimension(size(Dumpings)+2) :: Ext_dumpings, Ext_Convergences
+            !First check how much data do we have
+            n = minloc(Dumpings, DIM = 1)
+            !Dumpings is initially full of -1, if the position of the minimum value is not negative
+            !then, Dumpings is full, otherwise as n is the position of the first small value that
+            !is the size of Dumpings
+            if (Dumpings(n)>0) then
+                n = size(Dumpings)
+            else!We only want positive values
+                n = n - 1
+            end if
+            !Copy to Extended variables
+            Ext_dumpings(1:n) = Dumpings(1:n)
+            Ext_Convergences(1:n) = Convergences(1:n)
+
+            !Not linear so far
+            if (n==1) return
+
+            !Maximum degree of solution => cubic
+            m = 3!<= quadratic
+            if (n>=4) then!Two stored points plus the two extra points added to ensure minimums
+                m = 4
+                !Try to extend the information to the whole range [0,1]
+                !!With a dumping of 0, nothing happens
+                !Ext_dumpings(n+1) = 0d0
+                !Ext_Convergences(n+1) = 0d0
+                !Adjust to the extended variables
+                !n = n + 1
+                !with a dumping >> 1, divergence
+                !Ext_dumpings(n+1) = 1d0
+                !Ext_Convergences(n+1) = 1d0
+                !!Adjust to the extended variables
+                !n = n + 1
+            end if
+
+            allocate(A(n,m), A_inv(m,m))
+            !Construct matrix
+            do i = 1, m
+                do j = 1, n!Fill columns
+                    A(j,i) = Ext_Dumpings(j)**real(m-i)
+                    if (j==i) A(j,i) = A(j,i) + A(j,i)*(1d-7*real(rand(j)))
+                end do
+            end do
+
+
+            !Calculate curve fitting
+            !coefficients = (A^t*A)^-1 * A^t * Convergences
+            A_inv(1:m, 1:m) = matmul(transpose(A(1:n, 1:m)),A(1:n,1:m))!(M*n)*(n*m) => (m*m)
+            call invert(A_inv(1:m, 1:m))
+            Coefficients(1:m) = matmul(matmul(A_inv(1:m,1:m), transpose(A(1:n,1:m))), Ext_Convergences(1:n))
+            deallocate(A, A_inv)
+
+        end subroutine Cubic_fitting
 
     end subroutine Trust_region_correction
 

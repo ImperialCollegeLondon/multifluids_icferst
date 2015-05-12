@@ -69,7 +69,8 @@
          Extract_TensorFields_Outof_State, Extract_Position_Field, Get_Ele_Type, Get_Discretisation_Options, &
          print_from_state, update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
          get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
-         CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes
+         CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,&
+         get_Convergence_Functional
 
 
     interface Get_Ndgln
@@ -2363,8 +2364,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
             if(has_phase_volume_fraction) then
                call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
-                    check_paired(extract_scalar_field(state(i),"PhaseVolumeFraction"),&
-                    extract_scalar_field(state(i),"IteratedPhaseVolumeFraction")))
+                    check_paired(extract_scalar_field(state(i),"IteratedPhaseVolumeFraction"),&
+                    extract_scalar_field(state(i),"PhaseVolumeFraction")))
                call unpack_sfield(state(i),packed_state,"OldPhaseVolumeFraction",1,iphase,&
                     check_paired(extract_scalar_field(state(i),"PhaseVolumeFraction"),&
                     extract_scalar_field(state(i),"OldPhaseVolumeFraction")))
@@ -3248,6 +3249,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       integer, intent(in) :: its, order
       !Local variables
       real :: dt
+      integer :: iphase
       logical, save :: Time_step_decreased_with_dumping = .false.
       real, save :: OldDt
       real, save :: Accumulated_sol
@@ -3311,7 +3313,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          !we either store the data or we recover it if repeting a timestep
          !Procedure to repeat time-steps
          !If  Repeat_time_step then we recover values, else we store them
-         call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
+         if (its == 1) call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
       case (2)!Calculate and store reference_field
             !Store variable to check afterwards
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
@@ -3372,17 +3374,17 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             case (2)
                ts_ref_val = maxval(abs(reference_field-velocity))
             case default
-               ts_ref_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))
+!               ts_ref_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))
+
+                !Calculate value of the functional
+                ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), dumping_in_sat)
             end select
 
-            !Rescale using the dumping in saturation to get a more efficient number to compare with
-            !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
-            ts_ref_val = ts_ref_val / dumping_in_sat
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call allmax(ts_ref_val)
-!            !We cannot go to the next time step until we have performed a full time step
-!            Accumulated_sol = Accumulated_sol + dumping_in_sat
-!            if (IsParallel()) call allmax(Accumulated_sol)
+            !We cannot go to the next time step until we have performed a full time step
+            Accumulated_sol = Accumulated_sol + dumping_in_sat
+            if (IsParallel()) call allmax(Accumulated_sol)
 
             !TEMPORARY, re-use of global variable dumping_in_sat to send
             !information about convergence to the trust_region_method
@@ -3472,14 +3474,40 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                    Repeat_time_step = .true.
                    ExitNonLinearLoop = .true.
                    Time_step_decreased_with_dumping = .true.
+                else
+                   ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
+                   return
                 end if
             end if
          end if
 
       end select
-!ewrite(0,*) "exiting"
+
     end subroutine Adaptive_NonLinear
 
+    real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping)
+       !We create the potential to optimize F = sum (f**2), so the solution is when this potential
+       !reach a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
+       !f = (NewSat-OldSat)/Number of nodes; this is the typical approach for algebraic non linear systems
+        implicit none
+        real, dimension(:,:), intent(in) :: phasevolumefraction, reference_sat
+        real, intent(in) :: dumping
+        !Local variables
+        integer :: iphase
+
+
+        get_Convergence_Functional = 0.0
+        do iphase = 1, size(phasevolumefraction,1)
+            get_Convergence_Functional = max(sum((abs(reference_sat(iphase,:)-phasevolumefraction(iphase,:))&
+            /size(phasevolumefraction,2))**2.0), get_Convergence_Functional)
+        end do
+        !Rescale using the dumping in saturation to get a more efficient number to compare with
+        !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
+        !To make consistent the dumping parameter with the Potential, we have to raise it to 2.0
+        get_Convergence_Functional = get_Convergence_Functional / dumping**2.0
+
+
+    end function get_Convergence_Functional
 
     subroutine copy_packed_new_to_iterated(packed_state, viceversa)
       !Values from packed_state are stored in iterated unless viceversa is true, in that case
