@@ -417,18 +417,29 @@ start =
                element nonlinear_iterations_at_adapt {
                   integer
                }?,
-               ## Non-linear iterations are chosen automatically based on the variation of the saturation between non-linear iterations.
+               ## This is the convergence criteria for the Fixed Point Iteration solver.
+               ## The functional to compare is: 
+               ##
+               ## f = sum(average(dSat/dumping_parameter))^2;
+               ## dSat is the difference in saturation between FPI
+               ##
                ## 
-               ## The input is the tolerance between non-linear iterations.
-               ## Recommended value is 0.01
+               ## Recommended values: from 5e-8 to 1e-10
                element nonlinear_iterations_automatic {
                   real,
                   (
-                    ## Saturation obtained in the non-linear loop is dumped by this factor.
+                    ## dSat obtained from the Saturation equation is backtracked by this factor
+                    ##
+                    ## Sat = Sat(Previous FPI) + dumping_parameter * dSat
+                    ##
+                    ## Defined as: 0 < dumping_parameter < 1. Negative values => automatically (not well tested)
                     ## 
-                    ## The value is between 0 and 1. Negative values calculate it automatically
-                    ## 
-                    ## Recommended settings: Non-linear iterations >= 100 and Dumping_factor = 0.15
+                    ## Recommended settings: Non-linear iterations >= 100
+                    ##
+                    ## Recommended settings: Courant < 1 => dumping_parameter = 1;
+                    ## Courant > 1 => dumping_parameter from 1.0 to 0.1;
+                    ##
+                    ## The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be
                     element Dumping_factor{
                     real
                     }?

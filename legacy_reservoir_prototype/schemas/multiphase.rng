@@ -489,18 +489,29 @@ This option will work only if the mesh_adaptivity is switched on.</a:documentati
             </optional>
             <optional>
               <element name="nonlinear_iterations_automatic">
-                <a:documentation>Non-linear iterations are chosen automatically based on the variation of the saturation between non-linear iterations.
+                <a:documentation>This is the convergence criteria for the Fixed Point Iteration solver.
+The functional to compare is: 
 
-The input is the tolerance between non-linear iterations.
-Recommended value is 0.01</a:documentation>
+f = sum(average(dSat/dumping_parameter))^2;
+dSat is the difference in saturation between FPI
+
+
+Recommended values: from 5e-8 to 1e-10</a:documentation>
                 <ref name="real"/>
                 <optional>
                   <element name="Dumping_factor">
-                    <a:documentation>Saturation obtained in the non-linear loop is dumped by this factor.
+                    <a:documentation>dSat obtained from the Saturation equation is backtracked by this factor
 
-The value is between 0 and 1. Negative values calculate it automatically
+Sat = Sat(Previous FPI) + dumping_parameter * dSat
 
-Recommended settings: Non-linear iterations &gt;= 100 and Dumping_factor = 0.15</a:documentation>
+Defined as: 0 &lt; dumping_parameter &lt; 1. Negative values =&gt; automatically (not well tested)
+
+Recommended settings: Non-linear iterations &gt;= 100
+
+Recommended settings: Courant &lt; 1 =&gt; dumping_parameter = 1;
+Courant &gt; 1 =&gt; dumping_parameter from 1.0 to 0.1;
+
+The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be</a:documentation>
                     <ref name="real"/>
                   </element>
                 </optional>
