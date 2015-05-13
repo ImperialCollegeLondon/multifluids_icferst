@@ -2291,7 +2291,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       call insert_vfield(packed_state,"Velocity",add_source=.true.)
       call insert_vfield(packed_state,"NonlinearVelocity",zerod=.true.)
       call insert(state(1),velocity%mesh,"InternalVelocityMesh")
-
       call unpack_multiphase(packed_state,multiphase_state)
       if (ncomp>0) then
          call insert_sfield(packed_state,"ComponentDensity",ncomp,nphase)
@@ -2484,6 +2483,12 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          call insert(packed_state,permeability,"Permeability")
          call deallocate(permeability)
       end if
+
+      !Add memory for the DarcyVelocity
+      call allocate(ten_field,velocity%mesh,"DarcyVelocity")
+      call zero(ten_field)
+      call insert(packed_state,ten_field,"DarcyVelocity")
+      call deallocate(ten_field)
 
     contains
 
