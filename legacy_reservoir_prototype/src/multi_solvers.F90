@@ -1444,7 +1444,7 @@ contains
             !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
             !dumping_parameter
             if (convergence_tol< 0) &!retrieve it just once
-                call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic',&
+                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration',&
                      convergence_tol, default = -1. )
 
             dumping_factor = predictedDumping(stored_dumping, &
@@ -1568,7 +1568,7 @@ contains
             !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
             !dumping_parameter
             if (convergence_tol< 0) then!retrieve it just once
-                call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic',&
+                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration',&
                      convergence_tol, default = -1. )
                 !Use the positive value introduced by the user
                 stored_dumping = max(min(abs(Dumping_from_schema), 1.0), 1d-3)

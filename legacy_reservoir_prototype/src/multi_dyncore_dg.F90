@@ -542,7 +542,7 @@ contains
         totele, cv_nloc, CV_NDGLN, IDs2CV_ndgln)
 
       !Get variable for global convergence method
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/Dumping_factor',&
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Dumping_factor',&
         Dumping_factor, default = 1.1)
 
       GET_THETA_FLUX = .FALSE.
@@ -1092,7 +1092,6 @@ contains
             else
                nullify(halo)
             end if
-            
 
             CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, &
             NCOLC, FINDC, COLC, &
@@ -1102,7 +1101,6 @@ contains
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & 
             got_free_surf,  MASS_SUF, &
             C, CT, state, StorageIndexes(11), halo )
-
         END IF
 
         NO_MATRIX_STORE = ( NCOLDGM_PHA <= 1 )
@@ -2371,15 +2369,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
-!        PRINT *,'STRESS_FORM, STRESS_FORM_STAB, THERMAL_STAB_VISC, THERMAL_FLUID_VISC, Q_SCHEME,LES_DISOPT,LES_CS,therm_ftheta:', &
-!                 STRESS_FORM, STRESS_FORM_STAB, THERMAL_STAB_VISC, THERMAL_FLUID_VISC, Q_SCHEME,LES_DISOPT,LES_CS,therm_ftheta
-!        PRINT *,'DIFF_MIN_FRAC, DIFF_MAX_FRAC, SIMPLE_DIFF_CALC:', DIFF_MIN_FRAC, DIFF_MAX_FRAC, SIMPLE_DIFF_CALC
-!        STOP 2811
         !If we have calculated already the PIVIT_MAT and stored then we don't need to calculate it again
-        !Unless it is compressible flow
-!        if(have_option_for_any_phase("/equation_of_state/compressible", nphase)) StorageIndexes(34) = 0
         Porous_media_PIVIT_not_stored_yet = (.not.is_porous_media .or. StorageIndexes(34) <= 0)
-
         !If we do not have an index where we have stored C, then we need to calculate it
         got_c_matrix  = StorageIndexes(12)/=0
         if (.not.got_c_matrix) then

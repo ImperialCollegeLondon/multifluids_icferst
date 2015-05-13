@@ -377,6 +377,8 @@ start =
             ## maximum number of non-linear iterations.
             ## 
             ## Manual suggests 2
+            ## 
+            ## If using Fixed_Point_Iteration the recommendation is 100
 			element nonlinear_iterations {
                integer,
                ## tolerance for non-linear iteration.
@@ -425,7 +427,7 @@ start =
                ##
                ## 
                ## Recommended values: from 5e-8 to 1e-10
-               element nonlinear_iterations_automatic {
+               element Fixed_Point_Iteration{
                   real,
                   (
                     ## dSat obtained from the Saturation equation is backtracked by this factor
@@ -443,6 +445,11 @@ start =
                     element Dumping_factor{
                     real
                     }?
+                  ),
+                  (
+                    ## Prints the number of iterations and
+                    ## the final convergence achieved by the FPI solver
+                    element Show_Convergence{comment}?
                   ),
                   (
                     ## Adaptive timestep based on the ratio between non-linear iterations.

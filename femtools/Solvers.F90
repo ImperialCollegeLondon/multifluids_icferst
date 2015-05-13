@@ -1760,7 +1760,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
   logical, optional, intent(in) :: is_subpc
   ! option to "mg" to tell it not to do a direct solve at the coarsest level
   logical, optional, intent(in) :: has_null_space
-    
+  character(len=500):: gamg_options
     KSP:: subksp
     PC:: subpc
     PCType:: pctype, hypretype
@@ -1889,18 +1889,18 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
         call PCGAMGSetThreshold(pc, 0.01, ierr)
         !Improves the efficiency of the solver
         call PCGAMGSetUseASMAggs(pc, .true., ierr)!Use aggregation agragates for GASM smoother. By default is false
-
-        !More options we can tweak, consider adding them into diamond
-        !Number of smoothing steps
-!        call PCGAMGSetNSmooths(pc, 1, ierr)!Number of smoothing steps, 1 is default
-
-!        call PCGAMGSetReuseProl(pc, .false., ierr)!Reuse prolongation
-
-!        call PCGAMGSetSquareGraph(pc, .true., ierr)!For faster coarsening and lower coarse grid complexity
-!        call PCGAMGSetSymGraph(pc, .true., ierr)!For unsymmetric matrices
-
-!        call PCGAMGSetType(pc, PCGAMGAGG, ierr)!Types: PCGAMGAGG(plain aggregation, default), PCGAMGGEO (geometric aggregation)
-
+        !Add options via "commands"
+        gamg_options = '-multigrid'
+        !Set type of cycle v (faster) or w (more robust)
+        gamg_options = trim(gamg_options) // " " // "-pc_mg_cycles v"
+        !Set number of smoothup and smooth down
+        gamg_options = trim(gamg_options) // " " // "-pc_mg_smoothdown 2 -pc_mg_smoothup 2"
+        !Type of multigrid: additive,multiplicative,full,kaskade
+        gamg_options = trim(gamg_options) // " " // "-pc_mg_type multiplicative"
+        !Set to use GMRES as smoother, it seems to behave worse than the ASMAggs smoother
+!        gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres"
+        !Insert into petsc
+        call PetscOptionsInsertString(trim(gamg_options), ierr)
 
       end if
 #endif

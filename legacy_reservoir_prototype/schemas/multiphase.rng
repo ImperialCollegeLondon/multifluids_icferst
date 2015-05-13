@@ -441,7 +441,9 @@ then this is the initial time step size.</a:documentation>
           <element name="nonlinear_iterations">
             <a:documentation>maximum number of non-linear iterations.
 
-Manual suggests 2</a:documentation>
+Manual suggests 2
+
+If using Fixed_Point_Iteration the recommendation is 100</a:documentation>
             <ref name="integer"/>
             <optional>
               <element name="tolerance">
@@ -488,7 +490,7 @@ This option will work only if the mesh_adaptivity is switched on.</a:documentati
               </element>
             </optional>
             <optional>
-              <element name="nonlinear_iterations_automatic">
+              <element name="Fixed_Point_Iteration">
                 <a:documentation>This is the convergence criteria for the Fixed Point Iteration solver.
 The functional to compare is: 
 
@@ -513,6 +515,13 @@ Courant &gt; 1 =&gt; dumping_parameter from 1.0 to 0.1;
 
 The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be</a:documentation>
                     <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Show_Convergence">
+                    <a:documentation>Prints the number of iterations and
+the final convergence achieved by the FPI solver</a:documentation>
+                    <ref name="comment"/>
                   </element>
                 </optional>
                 <optional>

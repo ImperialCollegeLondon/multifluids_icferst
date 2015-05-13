@@ -3270,32 +3270,32 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       integer :: variable_selection, i, NonLinearIteration
 !ewrite(0,*) "entering"
       !First of all, check if the user wants to do something
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic', tolerance_between_non_linear, default = -1. )
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
       if (tolerance_between_non_linear<0) return
       call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
       !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
       !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation)
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear', &
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
            variable_selection, default = 3)
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_factor', &
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
            increaseFactor, default = 1.05 )
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_factor', &
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
            decreaseFactor, default = 1.2 )
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/max_timestep', &
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
            max_ts, default = huge(min_ts) )
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/min_timestep', &
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
            min_ts, default = -1. )
 
       !Switches are relative to the input value unless otherwise stated
-      if (have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch')) then
-          call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch', &
+      if (have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_ts_switch')) then
+          call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_ts_switch', &
           increase_ts_switch, default = 1d-3 )
       else
           increase_ts_switch = tolerance_between_non_linear / 10.
       end if
 
-      if (have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch')) then
-          call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch', &
+      if (have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_ts_switch')) then
+          call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_ts_switch', &
           decrease_ts_switch, default = 1d-1 )
       else
           decrease_ts_switch = min(tolerance_between_non_linear * 10.,1.0)
@@ -3391,8 +3391,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             !information about convergence to the trust_region_method
             dumping_in_sat = ts_ref_val
 
-
-            ewrite(1,*) "Difference between non linear iterations:", ts_ref_val, "Non-linear iteration", its
+            ewrite(1,*) "Fixed Point Iteration convergence:", ts_ref_val, "Non-linear iteration", its
 
 !            if (Accumulated_sol < 1.0) then
 !                return
@@ -3402,13 +3401,18 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             if (.not.nonLinearAdaptTs) then
                !Automatic non-linear iteration checking
                 ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
+                   if (ExitNonLinearLoop .and. &
+                    have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')) then
+                        !We tell the user the number of FPI and final convergence to help improving the parameters
+                         ewrite(0,*) "FPI convergence:", ts_ref_val, "Number of FPI to converge", its
+                   end if
                return
             end if
 
 
             !If we have a dumping parameter we only reduce the time-step if we reach
             !the maximum number of non-linear iterations
-            if (.not. have_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/Dumping_factor')) then
+            if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Dumping_factor')) then
                 !Tell the user if we have not converged
                 if (its == NonLinearIteration) then
                     ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val

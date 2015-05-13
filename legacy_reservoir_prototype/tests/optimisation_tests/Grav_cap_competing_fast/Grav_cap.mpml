@@ -160,12 +160,12 @@
     </finish_time>
     <nonlinear_iterations>
       <integer_value rank="0">100</integer_value>
-      <nonlinear_iterations_automatic>
+      <Fixed_Point_Iteration>
         <real_value rank="0">1e-8</real_value>
         <Dumping_factor>
           <real_value rank="0">0.1</real_value>
         </Dumping_factor>
-      </nonlinear_iterations_automatic>
+      </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
   <caching/>

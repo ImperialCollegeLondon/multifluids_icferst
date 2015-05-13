@@ -81,8 +81,6 @@
     USE multiphase_rheology
     use vtk_interfaces
 
-
-
 #ifdef HAVE_ZOLTAN
   use zoltan
 #endif
@@ -316,7 +314,7 @@
       !A deallocate tfield when finished!!
 
       Repeat_time_step = .false.!Initially has to be false
-      nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear')
+      nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
 
 !!$ Compute primary scalars used in most of the code
       call Get_Primary_Scalars( state, &
@@ -521,7 +519,7 @@
       call get_option( '/timestepping/finish_time', finish_time )
       call get_option( '/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1 )
       call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
-      !      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic', tolerance_between_non_linear, default = -1. )
+      !      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
 !!$
       have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
       do istate = 1, nstate
@@ -711,6 +709,7 @@
 
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
+
             if( solve_force_balance ) then
                call Calculate_AbsorptionTerm( state, packed_state,&
                     cv_ndgln, mat_ndgln, &
@@ -857,6 +856,9 @@
                     scale_momentum_by_volume_fraction,&
                     StorageIndexes=StorageIndexes, Quality_list = Quality_list,&
                     nonlinear_iteration = its, IDs_ndgln=IDs_ndgln )
+
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+
 !!$ Calculate Density_Component for compositional
                if( have_component_field ) &
                     call Calculate_Component_Rho( state, packed_state, &

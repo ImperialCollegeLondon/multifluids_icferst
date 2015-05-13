@@ -48,7 +48,7 @@ module darcy_diagnostics
   implicit none
   
   private
-  
+
   public :: calculate_darcy_velocity
   
 contains
@@ -90,10 +90,10 @@ contains
        call get_option('/material_phase['//int2str(state_index-1)//']/vector_field::Velocity/prognostic/tensor_field::Viscosity/prescribed/value::WholeMesh/isotropic/constant',mu)
     end if
 
-    call get_option('trim(states(state_index)%option_path)//&
-         "/multiphase_properties/relperm_max',beta,default=1.0)
-    call get_option('trim(states(state_index)%option_path)//&
-         "/multiphase_properties/relperm_exponent',alpha,default=2.0)
+    call get_option('trim(states(state_index)%option_path)'//&
+         '/multiphase_properties/relperm_max',beta,default=1.0)
+    call get_option('trim(states(state_index)%option_path)'//&
+         '/multiphase_properties/relperm_exponent',alpha,default=2.0)
 
     X => extract_vector_field(states(1), "Coordinate")
 
@@ -262,5 +262,6 @@ contains
     end subroutine allocate_and_insert
   
   end subroutine calculate_darcy_velocity
+
 
 end module darcy_diagnostics
