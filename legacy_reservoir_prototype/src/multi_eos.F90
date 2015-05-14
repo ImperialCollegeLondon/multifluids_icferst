@@ -94,7 +94,7 @@
                                                Density_Component, Cp, Component_l, c_cv_nod
       character( len = option_path_len ), dimension( : ), allocatable :: eos_option_path
       type( tensor_field ), pointer :: field1, field2, field3, field4
-      type( scalar_field ), pointer :: Cp_s, sf
+      type( scalar_field ), pointer :: Cp_s
       integer :: icomp, iphase, ncomp, sc, ec, sp, ep, stat, cv_iloc, cv_nod, ele
 
       logical :: boussinesq=.true.
@@ -677,7 +677,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, x_snloc, cv_snloc, u_snloc, &
            p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij,i
+           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij
       real :: Mobility, pert
       real, dimension(:), allocatable :: Max_sat
       real, dimension( :, :, : ), allocatable :: u_absorb2
@@ -802,7 +802,7 @@
       real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
       REAL, PARAMETER :: TOLER = 1.E-10
       INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
-           IPHA_IDIM, IDIM, JDIM, IPHASE, jphase, id_reg
+           IPHA_IDIM, IDIM, JDIM, IPHASE, id_reg
       REAL, DIMENSION( :, :, :), allocatable :: INV_PERM, PERM
 
       RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
@@ -965,7 +965,7 @@
            jphase_solid_solid_interaction_options
 
 
-      type(scalar_field) :: ibeta,jbeta,cval,cvf_dg,ivf_dg,jvf_dg
+      type(scalar_field) :: ibeta,cval,cvf_dg,ivf_dg,jvf_dg
       type(scalar_field), pointer :: cvf,ivf,jvf,rho_i,rho_j
       type(mesh_type), pointer :: mesh
       type(vector_field),pointer :: ivel,jvel
@@ -1190,13 +1190,12 @@
       type(tensor_field),pointer :: mu_g
       type(scalar_field) :: ratio, coeff, CVF_DG,DVF_DG,Re_s,psi
       type(vector_field) :: deltaV
-      type(mesh_type), pointer :: mesh, cv_mesh
+      type(mesh_type), pointer :: mesh
 
       real :: cval
-      integer :: node,ndim, dim,block1,block2, IDIM, stat,ele, i,nloc
+      integer :: ndim, block1,block2, IDIM, stat,ele, nloc
       integer, dimension(:), pointer :: nodes
       integer, dimension(:), pointer :: dg_nodes
-      type(element_type) :: p_cvshape_full
 
       continuous_velocity=>extract_vector_field(state(continuous_phase),"Velocity",stat)
 
@@ -1556,7 +1555,7 @@
         INTEGER, intent( in ) :: IPHASE
         real, dimension(:), intent(in) :: visc_phase, Immobile_fraction, Corey_exponent, Endpoint_relperm
         ! Local variables...
-        REAL :: KR, VISC, Krmax, aux
+        REAL :: KR, aux
         real, parameter :: epsilon = 1d-10
         !Kr_max should only multiply the wetting phase,
         !however as we do not know if it is phase 1 or 2, we let the decision to the user
@@ -1633,8 +1632,7 @@
       integer, intent(in) :: totele, cv_nloc
       logical, intent(in) :: Sat_in_FEM
       ! Local Variables
-      INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase, useful_phases, ele, cv_iloc, cv_nod
-      character(len=OPTION_PATH_LEN):: option_path, phase_name, cap_path
+      INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
       logical :: Pc_imbibition
       !Working pointers
       real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent
@@ -1899,12 +1897,11 @@
       integer, dimension(:), intent(in) :: mat_ndgln
 
       real, dimension( :, :, :, : ), intent(inout) :: Momentum_Diffusion
-      character( len = option_path_len ) :: option_path, option_path_python, buffer
+      character( len = option_path_len ) :: option_path_python, buffer
       type(tensor_field), pointer :: t_field
-      integer :: iphase, icomp, idim, stat, cv_nod, mat_nod, cv_nloc, ele
+      integer :: iphase, icomp, stat, mat_nod, cv_nloc, ele
 
-      type(scalar_field), pointer :: component, diffusivity
-      integer, dimension(:), pointer :: st_nodes, c_nodes
+      type(scalar_field), pointer :: component
       logical :: linearise_viscosity, python_diagnostic_field
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
@@ -2120,7 +2117,7 @@
       real, dimension(nphase) :: visc_phases
       integer :: iphase, ele, sele, cv_siloc, cv_snodi, cv_snodi_ipha, iface, s, e, &
            ele2, sele2, cv_iloc, idim, jdim, i, mat_nod, cv_nodi
-      real :: mobility, satura_bc, visc_phase1, visc_phase2
+      real :: mobility, satura_bc
       real, dimension( ndim, ndim ) :: inv_perm, sigma_out, sigma_in, mat, mat_inv
       integer, dimension( nface, totele) :: face_ele
       integer, dimension( mat_nonods*nphase ) :: idone
@@ -2293,7 +2290,7 @@
       integer, dimension( : ), intent( in ) :: mat_ndgln
 
       logical :: use_mat_stab_stab
-      integer :: apply_dim, idim, jdim, ipha_idim, iphase, ele, cv_iloc, ij, imat
+      integer :: apply_dim, idim, jdim, ipha_idim, iphase, ele, cv_iloc, imat
       real :: factor
 
       Material_Absorption_Stab = 0.
@@ -2644,7 +2641,7 @@
       real, dimension( : ), intent( inout ) :: S_lg_l, S_lg_g, S_ls_l, S_gs_g
       real, dimension( :, : ), intent( inout ) :: A
 
-      type( scalar_field ), pointer :: pressure, dummy
+      type( scalar_field ), pointer :: pressure
       type( tensor_field ), pointer :: density, velocity, volume_fraction
 
       integer, dimension( : ), pointer :: mat_ndgln, cv_ndgln, u_ndgln
@@ -2655,7 +2652,7 @@
       real, dimension( : ), allocatable :: ul, ug, us
 
       integer :: ele, totele, mat_iloc, mat_nloc, u_nloc, mat_inod, cv_inod, &
-           u_inod, u_inod1, u_inod2, ndim, stat
+           u_inod, u_inod1, u_inod2, ndim
 
       real, parameter :: &
            mu_l = 3.0e-4, mu_g = 1.0e-5, &
