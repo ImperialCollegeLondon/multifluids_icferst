@@ -580,8 +580,8 @@ contains
       integer, dimension( : ), allocatable :: findcmc_small, colcmc_small, midcmc_small, &
       MAP_DG2CTY
       integer :: ele,cv_iloc, dg_nod, cty_nod, jcolcmc, jcolcmc_small
-      integer :: mx_ncmc_small, ncmc_small, count, count2, count3, GL_ITS, col
-      real :: opt_step, k
+      integer :: mx_ncmc_small, ncmc_small, count, count2, count3, GL_ITS, col, k
+      real :: opt_step
 
       integer :: ierr, i
       real, dimension(1) :: auxR

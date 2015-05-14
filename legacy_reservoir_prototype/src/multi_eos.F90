@@ -97,6 +97,8 @@
       type( scalar_field ), pointer :: Cp_s, sf
       integer :: icomp, iphase, ncomp, sc, ec, sp, ep, stat, cv_iloc, cv_nod, ele
 
+      logical :: boussinesq=.true.
+
       DRhoDPressure = 0.
 
       ncomp = ncomp_in
@@ -210,7 +212,7 @@
       do iphase = 1, nphase
          sp = ( iphase - 1 ) * cv_nonods + 1 
          ep = iphase * cv_nonods 
-         
+
          field1 % val ( 1, iphase, :) = Density_Bulk( sp : ep )         !* ( 1. - sf%val)     +   1000. *  sf%val
          field2 % val ( 1, iphase, :) = DensityCp_Bulk( sp : ep )       !* ( 1. - sf%val)     +   1000. *  sf%val
 
@@ -223,6 +225,7 @@
          end if
       end do ! iphase
 
+      if ( boussinesq ) field2 % val = 1.0
 
       deallocate( Rho, dRhodP, Cp, Component_l)
       deallocate( Density_Component, Density_Bulk, DensityCp_Bulk )
@@ -1743,7 +1746,6 @@
     end function Get_DevCapPressure
 
     subroutine calculate_u_source(state, Density_FEMT, u_source)
-    !Deprecated, use calculate_u_source_cv instead
       !u_source has to be initialized before calling this subroutine
       type(state_type), dimension(:), intent(in) :: state
       real, dimension(:,:), intent(inout) :: Density_FEMT
@@ -1808,15 +1810,12 @@
 
       if( have_gravity ) then
          gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
-         g = node_val(gravity_direction, 1) * gravity_magnitude
-
+         g = node_val( gravity_direction, 1 ) * gravity_magnitude
          u_source_cv = 0.
          do nod = 1, cv_nonods
             do iphase = 1, nphase
                do idim = 1, ndim
-                  !u_source_cv( nod + (idim-1)*cv_nonods + ndim*cv_nonods*(iphase-1) ) = &
-                  !     den( iphase, nod ) * g( idim )
-                  u_source_cv( idim, iphase, nod) = den( iphase, nod ) * g( idim )
+                  u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
                end do
             end do
          end do
@@ -2380,6 +2379,77 @@
 
       return
     end subroutine update_velocity_absorption
+
+
+   subroutine update_velocity_absorption_coriolis( states, ndim, nphase, sigma )
+
+      implicit none
+
+      integer, intent( in ) :: ndim, nphase 
+      type( state_type ), dimension( : ), intent( in ) :: states
+      real, dimension( :, :, : ), intent( inout ) :: sigma
+
+      type( scalar_field ), pointer :: f
+      integer :: iphase, stat, idx1, idx2
+
+      do iphase = 1, nphase
+         f => extract_scalar_field( states( iphase ), 'f', stat )
+         if ( stat == 0 ) then
+            idx1 = 1 + (iphase-1)*ndim ;  idx2 = 2 + (iphase-1)*ndim
+            sigma( :, idx1, idx2 ) = sigma( :, idx1, idx2 ) - f % val
+            sigma( :, idx2, idx1 ) = sigma( :, idx2, idx1 ) + f % val
+         end if
+      end do
+
+      return
+    end subroutine update_velocity_absorption_coriolis
+
+
+
+
+    subroutine update_velocity_source( states, ndim, nphase, u_nonods, velocity_u_source )
+
+      implicit none
+
+      integer, intent( in ) :: ndim, nphase, u_nonods 
+      type( state_type ), dimension( : ), intent( in ) :: states
+      real, dimension( :, :, : ), intent( inout ) :: velocity_u_source
+
+      type( vector_field ), pointer :: source
+      integer :: iphase, idim
+      logical :: have_source
+      character( len = option_path_len ) :: option_path
+
+      velocity_u_source = 0.
+
+      do iphase = 1, nphase
+         have_source = .false.
+         option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/vector_field::Velocity' // &
+              '/prognostic/vector_field::Source/prescribed'
+         have_source = have_option( trim(option_path) )
+         if ( have_source ) then
+            source => extract_vector_field( states( iphase ), 'VelocitySource' )
+            do idim = 1, ndim
+               velocity_u_source( idim, iphase, : ) =  source % val( idim, : )
+            end do
+         else
+            do idim = 1, ndim
+               velocity_u_source( idim, iphase, : ) = 0.0 
+            end do
+         end if
+      end do
+
+      return
+    end subroutine update_velocity_source
+
+
+
+
+
+
+
+
+
 
 
     subroutine extract_scalar_from_diamond(state, field_values, path, StorName, indx, iphase, nphase)

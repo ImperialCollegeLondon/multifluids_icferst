@@ -191,4 +191,6 @@ module global_parameters
     get_surface_radius = real(surface_radius, kind=c_double)
   end function get_surface_radius
 
+  logical :: after_adapt = .false.
+
 end module global_parameters

@@ -543,6 +543,8 @@ contains
       logical :: skip
       logical :: GOT_T2, use_volume_frac_T2
 
+      logical, parameter :: symmetric_P=.false.
+
       type( scalar_field ), pointer :: sfield
 
       !Variables for Capillary pressure
@@ -560,11 +562,11 @@ contains
       calculate_flux = allocated(outlet_id)
 
       !THETA_VEL_HAT has to be zero for porous media flow
-        if (is_porous_media) then
-            THETA_VEL_HAT = 0.0
-        else
-            THETA_VEL_HAT = 1.0
-        end if
+      if ( is_porous_media ) then
+         THETA_VEL_HAT = 0.0
+      else
+         THETA_VEL_HAT = 1.0
+      end if
 
       !Check capillary pressure options
       capillary_pressure_activated = .false.
@@ -668,7 +670,7 @@ contains
     if(got_free_surf) then
         pressure => EXTRACT_SCALAR_FIELD( PACKED_STATE, "FEPressure" )
         call get_entire_boundary_condition(pressure,&
-           ['weakdirichlet'],&
+           ['weakdirichlet','freesurface  '],&
            pressure_BCs,WIC_P_BC_ALL)
     endif
 
@@ -1116,7 +1118,6 @@ contains
             FEMt2OLD_ALL=old_saturation%val(1,:,:)
          end if
       end IF
-         
 
       do i=1,FEM_IT-1
          if (fempsi(i)%ptr%name(1:6)=='FEMPSI') then
@@ -1233,7 +1234,7 @@ contains
       IF ( GETCT ) THEN ! Obtain the CV discretised CT eqns plus RHS
          call zero(CT_RHS)
          CT = 0.0
-         if(got_free_surf) MASS_SUF=0.0
+         if ( got_free_surf .and. .not.symmetric_P ) MASS_SUF=0.0
       END IF
 
       IF ( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion eqns
@@ -1973,16 +1974,13 @@ contains
                    CAP_DIFF_COEF_DIVDX( : ) = 0.5*(CAP_DIFFUSION( :, MAT_NODI )&
                    * rsum_nodi(:) + CAP_DIFFUSION( :, MAT_NODJ ) * rsum_nodj(:) ) /HDC
                ENDIF
-
-!CAP_DIFF_COEF_DIVDX(2) = CAP_DIFF_COEF_DIVDX(1)
-
            ELSE
                CAP_DIFF_COEF_DIVDX( : ) = 0.0
            ENDIF
        ELSE
            CAP_DIFF_COEF_DIVDX( : ) = 0.0
        END IF If_GOT_CAPDIFFUS
-      
+
        ! Pack ndotq information:
        IPT=1
        CALL PACK_LOC( F_INCOME(:), INCOME( : ),    NPHASE, NFIELD, IPT, IGOT_T_PACK(:,1) ) ! t
@@ -2033,7 +2031,7 @@ contains
               CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
               ELE, CV_NONODS, X_NONODS, NDIM, NPHASE,  &
               CV_NLOC,TOTELE, X_NDGLN, CV_NDGLN,  &
-              X_ALL,XC_CV_ALL,FACE_ELE,NFACE,BETWEEN_ELEMENTS, integrate_other_side, SCVFEN, GI)
+              X_ALL,XC_CV_ALL,FACE_ELE,NFACE,BETWEEN_ELEMENTS, integrate_other_side, SCVFEN, SCVFENX_ALL, GI, INV_JAC, NUGI_ALL, on_domain_boundary )
        ENDIF
        ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
        FVT(:)=T_ALL(:,CV_NODI)*(1.0-INCOME(:)) + T_ALL(:,CV_NODJ)*INCOME(:)
@@ -2173,6 +2171,7 @@ contains
 
                      !====================== ACV AND RHS ASSEMBLY ===================
                      Conditional_GETCT2 : IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS
+
                         IF(CT_DO_NOT_CHANGE) THEN ! CT will not change with this option...
                            FTHETA_T2=1.0
                            ONE_M_FTHETA_T2OLD=0.0
@@ -2180,27 +2179,27 @@ contains
                            ONE_M_FTHETA_T2OLD_J=0.0
                         ENDIF
 
-                        if(got_free_surf) then
-                           if(on_domain_boundary) then 
-                              if(WIC_P_BC_ALL( SELE )==WIC_P_BC_FREE) then ! on the free surface...
-                                 DO P_JLOC=1,CV_NLOC
-                                    P_JNOD=CV_NDGLN( (ELE-1)*CV_NLOC + P_JLOC ) 
-! Use the same sparcity as the MN matrix...
-                                    COUNT_SUF=0
-                                    DO COUNT=FINDCMC(CV_INOD),FINDCMC(CV_INOD+1)-1
-                                       IF(COLCMC(COUNT)==P_JNOD) THEN
-                                          COUNT_SUF=COUNT
-                                          EXIT
-                                       ENDIF
+                        IF ( got_free_surf ) THEN
+                           IF ( on_domain_boundary ) THEN
+                              IF ( .not.symmetric_P ) THEN
+                                 IF ( WIC_P_BC_ALL( SELE ) == WIC_P_BC_FREE ) THEN ! on the free surface...
+                                    DO P_JLOC = 1, CV_NLOC
+                                       P_JNOD = CV_NDGLN( (ELE-1)*CV_NLOC + P_JLOC ) 
+                                       ! Use the same sparcity as the MN matrix...
+                                       COUNT_SUF = 0
+                                       DO COUNT = FINDCMC( CV_NODI ), FINDCMC( CV_NODI + 1 ) - 1
+                                          IF ( COLCMC( COUNT ) == P_JNOD ) THEN
+                                             COUNT_SUF = COUNT
+                                             EXIT
+                                          END IF
+                                       END DO
+                                       MM_GRAVTY = CVNORMX_ALL( 3, GI ) * SCVFEN( P_JLOC, GI ) * SCVDETWEI(GI) / ( DT**2 * GRAVTY )
+                                       MASS_SUF( COUNT_SUF ) = MASS_SUF( COUNT_SUF ) + MM_GRAVTY
                                     END DO
-
-                                    MM_GRAVTY = CVNORMX_ALL(3, GI)*SCVFEN(GI,CV_JLOC)/(DT**2 *GRAVTY) 
-                                    MASS_SUF(COUNT_SUF) = MASS_SUF(COUNT_SUF) + MM_GRAVTY
-
-                                 END DO
-                              endif
-                           endif
-                        endif
+                                 END IF
+                              END IF
+                           END IF
+                        END IF
 
                         CALL PUT_IN_CT_RHS( CT, CT_RHS, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
                              CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary,  &

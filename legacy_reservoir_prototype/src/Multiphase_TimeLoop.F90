@@ -38,7 +38,7 @@
          check_diagnostic_dependencies
     use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
                                simulation_start_wall_time, &
-                               topology_mesh_name, current_time, is_porous_media, is_multifracture
+                               topology_mesh_name, current_time, is_porous_media, after_adapt, is_multifracture
     use fldebug
     use reference_counting
     use state_module
@@ -169,7 +169,7 @@
       type( tensor_field ) :: metric_tensor
       type( state_type ), dimension( : ), pointer :: sub_state => null()
       integer :: nonlinear_iterations_adapt
-      logical :: do_reallocate_fields, not_to_move_det_yet = .false., initialised
+      logical :: do_reallocate_fields = .false., not_to_move_det_yet = .false., initialised
 
 !!$ Working arrays:
       real, dimension(:), pointer :: mass_ele
@@ -668,6 +668,12 @@
 
          ! update velocity absorption
          call update_velocity_absorption( state, ndim, nphase, mat_nonods, velocity_absorption )
+         !call update_velocity_absorption_coriolis( state, ndim, nphase, velocity_absorption )
+
+         ! update velocity source
+         call update_velocity_source( state, ndim, nphase, u_nonods, velocity_u_source )
+
+
 
 !!$ FEMDEM...
 #ifdef USING_FEMDEM
@@ -1095,6 +1101,9 @@
                  Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3)
             if (ExitNonLinearLoop) exit Loop_NonLinearIteration
 
+            after_adapt=.false.
+
+
          end do Loop_NonLinearIteration
 
 
@@ -1492,9 +1501,25 @@
             allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
 
 
-
             !!call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv, StorageIndexes, cv_ele_type )
 
+
+            if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
+                 ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One/after_adapt' ) ) then
+               ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
+               MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+               MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
+               ALLOCATE( RSUM( NPHASE ) )
+               DO CV_INOD = 1, CV_NONODS
+                  DO IPHASE = 1, NPHASE
+                     RSUM( IPHASE ) = SUM (MFC_s % val (:, IPHASE, CV_INOD) )
+                  END DO
+                  DO IPHASE = 1, NPHASE
+                     MFC_s % val (:, IPHASE, CV_INOD) = MFC_s % val (:, IPHASE, CV_INOD) / RSUM( IPHASE )
+                  END DO
+               END DO
+               DEALLOCATE( RSUM )
+            end if
 
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
@@ -1523,6 +1548,14 @@
             call allmin(dt)
             call set_option( '/timestepping/timestep', dt )
          end if
+
+
+         !if ( after_adapt  ) then
+         !   NonLinearIteration = 6
+         !else
+         !   NonLinearIteration = 3
+         !end if
+
 
          call set_boundary_conditions_values(state, shift_time=.true.)
 

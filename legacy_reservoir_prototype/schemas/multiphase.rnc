@@ -3311,6 +3311,22 @@ vector_field_choice =
              )
          }|
 
+         ## Coordinate field remapped to the mesh of your choice.
+         element vector_field {
+             attribute rank { "1" },
+             attribute name { "DiagnosticCoordinate2" },
+             (
+                element diagnostic {
+                   internal_algorithm,
+                   mesh_choice,
+                   diagnostic_vector_field
+                }|
+                element aliased {
+                   generic_aliased_field
+                }
+             )
+         }|
+
          ## Galerkin projection of one field onto another mesh.
          ##
          ## The field must be in this material_phase.
