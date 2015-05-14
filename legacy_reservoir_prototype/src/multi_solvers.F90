@@ -263,7 +263,7 @@ contains
 
     integer, dimension( : ), allocatable :: findcmc_small, colcmc_small, midcmc_small, &
          MAP_DG2CTY
-    real, dimension( : ), allocatable :: cmc_small, resid_dg, resid_dg2, resid_cty, &
+    real, dimension( : ), allocatable :: cmc_small, resid_dg, resid_cty, &
          nods_sourou, DP_DG, DP_SMALL, USTEP
     integer :: ele,cv_iloc, dg_nod, cty_nod, jcolcmc, jcolcmc_small
     integer :: mx_ncmc_small, ncmc_small, count, count2, count3, GL_ITS, col
@@ -579,8 +579,8 @@ contains
       character(len=OPTION_PATH_LEN) :: solv_options = "/tmp/pressure"
       integer, dimension( : ), allocatable :: findcmc_small, colcmc_small, midcmc_small, &
       MAP_DG2CTY
-      integer :: ele,cv_iloc, dg_nod, cty_nod, jcolcmc, jcolcmc_small
-      integer :: mx_ncmc_small, ncmc_small, count, count2, count3, GL_ITS, col
+      integer :: ele,cv_iloc, dg_nod, cty_nod, jcolcmc_small
+      integer :: mx_ncmc_small, ncmc_small, count, count2, count3, col
       real :: opt_step, k
 
       integer :: ierr, i
@@ -1546,8 +1546,7 @@ contains
 
 
         real :: dumping_factor
-        integer :: i, k
-        logical :: first_attempt
+        integer :: i
         !Parameters for the automatic dumping
         real, save :: Oldconvergence = -1
         real, save :: stored_dumping = 0.20
@@ -1787,7 +1786,7 @@ contains
         type( state_type ), intent(inout) :: packed_state
         integer, dimension(:), intent(in) :: IDs2CV_ndgln
         !Local variables
-        integer :: iphase, jphase, nphase, ele, cv_nod
+        integer :: iphase, nphase, cv_nod
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
@@ -1834,7 +1833,7 @@ contains
         type( state_type ), intent(inout) :: packed_state
         integer, dimension(:), intent(in) :: IDs2CV_ndgln
         !Local variables
-        integer :: iphase, jphase, nphase, ele, cv_nod
+        integer :: iphase, nphase, cv_nod
         real :: maxsat, minsat
         real, dimension(:,:), pointer :: satura, Immobile_fraction
 
