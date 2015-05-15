@@ -70,7 +70,7 @@
          print_from_state, update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
          get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
          CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,&
-         get_Convergence_Functional
+         get_Convergence_Functional, get_DarcyVelocity
 
 
 !    interface Get_Ndgln
@@ -2476,9 +2476,9 @@
       end if
 
       !Add memory for the DarcyVelocity
-      call allocate(ten_field,velocity%mesh,"DarcyVelocity")
+      call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity")
       call zero(ten_field)
-      call insert(packed_state,ten_field,"DarcyVelocity")
+      call insert(packed_state,ten_field,"PackedDarcyVelocity")
       call deallocate(ten_field)
 
     contains
@@ -4637,7 +4637,118 @@ size(t_field%val,1)*size(t_field%val,2)*size(t_field%val,3), t_field%name)
 
     end subroutine get_regionIDs2nodes
 
+    subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, MAT_NDGLN, U_NDGLN, state, packed_state, Material_Absorption)
+        !This subroutine calculates the actual Darcy velocity, unfinished
+        implicit none
+        integer, intent(in) :: totele, cv_nloc, u_nloc, mat_nloc
+        integer, dimension(:) :: MAT_NDGLN, U_NDGLN
+        type(state_type) , intent(in):: packed_state
+        type( state_type ), dimension( : ), intent( inout ) :: state
+        real, dimension(:,:,:), intent(in):: Material_Absorption
+        !Local variables
+        type(tensor_field), pointer :: DarcyVelocity, Velocity
+        real, dimension(:,:), allocatable :: matrix
+        integer :: cv_iloc, u_iloc, ele, iphase, ndim, nphase, imat, u_inod
+!Local variables
+!            integer :: ndim, cv_ngi, cv_ngi_short,scvngi, nface, sbcvngi, nphase, &
+!            cv_nonods, iphase, cv_inod, u_siloc, cv_jloc,&
+!            CV_SJLOC, u_iloc, cv_Xnod
+!            logical :: d1, d3
+!            logical, dimension(  : , : ), allocatable :: cv_on_face, cvfem_on_face, u_on_face, ufem_on_face
+!            real, dimension(:,:), pointer :: CapPressure, CV_Bound_Shape_Func, CV_Shape_Func
+!            real, dimension(:), allocatable :: NMX_ALL
+!            !Pointers for detwei
+!            real, pointer, dimension(:) :: DETWEI, RA
+!            real, pointer:: volume
+!            REAL, pointer, DIMENSION(:,:,:):: CVFENX_ALL, UFENX_ALL
+!            !Pointers for cv_fem_shape_funs_plus_storage
+!            integer, pointer :: ncolgpts
+!            integer, dimension(:), pointer ::findgpts,colgpts
+!            integer, dimension(:,:), pointer :: cv_neiloc, cv_sloclist, u_sloclist
+!            real, dimension( : ), pointer :: cvweight,cvweight_short, scvfeweigh,sbcvfeweigh,&
+!            SELE_OVERLAP_SCALE
+!            real, dimension( : , : ), pointer:: cvn,cvn_short, cvfen, cvfen_short,ufen,&
+!            scvfen, scvfenslx, scvfensly, sufen, sufenslx, sufensly,&
+!            sbcvn,sbcvfen, sbcvfenslx, sbcvfensly, sbufen, sbufenslx, sbufensly
+!            real, dimension(  : , : , :), pointer ::  cvfenlx_all, cvfenlx_short_all, ufenlx_all,&
+!            scvfenlx_all, sufenlx_all, sbcvfenlx_all, sbufenlx_all
 
+            !Prepare local variables
+!            ndim = size(LOC_U_RHS,1); nphase = size(LOC_U_RHS,2)
+!            nface = size(FACE_ELE,1)
+!            cv_nonods = size(CapPressure,2)
+!            u_nloc = size(LOC_U_RHS,3)
+!            d1 = (ndim ==1); d3 = (ndim ==3)
+
+!            !#####Area to retrieve the shape functions#####
+!            !Only if we need to calculate the shape functions we retrieve the ngi data
+!            call retrieve_ngi( ndim, P_ELE_TYPE, cv_nloc, u_nloc, &
+!            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+!
+!            ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ), CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
+!            ALLOCATE( U_ON_FACE( U_NLOC, SCVNGI ), UFEM_ON_FACE( U_NLOC, SCVNGI ))
+!            allocate(NMX_ALL(ndim))
+!
+!            CALL cv_fem_shape_funs_plus_storage( &
+!                                 ! Volume shape functions...
+!            NDIM, P_ELE_TYPE,  &
+!            CV_NGI, CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
+!            CVWEIGHT, CVFEN, CVFENLX_ALL, &
+!            CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT_ALL, &
+!            UFEN, UFENLX_ALL, &
+!                                 ! Surface of each CV shape functions...
+!            SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
+!            SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
+!            SCVFENLX_ALL,  &
+!            SUFEN, SUFENSLX, SUFENSLY,  &
+!            SUFENLX_ALL,  &
+!                                 ! Surface element shape funcs...
+!            U_ON_FACE, UFEM_ON_FACE, NFACE, &
+!            SBCVNGI, SBCVN, SBCVFEN,SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX_ALL, &
+!            SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX_ALL, &
+!            CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
+!                                 ! Define the gauss points that lie on the surface of the CV...
+!            FINDGPTS, COLGPTS, NCOLGPTS, &
+!            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
+!            state, 'Vel_mesh', StorageIndexes(13))
+!
+!             !Retrieve detwei and ufenx_all
+!            CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, TOTELE, X_NONODS, &
+!            X_NLOC, CV_NLOC, CV_NGI, &
+!            CVFEN, CVFENLX_ALL(1,:,:), CVFENLX_ALL(2,:,:), CVFENLX_ALL(3,:,:), CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, .false., &
+!            CVFENX_ALL, &
+!            U_NLOC, UFENLX_ALL(1,:,:), UFENLX_ALL(2,:,:), UFENLX_ALL(3,:,:), UFENX_ALL,&
+!            state ,"C_1", StorageIndexes(14))
+
+        DarcyVelocity => extract_tensor_field(packed_state, "PackedDarcyVelocity")
+        Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
+        call zero(DarcyVelocity)
+
+        allocate(matrix(size(Material_Absorption,2), size(Material_Absorption,3)))
+        nphase = size(Velocity%val, 2)
+        ndim  = size(Velocity%val, 1)
+        do ele = 1, totele
+            do u_iloc = 1, u_nloc
+                u_inod = U_NDGLN(( ELE - 1 ) * u_nloc +u_iloc )
+
+                do cv_iloc = 1, cv_nloc
+                    imat = MAT_NDGLN(( ELE - 1 ) * MAT_NLOC +CV_ILOC )
+                    matrix = Material_Absorption(imat,:,:)
+                    !This is not optimal, maybe just perform when CVN(U_ILOC, CV_INOD) =/ 0
+                    call invert(matrix)
+                    do iphase = 1, nphase
+                        !Assuming no OFF DIAGONAL terms
+                        DarcyVelocity % val ( :, iphase , u_inod) = DarcyVelocity% val ( :, iphase , u_inod) + &
+                             matmul(matrix(ndim*(iphase-1)+1:iphase*ndim, ndim*(iphase-1)+1:iphase*ndim), &
+                                    Velocity % val( :, iphase , u_iloc) ) /cv_nloc
+                    end do
+                end do
+            end do
+        end do
+
+        deallocate(matrix)
+
+    end subroutine get_DarcyVelocity
 
 !subroutine MeshToMeshInterpolate(nphase,state, packed_state, FEMPSI, NDIM, &
 !       TOTELE, CV_NDGLN, X_NDGLN, &

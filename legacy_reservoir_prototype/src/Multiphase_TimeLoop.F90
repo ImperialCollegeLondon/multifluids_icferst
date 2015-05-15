@@ -865,6 +865,9 @@
 
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
 
+                    !Calculate actual Darcy velocity
+!                    call get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, MAT_NDGLN, U_NDGLN, state, packed_state, Material_Absorption)
+
 !!$ Calculate Density_Component for compositional
                if( have_component_field ) &
                     call Calculate_Component_Rho( state, packed_state, &
