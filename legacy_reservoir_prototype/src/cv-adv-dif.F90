@@ -2967,17 +2967,12 @@ end if
                   W(IPHASE2)=MAX(0.0,MIN(1.0,W(IPHASE2) ))
                   ! W=0.0(full upwind);  W=1.0(high order no limiting)
                   IF(W(IPHASE2)<0.99) GOT_AN_OSC=.TRUE.
-               !   IF(W(IPHASE2)<0.01) then 
-               !      W(IPHASE2)= 0.0 
-               !   else
-               !      W(IPHASE2)= 1.0
-               !   end if
                   IPT=IPT+1
                ENDIF
             END DO ! ENDOF DO IPHASE=1,NPHASE
          END DO ! ENDOF DO I_OLD_NEW=1,2
          ! Nothing to do if no oscillations detected...
-!         IF(.NOT.GOT_AN_OSC) RETURN
+         IF(.NOT.GOT_AN_OSC) RETURN
       ENDIF
 
 
@@ -2998,14 +2993,15 @@ end if
          IF ( between_elements ) THEN
             XVEC(:)=0.0
          else
-            XVEC(:)=0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
-!            XVEC(:)=1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
             IF(QUADRATIC_ELEMENT) THEN
+               XVEC(:)= - 1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! Double the length scale because its a quadratic element
                ! Is CV_JLOC a corner node...
                IS_CORNER_NOD_I = (CV_ILOC==1).OR.(CV_ILOC==3).OR.(CV_ILOC==6).OR.(CV_ILOC==10)
                IS_CORNER_NOD_J = (CV_JLOC==1).OR.(CV_JLOC==3).OR.(CV_JLOC==6).OR.(CV_JLOC==10)
-               IF(IS_CORNER_NOD_J) XVEC(:)=-0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
-!               IF(IS_CORNER_NOD_J) XVEC(:)=-1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! look at this
+!               IF(IS_CORNER_NOD_J) XVEC(:)= - 1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
+               IF(IS_CORNER_NOD_I) XVEC(:)= + 1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
+            ELSE ! linear element..
+               XVEC(:)= - 0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
             ENDIF
          endif
 
@@ -3037,10 +3033,7 @@ end if
                      LOCNODS(1)=X_NDGLN((ELE2-1)*CV_NLOC+1)
                      LOCNODS(2)=X_NDGLN((ELE2-1)*CV_NLOC+3)
                      LOCNODS(3)=X_NDGLN((ELE2-1)*CV_NLOC+6)
-                     IF(NDIM==3) THEN
-                        !Two coordinates missing if 3D
-                        LOCNODS(4)=X_NDGLN((ELE2-1)*CV_NLOC+10)
-                     ENDIF
+                     IF(NDIM==3) LOCNODS(4)=X_NDGLN((ELE2-1)*CV_NLOC+10)
                   ELSE
                      LOCNODS(1:CV_NLOC)=X_NDGLN((ELE2-1)*CV_NLOC+1:(ELE2-1)*CV_NLOC+CV_NLOC)
                   ENDIF
@@ -3071,10 +3064,7 @@ end if
                LOCNODS(1)=X_NDGLN((ELE2-1)*CV_NLOC+1)
                LOCNODS(2)=X_NDGLN((ELE2-1)*CV_NLOC+3)
                LOCNODS(3)=X_NDGLN((ELE2-1)*CV_NLOC+6)
-               IF(NDIM==3) THEN
-                  !Two coordinates missing if 3D
-                  LOCNODS(4)=X_NDGLN((ELE2-1)*CV_NLOC+10)
-               ENDIF
+               IF(NDIM==3) LOCNODS(4)=X_NDGLN((ELE2-1)*CV_NLOC+10)
             ELSE
                LOCNODS(1:CV_NLOC)=X_NDGLN((ELE2-1)*CV_NLOC+1:(ELE2-1)*CV_NLOC+CV_NLOC)
             ENDIF
@@ -3105,8 +3095,6 @@ end if
          ! now calculate ENO values at the quadrature pt **********************************...
          ! now calculate ENO values at the quadrature pt **********************************...
          !
-         TGI_IN(:)=0.0
-         TGI_OUT(:)=0.0
          ENO_ELE_NEI_IN =ENO_ELE_NEI(1)
          ENO_ELE_NEI_OUT=ENO_ELE_NEI(2)
 
@@ -3114,7 +3102,7 @@ end if
          ENO_ELE_MATWEI_OUT(:)=ENO_ELE_MATWEI(:,2)
 
 
-         if (.true.) then
+         if (.true.) then ! this is what we should use...
 
             do cv_kloc=1,cv_nloc
                cv_nodk_IN  = CV_NDGLN((ENO_ELE_NEI_IN -1)*CV_NLOC + cv_kloc) 
@@ -3126,14 +3114,6 @@ end if
                TGI_IN(1+NPHASE:2*NPHASE)=TGI_IN(1+NPHASE:2*NPHASE) + ENO_ELE_MATWEI_IN(CV_KLOC)*femTOLD_ALL(:,cv_nodk_IN)
                TGI_OUT(1+NPHASE:2*NPHASE)=TGI_OUT(1+NPHASE:2*NPHASE) + ENO_ELE_MATWEI_OUT(CV_KLOC)*femTOLD_ALL(:,cv_nodk_OUT)
             end do
-             !print *,'ELE', ELE
-             !print *,'ENO_ELE_NEI_IN', ENO_ELE_NEI_IN
-             !print *,'TGI_IN:',TGI_IN
-             !print *,'TGI_ele:',TGI_ele
-             !print *,'TUP:',Tup
-             !stop 322
-
-
 
          else
             do cv_kloc=1,cv_nloc
@@ -3155,7 +3135,7 @@ end if
                MAX_TGI=MAX(TGI_ELE(IPHASE2),TGI_IN(IPHASE2),TGI_OUT(IPHASE2))
                IF((TUP(IPHASE2)-MIN_TGI)*(TUP(IPHASE2)-MAX_TGI)>0) THEN
                   TGI(IPHASE2)=TUP(IPHASE2)
-               ELSE ! Choose the clostest
+               ELSE ! Choose the closest
                   IF(ABS(TUP(IPHASE2)-MIN_TGI)<ABS(TUP(IPHASE2)-MAX_TGI)) THEN
                      TGI(IPHASE2)=MIN_TGI
                   ELSE
@@ -3170,7 +3150,7 @@ end if
             DO IPHASE2=1,NPHASE2
                IF(  (TUP(IPHASE2)-TGI_ELE(IPHASE2))*(TUP(IPHASE2)-TGI_NEI(IPHASE2))  >0 ) THEN
                   TGI(IPHASE2)=TUP(IPHASE2)
-               ELSE ! Choose the clostest
+               ELSE ! Choose the closest
                   IF( ABS(TUP(IPHASE2)-TGI_ELE(IPHASE2)) < ABS(TUP(IPHASE2)-TGI_NEI(IPHASE2))  ) THEN
                      TGI(IPHASE2)=TGI_ELE(IPHASE2)
                   ELSE
@@ -3208,7 +3188,7 @@ end if
             IMPLICIT NONE
             INTEGER, intent(in) :: NDIM,CV_NLOC
             REAL, dimension(NDIM), intent(in) :: Xpt
-            REAL, dimension(NDIM), intent(inout) :: LOCCORDS
+            REAL, dimension(NDIM+1), intent(inout) :: LOCCORDS
             REAL, dimension(NDIM,CV_NLOC), intent(in) :: X_CORNERS_ALL
 
          IF (NDIM==3) THEN
