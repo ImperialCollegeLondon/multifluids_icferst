@@ -20,6 +20,11 @@
         <a:documentation>Acceleration due to gravity. 9.8 m/s^2 on earth.</a:documentation>
         <ref name="real"/>
       </element>
+      <optional>
+        <element name="hydrostatic_pressure_solver">
+          <empty/>
+        </element>
+      </optional>
       <element name="vector_field">
         <a:documentation>The direction of the gravity vector.</a:documentation>
         <attribute name="name">

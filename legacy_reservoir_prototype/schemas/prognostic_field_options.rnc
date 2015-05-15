@@ -105,7 +105,7 @@ robin_bc_scalar =
 
 prognostic_scalar_field =
    (
-#      scalar_equation_choice,
+      scalar_equation_choice,
       spatial_discretisation_options,
       temporal_discretisation_options,
       (
@@ -332,7 +332,7 @@ prognostic_scalar_field =
 
 prognostic_velocity_field =
    (
-#      velocity_equation_choice,
+      velocity_equation_choice,
       ## Spatial discretisation options
       element spatial_discretisation {
 #         (
@@ -1303,6 +1303,11 @@ prognostic_pressure_field =
          ## coordinates, the nearest vertex will be selected.
          element reference_coordinates {
             real_dim_vector
+         }
+      )?,
+     (	
+         element symmetric_P {
+            empty
          }
       )?,
 #      ## **UNDER DEVELOPMENT**

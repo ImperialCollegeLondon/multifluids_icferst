@@ -138,7 +138,7 @@ e.g. use a Dirichlet BC on inlets and k_epsilon on walls.</a:documentation>
   </define>
   <define name="prognostic_scalar_field">
     <group>
-      <!--      scalar_equation_choice, -->
+      <ref name="scalar_equation_choice"/>
       <ref name="spatial_discretisation_options"/>
       <ref name="temporal_discretisation_options"/>
       <choice>
@@ -416,7 +416,7 @@ requires a distinct name for the options dictionary.</a:documentation>
     -->
   </define>
   <define name="prognostic_velocity_field">
-    <!--      velocity_equation_choice, -->
+    <ref name="velocity_equation_choice"/>
     <element name="spatial_discretisation">
       <a:documentation>Spatial discretisation options</a:documentation>
       <!--
@@ -1496,6 +1496,11 @@ coordinates, the nearest vertex will be selected.</a:documentation>
           <ref name="real_dim_vector"/>
         </element>
       </choice>
+    </optional>
+    <optional>
+      <element name="symmetric_P">
+        <empty/>
+      </element>
     </optional>
     <!--
            ## **UNDER DEVELOPMENT**

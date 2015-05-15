@@ -179,6 +179,8 @@ module global_parameters
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: dumping_in_sat
 
+  logical :: after_adapt = .false.
+
   contains
 
   function get_surface_radius() bind(c)
@@ -190,7 +192,5 @@ module global_parameters
 
     get_surface_radius = real(surface_radius, kind=c_double)
   end function get_surface_radius
-
-  logical :: after_adapt = .false.
 
 end module global_parameters

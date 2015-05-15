@@ -359,7 +359,7 @@ contains
 ! CT will not change with this option...
       LOGICAL, PARAMETER :: CT_DO_NOT_CHANGE = .FALSE. 
 ! GRAVTY is used in the free surface method only...
-      REAL, PARAMETER :: GRAVTY = 9.8/1000.0
+      REAL :: GRAVTY
 !
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE 
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
@@ -543,7 +543,7 @@ contains
       logical :: skip
       logical :: GOT_T2, use_volume_frac_T2
 
-      logical, parameter :: symmetric_P=.false.
+      logical :: symmetric_P
 
       type( scalar_field ), pointer :: sfield
 
@@ -552,11 +552,16 @@ contains
       real :: Diffusive_cap_only_real
 
       real, dimension(nphase):: rsum_nodi, rsum_nodj
-      integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD
+      integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD, stat
       REAL :: MM_GRAVTY
 
       !Variables to calculate flux across boundaries
       logical :: calculate_flux
+
+
+      symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
+
+
 
       !We only allocate outlet_id if you actually want to calculate fluxes
       calculate_flux = allocated(outlet_id)
@@ -579,6 +584,8 @@ contains
               if(Diffusive_cap_only) Diffusive_cap_only_real = 1.
           end if
       end if
+
+      call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
 
     !#################SET WORKING VARIABLES#################
     call get_var_from_packed_state(packed_state,PressureCoordinate = X_ALL,&

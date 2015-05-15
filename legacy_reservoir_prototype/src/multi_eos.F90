@@ -1799,14 +1799,16 @@
 
       type(vector_field), pointer :: gravity_direction
       real, dimension(ndim) :: g
-      logical :: have_gravity
+      logical :: have_gravity, high_order_Ph
       real :: gravity_magnitude
       integer :: idim, iphase, nod, stat
 
       call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
       have_gravity = ( stat == 0 )
 
-      if( have_gravity ) then
+      high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
+
+      if( have_gravity .and. .not.high_order_Ph ) then
          gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
          g = node_val( gravity_direction, 1 ) * gravity_magnitude
          u_source_cv = 0.

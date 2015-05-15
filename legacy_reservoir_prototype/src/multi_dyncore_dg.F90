@@ -846,11 +846,11 @@ contains
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: MAT_INOD
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
-        REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL
+        REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, UDEN3
         REAL, DIMENSION( :, :, :, : ), allocatable :: UDIFFUSION_ALL
         REAL, DIMENSION( :, : ), allocatable :: UDIFFUSION_VOL_ALL
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
-        type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield
+        type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
         type( vector_field ), pointer :: x_all2
         type( scalar_field ), pointer :: p_all, pold_all, cvp_all, pressure_state, sf, soldf
 
@@ -863,8 +863,15 @@ contains
 
         type(halo_type), pointer :: halo
 
-        logical :: cty_proj_after_adapt=.false., high_order_Ph=.false., symmetric_P=.false.
-        logical :: boussinesq=.false.
+        logical :: cty_proj_after_adapt, high_order_Ph, symmetric_P, boussinesq, fem_density_buoyancy
+
+
+        high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
+        symmetric_P = have_option( "/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P" )
+        cty_proj_after_adapt = have_option( "/mesh_adaptivity/hr_adaptivity/project_continuity" ) 
+        boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
+        fem_density_buoyancy = have_option( "/physical_parameters/gravity/fem_density_buoyancy" )
+
 
         IGOT_CMC_PRECON = 0
         if ( symmetric_P ) IGOT_CMC_PRECON = 1
@@ -943,7 +950,6 @@ contains
         !Calculate gravity source terms
         if ( is_porous_media )then
            UDEN_ALL=0.0; UDENOLD_ALL=0.0
-           !This method for gravity for gravity works, provided we use CVFEN instead of CVN in ASSEMB_FORCE_CTY
            call calculate_u_source_cv( state, cv_nonods, ndim, nphase, DEN_ALL, U_Source_CV )
         else
            if ( linearise_density ) then
@@ -953,10 +959,27 @@ contains
               UDEN_ALL = DEN_ALL2%VAL( 1, :, : )
               UDENOLD_ALL = DENOLD_ALL2%VAL( 1, :, : )
            end if
-           call calculate_u_source_cv( state, cv_nonods, ndim, nphase, uden_all, U_Source_CV )
+
+           allocate(  uden3( nphase, cv_nonods )  )
+           if ( fem_density_buoyancy ) then
+              DEN_ALL3 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEDensity" )
+              UDEN3 = DEN_ALL3 % VAL( 1, :, : )
+           else
+              UDEN3 = uden_all
+           end if
+
+           call calculate_u_source_cv( state, cv_nonods, ndim, nphase, uden3, U_Source_CV )
+
+
+           deallocate( uden3 )
+
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
+
+
+
+
         end if
 
 
@@ -2254,15 +2277,19 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         INTEGER, DIMENSION( 4 ), PARAMETER :: ELEMENT_CORNERS=(/1,3,6,10/)
 
         ! GRAVTY is used in the free surface method only...
-        REAL, PARAMETER :: GRAVTY = 9.8/1000.0 !/1.0e-6  !1000.0
+        REAL :: GRAVTY
         REAL :: MM_GRAVTY
-        integer :: count_suf, count_p, P_SILOC
+        integer :: count_suf, count_p, P_SILOC, stat
 
         type (vector_field), pointer :: position
 
         integer, dimension(:), pointer :: neighbours
         integer :: nb
-        logical :: skip
+        logical :: skip, FEM_BUOYANCY
+
+
+        call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
+
 
         position=>extract_vector_field(packed_state,"PressureCoordinate")
 
@@ -2458,7 +2485,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         QUAD_OVER_WHOLE_ELE = is_porous_media
         QUAD_OVER_WHOLE_ELE = .true.
 
-
+        FEM_BUOYANCY = have_option( "/physical_parameters/gravity/fem_buoyancy" )
 
         call retrieve_ngi( ndim, u_ele_type, cv_nloc, u_nloc, &
         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE)
@@ -3542,11 +3569,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     ELSE ! ENDOF IF ( LUMP_MASS .AND. ( CV_NLOC==6 .OR. (CV_NLOC==10 .AND. NDIM==3) ) ) THEN ! Quadratice
 
                         Loop_CVNods2: DO CV_JLOC = 1, CV_NLOC
-                            IF(RETRIEVE_SOLID_CTY) THEN
+                            IF ( RETRIEVE_SOLID_CTY .OR. FEM_BUOYANCY ) THEN
                                 NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
                             ELSE
                                 NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
-                            ENDIF
+                            END IF
                             IF ( LUMP_MASS ) THEN
                                 CV_ILOC = U_ILOC
                                 LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_ILOC )
@@ -3555,7 +3582,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             END IF
                         END DO LOOP_CVNODS2
 
-                    ENDIF ! ENDOF IF ( LUMP_MASS .AND. ( CV_NLOC==6 .OR. (CV_NLOC==10 .AND. NDIM==3) ) ) THEN ! Quadratice
+                    END IF ! ENDOF IF ( LUMP_MASS .AND. ( CV_NLOC==6 .OR. (CV_NLOC==10 .AND. NDIM==3) ) ) THEN ! Quadratice
 
                     Loop_DGNods2: DO U_JLOC = 1, U_NLOC
 
