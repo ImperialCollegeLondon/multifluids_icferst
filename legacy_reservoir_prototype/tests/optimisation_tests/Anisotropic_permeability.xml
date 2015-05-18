@@ -1,16 +1,16 @@
 <?xml version='1.0' encoding='utf-8'?>
 <testproblem>
-  <name>BL_fast_pressure_boundaries</name>
+  <name>BL_fast</name>
   <owner userid="pablo.salinas"/>
-  <tags>porous mpml exodusii</tags>
+  <tags>porous mpml anisotropic</tags>
   <problem_definition length="short" nprocs="1">
-    <command_line>cd ./BL_fast_pressure_boundaries/
-        python ./Check_BL.py &gt; log</command_line>
+    <command_line>cd ./Anisotropic_permeability/
+        python ./*.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>
-    <test name="BL_fast_pressure_boundaries" language="python">BL_fast = False
-Log=file('BL_fast_pressure_boundaries/log','r')
+    <test name="BL_fast" language="python">BL_fast = False
+Log=file('Anisotropic_permeability/log','r')
 while True:
     cadena=Log.readline()
     if len(cadena) ==0:

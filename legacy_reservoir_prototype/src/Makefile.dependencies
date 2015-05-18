@@ -82,6 +82,7 @@ cv-adv-dif.o ../include/cv_advection.mod: cv-adv-dif.F90 \
    ../../include/sparse_tools.mod ../../include/sparsity_patterns.mod \
    ../../include/spud.mod ../../include/vtk_interfaces.mod \
    ../include/copy_outof_state.mod ../include/matrix_operations.mod \
+   ../include/multi_interpolation.mod \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod

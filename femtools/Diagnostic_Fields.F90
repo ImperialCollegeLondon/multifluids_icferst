@@ -320,6 +320,9 @@ contains
         
       case("DiagnosticCoordinate")
         call calculate_diagnostic_coordinate_field(state, d_field)
+
+      case("DiagnosticCoordinate2")
+        call calculate_diagnostic_coordinate_field(state, d_field)
         
       case default
         if(present(stat)) then

@@ -94,8 +94,10 @@
                                                Density_Component, Cp, Component_l, c_cv_nod
       character( len = option_path_len ), dimension( : ), allocatable :: eos_option_path
       type( tensor_field ), pointer :: field1, field2, field3, field4
-      type( scalar_field ), pointer :: Cp_s, sf
+      type( scalar_field ), pointer :: Cp_s
       integer :: icomp, iphase, ncomp, sc, ec, sp, ep, stat, cv_iloc, cv_nod, ele
+
+      logical :: boussinesq=.true.
 
       DRhoDPressure = 0.
 
@@ -210,7 +212,7 @@
       do iphase = 1, nphase
          sp = ( iphase - 1 ) * cv_nonods + 1 
          ep = iphase * cv_nonods 
-         
+
          field1 % val ( 1, iphase, :) = Density_Bulk( sp : ep )         !* ( 1. - sf%val)     +   1000. *  sf%val
          field2 % val ( 1, iphase, :) = DensityCp_Bulk( sp : ep )       !* ( 1. - sf%val)     +   1000. *  sf%val
 
@@ -223,6 +225,7 @@
          end if
       end do ! iphase
 
+      if ( boussinesq ) field2 % val = 1.0
 
       deallocate( Rho, dRhodP, Cp, Component_l)
       deallocate( Density_Component, Density_Bulk, DensityCp_Bulk )
@@ -674,7 +677,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, x_snloc, cv_snloc, u_snloc, &
            p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij,i
+           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij
       real :: Mobility, pert
       real, dimension(:), allocatable :: Max_sat
       real, dimension( :, :, : ), allocatable :: u_absorb2
@@ -799,7 +802,7 @@
       real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
       REAL, PARAMETER :: TOLER = 1.E-10
       INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
-           IPHA_IDIM, IDIM, JDIM, IPHASE, jphase, id_reg
+           IPHA_IDIM, IDIM, JDIM, IPHASE, id_reg
       REAL, DIMENSION( :, :, :), allocatable :: INV_PERM, PERM
 
       RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
@@ -834,15 +837,15 @@
                           if (is_porous_media) then
                               select case (NPHASE)
                                   case (1)!No relperm needed, we calculate directly the result
-                                      U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = INV_PERM( IDIM, JDIM, IDs_ndgln(ELE) ) *&
+                                      U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = INV_PERM( IDIM, JDIM, ELE ) *&
                                       visc_phases(1) * min(1.0,max(1d-5,SATURA(1,CV_NOD)))
                                   case (2)
                                       CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), visc_phases, &
-                                      INV_PERM( IDIM, JDIM, IDs_ndgln(ELE) ), SATURA(iphase,CV_NOD), IPHASE,&
+                                      INV_PERM( IDIM, JDIM, ELE ), SATURA(iphase,CV_NOD), IPHASE,&
                                       Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                   case (3)!For three phases we use the Stone model. !With predefined order: Water, oil, gas
                                       call relperm_stone(U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), iphase,&
-                                      SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, IDs_ndgln(ELE)),&
+                                      SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, ELE),&
                                       Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                   case default
                                       FLAbort("No relative permeability function implemented for more than 3 phases")
@@ -962,7 +965,7 @@
            jphase_solid_solid_interaction_options
 
 
-      type(scalar_field) :: ibeta,jbeta,cval,cvf_dg,ivf_dg,jvf_dg
+      type(scalar_field) :: ibeta,cval,cvf_dg,ivf_dg,jvf_dg
       type(scalar_field), pointer :: cvf,ivf,jvf,rho_i,rho_j
       type(mesh_type), pointer :: mesh
       type(vector_field),pointer :: ivel,jvel
@@ -1187,13 +1190,12 @@
       type(tensor_field),pointer :: mu_g
       type(scalar_field) :: ratio, coeff, CVF_DG,DVF_DG,Re_s,psi
       type(vector_field) :: deltaV
-      type(mesh_type), pointer :: mesh, cv_mesh
+      type(mesh_type), pointer :: mesh
 
       real :: cval
-      integer :: node,ndim, dim,block1,block2, IDIM, stat,ele, i,nloc
+      integer :: ndim, block1,block2, IDIM, stat,ele, nloc
       integer, dimension(:), pointer :: nodes
       integer, dimension(:), pointer :: dg_nodes
-      type(element_type) :: p_cvshape_full
 
       continuous_velocity=>extract_vector_field(state(continuous_phase),"Velocity",stat)
 
@@ -1553,7 +1555,7 @@
         INTEGER, intent( in ) :: IPHASE
         real, dimension(:), intent(in) :: visc_phase, Immobile_fraction, Corey_exponent, Endpoint_relperm
         ! Local variables...
-        REAL :: KR, VISC, Krmax, aux
+        REAL :: KR, aux
         real, parameter :: epsilon = 1d-10
         !Kr_max should only multiply the wetting phase,
         !however as we do not know if it is phase 1 or 2, we let the decision to the user
@@ -1630,8 +1632,7 @@
       integer, intent(in) :: totele, cv_nloc
       logical, intent(in) :: Sat_in_FEM
       ! Local Variables
-      INTEGER :: nstates, ncomps, nphases, IPHASE, JPHASE, i, j, k, nphase, useful_phases, ele, cv_iloc, cv_nod
-      character(len=OPTION_PATH_LEN):: option_path, phase_name, cap_path
+      INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
       logical :: Pc_imbibition
       !Working pointers
       real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent
@@ -1743,7 +1744,6 @@
     end function Get_DevCapPressure
 
     subroutine calculate_u_source(state, Density_FEMT, u_source)
-    !Deprecated, use calculate_u_source_cv instead
       !u_source has to be initialized before calling this subroutine
       type(state_type), dimension(:), intent(in) :: state
       real, dimension(:,:), intent(inout) :: Density_FEMT
@@ -1799,24 +1799,23 @@
 
       type(vector_field), pointer :: gravity_direction
       real, dimension(ndim) :: g
-      logical :: have_gravity
+      logical :: have_gravity, high_order_Ph
       real :: gravity_magnitude
       integer :: idim, iphase, nod, stat
 
       call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
       have_gravity = ( stat == 0 )
 
-      if( have_gravity ) then
-         gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
-         g = node_val(gravity_direction, 1) * gravity_magnitude
+      high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
 
+      if( have_gravity .and. .not.high_order_Ph ) then
+         gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
+         g = node_val( gravity_direction, 1 ) * gravity_magnitude
          u_source_cv = 0.
          do nod = 1, cv_nonods
             do iphase = 1, nphase
                do idim = 1, ndim
-                  !u_source_cv( nod + (idim-1)*cv_nonods + ndim*cv_nonods*(iphase-1) ) = &
-                  !     den( iphase, nod ) * g( idim )
-                  u_source_cv( idim, iphase, nod) = den( iphase, nod ) * g( idim )
+                  u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )
                end do
             end do
          end do
@@ -1900,12 +1899,11 @@
       integer, dimension(:), intent(in) :: mat_ndgln
 
       real, dimension( :, :, :, : ), intent(inout) :: Momentum_Diffusion
-      character( len = option_path_len ) :: option_path, option_path_python, buffer
+      character( len = option_path_len ) :: option_path_python, buffer
       type(tensor_field), pointer :: t_field
-      integer :: iphase, icomp, idim, stat, cv_nod, mat_nod, cv_nloc, ele
+      integer :: iphase, icomp, stat, mat_nod, cv_nloc, ele
 
-      type(scalar_field), pointer :: component, diffusivity
-      integer, dimension(:), pointer :: st_nodes, c_nodes
+      type(scalar_field), pointer :: component
       logical :: linearise_viscosity, python_diagnostic_field
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
@@ -2121,7 +2119,7 @@
       real, dimension(nphase) :: visc_phases
       integer :: iphase, ele, sele, cv_siloc, cv_snodi, cv_snodi_ipha, iface, s, e, &
            ele2, sele2, cv_iloc, idim, jdim, i, mat_nod, cv_nodi
-      real :: mobility, satura_bc, visc_phase1, visc_phase2
+      real :: mobility, satura_bc
       real, dimension( ndim, ndim ) :: inv_perm, sigma_out, sigma_in, mat, mat_inv
       integer, dimension( nface, totele) :: face_ele
       integer, dimension( mat_nonods*nphase ) :: idone
@@ -2198,7 +2196,7 @@
             Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
             Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
             Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
-            inv_perm = inverse( perm%val(:, :, IDs_ndgln(ele)) )
+            inv_perm = inverse( perm%val(:, :, ele) )
 
             do iface = 1, nface
 
@@ -2294,7 +2292,7 @@
       integer, dimension( : ), intent( in ) :: mat_ndgln
 
       logical :: use_mat_stab_stab
-      integer :: apply_dim, idim, jdim, ipha_idim, iphase, ele, cv_iloc, ij, imat
+      integer :: apply_dim, idim, jdim, ipha_idim, iphase, ele, cv_iloc, imat
       real :: factor
 
       Material_Absorption_Stab = 0.
@@ -2380,6 +2378,77 @@
 
       return
     end subroutine update_velocity_absorption
+
+
+   subroutine update_velocity_absorption_coriolis( states, ndim, nphase, sigma )
+
+      implicit none
+
+      integer, intent( in ) :: ndim, nphase 
+      type( state_type ), dimension( : ), intent( in ) :: states
+      real, dimension( :, :, : ), intent( inout ) :: sigma
+
+      type( scalar_field ), pointer :: f
+      integer :: iphase, stat, idx1, idx2
+
+      do iphase = 1, nphase
+         f => extract_scalar_field( states( iphase ), 'f', stat )
+         if ( stat == 0 ) then
+            idx1 = 1 + (iphase-1)*ndim ;  idx2 = 2 + (iphase-1)*ndim
+            sigma( :, idx1, idx2 ) = sigma( :, idx1, idx2 ) - f % val
+            sigma( :, idx2, idx1 ) = sigma( :, idx2, idx1 ) + f % val
+         end if
+      end do
+
+      return
+    end subroutine update_velocity_absorption_coriolis
+
+
+
+
+    subroutine update_velocity_source( states, ndim, nphase, u_nonods, velocity_u_source )
+
+      implicit none
+
+      integer, intent( in ) :: ndim, nphase, u_nonods 
+      type( state_type ), dimension( : ), intent( in ) :: states
+      real, dimension( :, :, : ), intent( inout ) :: velocity_u_source
+
+      type( vector_field ), pointer :: source
+      integer :: iphase, idim
+      logical :: have_source
+      character( len = option_path_len ) :: option_path
+
+      velocity_u_source = 0.
+
+      do iphase = 1, nphase
+         have_source = .false.
+         option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/vector_field::Velocity' // &
+              '/prognostic/vector_field::Source/prescribed'
+         have_source = have_option( trim(option_path) )
+         if ( have_source ) then
+            source => extract_vector_field( states( iphase ), 'VelocitySource' )
+            do idim = 1, ndim
+               velocity_u_source( idim, iphase, : ) =  source % val( idim, : )
+            end do
+         else
+            do idim = 1, ndim
+               velocity_u_source( idim, iphase, : ) = 0.0 
+            end do
+         end if
+      end do
+
+      return
+    end subroutine update_velocity_source
+
+
+
+
+
+
+
+
+
 
 
     subroutine extract_scalar_from_diamond(state, field_values, path, StorName, indx, iphase, nphase)
@@ -2574,7 +2643,7 @@
       real, dimension( : ), intent( inout ) :: S_lg_l, S_lg_g, S_ls_l, S_gs_g
       real, dimension( :, : ), intent( inout ) :: A
 
-      type( scalar_field ), pointer :: pressure, dummy
+      type( scalar_field ), pointer :: pressure
       type( tensor_field ), pointer :: density, velocity, volume_fraction
 
       integer, dimension( : ), pointer :: mat_ndgln, cv_ndgln, u_ndgln
@@ -2585,7 +2654,7 @@
       real, dimension( : ), allocatable :: ul, ug, us
 
       integer :: ele, totele, mat_iloc, mat_nloc, u_nloc, mat_inod, cv_inod, &
-           u_inod, u_inod1, u_inod2, ndim, stat
+           u_inod, u_inod1, u_inod2, ndim
 
       real, parameter :: &
            mu_l = 3.0e-4, mu_g = 1.0e-5, &

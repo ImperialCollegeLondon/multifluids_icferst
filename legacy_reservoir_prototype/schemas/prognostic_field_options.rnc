@@ -105,7 +105,7 @@ robin_bc_scalar =
 
 prognostic_scalar_field =
    (
-#      scalar_equation_choice,
+      scalar_equation_choice,
       spatial_discretisation_options,
       temporal_discretisation_options,
       (
@@ -332,7 +332,7 @@ prognostic_scalar_field =
 
 prognostic_velocity_field =
    (
-#      velocity_equation_choice,
+      velocity_equation_choice,
       ## Spatial discretisation options
       element spatial_discretisation {
 #         (
@@ -1305,6 +1305,11 @@ prognostic_pressure_field =
             real_dim_vector
          }
       )?,
+     (	
+         element symmetric_P {
+            empty
+         }
+      )?,
 #      ## **UNDER DEVELOPMENT**
 #      ## This searches the CMC matrix diagonal looking for nodes that are less than the maximum value time epsilon(0.0) (i.e. nodes that are effectively zero).
 #      ## It then zeros that row and column and places a one on the diagonal and a zero on the rhs.
@@ -1470,6 +1475,7 @@ prognostic_pressure_field =
             input_choice_initial_condition_pressure
          }
       )*,
+      ## Boundary conditions
       element boundary_conditions {
          attribute name { string },
          ## Surface id:
@@ -1477,25 +1483,27 @@ prognostic_pressure_field =
             integer_vector
          },
          ## Type
-         element type {
-            attribute name { "dirichlet" },
-            ## Apply the dirichlet bc weakly.  Available
-            ## automatically with discontinuous_galerkin and
-            ## control_volume spatial_discretisations.
-            ## If not selected boundary conditions are applied strongly.
-            element apply_weakly {
-              ## If the initial condition and boundary conditions
-              ## differ, setting this option will cause the initial
-              ## condition on the boundary to be overwritten with
-              ## the boundary condition. Since you are applying the
-              ## boundary condition weakly, you probably do *not*
-              ## want this.
-              element boundary_overwrites_initial_condition {
-                 empty
-              }?
-            },
-            input_choice_real_plus_boundary_forcing
-         }
+         (
+            element type {
+               attribute name { "dirichlet" },
+               element apply_weakly {
+                  ## If the initial condition and boundary conditions
+                  ## differ, setting this option will cause the initial
+                  ## condition on the boundary to be overwritten with
+                  ## the boundary condition. Since you are applying the
+                  ## boundary condition weakly, you probably do *not*
+                  ## want this.
+                  element boundary_overwrites_initial_condition {
+                     empty
+                  }?
+               }?,
+               input_choice_real
+            }|
+            element type {
+               attribute name { "freesurface" },
+               input_choice_real
+            }
+         )
       }*,
       pressure_output_options,
       prognostic_scalar_stat_options,

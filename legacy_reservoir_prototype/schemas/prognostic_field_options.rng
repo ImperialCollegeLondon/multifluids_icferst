@@ -138,7 +138,7 @@ e.g. use a Dirichlet BC on inlets and k_epsilon on walls.</a:documentation>
   </define>
   <define name="prognostic_scalar_field">
     <group>
-      <!--      scalar_equation_choice, -->
+      <ref name="scalar_equation_choice"/>
       <ref name="spatial_discretisation_options"/>
       <ref name="temporal_discretisation_options"/>
       <choice>
@@ -416,7 +416,7 @@ requires a distinct name for the options dictionary.</a:documentation>
     -->
   </define>
   <define name="prognostic_velocity_field">
-    <!--      velocity_equation_choice, -->
+    <ref name="velocity_equation_choice"/>
     <element name="spatial_discretisation">
       <a:documentation>Spatial discretisation options</a:documentation>
       <!--
@@ -1497,6 +1497,11 @@ coordinates, the nearest vertex will be selected.</a:documentation>
         </element>
       </choice>
     </optional>
+    <optional>
+      <element name="symmetric_P">
+        <empty/>
+      </element>
+    </optional>
     <!--
            ## **UNDER DEVELOPMENT**
            ## This searches the CMC matrix diagonal looking for nodes that are less than the maximum value time epsilon(0.0) (i.e. nodes that are effectively zero).
@@ -1674,6 +1679,7 @@ requires a distinct name for the options dictionary.</a:documentation>
     </zeroOrMore>
     <zeroOrMore>
       <element name="boundary_conditions">
+        <a:documentation>Boundary conditions</a:documentation>
         <attribute name="name">
           <data type="string"/>
         </attribute>
@@ -1681,30 +1687,36 @@ requires a distinct name for the options dictionary.</a:documentation>
           <a:documentation>Surface id:</a:documentation>
           <ref name="integer_vector"/>
         </element>
-        <element name="type">
+        <choice>
           <a:documentation>Type</a:documentation>
-          <attribute name="name">
-            <value>dirichlet</value>
-          </attribute>
-          <element name="apply_weakly">
-            <a:documentation>Apply the dirichlet bc weakly.  Available
-automatically with discontinuous_galerkin and
-control_volume spatial_discretisations.
-If not selected boundary conditions are applied strongly.</a:documentation>
+          <element name="type">
+            <attribute name="name">
+              <value>dirichlet</value>
+            </attribute>
             <optional>
-              <element name="boundary_overwrites_initial_condition">
-                <a:documentation>If the initial condition and boundary conditions
+              <element name="apply_weakly">
+                <optional>
+                  <element name="boundary_overwrites_initial_condition">
+                    <a:documentation>If the initial condition and boundary conditions
 differ, setting this option will cause the initial
 condition on the boundary to be overwritten with
 the boundary condition. Since you are applying the
 boundary condition weakly, you probably do *not*
 want this.</a:documentation>
-                <empty/>
+                    <empty/>
+                  </element>
+                </optional>
               </element>
             </optional>
+            <ref name="input_choice_real"/>
           </element>
-          <ref name="input_choice_real_plus_boundary_forcing"/>
-        </element>
+          <element name="type">
+            <attribute name="name">
+              <value>freesurface</value>
+            </attribute>
+            <ref name="input_choice_real"/>
+          </element>
+        </choice>
       </element>
     </zeroOrMore>
     <ref name="pressure_output_options"/>
