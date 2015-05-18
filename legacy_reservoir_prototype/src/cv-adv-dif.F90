@@ -535,7 +535,7 @@ contains
       type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
       type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
       type(vector_field), pointer :: coord
-      type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tracer_source
+      type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tracer_source, tfield
       integer :: FEM_IT
 
       integer, dimension(:), pointer :: neighbours
@@ -1102,6 +1102,8 @@ contains
       if (.not. is_constant(density)) then
          FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,:,:)
          FEM_IT=FEM_IT+1
+         tfield => extract_tensor_field( packed_state, "PackedFEDensity" ) 
+         tfield%val = psi(FEM_IT)%ptr%val
       else
          FEMDEN_ALL=density%val(1,:,:)
       end if

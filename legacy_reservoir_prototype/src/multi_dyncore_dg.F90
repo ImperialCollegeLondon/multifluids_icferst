@@ -826,8 +826,8 @@ contains
 ! switch on solid fluid coupling (THE ONLY SWITCH THAT NEEDS TO BE SWITCHED ON FOR SOLID-FLUID COUPLING)...
         LOGICAL :: RETRIEVE_SOLID_CTY = .FALSE.
 ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
-        LOGICAL :: got_free_surf = .FALSE.
-        character( len = option_path_len ) :: opt
+        LOGICAL :: got_free_surf
+        character( len = option_path_len ) :: opt, bc_type
 
         type( scalar_field ) :: ct_rhs
         REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES, &
@@ -836,7 +836,7 @@ contains
         UP_VEL
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
-        INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ndpset
+        INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ndpset, i
         LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY
         INTEGER :: IDIM
         !Re-scale parameter can be re-used
@@ -871,6 +871,15 @@ contains
         cty_proj_after_adapt = have_option( "/mesh_adaptivity/hr_adaptivity/project_continuity" ) 
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         fem_density_buoyancy = have_option( "/physical_parameters/gravity/fem_density_buoyancy" )
+
+        got_free_surf = .false.
+        do i = 1, size( pressure%bc%boundary_condition )
+           call get_boundary_condition( pressure, i, type=bc_type )
+           if ( trim( bc_type ) == "freesurface" ) then
+              got_free_surf = .true.
+              exit
+           end if
+        end do
 
         IGOT_CMC_PRECON = 0
         if ( symmetric_P ) IGOT_CMC_PRECON = 1
@@ -1011,7 +1020,7 @@ contains
 
         ! vertical stab for buoyant gyre
         !u_abs_stab=0.0
-        !u_abs_stab(:,3,3)=dt*0.2/500.0
+        !u_abs_stab(:,3,3)= dt*0.2/500.0
 
 
         allocate( U_ABSORB( mat_nonods, ndim * nphase, ndim * nphase ) )
@@ -8957,7 +8966,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       logical, dimension( :, : ), allocatable :: u_on_face, ufem_on_face, &
            &                                     ph_on_face, phfem_on_face
       integer, pointer :: ncolgpts
-      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, ph_ndgln, u_ndgln
+      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, ph_ndgln, u_ndgln, surface_node_list
       integer, dimension( :, : ), pointer :: ph_neiloc, ph_sloclist, u_sloclist
       logical :: quad_over_whole_ele, d1, d3, dcyl
       type( vector_field ), pointer :: x
@@ -8991,25 +9000,28 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       type( petsc_csr_matrix ) :: matrix
       type( csr_sparsity ), pointer :: sparsity
 
-      character( len = OPTION_PATH_LEN ) :: path = "/tmp"
+      character( len = OPTION_PATH_LEN ) :: path = "/tmp", bc_type
 
       type( tensor_field ), pointer :: rho
-      type( scalar_field ), pointer :: printf
+      type( scalar_field ), pointer :: printf, pfield
       type( vector_field ), pointer :: printu, x_p2
 
 
-      logical :: on_boundary
-      integer :: ph_jnod2, ierr, count, count2, i,j
+      logical :: on_boundary, boussinesq, got_free_surf
+      integer :: inod, ph_jnod2, ierr, count, count2, i,j
       integer, dimension(:), pointer :: findph, colph
-
-
 
 
       ewrite(3,*) "inside high_order_pressure_solve"
 
 
+      boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
+
       printu => extract_vector_field( state( 1 ), "f_x", stat )
       if ( stat == 0 ) call zero( printu  )
+
+
+
 
 
       call get_option( '/geometry/dimension', ndim )
@@ -9127,8 +9139,12 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       u_ph_source_cv = 0.0
 
       ! set the gravity term
-
-      rho => extract_tensor_field( packed_state, "PackedDensity" )
+      if ( have_option( "/physical_parameters/gravity/fem_density_buoyancy" ) ) then
+         rho => extract_tensor_field( packed_state, "PackedFEDensity" ) 
+      else
+         rho => extract_tensor_field( packed_state, "PackedDensity" )
+      end if
+      
 
       u_ph_source_cv( 3, 1, : ) = -rho % val( 1, 1, : ) * 9.8
 
@@ -9193,8 +9209,12 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
-                  den_gi( :, iphase ) = den_gi( :, iphase ) + &
-                       tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
+                  if ( boussinesq ) then
+                     den_gi( :, iphase ) = 1.0
+                  else
+                     den_gi( :, iphase ) = den_gi( :, iphase ) + &
+                          tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
+                  end if
                end do
             end do
 
@@ -9260,34 +9280,40 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
          if ( iloop == 1 ) then
 
-            ! don't apply boundary conditions but
-            ! don't forget to remove the null space
-            if ( .true. ) then
+            got_free_surf = .false.
+            pfield => extract_scalar_field( packed_state, "FEPressure" )
+            do i = 1, size( pfield%bc%boundary_condition )
+               call get_boundary_condition( pfield, i, type=bc_type, surface_node_list=surface_node_list )
+               if ( trim( bc_type ) == "freesurface" ) then
+                  got_free_surf = .true.
+                  exit
+               end if
+            end do
+
+            ! if free surface apply a boundary condition
+            ! else don't forget to remove the null space
+            if ( got_free_surf ) then
                findph => sparsity % findrm
                colph => sparsity % colm
-               x_p2 => extract_vector_field( state( 1 ), "DiagnosticCoordinate2" )
-               do ph_inod = 1, ph_nonods
-                  on_boundary = .false.
-                  if ( x_p2 % val( 3, ph_inod ) > 499.999 ) on_boundary = .true.
-                  if ( on_boundary ) then
-                     rhs % val( ph_inod ) = 0.0
-                     do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
-                        ph_jnod = colph( count )
-                        if ( ph_jnod /= ph_inod ) then
-                           i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
-                           j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                           call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                           do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
-                              ph_jnod2 = colph( count2 )
-                              if ( ph_jnod2 == ph_inod ) then
-                                 i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
-                                 j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                                 call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                              end if
-                           end do
-                        end if
-                     end do
-                  end if
+               do inod = 1, size( surface_node_list )
+                  ph_inod = surface_node_list( i )
+                  rhs % val( ph_inod ) = 0.0
+                  do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
+                     ph_jnod = colph( count )
+                     if ( ph_jnod /= ph_inod ) then
+                        i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
+                        j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
+                        call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                        do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
+                           ph_jnod2 = colph( count2 )
+                           if ( ph_jnod2 == ph_inod ) then
+                              i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
+                              j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
+                              call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                           end if
+                        end do
+                     end if
+                  end do
                end do
             end if
 
@@ -9302,8 +9328,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
             call set_option( &
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
-            !call add_option( &
-            !     trim( path ) // "/solver/remove_null_space", stat )
+            if ( .not.got_free_surf ) call add_option( &
+                    trim( path ) // "/solver/remove_null_space", stat )
             ph_sol % option_path = path
 
             call petsc_solve( ph_sol, matrix, rhs )
