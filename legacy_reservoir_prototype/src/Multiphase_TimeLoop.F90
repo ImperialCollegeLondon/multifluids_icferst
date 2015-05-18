@@ -668,7 +668,7 @@
 
          ! update velocity absorption
          call update_velocity_absorption( state, ndim, nphase, mat_nonods, velocity_absorption )
-         !call update_velocity_absorption_coriolis( state, ndim, nphase, velocity_absorption )
+         call update_velocity_absorption_coriolis( state, ndim, nphase, velocity_absorption )
 
          ! update velocity source
          call update_velocity_source( state, ndim, nphase, u_nonods, velocity_u_source )
