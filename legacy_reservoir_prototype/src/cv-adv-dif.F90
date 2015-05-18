@@ -355,7 +355,7 @@ contains
 ! Zhi try THETA_VEL_HAT = 1.0
       real :: THETA_VEL_HAT = 1.0
 ! if APPLY_ENO then apply ENO method to T and TOLD
-      LOGICAL, PARAMETER :: APPLY_ENO = .FALSE. 
+      LOGICAL :: APPLY_ENO
 ! CT will not change with this option...
       LOGICAL, PARAMETER :: CT_DO_NOT_CHANGE = .FALSE. 
 ! GRAVTY is used in the free surface method only...
@@ -558,9 +558,10 @@ contains
       !Variables to calculate flux across boundaries
       logical :: calculate_flux
 
-
       symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
 
+      option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"
+      apply_eno = have_option( option_path2 )
 
 
       !We only allocate outlet_id if you actually want to calculate fluxes
@@ -2994,12 +2995,12 @@ end if
             XVEC(:)=0.0
          else
             IF(QUADRATIC_ELEMENT) THEN
-               XVEC(:)= - 1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! Double the length scale because its a quadratic element
+               XVEC(:)= - 0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! Double the length scale because its a quadratic element
                ! Is CV_JLOC a corner node...
                IS_CORNER_NOD_I = (CV_ILOC==1).OR.(CV_ILOC==3).OR.(CV_ILOC==6).OR.(CV_ILOC==10)
                IS_CORNER_NOD_J = (CV_JLOC==1).OR.(CV_JLOC==3).OR.(CV_JLOC==6).OR.(CV_JLOC==10)
-!               IF(IS_CORNER_NOD_J) XVEC(:)= - 1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
-               IF(IS_CORNER_NOD_I) XVEC(:)= + 1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
+!               IF(IS_CORNER_NOD_J) XVEC(:)= - 0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
+               IF(IS_CORNER_NOD_I) XVEC(:)= + 0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
             ELSE ! linear element..
                XVEC(:)= - 0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
             ENDIF
@@ -3014,7 +3015,7 @@ end if
                     .OR. (QUADRATIC_ELEMENT.AND.(IS_CORNER_NOD_I.or.IS_CORNER_NOD_J)) ) THEN
                   ENO_ELE_NEI(IUP_DOWN)  = ELEWIC 
                   ENO_ELE_MATWEI(:,IUP_DOWN) = N(:,1)
-                  EXIT ! Jump out of IUP_DOWN loop ***********double check exit command
+                  EXIT ! Jump out of IUP_DOWN loop 
                ENDIF
             ENDIF
 

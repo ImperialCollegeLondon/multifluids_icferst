@@ -4478,6 +4478,7 @@ Defaults to -huge(0.0)*epsilon(0.0) if not set.</a:documentation>
           <ref name="ultimate_limiter"/>
           <ref name="extrema_limiter"/>
           <ref name="compressive_advection_limiter"/>
+          <ref name="ENO_advection"/>
         </choice>
       </element>
       <element name="do_not_limit_face_value">
@@ -4528,6 +4529,13 @@ Engineering, 88, 17-74</a:documentation>
     <element name="limiter">
       <attribute name="name">
         <value>CompressiveAdvection</value>
+      </attribute>
+    </element>
+  </define>
+  <define name="ENO_advection">
+    <element name="limiter">
+      <attribute name="name">
+        <value>ENO</value>
       </attribute>
     </element>
   </define>

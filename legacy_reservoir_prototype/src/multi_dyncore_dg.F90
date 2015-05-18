@@ -872,7 +872,6 @@ contains
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         fem_density_buoyancy = have_option( "/physical_parameters/gravity/fem_density_buoyancy" )
 
-
         IGOT_CMC_PRECON = 0
         if ( symmetric_P ) IGOT_CMC_PRECON = 1
 
@@ -967,18 +966,15 @@ contains
            else
               UDEN3 = uden_all
            end if
+           if ( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) UDEN3 = 0.0
 
            call calculate_u_source_cv( state, cv_nonods, ndim, nphase, uden3, U_Source_CV )
-
 
            deallocate( uden3 )
 
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
-
-
-
 
         end if
 
