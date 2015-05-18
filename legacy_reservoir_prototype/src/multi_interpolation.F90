@@ -27,7 +27,7 @@
 #include "fdebug.h"
 
 
-!  module multi_interpolation
+  module multi_interpolation
 !
 !    use fldebug
 !    use state_module
@@ -356,4 +356,4 @@
 !      end subroutine
 !
 !
-!  end module multi_interpolation
+  end module multi_interpolation

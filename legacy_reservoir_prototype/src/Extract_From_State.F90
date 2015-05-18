@@ -68,12 +68,13 @@
          Extract_TensorFields_Outof_State, Extract_Position_Field, Get_Ele_Type, Get_Discretisation_Options, &
          print_from_state, update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
          get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
-         CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes
+         CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,&
+         get_Convergence_Functional, get_DarcyVelocity
 
 
-    interface Get_Ndgln
-       module procedure Get_Scalar_Ndgln, Get_Vector_Ndgln, Get_Mesh_Ndgln
-    end interface Get_Ndgln
+!    interface Get_Ndgln
+!       module procedure Get_Scalar_Ndgln, Get_Vector_Ndgln, Get_Mesh_Ndgln
+!    end interface Get_Ndgln
 
     interface Get_SNdgln
        module procedure Get_Scalar_SNdgln, Get_Vector_SNdgln
@@ -116,7 +117,7 @@
       type( vector_field ), pointer :: positions, velocity
       type( scalar_field ), pointer :: pressure
       type( mesh_type ), pointer :: velocity_cg_mesh, pressure_cg_mesh, ph_mesh
-      integer :: i, degree, stat
+      integer :: i, stat
 
       ewrite(3,*)' In Get_Primary_Scalars'
 
@@ -225,7 +226,6 @@
       integer, dimension( : ), pointer  :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln
       integer, dimension( : ) ::  cv_sndgln, p_sndgln, u_sndgln
 !!$ Local variables
-      integer :: sele, u_siloc, ele, inod_remain, i
 
       x_ndgln_p1=>get_ndglno(extract_mesh(state(1),"CoordinateMesh"))
       x_ndgln=>get_ndglno(extract_mesh(state(1),"PressureMesh_Continuous"))
@@ -743,7 +743,7 @@
 
 !!$ Local variables
       type( scalar_field ), pointer :: scalarfield
-      type( vector_field ), pointer :: vectorfield, grav_vectorfield, x_all
+      type( vector_field ), pointer :: vectorfield, x_all
       type( tensor_field ), pointer :: tensorfield
       integer, dimension( : ), pointer :: element_nodes
       character( len = option_path_len ) :: option_path
@@ -752,11 +752,10 @@
            x_snloc, cv_snloc, u_snloc, p_snloc, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
            cv_ele_type, p_ele_type, u_ele_type, &
-           stat, istate, iphase, jphase, icomp, ele, idim, jdim, knod, knod2
+           iphase, ele, idim
       integer, dimension( : ), pointer :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, &
            xu_ndgln, mat_ndgln, cv_sndgln, p_sndgln, u_sndgln
-      real :: dx
-      logical :: is_isotropic, is_diagonal, is_symmetric, have_gravity
+      logical :: is_symmetric
       real, dimension( : ), allocatable :: dummy!, x, y, z
 
 !!$ Extracting spatial resolution
@@ -902,7 +901,7 @@
       type( state_type ), dimension( : ), intent( in ) :: state
       logical, intent( in ) :: initialised
       integer, intent( in ) :: iphase
-      type( scalar_field ), pointer :: field, field_prot_bc, field_prot_bc1, field_prot_bc2
+      type( scalar_field ), pointer :: field, field_prot_bc
       real, dimension( : ), intent( inout ) :: field_prot
       real, dimension( : ), intent( inout ), optional :: field_prot_source,field_prot_absorption, suf_bc_rob1, suf_bc_rob2
       integer, dimension( : ), intent( inout ), optional :: wic_bc
@@ -1066,321 +1065,321 @@
 
 
 
-subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
-         field_prot, wic_bc, suf_bc, field_prot_source, field_prot_absorption, suf_bc_rob1, suf_bc_rob2 )
-      implicit none
-      type( state_type ), dimension( : ), intent( in ) :: state
-      logical, intent( in ) :: initialised
-      integer, intent( in ) :: iphase
-      type( scalar_field ), pointer :: field, field_prot_bc, field_prot_bc1, field_prot_bc2
-      real, dimension( : ), intent( inout ) :: field_prot
-      real, dimension( : ), intent( inout ), optional :: field_prot_absorption, suf_bc_rob1, suf_bc_rob2
-      integer, dimension( : ), intent( inout ), optional :: wic_bc
-      real, dimension( : ), intent( inout ), optional :: suf_bc
-      real, dimension( : , : ), intent( inout ), optional :: field_prot_source
-
-      ! Local variables
-      type( mesh_type ), pointer :: pmesh, cmesh
-      type(scalar_field), pointer :: pressure, field_source, field_absorption
-      type(scalar_field) :: dummy
-      type(vector_field), pointer :: positions
-      integer, dimension(:), allocatable :: sufid_bc
-      character( len = option_path_len ) :: option_path, option_path2, field_name
-      integer :: stotel, nobcs, bc_type, i, j, k, kk, sele
-      integer :: nstate, nphase, ncomp, snloc, stat
-      integer :: shape_option(2)
-      real :: initial_constant
-      logical :: have_source, have_absorption
-      integer, dimension(:), allocatable :: face_nodes
-      character( len = 8192 ) :: func
-
-      field_name = trim( field % name )
-      have_source = .false. ; have_absorption = .false.
-
-      Conditional_SourceField: if( present( field_prot_source ) ) then
-         field_source => extract_scalar_field( state( iphase ), trim(field_name) // 'Source', stat )
-         have_source = ( stat == 0 )
-
-         if ( have_source ) then
-            do j = 1, node_count( field_source )
-               !field_prot_source( ( iphase - 1 ) * node_count( field_source ) + j ) = &
-               !     field_source % val( j )
-               field_prot_source( iphase, j ) = &
-                    field_source % val( j )
-            end do
-         end if
-      end if Conditional_SourceField
-
-      Conditional_AbsorptionField: if( present( field_prot_absorption ) ) then
-         field_absorption => extract_scalar_field( state( iphase ), trim(field_name) // 'Absorption', stat )
-         have_absorption = ( stat == 0 )
-         if ( have_absorption ) then
-            do j = 1, node_count( field_absorption )
-               field_prot_absorption( ( iphase - 1 ) * node_count( field_absorption ) + j ) = &
-                    field_absorption % val( j )
-            end do
-         end if
-      end if Conditional_AbsorptionField
-
-      pressure => extract_scalar_field( state( 1 ), 'Pressure' )
-      pmesh => extract_mesh( state, 'PressureMesh' )
-      cmesh => extract_mesh( state, 'CoordinateMesh' )
-      positions => extract_vector_field( state( 1 ), 'Coordinate' )
-
-      snloc = face_loc( pressure, 1 ) ; stotel = surface_element_count( cmesh ) ; &
-           nstate = option_count( '/material_phase' )
-
-      ncomp = 0
-      do i = 1, nstate
-         if( have_option( '/material_phase[' // int2str( i - 1) // ']/is_multiphase_component' ) )then
-            ncomp = ncomp + 1
-         end if
-      end do
-      nphase = nstate - ncomp
-      option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
-      ewrite(3,*)'option_path:', trim( option_path )
-
-
-!!$ This will need to be ammended later on to take into account python functions that impose
-!!$ time-dependent field changes
-      Conditional_InitialisationFromFLML: if( initialised ) then ! Extracting from state after initialisation
-         field_prot = field % val
-!!$         field_prot( 1 : node_count( field ) ) = field % val
-!!$         field_prot( ( iphase - 1 ) * node_count( field ) + 1 : iphase * node_count( field ) ) = &
-!!$              field % val
-
-      else !Initialisation before adapt
-         if( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant' ) )then
-            call get_option(trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant', &
-                 initial_constant )
-            field_prot = initial_constant
-
-         elseif( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python ') )then
-            call get_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python', func )
-            call allocate( dummy, field % mesh, 'dummy' )
-            call get_option('/timestepping/current_time', current_time)
-            call set_from_python_function(dummy, trim(func), positions, current_time)
-            field_prot = dummy % val
-            call deallocate( dummy )
-         elseif( have_option( trim( option_path ) // '/prognostic/initial_condition/from_file')) then
-            field_prot = field % val
-
-         else if (have_option( trim( option_path ) // '/prognostic/initial_condition') )then
-            call allocate( dummy, field % mesh, 'dummy' )
-            call get_option('/timestepping/current_time', current_time)
-            call initialise_field_over_regions(dummy, trim( option_path ) // '/prognostic/initial_condition', positions, current_time)
-            field_prot = dummy%val
-            call deallocate( dummy )
-
-         else
-            !ewrite(-1,*) 'No initial condition for field::', trim( field_name )
-            !FLAbort( 'Check initial conditions' )
-         end if
-      end if Conditional_InitialisationFromFLML
-
-!!$ Boundary conditions
-      if (present( wic_bc ) ) then
-
-         option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
-         nobcs = get_boundary_condition_count( field )
-         Loop_BC: do k = 1, nobcs
-
-            option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
-            shape_option = option_shape( trim( option_path ) )
-            allocate( SufID_BC( 1 : shape_option( 1 ) ) )
-            call get_option( trim( option_path ), SufID_BC )
-            allocate( face_nodes( face_loc( field, 1) ) )
-
-            option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
-
-            Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
-
-               BC_Type = 1
-               field_prot_bc => extract_surface_field( field, k, 'value' )
-
-               sele = 1
-               do j = 1, stotel
-                  if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-                     wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-                     face_nodes = ele_nodes( field_prot_bc, sele )
-                     do kk = 1, snloc
-                        suf_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
-                             field_prot_bc % val( face_nodes( kk ) )
-                     end do
-                     sele = sele + 1
-                  end if
-               end do
-
-            else if( have_option( trim( option_path ) // 'type::robin' ) ) then
-
-               BC_Type = 2
-
-               do j = 1, stotel
-                  if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-                     wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-                  end if
-               end do
-
-               ! calculate this later on...
-               suf_bc_rob1 = 0.
-               suf_bc_rob2 = 0.
-
-            end if Conditional_Field_BC
-
-            deallocate( face_nodes, sufid_bc )
-
-         end do Loop_BC
-
-      end if
-
-      return
-    end subroutine Get_ScalarFields_Outof_State2
-
-
+!subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
+!         field_prot, wic_bc, suf_bc, field_prot_source, field_prot_absorption, suf_bc_rob1, suf_bc_rob2 )
+!      implicit none
+!      type( state_type ), dimension( : ), intent( in ) :: state
+!      logical, intent( in ) :: initialised
+!      integer, intent( in ) :: iphase
+!      type( scalar_field ), pointer :: field, field_prot_bc, field_prot_bc1, field_prot_bc2
+!      real, dimension( : ), intent( inout ) :: field_prot
+!      real, dimension( : ), intent( inout ), optional :: field_prot_absorption, suf_bc_rob1, suf_bc_rob2
+!      integer, dimension( : ), intent( inout ), optional :: wic_bc
+!      real, dimension( : ), intent( inout ), optional :: suf_bc
+!      real, dimension( : , : ), intent( inout ), optional :: field_prot_source
+!
+!      ! Local variables
+!      type( mesh_type ), pointer :: pmesh, cmesh
+!      type(scalar_field), pointer :: pressure, field_source, field_absorption
+!      type(scalar_field) :: dummy
+!      type(vector_field), pointer :: positions
+!      integer, dimension(:), allocatable :: sufid_bc
+!      character( len = option_path_len ) :: option_path, option_path2, field_name
+!      integer :: stotel, nobcs, bc_type, i, j, k, kk, sele
+!      integer :: nstate, nphase, ncomp, snloc, stat
+!      integer :: shape_option(2)
+!      real :: initial_constant
+!      logical :: have_source, have_absorption
+!      integer, dimension(:), allocatable :: face_nodes
+!      character( len = 8192 ) :: func
+!
+!      field_name = trim( field % name )
+!      have_source = .false. ; have_absorption = .false.
+!
+!      Conditional_SourceField: if( present( field_prot_source ) ) then
+!         field_source => extract_scalar_field( state( iphase ), trim(field_name) // 'Source', stat )
+!         have_source = ( stat == 0 )
+!
+!         if ( have_source ) then
+!            do j = 1, node_count( field_source )
+!               !field_prot_source( ( iphase - 1 ) * node_count( field_source ) + j ) = &
+!               !     field_source % val( j )
+!               field_prot_source( iphase, j ) = &
+!                    field_source % val( j )
+!            end do
+!         end if
+!      end if Conditional_SourceField
+!
+!      Conditional_AbsorptionField: if( present( field_prot_absorption ) ) then
+!         field_absorption => extract_scalar_field( state( iphase ), trim(field_name) // 'Absorption', stat )
+!         have_absorption = ( stat == 0 )
+!         if ( have_absorption ) then
+!            do j = 1, node_count( field_absorption )
+!               field_prot_absorption( ( iphase - 1 ) * node_count( field_absorption ) + j ) = &
+!                    field_absorption % val( j )
+!            end do
+!         end if
+!      end if Conditional_AbsorptionField
+!
+!      pressure => extract_scalar_field( state( 1 ), 'Pressure' )
+!      pmesh => extract_mesh( state, 'PressureMesh' )
+!      cmesh => extract_mesh( state, 'CoordinateMesh' )
+!      positions => extract_vector_field( state( 1 ), 'Coordinate' )
+!
+!      snloc = face_loc( pressure, 1 ) ; stotel = surface_element_count( cmesh ) ; &
+!           nstate = option_count( '/material_phase' )
+!
+!      ncomp = 0
+!      do i = 1, nstate
+!         if( have_option( '/material_phase[' // int2str( i - 1) // ']/is_multiphase_component' ) )then
+!            ncomp = ncomp + 1
+!         end if
+!      end do
+!      nphase = nstate - ncomp
+!      option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
+!      ewrite(3,*)'option_path:', trim( option_path )
+!
+!
+!$ This will need to be ammended later on to take into account python functions that impose
+!$ time-dependent field changes
+!      Conditional_InitialisationFromFLML: if( initialised ) then ! Extracting from state after initialisation
+!         field_prot = field % val
+!$         field_prot( 1 : node_count( field ) ) = field % val
+!$         field_prot( ( iphase - 1 ) * node_count( field ) + 1 : iphase * node_count( field ) ) = &
+!$              field % val
+!
+!      else !Initialisation before adapt
+!         if( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant' ) )then
+!            call get_option(trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant', &
+!                 initial_constant )
+!            field_prot = initial_constant
+!
+!         elseif( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python ') )then
+!            call get_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python', func )
+!            call allocate( dummy, field % mesh, 'dummy' )
+!            call get_option('/timestepping/current_time', current_time)
+!            call set_from_python_function(dummy, trim(func), positions, current_time)
+!            field_prot = dummy % val
+!            call deallocate( dummy )
+!         elseif( have_option( trim( option_path ) // '/prognostic/initial_condition/from_file')) then
+!            field_prot = field % val
+!
+!         else if (have_option( trim( option_path ) // '/prognostic/initial_condition') )then
+!            call allocate( dummy, field % mesh, 'dummy' )
+!            call get_option('/timestepping/current_time', current_time)
+!            call initialise_field_over_regions(dummy, trim( option_path ) // '/prognostic/initial_condition', positions, current_time)
+!            field_prot = dummy%val
+!            call deallocate( dummy )
+!
+!         else
+!            !ewrite(-1,*) 'No initial condition for field::', trim( field_name )
+!            !FLAbort( 'Check initial conditions' )
+!         end if
+!      end if Conditional_InitialisationFromFLML
+!
+!$ Boundary conditions
+!      if (present( wic_bc ) ) then
+!
+!         option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
+!         nobcs = get_boundary_condition_count( field )
+!         Loop_BC: do k = 1, nobcs
+!
+!            option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
+!            shape_option = option_shape( trim( option_path ) )
+!            allocate( SufID_BC( 1 : shape_option( 1 ) ) )
+!            call get_option( trim( option_path ), SufID_BC )
+!            allocate( face_nodes( face_loc( field, 1) ) )
+!
+!            option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
+!
+!            Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
+!
+!               BC_Type = 1
+!               field_prot_bc => extract_surface_field( field, k, 'value' )
+!
+!               sele = 1
+!               do j = 1, stotel
+!                  if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
+!                     wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
+!                     face_nodes = ele_nodes( field_prot_bc, sele )
+!                     do kk = 1, snloc
+!                        suf_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
+!                             field_prot_bc % val( face_nodes( kk ) )
+!                     end do
+!                     sele = sele + 1
+!                  end if
+!               end do
+!
+!            else if( have_option( trim( option_path ) // 'type::robin' ) ) then
+!
+!               BC_Type = 2
+!
+!               do j = 1, stotel
+!                  if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
+!                     wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
+!                  end if
+!               end do
+!
+!               ! calculate this later on...
+!               suf_bc_rob1 = 0.
+!               suf_bc_rob2 = 0.
+!
+!            end if Conditional_Field_BC
+!
+!            deallocate( face_nodes, sufid_bc )
+!
+!         end do Loop_BC
+!
+!      end if
+!
+!      return
+!    end subroutine Get_ScalarFields_Outof_State2
 
 
-    subroutine Get_CompositionFields_Outof_State( state, initialised, nphase, icomp, iphase, field, &
-         field_prot, wic_bc, &
-         kprime, kprime2, &
-         suf_bc, &
-         field_prot_source, field_prot_absorption )
-      implicit none
-      type( state_type ), dimension( : ), intent( in ) :: state
-      logical, intent( in ) :: initialised
-      integer, intent( in ) :: nphase, icomp, iphase
-      type( scalar_field ), pointer :: field, field_prot_bc
-      real, dimension( : ), intent( inout ) :: field_prot
-      real, dimension( : ), intent( inout ), optional :: field_prot_source, field_prot_absorption
-      integer, dimension( : ), intent( inout ), optional :: wic_bc
-      integer, intent( in ), optional  :: kprime, kprime2
-      real, dimension(  :  ), intent( inout ), optional  :: suf_bc
-      ! Local variables
-      type( mesh_type ), pointer :: pmesh, cmesh
-      type(scalar_field), pointer :: pressure, field_source, field_absorption
-      type( scalar_field ) :: dummy
-      type( vector_field ), pointer :: positions
-      integer, dimension( : ), allocatable :: sufid_bc, face_nodes
-      integer :: shape_option( 2 )
-      character( len = option_path_len ) :: option_path, field_name
-      logical :: have_source, have_absorption
-      integer :: nstate, stotel, nobcs, bc_type, i, j, k, kk, sele, stat, snloc
-      real :: initial_constant
-      character( len = 8192 ) :: func
-
-      field_name = trim( field % name )
-      positions => extract_vector_field( state( 1 ), 'Coordinate' )
-      pressure => extract_scalar_field( state( 1 ), 'Pressure' )
-      pmesh => extract_mesh( state, 'PressureMesh' )
-      cmesh => extract_mesh( state, 'CoordinateMesh' )
-
-      field_source => extract_scalar_field( state( iphase ), field_name // 'Source', stat )
-      have_source = ( stat == 0 )
-      field_absorption => extract_scalar_field( state( iphase ), field_name // 'Absorption', stat )
-      have_absorption = ( stat == 0 )
-
-      snloc = face_loc( pressure, 1 )
-      nstate = option_count('/material_phase')
-      stotel = surface_element_count( cmesh )
-
-      option_path = '/material_phase[' // int2str( icomp - 1 ) // &
-           ']/scalar_field::ComponentMassFractionPhase' // &
-           int2str( iphase )
-
-      Conditional_InitialisedFromFLML: if( initialised ) then
-         field_prot = field % val
-      else
-         !option_path = '/material_phase[' // int2str( icomp - 1 ) // &
-         !     ']/scalar_field::ComponentMassFractionPhase' // &
-         !     int2str( iphase )
-
-         Conditional_Composition_MassFraction: if ( have_option( trim( option_path ) // &
-              '/prognostic/initial_condition::WholeMesh/constant' ) ) then
-
-            call get_option( trim( option_path ) // &
-                 '/prognostic/initial_condition::WholeMesh/constant', initial_constant )
-            field_prot = initial_constant
-
-         elseif( have_option( trim( option_path ) // &
-              '/prognostic/initial_condition::WholeMesh/python') ) then
-
-            call get_option( trim( option_path ) // &
-                 '/prognostic/initial_condition::WholeMesh/python', func )
-
-            call allocate( dummy, field % mesh, 'dummy' )
-            call get_option( '/timestepping/current_time', current_time )
-            call set_from_python_function( dummy, trim( func ), positions, current_time )
-            field_prot = dummy % val
-            call deallocate( dummy )
-         elseif( have_option( trim( option_path ) // '/prognostic/initial_condition/from_file')) then
-            field_prot = field % val
-         else
-            ewrite(-1,*) 'No initial condition for field::', trim( field_name )
-            FLAbort( ' Check initial conditions ' )
-
-         end if Conditional_Composition_MassFraction
-
-      end if Conditional_InitialisedFromFLML
-      if ( present(wic_bc)) then
 
 
-         Conditional_Composition_BC: if ( have_option( trim( option_path ) // &
-              '/prognostic/boundary_conditions[0]/type::dirichlet' )) then
-
-            BC_Type = 1
-            nobcs = get_boundary_condition_count( field )
-
-            Loop_Over_BC: do k = 1, nobcs
-               field_prot_bc => extract_surface_field( field, k, 'value' )
-               shape_option = option_shape( trim( option_path ) // &
-                    '/prognostic/boundary_conditions[' // &
-                    int2str( k - 1 ) // ']/surface_ids' )
-               allocate( sufid_bc( 1 : shape_option( 1 ) ) )
-
-               call get_option( trim( option_path ) // &
-                    '/prognostic/boundary_conditions[' // &
-                    int2str( k - 1 ) // ']/surface_ids', sufid_bc )
-
-               allocate( face_nodes( face_loc( field, 1 ) ) )
-               sele = 1
-               do j = 1, stotel
-                  if( any ( sufid_bc == pmesh % faces % boundary_ids( j ) ) ) then
-                     wic_bc( j + ( iphase - 1 ) * stotel ) = bc_type
-                     face_nodes = ele_nodes( field_prot_bc, sele )
-                     do kk = 1, snloc
-                        suf_bc( ( icomp - ( nphase + 1 ) ) * nphase * stotel * snloc + &
-                             ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
-                             field_prot_bc % val( face_nodes( kk ) )
-                     end do
-                     sele = sele + 1
-                  end if
-               end do
-
-               deallocate( face_nodes )
-               deallocate( sufid_bc )
-
-            end do Loop_Over_BC ! End of BC loop
-
-         end if Conditional_Composition_BC
-
-      end if
-
-
-      if ( have_source )  then
-         do j = 1, node_count( field_source )
-            field_prot_source( ( iphase - 1 ) * node_count( field_source ) + j ) = &
-                 field_source % val( j )
-         end do
-      end if
-
-      if ( have_absorption ) then
-         do j = 1, node_count( field_absorption )
-            field_prot_absorption( ( iphase - 1 ) * node_count( field_absorption ) + j ) = &
-                 field_absorption % val( j )
-         end do
-      end if
-
-      return
-    end subroutine Get_CompositionFields_Outof_State
+!    subroutine Get_CompositionFields_Outof_State( state, initialised, nphase, icomp, iphase, field, &
+!         field_prot, wic_bc, &
+!         kprime, kprime2, &
+!         suf_bc, &
+!         field_prot_source, field_prot_absorption )
+!      implicit none
+!      type( state_type ), dimension( : ), intent( in ) :: state
+!      logical, intent( in ) :: initialised
+!      integer, intent( in ) :: nphase, icomp, iphase
+!      type( scalar_field ), pointer :: field, field_prot_bc
+!      real, dimension( : ), intent( inout ) :: field_prot
+!      real, dimension( : ), intent( inout ), optional :: field_prot_source, field_prot_absorption
+!      integer, dimension( : ), intent( inout ), optional :: wic_bc
+!      integer, intent( in ), optional  :: kprime, kprime2
+!      real, dimension(  :  ), intent( inout ), optional  :: suf_bc
+!      ! Local variables
+!      type( mesh_type ), pointer :: pmesh, cmesh
+!      type(scalar_field), pointer :: pressure, field_source, field_absorption
+!      type( scalar_field ) :: dummy
+!      type( vector_field ), pointer :: positions
+!      integer, dimension( : ), allocatable :: sufid_bc, face_nodes
+!      integer :: shape_option( 2 )
+!      character( len = option_path_len ) :: option_path, field_name
+!      logical :: have_source, have_absorption
+!      integer :: nstate, stotel, nobcs, bc_type, i, j, k, kk, sele, stat, snloc
+!      real :: initial_constant
+!      character( len = 8192 ) :: func
+!
+!      field_name = trim( field % name )
+!      positions => extract_vector_field( state( 1 ), 'Coordinate' )
+!      pressure => extract_scalar_field( state( 1 ), 'Pressure' )
+!      pmesh => extract_mesh( state, 'PressureMesh' )
+!      cmesh => extract_mesh( state, 'CoordinateMesh' )
+!
+!      field_source => extract_scalar_field( state( iphase ), field_name // 'Source', stat )
+!      have_source = ( stat == 0 )
+!      field_absorption => extract_scalar_field( state( iphase ), field_name // 'Absorption', stat )
+!      have_absorption = ( stat == 0 )
+!
+!      snloc = face_loc( pressure, 1 )
+!      nstate = option_count('/material_phase')
+!      stotel = surface_element_count( cmesh )
+!
+!      option_path = '/material_phase[' // int2str( icomp - 1 ) // &
+!           ']/scalar_field::ComponentMassFractionPhase' // &
+!           int2str( iphase )
+!
+!      Conditional_InitialisedFromFLML: if( initialised ) then
+!         field_prot = field % val
+!      else
+!         !option_path = '/material_phase[' // int2str( icomp - 1 ) // &
+!         !     ']/scalar_field::ComponentMassFractionPhase' // &
+!         !     int2str( iphase )
+!
+!         Conditional_Composition_MassFraction: if ( have_option( trim( option_path ) // &
+!              '/prognostic/initial_condition::WholeMesh/constant' ) ) then
+!
+!            call get_option( trim( option_path ) // &
+!                 '/prognostic/initial_condition::WholeMesh/constant', initial_constant )
+!            field_prot = initial_constant
+!
+!         elseif( have_option( trim( option_path ) // &
+!              '/prognostic/initial_condition::WholeMesh/python') ) then
+!
+!            call get_option( trim( option_path ) // &
+!                 '/prognostic/initial_condition::WholeMesh/python', func )
+!
+!            call allocate( dummy, field % mesh, 'dummy' )
+!            call get_option( '/timestepping/current_time', current_time )
+!            call set_from_python_function( dummy, trim( func ), positions, current_time )
+!            field_prot = dummy % val
+!            call deallocate( dummy )
+!         elseif( have_option( trim( option_path ) // '/prognostic/initial_condition/from_file')) then
+!            field_prot = field % val
+!         else
+!            ewrite(-1,*) 'No initial condition for field::', trim( field_name )
+!            FLAbort( ' Check initial conditions ' )
+!
+!         end if Conditional_Composition_MassFraction
+!
+!      end if Conditional_InitialisedFromFLML
+!      if ( present(wic_bc)) then
+!
+!
+!         Conditional_Composition_BC: if ( have_option( trim( option_path ) // &
+!              '/prognostic/boundary_conditions[0]/type::dirichlet' )) then
+!
+!            BC_Type = 1
+!            nobcs = get_boundary_condition_count( field )
+!
+!            Loop_Over_BC: do k = 1, nobcs
+!               field_prot_bc => extract_surface_field( field, k, 'value' )
+!               shape_option = option_shape( trim( option_path ) // &
+!                    '/prognostic/boundary_conditions[' // &
+!                    int2str( k - 1 ) // ']/surface_ids' )
+!               allocate( sufid_bc( 1 : shape_option( 1 ) ) )
+!
+!               call get_option( trim( option_path ) // &
+!                    '/prognostic/boundary_conditions[' // &
+!                    int2str( k - 1 ) // ']/surface_ids', sufid_bc )
+!
+!               allocate( face_nodes( face_loc( field, 1 ) ) )
+!               sele = 1
+!               do j = 1, stotel
+!                  if( any ( sufid_bc == pmesh % faces % boundary_ids( j ) ) ) then
+!                     wic_bc( j + ( iphase - 1 ) * stotel ) = bc_type
+!                     face_nodes = ele_nodes( field_prot_bc, sele )
+!                     do kk = 1, snloc
+!                        suf_bc( ( icomp - ( nphase + 1 ) ) * nphase * stotel * snloc + &
+!                             ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
+!                             field_prot_bc % val( face_nodes( kk ) )
+!                     end do
+!                     sele = sele + 1
+!                  end if
+!               end do
+!
+!               deallocate( face_nodes )
+!               deallocate( sufid_bc )
+!
+!            end do Loop_Over_BC ! End of BC loop
+!
+!         end if Conditional_Composition_BC
+!
+!      end if
+!
+!
+!      if ( have_source )  then
+!         do j = 1, node_count( field_source )
+!            field_prot_source( ( iphase - 1 ) * node_count( field_source ) + j ) = &
+!                 field_source % val( j )
+!         end do
+!      end if
+!
+!      if ( have_absorption ) then
+!         do j = 1, node_count( field_absorption )
+!            field_prot_absorption( ( iphase - 1 ) * node_count( field_absorption ) + j ) = &
+!                 field_absorption % val( j )
+!         end do
+!      end if
+!
+!      return
+!    end subroutine Get_CompositionFields_Outof_State
 
 
 
@@ -1403,17 +1402,12 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
       ! Local variables
       type( mesh_type ), pointer :: pmesh, cmesh
-      type(vector_field) :: dummy
-      type(vector_field), pointer :: positions, field_source, field_absorption, chunk
-      type(scalar_field), pointer :: pressure
+      type(vector_field), pointer :: positions, field_absorption
       integer, dimension(:), allocatable :: sufid_bc, face_nodes
       character( len = option_path_len ) :: option_path, option_path2, field_name, bct
-      integer :: ndim, stotel, snloc, snloc2, nonods, nobcs, bc_type, i,j, k, kk, l, &
-           shape_option( 2 ), count, u_nonods, idim, stat,nloc, ele
-      real, dimension( : ), allocatable :: initial_constant
-      integer, dimension(:), allocatable :: order
-      logical :: have_source, have_absorption
-      character(len=8192) :: func
+      integer :: ndim, stotel, snloc, snloc2, nonods, nobcs, bc_type, j, k, kk, l, &
+           shape_option( 2 ), count, u_nonods, idim, stat
+      logical :: have_absorption
 
       pmesh => extract_mesh(state, 'PressureMesh' )
       cmesh => extract_mesh(state, 'CoordinateMesh' )
@@ -1763,71 +1757,71 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 !!$
 !!$ Module Get_Ndgln Interfaces
 
-    subroutine Get_Scalar_Ndgln( ndgln, field, cv_nloc )
-      implicit none
-      type( scalar_field ), intent( in ) :: field
-      integer, intent( in ), optional :: cv_nloc
-      integer, dimension( : ), intent( inout ) :: ndgln
-      ! Local variables
-      integer, dimension( : ), pointer :: nloc
-      integer :: ele, iloc
+!    subroutine Get_Scalar_Ndgln( ndgln, field, cv_nloc )
+!      implicit none
+!      type( scalar_field ), intent( in ) :: field
+!      integer, intent( in ), optional :: cv_nloc
+!      integer, dimension( : ), intent( inout ) :: ndgln
+!      ! Local variables
+!      integer, dimension( : ), pointer :: nloc
+!      integer :: ele, iloc
+!
+!      do ele = 1, ele_count( field )
+!         nloc => ele_nodes( field, ele )
+!         do iloc = 1, ele_loc( field, ele )
+!            ndgln( ( ele - 1 ) * ele_loc( field, ele ) + iloc ) =  nloc( iloc )
+!$            ewrite(3,*)'ele, iloc, ndgln:', ele, iloc, &
+!$                 ndgln( ( ele - 1 ) * ele_loc( field, ele ) + iloc )
+!         end do
+!      end do
+!
+!      return
+!    end subroutine Get_Scalar_Ndgln
 
-      do ele = 1, ele_count( field )
-         nloc => ele_nodes( field, ele )
-         do iloc = 1, ele_loc( field, ele )
-            ndgln( ( ele - 1 ) * ele_loc( field, ele ) + iloc ) =  nloc( iloc )
-!!$            ewrite(3,*)'ele, iloc, ndgln:', ele, iloc, &
-!!$                 ndgln( ( ele - 1 ) * ele_loc( field, ele ) + iloc )
-         end do
-      end do
-
-      return
-    end subroutine Get_Scalar_Ndgln
-
-    subroutine Get_Vector_Ndgln( ndgln, field, cv_nloc )
-      implicit none
-      type( vector_field ), intent( in ) :: field
-      integer, intent( in ), optional :: cv_nloc
-      integer, dimension( : ), intent( inout ) :: ndgln
-      ! Local variables
-      integer, dimension( : ), pointer :: nloc
-      integer :: ele, iloc, count, cv_nloc2, ndim
-
-      call get_option( '/geometry/dimension', ndim )
-      cv_nloc2 = 1
-
-      count = 0
-      do ele = 1, ele_count( field )
-         nloc => ele_nodes( field, ele )
-         do iloc = 1, ele_loc( field, 1 ) * cv_nloc2
-            ndgln( ( ele - 1 ) * ele_loc( field, 1 ) * cv_nloc2  + iloc ) =  nloc( iloc )
-         end do
-      end do
-
-      return
-    end subroutine Get_Vector_Ndgln
+!    subroutine Get_Vector_Ndgln( ndgln, field, cv_nloc )
+!      implicit none
+!      type( vector_field ), intent( in ) :: field
+!      integer, intent( in ), optional :: cv_nloc
+!      integer, dimension( : ), intent( inout ) :: ndgln
+!      ! Local variables
+!      integer, dimension( : ), pointer :: nloc
+!      integer :: ele, iloc, count, cv_nloc2, ndim
+!
+!      call get_option( '/geometry/dimension', ndim )
+!      cv_nloc2 = 1
+!
+!      count = 0
+!      do ele = 1, ele_count( field )
+!         nloc => ele_nodes( field, ele )
+!         do iloc = 1, ele_loc( field, 1 ) * cv_nloc2
+!            ndgln( ( ele - 1 ) * ele_loc( field, 1 ) * cv_nloc2  + iloc ) =  nloc( iloc )
+!         end do
+!      end do
+!
+!      return
+!    end subroutine Get_Vector_Ndgln
 
 
-    subroutine Get_Mesh_Ndgln( ndgln, mesh, cv_nloc )
-      implicit none
-      type( mesh_type ), intent( in ) :: mesh
-      integer, intent( in ), optional :: cv_nloc
-      integer, dimension( : ), intent( inout ) :: ndgln
-      ! Local variables
-      integer, dimension( : ), pointer :: nloc
-      integer :: ele, iloc
-
-      do ele = 1, ele_count( mesh )
-         nloc => ele_nodes( mesh, ele )
-         do iloc = 1, ele_loc( mesh, ele )
-            ndgln( ( ele - 1 ) * ele_loc( mesh, ele ) + iloc ) =  nloc( iloc )
-!!$            ewrite(3,*)'ele, iloc, ndgln:', ele, iloc, &
-!!$                 ndgln( ( ele - 1 ) * ele_loc( mesh, ele ) + iloc )
-         end do
-      end do
-
-      return
-    end subroutine Get_Mesh_Ndgln
+!    subroutine Get_Mesh_Ndgln( ndgln, mesh, cv_nloc )
+!      implicit none
+!      type( mesh_type ), intent( in ) :: mesh
+!      integer, intent( in ), optional :: cv_nloc
+!      integer, dimension( : ), intent( inout ) :: ndgln
+!      ! Local variables
+!      integer, dimension( : ), pointer :: nloc
+!      integer :: ele, iloc
+!
+!      do ele = 1, ele_count( mesh )
+!         nloc => ele_nodes( mesh, ele )
+!         do iloc = 1, ele_loc( mesh, ele )
+!            ndgln( ( ele - 1 ) * ele_loc( mesh, ele ) + iloc ) =  nloc( iloc )
+!$            ewrite(3,*)'ele, iloc, ndgln:', ele, iloc, &
+!$                 ndgln( ( ele - 1 ) * ele_loc( mesh, ele ) + iloc )
+!         end do
+!      end do
+!
+!      return
+!    end subroutine Get_Mesh_Ndgln
 
 !!$
 !!$ Module Get_SNdgln Interfaces
@@ -1889,7 +1883,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, knod, istate
-      real :: dx
       logical :: initialised
       integer, dimension( : ), pointer :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln
       integer, dimension( : ), allocatable ::     cv_sndgln, p_sndgln, u_sndgln, Temperature_BC_Spatial
@@ -2095,9 +2088,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       type(scalar_field) :: porosity
       type(vector_field) :: p_position, u_position, m_position
       type(tensor_field) :: permeability, ten_field
-      type(mesh_type) :: lmesh,nvmesh
       type(mesh_type), pointer :: ovmesh, element_mesh
-      type(element_type) :: vel_shape, element_shape
+      type(element_type) :: element_shape
 
       integer, dimension( : ), pointer :: element_nodes
 
@@ -2123,8 +2115,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          vfield => extract_vector_field( state(1), "solid_U" )
          call insert( packed_state, vfield, "solid_U" )
 
-!         vfield => extract_vector_field( state(1), "perm_frac" )
-!         call insert( packed_state, vfield, "perm_frac" )
 
          vfield => extract_vector_field( state(1), "f_x" )
          call insert( packed_state, vfield, "f_x" )
@@ -2144,12 +2134,16 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          tfield => extract_tensor_field( state(1), "Viscosity" )
          call insert( packed_state, tfield, "Viscosity" )
 
+         sfield => extract_scalar_field( state(1), "Dummy" )
+         call insert( packed_state, sfield, "Dummy" )
+
       end if
 #endif
 
       if (has_scalar_field(state(1),"Porosity")) then
          sfield=>extract_scalar_field(state(1),"Porosity")
          element_mesh=>sfield%mesh
+         call insert(packed_state,element_mesh,'P0DG')
       else
          element_shape=make_element_shape(position%mesh%shape,degree=0)
          allocate(element_mesh)
@@ -2161,7 +2155,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          call deallocate(element_shape)
          element_mesh=>extract_mesh(packed_state,'P0DG')
       end if
-      call insert(packed_state,element_mesh,'P0DG')
+
       !If have capillary pressure, then we store 5 entries in PackedRockFluidProp, otherwise just 3
       if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
         call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[5,nphase])
@@ -2294,7 +2288,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       call insert_vfield(packed_state,"Velocity",add_source=.true.)
       call insert_vfield(packed_state,"NonlinearVelocity",zerod=.true.)
       call insert(state(1),velocity%mesh,"InternalVelocityMesh")
-
       call unpack_multiphase(packed_state,multiphase_state)
       if (ncomp>0) then
          call insert_sfield(packed_state,"ComponentDensity",ncomp,nphase)
@@ -2368,8 +2361,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
             if(has_phase_volume_fraction) then
                call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
-                    check_paired(extract_scalar_field(state(i),"PhaseVolumeFraction"),&
-                    extract_scalar_field(state(i),"IteratedPhaseVolumeFraction")))
+                    check_paired(extract_scalar_field(state(i),"IteratedPhaseVolumeFraction"),&
+                    extract_scalar_field(state(i),"PhaseVolumeFraction")))
                call unpack_sfield(state(i),packed_state,"OldPhaseVolumeFraction",1,iphase,&
                     check_paired(extract_scalar_field(state(i),"PhaseVolumeFraction"),&
                     extract_scalar_field(state(i),"OldPhaseVolumeFraction")))
@@ -2487,6 +2480,12 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          call insert(packed_state,permeability,"Permeability")
          call deallocate(permeability)
       end if
+
+      !Add memory for the DarcyVelocity
+      call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity")
+      call zero(ten_field)
+      call insert(packed_state,ten_field,"PackedDarcyVelocity")
+      call deallocate(ten_field)
 
     contains
 
@@ -3113,24 +3112,24 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
     end subroutine pack_multistate
 
-    function wrap_as_tensor(field) result(tfield)
-
-      type(scalar_field), intent(inout) :: field
-      type(tensor_field), pointer :: tfield
-
-      allocate(tfield)
-      call allocate(tfield,field%mesh,name=field%name,dim=[1,1])
-
-      tfield%val(1,1,:)=field%val
-      deallocate(tfield%updated)
-      tfield%updated=field%updated
-      deallocate(field%val)
-      deallocate(field%updated)
-      field%val=>tfield%val(1,1,:)
-      field%updated=>tfield%updated
-      tfield%option_path=field%option_path
-
-    end function wrap_as_tensor
+!    function wrap_as_tensor(field) result(tfield)
+!
+!      type(scalar_field), intent(inout) :: field
+!      type(tensor_field), pointer :: tfield
+!
+!      allocate(tfield)
+!      call allocate(tfield,field%mesh,name=field%name,dim=[1,1])
+!
+!      tfield%val(1,1,:)=field%val
+!      deallocate(tfield%updated)
+!      tfield%updated=field%updated
+!      deallocate(field%val)
+!      deallocate(field%updated)
+!      field%val=>tfield%val(1,1,:)
+!      field%updated=>tfield%updated
+!      tfield%option_path=field%option_path
+!
+!    end function wrap_as_tensor
 
     function as_vector(tfield,dim,slice) result(vfield)
 
@@ -3201,43 +3200,43 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
 
 
-    subroutine add_dependant_fields_to_tensor_from_state(infield,state,scalar_field_names,&
-         vector_field_names,tensor_field_names)
-
-      !  Convenience subroutine to add a bunch of fields as dependants of infield in one call.
-
-      type(tensor_field) :: infield
-      type(state_type) :: state
-      character (len=*) , dimension(:), optional :: scalar_field_names, vector_field_names, &
-           tensor_field_names
-
-      integer :: i
-      type(scalar_field), pointer :: sfield
-      type(vector_field), pointer :: vfield
-      type(tensor_field), pointer :: tfield
-
-      if (present(scalar_field_names)) then
-         do i=1,size(scalar_field_names)
-            sfield=>extract_scalar_field(state,trim(scalar_field_names(i)))
-            call add_dependant_field(infield,sfield)
-         end do
-      end if
-
-      if (present(vector_field_names)) then
-         do i=1,size(vector_field_names)
-            vfield=>extract_vector_field(state,trim(vector_field_names(i)))
-            call add_dependant_field(infield,vfield)
-         end do
-      end if
-
-      if (present(tensor_field_names)) then
-         do i=1,size(tensor_field_names)
-            tfield=>extract_tensor_field(state,tensor_field_names(i))
-            call add_dependant_field(infield,tfield)
-         end do
-      end if
-
-    end subroutine add_dependant_fields_to_tensor_from_state
+!    subroutine add_dependant_fields_to_tensor_from_state(infield,state,scalar_field_names,&
+!         vector_field_names,tensor_field_names)
+!
+!      !  Convenience subroutine to add a bunch of fields as dependants of infield in one call.
+!
+!      type(tensor_field) :: infield
+!      type(state_type) :: state
+!      character (len=*) , dimension(:), optional :: scalar_field_names, vector_field_names, &
+!           tensor_field_names
+!
+!      integer :: i
+!      type(scalar_field), pointer :: sfield
+!      type(vector_field), pointer :: vfield
+!      type(tensor_field), pointer :: tfield
+!
+!      if (present(scalar_field_names)) then
+!         do i=1,size(scalar_field_names)
+!            sfield=>extract_scalar_field(state,trim(scalar_field_names(i)))
+!            call add_dependant_field(infield,sfield)
+!         end do
+!      end if
+!
+!      if (present(vector_field_names)) then
+!         do i=1,size(vector_field_names)
+!            vfield=>extract_vector_field(state,trim(vector_field_names(i)))
+!            call add_dependant_field(infield,vfield)
+!         end do
+!      end if
+!
+!      if (present(tensor_field_names)) then
+!         do i=1,size(tensor_field_names)
+!            tfield=>extract_tensor_field(state,tensor_field_names(i))
+!            call add_dependant_field(infield,tfield)
+!         end do
+!      end if
+!
+!    end subroutine add_dependant_fields_to_tensor_from_state
 
 
     subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
@@ -3253,6 +3252,8 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       integer, intent(in) :: its, order
       !Local variables
       real :: dt
+      logical, save :: Time_step_decreased_with_dumping = .false.
+      real, save :: OldDt
       real, save :: Accumulated_sol
       real, parameter :: check_sat_threshold = 1d-6
       real, dimension(:), pointer :: pressure
@@ -3267,35 +3268,35 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts, increase_ts_switch, decrease_ts_switch
       !Variables for adaptive time stepping based on non-linear iterations
       real :: increaseFactor, decreaseFactor, ts_ref_val, acctim
-      integer :: variable_selection, i, NonLinearIteration
+      integer :: variable_selection, NonLinearIteration
 !ewrite(0,*) "entering"
       !First of all, check if the user wants to do something
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic', tolerance_between_non_linear, default = -1. )
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
       if (tolerance_between_non_linear<0) return
       call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
       !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
       !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation)
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear', &
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear', &
            variable_selection, default = 3)
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_factor', &
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_factor', &
            increaseFactor, default = 1.05 )
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_factor', &
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_factor', &
            decreaseFactor, default = 1.2 )
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/max_timestep', &
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/max_timestep', &
            max_ts, default = huge(min_ts) )
-      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/min_timestep', &
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
            min_ts, default = -1. )
 
       !Switches are relative to the input value unless otherwise stated
-      if (have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch')) then
-          call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/increase_ts_switch', &
+      if (have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_ts_switch')) then
+          call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_ts_switch', &
           increase_ts_switch, default = 1d-3 )
       else
           increase_ts_switch = tolerance_between_non_linear / 10.
       end if
 
-      if (have_option('/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch')) then
-          call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear/decrease_ts_switch', &
+      if (have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_ts_switch')) then
+          call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/decrease_ts_switch', &
           decrease_ts_switch, default = 1d-1 )
       else
           decrease_ts_switch = min(tolerance_between_non_linear * 10.,1.0)
@@ -3314,7 +3315,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
          !we either store the data or we recover it if repeting a timestep
          !Procedure to repeat time-steps
          !If  Repeat_time_step then we recover values, else we store them
-         call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
+         if (its == 1) call copy_packed_new_to_iterated(packed_state, Repeat_time_step)
       case (2)!Calculate and store reference_field
             !Store variable to check afterwards
             call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
@@ -3375,27 +3376,23 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             case (2)
                ts_ref_val = maxval(abs(reference_field-velocity))
             case default
-               ts_ref_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))
+!               ts_ref_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))
+
+                !Calculate value of the functional
+                ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), dumping_in_sat)
             end select
 
-            !Rescale using the dumping in saturation to get a more efficient number to compare with
-            !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
-            ts_ref_val = ts_ref_val / dumping_in_sat
             !If it is parallel then we want to be consistent between cpus
             if (IsParallel()) call allmax(ts_ref_val)
-!            !We cannot go to the next time step until we have performed a full time step
-!            Accumulated_sol = Accumulated_sol + dumping_in_sat
-!            if (IsParallel()) call allmax(Accumulated_sol)
+            !We cannot go to the next time step until we have performed a full time step
+            Accumulated_sol = Accumulated_sol + dumping_in_sat
+            if (IsParallel()) call allmax(Accumulated_sol)
 
             !TEMPORARY, re-use of global variable dumping_in_sat to send
             !information about convergence to the trust_region_method
             dumping_in_sat = ts_ref_val
 
-            if (its == NonLinearIteration) then
-                ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
-            end if
-
-            ewrite(1,*) "Difference between non linear iterations:", ts_ref_val, "Non-linear iteration", its
+            ewrite(1,*) "Fixed Point Iteration convergence:", ts_ref_val, "Non-linear iteration", its
 
 !            if (Accumulated_sol < 1.0) then
 !                return
@@ -3405,56 +3402,118 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
             if (.not.nonLinearAdaptTs) then
                !Automatic non-linear iteration checking
                 ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
+                   if (ExitNonLinearLoop .and. &
+                    have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')) then
+                        !We tell the user the number of FPI and final convergence to help improving the parameters
+                         ewrite(0,*) "FPI convergence:", ts_ref_val, "Number of FPI to converge", its
+                   end if
                return
             end if
 
-            !Increase Ts section
-            if ((ts_ref_val < increase_ts_switch .and.dt*increaseFactor<max_ts).and..not.Repeat_time_step) then
-               call get_option( '/timestepping/timestep', dt )
-               dt = dt * increaseFactor
-               call set_option( '/timestepping/timestep', dt )
-               ewrite(1,*) "Time step increased to:", dt
-               ExitNonLinearLoop = .true.
-               return
-            else !Maybe it is not enough to increase the time step, but we could go to the next time step
-                ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
-            end if
 
-!                    !Exit loop section
-!                    if ((ts_ref_val < tolerance_between_non_linear).and..not.Repeat_time_step) then
-!                        ExitNonLinearLoop = .true.
-!                        return
-!                    end if
+            !If we have a dumping parameter we only reduce the time-step if we reach
+            !the maximum number of non-linear iterations
+            if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Dumping_factor')) then
+                !Tell the user if we have not converged
+                if (its == NonLinearIteration) then
+                    ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
+                end if
+                !Increase Ts section
+                if ((ts_ref_val < increase_ts_switch .and.dt*increaseFactor<max_ts).and..not.Repeat_time_step) then
+                   call get_option( '/timestepping/timestep', dt )
+                   dt = dt * increaseFactor
+                   call set_option( '/timestepping/timestep', dt )
+                   ewrite(1,*) "Time step increased to:", dt
+                   ExitNonLinearLoop = .true.
+                   return
+                else !Maybe it is not enough to increase the time step, but we could go to the next time step
+                    ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
+                end if
 
-            !Decrease Ts section only if we have done at least the 90% of the  nonLinearIterations
-            if ((ts_ref_val > decrease_ts_switch.or.repeat_time_step) &
-                 .and.its>=int(0.90*NonLinearIteration)) then
+                !Decrease Ts section only if we have done at least the 90% of the  nonLinearIterations
+                if ((ts_ref_val > decrease_ts_switch.or.repeat_time_step) &
+                     .and.its>=int(0.90*NonLinearIteration)) then
 
-               if ( dt / decreaseFactor < min_ts) then
-                  !Do not decrease
-                  Repeat_time_step = .false.
-                  ExitNonLinearLoop = .true.
-                  deallocate(reference_field)
-                  return
-               end if
+                   if ( dt / decreaseFactor < min_ts) then
+                      !Do not decrease
+                      Repeat_time_step = .false.
+                      ExitNonLinearLoop = .true.
+                      deallocate(reference_field)
+                      return
+                   end if
 
-               !Decrease time step, reset the time and repeat!
-               call get_option( '/timestepping/timestep', dt )
-               call get_option( '/timestepping/current_time', acctim )
-               acctim = acctim - dt
-               call set_option( '/timestepping/current_time', acctim )
-               dt = dt / decreaseFactor
-               call set_option( '/timestepping/timestep', dt )
-               ewrite(1,*) "Time step decreased to:", dt
-               Repeat_time_step = .true.
-               ExitNonLinearLoop = .true.
+                   !Decrease time step, reset the time and repeat!
+                   call get_option( '/timestepping/timestep', dt )
+                   call get_option( '/timestepping/current_time', acctim )
+                   acctim = acctim - dt
+                   call set_option( '/timestepping/current_time', acctim )
+                   dt = dt / decreaseFactor
+                   call set_option( '/timestepping/timestep', dt )
+                   ewrite(1,*) "Time step decreased to:", dt
+                   Repeat_time_step = .true.
+                   ExitNonLinearLoop = .true.
+                end if
+            else
+                !Check if after decreasing the time step we can increase it again
+                if (ts_ref_val < tolerance_between_non_linear .and. Time_step_decreased_with_dumping) then
+                    !After converging we set back the old time step and disable this check
+                    call set_option( '/timestepping/timestep', OldDt )
+                    ewrite(1,*) "Time step set back to:", OldDt
+                    Time_step_decreased_with_dumping = .false.
+                    ExitNonLinearLoop = .true.
+                    Repeat_time_step = .false.
+                    return
+                end if
+                !We do it one time-step and then we go back to the previous time-step
+                if (its>=int(NonLinearIteration)) then
+                   !Decrease time step, reset the time and repeat!
+                   call get_option( '/timestepping/timestep', dt )
+                   !Store this time step (the first time we reduce the time step) to return to it later on
+                   if (.not. Time_step_decreased_with_dumping)  OldDt = dt
+
+                   call get_option( '/timestepping/current_time', acctim )
+                   acctim = acctim - dt
+                   call set_option( '/timestepping/current_time', acctim )
+                   dt = dt / decreaseFactor
+                   call set_option( '/timestepping/timestep', dt )
+                   ewrite(1,*) "Time step decreased to:", dt
+                   Repeat_time_step = .true.
+                   ExitNonLinearLoop = .true.
+                   Time_step_decreased_with_dumping = .true.
+                else
+                   ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
+                   return
+                end if
             end if
          end if
 
       end select
-!ewrite(0,*) "exiting"
+
     end subroutine Adaptive_NonLinear
 
+    real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping)
+       !We create the potential to optimize F = sum (f**2), so the solution is when this potential
+       !reach a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
+       !f = (NewSat-OldSat)/Number of nodes; this is the typical approach for algebraic non linear systems
+        implicit none
+        real, dimension(:,:), intent(in) :: phasevolumefraction, reference_sat
+        real, intent(in) :: dumping
+        !Local variables
+        integer :: iphase
+
+
+        get_Convergence_Functional = 0.0
+        do iphase = 1, size(phasevolumefraction,1)
+            get_Convergence_Functional = max(sum((abs(reference_sat(iphase,:)-phasevolumefraction(iphase,:))&
+            /size(phasevolumefraction,2))**2.0), get_Convergence_Functional)
+        end do
+        !Rescale using the dumping in saturation to get a more efficient number to compare with
+        !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
+        !To make consistent the dumping parameter with the Potential, we have to raise it to 2.0
+        get_Convergence_Functional = get_Convergence_Functional / dumping**2.0
+
+
+    end function get_Convergence_Functional
 
     subroutine copy_packed_new_to_iterated(packed_state, viceversa)
       !Values from packed_state are stored in iterated unless viceversa is true, in that case
@@ -3804,7 +3863,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
     logical function is_constant(tfield)
       type(tensor_field), intent(in) :: tfield
 
-      integer :: i, j
+      integer :: i
       real, dimension(product(tfield%dim)) :: tmax, tmin
       real, parameter :: tol=1.0e-8
 
@@ -3933,7 +3992,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                 !bad_node enters as the first entry
                 if (degree == 1) then
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
@@ -3941,19 +4000,19 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                 else if (degree == 2) then!quadratic
                     !Here we consider three subtriangles, the normal one, plus two formed by the midpoints plus an edge
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 5, 6, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 5, 6, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 5, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 5, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
@@ -3966,25 +4025,25 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                 if (degree == 1) then
                     !We check the 4 triangles that form a tet
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 4, 3, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 4, 3, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 2, 3, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 2, 3, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
@@ -3993,76 +4052,76 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                     !We check the 4 triangles that form a tet, three times
                     !First face
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 5, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 5, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 5, 6, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 5, 6, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     !Second face
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 8, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 8, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 7, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 7, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 7, 8, 10, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 7, 8, 10, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     !Third face
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 4, 7, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 4, 7, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 6, 9, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 6, 9, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 7, 9, 10, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 7, 9, 10, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     !Forth face
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 10, 8, 9, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 10, 8, 9, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 8, 3, 5, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 8, 3, 5, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
                     end if
                     if (i > size(Quality_list)) exit!We cannot add more elements
-                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 9, 5, 6, MxAngl, Quality_list(i))
+                    Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 9, 5, 6, MxAngl, MnAngl, Quality_list(i))
                     if (Bad_founded) then
                         if (size(Quality_list)>= i) Quality_list(i)%ele = ele
                         i = i + 1
@@ -4073,19 +4132,19 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         end if
         contains
 
-            logical function Check_element(X_ALL, x_ndgln, ele_Pos, Pos1, Pos2, Pos3, MaxAngle, Quality_list)
-                !Introduce Pos4 for 3D, Pos4 is the forth vertex of the tet
+            logical function Check_element(X_ALL, x_ndgln, ele_Pos, Pos1, Pos2, Pos3, MaxAngle, MinAngle, Quality_list)
+                !Checks if an angle is below a threshold and stores the information to
+                !modify the matrix later
                 implicit none
                 real, dimension(:,:), intent(in) :: X_ALL
                 integer, intent(in) :: ele_Pos, Pos1, Pos2, Pos3
-                real, intent(in) :: MaxAngle
+                real, intent(in) :: MaxAngle, MinAngle
                 integer, dimension(:), intent(in) :: x_ndgln
                 type(bad_elements), intent(inout) :: Quality_list
                 !Local variables
-                real, dimension(size(X_ALL,1)) :: X1, X2, X3, X4
-                real, dimension(3) :: alpha, lenght, lenght2
+                real, dimension(size(X_ALL,1)) :: X1, X2, X3
+                real, dimension(3) :: alpha, lenght
                 !For 3D to project values
-                real :: ha, hd, ad, beta, s
                 !Definition of Pi
                 real, parameter :: pi = acos(0.0) * 2.0
 
@@ -4145,6 +4204,23 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
                 end if
                 !Make sure it is between bounds
                 Quality_list%weights = min(Quality_list%weights,1.0)
+
+                !If we have not added elements already in that element, check for small angles
+                if (.not.Check_element) then
+                    if (alpha(1) < MinAngle .or. alpha(2) < MinAngle .or. alpha(3) < MinAngle) then
+                        !No diffusion between nodes, just add a perturbation in the diagonal
+                        Quality_list%weights(1) = 0.0
+                        Quality_list%weights(2) = 0.0
+                        !Store nodes, the first one is the bad node
+                        Quality_list%nodes(1) = Pos1
+                        Quality_list%nodes(2) = Pos2
+                        Quality_list%nodes(3) = Pos3
+                        !We fake this parameter since it is preapred for obtuse angles
+                        !we consider a medium angle
+                        Quality_list%angle = 135
+                        Check_element = .true.
+                    end if
+                end if
 
             end function Check_element
 
@@ -4273,7 +4349,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       !x_ele=x_ndgln((ele-1)*cv_nloc+1)
       !PorG(ele) = Por(x_ele)
 
-      PorG = Por(IDs_ndgln(ele))
+     PorG = Por(IDs_ndgln(ele))
 
 !      PorG = Por(IDs_ndgln(sele))
 
@@ -4353,7 +4429,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
         logical, optional, intent(in) :: fake_IDs_ndgln
         !Local variables
 
-        type (scalar_field), pointer :: s_field
         type (tensor_field), pointer :: t_field
         type(mesh_type), pointer :: fl_mesh
         integer :: i, j, k, number_of_ids, nphase,mtemp
@@ -4533,16 +4608,6 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
 
 
         !###Compact fields###
-        !Porosity
-        if (has_scalar_field(packed_state,"Porosity")) then
-            s_field=>extract_scalar_field(packed_state,"Porosity")
-            call convert_scalar_field(s_field, IDs_ndgln )
-        end if
-        !Permeability
-        if (has_tensor_field(packed_state,"Permeability")) then
-            t_field=>extract_tensor_field(packed_state,"Permeability")
-            call convert_tensor_field(t_field, IDs_ndgln )
-        end if
         !Relative permeability and Immobile fractions (if cappressure, also cap parameters)
         if (has_tensor_field(packed_state,"PackedRockFluidProp")) then
             t_field=>extract_tensor_field(packed_state,"PackedRockFluidProp")
@@ -4591,7 +4656,6 @@ size(s_field%val,1), s_field%name)
             type (tensor_field), intent(inout), pointer :: t_field
             !Local variables
             real, dimension(:, :, :), allocatable :: t_field_bak
-            type(mesh_type), pointer :: fmesh
             integer :: i
 
             !Create backup
@@ -4622,6 +4686,118 @@ size(t_field%val,1)*size(t_field%val,2)*size(t_field%val,3), t_field%name)
 
     end subroutine get_regionIDs2nodes
 
+    subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, MAT_NDGLN, U_NDGLN, state, packed_state, Material_Absorption)
+        !This subroutine calculates the actual Darcy velocity, unfinished
+        implicit none
+        integer, intent(in) :: totele, cv_nloc, u_nloc, mat_nloc
+        integer, dimension(:) :: MAT_NDGLN, U_NDGLN
+        type(state_type) , intent(in):: packed_state
+        type( state_type ), dimension( : ), intent( inout ) :: state
+        real, dimension(:,:,:), intent(in):: Material_Absorption
+        !Local variables
+        type(tensor_field), pointer :: DarcyVelocity, Velocity
+        real, dimension(:,:), allocatable :: matrix
+        integer :: cv_iloc, u_iloc, ele, iphase, ndim, nphase, imat, u_inod
+!Local variables
+!            integer :: ndim, cv_ngi, cv_ngi_short,scvngi, nface, sbcvngi, nphase, &
+!            cv_nonods, iphase, cv_inod, u_siloc, cv_jloc,&
+!            CV_SJLOC, u_iloc, cv_Xnod
+!            logical :: d1, d3
+!            logical, dimension(  : , : ), allocatable :: cv_on_face, cvfem_on_face, u_on_face, ufem_on_face
+!            real, dimension(:,:), pointer :: CapPressure, CV_Bound_Shape_Func, CV_Shape_Func
+!            real, dimension(:), allocatable :: NMX_ALL
+!            !Pointers for detwei
+!            real, pointer, dimension(:) :: DETWEI, RA
+!            real, pointer:: volume
+!            REAL, pointer, DIMENSION(:,:,:):: CVFENX_ALL, UFENX_ALL
+!            !Pointers for cv_fem_shape_funs_plus_storage
+!            integer, pointer :: ncolgpts
+!            integer, dimension(:), pointer ::findgpts,colgpts
+!            integer, dimension(:,:), pointer :: cv_neiloc, cv_sloclist, u_sloclist
+!            real, dimension( : ), pointer :: cvweight,cvweight_short, scvfeweigh,sbcvfeweigh,&
+!            SELE_OVERLAP_SCALE
+!            real, dimension( : , : ), pointer:: cvn,cvn_short, cvfen, cvfen_short,ufen,&
+!            scvfen, scvfenslx, scvfensly, sufen, sufenslx, sufensly,&
+!            sbcvn,sbcvfen, sbcvfenslx, sbcvfensly, sbufen, sbufenslx, sbufensly
+!            real, dimension(  : , : , :), pointer ::  cvfenlx_all, cvfenlx_short_all, ufenlx_all,&
+!            scvfenlx_all, sufenlx_all, sbcvfenlx_all, sbufenlx_all
+
+            !Prepare local variables
+!            ndim = size(LOC_U_RHS,1); nphase = size(LOC_U_RHS,2)
+!            nface = size(FACE_ELE,1)
+!            cv_nonods = size(CapPressure,2)
+!            u_nloc = size(LOC_U_RHS,3)
+!            d1 = (ndim ==1); d3 = (ndim ==3)
+
+!            !#####Area to retrieve the shape functions#####
+!            !Only if we need to calculate the shape functions we retrieve the ngi data
+!            call retrieve_ngi( ndim, P_ELE_TYPE, cv_nloc, u_nloc, &
+!            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+!
+!            ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ), CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
+!            ALLOCATE( U_ON_FACE( U_NLOC, SCVNGI ), UFEM_ON_FACE( U_NLOC, SCVNGI ))
+!            allocate(NMX_ALL(ndim))
+!
+!            CALL cv_fem_shape_funs_plus_storage( &
+!                                 ! Volume shape functions...
+!            NDIM, P_ELE_TYPE,  &
+!            CV_NGI, CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
+!            CVWEIGHT, CVFEN, CVFENLX_ALL, &
+!            CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT_ALL, &
+!            UFEN, UFENLX_ALL, &
+!                                 ! Surface of each CV shape functions...
+!            SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
+!            SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
+!            SCVFENLX_ALL,  &
+!            SUFEN, SUFENSLX, SUFENSLY,  &
+!            SUFENLX_ALL,  &
+!                                 ! Surface element shape funcs...
+!            U_ON_FACE, UFEM_ON_FACE, NFACE, &
+!            SBCVNGI, SBCVN, SBCVFEN,SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX_ALL, &
+!            SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX_ALL, &
+!            CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
+!                                 ! Define the gauss points that lie on the surface of the CV...
+!            FINDGPTS, COLGPTS, NCOLGPTS, &
+!            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
+!            state, 'Vel_mesh', StorageIndexes(13))
+!
+!             !Retrieve detwei and ufenx_all
+!            CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, TOTELE, X_NONODS, &
+!            X_NLOC, CV_NLOC, CV_NGI, &
+!            CVFEN, CVFENLX_ALL(1,:,:), CVFENLX_ALL(2,:,:), CVFENLX_ALL(3,:,:), CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, .false., &
+!            CVFENX_ALL, &
+!            U_NLOC, UFENLX_ALL(1,:,:), UFENLX_ALL(2,:,:), UFENLX_ALL(3,:,:), UFENX_ALL,&
+!            state ,"C_1", StorageIndexes(14))
+
+        DarcyVelocity => extract_tensor_field(packed_state, "PackedDarcyVelocity")
+        Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
+        call zero(DarcyVelocity)
+
+        allocate(matrix(size(Material_Absorption,2), size(Material_Absorption,3)))
+        nphase = size(Velocity%val, 2)
+        ndim  = size(Velocity%val, 1)
+        do ele = 1, totele
+            do u_iloc = 1, u_nloc
+                u_inod = U_NDGLN(( ELE - 1 ) * u_nloc +u_iloc )
+
+                do cv_iloc = 1, cv_nloc
+                    imat = MAT_NDGLN(( ELE - 1 ) * MAT_NLOC +CV_ILOC )
+                    matrix = Material_Absorption(imat,:,:)
+                    !This is not optimal, maybe just perform when CVN(U_ILOC, CV_INOD) =/ 0
+                    call invert(matrix)
+                    do iphase = 1, nphase
+                        !Assuming no OFF DIAGONAL terms
+                        DarcyVelocity % val ( :, iphase , u_inod) = DarcyVelocity% val ( :, iphase , u_inod) + &
+                             matmul(matrix(ndim*(iphase-1)+1:iphase*ndim, ndim*(iphase-1)+1:iphase*ndim), &
+                                    Velocity % val( :, iphase , u_iloc) ) /cv_nloc
+                    end do
+                end do
+            end do
+        end do
+
+        deallocate(matrix)
+
+    end subroutine get_DarcyVelocity
 
 
 
