@@ -161,9 +161,6 @@
     </finish_time>
     <nonlinear_iterations>
       <integer_value rank="0">3</integer_value>
-      <nonlinear_iterations_automatic>
-        <real_value rank="0">0.01</real_value>
-      </nonlinear_iterations_automatic>
     </nonlinear_iterations>
   </timestepping>
   <caching/>

@@ -441,7 +441,9 @@ then this is the initial time step size.</a:documentation>
           <element name="nonlinear_iterations">
             <a:documentation>maximum number of non-linear iterations.
 
-Manual suggests 2</a:documentation>
+Manual suggests 2
+
+If using Fixed_Point_Iteration the recommendation is 100</a:documentation>
             <ref name="integer"/>
             <optional>
               <element name="tolerance">
@@ -488,20 +490,38 @@ This option will work only if the mesh_adaptivity is switched on.</a:documentati
               </element>
             </optional>
             <optional>
-              <element name="nonlinear_iterations_automatic">
-                <a:documentation>Non-linear iterations are chosen automatically based on the variation of the saturation between non-linear iterations.
+              <element name="Fixed_Point_Iteration">
+                <a:documentation>This is the convergence criteria for the Fixed Point Iteration solver.
+The functional to compare is: 
 
-The input is the tolerance between non-linear iterations.
-Recommended value is 0.01</a:documentation>
+f = sum(average(dSat/dumping_parameter))^2;
+dSat is the difference in saturation between FPI
+
+
+Recommended values: from 5e-8 to 1e-10</a:documentation>
                 <ref name="real"/>
                 <optional>
                   <element name="Dumping_factor">
-                    <a:documentation>Saturation obtained in the non-linear loop is dumped by this factor.
+                    <a:documentation>dSat obtained from the Saturation equation is backtracked by this factor
 
-The value is between 0 and 1. Negative values calculate it automatically
+Sat = Sat(Previous FPI) + dumping_parameter * dSat
 
-Recommended settings: Non-linear iterations &gt;= 100 and Dumping_factor = 0.15</a:documentation>
+Defined as: 0 &lt; dumping_parameter &lt; 1. Negative values =&gt; automatically (not well tested)
+
+Recommended settings: Non-linear iterations &gt;= 100
+
+Recommended settings: Courant &lt; 1 =&gt; dumping_parameter = 1;
+Courant &gt; 1 =&gt; dumping_parameter from 1.0 to 0.1;
+
+The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be</a:documentation>
                     <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
+                  <element name="Show_Convergence">
+                    <a:documentation>Prints the number of iterations and
+the final convergence achieved by the FPI solver</a:documentation>
+                    <ref name="comment"/>
                   </element>
                 </optional>
                 <optional>
@@ -4147,6 +4167,25 @@ Assumes both fields are on the same mesh as the AbsoluteDifference field.</a:doc
         </choice>
       </element>
       <element name="vector_field">
+        <a:documentation>Coordinate field remapped to the mesh of your choice.</a:documentation>
+        <attribute name="rank">
+          <value>1</value>
+        </attribute>
+        <attribute name="name">
+          <value>DiagnosticCoordinate2</value>
+        </attribute>
+        <choice>
+          <element name="diagnostic">
+            <ref name="internal_algorithm"/>
+            <ref name="mesh_choice"/>
+            <ref name="diagnostic_vector_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="vector_field">
         <a:documentation>Galerkin projection of one field onto another mesh.
 
 The field must be in this material_phase.
@@ -4439,6 +4478,7 @@ Defaults to -huge(0.0)*epsilon(0.0) if not set.</a:documentation>
           <ref name="ultimate_limiter"/>
           <ref name="extrema_limiter"/>
           <ref name="compressive_advection_limiter"/>
+          <ref name="ENO_advection"/>
         </choice>
       </element>
       <element name="do_not_limit_face_value">
@@ -4489,6 +4529,13 @@ Engineering, 88, 17-74</a:documentation>
     <element name="limiter">
       <attribute name="name">
         <value>CompressiveAdvection</value>
+      </attribute>
+    </element>
+  </define>
+  <define name="ENO_advection">
+    <element name="limiter">
+      <attribute name="name">
+        <value>ENO</value>
       </attribute>
     </element>
   </define>

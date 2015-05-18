@@ -4273,7 +4273,7 @@ subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
       !x_ele=x_ndgln((ele-1)*cv_nloc+1)
       !PorG(ele) = Por(x_ele)
 
-     PorG = Por(IDs_ndgln(ele))
+      PorG = Por(IDs_ndgln(ele))
 
 !      PorG = Por(IDs_ndgln(sele))
 

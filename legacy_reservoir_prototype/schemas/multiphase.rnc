@@ -377,6 +377,8 @@ start =
             ## maximum number of non-linear iterations.
             ## 
             ## Manual suggests 2
+            ## 
+            ## If using Fixed_Point_Iteration the recommendation is 100
 			element nonlinear_iterations {
                integer,
                ## tolerance for non-linear iteration.
@@ -417,21 +419,37 @@ start =
                element nonlinear_iterations_at_adapt {
                   integer
                }?,
-               ## Non-linear iterations are chosen automatically based on the variation of the saturation between non-linear iterations.
+               ## This is the convergence criteria for the Fixed Point Iteration solver.
+               ## The functional to compare is: 
+               ##
+               ## f = sum(average(dSat/dumping_parameter))^2;
+               ## dSat is the difference in saturation between FPI
+               ##
                ## 
-               ## The input is the tolerance between non-linear iterations.
-               ## Recommended value is 0.01
-               element nonlinear_iterations_automatic {
+               ## Recommended values: from 5e-8 to 1e-10
+               element Fixed_Point_Iteration{
                   real,
                   (
-                    ## Saturation obtained in the non-linear loop is dumped by this factor.
+                    ## dSat obtained from the Saturation equation is backtracked by this factor
+                    ##
+                    ## Sat = Sat(Previous FPI) + dumping_parameter * dSat
+                    ##
+                    ## Defined as: 0 < dumping_parameter < 1. Negative values => automatically (not well tested)
                     ## 
-                    ## The value is between 0 and 1. Negative values calculate it automatically
-                    ## 
-                    ## Recommended settings: Non-linear iterations >= 100 and Dumping_factor = 0.15
+                    ## Recommended settings: Non-linear iterations >= 100
+                    ##
+                    ## Recommended settings: Courant < 1 => dumping_parameter = 1;
+                    ## Courant > 1 => dumping_parameter from 1.0 to 0.1;
+                    ##
+                    ## The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be
                     element Dumping_factor{
                     real
                     }?
+                  ),
+                  (
+                    ## Prints the number of iterations and
+                    ## the final convergence achieved by the FPI solver
+                    element Show_Convergence{comment}?
                   ),
                   (
                     ## Adaptive timestep based on the ratio between non-linear iterations.
@@ -3293,6 +3311,22 @@ vector_field_choice =
              )
          }|
 
+         ## Coordinate field remapped to the mesh of your choice.
+         element vector_field {
+             attribute rank { "1" },
+             attribute name { "DiagnosticCoordinate2" },
+             (
+                element diagnostic {
+                   internal_algorithm,
+                   mesh_choice,
+                   diagnostic_vector_field
+                }|
+                element aliased {
+                   generic_aliased_field
+                }
+             )
+         }|
+
          ## Galerkin projection of one field onto another mesh.
          ##
          ## The field must be in this material_phase.
@@ -3543,7 +3577,8 @@ limiter_options =
             sweby_limiter|
             ultimate_limiter|
 	    extrema_limiter|
-            compressive_advection_limiter
+            compressive_advection_limiter|
+            ENO_advection
           )
         }|
         ## Do not limit the face value
@@ -3583,6 +3618,12 @@ compressive_advection_limiter =
   element limiter {
     attribute name {"CompressiveAdvection"}
   }
+
+ENO_advection = 
+  element limiter {
+    attribute name {"ENO"}
+  }
+
 
 slope_options =
    (

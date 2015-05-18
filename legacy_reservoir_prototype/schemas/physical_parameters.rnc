@@ -12,6 +12,9 @@ gravity_options =
       element magnitude {
          real
       },
+      element hydrostatic_pressure_solver { empty }?,
+      element fem_buoyancy { empty }?,
+      element fem_density_buoyancy { empty }?,
       ## The direction of the gravity vector.
       element vector_field {
          attribute name { "GravityDirection" },

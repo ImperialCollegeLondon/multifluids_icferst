@@ -159,13 +159,13 @@
       <real_value rank="0">0.10</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">100</integer_value>
-      <nonlinear_iterations_automatic>
-        <real_value rank="0">0.04</real_value>
+      <integer_value rank="0">50</integer_value>
+      <Fixed_Point_Iteration>
+        <real_value rank="0">4e-8</real_value>
         <Dumping_factor>
           <real_value rank="0">0.15</real_value>
         </Dumping_factor>
-      </nonlinear_iterations_automatic>
+      </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
   <caching/>

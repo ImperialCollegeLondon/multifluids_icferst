@@ -230,8 +230,15 @@ if (showPlot):
     for i in range(len(detector)):
         x.append(float(detector[i][0]))
         y.append(float(FS[i][0]))
-    line = plt.Line2D(x, y, color='red', linewidth=2)
     #line.text.set_color('red')
     #line.text.set_fontsize(16)
-    ax.add_line(line)
+    ax.add_line(plt.Line2D(x, y, color='red', linewidth=2))
+
+    x2 = []
+    y2 = []
+    for i in range(len(Analytical_X)):
+        x2.append(float(Analytical_X[i]))
+        y2.append(float(Analytical_Y[i]))
+    ax.add_line(plt.Line2D(x2, y2, color='blue', linewidth=2))
+
     plt.show()

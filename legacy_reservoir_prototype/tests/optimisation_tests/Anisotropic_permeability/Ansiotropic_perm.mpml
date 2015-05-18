@@ -1,15 +1,15 @@
 <?xml version='1.0' encoding='utf-8'?>
 <multiphase_options>
   <simulation_name>
-    <string_value lines="1">BL_fast_pressure</string_value>
+    <string_value lines="1">mid_discontinuous</string_value>
   </simulation_name>
   <geometry>
     <dimension>
       <integer_value rank="0">2</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
-      <from_file file_name="mesh_structured">
-        <format name="exodusii"/>
+      <from_file file_name="square">
+        <format name="gmsh"/>
         <stat>
           <include_in_stat/>
         </stat>
@@ -20,7 +20,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">1</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -78,7 +78,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">1</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -145,7 +145,7 @@
         <integer_value rank="0">1</integer_value>
       </constant>
     </dump_period_in_timesteps>
-    <output_mesh name="PressureMesh"/>
+    <output_mesh name="P0DG"/>
     <stat/>
   </io>
   <timestepping>
@@ -153,19 +153,19 @@
       <real_value rank="0">0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">10e-3</real_value>
+      <real_value rank="0">1e-2</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">0.2</real_value>
+      <real_value rank="0">2e-1</real_value>
     </finish_time>
     <nonlinear_iterations>
       <integer_value rank="0">100</integer_value>
-      <nonlinear_iterations_automatic>
-        <real_value rank="0">0.03</real_value>
+      <Fixed_Point_Iteration>
+        <real_value rank="0">0.04</real_value>
         <Dumping_factor>
           <real_value rank="0">0.3334</real_value>
         </Dumping_factor>
-      </nonlinear_iterations_automatic>
+      </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
   <caching/>
@@ -213,25 +213,14 @@
             <real_value rank="0">0</real_value>
           </constant>
         </initial_condition>
-        <boundary_conditions name="outlet">
+        <boundary_conditions name="right">
           <surface_ids>
-            <integer_value shape="1" rank="1">3</integer_value>
+            <integer_value shape="1" rank="1">8</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
             <constant>
               <real_value rank="0">0</real_value>
-            </constant>
-          </type>
-        </boundary_conditions>
-        <boundary_conditions name="inlet">
-          <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <constant>
-              <real_value rank="0">1</real_value>
             </constant>
           </type>
         </boundary_conditions>
@@ -262,7 +251,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">-1</real_value>
+            <real_value rank="0">1</real_value>
           </theta>
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
@@ -307,7 +296,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">-1</real_value>
+            <real_value rank="0">1</real_value>
           </theta>
           <relaxation>
             <real_value rank="0">1</real_value>
@@ -339,9 +328,9 @@
             <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
           </constant>
         </initial_condition>
-        <boundary_conditions name="up">
+        <boundary_conditions name="bottom_top">
           <surface_ids>
-            <integer_value shape="1" rank="1">2</integer_value>
+            <integer_value shape="2" rank="1">9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -359,16 +348,16 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <boundary_conditions name="down">
+        <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">4</integer_value>
+            <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
             <align_bc_with_cartesian>
               <x_component>
                 <constant>
-                  <real_value rank="0">0</real_value>
+                  <real_value rank="0">1</real_value>
                 </constant>
               </x_component>
               <y_component>
@@ -441,9 +430,7 @@
           <control_volumes>
             <face_value name="FiniteElement">
               <limit_face_value>
-                <limiter name="Sweby">
-                  <project_upwind_value_from_point/>
-                </limiter>
+                <limiter name="Sweby"/>
               </limit_face_value>
             </face_value>
             <diffusion_scheme name="ElementGradient"/>
@@ -454,7 +441,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">-1</real_value>
+            <real_value rank="0">1.0</real_value>
           </theta>
         </temporal_discretisation>
         <solver>
@@ -483,9 +470,9 @@
             <real_value rank="0">0.2</real_value>
           </constant>
         </initial_condition>
-        <boundary_conditions name="inlet">
+        <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
+            <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -523,9 +510,6 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
-      <Pe_stab>
-        <real_value rank="0">0.25e-2</real_value>
-      </Pe_stab>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
@@ -554,7 +538,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">-1</real_value>
+            <real_value rank="0">1</real_value>
           </theta>
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
@@ -598,7 +582,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">-1</real_value>
+            <real_value rank="0">1</real_value>
           </theta>
           <relaxation>
             <real_value rank="0">1.0</real_value>
@@ -630,9 +614,9 @@
             <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
           </constant>
         </initial_condition>
-        <boundary_conditions name="up_down">
+        <boundary_conditions name="bottom_top">
           <surface_ids>
-            <integer_value shape="2" rank="1">2 4</integer_value>
+            <integer_value shape="2" rank="1">9 10</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -650,9 +634,9 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <boundary_conditions name="inlet">
+        <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
+            <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -732,9 +716,7 @@
           <control_volumes>
             <face_value name="FiniteElement">
               <limit_face_value>
-                <limiter name="Sweby">
-                  <project_upwind_value_from_point/>
-                </limiter>
+                <limiter name="Sweby"/>
               </limit_face_value>
             </face_value>
             <diffusion_scheme name="ElementGradient"/>
@@ -745,7 +727,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">-1</real_value>
+            <real_value rank="0">1</real_value>
           </theta>
         </temporal_discretisation>
         <solver>
@@ -774,9 +756,9 @@
             <real_value rank="0">0.8</real_value>
           </constant>
         </initial_condition>
-        <boundary_conditions name="inlet">
+        <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">1</integer_value>
+            <integer_value shape="1" rank="1">7</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -803,7 +785,7 @@
             <mesh name="P0DG"/>
             <value name="WholeMesh">
               <constant>
-                <real_value rank="0">0.3</real_value>
+                <real_value rank="0">0.2</real_value>
               </constant>
             </value>
             <output/>
@@ -822,7 +804,7 @@
         <mesh name="P0DG"/>
         <value name="WholeMesh">
           <constant>
-            <real_value rank="0">0.20</real_value>
+            <real_value rank="0">0.25</real_value>
           </constant>
         </value>
         <output/>
@@ -832,20 +814,18 @@
         </detectors>
       </prescribed>
     </scalar_field>
-    <scalar_field name="Permeability">
+    <tensor_field name="Permeability">
       <prescribed>
-        <mesh name="P0DG"/>
+        <mesh name="VelocityMesh"/>
         <value name="WholeMesh">
-          <constant>
-            <real_value rank="0">1</real_value>
-          </constant>
+          <anisotropic_symmetric>
+            <constant>
+              <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">5.5 4.5 4.5 5.5</real_value>
+            </constant>
+          </anisotropic_symmetric>
         </value>
         <output/>
-        <stat/>
-        <detectors>
-          <exclude_from_detectors/>
-        </detectors>
       </prescribed>
-    </scalar_field>
+    </tensor_field>
   </porous_media>
 </multiphase_options>

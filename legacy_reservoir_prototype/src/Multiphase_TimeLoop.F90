@@ -261,6 +261,7 @@
 
       logical :: calculate_flux
 
+
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr

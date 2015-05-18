@@ -349,14 +349,14 @@
          NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
          got_free_surf,  MASS_SUF, &
-         C, CT, state, indx, halos)
+         C, CT, state, indx, halos, symmetric_P )
       !use multiphase_1D_engine
       !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
       implicit none
       ! form pressure matrix CMC using a colouring approach
       INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC, &
            TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
-      LOGICAL, intent( in ) :: got_free_surf
+      LOGICAL, intent( in ) :: got_free_surf, symmetric_P
       INTEGER, DIMENSION( : ), intent( in ) ::FINDC
       INTEGER, DIMENSION( : ), intent( in ) :: COLC
       REAL, DIMENSION( :, :, : ), intent( in ) :: INV_PIVIT_MAT
@@ -416,7 +416,7 @@
               NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
               CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
               got_free_surf,  MASS_SUF, &
-              C, CT, ndpset, state, indx)
+              C, CT, ndpset, state, indx, symmetric_P )
       ELSE
          ! Slow but memory efficient...
          CALL COLOR_GET_CMC_PHA_SLOW( CV_NONODS, U_NONODS, NDIM, NPHASE, &
@@ -430,7 +430,7 @@
       END IF
 
       !Final step to prepare the CMC_petsc
-!      call assemble( CMC_petsc )
+      !call assemble( CMC_petsc )
 
     END SUBROUTINE COLOR_GET_CMC_PHA
 
@@ -445,13 +445,13 @@
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
             got_free_surf,  MASS_SUF, &
-            C, CT, ndpset, state, indx )
+            C, CT, ndpset, state, indx, symmetric_P )
 
          implicit none
          ! form pressure matrix CMC using a colouring approach
          INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC, &
               TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
-         LOGICAL, intent( in ) :: got_free_surf
+         LOGICAL, intent( in ) :: got_free_surf, symmetric_P
          INTEGER, intent( in ) :: ndpset 
          INTEGER, DIMENSION( : ), intent( in ) ::FINDC
          INTEGER, DIMENSION( : ), intent( in ) :: COLC
@@ -653,16 +653,33 @@
          END DO
 
          !Put into matrix CMC
-         DO CV_NOD = 1, CV_NONODS 
-            DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
-               CV_JNOD = COLCMC( COUNT )
-               call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
-                val = dot_product(CMC_COLOR_VEC_MANY( :, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
-!               CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
-               IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = CMC_PRECON( COUNT ) + &
-                   sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+         if ( .not.symmetric_P ) then
+
+            ! original method
+            DO CV_NOD = 1, CV_NONODS
+               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                  CV_JNOD = COLCMC( COUNT )
+                  call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
+                       val = dot_product(CMC_COLOR_VEC_MANY( :, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
+                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = CMC_PRECON( COUNT ) + &
+                       sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+               END DO
             END DO
-         END DO
+
+         else
+
+            ! symmetric P matrix
+            DO CV_NOD = 1, CV_NONODS
+               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                  CV_JNOD = COLCMC( COUNT )
+                  call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
+                       val = sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD )))
+                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = CMC_PRECON( COUNT ) + &
+                       sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+               END DO
+            END DO
+
+         end if
 
          CMC_petsc%is_assembled=.false.
          call assemble( CMC_petsc )
@@ -1198,7 +1215,7 @@
 
 
      SUBROUTINE PHA_BLOCK_MAT_VEC2( U, BLOCK_MAT, CDP, U_NONODS, NDIM, NPHASE, &
-         TOTELE, U_NLOC, U_NDGLN ) 
+         TOTELE, U_NLOC, U_NDGLN )
       implicit none
       ! U = BLOCK_MAT * CDP
       INTEGER, intent( in )  :: U_NONODS, NDIM, NPHASE, TOTELE, U_NLOC
@@ -1498,7 +1515,7 @@
     END SUBROUTINE C_MULT_MANY
 
     SUBROUTINE C_MULT2( CDP, DP, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-         C, NCOLC, FINDC, COLC ) 
+         C, NCOLC, FINDC, COLC )
       implicit none
       ! CDP=C*DP
       INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC
@@ -1561,7 +1578,41 @@
 
 
 
+    SUBROUTINE CT_MULT_WITH_C2( DP, U_LONG, CV_NONODS, U_NONODS, NDIM, NPHASE, &
+         C, NCOLC, FINDC, COLC )
+      implicit none
+      ! DP = (C)^T U_LONG
+      INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC
+      REAL, DIMENSION( : ), intent( in ) :: U_LONG
+      REAL, DIMENSION( : ), intent( inout )  :: DP
+      REAL, DIMENSION( :, :, : ), intent( in ) :: C
+      INTEGER, DIMENSION( : ), intent( in ) ::FINDC
+      INTEGER, DIMENSION( : ), intent( in ) :: COLC
+      ! Local variables
+      INTEGER :: U_INOD, COUNT, P_JNOD, IPHASE, I1, IDIM, COUNT_DIM_PHA
 
+      DP = 0.0
+
+      Loop_VelNodes: DO U_INOD = 1, U_NONODS
+
+         Loop_Crow: DO COUNT = FINDC( U_INOD ), FINDC( U_INOD + 1 ) - 1, 1
+            P_JNOD = COLC( COUNT )
+
+            Loop_Phase: DO IPHASE = 1, NPHASE
+               Loop_Dim: DO IDIM = 1, NDIM
+                  COUNT_DIM_PHA = COUNT + NCOLC*(IDIM-1) + NCOLC*NDIM*(IPHASE-1)
+                  I1 = IDIM + (U_INOD-1)*NDIM + ( IPHASE - 1 ) * NDIM * U_NONODS
+                  DP( P_JNOD ) = DP( P_JNOD ) + C( IDIM, IPHASE, COUNT ) * U_LONG( I1 )
+               END DO Loop_Dim
+            END DO Loop_Phase
+
+         END DO Loop_Crow
+
+      END DO Loop_VelNodes
+
+      RETURN
+
+     END SUBROUTINE CT_MULT_WITH_C2
 
 
 

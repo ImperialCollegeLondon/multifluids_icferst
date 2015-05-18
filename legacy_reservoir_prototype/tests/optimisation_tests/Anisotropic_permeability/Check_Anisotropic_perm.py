@@ -15,9 +15,6 @@ import os
 
 
 print 'Running the model'
-
-#Get path
-
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
 os.system('rm -f ' + path+ '/*.vtu')
@@ -28,13 +25,13 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.048
-Tolerance_L2_NORM = 0.003
+Tolerance_L1_NORM = 0.035
+Tolerance_L2_NORM = 0.0015
 
 AutomaticLine = 1
 
 
-AutomaticFile = 'BL_fast_pressure'
+AutomaticFile = 'mid_discontinuous'
 AutomaticVTU_Number = 20
 
 #Plot the results in 2d?
@@ -44,10 +41,10 @@ showPlot = False
 data_name = 'phase1::PhaseVolumeFraction'
 
 #Initial and last coordinate of the probe
-x0 = -0.5
-x1 = 0.5
+x0 = 0.0
+x1 = 1.0
 
-y0 = 0.0 # 1.0/float(NUMBER)
+y0 = 0.033333333333333333 # 1.0/float(NUMBER)
 y1 = y0 #<==Temporary, it can handle different values
 
 z0 = 0.0
@@ -193,8 +190,9 @@ for i in range(len(Experimental_X)):
         L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i])
         L2_sum = L2_sum + (Analytical_Y[i] - Experimental_Y[i])**2
         continue
-    Experimental_X[i] = Experimental_X[i] + 0.5#In this test case the origin is in -0.5
+    
     position = Experimental_X[i]
+#    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
     if (x==-1):
         print 'The size of the Experimental and Analytical experiments is different'
@@ -219,17 +217,16 @@ if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
 #print L1_norm, L2_norm
 if (Passed): 
-    print 'BL works OK'
+    print 'Anisotropy works OK'
 else:
-    print 'BL does NOT work'
-
+    print 'Anisotropy does NOT work'
 
 if (showPlot):
     fig, ax = plt.subplots()
     x = []
     y = []
     for i in range(len(detector)):
-        x.append(float(detector[i][0])+0.5)
+        x.append(float(detector[i][0]))
         y.append(float(FS[i][0]))
     line = plt.Line2D(x, y, color='red', linewidth=2)
     #line.text.set_color('red')
