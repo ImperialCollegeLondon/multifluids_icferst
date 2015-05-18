@@ -38,7 +38,7 @@
          check_diagnostic_dependencies
     use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
                                simulation_start_wall_time, &
-                               topology_mesh_name, current_time, is_porous_media, is_multifracture
+                               topology_mesh_name, current_time, is_porous_media, after_adapt, is_multifracture
     use fldebug
     use reference_counting
     use state_module
@@ -171,7 +171,7 @@
       type( tensor_field ) :: metric_tensor
       type( state_type ), dimension( : ), pointer :: sub_state => null()
       integer :: nonlinear_iterations_adapt
-      logical :: do_reallocate_fields, not_to_move_det_yet = .false., initialised
+      logical :: do_reallocate_fields = .false., not_to_move_det_yet = .false., initialised
 
 !!$ Working arrays:
       real, dimension(:), pointer :: mass_ele
@@ -261,7 +261,6 @@
 
       logical :: calculate_flux
 
-
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
@@ -317,7 +316,7 @@
       !A deallocate tfield when finished!!
 
       Repeat_time_step = .false.!Initially has to be false
-      nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic/adaptive_timestep_nonlinear')
+      nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
 
 !!$ Compute primary scalars used in most of the code
       call Get_Primary_Scalars( state, &
@@ -522,7 +521,7 @@
       call get_option( '/timestepping/finish_time', finish_time )
       call get_option( '/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1 )
       call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
-      !      call get_option( '/timestepping/nonlinear_iterations/nonlinear_iterations_automatic', tolerance_between_non_linear, default = -1. )
+      !      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
 !!$
       have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
       do istate = 1, nstate
@@ -671,6 +670,12 @@
 
          ! update velocity absorption
          call update_velocity_absorption( state, ndim, nphase, mat_nonods, velocity_absorption )
+         call update_velocity_absorption_coriolis( state, ndim, nphase, velocity_absorption )
+
+         ! update velocity source
+         call update_velocity_source( state, ndim, nphase, u_nonods, velocity_u_source )
+
+
 
 !!$ FEMDEM...
 #ifdef USING_FEMDEM
@@ -712,6 +717,7 @@
 
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
+
             if( solve_force_balance ) then
                call Calculate_AbsorptionTerm( state, packed_state,&
                     cv_ndgln, mat_ndgln, &
@@ -858,6 +864,12 @@
                     scale_momentum_by_volume_fraction,&
                     StorageIndexes=StorageIndexes, Quality_list = Quality_list,&
                     nonlinear_iteration = its, IDs_ndgln=IDs_ndgln )
+
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+
+                    !Calculate actual Darcy velocity
+!                    call get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, MAT_NDGLN, U_NDGLN, state, packed_state, Material_Absorption)
+
 !!$ Calculate Density_Component for compositional
                if( have_component_field ) &
                     call Calculate_Component_Rho( state, packed_state, &
@@ -1094,6 +1106,9 @@
                  Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,3)
             if (ExitNonLinearLoop) exit Loop_NonLinearIteration
 
+            after_adapt=.false.
+
+
          end do Loop_NonLinearIteration
 
 
@@ -1197,7 +1212,6 @@
          elseif( have_option( '/mesh_adaptivity/prescribed_adaptivity' ) ) then
             if( do_adapt_state_prescribed( current_time ) ) do_reallocate_fields = .true.
          end if Conditional_Adaptivity_ReallocatingFields
-
          new_mesh = do_reallocate_fields
 
          Conditional_ReallocatingFields: if( do_reallocate_fields ) then
@@ -1501,9 +1515,25 @@
             allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
 
 
-
             !!call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv, StorageIndexes, cv_ele_type )
 
+
+            if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
+                 ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One/after_adapt' ) ) then
+               ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
+               MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+               MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
+               ALLOCATE( RSUM( NPHASE ) )
+               DO CV_INOD = 1, CV_NONODS
+                  DO IPHASE = 1, NPHASE
+                     RSUM( IPHASE ) = SUM (MFC_s % val (:, IPHASE, CV_INOD) )
+                  END DO
+                  DO IPHASE = 1, NPHASE
+                     MFC_s % val (:, IPHASE, CV_INOD) = MFC_s % val (:, IPHASE, CV_INOD) / RSUM( IPHASE )
+                  END DO
+               END DO
+               DEALLOCATE( RSUM )
+            end if
 
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
@@ -1532,6 +1562,14 @@
             call allmin(dt)
             call set_option( '/timestepping/timestep', dt )
          end if
+
+
+         !if ( after_adapt  ) then
+         !   NonLinearIteration = 6
+         !else
+         !   NonLinearIteration = 3
+         !end if
+
 
          call set_boundary_conditions_values(state, shift_time=.true.)
 
@@ -1809,49 +1847,49 @@
 
     end subroutine MultiFluids_SolveTimeLoop
 
-    subroutine Updating_Linearised_Components( totele, ndim, cv_nloc, cv_nonods, cv_ndgln, &
-         component )
-      implicit none
-      integer, intent( in ) :: totele, ndim, cv_nloc, cv_nonods
-      integer, dimension( : ), intent( in ) :: cv_ndgln
-      real, dimension ( : ), intent( inout ) :: component
-!!$Local variables
-      integer :: ele, cv_iloc, cv_nod
-      real, dimension( : ), allocatable :: density_tmp, den_cv_nod
-
-      allocate( density_tmp( cv_nonods ), den_cv_nod( cv_nloc ) )
-      density_tmp = 0. ; den_cv_nod = 0.
-
-      Conditional_CV_Number: if( cv_nloc == 6 .or. (cv_nloc == 10 .and. ndim==3) ) then ! P2 triangle or tet
-         density_tmp = component
-         Loop_Elements: do ele = 1, totele
-            Loop_CV: do cv_iloc = 1, cv_nloc
-               cv_nod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
-               den_cv_nod( cv_iloc ) = density_tmp( cv_nod )
-            end do Loop_CV
-
-            den_cv_nod( 2 ) = 0.5 * ( den_cv_nod( 1 ) + den_cv_nod( 3 ) )
-            den_cv_nod( 4 ) = 0.5 * ( den_cv_nod( 1 ) + den_cv_nod( 6 ) )
-            den_cv_nod( 5 ) = 0.5 * ( den_cv_nod( 3 ) + den_cv_nod( 6 ) )
-            if( cv_nloc == 10 ) then
-               den_cv_nod( 7 ) = 0.5 * ( den_cv_nod( 1 ) + den_cv_nod( 10 ) )
-               den_cv_nod( 8 ) = 0.5 * ( den_cv_nod( 3 ) + den_cv_nod( 10 ) )
-               den_cv_nod( 9 ) = 0.5 * ( den_cv_nod( 6 ) + den_cv_nod( 10 ) )
-            end if
-
-            Loop_CV2: do cv_iloc = 1, cv_nloc
-               cv_nod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
-               component( cv_nod ) = den_cv_nod( cv_iloc )
-            end do Loop_CV2
-
-         end do Loop_Elements
-
-      end if Conditional_CV_Number
-
-      deallocate( density_tmp, den_cv_nod )
-
-      return
-    end subroutine Updating_Linearised_Components
+!    subroutine Updating_Linearised_Components( totele, ndim, cv_nloc, cv_nonods, cv_ndgln, &
+!         component )
+!      implicit none
+!      integer, intent( in ) :: totele, ndim, cv_nloc, cv_nonods
+!      integer, dimension( : ), intent( in ) :: cv_ndgln
+!      real, dimension ( : ), intent( inout ) :: component
+!    !!$Local variables
+!      integer :: ele, cv_iloc, cv_nod
+!      real, dimension( : ), allocatable :: density_tmp, den_cv_nod
+!
+!      allocate( density_tmp( cv_nonods ), den_cv_nod( cv_nloc ) )
+!      density_tmp = 0. ; den_cv_nod = 0.
+!
+!      Conditional_CV_Number: if( cv_nloc == 6 .or. (cv_nloc == 10 .and. ndim==3) ) then ! P2 triangle or tet
+!         density_tmp = component
+!         Loop_Elements: do ele = 1, totele
+!            Loop_CV: do cv_iloc = 1, cv_nloc
+!               cv_nod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+!               den_cv_nod( cv_iloc ) = density_tmp( cv_nod )
+!            end do Loop_CV
+!
+!            den_cv_nod( 2 ) = 0.5 * ( den_cv_nod( 1 ) + den_cv_nod( 3 ) )
+!            den_cv_nod( 4 ) = 0.5 * ( den_cv_nod( 1 ) + den_cv_nod( 6 ) )
+!            den_cv_nod( 5 ) = 0.5 * ( den_cv_nod( 3 ) + den_cv_nod( 6 ) )
+!            if( cv_nloc == 10 ) then
+!               den_cv_nod( 7 ) = 0.5 * ( den_cv_nod( 1 ) + den_cv_nod( 10 ) )
+!               den_cv_nod( 8 ) = 0.5 * ( den_cv_nod( 3 ) + den_cv_nod( 10 ) )
+!               den_cv_nod( 9 ) = 0.5 * ( den_cv_nod( 6 ) + den_cv_nod( 10 ) )
+!            end if
+!
+!            Loop_CV2: do cv_iloc = 1, cv_nloc
+!               cv_nod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+!               component( cv_nod ) = den_cv_nod( cv_iloc )
+!            end do Loop_CV2
+!
+!         end do Loop_Elements
+!
+!      end if Conditional_CV_Number
+!
+!      deallocate( density_tmp, den_cv_nod )
+!
+!      return
+!    end subroutine Updating_Linearised_Components
 
    subroutine copy_packed_new_to_old(packed_state)
      type(state_type), intent(inout) :: packed_state
@@ -1913,60 +1951,60 @@
 
 
 
-   subroutine linearise( field )
-     implicit none
-     type( tensor_field ), intent( inout ) :: field
-
-     integer, dimension( : ), pointer :: ndglno, cv_nods
-     integer :: n, totele, cv_nloc, ncomp, nphase, cv_nonods, ele, cv_iloc, cv_nod
-     real, dimension( :, :, : ), allocatable :: field_tmp, field_cv_nod
-
-     ! This sub will linearise a p2 field
-
-     n = field%mesh%shape%degree
-
-     if ( n==2 ) then
-
-        ndglno => get_ndglno( field%mesh )
-
-        totele = field%mesh%elements
-        cv_nloc = field%mesh%shape%loc
-        cv_nonods =  field%mesh%nodes
-
-        ncomp = size( field%val, 1 )
-        nphase = size( field%val, 2 )
-
-        allocate( field_tmp( ncomp, nphase, cv_nonods ) ) ; field_tmp = field % val
-        allocate( field_cv_nod( ncomp, nphase, cv_nloc ) ) ; field_cv_nod = 0.0
-
-        do ele = 1, totele
-
-           cv_nods => ndglno( ( ele - 1 ) * cv_nloc + 1 : ele * cv_nloc )
-           field_cv_nod =  field_tmp( :, :, cv_nods )
-
-           field_cv_nod( :, :, 2 ) = 0.5 * ( field_cv_nod( :, :, 1 ) + field_cv_nod( :, :, 3 ) )
-           field_cv_nod( :, :, 4 ) = 0.5 * ( field_cv_nod( :, :, 1 ) + field_cv_nod( :, :, 6 ) )
-           field_cv_nod( :, :, 5 ) = 0.5 * ( field_cv_nod( :, :, 3 ) + field_cv_nod( :, :, 6 ) )
-
-           if ( cv_nloc == 10 ) then
-              field_cv_nod( :, :, 7 ) = 0.5 * ( field_cv_nod( :, :, 1 ) + field_cv_nod( :, :, 10 ) )
-              field_cv_nod( :, :, 8 ) = 0.5 * ( field_cv_nod( :, :, 3 ) + field_cv_nod( :, :, 10 ) )
-              field_cv_nod( :, :, 9 ) = 0.5 * ( field_cv_nod( :, :, 6 ) + field_cv_nod( :, :, 10 ) )
-           end if
-
-           do cv_iloc = 1, cv_nloc
-              cv_nod = ndglno( ( ele - 1 ) * cv_nloc + cv_iloc )
-              field%val( :, :, cv_nod ) = field_cv_nod( :, :, cv_iloc )
-           end do
-
-        end do
-
-        deallocate( field_tmp, field_cv_nod )
-
-     end if
-
-     return
-   end subroutine linearise
+!   subroutine linearise( field )
+!     implicit none
+!     type( tensor_field ), intent( inout ) :: field
+!
+!     integer, dimension( : ), pointer :: ndglno, cv_nods
+!     integer :: n, totele, cv_nloc, ncomp, nphase, cv_nonods, ele, cv_iloc, cv_nod
+!     real, dimension( :, :, : ), allocatable :: field_tmp, field_cv_nod
+!
+!     ! This sub will linearise a p2 field
+!
+!     n = field%mesh%shape%degree
+!
+!     if ( n==2 ) then
+!
+!        ndglno => get_ndglno( field%mesh )
+!
+!        totele = field%mesh%elements
+!        cv_nloc = field%mesh%shape%loc
+!        cv_nonods =  field%mesh%nodes
+!
+!        ncomp = size( field%val, 1 )
+!        nphase = size( field%val, 2 )
+!
+!        allocate( field_tmp( ncomp, nphase, cv_nonods ) ) ; field_tmp = field % val
+!        allocate( field_cv_nod( ncomp, nphase, cv_nloc ) ) ; field_cv_nod = 0.0
+!
+!        do ele = 1, totele
+!
+!           cv_nods => ndglno( ( ele - 1 ) * cv_nloc + 1 : ele * cv_nloc )
+!           field_cv_nod =  field_tmp( :, :, cv_nods )
+!
+!           field_cv_nod( :, :, 2 ) = 0.5 * ( field_cv_nod( :, :, 1 ) + field_cv_nod( :, :, 3 ) )
+!           field_cv_nod( :, :, 4 ) = 0.5 * ( field_cv_nod( :, :, 1 ) + field_cv_nod( :, :, 6 ) )
+!           field_cv_nod( :, :, 5 ) = 0.5 * ( field_cv_nod( :, :, 3 ) + field_cv_nod( :, :, 6 ) )
+!
+!           if ( cv_nloc == 10 ) then
+!              field_cv_nod( :, :, 7 ) = 0.5 * ( field_cv_nod( :, :, 1 ) + field_cv_nod( :, :, 10 ) )
+!              field_cv_nod( :, :, 8 ) = 0.5 * ( field_cv_nod( :, :, 3 ) + field_cv_nod( :, :, 10 ) )
+!              field_cv_nod( :, :, 9 ) = 0.5 * ( field_cv_nod( :, :, 6 ) + field_cv_nod( :, :, 10 ) )
+!           end if
+!
+!           do cv_iloc = 1, cv_nloc
+!              cv_nod = ndglno( ( ele - 1 ) * cv_nloc + cv_iloc )
+!              field%val( :, :, cv_nod ) = field_cv_nod( :, :, cv_iloc )
+!           end do
+!
+!        end do
+!
+!        deallocate( field_tmp, field_cv_nod )
+!
+!     end if
+!
+!     return
+!   end subroutine linearise
 
    subroutine dump_outflux(current_time, itime, outflux, intflux,ts)
 
