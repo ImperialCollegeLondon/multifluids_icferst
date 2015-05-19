@@ -8994,7 +8994,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       real, dimension( :, :, : ), pointer :: other_fenlx_all
       real, dimension( :, :, : ), pointer :: other_fenx_all
 
-      real :: nxnx, nm
+      real :: nxnx, nm, gravity_magnitude
 
       type( scalar_field ) :: rhs, ph_sol
       type( petsc_csr_matrix ) :: matrix
@@ -9004,7 +9004,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       type( tensor_field ), pointer :: rho
       type( scalar_field ), pointer :: printf, pfield
-      type( vector_field ), pointer :: printu, x_p2
+      type( vector_field ), pointer :: printu, x_p2, gravity_direction
 
 
       logical :: on_boundary, boussinesq, got_free_surf
@@ -9019,9 +9019,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       printu => extract_vector_field( state( 1 ), "f_x", stat )
       if ( stat == 0 ) call zero( printu  )
-
-
-
 
 
       call get_option( '/geometry/dimension', ndim )
@@ -9146,7 +9143,13 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       end if
       
 
-      u_ph_source_cv( 3, 1, : ) = -rho % val( 1, 1, : ) * 9.8
+      call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
+      gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
+
+      do idim = 1, ndim
+         u_ph_source_cv( idim, 1, : ) = rho % val( 1, 1, : ) * &
+                    gravity_magnitude * gravity_direction % val( idim, 1 )
+      end do
 
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
