@@ -57,9 +57,8 @@
 
     !use printout
     !use quicksort
-    ! Will probably need to include the one below for mesh to mesh interpolation
-    !use solvers
-
+    use solvers
+    use conservative_interpolation_module
 
     implicit none
 
@@ -93,6 +92,10 @@
 
     ! Used in calculations of the outflux - array of integers containing the gmesh IDs of each boundary that you wish to integrate over
     integer, dimension(:), allocatable :: outlet_id
+
+    integer, dimension(2) :: shape
+
+
   contains
 
 
@@ -122,7 +125,10 @@
       ! No need to explicitly allocate outlet_id (done here internally)
 
       if (have_option( "/io/dump_boundaryflux/surface_ids") .and..not.(allocated(outlet_id))) then
-        allocate(outlet_id(1))
+        shape = option_shape("/io/dump_boundaryflux/surface_ids")
+        assert(shape(1) >= 0)
+        allocate(outlet_id(shape(1)))
+        !allocate(outlet_id(1))
         call get_option( "/io/dump_boundaryflux/surface_ids", outlet_id)
 
       endif
@@ -4220,9 +4226,12 @@
 
     end subroutine CheckElementAngles
 
-
     subroutine calculate_outflux(packed_state, ndotqnew, sele, surface_ids, totoutflux, ele , x_ndgln,&
-         cv_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, detwei, IDs_ndgln)
+         cv_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, detwei, IDs_ndgln, cv_snloc, cv_siloc ,SUF_T_BC_ALL)
+
+!    subroutine calculate_outflux(packed_state, ndotqnew, sele, surface_ids, totoutflux, &
+!         cv_sndgln, cv_snloc, SCVFEN, gi, cv_nonods, totele, nphase, detwei, IDs_ndgln, SUF_T_BC_ALL)
+
        implicit none
 
 ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
@@ -4235,16 +4244,20 @@
        integer, dimension(1), intent(in) :: surface_ids
        real, dimension(:), intent(inout) :: totoutflux
        integer, intent(in) :: ele
-       integer, dimension(:), intent( in ) ::  x_ndgln, IDs_ndgln
-       ! Added cv_ndgln
+       integer, dimension(:), intent( in ) ::  x_ndgln
+       integer, dimension(:), intent( in ) :: IDs_ndgln
        integer, dimension(:), intent( in ) ::  cv_ndgln
+       !integer, dimension(:), intent( in ) ::  cv_sndgln
        integer, intent(in) :: cv_nloc
+       integer, intent(in) :: cv_snloc
+       integer, intent(in) :: cv_siloc
        real, dimension( : , : ), intent(in), pointer :: SCVFEN
        integer, intent(in) :: gi
        integer, intent(in) :: cv_nonods
        integer, intent(in) :: totele
        integer, intent(in) :: nphase
        real, pointer, dimension( : ), intent(in) :: detwei
+       real, dimension( :,:, : ), intent( in ) :: SUF_T_BC_ALL
 
 ! Local variables
 
@@ -4255,16 +4268,22 @@
        logical :: test
        type(tensor_field), pointer :: tfield
        type(tensor_field), pointer :: t2field
-       ! Added cv_knod, x_ele below
+       integer  :: x_knod
        integer  :: cv_knod
+       integer  :: cv_sknod
+       integer :: x_ele
        integer  :: cv_kloc
+       integer  :: cv_skloc
        real, dimension( : , : ), allocatable :: phaseV
        real, dimension( : , : ), allocatable :: phaseVG
        real, dimension( : , : ), allocatable :: Dens
        real, dimension( : , : ), allocatable :: DensVG
        !real, dimension( : ), allocatable :: PorG
        real :: PorG
+       integer :: surf
+       integer :: i
 
+       ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
        allocate(phaseV(nphase,cv_nonods), phaseVG(nphase,cv_nonods))
        allocate(Dens(nphase,cv_nonods), DensVG(nphase,cv_nonods))
        !allocate(PorG(totele))
@@ -4298,6 +4317,12 @@
       phaseVG(:,gi) = phaseVG(:,gi) + phaseV(:,cv_knod)*SCVFEN(cv_kloc,gi)
       end do
 
+!      phaseVG = 0.0
+!      do cv_skloc=1,cv_snloc
+!      cv_sknod=cv_sndgln((sele-1)*cv_snloc+cv_skloc)
+!      phaseVG(:,gi) = phaseVG(:,gi) + phaseV(:,cv_sknod)*SCVFEN(cv_skloc,gi)
+!      end do
+
 ! Having extracted the density at control volume nodes, need to calculate it at quadrature points gi.
 ! Density is a function of pressure and therefore lives on the pressure mesh. It is therefore stored at
 ! control volume nodes (easiest to see in a diagram of the elements). Hence, the global variable we need in the calculation below is cv_ndgln
@@ -4308,6 +4333,13 @@
       DensVG(:,gi) = DensVG(:,gi) + Dens(:,cv_knod)*SCVFEN(cv_kloc,gi)
       end do
 
+!      DensVG = 0.0
+!      do cv_skloc=1,cv_snloc
+!      cv_sknod=cv_sndgln((sele-1)*cv_snloc+cv_skloc)
+!      DensVG(:,gi) = DensVG(:,gi) + Dens(:,cv_sknod)*SCVFEN(cv_skloc,gi)
+!      end do
+
+
 ! Porosity is on the P0DG mesh. The value is constant across an element. Can calculate it at any point in an element and assign this to be the value
 ! at the Gauss point. (Strictly this last bit is unnecessary - may tidy up in the future). x_ndgln((ele-1)*cvnloc +1) allows us to extract the
 ! x-coordinate of the '1st physical' triangle node for each element. We then calculate the porosity at this value of x and assign it to PorG(ele).
@@ -4316,7 +4348,10 @@
       ! x_ele calculates a coordinate on each element
       !x_ele=x_ndgln((ele-1)*cv_nloc+1)
       !PorG(ele) = Por(x_ele)
-      PorG = Por(ele)
+
+     PorG = Por(IDs_ndgln(ele))
+
+!      PorG = Por(IDs_ndgln(sele))
 
 ! This function will return true for surfaces we should be integrating over (this entire subroutine is called in a loop over ele,(sele),gi in cv-adv-dif)
 ! Need the condition that sele > 0 Check why it can be zero/negative.
@@ -4331,8 +4366,22 @@
 
           if(test) then
 
-              !totoutflux(:) = totoutflux(:) + ndotqnew(:)*phaseVG(:,gi)*detwei(gi)*DensVG(:,gi)/PorG(ele)
-              totoutflux(:) = totoutflux(:) + ndotqnew(:)*phaseVG(:,gi)*detwei(gi)*DensVG(:,gi)/PorG
+              ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
+              ! Need to pass down an array with the saturation boundary conditions to deal with these cases
+              ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
+
+              do i = 1, size(ndotqnew)
+                      surf = (sele - 1 ) * cv_snloc + cv_siloc
+                      if(ndotqnew(i) < 0 ) then
+                          ! Inlet boundary - so use boundary phase volume fraction
+                          totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i,gi)/PorG
+                          !totoutflux(i) = totoutflux(i) + ndotqnew(i)*detwei(gi)*DensVG(i,gi)/PorG
+
+                      else
+                          ! Outlet boundary - so use internal (to the domain) phase volume fraction
+                          totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i,gi)*detwei(gi)*DensVG(i,gi)/PorG
+                      endif
+              enddo
 
           endif
 
@@ -4750,155 +4799,7 @@ size(t_field%val,1)*size(t_field%val,2)*size(t_field%val,3), t_field%name)
 
     end subroutine get_DarcyVelocity
 
-!subroutine MeshToMeshInterpolate(nphase,state, packed_state, FEMPSI, NDIM, &
-!       TOTELE, CV_NDGLN, X_NDGLN, &
-!       CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, X, NLX_ALL, X_NONODS)
-!
-!    ! Check whether we need all of these
-!    use shape_functions
-!    use shape_functions_Linear_Quadratic
-!    use solvers_module
-!    use matrix_operations
-!
-!    implicit none
-!
-!    type(state_type) :: packed_state
-!    type( state_type ), dimension( : ), intent( inout ) :: state
-!
-!    ! Check fempsi, fempsi_RHS etc, etc
-!    !type(tensor_field_pointer), dimension(:) :: fempsi,psi
-!    !type(scalar_field_pointer) :: fempsi,psi
-!
-!    integer, intent( in) :: nphase
-!    integer, intent( in ) :: NDIM, TOTELE, CV_NGI, CV_NLOC, X_NONODS
-!    integer, dimension( : ), intent( in ) :: CV_NDGLN
-!    integer, dimension( : ), intent( in ) ::  X_NDGLN
-!    real, dimension( :, : ), intent( in ) :: CVN
-!    real, dimension( : ), intent( inout ) :: CVWEIGHT
-!    real, dimension( :, : ), intent( in ) :: N
-!    real, dimension( :,: ), intent( in ) :: X
-!    real, dimension(:, :, :), intent(in) :: NLX_ALL
-!
-!    ! Local variables
-!    type( mesh_type ), pointer :: phmesh
-!    integer :: iphase
-!    logical :: D1, D3, DCYL
-!    real, dimension( : ), allocatable, target :: DETWEI2, RA2
-!    real, dimension( :, : , :), allocatable, target :: NX_ALL2
-!    real, target :: VOLUME2
-!    real :: MN, MM
-!    integer :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_GI, stat
-!
-!    ! Pointers to use if storage is used
-!    real, dimension( : ), pointer :: DETWEI, RA
-!    real, dimension( :, :, :), pointer :: NX_ALL
-!    real, pointer :: volume
-!
-!    !type(tensor_field), dimension(size(psi)) :: fempsi_rhs
-!    type(scalar_field) :: fempsi_rhs, fempsi,ph_sol
-!    type(tensor_field), pointer :: tfield
-!    type(csr_matrix) :: mat
-!    type(petsc_csr_matrix) :: pmat
-!    type(csr_sparsity), pointer :: sparsity
-!
-!    character( len = OPTION_PATH_LEN ) :: path = "/tmp"
-!
-!    phmesh => extract_mesh( state( 1 ), "ph" )
-!
-!    ! This is my 'Psi' in the notes - Extract it from Packed State. In this example we're interpolating the phase volume fraction
-!    tfield=>extract_tensor_field( packed_state, "PackedPhaseVolumeFraction"  )
-!    ! tfield%val( 1, iphase, cv_nonods)
-!
-!    allocate( DETWEI2( CV_NGI ))
-!    allocate( RA2( CV_NGI ))
-!    allocate( NX_ALL2( NDIM, CV_NLOC, CV_NGI ))
-!    !Set the pointers
-!    volume =>  VOLUME2; DETWEI => DETWEI2; RA => RA2
-!    NX_ALL =>NX_ALL2
-!
-!
-!    call allocate(fempsi,tfield%mesh,"FEMPSI" )
-!    call zero(fempsi)
-!
-!    call allocate(fempsi_rhs,tfield%mesh,"RHS")
-!    call zero(fempsi_rhs)
-!
-!    !call halo_update(psi%ptr) Deal with parallel later
-!
-!    ! Check exactly which of these things need to be allocated
-!
-!    sparsity=>extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
-!    call allocate(mat,sparsity,name="ProjectionMatrix")
-!    call allocate(pmat,sparsity,[1,1],name="ProjectionMatrix")
-!    call zero(mat)
-!
-!    call allocate( ph_sol, phmesh, "ph_sol" )
-!    call zero( ph_sol )
-!
-!    !IF(IGETCT.NE.0) MASS_MN_PRES=0.0
-!
-!    D1 = ( NDIM == 1 )
-!    D3 = ( NDIM == 3 )
-!    DCYL = .false.
-!
-!   Loop_Elements: do ELE = 1, TOTELE
-!
-!           ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-!          CALL DETNLXR( ELE, X(1,:), X(2,:), X(3,:), X_NDGLN, TOTELE, X_NONODS, CV_NLOC, CV_NGI, &
-!                N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), CVWEIGHT, DETWEI2, RA2, VOLUME2, D1, D3, DCYL, &
-!                NX_ALL2(1,:,:), NX_ALL2(2,:,:), NX_ALL2(3,:,:) )
-!
-!       Loop_CV_ILOC: do CV_ILOC = 1, CV_NLOC
-!
-!          CV_NODI = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
-!
-!          Loop_CV_JLOC: do CV_JLOC = 1, CV_NLOC
-!
-!             CV_NODJ = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_JLOC )
-!             MN = 0.0
-!             MM = 0.0
-!             do CV_GI = 1, CV_NGI
-!                MN = MN + CVN( CV_ILOC, CV_GI ) * N( CV_JLOC, CV_GI )   * DETWEI( CV_GI )
-!                MM = MM + CVN( CV_ILOC, CV_GI ) * CVN( CV_JLOC, CV_GI ) * DETWEI( CV_GI )
-!             end do
-!
-!             call addto(mat,cv_nodi,cv_nodj,MN)
-!
-!
-!             fempsi_rhs%val(cv_nodi) = fempsi_rhs%val(cv_nodi)+ MM*tfield%val(1, 1, cv_nodj)
-!
-!          end do Loop_CV_JLOC
-!
-!       end do Loop_CV_ILOC
-!
-!    end do Loop_Elements
-!
-!           call set_solver_options( path, &
-!                 ksptype = "cg", &
-!                 pctype = "hypre", &
-!                 rtol = 1.0e-10, &
-!                 atol = 0.0, &
-!                 max_its = 10000 )
-!            call add_option( &
-!                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
-!            call set_option( &
-!                 trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
-!            ph_sol % option_path = path
-!
-!            call petsc_solve(ph_sol, mat, fempsi_rhs )
-!
-!
-!    call deallocate(fempsi)
-!    call deallocate(fempsi_rhs)
-!
-!    call deallocate( MAT )
-!    call deallocate( PMAT )
-!
-!    deallocate( DETWEI2 )
-!    deallocate( RA2 )
-!    deallocate( NX_ALL2 )
-!
-!end subroutine
+
 
 
 end module Copy_Outof_State

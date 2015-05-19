@@ -81,6 +81,8 @@
     USE multiphase_rheology
     use vtk_interfaces
 
+    use multi_interpolation
+
 #ifdef HAVE_ZOLTAN
   use zoltan
 #endif
@@ -1185,6 +1187,11 @@
 
          end if Conditional_TimeDump
 
+
+!Call initial Mesh to Mesh interpolation routine
+
+!call M2MInterpolation(state, packed_state, StorageIndexes, cv_ele_type, nphase, 0 )
+
 !!$! ******************
 !!$! *** Mesh adapt ***
 !!$! ******************
@@ -1295,6 +1302,10 @@
             call pack_multistate(state,packed_state,&
                  multiphase_state,multicomponent_state)
             call set_boundary_conditions_values(state, shift_time=.true.)
+
+! Mesh to Mesh Interpolation - After adapting the mesh
+
+!call M2MInterpolation(state, packed_state, StorageIndexes, cv_ele_type, nphase, 1 )
 
             if (allocated(Quality_list) ) deallocate(Quality_list)
 

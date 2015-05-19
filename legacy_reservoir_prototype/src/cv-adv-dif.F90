@@ -54,6 +54,9 @@ module cv_advection
   use matrix_operations
   use Copy_Outof_State
   use boundary_conditions
+
+  use multi_interpolation
+
 #ifdef HAVE_PETSC_MODULES
   use petsc 
 #endif
@@ -61,11 +64,16 @@ module cv_advection
   implicit none
 
   ! Public totout needed when calculating outfluxes across a specified boundary. Will store the sum of totoutflux across all elements contained in the boundary.
-  ! Multiphase_TimeLoop needs to access this variable so easiest to make it public.
+  ! Multiphase_TimeLoop needs to access this variable so easiest to make it public. (Same situation with mat1, mat2)
 
-   public ::  totout
+   public ::  totout, mat1, mat2
 
    real, allocatable, dimension(:,:) :: totout
+
+  ! Variables needed for the mesh to mesh interpolation calculations
+
+   type(csr_matrix) :: mat1
+   type(csr_matrix) :: mat2
 
 #include "petsc_legacy.h"
 
@@ -2230,13 +2238,34 @@ contains
                         do ioutlet = 1, size(outlet_id)
                             ! Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
 
-                            !call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI)
                             call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_ndgln,&
-                                 cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, SCVDETWEI, IDs_ndgln)
+                                 cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, SCVDETWEI, IDs_ndgln, cv_snloc, cv_siloc ,SUF_T_BC_ALL)
 
                         enddo
 
                     end if
+
+!                    call InterpolationShapeFns(nphase,packed_state, ndim, totele, cv_ndgln, x_ndgln, &
+!                          cv_ngi_short, cv_nloc, cvn_short, cvweight_short, cvfen_short, x_all, cvfenlx_short_all, x_nonods, mat1, mat2)
+
+
+                            ! Remember to check very carefully the arguments we are calling above against proj_cv_to_fem_state
+!                            SUBROUTINE PROJ_CV_TO_FEM_state( packed_state,FEMPSI, PSI, NDIM, &
+!                            PSI_AVE, PSI_INT, MASS_ELE, &
+!                            CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
+!                            CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, NLX_ALL, &
+!                            X_NONODS, X, NCOLM, FINDM, COLM, MIDM, &
+!                            IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC,&
+!                            state, StorageIndexes )
+
+!                          ( packed_state,FEMPSI(1:FEM_IT),&
+!                            PSI(1:FEM_IT), NDIM, &
+!                            PSI_AVE, PSI_INT, MASS_ELE, &
+!                            CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
+!                            CV_NGI_short, CV_NLOC, CVN_short, CVWEIGHT_short,&
+!                            CVFEN_SHORT, CVFENLX_SHORT_ALL, &
+!                            X_NONODS, X_ALL, NCOLM, FINDM, COLM, MIDM, &
+!                            IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC)
 
 
                   Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
@@ -2486,7 +2515,30 @@ contains
 
       END DO Loop_Elements
 
+      ! Modifications to calculate_outflux()
+      ! Check what the correct bounds of the sele loop should be sele = 1, surface_element_count(?)
 
+!      do sele = 1, surface_element_count(tracer)
+!
+!          do cv_iloc = 1, cv_snloc
+!
+!              ! Loop over quadrature (gauss) points in ELE neighbouring ILOC (will this work for surface elements)
+!              do Gcount = Findgpts( cv_iloc ), Findgpts( cv_iloc + 1 ) - 1
+!
+!                  gi = colgpts( gcount )
+!
+!                  do ioutlet = 1, size(outlet_id)
+!
+!                      call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), cv_sndgln,&
+!                      cv_snloc, SCVFEN, gi, cv_nonods, totele, nphase, SCVDETWEI, IDs_ndgln, SUF_T_BC_ALL)
+!
+!                  enddo
+!
+!              end do
+!
+!          end do
+!
+!      end do
 
 
       IF(GET_GTHETA) THEN
