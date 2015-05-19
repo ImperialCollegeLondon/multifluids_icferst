@@ -9296,7 +9296,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                findph => sparsity % findrm
                colph => sparsity % colm
                do inod = 1, size( surface_node_list )
-                  ph_inod = surface_node_list( i )
+                  ph_inod = surface_node_list( inod )
                   rhs % val( ph_inod ) = 0.0
                   do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
                      ph_jnod = colph( count )

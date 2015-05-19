@@ -917,7 +917,6 @@ contains
                 IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
              END DO
           END DO
-
           ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) )
 
 
@@ -2801,13 +2800,15 @@ end if
       PARAMETER(ngi_one=1)
       ! If ENO_ALL_THREE use all 3 to find TGI ENO value...
       ! else use the upwind value and current element value. 
-      LOGICAL, PARAMETER :: ENO_ALL_THREE = .FALSE.
+      LOGICAL, PARAMETER :: ENO_ALL_THREE = .TRUE.
       ! If FOR_DG_ONLY_BETWEEN_ELE use fem INSIDE element for DG
       LOGICAL, PARAMETER :: FOR_DG_ONLY_BETWEEN_ELE = .TRUE.
       ! Use ENO only where there is an oscillation as it can be a bit dissipative. 
       LOGICAL, PARAMETER :: ENO_ONLY_WHERE_OSCILLATE = .TRUE.
       ! Simple ENO - somewhat dispersive 
       LOGICAL, PARAMETER :: SIMPLE_ENO = .FALSE.
+      ! RELAX_DOWN_WIND_2_CURRENT_ELE=1.0 (use upwind only), RELAX_DOWN_WIND_2_CURRENT_ELE=0 (use downwind in ENO)
+      REAL, PARAMETER :: RELAX_DOWN_WIND_2_CURRENT_ELE = 1.0
 
       INTEGER, intent(in) :: ELE,CV_NONODS,X_NONODS,CV_NLOC,TOTELE,NDIM,NPHASE,NFACE,GI
       INTEGER, intent(in) :: CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC
@@ -2832,7 +2833,8 @@ end if
       REAL :: n(cv_nloc,ngi_one), nlx(cv_nloc,ngi_one), nly(cv_nloc,ngi_one), nlz(cv_nloc,ngi_one)
       REAL :: l1(ngi_one), l2(ngi_one), l3(ngi_one), l4(ngi_one), weight(ngi_one)
       REAL :: TGI_ELE(NPHASE*2),TGI_IN(NPHASE*2),TGI_OUT(NPHASE*2),W(NPHASE*2), TGI_DER_ELE(NDIM,NPHASE*2)
-      REAL :: TGI(NPHASE*2),TUP(NPHASE*2),TGI_NEI(NPHASE*2), TGI_ELE_B(NPHASE*2), TGI_ELE_C(NPHASE*2)
+      REAL :: TGI(NPHASE*2),TUP(NPHASE*2), TGI_NEI(NPHASE*2), TGI_NEI2(NPHASE*2), INCOME_BOTH(2*NPHASE)
+      REAL :: TGI_ELE_B(NPHASE*2), TGI_ELE_C(NPHASE*2)
       REAL :: ENO_ELE_MATWEI_IN(CV_NLOC),ENO_ELE_MATWEI_OUT(CV_NLOC),ENO_ELE_MATWEI(CV_NLOC,2)
       REAL :: RUP_WIN,MIN_TGI,MAX_TGI,dx, min_val, max_val
       LOGICAL :: QUADRATIC_ELEMENT,IS_CORNER_NOD_I,IS_CORNER_NOD_J,DISTCONTINUOUS_METHOD, GOT_AN_OSC
@@ -2840,20 +2842,21 @@ end if
       INTEGER :: ELE2,SELE2,ELEWIC,ENO_ELE_NEI_IN,ENO_ELE_NEI_OUT,IPHASE2,CV_KLOC,IUP_DOWN
       INTEGER :: IFACE,NPHASE2,IPT, cv_nodk, cv_nodk_IN, cv_nodk_OUT, X_KNOD, I_OLD_NEW, IPHASE
 
-
+      ! nothing to do (needed to apply bcs etc)...
+      if ( on_domain_boundary ) return
 
       QUADRATIC_ELEMENT=( (NDIM==2).AND.(CV_NLOC==6) ) .OR. ( (NDIM==3).AND.(CV_NLOC==10) )
       NPHASE2=NPHASE*2
       DISTCONTINUOUS_METHOD=( CV_NONODS == TOTELE * CV_NLOC )
 
 
-      if (.true.) then
+      if ( .true. ) then
 
          TGI_ELE=0.0
          do cv_kloc=1,cv_nloc
             cv_nodk = CV_NDGLN((ELE-1)*CV_NLOC + cv_kloc) 
             TGI_ELE(1:NPHASE)=TGI_ELE(1:NPHASE) + SCVFEN(cv_Kloc,gi)*FEMT_ALL(:,cv_nodk)
-            TGI_ELE(1+NPHASE:2*NPHASE)=TGI_ELE(1+NPHASE:2*NPHASE) + SCVFEN(cv_Kloc,gi)*femTOLD_ALL(:,cv_nodk)
+            TGI_ELE(1+NPHASE:2*NPHASE)=TGI_ELE(1+NPHASE:2*NPHASE) + SCVFEN(cv_Kloc,gi)*FEMTOLD_ALL(:,cv_nodk)
          end do
 
       else
@@ -2880,11 +2883,8 @@ end if
 
 
          if(.true.) then
-         !if(.not.on_domain_boundary) then
-
 
             ugi_normalised(:,1) = ugi(:,1) / max(1.e-7, sqrt(sum( ugi(:,1)**2) ))
-
             dx = 1.0 / max( 1.0e-7, maxval( abs(matmul( INV_JAC(:,:,GI), UGI_normalised(:,1)))  ) )
 
             TGI_der_ELE=0.0
@@ -2929,10 +2929,6 @@ end if
                      end if
                   end if
                end do
-
-
-
-
             else
                TGI_ele = TGI_ele_B
             endif
@@ -2969,13 +2965,13 @@ end if
                   W(IPHASE2)=(TUP(IPHASE2)-LIMF(IPT))/TOLFUN(TUP(IPHASE2)-TGI_ELE(IPHASE2))
                   W(IPHASE2)=MAX(0.0,MIN(1.0,W(IPHASE2) ))
                   ! W=0.0(full upwind);  W=1.0(high order no limiting)
-                  IF(W(IPHASE2)<0.99) GOT_AN_OSC=.TRUE.
+                  IF(W(IPHASE2)<0.9999) GOT_AN_OSC=.TRUE.
                   IPT=IPT+1
                ENDIF
             END DO ! ENDOF DO IPHASE=1,NPHASE
          END DO ! ENDOF DO I_OLD_NEW=1,2
          ! Nothing to do if no oscillations detected...
-         IF(.NOT.GOT_AN_OSC) RETURN
+ !        IF(.NOT.GOT_AN_OSC) RETURN
       ENDIF
 
 
@@ -2997,14 +2993,14 @@ end if
             XVEC(:)=0.0
          else
             IF(QUADRATIC_ELEMENT) THEN
-               XVEC(:)= - 0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! Double the length scale because its a quadratic element
+               XVEC(:)= - 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! Double the length scale because its a quadratic element
                ! Is CV_JLOC a corner node...
                IS_CORNER_NOD_I = (CV_ILOC==1).OR.(CV_ILOC==3).OR.(CV_ILOC==6).OR.(CV_ILOC==10)
                IS_CORNER_NOD_J = (CV_JLOC==1).OR.(CV_JLOC==3).OR.(CV_JLOC==6).OR.(CV_JLOC==10)
-!               IF(IS_CORNER_NOD_J) XVEC(:)= - 0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
-               IF(IS_CORNER_NOD_I) XVEC(:)= + 0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
+!               IF(IS_CORNER_NOD_J) XVEC(:)= - 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
+               IF(IS_CORNER_NOD_I) XVEC(:)= + 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
             ELSE ! linear element..
-               XVEC(:)= - 0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
+               XVEC(:)= - 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
             ENDIF
          endif
 
@@ -3094,7 +3090,6 @@ end if
          END DO ! DO IUP_DOWN=1,2
 
 
-
          ! now calculate ENO values at the quadrature pt **********************************...
          ! now calculate ENO values at the quadrature pt **********************************...
          !
@@ -3104,6 +3099,8 @@ end if
          ENO_ELE_MATWEI_IN(:) =ENO_ELE_MATWEI(:,1)
          ENO_ELE_MATWEI_OUT(:)=ENO_ELE_MATWEI(:,2)
 
+
+         TGI_IN=0.0 ; TGI_OUT=0.0
 
          if (.true.) then ! this is what we should use...
 
@@ -3131,8 +3128,36 @@ end if
             end do
          end if
 
+         INCOME_BOTH(1:NPHASE)=INCOME(1:NPHASE)
+         INCOME_BOTH(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)
+
 
          IF(ENO_ALL_THREE) THEN ! Use all 3 to find TGI ENO value...
+            IF( IS_CORNER_NOD_I .or. IS_CORNER_NOD_J ) THEN
+               IF(IS_CORNER_NOD_I) THEN
+                  TGI_NEI =INCOME_BOTH       * TGI_ELE + (1.0-INCOME_BOTH) * TGI_IN
+                  TGI_NEI2=(1.0-INCOME_BOTH) * TGI_ELE + INCOME_BOTH       * TGI_IN
+               ELSE
+                  TGI_NEI =INCOME_BOTH      *TGI_IN + (1.0-INCOME_BOTH)*TGI_ELE
+                  TGI_NEI2=(1.0-INCOME_BOTH)*TGI_IN + INCOME_BOTH      *TGI_ELE
+               ENDIF
+               !
+               TGI_IN=TGI_NEI
+               ! reduce influence of downwind value (its needed as it oscillates without this)
+               TGI_OUT=RELAX_DOWN_WIND_2_CURRENT_ELE * TGI_ELE + (1.0-RELAX_DOWN_WIND_2_CURRENT_ELE) * TGI_NEI2
+            ELSE
+               ! Upwind value...
+               TGI_NEI(1:NPHASE)=INCOME(1:NPHASE)*TGI_IN(1:NPHASE) + (1.0-INCOME(1:NPHASE))*TGI_OUT(1:NPHASE)
+               TGI_NEI(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)*TGI_IN(1+NPHASE:2*NPHASE) + (1.0-INCOMEOLD(1:NPHASE))*TGI_OUT(1+NPHASE:2*NPHASE)
+               ! Downwind value...
+               TGI_NEI2(1:NPHASE)=(1.0-INCOME(1:NPHASE))*TGI_IN(1:NPHASE) + INCOME(1:NPHASE)*TGI_OUT(1:NPHASE)
+               TGI_NEI2(1+NPHASE:2*NPHASE)=(1.0-INCOMEOLD(1:NPHASE))*TGI_IN(1+NPHASE:2*NPHASE) + INCOMEOLD(1:NPHASE)*TGI_OUT(1+NPHASE:2*NPHASE)
+               !
+               TGI_IN=TGI_NEI
+               ! reduce influence of downwind value (its needed as it oscillates without this)
+               TGI_OUT=RELAX_DOWN_WIND_2_CURRENT_ELE * TGI_ELE + (1.0-RELAX_DOWN_WIND_2_CURRENT_ELE) * TGI_NEI2
+            ENDIF
+
             DO IPHASE2=1,NPHASE2
                MIN_TGI=MIN(TGI_ELE(IPHASE2),TGI_IN(IPHASE2),TGI_OUT(IPHASE2))
                MAX_TGI=MAX(TGI_ELE(IPHASE2),TGI_IN(IPHASE2),TGI_OUT(IPHASE2))
@@ -3162,10 +3187,6 @@ end if
                ENDIF
             END DO
          ENDIF
-         
-         !if ( on_domain_boundary ) TGI = TGI_ELE
-        ! TGI = 0.5 * TGI_ELE + 0.5 * TGI
-         
 
          ! Use ENO only where there is an oscillation as it can be a bit dissipative. 
          TGI(:) = (1.0-W(:))*TGI(:) + W(:)*TGI_ELE(:)
