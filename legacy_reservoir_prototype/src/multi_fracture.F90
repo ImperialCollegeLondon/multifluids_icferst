@@ -62,13 +62,13 @@ module multiphase_fractures
   interface
      subroutine y2d_populate_femdem( ele1_r, ele2_r, ele3_r, &
           &                          face1_r, face2_r, x_r, y_r, &
-          &                          p1, p2, p3, p4, isfr, &
+          &                          p1, p2, p3, p4, &
           &                          ele1_v, ele2_v, ele3_v, &
           &                          face1_v, face2_v, x_v, y_v )
        integer, dimension( * ), intent( out ) :: ele1_r, ele2_r, ele3_r, &
             &                                    ele1_v, ele2_v, ele3_v, &
             &                                    face1_r, face2_r, face1_v, face2_v
-       real, dimension( * ), intent( out ) :: x_r, y_r, x_v, y_v, p1, p2, p3, p4, isfr
+       real, dimension( * ), intent( out ) :: x_r, y_r, x_v, y_v, p1, p2, p3, p4
      end subroutine y2d_populate_femdem
   end interface
 
@@ -129,18 +129,21 @@ contains
     ! and simplify the volume mesh
     call initialise_femdem
 
-
     r_nonods = node_count( positions_r )
     v_nonods = node_count( positions_v )
+
+   
 
     allocate( p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
                f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
                uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ))
              
-
+  
+  
     p_r=0.0 ; uf_r=0.0 ; muf_r=0.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0
-
+  
     call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r )
+
     call interpolate_fields_out_v( packed_state, nphase, uf_v )
     call get_option( "/timestepping/timestep", dt )
 
@@ -198,7 +201,7 @@ contains
     integer, dimension( : ), allocatable :: ele1_r, ele2_r, ele3_r, &
          &                                  ele1_v, ele2_v, ele3_v, &
          &                                  face1_r, face2_r, face1_v, face2_v
-    real, dimension( : ), allocatable :: x_r, y_r, x_v, y_v, p1, p2, p3, p4 , isfr
+    real, dimension( : ), allocatable :: x_r, y_r, x_v, y_v, p1, p2, p3, p4 
     type( quadrature_type ) :: quad
     type( element_type ) :: shape
     integer, dimension( : ), allocatable :: sndglno_r, boundary_ids_r, &
@@ -243,11 +246,9 @@ contains
 
     allocate( p1( elements_r ), p2( elements_r ) )
     allocate( p3( elements_r ), p4( elements_r ) )
-    allocate( isfr(elements_r) )
-
 
     call y2d_populate_femdem( ele1_r, ele2_r, ele3_r, &
-         face1_r, face2_r, x_r, y_r, p1, p2, p3, p4, isfr, &
+         face1_r, face2_r, x_r, y_r, p1, p2, p3, p4, &
          ele1_v, ele2_v, ele3_v, face1_v, face2_v, x_v, y_v )
 
     quad = make_quadrature( loc, ndim, degree = quad_degree )
@@ -336,7 +337,7 @@ contains
 
     deallocate( ele1_r, ele2_r, ele3_r, face1_r, face2_r, &
          &      ele1_v, ele2_v, ele3_v, face1_v, face2_v, &
-         &      x_r, y_r, x_v, y_v, p1, p2, p3, p4, isfr )
+         &      x_r, y_r, x_v, y_v, p1, p2, p3, p4 )
 
     ewrite(3,*) "leaving initialise_femdem"
 
@@ -678,6 +679,7 @@ return
     call allocate( field_fl_mu, fl_mesh, "Viscosity" )
     call zero( field_fl_mu )
 
+
     ! deal with pressure and viscosity
     if ( cv_nloc == 6 ) then
        ! linearise pressure for p2
@@ -718,9 +720,17 @@ return
     call allocate( v_dg, u_mesh, "v_dg" )
     call zero( v_dg )
     u_dg % val = u_tmp( 1, 1, : ) ; v_dg % val = u_tmp( 2, 1, : )
+!!-PY changed it
 
-    call project_field( u_dg, field_fl_u, fl_positions )
-    call project_field( v_dg, field_fl_v, fl_positions )
+
+    !call project_field( u_dg, field_fl_u, fl_positions )
+    !call project_field( v_dg, field_fl_v, fl_positions )
+
+
+    call linear2quadratic_field( u_dg, field_fl_u)
+    call linear2quadratic_field( v_dg, field_fl_v)
+
+
 
     ! fluidity state
     call insert( alg_fl, fl_mesh, "Mesh" )
@@ -730,7 +740,6 @@ return
     call insert( alg_fl, field_fl_u, "Velocity1" )
     call insert( alg_fl, field_fl_v, "Velocity2" )
     call insert( alg_fl, field_fl_mu, "Viscosity" )
-
 
     ! ring state
     call insert( alg_ext, positions_r%mesh, "Mesh" )
@@ -758,6 +767,9 @@ return
 
     ewrite(3,*) "...interpolating"
 
+
+
+
     ! interpolate
     call interpolation_galerkin_femdem( alg_fl, alg_ext, femdem_out = .true. )
 
@@ -767,6 +779,7 @@ return
     u_r( 2, : ) = field_ext_v % val
     mu_r = field_ext_mu % val
 
+    
     ! deallocate
     call deallocate( field_fl_p )
     call deallocate( field_fl_u )
@@ -852,8 +865,15 @@ return
     call zero( v_dg )
     u_dg % val = u_tmp( 1, 1, : ) ; v_dg % val = u_tmp( 2, 1, : ) 
 
-    call project_field( u_dg, field_fl_u, fl_positions )
-    call project_field( v_dg, field_fl_v, fl_positions )
+!!-PY changed it
+    !call project_field( u_dg, field_fl_u, fl_positions )
+    !call project_field( v_dg, field_fl_v, fl_positions )
+
+    call linear2quadratic_field( u_dg, field_fl_u)
+    call linear2quadratic_field( v_dg, field_fl_v)
+
+
+
 
     ! fluidity state
     call insert( alg_fl, fl_mesh, "Mesh" )
@@ -1054,6 +1074,8 @@ return
 
   subroutine interpolate_fields_in_r( packed_state, fin, ain )
 
+  
+   
     implicit none
 
     type( state_type ), intent( in ) :: packed_state
@@ -1169,6 +1191,7 @@ return
     call linear2quadratic_field(f, f2)
     a_xx % val( 2, 2, : ) = f2 % val
     a_xx % val( 2, 1, :) = a_xx % val(1, 2, :)
+
 
 
     ! deallocate
@@ -1658,7 +1681,54 @@ return
             end do
 
             deallocate( field_p1_loc, field_p2_loc)
-       else 
+       else if ( n1==1 .and. n2==1) then
+
+
+
+
+
+          p1_ndglno => get_ndglno( field_in%mesh )
+            p2_ndglno => get_ndglno( field_out%mesh )
+
+            totele = field_in%mesh%elements
+            p1_nloc = field_in%mesh%shape%loc
+            p2_nloc = field_out%mesh%shape%loc
+
+            allocate( field_p1_loc( p1_nloc ) )
+            allocate( field_p2_loc( p2_nloc ) )
+
+            do ele = 1, totele
+
+                p1_nods => p1_ndglno( ( ele - 1 ) * p1_nloc + 1 : ele * p1_nloc )
+                field_p1_loc =  field_in % val( p1_nods )
+
+
+                field_p2_loc( 1 ) =field_p1_loc( 1 )
+                field_p2_loc( 2 ) =field_p1_loc( 2 )
+                field_p2_loc( 3 ) =field_p1_loc( 3 )
+
+                
+
+                if ( p2_nloc == 6 ) then
+                    field_p2_loc( 4 ) =field_p1_loc( 4 )
+                    field_p2_loc( 5 ) =field_p1_loc( 5 )
+                    field_p2_loc( 6 ) =field_p1_loc( 6 )
+                end if
+
+                do p2_iloc = 1, p2_nloc
+                    p2_nod = p2_ndglno( ( ele - 1 ) * p2_nloc + p2_iloc )
+                    field_out % val( p2_nod ) = field_p2_loc( p2_iloc )
+                end do
+
+            end do
+
+            deallocate( field_p1_loc, field_p2_loc)
+
+
+           else
+            
+
+
 ! we have not called this routine with a p2 field
             stop 28289
 

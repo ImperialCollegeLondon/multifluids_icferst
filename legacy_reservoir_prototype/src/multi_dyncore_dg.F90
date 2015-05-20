@@ -2107,7 +2107,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 ! LES_THETA =1 is backward Euler for the LES viscocity.
 ! COEFF_SOLID_FLUID is the coeffficient that determins the magnitude of the relaxation to the solid vel...
 ! min_den_for_solid_fluid is the minimum density that is used in the solid-fluid coupling term. 
-            REAL, PARAMETER :: COEFF_SOLID_FLUID = 1.0, min_den_for_solid_fluid = 1.0
+            REAL, PARAMETER :: min_den_for_solid_fluid = 1.0, COEFF_SOLID_FLUID_stab=1.0, COEFF_SOLID_FLUID_relax=1.0 
 ! include_viscous_solid_fluid_drag_force switches on the solid-fluid coupling viscocity boundary conditions...
 !            LOGICAL, PARAMETER :: include_viscous_solid_fluid_drag_force = .FALSE.
             LOGICAL :: include_viscous_solid_fluid_drag_force 
@@ -2255,6 +2255,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, : ), allocatable ::  UFEN_REVERSED, CVFEN_SHORT_REVERSED, CVN_SHORT_REVERSED, CVN_REVERSED, CVFEN_REVERSED
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
 
+
+          REAL, DIMENSION( : ), allocatable :: sf_val_min
+
         !Variables to store things in state
         type(mesh_type), pointer :: fl_mesh
         type(mesh_type) :: Auxmesh
@@ -2264,7 +2267,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: sf
-        real, dimension( : ), allocatable :: vol_s_gi
+        integer :: cv_nodi
+        real, dimension( : ), allocatable :: vol_s_gi, vol_s_min_gi
 
         !! Boundary_conditions
 
@@ -2799,7 +2803,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
               f_x => extract_vector_field( packed_state, "f_x" )
               do IDIMSF= 1, NDIM
-                  FOURCE_SOLID_FLUID_COUP( IDIMSF, 1, : ) = f_x%val(IDIMSF, : ) !f_x do not include NPHASE
+                  FOURCE_SOLID_FLUID_COUP( IDIMSF, 1, : ) =f_x%val(IDIMSF, : ) !f_x do not include NPHASE
               end do
                           
               a_xx => extract_tensor_field( packed_state, "a_xx")
@@ -2996,7 +3000,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            delta_u_all => extract_vector_field( packed_state, "delta_U" ) ! this is delta_u
            us_all => extract_vector_field( packed_state, "solid_U" )
 
-           if ( .false. ) then ! Do not switch this to false.
+
+
+           if ( .true. ) then ! Do not switch this to false.
               DO ELE = 1, TOTELE
                   DO CV_ILOC = 1, CV_NLOC
                      MAT_NOD = MAT_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
@@ -3012,9 +3018,31 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            end if
 
            allocate( vol_s_gi( cv_ngi_short ) )
+           allocate( vol_s_min_gi( cv_ngi_short ) )
            allocate( cv_dengi( nphase, cv_ngi_short ) )
 
         endif
+
+
+
+
+
+   ! find min of surrounding values of solid volume fraction.
+           allocate(sf_val_min(cv_nonods)) 
+           sf_val_min=1.0
+           do ele=1,totele
+              do cv_iloc=1,cv_nloc
+                 cv_nodi=cv_ndgln((ele-1)*cv_nloc+cv_iloc)                  
+                 sf_val_min(cv_nodi)=min(sf_val_min(cv_nodi), sf%val(cv_nodi) )
+                 if (sf_val_min(cv_nodi)<1.0) then
+                      sf_val_min(cv_nodi)=0.0
+                 end if 
+
+              end do
+           end do
+
+
+
 
 
         Loop_Elements: DO ELE = 1, TOTELE ! Volume integral
@@ -3138,18 +3166,21 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                       CV_INOD = CV_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_ILOC )
 
 
+                 if(.false.) then ! delete this...
                       DO IDIM=1,NDIM
                          DO IPHASE=1,NPHASE
                             I=IDIM + (IPHASE-1)*NDIM
                            LOC_U_ABSORB( I, I, MAT_ILOC ) = LOC_U_ABSORB( I, I, MAT_ILOC ) + &
                                  !COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
-                                 COEFF_SOLID_FLUID * ( max( 1.0, DEN_ALL( IPHASE, cv_inod )) / dt ) * sf%val( cv_inod )
+                                 COEFF_SOLID_FLUID_stab * ( min ( 1.0, DEN_ALL( IPHASE, cv_inod )) / dt ) * sf%val( cv_inod )
 
+! not used...
                             LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) &
                                  !+ COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt )
-                                 + COEFF_SOLID_FLUID * ( max( 1.0, DEN_ALL( IPHASE, cv_inod ) ) / dt )
+                                 + COEFF_SOLID_FLUID_stab * ( min ( 1.0, DEN_ALL( IPHASE, cv_inod ) ) / dt )
                          END DO
                       END DO
+                  endif
 
 
 
@@ -3188,11 +3219,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      DO IDIM=1,NDIM
                         DO IPHASE=1,NPHASE
                             I=IDIM + (IPHASE-1)*NDIM
+
                             LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
-                                   COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
+                                   COEFF_SOLID_FLUID_stab *( DEN_ALL( IPHASE, cv_inod ) / dt )  * sf%val( cv_inod )
   
-                            LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC )  &
-                                  + COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) 
+!                            LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC )  &
+!                                  + COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) 
                         END DO
                       END DO
                        
@@ -3367,24 +3399,44 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
                 IF ( RETRIEVE_SOLID_CTY ) THEN
                    VOL_S_GI = 0.0
+                   VOL_S_min_GI = 0.0
                    CV_DENGI = 0.0
                    DO CV_ILOC = 1, CV_NLOC
                       CV_INOD = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
                       DO GI = 1, CV_NGI_SHORT
                          !VOL_S_GI( GI ) = VOL_S_GI( GI ) + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * sf%val( cv_inod )
+
+
+                         !VOL_S_GI( GI ) = VOL_S_GI( GI ) + CVN_REVERSED( GI, CV_ILOC ) * sf%val( cv_inod )
+
+
                          VOL_S_GI( GI ) = VOL_S_GI( GI ) + CVN_REVERSED( GI, CV_ILOC ) * sf%val( cv_inod )
+                         VOL_S_min_GI( GI ) = VOL_S_min_GI( GI ) + CVN_REVERSED( GI, CV_ILOC ) * sf_val_min( cv_inod )
                          CV_DENGI(:, GI ) = CV_DENGI(:, GI ) + CVN_REVERSED( GI, CV_ILOC ) * den_all( :, cv_inod )
                       END DO
                    END DO
+
+
+
+
                    VOL_S_GI = MIN( MAX( VOL_S_GI, 0.0 ), 1.0 )
                    SIGMAGI_STAB_SOLID_RHS=0.0
+
+
                    do idim=1,ndim
                       do iphase=1,nphase
                          ipha_idim=idim + (iphase-1)*ndim
 !                         SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID*max( dengi( iphase, : ), min_den_for_solid_fluid ) * vol_s_gi(:) / dt
-!                         SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID*max( dengi( iphase, : ), min_den_for_solid_fluid ) / dt
-                         SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) * vol_s_gi(:) / dt
-                         SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) / dt
+!                         SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID_relax*max( dengi( iphase, : ), min_den_for_solid_fluid ) / dt
+
+
+                     if(.false.) then  ! will provide solid-fluid drag coupling near the ring...
+                         SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID_relax*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) * vol_s_gi(:) / dt
+                         SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID_relax*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) / dt
+                     else ! new...will provide solid-fluid drag coupling AWAY from the ring...
+                         SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID_relax*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) * vol_s_min_gi(:)/ dt
+                         SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID_relax*max( CV_dengi( iphase, : ), min_den_for_solid_fluid )* vol_s_min_gi(:) / dt
+                     endif
                       end do
                    end do
                 end if
@@ -3521,13 +3573,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                             PIVIT_MAT( I, I, ELE ) =   &
                                             NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                            + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
+                                            + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/ DT
 
                                         ELSE
                                             PIVIT_MAT( I, J, ELE ) =  &
                                             NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                            + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
+                                            + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/ DT
                                         END IF
                                         IF ( .NOT.NO_MATRIX_STORE ) THEN
                                             IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
@@ -3666,14 +3718,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                         IF ( MOM_CONSERV ) THEN
                                             IF ( LUMP_MASS ) THEN
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )     &
+                                                + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
                                                 + ( NN_MASSOLD_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_ILOC )
                                                 IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                 + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
                                             ELSE
                                                 LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                 + NN_SIGMAGI_STAB_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_U( JDIM, JPHASE, U_JLOC )  &
-                                                + ( NN_MASSOLD_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_JLOC )
+                                                +( NN_MASSOLD_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) / DT ) * LOC_UOLD( JDIM, JPHASE, U_JLOC )
                                                 IF(RETRIEVE_SOLID_CTY) LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                 + NN_SIGMAGI_STAB_SOLID_RHS_ELE( IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) * LOC_US( JDIM, JPHASE, U_JLOC )
                                             END IF
