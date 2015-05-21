@@ -720,8 +720,6 @@ return
     call allocate( v_dg, u_mesh, "v_dg" )
     call zero( v_dg )
     u_dg % val = u_tmp( 1, 1, : ) ; v_dg % val = u_tmp( 2, 1, : )
-!!-PY changed it
-
 
     !call project_field( u_dg, field_fl_u, fl_positions )
     !call project_field( v_dg, field_fl_v, fl_positions )
@@ -865,7 +863,7 @@ return
     call zero( v_dg )
     u_dg % val = u_tmp( 1, 1, : ) ; v_dg % val = u_tmp( 2, 1, : ) 
 
-!!-PY changed it
+
     !call project_field( u_dg, field_fl_u, fl_positions )
     !call project_field( v_dg, field_fl_v, fl_positions )
 
@@ -1037,14 +1035,20 @@ return
     delta_u => extract_vector_field( packed_state, "delta_U" )
     do idim = 1, ndim
        f => extract_scalar_field( alg_fl, "deltaVelocity" // int2str( idim ) )
-       call project_field( f, f2, fl_positions )
+
+       !call project_field( f, f2, fl_positions )
+       call linear2quadratic_field(f, f2)
+
        delta_u % val( idim, : ) = f2 % val
     end do
 
     solid_u => extract_vector_field( packed_state, "solid_U" )
     do idim = 1, ndim
        f => extract_scalar_field( alg_fl, "SolidVelocity" // int2str( idim ) )
-       call project_field( f, f2, fl_positions )
+       !call project_field( f, f2, fl_positions )
+       call linear2quadratic_field(f, f2)
+
+
        solid_u % val( idim, : ) = f2 % val
     end do
 
