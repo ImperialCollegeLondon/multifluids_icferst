@@ -262,6 +262,7 @@
     <vector_field name="Velocity" rank="1">
       <prognostic>
         <mesh name="VelocityMesh"/>
+        <equation name="LinearMomentum"/>
         <spatial_discretisation>
           <discontinuous_galerkin>
             <mass_terms/>
@@ -411,6 +412,7 @@
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <equation name="AdvectionDiffusion"/>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FiniteElement">
@@ -595,6 +597,7 @@ for i in range( field.node_count ):
     <vector_field name="Velocity" rank="1">
       <prognostic>
         <mesh name="VelocityMesh"/>
+        <equation name="LinearMomentum"/>
         <spatial_discretisation>
           <discontinuous_galerkin>
             <viscosity_scheme>
@@ -743,6 +746,7 @@ for i in range( field.node_count ):
     <scalar_field name="PhaseVolumeFraction" rank="0">
       <prognostic>
         <mesh name="PressureMesh"/>
+        <equation name="AdvectionDiffusion"/>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FiniteElement">
@@ -1096,6 +1100,7 @@ for i in range( field.node_count ):
             </linear>
           </incompressible>
         </equation_of_state>
+        <equation name="AdvectionDiffusion"/>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FirstOrderUpwind"/>
@@ -1169,6 +1174,7 @@ for i in range( field.node_count ):
             </linear>
           </incompressible>
         </equation_of_state>
+        <equation name="AdvectionDiffusion"/>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FirstOrderUpwind"/>
@@ -1262,6 +1268,7 @@ for i in range( field.node_count ):
             </linear>
           </incompressible>
         </equation_of_state>
+        <equation name="AdvectionDiffusion"/>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FirstOrderUpwind"/>
@@ -1335,6 +1342,7 @@ for i in range( field.node_count ):
             </linear>
           </incompressible>
         </equation_of_state>
+        <equation name="AdvectionDiffusion"/>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FirstOrderUpwind"/>
@@ -1428,6 +1436,7 @@ for i in range( field.node_count ):
             </linear>
           </incompressible>
         </equation_of_state>
+        <equation name="AdvectionDiffusion"/>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FirstOrderUpwind"/>
@@ -1501,6 +1510,7 @@ for i in range( field.node_count ):
             </linear>
           </incompressible>
         </equation_of_state>
+        <equation name="AdvectionDiffusion"/>
         <spatial_discretisation>
           <control_volumes>
             <face_value name="FirstOrderUpwind"/>

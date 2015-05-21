@@ -498,7 +498,7 @@ f = sum(average(dSat/dumping_parameter))^2;
 dSat is the difference in saturation between FPI
 
 
-Recommended values: from 5e-8 to 1e-10</a:documentation>
+Recommended values: from 1e-9 to 1e-10</a:documentation>
                 <ref name="real"/>
                 <optional>
                   <element name="Dumping_factor">
@@ -506,12 +506,21 @@ Recommended values: from 5e-8 to 1e-10</a:documentation>
 
 Sat = Sat(Previous FPI) + dumping_parameter * dSat
 
-Defined as: 0 &lt; dumping_parameter &lt; 1. Negative values =&gt; automatically (not well tested)
+Defined as: 0 &lt; dumping_parameter &lt; 1. Negative values =&gt; automatically 
 
+For Fixed Dumping parameters:
 Recommended settings: Non-linear iterations &gt;= 100
 
 Recommended settings: Courant &lt; 1 =&gt; dumping_parameter = 1;
 Courant &gt; 1 =&gt; dumping_parameter from 1.0 to 0.1;
+
+For dynamic Dumping parameters:
+
+Recommended settings: Non-linear iterations &gt;= 30
+The Dumping value introduced is used as reference, so it may have a big impact on the convergence
+
+Recommended settings: dumping_parameter = -0.33 or -0.5 or -0.8; 
+Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
 
 The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be</a:documentation>
                     <ref name="real"/>

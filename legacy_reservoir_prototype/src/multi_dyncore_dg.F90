@@ -491,8 +491,6 @@ contains
       real, dimension( :, :, : ), intent(inout) :: Material_Absorption
       integer, intent(in) :: nonlinear_iteration
       ! Local Variables
-      INTEGER, PARAMETER :: nits_flux_lim = 1
-      REAL, PARAMETER :: Max_updating = 0.99!Disabled iterating here
       LOGICAL, PARAMETER :: THERMAL= .false.
       integer :: igot_t2
       REAL, DIMENSION( : ), allocatable :: mass_mn_pres, DIAG_SCALE_PRES
@@ -528,8 +526,10 @@ contains
       integer :: Phase_with_Pc
 
       !Variables to stabilize the non-linear iteration solver
-      real, dimension(nphase, cv_nonods) :: sat_bak
-      real :: updating
+      real, dimension(nphase, cv_nonods) :: sat_bak, backtrack_sat
+      real :: Previous_convergence, updating, new_dumping
+      logical :: satisfactory_convergence
+      integer :: its
 
       !Extract variables from packed_state
       call get_var_from_packed_state(packed_state,FEPressure = P)
@@ -561,7 +561,6 @@ contains
       ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) )
       ALLOCATE( MEAN_PORE_CV( CV_NONODS ) )
 
-   
 
         IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
              ! use DEN=1 because the density is already in the theta variables
@@ -579,7 +578,6 @@ contains
       path = '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/temporal_discretisation/' // &
            'control_volumes/'
       call get_option( trim( path ) // 'second_theta', second_theta, stat , default = 1.0)
-!      call get_option( trim( path ) // 'number_advection_iterations', nits_flux_lim, default = 1 )
 
       IGOT_THERM_VIS=0
       ALLOCATE( THERM_U_DIFFUSION(NDIM,NDIM,NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
@@ -590,15 +588,18 @@ contains
       density=>extract_tensor_field(packed_state,"PackedDensity")
       sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
 
-      !This variable accounts for 1 - the total update we have been performing in this loop
-      !being the minimum 0.0
-      updating = 1.0
-      !dumping_in_sat = 0.0 !Public variable to be used in Adaptive_NonLinear to re-scale the convergence
-!      Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, nits_flux_lim
-      Loop_NonLinearFlux: do while (updating > Max_updating)
-
+      !This logical is used to loop over the saturation equation until the functional
+      !explained in function get_Convergence_Functional has been reduced enough
+      satisfactory_convergence = .false.
+      updating = 0.0
+      !We store the convergence of the previous FPI to compare with
+      Previous_convergence = dumping_in_sat
+      its = 1
+      call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
+      Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
+          !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
+          !it works, but it complains...
           call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
-          call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
 
           !Assemble the matrix and the RHS
           call CV_ASSEMB( state, packed_state, &
@@ -623,7 +624,6 @@ contains
           NCOLM, FINDM, COLM, MIDM, &
           XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
           opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-          !IGOT_T2, T2, T2OLD, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &!
           IGOT_T2, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
           THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
           IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -631,11 +631,12 @@ contains
           SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
           .false.,  mass_Mn_pres, &
           mass_ele_transp,&
-          StorageIndexes, 3 ,&
+          StorageIndexes, 3 ,&            !Capillary variables
           OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-          IDs_ndgln=IDs_ndgln)!Capillary variables
+          IDs_ndgln=IDs_ndgln)
           !Solve the system
           vtracer=as_vector(tracer,dim=2)
+
           !Backup of the saturation field, to adjust the solution
           if (Dumping_factor < 1.01) sat_bak = satura
 
@@ -643,39 +644,56 @@ contains
           call zero_non_owned(cv_rhs_field)
           call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
-          call deallocate(cv_rhs_field)
+          !Set to zero the fields
+          call zero(cv_rhs_field)
           call deallocate(petsc_acv)
 
           !Correct the solution obtained to make sure we are on track towards the final solution
           if (Dumping_factor < 1.01) then
-              !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
-!              call Trust_region_correction(packed_state, sat_bak, Dumping_factor,CV_NDGLN, IDs2CV_ndgln)
 
-              call Trust_region_correction_old(packed_state, sat_bak, Dumping_factor,CV_NDGLN, IDs2CV_ndgln,dumping_in_sat)
-              !Store the accumulated updated done
-              updating = updating - dumping_in_sat
+            !If convergence is not good, then we calculate a new saturation using backtracking
+            if (.not. satisfactory_convergence) then
+                  !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
+                  call Trust_region_correction(packed_state, sat_bak, backtrack_sat, Dumping_factor,CV_NDGLN, IDs2CV_ndgln,&
+                     Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration)
+                  !Store the accumulated updated done
+                  updating = updating + new_dumping
+                  !If the dumping factor is not adaptive, then, just one iteration
+                  if (Dumping_factor > 0) then
+                      satisfactory_convergence = .true.
+                      exit
+                  end if
+                  !If looping again, recalculate
+                  if (.not. satisfactory_convergence) then
+                      !Store old saturation to fully undo an iteration if it is very divergent
+                      backtrack_sat = sat_bak
 
-              !For the non-linear iteration inside this loop we need to update the velocities
-              !and that is done through the sigmas, hence we have to update them
-              if (updating > Max_updating) then!Recalculate sigmas, only if we are performing another loop
-                  call Calculate_AbsorptionTerm( state, packed_state,cv_ndgln, mat_ndgln, &
-                  opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption,IDs_ndgln, IDs2CV_ndgln)
-                  call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                  cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
-                  finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state,x_nonods, IDs_ndgln )
+                      !For the non-linear iteration inside this loop we need to update the velocities
+                      !and that is done through the sigmas, hence, we have to update them
+                      call Calculate_AbsorptionTerm( state, packed_state,cv_ndgln, mat_ndgln, &
+                      opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption,IDs_ndgln, IDs2CV_ndgln)
+                      call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
+                      cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+                      finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state,x_nonods, IDs_ndgln )
+                      !Also recalculate the Over-relaxation parameter
+                      call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes, &
+                      totele, cv_nloc, CV_NDGLN, IDs2CV_ndgln)
+                  end if
               end if
           else!Just one iteration
             exit Loop_NonLinearFlux
           end if
-
+        its = its + 1
       END DO Loop_NonLinearFlux
 
-      if (Dumping_factor < 1.0) then
+      !Store the final accumulated dumping_factor to properly calculate the convergence functional
+      if (Dumping_factor < 1.01) then
           !Final effective dumping to calculate properly the non linear convergence is:
-          dumping_in_sat = 1.0 - updating
+          dumping_in_sat = updating
       else
           dumping_in_sat = 1
       end if
+
       !Make sure the parameter is consistent between cpus
       if (IsParallel()) call allmin(dumping_in_sat)
 
@@ -684,12 +702,6 @@ contains
           call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv,&
           StorageIndexes, cv_ele_type, for_sat = .true., IDs2CV_ndgln = IDs2CV_ndgln)
       end if
-
-      !Set saturation to be between bounds
-      !In this case we impose that the saturation has to be between physical limits
-      !conservation of mass might be lost
-!      call Set_Saturation_between_bounds(packed_state, CV_NDGLN, IDs2CV_ndgln)
-!      satura = min(max(satura,0.0), 1.0)
 
       DEALLOCATE( mass_mn_pres )
       DEALLOCATE( CT )
@@ -700,7 +712,7 @@ contains
          DEALLOCATE( T2OLD )
       END IF
       DEALLOCATE( THETA_GDIFF )
-!      call deallocate(cv_rhs_field)
+      call deallocate(cv_rhs_field)
 !      call deallocate(petsc_acv)
 
        !Deallocate pointers only if not pointing to something in packed state
