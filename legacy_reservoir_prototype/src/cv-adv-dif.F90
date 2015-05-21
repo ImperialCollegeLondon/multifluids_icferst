@@ -54,6 +54,9 @@ module cv_advection
   use matrix_operations
   use Copy_Outof_State
   use boundary_conditions
+
+  use multi_interpolation
+
 #ifdef HAVE_PETSC_MODULES
   use petsc 
 #endif
@@ -61,11 +64,16 @@ module cv_advection
   implicit none
 
   ! Public totout needed when calculating outfluxes across a specified boundary. Will store the sum of totoutflux across all elements contained in the boundary.
-  ! Multiphase_TimeLoop needs to access this variable so easiest to make it public.
+  ! Multiphase_TimeLoop needs to access this variable so easiest to make it public. (Same situation with mat1, mat2)
 
-   public ::  totout
+   public ::  totout, mat1, mat2
 
    real, allocatable, dimension(:,:) :: totout
+
+  ! Variables needed for the mesh to mesh interpolation calculations
+
+   type(csr_matrix) :: mat1
+   type(csr_matrix) :: mat2
 
 #include "petsc_legacy.h"
 
@@ -355,7 +363,7 @@ contains
 ! Zhi try THETA_VEL_HAT = 1.0
       real :: THETA_VEL_HAT = 1.0
 ! if APPLY_ENO then apply ENO method to T and TOLD
-      LOGICAL, PARAMETER :: APPLY_ENO = .FALSE. 
+      LOGICAL :: APPLY_ENO
 ! CT will not change with this option...
       LOGICAL, PARAMETER :: CT_DO_NOT_CHANGE = .FALSE. 
 ! GRAVTY is used in the free surface method only...
@@ -535,7 +543,7 @@ contains
       type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
       type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
       type(vector_field), pointer :: coord
-      type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tracer_source
+      type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tracer_source, tfield
       integer :: FEM_IT
 
       integer, dimension(:), pointer :: neighbours
@@ -558,9 +566,10 @@ contains
       !Variables to calculate flux across boundaries
       logical :: calculate_flux
 
-
       symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
 
+      option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"
+      apply_eno = have_option( option_path2 )
 
 
       !We only allocate outlet_id if you actually want to calculate fluxes
@@ -916,7 +925,6 @@ contains
                 IF(.not.IGOT_T_CONST(IPHASE,IFI)) NFIELD=NFIELD+1
              END DO
           END DO
-
           ALLOCATE( DOWNWIND_EXTRAP_INDIVIDUAL( NFIELD ) )
 
 
@@ -1101,6 +1109,8 @@ contains
       if (.not. is_constant(density)) then
          FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,:,:)
          FEM_IT=FEM_IT+1
+         tfield => extract_tensor_field( packed_state, "PackedFEDensity" ) 
+         tfield%val = psi(FEM_IT)%ptr%val
       else
          FEMDEN_ALL=density%val(1,:,:)
       end if
@@ -2228,13 +2238,34 @@ contains
                         do ioutlet = 1, size(outlet_id)
                             ! Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
 
-                            !call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, nphase, SCVDETWEI)
                             call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_ndgln,&
-                                 cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, SCVDETWEI, IDs_ndgln)
+                                 cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, SCVDETWEI, IDs_ndgln, cv_snloc, cv_siloc ,SUF_T_BC_ALL)
 
                         enddo
 
                     end if
+
+!                    call InterpolationShapeFns(nphase,packed_state, ndim, totele, cv_ndgln, x_ndgln, &
+!                          cv_ngi_short, cv_nloc, cvn_short, cvweight_short, cvfen_short, x_all, cvfenlx_short_all, x_nonods, mat1, mat2)
+
+
+                            ! Remember to check very carefully the arguments we are calling above against proj_cv_to_fem_state
+!                            SUBROUTINE PROJ_CV_TO_FEM_state( packed_state,FEMPSI, PSI, NDIM, &
+!                            PSI_AVE, PSI_INT, MASS_ELE, &
+!                            CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
+!                            CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, NLX_ALL, &
+!                            X_NONODS, X, NCOLM, FINDM, COLM, MIDM, &
+!                            IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC,&
+!                            state, StorageIndexes )
+
+!                          ( packed_state,FEMPSI(1:FEM_IT),&
+!                            PSI(1:FEM_IT), NDIM, &
+!                            PSI_AVE, PSI_INT, MASS_ELE, &
+!                            CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
+!                            CV_NGI_short, CV_NLOC, CVN_short, CVWEIGHT_short,&
+!                            CVFEN_SHORT, CVFENLX_SHORT_ALL, &
+!                            X_NONODS, X_ALL, NCOLM, FINDM, COLM, MIDM, &
+!                            IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC)
 
 
                   Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
@@ -2484,7 +2515,30 @@ contains
 
       END DO Loop_Elements
 
+      ! Modifications to calculate_outflux()
+      ! Check what the correct bounds of the sele loop should be sele = 1, surface_element_count(?)
 
+!      do sele = 1, surface_element_count(tracer)
+!
+!          do cv_iloc = 1, cv_snloc
+!
+!              ! Loop over quadrature (gauss) points in ELE neighbouring ILOC (will this work for surface elements)
+!              do Gcount = Findgpts( cv_iloc ), Findgpts( cv_iloc + 1 ) - 1
+!
+!                  gi = colgpts( gcount )
+!
+!                  do ioutlet = 1, size(outlet_id)
+!
+!                      call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), cv_sndgln,&
+!                      cv_snloc, SCVFEN, gi, cv_nonods, totele, nphase, SCVDETWEI, IDs_ndgln, SUF_T_BC_ALL)
+!
+!                  enddo
+!
+!              end do
+!
+!          end do
+!
+!      end do
 
 
       IF(GET_GTHETA) THEN
@@ -2798,13 +2852,15 @@ end if
       PARAMETER(ngi_one=1)
       ! If ENO_ALL_THREE use all 3 to find TGI ENO value...
       ! else use the upwind value and current element value. 
-      LOGICAL, PARAMETER :: ENO_ALL_THREE = .FALSE.
+      LOGICAL, PARAMETER :: ENO_ALL_THREE = .TRUE.
       ! If FOR_DG_ONLY_BETWEEN_ELE use fem INSIDE element for DG
       LOGICAL, PARAMETER :: FOR_DG_ONLY_BETWEEN_ELE = .TRUE.
       ! Use ENO only where there is an oscillation as it can be a bit dissipative. 
       LOGICAL, PARAMETER :: ENO_ONLY_WHERE_OSCILLATE = .TRUE.
       ! Simple ENO - somewhat dispersive 
       LOGICAL, PARAMETER :: SIMPLE_ENO = .FALSE.
+      ! RELAX_DOWN_WIND_2_CURRENT_ELE=1.0 (use upwind only), RELAX_DOWN_WIND_2_CURRENT_ELE=0 (use downwind in ENO)
+      REAL, PARAMETER :: RELAX_DOWN_WIND_2_CURRENT_ELE = 1.0
 
       INTEGER, intent(in) :: ELE,CV_NONODS,X_NONODS,CV_NLOC,TOTELE,NDIM,NPHASE,NFACE,GI
       INTEGER, intent(in) :: CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC
@@ -2829,7 +2885,8 @@ end if
       REAL :: n(cv_nloc,ngi_one), nlx(cv_nloc,ngi_one), nly(cv_nloc,ngi_one), nlz(cv_nloc,ngi_one)
       REAL :: l1(ngi_one), l2(ngi_one), l3(ngi_one), l4(ngi_one), weight(ngi_one)
       REAL :: TGI_ELE(NPHASE*2),TGI_IN(NPHASE*2),TGI_OUT(NPHASE*2),W(NPHASE*2), TGI_DER_ELE(NDIM,NPHASE*2)
-      REAL :: TGI(NPHASE*2),TUP(NPHASE*2),TGI_NEI(NPHASE*2), TGI_ELE_B(NPHASE*2), TGI_ELE_C(NPHASE*2)
+      REAL :: TGI(NPHASE*2),TUP(NPHASE*2), TGI_NEI(NPHASE*2), TGI_NEI2(NPHASE*2), INCOME_BOTH(2*NPHASE)
+      REAL :: TGI_ELE_B(NPHASE*2), TGI_ELE_C(NPHASE*2)
       REAL :: ENO_ELE_MATWEI_IN(CV_NLOC),ENO_ELE_MATWEI_OUT(CV_NLOC),ENO_ELE_MATWEI(CV_NLOC,2)
       REAL :: RUP_WIN,MIN_TGI,MAX_TGI,dx, min_val, max_val
       LOGICAL :: QUADRATIC_ELEMENT,IS_CORNER_NOD_I,IS_CORNER_NOD_J,DISTCONTINUOUS_METHOD, GOT_AN_OSC
@@ -2837,20 +2894,21 @@ end if
       INTEGER :: ELE2,SELE2,ELEWIC,ENO_ELE_NEI_IN,ENO_ELE_NEI_OUT,IPHASE2,CV_KLOC,IUP_DOWN
       INTEGER :: IFACE,NPHASE2,IPT, cv_nodk, cv_nodk_IN, cv_nodk_OUT, X_KNOD, I_OLD_NEW, IPHASE
 
-
+      ! nothing to do (needed to apply bcs etc)...
+      if ( on_domain_boundary ) return
 
       QUADRATIC_ELEMENT=( (NDIM==2).AND.(CV_NLOC==6) ) .OR. ( (NDIM==3).AND.(CV_NLOC==10) )
       NPHASE2=NPHASE*2
       DISTCONTINUOUS_METHOD=( CV_NONODS == TOTELE * CV_NLOC )
 
 
-      if (.true.) then
+      if ( .true. ) then
 
          TGI_ELE=0.0
          do cv_kloc=1,cv_nloc
             cv_nodk = CV_NDGLN((ELE-1)*CV_NLOC + cv_kloc) 
             TGI_ELE(1:NPHASE)=TGI_ELE(1:NPHASE) + SCVFEN(cv_Kloc,gi)*FEMT_ALL(:,cv_nodk)
-            TGI_ELE(1+NPHASE:2*NPHASE)=TGI_ELE(1+NPHASE:2*NPHASE) + SCVFEN(cv_Kloc,gi)*femTOLD_ALL(:,cv_nodk)
+            TGI_ELE(1+NPHASE:2*NPHASE)=TGI_ELE(1+NPHASE:2*NPHASE) + SCVFEN(cv_Kloc,gi)*FEMTOLD_ALL(:,cv_nodk)
          end do
 
       else
@@ -2877,11 +2935,8 @@ end if
 
 
          if(.true.) then
-         !if(.not.on_domain_boundary) then
-
 
             ugi_normalised(:,1) = ugi(:,1) / max(1.e-7, sqrt(sum( ugi(:,1)**2) ))
-
             dx = 1.0 / max( 1.0e-7, maxval( abs(matmul( INV_JAC(:,:,GI), UGI_normalised(:,1)))  ) )
 
             TGI_der_ELE=0.0
@@ -2926,10 +2981,6 @@ end if
                      end if
                   end if
                end do
-
-
-
-
             else
                TGI_ele = TGI_ele_B
             endif
@@ -2966,13 +3017,13 @@ end if
                   W(IPHASE2)=(TUP(IPHASE2)-LIMF(IPT))/TOLFUN(TUP(IPHASE2)-TGI_ELE(IPHASE2))
                   W(IPHASE2)=MAX(0.0,MIN(1.0,W(IPHASE2) ))
                   ! W=0.0(full upwind);  W=1.0(high order no limiting)
-                  IF(W(IPHASE2)<0.99) GOT_AN_OSC=.TRUE.
+                  IF(W(IPHASE2)<0.9999) GOT_AN_OSC=.TRUE.
                   IPT=IPT+1
                ENDIF
             END DO ! ENDOF DO IPHASE=1,NPHASE
          END DO ! ENDOF DO I_OLD_NEW=1,2
          ! Nothing to do if no oscillations detected...
-         IF(.NOT.GOT_AN_OSC) RETURN
+ !        IF(.NOT.GOT_AN_OSC) RETURN
       ENDIF
 
 
@@ -2994,14 +3045,14 @@ end if
             XVEC(:)=0.0
          else
             IF(QUADRATIC_ELEMENT) THEN
-               XVEC(:)= - 1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! Double the length scale because its a quadratic element
+               XVEC(:)= - 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! Double the length scale because its a quadratic element
                ! Is CV_JLOC a corner node...
                IS_CORNER_NOD_I = (CV_ILOC==1).OR.(CV_ILOC==3).OR.(CV_ILOC==6).OR.(CV_ILOC==10)
                IS_CORNER_NOD_J = (CV_JLOC==1).OR.(CV_JLOC==3).OR.(CV_JLOC==6).OR.(CV_JLOC==10)
-!               IF(IS_CORNER_NOD_J) XVEC(:)= - 1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
-               IF(IS_CORNER_NOD_I) XVEC(:)= + 1.0*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
+!               IF(IS_CORNER_NOD_J) XVEC(:)= - 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
+               IF(IS_CORNER_NOD_I) XVEC(:)= + 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ)) ! half length scale because we are next to element boundary.
             ELSE ! linear element..
-               XVEC(:)= - 0.5*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
+               XVEC(:)= - 0.75*(X_ALL(:,X_NODI)-X_ALL(:,X_NODJ))
             ENDIF
          endif
 
@@ -3014,7 +3065,7 @@ end if
                     .OR. (QUADRATIC_ELEMENT.AND.(IS_CORNER_NOD_I.or.IS_CORNER_NOD_J)) ) THEN
                   ENO_ELE_NEI(IUP_DOWN)  = ELEWIC 
                   ENO_ELE_MATWEI(:,IUP_DOWN) = N(:,1)
-                  EXIT ! Jump out of IUP_DOWN loop ***********double check exit command
+                  EXIT ! Jump out of IUP_DOWN loop 
                ENDIF
             ENDIF
 
@@ -3091,7 +3142,6 @@ end if
          END DO ! DO IUP_DOWN=1,2
 
 
-
          ! now calculate ENO values at the quadrature pt **********************************...
          ! now calculate ENO values at the quadrature pt **********************************...
          !
@@ -3101,6 +3151,8 @@ end if
          ENO_ELE_MATWEI_IN(:) =ENO_ELE_MATWEI(:,1)
          ENO_ELE_MATWEI_OUT(:)=ENO_ELE_MATWEI(:,2)
 
+
+         TGI_IN=0.0 ; TGI_OUT=0.0
 
          if (.true.) then ! this is what we should use...
 
@@ -3128,8 +3180,36 @@ end if
             end do
          end if
 
+         INCOME_BOTH(1:NPHASE)=INCOME(1:NPHASE)
+         INCOME_BOTH(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)
+
 
          IF(ENO_ALL_THREE) THEN ! Use all 3 to find TGI ENO value...
+            IF( IS_CORNER_NOD_I .or. IS_CORNER_NOD_J ) THEN
+               IF(IS_CORNER_NOD_I) THEN
+                  TGI_NEI =INCOME_BOTH       * TGI_ELE + (1.0-INCOME_BOTH) * TGI_IN
+                  TGI_NEI2=(1.0-INCOME_BOTH) * TGI_ELE + INCOME_BOTH       * TGI_IN
+               ELSE
+                  TGI_NEI =INCOME_BOTH      *TGI_IN + (1.0-INCOME_BOTH)*TGI_ELE
+                  TGI_NEI2=(1.0-INCOME_BOTH)*TGI_IN + INCOME_BOTH      *TGI_ELE
+               ENDIF
+               !
+               TGI_IN=TGI_NEI
+               ! reduce influence of downwind value (its needed as it oscillates without this)
+               TGI_OUT=RELAX_DOWN_WIND_2_CURRENT_ELE * TGI_ELE + (1.0-RELAX_DOWN_WIND_2_CURRENT_ELE) * TGI_NEI2
+            ELSE
+               ! Upwind value...
+               TGI_NEI(1:NPHASE)=INCOME(1:NPHASE)*TGI_IN(1:NPHASE) + (1.0-INCOME(1:NPHASE))*TGI_OUT(1:NPHASE)
+               TGI_NEI(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)*TGI_IN(1+NPHASE:2*NPHASE) + (1.0-INCOMEOLD(1:NPHASE))*TGI_OUT(1+NPHASE:2*NPHASE)
+               ! Downwind value...
+               TGI_NEI2(1:NPHASE)=(1.0-INCOME(1:NPHASE))*TGI_IN(1:NPHASE) + INCOME(1:NPHASE)*TGI_OUT(1:NPHASE)
+               TGI_NEI2(1+NPHASE:2*NPHASE)=(1.0-INCOMEOLD(1:NPHASE))*TGI_IN(1+NPHASE:2*NPHASE) + INCOMEOLD(1:NPHASE)*TGI_OUT(1+NPHASE:2*NPHASE)
+               !
+               TGI_IN=TGI_NEI
+               ! reduce influence of downwind value (its needed as it oscillates without this)
+               TGI_OUT=RELAX_DOWN_WIND_2_CURRENT_ELE * TGI_ELE + (1.0-RELAX_DOWN_WIND_2_CURRENT_ELE) * TGI_NEI2
+            ENDIF
+
             DO IPHASE2=1,NPHASE2
                MIN_TGI=MIN(TGI_ELE(IPHASE2),TGI_IN(IPHASE2),TGI_OUT(IPHASE2))
                MAX_TGI=MAX(TGI_ELE(IPHASE2),TGI_IN(IPHASE2),TGI_OUT(IPHASE2))
@@ -3159,10 +3239,6 @@ end if
                ENDIF
             END DO
          ENDIF
-         
-         !if ( on_domain_boundary ) TGI = TGI_ELE
-        ! TGI = 0.5 * TGI_ELE + 0.5 * TGI
-         
 
          ! Use ENO only where there is an oscillation as it can be a bit dissipative. 
          TGI(:) = (1.0-W(:))*TGI(:) + W(:)*TGI_ELE(:)

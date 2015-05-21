@@ -838,8 +838,8 @@ contains
 ! switch on solid fluid coupling (THE ONLY SWITCH THAT NEEDS TO BE SWITCHED ON FOR SOLID-FLUID COUPLING)...
         LOGICAL :: RETRIEVE_SOLID_CTY = .FALSE.
 ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
-        LOGICAL :: got_free_surf = .FALSE.
-        character( len = option_path_len ) :: opt
+        LOGICAL :: got_free_surf
+        character( len = option_path_len ) :: opt, bc_type
 
         type( scalar_field ) :: ct_rhs
         REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES, &
@@ -848,7 +848,7 @@ contains
         UP_VEL
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
-        INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ndpset
+        INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ndpset, i
         LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY
         INTEGER :: IDIM
         !Re-scale parameter can be re-used
@@ -884,6 +884,14 @@ contains
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
         fem_density_buoyancy = have_option( "/physical_parameters/gravity/fem_density_buoyancy" )
 
+        got_free_surf = .false.
+        do i = 1, size( pressure%bc%boundary_condition )
+           call get_boundary_condition( pressure, i, type=bc_type )
+           if ( trim( bc_type ) == "freesurface" ) then
+              got_free_surf = .true.
+              exit
+           end if
+        end do
 
         IGOT_CMC_PRECON = 0
         if ( symmetric_P ) IGOT_CMC_PRECON = 1
@@ -979,18 +987,15 @@ contains
            else
               UDEN3 = uden_all
            end if
+           if ( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) UDEN3 = 0.0
 
            call calculate_u_source_cv( state, cv_nonods, ndim, nphase, uden3, U_Source_CV )
-
 
            deallocate( uden3 )
 
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
-
-
-
 
         end if
 
@@ -1027,7 +1032,7 @@ contains
 
         ! vertical stab for buoyant gyre
         !u_abs_stab=0.0
-        !u_abs_stab(:,3,3)=dt*0.2/500.0
+        !u_abs_stab(:,3,3)= dt*0.2/500.0
 
 
         allocate( U_ABSORB( mat_nonods, ndim * nphase, ndim * nphase ) )
@@ -2114,7 +2119,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 ! LES_THETA =1 is backward Euler for the LES viscocity.
 ! COEFF_SOLID_FLUID is the coeffficient that determins the magnitude of the relaxation to the solid vel...
 ! min_den_for_solid_fluid is the minimum density that is used in the solid-fluid coupling term. 
-            REAL, PARAMETER :: COEFF_SOLID_FLUID = 1.0, min_den_for_solid_fluid = 1.0
+            REAL, PARAMETER :: min_den_for_solid_fluid = 1.0, COEFF_SOLID_FLUID_stab=1.0, COEFF_SOLID_FLUID_relax=1.0
 ! include_viscous_solid_fluid_drag_force switches on the solid-fluid coupling viscocity boundary conditions...
 !            LOGICAL, PARAMETER :: include_viscous_solid_fluid_drag_force = .FALSE.
             LOGICAL :: include_viscous_solid_fluid_drag_force 
@@ -2262,6 +2267,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, : ), allocatable ::  UFEN_REVERSED, CVFEN_SHORT_REVERSED, CVN_SHORT_REVERSED, CVN_REVERSED, CVFEN_REVERSED
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
 
+
+        REAL, DIMENSION( : ), allocatable :: sf_val_min
+
         !Variables to store things in state
         type(mesh_type), pointer :: fl_mesh
         type(mesh_type) :: Auxmesh
@@ -2271,7 +2279,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: sf
-        real, dimension( : ), allocatable :: vol_s_gi
+        integer :: cv_nodip
+        real, dimension( : ), allocatable :: vol_s_gi, vol_s_min_gi
 
         !! Boundary_conditions
 
@@ -3019,9 +3028,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            end if
 
            allocate( vol_s_gi( cv_ngi_short ) )
+           allocate( vol_s_min_gi( cv_ngi_short ) )
            allocate( cv_dengi( nphase, cv_ngi_short ) )
 
         endif
+
+
 
 
         Loop_Elements: DO ELE = 1, TOTELE ! Volume integral
@@ -3145,18 +3157,21 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                       CV_INOD = CV_NDGLN( ( ELE - 1 ) * MAT_NLOC + MAT_ILOC )
 
 
+                 if(.false.) then ! delete this...
                       DO IDIM=1,NDIM
                          DO IPHASE=1,NPHASE
                             I=IDIM + (IPHASE-1)*NDIM
                            LOC_U_ABSORB( I, I, MAT_ILOC ) = LOC_U_ABSORB( I, I, MAT_ILOC ) + &
                                  !COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
-                                 COEFF_SOLID_FLUID * ( max( 1.0, DEN_ALL( IPHASE, cv_inod )) / dt ) * sf%val( cv_inod )
+                                 COEFF_SOLID_FLUID_stab * ( min ( 1.0, DEN_ALL( IPHASE, cv_inod )) / dt ) * sf%val( cv_inod )
 
+! not used...
                             LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) &
                                  !+ COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt )
-                                 + COEFF_SOLID_FLUID * ( max( 1.0, DEN_ALL( IPHASE, cv_inod ) ) / dt )
+                                 + COEFF_SOLID_FLUID_stab * ( min ( 1.0, DEN_ALL( IPHASE, cv_inod ) ) / dt )
                          END DO
                       END DO
+                  endif
 
 
 
@@ -3196,10 +3211,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                         DO IPHASE=1,NPHASE
                             I=IDIM + (IPHASE-1)*NDIM
                             LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
-                                   COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
+                                   COEFF_SOLID_FLUID_stab *( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
   
-                            LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC )  &
-                                  + COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) 
+!                            LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC )  &
+!                                  + COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) 
                         END DO
                       END DO
                        
@@ -3390,8 +3405,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                          ipha_idim=idim + (iphase-1)*ndim
 !                         SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID*max( dengi( iphase, : ), min_den_for_solid_fluid ) * vol_s_gi(:) / dt
 !                         SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID*max( dengi( iphase, : ), min_den_for_solid_fluid ) / dt
-                         SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) * vol_s_gi(:) / dt
-                         SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) / dt
+                         SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID_relax*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) * vol_s_gi(:) / dt
+                         SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID_relax*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) / dt
                       end do
                    end do
                 end if
@@ -8973,7 +8988,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       logical, dimension( :, : ), allocatable :: u_on_face, ufem_on_face, &
            &                                     ph_on_face, phfem_on_face
       integer, pointer :: ncolgpts
-      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, ph_ndgln, u_ndgln
+      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, ph_ndgln, u_ndgln, surface_node_list
       integer, dimension( :, : ), pointer :: ph_neiloc, ph_sloclist, u_sloclist
       logical :: quad_over_whole_ele, d1, d3, dcyl
       type( vector_field ), pointer :: x
@@ -9001,28 +9016,28 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       real, dimension( :, :, : ), pointer :: other_fenlx_all
       real, dimension( :, :, : ), pointer :: other_fenx_all
 
-      real :: nxnx, nm
+      real :: nxnx, nm, gravity_magnitude
 
       type( scalar_field ) :: rhs, ph_sol
       type( petsc_csr_matrix ) :: matrix
       type( csr_sparsity ), pointer :: sparsity
 
-      character( len = OPTION_PATH_LEN ) :: path = "/tmp"
+      character( len = OPTION_PATH_LEN ) :: path = "/tmp", bc_type
 
       type( tensor_field ), pointer :: rho
-      type( scalar_field ), pointer :: printf
-      type( vector_field ), pointer :: printu, x_p2
+      type( scalar_field ), pointer :: printf, pfield
+      type( vector_field ), pointer :: printu, x_p2, gravity_direction
 
 
-      logical :: on_boundary
-      integer :: ph_jnod2, ierr, count, count2, i,j
+      logical :: on_boundary, boussinesq, got_free_surf
+      integer :: inod, ph_jnod2, ierr, count, count2, i,j
       integer, dimension(:), pointer :: findph, colph
-
-
 
 
       ewrite(3,*) "inside high_order_pressure_solve"
 
+
+      boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
 
       printu => extract_vector_field( state( 1 ), "f_x", stat )
       if ( stat == 0 ) call zero( printu  )
@@ -9143,10 +9158,20 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       u_ph_source_cv = 0.0
 
       ! set the gravity term
+      if ( have_option( "/physical_parameters/gravity/fem_density_buoyancy" ) ) then
+         rho => extract_tensor_field( packed_state, "PackedFEDensity" ) 
+      else
+         rho => extract_tensor_field( packed_state, "PackedDensity" )
+      end if
+      
 
-      rho => extract_tensor_field( packed_state, "PackedDensity" )
+      call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude )
+      gravity_direction => extract_vector_field( state( 1 ), "GravityDirection" )
 
-      u_ph_source_cv( 3, 1, : ) = -rho % val( 1, 1, : ) * 9.8
+      do idim = 1, ndim
+         u_ph_source_cv( idim, 1, : ) = rho % val( 1, 1, : ) * &
+                    gravity_magnitude * gravity_direction % val( idim, 1 )
+      end do
 
 
       sparsity => extract_csr_sparsity( packed_state, "phsparsity" )
@@ -9209,8 +9234,12 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
                        tmp_cvfen( cv_iloc, : ) * coef_alpha_cv( iphase, cv_inod )
 
-                  den_gi( :, iphase ) = den_gi( :, iphase ) + &
-                       tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
+                  if ( boussinesq ) then
+                     den_gi( :, iphase ) = 1.0
+                  else
+                     den_gi( :, iphase ) = den_gi( :, iphase ) + &
+                          tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
+                  end if
                end do
             end do
 
@@ -9276,34 +9305,40 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
          if ( iloop == 1 ) then
 
-            ! don't apply boundary conditions but
-            ! don't forget to remove the null space
-            if ( .true. ) then
+            got_free_surf = .false.
+            pfield => extract_scalar_field( packed_state, "FEPressure" )
+            do i = 1, size( pfield%bc%boundary_condition )
+               call get_boundary_condition( pfield, i, type=bc_type, surface_node_list=surface_node_list )
+               if ( trim( bc_type ) == "freesurface" ) then
+                  got_free_surf = .true.
+                  exit
+               end if
+            end do
+
+            ! if free surface apply a boundary condition
+            ! else don't forget to remove the null space
+            if ( got_free_surf ) then
                findph => sparsity % findrm
                colph => sparsity % colm
-               x_p2 => extract_vector_field( state( 1 ), "DiagnosticCoordinate2" )
-               do ph_inod = 1, ph_nonods
-                  on_boundary = .false.
-                  if ( x_p2 % val( 3, ph_inod ) > 499.999 ) on_boundary = .true.
-                  if ( on_boundary ) then
-                     rhs % val( ph_inod ) = 0.0
-                     do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
-                        ph_jnod = colph( count )
-                        if ( ph_jnod /= ph_inod ) then
-                           i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
-                           j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
-                           call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                           do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
-                              ph_jnod2 = colph( count2 )
-                              if ( ph_jnod2 == ph_inod ) then
-                                 i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
-                                 j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
-                                 call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
-                              end if
-                           end do
-                        end if
-                     end do
-                  end if
+               do inod = 1, size( surface_node_list )
+                  ph_inod = surface_node_list( inod )
+                  rhs % val( ph_inod ) = 0.0
+                  do count = findph( ph_inod ), findph( ph_inod + 1 ) - 1
+                     ph_jnod = colph( count )
+                     if ( ph_jnod /= ph_inod ) then
+                        i = matrix % row_numbering % gnn2unn( ph_inod, 1 )
+                        j = matrix % column_numbering % gnn2unn( ph_jnod, 1 )
+                        call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                        do count2 = findph( ph_jnod ), findph( ph_jnod + 1 ) - 1
+                           ph_jnod2 = colph( count2 )
+                           if ( ph_jnod2 == ph_inod ) then
+                              i = matrix % row_numbering % gnn2unn( ph_jnod, 1 )
+                              j = matrix % column_numbering % gnn2unn( ph_jnod2, 1 )
+                              call MatSetValue( matrix % m, i, j, 0.0, INSERT_VALUES, ierr )
+                           end if
+                        end do
+                     end if
+                  end do
                end do
             end if
 
@@ -9318,8 +9353,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
             call set_option( &
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
-            !call add_option( &
-            !     trim( path ) // "/solver/remove_null_space", stat )
+            if ( .not.got_free_surf ) call add_option( &
+                    trim( path ) // "/solver/remove_null_space", stat )
             ph_sol % option_path = path
 
             call petsc_solve( ph_sol, matrix, rhs )
@@ -9350,6 +9385,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       return
     end subroutine high_order_pressure_solve
+
 
 
 end module multiphase_1D_engine

@@ -81,6 +81,8 @@
     USE multiphase_rheology
     use vtk_interfaces
 
+    use multi_interpolation
+
 #ifdef HAVE_ZOLTAN
   use zoltan
 #endif
@@ -668,7 +670,7 @@
 
          ! update velocity absorption
          call update_velocity_absorption( state, ndim, nphase, mat_nonods, velocity_absorption )
-         !call update_velocity_absorption_coriolis( state, ndim, nphase, velocity_absorption )
+         call update_velocity_absorption_coriolis( state, ndim, nphase, velocity_absorption )
 
          ! update velocity source
          call update_velocity_source( state, ndim, nphase, u_nonods, velocity_u_source )
@@ -1186,6 +1188,11 @@
 
          end if Conditional_TimeDump
 
+
+!Call initial Mesh to Mesh interpolation routine
+
+!call M2MInterpolation(state, packed_state, StorageIndexes, cv_ele_type, nphase, 0 )
+
 !!$! ******************
 !!$! *** Mesh adapt ***
 !!$! ******************
@@ -1296,6 +1303,10 @@
             call pack_multistate(state,packed_state,&
                  multiphase_state,multicomponent_state)
             call set_boundary_conditions_values(state, shift_time=.true.)
+
+! Mesh to Mesh Interpolation - After adapting the mesh
+
+!call M2MInterpolation(state, packed_state, StorageIndexes, cv_ele_type, nphase, 1 )
 
             if (allocated(Quality_list) ) deallocate(Quality_list)
 
