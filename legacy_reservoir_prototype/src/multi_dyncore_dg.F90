@@ -885,7 +885,7 @@ contains
         fem_density_buoyancy = have_option( "/physical_parameters/gravity/fem_density_buoyancy" )
 
         got_free_surf = .false.
-        do i = 1, size( pressure%bc%boundary_condition )
+        do i = 1, get_boundary_condition_count(pressure)
            call get_boundary_condition( pressure, i, type=bc_type )
            if ( trim( bc_type ) == "freesurface" ) then
               got_free_surf = .true.
