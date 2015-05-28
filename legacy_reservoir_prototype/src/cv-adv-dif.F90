@@ -874,6 +874,10 @@ contains
 ! Set up the fields...
 
       ALLOCATE( IGOT_T_PACK( NPHASE, 6 ), IGOT_T_CONST( NPHASE, 6 ), IGOT_T_CONST_VALUE( NPHASE, 6 ) )
+      IGOT_T_PACK=.FALSE.
+      IGOT_T_CONST( NPHASE, 6 )=.FALSE.
+      IGOT_T_CONST_VALUE( NPHASE, 6 )=0.0
+      
 
 ! FOR packing as well as for detemining which variables to apply interface tracking**********
 !          STORE=.TRUE.
@@ -9943,7 +9947,7 @@ CONTAINS
     INTEGER, intent( in ) :: CV_NONODS,X_NONODS,TOTELE,CV_NLOC, X_NLOC, &
          NSMALL_COLM, NDIM,IGOT_T2,NPHASE
     REAL, DIMENSION( :, : ), intent( in ) :: T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL
-    REAL, DIMENSION( :,:), intent( in ) :: T2_ALL,T2OLD_ALL
+    REAL, DIMENSION( :,:), intent( in ), pointer :: T2_ALL,T2OLD_ALL
     REAL, DIMENSION( :, :), intent( in ) :: FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL
     REAL, DIMENSION( :, :), intent( in ) :: FEMT2_ALL,FEMT2OLD_ALL
     LOGICAL, intent( in ) :: USE_FEMT ! Use the FEM solns rather than CV's when interpolating soln
