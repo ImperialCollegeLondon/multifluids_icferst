@@ -247,7 +247,7 @@
       !Working pointers
 
       type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
-      type(scalar_field), pointer :: pressure_field, porosity_field, cv_pressure, fe_pressure
+      type(scalar_field), pointer :: pressure_field, porosity_field, cv_pressure, fe_pressure, f1, f2
       type(vector_field), pointer :: positions
 
       logical :: write_all_stats=.true.
@@ -448,7 +448,13 @@
       plike_grad_sou_coef=0.
       iplike_grad_sou=0
 
-
+      do iphase = 1, nphase
+         f1 => extract_scalar_field( state(iphase), "Temperature", stat )
+         if ( stat==0 ) then
+            f2 => extract_scalar_field( state(iphase),"Dummy" )
+            f2%val = f1%val
+         end if
+      end do
 
 !!$ Extracting Mesh Dependent Fields
       initialised = .false.
@@ -457,6 +463,7 @@
 !!$ Calculate diagnostic fields
       call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
       call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
+
 !!$
 !!$ Initialising Absorption terms that do not appear in the schema
 !!$
@@ -550,17 +557,19 @@
 
       !Look for bad elements to apply a correction on them
       if (is_porous_media) then
-          pressure_field=>extract_scalar_field(packed_state,"FEPressure")
-          allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
-            call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc,Max_bad_angle, Min_bad_angle, Quality_list&
-                ,pressure_field%mesh%shape%degree)
+         pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+         allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
+         call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc,Max_bad_angle, Min_bad_angle, Quality_list&
+           ,pressure_field%mesh%shape%degree)
+
+         !Get into packed state relative permeability, immobile fractions, ...
+         call get_RockFluidProp(state, packed_state)
+         !Convert material properties to be stored using region ids, only if porous media
+         call get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, &
+           fake_IDs_ndgln = .not. is_porous_media .or. is_multifracture )
+
       end if
 
-      !Get into packed state relative permeability, immobile fractions, ...
-      call get_RockFluidProp(state, packed_state)
-      !Convert material properties to be stored using region ids, only if porous media
-      call get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, &
-        fake_IDs_ndgln = .not. is_porous_media .or. is_multifracture )
 
 !!$ Starting Time Loop
       itime = 0
@@ -718,7 +727,7 @@
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
 
-            if( solve_force_balance ) then
+            if( solve_force_balance .and. is_porous_media ) then
                call Calculate_AbsorptionTerm( state, packed_state,&
                     cv_ndgln, mat_ndgln, &
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption, ids_ndgln, IDs2CV_ndgln )
@@ -1155,6 +1164,14 @@
          call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
               cv_ndgln, DRhoDPressure )
 
+         do iphase = 1, nphase
+            f1 => extract_scalar_field( state(iphase), "Temperature", stat )
+            if ( stat==0 ) then
+               f2 => extract_scalar_field( state(iphase),"Dummy" )
+               f2%val = f1%val
+            end if
+         end do
+
 !!$ Calculate diagnostic fields
          call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
          call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
@@ -1412,10 +1429,12 @@
                  mx_nface_p1 )
 
 
-            !Re-calculate IDs_ndgln after adapting the mesh
-            call get_RockFluidProp(state, packed_state)
-            !Convert material properties to be stored using region ids, only if porous media
-            call get_regionIDs2nodes(state, packed_state, cv_ndgln, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
+            if (is_porous_media) then
+               !Re-calculate IDs_ndgln after adapting the mesh
+               call get_RockFluidProp(state, packed_state)
+               !Convert material properties to be stored using region ids, only if porous media
+               call get_regionIDs2nodes(state, packed_state, cv_ndgln, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
+            end if
 
             !Look again for bad elements
             if (is_porous_media) then
@@ -1519,7 +1538,7 @@
 
 
             if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
-                 ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One/after_adapt' ) ) then
+                 ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
                ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
                MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
                MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
@@ -1564,12 +1583,17 @@
          end if
 
 
-         !if ( after_adapt  ) then
-         !   NonLinearIteration = 6
-         !else
-         !   NonLinearIteration = 3
-         !end if
+         if ( do_reallocate_fields ) then
+            after_adapt=.true.
+         else
+            after_adapt=.false.
+         end if
 
+         if ( after_adapt .and. have_option( '/mesh_adaptivity/hr_adaptivity/nonlinear_iterations_after_adapt' ) ) then
+            call get_option( '/mesh_adaptivity/hr_adaptivity/nonlinear_iterations_after_adapt', NonLinearIteration )
+         else
+            call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
+         end if
 
          call set_boundary_conditions_values(state, shift_time=.true.)
 
@@ -1667,7 +1691,7 @@
            sparsity = wrap( findph, colm = colph, name = "phsparsity" )
            call insert( packed_state, sparsity, "phsparsity" )
            call deallocate( sparsity )
-	   deallocate ( sparsity )
+           deallocate ( sparsity )
         end if
 
 

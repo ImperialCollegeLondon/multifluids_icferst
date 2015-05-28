@@ -824,6 +824,9 @@ hr_adaptivity =
          element project_continuity {
             empty
          }?,
+         element nonlinear_iterations_after_adapt {
+            integer
+         }?,
          ## Enable this option to preserve any regions in your
          ## mesh (i.e. those specified by region_ids).
          ## Also, any prescribed fields using region_ids will be

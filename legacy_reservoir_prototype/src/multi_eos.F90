@@ -96,8 +96,7 @@
       type( tensor_field ), pointer :: field1, field2, field3, field4
       type( scalar_field ), pointer :: Cp_s
       integer :: icomp, iphase, ncomp, sc, ec, sp, ep, stat, cv_iloc, cv_nod, ele
-
-      logical :: boussinesq=.true.
+      logical :: boussinesq
 
       DRhoDPressure = 0.
 
@@ -146,6 +145,7 @@
             if( ncomp > 1 ) then
                field4 => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
                Component_l = field4 % val ( icomp, iphase, :)
+
                if ( have_option( '/material_phase[0]/linearise_component' ) ) then
                   ! linearise component
                   if ( cv_nloc==6 .or. (cv_nloc==10 .and. ndim==3) ) then ! P2 triangle or tet
@@ -225,6 +225,7 @@
          end if
       end do ! iphase
 
+      boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
       if ( boussinesq ) field2 % val = 1.0
 
       deallocate( Rho, dRhodP, Cp, Component_l)

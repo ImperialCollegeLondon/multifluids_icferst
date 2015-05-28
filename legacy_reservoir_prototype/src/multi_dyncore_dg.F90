@@ -197,7 +197,8 @@ contains
 
     IGOT_T2_loc = 0
 
-    if ( thermal ) then
+    if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
+
        p => extract_scalar_field( packed_state, "CVPressure" )
        den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
        denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
@@ -865,7 +866,6 @@ contains
 
         logical :: cty_proj_after_adapt, high_order_Ph, symmetric_P, boussinesq, fem_density_buoyancy
 
-
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
         symmetric_P = have_option( "/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P" )
         cty_proj_after_adapt = have_option( "/mesh_adaptivity/hr_adaptivity/project_continuity" ) 
@@ -1109,6 +1109,7 @@ contains
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,scale_momentum_by_volume_fraction ,&
         StorageIndexes, symmetric_P, boussinesq, IDs_ndgln )
 
+
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
             if (is_porous_media) then
@@ -1162,7 +1163,7 @@ contains
 
             if ( high_order_Ph ) then
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
-                  call high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase )
+                  call high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase, U_absorbin )
                end if
             end if
 
@@ -2219,7 +2220,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         INTEGER :: P_INOD, IDIM_VEL
         logical firstst
 
-        logical :: mom_conserv, lump_mass, BETWEEN_ELE_STAB
+        logical :: mom_conserv, lump_mass, lump_mass2, lump_absorption, BETWEEN_ELE_STAB
         real :: beta, therm_ftheta
 
         INTEGER :: FILT_DEN, J2, JU2_NOD_DIM_PHA
@@ -2447,6 +2448,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         if ( have_option( &
         '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix') &
         ) lump_mass = .true.
+
+        lump_absorption = .false.
+        if ( have_option( &
+             '/material_phase[0]/vector_field::Velocity/prognostic/vector_field::Absorption/lump_absorption') &
+             ) lump_absorption = .true.
+
+        lump_mass2 = .false.
+        if ( lump_absorption ) lump_mass2 = .true.
 
         ! This applies a non-linear shock capturing scheme which
         ! may be used to reduce oscillations in velocity or
@@ -3058,8 +3067,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                end if
             end if
 
-            
-
             ! *********subroutine Determine local vectors...
 
             LOC_U_RHS = 0.0
@@ -3441,14 +3448,16 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     DO U_JLOC = 1, U_NLOC
                     DO U_ILOC = 1, U_NLOC
                         DO GI = 1, CV_NGI
-
                             RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI )
-
-                            NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) = &
-                            NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) + RNN *SIGMAGI( :, :, GI )
-
+                            if ( lump_absorption ) then
+                               NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) = &
+                                    NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) + RNN * LOC_U_ABSORB( :, :, U_ILOC)
+                            else
+                               NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) = &
+                                    NN_SIGMAGI_ELE(:, :, U_ILOC, U_JLOC ) + RNN *SIGMAGI( :, :, GI )
+                            end if
                             NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) = &
-                            NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) + RNN *SIGMAGI_STAB( :, :, GI )
+                                 NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) + RNN *SIGMAGI_STAB( :, :, GI )
 
 ! Chris change ordering of NN_SIGMAGI_STAB_SOLID_RHS_ELE
                             IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, :, U_ILOC, U_JLOC ) =&
@@ -3458,10 +3467,22 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 DO JDIM = 1, NDIM_VEL
                                     JPHA_JDIM = JDIM + (JPHASE-1)*NDIM
 
-                                    NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) = NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                    + DENGI(JPHASE,GI) * RNN
-                                    NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) = NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
-                                    + DENGIOLD(JPHASE, GI) * RNN
+                                    if ( lump_mass2 ) then
+                                       NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) = NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
+                                            + DENGI(JPHASE,GI) * RNN
+                                       NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) = NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
+                                            + DENGIOLD(JPHASE, GI) * RNN
+                                       ! this is for full lumping
+                                       !NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) = NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
+                                       !     + RNN * LOC_uden( 1, u_iloc)
+                                       !NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) = NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
+                                       !     + RNN * LOC_uden( 1, u_iloc)
+                                    else
+                                       NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) = NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            + DENGI(JPHASE,GI) * RNN
+                                       NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) = NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
+                                            + DENGIOLD(JPHASE, GI) * RNN
+                                    end if
 
                                     IF(GOT_VIRTUAL_MASS) THEN
                                         DO IPHASE = 1, NPHASE
@@ -8938,7 +8959,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
 
-    subroutine high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase )
+    subroutine high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase, u_absorbin )
 
       implicit none
 
@@ -8947,6 +8968,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       type( state_type ), intent( inout ) :: packed_state
       integer, intent( in ) :: cv_ele_type, nphase
       integer, dimension( : ), intent( inout ) :: StorageIndexes
+
+      real, dimension( :, :, : ), intent( in ) :: u_absorbin
 
       ! local variables...
       type ( tensor_field ), pointer :: ufield
@@ -8966,7 +8989,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       logical, dimension( :, : ), allocatable :: u_on_face, ufem_on_face, &
            &                                     ph_on_face, phfem_on_face
       integer, pointer :: ncolgpts
-      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, ph_ndgln, u_ndgln, surface_node_list
+      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, ph_ndgln, u_ndgln, surface_node_list, mat_ndgln
       integer, dimension( :, : ), pointer :: ph_neiloc, ph_sloclist, u_sloclist
       logical :: quad_over_whole_ele, d1, d3, dcyl
       type( vector_field ), pointer :: x
@@ -8983,7 +9006,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       real, dimension( :, : ), allocatable :: alpha_ph, coef_alpha_ph, ph
 
       real, dimension( :, :, : ), allocatable :: u_s_gi, dx_alpha_gi
-      real, dimension( :, : ), allocatable :: coef_alpha_gi, den_gi, inv_den_gi
+      real, dimension( :, : ), allocatable :: coef_alpha_gi, den_gi, inv_den_gi, sigma_gi
 
       real, dimension( : ), pointer :: tmp_cv_weight
       real, dimension( :, : ), pointer :: tmp_cvfen
@@ -8994,7 +9017,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       real, dimension( :, :, : ), pointer :: other_fenlx_all
       real, dimension( :, :, : ), pointer :: other_fenx_all
 
-      real :: nxnx, nm, gravity_magnitude
+      real :: nxnx, nm, gravity_magnitude, dt
 
       type( scalar_field ) :: rhs, ph_sol
       type( petsc_csr_matrix ) :: matrix
@@ -9008,7 +9031,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
       logical :: on_boundary, boussinesq, got_free_surf
-      integer :: inod, ph_jnod2, ierr, count, count2, i,j
+      integer :: inod, ph_jnod2, ierr, count, count2, i, j, mat_inod
       integer, dimension(:), pointer :: findph, colph
 
 
@@ -9016,6 +9039,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
       boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
+
+      call get_option( '/timestepping/timestep', dt )
 
       printu => extract_vector_field( state( 1 ), "f_x", stat )
       if ( stat == 0 ) call zero( printu  )
@@ -9085,6 +9110,9 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       ph_nonods = node_count( phmesh )
       d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
 
+      mat_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Discontinuous" ) )
+
+
       if ( cv_nloc == u_nloc ) then
 
          tmp_cv_nloc = u_nloc
@@ -9128,7 +9156,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
            &    dx_alpha_gi( ph_ngi, ndim, nphase ), &
            &    coef_alpha_gi( ph_ngi, nphase ) )
 
-      allocate( den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ) )
+      allocate( den_gi( ph_ngi, nphase ), inv_den_gi( ph_ngi, nphase ), sigma_gi( ph_ngi, nphase ) )
 
       ! initialise memory
       u_ph_source_vel = 0.0 ; alpha_cv = 0.0 ; coef_alpha_cv = 0.0
@@ -9188,7 +9216,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             end if
 
             u_s_gi = 0.0 ; dx_alpha_gi = 0.0 ; coef_alpha_gi = 0.0
-            dx_ph_gi = 0.0 ; den_gi = 0.0
+            dx_ph_gi = 0.0 ; den_gi = 0.0 ; sigma_gi = 0.0
 
             do u_iloc = 1, u_nloc
                u_inod = u_ndgln( ( ele - 1 ) * u_nloc + u_iloc )
@@ -9202,6 +9230,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
             do cv_iloc = 1, cv_nloc
                cv_inod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+               mat_inod = mat_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+
                do iphase = 1, nphase
                   do idim = 1, ndim
                      dx_alpha_gi( :, idim, iphase ) = dx_alpha_gi( :, idim, iphase ) + &
@@ -9218,10 +9248,16 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &
                           tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
                   end if
+
+                  sigma_gi( :, iphase ) = sigma_gi( :, iphase ) + &
+                        tmp_cvfen( cv_iloc, : ) * u_absorbin( mat_inod, 1, iphase )
+
                end do
             end do
 
+            !inv_den_gi = 1.0 / ( den_gi + dt * sigma_gi )
             inv_den_gi = 1.0 / den_gi
+
 
             do ph_iloc = 1, ph_nloc
                ph_inod = ph_ndgln( ( ele - 1 ) * ph_nloc + ph_iloc )
@@ -9356,7 +9392,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       deallocate( u_ph_source_vel, u_ph_source_cv, alpha_cv, &
            &      coef_alpha_cv, u_ph_source_ph, alpha_ph, &
            &      ph, coef_alpha_ph, dx_ph_gi, u_s_gi, &
-           &      dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, &
+           &      dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, sigma_gi, &
            &      ph_on_face, phfem_on_face, u_on_face, ufem_on_face )
 
       ewrite(3,*) "leaving high_order_pressure_solve"

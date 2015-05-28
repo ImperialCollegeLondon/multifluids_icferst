@@ -2183,6 +2183,9 @@
       ! this could be cleaned up in the future.
       call add_new_memory(packed_state,pressure,"Dummy")
 
+      tfield => extract_tensor_field( state(1), "Dummy", stat )
+      if ( stat==0 ) call insert( packed_state, tfield, "Dummy" )
+
       p2=>extract_scalar_field(packed_state,"FEPressure")
       call set( p2, pressure )
       do icomp=1,ncomp

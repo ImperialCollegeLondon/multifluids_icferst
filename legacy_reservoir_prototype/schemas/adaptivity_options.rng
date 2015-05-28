@@ -960,6 +960,11 @@ without waiting for the first timestep adapt</a:documentation>
         </element>
       </optional>
       <optional>
+        <element name="nonlinear_iterations_after_adapt">
+          <ref name="integer"/>
+        </element>
+      </optional>
+      <optional>
         <element name="preserve_mesh_regions">
           <a:documentation>Enable this option to preserve any regions in your
 mesh (i.e. those specified by region_ids).
