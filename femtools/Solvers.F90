@@ -1887,20 +1887,25 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
         call PCGAMGSetThreshold(pc, 0.01, ierr)
-        !Improves the efficiency of the solver
-        call PCGAMGSetUseASMAggs(pc, .true., ierr)!Use aggregation agragates for GASM smoother. By default is false
-        !Add options via "commands"
-        gamg_options = '-multigrid'
-        !Set type of cycle v (faster) or w (more robust)
-        gamg_options = trim(gamg_options) // " " // "-pc_mg_cycles v"
-        !Set number of smoothup and smooth down
-        gamg_options = trim(gamg_options) // " " // "-pc_mg_smoothdown 2 -pc_mg_smoothup 2"
-        !Type of multigrid: additive,multiplicative,full,kaskade
-        gamg_options = trim(gamg_options) // " " // "-pc_mg_type multiplicative"
-        !Set to use GMRES as smoother, it seems to behave worse than the ASMAggs smoother
-!        gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres"
-        !Insert into petsc
-        call PetscOptionsInsertString(trim(gamg_options), ierr)
+
+        !Extra option for multiphase flow
+        if (is_porous_media) then
+            !Improves the efficiency of the solver
+            call PCGAMGSetUseASMAggs(pc, .true., ierr)!Use aggregation agragates for GASM smoother. By default is false
+            !Add options via "commands"
+            gamg_options = '-multigrid'
+            !Set type of cycle v (faster) or w (more robust)
+            gamg_options = trim(gamg_options) // " " // "-pc_mg_cycles v"
+            !Set number of smoothup and smooth down
+            gamg_options = trim(gamg_options) // " " // "-pc_mg_smoothdown 2 -pc_mg_smoothup 2"
+            !Type of multigrid: additive,multiplicative,full,kaskade
+            gamg_options = trim(gamg_options) // " " // "-pc_mg_type multiplicative"
+            !Set to use GMRES as smoother, it seems to behave worse than the ASMAggs smoother
+!           gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres"
+            !Insert into petsc
+            call PetscOptionsInsertString(trim(gamg_options), ierr)
+        end if
+
 
       end if
 #endif

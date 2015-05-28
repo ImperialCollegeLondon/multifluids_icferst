@@ -179,6 +179,9 @@ module global_parameters
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
   real :: dumping_in_sat
 
+  logical :: FPI_have_converged = .false.
+
+
   logical :: after_adapt = .false.
 
   contains

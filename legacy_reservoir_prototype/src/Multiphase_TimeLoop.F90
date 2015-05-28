@@ -1202,6 +1202,7 @@
             not_to_move_det_yet = .false. ; dump_no = itime/dump_period_in_timesteps ! Sync dump_no with itime
             call write_state( dump_no, state ) ! Now writing into the vtu files
 
+
          end if Conditional_TimeDump
 
 

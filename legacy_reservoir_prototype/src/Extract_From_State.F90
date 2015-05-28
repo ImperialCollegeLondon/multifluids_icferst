@@ -40,7 +40,7 @@
     use diagnostic_variables
     use diagnostic_fields
     use diagnostic_fields_wrapper
-    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat, is_multifracture
+    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat, is_multifracture, FPI_have_converged
     use diagnostic_fields_wrapper_new
     use element_numbering
     use shape_functions
@@ -2440,6 +2440,7 @@
          porosity%val = sfield%val
       end if
 
+
       if (has_scalar_field(state(1),"Permeability")) then
          call allocate(permeability,element_mesh,"Permeability",&
               dim=[mesh_dim(position),mesh_dim(position)])
@@ -3255,6 +3256,7 @@
       integer, intent(in) :: its, order
       !Local variables
       real :: dt
+      logical, save :: show_FPI_conv
       logical, save :: Time_step_decreased_with_dumping = .false.
       real, save :: OldDt
       real, save :: Accumulated_sol
@@ -3289,7 +3291,7 @@
            max_ts, default = huge(min_ts) )
       call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/min_timestep', &
            min_ts, default = -1. )
-
+      show_FPI_conv = have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')
       !Switches are relative to the input value unless otherwise stated
       if (have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_ts_switch')) then
           call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear/increase_ts_switch', &
@@ -3395,20 +3397,28 @@
             !information about convergence to the trust_region_method
             dumping_in_sat = ts_ref_val
 
-            ewrite(1,*) "Fixed Point Iteration convergence:", ts_ref_val, "Non-linear iteration", its
+            ewrite(1,*) "FPI convergence:", ts_ref_val, "Total iterations:", its
 
-!            if (Accumulated_sol < 1.0) then
+!            !Jump to the next time step and restart FPI_have_converged after performing that extra time step
+!            if (FPI_have_converged) then
+!                ExitNonLinearLoop = .true.
+!                FPI_have_converged = .false.
+!                return
+!            end if
+!
+!            !Enforce one final iteration with a dumping parameter of 1
+!            if (ts_ref_val < tolerance_between_non_linear .or. its == NonLinearIteration - 1) then
+!                FPI_have_converged = .true.
 !                return
 !            end if
 
             !If only non-linear iterations
             if (.not.nonLinearAdaptTs) then
                !Automatic non-linear iteration checking
-                ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
-                   if (ExitNonLinearLoop .and. &
-                    have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Show_Convergence')) then
-                        !We tell the user the number of FPI and final convergence to help improving the parameters
-                         ewrite(0,*) "FPI convergence:", ts_ref_val, "Number of FPI to converge", its
+                ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear .or. its >= NonLinearIteration)
+                   if (ExitNonLinearLoop .and. show_FPI_conv) then
+                        !Tell the user the number of FPI and final convergence to help improving the parameters
+                         print *, "FPI convergence:", ts_ref_val, "Total iterations:", its
                    end if
                return
             end if
@@ -3456,37 +3466,70 @@
                    Repeat_time_step = .true.
                    ExitNonLinearLoop = .true.
                 end if
-            else
-                !Check if after decreasing the time step we can increase it again
-                if (ts_ref_val < tolerance_between_non_linear .and. Time_step_decreased_with_dumping) then
-                    !After converging we set back the old time step and disable this check
-                    call set_option( '/timestepping/timestep', OldDt )
-                    ewrite(1,*) "Time step set back to:", OldDt
-                    Time_step_decreased_with_dumping = .false.
-                    ExitNonLinearLoop = .true.
-                    Repeat_time_step = .false.
-                    return
-                end if
-                !We do it one time-step and then we go back to the previous time-step
-                if (its>=int(NonLinearIteration)) then
-                   !Decrease time step, reset the time and repeat!
-                   call get_option( '/timestepping/timestep', dt )
-                   !Store this time step (the first time we reduce the time step) to return to it later on
-                   if (.not. Time_step_decreased_with_dumping)  OldDt = dt
+            else!Adaptive Ts for Dumping based on the number of FPI
+                if (ts_ref_val < tolerance_between_non_linear) then
+                    if (its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
+                       !Increase time step
+                       call get_option( '/timestepping/timestep', dt )
+                       dt = dt * increaseFactor
+                       call set_option( '/timestepping/timestep', dt )
+                       ewrite(1,*) "Time step increased to:", dt
+                       ExitNonLinearLoop = .true.
+                       return
+                    end if
+                else if (its >= NonLinearIteration) then
+                !If it has not converged when reaching the maximum number of non-linear iterations,
+                !reduce ts and repeat
+                    !Decrease time step for next time step
+                       if ( dt / decreaseFactor < min_ts) then
+                          !Do not decrease
+                          Repeat_time_step = .false.
+                          ExitNonLinearLoop = .true.
+                          deallocate(reference_field)
+                          return
+                       end if
 
-                   call get_option( '/timestepping/current_time', acctim )
-                   acctim = acctim - dt
-                   call set_option( '/timestepping/current_time', acctim )
-                   dt = dt / decreaseFactor
-                   call set_option( '/timestepping/timestep', dt )
-                   ewrite(1,*) "Time step decreased to:", dt
-                   Repeat_time_step = .true.
-                   ExitNonLinearLoop = .true.
-                   Time_step_decreased_with_dumping = .true.
-                else
-                   ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
-                   return
+                       !Decrease time step, reset the time and repeat!
+                       call get_option( '/timestepping/timestep', dt )
+                       call get_option( '/timestepping/current_time', acctim )
+                       acctim = acctim - dt
+                       call set_option( '/timestepping/current_time', acctim )
+                       dt = dt / decreaseFactor
+                       call set_option( '/timestepping/timestep', dt )
+                       ewrite(1,*) "Time step decreased to:", dt
+                       Repeat_time_step = .true.
+                       ExitNonLinearLoop = .true.
                 end if
+!                !Check if after decreasing the time step we can increase it again
+!                if (ts_ref_val < tolerance_between_non_linear .and. Time_step_decreased_with_dumping) then
+!                    !After converging we set back the old time step and disable this check
+!                    call set_option( '/timestepping/timestep', OldDt )
+!                    ewrite(1,*) "Time step set back to:", OldDt
+!                    Time_step_decreased_with_dumping = .false.
+!                    ExitNonLinearLoop = .true.
+!                    Repeat_time_step = .false.
+!                    return
+!                end if
+!                !We do it one time-step and then we go back to the previous time-step
+!                if (its>=int(NonLinearIteration)) then
+!                   !Decrease time step, reset the time and repeat!
+!                   call get_option( '/timestepping/timestep', dt )
+!                   !Store this time step (the first time we reduce the time step) to return to it later on
+!                   if (.not. Time_step_decreased_with_dumping)  OldDt = dt
+!
+!                   call get_option( '/timestepping/current_time', acctim )
+!                   acctim = acctim - dt
+!                   call set_option( '/timestepping/current_time', acctim )
+!                   dt = dt / decreaseFactor
+!                   call set_option( '/timestepping/timestep', dt )
+!                   ewrite(1,*) "Time step decreased to:", dt
+!                   Repeat_time_step = .true.
+!                   ExitNonLinearLoop = .true.
+!                   Time_step_decreased_with_dumping = .true.
+!                else
+!                   ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
+!                   return
+!                end if
             end if
          end if
 
@@ -3498,6 +3541,9 @@
        !We create the potential to optimize F = sum (f**2), so the solution is when this potential
        !reach a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
        !f = (NewSat-OldSat)/Number of nodes; this is the typical approach for algebraic non linear systems
+       !
+       !The convergence is independent of the dumping parameter
+       !and measures how the previous iteration (i.e. using the previous dumping parameter) performed
         implicit none
         real, dimension(:,:), intent(in) :: phasevolumefraction, reference_sat
         real, intent(in) :: dumping
