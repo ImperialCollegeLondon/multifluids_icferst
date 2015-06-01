@@ -3009,7 +3009,7 @@ end if
       !TUP(1+NPHASE:2*NPHASE)=(1.0-INCOMEOLD(1:NPHASE))*femTOLD_ALL(1:NPHASE,CV_NODI) + INCOMEOLD(1:NPHASE)*femTOLD_ALL(1:NPHASE,CV_NODJ)
 
 
-      W(:)=0.0 ! =0 means always apply ENO. 
+      W = 0.0 ! =0 means always apply ENO.
       IF(ENO_ONLY_WHERE_OSCILLATE) THEN
          ! Use ENO only where there is an oscillation as it can be a bit dissipative. 
          GOT_AN_OSC=.FALSE.
@@ -3029,8 +3029,6 @@ end if
          ! Nothing to do if no oscillations detected...
  !        IF(.NOT.GOT_AN_OSC) RETURN
       ENDIF
-
-
 
       IF(DISTCONTINUOUS_METHOD.AND.(.NOT.BETWEEN_ELEMENTS).AND.FOR_DG_ONLY_BETWEEN_ELE) THEN ! Use fem INSIDE element for DG method...
          TGI = TGI_ELE
@@ -3184,7 +3182,7 @@ end if
             end do
          end if
 
-         INCOME_BOTH(1:NPHASE)=INCOME(1:NPHASE)
+         INCOME_BOTH(1:NPHASE)         =INCOME(1:NPHASE)
          INCOME_BOTH(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)
 
 
@@ -3203,10 +3201,10 @@ end if
                TGI_OUT=RELAX_DOWN_WIND_2_CURRENT_ELE * TGI_ELE + (1.0-RELAX_DOWN_WIND_2_CURRENT_ELE) * TGI_NEI2
             ELSE
                ! Upwind value...
-               TGI_NEI(1:NPHASE)=INCOME(1:NPHASE)*TGI_IN(1:NPHASE) + (1.0-INCOME(1:NPHASE))*TGI_OUT(1:NPHASE)
+               TGI_NEI(1:NPHASE)         =INCOME(1:NPHASE   )*TGI_IN(1:NPHASE         ) + (1.0-INCOME(1:NPHASE))   *TGI_OUT(1:NPHASE)
                TGI_NEI(1+NPHASE:2*NPHASE)=INCOMEOLD(1:NPHASE)*TGI_IN(1+NPHASE:2*NPHASE) + (1.0-INCOMEOLD(1:NPHASE))*TGI_OUT(1+NPHASE:2*NPHASE)
                ! Downwind value...
-               TGI_NEI2(1:NPHASE)=(1.0-INCOME(1:NPHASE))*TGI_IN(1:NPHASE) + INCOME(1:NPHASE)*TGI_OUT(1:NPHASE)
+               TGI_NEI2(1:NPHASE)         =(1.0-INCOME(1:NPHASE)   )*TGI_IN(1:NPHASE)          + INCOME   (1:NPHASE)*TGI_OUT(1:NPHASE)
                TGI_NEI2(1+NPHASE:2*NPHASE)=(1.0-INCOMEOLD(1:NPHASE))*TGI_IN(1+NPHASE:2*NPHASE) + INCOMEOLD(1:NPHASE)*TGI_OUT(1+NPHASE:2*NPHASE)
                !
                TGI_IN=TGI_NEI

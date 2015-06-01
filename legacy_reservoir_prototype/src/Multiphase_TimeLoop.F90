@@ -451,8 +451,8 @@
       do iphase = 1, nphase
          f1 => extract_scalar_field( state(iphase), "Temperature", stat )
          if ( stat==0 ) then
-            f2 => extract_scalar_field( state(iphase),"Dummy" )
-            f2%val = f1%val
+            f2 => extract_scalar_field( state(iphase),"Dummy", stat )
+            if ( stat==0 ) f2%val = f1%val
          end if
       end do
 
@@ -1167,8 +1167,8 @@
          do iphase = 1, nphase
             f1 => extract_scalar_field( state(iphase), "Temperature", stat )
             if ( stat==0 ) then
-               f2 => extract_scalar_field( state(iphase),"Dummy" )
-               f2%val = f1%val
+               f2 => extract_scalar_field( state(iphase),"Dummy", stat )
+               if ( stat==0 ) f2%val = f1%val
             end if
          end do
 
