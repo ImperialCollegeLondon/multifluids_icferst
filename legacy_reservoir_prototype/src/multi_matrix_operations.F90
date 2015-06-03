@@ -342,11 +342,11 @@
 
 
 
-       SUBROUTINE COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, &
+       SUBROUTINE COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
          NCOLC, FINDC, COLC, &
          INV_PIVIT_MAT,  &
          TOTELE, U_NLOC, U_NDGLN, &
-         NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
+         NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
          got_free_surf,  MASS_SUF, &
          C, CT, state, indx, halos, symmetric_P )
@@ -354,7 +354,7 @@
       !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
       implicit none
       ! form pressure matrix CMC using a colouring approach
-      INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC, &
+      INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, NCOLC, &
            TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
       LOGICAL, intent( in ) :: got_free_surf, symmetric_P
       INTEGER, DIMENSION( : ), intent( in ) ::FINDC
@@ -364,6 +364,7 @@
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
       REAL, DIMENSION( : ), intent( in ) :: DIAG_SCALE_PRES
+      REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       REAL, DIMENSION( : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES

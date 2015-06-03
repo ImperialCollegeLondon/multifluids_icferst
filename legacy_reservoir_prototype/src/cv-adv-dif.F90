@@ -118,10 +118,10 @@ contains
          tracer, velocity, density, &
          CV_RHS_field, PETSC_ACV,&
          SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
-         NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
+         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CT_RHS, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
          CV_ELE_TYPE,  &
-         NPHASE,  &
+         NPHASE, NPRES, &
          CV_NLOC, U_NLOC, X_NLOC, &
          CV_NDGLN, X_NDGLN, U_NDGLN, &
          CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -275,7 +275,7 @@ contains
       INTEGER, intent( in ) :: NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, &
            TOTELE, &
            CV_ELE_TYPE, &
-           NPHASE, CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, &
+           NPHASE, NPRES, CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, &
            CV_SNLOC, U_SNLOC, STOTEL, CV_DISOPT, CV_DG_VEL_INT_OPT, NDIM, &
            NCOLM, XU_NLOC, NCOLELE, &
            IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -292,6 +292,8 @@ contains
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
       ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
       REAL, DIMENSION( : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
+      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! nphase x nphase x cv_nonods
+      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS ! npres x npres x cv_nonods
       type(scalar_field), intent( inout ) :: CT_RHS
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
@@ -444,7 +446,7 @@ contains
            CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
            NFACE, X_NODI,  X_NODJ, &
            CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, &
-           XNOD, NSMALL_COLM, COUNT2, NOD
+           XNOD, NSMALL_COLM, COUNT2, NOD, N_IN_PRES
       !        ===>  REALS  <===
       REAL :: HDC, &
            VTHETA, &
@@ -619,6 +621,9 @@ contains
     T_ALL_KEEP = T_ALL
 
     IF( GETCT ) THEN
+
+       N_IN_PRES = NPHASE / NPRES
+
        IF( RETRIEVE_SOLID_CTY ) THEN
           ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
           ALLOCATE(U_HAT_ALL(NDIM,U_NONODS))

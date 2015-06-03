@@ -155,9 +155,11 @@ contains
     integer, optional :: icomp
     ! Local variables
     LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE. 
+    INTEGER, PARAMETER :: NPRES = 1
     integer :: nits_flux_lim, its_flux_lim
     logical :: lump_eqns
     REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES
+    REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
     real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
     REAL, DIMENSION( : , : , : ), allocatable :: CT
     REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
@@ -191,6 +193,7 @@ contains
 
     allocate( den_all( nphase, cv_nonods ), denold_all( nphase, cv_nonods ) )
     allocate(Ct(0,0,0),DIAG_SCALE_PRES(0))
+    allocate(DIAG_SCALE_PRES_COUP(0,0,0), GAMMA_PRES_ABS(0,0,0))
 
     allocate( T_SOURCE( nphase, cv_nonods ) ) ; T_SOURCE=0.0
 
@@ -279,10 +282,10 @@ contains
             CV_RHS_field, &
             petsc_acv, &
             SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-            NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
+            NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CT_RHS, FINDCT, COLCT, &
             CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
             CV_ELE_TYPE, &
-            NPHASE, &
+            NPHASE, NPRES, &
             CV_NLOC, U_NLOC, X_NLOC, &
             CV_NDGLN, X_NDGLN, U_NDGLN, &
             CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -493,8 +496,10 @@ contains
       integer, intent(in) :: nonlinear_iteration
       ! Local Variables
       LOGICAL, PARAMETER :: THERMAL= .false.
+      INTEGER, PARAMETER :: NPRES = 1
       integer :: igot_t2
       REAL, DIMENSION( : ), allocatable :: mass_mn_pres, DIAG_SCALE_PRES
+      REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
       REAL, DIMENSION( :,:,: ), allocatable :: CT
       REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
       REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
@@ -558,8 +563,9 @@ contains
 
       ALLOCATE( mass_mn_pres(size(small_colacv)) ) ; mass_mn_pres = 0.
       ALLOCATE( CT( 0,0,0 ) )
-      ALLOCATE( DIAG_SCALE_PRES( CV_NONODS ) )
-      ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) )
+      ALLOCATE( DIAG_SCALE_PRES( 0 ) )
+      ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( 0,0,0 ) )
+      ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) ) ; TDIFFUSION = 0.
       ALLOCATE( MEAN_PORE_CV( CV_NONODS ) )
 
 
@@ -608,10 +614,10 @@ contains
           CV_RHS_field, &
           petsc_acv, &
           SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-          NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
+          NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CT_RHS, FINDCT, COLCT, &
           CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
           CV_ELE_TYPE,  &
-          NPHASE, &
+          NPHASE, NPRES, &
           CV_NLOC, U_NLOC, X_NLOC, &
           CV_NDGLN, X_NDGLN, U_NDGLN, &
           CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -706,7 +712,7 @@ contains
 
       DEALLOCATE( mass_mn_pres )
       DEALLOCATE( CT )
-      DEALLOCATE( DIAG_SCALE_PRES )
+      DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS )
       DEALLOCATE( TDIFFUSION )
       IF ( IGOT_T2 == 1 ) THEN
          DEALLOCATE( T2 )
@@ -832,6 +838,8 @@ contains
         LOGICAL, PARAMETER :: use_continuous_pressure_solver = .false.!For DG pressure,the first non linear iteration we
                                                                         !use a continuous pressure
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
+        INTEGER, PARAMETER :: NPRES = 1
+        INTEGER :: N_IN_PRES
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
         INTEGER :: IGOT_CMC_PRECON
 ! Gidaspow model B - can use conservative from of
@@ -847,6 +855,7 @@ contains
         MCY_RHS, MCY, &
         CMC_PRECON, MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
+        REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ndpset, i
@@ -896,6 +905,8 @@ contains
         IGOT_CMC_PRECON = 0
         if ( symmetric_P ) IGOT_CMC_PRECON = 1
 
+        N_IN_PRES = NPHASE / NPRES
+
         ALLOCATE( U_ALL( NDIM, NPHASE, U_NONODS ), UOLD_ALL( NDIM, NPHASE, U_NONODS ), &
         X_ALL( NDIM, X_NONODS ), UDEN_ALL( NPHASE, CV_NONODS ), UDENOLD_ALL( NPHASE, CV_NONODS ))
         U_ALL = 0. ; UOLD_ALL = 0. ; X_ALL = 0. ; UDEN_ALL = 0. ; UDENOLD_ALL = 0.
@@ -905,6 +916,8 @@ contains
         ALLOCATE( CT( NDIM, NPHASE, NCOLCT )) ; CT=0.
         call allocate(ct_rhs,pressure%mesh,"CT_rhs")
         ALLOCATE( DIAG_SCALE_PRES( CV_NONODS )) ; DIAG_SCALE_PRES=0.
+        ALLOCATE(DIAG_SCALE_PRES_COUP(NPRES,NPRES,CV_NONODS),GAMMA_PRES_ABS(NPHASE,NPHASE,CV_NONODS))
+
         ALLOCATE( U_RHS( NDIM, NPHASE, U_NONODS )) ; U_RHS=0.
         ALLOCATE( MCY_RHS( NDIM * NPHASE * U_NONODS + CV_NONODS )) ; MCY_RHS=0.
         ALLOCATE( MCY( NCOLMCY )) ; MCY=0.
@@ -1087,7 +1100,7 @@ contains
 
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
              velocity,pressure, &
-        NDIM, NPHASE, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
+        NDIM, NPHASE, NPRES, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
         U_ELE_TYPE, P_ELE_TYPE, &
         U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
@@ -1110,7 +1123,7 @@ contains
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         NCOLM, FINDM, COLM, MIDM, &
         XU_NLOC, XU_NDGLN, &
-        U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, GLOBAL_SOLVE, &
+        U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GLOBAL_SOLVE, &
         NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -1139,11 +1152,11 @@ contains
                nullify(halo)
             end if
 
-            CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, &
+            CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
             NCOLC, FINDC, COLC, &
             PIVIT_MAT, &
             TOTELE, U_NLOC, U_NDGLN, &
-            NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
+            NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & 
             got_free_surf,  MASS_SUF, &
             C, CT, state, StorageIndexes(11), halo, symmetric_P )
@@ -1369,7 +1382,7 @@ contains
         pressure_state % val = CVP_all % val
 
         DEALLOCATE( CT )
-        DEALLOCATE( DIAG_SCALE_PRES )
+        DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS )
         DEALLOCATE( U_RHS )
         DEALLOCATE( MCY_RHS )
         DEALLOCATE( MCY )
@@ -1525,7 +1538,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
 
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
          velocity,pressure, &
-    NDIM, NPHASE, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
+    NDIM, NPHASE, NPRES, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
     U_ELE_TYPE, P_ELE_TYPE, &
     U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
@@ -1548,7 +1561,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
     NCOLM, FINDM, COLM, MIDM, &
     XU_NLOC, XU_NDGLN, &
-    U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, GLOBAL_SOLVE, &
+    U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GLOBAL_SOLVE, &
     NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
     UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -1567,7 +1580,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         type( tensor_field ), intent(in) :: velocity
         type( scalar_field ), intent(in) :: pressure
 
-        INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, &
+        INTEGER, intent( in ) :: NDIM, NPHASE, NPRES, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, &
         TOTELE, U_ELE_TYPE, P_ELE_TYPE, &
         U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
         STOTEL, U_SNLOC, P_SNLOC, &
@@ -1626,6 +1639,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         type(scalar_field), intent( inout ) :: CT_RHS
         REAL, DIMENSION( : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
+        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
         LOGICAL, intent( in ) :: GLOBAL_SOLVE
         INTEGER, DIMENSION( : ), intent( in ) :: FINMCY
         REAL, DIMENSION( : ), intent( inout ) :: MCY
@@ -1761,10 +1775,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         CV_RHS, &
         ACV, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-        NCOLCT, CT, DIAG_SCALE_PRES, CT_RHS, FINDCT, COLCT, &
+        NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CT_RHS, FINDCT, COLCT, &
         CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-        CV_ELE_TYPE,  &
-        NPHASE,  &
+        CV_ELE_TYPE, &
+        NPHASE, NPRES, &
         CV_NLOC, U_NLOC, X_NLOC, &
         CV_NDGLN, X_NDGLN, U_NDGLN, &
         CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
