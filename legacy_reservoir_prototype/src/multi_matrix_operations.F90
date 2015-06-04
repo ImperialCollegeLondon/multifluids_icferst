@@ -1615,6 +1615,44 @@
 
      END SUBROUTINE CT_MULT_WITH_C2
 
+   SUBROUTINE CT_MULT_WITH_C3( DP, U_ALL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
+         C, NCOLC, FINDC, COLC )
+      implicit none
+      ! DP = (C)^T U_ALL
+      INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC
+      REAL, DIMENSION( :, :, : ), intent( in ) :: U_ALL
+      REAL, DIMENSION( : ), intent( inout )  :: DP
+      REAL, DIMENSION( :, :, : ), intent( in ) :: C
+      INTEGER, DIMENSION( : ), intent( in ) ::FINDC
+      INTEGER, DIMENSION( : ), intent( in ) :: COLC
+      ! Local variables
+      INTEGER :: U_INOD, COUNT, P_JNOD, IPHASE, IDIM, COUNT_DIM_PHA
+
+      DP = 0.0
+
+      Loop_VelNodes: DO U_INOD = 1, U_NONODS
+
+         Loop_Crow: DO COUNT = FINDC( U_INOD ), FINDC( U_INOD + 1 ) - 1, 1
+            P_JNOD = COLC( COUNT )
+
+            Loop_Phase: DO IPHASE = 1, NPHASE
+               Loop_Dim: DO IDIM = 1, NDIM
+                  COUNT_DIM_PHA = COUNT + NCOLC*(IDIM-1) + NCOLC*NDIM*(IPHASE-1)
+                  DP( P_JNOD ) = DP( P_JNOD ) + C( IDIM, IPHASE, COUNT ) * U_ALL( IDIM, IPHASE, U_INOD )
+               END DO Loop_Dim
+            END DO Loop_Phase
+
+         END DO Loop_Crow
+
+      END DO Loop_VelNodes
+
+      RETURN
+
+     END SUBROUTINE CT_MULT_WITH_C3
+
+
+
+
 
 
     SUBROUTINE CT_MULT_WITH_C_MANY( DP, U_LONG, CV_NONODS, U_NONODS, NDIM, NPHASE, NBLOCK, &

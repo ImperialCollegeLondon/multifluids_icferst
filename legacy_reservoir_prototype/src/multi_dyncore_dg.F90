@@ -868,7 +868,7 @@ contains
         !CMC using petsc format
         type(petsc_csr_matrix)::  CMC_petsc
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
-        INTEGER :: MAT_INOD
+        INTEGER :: MAT_INOD, IPRES, JPRES
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
         REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, UDEN3
         REAL, DIMENSION( :, :, :, : ), allocatable :: UDIFFUSION_ALL
@@ -879,7 +879,7 @@ contains
         type( scalar_field ), pointer :: p_all, pold_all, cvp_all, pressure_state, sf, soldf
 
         type( vector_field ) :: packed_vel, rhs
-        type( scalar_field ) :: deltap, rhs_p
+        type( vector_field ) :: deltap, rhs_p
         type( petsc_csr_matrix ) :: mat
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
@@ -969,8 +969,8 @@ contains
         DEN_ALL(1:, 1:) => DEN_ALL2%VAL( 1, :, : )
         DENOLD_ALL(1:, 1:) => DENOLD_ALL2%VAL( 1, :, : )
 
-        call allocate(deltaP,pressure%mesh,"DeltaP")
-        call allocate(rhs_p,pressure%mesh,"PressureCorrectionRHS")
+        call allocate(deltaP,npres,pressure%mesh,"DeltaP")
+        call allocate(rhs_p,npres,pressure%mesh,"PressureCorrectionRHS")
 
         NO_MATRIX_STORE = ( NCOLDGM_PHA <= 1 )
         JUST_BL_DIAG_MAT = .false.
@@ -1186,12 +1186,12 @@ contains
 
 
             ! Put pressure in rhs of force balance eqn: CDP = C * P
-            CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC)
+!            CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC)
 
-!            DO IPRES = 1, NPRES
-!               CALL C_MULT2( CDP_TENSOR%VAL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), P_ALL%val( IPRES, : ) , &
-!                    CV_NONODS, U_NONODS, NDIM, N_IN_PRES, C( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
-!            END DO
+            DO IPRES = 1, NPRES
+               CALL C_MULT2( CDP_TENSOR%VAL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), P_ALL%val( : ) , &   !P_ALL%val( IPRES, : ) , &
+                    CV_NONODS, U_NONODS, NDIM, N_IN_PRES, C( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
+            END DO
 
             if ( high_order_Ph ) then
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
@@ -1241,35 +1241,35 @@ contains
 
             ! put on rhs the cty eqn; put most recent pressure in RHS of momentum eqn
             ! NB. P_RHS = -CT * U + CT_RHS
-            if ( .not.symmetric_P ) then ! original
-               CALL CT_MULT2( rhs_p%val, UP_VEL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-                    CT, NCOLCT, FINDCT, COLCT )
-            else
-               CALL CT_MULT_WITH_C2( rhs_p%val, UP_VEL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-                    C, NCOLC, FINDC, COLC )
-            end if
-
-            rhs_p%val = -rhs_p%val + CT_RHS%val(1,:)
+!            if ( .not.symmetric_P ) then ! original
+!               CALL CT_MULT2( rhs_p%val, UP_VEL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
+!                    CT, NCOLCT, FINDCT, COLCT )
+!            else
+!               CALL CT_MULT_WITH_C2( rhs_p%val, UP_VEL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
+!                    C, NCOLC, FINDC, COLC )
+!            end if
+!
+!            rhs_p%val = -rhs_p%val + CT_RHS%val
   
 
 
-!            if ( .not.symmetric_P ) then ! original
-!
-!               DO IPRES = 1, NPRES
-!                  CALL CT_MULT2( rhs_p%val(IPRES,:), UP_VEL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), &
-!                       CV_NONODS, U_NONODS, NDIM, N_IN_PRES, CT( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLCT, FINDCT, COLCT )
-!               END DO
-!
-!            else
-!
-!               DO IPRES = 1, NPRES
-!                  CALL CT_MULT_WITH_C2( rhs_p%val(IPRES,:), UP_VEL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), &
-!                       CV_NONODS, U_NONODS, NDIM, NPHASE, C( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
-!               END DO
-!
-!            end if
-!
-!            rhs_p%val = -rhs_p%val + CT_RHS%val(IPRES,:)
+            if ( .not.symmetric_P ) then ! original
+
+               DO IPRES = 1, NPRES
+                  CALL CT_MULT2( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), &
+                       CV_NONODS, U_NONODS, NDIM, N_IN_PRES, CT( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLCT, FINDCT, COLCT )
+               END DO
+
+            else
+
+               DO IPRES = 1, NPRES
+                  CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), &
+                       CV_NONODS, U_NONODS, NDIM, NPHASE, C( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
+               END DO
+
+            end if
+
+            rhs_p%val = -rhs_p%val + CT_RHS%val
 
 
 
@@ -1278,39 +1278,39 @@ contains
 
 
             ! Matrix vector involving the mass diagonal term
-            DO CV_NOD = 1, CV_NONODS
-               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
-                  CV_JNOD = COLCMC( COUNT )
-                  rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
-                    -DIAG_SCALE_PRES( 1,CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( CV_JNOD )
-                  if ( got_free_surf ) then
-                    rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
-                    -MASS_SUF( COUNT ) * ( P_ALL%VAL( CV_JNOD ) - POLD_ALL%VAL( CV_JNOD ) )
-                  endif
-               END DO
-            END DO
-
-
-            ! Matrix vector involving the mass diagonal term
 !            DO CV_NOD = 1, CV_NONODS
 !               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
 !                  CV_JNOD = COLCMC( COUNT )
-!                  DO IPRES = 1, NPRES
-!                     rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-!                          -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( IPRES, CV_JNOD )
-!                     if ( got_free_surf ) then
-!                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-!                             -MASS_SUF( COUNT ) * ( P_ALL%VAL( IPRES, CV_JNOD ) - POLD_ALL%VAL( IPRES, CV_JNOD ) )
-!                     end if
-!                     IF ( NPRES > 1 ) THEN
-!                        DO JPRES = 1, NPRES
-!                           rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
-!                                -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( JPRES, CV_JNOD )
-!                        END DO
-!                     END IF
-!                  END DO
+!                  rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
+!                    -DIAG_SCALE_PRES( 1,CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( CV_JNOD )
+!                  if ( got_free_surf ) then
+!                    rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
+!                    -MASS_SUF( COUNT ) * ( P_ALL%VAL( CV_JNOD ) - POLD_ALL%VAL( CV_JNOD ) )
+!                  endif
 !               END DO
 !            END DO
+
+
+            ! Matrix vector involving the mass diagonal term
+            DO CV_NOD = 1, CV_NONODS
+               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                  CV_JNOD = COLCMC( COUNT )
+                  DO IPRES = 1, NPRES
+                     rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                          -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( CV_JNOD ) !P_ALL%VAL( IPRES, CV_JNOD )
+                     if ( got_free_surf ) then
+                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                             -MASS_SUF( COUNT ) * ( P_ALL%VAL( CV_JNOD ) - POLD_ALL%VAL( CV_JNOD ) ) ! ( P_ALL%VAL( IPRES, CV_JNOD ) - POLD_ALL%VAL( IPRES, CV_JNOD ) )
+                     end if
+                     IF ( NPRES > 1 ) THEN
+                        DO JPRES = 1, NPRES
+                           rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                                -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( CV_JNOD ) !P_ALL%VAL( JPRES, CV_JNOD )
+                        END DO
+                     END IF
+                  END DO
+               END DO
+            END DO
 
 
 
@@ -1319,7 +1319,7 @@ contains
 
             call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
             'prognostic/reference_node', ndpset, default = 0 )
-            if ( ndpset /= 0 ) rhs_p%val( ndpset ) = 0.0
+            if ( ndpset /= 0 ) rhs_p%val( 1, ndpset ) = 0.0
 
             ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
             ewrite(3,*)'about to solve for pressure'
@@ -1386,10 +1386,25 @@ contains
                     NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
                     totele, cv_nloc, x_nonods, x_ndgln, trim(pressure%option_path))
             else
+
+
+!               call allocate(rhs,npres,pressure%mesh,"RHS")
+!               rhs%val=RESHAPE( RHS_P%VAL, (/ NPRES , CV_NONODS /) )
+!
+!               call petsc_solve(deltap,cmc_petsc,rhs,trim(pressure%option_path))
+!
+!               call deallocate(rhs)
+
+
+
+
                 call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
+
+
+
             end if
 
-            P_all % val = P_all % val + deltap%val
+            P_all % val = P_all % val + deltap%val(1,:)
 
             call halo_update(p_all)
 
@@ -1400,13 +1415,12 @@ contains
 
             ! Use a projection method
             ! CDP = C * DP
-            CALL C_MULT2( CDP_tensor%val, deltap%val, CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC )
+!            CALL C_MULT2( CDP_tensor%val, deltap%val, CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC )
 
-
-            !DO IPRES = 1, NPRES
-            !   CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*n_in_pres : ipres*n_in_pres, : ), deltap%val( IPRES, : ), &
-            !        CV_NONODS, U_NONODS, NDIM, n_in_pres, C( :, 1+(ipres-1)*n_in_pres : ipres*n_in_pres, : ), NCOLC, FINDC, COLC )
-            !END DO
+            DO IPRES = 1, NPRES
+               CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*n_in_pres : ipres*n_in_pres, : ), deltap%val( IPRES, : ), &
+                    CV_NONODS, U_NONODS, NDIM, n_in_pres, C( :, 1+(ipres-1)*n_in_pres : ipres*n_in_pres, : ), NCOLC, FINDC, COLC )
+            END DO
 
 
             call deallocate(deltaP)

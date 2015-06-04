@@ -562,8 +562,8 @@ contains
       ! IGOT_CMC_PRECON=1 or 0 (1 if we have a preconditioning matrix)
       type( state_type ), dimension( : ), intent( inout ) :: state
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
-      type( scalar_field ), intent(inout) :: deltap
-      type( scalar_field ), intent(in) :: rhs_p
+      type( vector_field ), intent(inout) :: deltap
+      type( vector_field ), intent(in) :: rhs_p
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       INTEGER, DIMENSION( : ), intent( in ) :: MIDCMC
@@ -685,7 +685,7 @@ contains
                       call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(dg_nod,1) /), 1,&
                        (/ cmc_petsc%column_numbering%gnn2unn(COLCMC(COUNT),1) /),  auxR, ierr)
                       !Project residual to RHS_Small
-                      Residual_DG%val(dg_nod) = rhs_p%val(dg_nod) - auxR(1) * deltap%val(Col)
+                      Residual_DG%val(dg_nod) = rhs_p%val(1,dg_nod) - auxR(1) * deltap%val(1,Col)
                   END DO
               end do
           end if
@@ -697,7 +697,7 @@ contains
               if (k > 1) then
                   RHS_small%val(cty_nod) = RHS_small%val(cty_nod) + Residual_DG%val(dg_nod)
               else!If first itetation, or most likely only one iteration, the residual is the RHS
-                  RHS_small%val(cty_nod) = RHS_small%val(cty_nod) + RHS_p%val(dg_nod)
+                  RHS_small%val(cty_nod) = RHS_small%val(cty_nod) + RHS_p%val(1,dg_nod)
               end if
           end do
 
@@ -732,14 +732,40 @@ contains
               print *, OPT_STEP
           endif
           !Update the DG solution with a dumped value of CG
-          deltap%val = deltap%val + DP_DG * opt_step
+          deltap%val(1,:) = deltap%val(1,:) + DP_DG * opt_step
 
           !Depending on whether the CG solution is helping or not we either solve or continue
           if (opt_step < 1d-2) then
               !The CG solver cannot do anymore, solve what remains to be done
+
+
+
+!               call allocate(rhs,npres,pressure%mesh,"RHS")
+!               rhs%val=RESHAPE( RHS_P%VAL, (/ NPRES , CV_NONODS /) )
+!
+!               call petsc_solve(deltap,cmc_petsc,rhs,trim(option_path))
+!
+!               call deallocate(rhs)
+
+
+
               call petsc_solve(deltap,CMC_petsc,RHS_p,trim(option_path))
               exit!Exit the loop
+
+
+
           else if (DG_correction) then !Some smoothings in the finest mesh to finish the loop
+
+
+!               call allocate(rhs,npres,pressure%mesh,"RHS")
+!               rhs%val=RESHAPE( RHS_P%VAL, (/ NPRES , CV_NONODS /) )
+!
+!               call petsc_solve(deltap,cmc_petsc,rhs,trim(solv_options))
+!
+!               call deallocate(rhs)
+
+
+
               call petsc_solve(deltap,CMC_petsc,RHS_p,trim(solv_options))
           end if
 
