@@ -171,7 +171,7 @@ contains
     LOGICAL :: RETRIEVE_SOLID_CTY
     character( len = option_path_len ) :: path
     type(vector_field) :: cv_rhs_field
-    type(scalar_field) :: ct_rhs
+    type(vector_field) :: ct_rhs
     type( tensor_field ), pointer :: den_all2, denold_all2, a, aold
     integer :: lcomp, Field_selector, IGOT_T2_loc
 
@@ -525,7 +525,7 @@ contains
       type(petsc_csr_matrix) :: petsc_acv
       type(vector_field)  :: vtracer
       type(vector_field) :: cv_rhs_field
-      type(scalar_field) :: CT_RHS
+      type(vector_field) :: CT_RHS
       type(csr_sparsity), pointer :: sparsity
 
       !Variables for capillary pressure
@@ -851,7 +851,7 @@ contains
         LOGICAL :: got_free_surf
         character( len = option_path_len ) :: opt, bc_type
 
-        type( scalar_field ) :: ct_rhs
+        type( vector_field ) :: ct_rhs
         REAL, DIMENSION( : ), allocatable :: &
         MCY_RHS, MCY, &
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
@@ -916,7 +916,7 @@ contains
         ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
 
         ALLOCATE( CT( NDIM, NPHASE, NCOLCT )) ; CT=0.
-        call allocate(ct_rhs,pressure%mesh,"CT_rhs")
+        call allocate(ct_rhs,npres,pressure%mesh,"CT_rhs")
         ALLOCATE( DIAG_SCALE_PRES( NPRES,CV_NONODS )) ; DIAG_SCALE_PRES=0.
         ALLOCATE(DIAG_SCALE_PRES_COUP(NPRES,NPRES,CV_NONODS),GAMMA_PRES_ABS(NPHASE,NPHASE,CV_NONODS))
 
@@ -1147,7 +1147,7 @@ contains
             end if
             
             sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
-            call allocate(CMC_petsc,sparsity,[1,1],"CMC_petsc",.true.)
+            call allocate(CMC_petsc,sparsity,[npres,npres],"CMC_petsc",.true.)
             if (associated(pressure%mesh%halos)) then
                halo => pressure%mesh%halos(2)
             else
@@ -1249,7 +1249,7 @@ contains
                     C, NCOLC, FINDC, COLC )
             end if
 
-            rhs_p%val = -rhs_p%val + CT_RHS%val
+            rhs_p%val = -rhs_p%val + CT_RHS%val(1,:)
   
 
 
@@ -1269,7 +1269,7 @@ contains
 !
 !            end if
 !
-!            rhs_p%val = -rhs_p%val + CT_RHS%val
+!            rhs_p%val = -rhs_p%val + CT_RHS%val(IPRES,:)
 
 
 
@@ -1702,7 +1702,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: CT
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
-        type(scalar_field), intent( inout ) :: CT_RHS
+        type(vector_field), intent( inout ) :: CT_RHS
         REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
         LOGICAL, intent( in ) :: GLOBAL_SOLVE
@@ -1872,7 +1872,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         IF ( GLOBAL_SOLVE ) THEN
             ! Put CT into global matrix MCY...
             MCY_RHS( U_NONODS * NDIM * NPHASE + 1 : U_NONODS * NDIM * NPHASE + CV_NONODS ) = &
-            CT_RHS%val( 1 : CV_NONODS )
+            CT_RHS%val( 1, 1 : CV_NONODS )
 
             CALL PUT_CT_IN_GLOB_MAT( NPHASE, NDIM, U_NONODS, &
             NLENMCY, NCOLMCY, MCY, FINMCY, &

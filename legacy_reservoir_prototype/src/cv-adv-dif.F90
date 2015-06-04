@@ -294,7 +294,7 @@ contains
       REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! nphase x nphase x cv_nonods
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS ! npres x npres x cv_nonods
-      type(scalar_field), intent( inout ) :: CT_RHS
+      type(vector_field), intent( inout ) :: CT_RHS
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
@@ -2660,18 +2660,18 @@ contains
 ! Add constraint to force sum of volume fracts to be unity...
                   ! W_SUM_ONE==1 applies the constraint
                   ! W_SUM_ONE==0 does NOT apply the constraint
-            call addto(ct_rhs,cv_nodi,&
+            call addto(ct_rhs,1,cv_nodi,&
                  - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R)
 
             IF(RETRIEVE_SOLID_CTY) THEN 
 ! VOL_FRA_FLUID is the old voln fraction of total fluid...
 ! multiply by solid-voln fraction: (1.-VOL_FRA_FLUID)
-               call addto(ct_rhs,cv_nodi,&
+               call addto(ct_rhs,1,cv_nodi,&
                     + (1.-VOL_FRA_FLUID( CV_NODI )) * R)
 
             ENDIF
 
-            call addto(ct_rhs,cv_nodi,&
+            call addto(ct_rhs,1,cv_nodi,&
                     - R * SUM( &
                     + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
                     + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
@@ -2681,11 +2681,11 @@ contains
                   +  MEAN_PORE_CV( CV_NODI ) * SUM( T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
                     / ( DT * DEN_ALL( :, CV_NODI ) )   )
 
-               call addto(ct_rhs,cv_nodi,&
+               call addto(ct_rhs,1,cv_nodi,&
                     MASS_CV( CV_NODI ) * SUM( SOURCT_ALL( :, CV_NODI ) / DEN_ALL( :, CV_NODI )  ) )
 
                DO JPHASE = 1, NPHASE
-                  call addto(ct_rhs,cv_nodi,&
+                  call addto(ct_rhs,1,cv_nodi,&
                     - MASS_CV( CV_NODI ) * SUM( ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL( :, CV_NODI )   ) )
                END DO
 
@@ -9721,7 +9721,7 @@ CONTAINS
     INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
     REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
-    type( scalar_field ), intent( inout ) :: CT_RHS
+    type( vector_field ), intent( inout ) :: CT_RHS
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
     REAL, DIMENSION( :, : ), intent( in ) :: SUFEN
     REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI
@@ -9756,18 +9756,18 @@ CONTAINS
 
     IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
        ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the CT matrix and add what we really want)
-       call addto(ct_rhs,cv_nodi,&
+       call addto(ct_rhs,1,cv_nodi,&
             THETA_CTY_SOLID * SCVDETWEI( GI ) * ( SUM(LIMT_HAT(:)*NDOTQ(:)) - NDOTQ_HAT ))
 ! assume cty is satified for solids...
-       call addto(ct_rhs,cv_nodi,&
+       call addto(ct_rhs,1,cv_nodi,&
             (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * SUM(  (LIMT_HAT(:) - LIMT(:))*NDOTQ(:)  ) )
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
 ! assume cty is satified for solids...
-          call addto(ct_rhs,cv_nodj,&
+          call addto(ct_rhs,1,cv_nodj,&
                - THETA_CTY_SOLID * SCVDETWEI( GI ) * ( SUM( LIMT_HAT(:)*NDOTQ(:) ) - NDOTQ_HAT  ) )
 ! assume cty is satified for solids...
-          call addto(ct_rhs,cv_nodj,&
+          call addto(ct_rhs,1,cv_nodj,&
                - (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) *  SUM( (LIMT_HAT(:) - LIMT(:))*NDOTQ(:) ) )
        end if
     END IF ! For solid modelling...
@@ -9839,7 +9839,7 @@ CONTAINS
           NDOTQ_IMP(IPHASE)= SUM( CVNORMX_ALL( :,GI ) * UDGI_IMP_ALL(:,IPHASE) )
        END DO
 
-       call addto(ct_rhs,cv_nodi,&
+       call addto(ct_rhs,1,cv_nodi,&
             - SCVDETWEI( GI ) * SUM(  ( &
             ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
             + FTHETA_T2(:)  * LIMDT(:) * (NDOTQ(:)-NDOTQ_IMP(:)) &
@@ -9847,14 +9847,14 @@ CONTAINS
 
     ELSE
        
-       call addto(ct_rhs,cv_nodi,&
+       call addto(ct_rhs,1,cv_nodi,&
             - SCVDETWEI( GI ) * SUM(  ( &
             ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:))  &
             ) / DEN_ALL( :, CV_NODI )   ) )
 
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
-          call addto(ct_rhs,cv_nodj,&
+          call addto(ct_rhs,1,cv_nodj,&
                SCVDETWEI( GI ) * SUM(   ( &
                ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:))  &
                ) / DEN_ALL( :, CV_NODJ )    ) )
