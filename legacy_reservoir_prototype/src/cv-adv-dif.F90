@@ -291,7 +291,7 @@ contains
       type( petsc_csr_matrix ), intent(inout) :: petsc_ACV
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
       ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
-      REAL, DIMENSION( : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
+      REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! nphase x nphase x cv_nonods
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS ! npres x npres x cv_nonods
       type(scalar_field), intent( inout ) :: CT_RHS
@@ -2677,7 +2677,7 @@ contains
                     + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
                     - DERIV( :, CV_NODI ) * CV_P( CV_NODI ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL( :, CV_NODI ) ) )
 
-               DIAG_SCALE_PRES( CV_NODI ) = DIAG_SCALE_PRES( CV_NODI )  &
+               DIAG_SCALE_PRES( 1,CV_NODI ) = DIAG_SCALE_PRES( 1,CV_NODI )  &
                   +  MEAN_PORE_CV( CV_NODI ) * SUM( T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
                     / ( DT * DEN_ALL( :, CV_NODI ) )   )
 

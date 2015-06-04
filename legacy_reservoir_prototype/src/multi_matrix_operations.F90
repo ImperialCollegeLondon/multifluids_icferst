@@ -363,10 +363,10 @@
       INTEGER, DIMENSION( : ), intent( in ) ::  U_NDGLN
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-      REAL, DIMENSION( : ), intent( in ) :: DIAG_SCALE_PRES
+      REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
-      REAL, DIMENSION( : ), intent( inout ) :: CMC_PRECON
+      REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
       REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
@@ -460,9 +460,9 @@
          INTEGER, DIMENSION( : ), intent( in ) ::  U_NDGLN
          INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
          INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-         REAL, DIMENSION( : ), intent( in ) :: DIAG_SCALE_PRES
+         REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
          type(petsc_csr_matrix), intent(inout)::  CMC_petsc
-         REAL, DIMENSION( : ), intent( inout ) :: CMC_PRECON
+         REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
          REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
          REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
          INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
@@ -638,7 +638,7 @@
                CV_JNOD = COLCMC( COUNT )
 
                CMC_COLOR_VEC_MANY( :, CV_NOD ) = CMC_COLOR_VEC_MANY( :, CV_NOD ) +&
-                 DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+                 DIAG_SCALE_PRES( 1,CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
                         if(got_free_surf) then
                CMC_COLOR_VEC_MANY( :, CV_NOD ) = CMC_COLOR_VEC_MANY( :, CV_NOD ) +&
                  MASS_SUF( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
@@ -649,7 +649,7 @@
             END DO
             IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
               CMC_COLOR_VEC2_MANY( :, CV_NOD ) = CMC_COLOR_VEC2_MANY( :, CV_NOD ) &
-                   +  (DIAG_SCALE_PRES( CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC_MANY( :, CV_NOD )
+                   +  (DIAG_SCALE_PRES( 1,CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC_MANY( :, CV_NOD )
             END IF
          END DO
 
@@ -662,7 +662,7 @@
                   CV_JNOD = COLCMC( COUNT )
                   call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
                        val = dot_product(CMC_COLOR_VEC_MANY( :, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
-                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = CMC_PRECON( COUNT ) + &
+                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( 1,1,COUNT ) = CMC_PRECON( 1,1,COUNT ) + &
                        sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                END DO
             END DO
@@ -675,7 +675,7 @@
                   CV_JNOD = COLCMC( COUNT )
                   call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
                        val = sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD )))
-                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = CMC_PRECON( COUNT ) + &
+                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( 1,1,COUNT ) = CMC_PRECON( 1,1,COUNT ) + &
                        sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                END DO
             END DO
@@ -695,7 +695,7 @@
                   j=CMC_petsc%column_numbering%gnn2unn(cv_jnod,1)
                   call MatSetValue(CMC_petsc%M, i, j, 0.0,INSERT_VALUES, ierr)! not the diagonal
                   !CMC( COUNT ) = 0.0 ! not the diagonal
-                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = 0.0
+                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( 1,1,COUNT ) = 0.0
                   DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
                      CV_JNOD2 = COLCMC( COUNT2 )
                      IF ( CV_JNOD2 == CV_NOD ) then
@@ -705,7 +705,7 @@
                      end if
                      !IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
                      IF ( IGOT_CMC_PRECON/=0 ) THEN
-                        IF ( CV_JNOD2 == CV_NOD ) CMC_PRECON( COUNT2 ) = 0.0
+                        IF ( CV_JNOD2 == CV_NOD ) CMC_PRECON( 1,1,COUNT2 ) = 0.0
                      END IF
                   END DO
                END IF
@@ -842,9 +842,9 @@
       INTEGER, DIMENSION( : ), intent( in ) ::  U_NDGLN
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-      REAL, DIMENSION( : ), intent( in ) :: DIAG_SCALE_PRES
+      REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
-      REAL, DIMENSION( : ), intent( inout ) :: CMC_PRECON
+      REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
       REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
@@ -942,7 +942,7 @@
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
                CMC_COLOR_VEC( CV_NOD ) = CMC_COLOR_VEC( CV_NOD ) &
-                    + DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
+                    + DIAG_SCALE_PRES( 1,CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
                RSUM = RSUM + MASS_MN_PRES( COUNT )
 
                         if(got_free_surf) then
@@ -955,7 +955,7 @@
            
             IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
                CMC_COLOR_VEC2( CV_NOD ) = CMC_COLOR_VEC2( CV_NOD ) &
-                    + (DIAG_SCALE_PRES( CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC( CV_NOD )
+                    + (DIAG_SCALE_PRES( 1,CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC( CV_NOD )
             END IF
          END DO
 
@@ -966,7 +966,7 @@
                call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
                 val = CMC_COLOR_VEC( CV_NOD ) * COLOR_VEC( CV_JNOD ))
                IF ( IGOT_CMC_PRECON /= 0 ) THEN 
-                  CMC_PRECON( COUNT ) = CMC_PRECON( COUNT ) + CMC_COLOR_VEC2( CV_NOD ) * COLOR_VEC( CV_JNOD )
+                  CMC_PRECON( 1,1,COUNT ) = CMC_PRECON( 1,1,COUNT ) + CMC_COLOR_VEC2( CV_NOD ) * COLOR_VEC( CV_JNOD )
                END IF
             END DO
          END DO
@@ -987,7 +987,7 @@
 !               IF ( CV_JNOD /= CV_NOD ) THEN
 !                  call MatSetValue(CMC_petsc%M, cv_nod-1, cv_jnod-1,0.,INSERT_VALUES, ierr)! not the diagonal
 !                  !CMC( COUNT ) = 0.0 ! not the diagonal
-!                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( COUNT ) = 0.0
+!                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( 1,1,COUNT ) = 0.0
 !                  DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
 !                     CV_JNOD2 = COLCMC( COUNT2 )
 !                     IF ( CV_JNOD2 /= CV_NOD ) then
@@ -995,7 +995,7 @@
 !                     end if
 !                     !IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
 !                     IF ( IGOT_CMC_PRECON/=0 ) THEN
-!                        IF ( CV_JNOD2 == CV_NOD ) CMC_PRECON( COUNT2 ) = 0.0
+!                        IF ( CV_JNOD2 == CV_NOD ) CMC_PRECON( 1,1,COUNT2 ) = 0.0
 !                     END IF
 !                  END DO
 !               END IF

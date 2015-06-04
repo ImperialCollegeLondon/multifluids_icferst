@@ -158,7 +158,7 @@ contains
     INTEGER, PARAMETER :: NPRES = 1
     integer :: nits_flux_lim, its_flux_lim
     logical :: lump_eqns
-    REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES
+    REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
     REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
     real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
     REAL, DIMENSION( : , : , : ), allocatable :: CT
@@ -192,7 +192,7 @@ contains
 
 
     allocate( den_all( nphase, cv_nonods ), denold_all( nphase, cv_nonods ) )
-    allocate(Ct(0,0,0),DIAG_SCALE_PRES(0))
+    allocate(Ct(0,0,0),DIAG_SCALE_PRES(0,0))
     allocate(DIAG_SCALE_PRES_COUP(0,0,0), GAMMA_PRES_ABS(0,0,0))
 
     allocate( T_SOURCE( nphase, cv_nonods ) ) ; T_SOURCE=0.0
@@ -498,7 +498,8 @@ contains
       LOGICAL, PARAMETER :: THERMAL= .false.
       INTEGER, PARAMETER :: NPRES = 1
       integer :: igot_t2
-      REAL, DIMENSION( : ), allocatable :: mass_mn_pres, DIAG_SCALE_PRES
+      REAL, DIMENSION( : ), allocatable :: mass_mn_pres 
+      REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
       REAL, DIMENSION( :,:,: ), allocatable :: CT
       REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
@@ -563,7 +564,7 @@ contains
 
       ALLOCATE( mass_mn_pres(size(small_colacv)) ) ; mass_mn_pres = 0.
       ALLOCATE( CT( 0,0,0 ) )
-      ALLOCATE( DIAG_SCALE_PRES( 0 ) )
+      ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
       ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( 0,0,0 ) )
       ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) ) ; TDIFFUSION = 0.
       ALLOCATE( MEAN_PORE_CV( CV_NONODS ) )
@@ -851,11 +852,12 @@ contains
         character( len = option_path_len ) :: opt, bc_type
 
         type( scalar_field ) :: ct_rhs
-        REAL, DIMENSION( : ), allocatable :: DIAG_SCALE_PRES, &
+        REAL, DIMENSION( : ), allocatable :: &
         MCY_RHS, MCY, &
-        CMC_PRECON, MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
+        MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
-        REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
+        REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
+        REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CMC_PRECON
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ndpset, i
@@ -915,13 +917,13 @@ contains
 
         ALLOCATE( CT( NDIM, NPHASE, NCOLCT )) ; CT=0.
         call allocate(ct_rhs,pressure%mesh,"CT_rhs")
-        ALLOCATE( DIAG_SCALE_PRES( CV_NONODS )) ; DIAG_SCALE_PRES=0.
+        ALLOCATE( DIAG_SCALE_PRES( NPRES,CV_NONODS )) ; DIAG_SCALE_PRES=0.
         ALLOCATE(DIAG_SCALE_PRES_COUP(NPRES,NPRES,CV_NONODS),GAMMA_PRES_ABS(NPHASE,NPHASE,CV_NONODS))
 
         ALLOCATE( U_RHS( NDIM, NPHASE, U_NONODS )) ; U_RHS=0.
         ALLOCATE( MCY_RHS( NDIM * NPHASE * U_NONODS + CV_NONODS )) ; MCY_RHS=0.
         ALLOCATE( MCY( NCOLMCY )) ; MCY=0.
-        ALLOCATE( CMC_PRECON( NCOLCMC*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
+        ALLOCATE( CMC_PRECON( NPRES, NPRES, NCOLCMC*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
         ALLOCATE( MASS_MN_PRES( NCOLCMC )) ; MASS_MN_PRES=0.
         IF(got_free_surf) THEN
            ALLOCATE( MASS_SUF( NCOLCMC )) ; MASS_SUF=0.
@@ -1186,6 +1188,11 @@ contains
             ! Put pressure in rhs of force balance eqn: CDP = C * P
             CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC)
 
+!            DO IPRES = 1, NPRES
+!               CALL C_MULT2( CDP_TENSOR%VAL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), P_ALL%val( IPRES, : ) , &
+!                    CV_NONODS, U_NONODS, NDIM, N_IN_PRES, C( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
+!            END DO
+
             if ( high_order_Ph ) then
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
                   call high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase, U_absorbin )
@@ -1243,20 +1250,71 @@ contains
             end if
 
             rhs_p%val = -rhs_p%val + CT_RHS%val
+  
+
+
+!            if ( .not.symmetric_P ) then ! original
+!
+!               DO IPRES = 1, NPRES
+!                  CALL CT_MULT2( rhs_p%val(IPRES,:), UP_VEL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), &
+!                       CV_NONODS, U_NONODS, NDIM, N_IN_PRES, CT( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLCT, FINDCT, COLCT )
+!               END DO
+!
+!            else
+!
+!               DO IPRES = 1, NPRES
+!                  CALL CT_MULT_WITH_C2( rhs_p%val(IPRES,:), UP_VEL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), &
+!                       CV_NONODS, U_NONODS, NDIM, NPHASE, C( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
+!               END DO
+!
+!            end if
+!
+!            rhs_p%val = -rhs_p%val + CT_RHS%val
+
+
+
 
             if(got_free_surf) POLD_ALL => EXTRACT_SCALAR_FIELD( PACKED_STATE, "OldFEPressure" )
+
+
             ! Matrix vector involving the mass diagonal term
             DO CV_NOD = 1, CV_NONODS
                DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                   CV_JNOD = COLCMC( COUNT )
                   rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
-                    -DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( CV_JNOD )
+                    -DIAG_SCALE_PRES( 1,CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( CV_JNOD )
                   if ( got_free_surf ) then
                     rhs_p%val( CV_NOD ) = rhs_p%val( CV_NOD ) &
                     -MASS_SUF( COUNT ) * ( P_ALL%VAL( CV_JNOD ) - POLD_ALL%VAL( CV_JNOD ) )
                   endif
                END DO
             END DO
+
+
+            ! Matrix vector involving the mass diagonal term
+!            DO CV_NOD = 1, CV_NONODS
+!               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+!                  CV_JNOD = COLCMC( COUNT )
+!                  DO IPRES = 1, NPRES
+!                     rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+!                          -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( IPRES, CV_JNOD )
+!                     if ( got_free_surf ) then
+!                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+!                             -MASS_SUF( COUNT ) * ( P_ALL%VAL( IPRES, CV_JNOD ) - POLD_ALL%VAL( IPRES, CV_JNOD ) )
+!                     end if
+!                     IF ( NPRES > 1 ) THEN
+!                        DO JPRES = 1, NPRES
+!                           rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+!                                -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( JPRES, CV_JNOD )
+!                        END DO
+!                     END IF
+!                  END DO
+!               END DO
+!            END DO
+
+
+
+
             call zero_non_owned(rhs_p)
 
             call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
@@ -1343,6 +1401,13 @@ contains
             ! Use a projection method
             ! CDP = C * DP
             CALL C_MULT2( CDP_tensor%val, deltap%val, CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC )
+
+
+            !DO IPRES = 1, NPRES
+            !   CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*n_in_pres : ipres*n_in_pres, : ), deltap%val( IPRES, : ), &
+            !        CV_NONODS, U_NONODS, NDIM, n_in_pres, C( :, 1+(ipres-1)*n_in_pres : ipres*n_in_pres, : ), NCOLC, FINDC, COLC )
+            !END DO
+
 
             call deallocate(deltaP)
             call halo_update(cdp_tensor)
@@ -1638,7 +1703,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         type(scalar_field), intent( inout ) :: CT_RHS
-        REAL, DIMENSION( : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
+        REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
         LOGICAL, intent( in ) :: GLOBAL_SOLVE
         INTEGER, DIMENSION( : ), intent( in ) :: FINMCY
@@ -1900,7 +1965,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION( : ), intent( inout ) :: MCY
         INTEGER, DIMENSION( : ), intent( in ) ::  FINMCY
         REAL, DIMENSION( :, :, : ), intent( in ) :: CT
-        REAL, DIMENSION( : ), intent( in ) :: DIAG_SCALE_PRES
+        REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
         INTEGER, DIMENSION( : ), intent( in ) :: FINDCT, FINDCMC
         REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
         ! Local variables...
@@ -1933,7 +1998,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             DO I = 1, IWID
                 COUNT_CMC = FINDCMC( CV_NOD + 1) - I
                 COUNT_MCY = FINMCY( NDIM * NPHASE * U_NONODS + CV_NOD + 1 ) - I
-                MCY( COUNT_MCY ) = DIAG_SCALE_PRES( CV_NOD ) * MASS_MN_PRES( COUNT_CMC )
+                MCY( COUNT_MCY ) = DIAG_SCALE_PRES( 1, CV_NOD ) * MASS_MN_PRES( COUNT_CMC )
             END DO
         END DO
 
