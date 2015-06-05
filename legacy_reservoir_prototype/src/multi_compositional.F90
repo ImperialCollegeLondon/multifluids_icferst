@@ -55,7 +55,8 @@
       type( state_type ), intent( inout ) :: packed_state
       integer, intent( in ) :: icomp
       integer, dimension( : ), intent( in ) :: cv_ndgln, IDs_ndgln
-      real, dimension( : ), intent( in ) :: volfra_pore, mass_ele
+      real, dimension( : ), intent( in ) :: mass_ele
+      real, dimension( :, : ), intent( in ) :: volfra_pore
       real, dimension( :, :, : ), intent( in ) :: denold
       real, dimension( :, :, : ), intent( inout ) :: comp_absorb
 
@@ -109,7 +110,7 @@
             CV_NOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC ) 
             SUM_NOD( CV_NOD ) = SUM_NOD( CV_NOD ) + mass_ele( ele ) !1.0
             VOLFRA_PORE_NOD( CV_NOD ) = VOLFRA_PORE_NOD( CV_NOD ) + &
-                 VOLFRA_PORE( ELE ) * mass_ele( ele )
+                 VOLFRA_PORE( 1, ELE ) * mass_ele( ele )
          END DO
       END DO
       VOLFRA_PORE_NOD = VOLFRA_PORE_NOD / SUM_NOD

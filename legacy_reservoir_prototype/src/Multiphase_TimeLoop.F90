@@ -247,8 +247,8 @@
       !Working pointers
 
       type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
-      type(scalar_field), pointer :: pressure_field, porosity_field, cv_pressure, fe_pressure, f1, f2
-      type(vector_field), pointer :: positions
+      type(scalar_field), pointer :: pressure_field, cv_pressure, fe_pressure, f1, f2
+      type(vector_field), pointer :: positions, porosity_field
 
       logical :: write_all_stats=.true.
 
@@ -669,7 +669,7 @@
          if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
               Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
 
-         porosity_field=>extract_scalar_field(packed_state,"Porosity")
+         porosity_field=>extract_vector_field(packed_state,"Porosity")
 
          ! evaluate prescribed fields at time = current_time+dt
          call set_prescribed_field_values( state, exclude_interpolated = .true., &

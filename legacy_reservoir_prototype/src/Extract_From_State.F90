@@ -2079,13 +2079,13 @@
 
       type(state_type), dimension(:,:), pointer :: multi_state
 
-      integer :: i,nphase,ncomp,ndim, stat, iphase, icomp, idim, ele
+      integer :: i,nphase,ncomp,ndim,stat,iphase,icomp,idim,ele,npres,ipres
 
       type(scalar_field), pointer :: pressure, p2,sfield
       type(vector_field), pointer :: velocity, position, vfield
       type(tensor_field), pointer :: tfield
 
-      type(scalar_field) :: porosity
+      type(vector_field) :: porosity
       type(vector_field) :: p_position, u_position, m_position
       type(tensor_field) :: permeability, ten_field
       type(mesh_type), pointer :: ovmesh, element_mesh
@@ -2430,14 +2430,17 @@
          deallocate(multi_state)
       end if
 
+      npres = 1
 
-      call allocate(porosity,element_mesh,"Porosity")
-      call set(porosity,1.0)
+      call allocate(porosity,npres,element_mesh,"Porosity")
+      do ipres = 1, npres
+         call set(porosity,ipres,1.0)
+      end do
       call insert(packed_state,porosity,"Porosity")
       call deallocate(porosity)
       if (has_scalar_field(state(1),"Porosity")) then
          sfield => extract_scalar_field(state(1),"Porosity")
-         porosity%val = sfield%val
+         porosity%val(1,:) = sfield%val
       end if
 
 
@@ -4311,7 +4314,7 @@
 ! Local variables
 
        type(scalar_field), pointer :: sfield
-       type(scalar_field), pointer :: s2field
+       type(vector_field), pointer :: vfield
        real, dimension(:), pointer :: CVPressure
        real, dimension(:), pointer :: Por
        logical :: test
@@ -4354,8 +4357,8 @@
 
 ! Extract the porosity (still should confirm whether or not totoutflux needs to be divided by the porosity - matter of which velocity to use : q or v)
 
-      s2field => extract_scalar_field( packed_state, "Porosity" )
-      Por =>  s2field%val(:)
+      vfield => extract_vector_field( packed_state, "Porosity" )
+      Por =>  vfield%val(1,:)
 
 ! Having extracted the saturation field (phase volume fraction) at control volume nodes, need to calculate it at quadrature points gi.
 ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes). Therefore need cv_ndgln below

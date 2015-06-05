@@ -139,7 +139,7 @@ contains
     REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
     REAL, DIMENSION( :, : ), intent( in ) :: DERIV
     REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
-    REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
+    REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
     INTEGER, DIMENSION( : ), intent( in ) :: FINDM
     INTEGER, DIMENSION( : ), intent( in ) :: COLM
     INTEGER, DIMENSION( : ), intent( in ) :: MIDM
@@ -482,7 +482,7 @@ contains
       REAL, DIMENSION( :, : ), intent( in ) :: DERIV
       REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
       REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
-      REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
+      REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
       INTEGER, DIMENSION( : ), intent( in ) :: FINDM
       INTEGER, DIMENSION( : ), intent( in ) :: COLM
       INTEGER, DIMENSION( : ), intent( in ) :: MIDM
@@ -822,7 +822,7 @@ contains
         REAL, intent( in ) :: V_THETA
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         REAL, DIMENSION(  : ,  : ,: ), intent( in ) :: V_ABSORB
-        REAL, DIMENSION(  :  ), intent( in ) :: VOLFRA_PORE
+        REAL, DIMENSION(  :, :  ), intent( in ) :: VOLFRA_PORE
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDM
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLM
         INTEGER, DIMENSION(  :  ), intent( in ) :: MIDM
@@ -1706,7 +1706,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION(  : , : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
-        REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
+        REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
         INTEGER, DIMENSION( : ), intent( in ) :: FINDM
         INTEGER, DIMENSION( : ), intent( in ) :: COLM
         INTEGER, DIMENSION( : ), intent( in ) :: MIDM

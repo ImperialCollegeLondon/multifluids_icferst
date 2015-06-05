@@ -313,11 +313,11 @@ contains
 
       REAL, intent( in ) :: DT, CV_THETA, SECOND_THETA, CV_BETA
       REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-      REAL, DIMENSION(: , : ), intent( in ) :: DERIV
+      REAL, DIMENSION( : , : ), intent( in ) :: DERIV
       REAL, DIMENSION( : ), intent( in ) :: CV_P
       REAL, DIMENSION( :, : ), intent( in ) :: SOURCT
       REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT_ALL
-      REAL, DIMENSION( : ), intent( in ) :: VOLFRA_PORE
+      REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
       LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
 ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
       INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -1176,7 +1176,7 @@ contains
             CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
             SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
             MEAN_PORE_CV( CV_INOD ) = MEAN_PORE_CV( CV_INOD ) + &
-                 MASS_ELE( ELE ) * VOLFRA_PORE( ELE )
+                 MASS_ELE( ELE ) * VOLFRA_PORE( 1, ELE )
          END DO
       END DO
       MEAN_PORE_CV = MEAN_PORE_CV / SUM_CV
