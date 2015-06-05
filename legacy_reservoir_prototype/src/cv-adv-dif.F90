@@ -326,7 +326,7 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINELE
       INTEGER, DIMENSION( : ), intent( in ) :: COLELE
       REAL, DIMENSION( :, :, :, : ), target, intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-      REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
+      REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
       REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
       character( len = * ), intent( in ), optional :: option_path_spatial_discretisation
       integer, dimension(:), intent(in) :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
@@ -446,7 +446,7 @@ contains
            CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
            NFACE, X_NODI,  X_NODJ, &
            CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, &
-           XNOD, NSMALL_COLM, COUNT2, NOD, N_IN_PRES
+           XNOD, NSMALL_COLM, COUNT2, NOD, N_IN_PRES, IPRES
       !        ===>  REALS  <===
       REAL :: HDC, &
            VTHETA, &
@@ -1175,11 +1175,14 @@ contains
          DO CV_ILOC = 1, CV_NLOC
             CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
             SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
-            MEAN_PORE_CV( CV_INOD ) = MEAN_PORE_CV( CV_INOD ) + &
+            MEAN_PORE_CV( 1, CV_INOD ) = MEAN_PORE_CV( 1, CV_INOD ) + &
                  MASS_ELE( ELE ) * VOLFRA_PORE( 1, ELE )
          END DO
       END DO
-      MEAN_PORE_CV = MEAN_PORE_CV / SUM_CV
+      DO IPRES = 1, NPRES
+         MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
+      END DO
+
       ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
 
       IANISOLIM = 0
@@ -2569,7 +2572,7 @@ contains
 
             LOC_CV_RHS_I=0.0
 
-            R = MEAN_PORE_CV( CV_NODI ) * MASS_CV( CV_NODI ) / DT
+            R = MEAN_PORE_CV( 1, CV_NODI ) * MASS_CV( CV_NODI ) / DT
 
                IF(THERMAL) THEN
                   IF(GOT_VIS) THEN
@@ -2656,7 +2659,7 @@ contains
 
          DO CV_NODI = 1, CV_NONODS
 
-            R = MASS_CV( CV_NODI ) * MEAN_PORE_CV( CV_NODI ) / DT
+            R = MASS_CV( CV_NODI ) * MEAN_PORE_CV( 1, CV_NODI ) / DT
 ! Add constraint to force sum of volume fracts to be unity...
                   ! W_SUM_ONE==1 applies the constraint
                   ! W_SUM_ONE==0 does NOT apply the constraint
@@ -2678,7 +2681,7 @@ contains
                     - DERIV( :, CV_NODI ) * CV_P( CV_NODI ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL( :, CV_NODI ) ) )
 
                DIAG_SCALE_PRES( 1,CV_NODI ) = DIAG_SCALE_PRES( 1,CV_NODI )  &
-                  +  MEAN_PORE_CV( CV_NODI ) * SUM( T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
+                  +  MEAN_PORE_CV( 1, CV_NODI ) * SUM( T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
                     / ( DT * DEN_ALL( :, CV_NODI ) )   )
 
                call addto(ct_rhs,1,cv_nodi,&

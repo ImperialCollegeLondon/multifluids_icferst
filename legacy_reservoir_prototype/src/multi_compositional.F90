@@ -803,7 +803,7 @@
       integer, intent( in ) :: cv_nonods, nphase, ncomp2, its, nits
       real, intent( in ) :: dt
 !      real, dimension( :, : ), intent( inout ) :: V_SOURCE_COMP
-      real, dimension( : ), intent( in ) :: MEAN_PORE_CV
+      real, dimension( :, : ), intent( in ) :: MEAN_PORE_CV
 !      real, dimension( : ), intent( in ) :: SATURA
 !      real, dimension( : ), intent( in ) :: COMP, COMPOLD
 
@@ -844,14 +844,14 @@
 
             IF ( ENSURE_POSITIVE ) THEN
 !               V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) & 
-!                    - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
+!                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
                tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) & 
-                    - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
+                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
             ELSE
 !               V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) & 
-!                    - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
+!                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
                tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) &  
-                    - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
+                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
             END IF
 
          END DO

@@ -113,7 +113,7 @@
 
 
 !!$ Primary scalars
-      integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
+      integer :: nphase, npres, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods
@@ -159,9 +159,8 @@
 !!$ Shape function related fields:
       integer :: cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, igot_t2, igot_theta_flux, IGOT_THERM_VIS
 
-!!$ For output:
-      real, dimension( : ), allocatable :: &
-           Mean_Pore_CV
+!!$ CV-wise porosity
+      real, dimension( :, : ), allocatable :: Mean_Pore_CV
 
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
       integer :: iplike_grad_sou
@@ -246,7 +245,7 @@
 
       !Working pointers
 
-      type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
+      type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
       type(scalar_field), pointer :: pressure_field, cv_pressure, fe_pressure, f1, f2
       type(vector_field), pointer :: positions, porosity_field
 
@@ -324,6 +323,7 @@
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
+      npres = 1
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -399,7 +399,7 @@
            DRhoDPressure( nphase, cv_nonods ), FEM_VOL_FRAC( nphase, cv_nonods ),&
 !!$
            suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
-           Mean_Pore_CV( cv_nonods ), &
+           Mean_Pore_CV( npres, cv_nonods ), &
            mass_ele( totele ), &
 !!$
            Velocity_U_Source( ndim, nphase, u_nonods ), &
@@ -1085,11 +1085,11 @@
                   ! For compressibility
                   DO IPHASE = 1, NPHASE
                      DO CV_NODI = 1, CV_NONODS
-                        tracer_source%val(1,iphase,cv_nodi)=tracer_source%val(1,iphase,cv_nodi)&
-                             + Mean_Pore_CV( CV_NODI ) * MFCOLD_s%val(ICOMP, IPHASE, CV_NODI) &
-                             * ( DCOLD_s%val( ICOMP, IPHASE, CV_NODI ) - DC_s%val( ICOMP, IPHASE, CV_NODI) ) &
-                             * old_saturation_field%val( 1,IPHASE, CV_NONODS ) &
-                             / ( DC_s%val( ICOMP, IPHASE, CV_NODI ) * DT )
+                        tracer_source%val(1, iphase, cv_nodi)=tracer_source%val(1, iphase, cv_nodi)&
+                             + Mean_Pore_CV(1, CV_NODI ) * MFCOLD_s%val(ICOMP, IPHASE, CV_NODI) &
+                             * ( DCOLD_s%val(ICOMP, IPHASE, CV_NODI) - DC_s%val(ICOMP, IPHASE, CV_NODI) ) &
+                             * old_saturation_field%val(1, IPHASE, CV_NONODS) &
+                             / ( DC_s%val(ICOMP, IPHASE, CV_NODI) * DT )
                      END DO
                   END DO
 
@@ -1452,7 +1452,7 @@
                  DRhoDPressure( nphase, cv_nonods ), &
 !!$
                  suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
-                 Mean_Pore_CV( cv_nonods ), &
+                 Mean_Pore_CV( npres, cv_nonods ), &
                  mass_ele( totele ), &
 !!$
 !!$

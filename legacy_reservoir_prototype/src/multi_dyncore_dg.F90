@@ -146,7 +146,7 @@ contains
     INTEGER, DIMENSION( : ), intent( in ) :: FINELE
     INTEGER, DIMENSION( : ), intent( in ) :: COLELE
     REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-    REAL, DIMENSION( : ), intent( inout ) :: MEAN_PORE_CV
+    REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
     character( len = * ), intent( in ), optional :: option_path
     real, dimension( : ), intent( inout ), optional :: mass_ele_transp
     integer, dimension(:), intent(inout) :: StorageIndexes
@@ -506,7 +506,7 @@ contains
       REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
       REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
       REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD 
-      REAL, DIMENSION( : ), allocatable ::MEAN_PORE_CV
+      REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
       REAL, DIMENSION( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
       REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
       LOGICAL :: GET_THETA_FLUX
@@ -567,7 +567,7 @@ contains
       ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
       ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( 0,0,0 ) )
       ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) ) ; TDIFFUSION = 0.
-      ALLOCATE( MEAN_PORE_CV( CV_NONODS ) )
+      ALLOCATE( MEAN_PORE_CV( NPRES, CV_NONODS ) )
 
 
         IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
@@ -1742,7 +1742,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
         REAL, DIMENSION( : , : ), allocatable :: DEN_OR_ONE, DENOLD_OR_ONE
-        REAL, DIMENSION( : ), allocatable :: MEAN_PORE_CV
+        REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
         REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
         LOGICAL :: GET_THETA_FLUX
         INTEGER :: IGOT_T2, I, IGOT_THERM_VIS
@@ -1763,7 +1763,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         END IF
         ALLOCATE( THETA_GDIFF( NPHASE * IGOT_T2, CV_NONODS * IGOT_T2 )) ; THETA_GDIFF = 0.
         ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE )) ; TDIFFUSION = 0.
-        ALLOCATE( MEAN_PORE_CV( CV_NONODS )) ; MEAN_PORE_CV = 0.
+        ALLOCATE( MEAN_PORE_CV( NPRES, CV_NONODS )) ; MEAN_PORE_CV = 0.
         allocate( dummy_transp( totele ) ) ; dummy_transp = 0.
 
 
