@@ -314,7 +314,7 @@ contains
       REAL, intent( in ) :: DT, CV_THETA, SECOND_THETA, CV_BETA
       REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
       REAL, DIMENSION( : , : ), intent( in ) :: DERIV
-      REAL, DIMENSION( : ), intent( in ) :: CV_P
+      REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P
       REAL, DIMENSION( :, : ), intent( in ) :: SOURCT
       REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT_ALL
       REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
@@ -512,14 +512,14 @@ contains
 
       !! boundary_condition fields
       type(tensor_field) :: velocity_BCs,tracer_BCs, density_BCs, saturation_BCs
-      type(scalar_field) :: pressure_BCs
+      type(tensor_field) :: pressure_BCs
       type(tensor_field) :: tracer_BCs_robin2, saturation_BCs_robin2
 
       INTEGER, DIMENSION( 1 , nphase , surface_element_count(tracer) ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_T2_BC_ALL
       INTEGER, DIMENSION( ndim , nphase , surface_element_count(tracer) ) :: WIC_U_BC_ALL
 
-      type( scalar_field ), pointer ::  pressure
-      INTEGER, DIMENSION ( surface_element_count(tracer) ) :: WIC_P_BC_ALL
+      type( tensor_field ), pointer ::  pressure
+      INTEGER, DIMENSION ( 1,1,surface_element_count(tracer) ) :: WIC_P_BC_ALL
 
       REAL, DIMENSION( :,:,: ), pointer :: SUF_T_BC_ALL,&
            SUF_T_BC_ROB1_ALL, SUF_T_BC_ROB2_ALL
@@ -689,7 +689,7 @@ contains
          ['weakdirichlet'],&
          velocity_BCs,WIC_U_BC_ALL)
     if(got_free_surf) then
-        pressure => EXTRACT_SCALAR_FIELD( PACKED_STATE, "FEPressure" )
+        pressure => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
         call get_entire_boundary_condition(pressure,&
            ['weakdirichlet','freesurface  '],&
            pressure_BCs,WIC_P_BC_ALL)
@@ -2211,7 +2211,7 @@ contains
                         IF ( got_free_surf ) THEN
                            IF ( on_domain_boundary ) THEN
                               IF ( .not.symmetric_P ) THEN
-                                 IF ( WIC_P_BC_ALL( SELE ) == WIC_P_BC_FREE ) THEN ! on the free surface...
+                                 IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_FREE ) THEN ! on the free surface...
                                     DO P_JLOC = 1, CV_NLOC
                                        P_JNOD = CV_NDGLN( (ELE-1)*CV_NLOC + P_JLOC ) 
                                        ! Use the same sparcity as the MN matrix...
@@ -2465,12 +2465,12 @@ contains
                            ENDIF
 
                            LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
-                                - CV_P( CV_NODI ) * SCVDETWEI( GI ) * ( &
+                                - CV_P( 1,1,CV_NODI ) * SCVDETWEI( GI ) * ( &
                                 THERM_FTHETA * NDOTQNEW( : ) * LIMT2( : ) &
                                 + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD( : ) )*VOL_FRA_FLUID_I
                            if ( integrate_other_side_and_not_boundary ) then
                               LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
-                                   + CV_P( CV_NODJ ) * SCVDETWEI( GI ) * ( &
+                                   + CV_P( 1,1,CV_NODJ ) * SCVDETWEI( GI ) * ( &
                                    THERM_FTHETA * NDOTQNEW(:) * LIMT2(:) &
                                    + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD(:) )*VOL_FRA_FLUID_J
                            end if
@@ -2590,7 +2590,7 @@ contains
                   ENDIF
 
                   LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:) &
-                                - CV_P( CV_NODI ) * ( MASS_CV( CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
+                                - CV_P( 1,1,CV_NODI ) * ( MASS_CV( CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
                ENDIF
 !
                IF ( GOT_T2 ) THEN
@@ -2678,7 +2678,7 @@ contains
                     - R * SUM( &
                     + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
                     + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
-                    - DERIV( :, CV_NODI ) * CV_P( CV_NODI ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL( :, CV_NODI ) ) )
+                    - DERIV( :, CV_NODI ) * CV_P( 1,1,CV_NODI ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL( :, CV_NODI ) ) )
 
                DIAG_SCALE_PRES( 1,CV_NODI ) = DIAG_SCALE_PRES( 1,CV_NODI )  &
                   +  MEAN_PORE_CV( 1, CV_NODI ) * SUM( T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
@@ -4268,15 +4268,14 @@ end if
 
                 MASS_MN_PRES( COUNT ) = MASS_MN_PRES( COUNT ) + MN
              ENDIF
-             
+
              if (cv_test_space) then
                 call addto(mat,cv_nodi,cv_nodj,MN)
              else
                 call addto(mat,cv_nodi,cv_nodj,NN)
              end if
 
-             call addto(CV_MASS, CV_NODI,  MM )
-
+             call addto(CV_MASS, CV_NODI, MM )
 
              if (cv_test_space) then
                 DO IT = 1, size(fempsi_rhs)

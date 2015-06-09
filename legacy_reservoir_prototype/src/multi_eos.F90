@@ -347,7 +347,8 @@
       character( len = option_path_len ), intent( in ) :: eos_option_path
       real, dimension( : ), intent( inout ) :: rho, drhodp
 
-      type( scalar_field ), pointer :: pressure, temperature, density
+      type( tensor_field ), pointer :: pressure
+      type( scalar_field ), pointer :: temperature, density
       character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python, buffer
       character( len = python_func_len ) :: pycode
       logical, save :: initialised = .false.
@@ -365,7 +366,7 @@
 !!$ Den = Den0 * exp[ c0 * ( P - P0 ) ] :: Exponential_1 EOS
 !!$ Den = c0 * P** c1                   :: Exponential_2 EOS
 
-      pressure => extract_scalar_field( packed_state, 'CVPressure' )
+      pressure => extract_tensor_field( packed_state, 'PackedCVPressure' )
       temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
       have_temperature_field = ( stat == 0 )
 
@@ -401,11 +402,11 @@
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
          call get_option( trim( eos_option_path) // '/eos_option1' , eos_coefs( 1 ) )
          call get_option( trim( eos_option_path )// '/eos_option2' , eos_coefs( 2 ) )
-         Rho = ( pressure % val + eos_coefs( 1 ) ) * eos_coefs( 2 ) / temperature % val
-         perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val ) + eos_coefs( 1 ) ) )
-         RhoPlus = ( pressure % val + perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
+         Rho = ( pressure % val(1,1,:) + eos_coefs( 1 ) ) * eos_coefs( 2 ) / temperature % val
+         perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val(1,1,:) ) + eos_coefs( 1 ) ) )
+         RhoPlus = ( pressure % val(1,1,:) + perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
               temperature % val
-         RhoMinus = ( pressure % val - perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
+         RhoMinus = ( pressure % val(1,1,:) - perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
               temperature % val
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
          deallocate( eos_coefs )
@@ -415,7 +416,7 @@
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
          call get_option( trim( eos_option_path ) // '/coefficient_A', eos_coefs( 1 ) )
          call get_option( trim( eos_option_path ) // '/coefficient_B', eos_coefs( 2 ) )
-         Rho = eos_coefs( 1 ) * pressure % val + eos_coefs( 2 )
+         Rho = eos_coefs( 1 ) * pressure % val(1,1,:) + eos_coefs( 2 )
          perturbation_pressure = 1.
          !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) + eos_coefs( 2 )
          !RhoMinus = eos_coefs( 1 ) * ( pressure % val - perturbation_pressure ) + eos_coefs( 2 )
@@ -427,7 +428,7 @@
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
          call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_A', eos_coefs( 1 ) )
          call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B', eos_coefs( 2 ) )
-         Rho = eos_coefs( 1 ) * pressure % val / temperature % val + eos_coefs( 2 )
+         Rho = eos_coefs( 1 ) * pressure % val(1,1,:) / temperature % val + eos_coefs( 2 )
          perturbation_pressure = 1.
          !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) / &
          !     ( max( toler, temperature % val ) ) + eos_coefs( 2 )
@@ -443,14 +444,14 @@
          call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 2 ) ) ! reference_density 
          if ( .not. initialised ) then
             allocate( reference_pressure( node_count( pressure ) ) )
-            reference_pressure = pressure % val
+            reference_pressure = pressure % val(1,1,:)
             initialised = .true.
          end if
-         Rho = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( pressure % val - reference_pressure ) )
-         perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val ) ) )
-         RhoPlus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val + perturbation_pressure ) - &
+         Rho = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( pressure % val(1,1,:) - reference_pressure ) )
+         perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val(1,1,:) ) ) )
+         RhoPlus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val(1,1,:) + perturbation_pressure ) - &
               reference_pressure ) ) 
-         RhoMinus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val - perturbation_pressure ) - &
+         RhoMinus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val(1,1,:) - perturbation_pressure ) - &
               reference_pressure ) ) 
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
          deallocate( eos_coefs )
@@ -460,10 +461,10 @@
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
          call get_option( trim( eos_option_path ) // '/coefficient_A', eos_coefs( 1 ) )
          call get_option( trim( eos_option_path ) // '/coefficient_B', eos_coefs( 2 ) )
-         Rho = eos_coefs( 1 ) * pressure % val ** eos_coefs( 2 )
+         Rho = eos_coefs( 1 ) * pressure % val(1,1,:) ** eos_coefs( 2 )
          perturbation_pressure = 1.
-         RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) ** eos_coefs( 2 )
-         RhoMinus = eos_coefs( 1 ) * ( pressure % val - perturbation_pressure ) ** eos_coefs( 2 )
+         RhoPlus = eos_coefs( 1 ) * ( pressure % val(1,1,:) + perturbation_pressure ) ** eos_coefs( 2 )
+         RhoMinus = eos_coefs( 1 ) * ( pressure % val(1,1,:) - perturbation_pressure ) ** eos_coefs( 2 )
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
          deallocate( eos_coefs )
 
@@ -480,12 +481,12 @@
          else
             FLAbort('Unknown incompressible linear equation of state')
          end if
-         call Density_Polynomial( eos_coefs, pressure % val, temperature_local, &
+         call Density_Polynomial( eos_coefs, pressure % val(1,1,:), temperature_local, &
               Rho )
-         perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val ) )
-         call Density_Polynomial( eos_coefs, pressure % val + perturbation_pressure, temperature_local, &
+         perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val(1,1,:) ) )
+         call Density_Polynomial( eos_coefs, pressure % val(1,1,:) + perturbation_pressure, temperature_local, &
               RhoPlus )
-         call Density_Polynomial( eos_coefs, pressure % val - perturbation_pressure, temperature_local, &
+         call Density_Polynomial( eos_coefs, pressure % val(1,1,:) - perturbation_pressure, temperature_local, &
               RhoMinus )
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
          deallocate( temperature_local, eos_coefs )
@@ -525,7 +526,7 @@
          ! Back up pressure and density before we start perturbing stuff... 
          allocate( pressure_back_up( node_count( pressure ) ), density_back_up( node_count( pressure ) ) )
          pressure_back_up = 0. ; density_back_up = 0.
-         pressure_back_up = pressure % val
+         pressure_back_up = pressure % val(1,1,:)
          density_back_up = density % val
 
          call python_reset()
@@ -534,7 +535,7 @@
          ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
          perturbation_pressure = 1.e-5
 
-         pressure % val = pressure % val + perturbation_pressure
+         pressure % val(1,1,:) = pressure % val(1,1,:) + perturbation_pressure
          call zero( density )
 
          call python_reset()
@@ -554,8 +555,8 @@
 
          call python_reset()
 
-         pressure % val = pressure_back_up
-         pressure % val = pressure % val - perturbation_pressure
+         pressure % val(1,1,:) = pressure_back_up
+         pressure % val(1,1,:) = pressure % val(1,1,:) - perturbation_pressure
          call zero( density )
 
          call python_reset()
@@ -579,7 +580,7 @@
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
 
          ! Restore pressure and density values in state
-         pressure % val = pressure_back_up
+         pressure % val(1,1,:) = pressure_back_up
          density % val = density_back_up
 
          deallocate( pressure_back_up, density_back_up )

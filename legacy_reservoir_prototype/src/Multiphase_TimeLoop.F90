@@ -246,7 +246,8 @@
       !Working pointers
 
       type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
-      type(scalar_field), pointer :: pressure_field, cv_pressure, fe_pressure, f1, f2
+      type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure
+      type(scalar_field), pointer :: f1, f2
       type(vector_field), pointer :: positions, porosity_field
 
       logical :: write_all_stats=.true.
@@ -557,7 +558,7 @@
 
       !Look for bad elements to apply a correction on them
       if (is_porous_media) then
-         pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+         pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
          allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
          call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc,Max_bad_angle, Min_bad_angle, Quality_list&
            ,pressure_field%mesh%shape%degree)
@@ -833,7 +834,7 @@
                end if
 
                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-               pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+               pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
                CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                     velocity_field, pressure_field, &
@@ -1184,8 +1185,8 @@
 
             dtime=dtime+1
             if (do_checkpoint_simulation(dtime)) then
-               CV_Pressure=>extract_scalar_field(packed_state,"CVPressure")
-               FE_Pressure=>extract_scalar_field(packed_state,"FEPressure")
+               CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+               FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
                call set(pressure_field,FE_Pressure)
 
                call checkpoint_simulation(state,cp_no=checkpoint_number,&
@@ -1439,7 +1440,7 @@
 
             !Look again for bad elements
             if (is_porous_media) then
-              pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+              pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
                allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
                 call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list,&
                     pressure_field%mesh%shape%degree)
@@ -1713,22 +1714,22 @@
         call insert(packed_state,sparsity,'CVFEMSparsity')
         call deallocate(sparsity)
 
-        sfield=>extract_scalar_field(packed_state,"FEPressure")
+        tfield=>extract_tensor_field(packed_state,"PackedFEPressure")
 
-        if (associated( sfield%mesh%halos)) then
+        if (associated( tfield%mesh%halos)) then
            sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity',&
-                row_halo=sfield%mesh%halos(2),&
-                column_halo=sfield%mesh%halos(2))
+                row_halo=tfield%mesh%halos(2),&
+                column_halo=tfield%mesh%halos(2))
         else
            sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity')
         end if
         call insert(packed_state,sparsity,'CMCSparsity')
         call deallocate(sparsity)
 
-        if (associated( sfield%mesh%halos)) then
+        if (associated( tfield%mesh%halos)) then
            sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity",&
-                row_halo=sfield%mesh%halos(2),&
-                column_halo=sfield%mesh%halos(2))
+                row_halo=tfield%mesh%halos(2),&
+                column_halo=tfield%mesh%halos(2))
         else
            sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity")
         end if
@@ -1751,7 +1752,9 @@
         call insert(packed_state,sparsity,"MomentumSparsity")
         call deallocate(sparsity)
 
-        sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
+        tfield=>extract_tensor_field(packed_state,"PackedFEPressure")
+
+        sparsity=make_sparsity(tfield%mesh,tfield%mesh,&
              "PressureMassMatrixSparsity")
         call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
         call deallocate(sparsity)
@@ -1949,13 +1952,13 @@
         end if
      end do
 
-     sfield=>extract_scalar_field(packed_state,"OldFEPressure")
-     nsfield=>extract_scalar_field(packed_state,"FEPressure")
-     sfield%val=nsfield%val
+     tfield=>extract_tensor_field(packed_state,"PackedOldFEPressure")
+     ntfield=>extract_tensor_field(packed_state,"PackedFEPressure")
+     tfield%val=ntfield%val
 
-     sfield=>extract_scalar_field(packed_state,"OldCVPressure")
-     nsfield=>extract_scalar_field(packed_state,"CVPressure")
-     sfield%val=nsfield%val
+     tfield=>extract_tensor_field(packed_state,"PackedOldCVPressure")
+     ntfield=>extract_tensor_field(packed_state,"PackedCVPressure")
+     tfield%val=ntfield%val
 
    end subroutine copy_packed_new_to_old
 
