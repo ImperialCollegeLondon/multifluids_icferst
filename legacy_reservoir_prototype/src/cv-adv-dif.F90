@@ -292,8 +292,8 @@ contains
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
       ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
       REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
-      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! nphase x nphase x cv_nonods
-      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS ! npres x npres x cv_nonods
+      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (npres, npres, cv_nonods)
+      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS ! (npres, npres, cv_nonods)
       type(vector_field), intent( inout ) :: CT_RHS
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
@@ -313,11 +313,11 @@ contains
 
       REAL, intent( in ) :: DT, CV_THETA, SECOND_THETA, CV_BETA
       REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-      REAL, DIMENSION( : , : ), intent( in ) :: DERIV
-      REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P
+      REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (NPHASE,CV_NONODS)
+      REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,NPRES,CV_NONODS)
       REAL, DIMENSION( :, : ), intent( in ) :: SOURCT
       REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT_ALL
-      REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+      REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE ! (NPRES,TOTELE)
       LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
 ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
       INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -326,7 +326,7 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINELE
       INTEGER, DIMENSION( : ), intent( in ) :: COLELE
       REAL, DIMENSION( :, :, :, : ), target, intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-      REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
+      REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (NPRES,CV_NONODS)
       REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
       character( len = * ), intent( in ), optional :: option_path_spatial_discretisation
       integer, dimension(:), intent(in) :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
@@ -446,7 +446,7 @@ contains
            CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
            NFACE, X_NODI,  X_NODJ, &
            CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, &
-           XNOD, NSMALL_COLM, COUNT2, NOD, N_IN_PRES, IPRES
+           XNOD, NSMALL_COLM, COUNT2, NOD, N_IN_PRES
       !        ===>  REALS  <===
       REAL :: HDC, &
            VTHETA, &
@@ -501,6 +501,7 @@ contains
       LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
       LOGICAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_PACK, IGOT_T_CONST
       REAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_CONST_VALUE
+      REAL, DIMENSION( : ), ALLOCATABLE :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
 
       !Working pointers
       real, dimension(:), allocatable :: VOL_FRA_FLUID ! for solid coupling
@@ -509,6 +510,8 @@ contains
       real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL, FEMT_ALL, FEMTOLD_ALL
       real, dimension(:, :, :), pointer :: comp, comp_old, fecomp, fecomp_old, U_ALL, NU_ALL, NUOLD_ALL
       real, dimension(:,:), allocatable :: T_ALL_KEEP
+      real, dimension(:), allocatable :: ct_rhs_phase, DIAG_SCALE_PRES_phase
+      real, dimension(:), allocatable :: R_PRES,R_PHASE,CV_P_PHASE_NODI,CV_P_PHASE_NODJ,MEAN_PORE_CV_PHASE
 
       !! boundary_condition fields
       type(tensor_field) :: velocity_BCs,tracer_BCs, density_BCs, saturation_BCs
@@ -562,7 +565,7 @@ contains
       real :: Diffusive_cap_only_real
 
       real, dimension(nphase):: rsum_nodi, rsum_nodj
-      integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD, stat
+      integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
       REAL :: MM_GRAVTY
 
       !Variables to calculate flux across boundaries
@@ -620,9 +623,9 @@ contains
 
     T_ALL_KEEP = T_ALL
 
-    IF( GETCT ) THEN
+    N_IN_PRES = NPHASE / NPRES
 
-       N_IN_PRES = NPHASE / NPRES
+    IF( GETCT ) THEN
 
        IF( RETRIEVE_SOLID_CTY ) THEN
           ALLOCATE(VOL_FRA_FLUID(CV_NONODS))
@@ -863,6 +866,9 @@ contains
       ALLOCATE( FEMDEN_ALL( NPHASE, CV_NONODS ), FEMDENOLD_ALL( NPHASE, CV_NONODS ) )
       ALLOCATE( FEMT2_ALL( NPHASE, CV_NONODS ), FEMT2OLD_ALL( NPHASE, CV_NONODS ) )
 
+      allocate(CV_P_PHASE_NODI(nphase),CV_P_PHASE_NODJ(nphase))
+      allocate(CT_RHS_PHASE_CV_NODI(nphase),CT_RHS_PHASE_CV_NODJ(nphase))
+
       ALLOCATE( SOURCT_ALL( NPHASE, CV_NONODS ) )
       !DO IPHASE = 1, NPHASE
       !   tracer_source=>extract_tensor_field(packed_state,trim(tracer%name)//"Source")
@@ -1051,6 +1057,11 @@ contains
 
       ! END OF TEMP STUFF HERE
 
+
+      allocate(R_PRES(npres),R_PHASE(nphase),MEAN_PORE_CV_PHASE(nphase))
+
+
+
       psi(1)%ptr=>tracer
       psi(2)%ptr=>old_tracer
       FEM_IT=2
@@ -1175,14 +1186,13 @@ contains
          DO CV_ILOC = 1, CV_NLOC
             CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
             SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
-            MEAN_PORE_CV( 1, CV_INOD ) = MEAN_PORE_CV( 1, CV_INOD ) + &
-                 MASS_ELE( ELE ) * VOLFRA_PORE( 1, ELE )
+            MEAN_PORE_CV( :, CV_INOD ) = MEAN_PORE_CV( :, CV_INOD ) + &
+                 MASS_ELE( ELE ) * VOLFRA_PORE( :, ELE )
          END DO
       END DO
       DO IPRES = 1, NPRES
          MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
       END DO
-
       ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
 
       IANISOLIM = 0
@@ -2230,7 +2240,8 @@ contains
                            END IF
                         END IF
 
-                        CALL PUT_IN_CT_RHS( CT, CT_RHS, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+                        ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
+                        CALL PUT_IN_CT_RHS( CT, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
                              CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary,  &
                              JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, &
                              SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -2242,6 +2253,13 @@ contains
                              RETRIEVE_SOLID_CTY,theta_cty_solid, &
                              loc_u, loc2_u, THETA_VEL, & 
                              rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX )
+                        do ipres=1,npres
+                           call addto(ct_rhs,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*n_in_pres:ipres*n_in_pres) ))
+                        if ( integrate_other_side_and_not_boundary ) then
+                           call addto(ct_rhs,ipres,cv_nodj,sum(ct_rhs_phase_cv_nodj(1+(ipres-1)*n_in_pres:ipres*n_in_pres) ))
+                        end if
+                        end do
+
                      ENDIF Conditional_GETCT2
 
 
@@ -2464,22 +2482,27 @@ contains
                               VOL_FRA_FLUID_J = 1.0
                            ENDIF
 
+                           DO IPRES=1,NPRES
+                              CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODI )
+                              CV_P_PHASE_NODJ(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODJ )
+                           END DO
+
                            LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
-                                - CV_P( 1,1,CV_NODI ) * SCVDETWEI( GI ) * ( &
+                                - CV_P_PHASE_NODI( : ) * SCVDETWEI( GI ) * ( &
                                 THERM_FTHETA * NDOTQNEW( : ) * LIMT2( : ) &
                                 + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD( : ) )*VOL_FRA_FLUID_I
                            if ( integrate_other_side_and_not_boundary ) then
                               LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
-                                   + CV_P( 1,1,CV_NODJ ) * SCVDETWEI( GI ) * ( &
+                                   + CV_P_PHASE_NODJ( : ) * SCVDETWEI( GI ) * ( &
                                    THERM_FTHETA * NDOTQNEW(:) * LIMT2(:) &
                                    + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD(:) )*VOL_FRA_FLUID_J
                            end if
 
                            IF ( GOT_VIS ) THEN
                               ! stress form of viscosity...
-                              NU_LEV_GI(:, :) =  (1.-THERM_FTHETA) * NUOLDGI_ALL(:,:) + THERM_FTHETA * NUGI_ALL(:,:) 
+                              NU_LEV_GI(:, :) =  (1.-THERM_FTHETA) * NUOLDGI_ALL(:,:) + THERM_FTHETA * NUGI_ALL(:,:)
 
-                              STRESS_IJ_THERM(:,:,:) = 0.0 
+                              STRESS_IJ_THERM(:,:,:) = 0.0
 
                               DO IPHASE=1,NPHASE
 
@@ -2572,7 +2595,10 @@ contains
 
             LOC_CV_RHS_I=0.0
 
-            R = MEAN_PORE_CV( 1, CV_NODI ) * MASS_CV( CV_NODI ) / DT
+            DO IPRES=1,NPRES
+               R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI ) * MASS_CV( CV_NODI ) / DT
+               CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODI )
+            END DO
 
                IF(THERMAL) THEN
                   IF(GOT_VIS) THEN
@@ -2590,7 +2616,7 @@ contains
                   ENDIF
 
                   LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:) &
-                                - CV_P( 1,1,CV_NODI ) * ( MASS_CV( CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
+                                - CV_P_PHASE_NODI(:) * ( MASS_CV( CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
                ENDIF
 !
                IF ( GOT_T2 ) THEN
@@ -2602,13 +2628,13 @@ contains
                              cv_nodi, cv_nodi,&
                        + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) ) &
-                       * R)
+                       * R_PHASE(IPHASE))
                   END DO 
 
                   LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                        + (CV_BETA * DENOLD_ALL( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
-                       + (1.-CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) )  &
-                       * R * TOLD_ALL( :, CV_NODI )
+                       + (1.-CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) ) &
+                       * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
                ELSE
 
                   LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
@@ -2619,13 +2645,20 @@ contains
                              cv_nodi, cv_nodi,&
                        + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) )  &
-                       * R )
+                       * R_PHASE(IPHASE) )
                   END DO
 
                   LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                        + ( CV_BETA * DENOLD_ALL( :, CV_NODI ) &
                        + (1.-CV_BETA) * DEN_ALL( :, CV_NODI ) ) &
-                       * R * TOLD_ALL( :, CV_NODI )
+                       * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
+               END IF
+
+               IF( NPRES > 1 ) THEN
+                  DO JPHASE = 1, NPHASE
+                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
+                       - MASS_CV( CV_NODI ) * GAMMA_PRES_ABS(:,JPHASE,CV_NODI )*CV_P_PHASE_NODI(JPHASE )
+                  END DO
                END IF
 
                Conditional_GETMAT2: IF ( GETMAT ) THEN
@@ -2654,46 +2687,73 @@ contains
          W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T
          W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD
 
-
          DIAG_SCALE_PRES = 0.0
 
+         allocate(ct_rhs_phase(nphase),DIAG_SCALE_PRES_phase(nphase))
+         DIAG_SCALE_PRES_COUP=0.0
          DO CV_NODI = 1, CV_NONODS
-
-            R = MASS_CV( CV_NODI ) * MEAN_PORE_CV( 1, CV_NODI ) / DT
+            ct_rhs_phase=0.0;  DIAG_SCALE_PRES_phase=0.0
+            DO IPRES=1,NPRES
+               R_PRES(IPRES) = MASS_CV( CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
 ! Add constraint to force sum of volume fracts to be unity...
                   ! W_SUM_ONE==1 applies the constraint
                   ! W_SUM_ONE==0 does NOT apply the constraint
-            call addto(ct_rhs,1,cv_nodi,&
-                 - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R)
+               call addto(ct_rhs,IPRES,cv_nodi,&
+                 - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R_PRES(IPRES))
 
-            IF(RETRIEVE_SOLID_CTY) THEN 
+               IF(RETRIEVE_SOLID_CTY) THEN
 ! VOL_FRA_FLUID is the old voln fraction of total fluid...
 ! multiply by solid-voln fraction: (1.-VOL_FRA_FLUID)
-               call addto(ct_rhs,1,cv_nodi,&
-                    + (1.-VOL_FRA_FLUID( CV_NODI )) * R)
+                  call addto(ct_rhs,IPRES,cv_nodi,&
+                       + (1.-VOL_FRA_FLUID( CV_NODI )) * R_PRES(IPRES))
+               ENDIF
 
-            ENDIF
+               R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=R_PRES(IPRES)
+               MEAN_PORE_CV_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI )
 
-            call addto(ct_rhs,1,cv_nodi,&
-                    - R * SUM( &
+               CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODI )
+            END DO
+
+            ct_rhs_phase(:)=ct_rhs_phase(:)  &
+                    - R_PHASE(:) * ( &
                     + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
                     + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
-                    - DERIV( :, CV_NODI ) * CV_P( 1,1,CV_NODI ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL( :, CV_NODI ) ) )
+                    - DERIV( :, CV_NODI ) * CV_P_PHASE_NODI( : ) * T_ALL_KEEP( :, CV_NODI ) ) / DEN_ALL( :, CV_NODI ) )
 
-               DIAG_SCALE_PRES( 1,CV_NODI ) = DIAG_SCALE_PRES( 1,CV_NODI )  &
-                  +  MEAN_PORE_CV( 1, CV_NODI ) * SUM( T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
-                    / ( DT * DEN_ALL( :, CV_NODI ) )   )
+            DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) &
+                  +  MEAN_PORE_CV_PHASE(:) * T_ALL_KEEP( :, CV_NODI ) * DERIV( :, CV_NODI ) &
+                    / ( DT * DEN_ALL( :, CV_NODI ) )
 
-               call addto(ct_rhs,1,cv_nodi,&
-                    MASS_CV( CV_NODI ) * SUM( SOURCT_ALL( :, CV_NODI ) / DEN_ALL( :, CV_NODI )  ) )
+            ct_rhs_phase(:)=ct_rhs_phase(:)  &
+                  + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL( :, CV_NODI )
 
                DO JPHASE = 1, NPHASE
-                  call addto(ct_rhs,1,cv_nodi,&
-                    - MASS_CV( CV_NODI ) * SUM( ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL( :, CV_NODI )   ) )
+            ct_rhs_phase(:)=ct_rhs_phase(:)  &
+                    - MASS_CV( CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL( :, CV_NODI )
                END DO
 
-         END DO
+            ! scaling coefficient...
+            IF ( NPRES > 1 ) THEN
+               DO IPRES=1,NPRES
+                  DO JPRES=1,NPRES
+                     jphase=1+(jpres-1)*n_in_pres
+                     DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) =   &
+                        + sum( GAMMA_PRES_ABS(1+(ipres-1)*n_in_pres:ipres*n_in_pres,JPHASE, CV_NODI ) &
+                                    /DEN_ALL( 1+(ipres-1)*n_in_pres:ipres*n_in_pres, CV_NODI ) )
+                  END DO
+               END DO
+            END IF
 
+            DO IPRES=1,NPRES
+               call addto(ct_rhs, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) )
+               DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
+                     +  sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
+            END DO
+
+         END DO  ! endof DO CV_NODI = 1, CV_NONODS
+
+         deallocate(ct_rhs_phase, DIAG_SCALE_PRES_phase)
+         !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
 
       END IF
 
@@ -9699,7 +9759,9 @@ CONTAINS
   END SUBROUTINE CALC_SELE
 
 
-  SUBROUTINE PUT_IN_CT_RHS( CT, CT_RHS, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+
+
+  SUBROUTINE PUT_IN_CT_RHS( CT, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
        CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary, &
        JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC, U_SLOC2LOC,   &
        SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -9723,7 +9785,7 @@ CONTAINS
     INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
     REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
-    type( vector_field ), intent( inout ) :: CT_RHS
+    REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
     REAL, DIMENSION( :, : ), intent( in ) :: SUFEN
     REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI
@@ -9758,19 +9820,20 @@ CONTAINS
 
     IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
        ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the CT matrix and add what we really want)
-       call addto(ct_rhs,1,cv_nodi,&
-            THETA_CTY_SOLID * SCVDETWEI( GI ) * ( SUM(LIMT_HAT(:)*NDOTQ(:)) - NDOTQ_HAT ))
+
+       ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
+     +   THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT(:)*NDOTQ(:) - NDOTQ_HAT/REAL(NPHASE) )
 ! assume cty is satified for solids...
-       call addto(ct_rhs,1,cv_nodi,&
-            (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * SUM(  (LIMT_HAT(:) - LIMT(:))*NDOTQ(:)  ) )
+       ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
+     +      (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * (  LIMT_HAT(:) - LIMT(:) )*NDOTQ(:)
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
 ! assume cty is satified for solids...
-          call addto(ct_rhs,1,cv_nodj,&
-               - THETA_CTY_SOLID * SCVDETWEI( GI ) * ( SUM( LIMT_HAT(:)*NDOTQ(:) ) - NDOTQ_HAT  ) )
+       ct_rhs_phase_cv_nodj(:)=ct_rhs_phase_cv_nodj(:) &
+        - THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT(:)*NDOTQ(:)  - NDOTQ_HAT/REAL(NPHASE)  )
 ! assume cty is satified for solids...
-          call addto(ct_rhs,1,cv_nodj,&
-               - (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) *  SUM( (LIMT_HAT(:) - LIMT(:))*NDOTQ(:) ) )
+       ct_rhs_phase_cv_nodj(:)=ct_rhs_phase_cv_nodj(:) &
+               - (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * ( LIMT_HAT(:) - LIMT(:) )*NDOTQ(:)
        end if
     END IF ! For solid modelling...
 
@@ -9803,7 +9866,7 @@ CONTAINS
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
 
-          RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:))  &
+          RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:)) &
                * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
 
 
@@ -9841,25 +9904,25 @@ CONTAINS
           NDOTQ_IMP(IPHASE)= SUM( CVNORMX_ALL( :,GI ) * UDGI_IMP_ALL(:,IPHASE) )
        END DO
 
-       call addto(ct_rhs,1,cv_nodi,&
-            - SCVDETWEI( GI ) * SUM(  ( &
+       ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
+           - SCVDETWEI( GI ) * (  ( &
             ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
             + FTHETA_T2(:)  * LIMDT(:) * (NDOTQ(:)-NDOTQ_IMP(:)) &
-            ) / DEN_ALL( :, CV_NODI )  ) )
+            ) / DEN_ALL( :, CV_NODI ) )
 
     ELSE
        
-       call addto(ct_rhs,1,cv_nodi,&
-            - SCVDETWEI( GI ) * SUM(  ( &
-            ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:))  &
-            ) / DEN_ALL( :, CV_NODI )   ) )
+       ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
+            - SCVDETWEI( GI ) * (  ( &
+            ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
+            ) / DEN_ALL( :, CV_NODI )   )
 
        ! flux from the other side (change of sign because normal is -ve)...
        if ( integrate_other_side_and_not_boundary ) then
-          call addto(ct_rhs,1,cv_nodj,&
-               SCVDETWEI( GI ) * SUM(   ( &
-               ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:))  &
-               ) / DEN_ALL( :, CV_NODJ )    ) )
+       ct_rhs_phase_cv_nodj(:)=ct_rhs_phase_cv_nodj(:) &
+            + SCVDETWEI( GI ) * ( ( &
+               ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
+               ) / DEN_ALL( :, CV_NODJ ) )
        end if
     END IF
 
@@ -9899,10 +9962,10 @@ CONTAINS
 !     endif
              ! flux from the other side (change of sign because normal is -ve)...
              if ( integrate_other_side_and_not_boundary ) then
-                RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:))    &
+                RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:)) &
                      * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
                 IF(RETRIEVE_SOLID_CTY) THEN ! For solid modelling...
-                   RCON_J(:)    = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:))  &
+                   RCON_J(:)    = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
                         * SUFEN( U_KLOC, GI )
                 END IF ! For solid modelling...
 !     if(more_in_ct) then
