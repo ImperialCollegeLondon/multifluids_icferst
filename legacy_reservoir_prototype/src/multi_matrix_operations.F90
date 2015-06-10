@@ -388,7 +388,7 @@
       REAL, DIMENSION( :, : ), allocatable :: CDPC_MANY, DUC_MANY, DVC_MANY, DWC_MANY, DU_LONGC_MANY
       INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
       INTEGER :: I, ELE,u_inod,u_nod
-      integer, save :: ndpset=-1
+      INTEGER, DIMENSION( : ), allocatable :: ndpset
       REAL :: RSUM
       !Variables for CMC_petsc
       integer, dimension( : ), allocatable :: dnnz
@@ -400,8 +400,12 @@
 
       call zero( CMC_petsc )
 
-      if (ndpset<0) call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
-           'prognostic/reference_node', ndpset, default = 0 )
+      allocate(ndpset(npres)) ; ndpset(:)=-1
+      if (ndpset(1)<0) then
+         call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
+           'prognostic/reference_node', ndpset(1), default = 0 )
+         ndpset(1:npres)=ndpset(1)
+      endif
 
       if (isparallel()) then
             if (GetProcNo()>1) ndpset=0
@@ -410,24 +414,24 @@
 
       IF ( test_caching_level(6) ) THEN
          ! Fast but memory intensive...
-         CALL COLOR_GET_CMC_PHA_FAST( CV_NONODS, U_NONODS, NDIM, NPHASE, &
+         CALL COLOR_GET_CMC_PHA_FAST( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
               NCOLC, FINDC, COLC, &
               INV_PIVIT_MAT,  &
               TOTELE, U_NLOC, U_NDGLN, &
-              NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
+              NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
               CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
               got_free_surf,  MASS_SUF, &
               C, CT, ndpset, state, indx, symmetric_P )
       ELSE
          ! Slow but memory efficient...
-         CALL COLOR_GET_CMC_PHA_SLOW( CV_NONODS, U_NONODS, NDIM, NPHASE, &
+         CALL COLOR_GET_CMC_PHA_SLOW( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
               NCOLC, FINDC, COLC, &
               INV_PIVIT_MAT,  &
               TOTELE, U_NLOC, U_NDGLN, &
-              NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
+              NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
               CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
               got_free_surf,  MASS_SUF, &
-              C, CT, ndpset)
+              C, CT, ndpset, symmetric_P )
       END IF
 
       !Final step to prepare the CMC_petsc
@@ -439,21 +443,21 @@
 
 
 
-       SUBROUTINE COLOR_GET_CMC_PHA_FAST( CV_NONODS, U_NONODS, NDIM, NPHASE, &
+       SUBROUTINE COLOR_GET_CMC_PHA_FAST( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
             NCOLC, FINDC, COLC, &
             INV_PIVIT_MAT,  &
             TOTELE, U_NLOC, U_NDGLN, &
-            NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
+            NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
             got_free_surf,  MASS_SUF, &
             C, CT, ndpset, state, indx, symmetric_P )
 
          implicit none
          ! form pressure matrix CMC using a colouring approach
-         INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC, &
+         INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, NCOLC, &
               TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
          LOGICAL, intent( in ) :: got_free_surf, symmetric_P
-         INTEGER, intent( in ) :: ndpset 
+         INTEGER, DIMENSION( : ), intent( in ) :: ndpset
          INTEGER, DIMENSION( : ), intent( in ) ::FINDC
          INTEGER, DIMENSION( : ), intent( in ) :: COLC
          REAL, DIMENSION( :, :, : ), intent( in ) :: INV_PIVIT_MAT
@@ -461,6 +465,7 @@
          INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
          INTEGER, DIMENSION( : ), intent( in ) :: COLCT
          REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
+         REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP
          type(petsc_csr_matrix), intent(inout)::  CMC_petsc
          REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
          REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
@@ -480,10 +485,10 @@
          INTEGER, DIMENSION( : ), allocatable :: COLOR_IN_ROW, COLOR_IN_ROW2
          REAL, DIMENSION( :, : ), allocatable :: COLOR_VEC_MANY
          REAL, DIMENSION( :, :, :, : ), allocatable :: CDP_MANY, DU_LONG_MANY
-         REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC_MANY, CMC_COLOR_VEC2_MANY
+         REAL, DIMENSION( :, :, : ), allocatable :: CMC_COLOR_VEC_MANY, CMC_COLOR_VEC2_MANY
          INTEGER :: CV_NOD, CV_JNOD, COUNT, COUNT2, COUNT3, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
          INTEGER :: MAX_COLOR_IN_ROW, ICHOOSE, KVEC, I, ELE, U_INOD, U_NOD, ICAN_COLOR, MX_COLOR, NOD_COLOR
-         INTEGER :: NCOLOR, ierr, j
+         INTEGER :: NCOLOR, ierr, j, N_IN_PRES, i_indx, j_indx, IPRES, JPRES
          REAL :: RSUM, RSUM_SUF
          !Variables to store things in state
          type(mesh_type), pointer :: fl_mesh
@@ -492,14 +497,15 @@
          real, pointer, dimension(:) :: pointer_icolor
 
          IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
+         N_IN_PRES = NPHASE / NPRES
 
          MAX_COLOR_IN_ROW = 0
          DO CV_NOD = 1, CV_NONODS
             MAX_COLOR_IN_ROW = MAX( MAX_COLOR_IN_ROW, FINDCMC( CV_NOD + 1 ) - FINDCMC( CV_NOD ) )
          END DO
 
-         ALLOCATE( COLOR_IN_ROW( MAX_COLOR_IN_ROW**2 ) ) 
-         ALLOCATE( COLOR_IN_ROW2( MAX_COLOR_IN_ROW**2 ) ) 
+         ALLOCATE( COLOR_IN_ROW( MAX_COLOR_IN_ROW**2 ) )
+         ALLOCATE( COLOR_IN_ROW2( MAX_COLOR_IN_ROW**2 ) )
          IF ( indx /= 0 ) THEN!coloring stored
 
              pointer_icolor =>  state(1)%scalar_fields(indx)%ptr%val
@@ -508,6 +514,7 @@
              !WE SHOULD CONVERT ICOLOR AND NCOLOR INTO POINTERS!
              ICOLOR = pointer_icolor(1:CV_NONODS)
              NCOLOR = pointer_icolor(CV_NONODS+1)
+
          ELSE
 
                 !Prepare the variable inside state
@@ -525,14 +532,10 @@
              !Now we insert them in state and store the index
              call insert(state(1), targ_icolor, "Col_fast")
              call deallocate (targ_icolor)
-             !          call deallocate(Auxmesh)
+             !call deallocate(Auxmesh)
              indx = size(state(1)%scalar_fields)
              !Get from state
              pointer_icolor =>  state(1)%scalar_fields(indx)%ptr%val
-
-
-
-
 
              COLOR_LOGICAL = .FALSE.
 
@@ -575,10 +578,6 @@
              END DO Loop_CVNOD7
 
 
-
-
-
-
              IF ( NCOLOR > MX_NCOLOR ) THEN
                  EWRITE(-1, *) 'NOT ENOUGH COLOURS STOPPING - NEED TO MAKE MX_COLOR BIGGER'
                  STOP 281
@@ -591,10 +590,6 @@
          END IF ! SAVED_CMC_COLOR
 
 
-
-
-
-
          ALLOCATE( COLOR_VEC_MANY( NCOLOR, CV_NONODS ) )
          COLOR_VEC_MANY = 0.0
 
@@ -602,7 +597,7 @@
             COLOR_VEC_MANY( ICOLOR( CV_NOD ), CV_NOD ) = 1.0
          END DO Loop_CVNOD
 
-
+         ! we use the same colouring for each pressure variable when npres>1.
          ALLOCATE( CDP_MANY( NCOLOR, NDIM, NPHASE, U_NONODS ) )
 
          CALL C_MULT_MANY( CDP_MANY, COLOR_VEC_MANY, CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLOR, &
@@ -617,17 +612,24 @@
          ! NB. P_RHS = CT * U + CV_RHS 
          ! DU_LONG = CDP
 
-         ALLOCATE( CMC_COLOR_VEC_MANY( NCOLOR, CV_NONODS ) ) 
+         ALLOCATE( CMC_COLOR_VEC_MANY( NCOLOR, NPRES, CV_NONODS ) )
 
-         CALL CT_MULT_MANY( CMC_COLOR_VEC_MANY, DU_LONG_MANY, CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLOR, &
-              CT, NCOLCT, FINDCT, COLCT )
+         DO IPRES = 1, NPRES
+            CALL CT_MULT_MANY( CMC_COLOR_VEC_MANY(:,IPRES,:), &
+                 DU_LONG_MANY(:,:,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,:), &
+                 CV_NONODS, U_NONODS, NDIM, N_IN_PRES, NCOLOR, &
+                 CT(:,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,:), NCOLCT, FINDCT, COLCT )
+         END DO
 
          IF ( IGOT_CMC_PRECON /= 0 ) THEN
-            ALLOCATE( CMC_COLOR_VEC2_MANY( NCOLOR, CV_NONODS ) ) 
-            CALL CT_MULT_WITH_C_MANY( CMC_COLOR_VEC2_MANY, DU_LONG_MANY, CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLOR, &
-                 C, NCOLC, FINDC, COLC )
+            ALLOCATE( CMC_COLOR_VEC2_MANY( NCOLOR, NPRES, CV_NONODS ) )
+            DO IPRES = 1, NPRES
+               CALL CT_MULT_WITH_C_MANY( CMC_COLOR_VEC2_MANY(:,IPRES,:), &
+                    DU_LONG_MANY(:,:,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES, :), &
+                    CV_NONODS, U_NONODS, NDIM, N_IN_PRES, NCOLOR, &
+                    C(:,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,:), NCOLC, FINDC, COLC )
+            END DO
          END IF
-
 
 
          ! Matrix vector involving the mass diagonal term
@@ -637,19 +639,27 @@
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
 
-               CMC_COLOR_VEC_MANY( :, CV_NOD ) = CMC_COLOR_VEC_MANY( :, CV_NOD ) +&
-                 DIAG_SCALE_PRES( 1,CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
-                        if(got_free_surf) then
-               CMC_COLOR_VEC_MANY( :, CV_NOD ) = CMC_COLOR_VEC_MANY( :, CV_NOD ) +&
-                 MASS_SUF( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
-               RSUM_SUF = RSUM_SUF + MASS_SUF( COUNT )
-                        endif
+               DO IPRES = 1, NPRES
+                  CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
+                       DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+                  if ( got_free_surf ) then
+                     CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
+                          MASS_SUF( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+                  end if
+               END DO
 
+               if ( got_free_surf ) then
+                  RSUM_SUF = RSUM_SUF + MASS_SUF( COUNT )
+               end if
                RSUM = RSUM + MASS_MN_PRES( COUNT )
+
             END DO
+
             IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-              CMC_COLOR_VEC2_MANY( :, CV_NOD ) = CMC_COLOR_VEC2_MANY( :, CV_NOD ) &
-                   +  (DIAG_SCALE_PRES( 1,CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC_MANY( :, CV_NOD )
+               DO IPRES=1,NPRES
+                  CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) &
+                       + ( DIAG_SCALE_PRES( IPRES, CV_NOD ) * RSUM + RSUM_SUF ) * COLOR_VEC_MANY( :, CV_NOD )
+               END DO
             END IF
          END DO
 
@@ -660,10 +670,14 @@
             DO CV_NOD = 1, CV_NONODS
                DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                   CV_JNOD = COLCMC( COUNT )
-                  call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
-                       val = dot_product(CMC_COLOR_VEC_MANY( :, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
-                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( 1,1,COUNT ) = CMC_PRECON( 1,1,COUNT ) + &
-                       sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                  DO IPRES = 1, NPRES
+                     JPRES = IPRES ! Add contributions to the block diagonal only.
+                     call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                          val = dot_product(CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
+                     !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                     IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
+                          sum(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                  END DO
                END DO
             END DO
 
@@ -673,51 +687,77 @@
             DO CV_NOD = 1, CV_NONODS
                DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                   CV_JNOD = COLCMC( COUNT )
-                  call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
-                       val = sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD )))
-                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( 1,1,COUNT ) = CMC_PRECON( 1,1,COUNT ) + &
-                       sum(CMC_COLOR_VEC2_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                  DO IPRES = 1, NPRES
+                     JPRES = IPRES ! Add contributions to the block diagonal only.
+                     call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                          val = dot_product(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
+                     !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                     IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
+                          sum(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                  END DO
                END DO
             END DO
 
          end if
 
-         CMC_petsc%is_assembled=.false.
-         call assemble( CMC_petsc )
+
+         ! the matrix coupling term place immediately into matrix and not through colouring...
+         ! Matrix vector involving the mass diagonal term
+         IF ( NPRES > 1) THEN
+            DO CV_NOD = 1, CV_NONODS
+               RSUM = 0.0
+               RSUM_SUF = 0.0
+               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                  CV_JNOD = COLCMC( COUNT )
+                  DO IPRES = 1, NPRES
+                     DO JPRES = 1, NPRES
+                        call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD,&
+                             val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ))
+                        IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                           CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+                                + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ))* &
+                                MASS_MN_PRES( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
+                        END IF
+                     END DO
+                  END DO
+               END DO
+            END DO
+         END IF ! ENDOF IF(NPRES > 1) THEN
 
          !If we have a reference node with pressure zero we impose that here.
-         IF ( NDPSET /= 0 ) THEN
-            CV_NOD = NDPSET
-            DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
-               CV_JNOD = COLCMC( COUNT )
-               IF ( CV_JNOD /= CV_NOD ) THEN
-                  i=CMC_petsc%row_numbering%gnn2unn(cv_nod,1)
-                  j=CMC_petsc%column_numbering%gnn2unn(cv_jnod,1)
-                  call MatSetValue(CMC_petsc%M, i, j, 0.0,INSERT_VALUES, ierr)! not the diagonal
-                  !CMC( COUNT ) = 0.0 ! not the diagonal
-                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( 1,1,COUNT ) = 0.0
-                  DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
-                     CV_JNOD2 = COLCMC( COUNT2 )
-                     IF ( CV_JNOD2 == CV_NOD ) then
-                        i=CMC_petsc%row_numbering%gnn2unn(cv_jnod,1)
-                        j=CMC_petsc%column_numbering%gnn2unn(CV_JNOD2,1)
-                        call MatSetValue(CMC_petsc%M, i, j, 0.0,INSERT_VALUES, ierr)! not the diagonal
-                     end if
-                     !IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
-                     IF ( IGOT_CMC_PRECON/=0 ) THEN
-                        IF ( CV_JNOD2 == CV_NOD ) CMC_PRECON( 1,1,COUNT2 ) = 0.0
-                     END IF
-                  END DO
-               END IF
-            END DO
-         END IF
-        !Re-assemble just in case
-        CMC_petsc%is_assembled=.false.
-        call assemble( CMC_petsc )
-        IF ( IGOT_CMC_PRECON /= 0 ) deallocate(CMC_COLOR_VEC2_MANY)
+         DO IPRES = 1, NPRES
+            IF ( NDPSET(IPRES) /= 0 ) THEN
+               CV_NOD = NDPSET(IPRES)
+               i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                  CV_JNOD = COLCMC( COUNT )
+                  IF ( CV_JNOD /= CV_NOD ) THEN
+                     do jpres = 1, npres
+                        j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
+                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr) ! not the diagonal
+                        !CMC( COUNT ) = 0.0 ! not the diagonal
+                        IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = 0.0
+                        DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
+                           CV_JNOD2 = COLCMC( COUNT2 )
+                           IF ( CV_JNOD2 == CV_NOD ) then
+                              i_indx = CMC_petsc%row_numbering%gnn2unn( cv_jnod, ipres )
+                              j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD2, jpres )
+                              call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, INSERT_VALUES, ierr) ! not the diagonal
+                              IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( ipres, jpres, COUNT2 ) = 0.0
+                           END IF
+                        END DO
+                     end do ! do jpres=1,npres
+                  END IF
+               END DO
+            END IF
+         END DO
+         !Re-assemble just in case
+         CMC_petsc%is_assembled=.false.
+         call assemble( CMC_petsc )
+         IF ( IGOT_CMC_PRECON /= 0 ) deallocate(CMC_COLOR_VEC2_MANY)
 
-        deallocate(COLOR_IN_ROW, COLOR_IN_ROW2 )
-        deallocate(COLOR_VEC_MANY,CMC_COLOR_VEC_MANY, CDP_MANY, DU_LONG_MANY)
+         deallocate(COLOR_IN_ROW, COLOR_IN_ROW2 )
+         deallocate(COLOR_VEC_MANY,CMC_COLOR_VEC_MANY, CDP_MANY, DU_LONG_MANY)
 
          RETURN
        END SUBROUTINE COLOR_GET_CMC_PHA_FAST
@@ -820,22 +860,24 @@
 
 
 
-       SUBROUTINE COLOR_GET_CMC_PHA_SLOW( CV_NONODS, U_NONODS, NDIM, NPHASE, &
+
+
+       SUBROUTINE COLOR_GET_CMC_PHA_SLOW( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
          NCOLC, FINDC, COLC, &
          INV_PIVIT_MAT,  &
          TOTELE, U_NLOC, U_NDGLN, &
-         NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, &
+         NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
          got_free_surf,  MASS_SUF, &
-         C, CT, ndpset )
+         C, CT, ndpset, symmetric_P )
       !use multiphase_1D_engine
 
       implicit none
       ! form pressure matrix CMC using a colouring approach
-      INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC, &
+      INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, NCOLC, &
            TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
-      LOGICAL, intent( in ) :: got_free_surf
-      INTEGER, intent( in ) :: ndpset 
+      LOGICAL, intent( in ) :: got_free_surf, symmetric_P
+      INTEGER, DIMENSION( : ), intent( in ) :: ndpset
       INTEGER, DIMENSION( : ), intent( in ) ::FINDC
       INTEGER, DIMENSION( : ), intent( in ) :: COLC
       REAL, DIMENSION( :, :, : ), intent( in ) :: INV_PIVIT_MAT
@@ -843,6 +885,7 @@
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
       REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
+      REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
@@ -858,11 +901,12 @@
       LOGICAL :: UNDONE, LCOL
       logical, DIMENSION( : ), allocatable :: NEED_COLOR
       logical, DIMENSION( CV_NONODS ) :: to_color
-      REAL, DIMENSION( : ), allocatable :: COLOR_VEC, CMC_COLOR_VEC, CMC_COLOR_VEC2
+      REAL, DIMENSION( : ), allocatable :: COLOR_VEC
+      REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC, CMC_COLOR_VEC2
       REAL, DIMENSION( : ), allocatable :: DU, DV, DW, DU_LONG
       REAL, DIMENSION( :, :, : ), allocatable :: CDP
       INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
-      INTEGER :: I, ELE,u_inod,u_nod, ierr
+      INTEGER :: I, ELE,u_inod,u_nod, ierr, IV_STAR, IV_FINI, N_IN_PRES, i_indx, j_indx, IPRES, JPRES
       REAL :: RSUM, RSUM_SUF
 
       ALLOCATE( NEED_COLOR( CV_NONODS ) )
@@ -872,10 +916,11 @@
       ALLOCATE( DU( U_NONODS * NPHASE ) )
       ALLOCATE( DV( U_NONODS * NPHASE ) )
       ALLOCATE( DW( U_NONODS * NPHASE ) )
-      ALLOCATE( CMC_COLOR_VEC( CV_NONODS ) ) 
-      ALLOCATE( CMC_COLOR_VEC2( CV_NONODS ) ) 
+      ALLOCATE( CMC_COLOR_VEC( NPRES, CV_NONODS ) )
+      ALLOCATE( CMC_COLOR_VEC2( NPRES, CV_NONODS ) )
 
       IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
+      N_IN_PRES = NPHASE / NPRES
 
       NEED_COLOR = .TRUE.
       NCOLOR = 0
@@ -927,12 +972,22 @@
 
          CALL ULONG_2_UVW( DU, DV, DW, DU_LONG, U_NONODS, NDIM, NPHASE )
 
-         CALL CT_MULT( CMC_COLOR_VEC, DU, DV, DW, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-              CT, NCOLCT, FINDCT, COLCT )
+         DO IPRES = 1, NPRES
+            IV_STAR = 1+(IPRES-1)*N_IN_PRES*U_NONODS
+            IV_FINI = IPRES*N_IN_PRES*U_NONODS
+            CALL CT_MULT( CMC_COLOR_VEC(IPRES,:), DU(IV_STAR:IV_FINI), &
+                 DV(IV_STAR:IV_FINI), DW(IV_STAR:IV_FINI), CV_NONODS, U_NONODS, NDIM, N_IN_PRES, &
+                 CT(:,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,:), NCOLCT, FINDCT, COLCT )
+         END DO
       
          IF ( IGOT_CMC_PRECON /= 0 ) THEN
-            CALL CT_MULT_WITH_C( CMC_COLOR_VEC2, DU_LONG, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-                 C, NCOLC, FINDC, COLC )
+            DO IPRES = 1, NPRES
+               IV_STAR = 1+(IPRES-1)*N_IN_PRES*U_NONODS*NDIM
+               IV_FINI = IPRES*N_IN_PRES*U_NONODS*NDIM
+               CALL CT_MULT_WITH_C( CMC_COLOR_VEC2(IPRES,:), &
+                    DU_LONG(IV_STAR:IV_FINI), CV_NONODS, U_NONODS, NDIM, N_IN_PRES, &
+                    C(:,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,:), NCOLC, FINDC, COLC )
+            END DO
          END IF
 
          ! Matrix vector involving the mass diagonal term
@@ -941,35 +996,67 @@
             RSUM_SUF = 0.0
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
-               CMC_COLOR_VEC( CV_NOD ) = CMC_COLOR_VEC( CV_NOD ) &
-                    + DIAG_SCALE_PRES( 1,CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
+               DO IPRES = 1, NPRES
+                  CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
+                       + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
+
+                  if ( got_free_surf ) then
+                     CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) +&
+                          MASS_SUF( COUNT ) * COLOR_VEC( CV_JNOD )
+                  end if
+               END DO
+
+               if ( got_free_surf ) then
+                  RSUM_SUF = RSUM_SUF + MASS_SUF( COUNT )
+               end if
                RSUM = RSUM + MASS_MN_PRES( COUNT )
 
-                        if(got_free_surf) then
-               CMC_COLOR_VEC( CV_NOD ) = CMC_COLOR_VEC( CV_NOD ) +&
-                 MASS_SUF( COUNT ) * COLOR_VEC( CV_JNOD )
-               RSUM_SUF = RSUM_SUF + MASS_SUF( COUNT )
-                        endif
-
             END DO
-           
+
             IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-               CMC_COLOR_VEC2( CV_NOD ) = CMC_COLOR_VEC2( CV_NOD ) &
-                    + (DIAG_SCALE_PRES( 1,CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC( CV_NOD )
+               DO IPRES = 1, NPRES
+                  CMC_COLOR_VEC2( IPRES, CV_NOD ) = CMC_COLOR_VEC2( IPRES, CV_NOD ) &
+                       + (DIAG_SCALE_PRES( IPRES, CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC( CV_NOD )
+               END DO
             END IF
          END DO
 
          !Put into matrix CMC
-         DO CV_NOD = 1, CV_NONODS 
-            DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
-               CV_JNOD = COLCMC( COUNT )
-               call addto( CMC_petsc, blocki = 1, blockj = 1, i = cv_nod, j = CV_JNOD,&
-                val = CMC_COLOR_VEC( CV_NOD ) * COLOR_VEC( CV_JNOD ))
-               IF ( IGOT_CMC_PRECON /= 0 ) THEN 
-                  CMC_PRECON( 1,1,COUNT ) = CMC_PRECON( 1,1,COUNT ) + CMC_COLOR_VEC2( CV_NOD ) * COLOR_VEC( CV_JNOD )
-               END IF
+         if ( .not.symmetric_P ) then
+
+            ! original method
+            DO CV_NOD = 1, CV_NONODS
+               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                  CV_JNOD = COLCMC( COUNT )
+                  DO IPRES = 1, NPRES
+                     JPRES = IPRES ! Add contributions to the block diagonal only.
+                     call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                          val = CMC_COLOR_VEC( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD ) )
+                     !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                     IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
+                          CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD )
+                  END DO
+               END DO
             END DO
-         END DO
+
+         else  ! endof if ( .not.symmetric_P ) then
+
+            ! symmetric P matrix
+            DO CV_NOD = 1, CV_NONODS
+               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                  CV_JNOD = COLCMC( COUNT )
+                  DO IPRES = 1, NPRES
+                     JPRES = IPRES ! Add contributions to the block diagonal only.
+                     call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                          val = CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD ) )
+                     !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                     IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
+                          CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD )
+                  END DO
+               END DO
+            END DO
+
+         end if  ! endof if ( .not.symmetric_P ) then else
 
          UNDONE = ANY( NEED_COLOR )
 
@@ -977,37 +1064,68 @@
 
       END DO Loop_while
 
-     call assemble( CMC_petsc )
-     !If we have a reference node with pressure zero we impose that here.
-     IF ( NDPSET /= 0 ) call zero_rows(CMC_petsc, 1, (/NDPSET/), 1.0)
-!         IF ( NDPSET /= 0 ) THEN
-!            CV_NOD = NDPSET
-!            DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
-!               CV_JNOD = COLCMC( COUNT )
-!               IF ( CV_JNOD /= CV_NOD ) THEN
-!                  call MatSetValue(CMC_petsc%M, cv_nod-1, cv_jnod-1,0.,INSERT_VALUES, ierr)! not the diagonal
-!                  !CMC( COUNT ) = 0.0 ! not the diagonal
-!                  IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( 1,1,COUNT ) = 0.0
-!                  DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
-!                     CV_JNOD2 = COLCMC( COUNT2 )
-!                     IF ( CV_JNOD2 /= CV_NOD ) then
-!                        call MatSetValue(CMC_petsc%M, cv_nod-1, cv_jnod2-1, 0.,INSERT_VALUES, ierr)! not the diagonal
-!                     end if
-!                     !IF ( CV_JNOD2 == CV_NOD ) CMC( COUNT2 ) = 0.0 ! not the diagonal
-!                     IF ( IGOT_CMC_PRECON/=0 ) THEN
-!                        IF ( CV_JNOD2 == CV_NOD ) CMC_PRECON( 1,1,COUNT2 ) = 0.0
-!                     END IF
-!                  END DO
-!               END IF
-!            END DO
-!         END IF
+
+      ! the matrix coupling term place immediately into matrix and not through colouring...
+      ! Matrix vector involving the mass diagonal term
+      IF(NPRES > 1) THEN
+         DO CV_NOD = 1, CV_NONODS
+            RSUM = 0.0
+            RSUM_SUF = 0.0
+            DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+               CV_JNOD = COLCMC( COUNT )
+               DO IPRES = 1, NPRES
+                  DO JPRES = 1, NPRES
+                     call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                          val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ))
+                     IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                        CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+                             + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD )) * &
+                             MASS_MN_PRES( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
+                     END IF
+                  END DO
+               END DO
+            END DO
+         END DO
+      END IF ! ENDOF IF(NPRES > 1) THEN
+
+
+      !If we have a reference node with pressure zero we impose that here.
+      DO IPRES = 1, NPRES
+         IF ( NDPSET(IPRES) /= 0 ) THEN
+            CV_NOD = NDPSET( IPRES )
+            i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
+            DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+               CV_JNOD = COLCMC( COUNT )
+               IF ( CV_JNOD /= CV_NOD ) THEN
+                  do jpres = 1, npres
+                     j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
+                     call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr) ! not the diagonal
+                     !CMC( COUNT ) = 0.0 ! not the diagonal
+                     IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = 0.0
+                     DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
+                        CV_JNOD2 = COLCMC( COUNT2 )
+                        IF ( CV_JNOD2 == CV_NOD ) then
+                           i_indx = CMC_petsc%row_numbering%gnn2unn( cv_jnod, ipres )
+                           j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD2, jpres )
+                           call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, INSERT_VALUES, ierr) ! not the diagonal
+                           IF ( IGOT_CMC_PRECON/=0 ) CMC_PRECON( ipres, jpres, COUNT2 ) = 0.0
+                        END IF
+                     END DO
+                  end do ! do jpres=1,npres
+               END IF
+            END DO
+         END IF
+      END DO
+
+      CMC_petsc%is_assembled = .false.
+      call assemble( CMC_petsc )
 
       DEALLOCATE( NEED_COLOR )
       DEALLOCATE( COLOR_VEC )
       DEALLOCATE( CDP )
       DEALLOCATE( DU_LONG )
       DEALLOCATE( DU, DV, DW )
-      DEALLOCATE( CMC_COLOR_VEC ) 
+      DEALLOCATE( CMC_COLOR_VEC )
       DEALLOCATE( CMC_COLOR_VEC2 )
 
       RETURN
