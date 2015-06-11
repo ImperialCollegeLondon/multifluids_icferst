@@ -2466,6 +2466,12 @@
          porosity%val(1,:) = sfield%val
       end if
 
+      ! Hack to define a lateral from diamond
+      if ( npres >  1 ) then
+         vfield => extract_vector_field(packed_state,"Porosity")
+         sfield => extract_scalar_field(state(1),"Pipe1")
+         vfield%val(2,:) = sfield%val
+      end if
 
       if (has_scalar_field(state(1),"Permeability")) then
          call allocate(permeability,element_mesh,"Permeability",&

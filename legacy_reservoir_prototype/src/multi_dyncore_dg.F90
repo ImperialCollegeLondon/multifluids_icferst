@@ -536,7 +536,9 @@ contains
       real, dimension(nphase, cv_nonods) :: sat_bak, backtrack_sat
       real :: Previous_convergence, updating, new_dumping
       logical :: satisfactory_convergence
-      integer :: its
+      integer :: its, n_in_pres
+
+      N_IN_PRES = NPHASE / NPRES
 
       !Extract variables from packed_state
       call get_var_from_packed_state(packed_state,FEPressure = P)
@@ -681,7 +683,8 @@ contains
                       call Calculate_AbsorptionTerm( state, packed_state,cv_ndgln, mat_ndgln, &
                       opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption,IDs_ndgln, IDs2CV_ndgln)
                       call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                      cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+                      cv_snloc, n_in_pres, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+!                      cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                       finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state,x_nonods, IDs_ndgln )
                       !Also recalculate the Over-relaxation parameter
                       call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes, &
@@ -9421,7 +9424,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                         u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
                              sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
                              + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                             dx_alpha_gi( :, idim, iphase ) ) * detwei )               
+                             dx_alpha_gi( :, idim, iphase ) ) * detwei )
                      end do
                   end do
                end do

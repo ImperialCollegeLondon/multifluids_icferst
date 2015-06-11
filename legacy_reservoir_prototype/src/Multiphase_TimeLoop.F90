@@ -115,7 +115,7 @@
 !!$ Primary scalars
       integer :: nphase, npres, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-           x_snloc, cv_snloc, u_snloc, p_snloc, &
+           x_snloc, cv_snloc, u_snloc, p_snloc, n_in_pres, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods
 
 !!$ Node global numbers
@@ -325,6 +325,8 @@
            x_snloc, cv_snloc, u_snloc, p_snloc, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
       npres = 1
+      n_in_pres = nphase / npres
+
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -737,7 +739,8 @@
                ! is diagonal
                if( is_porous_media ) then
                   call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                       cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+                       cv_snloc, n_in_pres, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+!                       cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                        finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
                        state, x_nonods, ids_ndgln )
                end if
@@ -1138,7 +1141,7 @@
          if(calculate_flux) then
              if(getprocno() == 1) then
 
-                 call dump_outflux(acctim,itime,totout,intflux, dt)
+                 call dump_outflux(acctim,itime,totout,intflux)
 
              endif
          endif
@@ -1649,7 +1652,7 @@
 !      if(calculate_flux) then
 !         if(getprocno() == 1) then
 !
-!            call dump_outflux(acctim,itime,totout,intflux, dt)
+!            call dump_outflux(acctim,itime,totout,intflux)
 !
 !         endif
 !      endif
@@ -1677,7 +1680,6 @@
         use sparse_tools
 
         type(csr_sparsity), pointer :: sparsity
-        type(scalar_field), pointer :: sfield
         type(tensor_field), pointer :: tfield
 
         integer ic, stat
@@ -2034,7 +2036,7 @@
 !     return
 !   end subroutine linearise
 
-   subroutine dump_outflux(current_time, itime, outflux, intflux,ts)
+   subroutine dump_outflux(current_time, itime, outflux, intflux)
 
    ! Subroutine that dumps the total flux at a given timestep across all specified boudaries to a file  called 'outfluxes.txt'. In addition, the time integrated flux
    ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
@@ -2044,7 +2046,6 @@
    real,intent(in) :: current_time
    integer, intent(in) :: itime
    real, dimension(:,:), intent(inout) :: outflux, intflux
-   real,intent(in) :: ts
 
 
    integer :: ioutlet
