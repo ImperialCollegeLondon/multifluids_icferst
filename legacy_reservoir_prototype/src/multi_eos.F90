@@ -782,7 +782,7 @@
                ! set \sigma for the pipes here
                IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
                LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
-               U_ABSORB( IMAT, LOC, LOC ) = 1.0E+6
+               U_ABSORB( IMAT, LOC, LOC ) = 1.0
             end do
          end do
       end do

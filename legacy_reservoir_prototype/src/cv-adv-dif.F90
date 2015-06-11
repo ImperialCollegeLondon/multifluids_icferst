@@ -293,7 +293,7 @@ contains
       ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
       REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (npres, npres, cv_nonods)
-      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS ! (npres, npres, cv_nonods)
+      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS ! (nphase, nphase, cv_nonods)
       type(vector_field), intent( inout ) :: CT_RHS
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
@@ -2737,7 +2737,7 @@ contains
                DO IPRES=1,NPRES
                   DO JPRES=1,NPRES
                      jphase=1+(jpres-1)*n_in_pres
-                     DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) =   &
+                     DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) = &
                         + sum( GAMMA_PRES_ABS(1+(ipres-1)*n_in_pres:ipres*n_in_pres,JPHASE, CV_NODI ) &
                                     /DEN_ALL( 1+(ipres-1)*n_in_pres:ipres*n_in_pres, CV_NODI ) )
                   END DO
@@ -2747,7 +2747,7 @@ contains
             DO IPRES=1,NPRES
                call addto(ct_rhs, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) )
                DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
-                     +  sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
+                     + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
             END DO
 
          END DO  ! endof DO CV_NODI = 1, CV_NONODS

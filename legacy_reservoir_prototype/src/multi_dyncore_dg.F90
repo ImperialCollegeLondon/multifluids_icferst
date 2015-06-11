@@ -863,7 +863,7 @@ contains
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CMC_PRECON
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
-        INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ndpset, i
+        INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
         LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY
         INTEGER :: IDIM
         !Re-scale parameter can be re-used
@@ -871,7 +871,7 @@ contains
         !CMC using petsc format
         type(petsc_csr_matrix)::  CMC_petsc
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
-        INTEGER :: MAT_INOD, IPRES, JPRES
+        INTEGER :: MAT_INOD, IPRES, JPRES, iphase_real, jphase_real
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
         REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, UDEN3
         REAL, DIMENSION( :, :, :, : ), allocatable :: UDIFFUSION_ALL
@@ -944,6 +944,21 @@ contains
         ALLOCATE( DU_VEL( NDIM,  NPHASE, U_NONODS )) ; DU_VEL = 0.
         ALLOCATE( UP_VEL( NDIM * NPHASE * U_NONODS )) ; UP_VEL = 0.
 
+
+        GAMMA_PRES_ABS = 0.0
+        do ipres = 1, npres
+           do iphase = 1+ (ipres-1)*n_in_pres, ipres*n_in_pres
+              do jpres = 1, npres
+                 if ( ipres /= jpres ) then
+                    do jphase = 1+ (jpres-1)*n_in_pres, jpres*n_in_pres
+                       iphase_real = iphase-(ipres-1)*n_in_pres
+                       jphase_real = jphase-(jpres-1)*n_in_pres
+                       if ( iphase_real == jphase ) GAMMA_PRES_ABS = 1.0
+                    end do
+                 end if
+              end do
+           end do
+        end do
 
 
 
@@ -6499,8 +6514,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
        END SUBROUTINE ONEELETENS_ALL
 
 
-!
-!
           SUBROUTINE JACDIA(AA,V,D,N, &
 ! Working arrays...
      &       A,PRISCR) 
