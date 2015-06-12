@@ -81,7 +81,7 @@ contains
        NCOLCT, FINDCT, COLCT, &
        CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
        U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, &
-       NPHASE,  &
+       NPHASE, NPRES, &
        CV_NLOC, U_NLOC, X_NLOC,  &
        CV_NDGLN, X_NDGLN, U_NDGLN, &
        CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -114,7 +114,7 @@ contains
     INTEGER, intent( in ) :: NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
          U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, NPHASE, CV_NLOC, U_NLOC, X_NLOC,  MAT_NLOC, &
          CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, NCOLM, NCOLELE, &
-         IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux
+         IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux, NPRES
     LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
     LOGICAL, intent( in ), optional ::THERMAL
     INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
@@ -154,8 +154,7 @@ contains
 
     integer, optional :: icomp
     ! Local variables
-    LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE. 
-    INTEGER, PARAMETER :: NPRES = 1
+    LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
     integer :: nits_flux_lim, its_flux_lim
     logical :: lump_eqns
     REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
@@ -436,8 +435,8 @@ contains
          SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
          NCOLCT, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-         CV_ELE_TYPE,  &
-         NPHASE, &
+         CV_ELE_TYPE, &
+         NPHASE, NPRES, &
          CV_NLOC, U_NLOC, X_NLOC, &
          CV_NDGLN, X_NDGLN, U_NDGLN, &
          CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -468,7 +467,7 @@ contains
            CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, &
            NCOLM, NCOLELE, &
            MAT_NLOC, MAT_NONODS, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND,igot_theta_flux,&
-           nface
+           nface, NPRES
       LOGICAL, intent( in ) :: USE_THETA_FLUX
       INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, MAT_NDGLN, X_NDGLN, U_NDGLN, XU_NDGLN, CV_SNDGLN, U_SNDGLN, IDs_ndgln
       integer, dimension(:), intent(in)  :: small_finacv,small_colacv,small_midacv, IDs2CV_ndgln
@@ -496,7 +495,6 @@ contains
       integer, intent(in) :: nonlinear_iteration
       ! Local Variables
       LOGICAL, PARAMETER :: THERMAL= .false.
-      INTEGER, PARAMETER :: NPRES = 1
       integer :: igot_t2
       REAL, DIMENSION( : ), allocatable :: mass_mn_pres 
       REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
@@ -680,7 +678,7 @@ contains
 
                       !For the non-linear iteration inside this loop we need to update the velocities
                       !and that is done through the sigmas, hence, we have to update them
-                      call Calculate_AbsorptionTerm( state, packed_state,cv_ndgln, mat_ndgln, &
+                      call Calculate_AbsorptionTerm( state, packed_state, npres, cv_ndgln, mat_ndgln, &
                       opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption,IDs_ndgln, IDs2CV_ndgln)
                       call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
                       cv_snloc, n_in_pres, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
@@ -740,7 +738,7 @@ contains
 
     SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
          velocity, pressure, &
-    NDIM, NPHASE, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
+    NDIM, NPHASE, NPRES, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
     U_ELE_TYPE, P_ELE_TYPE, &
     U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
@@ -784,7 +782,7 @@ contains
         NCOLC, NCOLDGM_PHA, NCOLELE, NCOLCMC, ncolsmall, NLENMCY, NCOLMCY, NCOLCT, &
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, XU_NLOC, &
         IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
-        IPLIKE_GRAD_SOU, IDIVID_BY_VOL_FRAC
+        IPLIKE_GRAD_SOU, IDIVID_BY_VOL_FRAC, NPRES
         LOGICAL, intent( in ) :: USE_THETA_FLUX, scale_momentum_by_volume_fraction
         INTEGER, DIMENSION(  :  ), intent( in ) :: U_NDGLN, IDs_ndgln
         INTEGER, DIMENSION(  :  ), intent( in ) :: P_NDGLN
@@ -842,7 +840,6 @@ contains
         LOGICAL, PARAMETER :: use_continuous_pressure_solver = .false.!For DG pressure,the first non linear iteration we
                                                                         !use a continuous pressure
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
-        INTEGER, PARAMETER :: NPRES = 1
         INTEGER :: N_IN_PRES
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
         INTEGER :: IGOT_CMC_PRECON

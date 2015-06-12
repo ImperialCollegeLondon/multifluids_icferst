@@ -663,14 +663,15 @@
 
 
 
-    subroutine Calculate_AbsorptionTerm( state, packed_state,&
-         cv_ndgln, mat_ndgln, &
+    subroutine Calculate_AbsorptionTerm( state, packed_state, &
+         npres, cv_ndgln, mat_ndgln, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, u_absorb, IDs_ndgln, IDs2CV_ndgln )
       ! Calculate absorption for momentum eqns
       use matrix_operations
       implicit none
       type( state_type ), dimension( : ), intent( in ) :: state
       type( state_type ), intent( inout ) :: packed_state
+      integer, intent( in ) :: npres
       integer, dimension( : ), intent( in ) :: cv_ndgln, mat_ndgln, IDs_ndgln, IDs2CV_ndgln
       real, dimension( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
       real, dimension( :, :, : ), intent( inout ) :: u_absorb
@@ -679,7 +680,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, x_snloc, cv_snloc, u_snloc, &
            p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij, ipres, npres, n_in_pres, loc
+           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij, ipres, n_in_pres, loc
       real :: Mobility, pert
       real, dimension(:), allocatable :: Max_sat
       real, dimension( :, :, : ), allocatable :: u_absorb2
@@ -702,7 +703,6 @@
            x_snloc, cv_snloc, u_snloc, p_snloc, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods )
 
-      npres = 1
       n_in_pres = nphase / npres
 
       ewrite(3,*) 'In calculate_absorption'
