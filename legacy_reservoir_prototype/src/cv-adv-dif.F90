@@ -1993,7 +1993,13 @@ contains
                rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .true. )
            end if
        ENDIF
-       INCOME_J=1.-INCOME
+!       INCOME_J=1.-INCOME
+        !When NDOTQ == 0, INCOME_J is not well defined
+        WHERE ( NDOTQ <= 0. )
+            INCOME_J = 0.
+        ELSE WHERE
+            INCOME_J = 1.
+        END WHERE
 
 
        If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
