@@ -2066,19 +2066,20 @@
 
     end subroutine update_boundary_conditions
 
-    subroutine pack_multistate(state, packed_state,&
+    subroutine pack_multistate( npres, state, packed_state,&
          multiphase_state, multicomponent_state, pmulti_state )
 
       type(state_type), dimension(:), intent(inout):: state
       type(state_type), dimension(:), intent(inout), pointer :: &
            multiphase_state, multicomponent_state
-      type(state_type) ::  packed_state
+      type(state_type) :: packed_state
+      integer, intent(in) :: npres
 
       type(state_type), dimension(:,:), pointer, optional :: pmulti_state
 
       type(state_type), dimension(:,:), pointer :: multi_state
 
-      integer :: i,nphase,ncomp,ndim,stat,iphase,icomp,idim,ele,npres,ipres,n_in_pres
+      integer :: i,nphase,ncomp,ndim,stat,iphase,icomp,idim,ele,ipres,n_in_pres
 
       type(scalar_field), pointer :: pressure, sfield
       type(vector_field), pointer :: velocity, position, vfield
@@ -2096,7 +2097,6 @@
 
       ncomp=option_count('/material_phase/is_multiphase_component')
       nphase=size(state)-ncomp
-      npres=1
 
       position=>extract_vector_field(state(1),"Coordinate")
       ndim=mesh_dim(position)
@@ -2466,6 +2466,12 @@
          porosity%val(1,:) = sfield%val
       end if
 
+      ! Hack to define a lateral from diamond
+      if ( npres >  1 ) then
+         vfield => extract_vector_field(packed_state,"Porosity")
+         sfield => extract_scalar_field(state(1),"Pipe1")
+         vfield%val(2,:) = sfield%val
+      end if
 
       if (has_scalar_field(state(1),"Permeability")) then
          call allocate(permeability,element_mesh,"Permeability",&

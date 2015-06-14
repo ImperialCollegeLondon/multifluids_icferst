@@ -115,7 +115,7 @@
 !!$ Primary scalars
       integer :: nphase, npres, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-           x_snloc, cv_snloc, u_snloc, p_snloc, &
+           x_snloc, cv_snloc, u_snloc, p_snloc, n_in_pres, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods
 
 !!$ Node global numbers
@@ -272,6 +272,8 @@
       !Initially we set to use Stored data and that we have a new mesh
       StorageIndexes = 0!Initialize them as zero !
 
+      ! Number of pressures to solve for
+      npres = 1
 
       !Read info for adaptive timestep based on non_linear_iterations
 
@@ -295,13 +297,13 @@
       end if
 
       !! JRP changes to make a multiphasic state
-      call pack_multistate(state,packed_state,multiphase_state,&
+      call pack_multistate(npres,state,packed_state,multiphase_state,&
            multicomponent_state)
       call set_boundary_conditions_values(state, shift_time=.true.)
 
       call set_caching_level()
 
-      !      call initialize_rheologies(state,rheology)
+      !call initialize_rheologies(state,rheology)
 
       IDIVID_BY_VOL_FRAC=0
       !call print_state( packed_state )
@@ -313,7 +315,7 @@
       !  Then values are in tfield%val(1/ndim/ncomp,nphase,nonods)
       !  Type ids are in bc_type_list(1/ndim/ncomp,nphase,stotel)
       !
-      !A deallocate tfield when finished!!
+      !  A deallocate tfield when finished!!
 
       Repeat_time_step = .false.!Initially has to be false
       nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
@@ -324,7 +326,7 @@
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
-      npres = 1
+      n_in_pres = nphase / npres
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -729,7 +731,7 @@
                  cv_ndgln, DRhoDPressure )
 
             if( solve_force_balance .and. is_porous_media ) then
-               call Calculate_AbsorptionTerm( state, packed_state,&
+               call Calculate_AbsorptionTerm( state, packed_state, npres, &
                     cv_ndgln, mat_ndgln, &
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption, ids_ndgln, IDs2CV_ndgln )
                ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
@@ -737,7 +739,8 @@
                ! is diagonal
                if( is_porous_media ) then
                   call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                       cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+                       cv_snloc, n_in_pres, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+!                       cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                        finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
                        state, x_nonods, ids_ndgln )
                end if
@@ -764,7 +767,7 @@
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                     U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
-                    NPHASE, &
+                    NPHASE, NPRES, &
                     CV_NLOC, U_NLOC, X_NLOC, &
                     CV_NDGLN, X_NDGLN, U_NDGLN, &
                     CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -838,7 +841,7 @@
 
                CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                     velocity_field, pressure_field, &
-                    NDIM, NPHASE, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
+                    NDIM, NPHASE, NPRES, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
                     U_ELE_TYPE, P_ELE_TYPE, &
                     U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
                     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN,&
@@ -892,7 +895,7 @@
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                     CV_ELE_TYPE, &
-                    NPHASE, &
+                    NPHASE, NPRES, &
                     CV_NLOC, U_NLOC, X_NLOC,  &
                     CV_NDGLN, X_NDGLN, U_NDGLN, &
                     CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -985,9 +988,9 @@
                           SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
                           NCOLCT, FINDCT, COLCT, &
                           CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-                          U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
-                          NPHASE,  &
-                          CV_NLOC, U_NLOC, X_NLOC,  &
+                          U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, &
+                          NPHASE, NPRES, &
+                          CV_NLOC, U_NLOC, X_NLOC, &
                           CV_NDGLN, X_NDGLN, U_NDGLN, &
                           CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
 !!$
@@ -1138,7 +1141,7 @@
          if(calculate_flux) then
              if(getprocno() == 1) then
 
-                 call dump_outflux(acctim,itime,totout,intflux, dt)
+                 call dump_outflux(acctim,itime,totout,intflux)
 
              endif
          endif
@@ -1318,7 +1321,7 @@
             call deallocate(multiphase_state)
             call deallocate(multicomponent_state )
             !call unlinearise_components()
-            call pack_multistate(state,packed_state,&
+            call pack_multistate(npres,state,packed_state,&
                  multiphase_state,multicomponent_state)
             call set_boundary_conditions_values(state, shift_time=.true.)
 
@@ -1649,7 +1652,7 @@
 !      if(calculate_flux) then
 !         if(getprocno() == 1) then
 !
-!            call dump_outflux(acctim,itime,totout,intflux, dt)
+!            call dump_outflux(acctim,itime,totout,intflux)
 !
 !         endif
 !      endif
@@ -1677,7 +1680,6 @@
         use sparse_tools
 
         type(csr_sparsity), pointer :: sparsity
-        type(scalar_field), pointer :: sfield
         type(tensor_field), pointer :: tfield
 
         integer ic, stat
@@ -2034,7 +2036,7 @@
 !     return
 !   end subroutine linearise
 
-   subroutine dump_outflux(current_time, itime, outflux, intflux,ts)
+   subroutine dump_outflux(current_time, itime, outflux, intflux)
 
    ! Subroutine that dumps the total flux at a given timestep across all specified boudaries to a file  called 'outfluxes.txt'. In addition, the time integrated flux
    ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
@@ -2044,7 +2046,6 @@
    real,intent(in) :: current_time
    integer, intent(in) :: itime
    real, dimension(:,:), intent(inout) :: outflux, intflux
-   real,intent(in) :: ts
 
 
    integer :: ioutlet

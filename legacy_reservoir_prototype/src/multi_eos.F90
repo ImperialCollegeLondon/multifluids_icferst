@@ -663,14 +663,15 @@
 
 
 
-    subroutine Calculate_AbsorptionTerm( state, packed_state,&
-         cv_ndgln, mat_ndgln, &
+    subroutine Calculate_AbsorptionTerm( state, packed_state, &
+         npres, cv_ndgln, mat_ndgln, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, u_absorb, IDs_ndgln, IDs2CV_ndgln )
       ! Calculate absorption for momentum eqns
       use matrix_operations
       implicit none
       type( state_type ), dimension( : ), intent( in ) :: state
       type( state_type ), intent( inout ) :: packed_state
+      integer, intent( in ) :: npres
       integer, dimension( : ), intent( in ) :: cv_ndgln, mat_ndgln, IDs_ndgln, IDs2CV_ndgln
       real, dimension( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
       real, dimension( :, :, : ), intent( inout ) :: u_absorb
@@ -679,7 +680,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, x_snloc, cv_snloc, u_snloc, &
            p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij
+           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij, ipres, n_in_pres, loc
       real :: Mobility, pert
       real, dimension(:), allocatable :: Max_sat
       real, dimension( :, :, : ), allocatable :: u_absorb2
@@ -696,12 +697,13 @@
     perm=>extract_tensor_field(packed_state,"Permeability")
 
 !!$ Obtaining a few scalars that will be used in the current subroutine tree:
-      call Get_Primary_Scalars( state, &         
+      call Get_Primary_Scalars( state, &
            nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods )
 
+      n_in_pres = nphase / npres
 
       ewrite(3,*) 'In calculate_absorption'
 
@@ -724,10 +726,10 @@
       end if
 
 
-      allocate( u_absorb2( mat_nonods, nphase * ndim, nphase * ndim ), satura2( size(SATURA,1), size(SATURA,2) ) )
+      allocate( u_absorb2( mat_nonods, nphase * ndim, nphase * ndim ), satura2( N_IN_PRES, size(SATURA,2) ) )
       u_absorb2 = 0. ; satura2 = 0.
 
-      CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
+      CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, N_IN_PRES, NDIM, SATURA(1:N_IN_PRES,:), TOTELE, CV_NLOC, MAT_NLOC, &
            CV_NDGLN, MAT_NDGLN, U_ABSORB, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
       !Introduce perturbation, positive for the increasing and negative for decreasing
@@ -746,13 +748,13 @@
         end do
       end do
 
-      CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
+      CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, N_IN_PRES, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
            CV_NDGLN, MAT_NDGLN, U_ABSORB2, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
       DO ELE = 1, TOTELE
          DO CV_ILOC = 1, CV_NLOC
-            IMAT = MAT_NDGLN(( ELE - 1 ) * MAT_NLOC +CV_ILOC )
-            ICV = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
+            IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
+            ICV = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
             DO IPHASE = 1, NPHASE
               DO JDIM = 1, NDIM
                 DO IDIM = 1, NDIM
@@ -764,7 +766,7 @@
                      ! This is the gradient...
                      opt_vel_upwind_grad_new(IDIM, JDIM, IPHASE, IMAT) = &
                         (U_ABSORB2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
-                        U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ))&
+                        U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )) &
                          / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
 
                   END DO
@@ -772,6 +774,19 @@
             END DO
          END DO
       END DO
+
+
+      do ipres = 2, npres
+         do iphase = 1, n_in_pres
+            do idim = 1, ndim
+               ! set \sigma for the pipes here
+               IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
+               LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
+               U_ABSORB( IMAT, LOC, LOC ) = 1.0
+            end do
+         end do
+      end do
+
 
       deallocate( u_absorb2, satura2, Max_sat )
       ewrite(3,*) 'Leaving calculate_absorption'
@@ -2141,7 +2156,7 @@
       type(tensor_field), pointer :: velocity, volfrac, perm
       type(tensor_field) :: velocity_BCs, volfrac_BCs
 
-    !Get from packed_state
+      !Get from packed_state
       volfrac=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
       velocity=>extract_tensor_field(packed_state,"PackedVelocity")
       perm=>extract_tensor_field(packed_state,"Permeability")
@@ -2214,7 +2229,7 @@
 
                         cv_iloc = cv_sloc2loc( cv_siloc )
                         cv_snodi = ( sele - 1 ) * cv_snloc + cv_siloc
-                        cv_nodi =cv_sndgln(cv_snodi)
+                        cv_nodi = cv_sndgln(cv_snodi)
                         cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * stotel * cv_snloc
                         mat_nod = mat_ndgln( (ele-1)*cv_nloc + cv_iloc  )
                         ! this is the boundary condition

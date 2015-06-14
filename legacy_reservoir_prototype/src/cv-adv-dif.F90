@@ -293,7 +293,7 @@ contains
       ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
       REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (npres, npres, cv_nonods)
-      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS ! (npres, npres, cv_nonods)
+      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS ! (nphase, nphase, cv_nonods)
       type(vector_field), intent( inout ) :: CT_RHS
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
@@ -1995,7 +1995,13 @@ contains
                rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .true. )
            end if
        ENDIF
-       INCOME_J=1.-INCOME
+!       INCOME_J=1.-INCOME
+        !When NDOTQ == 0, INCOME_J is not well defined
+        WHERE ( NDOTQ <= 0. )
+            INCOME_J = 0.
+        ELSE WHERE
+            INCOME_J = 1.
+        END WHERE
 
 
        If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN
@@ -2759,7 +2765,7 @@ contains
             DO IPRES=1,NPRES
                call addto(ct_rhs, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) )
                DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
-                     +  sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
+                     + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
             END DO
 
          END DO  ! endof DO CV_NODI = 1, CV_NONODS

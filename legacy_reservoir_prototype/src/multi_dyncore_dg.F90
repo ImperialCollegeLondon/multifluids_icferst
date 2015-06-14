@@ -81,7 +81,7 @@ contains
        NCOLCT, FINDCT, COLCT, &
        CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
        U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, &
-       NPHASE,  &
+       NPHASE, NPRES, &
        CV_NLOC, U_NLOC, X_NLOC,  &
        CV_NDGLN, X_NDGLN, U_NDGLN, &
        CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -114,7 +114,7 @@ contains
     INTEGER, intent( in ) :: NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
          U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, NPHASE, CV_NLOC, U_NLOC, X_NLOC,  MAT_NLOC, &
          CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, NCOLM, NCOLELE, &
-         IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux
+         IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux, NPRES
     LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
     LOGICAL, intent( in ), optional ::THERMAL
     INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
@@ -154,8 +154,7 @@ contains
 
     integer, optional :: icomp
     ! Local variables
-    LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE. 
-    INTEGER, PARAMETER :: NPRES = 1
+    LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
     integer :: nits_flux_lim, its_flux_lim
     logical :: lump_eqns
     REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
@@ -436,8 +435,8 @@ contains
          SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
          NCOLCT, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-         CV_ELE_TYPE,  &
-         NPHASE, &
+         CV_ELE_TYPE, &
+         NPHASE, NPRES, &
          CV_NLOC, U_NLOC, X_NLOC, &
          CV_NDGLN, X_NDGLN, U_NDGLN, &
          CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -468,7 +467,7 @@ contains
            CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, &
            NCOLM, NCOLELE, &
            MAT_NLOC, MAT_NONODS, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND,igot_theta_flux,&
-           nface
+           nface, NPRES
       LOGICAL, intent( in ) :: USE_THETA_FLUX
       INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, MAT_NDGLN, X_NDGLN, U_NDGLN, XU_NDGLN, CV_SNDGLN, U_SNDGLN, IDs_ndgln
       integer, dimension(:), intent(in)  :: small_finacv,small_colacv,small_midacv, IDs2CV_ndgln
@@ -496,7 +495,6 @@ contains
       integer, intent(in) :: nonlinear_iteration
       ! Local Variables
       LOGICAL, PARAMETER :: THERMAL= .false.
-      INTEGER, PARAMETER :: NPRES = 1
       integer :: igot_t2
       REAL, DIMENSION( : ), allocatable :: mass_mn_pres 
       REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
@@ -536,7 +534,9 @@ contains
       real, dimension(nphase, cv_nonods) :: sat_bak, backtrack_sat
       real :: Previous_convergence, updating, new_dumping
       logical :: satisfactory_convergence
-      integer :: its
+      integer :: its, n_in_pres
+
+      N_IN_PRES = NPHASE / NPRES
 
       !Extract variables from packed_state
       call get_var_from_packed_state(packed_state,FEPressure = P)
@@ -678,10 +678,11 @@ contains
 
                       !For the non-linear iteration inside this loop we need to update the velocities
                       !and that is done through the sigmas, hence, we have to update them
-                      call Calculate_AbsorptionTerm( state, packed_state,cv_ndgln, mat_ndgln, &
+                      call Calculate_AbsorptionTerm( state, packed_state, npres, cv_ndgln, mat_ndgln, &
                       opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption,IDs_ndgln, IDs2CV_ndgln)
                       call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                      cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+                      cv_snloc, n_in_pres, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+!                      cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                       finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state,x_nonods, IDs_ndgln )
                       !Also recalculate the Over-relaxation parameter
                       call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes, &
@@ -737,7 +738,7 @@ contains
 
     SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
          velocity, pressure, &
-    NDIM, NPHASE, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
+    NDIM, NPHASE, NPRES, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
     U_ELE_TYPE, P_ELE_TYPE, &
     U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
@@ -781,7 +782,7 @@ contains
         NCOLC, NCOLDGM_PHA, NCOLELE, NCOLCMC, ncolsmall, NLENMCY, NCOLMCY, NCOLCT, &
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, XU_NLOC, &
         IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
-        IPLIKE_GRAD_SOU, IDIVID_BY_VOL_FRAC
+        IPLIKE_GRAD_SOU, IDIVID_BY_VOL_FRAC, NPRES
         LOGICAL, intent( in ) :: USE_THETA_FLUX, scale_momentum_by_volume_fraction
         INTEGER, DIMENSION(  :  ), intent( in ) :: U_NDGLN, IDs_ndgln
         INTEGER, DIMENSION(  :  ), intent( in ) :: P_NDGLN
@@ -839,7 +840,6 @@ contains
         LOGICAL, PARAMETER :: use_continuous_pressure_solver = .false.!For DG pressure,the first non linear iteration we
                                                                         !use a continuous pressure
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
-        INTEGER, PARAMETER :: NPRES = 1
         INTEGER :: N_IN_PRES
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
         INTEGER :: IGOT_CMC_PRECON
@@ -860,7 +860,7 @@ contains
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CMC_PRECON
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
-        INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, ndpset, i
+        INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
         LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY
         INTEGER :: IDIM
         !Re-scale parameter can be re-used
@@ -868,7 +868,7 @@ contains
         !CMC using petsc format
         type(petsc_csr_matrix)::  CMC_petsc
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
-        INTEGER :: MAT_INOD, IPRES, JPRES
+        INTEGER :: MAT_INOD, IPRES, JPRES, iphase_real, jphase_real
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
         REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, UDEN3
         REAL, DIMENSION( :, :, :, : ), allocatable :: UDIFFUSION_ALL
@@ -941,6 +941,21 @@ contains
         ALLOCATE( DU_VEL( NDIM,  NPHASE, U_NONODS )) ; DU_VEL = 0.
         ALLOCATE( UP_VEL( NDIM * NPHASE * U_NONODS )) ; UP_VEL = 0.
 
+
+        GAMMA_PRES_ABS = 0.0
+        do ipres = 1, npres
+           do iphase = 1+ (ipres-1)*n_in_pres, ipres*n_in_pres
+              do jpres = 1, npres
+                 if ( ipres /= jpres ) then
+                    do jphase = 1+ (jpres-1)*n_in_pres, jpres*n_in_pres
+                       iphase_real = iphase-(ipres-1)*n_in_pres
+                       jphase_real = jphase-(jpres-1)*n_in_pres
+                       if ( iphase_real == jphase ) GAMMA_PRES_ABS = 1.0
+                    end do
+                 end if
+              end do
+           end do
+        end do
 
 
 
@@ -6496,8 +6511,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
        END SUBROUTINE ONEELETENS_ALL
 
 
-!
-!
           SUBROUTINE JACDIA(AA,V,D,N, &
 ! Working arrays...
      &       A,PRISCR) 
@@ -9421,7 +9434,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                         u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + & 
                              sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
                              + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
-                             dx_alpha_gi( :, idim, iphase ) ) * detwei )               
+                             dx_alpha_gi( :, idim, iphase ) ) * detwei )
                      end do
                   end do
                end do
