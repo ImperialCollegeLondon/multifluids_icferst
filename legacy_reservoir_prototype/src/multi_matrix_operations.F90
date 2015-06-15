@@ -403,8 +403,8 @@
       allocate(ndpset(npres)) ; ndpset(:)=-1
       if (ndpset(1)<0) then
          call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
-           'prognostic/reference_node', ndpset(1), default = 0 )
-         ndpset(1:npres)=ndpset(1)
+           'prognostic/reference_node', ndpset(1), default = -1 )
+         ndpset(2:npres)=ndpset(1)
       endif
 
       if (isparallel()) then
@@ -726,7 +726,7 @@
 
          !If we have a reference node with pressure zero we impose that here.
          DO IPRES = 1, NPRES
-            IF ( NDPSET(IPRES) /= 0 ) THEN
+            IF ( NDPSET(IPRES) > 0 ) THEN
                CV_NOD = NDPSET(IPRES)
                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
                DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
@@ -1091,7 +1091,7 @@
 
       !If we have a reference node with pressure zero we impose that here.
       DO IPRES = 1, NPRES
-         IF ( NDPSET(IPRES) /= 0 ) THEN
+         IF ( NDPSET(IPRES) > 0 ) THEN
             CV_NOD = NDPSET( IPRES )
             i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1

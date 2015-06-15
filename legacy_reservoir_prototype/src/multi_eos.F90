@@ -725,6 +725,7 @@
          mobility = visc_phases(1)
       end if
 
+      u_absorb = 0.0
 
       allocate( u_absorb2( mat_nonods, nphase * ndim, nphase * ndim ), satura2( N_IN_PRES, size(SATURA,2) ) )
       u_absorb2 = 0. ; satura2 = 0.
@@ -737,7 +738,7 @@
       PERT = 0.0001; allocate(Max_sat(nphase))
       do icv = 1, size(satura,2)
         Max_sat(:) = 1. - sum(Immobile_fraction(:, IDs2CV_ndgln(icv))) + Immobile_fraction(:, IDs2CV_ndgln(icv))
-        do iphase = 1, nphase
+        do iphase = 1, n_in_pres !nphase
             SATURA2(iphase, icv) = SATURA(iphase, icv) + sign(PERT, satura(iphase, icv)-OldSatura(iphase, icv))
             !If out of bounds then we perturbate in the opposite direction
             if (satura2(iphase, icv) > Max_sat(iphase) .or. &
@@ -751,6 +752,21 @@
       CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, N_IN_PRES, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
            CV_NDGLN, MAT_NDGLN, U_ABSORB2, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
+      do ipres = 2, npres
+         do iphase = 1, n_in_pres
+            do idim = 1, ndim
+               ! set \sigma for the pipes here
+               LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
+               DO ELE = 1, TOTELE
+                  DO CV_ILOC = 1, CV_NLOC
+                     IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
+                     U_ABSORB( IMAT, LOC, LOC ) = 1.0
+                  END DO
+               END DO
+            end do
+         end do
+      end do
+
       DO ELE = 1, TOTELE
          DO CV_ILOC = 1, CV_NLOC
             IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
@@ -763,11 +779,16 @@
                      opt_vel_upwind_coefs_new(IDIM, JDIM, IPHASE, IMAT) = &
                         U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )
 
-                     ! This is the gradient...
-                     opt_vel_upwind_grad_new(IDIM, JDIM, IPHASE, IMAT) = &
-                        (U_ABSORB2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
-                        U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )) &
-                         / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
+                     if ( iphase <= n_in_pres ) then
+
+                        ! This is the gradient
+                        ! Assume d\sigma / dS = 0.0 for the pipes for now
+                        opt_vel_upwind_grad_new(IDIM, JDIM, IPHASE, IMAT) = &
+                           (U_ABSORB2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
+                            U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )) &
+                            / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
+
+                     end if
 
                   END DO
                END DO
@@ -775,17 +796,6 @@
          END DO
       END DO
 
-
-      do ipres = 2, npres
-         do iphase = 1, n_in_pres
-            do idim = 1, ndim
-               ! set \sigma for the pipes here
-               IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
-               LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
-               U_ABSORB( IMAT, LOC, LOC ) = 1.0
-            end do
-         end do
-      end do
 
 
       deallocate( u_absorb2, satura2, Max_sat )

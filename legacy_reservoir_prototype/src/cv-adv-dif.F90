@@ -2727,10 +2727,10 @@ contains
             ct_rhs_phase(:)=ct_rhs_phase(:)  &
                   + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL( :, CV_NODI )
 
-               DO JPHASE = 1, NPHASE
-            ct_rhs_phase(:)=ct_rhs_phase(:)  &
-                    - MASS_CV( CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL( :, CV_NODI )
-               END DO
+            DO JPHASE = 1, NPHASE
+               ct_rhs_phase(:)=ct_rhs_phase(:)  &
+                  - MASS_CV( CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL( :, CV_NODI )
+            END DO
 
             ! scaling coefficient...
             IF ( NPRES > 1 ) THEN

@@ -2470,7 +2470,7 @@
       if ( npres >  1 ) then
          vfield => extract_vector_field(packed_state,"Porosity")
          sfield => extract_scalar_field(state(1),"Pipe1")
-         vfield%val(2,:) = sfield%val
+         vfield%val(2,:) = sfield%val + 1.0e-10
       end if
 
       if (has_scalar_field(state(1),"Permeability")) then

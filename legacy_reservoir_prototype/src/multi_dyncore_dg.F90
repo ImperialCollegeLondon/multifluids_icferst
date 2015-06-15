@@ -509,7 +509,7 @@ contains
       REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
       LOGICAL :: GET_THETA_FLUX
       REAL :: SECOND_THETA
-      INTEGER :: STAT, IGOT_THERM_VIS
+      INTEGER :: STAT, IGOT_THERM_VIS, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
       character( len = option_path_len ) :: path
       LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
       type( tensor_field ), pointer :: den_all2, denold_all2
@@ -565,9 +565,29 @@ contains
       ALLOCATE( mass_mn_pres(size(small_colacv)) ) ; mass_mn_pres = 0.
       ALLOCATE( CT( 0,0,0 ) )
       ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
-      ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( 0,0,0 ) )
+      ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( NPHASE,NPHASE,CV_NONODS ) )
       ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) ) ; TDIFFUSION = 0.
       ALLOCATE( MEAN_PORE_CV( NPRES, CV_NONODS ) )
+
+
+        GAMMA_PRES_ABS = 0.0
+        do ipres = 1, npres
+           do iphase = 1+ (ipres-1)*n_in_pres, ipres*n_in_pres
+              do jpres = 1, npres
+                 if ( ipres /= jpres ) then
+                    do jphase = 1+ (jpres-1)*n_in_pres, jpres*n_in_pres
+                       iphase_real = iphase-(ipres-1)*n_in_pres
+                       jphase_real = jphase-(jpres-1)*n_in_pres
+                       if ( iphase_real == jphase ) GAMMA_PRES_ABS = 1.0
+                    end do
+                 end if
+              end do
+           end do
+        end do
+
+
+
+
 
 
         IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
@@ -595,6 +615,8 @@ contains
       velocity=>extract_tensor_field(packed_state,"PackedVelocity")
       density=>extract_tensor_field(packed_state,"PackedDensity")
       sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+
+
 
       !This logical is used to loop over the saturation equation until the functional
       !explained in function get_Convergence_Functional has been reduced enough
@@ -642,6 +664,7 @@ contains
           StorageIndexes, 3 ,&            !Capillary variables
           OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
           IDs_ndgln=IDs_ndgln)
+
           !Solve the system
           vtracer=as_vector(tracer,dim=2)
 
@@ -1161,9 +1184,15 @@ contains
             else
                 CALL PHA_BLOCK_INV( PIVIT_MAT, TOTELE, U_NLOC * NPHASE * NDIM )
             end if
-            
+
             sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
-            call allocate(CMC_petsc,sparsity,[npres,npres],"CMC_petsc",.true.)
+            
+            if ( npres > 1 ) then
+               call allocate(CMC_petsc,sparsity,[npres,npres],"CMC_petsc",.false.)
+            else
+               call allocate(CMC_petsc,sparsity,[npres,npres],"CMC_petsc",.true.)
+            end if
+            
             if (associated(pressure%mesh%halos)) then
                halo => pressure%mesh%halos(2)
             else
@@ -1791,7 +1820,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         CALL ASSEMB_FORCE_CTY( state, packed_state, &
              velocity, pressure, &
         NDIM, NPHASE, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
-        U_ELE_TYPE, P_ELE_TYPE, &
+        U_ELE_TYPE, P_ELE_TYPE, NPRES, &
         U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
         STOTEL, U_SNDGLN, P_SNDGLN, CV_SNDGLN, U_SNLOC, P_SNLOC, CV_SNLOC, &
@@ -2045,7 +2074,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
     SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state,&
          velocity, pressure, &
     NDIM, NPHASE, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
-    U_ELE_TYPE, P_ELE_TYPE, &
+    U_ELE_TYPE, P_ELE_TYPE, NPRES, &
     U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
     STOTEL, U_SNDGLN, P_SNDGLN, CV_SNDGLN, U_SNLOC, P_SNLOC, CV_SNLOC, &
@@ -2079,7 +2108,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         INTEGER, intent( in ) :: NDIM, NPHASE, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
         U_ELE_TYPE, P_ELE_TYPE, U_NONODS, CV_NONODS, X_NONODS, &
         MAT_NONODS, STOTEL, U_SNLOC, P_SNLOC, CV_SNLOC, &
-        NCOLC,  NCOLELE, XU_NLOC, IPLIKE_GRAD_SOU, NDIM_VEL, IDIVID_BY_VOL_FRAC, NCOLM
+        NCOLC,  NCOLELE, XU_NLOC, IPLIKE_GRAD_SOU, NDIM_VEL, IDIVID_BY_VOL_FRAC, NCOLM, NPRES
 ! If IDIVID_BY_VOL_FRAC==1 then modify the stress term to take into account dividing through by volume fraction. 
         ! NDIM_VEL
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
@@ -2393,7 +2422,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
         INTEGER, DIMENSION ( ndim , nphase , surface_element_count(velocity) )  :: WIC_U_BC_ALL, WIC_U_BC_ALL_VISC, &
                                                                                    WIC_U_BC_ALL_ADV, WIC_MOMU_BC_ALL, WIC_NU_BC_ALL
-        INTEGER, DIMENSION ( 1, 1, surface_element_count(pressure) ) :: WIC_P_BC_ALL
+        INTEGER, DIMENSION ( 1, npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         REAL, DIMENSION ( :, :, : ), pointer  :: SUF_U_BC_ALL, SUF_U_BC_ALL_VISC, SUF_MOMU_BC_ALL, SUF_NU_BC_ALL
         REAL, DIMENSION ( :, :, : ), pointer :: SUF_U_ROB1_BC_ALL, SUF_U_ROB2_BC_ALL
         REAL, DIMENSION ( :, :, : ), pointer :: SUF_P_BC_ALL
