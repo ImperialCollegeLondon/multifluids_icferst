@@ -728,7 +728,7 @@
       CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
            CV_NDGLN, MAT_NDGLN, U_ABSORB, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
-      !Introduce perturbation, positive for the increasing and negative for decreasing
+      !Introduce perturbation, positive for the increasing and negative for decreasing phase
       !Make sure that the perturbation is between bounds
       PERT = 0.0001; allocate(Max_sat(nphase))
       do icv = 1, size(satura,2)
@@ -1556,15 +1556,17 @@
         real, dimension(:), intent(in) :: visc_phase, Immobile_fraction, Corey_exponent, Endpoint_relperm
         ! Local variables...
         REAL :: KR, aux
-        real, parameter :: epsilon = 1d-10
+        real, parameter :: epsilon = 1d-15!This value should in theory never be used, the real lower limit
+        real, parameter :: eps = 1d-5!should be eps ** Corey_exponent
         !Kr_max should only multiply the wetting phase,
         !however as we do not know if it is phase 1 or 2, we let the decision to the user
         !and we multiply both phases by kr_max. By default kr_max= 1
 
         aux = 1.0 - sum(Immobile_fraction)
-        KR = Endpoint_relperm(iphase)*( ( sat - Immobile_fraction(iphase)) / aux ) ** Corey_exponent(iphase)
+        KR = Endpoint_relperm(iphase)*( max( sat - Immobile_fraction(iphase), sat*eps+eps) / aux ) ** Corey_exponent(iphase)
         !Make sure that the relperm is between bounds
         KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+!        KR = min(KR,Endpoint_relperm(iphase))
         ABSP = INV_PERM * (visc_phase(iphase) * max(1d-5, sat)) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
         !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
 
@@ -1633,7 +1635,6 @@
       logical, intent(in) :: Sat_in_FEM
       ! Local Variables
       INTEGER :: IPHASE, JPHASE, nphase, ele, cv_iloc, cv_nod
-      logical :: Pc_imbibition
       !Working pointers
       real, dimension(:,:), pointer :: Satura, CapPressure, Immobile_fraction, Cap_entry_pressure, Cap_exponent
       real, dimension(:), allocatable :: Cont_correction
@@ -1650,29 +1651,12 @@
       allocate(Cont_correction(size(satura,2)))
 
       CapPressure = 0.
-      Pc_imbibition = .false.
 
       DO IPHASE = 1, NPHASE
 
 
           if (have_option("/material_phase["//int2str(iphase-1)//&
             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
-!              option_path = "/material_phase["//int2str(iphase-1)//&
-!                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey"
-
-!            !Get C
-!            cap_path = "/material_phase["//int2str(iphase-1)//&
-!                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::C/prescribed/value"
-!            call extract_scalar_from_diamond(state, c_regions, cap_path, "CapPe", StorageIndexes(32), iphase, nphase)
-!            !Get a
-!            cap_path = "/material_phase["//int2str(iphase-1)//&
-!                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/scalar_field::a/prescribed/value"
-!            call extract_scalar_from_diamond(state, a_regions, cap_path, "CapA", StorageIndexes(33), iphase, nphase)
-
-            if (have_option("/material_phase["//int2str(iphase-1)//&
-               "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/Pc_imbibition") ) then
-               Pc_imbibition = .true.
-            end if
 
               !Apply Brooks-Corey model
               do jphase =1, nphase
@@ -1683,7 +1667,7 @@
                             cv_nod = cv_ndgln((ele-1)*cv_nloc + cv_iloc)
                               CapPressure( jphase, cv_nod ) = CapPressure( jphase, cv_nod ) + &
                               Get_capPressure(satura(iphase,cv_nod), Cap_entry_pressure(iphase, IDs_ndgln(ele)), &
-                                Cap_exponent(iphase, IDs_ndgln(ele)),Immobile_fraction(:,IDs_ndgln(ele)), iphase, Pc_imbibition)
+                                Cap_exponent(iphase, IDs_ndgln(ele)),Immobile_fraction(:,IDs_ndgln(ele)), iphase)
                               Cont_correction(cv_nod) = Cont_correction(cv_nod) + 1.0
                         end do
                     end do
@@ -1701,46 +1685,37 @@
     END SUBROUTINE calculate_capillary_pressure
 
 
-    pure real function Get_capPressure(sat, Pe, a, Immobile_fraction, iphase,  Pc_imbibition)
+    pure real function Get_capPressure(sat, Pe, a, Immobile_fraction, iphase)
         !This functions returns the capillary pressure for a certain input saturation
         !There is another function, its derivative in cv-adv-diff called Get_DevCapPressure
         Implicit none
         real, intent(in) :: sat, Pe, a
         real, dimension(:), intent(in) :: Immobile_fraction
         integer, intent(in) :: iphase
-        logical, intent(in) :: Pc_imbibition
         !Local
-        real, parameter :: tol = 1d-2 !Small values requires smaller time steps
+        real, parameter :: eps = 1d-3 !Small values requires smaller time steps
 
-        if ( Pc_imbibition ) then
-           Get_capPressure = &!Two tolerances, the tol**2 should, in theory, never be reached
-           Pe * max((1.0 - min((sat - Immobile_fraction(iphase)+tol) / (1.0 - sum(Immobile_fraction)), 1.0)), tol**2) ** (-a)
-        else
-           Get_capPressure = &
-           Pe * max(min((sat - Immobile_fraction(iphase)+tol) / (1.0 - Immobile_fraction(iphase)), 1.0), tol**2) ** (-a)
-        end if
-
+            Get_capPressure = &
+            Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - Immobile_fraction(iphase)), 1.0) ** (-a)
     end function Get_capPressure
 
 
-    PURE real function Get_DevCapPressure(sat, Pe, a, immobile_fraction, iphase,  Pc_imbibition)
+    PURE real function Get_DevCapPressure(sat, Pe, a, immobile_fraction, iphase)
         !This functions returns the derivative of the capillary pressure with the saturation
         Implicit none
         integer, intent(in) :: iphase
         real, intent(in) :: sat, Pe, a
         real, dimension(:), intent(in) :: immobile_fraction
-        logical, intent(in) :: Pc_imbibition
         !Local
-        real, parameter :: tol = 1d-2
+        real, parameter :: eps = 1d-3
         real :: aux
 
-        if ( Pc_imbibition ) then
-           aux = (1.0 - sum(immobile_fraction))
-        else
-           aux = (1.0 - immobile_fraction(iphase))
-        end if
+        aux = (1.0 - immobile_fraction(iphase))
+
         Get_DevCapPressure = &
-            -a * Pe * aux**a * max(min((sat - immobile_fraction(iphase)), 1.0), tol) ** (-a-1)
+            -a * Pe * aux**a * min((sat - immobile_fraction(iphase) + eps), 1.0) ** (-a-1)
+
+
     end function Get_DevCapPressure
 
     subroutine calculate_u_source(state, Density_FEMT, u_source)
@@ -2341,6 +2316,76 @@
 
       return
     end subroutine calculate_u_abs_stab
+
+    subroutine calculate_u_abs_stab_porous_media( packed_state, Material_Absorption_Stab, &
+         nphase, ndim, totele, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
+
+      implicit none
+      type(state_type), intent( inout ) :: packed_state
+      real, dimension( :, :, : ), intent( inout ) :: Material_Absorption_Stab
+      integer, intent( in ) :: nphase, ndim, totele, x_nloc, cv_nloc, mat_nloc
+      integer, dimension( : ), intent( in ) :: X_ndgln, MAT_NDGLN
+      type(bad_elements), dimension(:), intent(in) :: Quality_list
+
+      !Local variables
+      integer :: i, ipha_idim, iphase, ele, cv_iloc, imat, ipha_ndim, node, node2, node3, mat_nod
+      real :: factor, delta_ratio, aux, aux2
+      real, parameter :: pi = acos(0.d0) * 2d0
+      real, dimension(3,3) :: A, R
+      real, dimension(:,:), pointer:: X_ALL
+      !Initialize variable
+      Material_Absorption_Stab = 0.
+      call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)
+      !Factor is the desired aspect ratio
+      factor = 10.
+      i = 1
+      do while (quality_list(i)%ele > 0)
+        ele = quality_list(i)%ele
+          !Create A here
+          A = 0. ; R = 0.
+          aux = quality_list(i)%weights(1) * (1-quality_list(i)%weights(1))
+          aux2 = aux * tan(quality_list(i)%angle * pi/180)
+          !Obtain aspect ratio from the bad angle by using trigonometrics
+          !Only the positive value is physical (second order system)
+          delta_ratio = (-1./aux2 + sqrt(aux2**(-2) + 4. / aux))/2.
+          !This is the parameter we want to introduce in stab (delta_X^2/(desired_aspect_ratio^2 * delta_Z^2))
+          A(ndim,ndim) = (delta_ratio/factor)**2
+
+          !Get normal, towards the bad angle
+          node = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(1))
+          node2 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(2))
+          node3 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(3))
+
+!          !Get normal vector pointing to the bad element
+!          R(1:ndim, 1) = X_ALL(1:ndim,node) - (X_ALL(1:ndim,node2) + &
+!            quality_list(i)%weights(1)*(X_ALL(1:ndim,node3) - X_ALL(1:ndim,node2)))
+
+          !GET_TANG_BINORM creates a rotational matrix to the tangent of the vector introduced
+          !and the interest it to introduce this pointing to the bad angle
+          R(1:ndim, 1) = abs(X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3))
+
+          !normalize
+          R(1:ndim, 1) = R(1:ndim, 1) / sqrt(dot_product(R(1:ndim, 1),R(1:ndim, 1)))
+          !Obtain rotational matrix
+          call GET_TANG_BINORM(R(1, 1),R(2, 1),R(3, 1), R(1, 2),R(2, 2),R(3, 2), R(1, 3),R(2, 3),R(3, 3), 1)
+          !Rotate matrix
+          A = matmul(transpose(R), matmul(A,R))
+
+          !Add matrix into Stab
+          do cv_iloc = 1, cv_nloc
+            mat_nod = mat_ndgln(( ele - 1 ) * mat_nloc + cv_iloc)
+              do iphase = 1, nphase
+                  ipha_idim = ( iphase - 1 ) * ndim + 1
+                  ipha_ndim = ( iphase - 1 ) * ndim + ndim
+
+                  Material_Absorption_Stab( mat_nod, ipha_idim:ipha_ndim, ipha_idim:ipha_ndim ) = A(1:ndim, 1:ndim)
+              end do
+          end do
+        i = i + 1
+      end do
+
+      return
+    end subroutine calculate_u_abs_stab_porous_media
 
 
     subroutine update_velocity_absorption( states, ndim, nphase, mat_nonods,velocity_absorption )

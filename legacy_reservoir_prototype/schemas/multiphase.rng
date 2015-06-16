@@ -914,7 +914,7 @@ via a compressible equation of state.</a:documentation>
                   <a:documentation>Option for relperm type in prototype code
 Corey relperm:
 
-relperm = relperm_max * saturation**-relperm_exponent</a:documentation>
+relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent</a:documentation>
                   <optional>
                     <element name="relperm_max">
                       <a:documentation>Relative permeability end point

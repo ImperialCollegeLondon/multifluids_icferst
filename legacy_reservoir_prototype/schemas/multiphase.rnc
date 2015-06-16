@@ -713,7 +713,7 @@ start =
                ## Option for relperm type in prototype code
                   ## Corey relperm:
                   ##
-                  ## relperm = relperm_max * saturation**-relperm_exponent
+                  ## relperm = relperm_max * ((Sat-S_immobile)/(1-Sum(Immobile_saturations)))^relperm_exponent
                element Relperm_Corey {
                      ## Relative permeability end point
                      ##
