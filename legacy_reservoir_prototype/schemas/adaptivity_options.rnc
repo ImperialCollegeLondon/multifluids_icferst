@@ -776,16 +776,34 @@ hr_adaptivity =
          ## Mesh size constraints: the minimum edge length bound.
          element tensor_field {
            attribute name { "MinimumEdgeLengths" },
+	   (
            element anisotropic_symmetric {
              input_choice_real_dim_symmetric_tensor
-           }
+           }|
+	   element value {
+	     attribute name { string },
+             region_ids?,
+	     element anisotropic_symmetric {
+	     	input_choice_real_dim_symmetric_tensor
+	     }
+	   }
+	   )+	   
          },
          ## Mesh size constraints: the maximum edge length bound.
          element tensor_field {
            attribute name { "MaximumEdgeLengths" },
+	   (
            element anisotropic_symmetric {
              input_choice_real_dim_symmetric_tensor
-           }
+           }|
+	   element value {
+	     attribute name { string },
+             region_ids?,
+	     element anisotropic_symmetric {
+	       input_choice_real_dim_symmetric_tensor
+	     }
+	   }
+	   )+
          },
          ## Supply a reference mesh with which to bound the metric
          element reference_mesh {
@@ -823,6 +841,9 @@ hr_adaptivity =
          }?,
          element project_continuity {
             empty
+         }?,
+         element nonlinear_iterations_after_adapt {
+            integer
          }?,
          ## Enable this option to preserve any regions in your
          ## mesh (i.e. those specified by region_ids).

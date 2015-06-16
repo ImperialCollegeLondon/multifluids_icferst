@@ -96,8 +96,7 @@
       type( tensor_field ), pointer :: field1, field2, field3, field4
       type( scalar_field ), pointer :: Cp_s
       integer :: icomp, iphase, ncomp, sc, ec, sp, ep, stat, cv_iloc, cv_nod, ele
-
-      logical :: boussinesq=.true.
+      logical :: boussinesq
 
       DRhoDPressure = 0.
 
@@ -146,6 +145,7 @@
             if( ncomp > 1 ) then
                field4 => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
                Component_l = field4 % val ( icomp, iphase, :)
+
                if ( have_option( '/material_phase[0]/linearise_component' ) ) then
                   ! linearise component
                   if ( cv_nloc==6 .or. (cv_nloc==10 .and. ndim==3) ) then ! P2 triangle or tet
@@ -225,6 +225,7 @@
          end if
       end do ! iphase
 
+      boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
       if ( boussinesq ) field2 % val = 1.0
 
       deallocate( Rho, dRhodP, Cp, Component_l)
@@ -346,7 +347,8 @@
       character( len = option_path_len ), intent( in ) :: eos_option_path
       real, dimension( : ), intent( inout ) :: rho, drhodp
 
-      type( scalar_field ), pointer :: pressure, temperature, density
+      type( tensor_field ), pointer :: pressure
+      type( scalar_field ), pointer :: temperature, density
       character( len = option_path_len ) :: option_path_comp, option_path_incomp, option_path_python, buffer
       character( len = python_func_len ) :: pycode
       logical, save :: initialised = .false.
@@ -364,7 +366,7 @@
 !!$ Den = Den0 * exp[ c0 * ( P - P0 ) ] :: Exponential_1 EOS
 !!$ Den = c0 * P** c1                   :: Exponential_2 EOS
 
-      pressure => extract_scalar_field( packed_state, 'CVPressure' )
+      pressure => extract_tensor_field( packed_state, 'PackedCVPressure' )
       temperature => extract_scalar_field( state( iphase ), 'Temperature', stat )
       have_temperature_field = ( stat == 0 )
 
@@ -400,11 +402,11 @@
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
          call get_option( trim( eos_option_path) // '/eos_option1' , eos_coefs( 1 ) )
          call get_option( trim( eos_option_path )// '/eos_option2' , eos_coefs( 2 ) )
-         Rho = ( pressure % val + eos_coefs( 1 ) ) * eos_coefs( 2 ) / temperature % val
-         perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val ) + eos_coefs( 1 ) ) )
-         RhoPlus = ( pressure % val + perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
+         Rho = ( pressure % val(1,1,:) + eos_coefs( 1 ) ) * eos_coefs( 2 ) / temperature % val
+         perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val(1,1,:) ) + eos_coefs( 1 ) ) )
+         RhoPlus = ( pressure % val(1,1,:) + perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
               temperature % val
-         RhoMinus = ( pressure % val - perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
+         RhoMinus = ( pressure % val(1,1,:) - perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
               temperature % val
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
          deallocate( eos_coefs )
@@ -414,7 +416,7 @@
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
          call get_option( trim( eos_option_path ) // '/coefficient_A', eos_coefs( 1 ) )
          call get_option( trim( eos_option_path ) // '/coefficient_B', eos_coefs( 2 ) )
-         Rho = eos_coefs( 1 ) * pressure % val + eos_coefs( 2 )
+         Rho = eos_coefs( 1 ) * pressure % val(1,1,:) + eos_coefs( 2 )
          perturbation_pressure = 1.
          !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) + eos_coefs( 2 )
          !RhoMinus = eos_coefs( 1 ) * ( pressure % val - perturbation_pressure ) + eos_coefs( 2 )
@@ -426,7 +428,7 @@
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
          call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_A', eos_coefs( 1 ) )
          call get_option( trim( option_path_comp ) // '/linear_in_pressure/coefficient_B', eos_coefs( 2 ) )
-         Rho = eos_coefs( 1 ) * pressure % val / temperature % val + eos_coefs( 2 )
+         Rho = eos_coefs( 1 ) * pressure % val(1,1,:) / temperature % val + eos_coefs( 2 )
          perturbation_pressure = 1.
          !RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) / &
          !     ( max( toler, temperature % val ) ) + eos_coefs( 2 )
@@ -442,14 +444,14 @@
          call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 2 ) ) ! reference_density 
          if ( .not. initialised ) then
             allocate( reference_pressure( node_count( pressure ) ) )
-            reference_pressure = pressure % val
+            reference_pressure = pressure % val(1,1,:)
             initialised = .true.
          end if
-         Rho = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( pressure % val - reference_pressure ) )
-         perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val ) ) )
-         RhoPlus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val + perturbation_pressure ) - &
+         Rho = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( pressure % val(1,1,:) - reference_pressure ) )
+         perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val(1,1,:) ) ) )
+         RhoPlus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val(1,1,:) + perturbation_pressure ) - &
               reference_pressure ) ) 
-         RhoMinus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val - perturbation_pressure ) - &
+         RhoMinus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val(1,1,:) - perturbation_pressure ) - &
               reference_pressure ) ) 
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
          deallocate( eos_coefs )
@@ -459,10 +461,10 @@
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
          call get_option( trim( eos_option_path ) // '/coefficient_A', eos_coefs( 1 ) )
          call get_option( trim( eos_option_path ) // '/coefficient_B', eos_coefs( 2 ) )
-         Rho = eos_coefs( 1 ) * pressure % val ** eos_coefs( 2 )
+         Rho = eos_coefs( 1 ) * pressure % val(1,1,:) ** eos_coefs( 2 )
          perturbation_pressure = 1.
-         RhoPlus = eos_coefs( 1 ) * ( pressure % val + perturbation_pressure ) ** eos_coefs( 2 )
-         RhoMinus = eos_coefs( 1 ) * ( pressure % val - perturbation_pressure ) ** eos_coefs( 2 )
+         RhoPlus = eos_coefs( 1 ) * ( pressure % val(1,1,:) + perturbation_pressure ) ** eos_coefs( 2 )
+         RhoMinus = eos_coefs( 1 ) * ( pressure % val(1,1,:) - perturbation_pressure ) ** eos_coefs( 2 )
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
          deallocate( eos_coefs )
 
@@ -479,12 +481,12 @@
          else
             FLAbort('Unknown incompressible linear equation of state')
          end if
-         call Density_Polynomial( eos_coefs, pressure % val, temperature_local, &
+         call Density_Polynomial( eos_coefs, pressure % val(1,1,:), temperature_local, &
               Rho )
-         perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val ) )
-         call Density_Polynomial( eos_coefs, pressure % val + perturbation_pressure, temperature_local, &
+         perturbation_pressure = max( toler, 1.e-3 * abs( pressure % val(1,1,:) ) )
+         call Density_Polynomial( eos_coefs, pressure % val(1,1,:) + perturbation_pressure, temperature_local, &
               RhoPlus )
-         call Density_Polynomial( eos_coefs, pressure % val - perturbation_pressure, temperature_local, &
+         call Density_Polynomial( eos_coefs, pressure % val(1,1,:) - perturbation_pressure, temperature_local, &
               RhoMinus )
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
          deallocate( temperature_local, eos_coefs )
@@ -524,7 +526,7 @@
          ! Back up pressure and density before we start perturbing stuff... 
          allocate( pressure_back_up( node_count( pressure ) ), density_back_up( node_count( pressure ) ) )
          pressure_back_up = 0. ; density_back_up = 0.
-         pressure_back_up = pressure % val
+         pressure_back_up = pressure % val(1,1,:)
          density_back_up = density % val
 
          call python_reset()
@@ -533,7 +535,7 @@
          ! redefine p as p+pert and p-pert and then run python state again to get dRho / d P...
          perturbation_pressure = 1.e-5
 
-         pressure % val = pressure % val + perturbation_pressure
+         pressure % val(1,1,:) = pressure % val(1,1,:) + perturbation_pressure
          call zero( density )
 
          call python_reset()
@@ -553,8 +555,8 @@
 
          call python_reset()
 
-         pressure % val = pressure_back_up
-         pressure % val = pressure % val - perturbation_pressure
+         pressure % val(1,1,:) = pressure_back_up
+         pressure % val(1,1,:) = pressure % val(1,1,:) - perturbation_pressure
          call zero( density )
 
          call python_reset()
@@ -578,7 +580,7 @@
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
 
          ! Restore pressure and density values in state
-         pressure % val = pressure_back_up
+         pressure % val(1,1,:) = pressure_back_up
          density % val = density_back_up
 
          deallocate( pressure_back_up, density_back_up )
@@ -661,14 +663,15 @@
 
 
 
-    subroutine Calculate_AbsorptionTerm( state, packed_state,&
-         cv_ndgln, mat_ndgln, &
+    subroutine Calculate_AbsorptionTerm( state, packed_state, &
+         npres, cv_ndgln, mat_ndgln, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, u_absorb, IDs_ndgln, IDs2CV_ndgln )
       ! Calculate absorption for momentum eqns
       use matrix_operations
       implicit none
       type( state_type ), dimension( : ), intent( in ) :: state
       type( state_type ), intent( inout ) :: packed_state
+      integer, intent( in ) :: npres
       integer, dimension( : ), intent( in ) :: cv_ndgln, mat_ndgln, IDs_ndgln, IDs2CV_ndgln
       real, dimension( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
       real, dimension( :, :, : ), intent( inout ) :: u_absorb
@@ -677,7 +680,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, x_snloc, cv_snloc, u_snloc, &
            p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij
+           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij, ipres, n_in_pres, loc
       real :: Mobility, pert
       real, dimension(:), allocatable :: Max_sat
       real, dimension( :, :, : ), allocatable :: u_absorb2
@@ -694,12 +697,13 @@
     perm=>extract_tensor_field(packed_state,"Permeability")
 
 !!$ Obtaining a few scalars that will be used in the current subroutine tree:
-      call Get_Primary_Scalars( state, &         
+      call Get_Primary_Scalars( state, &
            nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods )
 
+      n_in_pres = nphase / npres
 
       ewrite(3,*) 'In calculate_absorption'
 
@@ -722,10 +726,10 @@
       end if
 
 
-      allocate( u_absorb2( mat_nonods, nphase * ndim, nphase * ndim ), satura2( size(SATURA,1), size(SATURA,2) ) )
+      allocate( u_absorb2( mat_nonods, nphase * ndim, nphase * ndim ), satura2( N_IN_PRES, size(SATURA,2) ) )
       u_absorb2 = 0. ; satura2 = 0.
 
-      CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
+      CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, N_IN_PRES, NDIM, SATURA(1:N_IN_PRES,:), TOTELE, CV_NLOC, MAT_NLOC, &
            CV_NDGLN, MAT_NDGLN, U_ABSORB, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
       !Introduce perturbation, positive for the increasing and negative for decreasing phase
@@ -744,13 +748,13 @@
         end do
       end do
 
-      CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
+      CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, N_IN_PRES, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
            CV_NDGLN, MAT_NDGLN, U_ABSORB2, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
       DO ELE = 1, TOTELE
          DO CV_ILOC = 1, CV_NLOC
-            IMAT = MAT_NDGLN(( ELE - 1 ) * MAT_NLOC +CV_ILOC )
-            ICV = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
+            IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
+            ICV = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
             DO IPHASE = 1, NPHASE
               DO JDIM = 1, NDIM
                 DO IDIM = 1, NDIM
@@ -762,7 +766,7 @@
                      ! This is the gradient...
                      opt_vel_upwind_grad_new(IDIM, JDIM, IPHASE, IMAT) = &
                         (U_ABSORB2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
-                        U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ))&
+                        U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )) &
                          / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
 
                   END DO
@@ -770,6 +774,19 @@
             END DO
          END DO
       END DO
+
+
+      do ipres = 2, npres
+         do iphase = 1, n_in_pres
+            do idim = 1, ndim
+               ! set \sigma for the pipes here
+               IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
+               LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
+               U_ABSORB( IMAT, LOC, LOC ) = 1.0
+            end do
+         end do
+      end do
+
 
       deallocate( u_absorb2, satura2, Max_sat )
       ewrite(3,*) 'Leaving calculate_absorption'
@@ -2114,7 +2131,7 @@
       type(tensor_field), pointer :: velocity, volfrac, perm
       type(tensor_field) :: velocity_BCs, volfrac_BCs
 
-    !Get from packed_state
+      !Get from packed_state
       volfrac=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
       velocity=>extract_tensor_field(packed_state,"PackedVelocity")
       perm=>extract_tensor_field(packed_state,"Permeability")
@@ -2187,7 +2204,7 @@
 
                         cv_iloc = cv_sloc2loc( cv_siloc )
                         cv_snodi = ( sele - 1 ) * cv_snloc + cv_siloc
-                        cv_nodi =cv_sndgln(cv_snodi)
+                        cv_nodi = cv_sndgln(cv_snodi)
                         cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * stotel * cv_snloc
                         mat_nod = mat_ndgln( (ele-1)*cv_nloc + cv_iloc  )
                         ! this is the boundary condition

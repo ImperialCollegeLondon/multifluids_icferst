@@ -893,18 +893,48 @@ in the goal, in the units of the goal itself.</a:documentation>
         <attribute name="name">
           <value>MinimumEdgeLengths</value>
         </attribute>
-        <element name="anisotropic_symmetric">
-          <ref name="input_choice_real_dim_symmetric_tensor"/>
-        </element>
+        <oneOrMore>
+          <choice>
+            <element name="anisotropic_symmetric">
+              <ref name="input_choice_real_dim_symmetric_tensor"/>
+            </element>
+            <element name="value">
+              <attribute name="name">
+                <data type="string" datatypeLibrary=""/>
+              </attribute>
+              <optional>
+                <ref name="region_ids"/>
+              </optional>
+              <element name="anisotropic_symmetric">
+                <ref name="input_choice_real_dim_symmetric_tensor"/>
+              </element>
+            </element>
+          </choice>
+        </oneOrMore>
       </element>
       <element name="tensor_field">
         <a:documentation>Mesh size constraints: the maximum edge length bound.</a:documentation>
         <attribute name="name">
           <value>MaximumEdgeLengths</value>
         </attribute>
-        <element name="anisotropic_symmetric">
-          <ref name="input_choice_real_dim_symmetric_tensor"/>
-        </element>
+        <oneOrMore>
+          <choice>
+            <element name="anisotropic_symmetric">
+              <ref name="input_choice_real_dim_symmetric_tensor"/>
+            </element>
+            <element name="value">
+              <attribute name="name">
+                <data type="string" datatypeLibrary=""/>
+              </attribute>
+              <optional>
+                <ref name="region_ids"/>
+              </optional>
+              <element name="anisotropic_symmetric">
+                <ref name="input_choice_real_dim_symmetric_tensor"/>
+              </element>
+            </element>
+          </choice>
+        </oneOrMore>
       </element>
       <zeroOrMore>
         <element name="reference_mesh">
@@ -957,6 +987,11 @@ without waiting for the first timestep adapt</a:documentation>
       <optional>
         <element name="project_continuity">
           <empty/>
+        </element>
+      </optional>
+      <optional>
+        <element name="nonlinear_iterations_after_adapt">
+          <ref name="integer"/>
         </element>
       </optional>
       <optional>

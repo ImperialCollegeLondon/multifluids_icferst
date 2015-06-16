@@ -113,9 +113,9 @@
 
 
 !!$ Primary scalars
-      integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
+      integer :: nphase, npres, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-           x_snloc, cv_snloc, u_snloc, p_snloc, &
+           x_snloc, cv_snloc, u_snloc, p_snloc, n_in_pres, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods
 
 !!$ Node global numbers
@@ -159,9 +159,8 @@
 !!$ Shape function related fields:
       integer :: cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, igot_t2, igot_theta_flux, IGOT_THERM_VIS
 
-!!$ For output:
-      real, dimension( : ), allocatable :: &
-           Mean_Pore_CV
+!!$ CV-wise porosity
+      real, dimension( :, : ), allocatable :: Mean_Pore_CV
 
 !!$ Variables used in the diffusion-like term: capilarity and surface tension:
       integer :: iplike_grad_sou
@@ -246,9 +245,10 @@
 
       !Working pointers
 
-      type( tensor_field ), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
-      type(scalar_field), pointer :: pressure_field, porosity_field, cv_pressure, fe_pressure
-      type(vector_field), pointer :: positions
+      type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
+      type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure
+      type(scalar_field), pointer :: f1, f2
+      type(vector_field), pointer :: positions, porosity_field
 
       logical :: write_all_stats=.true.
 
@@ -272,6 +272,8 @@
       !Initially we set to use Stored data and that we have a new mesh
       StorageIndexes = 0!Initialize them as zero !
 
+      ! Number of pressures to solve for
+      npres = 1
 
       !Read info for adaptive timestep based on non_linear_iterations
 
@@ -295,13 +297,13 @@
       end if
 
       !! JRP changes to make a multiphasic state
-      call pack_multistate(state,packed_state,multiphase_state,&
+      call pack_multistate(npres,state,packed_state,multiphase_state,&
            multicomponent_state)
       call set_boundary_conditions_values(state, shift_time=.true.)
 
       call set_caching_level()
 
-      !      call initialize_rheologies(state,rheology)
+      !call initialize_rheologies(state,rheology)
 
       IDIVID_BY_VOL_FRAC=0
       !call print_state( packed_state )
@@ -313,7 +315,7 @@
       !  Then values are in tfield%val(1/ndim/ncomp,nphase,nonods)
       !  Type ids are in bc_type_list(1/ndim/ncomp,nphase,stotel)
       !
-      !A deallocate tfield when finished!!
+      !  A deallocate tfield when finished!!
 
       Repeat_time_step = .false.!Initially has to be false
       nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
@@ -324,6 +326,7 @@
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
            x_snloc, cv_snloc, u_snloc, p_snloc, &
            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
+      n_in_pres = nphase / npres
 
 !!$ Calculating Global Node Numbers
       allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -399,7 +402,7 @@
            DRhoDPressure( nphase, cv_nonods ), FEM_VOL_FRAC( nphase, cv_nonods ),&
 !!$
            suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
-           Mean_Pore_CV( cv_nonods ), &
+           Mean_Pore_CV( npres, cv_nonods ), &
            mass_ele( totele ), &
 !!$
            Velocity_U_Source( ndim, nphase, u_nonods ), &
@@ -448,7 +451,13 @@
       plike_grad_sou_coef=0.
       iplike_grad_sou=0
 
-
+      do iphase = 1, nphase
+         f1 => extract_scalar_field( state(iphase), "Temperature", stat )
+         if ( stat==0 ) then
+            f2 => extract_scalar_field( state(iphase),"Dummy", stat )
+            if ( stat==0 ) f2%val = f1%val
+         end if
+      end do
 
 !!$ Extracting Mesh Dependent Fields
       initialised = .false.
@@ -457,6 +466,7 @@
 !!$ Calculate diagnostic fields
       call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
       call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
+
 !!$
 !!$ Initialising Absorption terms that do not appear in the schema
 !!$
@@ -550,17 +560,19 @@
 
       !Look for bad elements to apply a correction on them
       if (is_porous_media) then
-          pressure_field=>extract_scalar_field(packed_state,"FEPressure")
-          allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
-            call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc,Max_bad_angle, Min_bad_angle, Quality_list&
-                ,pressure_field%mesh%shape%degree)
+         pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
+         allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
+         call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc,Max_bad_angle, Min_bad_angle, Quality_list&
+           ,pressure_field%mesh%shape%degree)
+
+         !Get into packed state relative permeability, immobile fractions, ...
+         call get_RockFluidProp(state, packed_state)
+         !Convert material properties to be stored using region ids, only if porous media
+         call get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, &
+           fake_IDs_ndgln = .not. is_porous_media .or. is_multifracture )
+
       end if
 
-      !Get into packed state relative permeability, immobile fractions, ...
-      call get_RockFluidProp(state, packed_state)
-      !Convert material properties to be stored using region ids, only if porous media
-      call get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, &
-        fake_IDs_ndgln = .not. is_porous_media .or. is_multifracture )
 
 !!$ Starting Time Loop
       itime = 0
@@ -660,7 +672,7 @@
          if (nonLinearAdaptTs) call Adaptive_NonLinear(packed_state, reference_field, its, &
               Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,1)
 
-         porosity_field=>extract_scalar_field(packed_state,"Porosity")
+         porosity_field=>extract_vector_field(packed_state,"Porosity")
 
          ! evaluate prescribed fields at time = current_time+dt
          call set_prescribed_field_values( state, exclude_interpolated = .true., &
@@ -718,8 +730,8 @@
             call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
                  cv_ndgln, DRhoDPressure )
 
-            if( solve_force_balance ) then
-               call Calculate_AbsorptionTerm( state, packed_state,&
+            if( solve_force_balance .and. is_porous_media ) then
+               call Calculate_AbsorptionTerm( state, packed_state, npres, &
                     cv_ndgln, mat_ndgln, &
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption, ids_ndgln, IDs2CV_ndgln )
                ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
@@ -727,7 +739,8 @@
                ! is diagonal
                if( is_porous_media ) then
                   call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                       cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+                       cv_snloc, n_in_pres, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+!                       cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                        finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
                        state, x_nonods, ids_ndgln )
                end if
@@ -754,7 +767,7 @@
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                     U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
-                    NPHASE, &
+                    NPHASE, NPRES, &
                     CV_NLOC, U_NLOC, X_NLOC, &
                     CV_NDGLN, X_NDGLN, U_NDGLN, &
                     CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -824,11 +837,11 @@
                end if
 
                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-               pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+               pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
                CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                     velocity_field, pressure_field, &
-                    NDIM, NPHASE, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
+                    NDIM, NPHASE, NPRES, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
                     U_ELE_TYPE, P_ELE_TYPE, &
                     U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
                     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN,&
@@ -882,7 +895,7 @@
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                     CV_ELE_TYPE, &
-                    NPHASE, &
+                    NPHASE, NPRES, &
                     CV_NLOC, U_NLOC, X_NLOC,  &
                     CV_NDGLN, X_NDGLN, U_NDGLN, &
                     CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
@@ -975,9 +988,9 @@
                           SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
                           NCOLCT, FINDCT, COLCT, &
                           CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-                          U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
-                          NPHASE,  &
-                          CV_NLOC, U_NLOC, X_NLOC,  &
+                          U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, &
+                          NPHASE, NPRES, &
+                          CV_NLOC, U_NLOC, X_NLOC, &
                           CV_NDGLN, X_NDGLN, U_NDGLN, &
                           CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
 !!$
@@ -1076,11 +1089,11 @@
                   ! For compressibility
                   DO IPHASE = 1, NPHASE
                      DO CV_NODI = 1, CV_NONODS
-                        tracer_source%val(1,iphase,cv_nodi)=tracer_source%val(1,iphase,cv_nodi)&
-                             + Mean_Pore_CV( CV_NODI ) * MFCOLD_s%val(ICOMP, IPHASE, CV_NODI) &
-                             * ( DCOLD_s%val( ICOMP, IPHASE, CV_NODI ) - DC_s%val( ICOMP, IPHASE, CV_NODI) ) &
-                             * old_saturation_field%val( 1,IPHASE, CV_NONODS ) &
-                             / ( DC_s%val( ICOMP, IPHASE, CV_NODI ) * DT )
+                        tracer_source%val(1, iphase, cv_nodi)=tracer_source%val(1, iphase, cv_nodi)&
+                             + Mean_Pore_CV(1, CV_NODI ) * MFCOLD_s%val(ICOMP, IPHASE, CV_NODI) &
+                             * ( DCOLD_s%val(ICOMP, IPHASE, CV_NODI) - DC_s%val(ICOMP, IPHASE, CV_NODI) ) &
+                             * old_saturation_field%val(1, IPHASE, CV_NONODS) &
+                             / ( DC_s%val(ICOMP, IPHASE, CV_NODI) * DT )
                      END DO
                   END DO
 
@@ -1128,7 +1141,7 @@
          if(calculate_flux) then
              if(getprocno() == 1) then
 
-                 call dump_outflux(acctim,itime,totout,intflux, dt)
+                 call dump_outflux(acctim,itime,totout,intflux)
 
              endif
          endif
@@ -1155,6 +1168,14 @@
          call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
               cv_ndgln, DRhoDPressure )
 
+         do iphase = 1, nphase
+            f1 => extract_scalar_field( state(iphase), "Temperature", stat )
+            if ( stat==0 ) then
+               f2 => extract_scalar_field( state(iphase),"Dummy", stat )
+               if ( stat==0 ) f2%val = f1%val
+            end if
+         end do
+
 !!$ Calculate diagnostic fields
          call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
          call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
@@ -1167,8 +1188,8 @@
 
             dtime=dtime+1
             if (do_checkpoint_simulation(dtime)) then
-               CV_Pressure=>extract_scalar_field(packed_state,"CVPressure")
-               FE_Pressure=>extract_scalar_field(packed_state,"FEPressure")
+               CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+               FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
                call set(pressure_field,FE_Pressure)
 
                call checkpoint_simulation(state,cp_no=checkpoint_number,&
@@ -1300,7 +1321,7 @@
             call deallocate(multiphase_state)
             call deallocate(multicomponent_state )
             !call unlinearise_components()
-            call pack_multistate(state,packed_state,&
+            call pack_multistate(npres,state,packed_state,&
                  multiphase_state,multicomponent_state)
             call set_boundary_conditions_values(state, shift_time=.true.)
 
@@ -1413,14 +1434,16 @@
                  mx_nface_p1 )
 
 
-            !Re-calculate IDs_ndgln after adapting the mesh
-            call get_RockFluidProp(state, packed_state)
-            !Convert material properties to be stored using region ids, only if porous media
-            call get_regionIDs2nodes(state, packed_state, cv_ndgln, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
+            if (is_porous_media) then
+               !Re-calculate IDs_ndgln after adapting the mesh
+               call get_RockFluidProp(state, packed_state)
+               !Convert material properties to be stored using region ids, only if porous media
+               call get_regionIDs2nodes(state, packed_state, cv_ndgln, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
+            end if
 
             !Look again for bad elements
             if (is_porous_media) then
-              pressure_field=>extract_scalar_field(packed_state,"FEPressure")
+              pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
                allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
                 call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list,&
                     pressure_field%mesh%shape%degree)
@@ -1433,7 +1456,7 @@
                  DRhoDPressure( nphase, cv_nonods ), &
 !!$
                  suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
-                 Mean_Pore_CV( cv_nonods ), &
+                 Mean_Pore_CV( npres, cv_nonods ), &
                  mass_ele( totele ), &
 !!$
 !!$
@@ -1520,7 +1543,7 @@
 
 
             if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
-                 ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One/after_adapt' ) ) then
+                 ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
                ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
                MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
                MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
@@ -1565,12 +1588,17 @@
          end if
 
 
-         !if ( after_adapt  ) then
-         !   NonLinearIteration = 6
-         !else
-         !   NonLinearIteration = 3
-         !end if
+         if ( do_reallocate_fields ) then
+            after_adapt=.true.
+         else
+            after_adapt=.false.
+         end if
 
+         if ( after_adapt .and. have_option( '/mesh_adaptivity/hr_adaptivity/nonlinear_iterations_after_adapt' ) ) then
+            call get_option( '/mesh_adaptivity/hr_adaptivity/nonlinear_iterations_after_adapt', NonLinearIteration )
+         else
+            call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
+         end if
 
          call set_boundary_conditions_values(state, shift_time=.true.)
 
@@ -1624,7 +1652,7 @@
 !      if(calculate_flux) then
 !         if(getprocno() == 1) then
 !
-!            call dump_outflux(acctim,itime,totout,intflux, dt)
+!            call dump_outflux(acctim,itime,totout,intflux)
 !
 !         endif
 !      endif
@@ -1652,7 +1680,6 @@
         use sparse_tools
 
         type(csr_sparsity), pointer :: sparsity
-        type(scalar_field), pointer :: sfield
         type(tensor_field), pointer :: tfield
 
         integer ic, stat
@@ -1668,7 +1695,7 @@
            sparsity = wrap( findph, colm = colph, name = "phsparsity" )
            call insert( packed_state, sparsity, "phsparsity" )
            call deallocate( sparsity )
-	   deallocate ( sparsity )
+           deallocate ( sparsity )
         end if
 
 
@@ -1689,22 +1716,22 @@
         call insert(packed_state,sparsity,'CVFEMSparsity')
         call deallocate(sparsity)
 
-        sfield=>extract_scalar_field(packed_state,"FEPressure")
+        tfield=>extract_tensor_field(packed_state,"PackedFEPressure")
 
-        if (associated( sfield%mesh%halos)) then
+        if (associated( tfield%mesh%halos)) then
            sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity',&
-                row_halo=sfield%mesh%halos(2),&
-                column_halo=sfield%mesh%halos(2))
+                row_halo=tfield%mesh%halos(2),&
+                column_halo=tfield%mesh%halos(2))
         else
            sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity')
         end if
         call insert(packed_state,sparsity,'CMCSparsity')
         call deallocate(sparsity)
 
-        if (associated( sfield%mesh%halos)) then
+        if (associated( tfield%mesh%halos)) then
            sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity",&
-                row_halo=sfield%mesh%halos(2),&
-                column_halo=sfield%mesh%halos(2))
+                row_halo=tfield%mesh%halos(2),&
+                column_halo=tfield%mesh%halos(2))
         else
            sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity")
         end if
@@ -1727,7 +1754,9 @@
         call insert(packed_state,sparsity,"MomentumSparsity")
         call deallocate(sparsity)
 
-        sparsity=make_sparsity(sfield%mesh,sfield%mesh,&
+        tfield=>extract_tensor_field(packed_state,"PackedFEPressure")
+
+        sparsity=make_sparsity(tfield%mesh,tfield%mesh,&
              "PressureMassMatrixSparsity")
         call insert(packed_state,sparsity,"PressureMassMatrixSparsity")
         call deallocate(sparsity)
@@ -1925,13 +1954,13 @@
         end if
      end do
 
-     sfield=>extract_scalar_field(packed_state,"OldFEPressure")
-     nsfield=>extract_scalar_field(packed_state,"FEPressure")
-     sfield%val=nsfield%val
+     tfield=>extract_tensor_field(packed_state,"PackedOldFEPressure")
+     ntfield=>extract_tensor_field(packed_state,"PackedFEPressure")
+     tfield%val=ntfield%val
 
-     sfield=>extract_scalar_field(packed_state,"OldCVPressure")
-     nsfield=>extract_scalar_field(packed_state,"CVPressure")
-     sfield%val=nsfield%val
+     tfield=>extract_tensor_field(packed_state,"PackedOldCVPressure")
+     ntfield=>extract_tensor_field(packed_state,"PackedCVPressure")
+     tfield%val=ntfield%val
 
    end subroutine copy_packed_new_to_old
 
@@ -2007,7 +2036,7 @@
 !     return
 !   end subroutine linearise
 
-   subroutine dump_outflux(current_time, itime, outflux, intflux,ts)
+   subroutine dump_outflux(current_time, itime, outflux, intflux)
 
    ! Subroutine that dumps the total flux at a given timestep across all specified boudaries to a file  called 'outfluxes.txt'. In addition, the time integrated flux
    ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
@@ -2017,7 +2046,6 @@
    real,intent(in) :: current_time
    integer, intent(in) :: itime
    real, dimension(:,:), intent(inout) :: outflux, intflux
-   real,intent(in) :: ts
 
 
    integer :: ioutlet

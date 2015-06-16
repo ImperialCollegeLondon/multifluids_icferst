@@ -55,7 +55,8 @@
       type( state_type ), intent( inout ) :: packed_state
       integer, intent( in ) :: icomp
       integer, dimension( : ), intent( in ) :: cv_ndgln, IDs_ndgln
-      real, dimension( : ), intent( in ) :: volfra_pore, mass_ele
+      real, dimension( : ), intent( in ) :: mass_ele
+      real, dimension( :, : ), intent( in ) :: volfra_pore
       real, dimension( :, :, : ), intent( in ) :: denold
       real, dimension( :, :, : ), intent( inout ) :: comp_absorb
 
@@ -109,7 +110,7 @@
             CV_NOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC ) 
             SUM_NOD( CV_NOD ) = SUM_NOD( CV_NOD ) + mass_ele( ele ) !1.0
             VOLFRA_PORE_NOD( CV_NOD ) = VOLFRA_PORE_NOD( CV_NOD ) + &
-                 VOLFRA_PORE( ELE ) * mass_ele( ele )
+                 VOLFRA_PORE( 1, ELE ) * mass_ele( ele )
          END DO
       END DO
       VOLFRA_PORE_NOD = VOLFRA_PORE_NOD / SUM_NOD
@@ -802,7 +803,7 @@
       integer, intent( in ) :: cv_nonods, nphase, ncomp2, its, nits
       real, intent( in ) :: dt
 !      real, dimension( :, : ), intent( inout ) :: V_SOURCE_COMP
-      real, dimension( : ), intent( in ) :: MEAN_PORE_CV
+      real, dimension( :, : ), intent( in ) :: MEAN_PORE_CV
 !      real, dimension( : ), intent( in ) :: SATURA
 !      real, dimension( : ), intent( in ) :: COMP, COMPOLD
 
@@ -843,14 +844,14 @@
 
             IF ( ENSURE_POSITIVE ) THEN
 !               V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) & 
-!                    - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
+!                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
                tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) & 
-                    - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
+                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
             ELSE
 !               V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) & 
-!                    - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
+!                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
                tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) &  
-                    - SUM2ONE_RELAX * MEAN_PORE_CV( CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
+                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
             END IF
 
          END DO

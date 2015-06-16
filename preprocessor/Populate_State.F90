@@ -3067,7 +3067,7 @@ contains
     type(tensor_field) :: min_eigen, max_eigen
     character(len=*), parameter :: path = &
     & "/mesh_adaptivity/hr_adaptivity/"
-    logical :: is_constant
+    logical :: is_constant, have_regions
     type(mesh_type), pointer :: mesh
     type(vector_field), pointer :: X
     integer :: node
@@ -3088,14 +3088,19 @@ contains
     end if
 
     is_constant = (have_option(path // "/tensor_field::MinimumEdgeLengths/anisotropic_symmetric/constant"))
+    have_regions = (have_option(path // "/tensor_field::MinimumEdgeLengths/value"))
     if (is_constant) then
       call allocate(min_edge, mesh, "MinimumEdgeLengths", field_type=FIELD_TYPE_CONSTANT)
-      call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
+         call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
       call allocate(max_eigen, mesh, "MaxMetricEigenbound", field_type=FIELD_TYPE_CONSTANT)
       call set(max_eigen, eigenvalue_from_edge_length(node_val(min_edge, 1)))
     else
       call allocate(min_edge, mesh, "MinimumEdgeLengths")
-      call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
+      if (have_regions) then
+         call initialise_field_over_regions(min_edge, path // "/tensor_field::MinimumEdgeLengths/value", X)
+      else
+         call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
+      end if
       call allocate(max_eigen, mesh, "MaxMetricEigenbound")
       do node=1,node_count(mesh)
         call set(max_eigen, node, eigenvalue_from_edge_length(node_val(min_edge, node)))
@@ -3107,6 +3112,8 @@ contains
     call deallocate(max_eigen)
 
     is_constant = (have_option(path // "/tensor_field::MaximumEdgeLengths/anisotropic_symmetric/constant"))
+    have_regions = (have_option(path // "/tensor_field::MaximumEdgeLengths/value"))
+
     if (is_constant) then
       call allocate(max_edge, mesh, "MaximumEdgeLengths", field_type=FIELD_TYPE_CONSTANT)
       call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
@@ -3114,7 +3121,11 @@ contains
       call set(min_eigen, eigenvalue_from_edge_length(node_val(max_edge, 1)))
     else
       call allocate(max_edge, mesh, "MaximumEdgeLengths")
-      call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
+      if (have_regions) then
+         call initialise_field_over_regions(max_edge, path // "/tensor_field::MaximumEdgeLengths/value", X)
+      else
+         call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
+      end if
       call allocate(min_eigen, mesh, "MinMetricEigenbound")
       do node=1,node_count(mesh)
         call set(min_eigen, node, eigenvalue_from_edge_length(node_val(max_edge, node)))

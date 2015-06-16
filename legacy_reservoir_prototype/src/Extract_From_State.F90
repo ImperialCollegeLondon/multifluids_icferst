@@ -95,7 +95,6 @@
 
     integer, dimension(2) :: shape
 
-
   contains
 
 
@@ -2067,25 +2066,26 @@
 
     end subroutine update_boundary_conditions
 
-    subroutine pack_multistate(state, packed_state,&
+    subroutine pack_multistate( npres, state, packed_state,&
          multiphase_state, multicomponent_state, pmulti_state )
 
       type(state_type), dimension(:), intent(inout):: state
       type(state_type), dimension(:), intent(inout), pointer :: &
            multiphase_state, multicomponent_state
-      type(state_type) ::  packed_state
+      type(state_type) :: packed_state
+      integer, intent(in) :: npres
 
       type(state_type), dimension(:,:), pointer, optional :: pmulti_state
 
       type(state_type), dimension(:,:), pointer :: multi_state
 
-      integer :: i,nphase,ncomp,ndim, stat, iphase, icomp, idim, ele
+      integer :: i,nphase,ncomp,ndim,stat,iphase,icomp,idim,ele,ipres,n_in_pres
 
-      type(scalar_field), pointer :: pressure, p2,sfield
+      type(scalar_field), pointer :: pressure, sfield
       type(vector_field), pointer :: velocity, position, vfield
-      type(tensor_field), pointer :: tfield
+      type(tensor_field), pointer :: tfield, p2
 
-      type(scalar_field) :: porosity
+      type(vector_field) :: porosity
       type(vector_field) :: p_position, u_position, m_position
       type(tensor_field) :: permeability, ten_field
       type(mesh_type), pointer :: ovmesh, element_mesh
@@ -2097,6 +2097,7 @@
 
       ncomp=option_count('/material_phase/is_multiphase_component')
       nphase=size(state)-ncomp
+
       position=>extract_vector_field(state(1),"Coordinate")
       ndim=mesh_dim(position)
 
@@ -2174,24 +2175,42 @@
       pressure=>extract_scalar_field(state(1),"Pressure")
       call insert(packed_state,pressure%mesh,"PressureMesh")
 
-      call add_new_memory(packed_state,pressure,"FEPressure")
-      call add_new_memory(packed_state,pressure,"OldFEPressure")
-      call add_new_memory(packed_state,pressure,"CVPressure")
-      call add_new_memory(packed_state,pressure,"OldCVPressure")
+!      call add_new_memory(packed_state,pressure,"FEPressure")
+!      call add_new_memory(packed_state,pressure,"OldFEPressure")
+!      call add_new_memory(packed_state,pressure,"CVPressure")
+!      call add_new_memory(packed_state,pressure,"OldCVPressure")
+
+      call insert_sfield( packed_state,"FEPressure",1,npres )
+
+      tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
+      tfield%option_path = pressure%option_path
+
+      call insert_sfield( packed_state,"CVPressure",1,npres )
+
+
+
 
       ! dummy field on the pressure mesh, used for evaluating python eos's.
       ! this could be cleaned up in the future.
       call add_new_memory(packed_state,pressure,"Dummy")
 
-      p2=>extract_scalar_field(packed_state,"FEPressure")
-      call set( p2, pressure )
+      tfield => extract_tensor_field( state(1), "Dummy", stat )
+      if ( stat==0 ) call insert( packed_state, tfield, "Dummy" )
+
+      p2=>extract_tensor_field(packed_state,"PackedFEPressure")
+      !call set( p2, pressure )
+      do ipres = 1, npres
+         p2%val(1,ipres,:)=pressure%val
+      end do
       do icomp=1,ncomp
-         call insert(multicomponent_state(icomp),p2,"FEPressure")
+         call insert(multicomponent_state(icomp),p2,"PackedFEPressure")
       end do
 
-      p2=>extract_scalar_field(packed_state,"CVPressure")
-      call set( p2, pressure )
-
+      p2=>extract_tensor_field(packed_state,"PackedCVPressure")
+      !call set( p2, pressure )
+      do ipres = 1, npres
+         p2%val(1,ipres,:)=pressure%val
+      end do
 
       call insert_sfield(packed_state,"FEDensity",1,nphase)
 
@@ -2209,11 +2228,11 @@
       call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
 
       !If we have capillary pressure we create a field in packed_state
-     if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
-        call allocate(ten_field,pressure%mesh,"PackedCapPressure",dim=[1,nphase])
-        call insert(packed_state,ten_field,"PackedCapPressure")
-        call deallocate(ten_field)
-     end if
+      if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
+         call allocate(ten_field,pressure%mesh,"PackedCapPressure",dim=[1,nphase])
+         call insert(packed_state,ten_field,"PackedCapPressure")
+         call deallocate(ten_field)
+      end if
 
       velocity=>extract_vector_field(state(1),"Velocity")
       call insert(packed_state,velocity%mesh,"VelocityMesh")
@@ -2313,7 +2332,6 @@
             velocity=>extract_vector_field(state(i),"IteratedVelocity",stat)
             if (stat==0) velocity%wrapped=.true.
 
-
             call unpack_component_sfield(state(i),packed_state,"FEComponentDensity",icomp)
             !call unpack_component_sfield(state(i),packed_state,"FEOldComponentDensity",icomp)
             call unpack_component_sfield(state(i),packed_state,"FEComponentMassFraction",icomp)
@@ -2332,6 +2350,8 @@
             cycle
          else
 
+            pressure=>extract_scalar_field(state(i),"Pressure",stat)
+            if (stat==0) pressure%wrapped=.true.
 
             if (has_density) then
                call unpack_sfield(state(i),packed_state,"IteratedDensity",1,iphase,&
@@ -2387,13 +2407,21 @@
          end if
       end do
 
+      n_in_pres = nphase / npres
+      do ipres=1,npres
+         i = (ipres-1)*n_in_pres + 1
+         call unpack_sfield(state(i),packed_state,"Pressure",1,ipres)
+         call insert(multi_state(1,ipres), extract_scalar_field(state(i),"Pressure"),"FEPressure")
+      end do
+
+
       if (option_count("/material_phase/scalar_field::Temperature")>0) call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
       call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Density")
       call allocate_multiphase_scalar_bcs(packed_state,multi_state,"PhaseVolumeFraction")
       call allocate_multiphase_vector_bcs(packed_state,multi_state,"Velocity")
+      call allocate_multiphase_scalar_bcs(packed_state,multi_state,"FEPressure")
 
       if (ncomp>0) then
-
          call unpack_multicomponent(packed_state,multicomponent_state)
          call allocate_multicomponent_scalar_bcs(multicomponent_state,multi_state,"ComponentMassFraction")
          call allocate_multicomponent_scalar_bcs(multicomponent_state,multi_state,"ComponentDensity")
@@ -2427,16 +2455,23 @@
          deallocate(multi_state)
       end if
 
-
-      call allocate(porosity,element_mesh,"Porosity")
-      call set(porosity,1.0)
+      call allocate(porosity,npres,element_mesh,"Porosity")
+      do ipres = 1, npres
+         call set(porosity,ipres,1.0)
+      end do
       call insert(packed_state,porosity,"Porosity")
       call deallocate(porosity)
       if (has_scalar_field(state(1),"Porosity")) then
          sfield => extract_scalar_field(state(1),"Porosity")
-         porosity%val = sfield%val
+         porosity%val(1,:) = sfield%val
       end if
 
+      ! Hack to define a lateral from diamond
+      if ( npres >  1 ) then
+         vfield => extract_vector_field(packed_state,"Porosity")
+         sfield => extract_scalar_field(state(1),"Pipe1")
+         vfield%val(2,:) = sfield%val
+      end if
 
       if (has_scalar_field(state(1),"Permeability")) then
          call allocate(permeability,element_mesh,"Permeability",&
@@ -2581,7 +2616,7 @@
       subroutine unpack_multiphase(mstate,mpstate)
         type(state_type) :: mstate
         type(state_type), dimension(:) :: mpstate
-        integer :: index, iphase
+        integer :: index, iphase, si
 
         type(tensor_field), pointer :: tfield
         type(tensor_field) :: mp_tfield
@@ -2589,10 +2624,12 @@
 
         do index=1,size(mstate%tensor_fields)
            tfield=>extract_tensor_field(mstate,index)
-           if (tfield%name(:6)=="Packed") then
+           si=len(trim(tfield%name))
+           if(tfield%name(si-7:si)=="Pressure")then
+              ! do nothing...
+           else if(tfield%name(:6)=="Packed")then
               do iphase=1,nphase
                  call allocate(mp_tfield,tfield%mesh,tfield%name(7:),field_type=FiELD_TYPE_DEFERRED,dim=[tfield%dim(1),1])
-
                  mp_tfield%val=>tfield%val(:,iphase:iphase,:)
                  mp_tfield%updated=>tfield%updated
                  mp_tfield%wrapped=.true.
@@ -2617,12 +2654,16 @@
         sfield2%bc=sfield%bc
         if (associated(sfield2%bc%boundary_condition)) then
            do i=1,size(sfield2%bc%boundary_condition)
-              if (associated(sfield2%bc%boundary_condition(i)%surface_fields)) then
-                 do j=1, size(sfield2%bc%boundary_condition(i)%surface_fields)
-                    call incref(sfield2%bc%boundary_condition(i)%surface_fields(j))
+              if (associated(sfield2%bc%boundary_condition(i)&
+                   &%surface_fields)) then
+                 do j=1, size(sfield2%bc%boundary_condition(i)&
+                      &%surface_fields)
+                    call incref(sfield2%bc%boundary_condition(i)&
+                         &%surface_fields(j))
                  end do
               end if
-              call incref(sfield2%bc%boundary_condition(i)%surface_mesh)
+              call incref(sfield2%bc%boundary_condition(i)&
+                   &%surface_mesh)
            end do
         end if
         call insert(mstate,sfield2,name)
@@ -2630,9 +2671,8 @@
 
       end subroutine add_new_memory
 
-
       subroutine insert_sfield(mstate,name,ncomp,nphase,nmesh,&
-           add_source, add_absorption)
+           & add_source, add_absorption)
         type(state_type), intent(inout) :: mstate
         character(len=*), intent(in) :: name
         type(mesh_type),optional, target :: nmesh
@@ -2659,7 +2699,7 @@
 
         nfield=>extract_scalar_field(state(1),name,stat)
         if (stat/=0) then
-           nfield=>extract_scalar_field(state(1),"Pressure",stat)
+           nfield=>extract_scalar_field(state(1),"Pressure")
         end if
 
         if (present(nmesh)) then
@@ -2791,9 +2831,14 @@
            lfree=.true.
         end if
 
-        mfield=>extract_tensor_field(mstate,"Packed"//name)
+        if ( trim(name)=="Pressure" ) then
+           mfield=>extract_tensor_field(mstate,"PackedFE"//name)
+        else
+           mfield=>extract_tensor_field(mstate,"Packed"//name)
+        end if
 
         nfield=>extract_scalar_field(nstate,name,stat)
+
         if (stat==0) then
            if (size(nfield%val(:))>1) then
               mfield%val(icomp,iphase,1:size(nfield%val))=nfield%val(:)
@@ -3258,7 +3303,7 @@
       real, save :: OldDt
       real, save :: Accumulated_sol
       real, parameter :: check_sat_threshold = 1d-6
-      real, dimension(:), pointer :: pressure
+      real, dimension(:,:,:), pointer :: pressure
       real, dimension(:,:), pointer :: phasevolumefraction
       real, dimension(:,:,:), pointer :: velocity
 
@@ -3326,14 +3371,14 @@
             select case (variable_selection)
             case (1)
                 if (allocated(reference_field)) then
-                    if (size(reference_field,3) /= size(pressure,1) ) then
+                    if (size(reference_field,3) /= size(pressure,3) ) then
                         deallocate(reference_field)
-                        allocate (reference_field(1,1,size(pressure,1) ))
+                        allocate (reference_field(1,1,size(pressure,3) ))
                     end if
                 else
-                    allocate (reference_field(1,1,size(pressure,1) ))
+                    allocate (reference_field(1,1,size(pressure,3) ))
                 end if
-               reference_field(1,1, :) = pressure
+               reference_field(1,1,:) = pressure(1,1,:)
             case (2)
                 if (allocated(reference_field)) then
                     if (size(reference_field,1) /= size(velocity,1) .or. &
@@ -3374,7 +3419,7 @@
 
             select case (variable_selection)
             case (1)
-               ts_ref_val = maxval(abs(reference_field(1,1,:)-pressure))
+               ts_ref_val = maxval(abs(reference_field(1,1,:)-pressure(1,1,:)))
             case (2)
                ts_ref_val = maxval(abs(reference_field-velocity))
             case default
@@ -3574,13 +3619,13 @@
          end if
       end do
 
-      sfield=>extract_scalar_field(packed_state,"OldFEPressure")
-      nsfield=>extract_scalar_field(packed_state,"FEPressure")
-      sfield%val=nsfield%val
+      tfield=>extract_tensor_field(packed_state,"OldFEPressure")
+      ntfield=>extract_tensor_field(packed_state,"FEPressure")
+      tfield%val=ntfield%val
 
-      sfield=>extract_scalar_field(packed_state,"OldCVPressure")
-      nsfield=>extract_scalar_field(packed_state,"CVPressure")
-      sfield%val=nsfield%val
+      tfield=>extract_tensor_field(packed_state,"OldCVPressure")
+      ntfield=>extract_tensor_field(packed_state,"CVPressure")
+      tfield%val=ntfield%val
 
     end subroutine copy_packed_new_to_iterated
 
@@ -3621,7 +3666,7 @@
            Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, &
            FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
            Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent
-      real, optional, dimension(:), pointer ::Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure
+      real, optional, dimension(:,:,:), pointer ::Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure
       !Local variables
       type(scalar_field), pointer :: sfield
       type(vector_field), pointer :: vfield
@@ -3629,20 +3674,20 @@
 
       !Scalar stored
       if (present(FEPressure)) then
-         sfield => extract_scalar_field( packed_state, "FEPressure" )
-         FEPressure =>  sfield%val(:)
+         tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
+         FEPressure => tfield%val(:,:,:)
       end if
       if (present(OldFEPressure)) then
-         sfield => extract_scalar_field( packed_state, "OldFEPressure" )
-         OldFEPressure =>  sfield%val(:)
+         tfield => extract_tensor_field( packed_state, "PackedOldFEPressure" )
+         OldFEPressure => tfield%val(:,:,:)
       end if
       if (present(CVPressure)) then
-         sfield => extract_scalar_field( packed_state, "CVPressure" )
-         CVPressure =>  sfield%val(:)
+         tfield => extract_tensor_field( packed_state, "PackedCVPressure" )
+         CVPressure => tfield%val(:,:,:)
       end if
       if (present(OldCVPressure)) then
-         sfield => extract_scalar_field( packed_state, "OldCVPressure" )
-         OldCVPressure =>  sfield%val(:)
+         tfield => extract_tensor_field( packed_state, "PackedOldCVPressure" )
+         OldCVPressure => tfield%val(:,:,:)
       end if
 
       !Vectors stored
@@ -4273,7 +4318,7 @@
 ! Local variables
 
        type(scalar_field), pointer :: sfield
-       type(scalar_field), pointer :: s2field
+       type(vector_field), pointer :: vfield
        real, dimension(:), pointer :: CVPressure
        real, dimension(:), pointer :: Por
        logical :: test
@@ -4316,8 +4361,8 @@
 
 ! Extract the porosity (still should confirm whether or not totoutflux needs to be divided by the porosity - matter of which velocity to use : q or v)
 
-      s2field => extract_scalar_field( packed_state, "Porosity" )
-      Por =>  s2field%val(:)
+      vfield => extract_vector_field( packed_state, "Porosity" )
+      Por =>  vfield%val(1,:)
 
 ! Having extracted the saturation field (phase volume fraction) at control volume nodes, need to calculate it at quadrature points gi.
 ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes). Therefore need cv_ndgln below
