@@ -273,7 +273,7 @@
       StorageIndexes = 0!Initialize them as zero !
 
       ! Number of pressures to solve for
-      npres = 2
+      npres = 1
 
       !Read info for adaptive timestep based on non_linear_iterations
 

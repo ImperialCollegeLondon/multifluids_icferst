@@ -9887,7 +9887,6 @@ CONTAINS
           RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:)) &
                * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
 
-
           IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
              RCON_J(:) = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
                   * SUFEN( U_KLOC, GI )
@@ -11246,7 +11245,6 @@ deallocate(NX_ALL)
     INTEGER :: IPHASE, IDIM
 
 
-!          stop 2928
     ! coefficients for this element ELE
     UGI_COEF_ELE_ALL = 0.0
 
@@ -11443,6 +11441,7 @@ deallocate(NX_ALL)
     ! Local variable for indirect addressing
     !Last commit with all the functionalities of the subroutine: 65274db742e27de60dad7a1036c72f708e87e0d1
 
+    UGI_COEF_ELE_ALL=0.0 ; UGI_COEF_ELE2_ALL=0.0
 
     Conditional_SELE: IF( on_domain_boundary ) THEN ! On the boundary of the domain.
         !Initialize variables

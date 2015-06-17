@@ -680,7 +680,7 @@
       integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, x_snloc, cv_snloc, u_snloc, &
            p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij, ipres, n_in_pres, loc
+           ele, imat, icv, iphase, cv_iloc, idim, jdim, ij, ipres, n_in_pres, loc, loc2
       real :: Mobility, pert
       real, dimension(:), allocatable :: Max_sat
       real, dimension( :, :, : ), allocatable :: u_absorb2
@@ -690,6 +690,7 @@
       !Working pointers
       real, dimension(:,:), pointer :: Satura, OldSatura, Immobile_fraction
       type( tensor_field ), pointer :: perm
+
 
     !Get from packed_state
     call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
@@ -757,15 +758,19 @@
             do idim = 1, ndim
                ! set \sigma for the pipes here
                LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
+               LOC2 = (1-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
                DO ELE = 1, TOTELE
                   DO CV_ILOC = 1, CV_NLOC
                      IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
                      U_ABSORB( IMAT, LOC, LOC ) = 1.0
+                     !U_ABSORB( IMAT, LOC, LOC ) = U_ABSORB( IMAT, LOC2, LOC2 )
                   END DO
                END DO
             end do
          end do
       end do
+
+
 
       DO ELE = 1, TOTELE
          DO CV_ILOC = 1, CV_NLOC
@@ -795,8 +800,6 @@
             END DO
          END DO
       END DO
-
-
 
       deallocate( u_absorb2, satura2, Max_sat )
       ewrite(3,*) 'Leaving calculate_absorption'

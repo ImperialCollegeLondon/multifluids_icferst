@@ -372,7 +372,7 @@
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( :, :, : ), intent( in ) :: C
-      REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
+      REAL, DIMENSION( :, :, : ), intent( in ) :: CT
       type( state_type ), intent( inout ), dimension(:) :: state
       integer, intent(inout) :: indx
       type(halo_type), pointer :: halos
@@ -473,7 +473,7 @@
          INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
          INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
          REAL, DIMENSION( :, :, : ), intent( in ) :: C
-         REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
+         REAL, DIMENSION( :, :, : ), intent( in ) :: CT
          type( state_type ), intent( inout ), dimension(:) :: state
          integer, intent(inout) :: indx
          ! Local variables
@@ -893,7 +893,8 @@
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( :, :, : ), intent( in ) :: C
-      REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
+      REAL, DIMENSION( :, :, : ), intent( in ) :: CT
+
 
       ! Local variables
       INTEGER, PARAMETER :: MX_NCOLOR = 1000
@@ -2000,7 +2001,7 @@
     do n=1,nc!node_count(velocity)
        do k=1,nfields
           row=>row_m_ptr(sparsity,k+nfields*(n-1))
-          do j=1,size(row)             
+          do j=1,size(row)
              call addto(mat,k,mod(row(j)-1,nfields)+1,&
                    n,(row(j)-1)/nfields+1,dgm_pha(next))
              next=next+1
@@ -2062,7 +2063,6 @@
 
 
   end function allocate_momentum_matrix
-    
 
 
   subroutine apply_strong_bcs_multiphase(A , x , b)

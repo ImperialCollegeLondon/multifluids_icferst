@@ -578,7 +578,7 @@ contains
                     do jphase = 1+ (jpres-1)*n_in_pres, jpres*n_in_pres
                        iphase_real = iphase-(ipres-1)*n_in_pres
                        jphase_real = jphase-(jpres-1)*n_in_pres
-                       if ( iphase_real == jphase ) GAMMA_PRES_ABS = 1.0
+                       if ( iphase_real == jphase ) GAMMA_PRES_ABS = 0.0
                     end do
                  end if
               end do
@@ -861,7 +861,7 @@ contains
         integer, intent(in) :: nonlinear_iteration
         ! Local Variables
         LOGICAL, PARAMETER :: use_continuous_pressure_solver = .false.!For DG pressure,the first non linear iteration we
-                                                                        !use a continuous pressure
+                                                                      !use a continuous pressure
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
         INTEGER :: N_IN_PRES
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
@@ -884,7 +884,7 @@ contains
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
-        LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY
+        LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY, diag
         INTEGER :: IDIM
         !Re-scale parameter can be re-used
         real, save :: rescaleVal = -1.0
@@ -907,7 +907,6 @@ contains
         type( petsc_csr_matrix ) :: mat
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
-
 
         type(halo_type), pointer :: halo
 
@@ -973,7 +972,7 @@ contains
                     do jphase = 1+ (jpres-1)*n_in_pres, jpres*n_in_pres
                        iphase_real = iphase-(ipres-1)*n_in_pres
                        jphase_real = jphase-(jpres-1)*n_in_pres
-                       if ( iphase_real == jphase ) GAMMA_PRES_ABS = 1.0
+                       if ( iphase_real == jphase ) GAMMA_PRES_ABS = 0.0
                     end do
                  end if
               end do
@@ -1186,13 +1185,10 @@ contains
             end if
 
             sparsity=>extract_csr_sparsity(packed_state,'CMCSparsity')
-            
-            if ( npres > 1 ) then
-               call allocate(CMC_petsc,sparsity,[npres,npres],"CMC_petsc",.false.)
-            else
-               call allocate(CMC_petsc,sparsity,[npres,npres],"CMC_petsc",.true.)
-            end if
-            
+            diag=.true.
+            if ( npres>1 ) diag=.false.
+            call allocate(CMC_petsc,sparsity,[npres,npres],"CMC_petsc",diag)
+
             if (associated(pressure%mesh%halos)) then
                halo => pressure%mesh%halos(2)
             else
@@ -1295,8 +1291,6 @@ contains
 !            end if
 !
 !            rhs_p%val = -rhs_p%val + CT_RHS%val
-  
-
 
             if ( .not.symmetric_P ) then ! original
 
@@ -1316,11 +1310,7 @@ contains
 
             rhs_p%val = -rhs_p%val + CT_RHS%val
 
-
-
-
             if(got_free_surf) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
-
 
             ! Matrix vector involving the mass diagonal term
 !            DO CV_NOD = 1, CV_NONODS
@@ -1389,7 +1379,6 @@ contains
 !            else
 !               sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity_BOB')
 !            end if
-
 !call MatView(cmc_petsc%M,PETSC_VIEWER_STDOUT_SELF)
 !            cmat=wrap(sparsity,val=cmc,name="CMCMatrix_BOB")
 !            mat2=csr2petsc_csr(cmat)
@@ -1432,19 +1421,8 @@ contains
                     totele, cv_nloc, x_nonods, x_ndgln, trim(pressure%option_path))
             else
 
-               call allocate(rhs,npres,pressure%mesh,"RHS")
-               rhs%val=RESHAPE( RHS_P%VAL, (/ NPRES , CV_NONODS /) )
 
-               call petsc_solve(deltap,cmc_petsc,rhs,trim(pressure%option_path))
-
-               call deallocate(rhs)
-
-
-
-
-!                call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
-
-
+               call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
 
             end if
 
@@ -1453,7 +1431,7 @@ contains
             call halo_update(p_all)
 
             call deallocate(rhs_p)
-            call deallocate(cmc_petsc)  
+            call deallocate(cmc_petsc)
 
             ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
 
@@ -1500,10 +1478,6 @@ contains
            CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
         END DO
         call halo_update(CVP_all)
-
-        ! update prssure field in trunk state
-        pressure_state => extract_scalar_field(state(1),"Pressure")
-        pressure_state % val = CVP_all % val(1,1,:)
 
         DEALLOCATE( CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS )
