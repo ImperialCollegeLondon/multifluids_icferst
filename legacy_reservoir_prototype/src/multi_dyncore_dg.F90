@@ -535,7 +535,7 @@ contains
       real :: Previous_convergence, updating, new_dumping, aux, resold, first_res
       real, save :: res = -1
       logical :: satisfactory_convergence
-      integer :: its, n_in_pres, useful_sats, iphase
+      integer :: its, n_in_pres, useful_sats
 
       N_IN_PRES = NPHASE / NPRES
 
@@ -585,10 +585,6 @@ contains
               end do
            end do
         end do
-
-
-
-
 
 
         IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
