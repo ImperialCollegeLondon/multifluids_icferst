@@ -1452,7 +1452,8 @@ contains
         !Local parameters
         integer, parameter :: Max_sat_its = 9
         real, parameter :: Conv_to_achiv = 10.0
-        !Local variables
+        real, parameter :: anders_exp = 0.4!This parameter change the importance of backtrack_sat in Anderson's acceleration (mainly for high alphas)
+        !Local variables                   !100 => backtrack_sat is not used; 0.3 => equally important; 0.4 => recommended; 0 => more important than sat_bak
         real, dimension(:, :), pointer :: Satura
         logical :: new_time_step, new_FPI
         real :: aux
@@ -1553,7 +1554,6 @@ contains
 
         ewrite(1,*) "Dumping factor",Dumpings(1)
 
-
         !If it is parallel then we want to be consistent between cpus
         !we use the smallest value, since it is more conservative
         if (IsParallel()) call allmin(Dumpings(1))
@@ -1567,16 +1567,9 @@ contains
 
             !Based on making backtrack_sat small when Dumpings(1) is high and backtrack_sat small when Dumpings(1) is small
             !The highest value of backtrack_sat is displaced to low values of alpha
-!            aux = 1.0 - Dumpings(1)
-!            Satura = Dumpings(1) * Satura + aux * ((1.0 - aux*Dumpings(1)) * sat_bak + aux*Dumpings(1) * backtrack_sat)!<=The second best option so far
-
-!            !The highest value of backtrack_sat is displaced to low values of alpha, sligtly higher importance of backtrack_sat
             aux = 1.0 - Dumpings(1)
-            Satura = Dumpings(1) * Satura + aux * ((1.-aux**0.4 *Dumpings(1)) * sat_bak + aux**0.4 *Dumpings(1) * backtrack_sat)!<=The best option so far
-
-!            !The highest value of backtrack_sat is displaced to low values of alpha, but even the exponent is adaptive
-!            aux = 1.0 - Dumpings(1)
-!            Satura = Dumpings(1) * Satura + aux * ((1.-aux**(1-Dumpings(1)) *Dumpings(1)) * sat_bak + aux**(1-Dumpings(1)) *Dumpings(1) * backtrack_sat)
+            Satura = Dumpings(1) * Satura + aux * ( (1.-(aux**anders_exp *Dumpings(1)) ) * sat_bak + &
+                            aux**anders_exp *Dumpings(1) * backtrack_sat)!<=The best option so far
 
 !            !More importance of backtrack_sat, for high alpha, even more important than sat_bak
 !            aux = (1. - Dumpings(1))
