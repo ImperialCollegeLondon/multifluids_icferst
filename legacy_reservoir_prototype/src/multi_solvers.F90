@@ -1476,7 +1476,7 @@ contains
         call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
 
         !Automatic method based on the history of convergence
-        if (Dumping_from_schema < 0.0) then!THIS IS STILL NOT EFFICIENT FOR LOW COURANT NUMBERS
+        if (Dumping_from_schema < 0.0) then
 
             !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
             !dumping_parameter
@@ -1498,15 +1498,14 @@ contains
                     Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-2)
                 satisfactory_convergence = .true.
             else
-                !Check the convergence obtained using the previous dumping parameter before calculating new ones
-!                Convergences(1) = get_Convergence_Functional(Satura, Sat_bak, Dumpings(2))!<=This is size of step
                 !Store convergence obtained with the previous dumping parameter
                 Convergences(1) = res_ratio!<=Actual residual ratio
                 !Compare with the Convergence using the first dumping parameter
                 if (new_FPI) Previous_convergence = Convergences(1)
 
                 !####Check convergence of the method####
-                satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv)
+                satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv) &
+                    .or. (get_Convergence_Functional(Satura, Sat_bak, Dumpings(2)) < convergence_tol)!<= exit if final convergence is achieved
                 !If a dumping parameter turns out not to be useful, then undo that iteration
                 if (its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.) then
                     Satura = backtrack_sat
@@ -1522,14 +1521,12 @@ contains
                     allow_undo = .true.
                 end if
 
-                !Depending on the local saturation iteration, we select different dumping parameters
+                !Select different dumping parameter for the first Saturation iteration (SFPI)
                 select case (its)
                     case (1)
-                        !First, try the one introduced by the user
+                        !First, use the one introduced by the user, this is necessary since the algorithm tends to small
+                        !values of alphas
                         Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-3)
-!                        !Re-use previous dumping parameter
-!                        continue
-
                     case default
                         !Calculate a curve that fits the historical data
                         call Cubic_fitting(Dumpings(2:), Convergences, Coefficients)
@@ -1583,7 +1580,6 @@ contains
         end if
         !Inform of the new dumping parameter used
         new_dumping = Dumpings(1)
-
     contains
 
         real function get_optimal_dumping(Dumpings, Convergences, Coefficients)
