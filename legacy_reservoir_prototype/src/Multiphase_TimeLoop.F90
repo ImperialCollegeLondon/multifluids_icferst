@@ -2061,7 +2061,13 @@
 
    default_stat%conv_unit=free_unit()
 
-   open(unit=default_stat%conv_unit, file="outfluxes.txt", action="write", position="append")
+    if (itime == 1) then
+    !The first time, remove file if already exists
+        open(unit=default_stat%conv_unit, file="outfluxes.txt", status="replace", action="write")
+    else
+       open(unit=default_stat%conv_unit, file="outfluxes.txt", action="write", position="append")
+    end if
+
 
 !   ! Write column headings to file
 !   if(itime.eq.1) then

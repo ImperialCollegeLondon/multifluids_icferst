@@ -3441,19 +3441,6 @@
 
             ewrite(1,*) "FPI convergence:", ts_ref_val, "Total iterations:", its
 
-!            !Jump to the next time step and restart FPI_have_converged after performing that extra time step
-!            if (FPI_have_converged) then
-!                ExitNonLinearLoop = .true.
-!                FPI_have_converged = .false.
-!                return
-!            end if
-!
-!            !Enforce one final iteration with a dumping parameter of 1
-!            if (ts_ref_val < tolerance_between_non_linear .or. its == NonLinearIteration - 1) then
-!                FPI_have_converged = .true.
-!                return
-!            end if
-
             !If only non-linear iterations
             if (.not.nonLinearAdaptTs) then
                !Automatic non-linear iteration checking
@@ -3542,36 +3529,14 @@
                        Repeat_time_step = .true.
                        ExitNonLinearLoop = .true.
                 end if
-!                !Check if after decreasing the time step we can increase it again
-!                if (ts_ref_val < tolerance_between_non_linear .and. Time_step_decreased_with_dumping) then
-!                    !After converging we set back the old time step and disable this check
-!                    call set_option( '/timestepping/timestep', OldDt )
-!                    ewrite(1,*) "Time step set back to:", OldDt
-!                    Time_step_decreased_with_dumping = .false.
-!                    ExitNonLinearLoop = .true.
-!                    Repeat_time_step = .false.
-!                    return
-!                end if
-!                !We do it one time-step and then we go back to the previous time-step
-!                if (its>=int(NonLinearIteration)) then
-!                   !Decrease time step, reset the time and repeat!
-!                   call get_option( '/timestepping/timestep', dt )
-!                   !Store this time step (the first time we reduce the time step) to return to it later on
-!                   if (.not. Time_step_decreased_with_dumping)  OldDt = dt
-!
-!                   call get_option( '/timestepping/current_time', acctim )
-!                   acctim = acctim - dt
-!                   call set_option( '/timestepping/current_time', acctim )
-!                   dt = dt / decreaseFactor
-!                   call set_option( '/timestepping/timestep', dt )
-!                   ewrite(1,*) "Time step decreased to:", dt
-!                   Repeat_time_step = .true.
-!                   ExitNonLinearLoop = .true.
-!                   Time_step_decreased_with_dumping = .true.
-!                else
-!                   ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear)
-!                   return
-!                end if
+
+
+                !For adaptive time stepping we need to put this again
+                if (ExitNonLinearLoop .and. show_FPI_conv) then
+                    !Tell the user the number of FPI and final convergence to help improving the parameters
+                    print *, "FPI convergence:", ts_ref_val, "Total iterations:", its
+                end if
+
             end if
          end if
 
@@ -4527,8 +4492,10 @@
         logical :: stored, all_fields_costant
         integer, dimension(1) :: aux
         character(len=200):: path, root_path
-        !By default I use the Pressure mesh (Number 1)
+        !Use P0DG mesh
         fl_mesh => extract_mesh( state(1), "P0DG" )
+
+        if (.not.associated(fl_mesh%region_ids)) FLAbort("P0DG mesh not defined or if using adaptivity preserve_mesh_regions is off")
 
         t_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         nphase = size(t_field%val,2)

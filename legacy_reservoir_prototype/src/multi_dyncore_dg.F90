@@ -521,7 +521,7 @@ contains
       real :: Dumping_factor
 
       type(petsc_csr_matrix) :: petsc_acv
-      type(vector_field)  :: vtracer
+      type(vector_field)  :: vtracer, residual
       type(vector_field) :: cv_rhs_field
       type(vector_field) :: CT_RHS
       type(csr_sparsity), pointer :: sparsity
@@ -532,9 +532,10 @@ contains
 
       !Variables to stabilize the non-linear iteration solver
       real, dimension(nphase, cv_nonods) :: sat_bak, backtrack_sat
-      real :: Previous_convergence, updating, new_dumping
+      real :: Previous_convergence, updating, new_dumping, aux, resold, first_res
+      real, save :: res = -1
       logical :: satisfactory_convergence
-      integer :: its, n_in_pres
+      integer :: its, n_in_pres, useful_sats, iphase
 
       N_IN_PRES = NPHASE / NPRES
 
@@ -623,9 +624,13 @@ contains
       satisfactory_convergence = .false.
       updating = 0.0
       !We store the convergence of the previous FPI to compare with
-      Previous_convergence = dumping_in_sat
-      its = 1
+      Previous_convergence = dumping_in_sat!<== deprecated?
+      its = 1; useful_sats = 1;
+      if (resold < 0 ) res = huge(res)!<=initialize res once
       call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
+      !Allocate residual, to compute the residual
+      if (Dumping_factor < 1.01) call allocate(residual,nphase,tracer%mesh,"residual")
+
       Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
           !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
           !it works, but it complains...
@@ -668,8 +673,25 @@ contains
           !Solve the system
           vtracer=as_vector(tracer,dim=2)
 
-          !Backup of the saturation field, to adjust the solution
-          if (Dumping_factor < 1.01) sat_bak = satura
+          !If using FPI with backtracking
+          if (Dumping_factor < 1.01) then
+            !Backup of the saturation field, to adjust the solution
+            sat_bak = satura
+            !If using ADAPTIVE FPI with backtracking
+            if (Dumping_factor < 0) then
+                !Calculate the residual using a previous dumping
+                call mult(residual, petsc_acv, vtracer)
+                !Calculate residual
+                residual%val = cv_rhs_field%val - residual%val
+                resold = res; res = 0
+                do iphase = 1, nphase
+                    aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
+                    if (aux > res) res = aux
+                end do
+                if (its==1) first_res = res!Variable to check total convergence of the SFPI method
+            end if
+          end if
+
 
           call zero(vtracer)
           call zero_non_owned(cv_rhs_field)
@@ -685,14 +707,15 @@ contains
             !If convergence is not good, then we calculate a new saturation using backtracking
             if (.not. satisfactory_convergence) then
                   !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
-                  call Trust_region_correction(packed_state, sat_bak, backtrack_sat, Dumping_factor,CV_NDGLN, IDs2CV_ndgln,&
-                     Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration)
+                  call FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_factor,CV_NDGLN, IDs2CV_ndgln,&
+                     Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration,&
+                         useful_sats,res, res/resold, first_res)
                   !Store the accumulated updated done
                   updating = updating + new_dumping
                   !If the dumping factor is not adaptive, then, just one iteration
                   if (Dumping_factor > 0) then
                       satisfactory_convergence = .true.
-                      exit
+                      exit Loop_NonLinearFlux
                   end if
                   !If looping again, recalculate
                   if (.not. satisfactory_convergence) then
@@ -705,17 +728,19 @@ contains
                       opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption,IDs_ndgln, IDs2CV_ndgln)
                       call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
                       cv_snloc, n_in_pres, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
-!                      cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                       finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state,x_nonods, IDs_ndgln )
                       !Also recalculate the Over-relaxation parameter
                       call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes, &
                       totele, cv_nloc, CV_NDGLN, IDs2CV_ndgln)
+                  else
+                    exit Loop_NonLinearFlux
                   end if
               end if
           else!Just one iteration
             exit Loop_NonLinearFlux
           end if
         its = its + 1
+        useful_sats = useful_sats + 1
       END DO Loop_NonLinearFlux
 
       !Store the final accumulated dumping_factor to properly calculate the convergence functional
@@ -745,6 +770,9 @@ contains
       END IF
       DEALLOCATE( THETA_GDIFF )
       call deallocate(cv_rhs_field)
+      if (Dumping_factor < 1.01) call deallocate(residual)
+
+
 !      call deallocate(petsc_acv)
 
        !Deallocate pointers only if not pointing to something in packed state
@@ -911,6 +939,7 @@ contains
         type(halo_type), pointer :: halo
 
         logical :: cty_proj_after_adapt, high_order_Ph, symmetric_P, boussinesq, fem_density_buoyancy
+
 
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
         symmetric_P = have_option( "/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P" )
@@ -2284,9 +2313,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: DIFFCV_TEN_ELE
         REAL, DIMENSION ( : ), allocatable :: RCOUNT_NODS
 
+
+        !REAL, DIMENSION ( :, :, :, : ), allocatable :: SUF_U_BC_ALL, SUF_MOM_BC_ALL, SUF_NU_BC_ALL, SUF_ROB1_UBC_ALL, SUF_ROB2_UBC_ALL, TEN_XX
         REAL, DIMENSION ( :, :, :, : ), allocatable :: TEN_XX
         REAL, DIMENSION ( :, : ), allocatable :: TEN_VOL
 
+        !REAL, DIMENSION ( :, :, : ), allocatable :: SUF_P_BC_ALL
         REAL, DIMENSION ( :, : ), allocatable :: LOC_UDEN,  LOC_UDENOLD
         REAL, DIMENSION ( : ), allocatable :: LOC_P
         REAL, DIMENSION ( :, : ), allocatable :: LOC_PLIKE_GRAD_SOU_COEF, LOC_PLIKE_GRAD_SOU_GRAD
@@ -3195,6 +3227,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                end if
             end if
 
+            
+
             ! *********subroutine Determine local vectors...
 
             LOC_U_RHS = 0.0
@@ -3579,6 +3613,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     DO U_JLOC = 1, U_NLOC
                     DO U_ILOC = 1, U_NLOC
                         DO GI = 1, CV_NGI
+
                             RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI )
                             if ( lump_absorption ) then
                                NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) = &
@@ -6514,6 +6549,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
        END SUBROUTINE ONEELETENS_ALL
 
 
+!
+!
           SUBROUTINE JACDIA(AA,V,D,N, &
 ! Working arrays...
      &       A,PRISCR) 
@@ -8986,7 +9023,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         integer :: iphase, nphase, cv_nodi, cv_nonods
         real :: Pe_aux
         real, dimension(:), pointer ::Pe, Cap_exp
-        logical :: Artificial_Pe, Pc_imbibition, Diffusive_cap_only
+        logical :: Artificial_Pe, Diffusive_cap_only
         real, dimension(:,:,:), pointer :: p
         real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent
 
@@ -9000,7 +9037,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
         !Check capillary pressure options
         Phase_with_Pc = -1
-        Pc_imbibition = .false.
         do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
             !this way we try to avoid problems if someone introduces 0 capillary pressure in the second phase
             if (have_option( "/material_phase["//int2str(iphase-1)//&
@@ -9008,10 +9044,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             have_option("/material_phase[["//int2str(iphase-1)//&
             "]/multiphase_properties/Pe_stab")) then
                 Phase_with_Pc = iphase
-                if (have_option("/material_phase["//int2str(iphase-1)//&
-                "]/multiphase_properties/capillary_pressure/type_Brooks_Corey/Pc_imbibition") ) then
-                    Pc_imbibition = .true.
-                end if
             end if
         end do
 
@@ -9032,19 +9064,22 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 Artificial_Pe = .true.
                 call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
                 if (Pe_aux<0) then!Automatic set up for Pe
-                    Pe = p(1,1,:) * 1d-2
+!                    Pe = maxval(p(1,1,:)) * 1d-2
+                    Pe = p(1,1,:) * 1d-3
                 else
                     Pe = Pe_aux
                 end if
-                Cap_exp = 1.!Linear exponent
+!                Cap_exp = 1.!Linear exponent
+                Cap_exp = 2.!Quadratic exponent
             end if
+
             !Calculate the overrrelaxation parameter, the numbering might be different for Pe and real capillary
             !values, hence we calculate it differently
             if (Artificial_Pe) then
                 !Calculate the Overrelaxation
                 do cv_nodi = 1, size(Overrelaxation)
                     Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
-                    Pe(CV_NODI), Cap_Exp(CV_NODI), immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc, Pc_imbibition)
+                    Pe(CV_NODI), Cap_Exp(CV_NODI), immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc)
                 end do
             else
                 !Calculate the Overrelaxation
@@ -9052,7 +9087,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
                     Cap_entry_pressure(Phase_with_Pc, IDs2CV_ndgln(CV_NODI)), &
                     Cap_entry_pressure(Phase_with_Pc, IDs2CV_ndgln(CV_NODI)),&
-                    immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc, Pc_imbibition)
+                    immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc)
                 end do
             end if
 
