@@ -573,19 +573,21 @@ contains
 
         GAMMA_PRES_ABS = 0.0
         do ipres = 1, npres
-           do iphase = 1+ (ipres-1)*n_in_pres, ipres*n_in_pres
+           do iphase = 1+(ipres-1)*n_in_pres, ipres*n_in_pres
               do jpres = 1, npres
                  if ( ipres /= jpres ) then
-                    do jphase = 1+ (jpres-1)*n_in_pres, jpres*n_in_pres
+                    do jphase = 1+(jpres-1)*n_in_pres, jpres*n_in_pres
                        iphase_real = iphase-(ipres-1)*n_in_pres
                        jphase_real = jphase-(jpres-1)*n_in_pres
-                       if ( iphase_real == jphase ) GAMMA_PRES_ABS = 0.0
+                       if ( iphase_real == jphase ) then
+                          GAMMA_PRES_ABS(IPHASE,JPHASE,:) = 1.0
+                          GAMMA_PRES_ABS(JPHASE,IPHASE,:) = 1.0
+                       end if
                     end do
                  end if
               end do
            end do
         end do
-
 
         IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
              ! use DEN=1 because the density is already in the theta variables
@@ -723,8 +725,8 @@ contains
                       call Calculate_AbsorptionTerm( state, packed_state, npres, cv_ndgln, mat_ndgln, &
                       opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption,IDs_ndgln, IDs2CV_ndgln)
                       call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                      cv_snloc, n_in_pres, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
-                      finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state,x_nonods, IDs_ndgln )
+                      cv_snloc, n_in_pres, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+                      finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state, x_nonods, IDs_ndgln )
                       !Also recalculate the Over-relaxation parameter
                       call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes, &
                       totele, cv_nloc, CV_NDGLN, IDs2CV_ndgln)
@@ -991,13 +993,16 @@ contains
 
         GAMMA_PRES_ABS = 0.0
         do ipres = 1, npres
-           do iphase = 1+ (ipres-1)*n_in_pres, ipres*n_in_pres
+           do iphase = 1+(ipres-1)*n_in_pres, ipres*n_in_pres
               do jpres = 1, npres
                  if ( ipres /= jpres ) then
-                    do jphase = 1+ (jpres-1)*n_in_pres, jpres*n_in_pres
+                    do jphase = 1+(jpres-1)*n_in_pres, jpres*n_in_pres
                        iphase_real = iphase-(ipres-1)*n_in_pres
                        jphase_real = jphase-(jpres-1)*n_in_pres
-                       if ( iphase_real == jphase ) GAMMA_PRES_ABS = 0.0
+                       if ( iphase_real == jphase ) then
+                          GAMMA_PRES_ABS(IPHASE,JPHASE,:) = 1.0
+                          GAMMA_PRES_ABS(JPHASE,IPHASE,:) = 1.0
+                       end if
                     end do
                  end if
               end do
@@ -1445,7 +1450,6 @@ contains
                     NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
                     totele, cv_nloc, x_nonods, x_ndgln, trim(pressure%option_path))
             else
-
 
                call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
 
@@ -2354,7 +2358,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         U_SJLOC, MAT_ILOC2, MAT_INOD, MAT_INOD2, MAT_SILOC, &
         CV_ILOC, CV_JLOC, CV_NOD, P_JLOC2, P_JNOD, P_JNOD2, &
         CV_SILOC, JDIM, JPHASE, &
-        cv_inod, COUNT_ELE, CV_ILOC2, CV_INOD2, IDIMSF,JDIMSF
+        cv_inod, COUNT_ELE, CV_ILOC2, CV_INOD2, IDIMSF,JDIMSF, &
+        IPRES, N_IN_PRES
         REAL    :: NN, NM, SAREA,R
         REAL    :: HDC, VLM, VLM_NEW,VLM_OLD, NN_SNDOTQ_IN,NN_SNDOTQ_OUT, &
         NN_SNDOTQOLD_IN,NN_SNDOTQOLD_OUT, RNN, c1(NDIM), c2(NDIM)
@@ -2446,6 +2451,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         integer :: nb
         logical :: skip, FEM_BUOYANCY
 
+        N_IN_PRES = NPHASE / NPRES
 
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
 
@@ -4855,27 +4861,31 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 TOTELE, U_NLOC, P_NLOC )
                             END IF
 
-                            IF( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_DIRICHLET ) THEN
-                                Loop_Phase2: DO IPHASE = 1, NPHASE
-                                    DO IDIM = 1, NDIM_VEL
-                                        IF(IGOT_VOL_X_PRESSURE==1) THEN
-                                            IF ( .NOT.GOT_C_MATRIX ) THEN
-                                                C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-                                                + VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                            END IF
-                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                            - VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SUF_P_BC_ALL( 1,1,P_SJLOC + P_SNLOC * ( SELE - 1) ) * SELE_OVERLAP_SCALE( P_JLOC )
+
+
+                            DO IPRES = 1, NPRES
+                               IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
+                                  DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
+                                     DO IDIM = 1, NDIM_VEL
+                                        IF ( IGOT_VOL_X_PRESSURE == 1 ) THEN
+                                           IF ( .NOT.GOT_C_MATRIX ) THEN
+                                              C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                   + VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                           END IF
+                                           LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                - VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC * ( SELE - 1) ) * SELE_OVERLAP_SCALE( P_JLOC )
                                         ELSE
-                                            IF ( .NOT.GOT_C_MATRIX ) THEN
-                                                C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-                                                + NMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                            END IF
-                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                            - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,1,P_SJLOC + P_SNLOC* ( SELE - 1 ) ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                        ENDIF
-                                    END DO
-                               END DO Loop_Phase2
-                            END IF
+                                           IF ( .NOT.GOT_C_MATRIX ) THEN
+                                              C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                   + NMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                           END IF
+                                           LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC* ( SELE - 1 ) ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                        END IF
+                                     END DO
+                                  END DO
+                               END IF
+                            END DO
 
                         END DO Loop_JLOC2
                     END DO Loop_ILOC2

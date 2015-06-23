@@ -739,8 +739,7 @@
                ! is diagonal
                if( is_porous_media ) then
                   call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                       cv_snloc, n_in_pres, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
-!                       cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+                       cv_snloc, n_in_pres, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                        finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
                        state, x_nonods, ids_ndgln )
                end if

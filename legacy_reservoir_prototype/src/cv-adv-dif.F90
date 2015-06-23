@@ -512,7 +512,7 @@ contains
       real, dimension(:,:), allocatable :: T_ALL_KEEP
       real, dimension(:), allocatable :: ct_rhs_phase, DIAG_SCALE_PRES_phase
       real, dimension(:), allocatable :: R_PRES,R_PHASE,CV_P_PHASE_NODI,CV_P_PHASE_NODJ,MEAN_PORE_CV_PHASE
-      real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS
+      real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS,GAMMA_PRES_ABS2
 
       !! boundary_condition fields
       type(tensor_field) :: velocity_BCs,tracer_BCs, density_BCs, saturation_BCs
@@ -1060,8 +1060,10 @@ contains
 
 
       allocate(R_PRES(npres),R_PHASE(nphase),MEAN_PORE_CV_PHASE(nphase))
-      IF(NPRES>1) allocate(A_GAMMA_PRES_ABS(NPHASE,NPHASE,CV_NONODS) )
-
+      IF(NPRES>1) then
+         allocate(A_GAMMA_PRES_ABS(NPHASE,NPHASE,CV_NONODS) )
+         allocate(GAMMA_PRES_ABS2(NPHASE,NPHASE,CV_NONODS) )
+      end IF
 
 
       psi(1)%ptr=>tracer
@@ -2504,15 +2506,34 @@ contains
          END DO
       ENDIF
       
-      IF(NPRES>1) THEN
-         A_GAMMA_PRES_ABS=0.0
-         DO IPHASE=1,NPHASE      
-            DO JPHASE=1,NPHASE
-      A_GAMMA_PRES_ABS(IPHASE,JPHASE,CV_NODI ) = - GAMMA_PRES_ABS(IPHASE,JPHASE,CV_NODI )
-      A_GAMMA_PRES_ABS(IPHASE,IPHASE,CV_NODI ) = A_GAMMA_PRES_ABS(IPHASE,IPHASE,CV_NODI ) + GAMMA_PRES_ABS(IPHASE,JPHASE,CV_NODI )
-            END DO 
+      IF ( NPRES > 1 ) THEN
+
+         DO CV_NODI = 1, CV_NONODS
+            DO IPHASE = 1, NPHASE
+               DO JPHASE = 1, NPHASE
+                  IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
+                  JPRES = 1 + INT( (JPHASE-1)/N_IN_PRES )
+                  IF ( CV_P( 1, IPRES, CV_NODI ) > CV_P( 1, JPRES, CV_NODI ) ) THEN
+                     GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 )
+                  ELSE
+                     GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 )
+                  END IF
+               END DO
+            END DO
          END DO
-      ENDIF
+
+         A_GAMMA_PRES_ABS = 0.0
+         DO IPHASE = 1, NPHASE
+            DO JPHASE = 1, NPHASE
+               A_GAMMA_PRES_ABS( IPHASE, JPHASE, : ) = - GAMMA_PRES_ABS2( IPHASE, JPHASE, : )
+               A_GAMMA_PRES_ABS( IPHASE, IPHASE, : ) = A_GAMMA_PRES_ABS( IPHASE, IPHASE, : ) + GAMMA_PRES_ABS2( IPHASE, JPHASE, : )
+            END DO
+         END DO
+
+      END IF
+
 
       Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
 
