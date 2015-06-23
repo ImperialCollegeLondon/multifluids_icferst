@@ -691,6 +691,7 @@
       real, dimension(:,:), pointer :: Satura, OldSatura, Immobile_fraction
       type( tensor_field ), pointer :: perm
 
+    opt_vel_upwind_coefs_new=0.0 ; opt_vel_upwind_grad_new=0.0
 
     !Get from packed_state
     call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
@@ -732,7 +733,7 @@
       u_absorb2 = 0. ; satura2 = 0.
 
       CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, N_IN_PRES, NDIM, SATURA(1:N_IN_PRES,:), TOTELE, CV_NLOC, MAT_NLOC, &
-           CV_NDGLN, MAT_NDGLN, U_ABSORB, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
+           CV_NDGLN, MAT_NDGLN, U_ABSORB(:,1:N_IN_PRES*NDIM,1:N_IN_PRES*NDIM), PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
       !Introduce perturbation, positive for the increasing and negative for decreasing phase
       !Make sure that the perturbation is between bounds
@@ -759,39 +760,32 @@
                ! set \sigma for the pipes here
                LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
                LOC2 = (1-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
-               DO ELE = 1, TOTELE
-                  DO CV_ILOC = 1, CV_NLOC
-                     IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
-                     U_ABSORB( IMAT, LOC, LOC ) = 1.0
-                     !U_ABSORB( IMAT, LOC, LOC ) = U_ABSORB( IMAT, LOC2, LOC2 )
-                  END DO
-               END DO
+
+               U_ABSORB( :, LOC, LOC ) = 1.0
+               !U_ABSORB( :, LOC, LOC ) = U_ABSORB( :, LOC2, LOC2 )
             end do
          end do
       end do
-
-
 
       DO ELE = 1, TOTELE
          DO CV_ILOC = 1, CV_NLOC
             IMAT = MAT_NDGLN( ( ELE - 1 ) * MAT_NLOC + CV_ILOC )
             ICV = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
             DO IPHASE = 1, NPHASE
-              DO JDIM = 1, NDIM
-                DO IDIM = 1, NDIM
-                     IJ = ( IPHASE - 1 ) * MAT_NONODS * NDIM * NDIM + ( IMAT - 1 ) * NDIM * NDIM + &
-                          ( IDIM - 1 ) * NDIM + JDIM
+               DO JDIM = 1, NDIM
+                  DO IDIM = 1, NDIM
+
                      opt_vel_upwind_coefs_new(IDIM, JDIM, IPHASE, IMAT) = &
-                        U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )
+                          U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )
 
                      if ( iphase <= n_in_pres ) then
 
                         ! This is the gradient
                         ! Assume d\sigma / dS = 0.0 for the pipes for now
                         opt_vel_upwind_grad_new(IDIM, JDIM, IPHASE, IMAT) = &
-                           (U_ABSORB2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
-                            U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )) &
-                            / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
+                             (U_ABSORB2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
+                             U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )) &
+                             / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
 
                      end if
 
@@ -2104,19 +2098,19 @@
     end subroutine calculate_viscosity
 
     subroutine calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-         cv_snloc, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+         cv_snloc, nphase, nphase_total, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
          finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
          state, x_nonods, IDs_ndgln )
 
       implicit none
       type( state_type ), intent( inout ) :: packed_state
-      integer, intent(in) :: totele, stotel, cv_nloc, cv_snloc, nphase, ndim, nface, &
+      integer, intent(in) :: totele, stotel, cv_nloc, cv_snloc, nphase, nphase_total, ndim, nface, &
            mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, x_nonods
       integer, dimension( : ), intent( in ) :: finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, IDs_ndgln
       real, dimension( :, :, : ), intent( inout ) :: material_absorption
       type(state_type), dimension( : ) :: state  
 
-      real, dimension(stotel * cv_snloc * nphase, ndim ), intent( inout ) :: suf_sig_diagten_bc
+      real, dimension( stotel * cv_snloc * nphase_total, ndim ), intent( inout ) :: suf_sig_diagten_bc
 
       ! local variables
       type(tensor_field), pointer :: viscosity_ph, RockFluidProp
@@ -2131,14 +2125,15 @@
       integer, dimension(nface, cv_snloc ) :: cv_sloclist
       integer, dimension( cv_snloc ) :: cv_sloc2loc
 
-      integer, dimension( :, :, :),  allocatable :: wic_u_bc, wic_vol_bc
+      integer, dimension( :, :, : ),  allocatable :: wic_u_bc, wic_vol_bc
 
       integer, parameter :: WIC_BC_DIRICHLET = 1
+
 !!$ for the pressure b.c. and compact_overlapping method
-!!$ make the material property change just inside the domain else on the surface only...
-!      logical, parameter :: mat_change_inside = .true.
+!!$ make the material property change just inside the domain else on the surface only
       logical, parameter :: mat_change_inside = .false.
-! if mat_perm_bc_dg use the method that is used for DG between the elements.
+
+!!$ if mat_perm_bc_dg use the method that is used for DG between the elements
       logical, parameter :: mat_perm_bc_dg = .true.
 
       type(tensor_field), pointer :: velocity, volfrac, perm
@@ -2151,14 +2146,14 @@
       RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
 
 
-    allocate(wic_u_bc(velocity%dim(1),velocity%dim(2),&
-         surface_element_count(velocity)))
-    allocate(wic_vol_bc(volfrac%dim(1),volfrac%dim(2),&
-         surface_element_count(volfrac)))
+      allocate(wic_u_bc(velocity%dim(1),velocity%dim(2),&
+           surface_element_count(velocity)))
+      allocate(wic_vol_bc(volfrac%dim(1),volfrac%dim(2),&
+           surface_element_count(volfrac)))
 
-    call get_entire_boundary_condition(velocity,&
+      call get_entire_boundary_condition(velocity,&
            ['weakdirichlet'],velocity_BCs,WIC_U_BC)
-    call get_entire_boundary_condition(volfrac,&
+      call get_entire_boundary_condition(volfrac,&
            ['weakdirichlet'],volfrac_BCs,WIC_vol_BC)
 
       if( have_option( '/physical_parameters/mobility' ) )then
@@ -2167,9 +2162,9 @@
          visc_phases(2) = mobility
       elseif( have_option( '/material_phase[1]/vector_field::Velocity/prognostic/tensor_field::Viscosity' // &
            '/prescribed/value::WholeMesh/isotropic' ) ) then
-         DO IPHASE = 1, NPHASE!Get viscosity for all the phases
+         DO IPHASE = 1, NPHASE ! Get viscosity for all the phases
             viscosity_ph => extract_tensor_field( state( iphase ), 'Viscosity' )
-            visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
+            visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 ) ! So far we only consider scalar viscosity
          end do
          mobility = visc_phases(2) / visc_phases(1)
       elseif( nphase == 1 ) then
@@ -2195,8 +2190,8 @@
          s = ( iphase - 1 ) * ndim + 1
          e = iphase * ndim
 
-
          do ele = 1, totele
+
             !Get properties from packed state
             Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
             Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
@@ -2210,7 +2205,7 @@
                sele  = sele2
                if ( sele > 0 ) then
                   if ( wic_u_bc(1,iphase,sele) /= WIC_BC_DIRICHLET .and. &
-                     wic_vol_bc(1,iphase,sele) == WIC_BC_DIRICHLET ) then
+                       wic_vol_bc(1,iphase,sele) == WIC_BC_DIRICHLET ) then
 
                      cv_sloc2loc( : ) = cv_sloclist( iface, : )
                      do cv_siloc = 1, cv_snloc
@@ -2225,15 +2220,15 @@
 
                         do idim = 1, ndim
                            do jdim = 1, ndim
-                               select case (nphase)
-                                   case (1)!No relperm needed, we calculate directly the result
+                               select case ( nphase )
+                                   case (1) ! No relperm needed, we calculate directly the result
                                        sigma_out( idim, jdim ) = inv_perm( idim, jdim ) *&
                                        visc_phases(1) * min(1.0,max(1d-5,satura_bc))
                                    case (2)
                                        call relperm_corey_epsilon( sigma_out( idim, jdim ), visc_phases, &
                                        inv_perm( idim, jdim ), satura_bc, IPHASE,&
                                        Immobile_fraction, Corey_exponent, Endpoint_relperm)
-                                   case (3)!For three phases we use the Stone model. !With predefined order: Water, oil, gas
+                                   case (3) ! For three phases we use the Stone model. !With predefined order: Water, oil, gas
                                        call relperm_stone(sigma_out( idim, jdim ), iphase,&
                                        volfrac_BCs%val(1,:,cv_snodi), visc_phases, inv_perm( idim, jdim ),&
                                        Immobile_fraction, Corey_exponent, Endpoint_relperm)
@@ -2243,24 +2238,24 @@
                            end do
                         end do
 
-                        if(mat_perm_bc_dg) then
-! if mat_perm_bc_dg use the method that is used for DG between the elements.
+                        if ( mat_perm_bc_dg ) then
+                           ! if mat_perm_bc_dg use the method that is used for DG between the elements.
                            sigma_in=0.0
                            sigma_in = material_absorption( mat_nod, s : e, s : e )
                            mat = sigma_out  +  matmul(  sigma_in,  matmul( inverse( sigma_out ), sigma_in ) )
                            mat_inv = matmul( inverse( sigma_in+sigma_out ), mat )
                            suf_sig_diagten_bc( cv_snodi_ipha, 1 : ndim ) = (/ (mat_inv(i, i), i = 1, ndim) /)
-                     !!      suf_sig_diagten_bc( cv_snodi_ipha, 1 : ndim ) = 1.
+                           !suf_sig_diagten_bc( cv_snodi_ipha, 1 : ndim ) = 1.
                         else
                            mat = matmul( sigma_out, inverse( material_absorption( mat_nod, s : e, s : e ) ) )
                            mat_inv = inverse( mat )
                            suf_sig_diagten_bc( cv_snodi_ipha, 1 : ndim ) = (/ (mat_inv(i, i), i = 1, ndim) /)
-                        endif
+                        end if
 
-                        if( mat_change_inside ) then
+                        if ( mat_change_inside ) then
                            suf_sig_diagten_bc( cv_snodi_ipha, 1 : ndim ) = 1.
 
-                           if( idone( mat_nod+(iphase-1)*mat_nonods ) == 0 ) then
+                           if ( idone( mat_nod+(iphase-1)*mat_nonods ) == 0 ) then
                               material_absorption( mat_nod, s : e, s : e  ) &
                                  = matmul( mat, material_absorption( mat_nod, s : e, s : e ) )
                               idone( mat_nod+(iphase-1)*mat_nonods ) = 1
