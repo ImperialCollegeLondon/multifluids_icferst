@@ -1109,9 +1109,13 @@ contains
         call calculate_viscosity( state, packed_state, ncomp, nphase, ndim, mat_nonods, mat_ndgln, uDiffusion )
 
         ! stabilisation for high aspect ratio problems - switched off
-        call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
-           opt_vel_upwind_coefs_new, nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods, mat_ndgln )
-
+        if (is_porous_media) then
+!            call calculate_u_abs_stab_porous_media( packed_state, U_ABS_STAB, &
+!                     nphase, ndim, totele, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
+        else
+            call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
+               opt_vel_upwind_coefs_new, nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods, mat_ndgln )
+        end if
 
         ! vertical stab for buoyant gyre
         !u_abs_stab=0.0
@@ -1160,13 +1164,6 @@ contains
             PLIKE_GRAD_SOU_GRAD_ALL( IPHASE, : ) = PLIKE_GRAD_SOU_GRAD( 1 + (IPHASE-1)*CV_NONODS : IPHASE*CV_NONODS )
         END DO
         !##########TEMPORARY ADAPT FROM OLD VARIABLES TO NEW############
-
-        !Calculate the RHS for compact_overlapping
-!        if (is_porous_media) then
-!           call get_var_from_packed_state(packed_state, FEDensity = den_fem)
-!           call calculate_u_source( state, den_fem, U_SOURCE_ALL )
-!        end if
-
 
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
              velocity, pressure, &
@@ -3352,7 +3349,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
                 END IF
                 LOC_U_ABS_STAB( :, :, MAT_ILOC ) = U_ABS_STAB( :, :, MAT_INOD )
-
 ! Switch on for solid fluid-coupling apply stabilization term...
 
 
@@ -3518,6 +3514,18 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                DO IPHA_IDIM = 1, NDIM_VEL * NPHASE
                     SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
                end do
+               !Add stabilization for bad elements
+!               DO MAT_ILOC = 1, MAT_NLOC
+!                   DO GI = 1, CV_NGI
+!                       DO IPHA_IDIM = 1, NDIM_VEL * NPHASE
+!                           DO JPHA_JDIM = 1, NDIM_VEL * NPHASE
+!                                SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI ) = SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI ) &
+!                                + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
+!                           end do
+!                       end do
+!                   end do
+!               end do
+
             else
                 DO MAT_ILOC = 1, MAT_NLOC
                     DO GI = 1, CV_NGI
