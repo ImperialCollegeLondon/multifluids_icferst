@@ -1496,7 +1496,7 @@ prognostic_pressure_field =
                   element boundary_overwrites_initial_condition {
                      empty
                   }?
-               }?,
+               },
                input_choice_real
             }|
             element type {

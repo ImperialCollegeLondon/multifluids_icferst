@@ -1693,21 +1693,19 @@ requires a distinct name for the options dictionary.</a:documentation>
             <attribute name="name">
               <value>dirichlet</value>
             </attribute>
-            <optional>
-              <element name="apply_weakly">
-                <optional>
-                  <element name="boundary_overwrites_initial_condition">
-                    <a:documentation>If the initial condition and boundary conditions
+            <element name="apply_weakly">
+              <optional>
+                <element name="boundary_overwrites_initial_condition">
+                  <a:documentation>If the initial condition and boundary conditions
 differ, setting this option will cause the initial
 condition on the boundary to be overwritten with
 the boundary condition. Since you are applying the
 boundary condition weakly, you probably do *not*
 want this.</a:documentation>
-                    <empty/>
-                  </element>
-                </optional>
-              </element>
-            </optional>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
             <ref name="input_choice_real"/>
           </element>
           <element name="type">
