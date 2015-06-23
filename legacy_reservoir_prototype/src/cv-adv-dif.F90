@@ -2515,10 +2515,10 @@ contains
                   JPRES = 1 + INT( (JPHASE-1)/N_IN_PRES )
                   IF ( CV_P( 1, IPRES, CV_NODI ) > CV_P( 1, JPRES, CV_NODI ) ) THEN
                      GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 0.0
+                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 )
                   ELSE
                      GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 0.0
+                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 )
                   END IF
                END DO
             END DO
