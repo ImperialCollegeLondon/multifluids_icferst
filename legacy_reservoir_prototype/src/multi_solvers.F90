@@ -1494,8 +1494,7 @@ contains
                 Dumpings(2:) = -1; Convergences = -1
                 !###New time step###
                 !First FPI with the parameter introduced by the user
-!                if (Dumpings(1) < 0) &!this helps to avoid the tendency for small dumping parameters
-                    Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-2)
+                Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-2)
                 satisfactory_convergence = .true.
             else
                 !Store convergence obtained with the previous dumping parameter
