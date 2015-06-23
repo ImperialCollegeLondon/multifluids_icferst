@@ -538,6 +538,29 @@ nodes).</a:documentation>
         </optional>
         <ref name="integer"/>
       </element>
+      <oneOrMore>
+        <element name="number_of_nodes_by_mesh_region">
+          <a:documentation>Specifc bounds on the number of nodes used in mesh subdomians
+identified by a region id.</a:documentation>
+          <attribute name="name">
+            <data type="string"/>
+          </attribute>
+          <element name="region_ids">
+            <a:documentation>Region ids specifying the subdomain</a:documentation>
+            <ref name="integer_vector"/>
+          </element>
+          <element name="maximum_number_of_nodes">
+            <a:documentation>Maximum number of nodes to be used in this subdomain. </a:documentation>
+            <ref name="integer"/>
+          </element>
+          <optional>
+            <element name="minimum_number_of_nodes">
+              <a:documentation>Minimum number of nodes to be used in this subdomain.Defaults to 1	</a:documentation>
+              <ref name="integer"/>
+            </element>
+          </optional>
+        </element>
+      </oneOrMore>
       <optional>
         <element name="max_node_increase">
           <a:documentation>The maximum ratio by which the number of nodes is allowed to
