@@ -19,7 +19,7 @@ module limit_metric_module
   private
 
   public :: limit_metric, limit_metric_elements, expected_elements, &
-    & expected_nodes, determinant, limit_by_region
+    & expected_nodes, determinant, limit_by_region, build_region_list
 
   interface expected_elements
     module procedure expected_elements_whole_mesh, expected_elements_by_region
@@ -49,33 +49,11 @@ contains
     real :: increase_tolerance
 
     type(integer_set), dimension(:), allocatable :: region_list
-    integer :: no_of_regions, region, id, id_shape(2)
-    integer, dimension(:), allocatable :: region_ids
     integer, dimension(:), allocatable :: max_nodes, min_nodes
+    integer :: no_of_regions
 
-    no_of_regions=option_count(base_path // "/number_of_nodes_by_mesh_region" )
-
-    print*, base_path, no_of_regions
-
-    allocate(region_list(no_of_regions),max_nodes(no_of_regions+1),min_nodes(no_of_regions+1))
-    call allocate(region_list)
-    do region=1, no_of_regions
-       id_shape=option_shape(base_path // "/number_of_nodes_by_mesh_region/region_ids")
-       allocate(region_ids(id_shape(1)))
-       call get_option(base_path // "/number_of_nodes_by_mesh_region["//int2str(region-1)//"]/region_ids",&
-            region_ids)
-       do id=1,size(region_ids)
-          call insert(region_list(id),region_ids(id))
-       end do
-       call get_option(base_path // "/number_of_nodes_by_mesh_region["//int2str(region-1)//"]/maximum_number_of_nodes",max_nodes(region))
-       call get_option(base_path // "/number_of_nodes_by_mesh_region["//int2str(region-1)//"]/minimum_number_of_nodes",min_nodes(region),default=1)
-       print*, region, region_ids, "::",  max_nodes(region), min_nodes(region)
-       deallocate(region_ids)
-       if (min_nodes(region)>max_nodes(region)) then
-          FLAbort("Minimum number of nodes exceeds maximum number for at least one mesh region. Please fix your adaptivity options")
-       end if
-
-    end do
+    call build_region_list(region_list, max_nodes, min_nodes)
+    no_of_regions=size(region_list)
     
     call mesh_stats(positions, nodes = nodes)
 
@@ -89,7 +67,7 @@ contains
     end if
     call get_option(base_path // "/max_node_increase", increase_tolerance, stat = stat)
     if(stat == SPUD_NO_ERROR) then
-      max_nodes(no_of_regions+1) = min(max_nodes(no_of_regions+1), int(nodes * increase_tolerance))
+      max_nodes(no_of_regions) = min(max_nodes(no_of_regions+1), int(nodes * increase_tolerance))
     end if
 
     if (no_of_regions>0) then
@@ -286,6 +264,38 @@ contains
     call limit_metric_elements(positions, metric, region_list, min_eles = target_eles, max_eles = target_eles)
     
   end subroutine limit_metric_elements_target
+
+  subroutine build_region_list(region_list,max_nodes, min_nodes) 
+  
+    type(integer_set), dimension(:), allocatable, intent(inout) :: region_list
+    integer, dimension(:), allocatable, intent(inout) :: max_nodes, min_nodes
+
+    character(len = *), parameter :: base_path = "/mesh_adaptivity/hr_adaptivity"
+    integer :: no_of_regions, region, id, id_shape(2)
+    integer, dimension(:), allocatable :: region_ids
+
+    no_of_regions=option_count(base_path // "/number_of_nodes_by_mesh_region" )
+
+    allocate(region_list(no_of_regions),max_nodes(no_of_regions+1),min_nodes(no_of_regions+1))
+    call allocate(region_list)
+    do region=1, no_of_regions
+       id_shape=option_shape(base_path // "/number_of_nodes_by_mesh_region/region_ids")
+       allocate(region_ids(id_shape(1)))
+       call get_option(base_path // "/number_of_nodes_by_mesh_region["//int2str(region-1)//"]/region_ids",&
+            region_ids)
+       do id=1,size(region_ids)
+          call insert(region_list(id),region_ids(id))
+       end do
+       call get_option(base_path // "/number_of_nodes_by_mesh_region["//int2str(region-1)//"]/maximum_number_of_nodes",max_nodes(region))
+       call get_option(base_path // "/number_of_nodes_by_mesh_region["//int2str(region-1)//"]/minimum_number_of_nodes",min_nodes(region),default=1)
+       deallocate(region_ids)
+       if (min_nodes(region)>max_nodes(region)) then
+          FLAbort("Minimum number of nodes exceeds maximum number for at least one mesh region. Please fix your adaptivity options")
+       end if
+
+    end do
+
+  end subroutine build_region_list
 
   function expected_elements_whole_mesh(old_positions, metric,  global) result(xpct)
     type(vector_field), intent(in) :: old_positions
