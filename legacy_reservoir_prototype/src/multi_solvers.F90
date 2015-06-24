@@ -73,7 +73,7 @@ module solvers_module
   private
 
   public :: solver, PRES_DG_MULTIGRID, CMC_Agglomerator_solver, Fix_to_bad_elements,&
-         BoundedSolutionCorrections, Trust_region_correction, Set_Saturation_between_bounds, Set_Saturation_to_sum_one
+         BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_between_bounds, Set_Saturation_to_sum_one
 
   interface solver
      module procedure solve_via_copy_to_petsc_csr_matrix
@@ -1434,8 +1434,8 @@ contains
       return
     end subroutine BoundedSolutionCorrections
 
-    subroutine Trust_region_correction(packed_state, sat_bak, backtrack_sat, Dumping_from_schema, CV_NDGLN, IDs2CV_ndgln,&
-         Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration)
+    subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_from_schema, CV_NDGLN, IDs2CV_ndgln,&
+         Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration, useful_sats, res, res_ratio, first_res)
     !In this subroutine we applied some corrections and dumping on the saturations obtained from the saturation equation
     !this idea is based on the paper SPE-173267-MS.
     !The method ensures convergence "independent" of the time step.
@@ -1444,17 +1444,19 @@ contains
         type( state_type ), intent(inout) :: packed_state
         integer, dimension(:) :: CV_NDGLN, IDs2CV_ndgln
         real, dimension(:, :), intent(in) :: sat_bak, backtrack_sat
-        real, intent(in) :: Dumping_from_schema
+        real, intent(in) :: Dumping_from_schema, res, res_ratio, first_res
         logical, intent(inout) :: satisfactory_convergence
         real, intent(inout) :: new_dumping, Previous_convergence
         integer, intent(in) :: its, nonlinear_iteration
+        integer, intent(inout) :: useful_sats
         !Local parameters
         integer, parameter :: Max_sat_its = 9
-        real, parameter :: Conv_to_achiv = 100.0
-        !Local variables
+        real, parameter :: Conv_to_achiv = 10.0
+        real, parameter :: anders_exp = 0.4!This parameter change the importance of backtrack_sat in Anderson's acceleration (mainly for high alphas)
+        !Local variables                   !100 => backtrack_sat is not used; 0.3 => equally important; 0.4 => recommended; 0 => more important than sat_bak
         real, dimension(:, :), pointer :: Satura
         logical :: new_time_step, new_FPI
-        real :: convergence_tol, aux
+        real :: aux
         integer :: i
         !Parameters for the automatic dumping
 !        integer, parameter :: History_order = 4!<= Cubic
@@ -1463,18 +1465,12 @@ contains
         real, dimension(History_order), save :: Convergences = -1
         real, dimension(History_order) :: Coefficients
         logical, save :: allow_undo = .true.
+        real, save :: convergence_tol
         !Initialize variables
         new_dumping = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
         call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln)
-
-!        !No backtracking of solution for the extra iteration, i.e. dumping_parameter = 1
-!        if (FPI_have_converged) then
-!print *, "PERFORMING THE EXTRA ITERATION#######################"
-!            satisfactory_convergence = .true.
-!            return
-!        end if
 
         !Retrieve Saturation
         call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
@@ -1484,67 +1480,58 @@ contains
 
             !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
             !dumping_parameter
-            if (convergence_tol< 0) then!retrieve it just once
+            if (Dumpings(1) < 0) then!retrieve it just once
                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration',&
-                     convergence_tol, default = -1. )
+                     convergence_tol, default = 0. )
+                convergence_tol =  convergence_tol
+                Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-2)
             end if
 
             if (new_time_step) then
-!                !Store last convergence to use it as a reference
+                !Store last convergence to use it as a reference
                 Previous_convergence = Convergences(1)
                 !restart all the storage
                 Dumpings(2:) = -1; Convergences = -1
                 !###New time step###
                 !First FPI with the parameter introduced by the user
-!                if (Dumpings(1) < 0) &
-                    Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-3)
+                Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-2)
                 satisfactory_convergence = .true.
             else
-                !###New FPI###
-                !Check the convergence obtained using the previous dumping parameter before calculating new ones
-                Convergences(1) = get_Convergence_Functional(Satura, Sat_bak, Dumpings(1))
+                !Store convergence obtained with the previous dumping parameter
+                Convergences(1) = res_ratio!<=Actual residual ratio
+                !Compare with the Convergence using the first dumping parameter
+                if (new_FPI) Previous_convergence = Convergences(1)
 
-                !If a dumping parameter turns out not to be very useful, then undo that iteration
-                if (its > 2 .and. allow_undo .and. Convergences(2) > 0 .and. Convergences(1)*1.05 > Convergences(2)) then
+                !####Check convergence of the method####
+                satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv) &
+                    .or. (get_Convergence_Functional(Satura, Sat_bak, Dumpings(2)) < convergence_tol)!<= exit if final convergence is achieved
+                !If a dumping parameter turns out not to be useful, then undo that iteration
+                if (its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.) then
                     Satura = backtrack_sat
                     !We do not allow two consecutive undos
                     allow_undo = .false.
+                    !restart the counter of useful saturations, this is to not use Anderson acceleration
+                    !with values that were rejected
+                    useful_sats = 1
+                    !Undo de accumulation of dumping parameters
+                    new_dumping = - Dumpings(1)
                     return
                 else
                     allow_undo = .true.
                 end if
 
-                !Compare with the Convergence using the first dumping parameter
-                if (new_FPI) Previous_convergence = Convergences(1)
-
-                !####Check convergence of the method####
-                satisfactory_convergence = (Convergences(1) < Previous_convergence / Conv_to_achiv) &
-                        .or. (its > Max_sat_its) .or. (Convergences(1) <= convergence_tol)
-
-                !Depending on the local saturation iteration, we select different dumping parameters
+                !Select different dumping parameter for the first Saturation iteration (SFPI)
                 select case (its)
                     case (1)
-                        !Re-use previous dumping parameter
-                        continue
-                        !First, try the one introduced by the user
-                        !Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-3)
+                        !First, use the one introduced by the user, this is necessary since the algorithm tends to small
+                        !values of alphas
+                        Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-3)
                     case default
                         !Calculate a curve that fits the historical data
                         call Cubic_fitting(Dumpings(2:), Convergences, Coefficients)
                         !Calculate the new optimal dumping parameter
                         Dumpings(1) = get_optimal_dumping(Dumpings(2:), Convergences, Coefficients)
                 end select
-
-                !If convergence was OK, then finish this one an exit
-                if (satisfactory_convergence) then
-!                    Convergences(2:) = -1
-                    !We save the first one to check in the next non-linear iteration how we did
-!                    Dumpings(3:) = -1
-                    Dumpings(1) = 1.0
-                    return !No backtracking
-!                    Dumpings(1) = 1.0
-                end if
-
 
                 !Update history, 1 => newest
                 do i = size(Dumpings), 2, -1
@@ -1553,15 +1540,6 @@ contains
                 do i = size(Convergences), 2, -1
                     Convergences(i) = Convergences(i-1)
                 end do
-
-                !If getting stagnated, perform this FPI and exit the saturation FPI
-                if (its >=3 .and. .not. satisfactory_convergence) then
-                    aux = sum(Convergences(1:3))/3.0
-                    satisfactory_convergence = abs(aux - Convergences(1))/aux < 0.05
-                    !Since the method tends to small Dumpings parameters, if stagnatting, we try to get out
-                    !of those small values that may be too conservative (this may be bad for very big Courant Numbers)
-                    if (satisfactory_convergence) Dumpings(1) = min(2.0* Dumpings(1),1.0)
-                end if
 
             end if
         else!Use the value introduced by the user
@@ -1572,26 +1550,35 @@ contains
 
         ewrite(1,*) "Dumping factor",Dumpings(1)
 
-
         !If it is parallel then we want to be consistent between cpus
         !we use the smallest value, since it is more conservative
         if (IsParallel()) call allmin(Dumpings(1))
 
         !***Calculate new saturation***
         !Obtain new saturation using the backtracking method
-        if (its < 2) then
+        if (useful_sats < 2 .or. satisfactory_convergence) then
+            !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
             Satura = sat_bak * (1.0 - Dumpings(1)) + Dumpings(1) * Satura
         else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
-            !For the time being a half of both old values
+
+            !Based on making backtrack_sat small when Dumpings(1) is high and backtrack_sat small when Dumpings(1) is small
+            !The highest value of backtrack_sat is displaced to low values of alpha
             aux = 1.0 - Dumpings(1)
+            Satura = Dumpings(1) * Satura + aux * ( (1.-(aux**anders_exp *Dumpings(1)) ) * sat_bak + &
+                            aux**anders_exp *Dumpings(1) * backtrack_sat)!<=The best option so far
+
+!            !More importance of backtrack_sat, for high alpha, even more important than sat_bak
+!            aux = (1. - Dumpings(1))
+!            Satura = Dumpings(1) * Satura + aux * (aux * sat_bak + Dumpings(1)* backtrack_sat)!<=The second best option so far
+
             !For the Anderson acceleration (using more than just the old Sat) we fixed the contributions
             !since in this way the optimisation of the Dumping can be done as for no acceleration procedure
-            Satura = Dumpings(1) * Satura + aux * (0.8 * sat_bak + 0.2 * backtrack_sat)
-!            Satura = Dumpings(1) * Satura + dumping_old_sat * (Dumpings(2) * sat_bak + (1.0 - Dumpings(2)) * backtrack_sat)
+!            aux = 1.0 - Dumpings(1)
+!            Satura = Dumpings(1) * Satura + aux * (0.8 * sat_bak + 0.2 * backtrack_sat)
 
         end if
+        !Inform of the new dumping parameter used
         new_dumping = Dumpings(1)
-
     contains
 
         real function get_optimal_dumping(Dumpings, Convergences, Coefficients)
@@ -1611,10 +1598,11 @@ contains
 
 
             !Check how much data we have
-            do n = 1, size(Convergences)
-                if (Convergences(n) < 0) exit
+            do n = 1, size(Dumpings)
+                if (Dumpings(n) < 0) exit
             end do
             n = n - 1
+
             !Check coefficients
             if ( ISNAN(sum(Coefficients(1:n)))) Basic_method = .true.
 
@@ -1624,6 +1612,7 @@ contains
                         get_optimal_dumping = abs(-Coefficients(2)/(2.0*Coefficients(1)))
                         !If it is a maximum then go to the basic method
                         if (Coefficients(1) > 0) Basic_method = .true.
+
                     case (4)!Cubic !Very Unstable, better just quadratic
                         !Get solution of quadratic system
                         aux = 4. * Coefficients(2)**2 - 12. * Coefficients(1) * Coefficients(3)
@@ -1665,13 +1654,16 @@ contains
                 end select
             end if
 
+            !If results obtained are not within range, use the basic method
+            if (get_optimal_dumping > 1.0 .or. get_optimal_dumping < 0) Basic_method = .true.
+
             !If not possible to get a good value, then just a simple method based on the history
             if (basic_method) then
                 if (Dumpings(3) < 0 .or..true.) then!SIMPLE METHOD
                     if (Convergences(1)-Convergences(2) < 0) then!Converging
                        get_optimal_dumping = Dumpings(1) * 1.1
                     else!Diverging, the reduce with a minimum value that will mean performing all the non-linear iterations
-                       get_optimal_dumping = Dumpings(1) / 2.0
+                       get_optimal_dumping = Dumpings(1) / 2.0!1.5
                     end if
                 else
                     X = (/Dumpings(1), Convergences(1) /) - (/Dumpings(2), Convergences(2) /)
@@ -1681,7 +1673,6 @@ contains
                             if (abs(X(2)/X(1)) > abs(Y2(2)/Y2(1))) then!New slope is steeper => Optimal still to be reached
                                 !New value is previous value + the vector divided by the tangent, if it is very steep then
                                 !the optimal is very close
-!                                get_optimal_dumping =1.1* Dumpings(1) + 2.0 * X(1)! + X(1) / abs(X(2)/X(1))
 
                                 get_optimal_dumping = Dumpings(1) * max(1.2, 2.0 * X(1))
 
@@ -1691,7 +1682,6 @@ contains
                             end if
                         else!It started to converge now, so we encourage to get away from the bad convergence value
                             get_optimal_dumping = Dumpings(1) * max(1.2, 2.0 * X(1))
-!                            get_optimal_dumping = 1.1*Dumpings(1) + 2.0 * X(1)! + X(1) / abs(X(2)/X(1))
                         end if
                     else!It is NOT converging now
                         if (Y2(2)/Y2(1) < 0) then!It was converging before
@@ -1703,7 +1693,6 @@ contains
                     end if
                 end if
             end if
-
             !Make sure it is bounded
             get_optimal_dumping = max(min(get_optimal_dumping, 1.0), 1d-1)
 
@@ -1722,25 +1711,15 @@ contains
             !Local variables
             integer :: n, i, j, m
             real, dimension(:,:), allocatable :: A, A_inv
-            !First check how much data do we have
-            n = minloc(Dumpings, DIM = 1)
-            !Dumpings is initially full of -1, if the position of the minimum value is not negative
-            !then, Dumpings is full, otherwise as n is the position of the first small value that
-            !is the size of Dumpings
-            if (Convergences(n)>0) then
-                n = size(Convergences)
-            else!We only want positive values
-                n = n - 1
-            end if
 
             !Check how much data we have
-            do n = 1, size(Convergences)
-                if (Convergences(n) < 0) exit
+            do n = 1, size(Dumpings)
+                if (Dumpings(n) < 0) exit
             end do
             n = n - 1
-
             !Not linear so far
             if (n<=2) return
+
 
             !Maximum degree of solution => cubic
             m = 3!<= quadratic
@@ -1760,7 +1739,7 @@ contains
             !if square system
             if (n == m) then
                 !Solve system
-                call invert(A)
+                call invert(A)!tested, coefficients are correct
                 Coefficients = matmul(A, Convergences(1:m))
             else!Calculate curve fitting
                 !coefficients = (A^t*A)^-1 * A^t * Convergences
@@ -1772,7 +1751,7 @@ contains
             deallocate(A, A_inv)
         end subroutine Cubic_fitting
 
-    end subroutine Trust_region_correction
+    end subroutine FPI_backtracking
 
     subroutine Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
@@ -1795,6 +1774,8 @@ contains
 
         !Allocate
         allocate(Normalized_sat(nphase))
+        !Impose sat to be between bounds
+!        call Set_Saturation_between_bounds(packed_state, IDs2CV_ndgln)
 
         !Set saturation to be between bounds
         do cv_nod = 1, size(satura,2 )
