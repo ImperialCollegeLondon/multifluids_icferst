@@ -483,7 +483,7 @@ hr_adaptivity =
 	    element minimum_number_of_nodes {
 	       integer
 	    }?
-         }+,
+         }*,
          ## The maximum ratio by which the number of nodes is allowed to
          ## increase in an adapt. e.g., a value of 1.1 indicates that the
          ## number of nodes may be increased by at most 10%.

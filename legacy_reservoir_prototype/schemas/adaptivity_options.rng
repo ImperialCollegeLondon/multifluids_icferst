@@ -538,7 +538,7 @@ nodes).</a:documentation>
         </optional>
         <ref name="integer"/>
       </element>
-      <oneOrMore>
+      <zeroOrMore>
         <element name="number_of_nodes_by_mesh_region">
           <a:documentation>Specifc bounds on the number of nodes used in mesh subdomians
 identified by a region id.</a:documentation>
@@ -560,7 +560,7 @@ identified by a region id.</a:documentation>
             </element>
           </optional>
         </element>
-      </oneOrMore>
+      </zeroOrMore>
       <optional>
         <element name="max_node_increase">
           <a:documentation>The maximum ratio by which the number of nodes is allowed to
