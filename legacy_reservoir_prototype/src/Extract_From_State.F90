@@ -4319,11 +4319,12 @@
 
        type(scalar_field), pointer :: sfield
        type(vector_field), pointer :: vfield
-       real, dimension(:), pointer :: CVPressure
+       !real, dimension(:), pointer :: CVPressure
+       real, dimension(:,:,:), pointer :: CVPressure
        real, dimension(:), pointer :: Por
        logical :: test
        type(tensor_field), pointer :: tfield
-       type(tensor_field), pointer :: t2field
+       type(tensor_field), pointer :: t2field, t3field
        integer  :: x_knod
        integer  :: cv_knod
        integer  :: cv_sknod
@@ -4346,8 +4347,13 @@
 
 ! Extract the pressure
 
-      sfield => extract_scalar_field( packed_state, "CVPressure" )
-      CVPressure =>  sfield%val(:)
+      !sfield => extract_scalar_field( packed_state, "CVPressure" )
+      !CVPressure =>  sfield%val(:)
+
+      ! Modified 25/06/15 to account for the changes to the treatment of Pressure in the code (Using DPPs multiple pressures formulation)
+
+      t3field => extract_tensor_field( packed_state, "PackedCVPressure" )
+      CVPressure => t3field%val(:,:,:)
 
 ! Extract the phase volume fraction
 
@@ -4414,7 +4420,7 @@
 
       if(sele > 0) then
 
-          test = integrate_over_surface_element(sfield, sele, surface_ids)
+          test = integrate_over_surface_element(t3field, sele, surface_ids)
 
 ! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
 ! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
