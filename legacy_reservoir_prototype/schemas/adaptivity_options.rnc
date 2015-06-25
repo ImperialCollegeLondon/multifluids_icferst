@@ -467,6 +467,23 @@ hr_adaptivity =
             }?,
             integer
          },
+	 ## Specifc bounds on the number of nodes used in mesh subdomians
+	 ## identified by a region id.
+	 element number_of_nodes_by_mesh_region {
+	    attribute name {xsd:string},
+	    ## Region ids specifying the subdomain
+	    element region_ids {
+	       integer_vector
+	    }, 
+	    ## Maximum number of nodes to be used in this subdomain. 
+	    element maximum_number_of_nodes {
+	       integer
+	    },
+	    ## Minimum number of nodes to be used in this subdomain.Defaults to 1	
+	    element minimum_number_of_nodes {
+	       integer
+	    }?
+         }*,
          ## The maximum ratio by which the number of nodes is allowed to
          ## increase in an adapt. e.g., a value of 1.1 indicates that the
          ## number of nodes may be increased by at most 10%.
