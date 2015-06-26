@@ -4186,6 +4186,12 @@
                 end if
             end do
         end if
+
+
+        if (size(Quality_list) < i) then
+            ewrite(1,*) 'WARNING: The number of bad elements is bigger than expected not all of them will be compensated. Reduce them or increase the size of Quality_list'
+        end if
+
         contains
 
             logical function Check_element(X_ALL, x_ndgln, ele_Pos, Pos1, Pos2, Pos3, MaxAngle, MinAngle, Quality_list)

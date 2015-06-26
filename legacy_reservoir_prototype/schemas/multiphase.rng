@@ -527,6 +527,21 @@ The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc
                   </element>
                 </optional>
                 <optional>
+                  <element name="Acceleration_exp">
+                    <a:documentation>THIS ONLY WORKS with automatics dumpings factor, i.e. Dumping_factor &lt; 0
+
+This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
+
+100 =&gt; Only the previous saturation is used (more conservative); 
+0.4 =&gt; Recommended (default); 
+0.3 =&gt; Older saturation is at some points as important as the old saturation;
+0 =&gt; Older saturation is more important than old saturation
+
+If having problems converging the recomendation is to try different parameters from 0.2 to 1.0 or disabling totally the acceleration (100)</a:documentation>
+                    <ref name="real"/>
+                  </element>
+                </optional>
+                <optional>
                   <element name="Show_Convergence">
                     <a:documentation>Prints the number of iterations and
 the final convergence achieved by the FPI solver</a:documentation>
@@ -653,6 +668,23 @@ at the first timestep or not.</a:documentation>
           </element>
         </optional>
       </element>
+      <optional>
+        <element name="Fix_bad_elements">
+          <a:documentation>Options applicable to the the fix to bad elements (elements with angles bigger than 105 degrees)
+
+An artificial compressible-like term is introduced in the bad angle</a:documentation>
+          <optional>
+            <element name="Bad_ele_scale">
+              <a:documentation>Scaling factor of the introduced term. 
+
+If this term is too big the system is easier to solve but the solutions may be wrong.
+
+Default valued 0.5e-4.</a:documentation>
+              <ref name="real"/>
+            </element>
+          </optional>
+        </element>
+      </optional>
       <optional>
         <element name="projections">
           <optional>
