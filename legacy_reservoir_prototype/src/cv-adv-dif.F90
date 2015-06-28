@@ -2508,6 +2508,7 @@ contains
       
       IF ( NPRES > 1 ) THEN
 
+         GAMMA_PRES_ABS2 = 0.0
          DO CV_NODI = 1, CV_NONODS
             DO IPHASE = 1, NPHASE
                DO JPHASE = 1, NPHASE
@@ -2527,8 +2528,10 @@ contains
          A_GAMMA_PRES_ABS = 0.0
          DO IPHASE = 1, NPHASE
             DO JPHASE = 1, NPHASE
-               A_GAMMA_PRES_ABS( IPHASE, JPHASE, : ) = - GAMMA_PRES_ABS2( IPHASE, JPHASE, : )
-               A_GAMMA_PRES_ABS( IPHASE, IPHASE, : ) = A_GAMMA_PRES_ABS( IPHASE, IPHASE, : ) + GAMMA_PRES_ABS2( IPHASE, JPHASE, : )
+               IF( IPHASE /= JPHASE ) THEN
+                  A_GAMMA_PRES_ABS( IPHASE, JPHASE, : ) = - GAMMA_PRES_ABS2( IPHASE, JPHASE, : )
+                  A_GAMMA_PRES_ABS( IPHASE, IPHASE, : ) = A_GAMMA_PRES_ABS( IPHASE, IPHASE, : ) + GAMMA_PRES_ABS2( IPHASE, JPHASE, : )
+               END IF
             END DO
          END DO
 

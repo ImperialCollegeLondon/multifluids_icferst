@@ -73,7 +73,7 @@ contains
     if (no_of_regions>0) then
        max_nodes(no_of_regions+1)=max_nodes(no_of_regions+1)-sum(max_nodes(1:no_of_regions))
        min_nodes(no_of_regions+1)=min_nodes(no_of_regions+1)-sum(min_nodes(1:no_of_regions))
-       if (min_nodes(no_of_regions+1)<0) min_nodes(no_of_regions+1)=1
+       if (min_nodes(no_of_regions+1)<1) min_nodes(no_of_regions+1)=1
        limit_by_region=.true.
     else
        limit_by_region=.false.

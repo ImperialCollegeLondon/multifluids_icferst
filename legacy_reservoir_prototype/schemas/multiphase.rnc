@@ -456,6 +456,21 @@ start =
                     }?
                   ),
                   (
+                    ## THIS ONLY WORKS with automatics dumpings factor, i.e. Dumping_factor < 0
+                    ##
+                    ## This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
+                    ## 
+                    ## 100 => Only the previous saturation is used (more conservative); 
+                    ## 0.4 => Recommended (default); 
+                    ## 0.3 => Older saturation is at some points as important as the old saturation;
+                    ## 0 => Older saturation is more important than old saturation
+                    ## 
+                    ## If having problems converging the recomendation is to try different parameters from 0.2 to 1.0 or disabling totally the acceleration (100)
+                    element Acceleration_exp{
+                    real
+                    }?
+                  ),
+                  (
                     ## Prints the number of iterations and
                     ## the final convergence achieved by the FPI solver
                     element Show_Convergence{comment}?
@@ -552,6 +567,19 @@ start =
 	    empty
 	    }?
 	 },
+     ## Options applicable to the the fix to bad elements (elements with angles bigger than 105 degrees)
+     ##
+     ## An artificial compressible-like term is introduced in the bad angle
+	 element Fix_bad_elements {
+	    ## Scaling factor of the introduced term. 
+        ##
+        ## If this term is too big the system is easier to solve but the solutions may be wrong.
+        ## 
+        ## Default valued 0.5e-4.
+	    element Bad_ele_scale {
+            real
+        }?
+	 }?,
 	 element projections {
 	    ## Options applicable to the projections used in
 	    ## the multiphase prototype code

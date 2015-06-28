@@ -791,7 +791,8 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC, COLCMC, MIDCMC, P_NDGLN
       type(bad_elements), DIMENSION(:), intent( in ) :: Quality_list
       !Local variables
-      real, parameter :: alpha = 0.5d-4
+!      real, parameter :: alpha = 0.5d-4
+      real, save :: alpha = -1
       integer, dimension(2) :: counter
       integer :: i, i_node, j_node, ele, COUNT, P_ILOC, bad_node, k, ierr
       real :: auxR, adapted_alpha
@@ -799,6 +800,9 @@ contains
       logical :: nodeFound
       !Initialize variables
       i = 1
+
+      !retrieve the value of alpha from diamond just once
+      if (alpha < 0) call get_option( '/Fix_bad_elements/Bad_ele_scale',alpha, default = 0.5d-4 )
 
       !Depending on the angle of the element we consider different alphas
       !for 90 it is 0, for 135 it is 0.25 *alpha for 180 it is alpha
@@ -1452,8 +1456,8 @@ contains
         !Local parameters
         integer, parameter :: Max_sat_its = 9
         real, parameter :: Conv_to_achiv = 10.0
-        real, parameter :: anders_exp = 0.4!This parameter change the importance of backtrack_sat in Anderson's acceleration (mainly for high alphas)
-        !Local variables                   !100 => backtrack_sat is not used; 0.3 => equally important; 0.4 => recommended; 0 => more important than sat_bak
+        real, save :: anders_exp!This parameter change the importance of backtrack_sat in Anderson's acceleration (mainly for high alphas)
+        !Local variables        !100 => backtrack_sat is not used; 0.3 => equally important; 0.4 => recommended; 0 => more important than sat_bak
         real, dimension(:, :), pointer :: Satura
         logical :: new_time_step, new_FPI
         real :: aux
@@ -1485,6 +1489,11 @@ contains
                      convergence_tol, default = 0. )
                 convergence_tol =  convergence_tol
                 Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-2)
+                !Retrieve the shape of the function to use to weight the importance of previous saturations
+                call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Acceleration_exp',&
+                     anders_exp, default = 0.4 )!0.4 the best option, based on experience
+                     !Should not be negative
+                     anders_exp = max(anders_exp, 0.)
             end if
 
             if (new_time_step) then

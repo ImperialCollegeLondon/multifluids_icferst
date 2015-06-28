@@ -517,6 +517,7 @@ contains
       real, dimension(:,:,:), pointer :: p
       real, dimension(:, :), pointer :: satura
       type(tensor_field), pointer :: tracer, velocity, density
+      type(scalar_field), pointer :: gamma
       !Variables for global convergence method
       real :: Dumping_factor
 
@@ -570,6 +571,7 @@ contains
       ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) ) ; TDIFFUSION = 0.
       ALLOCATE( MEAN_PORE_CV( NPRES, CV_NONODS ) )
 
+        gamma=>extract_scalar_field(state(1),"Gamma1",stat)
 
         GAMMA_PRES_ABS = 0.0
         do ipres = 1, npres
@@ -579,15 +581,16 @@ contains
                     do jphase = 1+(jpres-1)*n_in_pres, jpres*n_in_pres
                        iphase_real = iphase-(ipres-1)*n_in_pres
                        jphase_real = jphase-(jpres-1)*n_in_pres
-                       if ( iphase_real == jphase ) then
-                          GAMMA_PRES_ABS(IPHASE,JPHASE,:) = 1.0
-                          GAMMA_PRES_ABS(JPHASE,IPHASE,:) = 1.0
+                       if ( iphase_real == jphase_real ) then
+                          GAMMA_PRES_ABS(IPHASE,JPHASE,:) = gamma%val
+                          GAMMA_PRES_ABS(JPHASE,IPHASE,:) = gamma%val
                        end if
                     end do
                  end if
               end do
            end do
         end do
+
 
         IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
              ! use DEN=1 because the density is already in the theta variables
@@ -911,7 +914,7 @@ contains
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
         LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY, diag
-        INTEGER :: IDIM
+        INTEGER :: IDIM, stat
         !Re-scale parameter can be re-used
         real, save :: rescaleVal = -1.0
         !CMC using petsc format
@@ -926,7 +929,7 @@ contains
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
         type( tensor_field ), pointer :: p_all, pold_all, cvp_all
         type( vector_field ), pointer :: x_all2
-        type( scalar_field ), pointer ::  pressure_state, sf, soldf
+        type( scalar_field ), pointer ::  pressure_state, sf, soldf, gamma
 
         type( vector_field ) :: packed_vel, rhs
         type( vector_field ) :: deltap, rhs_p
@@ -990,6 +993,7 @@ contains
         ALLOCATE( DU_VEL( NDIM,  NPHASE, U_NONODS )) ; DU_VEL = 0.
         ALLOCATE( UP_VEL( NDIM * NPHASE * U_NONODS )) ; UP_VEL = 0.
 
+        gamma=>extract_scalar_field(state(1),"Gamma1",stat)
 
         GAMMA_PRES_ABS = 0.0
         do ipres = 1, npres
@@ -999,9 +1003,9 @@ contains
                     do jphase = 1+(jpres-1)*n_in_pres, jpres*n_in_pres
                        iphase_real = iphase-(ipres-1)*n_in_pres
                        jphase_real = jphase-(jpres-1)*n_in_pres
-                       if ( iphase_real == jphase ) then
-                          GAMMA_PRES_ABS(IPHASE,JPHASE,:) = 1.0
-                          GAMMA_PRES_ABS(JPHASE,IPHASE,:) = 1.0
+                       if ( iphase_real == jphase_real ) then
+                          GAMMA_PRES_ABS(IPHASE,JPHASE,:) = gamma%val
+                          GAMMA_PRES_ABS(JPHASE,IPHASE,:) = gamma%val
                        end if
                     end do
                  end if
