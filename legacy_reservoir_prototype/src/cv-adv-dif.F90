@@ -144,7 +144,7 @@ contains
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
          option_path_spatial_discretisation, &
-         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln)
+         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln, Courant_number)
 
       !  =====================================================================
       !     In this subroutine the advection terms in the advection-diffusion
@@ -339,6 +339,7 @@ contains
       !Variables to cache get_int_vel OLD
       integer, optional ::indx
       character(len=*), optional :: Storname
+      real, optional, intent(inout) :: Courant_number
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
       ! Variables needed when calculating boundary outfluxes. Totoutflux will be used to sum up over elements for each phase the outflux through a specified boundary
@@ -560,6 +561,8 @@ contains
       logical :: symmetric_P
 
       type( scalar_field ), pointer :: sfield
+      !Permeability
+      type( tensor_field ), pointer :: perm
 
       !Variables for Capillary pressure
       logical :: capillary_pressure_activated, between_elements, on_domain_boundary, Diffusive_cap_only
@@ -577,7 +580,6 @@ contains
       option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"
       apply_eno = have_option( option_path2 )
 
-
       !We only allocate outlet_id if you actually want to calculate fluxes
       calculate_flux = allocated(outlet_id)
 
@@ -587,6 +589,10 @@ contains
       else
          THETA_VEL_HAT = 1.0
       end if
+
+
+      !Pointer to permeability
+      perm=>extract_tensor_field(packed_state,"Permeability")
 
       !Check capillary pressure options
       capillary_pressure_activated = .false.
@@ -761,6 +767,11 @@ contains
     DISTCONTINUOUS_METHOD = ( CV_NONODS == TOTELE * CV_NLOC )
     ! Quadratic elements
     QUAD_ELEMENTS = ( ((NDIM==2).AND.(CV_NLOC==6)).or.((NDIM==3).AND.(CV_NLOC==10)) ) 
+
+
+      !Initialize Courant number for porous media
+      if (present(Courant_number) .and. is_porous_media) Courant_number = 0.
+
 
 
       ALLOCATE( CVNORMX_ALL( NDIM, SCVNGI )) ; CVNORMX_ALL=0.0 
@@ -963,12 +974,24 @@ contains
 
              ALLOCATE( INV_V_OPT_VEL_UPWIND_COEFS(NDIM,NDIM,NPHASE,MAT_NONODS) )
              !Calculate inverse of sigma
-             INV_V_OPT_VEL_UPWIND_COEFS = opt_vel_upwind_coefs_new
-             DO MAT_NODI=1,MAT_NONODS
-                DO IPHASE=1,NPHASE
-                   call invert(INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI))
-                END DO
+             !In this way we substitute an inversion of a matrix by a matrix multiplication
+             DO ele=1,totele
+                 do CV_ILOC = 1, CV_NLOC
+                     MAT_NODI = MAT_ndgln(CV_ILOC + (ele-1) * CV_NLOC)
+                     DO IPHASE=1,NPHASE
+                         INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI) = matmul(perm%val(:,:,ele),opt_vel_upwind_coefs_new(:,:,IPHASE,MAT_NODI))
+                         !All the elements should be equal in the diagonal now
+                         INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI) = perm%val(:,:,ele)/INV_V_OPT_VEL_UPWIND_COEFS(1,1,IPHASE,MAT_NODI)
+                     END DO
+                 end do
              END DO
+            !Old method, inverting the matrix
+!             INV_V_OPT_VEL_UPWIND_COEFS = opt_vel_upwind_coefs_new
+!             DO MAT_NODI=1,MAT_NONODS
+!                DO IPHASE=1,NPHASE
+!                   call invert(INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI))
+!                END DO
+!             END DO
           ENDIF
 
 
@@ -1594,7 +1617,6 @@ contains
                      HDC = SQRT( SUM( (XC_CV_ALL(1:NDIM,CV_NODI)-XC_CV_ALL(1:NDIM,CV_NODJ))**2) )
                   END IF
 
-
                   DO COUNT = SMALL_FINDRM( CV_NODI ), SMALL_FINDRM( CV_NODI + 1 ) - 1
                      IF ( SMALL_COLM( COUNT ) == CV_NODJ ) THEN 
                         count_out = COUNT
@@ -1980,6 +2002,15 @@ contains
         ELSE WHERE
             INCOME_J = 1.
         END WHERE
+
+        !Calculate the courant number for porous media
+        if (present(Courant_number) .and. is_porous_media.and. .not. on_domain_boundary) then
+            do ipres = 1, npres
+                !ndotq = velocity * normal
+                Courant_number = max(Courant_number, abs ( dt * maxval(ndotq(:)) / (VOLFRA_PORE( ipres, ELE ) * hdc)))
+            end do
+        end if
+
 
 
        If_GOT_CAPDIFFUS: IF ( capillary_pressure_activated ) THEN

@@ -651,8 +651,6 @@ start =
             element linearise_viscosity{ empty }?,
             ## linearise component for the bulk density calculation used in the momentum equation
             element linearise_component{ empty }?,
-            ## The saturation is imposed to be between physical limits, conservation of mass is kept. However dispersion is introduced. This option allows to increase the time step severily. (Activate it for the first phase)
-            element Impose_saturation_limits { comment }?,
             ## The equation of state
             equation_of_state?,
 	    ## The material rheological model

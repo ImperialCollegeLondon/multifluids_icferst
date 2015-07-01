@@ -455,7 +455,7 @@ contains
          mass_ele_transp,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
          StorageIndexes, Material_Absorption,nonlinear_iteration, IDs_ndgln,&
-         IDs2CV_ndgln)
+         IDs2CV_ndgln, Courant_number)
 
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
@@ -493,6 +493,7 @@ contains
       integer, dimension(:), intent(inout) :: StorageIndexes
       real, dimension( :, :, : ), intent(inout) :: Material_Absorption
       integer, intent(in) :: nonlinear_iteration
+      real, intent(inout) :: Courant_number
       ! Local Variables
       LOGICAL, PARAMETER :: THERMAL= .false.
       integer :: igot_t2
@@ -669,7 +670,7 @@ contains
           mass_ele_transp,&
           StorageIndexes, 3 ,&            !Capillary variables
           OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-          IDs_ndgln=IDs_ndgln)
+          IDs_ndgln=IDs_ndgln, Courant_number = Courant_number)
 
           !Solve the system
           vtracer=as_vector(tracer,dim=2)
@@ -754,12 +755,6 @@ contains
 
       !Make sure the parameter is consistent between cpus
       if (IsParallel()) call allmin(dumping_in_sat)
-
-      !While ensuring global conservation of mass, force the saturation to be between bounds
-      if (have_option_for_any_phase('Impose_saturation_limits', nphase)) then
-          call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv,&
-          StorageIndexes, cv_ele_type, for_sat = .true., IDs2CV_ndgln = IDs2CV_ndgln)
-      end if
 
       DEALLOCATE( mass_mn_pres )
       DEALLOCATE( CT )

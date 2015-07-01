@@ -218,6 +218,8 @@
       !! face value storage
       integer :: ncv_faces
       real::  second_theta
+      !Courant number for porous media
+      real :: Courant_number = -1
 
       integer :: checkpoint_number
       !Array to map nodes to region ids
@@ -879,8 +881,9 @@
 
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
 
-                    !Calculate actual Darcy velocity
-!                    call get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, MAT_NDGLN, U_NDGLN, state, packed_state, Material_Absorption)
+!                    !Calculate actual Darcy velocity
+!                    call get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, MAT_NDGLN, U_NDGLN, &
+!                            CV_NDGLN, state, packed_state, Material_Absorption)
 
 !!$ Calculate Density_Component for compositional
                if( have_component_field ) &
@@ -918,7 +921,8 @@
                     theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                     theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j,&
                     StorageIndexes=StorageIndexes, Material_Absorption=Material_Absorption,&
-                    nonlinear_iteration = its, IDs_ndgln = IDs_ndgln, IDs2CV_ndgln = IDs2CV_ndgln)
+                    nonlinear_iteration = its, IDs_ndgln = IDs_ndgln, IDs2CV_ndgln = IDs2CV_ndgln, &
+                    Courant_number = Courant_number)
 
             end if Conditional_PhaseVolumeFraction
 
@@ -1174,7 +1178,6 @@
                if ( stat==0 ) f2%val = f1%val
             end if
          end do
-
 !!$ Calculate diagnostic fields
          call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
          call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
@@ -1204,8 +1207,6 @@
             if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
             not_to_move_det_yet = .false. ; dump_no = itime/dump_period_in_timesteps ! Sync dump_no with itime
             call write_state( dump_no, state ) ! Now writing into the vtu files
-
-
          end if Conditional_TimeDump
 
 
@@ -1571,15 +1572,19 @@
             call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat )
             call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat )
 
-            do iphase = 1, nphase
-               ! requested cfl
-               rc_field => extract_scalar_field( state( iphase ), 'RequestedCFL', stat )
-               if ( stat == 0 ) rc = min( rc, minval( rc_field % val ) )
-               ! max cfl
-               cfl => extract_scalar_field( state( iphase ), 'CFLNumber' )
-               c = max ( c, maxval( cfl % val ) )
-            end do
-
+            !For porous media we need to use the Courant number obtained in cv_assemb
+            if (is_porous_media) then
+                c = max ( c, Courant_number )
+            else
+                do iphase = 1, nphase
+                   ! requested cfl
+                   rc_field => extract_scalar_field( state( iphase ), 'RequestedCFL', stat )
+                   if ( stat == 0 ) rc = min( rc, minval( rc_field % val ) )
+                   ! max cfl
+                   cfl => extract_scalar_field( state( iphase ), 'CFLNumber' )
+                   c = max ( c, maxval( cfl % val ) )
+                end do
+            end if
             call get_option( '/timestepping/timestep', dt )
             dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
             call allmin(dt)
@@ -1645,17 +1650,6 @@
       if(.not. have_option("/io/disable_dump_at_end")) then
          call write_state(dump_no, state)
       end if
-
-      ! If calculating boundary fluxes, dump them to outfluxes.txt at the very end to get the values at the last time step
-
-!      if(calculate_flux) then
-!         if(getprocno() == 1) then
-!
-!            call dump_outflux(acctim,itime,totout,intflux)
-!
-!         endif
-!      endif
-
 
       call tag_references()
 
