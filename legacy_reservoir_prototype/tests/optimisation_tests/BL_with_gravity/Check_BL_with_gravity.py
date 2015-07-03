@@ -31,8 +31,18 @@ Tolerance_L2_NORM = 0.0014
 AutomaticLine = 1
 
 
-AutomaticFile = 'QuickTest_DG'
-AutomaticVTU_Number = 20
+#RETRIEVE AUTOMATICALLY THE LAST VTU FILE
+AutoNumber = 0
+for files in os.listdir(path):
+    if files.endswith(".vtu"):
+        pos = files.rfind('_')
+        pos2 = files.rfind('.')
+        AutoFile = files[:pos]
+        AutoNumber = max(AutoNumber, int(files[pos+1:pos2]))
+
+
+AutomaticFile = AutoFile
+AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
 showPlot = False
