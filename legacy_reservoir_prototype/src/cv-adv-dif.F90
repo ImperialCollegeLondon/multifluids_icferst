@@ -590,9 +590,9 @@ contains
          THETA_VEL_HAT = 1.0
       end if
 
-
       !Pointer to permeability
-      perm=>extract_tensor_field(packed_state,"Permeability")
+      if ( is_porous_media ) &
+           perm=>extract_tensor_field(packed_state,"Permeability")
 
       !Check capillary pressure options
       capillary_pressure_activated = .false.
