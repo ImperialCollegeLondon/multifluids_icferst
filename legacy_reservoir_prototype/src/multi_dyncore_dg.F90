@@ -1348,6 +1348,10 @@ IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
 
             end if
 
+            DO CV_NOD = 1, CV_NONODS
+                  rhs_p2(:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), rhs_p2(:,CV_NOD) )
+            END DO
+
 
             DO CV_NOD = 1, CV_NONODS
                DO IPRES = 1, NPRES
