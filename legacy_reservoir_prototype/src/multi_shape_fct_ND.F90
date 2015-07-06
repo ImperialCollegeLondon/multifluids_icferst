@@ -46,8 +46,8 @@
     use multiphase_caching, only: cache_level, reshape_vector2pointer
 
     logical :: NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE = .false.
-    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
-!    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.
+!    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
+    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.
 
  contains
 

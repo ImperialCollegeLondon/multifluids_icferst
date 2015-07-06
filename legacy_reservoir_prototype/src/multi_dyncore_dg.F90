@@ -275,7 +275,6 @@ contains
 
     Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
-
        call CV_ASSEMB( state, packed_state, &
             tracer, velocity, density, &
             CV_RHS_field, &
@@ -1372,9 +1371,6 @@ contains
                   END DO
                END DO
             END DO
-
-
-
 
             call zero_non_owned(rhs_p)
 
@@ -9202,8 +9198,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
       character( len = OPTION_PATH_LEN ) :: path = "/tmp", bc_type
 
-      type( tensor_field ), pointer :: rho
-      type( scalar_field ), pointer :: printf, pfield
+      type( tensor_field ), pointer :: rho, pfield
+      type( scalar_field ), pointer :: printf
       type( vector_field ), pointer :: printu, x_p2, gravity_direction
 
 
@@ -9497,8 +9493,8 @@ deallocate(CVFENX_ALL, UFENX_ALL)
          if ( iloop == 1 ) then
 
             got_free_surf = .false.
-            pfield => extract_scalar_field( packed_state, "FEPressure" )
-            do i = 1, size( pfield%bc%boundary_condition )
+            pfield => extract_tensor_field( packed_state, "PackedFEPressure" )
+            do i = 1, get_boundary_condition_count( pfield )
                call get_boundary_condition( pfield, i, type=bc_type, surface_node_list=surface_node_list )
                if ( trim( bc_type ) == "freesurface" ) then
                   got_free_surf = .true.
