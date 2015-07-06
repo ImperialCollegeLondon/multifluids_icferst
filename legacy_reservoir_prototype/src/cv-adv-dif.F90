@@ -118,7 +118,7 @@ contains
          tracer, velocity, density, &
          CV_RHS_field, PETSC_ACV,&
          SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
-         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CT_RHS, FINDCT, COLCT, &
+         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, CT_RHS, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
          CV_ELE_TYPE,  &
          NPHASE, NPRES, &
@@ -293,7 +293,7 @@ contains
       ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
       REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (npres, npres, cv_nonods)
-      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS ! (nphase, nphase, cv_nonods)
+      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS, INV_B ! (nphase, nphase, cv_nonods)
       type(vector_field), intent( inout ) :: CT_RHS
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
@@ -372,6 +372,10 @@ contains
 ! GRAVTY is used in the free surface method only...
       REAL :: GRAVTY
 !
+      logical, PARAMETER :: EXPLICIT_PIPES= .false.
+      logical, PARAMETER :: EXPLICIT_PIPES2= .false.
+
+
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE 
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
            CVFEM_ON_FACE, UFEM_ON_FACE
@@ -381,7 +385,7 @@ contains
       INTEGER, DIMENSION( : , : ), allocatable :: FACE_ELE
       REAL, DIMENSION( : ), allocatable ::  &
            MASS_CV, MASS_ELE,  &
-           SUM_CV, PERM_ELE
+           SUM_CV, PERM_ELE, N, RSUM_VEC
       REAL, DIMENSION( :, : ), allocatable :: CVNORMX_ALL, XC_CV_ALL
       REAL, DIMENSION( :, :, : ), allocatable :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
       REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
@@ -486,10 +490,10 @@ contains
       INTEGER :: U_KLOC2,U_NODK2,U_NODK2_IPHA,U_SKLOC
       INTEGER :: IPT,ILOOP,IMID,JMID,JDIM
       LOGICAL :: STORE, integrate_other_side_and_not_boundary, prep_stop, GOT_VIS
-      REAL :: R, NDOTQ_HAT
+      REAL :: R, NDOTQ_HAT, DeltaP
       REAL :: LIMT_keep(NPHASE ),  LIMTOLD_keep( NPHASE ), LIMD_keep( NPHASE ),   LIMDOLD_keep( NPHASE ), LIMT2_keep( NPHASE ),   LIMT2OLD_keep(NPHASE)
       REAL , DIMENSION( : ), ALLOCATABLE :: F_CV_NODI, F_CV_NODJ
-      REAL , DIMENSION( :, : ), ALLOCATABLE :: NUGI_ALL, NU_LEV_GI!,NUOLDGI_ALL
+      REAL , DIMENSION( :, : ), ALLOCATABLE :: NUGI_ALL, NU_LEV_GI, SIGMA_INV_APPROX, opt_vel_upwind_coefs_new_cv
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
       REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
       REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: INV_V_OPT_VEL_UPWIND_COEFS
@@ -511,9 +515,9 @@ contains
       real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL, FEMT_ALL, FEMTOLD_ALL
       real, dimension(:, :, :), pointer :: comp, comp_old, fecomp, fecomp_old, U_ALL, NU_ALL, NUOLD_ALL
       real, dimension(:,:), allocatable :: T_ALL_KEEP
-      real, dimension(:), allocatable :: ct_rhs_phase, DIAG_SCALE_PRES_phase
-      real, dimension(:), allocatable :: R_PRES,R_PHASE,CV_P_PHASE_NODI,CV_P_PHASE_NODJ,MEAN_PORE_CV_PHASE
-      real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS,GAMMA_PRES_ABS2
+      real, dimension( : ), allocatable :: ct_rhs_phase, DIAG_SCALE_PRES_phase
+      real, dimension( : ), allocatable :: R_PRES,R_PHASE,CV_P_PHASE_NODI,CV_P_PHASE_NODJ,MEAN_PORE_CV_PHASE
+      real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS,GAMMA_PRES_ABS2, PIPE_ABS
 
       !! boundary_condition fields
       type(tensor_field) :: velocity_BCs,tracer_BCs, density_BCs, saturation_BCs
@@ -1082,12 +1086,15 @@ contains
       ! END OF TEMP STUFF HERE
 
 
-      allocate(R_PRES(npres),R_PHASE(nphase),MEAN_PORE_CV_PHASE(nphase))
-      IF(NPRES>1) then
-         allocate(A_GAMMA_PRES_ABS(NPHASE,NPHASE,CV_NONODS) )
-         allocate(GAMMA_PRES_ABS2(NPHASE,NPHASE,CV_NONODS) )
-      end IF
-
+      ALLOCATE( R_PRES( NPRES ), R_PHASE( NPHASE ), MEAN_PORE_CV_PHASE( NPHASE ) )
+      IF ( NPRES > 1 ) THEN
+         ALLOCATE( A_GAMMA_PRES_ABS( NPHASE, NPHASE, CV_NONODS ) )
+         ALLOCATE( GAMMA_PRES_ABS2( NPHASE, NPHASE, CV_NONODS ) )
+         ALLOCATE( OPT_VEL_UPWIND_COEFS_NEW_CV( NPHASE, CV_NONODS ) )
+         ALLOCATE( SIGMA_INV_APPROX( NPHASE, CV_NONODS ), N( CV_NONODS ) )
+         ALLOCATE( RSUM_VEC( NPHASE ) )
+         ALLOCATE( PIPE_ABS( NPHASE, NPHASE, CV_NONODS ) )
+      END IF
 
       psi(1)%ptr=>tracer
       psi(2)%ptr=>old_tracer
@@ -2539,6 +2546,24 @@ contains
       
       IF ( NPRES > 1 ) THEN
 
+         OPT_VEL_UPWIND_COEFS_NEW_CV=0.0 ; N=0.0
+         DO ELE = 1, TOTELE
+            DO CV_ILOC = 1, CV_NLOC
+               CV_NODI = CV_NDGLN( CV_ILOC + (ELE-1)*CV_NLOC )
+               MAT_NODI = MAT_NDGLN( CV_ILOC + (ELE-1)*CV_NLOC )
+               RSUM_VEC = 0.0
+               DO IDIM = 1, NDIM
+                  RSUM_VEC = RSUM_VEC + OPT_VEL_UPWIND_COEFS_NEW( IDIM, IDIM, :, MAT_NODI ) / REAL( NDIM )
+               END DO
+               OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) = OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) + &
+                    RSUM_VEC * MASS_ELE( ELE )
+               N( CV_NODI ) = N( CV_NODI ) + MASS_ELE( ELE )
+            END DO
+         END DO
+         DO CV_NODI = 1, CV_NONODS
+            SIGMA_INV_APPROX( :, CV_NODI ) = 1.0 / ( OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) / N( CV_NODI ) )
+         END DO
+
          GAMMA_PRES_ABS2 = 0.0
          DO CV_NODI = 1, CV_NONODS
             DO IPHASE = 1, NPHASE
@@ -2547,10 +2572,12 @@ contains
                   JPRES = 1 + INT( (JPHASE-1)/N_IN_PRES )
                   IF ( CV_P( 1, IPRES, CV_NODI ) > CV_P( 1, JPRES, CV_NODI ) ) THEN
                      GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 )
+                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
+                          MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * SIGMA_INV_APPROX( IPHASE, CV_NODI )
                   ELSE
                      GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 )
+                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
+                          MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * SIGMA_INV_APPROX( JPHASE, CV_NODI )
                   END IF
                END DO
             END DO
@@ -2565,6 +2592,45 @@ contains
                END IF
             END DO
          END DO
+
+
+         PIPE_ABS = 0.0
+         DO CV_NODI = 1, CV_NONODS
+            DO IPHASE = 1, NPHASE
+               DO JPHASE = 1, NPHASE
+                  IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
+                  JPRES = 1 + INT( (JPHASE-1)/N_IN_PRES )
+                  IF ( IPRES /= JPRES ) THEN
+                     DeltaP = CV_P( 1, IPRES, CV_NODI ) - CV_P( 1, JPRES, CV_NODI )
+                     IF ( DeltaP > 0.0 ) THEN
+                        PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
+                           MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
+                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
+                     ELSE
+                        PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
+                           MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
+                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
+                     END IF
+                  END IF
+               END DO
+            END DO
+         END DO
+
+         IF ( GETCT ) THEN
+
+            INV_B = dt * PIPE_ABS *0.0
+            DO IPHASE = 1, NPHASE
+               IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
+               INV_B( IPHASE, IPHASE, : ) = INV_B( IPHASE, IPHASE, : ) + &
+               !MEAN_PORE_CV( IPRES, : ) * DEN_ALL( IPHASE, : )
+               DEN_ALL( IPHASE, : )
+             END DO
+
+            DO CV_NODI = 1, CV_NONODS
+               CALL INVERT( INV_B( :, :, CV_NODI ) )
+            END DO
+
+         END IF
 
       END IF
 
@@ -2641,7 +2707,7 @@ contains
                        * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
                END IF
 
-               IF( NPRES > 1 ) THEN
+               IF( NPRES > 1 .and. explicit_pipes ) THEN
                   DO JPHASE = 1, NPHASE
                      LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                        - MASS_CV( CV_NODI ) * A_GAMMA_PRES_ABS(:,JPHASE,CV_NODI )*CV_P_PHASE_NODI(JPHASE )
@@ -2652,9 +2718,14 @@ contains
 
                   do jphase=1,nphase
                      do iphase=1,nphase
+                        IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES ) THEN
+                           call addto(petsc_acv,iphase,jphase,&
+                                cv_nodi, cv_nodi,&
+                                MASS_CV( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
+                        END IF
                         call addto(petsc_acv,iphase,jphase,&
                              cv_nodi, cv_nodi,&
-                          MASS_CV( CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
+                             MASS_CV( CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
                      end do
                   end do
 
@@ -2673,7 +2744,6 @@ contains
       IF ( GETCT ) THEN
          W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T
          W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD
-
 
          DIAG_SCALE_PRES = 0.0
 
@@ -2702,7 +2772,7 @@ contains
                CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODI )
             END DO
 
-            ct_rhs_phase(:)=ct_rhs_phase(:)  &
+            ct_rhs_phase(:)=ct_rhs_phase(:) &
                     - R_PHASE(:) * ( &
                     + (1.0-W_SUM_ONE1) * T_ALL( :, CV_NODI ) - (1.0-W_SUM_ONE2) * TOLD_ALL( :, CV_NODI ) &
                     + ( TOLD_ALL( :, CV_NODI ) * ( DEN_ALL( :, CV_NODI ) - DENOLD_ALL( :, CV_NODI ) ) &
@@ -2721,15 +2791,21 @@ contains
             END DO
 
             ! scaling coefficient...
-            IF ( NPRES > 1 ) THEN
+            IF ( NPRES > 1  .and. explicit_pipes2 ) THEN
                DO IPRES=1,NPRES
                   DO JPRES=1,NPRES
                      jphase=1+(jpres-1)*n_in_pres
-                     DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) =   &
+                     DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) = &
                         + sum( A_GAMMA_PRES_ABS(1+(ipres-1)*n_in_pres:ipres*n_in_pres,JPHASE, CV_NODI ) &
-                                    /DEN_ALL( 1+(ipres-1)*n_in_pres:ipres*n_in_pres, CV_NODI ) )
+                                    / DEN_ALL( 1+(ipres-1)*n_in_pres:ipres*n_in_pres, CV_NODI ) )
                   END DO
                END DO
+            END IF
+
+            IF ( .NOT.explicit_pipes2 ) THEN
+               DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) * DEN_ALL( :, CV_NODI )
+               CT_RHS_PHASE( : ) = CT_RHS_PHASE( : ) * DEN_ALL( :, CV_NODI )
+               CT_RHS_PHASE( : ) = MATMUL( INV_B( :,:, CV_NODI) , CT_RHS_PHASE( : ) )
             END IF
 
             DO IPRES=1,NPRES

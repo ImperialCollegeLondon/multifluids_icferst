@@ -346,7 +346,7 @@
          NCOLC, FINDC, COLC, &
          INV_PIVIT_MAT,  &
          TOTELE, U_NLOC, U_NDGLN, &
-         NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
+         NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
          got_free_surf,  MASS_SUF, &
          C, CT, state, indx, halos, symmetric_P )
@@ -364,7 +364,7 @@
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
       REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
-      REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP
+      REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
@@ -418,7 +418,7 @@
               NCOLC, FINDC, COLC, &
               INV_PIVIT_MAT,  &
               TOTELE, U_NLOC, U_NDGLN, &
-              NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
+              NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
               CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
               got_free_surf,  MASS_SUF, &
               C, CT, ndpset, state, indx, symmetric_P )
@@ -428,7 +428,7 @@
               NCOLC, FINDC, COLC, &
               INV_PIVIT_MAT,  &
               TOTELE, U_NLOC, U_NDGLN, &
-              NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
+              NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
               CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
               got_free_surf,  MASS_SUF, &
               C, CT, ndpset, symmetric_P )
@@ -447,7 +447,7 @@
             NCOLC, FINDC, COLC, &
             INV_PIVIT_MAT,  &
             TOTELE, U_NLOC, U_NDGLN, &
-            NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
+            NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
             got_free_surf,  MASS_SUF, &
             C, CT, ndpset, state, indx, symmetric_P )
@@ -465,7 +465,7 @@
          INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
          INTEGER, DIMENSION( : ), intent( in ) :: COLCT
          REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
-         REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP
+         REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
          type(petsc_csr_matrix), intent(inout)::  CMC_petsc
          REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
          REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
@@ -479,13 +479,14 @@
          ! Local variables
          INTEGER, PARAMETER :: MX_NCOLOR = 1000
          REAL, PARAMETER :: INFINY = 1.0E+10
-         LOGICAL :: LCOL
+         LOGICAL :: LCOL, EXPLICIT_PIPES2
          LOGICAL, DIMENSION( CV_NONODS ) :: COLOR_LOGICAL
          INTEGER, DIMENSION( CV_NONODS ) :: ICOLOR
          INTEGER, DIMENSION( : ), allocatable :: COLOR_IN_ROW, COLOR_IN_ROW2
          REAL, DIMENSION( :, : ), allocatable :: COLOR_VEC_MANY
          REAL, DIMENSION( :, :, :, : ), allocatable :: CDP_MANY, DU_LONG_MANY
-         REAL, DIMENSION( :, :, : ), allocatable :: CMC_COLOR_VEC_MANY, CMC_COLOR_VEC2_MANY
+         REAL, DIMENSION( :, :, : ), allocatable :: CMC_COLOR_VEC_MANY, CMC_COLOR_VEC2_MANY, &
+                                                    CMC_COLOR_VEC_MANY_PHASE, CMC_COLOR_VEC2_MANY_PHASE
          INTEGER :: CV_NOD, CV_JNOD, COUNT, COUNT2, COUNT3, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
          INTEGER :: MAX_COLOR_IN_ROW, ICHOOSE, KVEC, I, ELE, U_INOD, U_NOD, ICAN_COLOR, MX_COLOR, NOD_COLOR
          INTEGER :: NCOLOR, ierr, j, N_IN_PRES, i_indx, j_indx, IPRES, JPRES
@@ -498,6 +499,8 @@
 
          IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
          N_IN_PRES = NPHASE / NPRES
+         EXPLICIT_PIPES2=.false.
+
 
          MAX_COLOR_IN_ROW = 0
          DO CV_NOD = 1, CV_NONODS
@@ -612,8 +615,69 @@
          ! NB. P_RHS = CT * U + CV_RHS 
          ! DU_LONG = CDP
 
+
+
+
+
+
+IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
+
+
+         ALLOCATE( CMC_COLOR_VEC_MANY_PHASE( NCOLOR, NPHASE, CV_NONODS ) )
          ALLOCATE( CMC_COLOR_VEC_MANY( NCOLOR, NPRES, CV_NONODS ) )
 
+         DO IPHASE = 1, NPHASE
+            CALL CT_MULT_MANY( CMC_COLOR_VEC_MANY_PHASE(:,IPHASE,:), &
+                 DU_LONG_MANY(:,:,IPHASE:IPHASE,:), &
+                 CV_NONODS, U_NONODS, NDIM, 1, NCOLOR, &
+                 CT(:,IPHASE:IPHASE,:), NCOLCT, FINDCT, COLCT )
+         END DO
+
+         DO CV_NOD = 1, CV_NONODS
+            DO I = 1, NCOLOR
+               CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
+            END DO
+         END DO
+
+         DO CV_NOD = 1, CV_NONODS
+            DO I = 1, NCOLOR
+               DO IPRES = 1, NPRES
+                  CMC_COLOR_VEC_MANY(I,IPRES,CV_NOD) = SUM(CMC_COLOR_VEC_MANY_PHASE(I,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,CV_NOD) )
+               END DO
+            END DO
+         END DO
+
+
+         IF ( IGOT_CMC_PRECON /= 0 ) THEN
+            ALLOCATE( CMC_COLOR_VEC2_MANY_PHASE( NCOLOR, NPHASE, CV_NONODS ) )
+            DO IPHASE = 1, NPHASE
+               CALL CT_MULT_WITH_C_MANY( CMC_COLOR_VEC2_MANY_PHASE(:,IPHASE,:), &
+                    DU_LONG_MANY(:,:,IPHASE:IPHASE,:), &
+                    CV_NONODS, U_NONODS, NDIM, 1, NCOLOR, &
+                    C(:,IPHASE:IPHASE,:), NCOLC, FINDC, COLC )
+            END DO
+
+            DO CV_NOD = 1, CV_NONODS
+               DO I = 1, NCOLOR
+                  CMC_COLOR_VEC2_MANY_PHASE(I,:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), CMC_COLOR_VEC2_MANY_PHASE(I,:,CV_NOD) )
+               END DO
+            END DO
+
+            DO CV_NOD = 1, CV_NONODS
+               DO I = 1, NCOLOR
+                  DO IPRES = 1, NPRES
+                     CMC_COLOR_VEC2_MANY(I,IPRES,CV_NOD) = SUM(CMC_COLOR_VEC2_MANY_PHASE(I,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,CV_NOD) )
+                  END DO
+               END DO
+            END DO
+
+         END IF
+
+
+ELSE
+
+
+         ALLOCATE( CMC_COLOR_VEC_MANY( NCOLOR, NPRES, CV_NONODS ) )
          DO IPRES = 1, NPRES
             CALL CT_MULT_MANY( CMC_COLOR_VEC_MANY(:,IPRES,:), &
                  DU_LONG_MANY(:,:,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,:), &
@@ -630,6 +694,10 @@
                     C(:,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,:), NCOLC, FINDC, COLC )
             END DO
          END IF
+
+
+END IF
+
 
 
          ! Matrix vector involving the mass diagonal term
@@ -866,7 +934,7 @@
          NCOLC, FINDC, COLC, &
          INV_PIVIT_MAT,  &
          TOTELE, U_NLOC, U_NDGLN, &
-         NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
+         NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
          got_free_surf,  MASS_SUF, &
          C, CT, ndpset, symmetric_P )
@@ -885,7 +953,7 @@
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
       REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
-      REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP
+      REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
       type(petsc_csr_matrix), intent(inout)::  CMC_petsc
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
