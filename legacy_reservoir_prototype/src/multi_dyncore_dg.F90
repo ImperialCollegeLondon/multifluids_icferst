@@ -158,7 +158,7 @@ contains
     integer :: nits_flux_lim, its_flux_lim
     logical :: lump_eqns
     REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-    REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
+    REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
     real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
     REAL, DIMENSION( : , : , : ), allocatable :: CT
     REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
@@ -190,9 +190,9 @@ contains
     call zero(petsc_acv)
 
 
-    allocate( den_all( nphase, cv_nonods ), denold_all( nphase, cv_nonods ) )
+    allocate(den_all(nphase,cv_nonods),denold_all(nphase,cv_nonods))
     allocate(Ct(0,0,0),DIAG_SCALE_PRES(0,0))
-    allocate(DIAG_SCALE_PRES_COUP(0,0,0), GAMMA_PRES_ABS(0,0,0))
+    allocate(DIAG_SCALE_PRES_COUP(0,0,0),GAMMA_PRES_ABS(0,0,0),INV_B(0,0,0))
 
     allocate( T_SOURCE( nphase, cv_nonods ) ) ; T_SOURCE=0.0
 
@@ -280,7 +280,7 @@ contains
             CV_RHS_field, &
             petsc_acv, &
             SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-            NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CT_RHS, FINDCT, COLCT, &
+            NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, CT_RHS, FINDCT, COLCT, &
             CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
             CV_ELE_TYPE, &
             NPHASE, NPRES, &
@@ -498,7 +498,7 @@ contains
       integer :: igot_t2
       REAL, DIMENSION( : ), allocatable :: mass_mn_pres 
       REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-      REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
+      REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
       REAL, DIMENSION( :,:,: ), allocatable :: CT
       REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
       REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
@@ -567,7 +567,7 @@ contains
       ALLOCATE( mass_mn_pres(size(small_colacv)) ) ; mass_mn_pres = 0.
       ALLOCATE( CT( 0,0,0 ) )
       ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
-      ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( NPHASE,NPHASE,CV_NONODS ) )
+      ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( NPHASE,NPHASE,CV_NONODS ), INV_B( 0,0,0 ) )
       ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) ) ; TDIFFUSION = 0.
       ALLOCATE( MEAN_PORE_CV( NPRES, CV_NONODS ) )
 
@@ -643,7 +643,7 @@ contains
           CV_RHS_field, &
           petsc_acv, &
           SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-          NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CT_RHS, FINDCT, COLCT, &
+          NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, CT_RHS, FINDCT, COLCT, &
           CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
           CV_ELE_TYPE,  &
           NPHASE, NPRES, &
@@ -903,7 +903,7 @@ contains
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
         REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-        REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CMC_PRECON
+        REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, CMC_PRECON
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
@@ -918,7 +918,7 @@ contains
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
         REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, UDEN3
         REAL, DIMENSION( :, :, :, : ), allocatable :: UDIFFUSION_ALL
-        REAL, DIMENSION( :, : ), allocatable :: UDIFFUSION_VOL_ALL
+        REAL, DIMENSION( :, : ), allocatable :: UDIFFUSION_VOL_ALL, rhs_p2
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
         type( tensor_field ), pointer :: p_all, pold_all, cvp_all
@@ -934,7 +934,10 @@ contains
         type(halo_type), pointer :: halo
 
         logical :: cty_proj_after_adapt, high_order_Ph, symmetric_P, boussinesq, fem_density_buoyancy
+        logical :: EXPLICIT_PIPES2
 
+
+        EXPLICIT_PIPES2 = .false.
 
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
         symmetric_P = have_option( "/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P" )
@@ -965,7 +968,7 @@ contains
         ALLOCATE( CT( NDIM, NPHASE, NCOLCT )) ; CT=0.
         call allocate(ct_rhs,npres,pressure%mesh,"CT_rhs")
         ALLOCATE( DIAG_SCALE_PRES( NPRES,CV_NONODS )) ; DIAG_SCALE_PRES=0.
-        ALLOCATE(DIAG_SCALE_PRES_COUP(NPRES,NPRES,CV_NONODS),GAMMA_PRES_ABS(NPHASE,NPHASE,CV_NONODS))
+        ALLOCATE(DIAG_SCALE_PRES_COUP(NPRES,NPRES,CV_NONODS),GAMMA_PRES_ABS(NPHASE,NPHASE,CV_NONODS),INV_B(NPHASE,NPHASE,CV_NONODS))
 
         ALLOCATE( U_RHS( NDIM, NPHASE, U_NONODS )) ; U_RHS=0.
         ALLOCATE( MCY_RHS( NDIM * NPHASE * U_NONODS + CV_NONODS )) ; MCY_RHS=0.
@@ -1188,7 +1191,7 @@ contains
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         NCOLM, FINDM, COLM, MIDM, &
         XU_NLOC, XU_NDGLN, &
-        U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GLOBAL_SOLVE, &
+        U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, GLOBAL_SOLVE, &
         NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -1224,7 +1227,7 @@ contains
             NCOLC, FINDC, COLC, &
             PIVIT_MAT, &
             TOTELE, U_NLOC, U_NDGLN, &
-            NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, &
+            NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & 
             got_free_surf,  MASS_SUF, &
             C, CT, state, StorageIndexes(11), halo, symmetric_P )
@@ -1317,6 +1320,43 @@ contains
 !
 !            rhs_p%val = -rhs_p%val + CT_RHS%val
 
+
+
+
+
+
+
+
+
+IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
+
+            if ( .not.symmetric_P ) then ! original
+
+               ALLOCATE ( rhs_p2(NPHASE,CV_NONODS) ) ; rhs_p2=0.0
+
+               DO IPHASE = 1, NPHASE
+                  CALL CT_MULT2( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
+                       CV_NONODS, U_NONODS, NDIM, 1, CT( :, IPHASE : IPHASE, : ), NCOLCT, FINDCT, COLCT )
+               END DO
+
+            else
+
+               DO IPHASE = 1, NPHASE
+                  CALL CT_MULT_WITH_C3( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
+                       CV_NONODS, U_NONODS, NDIM, 1, C( :, IPHASE : IPHASE, : ), NCOLC, FINDC, COLC )
+               END DO
+
+            end if
+
+
+            DO CV_NOD = 1, CV_NONODS
+               DO IPRES = 1, NPRES
+                  rhs_p%val(IPRES,CV_NOD)= SUM( rhs_p2(1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES,CV_NOD) )
+               END DO
+            END DO
+
+ELSE
+
             if ( .not.symmetric_P ) then ! original
 
                DO IPRES = 1, NPRES
@@ -1328,10 +1368,15 @@ contains
 
                DO IPRES = 1, NPRES
                   CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), &
-                       CV_NONODS, U_NONODS, NDIM, NPHASE, C( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
+                       CV_NONODS, U_NONODS, NDIM, N_IN_PRES, C( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
                END DO
 
             end if
+
+END IF
+
+
+
 
             rhs_p%val = -rhs_p%val + CT_RHS%val
 
@@ -1680,7 +1725,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
     NCOLM, FINDM, COLM, MIDM, &
     XU_NLOC, XU_NDGLN, &
-    U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GLOBAL_SOLVE, &
+    U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, GLOBAL_SOLVE, &
     NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
     UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -1758,7 +1803,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         type(vector_field), intent( inout ) :: CT_RHS
         REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
-        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS
+        REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
         LOGICAL, intent( in ) :: GLOBAL_SOLVE
         INTEGER, DIMENSION( : ), intent( in ) :: FINMCY
         REAL, DIMENSION( : ), intent( inout ) :: MCY
@@ -1894,7 +1939,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         CV_RHS, &
         ACV, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-        NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, CT_RHS, FINDCT, COLCT, &
+        NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, CT_RHS, FINDCT, COLCT, &
         CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
         CV_ELE_TYPE, &
         NPHASE, NPRES, &
@@ -9284,7 +9329,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
       d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
 
       mat_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Discontinuous" ) )
-
 
       if ( cv_nloc == u_nloc ) then
 
