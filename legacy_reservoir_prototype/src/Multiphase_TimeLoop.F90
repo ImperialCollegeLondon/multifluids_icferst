@@ -1587,7 +1587,7 @@
             end if
             call get_option( '/timestepping/timestep', dt )
             dt = max( min( min( dt * rc / c, ic * dt ), maxc ), minc )
-            dt = min(dt, finish_time - current_time)!Make sure we finish at required time
+            dt = max(min(dt, finish_time - current_time), 1d-15)!Make sure we finish at required time and we don't get dt = 0
             call allmin(dt)
             call set_option( '/timestepping/timestep', dt )
          end if
