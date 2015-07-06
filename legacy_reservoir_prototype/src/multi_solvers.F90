@@ -1439,7 +1439,8 @@ contains
     end subroutine BoundedSolutionCorrections
 
     subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_from_schema, CV_NDGLN, IDs2CV_ndgln,&
-         Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration, useful_sats, res, res_ratio, first_res)
+         Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration, useful_sats, res, &
+         res_ratio, first_res, npres)
     !In this subroutine we applied some corrections and dumping on the saturations obtained from the saturation equation
     !this idea is based on the paper SPE-173267-MS.
     !The method ensures convergence "independent" of the time step.
@@ -1451,7 +1452,7 @@ contains
         real, intent(in) :: Dumping_from_schema, res, res_ratio, first_res
         logical, intent(inout) :: satisfactory_convergence
         real, intent(inout) :: new_dumping, Previous_convergence
-        integer, intent(in) :: its, nonlinear_iteration
+        integer, intent(in) :: its, nonlinear_iteration, npres
         integer, intent(inout) :: useful_sats
         !Local parameters
         integer, parameter :: Max_sat_its = 9
@@ -1474,7 +1475,7 @@ contains
         new_dumping = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
-        call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln)
+        call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
 
         !Retrieve Saturation
         call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
@@ -1762,15 +1763,16 @@ contains
 
     end subroutine FPI_backtracking
 
-    subroutine Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln)
+    subroutine Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
         !This subroutines eliminates the oscillations in the saturation that are bigger than a
         !certain tolerance and also sets the saturation to be between bounds
         Implicit none
         !Global variables
         type( state_type ), intent(inout) :: packed_state
         integer, dimension(:), intent(in) :: IDs2CV_ndgln
+        integer, intent(in) :: npres
         !Local variables
-        integer :: iphase, nphase, cv_nod
+        integer :: iphase, nphase, cv_nod, i_start, i_end, ipres
         real :: maxsat, minsat, correction, sum_of_phases, moveable_sat
         real, dimension(:), allocatable :: Normalized_sat
         real, dimension(:,:), pointer :: satura
@@ -1783,28 +1785,30 @@ contains
 
         !Allocate
         allocate(Normalized_sat(nphase))
-        !Impose sat to be between bounds
-!        call Set_Saturation_between_bounds(packed_state, IDs2CV_ndgln)
-
-        !Set saturation to be between bounds
-        do cv_nod = 1, size(satura,2 )
-            moveable_sat = 1 - sum(Immobile_fraction(:, IDs2CV_ndgln(cv_nod)))
-            !Work in normalize saturation here
-            Normalized_sat = (satura(:,cv_nod) - Immobile_fraction(:, IDs2CV_ndgln(cv_nod)))/moveable_sat
-            sum_of_phases = sum(Normalized_sat)
-            correction = (1.0 - sum_of_phases)
-            !Spread the error to all the phases weighted by their moveable presence in that CV
-            !Increase the range to look for solutions by allowing oscillations below 0.1 percent
-            if (abs(correction) > 1d-3) satura(:, cv_nod) = (Normalized_sat(:) * (1.0 + correction/sum_of_phases))*&
-                    moveable_sat + Immobile_fraction(:, IDs2CV_ndgln(cv_nod))
-            !Make sure saturation is between bounds after the modification
-            do iphase = 1, nphase
-                minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
-                maxsat = moveable_sat + minsat
-                satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+        !Impose sat to be between bounds for blocks of saturations (this is for multiple pressure, otherwise there is just one block)
+        do ipres = 1, npres
+            i_start = 1 + (ipres-1) * nphase/npres
+            i_end = ipres * nphase/npres
+            !Set saturation to be between bounds
+            do cv_nod = 1, size(satura,2 )
+                moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))
+                !Work in normalize saturation here
+                Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &
+                        Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))/moveable_sat
+                sum_of_phases = sum(Normalized_sat(i_start:i_end))
+                correction = (1.0 - sum_of_phases)
+                !Spread the error to all the phases weighted by their moveable presence in that CV
+                !Increase the range to look for solutions by allowing oscillations below 0.1 percent
+                if (abs(correction) > 1d-3) satura(i_start:i_end, cv_nod) = (Normalized_sat(i_start:i_end) * (1.0 + correction/sum_of_phases))*&
+                        moveable_sat + Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod))
+                !Make sure saturation is between bounds after the modification
+                do iphase = i_start, i_end
+                    minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
+                    maxsat = moveable_sat + minsat
+                    satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
+                end do
             end do
         end do
-
         !Deallocate
         deallocate(Normalized_sat)
 
