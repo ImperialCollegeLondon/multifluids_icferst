@@ -766,7 +766,6 @@ contains
       call deallocate(cv_rhs_field)
       if (Dumping_factor < 1.01) call deallocate(residual)
 
-
 !      call deallocate(petsc_acv)
 
        !Deallocate pointers only if not pointing to something in packed state
@@ -936,7 +935,7 @@ contains
         logical :: EXPLICIT_PIPES2
 
 
-        EXPLICIT_PIPES2 = .false.
+        EXPLICIT_PIPES2 = .true.
 
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
         symmetric_P = have_option( "/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P" )
@@ -1549,7 +1548,7 @@ END IF
         call halo_update(CVP_all)
 
         DEALLOCATE( CT )
-        DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS )
+        DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B )
         DEALLOCATE( U_RHS )
         DEALLOCATE( MCY_RHS )
         DEALLOCATE( MCY )

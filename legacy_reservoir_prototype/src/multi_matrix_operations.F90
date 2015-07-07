@@ -499,7 +499,7 @@
 
          IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
          N_IN_PRES = NPHASE / NPRES
-         EXPLICIT_PIPES2= .false.
+         EXPLICIT_PIPES2 = .true.
 
 
          MAX_COLOR_IN_ROW = 0
@@ -650,6 +650,8 @@ IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
 
          IF ( IGOT_CMC_PRECON /= 0 ) THEN
             ALLOCATE( CMC_COLOR_VEC2_MANY_PHASE( NCOLOR, NPHASE, CV_NONODS ) )
+            ALLOCATE( CMC_COLOR_VEC2_MANY( NCOLOR, NPRES, CV_NONODS ) )
+
             DO IPHASE = 1, NPHASE
                CALL CT_MULT_WITH_C_MANY( CMC_COLOR_VEC2_MANY_PHASE(:,IPHASE,:), &
                     DU_LONG_MANY(:,:,IPHASE:IPHASE,:), &
@@ -881,7 +883,7 @@ END IF
              end if
           end do
 
-        end function partition          
+        end function partition
            
         subroutine insertion_sort(vec,n)
           
@@ -991,7 +993,7 @@ END IF
 
       IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
       N_IN_PRES = NPHASE / NPRES
-      EXPLICIT_PIPES2=.false.
+      EXPLICIT_PIPES2 = .false.
 
       NEED_COLOR = .TRUE.
       NCOLOR = 0
@@ -2052,15 +2054,14 @@ END IF
       type(tensor_field) :: tracer
 
       integer :: nphase
-
       type(csr_sparsity) :: sparsity
 
       nphase=tracer%dim(2)
 
+      ewrite(3,*), "In assemble_global_multiphase_petsc_csr"
 
-      ewrite(3,*), "In  assemble_global_multiphase_petsc_csr"
-      
-      call allocate(global_petsc,sparsity,[nphase,nphase],"ACV",.true.)
+      !call allocate(global_petsc,sparsity,[nphase,nphase],"ACV",.true.)
+      call allocate(global_petsc,sparsity,[nphase,nphase],"ACV",.false.,.false.)
       call zero(global_petsc)
 
       ewrite(3,*), "Leaving allocate_global_multiphase_petsc_csr"

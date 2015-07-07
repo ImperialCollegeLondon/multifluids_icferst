@@ -372,9 +372,9 @@ contains
 ! GRAVTY is used in the free surface method only...
       REAL :: GRAVTY
 !
-      logical, PARAMETER :: EXPLICIT_PIPES= .true.
-      logical, PARAMETER :: EXPLICIT_PIPES2= .false.
-
+      logical, PARAMETER :: EXPLICIT_PIPES= .false.
+      logical, PARAMETER :: EXPLICIT_PIPES2= .true.
+      logical, PARAMETER :: MULTB_BY_POROSITY= .false.
 
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE 
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
@@ -2618,17 +2618,24 @@ contains
 
          IF ( GETCT ) THEN
 
-            INV_B = dt * PIPE_ABS * 0.0
+            INV_B = dt * PIPE_ABS * 1.0
             DO IPHASE = 1, NPHASE
                IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
                INV_B( IPHASE, IPHASE, : ) = INV_B( IPHASE, IPHASE, : ) + &
-               !MEAN_PORE_CV( IPRES, : ) * DEN_ALL( IPHASE, : )
-               DEN_ALL( IPHASE, : )
+               MEAN_PORE_CV( IPRES, : ) * DEN_ALL( IPHASE, : )
+               !DEN_ALL( IPHASE, : )
              END DO
 
             DO CV_NODI = 1, CV_NONODS
                CALL INVERT( INV_B( :, :, CV_NODI ) )
             END DO
+
+            IF ( MULTB_BY_POROSITY ) THEN
+               DO IPHASE = 1, NPHASE
+                  IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
+                  INV_B( IPHASE, IPHASE, : ) = INV_B( IPHASE, IPHASE, : ) * MEAN_PORE_CV( IPRES, : )
+                END DO
+            END IF
 
          END IF
 
@@ -2791,24 +2798,24 @@ contains
             END DO
 
             ! scaling coefficient...
-            IF ( NPRES > 1  .and. explicit_pipes2 ) THEN
+            IF ( NPRES > 1 .AND. explicit_pipes2 ) THEN
                DO IPRES=1,NPRES
                   DO JPRES=1,NPRES
                      jphase=1+(jpres-1)*n_in_pres
                      DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) = &
                         + sum( A_GAMMA_PRES_ABS(1+(ipres-1)*n_in_pres:ipres*n_in_pres,JPHASE, CV_NODI ) &
-                                    / DEN_ALL( 1+(ipres-1)*n_in_pres:ipres*n_in_pres, CV_NODI ) )
+                        / DEN_ALL( 1+(ipres-1)*n_in_pres:ipres*n_in_pres, CV_NODI ) )
                   END DO
                END DO
             END IF
 
-            IF ( .NOT.explicit_pipes2 ) THEN
+            IF ( NPRES > 1 .AND. .NOT.explicit_pipes2 ) THEN
                DIAG_SCALE_PRES_phase( : ) = DIAG_SCALE_PRES_phase( : ) * DEN_ALL( :, CV_NODI )
                CT_RHS_PHASE( : ) = CT_RHS_PHASE( : ) * DEN_ALL( :, CV_NODI )
-               CT_RHS_PHASE( : ) = MATMUL( INV_B( :,:, CV_NODI) , CT_RHS_PHASE( : ) )
+               CT_RHS_PHASE( : ) = MATMUL( INV_B( :, :, CV_NODI) , CT_RHS_PHASE( : ) )
             END IF
 
-            DO IPRES=1,NPRES
+            DO IPRES = 1, NPRES
                call addto(ct_rhs, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) )
                DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
                      + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
