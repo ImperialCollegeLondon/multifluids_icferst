@@ -710,7 +710,7 @@ contains
                   !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
                   call FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_factor,CV_NDGLN, IDs2CV_ndgln,&
                      Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration,&
-                         useful_sats,res, res/resold, first_res)
+                         useful_sats,res, res/resold, first_res, npres)
                   !Store the accumulated updated done
                   updating = updating + new_dumping
                   !If the dumping factor is not adaptive, then, just one iteration
@@ -743,7 +743,6 @@ contains
         its = its + 1
         useful_sats = useful_sats + 1
       END DO Loop_NonLinearFlux
-
       !Store the final accumulated dumping_factor to properly calculate the convergence functional
       if (Dumping_factor < 1.01) then
           !Final effective dumping to calculate properly the non linear convergence is:

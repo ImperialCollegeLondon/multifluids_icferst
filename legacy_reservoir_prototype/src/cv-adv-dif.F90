@@ -11524,6 +11524,7 @@ deallocate(NX_ALL)
           Incomming_flow = DOT_PRODUCT(UDGI_ALL(:, IPHASE), CVNORMX_ALL(:, GI)) .LT. 0.0
           if (not_OLD_VEL) then
               DO U_KLOC = 1, U_NLOC
+!                  IF (.false.) THEN !<= this one for strong boundary conditions
                   IF (Incomming_flow) THEN ! Incomming...
                       UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=SUF_SIG_DIAGTEN_BC_GI(:)
                   ELSE
