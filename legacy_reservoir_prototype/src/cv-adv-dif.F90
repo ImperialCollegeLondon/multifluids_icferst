@@ -372,7 +372,7 @@ contains
 ! GRAVTY is used in the free surface method only...
       REAL :: GRAVTY
 !
-      logical, PARAMETER :: EXPLICIT_PIPES= .false.
+      logical, PARAMETER :: EXPLICIT_PIPES= .true.
       logical, PARAMETER :: EXPLICIT_PIPES2= .false.
 
 
@@ -2605,11 +2605,11 @@ contains
                      IF ( DeltaP > 0.0 ) THEN
                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
                            MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
-                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
+                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( IPHASE, CV_NODI )
                      ELSE
                         PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
                            MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
-                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
+                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( JPHASE, CV_NODI )
                      END IF
                   END IF
                END DO
@@ -2618,7 +2618,7 @@ contains
 
          IF ( GETCT ) THEN
 
-            INV_B = dt * PIPE_ABS *0.0
+            INV_B = dt * PIPE_ABS * 0.0
             DO IPHASE = 1, NPHASE
                IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
                INV_B( IPHASE, IPHASE, : ) = INV_B( IPHASE, IPHASE, : ) + &

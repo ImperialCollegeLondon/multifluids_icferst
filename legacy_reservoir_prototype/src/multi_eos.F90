@@ -761,7 +761,7 @@
                LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
                LOC2 = (1-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
 
-               U_ABSORB( :, LOC, LOC ) = 100.0
+               U_ABSORB( :, LOC, LOC ) = 1000.0
                !U_ABSORB( :, LOC, LOC ) = U_ABSORB( :, LOC2, LOC2 )
             end do
          end do

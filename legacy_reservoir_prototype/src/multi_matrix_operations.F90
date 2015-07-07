@@ -499,7 +499,7 @@
 
          IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
          N_IN_PRES = NPHASE / NPRES
-         EXPLICIT_PIPES2=.false.
+         EXPLICIT_PIPES2= .false.
 
 
          MAX_COLOR_IN_ROW = 0
