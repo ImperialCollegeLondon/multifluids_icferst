@@ -2605,11 +2605,11 @@ contains
                      IF ( DeltaP > 0.0 ) THEN
                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
                            MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
-                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
+                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( IPHASE, CV_NODI )
                      ELSE
                         PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
                            MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
-                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI )
+                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( JPHASE, CV_NODI )
                      END IF
                   END IF
                END DO

@@ -3717,7 +3717,6 @@ for a time step is to determine $y_i^j$.
 
 
 
-
 \section{Well modelling using extended multi-phase flow equations} 
 \label{Well modelling using extended multi-phase flow equations}
 Here we outline an approach for modelling wells based on extending the number of 
@@ -3902,8 +3901,6 @@ From conservation of mass $\sum_i\sum_j Q^j_i=0$ but here the mass exchanges are
 the reservoir and thus $\sum_j Q^j_i=0, \forall i \in\{ 1,2,...~ , {\cal N}_{phase}\}$. 
 
 
-
-
 \subsection{Mass flow rate between the reservoir and the wells} 
 \label{Mass flow rate between the reservoir and the wells} 
 In order to determine $\gamma^{j\,k}_i$ we will first determine the 
@@ -4069,6 +4066,117 @@ of $q_i^{j\,k}$ in equations \ref{saturation_wells_7}.
 
 
 
+\subsection{The sum to one constraint within the continuity equations for well modelling} 
+\label{Continuity equation for well modelling} 
+The sum of the saturation constraint
+\begin{equation}
+\sum\limits_{i=1}^{{\cal N}_{phase}} 
+{S_i^{j}}^{n+1}
+= 1, 
+\label{saturation_wells_3c--}
+\end{equation}
+can be enforced more strongly through the continuity equation using:
+\begin{equation}
+\phi^j \displaystyle \left( \frac{  
+ {\rho_{i}^{j}}^{n+1} {S_i^{j}}^{n+1} - {\rho_{i}^{j}}^n {S_i^{j}}^n
+}{\Delta t} \right) + \nabla\cdot\left(\rho_{i}^{j}S_i^{j}\mathbf{u}_i^{j}\right) + \sum_{k=1}^{{\cal N}_{well}} \nu_{i}^{j\;k}  {S_i^{k}}^{n+1}= 0, 
+\label{saturation_wells_2--}
+\end{equation}
+\begin{equation}
+~~~ \forall i \in\{ 1,2,...~ , {\cal N}_{phase}\}, \;\;\; 
+\forall j \in\{ 1,2,...~ , {\cal N}_{well} \}, 
+\label{saturation_wells_2--all}
+\end{equation}
+with:
+\begin{equation}
+\nu_{i}^{j\;k} = \phi^j \phi^k \frac{ \widehat A_{j\;k}  \rho_i^{j}  }{{{\Delta x}_{grid}\sigma_{j}}_i}  H(p_{i}^{k}-p_{i}^{j}) (p_{i}^{j}-p_{i}^{k}), 
+~~~j\neq k ;  
+\label{saturation_wells_H1}
+\end{equation}
+\begin{equation}
+\nu_{i}^{j\;j} = \sum_{k=1, k\neq j}^{{\cal N}_{well}} \phi^j \phi^k \frac{ \widehat A_{j\;k}  \rho_i^{k}  }{{{\Delta x}_{grid}\sigma_{k}}_i} H(p_{i}^{j}-p_{i}^{k}) (p_{i}^{j}-p_{i}^{k}), 
+\label{saturation_wells_H2}
+\end{equation}
+in which $H(z)=1$ if $z>0$ else $H(z)=0$.  
+Notice that $\nu_{i}^{j\;k}\le 0$ when $j\neq k$ and $\nu_{i}^{j\;j}\ge 0$.  
+When fully discretized in space, equation \ref{saturation_wells_2--} is relatively easy to solve (even when the quantity 
+of fluid exchanged with the wells is large) with a suitable choice of solver e.g. GMRES with a 
+BSSOR preconditioner, or some multi-grid methods. 
+
+Analogous to equations \ref{saturation_wells_3} and \ref{saturation_wells_4} we normalize equations 
+\ref{saturation_wells_2--},  
+but because of the strength of the coupling of the well-reserviour terms, we need to 
+treat the coupling of the two pressures implicitly. Equation \ref{saturation_wells_2--} may be re-written 
+as:
+
+\begin{equation}\displaystyle
+\underline{\underline \phi}  \left( \frac{  
+ \underline{\underline{\rho_{i}^{}}}^{n+1} {\underline S_i^{}}^{n+1} - \underline{\underline{\rho_{i}^{}}}^{n}   {\underline S_i^{}}^n
+}{\Delta t} \right) + \nabla\cdot\left( \underline{\underline\rho}_{i} \underline S_i^{}\mathbf{u}_i^{}\right) +  K_i   \underline{S}_i^{n+1}= 0, 
+~~~~~ \forall i \in\{ 1,2,...~ , {\cal N}_{phase}\},
+\label{saturation_wells_2--++}
+\end{equation}
+Multiplying this equation by $B^{-1}_i$ with
+\begin{equation}
+B_i=\underline{\underline \phi} \underline{\underline{\rho_{i}^{}}}^{n+1} +\Delta t K_i, 
+\label{saturation_wells_2--++--}
+\end{equation}
+one obtains by 
+applying the summation constraint 
+
+\begin{equation}
+\sum\limits_{i=1}^{{\cal N}_{phase}} 
+{S_i^{j}}^{n+1}
+= 1,
+\label{saturation_wells_3c-}
+\end{equation}  
+equation 
+\ref{saturation_wells_2--++} becomes: 
+
+\begin{equation}
+\left(  \frac{  
+I 
+-  
+\sum\limits_{i=1}^{{\cal N}_{phase}}
+B_i^{-1} \underline{\underline{\rho_{i}^{}}}^{n}
+\underline{S_i^{j}}^n
+}
+{\Delta t}
+\right) 
++ 
+\sum\limits_{i=1}^{{\cal N}_{phase}}
+B_i^{-1} 
+\nabla\cdot \underline{\underline\rho}_{i}\underline S_i^{}\mathbf{u}_i^{} 
+= 0. 
+\label{saturation_wells_4-----}
+\end{equation}
+To be consistent with equation \ref{saturation_wells_4} one can multiply 
+this equation by $\underline{\underline \phi}$ to obtain 
+\begin{equation}
+\underline{\underline \phi}
+\left(  \frac{  
+I 
+-  
+\sum\limits_{i=1}^{{\cal N}_{phase}}
+B_i^{-1}  \underline{\underline{\rho_{i}^{}}}^{n}
+\underline{S_i^{j}}^n
+}
+{\Delta t}
+\right) 
++ \underline{\underline \phi} 
+\sum\limits_{i=1}^{{\cal N}_{phase}}
+B_i^{-1} 
+\nabla\cdot \underline{\underline\rho}_{i}\underline S_i^{}\mathbf{u}_i^{} 
+= 0, 
+\label{saturation_wells_4-----++}
+\end{equation}
+which is then manipulated to obtain the pressure equation. 
+The use of the indentity matrix in equation \ref{saturation_wells_4-----} or \ref {saturation_wells_4-----++}
+is key to impossing the sum to unity constaint, equation \ref{saturation_wells_3c-} 
+at time level $n+1$.
+
+
+
 \subsection{Pressure matrix sparcity and formation} 
 \label{Pressure matrix sparcity}
 The pressure matrix has now has to store information associated with a number of pressures. 
@@ -4083,6 +4191,8 @@ freedome for pressure, but these are not supported (generally) in the current ge
 multi-grid solvers which are needed to solve for pressure. 
 
 The formation of the pressure matrix equation is as described in section \ref{Projection method of solution} and the matrix ${\bf B}$ in the continuity equation \ref{glob-cty-matrix2} (a discretization of equation \ref{saturation_wells_4}) is formed from the terms involving $\hat\gamma^{j\, k}$ which couple the phases. 
+
+
 
 
 \pagebreak
