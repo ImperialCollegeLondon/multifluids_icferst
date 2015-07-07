@@ -970,8 +970,9 @@ END IF
       LOGICAL :: UNDONE, LCOL
       logical, DIMENSION( : ), allocatable :: NEED_COLOR
       logical, DIMENSION( CV_NONODS ) :: to_color
+      LOGICAL :: EXPLICIT_PIPES2
       REAL, DIMENSION( : ), allocatable :: COLOR_VEC
-      REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC, CMC_COLOR_VEC2
+      REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC, CMC_COLOR_VEC2, CMC_COLOR_VEC_PHASE, CMC_COLOR_VEC2_PHASE
       REAL, DIMENSION( : ), allocatable :: DU, DV, DW, DU_LONG
       REAL, DIMENSION( :, :, : ), allocatable :: CDP
       INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
@@ -990,6 +991,7 @@ END IF
 
       IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
       N_IN_PRES = NPHASE / NPRES
+      EXPLICIT_PIPES2=.false.
 
       NEED_COLOR = .TRUE.
       NCOLOR = 0
@@ -1041,6 +1043,58 @@ END IF
 
          CALL ULONG_2_UVW( DU, DV, DW, DU_LONG, U_NONODS, NDIM, NPHASE )
 
+
+
+
+IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
+
+
+         ALLOCATE( CMC_COLOR_VEC_PHASE( NPHASE, CV_NONODS ) )
+
+         DO IPHASE = 1, NPHASE
+            IV_STAR = 1+(IPHASE-1)*U_NONODS*NDIM
+            IV_FINI = IPHASE*U_NONODS*NDIM
+            CALL CT_MULT( CMC_COLOR_VEC_PHASE(IPHASE,:), DU(IV_STAR:IV_FINI), &
+                 DV(IV_STAR:IV_FINI), DW(IV_STAR:IV_FINI), CV_NONODS, U_NONODS, NDIM, 1, &
+                 CT(:,IPHASE:IPHASE,:), NCOLCT, FINDCT, COLCT )
+         END DO
+
+         DO CV_NOD = 1, CV_NONODS
+               CMC_COLOR_VEC_PHASE(:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), CMC_COLOR_VEC_PHASE(:,CV_NOD) )
+         END DO
+
+         DO CV_NOD = 1, CV_NONODS
+               DO IPRES = 1, NPRES
+                  CMC_COLOR_VEC(IPRES,CV_NOD) = SUM(CMC_COLOR_VEC_PHASE(1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,CV_NOD) )
+               END DO
+         END DO
+
+
+         IF ( IGOT_CMC_PRECON /= 0 ) THEN
+            ALLOCATE( CMC_COLOR_VEC2_PHASE( NPHASE, CV_NONODS ) )
+            DO IPHASE = 1, NPHASE
+               IV_STAR = 1+(IPHASE-1)*U_NONODS*NDIM
+               IV_FINI = IPHASE*U_NONODS*NDIM
+               CALL CT_MULT_WITH_C( CMC_COLOR_VEC2_PHASE(IPHASE,:), &
+                    DU_LONG(IV_STAR:IV_FINI), &
+                    CV_NONODS, U_NONODS, NDIM, 1,  &
+                    C(:,IPHASE:IPHASE,:), NCOLC, FINDC, COLC )
+            END DO
+
+            DO CV_NOD = 1, CV_NONODS
+               CMC_COLOR_VEC2_PHASE(:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), CMC_COLOR_VEC2_PHASE(:,CV_NOD) )
+            END DO
+
+            DO CV_NOD = 1, CV_NONODS
+               DO IPHASE = 1, NPHASE
+                  CMC_COLOR_VEC2(IPHASE,CV_NOD) = SUM(CMC_COLOR_VEC2_PHASE(IPHASE:IPHASE,CV_NOD) )
+               END DO
+            END DO
+
+         END IF
+
+ELSE
+
          DO IPRES = 1, NPRES
             IV_STAR = 1+(IPRES-1)*N_IN_PRES*U_NONODS
             IV_FINI = IPRES*N_IN_PRES*U_NONODS
@@ -1058,6 +1112,12 @@ END IF
                     C(:,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,:), NCOLC, FINDC, COLC )
             END DO
          END IF
+
+
+END IF
+
+
+
 
          ! Matrix vector involving the mass diagonal term
          DO CV_NOD = 1, CV_NONODS
