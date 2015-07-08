@@ -4110,15 +4110,15 @@ treat the coupling of the two pressures implicitly. Equation \ref{saturation_wel
 as:
 
 \begin{equation}\displaystyle
-\underline{\underline \phi}  \left( \frac{  
- \underline{\underline{\rho_{i}^{}}}^{n+1} {\underline S_i^{}}^{n+1} - \underline{\underline{\rho_{i}^{}}}^{n}   {\underline S_i^{}}^n
-}{\Delta t} \right) + \nabla\cdot\left( \underline{\underline\rho}_{i} \underline S_i^{}\mathbf{u}_i^{}\right) +  K_i   \underline{S}_i^{n+1}= 0, 
+  \left( \frac{  
+ \underline{\underline{\rho}}^{n+1}\underline{\underline \phi} {\underline S}^{n+1} - \underline{\underline\phi} \; \underline{\underline{\rho}}^{n}   {\underline S}^n
+}{\Delta t} \right) + \nabla\cdot\left( \underline{\underline\rho} \mathbf{u} {\underline{S}} \right) +  K\underline{\underline \phi} \underline{S}^{n+1}= 0, 
 ~~~~~ \forall i \in\{ 1,2,...~ , {\cal N}_{phase}\},
 \label{saturation_wells_2--++}
 \end{equation}
-Multiplying this equation by $B^{-1}_i$ with
+Multiplying this equation by $B^{-1}$ with
 \begin{equation}
-B_i=\underline{\underline \phi} \underline{\underline{\rho_{i}^{}}}^{n+1} +\Delta t K_i, 
+B= \underline{\underline{\rho^{}}}^{n+1} +\Delta t K, 
 \label{saturation_wells_2--++--}
 \end{equation}
 one obtains by 
@@ -4130,48 +4130,36 @@ applying the summation constraint
 = 1,
 \label{saturation_wells_3c-}
 \end{equation}  
+or equivalently: 
+\begin{equation}
+ J 
+\underline{S}^{n+1}
+= \underline{b},
+\label{saturation_wells_3c-b}
+\end{equation}  
+with $\underline{b}$ being the unity vector then 
 equation 
 \ref{saturation_wells_2--++} becomes: 
 
 \begin{equation}
 \left(  \frac{  
-I 
+I \hat{ \underline{\underline \phi} }
 -  
-\sum\limits_{i=1}^{{\cal N}_{phase}}
-B_i^{-1} \underline{\underline{\rho_{i}^{}}}^{n}
-\underline{S_i^{j}}^n
+J
+B^{-1} \underline{\underline{\rho^{}}}^{n} \; \underline{\underline \phi}
+\underline{S}^n
 }
 {\Delta t}
 \right) 
 + 
-\sum\limits_{i=1}^{{\cal N}_{phase}}
-B_i^{-1} 
-\nabla\cdot \underline{\underline\rho}_{i}\underline S_i^{}\mathbf{u}_i^{} 
-= 0. 
+J 
+B^{-1} 
+\nabla\cdot \underline{\underline\rho} \mathbf{u} {\underline S}
+= 0, 
 \label{saturation_wells_4-----}
 \end{equation}
-To be consistent with equation \ref{saturation_wells_4} one can multiply 
-this equation by $\underline{\underline \phi}$ to obtain 
-\begin{equation}
-\underline{\underline \phi}
-\left(  \frac{  
-I 
--  
-\sum\limits_{i=1}^{{\cal N}_{phase}}
-B_i^{-1}  \underline{\underline{\rho_{i}^{}}}^{n}
-\underline{S_i^{j}}^n
-}
-{\Delta t}
-\right) 
-+ \underline{\underline \phi} 
-\sum\limits_{i=1}^{{\cal N}_{phase}}
-B_i^{-1} 
-\nabla\cdot \underline{\underline\rho}_{i}\underline S_i^{}\mathbf{u}_i^{} 
-= 0, 
-\label{saturation_wells_4-----++}
-\end{equation}
 which is then manipulated to obtain the pressure equation. 
-The use of the indentity matrix in equation \ref{saturation_wells_4-----} or \ref {saturation_wells_4-----++}
+The use of the indentity matrix in equation \ref{saturation_wells_4-----} 
 is key to impossing the sum to unity constaint, equation \ref{saturation_wells_3c-} 
 at time level $n+1$.
 
