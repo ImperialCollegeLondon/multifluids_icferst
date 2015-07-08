@@ -2605,11 +2605,14 @@ contains
 ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
                      IF ( DeltaP > 0.0 ) THEN
                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
-                           MEAN_PORE_CV( IPRES, CV_NODI ) *  &
+                        !    MEAN_PORE_CV( IPRES, CV_NODI ) *  &
+                       !    MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
+                            MEAN_PORE_CV( JPRES, CV_NODI ) *  &
                            DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( IPHASE, CV_NODI )
                      ELSE
                         PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
                            MEAN_PORE_CV( IPRES, CV_NODI ) *  &
+                       !    MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
                            DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( JPHASE, CV_NODI )
                      END IF
                   END IF
@@ -2641,7 +2644,9 @@ contains
          ENDIF ! ENDOF IF ( GETCT ) THEN
 
 
-         IF (  .NOT. GETCT ) THEN
+        ! IF (  .NOT.GETCT .AND. .NOT.EXPLICIT_PIPES2 ) THEN
+         IF (  .NOT.GETCT  ) THEN
+        ! IF (  .FALSE. ) THEN
 
             DO CV_NODI = 1, CV_NONODS
                DO IPHASE = 1, NPHASE

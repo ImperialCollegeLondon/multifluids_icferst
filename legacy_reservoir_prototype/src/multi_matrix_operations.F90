@@ -993,7 +993,7 @@ END IF
 
       IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
       N_IN_PRES = NPHASE / NPRES
-      EXPLICIT_PIPES2 = .false.
+      EXPLICIT_PIPES2 = .true.
 
       NEED_COLOR = .TRUE.
       NCOLOR = 0
