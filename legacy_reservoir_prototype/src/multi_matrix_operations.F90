@@ -487,6 +487,8 @@
          REAL, DIMENSION( :, :, :, : ), allocatable :: CDP_MANY, DU_LONG_MANY
          REAL, DIMENSION( :, :, : ), allocatable :: CMC_COLOR_VEC_MANY, CMC_COLOR_VEC2_MANY, &
                                                     CMC_COLOR_VEC_MANY_PHASE, CMC_COLOR_VEC2_MANY_PHASE
+         REAL, DIMENSION( : ), allocatable :: CMC_COLOR_VEC_MANY_PHASE_SHORT
+         REAL, DIMENSION( :, : ), allocatable :: RINV_B_COLNS_ZEROED, CMC_COLOR_VEC_PRES_MANY_SHORT
          INTEGER :: CV_NOD, CV_JNOD, COUNT, COUNT2, COUNT3, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
          INTEGER :: MAX_COLOR_IN_ROW, ICHOOSE, KVEC, I, ELE, U_INOD, U_NOD, ICAN_COLOR, MX_COLOR, NOD_COLOR
          INTEGER :: NCOLOR, ierr, j, N_IN_PRES, i_indx, j_indx, IPRES, JPRES
@@ -633,19 +635,37 @@ IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
                  CT(:,IPHASE:IPHASE,:), NCOLCT, FINDCT, COLCT )
          END DO
 
-         DO CV_NOD = 1, CV_NONODS
-            DO I = 1, NCOLOR
-               CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
-            END DO
-         END DO
+         ALLOCATE( RINV_B_COLNS_ZEROED(NPHASE,NPHASE) )
+         ALLOCATE( CMC_COLOR_VEC_MANY_PHASE_SHORT(NPHASE) )
+         ALLOCATE( CMC_COLOR_VEC_PRES_MANY_SHORT(NCOLOR,NPRES) )
 
-         DO CV_NOD = 1, CV_NONODS
-            DO I = 1, NCOLOR
-               DO IPRES = 1, NPRES
-                  CMC_COLOR_VEC_MANY(I,IPRES,CV_NOD) = SUM(CMC_COLOR_VEC_MANY_PHASE(I,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,CV_NOD) )
+
+         DO JPRES=1,NPRES
+
+            DO CV_NOD = 1, CV_NONODS
+               DO I = 1, NCOLOR
+                  RINV_B_COLNS_ZEROED(:,:) = 0.0
+                  RINV_B_COLNS_ZEROED(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES ) = INV_B(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES,  CV_NOD)
+!                  CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
+                  CMC_COLOR_VEC_MANY_PHASE_SHORT(:) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
+                  DO IPRES = 1, NPRES
+                     CMC_COLOR_VEC_PRES_MANY_SHORT(I,IPRES) = SUM( CMC_COLOR_VEC_MANY_PHASE_SHORT(1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES) )
+                  END DO
                END DO
+
+               DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                  CV_JNOD = COLCMC( COUNT )
+
+                  DO IPRES = 1, NPRES
+                     call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                          val = dot_product(CMC_COLOR_VEC_PRES_MANY_SHORT( :, IPRES ), COLOR_VEC_MANY( :, CV_JNOD ) ))
+                  END DO
+               END DO
+
             END DO
-         END DO
+
+         END DO ! ENDOF DO JPRES=1,NPRES
+
 
 
          IF ( IGOT_CMC_PRECON /= 0 ) THEN
@@ -659,23 +679,41 @@ IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
                     C(:,IPHASE:IPHASE,:), NCOLC, FINDC, COLC )
             END DO
 
-            DO CV_NOD = 1, CV_NONODS
-               DO I = 1, NCOLOR
-                  CMC_COLOR_VEC2_MANY_PHASE(I,:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), CMC_COLOR_VEC2_MANY_PHASE(I,:,CV_NOD) )
-               END DO
-            END DO
 
-            DO CV_NOD = 1, CV_NONODS
-               DO I = 1, NCOLOR
-                  DO IPRES = 1, NPRES
-                     CMC_COLOR_VEC2_MANY(I,IPRES,CV_NOD) = SUM(CMC_COLOR_VEC2_MANY_PHASE(I,1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES,CV_NOD) )
+            DO JPRES=1,NPRES
+
+               DO CV_NOD = 1, CV_NONODS
+                  DO I = 1, NCOLOR
+                     RINV_B_COLNS_ZEROED(:,:) = 0.0
+                     RINV_B_COLNS_ZEROED(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES ) = INV_B(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES,  CV_NOD)
+! The following uses CMC_COLOR_VEC2_MANY_PHASE: 
+                     CMC_COLOR_VEC_MANY_PHASE_SHORT(:) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC2_MANY_PHASE(I,:,CV_NOD) )
+                     DO IPRES = 1, NPRES
+                       CMC_COLOR_VEC_PRES_MANY_SHORT(I,IPRES) = SUM( CMC_COLOR_VEC_MANY_PHASE_SHORT(1+(IPRES-1)*N_IN_PRES:IPRES*N_IN_PRES) )
+                     END DO
                   END DO
+
+                  DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                     CV_JNOD = COLCMC( COUNT )
+
+                     DO IPRES = 1, NPRES
+                       CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
+                          sum( CMC_COLOR_VEC_PRES_MANY_SHORT( :, IPRES )* COLOR_VEC_MANY( :, CV_JNOD ) )
+
+                     END DO
+                  END DO
+
                END DO
-            END DO
+
+            END DO ! ENDOF DO JPRES=1,NPRES
+
+            CMC_COLOR_VEC2_MANY=0.0
 
          END IF
 
-
+! Re-set CMC_COLOR_VEC_MANY & CMC_COLOR_VEC_MANY2 as we have already added the 
+! contributions up to this point into the matrix.
+         CMC_COLOR_VEC_MANY=0.0
 ELSE
 
 
