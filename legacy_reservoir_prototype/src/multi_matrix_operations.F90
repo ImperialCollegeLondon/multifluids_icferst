@@ -643,9 +643,9 @@ IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
          DO JPRES=1,NPRES
 
             DO CV_NOD = 1, CV_NONODS
+               RINV_B_COLNS_ZEROED(:,:) = 0.0
+               RINV_B_COLNS_ZEROED(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES ) = INV_B(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES,  CV_NOD)
                DO I = 1, NCOLOR
-                  RINV_B_COLNS_ZEROED(:,:) = 0.0
-                  RINV_B_COLNS_ZEROED(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES ) = INV_B(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES,  CV_NOD)
 !                  CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
                   CMC_COLOR_VEC_MANY_PHASE_SHORT(:) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
                   DO IPRES = 1, NPRES
@@ -683,9 +683,9 @@ IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
             DO JPRES=1,NPRES
 
                DO CV_NOD = 1, CV_NONODS
+                  RINV_B_COLNS_ZEROED(:,:) = 0.0
+                  RINV_B_COLNS_ZEROED(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES ) = INV_B(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES,  CV_NOD)
                   DO I = 1, NCOLOR
-                     RINV_B_COLNS_ZEROED(:,:) = 0.0
-                     RINV_B_COLNS_ZEROED(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES ) = INV_B(:,  1+(JPRES-1)*N_IN_PRES:JPRES*N_IN_PRES,  CV_NOD)
 ! The following uses CMC_COLOR_VEC2_MANY_PHASE: 
                      CMC_COLOR_VEC_MANY_PHASE_SHORT(:) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC2_MANY_PHASE(I,:,CV_NOD) )
                      DO IPRES = 1, NPRES
