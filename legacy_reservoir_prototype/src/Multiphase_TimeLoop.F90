@@ -1566,7 +1566,7 @@
 
 !!$ Simple adaptive time stepping algorithm
          if ( have_option( '/timestepping/adaptive_timestep' ) ) then
-            c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 66.e6
+            c = -66.6 ; minc = 0. ; maxc = 66.e6 ; ic = 1.1!66.e6
             call get_option( '/timestepping/adaptive_timestep/requested_cfl', rc )
             call get_option( '/timestepping/adaptive_timestep/minimum_timestep', minc, stat )
             call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat )
