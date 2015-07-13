@@ -1590,7 +1590,6 @@
         KR = Endpoint_relperm(iphase)*( max( sat - Immobile_fraction(iphase), sat*eps+eps) / aux ) ** Corey_exponent(iphase)
         !Make sure that the relperm is between bounds
         KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
-!        KR = min(KR,Endpoint_relperm(iphase))
         ABSP = INV_PERM * (visc_phase(iphase) * max(1d-5, sat)) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
         !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
 

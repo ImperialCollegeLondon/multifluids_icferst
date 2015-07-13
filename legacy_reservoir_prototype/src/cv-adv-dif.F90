@@ -11607,7 +11607,7 @@ deallocate(NX_ALL)
       ELSE WHERE
         INCOME=0.0
       END WHERE
-      !Calculate velocity on the interface, either using upwinding of high order methods
+      !Calculate velocity on the interface, either using upwinding or high order methods
       if (IN_ELE_UPWIND /= 1) then !high order
           !Calculate saturation at GI, necessary for the limiter
           FEMTGI_IPHA = matmul(LOC_FEMT, SCVFEN(:,GI) )
@@ -11668,12 +11668,13 @@ deallocate(NX_ALL)
             matmul(LOC2_NU( :, IPHASE, : ), SUFEN( :, GI )))
       end do
 
+
       !Get the projected velocity
       NDOTQ  = MATMUL( CVNORMX_ALL(:, GI), UDGI_ALL )
       NDOTQ2 = MATMUL( CVNORMX_ALL(:, GI), UDGI2_ALL )
-
       select case (CV_DG_VEL_INT_OPT)
           case (1)!Upwinding
+
              DT_I=1.0
              DT_J=1.0
 
@@ -11685,43 +11686,41 @@ deallocate(NX_ALL)
                 GRAD_ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(GI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
                 ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
                 GRAD_ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(GJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                !Axuliar variable to reduce computations, LIMT3 was unused for this part of the code
+                LIMT3 = ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J
             END DO
 
             !Calculate the contribution of each side, considering sigma and the volume of the CVs
-            WHERE ( ( NDOTQ*ABS_CV_NODI_IPHA + NDOTQ2*ABS_CV_NODJ_IPHA ) > 0.0 )
+            WHERE ( ( NDOTQ * ABS_CV_NODI_IPHA + NDOTQ2 * ABS_CV_NODJ_IPHA ) > 0.0 )
                !We redefine sigma so that it detects oscillations using first order taylor series
                abs_tilde =  ABS_CV_NODI_IPHA  + 0.5*( LOC_T_J - LOC_T_I ) * GRAD_ABS_CV_NODI_IPHA
                !We limit the value
                abs_tilde = min(1000.*max(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), &
                   max(0.001*min(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), abs_tilde ))
-               wrelax= min( 1.0, abs_tilde/ABS_CV_NODI_IPHA )!We re-use the variable abs_tilde
+               wrelax= min( 1.0, abs_tilde/ABS_CV_NODI_IPHA )
 
                !Calculate importance of each side
-               DT_I = (1.-wrelax) + wrelax*ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                   /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-               DT_J = wrelax*ABS_CV_NODI_IPHA*MASS_CV_I  &
-                   /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+               DT_I = (1.-wrelax) + wrelax*ABS_CV_NODJ_IPHA*MASS_CV_J /LIMT3
+               DT_J = wrelax*ABS_CV_NODI_IPHA*MASS_CV_I /LIMT3
             ELSE WHERE
                !We redefine sigma so that it detects oscillations using first order taylor series
                abs_tilde =  ABS_CV_NODJ_IPHA  + 0.5*( LOC_T_I - LOC_T_J ) * GRAD_ABS_CV_NODJ_IPHA
                !We limit the value
                abs_tilde = min(1000.*max(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), &
                   max(0.001*min(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), abs_tilde ))
-               wrelax= min( 1.0, abs_tilde/ABS_CV_NODJ_IPHA  )!We re-use the variable abs_tilde
+               wrelax= min( 1.0, abs_tilde/ABS_CV_NODJ_IPHA  )
 
                !Calculate importance of each side
-               DT_I = wrelax*ABS_CV_NODJ_IPHA*MASS_CV_J  &
-                   /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
-               DT_J = (1.-wrelax) + wrelax*ABS_CV_NODI_IPHA*MASS_CV_I  &
-                   /(ABS_CV_NODI_IPHA*MASS_CV_I+ABS_CV_NODJ_IPHA*MASS_CV_J)
+               DT_I = wrelax*ABS_CV_NODJ_IPHA*MASS_CV_J /LIMT3
+               DT_J = (1.-wrelax) + wrelax*ABS_CV_NODI_IPHA*MASS_CV_I /LIMT3
             END WHERE
-
       end select
 
       !Calculation of the velocity at the GI point
       DO IPHASE = 1, NPHASE
          UDGI_ALL(:, IPHASE) = DT_I(IPHASE) * UDGI_ALL(:, IPHASE) + DT_J(IPHASE) * UDGI2_ALL(:, IPHASE)
       END DO
+
       !Calculation of the coefficients at the GI point
       if (not_OLD_VEL) then
           forall (iphase = 1:nphase, idim = 1:ndim)

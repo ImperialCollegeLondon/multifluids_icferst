@@ -1217,12 +1217,14 @@ You should specify this ONLY for the wetting phase</a:documentation>
               </optional>
               <optional>
                 <element name="Pe_stab">
-                  <a:documentation>Introduce over-relaxation based on how the method is converging in the saturation equation. 
+                  <a:documentation>Introduce over-relaxation in the saturation equation that diminishes as the FPI converges. 
 The input value is the entry pressure.
 
-Recommended value: Maximum Pressure of the system * 10-2
+Recommended fixed value: Maximum Pressure of the system * 10-2
 
-Tip: For automatic set up introduce a negative value.
+Negative values create Pe_stab as: max(Pressure) * 1e-3
+
+Recommended automatic value.
 
 You should specify this ONLY for the wetting phase.
 

@@ -1571,7 +1571,6 @@
             call get_option( '/timestepping/adaptive_timestep/minimum_timestep', minc, stat )
             call get_option( '/timestepping/adaptive_timestep/maximum_timestep', maxc, stat )
             call get_option( '/timestepping/adaptive_timestep/increase_tolerance', ic, stat )
-
             !For porous media we need to use the Courant number obtained in cv_assemb
             if (is_porous_media) then
                 c = max ( c, Courant_number )
