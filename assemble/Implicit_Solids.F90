@@ -1942,6 +1942,8 @@ contains
     else
       l_force_bounded = .false.
     end if
+
+    l_force_bounded=.true.
     
     ! Linear positions -- definitely linear positions.
     assert(old_position%mesh%shape%degree == 1)

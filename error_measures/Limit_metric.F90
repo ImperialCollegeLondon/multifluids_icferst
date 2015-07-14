@@ -67,7 +67,7 @@ contains
     end if
     call get_option(base_path // "/max_node_increase", increase_tolerance, stat = stat)
     if(stat == SPUD_NO_ERROR) then
-      max_nodes(no_of_regions) = min(max_nodes(no_of_regions+1), int(nodes * increase_tolerance))
+      max_nodes(no_of_regions+1) = min(max_nodes(no_of_regions+1), int(nodes * increase_tolerance))
     end if
 
     if (no_of_regions>0) then
