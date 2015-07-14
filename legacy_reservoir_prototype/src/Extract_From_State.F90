@@ -2637,7 +2637,9 @@
         do index=1,size(mstate%tensor_fields)
            tfield=>extract_tensor_field(mstate,index)
            si=len(trim(tfield%name))
-           if(tfield%name(si-7:si)=="Pressure")then
+!!-PY changed it
+           !if(tfield%name(si-7:si)=="Pressure")then
+           if(tfield%name(si-3:si)=="Pressure")then
               ! do nothing...
            else if(tfield%name(:6)=="Packed")then
               do iphase=1,nphase

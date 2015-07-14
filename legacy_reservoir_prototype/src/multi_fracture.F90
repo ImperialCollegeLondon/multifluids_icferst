@@ -624,9 +624,10 @@ return
     type( scalar_field ) :: field_fl_p, field_fl_u, field_fl_v, field_fl_mu, &
          &                  field_ext_p, field_ext_u, field_ext_v, field_ext_mu, &
          &                  u_dg, v_dg
-    type( scalar_field ), pointer :: pressure
+    !!type( scalar_field ), pointer :: pressure
+    
     type( vector_field ), pointer :: fl_positions
-    type( tensor_field ), pointer :: velocity, viscosity
+    type( tensor_field ), pointer :: velocity, viscosity , pressure
     type( state_type ) :: alg_ext, alg_fl
     real, dimension( :, :, : ), allocatable :: u_tmp
     integer, dimension( : ), pointer :: fl_ele_nodes, cv_ndgln
@@ -639,7 +640,8 @@ return
 
     cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
 
-    pressure => extract_scalar_field( packed_state, "FEPressure" )
+    pressure => extract_tensor_field( packed_state, "PackedFEPressure" )
+     
     cv_nloc = ele_loc( pressure, 1 )
 
     fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
@@ -685,9 +687,9 @@ return
        ! linearise pressure for p2
        do ele = 1, totele
           fl_ele_nodes => ele_nodes( fl_mesh, ele )
-          field_fl_p % val( fl_ele_nodes( 1 ) ) = pressure % val( cv_ndgln( ( ele - 1 ) * cv_nloc + 1 ) )
-          field_fl_p % val( fl_ele_nodes( 2 ) ) = pressure % val( cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
-          field_fl_p % val( fl_ele_nodes( 3 ) ) = pressure % val( cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
+          field_fl_p % val( fl_ele_nodes( 1 ) ) = pressure % val(1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 1 ) )
+          field_fl_p % val( fl_ele_nodes( 2 ) ) = pressure % val(1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 3 ) )
+          field_fl_p % val( fl_ele_nodes( 3 ) ) = pressure % val(1, 1, cv_ndgln( ( ele - 1 ) * cv_nloc + 6 ) )
 
           if ( constant_mu ) then
              field_fl_mu % val(fl_ele_nodes( 1 ) ) = viscosity % val( 1, 1, 1 )
@@ -701,7 +703,7 @@ return
        end do
     else
        ! just copy memory for p1
-       field_fl_p % val = pressure % val
+       field_fl_p % val = pressure % val (1, 1, :)
        field_fl_mu % val = viscosity % val( 1, 1, : )
     end if
 
