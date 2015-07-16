@@ -1522,7 +1522,7 @@ contains
                !the difference also sum 0 despite being different permeabilities
                if (anisotropic_and_frontier) anisotropic_and_frontier = sum(perm%val(:,:,ele) - perm%val(:,:,ele2)) < &
                     10.**(exponent(perm%val(1,1,ele))-9)
-!print *, anisotropic_and_frontier
+
                IF ( between_elements ) THEN
                      CV_NODJ = CV_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_JLOC )
                      X_NODJ = X_NDGLN( ( ELE2 - 1 ) * CV_NLOC + CV_JLOC )
