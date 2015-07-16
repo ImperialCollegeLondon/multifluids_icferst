@@ -519,7 +519,13 @@
 
 !!$ Options below are hardcoded and need to be added into the schema
       t_dg_vel_int_opt = 1 ; u_dg_vel_int_opt = 4 ; v_dg_vel_int_opt = 4 ; w_dg_vel_int_opt = 0
-      if( .not. is_porous_media) v_dg_vel_int_opt = 1
+      if(is_porous_media) then
+        if ( have_option( &
+        '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/DG_weighting') &
+        ) v_dg_vel_int_opt = 10
+      else
+        v_dg_vel_int_opt = 1
+      end if
       comp_diffusion_opt = 0 ; ncomp_diff_coef = 0
       volfra_use_theta_flux = .false. ; volfra_get_theta_flux = .true.
       comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
@@ -2637,7 +2643,9 @@
         do index=1,size(mstate%tensor_fields)
            tfield=>extract_tensor_field(mstate,index)
            si=len(trim(tfield%name))
+!!-PY changed it
            if(tfield%name(si-7:si)=="Pressure")then
+!           if(tfield%name(si-3:si)=="Pressure")then
               ! do nothing...
            else if(tfield%name(:6)=="Packed")then
               do iphase=1,nphase
