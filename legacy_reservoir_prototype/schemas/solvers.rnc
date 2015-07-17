@@ -400,7 +400,18 @@ pcgamg_options =
         ## near null-space option is not applicable for scalar solves.
         ## Requires a PETSC version >= 3.3
         element preconditioner {
-            attribute name { "gamg" }
+            attribute name { "gamg" },
+         (
+            ## This parameter has a strong effect on the efficiency of the algorithm,
+            ## it controls the elative threshold to use for dropping edges in aggregation graph.
+            ## 
+            ## Usage: Try different values from 0 to 0.5
+            ## 
+            ## Negative values are used as positive and also stronger smoothers are used
+            ##
+            ## Default : 0.01
+            element GAMG_threshold {real}?
+         )
         }
     )
 # ####################################################################
