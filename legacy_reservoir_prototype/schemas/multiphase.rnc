@@ -4257,6 +4257,27 @@ element equation_of_state{
                               real
                            }?
                         }|
+
+                  
+                        ## Jones-Wilkins-Lee equation of state for explosives (JWL-equation)
+                        ##
+                        ## Used with compressible simulations
+                        ## 
+                        ## P=A*(1-w/(R1*V))*exp(-R1*V)+B*(1-w/(R2*V))*exp(-R2/V)+w*E0/V;
+                        ##
+                        ## The ratio V =roe/ro is defined by using roe = density of the explosive (solid part) and ro = density of the detonation products.
+
+                        element JWL_equation {
+                           element density_of_explosive_roe { real },
+                           element A { real },
+                           element B { real },
+                           element R1 { real },
+                           element R2 { real },
+                           element E0 { real },
+                           element w { real }
+                        }|
+
+
                         ## Exponential EOS (SPE 102542)
                         ##
                         ## DEN = DEN_REF * EXP( COMPRES_FACTOR * ( P_oil * P_oil_ref ))
