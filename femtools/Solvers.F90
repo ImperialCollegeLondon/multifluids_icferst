@@ -1887,28 +1887,29 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
       if (pctype==PCGAMG) then
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
-        call get_option(trim(option_path)//'/GAMG_threshold', GAMGThreshold, default =0.01)
+        call get_option(trim(option_path)//'/GAMG_threshold', GAMGThreshold, default =-0.1)
 
         call PCGAMGSetThreshold(pc, abs(GAMGThreshold), ierr)
 
         !Extra option for multiphase flow
         if (GAMGThreshold < 0) then
             !Improves the efficiency of the solver
-            call PCGAMGSetUseASMAggs(pc, .true., ierr)!Use aggregation agragates for GASM smoother. By default is false
+!            call PCGAMGSetUseASMAggs(pc, .true., ierr)!Use aggregation agragates for GASM smoother. By default is false
             !Add options via "commands"
             gamg_options = '-multigrid'
             !Set type of cycle v (faster) or w (more robust)
             gamg_options = trim(gamg_options) // " " // "-pc_mg_cycles v"
             !Set number of smoothup and smooth down
-            gamg_options = trim(gamg_options) // " " // "-pc_mg_smoothdown 2 -pc_mg_smoothup 2"
+            gamg_options = trim(gamg_options) // " " // "-pc_mg_smoothdown 1 -pc_mg_smoothup 2"
             !Type of multigrid: additive,multiplicative,full,kaskade
             gamg_options = trim(gamg_options) // " " // "-pc_mg_type multiplicative"
             !Set to use GMRES as smoother, it seems to behave worse than the ASMAggs smoother
-            gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres"
+!            gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres -mg_levels_pc_type none"
+            !Set SOR or eisenstat as smoother, the omega option does not seem to work
+            gamg_options = trim(gamg_options) // " " // "-mg_levels_pc_type eisenstat"!<= best option, also sor can be used
             !Insert into petsc
             call PetscOptionsInsertString(trim(gamg_options), ierr)
         end if
-
 
       end if
 #endif
