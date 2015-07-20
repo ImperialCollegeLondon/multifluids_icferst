@@ -1554,7 +1554,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
       internal_smoothing_option=internal_smoothing_option, &
       positions=positions, &
       rotation_matrix=rotation_matrix)
-      
+
   end subroutine SetupKSP
     
   recursive subroutine setup_ksp_from_options(ksp, mat, pmat, solver_option_path, &
@@ -1903,14 +1903,15 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
             gamg_options = trim(gamg_options) // " " // "-pc_mg_smoothdown 1 -pc_mg_smoothup 2"
             !Type of multigrid: additive,multiplicative,full,kaskade
             gamg_options = trim(gamg_options) // " " // "-pc_mg_type multiplicative"
-            !Set to use GMRES as smoother, it seems to behave worse than the ASMAggs smoother
-!            gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres -mg_levels_pc_type none"
-            !Set SOR or eisenstat as smoother, the omega option does not seem to work
-            gamg_options = trim(gamg_options) // " " // "-mg_levels_pc_type eisenstat"!<= best option, also sor can be used
+            !Set to use GMRES as smoother, needs FGMRES outside
+!            gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres -mg_levels_pc_type eisenstat -mg_levels_pc_eisenstat_omega 0.8"
+            !Set SOR or eisenstat as smoother
+            gamg_options = trim(gamg_options) // " " // "-mg_levels_pc_type eisenstat -mg_levels_pc_eisenstat_omega 0.8"!<= best option, also sor can be used
+            !Set solver for the coarsest grid
+!            gamg_options = trim(gamg_options) // " " // "-mg_coarse_ksp_type preonly -mg_coarse_pc_type lu"
             !Insert into petsc
             call PetscOptionsInsertString(trim(gamg_options), ierr)
         end if
-
       end if
 #endif
       
