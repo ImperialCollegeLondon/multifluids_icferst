@@ -246,7 +246,6 @@
 
 
       !Working pointers
-
       type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
       type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure
       type(scalar_field), pointer :: f1, f2
