@@ -1315,6 +1315,11 @@ Tip: if Diffusive_cap_only is activated Pe is ignored.</a:documentation>
               </attribute>
             </element>
           </optional>
+          <optional>
+            <element name="oneway_coupling_only">
+              <empty/>
+            </element>
+          </optional>
         </element>
       </optional>
       <optional>
@@ -4302,7 +4307,7 @@ less accurate but faster and might give smoother result.                  </a:do
           <value>1</value>
         </attribute>
         <attribute name="name">
-          <value>perm_frac</value>
+          <value>Darcy_Velocity</value>
         </attribute>
         <choice>
           <element name="diagnostic">
