@@ -1898,15 +1898,15 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
             !Add options via "commands"
             gamg_options = '-multigrid'
             !Set type of cycle v (faster) or w (more robust)
-            gamg_options = trim(gamg_options) // " " // "-pc_mg_cycles v"
+            gamg_options = trim(gamg_options) // " " // "-pc_mg_cycle_type v"
             !Set number of smoothup and smooth down
             gamg_options = trim(gamg_options) // " " // "-pc_mg_smoothdown 1 -pc_mg_smoothup 2"
             !Type of multigrid: additive,multiplicative,full,kaskade
             gamg_options = trim(gamg_options) // " " // "-pc_mg_type multiplicative"
             !Set to use GMRES as smoother, needs FGMRES outside
-!            gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres -mg_levels_pc_type eisenstat -mg_levels_pc_eisenstat_omega 0.8"
+!            gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres -mg_levels_pc_type sor -mg_levels_pc_sor_omega 1.0"
             !Set SOR or eisenstat as smoother
-            gamg_options = trim(gamg_options) // " " // "-mg_levels_pc_type eisenstat -mg_levels_pc_eisenstat_omega 0.8"!<= best option, also sor can be used
+            gamg_options = trim(gamg_options) // " " // "-mg_levels_pc_type sor -mg_levels_pc_sor_symmetric -mg_levels_pc_sor_omega 1.0"!<= best option, also sor can be used
             !Set solver for the coarsest grid
 !            gamg_options = trim(gamg_options) // " " // "-mg_coarse_ksp_type preonly -mg_coarse_pc_type lu"
             !Insert into petsc
