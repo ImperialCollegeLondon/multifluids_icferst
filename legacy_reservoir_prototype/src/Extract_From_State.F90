@@ -2132,8 +2132,7 @@
          tfield => extract_tensor_field( state(1), "Viscosity" )
          call insert( packed_state, tfield, "Viscosity" )
 
-
-      elseif ( have_option( '/femdem_fracture' ) ) then
+	elseif ( have_option( '/femdem_fracture' ) ) then
          sfield => extract_scalar_field( state(1), "SolidConcentration" )
          call insert( packed_state, sfield, "SolidConcentration" )
          call add_new_memory(packed_state,sfield,"OldSolidConcentration")
@@ -2143,6 +2142,15 @@
 
          sfield => extract_scalar_field( state(1), "Dummy" )
          call insert( packed_state, sfield, "Dummy" )
+
+         vfield => extract_vector_field( state(1), "Darcy_Velocity" )
+         call insert( packed_state,vfield, "Darcy_Velocity" )
+
+         vfield => extract_vector_field( state(1), "delta_U" )
+         call insert( packed_state, vfield, "delta_U" )
+
+         vfield => extract_vector_field( state(1), "solid_U" )
+         call insert( packed_state, vfield, "solid_U" )
 
       end if
 #endif
