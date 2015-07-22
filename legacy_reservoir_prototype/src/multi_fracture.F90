@@ -162,7 +162,7 @@ contains
     return
   end subroutine blasting
 
-    !------------------ao---------------hydro-fracture/fracturing subroutine --------------------------------------------------ao
+    !------------------ao---------------hydro-fracture/fracturing subroutine --------------------------------------------------
     subroutine fracking( packed_state, state, nphase )
         implicit none
 
