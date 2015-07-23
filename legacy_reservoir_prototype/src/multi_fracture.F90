@@ -164,7 +164,6 @@ contains
 
     !------------------ao---------------hydro-fracture/fracturing subroutine --------------------------------------------------
     subroutine fracking( packed_state, state, nphase )
-
         implicit none
 
         integer, intent( in ) :: nphase
