@@ -1,0 +1,24 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_CVgalerkin</name>
+  <owner userid="alex.adam"/>
+  <tags>porous mpml </tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>cd ./BL_CVgalerkin/
+        python ./Check_BLCVgalerkin.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="BL_CVgalerkin" language="python">BL_CVgalerkin = False
+Log=file('BL_CVgalerkin/log','r')
+while True:
+    cadena=Log.readline()
+    if len(cadena) ==0:
+        break # EOF
+
+if 'OK' in cadena: BL_CVgalerkin = True
+
+Log.close</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

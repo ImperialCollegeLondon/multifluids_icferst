@@ -1778,6 +1778,15 @@ grandy_interpolation =
         empty
       }
    )
+
+CVgalerkin_interpolation =
+   (
+      ## Galerkin interpolation for control volume fields. Conservative
+      ## and higher order. Not yet tested in parallel.
+      element CVgalerkin_interpolation {
+        empty
+      }
+   )
    
 interpolation_algorithm_disabled =
    (
@@ -1791,6 +1800,7 @@ interpolation_algorithm_scalar =
     (
       consistent_interpolation|
       pseudo_consistent_interpolation|
+      CVgalerkin_interpolation|
       ## Galerkin projection. By default, conservative, non-dissipative and
       ## non-bounded. The most accurate choice, in the sense of minimising
       ## the L2 norm of the residual
