@@ -20,8 +20,8 @@ print 'Running the model'
 
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
-#os.system('rm -f ' + path+ '/*.vtu')
-#os.system(binpath + ' ' + path + '/BL_fast.mpml')
+os.system('rm -f ' + path+ '/*.vtu')
+os.system(binpath + ' ' + path + '/BLCVgalerkin.mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 
 #A STRUCTURED MESH OF 30 ELEMENTS IN THE X-DIRECTION
 #IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
@@ -259,4 +259,4 @@ if (showPlot):
         y2.append(float(Analytical_Y[i]))
     ax.add_line(plt.Line2D(x2, y2, color='blue', linewidth=2))
 
-    plt.show()
+    #plt.show()

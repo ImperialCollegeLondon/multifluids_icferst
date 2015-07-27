@@ -438,7 +438,7 @@
           ! BOUNDEDNESS : Our solutions are currently not bounded to be in [0,1]. The following subroutine call should fix this
           ! This section needs to be generalised to work for multi-fields (I think the boundedness subroutine may need generalisation)
 
-          print *, nfields
+          !print *, nfields
 
           if (have_option('/material_phase::phase1/scalar_field::Temperature/prognostic/CVgalerkin_interpolation')) then
 

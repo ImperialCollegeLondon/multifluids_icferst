@@ -20,14 +20,16 @@ print 'Running the model'
 
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
-#os.system('rm -f ' + path+ '/*.vtu')
-#os.system(binpath + ' ' + path + '/BL_fast.mpml')
+os.system('rm -f ' + path+ '/*.vtu')
+os.system(binpath + ' ' + path + '/BLCVgalerkin.mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 
 #A STRUCTURED MESH OF 30 ELEMENTS IN THE X-DIRECTION
 #IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
 
 #TOLERANCE OF THE CHECKING
-#The present values are just above the values I got when writing the script
+#The present values are just above the values I got when writing the script.
+# The purpose of this test case in any event is not to serve as a BL precision test
+# but to make sure that CVgalerkin_interpolation is not crashing.
 Tolerance_L1_NORM = 0.03
 Tolerance_L2_NORM = 0.003
 
