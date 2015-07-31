@@ -2123,6 +2123,13 @@ See doi:10.1006/jcph.1998.6125 .</a:documentation>
       <empty/>
     </element>
   </define>
+  <define name="CVgalerkin_interpolation">
+    <element name="CVgalerkin_interpolation">
+      <a:documentation>Galerkin interpolation for control volume fields. Conservative
+and higher order. Not yet tested in parallel.</a:documentation>
+      <empty/>
+    </element>
+  </define>
   <define name="interpolation_algorithm_disabled">
     <element name="no_interpolation">
       <a:documentation>Disable interpolation</a:documentation>
@@ -2133,6 +2140,7 @@ See doi:10.1006/jcph.1998.6125 .</a:documentation>
     <choice>
       <ref name="consistent_interpolation"/>
       <ref name="pseudo_consistent_interpolation"/>
+      <ref name="CVgalerkin_interpolation"/>
       <element name="galerkin_projection">
         <a:documentation>Galerkin projection. By default, conservative, non-dissipative and
 non-bounded. The most accurate choice, in the sense of minimising

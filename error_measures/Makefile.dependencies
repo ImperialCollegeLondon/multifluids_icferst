@@ -184,8 +184,9 @@ Interpolation_metric.o ../include/interpolation_metric.mod: \
 	@true
 
 Limit_metric.o ../include/limit_metric_module.mod: Limit_metric.F90 \
-   ../include/elements.mod ../include/fdebug.h ../include/fields.mod \
-   ../include/fldebug.mod ../include/meshdiagnostics.mod ../include/spud.mod \
+   ../include/data_structures.mod ../include/elements.mod ../include/fdebug.h \
+   ../include/fields.mod ../include/fldebug.mod ../include/meshdiagnostics.mod \
+   ../include/parallel_fields.mod ../include/spud.mod \
    ../include/vector_tools.mod
 
 ../include/mba_adapt_module.mod: Mba_adapt.o
