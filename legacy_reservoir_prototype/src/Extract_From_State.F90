@@ -3562,7 +3562,7 @@
                 !For adaptive time stepping we need to put this again
                 if (ExitNonLinearLoop .and. show_FPI_conv) then
                     !Tell the user the number of FPI and final convergence to help improving the parameters
-                    print *, "FPI convergence:", ts_ref_val, "Total iterations:", its
+                    ewrite(0,*) "FPI convergence:", ts_ref_val, "Total iterations:", its
                 end if
 
             end if

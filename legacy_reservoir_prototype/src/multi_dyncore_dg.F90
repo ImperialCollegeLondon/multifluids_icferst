@@ -689,6 +689,8 @@ contains
                     aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
                     if (aux > res) res = aux
                 end do
+                !We use the highest residual across the domain
+                if (IsParallel()) call allmax(res)
                 if (its==1) first_res = res!Variable to check total convergence of the SFPI method
             end if
           end if
@@ -718,6 +720,8 @@ contains
                       satisfactory_convergence = .true.
                       exit Loop_NonLinearFlux
                   end if
+                  !This have to be consistent between processors
+                  if (IsParallel())  call alland(satisfactory_convergence)
                   !If looping again, recalculate
                   if (.not. satisfactory_convergence) then
                       !Store old saturation to fully undo an iteration if it is very divergent

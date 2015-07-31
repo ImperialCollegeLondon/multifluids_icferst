@@ -1906,7 +1906,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
             !Set to use GMRES as smoother, needs FGMRES outside
 !            gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres -mg_levels_pc_type sor -mg_levels_pc_sor_omega 1.0"
             !Set SOR or eisenstat as smoother
-            gamg_options = trim(gamg_options) // " " // "-mg_levels_pc_type sor -mg_levels_pc_sor_symmetric -mg_levels_pc_sor_omega 1.0"!<= best option, also sor can be used
+            gamg_options = trim(gamg_options) // " " // "-mg_levels_pc_type eisenstat -mg_levels_pc_eisenstat_omega 1.0"
             !Set solver for the coarsest grid
 !            gamg_options = trim(gamg_options) // " " // "-mg_coarse_ksp_type preonly -mg_coarse_pc_type lu"
             !Insert into petsc
