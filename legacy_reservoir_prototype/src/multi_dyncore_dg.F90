@@ -1209,7 +1209,7 @@ contains
             ! form pres eqn.
             if (is_porous_media) then
                 call PHA_BLOCK_INV_plus_storage( PIVIT_MAT, TOTELE,&
-                    U_NLOC * NPHASE * NDIM, state, 'stored_PIVIT_MAT', StorageIndexes(34))
+                    U_NLOC * NPHASE * NDIM, packed_state, 'stored_PIVIT_MAT', StorageIndexes(34))
             else
                 CALL PHA_BLOCK_INV( PIVIT_MAT, TOTELE, U_NLOC * NPHASE * NDIM )
             end if
@@ -1232,7 +1232,7 @@ contains
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & 
             got_free_surf,  MASS_SUF, &
-            C, CT, state, StorageIndexes(11), halo, symmetric_P )
+            C, CT, packed_state, StorageIndexes(11), halo, symmetric_P )
         END IF
 
         NO_MATRIX_STORE = ( NCOLDGM_PHA <= 1 )
@@ -2573,29 +2573,28 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         got_c_matrix  = StorageIndexes(12)/=0
         if (.not.got_c_matrix) then
             !Prepare stuff to store C in state
-            if (has_scalar_field(state(1), "C_MAT")) then
+            if (has_scalar_field(packed_state, "C_MAT")) then
                 !If we are recalculating due to a mesh modification then
                 !we return to the original situation
-                call remove_scalar_field(state(1), "C_MAT")
+                call remove_scalar_field(packed_state, "C_MAT")
             end if
             !Get mesh file just to be able to allocate the fields we want to store
-            fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+            fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
             Auxmesh = fl_mesh
             !The number of nodes I want does not coincide
             Auxmesh%nodes = NDIM * NPHASE * NCOLC
             call allocate (Targ_C_Mat, Auxmesh,'CMatrixAsScalar')
 
             !Now we insert them in state and store the index
-            call insert(state(1), Targ_C_Mat, "C_MAT")
-            StorageIndexes(12) = size(state(1)%scalar_fields)
+            call insert(packed_state, Targ_C_Mat, "C_MAT")
+            StorageIndexes(12) = size(packed_state%scalar_fields)
             call deallocate (Targ_C_Mat)
 !            call deallocate(Auxmesh)
             !Initilize it to zero
-            state(1)%scalar_fields(StorageIndexes(12))%ptr%val = 0.
+            packed_state%scalar_fields(StorageIndexes(12))%ptr%val = 0.
         end if
-
         !Get from state
-        call reshape_vector2pointer(state(1)%scalar_fields(&
+        call reshape_vector2pointer(packed_state%scalar_fields(&
         StorageIndexes(12))%ptr%val, C, NDIM, NPHASE, NCOLC)
 
         ewrite(3,*) 'In ASSEMB_FORCE_CTY'
@@ -3099,7 +3098,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                              ! Define the gauss points that lie on the surface of the CV...
            FINDGPTS, COLGPTS, NCOLGPTS, &
            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
-           state, 'Vel_mesh', StorageIndexes(13))
+           packed_state, 'Vel_mesh', StorageIndexes(13))
 
         if ( quad_over_whole_ele ) then
            cvn => cvfen
@@ -3170,7 +3169,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
             SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBCVFEWEIGH, &
             SBCVFEN, SBCVFENSLX, SBCVFENSLY ,&
-            state ,"C_1", StorageIndexes(14))!<== We use the same index that we use in the DETNLXR_PLUS_U_WITH_STORAGE
+            packed_state ,"C_1", StorageIndexes(14))!<== We use the same index that we use in the DETNLXR_PLUS_U_WITH_STORAGE
             !below since inside this subroutine the only thing we store is DETNLXR_PLUS_U_WITH_STORAGE
         ENDIF
 
@@ -3239,7 +3238,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             CVFEN, CVFENLX_ALL(1,:,:), CVFENLX_ALL(2,:,:), CVFENLX_ALL(3,:,:), CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
             CVFENX_ALL, &
             U_NLOC, UFENLX_ALL(1,:,:), UFENLX_ALL(2,:,:), UFENLX_ALL(3,:,:), UFENX_ALL , &
-            state ,"C_1", StorageIndexes(14))
+            packed_state ,"C_1", StorageIndexes(14))
 
             DO GI = 1, CV_NGI_SHORT
                CVFENX_ALL_REVERSED(:,GI,:)=CVFENX_ALL(:,:,GI)
@@ -6013,7 +6012,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !Nothing to do  - THIS SEEMS ODD? (Chris comment)
 #else
 !Make sure we store the C matrix into state
-if (.not.got_c_matrix) state(1)%scalar_fields(&
+if (.not.got_c_matrix) packed_state%scalar_fields(&
         StorageIndexes(12))%ptr%val(1:NDIM*NPHASE*NCOLC) =&
 reshape(C,[NDIM*NPHASE*NCOLC])
 !Variables from cv_fem_shape_funs_plus_storage
@@ -8011,7 +8010,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         RZERO, &
         1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
         SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-        state, "wrap1", StorageIndexes(15) )
+        packed_state, "wrap1", StorageIndexes(15) )
 
 
         CALL DG_DERIVS( SHARP_FEMT, FEMTOLD, &
@@ -8026,7 +8025,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         RZERO, &
         1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
         SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-        state, "Surf_ten_wrap2", StorageIndexes(16))
+        packed_state, "Surf_ten_wrap2", StorageIndexes(16))
 
         ! determine the curvature by solving a simple eqn...
 
@@ -8220,7 +8219,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 RZERO,RZERO,RZERO, &
                 1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                 SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                state, "wrapp1", StorageIndexes(17:19))
+                packed_state, "wrapp1", StorageIndexes(17:19))
 
 
 
@@ -8256,7 +8255,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     RZERO,RZERO,RZERO, &
                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, & 
                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                    state, "wrapp2", StorageIndexes(20:22))
+                    packed_state, "wrapp2", StorageIndexes(20:22))
 
                     U_FORCE_Y_SUF_TEN = pack(DX_TAU_YX(:,1,:)+ DY_TAU_YY(:,1,:) + DZ_TAU_YZ(:,1,:),.true.)
 
@@ -8296,7 +8295,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     RZERO,RZERO,RZERO, &
                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, & 
                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                    state, "wrapp3", StorageIndexes(23:25))
+                    packed_state, "wrapp3", StorageIndexes(23:25))
 
                     U_FORCE_Z_SUF_TEN = pack(DX_TAU_ZX(:,1,:) + DY_TAU_ZY(:,1,:) + DZ_TAU_ZZ(:,1,:),.true.)
 
@@ -8355,7 +8354,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     RZERO,RZERO,RZERO, &
                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, & 
                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                    state, "wrapp4", StorageIndexes(26:28))
+                    packed_state, "wrapp4", StorageIndexes(26:28))
 
                 else
 
@@ -8380,7 +8379,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     RZERO, &
                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                    state, "wrap4", StorageIndexes(29))
+                    packed_state, "wrap4", StorageIndexes(29))
 
                     DO ELE=1,TOTELE
                         DO CV_ILOC=1,CV_NLOC
@@ -8411,7 +8410,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     RZERO, &
                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                    state, "wrap5", StorageIndexes(30))
+                    packed_state, "wrap5", StorageIndexes(30))
 
                     DO ELE=1,TOTELE
                         DO CV_ILOC=1,CV_NLOC
@@ -8915,7 +8914,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                  ! Define the gauss points that lie on the surface of the CV...
             FINDGPTS, COLGPTS, NCOLGPTS, &
             SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
-            state, 'Vel_mesh', StorageIndexes(13))
+            packed_state, 'Vel_mesh', StorageIndexes(13))
 
              !Retrieve detwei and ufenx_all
             CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, TOTELE, X_NONODS, &
@@ -8923,7 +8922,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             CVFEN, CVFENLX_ALL(1,:,:), CVFENLX_ALL(2,:,:), CVFENLX_ALL(3,:,:), CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, .false., &
             CVFENX_ALL, &
             U_NLOC, UFENLX_ALL(1,:,:), UFENLX_ALL(2,:,:), UFENLX_ALL(3,:,:), UFENX_ALL,&
-            state ,"C_1", StorageIndexes(14))
+            packed_state ,"C_1", StorageIndexes(14))
 
             !##### End of area to obtain shape functions#####
 
@@ -9326,7 +9325,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                 ! define the gauss points that lie on the surface of the ph...
            findgpts, colgpts, ncolgpts, &
            sele_overlap_scale, quad_over_whole_ele, &
-           state, "ph_1" , storageindexes( 36 ) )
+           packed_state, "ph_1" , storageindexes( 36 ) )
 
       totele = ele_count( ufield )
       x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
@@ -9433,7 +9432,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
                  tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
                  other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
-                 other_fenx_all, state , "ph_2", StorageIndexes( 37 ) )
+                 other_fenx_all, packed_state , "ph_2", StorageIndexes( 37 ) )
 
             if ( u_nloc == tmp_cv_nloc ) then
                 ufenx_all => tmp_cvfenx_all

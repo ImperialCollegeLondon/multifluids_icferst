@@ -1178,7 +1178,7 @@
 
     SUBROUTINE DETNLXR_plus_storage( ELE, X_ALL, XONDGL, TOTELE, NONODS, NLOC, NGI, &
          N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
-         NX_ALL, state, StorName , indx)
+         NX_ALL, packed_state, StorName , indx)
       IMPLICIT NONE
       INTEGER, intent( in ) :: ELE, TOTELE, NONODS, NLOC, NGI
       INTEGER, DIMENSION( : ) :: XONDGL
@@ -1190,13 +1190,13 @@
       REAL, pointer, intent( inout ) :: VOLUME
       LOGICAL, intent( in ) ::DCYL
       REAL, DIMENSION( :, : ,:), pointer, intent( inout ) :: NX_ALL!dimension(ndim, NLOC, NGI)
-      type( state_type ), intent( inout ), dimension(:) :: state
+      type( state_type ), intent( inout ):: packed_state
       character(len=*), intent(in) :: StorName
       integer, intent(inout) :: indx
      !Local variables
      logical :: D1, D3
      integer :: ndim, Pos1, Pos2, lele
-      !Variables to store things in state
+      !Variables to store things in packed_state
       type(mesh_type), pointer :: fl_mesh
       type(mesh_type) :: Auxmesh
       type(scalar_field), target :: targ_Store
@@ -1206,50 +1206,50 @@
       !#########Storing area#################################
       !If new mesh or mesh moved indx will be zero (set in Multiphase_TimeLoop)
       if (indx<=0) then!Everything has to be calculated
-          if (ELE==1) then !The first time we need to introduce the targets in state
-              if (has_scalar_field(state(1), StorName)) then
+          if (ELE==1) then !The first time we need to introduce the targets in packed_state
+              if (has_scalar_field(packed_state, StorName)) then
                   !If we are recalculating due to a mesh modification then
                   !we return to the original situation
-                  call remove_scalar_field(state(1), StorName)
+                  call remove_scalar_field(packed_state, StorName)
               end if
 
               !Get mesh file just to be able to allocate the fields we want to store
-              fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+              fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
               Auxmesh = fl_mesh
               !The number of nodes I want does not coincide
               Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*(NLOC*NGI*NDIM + NGI*2 + 1)
               call allocate (targ_Store, Auxmesh)
-              !Now we insert them in state and store the indexes
-              call insert(state(1), targ_Store, StorName)
+              !Now we insert them in packed_state and store the indexes
+              call insert(packed_state, targ_Store, StorName)
               call deallocate (targ_Store)
 !              call deallocate (Auxmesh)
               !Store index with a negative value, because if the index is
               !zero or negative then we have to calculate stuff
-              indx = -size(state(1)%scalar_fields)
+              indx = -size(packed_state%scalar_fields)
           end if
           LELE=merge(ele,1,btest(cache_level,0))
-          !Get from state, indx is an input
+          !Get from packed_state, indx is an input
           Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
-          call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2),&
+          call reshape_vector2pointer(packed_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2),&
           NX_ALL, NDIM, NLOC, NGI)
           Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-          DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
+          DETWEI => packed_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
           Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-          RA => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
+          RA => packed_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
           Pos1 = Pos2 + 1
-          VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1)
+          VOLUME => packed_state%scalar_fields(abs(indx))%ptr%val(Pos1)
       else  !If the index is bigger than zero then everything is in storage
-          !Get from state, indx is an input
+          !Get from packed_state, indx is an input
           LELE=merge(ele,1,btest(cache_level,0))
           Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
-          call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2),&
+          call reshape_vector2pointer(packed_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2),&
           NX_ALL, NDIM, NLOC, NGI)
           Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-          DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
+          DETWEI => packed_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
           Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-          RA => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
+          RA => packed_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
           Pos1 = Pos2 + 1
-          VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(Pos1)
+          VOLUME => packed_state%scalar_fields(abs(indx))%ptr%val(Pos1)
           return
       end if
       !When all the values are obtained, the index is set to a positive value
@@ -1261,11 +1261,11 @@
       N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
       NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
 
-      !Store data into state
+      !Store data into packed_state
       LELE=merge(ele,1,btest(cache_level,0))
-      !Get from state, indx is an input
+      !Get from packed_state, indx is an input
       Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
-      state(1)%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)=&
+      packed_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)=&
       reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI), [NDIM*NLOC*NGI])
 
 
@@ -1432,7 +1432,7 @@
     SUBROUTINE DETNLXR_INVJAC_plus_storage( ELE, X_ALL, XONDGL, TOTELE, NONODS, NLOC, NGI, &
          N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
          NX_ALL,&
-         NDIM, INV_JAC, state, StorName, indx )
+         NDIM, INV_JAC, packed_state, StorName, indx )
       IMPLICIT NONE
       INTEGER, intent( in ) :: ELE, TOTELE, NONODS, NLOC, NGI, NDIM
       INTEGER, DIMENSION( : ) :: XONDGL
@@ -1445,12 +1445,12 @@
       REAL, pointer,  DIMENSION( : ), intent( inout ):: DETWEI, RA
       REAL, pointer, DIMENSION( :, :, : ), intent( inout ) :: NX_ALL
       REAL, pointer, DIMENSION( :,:, : ), intent( inout ):: INV_JAC
-      type( state_type ), intent( inout ), dimension(:) :: state
+      type( state_type ), intent( inout ):: packed_state
       character(len=*), intent(in) :: StorName
       integer, intent(inout) :: indx
       ! Local variables
       integer :: from, to, jump
-      !Variables to store things in state
+      !Variables to store things in packed_state
       type(mesh_type), pointer :: fl_mesh
       type(mesh_type) :: Auxmesh
       type(scalar_field), target :: targ_NX_ALL
@@ -1458,14 +1458,14 @@
       !If new mesh or mesh moved indx will be zero (set in Multiphase_TimeLoop)
 
 
-      if (indx==0 .and. ELE==1) then !The first time we need to introduce the targets in state
-         if (has_scalar_field(state(1), trim(Storname))) then
+      if (indx==0 .and. ELE==1) then !The first time we need to introduce the targets in packed_state
+         if (has_scalar_field(packed_state, trim(Storname))) then
             !If we are recalculating due to a mesh modification then
             !we return to the original situation
-            call remove_scalar_field(state(1), trim(Storname))
+            call remove_scalar_field(packed_state, trim(Storname))
          end if
          !Get mesh file just to be able to allocate the fields we want to store
-         fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+         fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
          Auxmesh = make_mesh(fl_mesh,name=trim(Storname))
          !The number of nodes I want does not coincide
          Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*NLOC*NGI*NDIM &
@@ -1474,52 +1474,52 @@
 
          call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
          
-         !Now we insert them in state and store the indexes
-         call insert(state(1), Auxmesh, trim(Storname))
-         call insert(state(1), Targ_NX_ALL, trim(Storname))
+         !Now we insert them in packed_state and store the indexes
+         call insert(packed_state, Auxmesh, trim(Storname))
+         call insert(packed_state, Targ_NX_ALL, trim(Storname))
 !         call deallocate (Auxmesh)
          !Store index with a negative value, because if the index is
          !zero or negative then we have to calculate stuff
-         indx = -size(state(1)%scalar_fields)
+         indx = -size(packed_state%scalar_fields)
 
          call deallocate (Targ_NX_ALL)
          call deallocate (Auxmesh)
       end if
-       !Get from state, indx is an input
+       !Get from packed_state, indx is an input
        if (btest(cache_level,0)) then
          from = 1+NDIM*NLOC*NGI*(ELE-1); to = NDIM*NLOC*NGI*ELE
-         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         call reshape_vector2pointer(packed_state%scalar_fields(abs(indx))%ptr%val(from:to),&
          NX_ALL, NDIM, NLOC, NGI)
 !         NX_ALL(1:NDIM,1:NLOC,1:NGI) => &
-!              state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+!              packed_state%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = NDIM*NLOC*NGI*totele
          from = jump + 1+(ELE-1)*(NGI+NDIM*NDIM); to = jump + ELE*(NGI*NDIM*NDIM)
-         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         call reshape_vector2pointer(packed_state%scalar_fields(abs(indx))%ptr%val(from:to),&
          INV_JAC, NDIM, NDIM, NGI)
          jump = jump + totele*(NGI*NDIM*NDIM)
          from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-         DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         DETWEI => packed_state%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI*totele
          from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-         RA => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         RA => packed_state%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI*totele
-         VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(jump + ELE)
+         VOLUME => packed_state%scalar_fields(abs(indx))%ptr%val(jump + ELE)
       else
          from = 1; to = NDIM*NLOC*NGI
-         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         call reshape_vector2pointer(packed_state%scalar_fields(abs(indx))%ptr%val(from:to),&
          NX_ALL, NDIM, NLOC, NGI)
          jump = NDIM*NLOC*NGI
          from = jump + 1; to = jump + NGI*NDIM*NDIM
-         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         call reshape_vector2pointer(packed_state%scalar_fields(abs(indx))%ptr%val(from:to),&
          INV_JAC, NDIM, NDIM, NGI)
          jump = jump + NGI*NDIM*NDIM
          from = jump + 1; to = jump + NGI
-         DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         DETWEI => packed_state%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI
          from = jump + 1; to = jump + NGI
-         RA => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         RA => packed_state%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI
-         VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(jump + ELE)
+         VOLUME => packed_state%scalar_fields(abs(indx))%ptr%val(jump + ELE)
       end if
 
 
@@ -1537,19 +1537,19 @@
         !Store data
        if (btest(cache_level,0)) then
          from = 1+NDIM*NLOC*NGI*(ELE-1); to = NDIM*NLOC*NGI*ELE
-         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         packed_state%scalar_fields(abs(indx))%ptr%val(from:to)=&
          reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI),[NDIM*NLOC*NGI])
          jump = NDIM*NLOC*NGI*totele
          from = jump + 1+(ELE-1)*(NGI+NDIM*NDIM); to = jump + ELE*(NGI*NDIM*NDIM)
-         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         packed_state%scalar_fields(abs(indx))%ptr%val(from:to)=&
          reshape(INV_JAC(1:NDIM,1:NDIM,1:NGI),[NDIM*NDIM*NGI])
       else
          from = 1; to = NDIM*NLOC*NGI
-         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         packed_state%scalar_fields(abs(indx))%ptr%val(from:to)=&
          reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI),[NDIM*NLOC*NGI])
          jump = NDIM*NLOC*NGI
          from = jump + 1; to = jump + NGI*NDIM*NDIM
-         state(1)%scalar_fields(abs(indx))%ptr%val(from:to)=&
+         packed_state%scalar_fields(abs(indx))%ptr%val(from:to)=&
          reshape(INV_JAC(1:NDIM,1:NDIM,1:NGI),[NDIM*NDIM*NGI])
       end if
 

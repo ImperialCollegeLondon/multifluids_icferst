@@ -4001,41 +4001,25 @@
     end function GetFEMName
 
 
-    subroutine Clean_Storage(state, StorageIndexes, ignore_var)
+    subroutine Clean_Storage(packed_state, StorageIndexes)
       !This subroutine removes all the storage controlled by StorageIndexes
       Implicit none
-      type(state_type), dimension(:), intent(inout) :: state
+      type(state_type), intent(inout) :: packed_state
       integer, dimension(:), intent(inout) :: StorageIndexes
-      character (len=*), intent(in), optional :: ignore_var
       !Local variables
       character (len = 100) :: StorName
-      integer :: maxpos, ignored_var_pos, i
+      integer :: maxpos,i
 
-      if (.not.present(ignore_var)) then
-         !This loop is the most robust, so by default we still use this one
-         do while (maxval(abs(StorageIndexes)) > 0)
-            maxpos = maxloc(abs(StorageIndexes), dim =1)
-            StorName = trim(state(1)%scalar_names(abs(StorageIndexes(maxpos))))!This lines is
-            call remove_scalar_field(state(1), trim(StorName))           !failing for Xie when using adaptive meshing
-            StorageIndexes(maxpos) = 0
-         end do
-         !Just in case
-         StorageIndexes = 0
-      else
-         !Backward loop, otherwise the indexes in
-         !StorageIndexes and State may become unconsistent
-         do i = size(StorageIndexes,1), 1,-1
-            StorName = trim(state(1)%scalar_names(StorageIndexes(i)))
-            if (trim(StorName)==trim(ignore_var)) then
-               ignored_var_pos = i!Get StorageIndex of the field we want to save
-            else
-               call remove_scalar_field(state(1), trim(StorName))
-               StorageIndexes(i) = 0
-            end if
-         end do
-         !Store new position of that field
-         StorageIndexes(ignored_var_pos) = get_state_index(state, trim(ignore_var))
-      end if
+     !This loop is the most robust, so by default we still use this one
+     do while (maxval(abs(StorageIndexes)) > 0)
+        maxpos = maxloc(abs(StorageIndexes), dim =1)
+        StorName = trim(packed_state%scalar_names(abs(StorageIndexes(maxpos))))!These lines are
+        call remove_scalar_field(packed_state, trim(StorName))           !failing for Xie when using adaptive meshing
+        StorageIndexes(maxpos) = 0
+     end do
+     !Just in case
+     StorageIndexes = 0
+
     end subroutine Clean_Storage
 
 

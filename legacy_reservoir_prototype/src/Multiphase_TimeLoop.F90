@@ -835,7 +835,7 @@
                     StorageIndexes=StorageIndexes )
                if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) )then
                           !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
-                  call calculate_capillary_pressure( state, packed_state, .false., StorageIndexes,&
+                  call calculate_capillary_pressure( state, packed_state, .false., &
                      CV_NDGLN, ids_ndgln, totele, cv_nloc)
                end if
 
@@ -1255,7 +1255,7 @@
 
          Conditional_ReallocatingFields: if( do_reallocate_fields ) then
             !The storaged variables must be recalculated
-            call Clean_Storage(state, StorageIndexes)
+            call Clean_Storage(packed_state, StorageIndexes)
 
 !            call linearise_components()
 

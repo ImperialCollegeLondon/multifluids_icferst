@@ -1698,7 +1698,7 @@
     end subroutine relperm_stone
 
 
-   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM, StorageIndexes,&
+   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM, &
          CV_NDGLN, ids_ndgln, totele, cv_nloc)
 
       ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
@@ -1710,7 +1710,6 @@
       type(state_type), dimension(:), intent(inout) :: state
       type(state_type), intent(inout) :: packed_state
       integer, dimension(:), intent(in) :: CV_NDGLN, ids_ndgln
-      integer, dimension(:), intent(inout) :: StorageIndexes
       integer, intent(in) :: totele, cv_nloc
       logical, intent(in) :: Sat_in_FEM
       ! Local Variables
