@@ -563,7 +563,8 @@ start =
             }?
          },
 	 element caching {
-	    element no_cache_shape_functions {
+        ## Activate this to store the shape functions for every element.
+	    element cache_shape_functions {
 	    empty
 	    }?
 	 },

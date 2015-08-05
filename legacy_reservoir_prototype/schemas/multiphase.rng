@@ -663,7 +663,8 @@ at the first timestep or not.</a:documentation>
       </element>
       <element name="caching">
         <optional>
-          <element name="no_cache_shape_functions">
+          <element name="cache_shape_functions">
+            <a:documentation>Activate this to store the shape functions for every element.</a:documentation>
             <empty/>
           </element>
         </optional>
