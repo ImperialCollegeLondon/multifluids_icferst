@@ -2,7 +2,7 @@
 <testproblem>
   <name>BL_CVgalerkin</name>
   <owner userid="alex.adam"/>
-  <tags>porous mpml</tags>
+  <tags>porous mpml </tags>
   <problem_definition length="short" nprocs="1">
     <command_line>cd ./BL_CVgalerkin/
         python ./Check_BLCVgalerkin.py &gt; log</command_line>

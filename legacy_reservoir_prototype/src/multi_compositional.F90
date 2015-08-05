@@ -197,7 +197,7 @@
 !!$ COMP_DIFF_COEF( NCOMP,  NCOMP_DIFF_COEF, NPHASE  )
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ), intent( inout ) :: packed_state
+      type( state_type ), intent( in ) :: packed_state
 
       integer, dimension( : ), intent( in ) :: mat_ndgln, u_ndgln, x_ndgln
       integer, intent( in ) :: u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt
@@ -272,7 +272,7 @@
            COMP_DIFFUSION, NCOMP_DIFF_COEF, COMP_DIFF_COEF, &
            X_NONODS, X, Y, Z, NU, NV, NW, U_NONODS, MAT_NDGLN, U_NDGLN, X_NDGLN, &
            U_ELE_TYPE, P_ELE_TYPE, &
-           MAT_U ,  packed_state, StorageIndexes)
+           MAT_U ,  state, StorageIndexes)
 
       ! Determine the diffusion coeff tensor COMP_DIFFUSION from MAT_U and COMP_DIFF_COEF
 
@@ -308,7 +308,7 @@
          COMP_DIFFUSION, NCOMP_DIFF_COEF, COMP_DIFF_COEF, &
          X_NONODS, X, Y, Z, NU, NV, NW, U_NONODS, MAT_NDGLN, U_NDGLN, X_NDGLN, &
          U_ELE_TYPE, P_ELE_TYPE, &
-         MAT_U,  packed_state, StorageIndexes )
+         MAT_U,  state, StorageIndexes )
       ! Determine MAT_U from NU,NV,NW which are variables mapped to material mesh. 
  
 
@@ -324,7 +324,7 @@
       INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
       INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN
       REAL, DIMENSION( :), intent( inout ) :: MAT_U
-       type( state_type ), intent( inout ) :: packed_state
+       type( state_type ), dimension( : ), intent( inout ) :: state
       integer, dimension(:), intent(inout) :: StorageIndexes
       ! Determine MAT_U from NU,NV,NW which are these variables mapped to material mesh. 
 

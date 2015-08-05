@@ -349,7 +349,7 @@
          NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
          got_free_surf,  MASS_SUF, &
-         C, CT, packed_state, indx, halos, symmetric_P )
+         C, CT, state, indx, halos, symmetric_P )
       !use multiphase_1D_engine
       !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
       implicit none
@@ -373,7 +373,7 @@
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( :, :, : ), intent( in ) :: C
       REAL, DIMENSION( :, :, : ), intent( in ) :: CT
-      type( state_type ), intent( inout ) :: packed_state
+      type( state_type ), intent( inout ), dimension(:) :: state
       integer, intent(inout) :: indx
       type(halo_type), pointer :: halos
       ! Local variables
@@ -421,7 +421,7 @@
               NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
               CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
               got_free_surf,  MASS_SUF, &
-              C, CT, ndpset, packed_state, indx, symmetric_P )
+              C, CT, ndpset, state, indx, symmetric_P )
       ELSE
          ! Slow but memory efficient...
          CALL COLOR_GET_CMC_PHA_SLOW( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
@@ -450,7 +450,7 @@
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
             got_free_surf,  MASS_SUF, &
-            C, CT, ndpset, packed_state, indx, symmetric_P )
+            C, CT, ndpset, state, indx, symmetric_P )
 
          implicit none
          ! form pressure matrix CMC using a colouring approach
@@ -474,7 +474,7 @@
          INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
          REAL, DIMENSION( :, :, : ), intent( in ) :: C
          REAL, DIMENSION( :, :, : ), intent( in ) :: CT
-         type( state_type ), intent( inout ) :: packed_state
+         type( state_type ), intent( inout ), dimension(:) :: state
          integer, intent(inout) :: indx
          ! Local variables
          INTEGER, PARAMETER :: MX_NCOLOR = 1000
@@ -513,7 +513,7 @@
          ALLOCATE( COLOR_IN_ROW2( MAX_COLOR_IN_ROW**2 ) )
          IF ( indx /= 0 ) THEN!coloring stored
 
-             pointer_icolor =>  packed_state%scalar_fields(indx)%ptr%val
+             pointer_icolor =>  state(1)%scalar_fields(indx)%ptr%val
              !Recover the calculated coloring
              !THIS IS NOT EFFICIENT, IF WE FINALLY DECIDE TO USE ONLY THE FAST VERSION
              !WE SHOULD CONVERT ICOLOR AND NCOLOR INTO POINTERS!
@@ -523,24 +523,24 @@
          ELSE
 
                 !Prepare the variable inside state
-             if (has_scalar_field(packed_state, "Col_fast")) then
+             if (has_scalar_field(state(1), "Col_fast")) then
                  !If we are recalculating due to a mesh modification then
                  !we return to the original situation
-                 call remove_scalar_field(packed_state, "Col_fast")
+                 call remove_scalar_field(state(1), "Col_fast")
              end if
              !Get mesh file just to be able to allocate the fields we want to store
-             fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
+             fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
              Auxmesh = fl_mesh
              !The number of nodes I want does not coincide
              Auxmesh%nodes = CV_NONODS+1!in the +1 we store NCOLOR
              call allocate (targ_icolor, Auxmesh)
              !Now we insert them in state and store the index
-             call insert(packed_state, targ_icolor, "Col_fast")
+             call insert(state(1), targ_icolor, "Col_fast")
              call deallocate (targ_icolor)
              !call deallocate(Auxmesh)
-             indx = size(packed_state%scalar_fields)
+             indx = size(state(1)%scalar_fields)
              !Get from state
-             pointer_icolor =>  packed_state%scalar_fields(indx)%ptr%val
+             pointer_icolor =>  state(1)%scalar_fields(indx)%ptr%val
 
              COLOR_LOGICAL = .FALSE.
 
@@ -1323,12 +1323,12 @@ END IF
 
 
     SUBROUTINE PHA_BLOCK_INV_plus_storage( PIVIT_MAT, TOTELE, &
-         NBLOCK, packed_state, StorName, indx)
+         NBLOCK, state, StorName, indx)
         !Retrieves the inverse of the PIVIT_MAT fron the storage
       implicit none
       INTEGER, intent( in ) :: TOTELE, NBLOCK
       REAL, DIMENSION( : , : , : ), intent( inout ), pointer :: PIVIT_MAT
-      type( state_type ), intent( inout ) :: packed_state
+      type( state_type ), intent( inout ), dimension(:) :: state
       character(len=*), intent(in) :: StorName
       integer, intent(inout) :: indx
       ! Local variables
@@ -1339,13 +1339,13 @@ END IF
       REAL, DIMENSION( :, :, : ), allocatable :: PIVIT_MAT2
 
       if (indx==0) then !The first time we need to introduce the targets in state
-         if (has_scalar_field(packed_state, trim(Storname))) then
+         if (has_scalar_field(state(1), trim(Storname))) then
             !If we are recalculating due to a mesh modification then
             !we return to the original situation
-            call remove_scalar_field(packed_state, trim(Storname))
+            call remove_scalar_field(state(1), trim(Storname))
          end if
          !Get mesh file just to be able to allocate the fields we want to store
-         fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
+         fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
          Auxmesh = make_mesh(fl_mesh,name=trim(Storname))
          !The number of nodes I want does not coincide
          Auxmesh%nodes = NBLOCK * NBLOCK * TOTELE
@@ -1353,9 +1353,9 @@ END IF
          call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
 
          !Now we insert them in state and store the indexes
-         call insert(packed_state, Targ_NX_ALL, trim(Storname))
+         call insert(state(1), Targ_NX_ALL, trim(Storname))
          !Store index
-         indx = size(packed_state%scalar_fields)
+         indx = size(state(1)%scalar_fields)
 
          call deallocate (Targ_NX_ALL)
          call deallocate (Auxmesh)
@@ -1370,7 +1370,7 @@ END IF
 
          !Store data
          from = 1; to = NBLOCK * NBLOCK * TOTELE
-         packed_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
+         state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
          reshape(PIVIT_MAT2,[NBLOCK * NBLOCK * TOTELE])
          deallocate(PIVIT_MAT2)
          indx = abs(indx)
@@ -1378,7 +1378,7 @@ END IF
 
       !Set the pointer to the  solution
       from = 1; to = NBLOCK * NBLOCK * TOTELE
-      call reshape_vector2pointer(packed_state%scalar_fields(abs(indx))%ptr%val(from:to),&
+      call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
       PIVIT_MAT, NBLOCK, NBLOCK, TOTELE)
 
 

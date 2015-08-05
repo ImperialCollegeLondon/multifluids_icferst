@@ -221,7 +221,7 @@
                                ! define the gauss points that lie on the surface of the ph...
           findgpts, colgpts, ncolgpts, &
           sele_overlap_scale, quad_over_whole_ele, &
-          packed_state, "ph_1" , storageindexes( 36 ) )
+          state, "ph_1" , storageindexes( 36 ) )
 
           totele = ele_count( ufield )
           x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
@@ -337,7 +337,7 @@
               tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
               tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
               other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
-              other_fenx_all, packed_state , "ph_2", StorageIndexes( 37 ) )
+              other_fenx_all, state , "ph_2", StorageIndexes( 37 ) )
 
               ! LOOP to calculate the mass matrices and right hand side element by element and invert the linear problem.
               ! Problem is inverted element by element

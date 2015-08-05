@@ -162,7 +162,9 @@
       <integer_value rank="0">3</integer_value>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
+  <caching>
+    <no_cache_shape_functions/>
+  </caching>
   <material_phase name="Fluid">
     <equation_of_state>
       <incompressible>

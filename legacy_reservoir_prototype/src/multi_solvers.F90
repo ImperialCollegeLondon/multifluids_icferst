@@ -1212,7 +1212,7 @@ contains
                                 ! define the gauss points that lie on the surface of the cv...
            findgpts, colgpts, ncolgpts, &
            sele_overlap_scale, quad_over_whole_ele,&
-           packed_state, "Press_mesh" , storageindexes(1))
+           state, "Press_mesh" , storageindexes(1))
            !state, "bound", storageindexes( 35 ) )
 
       totele = ele_count( field )

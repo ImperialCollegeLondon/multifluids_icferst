@@ -563,9 +563,7 @@ start =
             }?
          },
 	 element caching {
-        ## Store the shape functions for every element.
-        ## Memory intensive; should increase the speed a bit
-	    element cache_shape_functions {
+	    element no_cache_shape_functions {
 	    empty
 	    }?
 	 },
