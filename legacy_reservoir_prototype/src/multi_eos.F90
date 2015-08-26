@@ -690,6 +690,7 @@
       !Working pointers
       real, dimension(:,:), pointer :: Satura, OldSatura, Immobile_fraction
       type( tensor_field ), pointer :: perm
+      type( scalar_field ), pointer :: Spipe
 
     opt_vel_upwind_coefs_new=0.0 ; opt_vel_upwind_grad_new=0.0
 
@@ -755,13 +756,17 @@
            CV_NDGLN, MAT_NDGLN, U_ABSORB2, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
       do ipres = 2, npres
+
+         Spipe => extract_scalar_field( state(1), "Sigma1" )
+
          do iphase = 1, n_in_pres
             do idim = 1, ndim
                ! set \sigma for the pipes here
                LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
                LOC2 = (1-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
 
-               U_ABSORB( :, LOC, LOC ) = 1000.0
+               !U_ABSORB( :, LOC, LOC ) = 1000.0
+               U_ABSORB( :, LOC, LOC ) = Spipe%val
                !U_ABSORB( :, LOC, LOC ) = U_ABSORB( :, LOC2, LOC2 )
             end do
          end do

@@ -579,6 +579,15 @@ contains
       !Variables to calculate flux across boundaries
       logical :: calculate_flux
 
+      real :: reservoir_P( npres ) ! this is the background reservoir pressure
+
+      if ( npres > 1 )then
+         reservoir_P( 1 ) = 1.0e+7
+         reservoir_P( 2 ) = 0.0
+      else
+         reservoir_P = 0.0
+      end if
+
       symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
 
       option_path2 = trim(tracer%option_path)//"/prognostic/spatial_discretisation/control_volumes/face_value::FiniteElement/limit_face_value/limiter::ENO"
@@ -2570,7 +2579,7 @@ contains
                DO JPHASE = 1, NPHASE
                   IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
                   JPRES = 1 + INT( (JPHASE-1)/N_IN_PRES )
-                  IF ( CV_P( 1, IPRES, CV_NODI ) > CV_P( 1, JPRES, CV_NODI ) ) THEN
+                  IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
                      GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
                           MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
                           MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * SIGMA_INV_APPROX( IPHASE, CV_NODI )
@@ -2601,9 +2610,9 @@ contains
                   IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
                   JPRES = 1 + INT( (JPHASE-1)/N_IN_PRES )
                   IF ( IPRES /= JPRES ) THEN
-                     DeltaP = CV_P( 1, IPRES, CV_NODI ) - CV_P( 1, JPRES, CV_NODI )
+                     DeltaP = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
 ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
-                     IF ( DeltaP > 0.0 ) THEN
+                     IF ( DeltaP >= 0.0 ) THEN
                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
                         !    MEAN_PORE_CV( IPRES, CV_NODI ) *  &
                        !    MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
@@ -2678,7 +2687,7 @@ contains
 
             DO IPRES=1,NPRES
                R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI ) * MASS_CV( CV_NODI ) / DT
-               CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres)=CV_P( 1, IPRES, CV_NODI )
+               CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
             END DO
 
                IF(THERMAL) THEN
@@ -2778,7 +2787,7 @@ contains
          allocate(ct_rhs_phase(nphase),DIAG_SCALE_PRES_phase(nphase))
          DIAG_SCALE_PRES_COUP=0.0
          DO CV_NODI = 1, CV_NONODS
-            ct_rhs_phase=0.0;  DIAG_SCALE_PRES_phase=0.0
+            ct_rhs_phase=0.0 ; DIAG_SCALE_PRES_phase=0.0
             DO IPRES=1,NPRES
                R_PRES(IPRES) = MASS_CV( CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
 ! Add constraint to force sum of volume fracts to be unity...
@@ -2826,6 +2835,7 @@ contains
                      DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) = &
                         + sum( A_GAMMA_PRES_ABS(1+(ipres-1)*n_in_pres:ipres*n_in_pres,JPHASE, CV_NODI ) &
                         / DEN_ALL( 1+(ipres-1)*n_in_pres:ipres*n_in_pres, CV_NODI ) )
+
                   END DO
                END DO
             END IF
@@ -2837,7 +2847,19 @@ contains
             END IF
 
             DO IPRES = 1, NPRES
+
+if ( npres > 1 ) then
+
+               call addto(ct_rhs, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) &
+                   - MASS_CV(CV_NODI) * SUM(DIAG_SCALE_PRES_COUP(IPRES,:, cv_nodi) * RESERVOIR_P( : ))    )
+
+else
+
                call addto(ct_rhs, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) )
+end if
+
+
+
                DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
                      + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres))
             END DO
