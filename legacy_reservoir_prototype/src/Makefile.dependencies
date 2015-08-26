@@ -161,7 +161,26 @@ multi_fracture.o ../include/multiphase_fractures.mod: multi_fracture.F90 \
 	@true
 
 multi_interpolation.o ../include/multi_interpolation.mod: \
-   multi_interpolation.F90 ../../include/confdefs.h ../../include/fdebug.h
+   multi_interpolation.F90 ../../include/boundary_conditions.mod \
+   ../../include/boundary_conditions_from_options.mod ../../include/confdefs.h \
+   ../../include/conservative_interpolation_module.mod \
+   ../../include/diagnostic_fields.mod \
+   ../../include/diagnostic_fields_wrapper.mod \
+   ../../include/diagnostic_fields_wrapper_new.mod \
+   ../../include/diagnostic_variables.mod ../../include/element_numbering.mod \
+   ../../include/fdebug.h ../../include/fefields.mod \
+   ../../include/field_options.mod ../../include/fields.mod \
+   ../../include/fields_allocates.mod ../../include/fldebug.mod \
+   ../../include/futils.mod ../../include/global_parameters.mod \
+   ../../include/halos.mod ../../include/initialise_fields_module.mod \
+   ../../include/memory_diagnostics.mod ../../include/parallel_tools.mod \
+   ../../include/populate_state_module.mod ../../include/shape_functions.mod \
+   ../../include/solvers.mod ../../include/sparse_tools_petsc.mod \
+   ../../include/sparsity_patterns.mod ../../include/spud.mod \
+   ../../include/state_module.mod ../include/copy_outof_state.mod \
+   ../include/matrix_operations.mod \
+   ../include/shape_functions_linear_quadratic.mod \
+   ../include/shape_functions_prototype.mod ../include/solvers_module.mod
 
 ../include/matrix_operations.mod: multi_matrix_operations.o
 	@true

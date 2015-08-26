@@ -1554,7 +1554,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
       internal_smoothing_option=internal_smoothing_option, &
       positions=positions, &
       rotation_matrix=rotation_matrix)
-      
+
   end subroutine SetupKSP
     
   recursive subroutine setup_ksp_from_options(ksp, mat, pmat, solver_option_path, &
@@ -1627,7 +1627,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
        prolongators=prolongators, surface_node_list=surface_node_list, &
        matrix_csr=matrix_csr, internal_smoothing_option=internal_smoothing_option, &
        has_null_space=remove_null_space)
-    
+
     ! then ksp type
     ! =========================================================
     call get_option(trim(solver_option_path)//'/iterative_method[0]/name', &
@@ -1761,6 +1761,7 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
   ! option to "mg" to tell it not to do a direct solve at the coarsest level
   logical, optional, intent(in) :: has_null_space
   character(len=500):: gamg_options
+  real :: GAMGThreshold
     KSP:: subksp
     PC:: subpc
     PCType:: pctype, hypretype
@@ -1886,27 +1887,31 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
       if (pctype==PCGAMG) then
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
-        call PCGAMGSetThreshold(pc, 0.01, ierr)
+        call get_option(trim(option_path)//'/GAMG_threshold', GAMGThreshold, default =-0.1)
+
+        call PCGAMGSetThreshold(pc, abs(GAMGThreshold), ierr)
 
         !Extra option for multiphase flow
-        if (is_porous_media) then
+        if (GAMGThreshold < 0) then
             !Improves the efficiency of the solver
-            call PCGAMGSetUseASMAggs(pc, .true., ierr)!Use aggregation agragates for GASM smoother. By default is false
+!            call PCGAMGSetUseASMAggs(pc, .true., ierr)!Use aggregation agragates for GASM smoother. By default is false
             !Add options via "commands"
             gamg_options = '-multigrid'
             !Set type of cycle v (faster) or w (more robust)
-            gamg_options = trim(gamg_options) // " " // "-pc_mg_cycles v"
+            gamg_options = trim(gamg_options) // " " // "-pc_mg_cycle_type v"
             !Set number of smoothup and smooth down
-            gamg_options = trim(gamg_options) // " " // "-pc_mg_smoothdown 2 -pc_mg_smoothup 2"
+            gamg_options = trim(gamg_options) // " " // "-pc_mg_smoothdown 1 -pc_mg_smoothup 2"
             !Type of multigrid: additive,multiplicative,full,kaskade
             gamg_options = trim(gamg_options) // " " // "-pc_mg_type multiplicative"
-            !Set to use GMRES as smoother, it seems to behave worse than the ASMAggs smoother
-!           gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres"
+            !Set to use GMRES as smoother, needs FGMRES outside
+!            gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres -mg_levels_pc_type sor -mg_levels_pc_sor_omega 1.0"
+            !Set SOR or eisenstat as smoother
+            gamg_options = trim(gamg_options) // " " // "-mg_levels_pc_type eisenstat -mg_levels_pc_eisenstat_omega 1.0"
+            !Set solver for the coarsest grid
+!            gamg_options = trim(gamg_options) // " " // "-mg_coarse_ksp_type preonly -mg_coarse_pc_type lu"
             !Insert into petsc
             call PetscOptionsInsertString(trim(gamg_options), ierr)
         end if
-
-
       end if
 #endif
       

@@ -424,6 +424,19 @@ Requires a PETSC version &gt;= 3.3</a:documentation>
       <attribute name="name">
         <value>gamg</value>
       </attribute>
+      <optional>
+        <element name="GAMG_threshold">
+          <a:documentation>This parameter has a strong effect on the efficiency of the algorithm,
+it controls the elative threshold to use for dropping edges in aggregation graph.
+
+Usage: Try different values from 0 to 0.5
+
+Negative values implement stronger smoothers and the value used is the absolute
+
+Default : -0.1</a:documentation>
+          <ref name="real"/>
+        </element>
+      </optional>
     </element>
   </define>
   <!--

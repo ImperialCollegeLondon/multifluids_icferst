@@ -246,7 +246,6 @@
 
 
       !Working pointers
-
       type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
       type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure
       type(scalar_field), pointer :: f1, f2
@@ -262,6 +261,9 @@
       real, dimension(:,:),  allocatable  :: intflux
 
       logical :: calculate_flux
+
+      ! Variables used in the CVGalerkin interpolation calculation
+      integer :: numberfields
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -571,7 +573,7 @@
          call get_RockFluidProp(state, packed_state)
          !Convert material properties to be stored using region ids, only if porous media
          call get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, &
-           fake_IDs_ndgln = .not. is_porous_media .or. is_multifracture )
+           fake_IDs_ndgln = .not. is_porous_media)! .or. is_multifracture )
 
       end if
 
@@ -694,7 +696,7 @@
 !!$ FEMDEM...
 #ifdef USING_FEMDEM
         if ( (is_multifracture ) ) then
-            call fracking(packed_state, state) 
+            call fracking(packed_state, state,nphase) 
         elseif ( have_option( '/blasting') ) then 
             call blasting( packed_state, nphase )
             call update_blasting_memory( packed_state, state, timestep )  
@@ -1210,9 +1212,24 @@
          end if Conditional_TimeDump
 
 
-!Call initial Mesh to Mesh interpolation routine
+         ! CALL INITIAL MESH TO MESH INTERPOLATION ROUTINE (Before adapting the mesh)
 
-!call M2MInterpolation(state, packed_state, StorageIndexes, cv_ele_type, nphase, 0 )
+         numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
+         if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method
+
+             if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
+
+                 call M2MInterpolation(state, packed_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
+             else
+                 ! In this case, we don't adapt the mesh so we just call both routines straight away which gives back the original field
+                 ! Alternatively could just do nothing here
+                 !call M2MInterpolation(state, packed_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
+                 !call M2MInterpolation(state, packed_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
+                 !call MemoryCleanupInterpolation2() ! Deallocate the memory used in the second call - the 1st call is deactivated right at the end
+
+             endif
+
+         endif
 
 !!$! ******************
 !!$! *** Mesh adapt ***
@@ -1324,10 +1341,6 @@
             call pack_multistate(npres,state,packed_state,&
                  multiphase_state,multicomponent_state)
             call set_boundary_conditions_values(state, shift_time=.true.)
-
-! Mesh to Mesh Interpolation - After adapting the mesh
-
-!call M2MInterpolation(state, packed_state, StorageIndexes, cv_ele_type, nphase, 1 )
 
             if (allocated(Quality_list) ) deallocate(Quality_list)
 
@@ -1450,6 +1463,20 @@
             end if
             call temp_mem_hacks()
 
+
+            ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
+
+            if (numberfields > 0) then
+
+                if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
+                    call M2MInterpolation(state, packed_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
+                    call MemoryCleanupInterpolation2()
+                endif
+
+            endif
+
+            ! *************************************************************
+
 !!$ Allocating space for various arrays:
             allocate( &
 !!$
@@ -1537,9 +1564,6 @@
             allocate( Component_Diffusion_Operator_Coefficient( ncomp, ncomp_diff_coef, nphase ) )
             allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
             allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
-
-
-            !!call BoundedSolutionCorrections( state, packed_state, small_finacv, small_colacv, StorageIndexes, cv_ele_type )
 
 
             if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
@@ -1658,6 +1682,19 @@
       call deallocate(multicomponent_state )
 
       if (allocated(Quality_list)) deallocate(Quality_list)
+
+      !***************************************
+      ! INTERPOLATION MEMORY CLEANUP
+
+      if (numberfields > 0) then
+
+          call MemoryCleanupInterpolation1()     ! Clean up state_old allocations here.
+                                                 ! State_new cleanup happens straight after calling the interpolation with flag = 1
+                                                 ! inside the adaptivity loop. Probably best to split M2Minterpolation into
+                                                 ! separate flag == 0, flag == 1 subroutines and deallocate inside them
+                                                 ! (future work).
+      endif
+      !***************************************
 
       if (calculate_flux) deallocate(outlet_id, totout, intflux)
 

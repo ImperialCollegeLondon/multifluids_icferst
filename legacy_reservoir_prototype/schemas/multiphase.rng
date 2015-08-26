@@ -663,7 +663,8 @@ at the first timestep or not.</a:documentation>
       </element>
       <element name="caching">
         <optional>
-          <element name="no_cache_shape_functions">
+          <element name="cache_shape_functions">
+            <a:documentation>Activate this to store the shape functions for every element.</a:documentation>
             <empty/>
           </element>
         </optional>
@@ -1313,6 +1314,11 @@ Tip: if Diffusive_cap_only is activated Pe is ignored.</a:documentation>
               <attribute name="name">
                 <data type="string"/>
               </attribute>
+            </element>
+          </optional>
+          <optional>
+            <element name="oneway_coupling_only">
+              <empty/>
             </element>
           </optional>
         </element>
@@ -4302,7 +4308,7 @@ less accurate but faster and might give smoother result.                  </a:do
           <value>1</value>
         </attribute>
         <attribute name="name">
-          <value>perm_frac</value>
+          <value>Darcy_Velocity</value>
         </attribute>
         <choice>
           <element name="diagnostic">
@@ -5249,6 +5255,36 @@ Stiffened Gas EoS</a:documentation>
                   <ref name="real"/>
                 </element>
               </optional>
+            </element>
+            <element name="JWL_equation">
+              <a:documentation>Jones-Wilkins-Lee equation of state for explosives (JWL-equation)
+
+Used with compressible simulations
+
+P=A*(1-w/(R1*V))*exp(-R1*V)+B*(1-w/(R2*V))*exp(-R2/V)+w*E0/V;
+
+The ratio V =roe/ro is defined by using roe = density of the explosive (solid part) and ro = density of the detonation products.</a:documentation>
+              <element name="density_of_explosive_roe">
+                <ref name="real"/>
+              </element>
+              <element name="A">
+                <ref name="real"/>
+              </element>
+              <element name="B">
+                <ref name="real"/>
+              </element>
+              <element name="R1">
+                <ref name="real"/>
+              </element>
+              <element name="R2">
+                <ref name="real"/>
+              </element>
+              <element name="E0">
+                <ref name="real"/>
+              </element>
+              <element name="w">
+                <ref name="real"/>
+              </element>
             </element>
             <element name="exponential_oil_gas">
               <a:documentation>Exponential EOS (SPE 102542)
