@@ -38,7 +38,7 @@ module cv_advection
 
   use solvers_module
   use spud
-  use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media
+  use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media, pi
   use futils, only: int2str
   use adapt_state_prescribed_module
   use sparse_tools
@@ -458,7 +458,7 @@ contains
            TMID, TOLDMID, TMID_J, TOLDMID_J, &
            RSUM, &
            THERM_FTHETA, &
-           W_SUM_ONE1, W_SUM_ONE2
+           W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin
       REAL :: FTHETA(NPHASE), FTHETA_T2(NPHASE), ONE_M_FTHETA_T2OLD(NPHASE), FTHETA_T2_J(NPHASE), ONE_M_FTHETA_T2OLD_J(NPHASE)
       REAL :: ROBIN1(NPHASE), ROBIN2(NPHASE)
 
@@ -564,7 +564,7 @@ contains
 
       logical :: symmetric_P
 
-      type( scalar_field ), pointer :: sfield
+      type( scalar_field ), pointer :: sfield, pipe_radius
       !Permeability
       type( tensor_field ), pointer :: perm
 
@@ -589,6 +589,13 @@ contains
          reservoir_P( 2 ) = 0.0
       else
          reservoir_P = 0.0
+      end if
+
+      if ( npres > 1 .and. .true. ) then
+         ! Edge approach - pipe location and radius field
+         ! this should really be (npres, cv_nonods)
+         ! we assume one extra pressure for now
+         pipe_radius => extract_scalar_field( state(1), "RadiusPipe1" )
       end if
 
       symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
@@ -2588,19 +2595,42 @@ contains
 
          GAMMA_PRES_ABS2 = 0.0
          DO CV_NODI = 1, CV_NONODS
+
+            ! variables used in the edge approach
+            if ( .true. ) then
+               h = mass_cv( cv_nodi )**(1.0/ndim)
+               rp = 0.1 * h**2
+               Skin = 0.0
+            end if
+
             DO IPHASE = 1, NPHASE
                DO JPHASE = 1, NPHASE
                   IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
                   JPRES = 1 + INT( (JPHASE-1)/N_IN_PRES )
-                  IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
-                     GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
-                          MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * SIGMA_INV_APPROX( IPHASE, CV_NODI )
+
+                  IF ( .FALSE. ) THEN
+                     ! This is the volume approach
+                     IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
+                        GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                             MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
+                             MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * SIGMA_INV_APPROX( IPHASE, CV_NODI )
+                     ELSE
+                        GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                             MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
+                             MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * SIGMA_INV_APPROX( JPHASE, CV_NODI )
+                     END IF
                   ELSE
-                     GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                          MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
-                          MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * SIGMA_INV_APPROX( JPHASE, CV_NODI )
+                     ! This is the edge approach
+                     IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
+                        GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                        MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log( pipe_radius%val( cv_nodi ) / rp ) + Skin )
+                     ELSE
+                        GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                        MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log( pipe_radius%val( cv_nodi ) / rp ) + Skin )
+                     END IF
+
                   END IF
+
                END DO
             END DO
          END DO
@@ -2624,18 +2654,18 @@ contains
                   JPRES = 1 + INT( (JPHASE-1)/N_IN_PRES )
                   IF ( IPRES /= JPRES ) THEN
                      DeltaP = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
-! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
+                     ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
                      IF ( DeltaP >= 0.0 ) THEN
                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
-                        !    MEAN_PORE_CV( IPRES, CV_NODI ) *  &
-                       !    MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
-                            MEAN_PORE_CV( JPRES, CV_NODI ) *  &
-                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( IPHASE, CV_NODI )
+                             !MEAN_PORE_CV( IPRES, CV_NODI ) *  &
+                             !MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
+                             MEAN_PORE_CV( JPRES, CV_NODI ) *  &
+                             DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( IPHASE, CV_NODI )
                      ELSE
                         PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
-                           MEAN_PORE_CV( IPRES, CV_NODI ) *  &
-                       !    MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
-                           DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( JPHASE, CV_NODI )
+                             MEAN_PORE_CV( IPRES, CV_NODI ) *  &
+                             !MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
+                             DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( JPHASE, CV_NODI )
                      END IF
                   END IF
                END DO
