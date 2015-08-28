@@ -689,6 +689,8 @@ contains
                     aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
                     if (aux > res) res = aux
                 end do
+                !We use the highest residual across the domain
+                if (IsParallel()) call allmax(res)
                 if (its==1) first_res = res!Variable to check total convergence of the SFPI method
             end if
           end if
@@ -718,6 +720,8 @@ contains
                       satisfactory_convergence = .true.
                       exit Loop_NonLinearFlux
                   end if
+                  !This have to be consistent between processors
+                  if (IsParallel())  call alland(satisfactory_convergence)
                   !If looping again, recalculate
                   if (.not. satisfactory_convergence) then
                       !Store old saturation to fully undo an iteration if it is very divergent
@@ -9076,16 +9080,16 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         integer, dimension(:), intent(in) :: cv_ndgln, IDs2CV_ndgln
         integer, dimension(:), intent(inout) :: StorageIndexes
         !Local variables
-        integer :: iphase, nphase, cv_nodi, cv_nonods
-        real :: Pe_aux
+        integer :: iphase, nphase, cv_nodi, cv_nonods, ele, cv_nodj
+        real :: Pe_aux, aux, aux2
         real, dimension(:), pointer ::Pe, Cap_exp
         logical :: Artificial_Pe, Diffusive_cap_only
         real, dimension(:,:,:), pointer :: p
-        real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent
+        real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent, X_ALL
 
         !Extract variables from packed_state
         call get_var_from_packed_state(packed_state,FEPressure = P,&
-        PhaseVolumeFraction = satura, immobile_fraction = immobile_fraction)
+        PhaseVolumeFraction = satura, immobile_fraction = immobile_fraction, PressureCoordinate = X_ALL)
 
         !Initiate local variables
         nphase = size(satura,1)
@@ -9120,8 +9124,16 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 Artificial_Pe = .true.
                 call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
                 if (Pe_aux<0) then!Automatic set up for Pe
-!                    Pe = maxval(p(1,1,:)) * 1d-2
-                    Pe = p(1,1,:) * 1d-3
+                    aux2 = max(maxval(p(1,1,:)), 0.)
+!                    do ele = 1, totele
+!                        cv_nodi = cv_ndgln( ( ele - 1 ) * cv_nloc + 1 )
+!                        cv_nodj = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_nloc )
+!                        aux = sqrt(dot_product( X_ALL(:,cv_nodi) - X_ALL(:,cv_nodj), X_ALL(:,cv_nodi) - X_ALL(:,cv_nodj)))
+!                        !Introduce Pe based on the pressure the size of the element and the parameter introduced by the user
+!                        Pe(cv_nodi:cv_nodj) = aux2 * min( abs(Pe_aux) * aux, 1d-3)
+!                    end do
+!                   Pe = p(1,1,:) * 1d-3
+                    Pe = aux2 * 1d-3!Seems more stable than p(1,1,:) * 1d-3
                 else
                     Pe = Pe_aux
                 end if

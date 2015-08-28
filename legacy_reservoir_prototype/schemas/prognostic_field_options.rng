@@ -919,6 +919,10 @@ Int grad u.kappa.grad v dV</a:documentation>
               <a:documentation>Non-linear DG flux - if we have an oscillation use upwinding else use central scheme.</a:documentation>
               <empty/>
             </element>
+            <element name="DG_weighting">
+              <a:documentation>DG_weighting - The method to calculate the flux between CV not sharing element is also used for fluxes within an element</a:documentation>
+              <empty/>
+            </element>
             <element name="none">
               <a:documentation>Disable advection</a:documentation>
               <empty/>

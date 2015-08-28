@@ -290,7 +290,7 @@
               <nonlinear_scheme/>
             </viscosity_scheme>
             <advection_scheme>
-              <upwind/>
+              <DG_weighting/>
               <integrate_advection_by_parts>
                 <twice/>
               </integrate_advection_by_parts>

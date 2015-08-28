@@ -7832,6 +7832,58 @@ one ignores the CV's that are not stictly on the current processor, iterate on t
 
 
 \pagebreak
+\section{A backtracking two-fixed point iteration solver with acceleration}
+\label{Non-linear_solver_backtracking}
+To solve the non-linear system of equations formed by the momentum equation, the saturation equation and saturations sum to one, a FPI method is considered. First an estimated pressure solution is obtained, then an estimated velocity, and finally an estimated saturation. The solver iterates until a certain pre-defined saturation tolerance is reached, in which case the size of the next time step may be increased, or until a pre-determined maximum number of non-linear iterations is reached, in which case the current solution is disposed of, the time step size is decreased and the time-level is repeated with the new time step size.
+
+The fact that the pressure field change is slower than the saturation field has been used to artificially obtain Courant numbers over unity using IMPES (implicit pressure explicit saturation) formulations. Here, an equivalent approach is used in order to reduce the computational cost. As the pressure field change is slower than the saturation field, recalculating ${\underline {\underline \sigma}}_{\alpha}$ with the new estimation of the saturation ${S^\prime_k}$ provides a good approximation to recalculate the velocity.
+This implies that an extra FPI can be performed in order to increase the speed of the method. Fig.~\ref{fig:flow_chart} shows the algorithm used to solve a problem. Three loops are considered. The solid-line loop is the time loop. The dotted-line loop is the classical FPI loop. The dashed-line loop is another FPI loop, whose computational cost is approximately a third of a conventional FPI. The last one, only loops over the saturation. Thus, it is denoted as Saturation Fixed Point Iteration (SFPI). 
+
+\begin{figure}[h!]
+  \begin{center}
+    \includegraphics[width=0.50\textwidth]{figures/high_courant.png}
+    \caption{Flow chart showing the steps of the algorithm. There are three main loops in total. The solid-line loop is the time loop. The dotted-line loop is the fixed point iteration method, which is used to solve the non-linear system of equations, the dashed-line loop is the saturation fixed point iteration, which is used to accelerate the FPI. \label{fig:flow_chart}}
+  \end{center}
+\end{figure}
+
+The non-linearity of this system of equations depends only on the saturation equation. Thus, only a post-processing step is required in order to stabilize the equations and increase the resilience and convergence of the non-linear solver.
+
+In the post-processing step, after calculating the saturation fields, a solution is sought in a trust region by forcing the solution to fulfil the physical restrictions of the solution. Instead of seeking for a solution in the whole spectrum of $\cal R$, a solution is sought in the normalized saturation range, $[0,1]$. This is done by forcing the values obtained after solving the saturation equation to be in that range.
+
+The common lore claims that a relaxation parameter can be used to increase the convergence of a solver, moreover, for non-linear solvers, like in the Newton-Armijo solver, it is a common procedure to obtain global convergence instead of local convergence. Thus, a relaxation parameter is used in order to improve the convergence of the FPI. However, a relaxation parameter may lead to slower convergences, therefore, acceleration techniques are necessary to alleviate this issue. A modified Anderson acceleration is considered here.
+The new value of saturation obtained after solving the saturation equation is relaxed using the last two values of saturation inside the SFPI using the following formula:
+\begin{equation}
+{S^\prime_k} = \varphi S_k + (1-\varphi) [ (1-(1-\varphi)^\beta \varphi) S_{k_1} + (1-\varphi)^\beta \varphi S_{k_2}],
+\label{eq:relax_method}
+\end{equation}
+in which $\varphi$ is the relaxation parameter, $S_{k}$ is the value of saturation obtained at this SFPI before relaxing it, $S_{k_1}$ and $S_{k_2}$ are the saturations obtained in the previous SPFI and the saturation obtained before $S_{k_1}$ respectively. 
+Normally, the weights for previous $S_{k_i}$ to obtain ${S^\prime_k}$ are obtained by solving an optimization problem. However, this implies solving an extra system and the storage of more data. 
+Here, Eq.~\ref{eq:relax_method} is used to obtain the different weights for $S_{k_i}$ without having to find an optimal of a system. 
+$\beta$ is the exponent that change the relative importance of $S_{k_1}$ and $S_{k_2}$ depending on the input $\varphi$. For small values of $\beta$ the relative importance of $S_{k_2}$ is increased even over $S_{k_1}$ (see Fig.~\ref{fig:alpha_ratio} (left)), for medium values Fig.~\ref{fig:alpha_ratio} (center) $S_{k_2}$ is always below $S_{k_1}$ and for high values of $\beta$ $S_{k_2}$ tends to be less important. The shape of the curve formed for the weight of $S_{k_2}$ (see Fig.~\ref{fig:alpha_ratio}), is asymmetric, being higher for smaller values of $\varphi$, when convergence is slow, and the system is more likely to be oscillating, than for high values of $\varphi$ when the system is converging nicely and no acceleration is required. Also, Eq.~\ref{eq:relax_method} guarantees a small contribution of $S_{k_2}$ which is important as this acceleration technique diverge. Moreover, in order to encourage an stable behaviour of the solution, the last iteration of the SFPI is always performed without acceleration, i.e. the weight of $S_{k_2}$ is zero.
+
+
+\begin{figure}[h!]
+{\includegraphics[width=0.33\textwidth]{figures/phi_ratio_0.png}}
+{\includegraphics[width=0.33\textwidth]{figures/phi_ratio_04.png}}
+{\includegraphics[width=0.33\textwidth]{figures/phi_ratio_5.png}}
+\caption{Weight of the different saturations, $S_{k_i}$, used to obtain the new ${S^\prime_k}$ depending on the relaxation parameter $\varphi$ for different values of $\beta.$ left)Shows a big importance of $S_{k_2}$, even more important than $S_{k_1}$. center) $S_{k_2}$ is always less important than $S_{k_1}$ right) $S_{k_2}$ is barely considered}
+    \label{fig:alpha_ratio}
+\end{figure} 
+
+Regarding the calculation of the relaxation parameter $\varphi$ to optimize convergence, some authors calculate it in advance based on information about the flow and the gravity number, other options are based on using the history of the convergence to calculate the optimal parameter. Here, the interest is in moderately large Courant numbers and therefore a method based on the history of convergence provides good results. 
+
+The relaxation parameter $\varphi$ is re-started every FPI to be the value prescribed by the user and within the SFPI it is calculated as the value that yields the best convergence ratio based on the residual. To this end, the last three values of the ratio of convergence of the residual are stored together with their corresponding $\varphi$ value. Next a minima is searched using the history of convergence. The main disadvantage of this algorithm is that it is bounded between the value introduced by the user and a minimum value. To avoid this, when no minima can be obtained, the algorithm calculates the new $\varphi$ solely based on the last value and its consequent convergence. In this way, $\varphi$ is increased if the convergence improves and if otherwise, decreased. This guarantees that the algorithm goes through all the possible values between $1$ and $0.1$. 
+
+To check convergence the $L_2^2$ norm of the size of the correction over all the elements is tested: 
+\begin{equation}
+f(S) = \sum_i^N \left( \frac{{S^\prime_k} - S_{k_1}}{\varphi N} \right)^2,
+\label{eq:functional}
+\end{equation}
+where $N$ is the total number of nodes. This criterion works for FPI, specially for spiral-wise convergence, and it requires less computations than calculating the residual.
+As stopping criteria for the main FPI, the solver iterates until the functional defined in Eq.~\ref{eq:functional} reaches the tolerance defined by the user, as shown in Fig.~\ref{fig:flow_chart}, or the maximum number of FPI is reached.
+The stopping criterion for the SPFI is the same as for the FPI in terms of tolerance, however, the number of iterations is very restricted as it may not be converging to the ''real'' solution, since the pressure is not updated.
+
+\pagebreak
 
 
 \section{Advection-diffusion applications}

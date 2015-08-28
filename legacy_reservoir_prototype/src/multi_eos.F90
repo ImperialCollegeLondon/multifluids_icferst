@@ -344,8 +344,10 @@
       type( state_type ), intent( inout ) :: packed_state
 
       integer, intent( in ) :: iphase, icomp, nphase, ncomp
+      integer :: JWLn, JWLi, JWLj
       character( len = option_path_len ), intent( in ) :: eos_option_path
       real, dimension( : ), intent( inout ) :: rho, drhodp
+       real, dimension( : ), allocatable :: ro0
 
       type( tensor_field ), pointer :: pressure
       type( scalar_field ), pointer :: temperature, density
@@ -402,14 +404,64 @@
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
          call get_option( trim( eos_option_path) // '/eos_option1' , eos_coefs( 1 ) )
          call get_option( trim( eos_option_path )// '/eos_option2' , eos_coefs( 2 ) )
-         Rho = ( pressure % val(1,1,:) + eos_coefs( 1 ) ) * eos_coefs( 2 ) / temperature % val
-         perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val(1,1,:) ) + eos_coefs( 1 ) ) )
-         RhoPlus = ( pressure % val(1,1,:) + perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
+         Rho = ( pressure%val(1, 1, :) + eos_coefs( 1 ) ) * eos_coefs( 2 ) / temperature % val
+         perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure%val(1, 1, :) ) + eos_coefs( 1 ) ) )
+         RhoPlus = ( pressure%val(1, 1, :) + perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
               temperature % val
-         RhoMinus = ( pressure % val(1,1,:) - perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
+         RhoMinus = ( pressure%val(1 , 1, :) - perturbation_pressure + eos_coefs( 1 ) ) *  eos_coefs( 2 ) / &
               temperature % val
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
          deallocate( eos_coefs )
+
+
+      
+         elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/JWL_equation' ) then
+!!P=A*(1-w/(R1*V))*exp(-R1*V)+B*(1-w/(R2*V))*exp(-R2/V)+w*E0/V;
+!!The ratio V =roe/ro is defined by using roe = density of the explosive (solid part) and ro = density of the detonation products.
+        allocate( eos_coefs( 7 ) ) ; eos_coefs = 0.
+!! eos_coefs(1): density_of_explosive_roe,
+!! eos_coefs(2): A,
+!! eos_coefs(3): B,
+!! eos_coefs(4): R1,
+!! eos_coefs(5): R2,
+!! eos_coefs(6): E0,
+!! eos_coefs(7): w,
+
+        call get_option( trim( eos_option_path ) // '/density_of_explosive_roe', eos_coefs( 1 ) )
+        call get_option( trim( eos_option_path ) // '/A', eos_coefs( 2 ) )
+        call get_option( trim( eos_option_path ) // '/B', eos_coefs( 3 ) )
+        call get_option( trim( eos_option_path ) // '/R1', eos_coefs( 4 ) )
+        call get_option( trim( eos_option_path ) // '/R2', eos_coefs( 5 ) )
+        call get_option( trim( eos_option_path ) // '/E0', eos_coefs( 6 ) )
+        call get_option( trim( eos_option_path ) // '/w', eos_coefs( 7 ) )
+        JWLn=size(pressure%val(1, 1, :));
+       
+        allocate(ro0(JWLn))
+        ro0=eos_coefs(1)      
+      
+      Rho=JWLdensity(eos_coefs, pressure%val(1, 1, :), ro0, JWLn)
+
+      perturbation_pressure = max( toler, 1.e-2 * abs( pressure%val(1, 1, :) ) )
+
+      RhoPlus=JWLdensity(eos_coefs, pressure%val(1, 1, :) + perturbation_pressure, ro0, JWLn)
+      RhoMinus=JWLdensity(eos_coefs, pressure%val(1, 1, :) - perturbation_pressure, ro0, JWLn)
+              
+      dRhodP = 0.5 * (  RhoPlus - RhoMinus ) / perturbation_pressure
+      
+      do JWLi=1, JWLn
+        if (pressure%val(1, 1, JWLi)<JWL(eos_coefs( 2 ), eos_coefs( 3 ), eos_coefs( 7 ), eos_coefs( 4 ), eos_coefs( 5 ), eos_coefs( 6 ), 0.0,  eos_coefs( 1 ), 1.205)) then
+               perturbation_pressure(JWLi)=1.
+               dRhodP(JWLi)=2.5
+        else 
+              ! perturbation_pressure(JWLi)=1.
+              ! dRhodP(JWLi)=1000.
+        end if
+      end do
+
+     temperature %val=pressure %val(1, 1, :) /(Rho*278.0)
+      deallocate( eos_coefs )
+
+
 
       elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/linear_in_pressure' ) then
 !!$ Den = C0 * P +C1
@@ -620,6 +672,11 @@
          Conditional_for_Compressibility_Option: if( have_option( trim( eos_option_path_out ) // '/stiffened_gas' ) ) then
             eos_option_path_out = trim( eos_option_path_out ) // '/stiffened_gas'
 
+          
+         elseif( have_option( trim( eos_option_path_out ) // '/JWL_equation' ) ) then
+            eos_option_path_out = trim( eos_option_path_out ) // '/JWL_equation'
+
+
          elseif( have_option( trim( eos_option_path_out ) // '/exponential_oil_gas' ) ) then
             eos_option_path_out = trim( eos_option_path_out ) // '/exponential_oil_gas'
 
@@ -690,6 +747,7 @@
       !Working pointers
       real, dimension(:,:), pointer :: Satura, OldSatura, Immobile_fraction
       type( tensor_field ), pointer :: perm
+      type( scalar_field ), pointer :: Spipe
 
     opt_vel_upwind_coefs_new=0.0 ; opt_vel_upwind_grad_new=0.0
 
@@ -755,13 +813,17 @@
            CV_NDGLN, MAT_NDGLN, U_ABSORB2, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
 
       do ipres = 2, npres
+
+         Spipe => extract_scalar_field( state(1), "Sigma1" )
+
          do iphase = 1, n_in_pres
             do idim = 1, ndim
                ! set \sigma for the pipes here
                LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
                LOC2 = (1-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
 
-               U_ABSORB( :, LOC, LOC ) = 1000.0
+               !U_ABSORB( :, LOC, LOC ) = 1000.0
+               U_ABSORB( :, LOC, LOC ) = Spipe%val
                !U_ABSORB( :, LOC, LOC ) = U_ABSORB( :, LOC2, LOC2 )
             end do
          end do
@@ -1590,7 +1652,6 @@
         KR = Endpoint_relperm(iphase)*( max( sat - Immobile_fraction(iphase), sat*eps+eps) / aux ) ** Corey_exponent(iphase)
         !Make sure that the relperm is between bounds
         KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
-!        KR = min(KR,Endpoint_relperm(iphase))
         ABSP = INV_PERM * (visc_phase(iphase) * max(1d-5, sat)) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
         !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
 
@@ -3241,5 +3302,100 @@
 
         call deallocate(targ_Store)
     end subroutine get_RockFluidProp
+
+
+
+
+
+
+!!JWL eqaution functions
+
+function JWL( A, B, w, R1, R2, E0, p,  roe, ro) result(fro)
+      implicit none
+      real, intent( in ) ::  A, B, w, R1, R2, E0, p,  roe, ro
+      real :: fro
+      real :: V
+      V=roe/ro      
+      fro=(A*(1.0-w/(R1*V))*exp(-R1*V)+B*(1.0-w/(R2*V))*exp(-R2/V)+w*E0/V)-p
+end function JWL
+
+
+
+function diffJWL(A, B, w, R1, R2, E0, roe, ro)  result(difffro)
+      implicit none
+      real, intent( in ) ::  A, B, w, R1, R2, E0, roe, ro
+      real ::  difffro  
+
+difffro=(E0*w)/roe + (B*R2*exp(-(R2*ro)/roe)*((ro*w)/(R2*roe) - 1.0))/roe- (A*w*exp(-(R1*roe)/ro))/(R1*roe) - (B*w*exp(-(R2*ro)/roe))/(R2*roe)- (A*R1*roe*exp(-(R1*roe)/ro)*((ro*w)/(R1*roe) - 1.0))/ro**2.0
+
+end function diffJWL
+
+
+
+function JWLdensity(eos_coefs, pressure, ro0, JWLn) result(Rho)
+!      implicit none
+      real, dimension( : ),   intent( in ) :: eos_coefs
+      real, dimension( : ),   intent( in ) :: pressure
+      real, dimension( : ),   intent( in ) :: ro0
+      integer, intent( in ) :: JWLn
+
+      real, dimension( JWLn ) :: Rho
+
+      integer :: JWLi, JWLj
+
+      real, dimension(JWLn) :: rozero
+      rozero=ro0
+
+!      allocate(eos_coefs(7));
+!      allocate(pressure(JWLn));
+!      allocate(ro0(JWLn));
+!      allocate(Rho(JWLn));
+
+
+ !      do JWLi=1, JWLn
+ !          if (pressure%val(JWLi)<1e6) then
+ !              Rho(JWLi)=1.2
+ !          else
+ !              Rho=JWLdensity(eos_coefs, pressure%val, ro0, JWLn)
+ !          end if
+ !      end do
+ 
+
+  
+      do JWLi=1, JWLn
+          if (pressure(JWLi)<JWL(eos_coefs( 2 ), eos_coefs( 3 ), eos_coefs( 7 ), eos_coefs( 4 ), eos_coefs( 5 ), eos_coefs( 6 ), 0.0,  eos_coefs( 1 ), 1.205) ) then
+                Rho(JWLi) = 1.205
+          elseif(pressure(JWLi)<1.0e6) then 
+                Rho(JWLi)=2.5*pressure(JWLi)/210217.842
+        
+          else
+
+          do JWLj=1, 10000
+               Rho(JWLi)=rozero(JWLi)-JWL(eos_coefs( 2 ), eos_coefs( 3 ), eos_coefs( 7 ), eos_coefs( 4 ), eos_coefs( 5 ), eos_coefs( 6 ), pressure(JWLi),  eos_coefs( 1 ), rozero(JWLi))/diffJWL( eos_coefs( 2 ), eos_coefs( 3 ), eos_coefs( 7 ), eos_coefs( 4 ), eos_coefs( 5 ), eos_coefs( 6 ), eos_coefs( 1 ), rozero(JWLi))
+               if (abs(Rho(JWLi)-rozero(JWLi))<1e-10) then
+                    exit
+               end if
+               rozero(JWLi)=Rho(JWLi)
+           end do
+
+           end if
+      end do
+
+     
+
+!      deallocate(eos_coefs);
+!      deallocate(pressure);
+!      deallocate(ro0);
+!      deallocate(Rho);
+
+end function JWLdensity
+
+!!-JWL eqaution functions
+
+
+
+
+
+
 
   end module multiphase_EOS

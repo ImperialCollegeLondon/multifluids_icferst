@@ -52,7 +52,7 @@ contains
 
     integer :: i
     cache_level=0
-    if (have_option('/caching/no_cache_shape_functions')) then
+    if (.not. have_option('/caching/cache_shape_functions')) then
        return
     else
        do i=1,bit_size(cache_level)

@@ -67,7 +67,7 @@ contains
     end if
     call get_option(base_path // "/max_node_increase", increase_tolerance, stat = stat)
     if(stat == SPUD_NO_ERROR) then
-      max_nodes(no_of_regions) = min(max_nodes(no_of_regions+1), int(nodes * increase_tolerance))
+      max_nodes(no_of_regions+1) = min(max_nodes(no_of_regions+1), int(nodes * increase_tolerance))
     end if
 
     if (no_of_regions>0) then
@@ -279,16 +279,17 @@ contains
     allocate(region_list(no_of_regions),max_nodes(no_of_regions+1),min_nodes(no_of_regions+1))
     call allocate(region_list)
     do region=1, no_of_regions
-       id_shape=option_shape(base_path // "/number_of_nodes_by_mesh_region/region_ids")
+       id_shape=option_shape(base_path // "/number_of_nodes_by_mesh_region["//int2str(region-1)//"]/region_ids")
        allocate(region_ids(id_shape(1)))
        call get_option(base_path // "/number_of_nodes_by_mesh_region["//int2str(region-1)//"]/region_ids",&
             region_ids)
        do id=1,size(region_ids)
-          call insert(region_list(id),region_ids(id))
+          call insert(region_list(region),region_ids(id))
        end do
+       deallocate(region_ids)
+
        call get_option(base_path // "/number_of_nodes_by_mesh_region["//int2str(region-1)//"]/maximum_number_of_nodes",max_nodes(region))
        call get_option(base_path // "/number_of_nodes_by_mesh_region["//int2str(region-1)//"]/minimum_number_of_nodes",min_nodes(region),default=1)
-       deallocate(region_ids)
        if (min_nodes(region)>max_nodes(region)) then
           FLAbort("Minimum number of nodes exceeds maximum number for at least one mesh region. Please fix your adaptivity options")
        end if

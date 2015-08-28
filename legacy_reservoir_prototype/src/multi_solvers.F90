@@ -799,7 +799,7 @@ contains
       real, dimension(1) :: rescal
       logical :: nodeFound
       !Initialize variables
-      i = 1
+      i = 1; rescal = 1.
 
       !retrieve the value of alpha from diamond just once
       if (alpha < 0) call get_option( '/Fix_bad_elements/Bad_ele_scale',alpha, default = 0.5d-4 )
@@ -816,6 +816,7 @@ contains
           !We get the diagonal value to use it as a reference when adding the over-relaxation
           call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(bad_node ,1) /), 1, &
             (/ cmc_petsc%column_numbering%gnn2unn(bad_node ,1) /),  rescal, ierr)
+
           rescal(1) = adapted_alpha * rescal(1)
           DO P_ILOC = 1, P_NLOC
               i_node = P_NDGLN((ele-1) * p_nloc + P_ILOC)
@@ -863,6 +864,7 @@ contains
                 call addto( cmc_petsc, blocki = 1, blockj = 1, i = i_node, j = j_node,val = rescal(1) * auxR)
               end do
           end do
+
           !After setting values we have to re-assemble the matrix as we want to use MatGetValues
           call assemble( cmc_petsc )
           !Advance one element
@@ -1471,6 +1473,7 @@ contains
         real, dimension(History_order) :: Coefficients
         logical, save :: allow_undo = .true.
         real, save :: convergence_tol
+        type (tensor_field), pointer :: sat_field
         !Initialize variables
         new_dumping = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
@@ -1478,8 +1481,10 @@ contains
         call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
 
         !Retrieve Saturation
-        call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
+!        call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
 
+        sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+        Satura =>  sat_field%val(1,:,:)
         !Automatic method based on the history of convergence
         if (Dumping_from_schema < 0.0) then
 
@@ -1577,18 +1582,13 @@ contains
             Satura = Dumpings(1) * Satura + aux * ( (1.-(aux**anders_exp *Dumpings(1)) ) * sat_bak + &
                             aux**anders_exp *Dumpings(1) * backtrack_sat)!<=The best option so far
 
-!            !More importance of backtrack_sat, for high alpha, even more important than sat_bak
-!            aux = (1. - Dumpings(1))
-!            Satura = Dumpings(1) * Satura + aux * (aux * sat_bak + Dumpings(1)* backtrack_sat)!<=The second best option so far
-
-            !For the Anderson acceleration (using more than just the old Sat) we fixed the contributions
-            !since in this way the optimisation of the Dumping can be done as for no acceleration procedure
-!            aux = 1.0 - Dumpings(1)
-!            Satura = Dumpings(1) * Satura + aux * (0.8 * sat_bak + 0.2 * backtrack_sat)
-
         end if
         !Inform of the new dumping parameter used
         new_dumping = Dumpings(1)
+
+        !Update halos with the new values
+        if (IsParallel()) call halo_update(sat_field)
+
     contains
 
         real function get_optimal_dumping(Dumpings, Convergences, Coefficients)
