@@ -3950,6 +3950,7 @@ and for $p_{well}\leq p_{reservoir}$ for phase $i$ the value of $\gamma_i^{well\
 \gamma_{up_i}^{well\, reservoir}=\frac{A_{pipe-wall}  \rho_i^{reservoir} S_i^{reservoir}   }
 {{\Delta x}_{wall}{\sigma_{wall}}_i} 
 \;\;\;
+\label{saturation_wells_12-gamma}
 \end{equation}
 \begin{equation}
 \text{and} 
@@ -4066,6 +4067,32 @@ of $q_i^{j\,k}$ in equations \ref{saturation_wells_7}.
 
 
 
+\subsection{Cylindrical geometry and skin effect adjustment} 
+
+Now assuming the well is cylindericial and a cyclindrically symmetric analytical solution 
+as well as the intorduction of the skin effect coefficient $Skin$ (an adjustment for fracturing of the porious media by the introduction of the well) the result is that the maximum flux can 
+be written as: 
+
+\begin{equation}
+q_k = \frac{2 \pi h}{\sigma_i} \frac{(p_{reservior}- p_{well})}{ ( log(\frac{r_e}{r_p}) + Skin)} 
+\label{saturation_wells_11-cyl-skin}
+\end{equation}
+in which the Peacman correction is:
+\begin{equation}
+r_p= 0.1 h \Delta x_{grid} 
+\end{equation}
+and $h$ is the length of the completion - length over which the well is perforated. Also $\Delta X$ 
+is  the length scale of the elements - for CV-FEM it may be calculated from the dertminant of the FEM Jacobian. 
+Complex expression exist for the skin effect coefficient $Skin$. 
+From equation \ref{saturation_wells_11-cyl-skin} then:
+
+\begin{equation}
+\gamma_{i}^{well\, reservoir}=\frac{2 \pi h}{\sigma_i} \frac{1}{ ( log(\frac{r_e}{r_p}) + Skin)} ,
+\label{saturation_wells_15-well10reservoir-cyl-skin}
+\end{equation}
+
+
+
 \subsection{The sum to one constraint within the continuity equations for well modelling} 
 \label{Continuity equation for well modelling} 
 The sum of the saturation constraint
@@ -4179,6 +4206,75 @@ freedome for pressure, but these are not supported (generally) in the current ge
 multi-grid solvers which are needed to solve for pressure. 
 
 The formation of the pressure matrix equation is as described in section \ref{Projection method of solution} and the matrix ${\bf B}$ in the continuity equation \ref{glob-cty-matrix2} (a discretization of equation \ref{saturation_wells_4}) is formed from the terms involving $\hat\gamma^{j\, k}$ which couple the phases. 
+
+
+
+
+\subsection{Scaling of the equations with wells} 
+\label{well-scaling}
+
+One can scale the equations with wells in order to make the numbers generated on the 
+computer easier to deal with in terms of round off error as well as for the iterative 
+solvers. 
+Consider the force balance equation:
+
+\begin{equation}
+\sigma u = -\nabla p. 
+\end{equation}
+
+Using the new non-dimensional variables $\sigma=\Sigma \sigma^*$, $u=U u^*$ , $p=\Sigma U L p^*$, 
+$x=L x^*$ 
+and $t=\frac{L}{U} t^*$ in which $L$ is a length scale 
+one 
+obtains:
+\begin{equation}
+\Sigma U \sigma^* u^* = -\frac{1}{L} \nabla^*  \Sigma U L p^*. 
+\end{equation}
+Here $\Sigma,\; U,\; L$ are dimensional scalar constants. 
+Thus,  
+\begin{equation}
+\sigma^* u^* = -\nabla^* p^*. 
+\end{equation}
+A simplified saturation equation looks like:
+\begin{equation}
+\phi_i \frac{\partial S_k}{\partial t} 
++ \nabla \cdot u_k S_k
++ \gamma (p-p_0)=0,
+\end{equation}
+and thus:
+\begin{equation}
+\frac{U}{L} \phi_i \frac{\partial S_k}{\partial t^*} 
++ \frac{U}{L} \nabla^* \cdot u_k^* S_k
++ \gamma \Sigma U L  (p^*-p^*_0)=0, 
+\end{equation}
+also:
+\begin{equation}
+\phi_i \frac{\partial S_k}{\partial t^*} 
++ \nabla^* \cdot u_k^* S_k
++ \gamma \Sigma  L^2  (p^*-p^*_0)=0, 
+\end{equation}
+and:
+\begin{equation}
+\phi_i \frac{\partial S_k}{\partial t^*} 
++ \nabla^* \cdot u_k^* S_k
++ \gamma^* (p^*-p^*_0)=0. 
+\end{equation}
+The key non-dimensional parameter governing the exchange of mass between 
+the well and the reservoir is thus: 
+\begin{equation}
+\gamma^* = \gamma  \Sigma L^2.  
+\end{equation}
+For the key well producing situation (ignoring density for the time being) from equation  
+\ref{saturation_wells_12-gamma}, 
+for $p_{well}< p_{reservior}$: 
+\begin{equation}
+\gamma^* = \gamma_{up_i}^{well\, reservoir}
+  \Sigma L^2 
+=\frac{A_{pipe-wall}  S_i^{reservoir}   }
+{{\Delta x}_{wall}{\sigma_{wall}}_i}
+  \Sigma L^2
+\end{equation}
+
 
 
 
