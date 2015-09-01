@@ -12239,6 +12239,7 @@ deallocate(NX_ALL)
              L_CVFENX_ALL(:,:) = 2.0 * SCVFENLX(:,:) / DX
              L_UFENX_ALL(:,:) = 2.0 * SUFENLX(:,:) / DX
 
+
              PIPE_RAD(:) = 0.0
              DO CV_LILOC = 1, CV_LNLOC
                 CV_KNOD = CV_GL_GL( CV_LILOC )
