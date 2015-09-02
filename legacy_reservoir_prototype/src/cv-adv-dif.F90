@@ -114,7 +114,7 @@ contains
     end if
   end function my_size_real
 
-    SUBROUTINE CV_ASSEMB( state, packed_state, &
+    SUBROUTINE CV_ASSEMB( state, packed_state, storage_state, &
          tracer, velocity, density, &
          CV_RHS_field, PETSC_ACV,&
          SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
@@ -267,7 +267,7 @@ contains
       ! Inputs/Outputs
       IMPLICIT NONE
       type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ), intent( inout ) :: packed_state
+      type( state_type ), intent( inout ) :: packed_state, storage_state
       type(tensor_field), intent(inout), target :: tracer
       type(tensor_field), intent(in), target :: density
       type(tensor_field), intent(in) :: velocity
@@ -861,7 +861,7 @@ contains
                                 ! Define the gauss points that lie on the surface of the CV...
            FINDGPTS, COLGPTS, NCOLGPTS, &
            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
-           state, "Press_mesh" , StorageIndexes(1) )
+           storage_state, "Press_mesh" , StorageIndexes(1) )
 
       !ewrite(3,*)'back in cv-adv-dif'
       !do iphase = 1, nphase
@@ -1291,7 +1291,7 @@ contains
               SMALL_FINDRM,SMALL_CENTRM,SMALL_COLM,NSMALL_COLM, &
               X_NDGLN,X_NONODS,NDIM, &
               X_ALL, XC_CV_ALL, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE,&
-              state, "anisotrop", storageindexes(2))
+              storage_state, "anisotrop", storageindexes(2))
 
          
       END IF ! endof IF ( IANISOLIM == 0 ) THEN ELSE
@@ -1313,7 +1313,7 @@ contains
               NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, WIC_T_BC_ALL, SUF_T_BC_ALL, &
               SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
               SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-              state, "DGDEVAL2", StorageIndexes( 3 ) )
+              storage_state, "DGDEVAL2", StorageIndexes( 3 ) )
 
       END IF
 
@@ -1386,7 +1386,7 @@ contains
               CV_NLOC, SCVNGI, &
               SCVFEN, SCVFENLX_ALL, SCVFEWEIGH, SCVDETWEI, SCVRA, VOLUME, DCYL, &
               SCVFENX_ALL, &
-              NDIM, INV_JAC, state, "INVJAC", StorageIndexes(4) )
+              NDIM, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
 
 
 ! Generate some local F variables ***************
@@ -2139,18 +2139,18 @@ contains
        !###############################################################
        IPT=1
        CALL UNPACK_LOC( LIMF(:), LIMT( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,1), GLOBAL_FACE, IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1),&
-       SCVNGI*TOTELE,state, 'limf1', StorageIndexes(5) )
+       SCVNGI*TOTELE,storage_state, 'limf1', StorageIndexes(5) )
        CALL UNPACK_LOC( LIMF(:), LIMTOLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,2), GLOBAL_FACE, IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2),&
-       SCVNGI*TOTELE,state, 'limf2', StorageIndexes(6) )
+       SCVNGI*TOTELE,storage_state, 'limf2', StorageIndexes(6) )
        CALL UNPACK_LOC( LIMF(:), LIMD( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,3), GLOBAL_FACE, IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3),&
-       SCVNGI*TOTELE,state, 'limf3', StorageIndexes(7) )
+       SCVNGI*TOTELE,storage_state, 'limf3', StorageIndexes(7) )
        CALL UNPACK_LOC( LIMF(:), LIMDOLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,4), GLOBAL_FACE, IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4),&
-       SCVNGI*TOTELE,state, 'limf4', StorageIndexes(8) )
+       SCVNGI*TOTELE,storage_state, 'limf4', StorageIndexes(8) )
        IF ( use_volume_frac_T2 ) THEN
            CALL UNPACK_LOC( LIMF(:), LIMT2( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,5), GLOBAL_FACE, IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5),&
-           SCVNGI*TOTELE,state, 'limf5', StorageIndexes(9) )
+           SCVNGI*TOTELE,storage_state, 'limf5', StorageIndexes(9) )
            CALL UNPACK_LOC( LIMF(:), LIMT2OLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,6), GLOBAL_FACE, IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6),&
-           SCVNGI*TOTELE,state, 'limf6', StorageIndexes(10) )
+           SCVNGI*TOTELE,storage_state, 'limf6', StorageIndexes(10) )
        else
            LIMT2( : )=1.0; LIMT2OLD( : )=1.0
        ENDIF
@@ -3603,7 +3603,7 @@ end if
 
 
              SUBROUTINE UNPACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK, GLOBAL_FACE, IGOT_T_CONST, IGOT_T_CONST_VALUE,&
-                TOTAL_GLOBAL_FACE, state, StorName, indx )
+                TOTAL_GLOBAL_FACE, storage_state, StorName, indx )
 ! If PACK then UNpack loc_f into T_ALL  as long at IGOT_T==1 and STORE and not already in storage.
              IMPLICIT NONE
              LOGICAL, intent( in ) :: STORE
@@ -3615,7 +3615,7 @@ end if
              REAL, DIMENSION(NPHASE), intent( inout ) :: T_ALL
              REAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_CONST_VALUE
              REAL, DIMENSION(:), intent( inout ) :: LOC_F
-             type( state_type ), intent( inout ), dimension(:) :: state
+             type( state_type ), intent( inout ):: storage_state
              character(len=*), intent(in) :: StorName
              integer, intent(inout) :: indx
              !Local variables
@@ -3630,12 +3630,12 @@ end if
              DO IPHASE=1,NPHASE
                 !Initial check to know whether we have already stored all the values
                 if (indx < 0) then
-                    if ((IPHASE+(GLOBAL_FACE-1)*NPHASE)<int(state(1)%scalar_fields(abs(indx))%ptr%val(TOTAL_GLOBAL_FACE*NPHASE+1))) then
+                    if ((IPHASE+(GLOBAL_FACE-1)*NPHASE)<int(storage_state%scalar_fields(abs(indx))%ptr%val(TOTAL_GLOBAL_FACE*NPHASE+1))) then
                         !If the input index is smaller than the last stored index,
                         !then we have re-started and we should be extracting stored values
                         indx = abs(indx)
                         !We just need to enter once
-                        state(1)%scalar_fields(abs(indx))%ptr%val(TOTAL_GLOBAL_FACE*NPHASE+1) = -1.0
+                        storage_state%scalar_fields(abs(indx))%ptr%val(TOTAL_GLOBAL_FACE*NPHASE+1) = -1.0
 
                     end if
                 end if
@@ -3646,17 +3646,17 @@ end if
                          IF(STORE) THEN ! Put in storage if not already in storage...
                              if (indx < 0) then!We may need to store a new value
                                  !Store in state, indx is an input
-                                 state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = LOC_F(IPT-1)
+                                 storage_state%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = LOC_F(IPT-1)
                                  !Store input index to check when we start to get data instead of sting data
-                                 state(1)%scalar_fields(abs(indx))%ptr%val(TOTAL_GLOBAL_FACE*NPHASE+1) = IPHASE+(GLOBAL_FACE-1)*NPHASE
+                                 storage_state%scalar_fields(abs(indx))%ptr%val(TOTAL_GLOBAL_FACE*NPHASE+1) = IPHASE+(GLOBAL_FACE-1)*NPHASE
                              else if (GLOBAL_FACE==1 .and. indx == 0) then !The first time we need to introduce the targets in state
-                                 if (has_scalar_field(state(1), "Fld"//StorName)) then
+                                 if (has_scalar_field(storage_state, "Fld"//StorName)) then
                                      !If we are recalculating due to a mesh modification then
                                      !we return to the original situation
-                                     call remove_scalar_field(state(1), "Fld"//StorName)
+                                     call remove_scalar_field(storage_state, "Fld"//StorName)
                                  end if
                                   !Get mesh file just to be able to allocate the fields we want to store
-                                 fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+                                 fl_mesh => extract_mesh( storage_state, "FakeMesh" )
                                  allocate(auxmesh)
                                  Auxmesh = fl_mesh
                                  !The number of nodes I want does not coincide
@@ -3668,24 +3668,24 @@ end if
                                  call allocate (targ_fieldToStore, Auxmesh,'UnpackLoc')
 
                                  !Now we insert them in state and store the indexes
-                                 call insert(state(1), targ_fieldToStore, "Fld"//StorName)
+                                 call insert(storage_state, targ_fieldToStore, "Fld"//StorName)
                                  !Store index with a negative value, because if the index is
                                  !zero or negative then we have to calculate stuff
                                  call deallocate(targ_fieldToStore)
                                  deallocate(targ_fieldToStore)
 !                                 deallocate(auxmesh)
-                                 indx = -size(state(1)%scalar_fields)
+                                 indx = -size(storage_state%scalar_fields)
                                   !Store in state
-                                 state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = LOC_F(IPT-1)
+                                 storage_state%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE) = LOC_F(IPT-1)
 !
                              end if
-                          T_ALL(IPHASE) = state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE)
+                          T_ALL(IPHASE) = storage_state%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE)
                          end if
                      ENDIF
                  ELSE IF(IGOT_T_CONST(IPHASE)) THEN
                      T_ALL(IPHASE) = IGOT_T_CONST_VALUE(IPHASE)
                  ELSE IF(STORE.and.indx>0) THEN ! Check storage and pull out of storage
-                     T_ALL(IPHASE) = state(1)%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE)
+                     T_ALL(IPHASE) = storage_state%scalar_fields(abs(indx))%ptr%val(IPHASE+(GLOBAL_FACE-1)*NPHASE)
                  ELSE ! Set to 1 as last resort e.g. for T2, T2OLD
                      T_ALL(IPHASE) = 1.0
                  ENDIF
@@ -4326,8 +4326,7 @@ end if
        CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
        CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, NLX_ALL, &
        X_NONODS, X, NCOLM, FINDM, COLM, MIDM, &
-       IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC,&
-       state, StorageIndexes )
+       IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC)
 
     ! Determine FEMT (finite element wise) etc from T (control volume wise)
     ! Also integrate PSI_INT over each CV and average PSI_AVE over each CV.
@@ -4358,8 +4357,6 @@ end if
     REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
     INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
     INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
-    type(state_type), optional, dimension(:), intent(inout) :: state
-    INTEGER, DIMENSION( : ), optional, intent( inout ) :: StorageIndexes
     ! Local variables
     LOGICAL :: D1, D3, DCYL
     REAL, DIMENSION( : ), allocatable, target :: DETWEI2, RA2
@@ -4399,14 +4396,14 @@ end if
     call allocate(cv_mass,psi(1)%ptr%mesh,'CV_mass')
     call zero(cv_mass)
 
-    if (.not.present(state) .or. .not.present(StorageIndexes)) then
-        ALLOCATE( DETWEI2( CV_NGI ))
-        ALLOCATE( RA2( CV_NGI ))
-        ALLOCATE( NX_ALL2( NDIM, CV_NLOC, CV_NGI ))
-        !Set the pointers
-        volume =>  VOLUME2; DETWEI => DETWEI2; RA => RA2
-        NX_ALL =>NX_ALL2
-    end if
+
+    ALLOCATE( DETWEI2( CV_NGI ))
+    ALLOCATE( RA2( CV_NGI ))
+    ALLOCATE( NX_ALL2( NDIM, CV_NLOC, CV_NGI ))
+    !Set the pointers
+    volume =>  VOLUME2; DETWEI => DETWEI2; RA => RA2
+    NX_ALL =>NX_ALL2
+
 
     do it=1,size(fempsi)
        call zero(fempsi(it)%ptr)
@@ -4449,16 +4446,10 @@ end if
           if (.not. assemble_ele(psi_int(1)%ptr,ele)) cycle ! IS THIS A PROBLEM? 
        end if
 
-       if (present(state) .and. present(StorageIndexes)) then!This part does not work yet
-            call DETNLXR_plus_storage( ELE, X, X_NDGLN, TOTELE, X_NONODS, CV_NLOC, CV_NGI, &
-                N, NLX_ALL, CVWEIGHT, DETWEI, RA, VOLUME, DCYL, &
-                NX_ALL, state, "ProjFE", StorageIndexes(31))
-       else
-           ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-           CALL DETNLXR( ELE, X(1,:), X(2,:), X(3,:), X_NDGLN, TOTELE, X_NONODS, CV_NLOC, CV_NGI, &
-                N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), CVWEIGHT, DETWEI2, RA2, VOLUME2, D1, D3, DCYL, &
-                NX_ALL2(1,:,:), NX_ALL2(2,:,:), NX_ALL2(3,:,:) )
-       end if
+       ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
+       CALL DETNLXR( ELE, X(1,:), X(2,:), X(3,:), X_NDGLN, TOTELE, X_NONODS, CV_NLOC, CV_NGI, &
+           N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), CVWEIGHT, DETWEI2, RA2, VOLUME2, D1, D3, DCYL, &
+           NX_ALL2(1,:,:), NX_ALL2(2,:,:), NX_ALL2(3,:,:) )
        MASS_ELE( ELE ) = VOLUME
        Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
 
@@ -4576,11 +4567,9 @@ end if
     end do
     call DEALLOCATE( MAT )
     call DEALLOCATE( PMAT )
-    if (.not.present(state) .or. .not.present(StorageIndexes)) then
-        DEALLOCATE( DETWEI2 )
-        DEALLOCATE( RA2 )
-        DEALLOCATE( NX_ALL2 )
-    end if
+    DEALLOCATE( DETWEI2 )
+    DEALLOCATE( RA2 )
+    DEALLOCATE( NX_ALL2 )
     ewrite(3,*) 'Leaving PROJ_CV_TO_FEM_state'
 
     RETURN
@@ -4603,7 +4592,7 @@ end if
        NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC,  &
        SUF_U_BC,SUF_V_BC,SUF_W_BC, &
        WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
-       SBCVFEN, SBCVFENSLX, SBCVFENSLY, state, StorName, Indexes)
+       SBCVFEN, SBCVFENSLX, SBCVFENSLY, storage_state, StorName, Indexes)
 
     ! determine FEMT (finite element wise) etc from T (control volume wise)
     IMPLICIT NONE
@@ -4632,7 +4621,7 @@ end if
     REAL, DIMENSION( :, : ), intent( in ) :: SBUFEN, SBUFENSLX, SBUFENSLY
     REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
     REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-    type( state_type ), dimension( : ), intent( inout ) :: state
+    type( state_type ), intent( inout ) :: storage_state
     character(len=*), intent(in) :: StorName
     integer, dimension(:), intent(inout) :: Indexes
 
@@ -4647,7 +4636,7 @@ end if
          NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_U_BC, &
          WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
          SBCVFEN, SBCVFENSLX, SBCVFENSLY,&
-         state, StorName//"U", Indexes(1))
+         storage_state, StorName//"U", Indexes(1))
     IF(NDIM_VEL.GE.2) THEN
        CALL DG_DERIVS( V, VOLD, &
             DVX_ELE, DVY_ELE, DVZ_ELE, DVOLDX_ELE, DVOLDY_ELE, DVOLDZ_ELE, &
@@ -4660,7 +4649,7 @@ end if
             NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_V_BC, &
             WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
             SBCVFEN, SBCVFENSLX, SBCVFENSLY,&
-            state, StorName//"V", Indexes(2))
+            storage_state, StorName//"V", Indexes(2))
     ELSE
        DVX_ELE=0; DVY_ELE=0; DVZ_ELE=0; DVOLDX_ELE=0; DVOLDY_ELE=0; DVOLDZ_ELE=0
     ENDIF
@@ -4677,7 +4666,7 @@ end if
             NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_W_BC, &
             WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
             SBCVFEN, SBCVFENSLX, SBCVFENSLY,&
-            state,StorName//"W", Indexes(3))
+            storage_state,StorName//"W", Indexes(3))
     ELSE
        DWX_ELE=0; DWY_ELE=0; DWZ_ELE=0; DWOLDX_ELE=0; DWOLDY_ELE=0; DWOLDZ_ELE=0
     ENDIF
@@ -4697,7 +4686,7 @@ end if
        NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
        WIC_T_BC_DIRICHLET, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY,&
-        state, StorName,indx )
+       storage_state, StorName,indx )
 
     ! determine FEMT (finite element wise) etc from T (control volume wise)
     IMPLICIT NONE
@@ -4721,7 +4710,7 @@ end if
     REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
     REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
     REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-    type( state_type ), dimension( : ), intent( inout ) :: state
+    type( state_type ), intent( inout ) :: storage_state
     character(len=*), intent(in) :: StorName
     integer, intent(inout) :: indx
     ! Local variables
@@ -4802,7 +4791,7 @@ end if
             X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
             X_NX_ALL, &
             CV_NLOC, NLX, NLY, NLZ, NX_ALL,&
-            state,StorName, indx)
+            storage_state,StorName, indx)
 
        !ewrite(3,*)'N',N
        !ewrite(3,*)'nlx:',nlx
@@ -5129,7 +5118,7 @@ end if
        NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
        SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY,&
-      state, StorName, indx  )
+       storage_state, StorName, indx  )
 
     ! determine FEMT (finite element wise) etc from T (control volume wise)
     IMPLICIT NONE
@@ -5153,7 +5142,7 @@ end if
     REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
     REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
     REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-    type( state_type ), dimension( : ), intent( inout ) :: state
+    type( state_type ), intent( inout ) :: storage_state
     character(len=*), intent(in) :: StorName
     integer, intent(inout) :: indx
     ! Local variables
@@ -5199,7 +5188,7 @@ end if
             X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
             X_NX_ALL, &
             CV_NLOC, NLX, NLY, NLZ, NX_ALL&
-            , state,StorName , indx )
+            , storage_state,StorName , indx )
 
        Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
 
@@ -5382,7 +5371,7 @@ end if
        NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
        SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY,&
-       state, StorName, StorageIndexes  )
+       storage_state, StorName, StorageIndexes  )
 
     ! determine FEMT (finite element wise) etc from T (control volume wise)
     IMPLICIT NONE
@@ -5406,7 +5395,7 @@ end if
     REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
     REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
     REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-    type( state_type ), dimension( : ), intent( inout ) :: state
+    type( state_type ), intent( inout ) :: storage_state
     character(len=*), intent(in) :: StorName
     integer, intent(inout) :: StorageIndexes
 
@@ -5449,7 +5438,7 @@ end if
             X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
             X_NX_ALL, &
             CV_NLOC, NLX, NLY, NLZ, NX_ALL&
-            , state,StorName , StorageIndexes )
+            , storage_state, StorName , StorageIndexes )
 
        Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
 
@@ -10165,7 +10154,7 @@ CONTAINS
        SMALL_FINDRM, SMALL_CENTRM, SMALL_COLM,NSMALL_COLM, &
        X_NDGLN, X_NONODS, NDIM, &
        X_ALL, XC_CV_ALL, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE,&
-       state, storname, indx)
+       storage_state, storname, indx)
     ! For the anisotropic limiting scheme we find the upwind values
     ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
     ! value for each node pair is stored in the matrices TUPWIND AND
@@ -10189,7 +10178,7 @@ CONTAINS
     LOGICAL, DIMENSION( NPHASE, 6 ), intent( in) :: IGOT_T_PACK, IGOT_T_CONST
     REAL, DIMENSION( NPHASE, 6 ), intent( in) :: IGOT_T_CONST_VALUE
     REAL, DIMENSION( NDIM, CV_NONODS), intent( in ) :: XC_CV_ALL
-    type( state_type ), intent( inout ), dimension(:) :: state
+    type( state_type ), intent( inout ) :: storage_state
     character(len=*), intent(in) :: StorName
     integer, intent(inout) :: indx
 ! local variables...
@@ -10228,7 +10217,7 @@ CONTAINS
     CALL CALC_ANISOTROP_LIM_VALS( F_ALL, FEMF_ALL, USE_FEMT, FUPWIND_MAT_ALL,  &
     NFIELD,CV_NONODS,CV_NLOC,X_NLOC,TOTELE,CV_NDGLN, SMALL_FINDRM,&
     SMALL_COLM,NSMALL_COLM, X_NDGLN,X_NONODS,NDIM, X_ALL, XC_CV_ALL,&
-    state, storname,indx )
+    storage_state, storname,indx )
 
 ! make sure the diagonal is equal to the value:
          DO NOD=1,CV_NONODS
@@ -10261,7 +10250,7 @@ CONTAINS
        SMALL_FINDRM,SMALL_COLM,NSMALL_COLM, &
        X_NDGLN,X_NONODS,NDIM, &
        X_ALL, XC_CV_ALL,&
-       state, storname, indx )
+       storage_state, storname, indx )
     ! For the anisotropic limiting scheme we find the upwind values
     ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
     ! value for each node pair is stored in the matrices TUPWIND AND
@@ -10277,7 +10266,7 @@ CONTAINS
     INTEGER, DIMENSION( : ), intent( in ) :: SMALL_COLM
     REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
     REAL, DIMENSION( NDIM, NONODS ), intent( in ) :: XC_CV_ALL
-    type( state_type ), intent( inout ), dimension(:) :: state
+    type( state_type ), intent( inout ):: storage_state
     character(len=*), intent(in) :: StorName
     integer, intent(inout) :: indx
     ! the centre of each CV is: XC_CV, YC_CV, ZC_CV
@@ -10371,7 +10360,7 @@ CONTAINS
          SUB_XNDGLNO, X_NONODS, NDIM, &
          X_ALL, XC_CV_ALL, &
          N, NLX_ALL, WEIGHT,&
-         state, storname, indx )
+         storage_state, storname, indx )
 
 
 !    DEALLOCATE( N, NLX, NLY, NLZ, L1, L2, L3, L4, &
@@ -10392,7 +10381,7 @@ CONTAINS
        X_NDGLN,X_NONODS,NDIM, &
        X_ALL, XC_CV_ALL,  &
        N,NLX_ALL, WEIGHT,&
-       state, storname, indx )
+       storage_state, storname, indx )
     ! For the anisotropic limiting scheme we find the upwind values
     ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
     ! value for each node pair is stored in the matrices TUPWIND AND
@@ -10410,7 +10399,7 @@ CONTAINS
     REAL, DIMENSION(NLOC,NGI), INTENT(IN) :: N!,NLX,NLY,NLZ
     REAL, DIMENSION(:,:,:), INTENT(IN) :: NLX_ALL!DIMENSION(NDIM, NLOC,NGI)
     REAL, DIMENSION(NGI), INTENT(IN) :: WEIGHT
-    type( state_type ), intent( inout ), dimension(:) :: state
+    type( state_type ), intent( inout ):: storage_state
     character(len=*), intent(in) :: StorName
     integer, intent(inout) :: indx
     !Local variables
@@ -10454,7 +10443,7 @@ CONTAINS
             N,NLX_ALL, WEIGHT, &
             NOD_FINDELE,NOD_COLELE,NCOLEL, &
             ELEMATPSI,ELEMATWEI,1, &
-            BOUND, REFLECT, state, storName, indx)
+            BOUND, REFLECT, storage_state, storName, indx)
 
     ELSE IF( RET_STORE_ELE ) THEN
 
@@ -10477,7 +10466,7 @@ CONTAINS
             N,NLX_ALL, WEIGHT, &
             NOD_FINDELE,NOD_COLELE,NCOLEL, &
             DUMMYINT,DUMMYREAL,0, &
-            BOUND, REFLECT, state, storname, indx)
+            BOUND, REFLECT, storage_state, storname, indx)
 
        DEALLOCATE(DUMMYINT,DUMMYREAL)
 
@@ -10639,7 +10628,7 @@ CONTAINS
        &     FINDELE,COLELE,NCOLEL,&
        &     ELEMATPSI,ELEMATWEI,IGETSTOR,&
        &     BOUND, REFLECT,&
-       state, storname,indx)
+       storage_state, storname,indx)
     !     This sub finds the matrix values MATPSI for a given point on the
     !     stencil
     ! IF IGETSTOR=1 then get ELEMATPSI,ELEMATWEI.
@@ -10662,7 +10651,7 @@ CONTAINS
     REAL, dimension(NLOC,NGI), intent(in) :: N!,NLX,NLY,NLZ
     REAL, dimension(:, :,:), intent(in) :: NLX_ALL!dimension(NDIM, NLOC,NGI)
     REAL, dimension(:), intent(in) :: WEIGHT!dimenson(NGI)
-    type( state_type ), intent( inout ), dimension(:) :: state
+    type( state_type ), intent( inout ):: storage_state
     character(len=*), intent(in) :: StorName
     integer, intent(inout) :: indx
     !     work space...
@@ -10705,7 +10694,7 @@ CONTAINS
 
            call DETNLXR_plus_storage( ELE, X_ALL, X_NDGLN, TOTELE, X_NONODS, NLOC, NGI, &
            N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, .false., &
-           NX_ALL, state, StorName , indx)
+           NX_ALL, storage_state, StorName , indx)
 
           !
           DO ILOC=1,NLOC! Was loop

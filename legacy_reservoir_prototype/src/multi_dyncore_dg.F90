@@ -75,7 +75,7 @@ module multiphase_1D_engine
 
 contains
 
-  SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
+  SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, storage_state, &
        tracer, velocity, density, &
        SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
        NCOLCT, FINDCT, COLCT, &
@@ -107,7 +107,7 @@ contains
 
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
+        type( state_type ), intent( inout ) :: packed_state, storage_state
         type(tensor_field), intent(inout) :: tracer
         type(tensor_field), intent(in) :: velocity, density
 
@@ -275,7 +275,7 @@ contains
 
     Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
-       call CV_ASSEMB( state, packed_state, &
+       call CV_ASSEMB( state, packed_state, storage_state, &
             tracer, velocity, density, &
             CV_RHS_field, &
             petsc_acv, &
@@ -430,7 +430,7 @@ contains
 
 
 
-    subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
+    subroutine VolumeFraction_Assemble_Solve( state,packed_state, storage_state, &
          SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
          NCOLCT, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -458,7 +458,7 @@ contains
 
       implicit none
       type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ) :: packed_state
+      type( state_type ) :: packed_state, storage_state
       INTEGER, intent( in ) :: NCOLCT, &
            CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
            CV_ELE_TYPE, &
@@ -544,7 +544,7 @@ contains
       call get_var_from_packed_state(packed_state,FEPressure = P)
       call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
       !Get information for capillary pressure to be use in CV_ASSEMB
-      call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes, &
+      call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, &
         totele, cv_nloc, CV_NDGLN, IDs2CV_ndgln)
 
       !Get variable for global convergence method
@@ -638,7 +638,7 @@ contains
           call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
 
           !Assemble the matrix and the RHS
-          call CV_ASSEMB( state, packed_state, &
+          call CV_ASSEMB( state, packed_state, storage_state,&
           tracer, velocity, density, &
           CV_RHS_field, &
           petsc_acv, &
@@ -735,7 +735,7 @@ contains
                       cv_snloc, n_in_pres, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                       finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state, x_nonods, IDs_ndgln )
                       !Also recalculate the Over-relaxation parameter
-                      call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, StorageIndexes, &
+                      call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, &
                       totele, cv_nloc, CV_NDGLN, IDs2CV_ndgln)
                   else
                     exit Loop_NonLinearFlux
@@ -784,7 +784,7 @@ contains
     end subroutine VolumeFraction_Assemble_Solve
 
 
-    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, storage_state, &
          velocity, pressure, &
     NDIM, NPHASE, NPRES, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
     U_ELE_TYPE, P_ELE_TYPE, &
@@ -819,7 +819,7 @@ contains
 
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
+        type( state_type ), intent( inout ) :: packed_state, storage_state
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
         INTEGER, intent( in ) :: NDIM, NPHASE, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, &
@@ -1168,7 +1168,7 @@ contains
         END DO
         !##########TEMPORARY ADAPT FROM OLD VARIABLES TO NEW############
 
-        CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
+        CALL CV_ASSEMB_FORCE_CTY( state, packed_state, storage_state, &
              velocity, pressure, &
         NDIM, NPHASE, NPRES, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
         U_ELE_TYPE, P_ELE_TYPE, &
@@ -1209,7 +1209,7 @@ contains
             ! form pres eqn.
             if (is_porous_media) then
                 call PHA_BLOCK_INV_plus_storage( PIVIT_MAT, TOTELE,&
-                    U_NLOC * NPHASE * NDIM, state, 'stored_PIVIT_MAT', StorageIndexes(34))
+                    U_NLOC * NPHASE * NDIM, Storage_state, 'stored_PIVIT_MAT', StorageIndexes(34))
             else
                 CALL PHA_BLOCK_INV( PIVIT_MAT, TOTELE, U_NLOC * NPHASE * NDIM )
             end if
@@ -1232,7 +1232,7 @@ contains
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & 
             got_free_surf,  MASS_SUF, &
-            C, CT, state, StorageIndexes(11), halo, symmetric_P )
+            C, CT, storage_state, StorageIndexes(11), halo, symmetric_P )
         END IF
 
         NO_MATRIX_STORE = ( NCOLDGM_PHA <= 1 )
@@ -1266,7 +1266,7 @@ contains
 
             if ( high_order_Ph ) then
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
-                  call high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase, U_absorbin )
+                  call high_order_pressure_solve( u_rhs, state, packed_state, storage_state, StorageIndexes, cv_ele_type, nphase, U_absorbin )
                end if
             end if
 
@@ -1706,7 +1706,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
 
 
 
-    SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
+    SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, storage_state, &
          velocity, pressure, &
     NDIM, NPHASE, NPRES, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
     U_ELE_TYPE, P_ELE_TYPE, &
@@ -1746,7 +1746,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
 
         type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
+        type( state_type ), intent( inout ) :: packed_state, storage_state
         type( tensor_field ), intent(in) :: velocity
         type( tensor_field ), intent(in) :: pressure
 
@@ -1863,7 +1863,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         IF( GLOBAL_SOLVE ) MCY = 0.0
 
         ! Obtain the momentum and C matricies
-        CALL ASSEMB_FORCE_CTY( state, packed_state, &
+        CALL ASSEMB_FORCE_CTY( state, packed_state, storage_state, &
              velocity, pressure, &
         NDIM, NPHASE, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
         U_ELE_TYPE, P_ELE_TYPE, NPRES, &
@@ -1940,7 +1940,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         density=>extract_tensor_field(packed_state,"PackedDensity")
         call halo_update(density)
 
-        call CV_ASSEMB( state, packed_state, &
+        call CV_ASSEMB( state, packed_state, storage_state, &
              tracer, velocity, density, &
         CV_RHS, &
         ACV, &
@@ -2117,7 +2117,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
-    SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state,&
+    SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state,storage_state, &
          velocity, pressure, &
     NDIM, NPHASE, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
     U_ELE_TYPE, P_ELE_TYPE, NPRES, &
@@ -2146,7 +2146,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         implicit none
 
         type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
+        type( state_type ), intent( inout ) :: packed_state, storage_state
         type( tensor_field ), intent( in ) :: velocity
         type( tensor_field ), intent( in ) :: pressure
 ! If IGOT_VOL_X_PRESSURE=1 then have a voln fraction in the pressure term and multiply density by volume fraction...
@@ -2579,15 +2579,15 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 call remove_scalar_field(state(1), "C_MAT")
             end if
             !Get mesh file just to be able to allocate the fields we want to store
-            fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+            fl_mesh => extract_mesh( storage_state, "FakeMesh" )
             Auxmesh = fl_mesh
             !The number of nodes I want does not coincide
             Auxmesh%nodes = NDIM * NPHASE * NCOLC
             call allocate (Targ_C_Mat, Auxmesh,'CMatrixAsScalar')
 
             !Now we insert them in state and store the index
-            call insert(state(1), Targ_C_Mat, "C_MAT")
-            StorageIndexes(12) = size(state(1)%scalar_fields)
+            call insert(storage_state, Targ_C_Mat, "C_MAT")
+            StorageIndexes(12) = size(storage_state%scalar_fields)
             call deallocate (Targ_C_Mat)
 !            call deallocate(Auxmesh)
             !Initilize it to zero
@@ -2595,7 +2595,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         end if
 
         !Get from state
-        call reshape_vector2pointer(state(1)%scalar_fields(&
+        call reshape_vector2pointer(storage_state%scalar_fields(&
         StorageIndexes(12))%ptr%val, C, NDIM, NPHASE, NCOLC)
 
         ewrite(3,*) 'In ASSEMB_FORCE_CTY'
@@ -3099,7 +3099,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                              ! Define the gauss points that lie on the surface of the CV...
            FINDGPTS, COLGPTS, NCOLGPTS, &
            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
-           state, 'Vel_mesh', StorageIndexes(13))
+           storage_state, 'Vel_mesh', StorageIndexes(13))
 
         if ( quad_over_whole_ele ) then
            cvn => cvfen
@@ -3170,7 +3170,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
             SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBCVFEWEIGH, &
             SBCVFEN, SBCVFENSLX, SBCVFENSLY ,&
-            state ,"C_1", StorageIndexes(14))!<== We use the same index that we use in the DETNLXR_PLUS_U_WITH_STORAGE
+            storage_state ,"C_1", StorageIndexes(14))!<== We use the same index that we use in the DETNLXR_PLUS_U_WITH_STORAGE
             !below since inside this subroutine the only thing we store is DETNLXR_PLUS_U_WITH_STORAGE
         ENDIF
 
@@ -3239,7 +3239,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             CVFEN, CVFENLX_ALL(1,:,:), CVFENLX_ALL(2,:,:), CVFENLX_ALL(3,:,:), CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
             CVFENX_ALL, &
             U_NLOC, UFENLX_ALL(1,:,:), UFENLX_ALL(2,:,:), UFENLX_ALL(3,:,:), UFENX_ALL , &
-            state ,"C_1", StorageIndexes(14))
+            storage_state ,"C_1", StorageIndexes(14))
 
             DO GI = 1, CV_NGI_SHORT
                CVFENX_ALL_REVERSED(:,GI,:)=CVFENX_ALL(:,:,GI)
@@ -4654,7 +4654,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                 if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
-                state, packed_state,X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,cv_ndgln, cv_nloc, cv_snloc, u_snloc, &
+                state, packed_state,storage_state, X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,cv_ndgln, cv_nloc, cv_snloc, u_snloc, &
                 totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes, QUAD_OVER_WHOLE_ELE, ncolm, findm,&
                 colm, midm, mass_ele, ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
 
@@ -6013,7 +6013,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !Nothing to do  - THIS SEEMS ODD? (Chris comment)
 #else
 !Make sure we store the C matrix into state
-if (.not.got_c_matrix) state(1)%scalar_fields(&
+if (.not.got_c_matrix) storage_state%scalar_fields(&
         StorageIndexes(12))%ptr%val(1:NDIM*NPHASE*NCOLC) =&
 reshape(C,[NDIM*NPHASE*NCOLC])
 !Variables from cv_fem_shape_funs_plus_storage
@@ -7289,7 +7289,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 !    END SUBROUTINE LUMP_ENERGY_EQNS
 
 
-    SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, nphase, ncomp, &
+    SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, nphase, ncomp, &
     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
     U_SOURCE_CV, U_SOURCE, &
     NCOLACV, FINACV, COLACV, MIDACV, &
@@ -7313,7 +7313,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         real, dimension( u_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE
 
         type(state_type), dimension( : ), intent( inout ) :: state
-        type(state_type), intent( inout ) :: packed_state
+        type(state_type), intent( inout ) :: packed_state, storage_state
         integer, intent( in ) :: nphase, ncomp, cv_nonods, U_NONODS, X_NONODS, MAT_NONODS, &
         NCOLACV, NCOLCT, TOTELE, CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
         CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, CV_SNLOC, U_SNLOC, NDIM, &
@@ -7413,7 +7413,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
                 do iphase = 1, nphase
 
-                    CALL SURFACE_TENSION_WRAPPER( state, packed_state, &
+                    CALL SURFACE_TENSION_WRAPPER( state, packed_state, storage_state, &
                     U_FORCE_X_SUF_TEN, U_FORCE_Y_SUF_TEN, U_FORCE_Z_SUF_TEN, &
                     CV_U_FORCE_X_SUF_TEN, CV_U_FORCE_Y_SUF_TEN, CV_U_FORCE_Z_SUF_TEN, &
                     PLIKE_GRAD_SOU_COEF( 1+CV_NONODS*(IPHASE-1) : CV_NONODS*IPHASE ), & 
@@ -7466,7 +7466,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
 
-    SUBROUTINE SURFACE_TENSION_WRAPPER( state, packed_state, &
+    SUBROUTINE SURFACE_TENSION_WRAPPER( state, packed_state, storage_state,&
     U_FORCE_X_SUF_TEN, U_FORCE_Y_SUF_TEN, U_FORCE_Z_SUF_TEN, &
     CV_U_FORCE_X_SUF_TEN, CV_U_FORCE_Y_SUF_TEN, CV_U_FORCE_Z_SUF_TEN, &
     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
@@ -7611,7 +7611,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         ! Inputs/Outputs
         IMPLICIT NONE
         type(state_type), dimension( : ), intent( inout ) :: state
-        type(state_type), intent( inout ) :: packed_state
+        type(state_type), intent( inout ) :: packed_state, storage_state
 
         INTEGER, PARAMETER :: NPHASE = 1
         INTEGER, PARAMETER :: SMOOTH_NITS = 0 ! smoothing iterations, 10 seems good.
@@ -8011,7 +8011,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         RZERO, &
         1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
         SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-        state, "wrap1", StorageIndexes(15) )
+        storage_state, "wrap1", StorageIndexes(15) )
 
 
         CALL DG_DERIVS( SHARP_FEMT, FEMTOLD, &
@@ -8026,7 +8026,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         RZERO, &
         1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
         SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-        state, "Surf_ten_wrap2", StorageIndexes(16))
+        storage_state, "Surf_ten_wrap2", StorageIndexes(16))
 
         ! determine the curvature by solving a simple eqn...
 
@@ -8220,7 +8220,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                 RZERO,RZERO,RZERO, &
                 1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                 SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                state, "wrapp1", StorageIndexes(17:19))
+                storage_state, "wrapp1", StorageIndexes(17:19))
 
 
 
@@ -8256,7 +8256,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     RZERO,RZERO,RZERO, &
                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, & 
                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                    state, "wrapp2", StorageIndexes(20:22))
+                    storage_state, "wrapp2", StorageIndexes(20:22))
 
                     U_FORCE_Y_SUF_TEN = pack(DX_TAU_YX(:,1,:)+ DY_TAU_YY(:,1,:) + DZ_TAU_YZ(:,1,:),.true.)
 
@@ -8296,7 +8296,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     RZERO,RZERO,RZERO, &
                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, & 
                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                    state, "wrapp3", StorageIndexes(23:25))
+                    storage_state, "wrapp3", StorageIndexes(23:25))
 
                     U_FORCE_Z_SUF_TEN = pack(DX_TAU_ZX(:,1,:) + DY_TAU_ZY(:,1,:) + DZ_TAU_ZZ(:,1,:),.true.)
 
@@ -8355,7 +8355,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     RZERO,RZERO,RZERO, &
                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, & 
                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                    state, "wrapp4", StorageIndexes(26:28))
+                    storage_state, "wrapp4", StorageIndexes(26:28))
 
                 else
 
@@ -8380,7 +8380,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     RZERO, &
                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                    state, "wrap4", StorageIndexes(29))
+                    storage_state, "wrap4", StorageIndexes(29))
 
                     DO ELE=1,TOTELE
                         DO CV_ILOC=1,CV_NLOC
@@ -8411,7 +8411,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                     RZERO, &
                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                    state, "wrap5", StorageIndexes(30))
+                    storage_state, "wrap5", StorageIndexes(30))
 
                     DO ELE=1,TOTELE
                         DO CV_ILOC=1,CV_NLOC
@@ -8825,14 +8825,14 @@ deallocate(CVFENX_ALL, UFENX_ALL)
     end subroutine linearise_field
 
 
-    subroutine Introduce_Cap_press_term(state, packed_state, X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,&
+    subroutine Introduce_Cap_press_term(state, packed_state, storage_state, X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,&
         cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes,&
          QUAD_OVER_WHOLE_ELE, ncolm, findm, colm, midm, mass_ele, ele2, iface, sdetwe, SNORMXN_ALL, &
          U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
             !This subroutine introduces the capillary pressure term in the RHS
             Implicit none
             type( state_type ), dimension( : ), intent( inout ) :: state
-            type( state_type ), intent( inout ) :: packed_state
+            type( state_type ), intent( inout ) :: packed_state, storage_state
             integer, intent(in) :: ele, x_nloc, cv_nloc, x_nonods, P_ELE_TYPE, &
             cv_snloc, totele, u_snloc, ncolm, iface, ele2
             INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -8915,7 +8915,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                  ! Define the gauss points that lie on the surface of the CV...
             FINDGPTS, COLGPTS, NCOLGPTS, &
             SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
-            state, 'Vel_mesh', StorageIndexes(13))
+            storage_state, 'Vel_mesh', StorageIndexes(13))
 
              !Retrieve detwei and ufenx_all
             CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, TOTELE, X_NONODS, &
@@ -8923,7 +8923,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
             CVFEN, CVFENLX_ALL(1,:,:), CVFENLX_ALL(2,:,:), CVFENLX_ALL(3,:,:), CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, .false., &
             CVFENX_ALL, &
             U_NLOC, UFENLX_ALL(1,:,:), UFENLX_ALL(2,:,:), UFENLX_ALL(3,:,:), UFENX_ALL,&
-            state ,"C_1", StorageIndexes(14))
+            storage_state ,"C_1", StorageIndexes(14))
 
             !##### End of area to obtain shape functions#####
 
@@ -9067,7 +9067,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
     subroutine getOverrelaxation_parameter(state, packed_state, Overrelaxation, Phase_with_Pc, &
-        StorageIndexes, totele, cv_nloc, cv_ndgln, IDs2CV_ndgln)
+        totele, cv_nloc, cv_ndgln, IDs2CV_ndgln)
     !This subroutine calculates the overrelaxation parameter we introduce in the saturation equation
     !It is the derivative of the capillary pressure for each node.
     !Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
@@ -9078,7 +9078,6 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         real, dimension(:), intent(inout) :: Overrelaxation
         integer, intent(inout) :: Phase_with_Pc
         integer, dimension(:), intent(in) :: cv_ndgln, IDs2CV_ndgln
-        integer, dimension(:), intent(inout) :: StorageIndexes
         !Local variables
         integer :: iphase, nphase, cv_nodi, cv_nonods, ele, cv_nodj
         real :: Pe_aux, aux, aux2
@@ -9191,13 +9190,13 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
 
 
-    subroutine high_order_pressure_solve( u_rhs, state, packed_state, StorageIndexes, cv_ele_type, nphase, u_absorbin )
+    subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state, StorageIndexes, cv_ele_type, nphase, u_absorbin )
 
       implicit none
 
       real, dimension( :, :, : ), intent( inout ) :: u_rhs
       type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ), intent( inout ) :: packed_state
+      type( state_type ), intent( inout ) :: packed_state, storage_state
       integer, intent( in ) :: cv_ele_type, nphase
       integer, dimension( : ), intent( inout ) :: StorageIndexes
 
@@ -9326,7 +9325,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                                 ! define the gauss points that lie on the surface of the ph...
            findgpts, colgpts, ncolgpts, &
            sele_overlap_scale, quad_over_whole_ele, &
-           state, "ph_1" , storageindexes( 36 ) )
+           storage_state, "ph_1" , storageindexes( 36 ) )
 
       totele = ele_count( ufield )
       x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
@@ -9433,7 +9432,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                  tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
                  tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
                  other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
-                 other_fenx_all, state , "ph_2", StorageIndexes( 37 ) )
+                 other_fenx_all, storage_state , "ph_2", StorageIndexes( 37 ) )
 
             if ( u_nloc == tmp_cv_nloc ) then
                 ufenx_all => tmp_cvfenx_all

@@ -30,13 +30,15 @@ module multiphase_caching
 
   use spud
   use fldebug
-
+  use state_module
+  use Fields_Allocates, only : allocate, make_mesh
+  use fields_data_types, only: mesh_type, scalar_field
 
   implicit none
 
   private 
   
-  public  :: set_caching_level, get_caching_level, test_caching_level, reshape_vector2pointer
+  public  :: set_caching_level, get_caching_level, test_caching_level, reshape_vector2pointer, initialize_storage
   
   integer, public :: cache_level=0
 
@@ -77,6 +79,26 @@ contains
        test_caching_level=btest(cache_level,i)
 
   end function test_caching_level
+
+  !Copies a mesh type into storage_state to facilitate the manipulation of the storage
+  subroutine initialize_storage(packed_state, storage_state)
+      type( state_type ), intent( in ) :: packed_state
+      type( state_type ), intent( inout ) :: storage_state
+
+      !Local variables
+      type(mesh_type), pointer :: fl_mesh
+      type(mesh_type) :: Auxmesh
+
+      fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
+      Auxmesh = make_mesh(fl_mesh,name="FakeMesh")
+      !The number of nodes I want does not coincide
+      Auxmesh%nodes = 1
+
+      !Now we insert them in state and store the indexes
+      call insert(storage_state, Auxmesh, "FakeMesh")
+      call deallocate(AuxMesh)
+
+  end subroutine initialize_storage
 
 #ifdef USING_GFORTRAN
     !These subroutines are used to avoid problems with the reshaping under intel compilers.

@@ -1584,7 +1584,7 @@
                                 ! Define the gauss points that lie on the surface of the CV
          findgpts, colgpts, ncolgpts, &
          sele_overlap_scale, QUAD_OVER_WHOLE_ELE,&
-         state, StorName , indx )
+         storage_state, StorName , indx )
       implicit none
       !This subroutine calls cv_fem_shape_funs only if the shape functions have not been calculated already
       !If they are in storage, the values are returned without calculations
@@ -1628,7 +1628,7 @@
       integer, dimension( : ), pointer,intent( inout ) :: colgpts!dimension( cv_nloc * scvngi )
       integer,pointer, intent( inout ) :: ncolgpts
       real, dimension( : ),pointer, intent( inout ) :: sele_overlap_scale!dimension( cv_nloc )
-      type( state_type ), intent( inout ), dimension(:) :: state
+      type( state_type ), intent( inout ) :: storage_state
       character(len=*), intent(in) :: StorName
       integer, intent(inout) :: indx
 
@@ -1674,16 +1674,16 @@
 
       !If values not stored then create space in state
       if (indx <=0) then
-          if (has_scalar_field(state(1),trim(Storname))) then
+          if (has_scalar_field(storage_state,trim(Storname))) then
 !               !We have to deallocate also the mesh type we are using inside the scalar field?
-!               pntr_Storage => extract_scalar_field(state(1), StorName)
+!               pntr_Storage => extract_scalar_field(storage_state, StorName)
 !               !deallocate mesh
 !               call deallocate(pntr_Storage%mesh)!Can I remove this without incurring in memory leaking?
 
-              call remove_scalar_field(state(1), trim(Storname))
+              call remove_scalar_field(storage_state, trim(Storname))
           end if
           !Get mesh file just to be able to allocate the fields we want to store       
-          fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+          fl_mesh => extract_mesh( storage_state, "FakeMesh" )
           aux_shape=make_element_shape(fl_mesh%shape,degree=0)
 
           !The number of nodes I want does not coincide
@@ -1698,13 +1698,13 @@
         
           !Now we insert them in state and store the index
 
-          call insert(state(1),Auxmesh,StorName)
-          call insert(state(1), targ_Storage,StorName)
+          call insert(storage_state,Auxmesh,StorName)
+          call insert(storage_state, targ_Storage,StorName)
           call deallocate (targ_Storage)
           call deallocate( AuxMesh)
           call deallocate(aux_shape)
 
-          indx = size(state(1)%scalar_fields)
+          indx = size(storage_state%scalar_fields)
 
       end if
 
@@ -1763,135 +1763,135 @@
               !###cv_nloc*cv_ngi section###
               siz1 = cv_nloc;  siz2 = cv_ngi
               counter_from = 1; counter_to = siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvn2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvn2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfen2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfen2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
               !###cv_nloc*cv_ngi_short section###
               siz1 = cv_nloc;  siz2 = cv_ngi_short
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvn_short2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvn_short2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfen_short2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfen_short2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfenlx_short_all2(1:ndim,:,:),[ndim*siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfenlx_short_all2(1:ndim,:,:),[ndim*siz1*siz2])
               !###u_nloc*cv_ngi section###
               siz1 = u_nloc;  siz2 = cv_ngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(ufen2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(ufen2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(ufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(ufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
 
               !###cv_nloc*scvngi section###
               siz1 = cv_nloc;  siz2 = scvngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfen2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfen2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfenslx2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfenslx2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfensly2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfensly2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
 
               !###u_nloc*scvngi section###
               siz1 = u_nloc;  siz2 = scvngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufen2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufen2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufenslx2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufenslx2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufensly2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufensly2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
 
               !###cv_snloc*sbcvngi section###
               siz1 = cv_snloc;  siz2 = sbcvngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvn2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvn2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfen2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfen2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfenslx2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfenslx2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfensly2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfensly2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
 
               !###u_snloc*sbcvngi section###
               siz1 = u_snloc;  siz2 = sbcvngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufen2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufen2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufenslx2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufenslx2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufensly2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufensly2,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
 
               !###cv_ngi###
               siz1 = cv_ngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = cvweight2(1:siz1)
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = cvweight2(1:siz1)
               !###cv_ngi_short###
               siz1 = cv_ngi_short
               counter_from = counter_to + 1; counter_to = counter_to + siz1
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = cvweight_short2(1:siz1)
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = cvweight_short2(1:siz1)
 
               !###scvngi###
               siz1 = scvngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = scvfeweigh2(1:siz1)
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = scvfeweigh2(1:siz1)
 
               !###sbcvngi###
               siz1 = sbcvngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = sbcvfeweigh2(1:siz1)
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = sbcvfeweigh2(1:siz1)
 
               !###cv_nloc###
               siz1 = cv_nloc
               counter_from = counter_to + 1; counter_to = counter_to + siz1
-              state(1)%scalar_fields(indx)%ptr%val(counter_from:counter_to) = sele_overlap_scale2(1:siz1)
+              storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = sele_overlap_scale2(1:siz1)
 
               !###STORE INTEGERS###
               !###cv_nloc + 1###
               siz1 = cv_nloc + 1
               counter_from = 1; counter_to = siz1
-              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = findgpts2(1:siz1)
+              storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = findgpts2(1:siz1)
               !###cv_nloc * scvngi###
               siz1 = cv_nloc * scvngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1
-              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = colgpts2(1:siz1)
+              storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = colgpts2(1:siz1)
               !###cv_nloc*scvngi section###
               siz1 = cv_nloc;  siz2 = scvngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_neiloc2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_neiloc2,[siz1*siz2])
               !###nface*cv_snloc section###
               siz1 = nface;  siz2 = cv_snloc
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_sloclist2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_sloclist2,[siz1*siz2])
               !###nface*u_snloc section###
               siz1 = nface;  siz2 = u_snloc
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(u_sloclist2,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(u_sloclist2,[siz1*siz2])
               !###1###
               siz1 = 1
               counter_from = counter_to + 1; counter_to = counter_to + siz1
-              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from) = ncolgpts2
+              storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from) = ncolgpts2
               !Store logicals as integer since there are no data types to store logicals in state
               !###u_nloc*scvngi section###
               siz1 = u_nloc;  siz2 = scvngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(u_on_face,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(u_on_face,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(ufem_on_face,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(ufem_on_face,[siz1*siz2])
 
               !###cv_nloc*scvngi section###
               siz1 = cv_nloc;  siz2 = scvngi
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_on_face,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_on_face,[siz1*siz2])
               counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-              state(1)%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cvfem_on_face,[siz1*siz2])
+              storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cvfem_on_face,[siz1*siz2])
 
 
               !deallocate local variables
@@ -1911,30 +1911,30 @@
           !###cv_nloc*cv_ngi section###
           siz1 = cv_nloc;  siz2 = cv_ngi
           counter_from = 1; counter_to = siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), cvn, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), cvfen, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2*ndim
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), cvfenlx_all,&
           &ndim, siz1,siz2)
           !###cv_nloc*cv_ngi_short section###
           siz1 = cv_nloc;  siz2 = cv_ngi_short
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), cvn_short, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), cvfen_short, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2*ndim
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), cvfenlx_short_all,&
           &ndim, siz1,siz2)
 
@@ -1942,11 +1942,11 @@
           siz1 = u_nloc;  siz2 = cv_ngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), ufen, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2*ndim
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), ufenlx_all,&
           & ndim, siz1,siz2)
 
@@ -1954,19 +1954,19 @@
           siz1 = cv_nloc;  siz2 = scvngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), scvfen, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), scvfenslx, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), scvfensly, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2*ndim
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), scvfenlx_all,&
           & ndim, siz1,siz2)
 
@@ -1974,19 +1974,19 @@
           siz1 = u_nloc;  siz2 = scvngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sufen, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sufenslx, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sufensly, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2*ndim
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sufenlx_all,&
           & ndim, siz1,siz2)
 
@@ -1994,23 +1994,23 @@
           siz1 = cv_snloc;  siz2 = sbcvngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sbcvn, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sbcvfen, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sbcvfenslx, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sbcvfensly, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2*ndim
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sbcvfenlx_all,&
           & ndim, siz1,siz2)
 
@@ -2018,19 +2018,19 @@
           siz1 = u_snloc;  siz2 = sbcvngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sbufen, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sbufenslx, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sbufensly, siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2*ndim
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%val(counter_from:counter_to), sbufenlx_all,&
           & ndim, siz1,siz2)
 
@@ -2038,74 +2038,74 @@
           siz1 = cv_ngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1
-          cvweight => state(1)%scalar_fields(indx)%ptr&
+          cvweight => storage_state%scalar_fields(indx)%ptr&
                &%val(counter_from:counter_to)
           !###cv_ngi_short###
           siz1 = cv_ngi_short
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1
-          cvweight_short=> state(1)%scalar_fields(indx)%ptr&
+          cvweight_short=> storage_state%scalar_fields(indx)%ptr&
                &%val(counter_from:counter_to)
 
           !###scvngi###
           siz1 = scvngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1
-          scvfeweigh => state(1)%scalar_fields(indx)%ptr&
+          scvfeweigh => storage_state%scalar_fields(indx)%ptr&
                &%val(counter_from:counter_to)
 
           !###sbcvngi###
           siz1 = sbcvngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1
-          sbcvfeweigh => state(1)%scalar_fields(indx)%ptr&
+          sbcvfeweigh => storage_state%scalar_fields(indx)%ptr&
                &%val(counter_from:counter_to)
 
           !###cv_nloc###
           siz1 = cv_nloc
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1
-          sele_overlap_scale => state(1)%scalar_fields(indx)&
+          sele_overlap_scale => storage_state%scalar_fields(indx)&
                &%ptr%val(counter_from:counter_to)
 
           !###STORE INTEGERS###
           !###cv_nloc + 1###
           siz1 = cv_nloc + 1
           counter_from = 1; counter_to = siz1
-          findgpts => state(1)%scalar_fields(indx)%ptr%mesh&
+          findgpts => storage_state%scalar_fields(indx)%ptr%mesh&
                &%ndglno(counter_from:counter_to)
           !###cv_nloc * scvngi###
           siz1 = cv_nloc * scvngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1
-          colgpts => state(1)%scalar_fields(indx)%ptr%mesh&
+          colgpts => storage_state%scalar_fields(indx)%ptr%mesh&
                &%ndglno(counter_from:counter_to)
           !###cv_nloc*scvngi section###
           siz1 = cv_nloc;  siz2 = scvngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%mesh%ndglno(counter_from:counter_to), cv_neiloc,&
           & siz1,siz2)
           !###nface*cv_snloc section###
           siz1 = nface;  siz2 = cv_snloc
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%mesh%ndglno(counter_from:counter_to), cv_sloclist,&
           & siz1,siz2)
           !###nface*u_snloc section###
           siz1 = nface;  siz2 = u_snloc
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%mesh%ndglno(counter_from:counter_to), u_sloclist,&
           & siz1,siz2)
           !###1###
           siz1 = 1
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1
-          ncolgpts => state(1)%scalar_fields(indx)%ptr%mesh&
+          ncolgpts => storage_state%scalar_fields(indx)%ptr%mesh&
                &%ndglno(counter_from)
           !Store logicals as integer since there are no data types to
           ! store logicals in state
@@ -2113,12 +2113,12 @@
           siz1 = u_nloc;  siz2 = scvngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%mesh%ndglno(counter_from:counter_to), ptr_u_on_face,&
           & siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%mesh%ndglno(counter_from:counter_to),ptr_ufem_on_face,&
           & siz1,siz2)
 
@@ -2126,12 +2126,12 @@
           siz1 = cv_nloc;  siz2 = scvngi
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%mesh%ndglno(counter_from:counter_to), ptr_cv_on_face,&
           & siz1,siz2)
           counter_from = counter_to + 1; counter_to = counter_to +&
                & siz1*siz2
-          call reshape_vector2pointer(state(1)%scalar_fields(indx)&
+          call reshape_vector2pointer(storage_state%scalar_fields(indx)&
           &%ptr%mesh%ndglno(counter_from:counter_to),ptr_cvfem_on_face,&
           & siz1,siz2)
 
@@ -7979,7 +7979,7 @@
          X_NLOC, CV_NLOC, NGI, &
          N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
          NX_ALL, &
-         U_NLOC, UNLX, UNLY, UNLZ, UNX_ALL, state, StorName , indx )
+         U_NLOC, UNLX, UNLY, UNLZ, UNX_ALL, storage_state, StorName , indx )
       implicit none
       INTEGER, intent( in ) :: ELE, TOTELE, NONODS, X_NLOC, NGI, CV_NLOC, U_NLOC
       INTEGER, DIMENSION( : ), intent( in ) :: XONDGL
@@ -7991,7 +7991,7 @@
       real, pointer, dimension(:,:,:), intent(inout) ::NX_ALL, UNX_ALL
       real, pointer, dimension(:), intent(inout) :: DETWEI, RA
       real, pointer, intent(inout) :: VOLUME
-      type( state_type ), intent( inout ), dimension(:) :: state
+      type( state_type ), intent( inout ) :: storage_state
       character(len=*), intent(in) :: StorName
       integer, intent(inout) :: indx
       ! Local variables
@@ -8006,13 +8006,13 @@
       if (D3) ndim = 3
 
       if (indx==0 .and. ELE==1) then !The first time we need to introduce the targets in state
-         if (has_scalar_field(state(1), trim(StorName))) then
+         if (has_scalar_field(storage_state, trim(StorName))) then
             !If we are recalculating due to a mesh modification then
             !we return to the original situation
-            call remove_scalar_field(state(1), trim(StorName))
+            call remove_scalar_field(storage_state, trim(StorName))
          end if
           !Get mesh file just to be able to allocate the fields we want to store
-         fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+         fl_mesh => extract_mesh( storage_state, "FakeMesh" )
          Auxmesh = fl_mesh
 
          !The number of nodes I want does not coincide
@@ -8022,10 +8022,10 @@
          call allocate (Targ_NX_ALL, Auxmesh,trim(StorName))
 
          !Now we insert them in state and store the indexes
-         call insert(state(1), Targ_NX_ALL, trim(StorName))
+         call insert(storage_state, Targ_NX_ALL, trim(StorName))
          !Store index with a negative value, because if the index is
          !zero or negative then we have to calculate stuff
-         indx = -size(state(1)%scalar_fields)
+         indx = -size(storage_state%scalar_fields)
          call deallocate (Targ_NX_ALL)
 !         call deallocate(Auxmesh)
 
@@ -8035,36 +8035,36 @@
 
       if (btest(cache_level,0)) then
          from = 1+NDIM*X_NLOC*NGI*(ELE-1); to = NDIM*X_NLOC*NGI*ELE
-         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
          NX_ALL, NDIM, X_NLOC, NGI)
          jump = NDIM*X_NLOC*NGI*totele
          from = jump + 1+NDIM*U_NLOC*NGI*(ELE-1); to = jump + NDIM*U_NLOC*NGI*ELE
-         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
          UNX_ALL, NDIM, U_NLOC, NGI)
          jump = jump + NDIM*U_NLOC*NGI*totele
          from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-         DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         DETWEI => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI*totele
          from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-         RA => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         RA => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI*totele
-         VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(jump + ELE)
+         VOLUME => storage_state%scalar_fields(abs(indx))%ptr%val(jump + ELE)
       else
          from = 1; to = NDIM*X_NLOC*NGI
-         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
          NX_ALL, NDIM, X_NLOC, NGI)
          jump = NDIM*X_NLOC*NGI
          from = jump + 1; to = jump + NDIM*U_NLOC*NGI
-         call reshape_vector2pointer(state(1)%scalar_fields(abs(indx))%ptr%val(from:to),&
+         call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
          UNX_ALL, NDIM, U_NLOC, NGI)
          jump = jump + NDIM*U_NLOC*NGI
          from = jump + 1; to = jump + NGI
-         DETWEI => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         DETWEI => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI
          from = jump + 1; to = jump + NGI
-         RA => state(1)%scalar_fields(abs(indx))%ptr%val(from:to)
+         RA => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
          jump = jump + NGI
-         VOLUME => state(1)%scalar_fields(abs(indx))%ptr%val(jump + ELE)
+         VOLUME => storage_state%scalar_fields(abs(indx))%ptr%val(jump + ELE)
       end if
 
       IF (indx>0 .and. not(cache_level)==0) return
@@ -8082,19 +8082,19 @@
       !Store data
       if (btest(cache_level,0)) then
          from = 1+NDIM*X_NLOC*NGI*(ELE-1); to = NDIM*X_NLOC*NGI*ELE
-         state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
+         storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
          & reshape(NX_ALL(1:NDIM,1:X_NLOC,1:NGI), [NDIM*X_NLOC*NGI])
          jump = NDIM*X_NLOC*NGI*totele
          from = jump + 1+NDIM*U_NLOC*NGI*(ELE-1); to = jump + NDIM*U_NLOC*NGI*ELE
-         state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
+         storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
          reshape(UNX_ALL(1:NDIM,1:U_NLOC,1:NGI), [NDIM*U_NLOC*NGI])
       else
          from = 1; to = NDIM*X_NLOC*NGI
-         state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
+         storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
          & reshape(NX_ALL(1:NDIM,1:X_NLOC,1:NGI), [NDIM*X_NLOC*NGI])
          jump = NDIM*X_NLOC*NGI
          from = jump + 1; to = jump + NDIM*U_NLOC*NGI
-         state(1)%scalar_fields(abs(indx))%ptr%val(from:to) =&
+         storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
          reshape(UNX_ALL(1:NDIM,1:U_NLOC,1:NGI), [NDIM*U_NLOC*NGI])
       end if
 
