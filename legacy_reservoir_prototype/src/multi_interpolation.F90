@@ -72,7 +72,7 @@
 
   contains
 
-      subroutine M2MInterpolation(state, packed_state, StorageIndexes, small_finacv, small_colacv, cv_ele_type, nphase, flag, p_ele_type, cv_nloc, &
+      subroutine M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv, cv_ele_type, nphase, flag, p_ele_type, cv_nloc, &
        cv_snloc)
 
           implicit none
@@ -80,7 +80,7 @@
            ! IMPORTANT: flag is a switch before and after the adapt and tells us which interpolation step (1) or (3) to implement
 
           type( state_type ), dimension( : ), intent( inout ) :: state
-          type( state_type ), intent( inout ) :: packed_state
+          type( state_type ), intent( inout ) :: packed_state, storage_state
           integer, intent( in ) :: cv_ele_type , cv_nloc, p_ele_type, cv_snloc
           integer, intent( in ) :: nphase
           integer, dimension( : ), intent( inout ) :: StorageIndexes
@@ -221,7 +221,7 @@
                                ! define the gauss points that lie on the surface of the ph...
           findgpts, colgpts, ncolgpts, &
           sele_overlap_scale, quad_over_whole_ele, &
-          state, "ph_1" , storageindexes( 36 ) )
+          storage_state, "ph_1" , storageindexes( 36 ) )
 
           totele = ele_count( ufield )
           x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
@@ -337,7 +337,7 @@
               tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
               tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
               other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
-              other_fenx_all, state , "ph_2", StorageIndexes( 37 ) )
+              other_fenx_all, storage_state , "ph_2", StorageIndexes( 37 ) )
 
               ! LOOP to calculate the mass matrices and right hand side element by element and invert the linear problem.
               ! Problem is inverted element by element
@@ -442,11 +442,11 @@
 
           if (have_option('/material_phase::phase1/scalar_field::Temperature/prognostic/CVgalerkin_interpolation')) then
 
-              if(flag == 1) call BoundedSolutionCorrections(state, packed_state, small_finacv, small_colacv, StorageIndexes, cv_ele_type)
+              if(flag == 1) call BoundedSolutionCorrections(state, packed_state,storage_state,  small_finacv, small_colacv, StorageIndexes, cv_ele_type)
 
           else if(have_option('/material_phase::phase1/scalar_field::PhaseVolumeFraction/prognostic/CVgalerkin_interpolation')) then
 
-              if(flag == 1)  call BoundedSolutionCorrections(state, packed_state, small_finacv, small_colacv, StorageIndexes, cv_ele_type,.true.)
+              if(flag == 1)  call BoundedSolutionCorrections(state, packed_state,storage_state, small_finacv, small_colacv, StorageIndexes, cv_ele_type,.true.)
 
           endif
 

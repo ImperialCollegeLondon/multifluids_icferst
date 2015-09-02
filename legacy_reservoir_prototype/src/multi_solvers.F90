@@ -1086,7 +1086,7 @@ contains
 
 
 
-    subroutine BoundedSolutionCorrections( state, packed_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, &
+    subroutine BoundedSolutionCorrections( state, packed_state, storage_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, &
         for_sat, IDs2CV_ndgln)
 
       implicit none
@@ -1104,7 +1104,7 @@ contains
       real, parameter :: w_relax = 0.5, error_tol = 1.0e-5
 
       type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ), intent( inout ) :: packed_state
+      type( state_type ), intent( inout ) :: packed_state, storage_state
       integer, dimension( : ), intent( in ) :: small_findrm, small_colm
       integer, intent( in ) :: cv_ele_type
       integer, dimension( : ), intent( inout ) :: StorageIndexes
@@ -1212,8 +1212,8 @@ contains
                                 ! define the gauss points that lie on the surface of the cv...
            findgpts, colgpts, ncolgpts, &
            sele_overlap_scale, quad_over_whole_ele,&
-           state, "Press_mesh" , storageindexes(1))
-           !state, "bound", storageindexes( 35 ) )
+           storage_state, "Press_mesh" , storageindexes(1))
+           !storage_state, "bound", storageindexes( 35 ) )
 
       totele = ele_count( field )
       x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )

@@ -1703,7 +1703,7 @@
     end subroutine relperm_stone
 
 
-   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM, StorageIndexes,&
+   SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM,&
          CV_NDGLN, ids_ndgln, totele, cv_nloc)
 
       ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
@@ -1715,7 +1715,6 @@
       type(state_type), dimension(:), intent(inout) :: state
       type(state_type), intent(inout) :: packed_state
       integer, dimension(:), intent(in) :: CV_NDGLN, ids_ndgln
-      integer, dimension(:), intent(inout) :: StorageIndexes
       integer, intent(in) :: totele, cv_nloc
       logical, intent(in) :: Sat_in_FEM
       ! Local Variables
@@ -2582,7 +2581,7 @@
 
 
 
-    subroutine extract_scalar_from_diamond(state, field_values, path, StorName, indx, iphase, nphase)
+    subroutine extract_scalar_from_diamond(state, storage_state, field_values, path, StorName, indx, iphase, nphase)
     !Gets a scalar field directly from Diamond
     !Path have to end in /prescribed/value
     !Indx is for the cashing
@@ -2590,6 +2589,7 @@
     !NOTE: This was initially done for capillary pressure with regions
         implicit none
         type(state_type), dimension(:), intent(inout) :: state
+        type(state_type), intent(inout) :: storage_state
         real, dimension(:), pointer, intent(inout) :: field_values
         character(len=*), intent(in) :: path, StorName
         integer, intent(inout) :: indx
@@ -2602,17 +2602,17 @@
         type(mesh_type) :: Auxmesh
         integer :: siz
          if (indx<=0) then!Everything needs to be calculated
-              if (has_scalar_field(state(1), StorName)) then
+              if (has_scalar_field(storage_state, StorName)) then
                   !If we are recalculating due to a mesh modification then
                   !we return to the original situation
-                  call remove_scalar_field(state(1), StorName)
+                  call remove_scalar_field(storage_state, StorName)
               end if
 
 
             !By default I use the Pressure mesh (Number 1)
             Sfield => extract_scalar_field(state(1),1)
             position => get_external_coordinate_field(state(1), Sfield%mesh)
-            fl_mesh => extract_mesh( state(1), "CoordinateMesh" )
+            fl_mesh => extract_mesh( storage_state, "FakeMesh" )
             Auxmesh = fl_mesh
             !The number of nodes I want does not coincide
             Auxmesh%nodes = size(Sfield%val,1) * nphase
@@ -2621,13 +2621,13 @@
 !            call allocate(targ_Store, Sfield%mesh)
             call initialise_field_over_regions(targ_Store, path, position)
             !Now we insert them in state and store the indexes
-            call insert(state(1), targ_Store, StorName)
+            call insert(storage_state, targ_Store, StorName)
             call deallocate (targ_Store)
-            indx = size(state(1)%scalar_fields)
+            indx = size(storage_state%scalar_fields)
           end if
           !Get the data
-          siz = size(state(1)%scalar_fields(abs(indx))%ptr%val(:),1)/nphase
-          field_values => state(1)%scalar_fields(abs(indx))%ptr%val((iphase-1)*siz + 1: siz * iphase )
+          siz = size(storage_state%scalar_fields(abs(indx))%ptr%val(:),1)/nphase
+          field_values => storage_state%scalar_fields(abs(indx))%ptr%val((iphase-1)*siz + 1: siz * iphase )
 
 
     end subroutine extract_scalar_from_diamond
@@ -3212,7 +3212,7 @@
     subroutine get_RockFluidProp(state, packed_state)
         !Gets the relperm max, the relperm exponent and the immobile fractions and stores
         !them into packed state
-        !The first index in the immobile fraction, the second is the relperm max
+        !The first index is the immobile fraction, the second is the relperm max
         ! and the third is the relperm exponent
         implicit none
         type(state_type), dimension(:), intent(inout) :: state
@@ -3232,7 +3232,7 @@
         !By default the pressure mesh (position 1)
         s_field => extract_scalar_field(state(1),1)
         position => get_external_coordinate_field(packed_state, s_field%mesh)
-        !The number of nodes I want does not coincide
+
         fl_mesh => extract_mesh( state(1), "P0DG" )
         Auxmesh = fl_mesh
         call allocate (targ_Store, Auxmesh, "Temporary_get_RockFluidProp")
