@@ -12087,43 +12087,53 @@ deallocate(NX_ALL)
 
 
 
-  SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, nphase, n_in_pres, ndim, u_nloc, cv_nloc,FINACV, COLACV, &
-       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln )
+  SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc,FINACV, COLACV, &
+       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, LOC_CV_RHS_I, LOC_CV_RHS_J )
     ! This sub modified either CT or the Advection-diffusion equation for 1D pipe modleling
 
     type(state_type), intent(in) :: packed_state
     type(state_type), dimension(:), intent(in) :: state
 
-    INTEGER, intent( in ) :: nphase, n_in_pres, ndim, u_nloc, cv_nloc, cv_nonods, totele
+    INTEGER, intent( in ) :: nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, cv_nonods, totele
     integer, dimension(:), intent( in ), target :: FINACV, COLACV
-    integer, dimension(:), intent( in ) :: cv_ndgln, x_ndgln, u_ndgln
+    integer, dimension(:), intent( in ) :: cv_ndgln, x_ndgln, u_ndgln, findct, colct
+    real, dimension(:,:,:),intent( inout ) :: ct
+    real, dimension(:),intent( inout ) :: LOC_CV_RHS_I, LOC_CV_RHS_J
 
     logical, intent( in ) :: getcv_disc, getct
     type(petsc_csr_matrix), intent(inout) :: petsc_acv
 
 
     ! Local variables
-    INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, CV_INOD, cv_iloc, ipipe2
-    INTEGER :: cv_ncorner, cv_lngi, cv_lnloc, u_lngi, u_lnloc, i_indx, j_indx, ele, CV_ICORNER
+    INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, CV_INOD, CV_JNOD, cv_iloc, cv_jloc, ipipe2
+    INTEGER :: cv_ncorner, cv_lngi, cv_lnloc, u_lngi, u_lnloc, i_indx, j_indx, ele, CV_ICORNER, cv_gi, iloop
   
 
     integer, dimension(:), pointer :: cv_neigh_ptr
-    integer, dimension(:), allocatable:: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, u_GL_LOC, u_GL_GL
+    integer, dimension(:), allocatable:: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, u_GL_LOC, u_GL_GL, &
+         pipe_corner_nds1, pipe_corner_nds2
     INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE
 
-    real, dimension(:), allocatable:: xi_limit, cvweigh, cv_nodpos, lcv_b
-    real, dimension(:,:), allocatable::cvn, n, nlx, un, unlx, sbcvfen, sbcvfenslx
-    logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE
+    real, dimension(:), allocatable:: xi_limit, cvweigh, cv_nodpos, lcv_b, direction, detwei, PIPE_RAD, suf_detwei, vol_detwei, &
+         TUPWIND_OUT,  DUPWIND_OUT,   TUPWIND_in,  DUPWIND_in, sigma, ndotq, income, income_j, &
+         FEMTGI, FEMdGI, T_CV_NODI, T_CV_NODJ, D_CV_NODI, D_CV_NODJ, limt, limd, bczero, fvt, limdt
+    real, dimension(:,:), allocatable::cvn, n, nlx, un, unlx, sbcvfen, sbcvfenslx, L_CVFENX_ALL, L_UFENX_ALL,L_UFEN_REVERSED,L_UFEN,&
+         VGI_ALL, UGI_ALL, ct_con
+    real, dimension(:,:,:), allocatable::L_CVFENX_ALL_REVERSED
+    logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
 
-    real :: ldx
-    integer :: i, ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, PIPE_CORNER(ndim+1), ipipe, CV_LILOC, U_LILOC, u_icorner, u_iloc, x_iloc
+    real :: ldx, dx, ele_angle, cv_m, sigma_gi
+    integer :: i, ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, PIPE_CORNER(ndim+1), ipipe, CV_LILOC,   CV_LJLOC,  U_LILOC, &
+         u_icorner, u_iloc, x_iloc, cv_knod, idim, I_CORN3, I_CORN4, X_NLOC, cv_lkloc, u_lkloc, u_knod, gi
 
     real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
 
-    type(tensor_field), pointer :: t_all, den_all
+    type(tensor_field), pointer :: t_all, den_all, u_all
     type(scalar_field), pointer :: pipe_index
     type(vector_field), pointer :: X
 
+
+    X_NLOC = CV_NLOC
 
     allocate( xi_limit(nphase), &
          CV_LOC_CORNER(cv_nloc), CV_MID_SIDE(ndim+1, ndim+1), &
@@ -12186,6 +12196,7 @@ deallocate(NX_ALL)
 
     T_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" ) 
     DEN_ALL => extract_tensor_field( packed_state, "PackedCVDensity" ) 
+    U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )
 
 
     DO CV_NODI = 1, CV_NONODS
@@ -12219,6 +12230,20 @@ deallocate(NX_ALL)
     allocate( CV_GL_LOC( cv_nloc ), CV_GL_GL( cv_nloc ), X_GL_GL( cv_nloc ), &
          U_GL_LOC( u_nloc ), U_GL_GL( u_nloc ) )
 
+    allocate(  pipe_corner_nds1(NPIPES_IN_ELE), pipe_corner_nds2(NPIPES_IN_ELE), direction(ndim)  )
+    allocate( detwei(cv_lngi),   L_CVFENX_ALL(cv_lnloc, cv_lngi),    L_UFENX_ALL(u_lnloc, cv_lngi) , PIPE_rad(cv_lngi ) )
+    allocate( L_CVFENX_ALL_REVERSED( ndim,  cv_lnloc, cv_lngi ), L_UFEN_REVERSED( cv_lngi,u_lnloc   ) , L_UFEN( u_lnloc, cv_lngi  )   )
+    allocate( suf_detwei(cv_lngi), vol_detwei(cv_lngi) )
+
+    allocate( TUPWIND_OUT( nphase ),  DUPWIND_OUT( nphase ),   TUPWIND_in( nphase ),  DUPWIND_in( nphase ), sigma( cv_nonods)    )
+    allocate( VGI_ALL(ndim,nphase), UGI_ALL(ndim,nphase), ndotq(nphase), income(nphase), income_j(nphase) )
+
+    allocate( FEMTGI(nphase), FEMdGI(nphase), T_CV_NODI(nphase), T_CV_NODJ(nphase), D_CV_NODI(nphase), D_CV_NODJ(nphase) )
+    allocate( limt(nphase), limd(nphase) )
+    allocate( ct_con(ndim, nphase), bczero(nphase), fvt(nphase), limdt(nphase) )
+
+
+    sigma = 0.0                    ! fix me!!
 
     DO ELE = 1, TOTELE
 
@@ -12285,205 +12310,225 @@ deallocate(NX_ALL)
                 U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
              END DO
 
-!!$             ! Calculate the pipes within an element...
-!!$             CALL CALC_PIPES_IN_ELE( X%VAL(:,X_GL_GL( : )), PIPE_INDEX_LOGICAL, NDIM, &
-!!$                  pipe_corner_nds1, pipe_corner_nds2, NPIPES_IN_ELE )
-!!$
-!!$             DIRECTION(:) = X%VAL( :, CV_GL_LOC(2) ) - X%VAL( :, CV_GL_LOC(CV_LNLOC) )
-!!$             DX = SQRT( SUM( DIRECTION(:)**2 ) )
-!!$             DIRECTION(:) = DIRECTION(:) / DX
-!!$
-!!$             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-!!$             DETWEI(:) = SCVFEWEIGH(:) * DX
-!!$             L_CVFENX_ALL(:,:) = 2.0 * SCVFENLX(:,:) / DX
-!!$             L_UFENX_ALL(:,:) = 2.0 * SUFENLX(:,:) / DX
-!!$
-!!$             PIPE_DIAM(:) = 0.0
-!!$             DO CV_LILOC = 1, CV_LNLOC
-!!$                CV_KNOD = CV_GL_GL( CV_LILOC )
-!!$                PIPE_DIAM(:) = PIPE_DIAM(:) + PIPE_INDEX%val( CV_KNOD ) * L_CVFEN( CV_LILOC, : )
-!!$             END DO
-!!$
-!!$             ! Adjust according to the volume of the pipe...
-!!$             DETWEI( : ) =  DETWEI( : ) * PI * (PIPE_DIAM(:) * 0.5)**2
-!!$
-!!$             DO IDIM = 1, NDIM
-!!$                L_CVFENX_ALL_REVERSED(IDIM,:,:) = L_CVFENX_ALL(:,:) * DIRECTION(IDIM)
-!!$             END DO
-!!$             DO U_LILOC = 1, U_LNLOC
-!!$                L_UFEN_REVERSED( :, U_LILOC ) = L_UFEN( U_LILOC, : )
-!!$             END DO
-!!$
-!!$             ! Calculate element angle sweeped out by element and pipe
-!!$             IF ( NDIM==2 ) THEN
-!!$                CALC_ELE_ANGLE = PI
-!!$             ELSE
-!!$                ELE_ANGLE = CALC_ELE_ANGLE( X_ALL(:,X_GL_GL( 1 )), X_ALL(:,X_GL_GL( CV_LNLOC )),
-!!$                X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN3 )) ), &
-!!$                     X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN4 )) ), NDIM )
-!!$             END IF
-!!$
-!!$             ! Adjust according to the volume of the pipe...
-!!$             SUF_DETWEI( : ) =  1.0 * PI * ( (0.5 * PIPE_DIAM(:) )**2 ) * ELE_ANGLE / ( 2.0 * PI )
-!!$             VOL_DETWEI( : ) =  DETWEI( : ) * PI * ( ( 0.5 * PIPE_DIAM(:) )**2 ) * ELE_ANGLE / ( 2.0 * PI )
-!!$
-!!$             DO IDIM = 1, NDIM
-!!$                L_CVFENX_ALL_REVERSED( IDIM, :, : ) = L_CVFENX_ALL( :, : ) * DIRECTION( IDIM )
-!!$             END DO
-!!$             DO U_LILOC = 1, U_LNLOC
-!!$                L_UFEN_REVERSED( :, U_LILOC ) = SUFEN( U_LILOC, : )
-!!$             END DO
-!!$
+             ! Calculate the pipes within an element...
+             CALL CALC_PIPES_IN_ELE( X%VAL(:,X_GL_GL( : )), PIPE_INDEX_LOGICAL, NDIM, &
+                  pipe_corner_nds1, pipe_corner_nds2, NPIPES_IN_ELE )
+
+             DIRECTION(:) = X%VAL( :, CV_GL_LOC(2) ) - X%VAL( :, CV_GL_LOC(CV_LNLOC) )
+             DX = SQRT( SUM( DIRECTION(:)**2 ) )
+             DIRECTION(:) = DIRECTION(:) / DX
+
+             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
+             DETWEI(:) = CVWEIGH(:) * DX
+             L_CVFENX_ALL(:,:) = 2.0 * NLX(:,:) / DX
+             L_UFENX_ALL(:,:) = 2.0 * UNLX(:,:) / DX
+
+             PIPE_RAD(:) = 0.0
+             DO CV_LILOC = 1, CV_LNLOC
+                CV_KNOD = CV_GL_GL( CV_LILOC )
+                PIPE_RAD(:) = PIPE_RAD(:) + PIPE_INDEX%val( CV_KNOD ) * SBCVFEN( CV_LILOC, : )   !L_CVFEN( CV_LILOC, : )  ! fix me!!
+             END DO
+
+             ! Adjust according to the volume of the pipe...
+             DETWEI( : ) =  DETWEI( : ) * PI * (PIPE_RAD(:)  )**2
+
+             L_UFEN = N
+
+
+             DO IDIM = 1, NDIM
+                L_CVFENX_ALL_REVERSED(IDIM,:,:) = L_CVFENX_ALL(:,:) * DIRECTION(IDIM)
+             END DO
+             DO U_LILOC = 1, U_LNLOC
+                L_UFEN_REVERSED( :, U_LILOC ) = L_UFEN( U_LILOC, : )
+             END DO
+
+             ! Calculate element angle sweeped out by element and pipe
+             IF ( NDIM==2 ) THEN
+                ELE_ANGLE = PI
+             ELSE
+
+                I_CORN3 = 1 ; I_CORN4 = 1
+
+                ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X%VAL(:,X_GL_GL( 1 )), X%VAL(:,X_GL_GL( CV_LNLOC )), &
+                     X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN3 )) ), &
+                     X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN4 )) ) )
+             END IF
+
+             ! Adjust according to the volume of the pipe...
+             SUF_DETWEI( : ) =  1.0 * PI * ( ( PIPE_RAD(:) )**2 ) * ELE_ANGLE / ( 2.0 * PI )
+             VOL_DETWEI( : ) =  DETWEI( : ) * PI * ( (  PIPE_RAD(:) )**2 ) * ELE_ANGLE / ( 2.0 * PI )
+
+             DO IDIM = 1, NDIM
+                L_CVFENX_ALL_REVERSED( IDIM, :, : ) = L_CVFENX_ALL( :, : ) * DIRECTION( IDIM )
+             END DO
+             DO U_LILOC = 1, U_LNLOC
+                L_UFEN_REVERSED( :, U_LILOC ) =  UN( U_LILOC, : )  !SUFEN( U_LILOC, : )
+             END DO
+
 !!$             ! Add contributions from the volume...
 !!$             DO CV_LILOC = 1, CV_LNLOC
 !!$                CV_INOD = CV_GL_GL(CV_LILOC)
 !!$                MASS_PIPE(CV_INOD) = MASS_PIPE(CV_INOD) + SUM( CVN(CV_LILOC,:) * VOL_DETWEI( : ) )
 !!$                DO CV_LILOC = 1, CV_LNLOC
 !!$                   CV_JNOD = CV_GL_GL(CV_LJLOC)
-!!$                   CV_M  = SUM( CVN(CV_LILOC,:) * CVNFEM(CV_LJLOC,:) * VOL_DETWEI( : ) )
+!!$                   CV_M  = SUM( CVN(CV_LILOC,:) * N(CV_LJLOC,:) * VOL_DETWEI( : ) )
 !!$                   DO COUNT = FINDM(CV_INOD), FINDM(CV_INOD+1)-1
-!!$                      IF ( CV_INOD==CV_JNOD ) MASS_CV_M(COUNT) = CV_M
+!!$                      IF ( CV_INOD==CV_JNOD ) MASS_CV_M(COUNT) = CV_M                            ! what is this? where do we add this?
 !!$                   END DO
 !!$                END DO
 !!$             END DO
-!!$
-!!$             ! The number of CV basis functions...
-!!$             DO CV_GI = 1, NCV_GI
-!!$                DO ILOOP = 1, 2
-!!$                   IF ( ILOOP==1 ) THEN
-!!$                      CV_LILOC = CV_GI
-!!$                      CV_LJLOC = CV_GI + 1
-!!$                   ELSE
-!!$                      CV_LILOC = CV_GI + 1
-!!$                      CV_LJLOC = CV_GI
-!!$                   END IF
-!!$                   CV_INOD = CV_GL_GL(CV_LILOC)
-!!$                   CV_JNOD = CV_GL_GL(CV_LJLOC)
-!!$
-!!$                   ! This is for outgoing T:
-!!$                   DO IPHASE = 1, NPHASE
-!!$                      IF ( T_ALL( IPHASE, CV_NODI ) > T_ALL( IPHASE, CV_NODJ ) ) THEN
-!!$                         TUPWIND_OUT( IPHASE ) = TMAX_ALL( IPHASE, CV_NODI )
-!!$                         DUPWIND_OUT( IPHASE ) = DENMAX_ALL( IPHASE, CV_NODI )
-!!$                      ELSE
-!!$                         TUPWIND_OUT( IPHASE, COUNT_OUT ) = TMIN_ALL( IPHASE, CV_NODI )
-!!$                         DUPWIND_OUT( IPHASE ) = DENMIN_ALL( IPHASE, CV_NODI )
-!!$                      END IF
-!!$                   END DO
-!!$
-!!$                   ! This is for incomming T:
-!!$                   DO IPHASE = 1, NPHASE
-!!$                      IF ( T_ALL( IPHASE, CV_NODI ) > T_ALL( IPHASE, CV_NODJ ) ) THEN
-!!$                         TUPWIND_IN( IPHASE ) = TMAX_ALL( IPHASE, CV_NODJ )
-!!$                         DUPWIND_IN( IPHASE ) = DENMAX_ALL( IPHASE, CV_NODJ )
-!!$                      ELSE
-!!$                         TUPWIND_IN( IPHASE ) = TMIN_ALL( IPHASE, CV_NODJ )
-!!$                         DUPWIND_IN( IPHASE ) = DENMIN_ALL( IPHASE, CV_NODJ )
-!!$                      END IF
-!!$                   END DO
-!!$
-!!$                   ! Value of sigma in the force balance eqn...
-!!$                   SIGMA_GI = 0.0
-!!$                   DO CV_LKLOC = 1, CV_LNLOC
-!!$                      CV_KNOD = CV_GL_GL(CV_LKLOC)
-!!$                      SIGMA_GI = SIGMA_GI + LCVFEN( CV_KLOC, GI ) * SIGMA(CV_INOD)
-!!$                   END DO
-!!$
-!!$                   ! Velocity in the pipe
-!!$                   VGI_ALL  = 0.0
-!!$                   DO U_LKLOC = 1, U_LNLOC
-!!$                      U_KNOD = U_GL_GL(U_LKLOC)
-!!$                      VGI_ALL  = VGI_ALL + LUFEN( CV_KLOC, GI ) * U_ALL(:,:,CV_INOD)
-!!$                   END DO
-!!$                   UGI_ALL(:,:) = VGI_ALL(:,:) / SIGMA_GI
-!!$
-!!$                   DO IPHASE = 1, NPHASE
-!!$                      IF ( ILOOP==1 ) THEN
-!!$                         NDOTQ(IPHASE) = SUM( DIRECTION(:) * UGI(:,IPHASE) )
-!!$                      ELSE
-!!$                         NDOTQ(IPHASE) = -SUM( DIRECTION(:) * UGI(:,IPHASE) )
-!!$                      END IF
-!!$                   END DO
-!!$
-!!$                   ! When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
-!!$                   WHERE ( NDOTQ <= 0.0 )
-!!$                      INCOME_J = 0.0
-!!$                   ELSE WHERE
-!!$                      INCOME_J = 1.0
-!!$                   END WHERE
-!!$                   INCOME = 1.0 - INCOME_J
-!!$
-!!$                   ! high order values...
-!!$                   GI = 1
-!!$                   FEMTGI=0.0 ; FEMDGI=0.0
-!!$                   DO CV_LKLOC = 1, CV_LNLOC
-!!$                      CV_KNOD = CV_GL_GL(CV_LKLOC)
-!!$                      FEMTGI(:) = FEMTGI(:) + LCVFEN( CV_KLOC, GI ) * T_ALL( :, CV_KNOD)
-!!$                      FEMDGI(:) = FEMDGI(:) + LCVFEN( CV_KLOC, GI ) * DEN_ALL( :, CV_KNOD)
-!!$                   END DO
-!!$
-!!$                   T_CV_NODI(:) = T_ALL%val( :, CV_INOD)
-!!$                   T_CV_NODJ(:) = T_ALL%val( :, CV_JNOD)
-!!$                   D_CV_NODI(:) = DEN_ALL%val( :, CV_INOD)
-!!$                   D_CV_NODJ(:) = DEN_ALL%val( :, CV_JNOD)
-!!$
-!!$                   ! Call the limiter for T...
-!!$                   CALL ONVDLIM_ANO_MANY( NPHASE, &
-!!$                        LIMT(:), FEMTGI(:), INCOME(:), &
-!!$                        T_CV_NODI(:), T_CV_NODJ(:), XI_LIMIT(:), &
-!!$                        TUPWIND_IN(:), TUPWIND_OUT(:) )
-!!$
-!!$                   ! Call the limiter for D...
-!!$                   CALL ONVDLIM_ANO_MANY( NPHASE, &
-!!$                        LIMD(:), FEMDGI(:), INCOME(:), &
-!!$                        D_CV_NODI(:), D_CV_NODJ(:), XI_LIMIT(:), &
-!!$                        DUPWIND_IN(:), DUPWIND_OUT(:) )
-!!$
-!!$                   IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS
-!!$                      DO U_LKLOC = 1, U_LNLOC
-!!$                         U_KNOD = U_GL_GL(U_LKLOC)
-!!$                         DO IDIM = 1, NDIM
-!!$                            CT_CON(IDIM,:) = LUFEN( CV_KLOC, GI ) * LIMD(:) * LIMT(:) * SCVDETWEI( GI ) * DIRECTION(IDIM)
-!!$                         END DO
-!!$                         ! Put into CT matrix...
-!!$                         DO COUNT = FINDCT(CV_INOD), FINDCT(CV_INOD+1)-1
-!!$                            IF ( COLCT(COUNT)==U_KNOD ) CT( :, N_IN_PRES+1:NPRES, COUNT ) = &
-!!$                                 CT( :, N_IN_PRES+1:NPRES, COUNT ) + CT_CON( IDIM, N_IN_PRES+1:NPRES )
-!!$                         END DO
-!!$                      END DO
-!!$                   END IF
-!!$
-!!$                   IF ( GETCV_DISC ) THEN
-!!$
-!!$                      ! Put results into the RHS vector
-!!$                      LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
-!!$                           ! subtract 1st order adv. soln.
-!!$                           + NDOTQNEW(:) * SCVDETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
-!!$                           -  SCVDETWEI( GI ) * NDOTQNEW(:) * LIMDT(:) ) ! hi order adv
-!!$
-!!$                      if ( integrate_other_side_and_not_boundary ) then
-!!$                         LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : ) &
-!!$                              ! subtract 1st order adv. soln.
-!!$                              - NDOTQNEW(:) * SCVDETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
-!!$                              +  SCVDETWEI( GI ) * NDOTQNEW(:) * LIMDT(:)  ) ! hi order adv
-!!$                      end if
-!!$                      ! Put into matrix...
-!!$                      do iphase = n_in_pres+1, nphase
-!!$                         call addto( petsc_acv, iphase, iphase, cv_nodi, cv_nodi, &
-!!$                              +SCVDETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) )
-!!$                      end do
-!!$
-!!$                      if ( integrate_other_side_and_not_boundary ) then
-!!$                         do iphase = n_in_pres+1, nphase
-!!$                            call addto( petsc_acv, iphase, iphase, cv_nodj, cv_nodj,&
-!!$                                 -SCVDETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME_J(iphase) ) * LIMD(iphase) )
-!!$                         end do
-!!$                      end if
-!!$
-!!$                   END IF
-!!$
-!!$                END DO ! DO ILOOP = 1, 2
-!!$             END DO ! DO CV_GI = 1, NCV_GI
+
+
+
+             ! The number of CV basis functions...
+             DO CV_GI = 1, cv_lngi !NCV_GI
+                DO ILOOP = 1, 2
+
+                   IF ( ILOOP==1 ) THEN
+                      CV_LILOC = CV_GI
+                      CV_LJLOC = CV_GI + 1
+                   ELSE
+                      CV_LILOC = CV_GI + 1
+                      CV_LJLOC = CV_GI
+                   END IF
+                   CV_INOD = CV_GL_GL(CV_LILOC)
+                   CV_JNOD = CV_GL_GL(CV_LJLOC)
+
+                   ! This is for outgoing T:
+                   DO IPHASE = 1, NPHASE
+                      IF ( T_ALL%val( 1, IPHASE, CV_NODI ) > T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN   ! these should be cv_Inod not nodi !!! BUG
+                         TUPWIND_OUT( IPHASE ) = TMAX_ALL( IPHASE, CV_NODI )
+                         DUPWIND_OUT( IPHASE ) = DENMAX_ALL( IPHASE, CV_NODI )
+                      ELSE
+                         TUPWIND_OUT( IPHASE ) = TMIN_ALL( IPHASE, CV_NODI )
+                         DUPWIND_OUT( IPHASE ) = DENMIN_ALL( IPHASE, CV_NODI )
+                      END IF
+                   END DO
+
+                   ! This is for incomming T:
+                   DO IPHASE = 1, NPHASE
+                      IF ( T_ALL%val( 1, IPHASE, CV_NODI ) > T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
+                         TUPWIND_IN( IPHASE ) = TMAX_ALL( IPHASE, CV_NODJ )
+                         DUPWIND_IN( IPHASE ) = DENMAX_ALL( IPHASE, CV_NODJ )
+                      ELSE
+                         TUPWIND_IN( IPHASE ) = TMIN_ALL( IPHASE, CV_NODJ )
+                         DUPWIND_IN( IPHASE ) = DENMIN_ALL( IPHASE, CV_NODJ )
+                      END IF
+                   END DO
+
+                   ! Value of sigma in the force balance eqn...
+                   SIGMA_GI = 0.0
+                   DO CV_LKLOC = 1, CV_LNLOC
+                      CV_KNOD = CV_GL_GL(CV_LKLOC)
+                      SIGMA_GI = SIGMA_GI + N( CV_LKLOC, cv_GI ) * SIGMA(CV_INOD)
+                   END DO
+
+                   ! Velocity in the pipe
+                   VGI_ALL  = 0.0
+                   DO U_LKLOC = 1, U_LNLOC
+                      U_KNOD = U_GL_GL(U_LKLOC)
+                      VGI_ALL  = VGI_ALL + UN( u_lKLOC, cv_GI ) * U_ALL%val(:,:,u_kNOD)
+                   END DO
+                   UGI_ALL(:,:) = VGI_ALL(:,:) / SIGMA_GI
+
+                   DO IPHASE = 1, NPHASE
+                      IF ( ILOOP==1 ) THEN
+                         NDOTQ(IPHASE) = SUM( DIRECTION(:) * UGI_all(:,IPHASE) )
+                      ELSE
+                         NDOTQ(IPHASE) = -SUM( DIRECTION(:) * UGI_all(:,IPHASE) )
+                      END IF
+                   END DO
+
+                   ! When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
+                   WHERE ( NDOTQ <= 0.0 )
+                      INCOME_J = 0.0
+                   ELSE WHERE
+                      INCOME_J = 1.0
+                   END WHERE
+                   INCOME = 1.0 - INCOME_J
+
+                   ! high order values...
+                   GI = 1
+                   FEMTGI=0.0 ; FEMDGI=0.0
+                   DO CV_LKLOC = 1, CV_LNLOC
+                      CV_KNOD = CV_GL_GL(CV_LKLOC)
+                      FEMTGI(:) = FEMTGI(:) + N( CV_lKLOC, GI ) * T_ALL%val( 1, :, CV_KNOD)
+                      FEMDGI(:) = FEMDGI(:) + N( CV_lKLOC, GI ) * DEN_ALL%val( 1, :, CV_KNOD)
+                   END DO
+
+                   T_CV_NODI(:) = T_ALL%val( 1, :, CV_INOD)
+                   T_CV_NODJ(:) = T_ALL%val( 1, :, CV_JNOD)
+                   D_CV_NODI(:) = DEN_ALL%val( 1, :, CV_INOD)
+                   D_CV_NODJ(:) = DEN_ALL%val( 1, :, CV_JNOD)
+
+
+
+
+                   ! Call the limiter for T...                                                  ! this sub is local to get_int_t_den ... so compiler won't see it !
+       !            CALL ONVDLIM_ANO_MANY( NPHASE, &
+       !                 LIMT(:), FEMTGI(:), INCOME(:), &
+       !                 T_CV_NODI(:), T_CV_NODJ(:), XI_LIMIT(:), &
+       !                 TUPWIND_IN(:), TUPWIND_OUT(:) )
+
+                   ! Call the limiter for D...
+       !            CALL ONVDLIM_ANO_MANY( NPHASE, &
+       !                 LIMD(:), FEMDGI(:), INCOME(:), &
+       !                 D_CV_NODI(:), D_CV_NODJ(:), XI_LIMIT(:), &
+       !                 DUPWIND_IN(:), DUPWIND_OUT(:) )
+
+
+
+
+                   IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS
+                      DO U_LKLOC = 1, U_LNLOC
+                         U_KNOD = U_GL_GL(U_LKLOC)
+                         DO IDIM = 1, NDIM
+                            CT_CON(IDIM,:) = UN( u_lKLOC, cv_GI ) * LIMD(:) * LIMT(:) * DETWEI( cv_GI ) * DIRECTION(IDIM)
+                         END DO
+                         ! Put into CT matrix...
+                         DO COUNT = FINDCT(CV_INOD), FINDCT(CV_INOD+1)-1
+                            IF ( COLCT(COUNT)==U_KNOD ) CT( :, N_IN_PRES+1:NPRES, COUNT ) = &
+                                 CT( :, N_IN_PRES+1:NPRES, COUNT ) + CT_CON( :, N_IN_PRES+1:NPRES )
+                         END DO
+                      END DO
+                   END IF
+
+                   IF ( GETCV_DISC ) THEN
+
+                      FVT(:)=T_ALL%val(1,:,CV_NODI)*(1.0-INCOME(:)) + T_ALL%val(1,:,CV_NODJ)*INCOME(:)
+                      LIMDT(:)= LIMD(:)*LIMT(:)
+                      integrate_other_side_and_not_boundary = .true.     !  generalise???
+
+                      BCZERO = 0.0
+                      ! Put results into the RHS vector
+                      LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
+                           ! subtract 1st order adv. soln.
+                           + NDOTQ(:) * DETWEI( cv_GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
+                           -  DETWEI( cv_GI ) * NDOTQ(:) * LIMDT(:) ! hi order adv
+
+                      if ( integrate_other_side_and_not_boundary ) then
+                         LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : ) &
+                              ! subtract 1st order adv. soln.
+                              - NDOTQ(:) * DETWEI( cv_GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
+                              +  DETWEI( cv_GI ) * NDOTQ(:) * LIMDT(:) ! hi order adv
+                      end if
+                      ! Put into matrix...
+                      do iphase = n_in_pres+1, nphase
+                         call addto( petsc_acv, iphase, iphase, cv_nodi, cv_nodi, &
+                              +DETWEI( cv_GI ) * NDOTQ(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) )
+                      end do
+
+                      if ( integrate_other_side_and_not_boundary ) then
+                         do iphase = n_in_pres+1, nphase
+                            call addto( petsc_acv, iphase, iphase, cv_nodj, cv_nodj,&
+                                 -DETWEI( cv_GI ) * NDOTQ(iphase) * ( 1. - INCOME_J(iphase) ) * LIMD(iphase) )
+                         end do
+                      end if
+
+                   END IF
+
+                END DO ! DO ILOOP = 1, 2
+             END DO ! DO CV_GI = 1, NCV_GI
 
           END DO ! DO IPIPE2 = 1, NPIPES_IN_ELE
        END IF ! IF ( ELE_HAS_PIPE ) THEN
@@ -12492,50 +12537,6 @@ deallocate(NX_ALL)
 
     RETURN
   END SUBROUTINE MOD_1D_CT_AND_ADV
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
