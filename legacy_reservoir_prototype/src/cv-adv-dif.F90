@@ -12730,9 +12730,11 @@ deallocate(NX_ALL)
 
     REAL, DIMENSION( :, :, : ), ALLOCATABLE :: L_CVFENX_ALL_REVERSED
     REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED
-    REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_RAD, NMX_ALL
+    REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_RAD, NMX_ALL, PIPE_RAD_GI
 
     REAL :: DIRECTION( NDIM ), DX
+    LOGICAL :: PIPE_INDEX( NDIM+1 )
+    INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES
 
     CV_QUADRATIC = (CV_NLOC==6.AND.NDIM==2) .OR. (CV_NLOC==10.AND.NDIM==3)
     U_QUADRATIC = (U_NLOC==6.AND.NDIM==2) .OR. (U_NLOC==10.AND.NDIM==3)
@@ -12754,6 +12756,9 @@ deallocate(NX_ALL)
          l_cvfenx_all_reversed(ndim, cv_nloc, scvngi), &
          l_ufen_reversed(scvngi, u_nloc), &
          nmx_all( ndim ) )
+
+    
+    allocate( PIPE_RAD_GI(scvngi) )
 
     allocate( cv_loc_corner(cv_nloc), cv_mid_side(ndim+1, ndim+1), &
          u_loc_corner(u_nloc), u_mid_side(ndim+1, ndim+1) )
@@ -12795,77 +12800,96 @@ deallocate(NX_ALL)
 
           ! Look for pipe indicator in element:
           PIPE_NOD_COUNT=0 ; PIPE_CORNER=0
+          PIPE_INDEX=.false. 
           DO CV_ICORNER = 1, CV_NCORNER ! Number of corner nodes in element
              CV_ILOC = CV_LOC_CORNER( CV_ICORNER )
              CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
              IF ( PIPE_INDEX%val( CV_INOD ) > 0.0 ) THEN
                 PIPE_NOD_COUNT = PIPE_NOD_COUNT + 1
                 PIPE_CORNER( PIPE_NOD_COUNT ) = CV_ICORNER
+                PIPE_INDEX(CV_ICORNER) = .true. 
              END IF
           END DO
           ELE_HAS_PIPE = PIPE_NOD_COUNT > 1
+          npipes = PIPE_NOD_COUNT - 1
 
           IF ( ELE_HAS_PIPE ) THEN
 
              ! If we have more than one pipe then choose the 2 edges with the shortest sides
              ! and have a maximum of 2 pipes per element...
 
-             ! DEFINE CV_LILOC:
-             CV_LILOC = 0
-             DO IPIPE = 1, 2
-                CV_ICORNER = PIPE_CORNER( IPIPE )
-                CV_ILOC = CV_LOC_CORNER( CV_ICORNER )
-                CV_LILOC =  CV_LILOC + 1
-                CV_GL_LOC( CV_LILOC ) = CV_ILOC
-             END DO
+! Calculate the pipes within an element...
+! we return the pipe corner nodes for each pipe in
+             CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX, NDIM, &
+                 pipe_corner_nds1, pipe_corner_nds2, npipes )
 
-             IF ( CV_QUADRATIC ) THEN
-                CV_GL_LOC(3) = CV_GL_LOC( 2 )
-                CV_GL_LOC(2) = CV_MID_SIDE( PIPE_CORNER( 1 ), PIPE_CORNER( 2 ) )
-             END IF
+
+            DO IPIPE=1,NPIPES
+
+! DEFINE CV_LILOC:
+             CV_LILOC = 1
+             CV_ICORNER = pipe_corner_nds1(IPIPE)
+             CV_ILOC = CV_LOC_CORNER( CV_ICORNER )
+             CV_GL_LOC( CV_LILOC ) = CV_ILOC 
+             CV_LILOC = CV_LNLOC
+             CV_ICORNER = pipe_corner_nds2(IPIPE)
+             CV_ILOC = CV_LOC_CORNER( CV_ICORNER )
+             CV_GL_LOC( CV_LILOC ) = CV_ILOC 
+
+             IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( PIPE_CORNER( 1 ), PIPE_CORNER( 2 ) )
 
              DO CV_LILOC = 1, CV_LNLOC
                 CV_ILOC = CV_GL_LOC(CV_LILOC)
                 CV_GL_GL( CV_LILOC ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
              END DO
 
-             ! DEFINE U_LILOC:
-             U_LILOC = 0
-             DO IPIPE = 1, 2
-                U_ICORNER = PIPE_CORNER( IPIPE )
-                U_ILOC = U_LOC_CORNER( U_ICORNER )
-                U_LILOC =  U_LILOC + 1
-                U_GL_LOC( U_LILOC ) = U_ILOC
-             END DO
 
-             IF ( U_QUADRATIC ) THEN
-                U_GL_LOC( 3 ) = U_GL_LOC( 2 )
-                U_GL_LOC( 2 ) = U_MID_SIDE( PIPE_CORNER( 1 ), PIPE_CORNER( 2 ) )
-             END IF
+! DEFINE U_LILOC:
+             U_LILOC = 1
+             U_ICORNER= pipe_corner_nds1(IPIPE)
+             U_ILOC = U_LOC_CORNER( CV_ICORNER )
+             U_GL_LOC( CV_LILOC ) = U_ILOC
+             U_LILOC = U_LNLOC
+             U_ICORNER= pipe_corner_nds2(IPIPE)
+             U_ILOC = U_LOC_CORNER( CV_ICORNER )
+             U_GL_LOC( CV_LILOC ) = U_ILOC
+
+             IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( PIPE_CORNER( 1 ), PIPE_CORNER( 2 ) )
+
 
              DO U_LILOC = 1, U_LNLOC
                 U_ILOC = U_GL_LOC( U_LILOC )
                 U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
              END DO
 
-             DIRECTION(:) = X%VAL( :, CV_GL_LOC(2) ) - X%VAL( :, CV_GL_LOC(CV_LNLOC) )
+
+             ! Calculate element angle sweeped out by element and pipe
+             IF ( NDIM==2 ) THEN
+                CALC_ELE_ANGLE = PI
+             ELSE
+                ELE_ANGLE = CALC_ELE_ANGLE( X_ALL(:,X_GL_GL( 1 )), X_ALL(:,X_GL_GL( CV_LNLOC )),
+                X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN3 )) ), &
+                     X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN4 )) ), NDIM )
+             END IF
+
+
+             DIRECTION(:) = X%VAL( :, CV_GL_GL(1) ) - X%VAL( :, CV_GL_GL(CV_LNLOC) )
              DX = SQRT( SUM( DIRECTION(:)**2 ) )
              DIRECTION(:) = DIRECTION(:) / DX
 
+             PIPE_RAD_GI(:) = 0.0
+             DO CV_LILOC = 1, CV_LNLOC
+                CV_KNOD = CV_GL_GL( CV_LILOC )
+                PIPE_RAD_GI(:) = PIPE_RAD_GI(:) + PIPE_INDEX%val( CV_KNOD ) * LCVFEN( CV_LILOC, : )
+             END DO
+
              ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-             DETWEI(:) = SCVFEWEIGH(:) * DX
+             DETWEI(:) = SCVFEWEIGH(:) * DX * PI * ( PIPE_RAD_GI(:)**2 ) * ELE_ANGLE / ( 2.0 * PI )
              L_CVFENX_ALL(:,:) = 2.0 * SCVFENLX(:,:) / DX
              L_UFENX_ALL(:,:) = 2.0 * SUFENLX(:,:) / DX
 
-
-             PIPE_RAD(:) = 0.0
-             DO CV_LILOC = 1, CV_LNLOC
-                CV_KNOD = CV_GL_GL( CV_LILOC )
-                PIPE_RAD(:) = PIPE_RAD(:) + PIPE_INDEX%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
-             END DO
-
              ! Adjust according to the volume of the pipe...
-             DETWEI( : ) =  DETWEI( : ) * PI * PIPE_RAD(:)**2
+             DETWEI( : ) =  DETWEI( : ) * PI * PIPE_RAD_GI(:)**2
 
              DO IDIM = 1, NDIM
                 L_CVFENX_ALL_REVERSED( IDIM, :, : ) = L_CVFENX_ALL( :, : ) * DIRECTION( IDIM )
@@ -12890,18 +12914,17 @@ deallocate(NX_ALL)
                    !Prepare aid variable NMX_ALL to improve the speed of the calculations
                    NMX_ALL( : ) = matmul( L_CVFENX_ALL_REVERSED( :, :, P_LJLOC ), DETWEI( : ) * L_UFEN_REVERSED( :, U_LILOC ) )
 
-                   DO IPHASE = 1, NPHASE
                       ! Put into matrix
-                      DO IDIM = 1, NDIM
-                         C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) - NMX_ALL( IDIM )
-                      END DO
-
+                   DO IDIM = 1, NDIM
+                      C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) = C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) - NMX_ALL( IDIM )
                    END DO
+
 
                 END DO
 
              END DO
 
+          END DO ! DO IPIPE=1,NPIPES
           END IF ! IF(ELE_HAS_PIPE) THEN
 
        END DO ! DO ELE=1,TOTELE
@@ -12923,10 +12946,10 @@ deallocate(NX_ALL)
     LOGICAL, INTENT( INOUT ) :: CV_QUADRATIC
     INTEGER :: CV_ILOC, ICORN, JCORN
 
+    CV_NCORNER=NDIM+1
+
     IF( ((CV_NLOC==3).AND.(NDIM==2)) .OR. ((CV_NLOC==4).AND.(NDIM==3)) ) THEN ! assume linear...
        CV_QUADRATIC=.FALSE.
-       CV_NCORNER=3
-       IF(NDIM==3) CV_NCORNER=3
        DO CV_ILOC=1,CV_NLOC
           CV_LOC_CORNER(CV_ILOC)=CV_ILOC
        END DO
@@ -12935,12 +12958,7 @@ deallocate(NX_ALL)
        CV_LOC_CORNER(1)=1
        CV_LOC_CORNER(2)=3
        CV_LOC_CORNER(3)=6
-       IF(NDIM==3) THEN
-          CV_LOC_CORNER(4)=10
-          CV_NCORNER=4
-       ELSE
-          CV_NCORNER=3
-       END IF
+
        CV_MID_SIDE=0
        CV_MID_SIDE(1,2)=2
        CV_MID_SIDE(1,3)=4
@@ -12950,6 +12968,7 @@ deallocate(NX_ALL)
           CV_MID_SIDE(1,4)=7
           CV_MID_SIDE(2,4)=8
           CV_MID_SIDE(4,4)=9
+          CV_LOC_CORNER(4)=10
        END IF
        DO ICORN=1,CV_NCORNER
           DO JCORN=ICORN+1,CV_NCORNER
