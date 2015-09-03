@@ -4114,13 +4114,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
                         ! Put into matrix
                         IF ( .NOT.GOT_C_MATRIX ) THEN
-                            DO IDIM = 1, NDIM_VEL
-                                IF(IGOT_VOL_X_PRESSURE==1) THEN
-                                   C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) - VOL_FRA_NMX_ALL( IDIM, IPHASE )
-                                ELSE
-                                   C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) - NMX_ALL( IDIM )
-                                ENDIF
-                            END DO
+                            IF(IGOT_VOL_X_PRESSURE==1) THEN
+                                C( :, IPHASE, COUNT ) = C( :, IPHASE, COUNT ) - VOL_FRA_NMX_ALL( :, IPHASE )
+                            ELSE
+                                DO IDIM = 1, NDIM_VEL
+                                    C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) - NMX_ALL( IDIM )
+                                END DO
+                            ENDIF
                         END IF
                         IF ( IPLIKE_GRAD_SOU == 1) THEN ! Pressure like term
                             DO IDIM = 1, NDIM_VEL

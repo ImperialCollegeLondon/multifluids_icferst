@@ -1464,16 +1464,18 @@
             !we return to the original situation
             call remove_scalar_field(storage_state, trim(Storname))
          end if
+
          !Get mesh file just to be able to allocate the fields we want to store
          fl_mesh => extract_mesh( storage_state, "FakeMesh" )
+
          Auxmesh = make_mesh(fl_mesh,name=trim(Storname))
          !The number of nodes I want does not coincide
+
          Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*NLOC*NGI*NDIM &
          +merge(totele,1,btest(cache_level,1))*NDIM*NDIM*NGI &
          +merge(totele,1,btest(cache_level,2))*NGI*2 + totele
 
          call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
-         
          !Now we insert them in state and store the indexes
          call insert(storage_state, Auxmesh, trim(Storname))
          call insert(storage_state, Targ_NX_ALL, trim(Storname))
@@ -1481,7 +1483,6 @@
          !Store index with a negative value, because if the index is
          !zero or negative then we have to calculate stuff
          indx = -size(storage_state%scalar_fields)
-
          call deallocate (Targ_NX_ALL)
          call deallocate (Auxmesh)
       end if

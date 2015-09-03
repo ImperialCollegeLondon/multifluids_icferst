@@ -1424,7 +1424,7 @@ contains
              END IF
           END DO
 
-    
+
           DO U_KLOC = 1, U_NLOC
              U_NODK = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_KLOC )
 
@@ -2572,7 +2572,7 @@ contains
                THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV(CV_NODI)
          END DO
       ENDIF
-      
+
       IF ( NPRES > 1 ) THEN
 
          OPT_VEL_UPWIND_COEFS_NEW_CV=0.0 ; N=0.0

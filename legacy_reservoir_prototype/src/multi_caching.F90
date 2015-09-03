@@ -91,8 +91,6 @@ contains
 
       fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
       Auxmesh = make_mesh(fl_mesh,name="FakeMesh")
-      !The number of nodes I want does not coincide
-      Auxmesh%nodes = 1
 
       !Now we insert them in state and store the indexes
       call insert(storage_state, Auxmesh, "FakeMesh")
