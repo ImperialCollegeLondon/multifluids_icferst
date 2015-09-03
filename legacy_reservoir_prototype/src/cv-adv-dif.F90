@@ -12098,7 +12098,7 @@ deallocate(NX_ALL)
 
     ! Local variables
     INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, CV_INOD, CV_JNOD, cv_iloc, cv_jloc, ipipe2
-    INTEGER :: cv_ncorner, cv_lngi, cv_lnloc, u_lngi, u_lnloc, i_indx, j_indx, ele, CV_ICORNER, cv_gi, iloop
+    INTEGER :: cv_ncorner, cv_lngi, cv_lnloc, u_lngi, u_lnloc, i_indx, j_indx, ele, CV_ICORNER, cv_gi, iloop, ICORNER, NPIPES
   
 
     integer, dimension(:), pointer :: cv_neigh_ptr
@@ -12110,13 +12110,13 @@ deallocate(NX_ALL)
          TUPWIND_OUT,  DUPWIND_OUT,   TUPWIND_in,  DUPWIND_in, sigma, ndotq, income, income_j, &
          FEMTGI, FEMdGI, T_CV_NODI, T_CV_NODJ, D_CV_NODI, D_CV_NODJ, limt, limd, bczero, fvt, limdt, mass_pipe
     real, dimension(:,:), allocatable::cvn, n, nlx, un, unlx, sbcvfen, sbcvfenslx, L_CVFENX_ALL, L_UFENX_ALL,L_UFEN_REVERSED,L_UFEN,&
-         VGI_ALL, UGI_ALL, ct_con
+         VGI_ALL, UGI_ALL, ct_con, x_all_corn
     real, dimension(:,:,:), allocatable::L_CVFENX_ALL_REVERSED
     logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
 
     real :: ldx, dx, ele_angle, cv_m, sigma_gi
     integer :: i, ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, PIPE_CORNER(ndim+1), ipipe, CV_LILOC,   CV_LJLOC,  U_LILOC, &
-         u_icorner, u_iloc, x_iloc, cv_knod, idim, I_CORN3, I_CORN4, X_NLOC, cv_lkloc, u_lkloc, u_knod, gi
+         u_icorner, u_iloc, x_iloc, cv_knod, idim, X_NLOC, cv_lkloc, u_lkloc, u_knod, gi
 
     real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
 
@@ -12234,7 +12234,7 @@ deallocate(NX_ALL)
     allocate( limt(nphase), limd(nphase) )
     allocate( ct_con(ndim, nphase), bczero(nphase), fvt(nphase), limdt(nphase) )
 
-    allocate( mass_pipe(cv_nonods) )
+    allocate( mass_pipe(cv_nonods), x_all_corn( ndim, x_nloc  ) )
     
     mass_pipe=0.0
 
@@ -12259,24 +12259,25 @@ deallocate(NX_ALL)
 
        IF ( ELE_HAS_PIPE ) THEN
 
-          DO IPIPE2 = 1, NPIPES_IN_ELE                                                                                   !  double check - bug
+          X_ALL_CORN(:,1:cv_nloc)=x%val(:,X_NDGLN( ( ELE - 1 ) * CV_NLOC + 1: ELE * CV_NLOC)  )
+
+
+          DO IPIPE = 1, NPIPES      
 
              ! If we have more than one pipe then choose the 2 edges with the shortest sides
              ! and have a maximum of 2 pipes per element...
 
-             ! DEFINE CV_LILOC:
-             CV_LILOC = 0
-             DO IPIPE = 1, 2
-                CV_ICORNER = PIPE_CORNER( IPIPE )
-                CV_ILOC = CV_LOC_CORNER( CV_ICORNER )
-                CV_LILOC =  CV_LILOC + 1
-                CV_GL_LOC( CV_LILOC ) = CV_ILOC
-             END DO
+! DEFINE CV_LILOC:
+                CV_LILOC = 1
+                ICORNER = pipe_corner_nds1(IPIPE)
+                CV_ILOC = CV_LOC_CORNER( ICORNER )
+                CV_GL_LOC( CV_LILOC ) = CV_ILOC 
+                CV_LILOC = CV_LNLOC
+                ICORNER = pipe_corner_nds2(IPIPE)
+                CV_ILOC = CV_LOC_CORNER( ICORNER )
+                CV_GL_LOC( CV_LILOC ) = CV_ILOC 
 
-             IF ( CV_QUADRATIC ) THEN
-                CV_GL_LOC(3) = CV_GL_LOC( 2 )
-                CV_GL_LOC(2) = CV_MID_SIDE( PIPE_CORNER( 1 ), PIPE_CORNER( 2 ) )
-             END IF
+                IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( CV_GL_LOC( 1 ), CV_GL_LOC( CV_LNLOC ) )
 
              DO CV_LILOC = 1, CV_LNLOC
                 CV_ILOC = CV_GL_LOC(CV_LILOC)
@@ -12286,35 +12287,30 @@ deallocate(NX_ALL)
              END DO
 
 
-             ! DEFINE U_LILOC:
-             U_LILOC = 0
-             DO IPIPE = 1, 2
-                U_ICORNER = PIPE_CORNER( IPIPE )
-                U_ILOC = U_LOC_CORNER( U_ICORNER )
-                U_LILOC =  U_LILOC + 1
-                U_GL_LOC( U_LILOC ) = U_ILOC
-             END DO
+! DEFINE U_LILOC:
+                U_LILOC = 1
+                ICORNER= pipe_corner_nds1(IPIPE)
+                U_ILOC = U_LOC_CORNER( ICORNER )
+                U_GL_LOC( CV_LILOC ) = U_ILOC
+                U_LILOC = U_LNLOC
+                ICORNER= pipe_corner_nds2(IPIPE)
+                U_ILOC = U_LOC_CORNER( ICORNER )
+                U_GL_LOC( CV_LILOC ) = U_ILOC
 
-             IF ( U_QUADRATIC ) THEN
-                U_GL_LOC( 3 ) = U_GL_LOC( 2 )
-                U_GL_LOC( 2 ) = U_MID_SIDE( PIPE_CORNER( 1 ), PIPE_CORNER( 2 ) )
-             END IF
+                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( U_GL_LOC( 1 ), U_GL_LOC( U_LNLOC ) )
 
-             DO U_LILOC = 1, U_LNLOC
-                U_ILOC = U_GL_LOC( U_LILOC )
-                U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
-             END DO
+                DO U_LILOC = 1, U_LNLOC
+                   U_ILOC = U_GL_LOC( U_LILOC )
+                   U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
+                END DO
 
-             ! Calculate the pipes within an element...
-             CALL CALC_PIPES_IN_ELE( X%VAL(:,X_GL_GL( : )), PIPE_INDEX_LOGICAL, NDIM, &
-                  pipe_corner_nds1, pipe_corner_nds2, NPIPES_IN_ELE )
 
-             DIRECTION(:) = X%VAL( :, CV_GL_LOC(2) ) - X%VAL( :, CV_GL_LOC(CV_LNLOC) )
+
+             DIRECTION(:) = X%VAL( :, CV_GL_LOC(1) ) - X%VAL( :, CV_GL_LOC(CV_LNLOC) )
              DX = SQRT( SUM( DIRECTION(:)**2 ) )
              DIRECTION(:) = DIRECTION(:) / DX
 
              ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-             DETWEI(:) = CVWEIGH(:) * DX
              L_CVFENX_ALL(:,:) = 2.0 * NLX(:,:) / DX
              L_UFENX_ALL(:,:) = 2.0 * UNLX(:,:) / DX
 
@@ -12324,8 +12320,6 @@ deallocate(NX_ALL)
                 PIPE_RAD(:) = PIPE_RAD(:) + PIPE_diameter%val( CV_KNOD ) * SBCVFEN( CV_LILOC, : )   !L_CVFEN( CV_LILOC, : )  ! fix me!!
              END DO
 
-             ! Adjust according to the volume of the pipe...
-             DETWEI( : ) =  DETWEI( : ) * PI * (PIPE_RAD(:)  )**2
 
              L_UFEN = N
 
@@ -12338,16 +12332,13 @@ deallocate(NX_ALL)
              END DO
 
              ! Calculate element angle sweeped out by element and pipe
-             IF ( NDIM==2 ) THEN
+             IF ( NDIM == 2 ) THEN
                 ELE_ANGLE = PI
              ELSE
-
-                I_CORN3 = 1 ; I_CORN4 = 1
-
-                ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X%VAL(:,X_GL_GL( 1 )), X%VAL(:,X_GL_GL( CV_LNLOC )), &
-                     X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN3 )) ), &
-                     X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN4 )) ) )
+                ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(1 )),   X_ALL_CORN(:, CV_LOC_CORNER(2)) , &
+                     &                                                       X_ALL_CORN(:, CV_LOC_CORNER(3 )),   X_ALL_CORN(:, CV_LOC_CORNER(4)) )
              END IF
+
 
              ! Adjust according to the volume of the pipe...
              SUF_DETWEI( : ) =  1.0 * PI * ( ( PIPE_RAD(:) )**2 ) * ELE_ANGLE / ( 2.0 * PI )
@@ -12729,13 +12720,13 @@ deallocate(NX_ALL)
 
 
     REAL, DIMENSION( :, :, : ), ALLOCATABLE :: L_CVFENX_ALL_REVERSED
-    REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED
+    REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED, X_ALL_CORN
     REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_RAD, NMX_ALL, PIPE_RAD_GI
 
     REAL :: DIRECTION( NDIM ), DX, ELE_ANGLE
     LOGICAL :: PIPE_INDEX2( NDIM+1 )
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, cv_lngi, &
-         &         u_lngi, scvngi, cv_icorner, i_corn3, i_corn4
+         &         u_lngi, scvngi, cv_icorner
 
     X_NLOC = CV_NLOC
 
@@ -12817,6 +12808,8 @@ deallocate(NX_ALL)
 
        allocate( CV_GL_LOC( cv_lnloc ), CV_GL_GL( cv_lnloc ), X_GL_GL( cv_lnloc )  )
        allocate( U_GL_LOC( U_lnloc ), U_GL_GL( U_lnloc )  )
+       ALLOCATE( X_ALL_CORN(NDIM, CV_NLOC) )
+
 
        C( :, N_IN_PRES+1:NPHASE, : ) = 0.0
 
@@ -12842,6 +12835,13 @@ deallocate(NX_ALL)
              ! If we have more than one pipe then choose the 2 edges with the shortest sides
              ! and have a maximum of 2 pipes per element...
 
+! Calculate the pipes within an element...
+! we return the pipe corner nodes for each pipe in
+             X_ALL_CORN(:,1:cv_nloc)=x%val(:,X_NDGLN( ( ELE - 1 ) * CV_NLOC + 1: ELE * CV_NLOC)  )
+             Call CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX2, NDIM, &
+                 pipe_corner_nds1, pipe_corner_nds2, npipes )
+
+
              DO IPIPE=1,NPIPES
 
                 ! DEFINE CV_LILOC:
@@ -12862,10 +12862,6 @@ deallocate(NX_ALL)
                    X_GL_GL( CV_LILOC ) = X_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
                 END DO
 
-                ! Calculate the pipes within an element...
-                ! we return the pipe corner nodes for each pipe in
-                CALL CALC_PIPES_IN_ELE( X%VAL(:,X_GL_GL( : )), PIPE_INDEX2, NDIM, &
-                     pipe_corner_nds1, pipe_corner_nds2, npipes )
 
                 ! DEFINE U_LILOC:
                 U_LILOC = 1
@@ -12888,14 +12884,9 @@ deallocate(NX_ALL)
                 IF ( NDIM == 2 ) THEN
                    ELE_ANGLE = PI
                 ELSE
-            
-                   I_CORN3 = 1 ; I_CORN4 = 1
-
-                   ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X%VAL(:,X_GL_GL( 1 )), X%VAL(:,X_GL_GL( CV_LNLOC )), &
-                        X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN3 )) ), &
-                        X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN4 )) ) )
+                   ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(1 )),   X_ALL_CORN(:, CV_LOC_CORNER(2)) , &
+                        &                                                      X_ALL_CORN(:, CV_LOC_CORNER(3 )),   X_ALL_CORN(:, CV_LOC_CORNER(4)) )
                 END IF
-
 
                 DIRECTION(:) = X%VAL( :, CV_GL_GL(CV_LNLOC) ) - X%VAL( :, CV_GL_GL(1) )
                 DX = SQRT( SUM( DIRECTION(:)**2 ) )
