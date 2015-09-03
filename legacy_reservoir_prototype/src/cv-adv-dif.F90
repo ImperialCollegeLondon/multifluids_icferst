@@ -12077,7 +12077,10 @@ deallocate(NX_ALL)
 
 
   SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc,FINACV, COLACV, &
-       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, LOC_CV_RHS_I, LOC_CV_RHS_J )
+       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, LOC_CV_RHS_I, LOC_CV_RHS_J, &
+       findcmc, colcmc )
+!       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, CV_RHS, CT_RHS, &
+!&      MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, FINDCMC, COLCMC    )
     ! This sub modified either CT or the Advection-diffusion equation for 1D pipe modleling
 
     type(state_type), intent(in) :: packed_state
@@ -12085,7 +12088,7 @@ deallocate(NX_ALL)
 
     INTEGER, intent( in ) :: nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, cv_nonods, totele
     integer, dimension(:), intent( in ), target :: FINACV, COLACV
-    integer, dimension(:), intent( in ) :: cv_ndgln, x_ndgln, u_ndgln, findct, colct
+    integer, dimension(:), intent( in ) :: cv_ndgln, x_ndgln, u_ndgln, findct, colct, findcmc, colcmc
     real, dimension(:,:,:),intent( inout ) :: ct
     real, dimension(:),intent( inout ) :: LOC_CV_RHS_I, LOC_CV_RHS_J
 
@@ -12105,7 +12108,7 @@ deallocate(NX_ALL)
 
     real, dimension(:), allocatable:: xi_limit, cvweigh, cv_nodpos, lcv_b, direction, detwei, PIPE_RAD, suf_detwei, vol_detwei, &
          TUPWIND_OUT,  DUPWIND_OUT,   TUPWIND_in,  DUPWIND_in, sigma, ndotq, income, income_j, &
-         FEMTGI, FEMdGI, T_CV_NODI, T_CV_NODJ, D_CV_NODI, D_CV_NODJ, limt, limd, bczero, fvt, limdt
+         FEMTGI, FEMdGI, T_CV_NODI, T_CV_NODJ, D_CV_NODI, D_CV_NODJ, limt, limd, bczero, fvt, limdt, mass_pipe
     real, dimension(:,:), allocatable::cvn, n, nlx, un, unlx, sbcvfen, sbcvfenslx, L_CVFENX_ALL, L_UFENX_ALL,L_UFEN_REVERSED,L_UFEN,&
          VGI_ALL, UGI_ALL, ct_con
     real, dimension(:,:,:), allocatable::L_CVFENX_ALL_REVERSED
@@ -12118,7 +12121,7 @@ deallocate(NX_ALL)
     real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
 
     type(tensor_field), pointer :: t_all, den_all, u_all
-    type(scalar_field), pointer :: pipe_index
+    type(scalar_field), pointer :: pipe_diameter
     type(vector_field), pointer :: X
 
 
@@ -12173,11 +12176,11 @@ deallocate(NX_ALL)
        lcv_b(i-1) = 0.5 * ( cv_nodpos(i-1) + cv_nodpos(i) )
     end do
 
-!!$    do iloc = 1, cv_nloc
-!!$       SBCVFEN( iloc, gpoi ) = lagran( ndiff, lcv_b(iloc), iloc, cv_lnloc, cv_nodpos )
-!!$       SBCVFENSLX( iloc, gpoi ) = lagran( diff,  lcv_b(iloc), iloc, cv_lnloc, cv_nodpos )             !   ????? is this right  ???
-!!$    end do
-!!$
+!  do iloc = 1, cv_nloc
+!     SBCVFEN( iloc, gpoi ) = lagran( ndiff, lcv_b(iloc), iloc, cv_lnloc, cv_nodpos )
+!     SBCVFENSLX( iloc, gpoi ) = lagran( diff,  lcv_b(iloc), iloc, cv_lnloc, cv_nodpos )             !   ????? is this right  ???
+!  end do
+
 
 
     allocate( tmax_all( nphase, cv_nonods ),  tmin_all( nphase, cv_nonods ), &
@@ -12212,7 +12215,7 @@ deallocate(NX_ALL)
        end do
     END IF
 
-    PIPE_INDEX => extract_scalar_field( state(1), "PipeRadius1" )
+    PIPE_DIAMETER => extract_scalar_field( state(1), "PipeDiameter1" )
     X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
 
@@ -12231,6 +12234,9 @@ deallocate(NX_ALL)
     allocate( limt(nphase), limd(nphase) )
     allocate( ct_con(ndim, nphase), bczero(nphase), fvt(nphase), limdt(nphase) )
 
+    allocate( mass_pipe(cv_nonods) )
+    
+    mass_pipe=0.0
 
     sigma = 0.0                    ! fix me!!
 
@@ -12242,7 +12248,7 @@ deallocate(NX_ALL)
        DO CV_ICORNER = 1, CV_NCORNER ! Number of corner nodes in element
           CV_ILOC = CV_LOC_CORNER( CV_ICORNER )
           CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
-          IF ( PIPE_INDEX%val( CV_INOD ) > 0.0 ) THEN
+          IF ( PIPE_diameter%val( CV_INOD ) > 0.0 ) THEN
              PIPE_NOD_COUNT = PIPE_NOD_COUNT + 1
              PIPE_CORNER( PIPE_NOD_COUNT ) = CV_ICORNER
              PIPE_INDEX_LOGICAL(CV_ICORNER) = .TRUE.
@@ -12315,7 +12321,7 @@ deallocate(NX_ALL)
              PIPE_RAD(:) = 0.0
              DO CV_LILOC = 1, CV_LNLOC
                 CV_KNOD = CV_GL_GL( CV_LILOC )
-                PIPE_RAD(:) = PIPE_RAD(:) + PIPE_INDEX%val( CV_KNOD ) * SBCVFEN( CV_LILOC, : )   !L_CVFEN( CV_LILOC, : )  ! fix me!!
+                PIPE_RAD(:) = PIPE_RAD(:) + PIPE_diameter%val( CV_KNOD ) * SBCVFEN( CV_LILOC, : )   !L_CVFEN( CV_LILOC, : )  ! fix me!!
              END DO
 
              ! Adjust according to the volume of the pipe...
@@ -12354,18 +12360,22 @@ deallocate(NX_ALL)
                 L_UFEN_REVERSED( :, U_LILOC ) =  UN( U_LILOC, : )  !SUFEN( U_LILOC, : )
              END DO
 
-!!$             ! Add contributions from the volume...
-!!$             DO CV_LILOC = 1, CV_LNLOC
-!!$                CV_INOD = CV_GL_GL(CV_LILOC)
-!!$                MASS_PIPE(CV_INOD) = MASS_PIPE(CV_INOD) + SUM( CVN(CV_LILOC,:) * VOL_DETWEI( : ) )
-!!$                DO CV_LILOC = 1, CV_LNLOC
-!!$                   CV_JNOD = CV_GL_GL(CV_LJLOC)
-!!$                   CV_M  = SUM( CVN(CV_LILOC,:) * N(CV_LJLOC,:) * VOL_DETWEI( : ) )
-!!$                   DO COUNT = FINDM(CV_INOD), FINDM(CV_INOD+1)-1
-!!$                      IF ( CV_INOD==CV_JNOD ) MASS_CV_M(COUNT) = CV_M                            ! what is this? where do we add this?
-!!$                   END DO
-!!$                END DO
-!!$             END DO
+             ! Add contributions from the volume...
+             DO CV_LILOC = 1, CV_LNLOC
+                CV_INOD = CV_GL_GL(CV_LILOC)
+                MASS_PIPE(CV_INOD) = MASS_PIPE(CV_INOD) + SUM( CVN(CV_LILOC,:) * VOL_DETWEI( : ) )
+                DO CV_LJLOC = 1, CV_LNLOC
+                   CV_JNOD = CV_GL_GL(CV_LJLOC)
+            !       M_CVFEM2PIPE  = SUM( CVN(CV_LILOC,:) * CVFEM(CV_LJLOC,:) * VOL_DETWEI( : ) )
+            !       M_PIPE2CVFEM  = SUM( CVN(CV_LJLOC,:) * CVFEM(CV_LILOC,:) * VOL_DETWEI( : ) )
+                   DO COUNT = FINDCMC(CV_INOD), FINDCMC(CV_INOD+1)-1
+                      IF ( CV_INOD==CV_JNOD ) THEN
+            !             MASS_CVFEM2PIPE(COUNT) = M_CVFEM2PIPE   
+            !             MASS_PIPE2CVFEM(COUNT) = M_PIPE2CVFEM  
+                      END IF                   
+                   END DO
+                END DO
+             END DO
 
 
 
@@ -12689,23 +12699,23 @@ deallocate(NX_ALL)
 
 
   SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
-       &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, SCVNGI, FINDC, COLC )
+       &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
     TYPE(STATE_TYPE),DIMENSION(:),INTENT(IN)::STATE
     TYPE(STATE_TYPE),INTENT(IN)::packed_STATE
 
-    INTEGER, INTENT( IN ) :: NPHASE, N_IN_PRES, NDIM, CV_NLOC, U_NLOC, TOTELE, SCVNGI
+    INTEGER, INTENT( IN ) :: NPHASE, N_IN_PRES, NDIM, CV_NLOC, U_NLOC, TOTELE
     REAL, DIMENSION( :, :, : ), INTENT( INOUT ) :: U_RHS, C
-    INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, FINDC, COLC
+    INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC
 
     LOGICAL, INTENT( IN ) :: GOT_C_MATRIX
 
     LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE
-    INTEGER :: CV_NCORNER, ELE, PIPE_NOD_COUNT, PIPE_CORNER(2), CV_ICORNER, U_ICORNER, &
+    INTEGER :: CV_NCORNER, ELE, PIPE_NOD_COUNT, PIPE_CORNER(2), ICORNER, &
          &     CV_ILOC, U_ILOC, CV_INOD, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, IDIM, &
-         &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE
-    INTEGER, DIMENSION(:), ALLOCATABLE :: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, U_GL_LOC, U_GL_GL
+         &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc
+    INTEGER, DIMENSION(:), ALLOCATABLE :: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, U_GL_LOC, U_GL_GL
     INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE
     TYPE(SCALAR_FIELD), POINTER :: PIPE_INDEX
     TYPE(VECTOR_FIELD), POINTER :: X
@@ -12720,38 +12730,14 @@ deallocate(NX_ALL)
 
     REAL, DIMENSION( :, :, : ), ALLOCATABLE :: L_CVFENX_ALL_REVERSED
     REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED
-    REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_RAD, NMX_ALL
+    REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_RAD, NMX_ALL, PIPE_RAD_GI
 
-    REAL :: DIRECTION( NDIM ), DX
+    REAL :: DIRECTION( NDIM ), DX, ELE_ANGLE
+    LOGICAL :: PIPE_INDEX2( NDIM+1 )
+    INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, cv_lngi, &
+         &         u_lngi, scvngi, cv_icorner, i_corn3, i_corn4
 
-    CV_QUADRATIC = (CV_NLOC==6.AND.NDIM==2) .OR. (CV_NLOC==10.AND.NDIM==3)
-    U_QUADRATIC = (U_NLOC==6.AND.NDIM==2) .OR. (U_NLOC==10.AND.NDIM==3)
-
-    PIPE_INDEX => EXTRACT_SCALAR_FIELD(STATE(1), "RadiusPipe1")
-    X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
-
-
-    ! Get the 1D shape functions...
-    allocate( scvfeweigh(scvngi), &
-         scvfen(cv_nloc, scvngi), scvfenslx(cv_nloc, scvngi), scvfensly(cv_nloc, scvngi), &
-         scvfenlx(cv_nloc, scvngi), scvfenly(cv_nloc, scvngi), scvfenlz(cv_nloc, scvngi), &
-         sufen(u_nloc, scvngi), sufenslx(u_nloc, scvngi), sufensly(u_nloc, scvngi), &
-         sufenlx(u_nloc, scvngi), sufenly(u_nloc, scvngi), sufenlz(u_nloc, scvngi) )
-
-    allocate( detwei(scvngi), &
-         l_cvfenx_all(cv_nloc, scvngi), l_ufenx_all(cv_nloc, scvngi), &
-         pipe_rad(scvngi), &
-         l_cvfenx_all_reversed(ndim, cv_nloc, scvngi), &
-         l_ufen_reversed(scvngi, u_nloc), &
-         nmx_all( ndim ) )
-
-    allocate( cv_loc_corner(cv_nloc), cv_mid_side(ndim+1, ndim+1), &
-         u_loc_corner(u_nloc), u_mid_side(ndim+1, ndim+1) )
-
-     call fv_1d_quad( scvngi, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-          scvfenlx, scvfenly, scvfenlz ) ! For scalar fields
-     call fv_1d_quad( scvngi, u_nloc, sufen, sufenslx, sufensly, scvfeweigh, &
-          sufenlx, sufenly, sufenlz ) ! For U fields
+    X_NLOC = CV_NLOC
 
     ! Set rhs of the force balce equation to zero just for the pipes...
     U_RHS( :, N_IN_PRES:NPHASE, : ) = 0.0
@@ -12759,7 +12745,59 @@ deallocate(NX_ALL)
     ! Calculate C:
     IF ( .NOT.GOT_C_MATRIX ) THEN
 
-       C( :, N_IN_PRES+1:NPHASE, : ) = 0.0
+       CV_QUADRATIC = (CV_NLOC==6.AND.NDIM==2) .OR. (CV_NLOC==10.AND.NDIM==3)
+       U_QUADRATIC = (U_NLOC==6.AND.NDIM==2) .OR. (U_NLOC==10.AND.NDIM==3)
+
+       ! The following is for 1d integration...
+       scvngi = 2
+
+       if ( CV_QUADRATIC ) then
+          cv_lngi = 3
+          cv_lnloc = 3
+          scvngi=3
+       else
+          cv_lngi = 2
+          cv_lnloc = 2
+       end if
+
+       if ( U_QUADRATIC ) then
+          u_lngi = 3
+          u_lnloc = 3
+          scvngi=3
+       else
+          u_lngi = 2
+          u_lnloc = 2
+       end if
+
+       PIPE_INDEX => EXTRACT_SCALAR_FIELD(STATE(1), "RadiusPipe1")
+       X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
+
+       ncorner=ndim+1
+
+       ! Get the 1D shape functions...
+       allocate( scvfeweigh(scvngi), &
+            scvfen(cv_lnloc, scvngi), scvfenslx(cv_lnloc, scvngi), scvfensly(cv_lnloc, scvngi), &
+            scvfenlx(cv_lnloc, scvngi), scvfenly(cv_lnloc, scvngi), scvfenlz(cv_lnloc, scvngi), &
+            sufen(u_lnloc, scvngi), sufenslx(u_lnloc, scvngi), sufensly(u_lnloc, scvngi), &
+            sufenlx(u_lnloc, scvngi), sufenly(u_lnloc, scvngi), sufenlz(u_lnloc, scvngi) )
+
+       allocate( detwei(scvngi), &
+            l_cvfenx_all(cv_lnloc, scvngi), l_ufenx_all(cv_lnloc, scvngi), &
+            pipe_rad(scvngi), &
+            l_cvfenx_all_reversed(ndim, cv_lnloc, scvngi), &
+            l_ufen_reversed(scvngi, u_lnloc), &
+            nmx_all( ndim ) )
+
+    
+       allocate( PIPE_RAD_GI(scvngi) )
+
+       allocate( cv_loc_corner(ncorner), cv_mid_side(ncorner, ncorner), &
+            u_loc_corner(ncorner), u_mid_side(ncorner, ncorner) )
+
+       call fv_1d_quad( scvngi, cv_lnloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
+            scvfenlx, scvfenly, scvfenlz ) ! For scalar fields
+       call fv_1d_quad( scvngi, u_lnloc, sufen, sufenslx, sufensly, scvfeweigh, &
+            sufenlx, sufenly, sufenlz ) ! For U fields
 
        ! Calculate the local corner nodes...
        CALL CALC_CORNER_NODS(CV_NCORNER, CV_LOC_CORNER, NDIM, CV_NLOC, CV_QUADRATIC, CV_MID_SIDE)
@@ -12777,120 +12815,137 @@ deallocate(NX_ALL)
           CV_LNLOC = 2
        END IF
 
-       allocate( CV_GL_LOC( cv_nloc ), CV_GL_GL( cv_nloc )  )
-       allocate( U_GL_LOC( U_nloc ), U_GL_GL( U_nloc )  )
+       allocate( CV_GL_LOC( cv_lnloc ), CV_GL_GL( cv_lnloc ), X_GL_GL( cv_lnloc )  )
+       allocate( U_GL_LOC( U_lnloc ), U_GL_GL( U_lnloc )  )
 
+       C( :, N_IN_PRES+1:NPHASE, : ) = 0.0
 
        DO ELE = 1, TOTELE
 
           ! Look for pipe indicator in element:
           PIPE_NOD_COUNT=0 ; PIPE_CORNER=0
+          PIPE_INDEX2=.false. 
           DO CV_ICORNER = 1, CV_NCORNER ! Number of corner nodes in element
              CV_ILOC = CV_LOC_CORNER( CV_ICORNER )
              CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
              IF ( PIPE_INDEX%val( CV_INOD ) > 0.0 ) THEN
                 PIPE_NOD_COUNT = PIPE_NOD_COUNT + 1
                 PIPE_CORNER( PIPE_NOD_COUNT ) = CV_ICORNER
+                PIPE_INDEX2(CV_ICORNER) = .true. 
              END IF
           END DO
-          ELE_HAS_PIPE = PIPE_NOD_COUNT > 1
+          npipes = PIPE_NOD_COUNT - 1
+          ELE_HAS_PIPE = npipes >= 1
 
           IF ( ELE_HAS_PIPE ) THEN
 
              ! If we have more than one pipe then choose the 2 edges with the shortest sides
              ! and have a maximum of 2 pipes per element...
 
-             ! DEFINE CV_LILOC:
-             CV_LILOC = 0
-             DO IPIPE = 1, 2
-                CV_ICORNER = PIPE_CORNER( IPIPE )
-                CV_ILOC = CV_LOC_CORNER( CV_ICORNER )
-                CV_LILOC =  CV_LILOC + 1
-                CV_GL_LOC( CV_LILOC ) = CV_ILOC
-             END DO
+             DO IPIPE=1,NPIPES
 
-             IF ( CV_QUADRATIC ) THEN
-                CV_GL_LOC(3) = CV_GL_LOC( 2 )
-                CV_GL_LOC(2) = CV_MID_SIDE( PIPE_CORNER( 1 ), PIPE_CORNER( 2 ) )
-             END IF
+                ! DEFINE CV_LILOC:
+                CV_LILOC = 1
+                ICORNER = pipe_corner_nds1( IPIPE )
+                CV_ILOC = CV_LOC_CORNER( ICORNER )
+                CV_GL_LOC( CV_LILOC ) = CV_ILOC 
+                CV_LILOC = CV_LNLOC
+                ICORNER = pipe_corner_nds2( IPIPE )
+                CV_ILOC = CV_LOC_CORNER( ICORNER )
+                CV_GL_LOC( CV_LILOC ) = CV_ILOC 
 
-             DO CV_LILOC = 1, CV_LNLOC
-                CV_ILOC = CV_GL_LOC(CV_LILOC)
-                CV_GL_GL( CV_LILOC ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
-             END DO
+                IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( CV_GL_LOC( 1 ), CV_GL_LOC( CV_LNLOC ) )
 
-             ! DEFINE U_LILOC:
-             U_LILOC = 0
-             DO IPIPE = 1, 2
-                U_ICORNER = PIPE_CORNER( IPIPE )
-                U_ILOC = U_LOC_CORNER( U_ICORNER )
-                U_LILOC =  U_LILOC + 1
-                U_GL_LOC( U_LILOC ) = U_ILOC
-             END DO
+                DO CV_LILOC = 1, CV_LNLOC
+                   CV_ILOC = CV_GL_LOC( CV_LILOC )
+                   CV_GL_GL( CV_LILOC ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
+                   X_GL_GL( CV_LILOC ) = X_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
+                END DO
 
-             IF ( U_QUADRATIC ) THEN
-                U_GL_LOC( 3 ) = U_GL_LOC( 2 )
-                U_GL_LOC( 2 ) = U_MID_SIDE( PIPE_CORNER( 1 ), PIPE_CORNER( 2 ) )
-             END IF
+                ! Calculate the pipes within an element...
+                ! we return the pipe corner nodes for each pipe in
+                CALL CALC_PIPES_IN_ELE( X%VAL(:,X_GL_GL( : )), PIPE_INDEX2, NDIM, &
+                     pipe_corner_nds1, pipe_corner_nds2, npipes )
 
-             DO U_LILOC = 1, U_LNLOC
-                U_ILOC = U_GL_LOC( U_LILOC )
-                U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
-             END DO
+                ! DEFINE U_LILOC:
+                U_LILOC = 1
+                ICORNER= pipe_corner_nds1(IPIPE)
+                U_ILOC = U_LOC_CORNER( ICORNER )
+                U_GL_LOC( CV_LILOC ) = U_ILOC
+                U_LILOC = U_LNLOC
+                ICORNER= pipe_corner_nds2(IPIPE)
+                U_ILOC = U_LOC_CORNER( ICORNER )
+                U_GL_LOC( CV_LILOC ) = U_ILOC
 
-             DIRECTION(:) = X%VAL( :, CV_GL_LOC(2) ) - X%VAL( :, CV_GL_LOC(CV_LNLOC) )
-             DX = SQRT( SUM( DIRECTION(:)**2 ) )
-             DIRECTION(:) = DIRECTION(:) / DX
+                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( U_GL_LOC( 1 ), U_GL_LOC( U_LNLOC ) )
 
-             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-             DETWEI(:) = SCVFEWEIGH(:) * DX
-             L_CVFENX_ALL(:,:) = 2.0 * SCVFENLX(:,:) / DX
-             L_UFENX_ALL(:,:) = 2.0 * SUFENLX(:,:) / DX
+                DO U_LILOC = 1, U_LNLOC
+                   U_ILOC = U_GL_LOC( U_LILOC )
+                   U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
+                END DO
 
-             PIPE_RAD(:) = 0.0
-             DO CV_LILOC = 1, CV_LNLOC
-                CV_KNOD = CV_GL_GL( CV_LILOC )
-                PIPE_RAD(:) = PIPE_RAD(:) + PIPE_INDEX%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
-             END DO
+                ! Calculate element angle sweeped out by element and pipe
+                IF ( NDIM == 2 ) THEN
+                   ELE_ANGLE = PI
+                ELSE
+            
+                   I_CORN3 = 1 ; I_CORN4 = 1
 
-             ! Adjust according to the volume of the pipe...
-             DETWEI( : ) =  DETWEI( : ) * PI * PIPE_RAD(:)**2
+                   ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X%VAL(:,X_GL_GL( 1 )), X%VAL(:,X_GL_GL( CV_LNLOC )), &
+                        X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN3 )) ), &
+                        X%VAL(:, X_NDGLN((ELE-1)*X_NLOC+CV_LOC_CORNER( I_CORN4 )) ) )
+                END IF
 
-             DO IDIM = 1, NDIM
-                L_CVFENX_ALL_REVERSED( IDIM, :, : ) = L_CVFENX_ALL( :, : ) * DIRECTION( IDIM )
-             END DO
-             DO U_LILOC = 1, U_LNLOC
-                L_UFEN_REVERSED( :, U_LILOC ) = SUFEN( U_LILOC, : )
-             END DO
 
-             ! Add in C matrix contribution: (DG velocities)
-             DO U_LILOC = 1, U_LNLOC
-                IU_NOD = U_GL_GL( U_LILOC ) ! U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+                DIRECTION(:) = X%VAL( :, CV_GL_GL(CV_LNLOC) ) - X%VAL( :, CV_GL_GL(1) )
+                DX = SQRT( SUM( DIRECTION(:)**2 ) )
+                DIRECTION(:) = DIRECTION(:) / DX
 
-                DO P_LJLOC = 1, CV_LNLOC
-                   JCV_NOD = CV_GL_GL(CV_LILOC) ! P_NDGLN( ( ELE - 1 ) * P_NLOC + P_JLOC )
-                   !In this section we multiply the shape functions over the GI points. I.E: We perform the integration
-                   !over the element of the pressure like source term.
-                   ! Put into matrix
-                   DO COUNT2 = FINDC(IU_NOD), FINDC(IU_NOD+1)-1
-                      IF ( COLC(COUNT2) == JCV_NOD ) COUNT = COUNT2
-                   END DO
+                PIPE_RAD_GI(:) = 0.0
+                DO CV_LILOC = 1, CV_LNLOC
+                   CV_KNOD = CV_GL_GL( CV_LILOC )
+                   PIPE_RAD_GI(:) = PIPE_RAD_GI(:) + PIPE_INDEX%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
+                END DO
 
-                   !Prepare aid variable NMX_ALL to improve the speed of the calculations
-                   NMX_ALL( : ) = matmul( L_CVFENX_ALL_REVERSED( :, :, P_LJLOC ), DETWEI( : ) * L_UFEN_REVERSED( :, U_LILOC ) )
+                ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
+                ! Adjust according to the volume of the pipe...
+                DETWEI(:) = SCVFEWEIGH(:) * DX * PI * ( PIPE_RAD_GI(:)**2 ) * ELE_ANGLE / ( 2.0 * PI )
+                L_CVFENX_ALL(:,:) = 2.0 * SCVFENLX(:,:) / DX
+                L_UFENX_ALL(:,:) = 2.0 * SUFENLX(:,:) / DX
 
-                   DO IPHASE = 1, NPHASE
+                DO IDIM = 1, NDIM
+                   L_CVFENX_ALL_REVERSED( IDIM, :, : ) = L_CVFENX_ALL( :, : ) * DIRECTION( IDIM )
+                END DO
+                DO U_LILOC = 1, U_LNLOC
+                   L_UFEN_REVERSED( :, U_LILOC ) = SUFEN( U_LILOC, : )
+                END DO
+
+                ! Add in C matrix contribution: (DG velocities)
+                DO U_LILOC = 1, U_LNLOC
+                   IU_NOD = U_GL_GL( U_LILOC ) ! U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+
+                   DO P_LJLOC = 1, CV_LNLOC
+                      JCV_NOD = CV_GL_GL(CV_LILOC) ! P_NDGLN( ( ELE - 1 ) * P_NLOC + P_JLOC )
+                      ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
+                      ! over the element of the pressure like source term.
+                      ! Put into matrix
+                      DO COUNT2 = FINDC(IU_NOD), FINDC(IU_NOD+1)-1
+                         IF ( COLC(COUNT2) == JCV_NOD ) COUNT = COUNT2
+                      END DO
+
+                      ! Prepare aid variable NMX_ALL to improve the speed of the calculations
+                      NMX_ALL( : ) = matmul( L_CVFENX_ALL_REVERSED( :, :, P_LJLOC ), DETWEI( : ) * L_UFEN_REVERSED( :, U_LILOC ) )
+
                       ! Put into matrix
                       DO IDIM = 1, NDIM
-                         C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) - NMX_ALL( IDIM )
+                         C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) = C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) - NMX_ALL( IDIM )
                       END DO
 
                    END DO
 
                 END DO
 
-             END DO
-
+             END DO ! DO IPIPE=1,NPIPES
           END IF ! IF(ELE_HAS_PIPE) THEN
 
        END DO ! DO ELE=1,TOTELE
@@ -12912,10 +12967,10 @@ deallocate(NX_ALL)
     LOGICAL, INTENT( INOUT ) :: CV_QUADRATIC
     INTEGER :: CV_ILOC, ICORN, JCORN
 
+    CV_NCORNER = NDIM + 1
+
     IF( ((CV_NLOC==3).AND.(NDIM==2)) .OR. ((CV_NLOC==4).AND.(NDIM==3)) ) THEN ! assume linear...
        CV_QUADRATIC=.FALSE.
-       CV_NCORNER=3
-       IF(NDIM==3) CV_NCORNER=3
        DO CV_ILOC=1,CV_NLOC
           CV_LOC_CORNER(CV_ILOC)=CV_ILOC
        END DO
@@ -12924,12 +12979,7 @@ deallocate(NX_ALL)
        CV_LOC_CORNER(1)=1
        CV_LOC_CORNER(2)=3
        CV_LOC_CORNER(3)=6
-       IF(NDIM==3) THEN
-          CV_LOC_CORNER(4)=10
-          CV_NCORNER=4
-       ELSE
-          CV_NCORNER=3
-       END IF
+
        CV_MID_SIDE=0
        CV_MID_SIDE(1,2)=2
        CV_MID_SIDE(1,3)=4
@@ -12939,6 +12989,7 @@ deallocate(NX_ALL)
           CV_MID_SIDE(1,4)=7
           CV_MID_SIDE(2,4)=8
           CV_MID_SIDE(4,4)=9
+          CV_LOC_CORNER(4)=10
        END IF
        DO ICORN=1,CV_NCORNER
           DO JCORN=ICORN+1,CV_NCORNER
