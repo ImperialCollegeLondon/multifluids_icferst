@@ -69,7 +69,7 @@
     use Compositional_Terms
     use multiphase_EOS
     use multiphase_fractures
-    use multiphase_caching, only: set_caching_level, cache_level
+    use multiphase_caching
     use shape_functions_Linear_Quadratic
     use Compositional_Terms
     use Copy_Outof_State
@@ -111,6 +111,8 @@
       type(state_type) :: packed_state
       type(state_type), dimension(:), pointer :: multiphase_state, multicomponent_state
 
+!!$ additional state variable for storage
+      type(state_type) :: storage_state
 
 !!$ Primary scalars
       integer :: nphase, npres, nstate, ncomp, totele, ndim, stotel, &
@@ -304,8 +306,9 @@
       call pack_multistate(npres,state,packed_state,multiphase_state,&
            multicomponent_state)
       call set_boundary_conditions_values(state, shift_time=.true.)
-
+      !Prepare the caching
       call set_caching_level()
+      call initialize_storage(packed_state, storage_state)
 
       !call initialize_rheologies(state,rheology)
 
@@ -764,7 +767,7 @@
                density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
-               call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+               call INTENERGE_ASSEM_SOLVE( state, packed_state,storage_state, &
                     tracer_field,velocity_field,density_field,&
                     small_FINACV, small_COLACV, small_MIDACV, &
                     NCOLCT, FINDCT, COLCT, &
@@ -818,7 +821,7 @@
                plike_grad_sou_grad = 0
 
 
-               CALL CALCULATE_SURFACE_TENSION( state, packed_state, nphase, ncomp, &
+               CALL CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, nphase, ncomp, &
                     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
                     Velocity_U_Source_CV, Velocity_U_Source, &
                     NCOLACV, FINACV, COLACV, MIDACV, &
@@ -835,14 +838,14 @@
                     StorageIndexes=StorageIndexes )
                if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) )then
                           !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
-                  call calculate_capillary_pressure( state, packed_state, .false., StorageIndexes,&
+                  call calculate_capillary_pressure( state, packed_state, .false., &
                      CV_NDGLN, ids_ndgln, totele, cv_nloc)
                end if
 
                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
-               CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+               CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, storage_state,&
                     velocity_field, pressure_field, &
                     NDIM, NPHASE, NPRES, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
                     U_ELE_TYPE, P_ELE_TYPE, &
@@ -894,7 +897,7 @@
             end if Conditional_ForceBalanceEquation
 
             Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
-               call VolumeFraction_Assemble_Solve( state, packed_state, &
+               call VolumeFraction_Assemble_Solve( state, packed_state, storage_state,&
                     small_FINACV, small_COLACV, small_MIDACV, &
                     NCOLCT, FINDCT, COLCT, &
                     CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
@@ -977,7 +980,7 @@
                   end if Conditional_SmoothAbsorption
 
 !!$ Computing diffusion term for the component conservative equation:
-                  call Calculate_ComponentDiffusionTerm( state, packed_state, &
+                  call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state,&
                        mat_ndgln, u_ndgln, x_ndgln, &
                        u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt, &
                        Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
@@ -988,7 +991,7 @@
                   Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
                      comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
 
-                     call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
+                     call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), storage_state,&
                           tracer_field,velocity_field,density_field,&
                           SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
                           NCOLCT, FINDCT, COLCT, &
@@ -1219,12 +1222,12 @@
 
              if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
 
-                 call M2MInterpolation(state, packed_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
+                 call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
              else
                  ! In this case, we don't adapt the mesh so we just call both routines straight away which gives back the original field
                  ! Alternatively could just do nothing here
-                 !call M2MInterpolation(state, packed_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
-                 !call M2MInterpolation(state, packed_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
+                 !call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
+                 !call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
                  !call MemoryCleanupInterpolation2() ! Deallocate the memory used in the second call - the 1st call is deactivated right at the end
 
              endif
@@ -1255,7 +1258,7 @@
 
          Conditional_ReallocatingFields: if( do_reallocate_fields ) then
             !The storaged variables must be recalculated
-            call Clean_Storage(state, StorageIndexes)
+            call Clean_Storage(storage_state, StorageIndexes)
 
 !            call linearise_components()
 
@@ -1469,7 +1472,7 @@
             if (numberfields > 0) then
 
                 if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
-                    call M2MInterpolation(state, packed_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
+                    call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
                     call MemoryCleanupInterpolation2()
                 endif
 
@@ -1679,8 +1682,8 @@
 
       call deallocate(packed_state)
       call deallocate(multiphase_state)
-      call deallocate(multicomponent_state )
-
+      call deallocate(multicomponent_state)
+      call deallocate(storage_state)
       if (allocated(Quality_list)) deallocate(Quality_list)
 
       !***************************************
