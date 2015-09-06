@@ -942,6 +942,7 @@
             old_saturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
 
 
+
             Conditional_Components:if( have_component_field ) then
 
                D_s  => extract_tensor_field( packed_state, "PackedDensity" )
@@ -950,7 +951,6 @@
                DCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
                MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
                MFCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentMassFraction" )
-
 
                Loop_Components: do icomp = 1, ncomp
 
