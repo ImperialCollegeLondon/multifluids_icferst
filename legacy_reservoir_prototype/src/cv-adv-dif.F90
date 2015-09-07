@@ -2849,7 +2849,7 @@ contains
       END IF Conditional_GETCV_DISC2
 
       IF ( GETCT ) THEN
-         W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T
+         W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T 
          W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD
 
          DIAG_SCALE_PRES = 0.0
