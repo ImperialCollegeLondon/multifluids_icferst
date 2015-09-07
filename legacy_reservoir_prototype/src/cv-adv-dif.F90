@@ -368,7 +368,8 @@ contains
 ! if APPLY_ENO then apply ENO method to T and TOLD
       LOGICAL :: APPLY_ENO
 ! CT will not change with this option...
-      LOGICAL, PARAMETER :: CT_DO_NOT_CHANGE = .FALSE. 
+      LOGICAL, PARAMETER :: CT_DO_NOT_CHANGE = .FALSE.,  PIPES_1D=.TRUE.
+! PIPES_1D uses 1D pipes along edges of elements...
 ! GRAVTY is used in the free surface method only...
       REAL :: GRAVTY
 !
@@ -515,6 +516,7 @@ contains
       real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL, FEMT_ALL, FEMTOLD_ALL
       real, dimension(:, :, :), pointer :: comp, comp_old, fecomp, fecomp_old, U_ALL, NU_ALL, NUOLD_ALL
       real, dimension(:,:), allocatable :: T_ALL_KEEP
+      real, dimension(:,:), allocatable :: MASS_CV_PLUS
       real, dimension( : ), allocatable :: ct_rhs_phase, DIAG_SCALE_PRES_phase
       real, dimension( : ), allocatable :: R_PRES,R_PHASE,CV_P_PHASE_NODI,CV_P_PHASE_NODJ,MEAN_PORE_CV_PHASE
       real, dimension( :, :, : ), allocatable :: A_GAMMA_PRES_ABS,GAMMA_PRES_ABS2, PIPE_ABS
@@ -2569,11 +2571,22 @@ contains
 
       END DO Loop_Elements
 
+
+
       IF(GET_GTHETA) THEN
          DO CV_NODI = 1, CV_NONODS
                THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV(CV_NODI)
          END DO
       ENDIF
+
+! Used for pipe modelling...
+      ALLOCATE(MASS_CV_PLUS(NPRES,CV_NONODS))
+      ALLOCATE( MASS_PIPE(CV_NONODS))
+
+      DO CV_NODI = 1, CV_NONODS
+         MASS_CV_PLUS(:,CV_NODI)= MASS_CV(CV_NODI)
+      END DO
+      MASS_PIPE=MASS_CV
 
       IF ( NPRES > 1 ) THEN
 
@@ -2714,14 +2727,21 @@ contains
 
          END IF ! ENDOF IF ( .NOT. GETCT ) THEN
 
-         ALLOCATE( MASS_PIPE(CV_NONODS), MASS_CVFEM2PIPE(NCOLCMC), MASS_PIPE2CVFEM(NCOLCMC) )
+         ALLOCATE( MASS_CVFEM2PIPE(NCOLCMC), MASS_PIPE2CVFEM(NCOLCMC) )
 
-         CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, SMALL_FINDRM, SMALL_COLM, &
+         IF(PIPES_1D) THEN
+            CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, SMALL_FINDRM, SMALL_COLM, &
               cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, CV_RHS_field, &
               findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, mass_pipe, SIGMA_INV_APPROX )
 
+! Used for pipe modelling...
+            DO CV_NODI = 1, CV_NONODS
+               MASS_CV_PLUS(2:NPRES,CV_NONODS) = mass_pipe(CV_NODI)
+            END DO
+         END IF
 
-      END IF
+
+      END IF ! IF ( NPRES > 1 ) THEN
 
 
       Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
@@ -2738,7 +2758,7 @@ contains
             LOC_CV_RHS_I=0.0
 
             DO IPRES=1,NPRES
-               R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI ) * MASS_CV( CV_NODI ) / DT
+               R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI ) * MASS_CV_PLUS( IPRES, CV_NODI ) / DT
                CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
             END DO
 
@@ -2799,7 +2819,7 @@ contains
                IF( NPRES > 1 .and. explicit_pipes ) THEN
                   DO JPHASE = 1, NPHASE
                      LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
-                       - MASS_CV( CV_NODI ) * A_GAMMA_PRES_ABS(:,JPHASE,CV_NODI )*CV_P_PHASE_NODI(JPHASE )
+                       - MASS_PIPE( CV_NODI ) * A_GAMMA_PRES_ABS(:,JPHASE,CV_NODI )*CV_P_PHASE_NODI(JPHASE )
                   END DO
                END IF
 
@@ -2808,12 +2828,12 @@ contains
                   do jphase=1,nphase
                      do iphase=1,nphase
                         IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES ) THEN
-                           call addto(petsc_acv,iphase,jphase,&
-                                cv_nodi, cv_nodi,&
-                                MASS_CV( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
+                           call addto(petsc_acv,iphase,jphase, &
+                                cv_nodi, cv_nodi, &
+                                MASS_PIPE( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
                         END IF
-                        call addto(petsc_acv,iphase,jphase,&
-                             cv_nodi, cv_nodi,&
+                        call addto(petsc_acv,iphase,jphase, &
+                             cv_nodi, cv_nodi, &
                              MASS_CV( CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
                      end do
                   end do
@@ -2841,7 +2861,7 @@ contains
          DO CV_NODI = 1, CV_NONODS
             ct_rhs_phase=0.0 ; DIAG_SCALE_PRES_phase=0.0
             DO IPRES=1,NPRES
-               R_PRES(IPRES) = MASS_CV( CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
+               R_PRES(IPRES) = MASS_CV_PLUS( IPRES, CV_NODI ) * MEAN_PORE_CV( IPRES, CV_NODI ) / DT
 ! Add constraint to force sum of volume fracts to be unity...
                   ! W_SUM_ONE==1 applies the constraint
                   ! W_SUM_ONE==0 does NOT apply the constraint
@@ -2903,7 +2923,7 @@ contains
 if ( npres > 1 ) then
 
                call addto(ct_rhs, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) &
-                   - MASS_CV(CV_NODI) * SUM(DIAG_SCALE_PRES_COUP(IPRES,:, cv_nodi) * RESERVOIR_P( : ))    )
+                   - MASS_CV_PLUS(IPRES,CV_NODI) * SUM(DIAG_SCALE_PRES_COUP(IPRES,:, cv_nodi) * RESERVOIR_P( : ))    )
 
 else
 
