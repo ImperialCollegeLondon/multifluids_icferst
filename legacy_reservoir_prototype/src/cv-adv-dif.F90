@@ -12854,6 +12854,7 @@ deallocate(NX_ALL)
        allocate( cv_loc_corner(cv_nloc), cv_mid_side(ncorner, ncorner), &
             u_loc_corner(u_nloc), u_mid_side(ncorner, ncorner) )
 
+       scvngi = 2
        if ( CV_QUADRATIC ) then
           cv_lngi = 3
           cv_lnloc = 3
