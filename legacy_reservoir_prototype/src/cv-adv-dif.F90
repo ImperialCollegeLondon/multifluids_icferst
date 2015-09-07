@@ -12157,11 +12157,11 @@ deallocate(NX_ALL)
     if ( CV_QUADRATIC ) then
        cv_lngi = 3
        cv_lnloc = 3
-       cv_bngi=2
+       cv_bngi = 2
     else
        cv_lngi = 2
        cv_lnloc = 2
-       cv_bngi=1
+       cv_bngi = 1
     end if
 
     if ( U_QUADRATIC ) then
@@ -12173,8 +12173,8 @@ deallocate(NX_ALL)
     u_lngi = cv_lngi
 
     allocate( cvweigh(cv_lngi), cvn(cv_nloc, cv_lngi), n(cv_nloc, cv_lngi), &
-         nlx(cv_nloc, cv_lngi), un(u_nloc,u_lngi), unlx(u_nloc,u_lngi), &
-         cv_nodpos(cv_lnloc), u_nodpos(u_lnloc), lcv_b(cv_lnloc),  sbcvfen(cv_nloc,cv_bngi), sbufen(u_nloc,cv_bngi), PIPE_DIAM_GI(cv_lngi) )
+         nlx(cv_nloc, cv_lngi), un(u_nloc, u_lngi), unlx(u_nloc, u_lngi), &
+         cv_nodpos(cv_lnloc), u_nodpos(u_lnloc), lcv_b(cv_lnloc), sbcvfen(cv_nloc, cv_bngi), sbufen(u_nloc, cv_bngi), PIPE_DIAM_GI(cv_lngi) )
     allocate(INV_SIGMA_GI(nphase))
 
     allocate( cv_nodpos(cv_lnloc), u_nodpos(u_lnloc)) 
@@ -12207,14 +12207,14 @@ deallocate(NX_ALL)
     end do
 
     do CV_Liloc = 1, cv_lnloc
-       do bgi=1,cv_bngi
+       do bgi = 1, cv_bngi
           SBCVFEN( cv_liloc, bgi ) = lagran( ndiff, lcv_b(bgi), cv_liloc, cv_lnloc, cv_nodpos )
           !SBCVFENSLX( iloc, bgi ) = lagran( diff,  lcv_b(bgi), cv_liloc, cv_lnloc, cv_nodpos )
        end do
     end do
 
     do U_Liloc = 1, U_lnloc
-       do bgi=1,cv_bngi
+       do bgi = 1, cv_bngi
           SBUFEN( u_liloc, bgi ) = lagran( ndiff, lcv_b(bgi), U_liloc, u_lnloc, u_nodpos )
        end do
     end do
@@ -12260,12 +12260,12 @@ deallocate(NX_ALL)
     allocate( CV_GL_LOC( cv_lnloc ), CV_GL_GL( cv_lnloc ), X_GL_GL( cv_lnloc ), &
          U_GL_LOC( u_lnloc ), U_GL_GL( u_lnloc ) )
 
-    allocate(  pipe_corner_nds1(ndim), pipe_corner_nds2(ndim), direction(ndim) )
+    allocate( pipe_corner_nds1(ndim), pipe_corner_nds2(ndim), direction(ndim) )
     allocate( detwei(cv_lngi), L_CVFENX_ALL(cv_lnloc, cv_lngi), L_UFENX_ALL(u_lnloc, cv_lngi) , PIPE_DIAM_GI(cv_lngi) )
     allocate( L_CVFENX_ALL_REVERSED(ndim, cv_lnloc, cv_lngi), L_UFEN_REVERSED(cv_lngi, u_lnloc), L_UFEN(u_lnloc, cv_lngi) )
     allocate( suf_detwei(cv_bngi), vol_detwei(cv_lngi), INV_SIGMA_GI(cv_lngi) )
 
-    allocate( TUPWIND_OUT(nphase), DUPWIND_OUT(nphase), TUPWIND_in(nphase),  DUPWIND_in(nphase) )
+    allocate( TUPWIND_OUT(nphase), DUPWIND_OUT(nphase), TUPWIND_in(nphase), DUPWIND_in(nphase) )
     allocate( UGI_ALL(ndim, nphase), ndotq(nphase), income(nphase), income_j(nphase) )
 
     allocate( FEMTGI(nphase), FEMdGI(nphase), T_CV_NODI(nphase), T_CV_NODJ(nphase), D_CV_NODI(nphase), D_CV_NODJ(nphase) )
@@ -12404,24 +12404,23 @@ deallocate(NX_ALL)
 
 
              ! The number of CV basis functions...
-             DO BGI = 1, cv_bngi !NCV_GI
+             DO BGI = 1, cv_bngi
                 DO ILOOP = 1, 2
 
-                   LOC_CV_RHS_I=0.0
-                   LOC_CV_RHS_J=0.0
+                   LOC_CV_RHS_I = 0.0 ; LOC_CV_RHS_J = 0.0
 
                    IF ( ILOOP==1 ) THEN
                       CV_LILOC = BGI
                       CV_LJLOC = BGI + 1
                       CV_NODI = CV_GL_GL(CV_LILOC)
                       CV_NODJ = CV_GL_GL(CV_LJLOC)
-                      rnorm_sign=1.0
+                      rnorm_sign = 1.0
                    ELSE
                       CV_LILOC = BGI + 1
                       CV_LJLOC = BGI
                       CV_NODI = CV_GL_GL(CV_LJLOC)
                       CV_NODJ = CV_GL_GL(CV_LILOC)
-                      rnorm_sign=-1.0
+                      rnorm_sign = -1.0
                    END IF
 
                    ! This is for outgoing T:
@@ -12450,7 +12449,7 @@ deallocate(NX_ALL)
                    INV_SIGMA_GI(:) = 0.0
                    DO CV_LKLOC = 1, CV_LNLOC
                       CV_KNOD = CV_GL_GL(CV_LKLOC)
-                      DO IPHASE=1,NPHASE
+                      DO IPHASE = 1, NPHASE
                          INV_SIGMA_GI(IPHASE) = INV_SIGMA_GI(IPHASE) + SBCVFEN( CV_LKLOC, BGI ) * INV_SIGMA(IPHASE,CV_KNOD)
                       END DO
                    END DO
@@ -12559,7 +12558,7 @@ deallocate(NX_ALL)
                    END IF
 
                 END DO ! DO ILOOP = 1, 2
-             END DO ! DO CV_GI = 1, NCV_GI
+             END DO ! DO BGI = 1, CV_BNGI
 
           END DO ! DO IPIPE2 = 1, NPIPES_IN_ELE
        END IF ! IF ( ELE_HAS_PIPE ) THEN
@@ -12838,6 +12837,8 @@ deallocate(NX_ALL)
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi
 
     X_NLOC = CV_NLOC
+    ncorner = ndim + 1
+
 
     ! Set rhs of the force balce equation to zero just for the pipes...
     U_RHS( :, N_IN_PRES:NPHASE, : ) = 0.0
@@ -12850,13 +12851,13 @@ deallocate(NX_ALL)
 
        ! The following is for 1d integration...
 
-       allocate( cv_loc_corner(cv_nloc), cv_mid_side(ndim+1, ndim+1), &
-            u_loc_corner(u_nloc), u_mid_side(ndim+1, ndim+1) )
+       allocate( cv_loc_corner(cv_nloc), cv_mid_side(ncorner, ncorner), &
+            u_loc_corner(u_nloc), u_mid_side(ncorner, ncorner) )
 
        if ( CV_QUADRATIC ) then
           cv_lngi = 3
           cv_lnloc = 3
-          scvngi=3
+          scvngi = 3
        else
           cv_lngi = 2
           cv_lnloc = 2
@@ -12865,7 +12866,7 @@ deallocate(NX_ALL)
        if ( U_QUADRATIC ) then
           u_lngi = 3
           u_lnloc = 3
-          scvngi=3
+          scvngi = 3
        else
           u_lngi = 2
           u_lnloc = 2
@@ -12874,11 +12875,7 @@ deallocate(NX_ALL)
        PIPE_Diameter => EXTRACT_SCALAR_FIELD(STATE(1), "DiameterPipe1")
        X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
-       ncorner = ndim + 1
-
-
        allocate( PIPE_DIAM_GI(scvngi) )
-
 
        ! Get the 1D shape functions...
        allocate( scvfeweigh(scvngi), &
@@ -12891,7 +12888,7 @@ deallocate(NX_ALL)
             l_cvfenx_all(cv_lnloc, scvngi), l_ufenx_all(cv_lnloc, scvngi), &
             l_cvfenx_all_reversed(ndim, cv_lnloc, scvngi), &
             l_ufen_reversed(scvngi, u_lnloc), &
-            nmx_all( ndim ), X_ALL_CORN(ndim, ncorner))
+            nmx_all( ndim ), X_ALL_CORN(ndim, ncorner) )
 
        allocate(PIPE_INDEX_LOGICAL(ncorner))
 
@@ -12944,7 +12941,7 @@ deallocate(NX_ALL)
 
           IF ( ELE_HAS_PIPE ) THEN
 
-             X_ALL_CORN(:,1:NCORNER) = x%val(:, X_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_LOC_CORNER(1:NCORNER)) )
+             X_ALL_CORN(:, :) = x%val(:, X_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_LOC_CORNER(1:NCORNER)) )
 
              ! If we have more than one pipe then choose the 2 edges with the shortest sides
              ! and have a maximum of 2 pipes per element...
@@ -12955,7 +12952,7 @@ deallocate(NX_ALL)
                   pipe_corner_nds1, pipe_corner_nds2, npipes )
 
 
-             DO IPIPE=1,NPIPES
+             DO IPIPE = 1, NPIPES
 
                 ! DEFINE CV_LILOC:
                 CV_LILOC = 1
