@@ -12966,10 +12966,6 @@ CONTAINS
              CALL CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX_LOGICAL, NDIM, &
                  pipe_corner_nds1, pipe_corner_nds2, npipes )
 
-             IF ( CV_QUADRATIC ) THEN
-                CV_GL_LOC(3) = CV_GL_LOC( 2 )
-                CV_GL_LOC(2) = CV_MID_SIDE( PIPE_CORNER( 1 ), PIPE_CORNER( 2 ) )
-             END IF
 
              DO IPIPE=1,NPIPES
 
