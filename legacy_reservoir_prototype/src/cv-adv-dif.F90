@@ -118,7 +118,7 @@ contains
          tracer, velocity, density, &
          CV_RHS_field, PETSC_ACV,&
          SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
-         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, CT_RHS, FINDCT, COLCT, &
+         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, CT_RHS, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
          CV_ELE_TYPE,  &
          NPHASE, NPRES, &
@@ -294,6 +294,7 @@ contains
       REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (npres, npres, cv_nonods)
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS, INV_B ! (nphase, nphase, cv_nonods)
+      REAL, DIMENSION( : ), intent( inout ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM
       type(vector_field), intent( inout ) :: CT_RHS
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
@@ -585,7 +586,6 @@ contains
       logical :: calculate_flux
 
       real :: reservoir_P( npres ) ! this is the background reservoir pressure
-      REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM
 
 
       if ( npres > 1 )then
@@ -2581,12 +2581,11 @@ contains
 
 ! Used for pipe modelling...
       ALLOCATE(MASS_CV_PLUS(NPRES,CV_NONODS))
-      ALLOCATE( MASS_PIPE(CV_NONODS))
 
       DO CV_NODI = 1, CV_NONODS
          MASS_CV_PLUS(:,CV_NODI)= MASS_CV(CV_NODI)
       END DO
-      MASS_PIPE=MASS_CV
+!      MASS_PIPE=MASS_CV
 
       IF ( NPRES > 1 ) THEN
 
@@ -2727,7 +2726,6 @@ contains
 
          END IF ! ENDOF IF ( .NOT. GETCT ) THEN
 
-         ALLOCATE( MASS_CVFEM2PIPE(NCOLCMC), MASS_PIPE2CVFEM(NCOLCMC) )
 
          IF(PIPES_1D) THEN
             CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, SMALL_FINDRM, SMALL_COLM, &
