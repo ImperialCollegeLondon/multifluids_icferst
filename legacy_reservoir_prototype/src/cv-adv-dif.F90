@@ -583,6 +583,8 @@ contains
       logical :: calculate_flux
 
       real :: reservoir_P( npres ) ! this is the background reservoir pressure
+      REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM
+
 
       if ( npres > 1 )then
          reservoir_P( 1 ) = 1.0e+7
@@ -2711,6 +2713,13 @@ contains
             END DO
 
          END IF ! ENDOF IF ( .NOT. GETCT ) THEN
+
+         ALLOCATE( MASS_PIPE(CV_NONODS), MASS_CVFEM2PIPE(NCOLCMC), MASS_PIPE2CVFEM(NCOLCMC) )
+
+         CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, SMALL_FINDRM, SMALL_COLM, &
+              cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, CV_RHS_field, &
+              findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, mass_pipe, SIGMA_INV_APPROX )
+
 
       END IF
 
