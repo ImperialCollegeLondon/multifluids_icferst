@@ -12173,11 +12173,11 @@ deallocate(NX_ALL)
     CALL CALC_CORNER_NODS( U_LOC_CORNER, NDIM, U_NLOC, U_QUADRATIC, U_MID_SIDE )
 
     if ( CV_QUADRATIC ) then
-       cv_lngi = 3
+       cv_lngi = 9 !3
        cv_lnloc = 3
        cv_bngi = 2
     else
-       cv_lngi = 2
+       cv_lngi = 6 !1
        cv_lnloc = 2
        cv_bngi = 1
     end if
@@ -12190,15 +12190,11 @@ deallocate(NX_ALL)
 
     u_lngi = cv_lngi
 
-    allocate( cvweigh(cv_lngi), cvn(cv_nloc, cv_lngi), n(cv_nloc, cv_lngi), &
-         nlx(cv_nloc, cv_lngi), un(u_nloc, u_lngi), unlx(u_nloc, u_lngi), &
-         cv_nodpos(cv_lnloc), u_nodpos(u_lnloc), lcv_b(cv_lnloc), sbcvfen(cv_nloc, cv_bngi), sbufen(u_nloc, cv_bngi), PIPE_DIAM_GI(cv_lngi) )
-    allocate(INV_SIGMA_GI(nphase))
+    allocate( cvweigh(cv_lngi), cvn(cv_lnloc, cv_lngi), n(cv_lnloc, cv_lngi), &
+         nlx(cv_nloc, cv_lngi), un(u_nloc, u_lngi), unlx(u_lnloc, u_lngi), &
+         cv_nodpos(cv_lnloc), u_nodpos(u_lnloc), lcv_b(cv_lnloc), sbcvfen(cv_nloc, cv_bngi), sbufen(u_nloc, cv_bngi) )
 
-    allocate( cv_nodpos(cv_lnloc), u_nodpos(u_lnloc)) 
-
-    allocate( cvn(cv_lngi, cv_lnloc), cvweigh(cv_lngi), n(cv_lngi, cv_lnloc), nlx(cv_lngi, cv_lnloc), un(cv_lngi, u_lnloc), unlx(cv_lngi, u_lnloc) )
-    allocate(cvn_fem(cv_lngi, cv_lnloc), cvn_femlx(cv_lngi, cv_lnloc), cvnn_fem(cv_lngi, cv_lnloc), cvnn_femlx(cv_lngi, cv_lnloc))
+    allocate(cvn_fem(cv_lnloc, cv_lngi), cvn_femlx(cv_lnloc, cv_lngi), cvnn_fem(cv_lnloc, cv_lngi), cvnn_femlx(cv_lnloc, cv_lngi))
 
     ! calculate shape functions...
     call quad_1d_shape( cv_lngi, cv_lnloc, u_lnloc, cvn, cvweigh, n, nlx, un, unlx )
@@ -12227,7 +12223,6 @@ deallocate(NX_ALL)
     do CV_Liloc = 1, cv_lnloc
        do bgi = 1, cv_bngi
           SBCVFEN( cv_liloc, bgi ) = lagran( ndiff, lcv_b(bgi), cv_liloc, cv_lnloc, cv_nodpos )
-          !SBCVFENSLX( iloc, bgi ) = lagran( diff,  lcv_b(bgi), cv_liloc, cv_lnloc, cv_nodpos )
        end do
     end do
 
@@ -12237,13 +12232,11 @@ deallocate(NX_ALL)
        end do
     end do
 
-
-
     allocate( tmax_all(nphase, cv_nonods), tmin_all(nphase, cv_nonods), &
          denmax_all(nphase, cv_nonods), denmin_all(nphase, cv_nonods) )
 
     T_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-    DEN_ALL => extract_tensor_field( packed_state, "PackedCVDensity" )
+    DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
     U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )
 
 
@@ -12271,7 +12264,7 @@ deallocate(NX_ALL)
        end do
     END IF
 
-    PIPE_DIAMETER => extract_scalar_field( state(1), "PipeDiameter1" )
+    PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe1" )
     X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
 
@@ -12281,7 +12274,7 @@ deallocate(NX_ALL)
     allocate( pipe_corner_nds1(ndim), pipe_corner_nds2(ndim), direction(ndim) )
     allocate( detwei(cv_lngi), L_CVFENX_ALL(cv_lnloc, cv_lngi), L_UFENX_ALL(u_lnloc, cv_lngi) , PIPE_DIAM_GI(cv_lngi) )
     allocate( L_CVFENX_ALL_REVERSED(ndim, cv_lnloc, cv_lngi), L_UFEN_REVERSED(cv_lngi, u_lnloc), L_UFEN(u_lnloc, cv_lngi) )
-    allocate( suf_detwei(cv_bngi), vol_detwei(cv_lngi), INV_SIGMA_GI(cv_lngi) )
+    allocate( suf_detwei(cv_lngi), vol_detwei(cv_lngi), INV_SIGMA_GI(cv_lngi) )
 
     allocate( TUPWIND_OUT(nphase), DUPWIND_OUT(nphase), TUPWIND_in(nphase), DUPWIND_in(nphase) )
     allocate( UGI_ALL(ndim, nphase), ndotq(nphase), income(nphase), income_j(nphase) )
@@ -13092,10 +13085,10 @@ deallocate(NX_ALL)
 
                 END DO ! DO U_LILOC = 1, U_LNLOC
 
-             END DO ! DO IPIPE=1,NPIPES
-          END IF ! IF(ELE_HAS_PIPE) THEN
+             END DO ! DO IPIPE = 1, NPIPES
+          END IF ! IF ( ELE_HAS_PIPE ) THEN
 
-       END DO ! DO ELE=1,TOTELE
+       END DO ! DO ELE = 1, TOTELE
 
        DO U_ILOC = 1, U_NLOC
           DO U_JLOC = 1, U_NLOC
