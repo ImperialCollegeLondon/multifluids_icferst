@@ -1199,7 +1199,7 @@ contains
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         NCOLM, FINDM, COLM, MIDM, &
         XU_NLOC, XU_NDGLN, &
-        U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B,  MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, GLOBAL_SOLVE, &
+        U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, GLOBAL_SOLVE, &
         NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -1249,7 +1249,7 @@ contains
                 EWRITE(-1,*) 'OPTION NOT READY YET WITH A GLOBAL SOLVE'
                 STOP 8331
             END IF
-         
+
             UP = 0.0
             CALL SOLVER( MCY, UP, MCY_RHS, &
             FINMCY, COLMCY, &
@@ -1738,7 +1738,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
     NCOLM, FINDM, COLM, MIDM, &
     XU_NLOC, XU_NDGLN, &
-    U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B,  MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, GLOBAL_SOLVE, &
+    U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, GLOBAL_SOLVE, &
     NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
     UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -5860,7 +5860,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
         if ( npres > 1 ) CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
-             &                                                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, pivit_mat )
+             &                                    C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, pivit_mat )
 
 
         ! This subroutine combines the distributed and block diagonal for an element
