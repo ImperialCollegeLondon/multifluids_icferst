@@ -890,6 +890,7 @@ contains
         ! Local Variables
         LOGICAL, PARAMETER :: use_continuous_pressure_solver = .false.!For DG pressure,the first non linear iteration we
                                                                       !use a continuous pressure
+        LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
         INTEGER :: N_IN_PRES
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
@@ -1385,6 +1386,15 @@ ELSE
                END DO
 
             end if
+In file "multi_matrix_operations.F90":
+------------------------------
+352:          got_free_surf,  MASS_SUF, &
+353:          C, CT, storage_state, indx, halos, symmetric_P )
+354:       !use multiphase_1D_engine
+355:       !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
+356:       implicit none
+357:       ! form pressure matrix CMC using a colouring approach
+
 
 END IF
 
@@ -1422,8 +1432,13 @@ END IF
                      end if
                      IF ( NPRES > 1 ) THEN
                         DO JPRES = 1, NPRES
-                           rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                           IF(PIPES_1D) THEN
+                              rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                                -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_CVFEM2PIPE( COUNT ) * P_ALL%VAL( 1, JPRES, CV_JNOD )
+                           ELSE
+                              rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                                 -DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, JPRES, CV_JNOD )
+                           ENDIF
                         END DO
                      END IF
                   END DO
