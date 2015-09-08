@@ -445,7 +445,7 @@
 
       DO CV_NOD = 1, CV_NONODS
          DO IPRES = 2, NPRES
-            j_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+            i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
             CV_JNOD = CV_NOD
             JPRES = IPRES
             j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
