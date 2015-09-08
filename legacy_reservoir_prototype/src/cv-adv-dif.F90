@@ -12795,14 +12795,14 @@ deallocate(NX_ALL)
 
 
   SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
-       &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC )
+       &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, pivit_mat )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
     TYPE(STATE_TYPE),DIMENSION(:),INTENT(IN)::STATE
     TYPE(STATE_TYPE),INTENT(IN)::packed_STATE
 
     INTEGER, INTENT( IN ) :: NPHASE, N_IN_PRES, NDIM, CV_NLOC, U_NLOC, TOTELE
-    REAL, DIMENSION( :, :, : ), INTENT( INOUT ) :: U_RHS, C
+    REAL, DIMENSION( :, :, : ), INTENT( INOUT ) :: U_RHS, C, pivit_mat
     INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC
 
     LOGICAL, INTENT( IN ) :: GOT_C_MATRIX
@@ -12830,8 +12830,9 @@ deallocate(NX_ALL)
     REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
-    REAL :: DIRECTION( NDIM ), DX, ELE_ANGLE
-    INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi
+    REAL :: DIRECTION( NDIM ), DX, ELE_ANGLE, NN
+    INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
+         &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc
 
     X_NLOC = CV_NLOC
     ncorner = ndim + 1
@@ -12840,8 +12841,23 @@ deallocate(NX_ALL)
     ! Set rhs of the force balce equation to zero just for the pipes...
     U_RHS( :, N_IN_PRES:NPHASE, : ) = 0.0
 
+
     ! Calculate C:
     IF ( .NOT.GOT_C_MATRIX ) THEN
+
+       DO U_ILOC = 1, U_NLOC
+          DO U_JLOC = 1, U_NLOC
+             DO IPHASE = N_IN_PRES+1, NPHASE
+                JPHASE = IPHASE
+                DO IDIM = 1, NDIM
+                   JDIM = IDIM
+                   i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
+                   j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
+                   pivit_mat(i_indx, j_indx, :) = 0.0
+                END DO
+             END DO
+          END DO
+       END DO
 
        CV_QUADRATIC = (CV_NLOC==6.AND.NDIM==2) .OR. (CV_NLOC==10.AND.NDIM==3)
        U_QUADRATIC = (U_NLOC==6.AND.NDIM==2) .OR. (U_NLOC==10.AND.NDIM==3)
@@ -13039,8 +13055,22 @@ deallocate(NX_ALL)
                       DO IDIM = 1, NDIM
                          C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) = C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) - NMX_ALL( IDIM )
                       END DO
-
                    END DO ! DO P_LJLOC = 1, CV_LNLOC
+
+                   U_ILOC = U_GL_LOC( U_LILOC )
+                   DO U_LJLOC = 1, U_LNLOC
+                      U_JLOC = U_GL_LOC( U_LJLOC )
+                      NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
+                      DO IPHASE = N_IN_PRES+1, NPHASE
+                         JPHASE = IPHASE
+                         DO IDIM = 1, NDIM
+                            JDIM = IDIM
+                            i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
+                            j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
+                            pivit_mat(i_indx, j_indx, ele) = NN
+                         END DO
+                      END DO
+                   END DO ! DO U_LJLOC = 1, U_LNLOC
 
                 END DO ! DO U_LILOC = 1, U_LNLOC
 
@@ -13048,6 +13078,22 @@ deallocate(NX_ALL)
           END IF ! IF(ELE_HAS_PIPE) THEN
 
        END DO ! DO ELE=1,TOTELE
+
+       DO U_ILOC = 1, U_NLOC
+          DO U_JLOC = 1, U_NLOC
+             DO IPHASE = N_IN_PRES+1, NPHASE
+                JPHASE = IPHASE
+                DO IDIM = 1, NDIM
+                   JDIM = IDIM
+                   i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
+                   j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
+                   WHERE ( pivit_mat(i_indx, j_indx, :) < 1.0e-10 )
+                      pivit_mat(i_indx, j_indx, :) = 1.0
+                   END WHERE
+                END DO
+             END DO
+          END DO
+       END DO
 
     END IF ! IF ( .NOT.GOT_C_MATRIX ) THEN
 
