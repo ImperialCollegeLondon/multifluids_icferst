@@ -1237,6 +1237,7 @@ contains
             TOTELE, U_NLOC, U_NDGLN, &
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, & 
+            MASS_PIPE, MASS_CVFEM2PIPE,  &
             got_free_surf,  MASS_SUF, &
             C, CT, storage_state, StorageIndexes(11), halo, symmetric_P )
         END IF

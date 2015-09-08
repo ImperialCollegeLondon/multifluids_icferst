@@ -348,12 +348,14 @@
          TOTELE, U_NLOC, U_NDGLN, &
          NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+         MASS_PIPE, MASS_CVFEM2PIPE,  &
          got_free_surf,  MASS_SUF, &
          C, CT, storage_state, indx, halos, symmetric_P )
       !use multiphase_1D_engine
       !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
       implicit none
       ! form pressure matrix CMC using a colouring approach
+      LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
       INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, NCOLC, &
            TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
       LOGICAL, intent( in ) :: got_free_surf, symmetric_P
@@ -369,6 +371,7 @@
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
       REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
+      REAL, DIMENSION( : ), intent( in ) :: MASS_PIPE, MASS_CVFEM2PIPE
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( :, :, : ), intent( in ) :: C
@@ -420,6 +423,7 @@
               TOTELE, U_NLOC, U_NDGLN, &
               NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
               CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+              MASS_PIPE, MASS_CVFEM2PIPE,  &
               got_free_surf,  MASS_SUF, &
               C, CT, ndpset, storage_state, indx, symmetric_P )
       ELSE
@@ -430,6 +434,7 @@
               TOTELE, U_NLOC, U_NDGLN, &
               NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
               CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+              MASS_PIPE, MASS_CVFEM2PIPE,  &
               got_free_surf,  MASS_SUF, &
               C, CT, ndpset, symmetric_P )
       END IF
@@ -449,6 +454,7 @@
             TOTELE, U_NLOC, U_NDGLN, &
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+            MASS_PIPE, MASS_CVFEM2PIPE,  &
             got_free_surf,  MASS_SUF, &
             C, CT, ndpset, storage_state, indx, symmetric_P )
 
@@ -456,6 +462,7 @@
          ! form pressure matrix CMC using a colouring approach
          INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, NCOLC, &
               TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
+         LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
          LOGICAL, intent( in ) :: got_free_surf, symmetric_P
          INTEGER, DIMENSION( : ), intent( in ) :: ndpset
          INTEGER, DIMENSION( : ), intent( in ) ::FINDC
@@ -470,6 +477,7 @@
          REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
          REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
          REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
+         REAL, DIMENSION( : ), intent( in ) :: MASS_PIPE, MASS_CVFEM2PIPE
          INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
          INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
          REAL, DIMENSION( :, :, : ), intent( in ) :: C
@@ -819,13 +827,23 @@ END IF
                   CV_JNOD = COLCMC( COUNT )
                   DO IPRES = 1, NPRES
                      DO JPRES = 1, NPRES
-                        call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD,&
+                        IF(PIPES_1D) THEN ! 1D PIPE MODELLING
+                           call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD,&
+                             val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_CVFEM2PIPE( COUNT ))
+                           IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                              CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+                                + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ))* &
+                                MASS_CVFEM2PIPE( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
+                           END IF
+                        ELSE
+                           call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD,&
                              val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ))
-                        IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-                           CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+                           IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                              CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
                                 + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ))* &
                                 MASS_MN_PRES( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
-                        END IF
+                           END IF
+                        ENDIF
                      END DO
                   END DO
                END DO
@@ -976,6 +994,7 @@ END IF
          TOTELE, U_NLOC, U_NDGLN, &
          NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
          CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+         MASS_PIPE, MASS_CVFEM2PIPE,  &
          got_free_surf,  MASS_SUF, &
          C, CT, ndpset, symmetric_P )
       !use multiphase_1D_engine
@@ -984,6 +1003,7 @@ END IF
       ! form pressure matrix CMC using a colouring approach
       INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, NCOLC, &
            TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
+      LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
       LOGICAL, intent( in ) :: got_free_surf, symmetric_P
       INTEGER, DIMENSION( : ), intent( in ) :: ndpset
       INTEGER, DIMENSION( : ), intent( in ) ::FINDC
@@ -998,6 +1018,7 @@ END IF
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
       REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
       REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
+      REAL, DIMENSION( : ), intent( in ) :: MASS_PIPE, MASS_CVFEM2PIPE
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( :, :, : ), intent( in ) :: C
@@ -1244,13 +1265,23 @@ END IF
                CV_JNOD = COLCMC( COUNT )
                DO IPRES = 1, NPRES
                   DO JPRES = 1, NPRES
-                     call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                     IF(PIPES_1D) THEN
+                        call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                          val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_CVFEM2PIPE( COUNT ))
+                        IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                           CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+                             + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD )) * &
+                             MASS_CVFEM2PIPE( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
+                        END IF
+                     ELSE
+                        call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
                           val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ))
-                     IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-                        CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+                        IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                           CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
                              + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD )) * &
                              MASS_MN_PRES( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
-                     END IF
+                        END IF
+                     ENDIF
                   END DO
                END DO
             END DO
