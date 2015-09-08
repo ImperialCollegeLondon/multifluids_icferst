@@ -13108,7 +13108,7 @@ deallocate(NX_ALL)
                    JDIM = IDIM
                    i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
                    j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
-                   WHERE ( pivit_mat(i_indx, j_indx, :) < 1.0e-10 )
+                   WHERE ( abs( pivit_mat(i_indx, j_indx, :) ) < 1.0e-10 )
                       pivit_mat(i_indx, j_indx, :) = 1.0
                    END WHERE
                 END DO
