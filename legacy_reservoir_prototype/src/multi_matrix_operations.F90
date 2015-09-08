@@ -389,13 +389,14 @@
       REAL, DIMENSION( : ), allocatable :: CDP, DU, DV, DW, DU_LONG
       REAL, DIMENSION( :, : ), allocatable :: COLOR_VEC_MANY, CMC_COLOR_VECC_MANY, CMC_COLOR_VEC2C_MANY
       REAL, DIMENSION( :, : ), allocatable :: CDPC_MANY, DUC_MANY, DVC_MANY, DWC_MANY, DU_LONGC_MANY
-      INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
+      INTEGER :: NCOLOR, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
       INTEGER :: I, ELE,u_inod,u_nod
       INTEGER, DIMENSION( : ), allocatable :: ndpset
-      REAL :: RSUM
+      REAL :: RSUM, auxR(1)
       !Variables for CMC_petsc
       integer, dimension( : ), allocatable :: dnnz
       integer :: cmc_rows
+      INTEGER :: cv_nod, cv_jnod, ipres, jpres, i_indx, j_indx, ierr
 
       type(csr_sparsity) :: sparsity
 
@@ -438,6 +439,27 @@
               got_free_surf,  MASS_SUF, &
               C, CT, ndpset, symmetric_P )
       END IF
+
+
+
+
+      DO CV_NOD = 1, CV_NONODS
+         DO IPRES = 2, NPRES
+            j_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+            CV_JNOD = CV_NOD
+            JPRES = IPRES
+            j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
+            call MatGetValues(CMC_petsc%M, 1, (/ i_indx /), 1, (/ j_indx /), auxR, ierr)
+            if ( auxR(1) == 0.0 ) then
+               call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, INSERT_VALUES, ierr)
+            end if
+         END DO
+      END DO
+      !Re-assemble just in case
+      CMC_petsc%is_assembled=.false.
+      call assemble( CMC_petsc )
+
+
 
       !Final step to prepare the CMC_petsc
       !call assemble( CMC_petsc )
