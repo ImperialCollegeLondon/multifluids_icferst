@@ -12334,7 +12334,7 @@ deallocate(NX_ALL)
              CV_ILOC = CV_LOC_CORNER( ICORNER )
              CV_GL_LOC( CV_LILOC ) = CV_ILOC 
 
-             IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( CV_GL_LOC( 1 ), CV_GL_LOC( CV_LNLOC ) )
+             IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
 
              DO CV_LILOC = 1, CV_LNLOC
                 CV_ILOC = CV_GL_LOC(CV_LILOC)
@@ -12348,13 +12348,13 @@ deallocate(NX_ALL)
              U_LILOC = 1
              ICORNER = pipe_corner_nds1(IPIPE)
              U_ILOC = U_LOC_CORNER( ICORNER )
-             U_GL_LOC( CV_LILOC ) = U_ILOC
+             U_GL_LOC( U_LILOC ) = U_ILOC
              U_LILOC = U_LNLOC
              ICORNER = pipe_corner_nds2(IPIPE)
              U_ILOC = U_LOC_CORNER( ICORNER )
-             U_GL_LOC( CV_LILOC ) = U_ILOC
+             U_GL_LOC( U_LILOC ) = U_ILOC
 
-             IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( U_GL_LOC( 1 ), U_GL_LOC( U_LNLOC ) )
+             IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
 
              DO U_LILOC = 1, U_LNLOC
                 U_ILOC = U_GL_LOC( U_LILOC )
@@ -12885,9 +12885,6 @@ deallocate(NX_ALL)
 
        ! The following is for 1d integration...
 
-       allocate( cv_loc_corner(cv_nloc), cv_mid_side(ncorner, ncorner), &
-            u_loc_corner(u_nloc), u_mid_side(ncorner, ncorner) )
-
        scvngi = 2
        if ( CV_QUADRATIC ) then
           cv_lngi = 3
@@ -12920,7 +12917,7 @@ deallocate(NX_ALL)
             sufenlx(u_lnloc, scvngi), sufenly(u_lnloc, scvngi), sufenlz(u_lnloc, scvngi) )
 
        allocate( detwei(scvngi), &
-            l_cvfenx_all(cv_lnloc, scvngi), l_ufenx_all(cv_lnloc, scvngi), &
+            l_cvfenx_all(cv_lnloc, scvngi), l_ufenx_all(u_lnloc, scvngi), &
             l_cvfenx_all_reversed(ndim, cv_lnloc, scvngi), &
             l_ufen_reversed(scvngi, u_lnloc), &
             nmx_all( ndim ), X_ALL_CORN(ndim, ncorner) )
@@ -12999,7 +12996,7 @@ deallocate(NX_ALL)
                 CV_ILOC = CV_LOC_CORNER( ICORNER )
                 CV_GL_LOC( CV_LILOC ) = CV_ILOC 
 
-                IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( CV_GL_LOC( 1 ), CV_GL_LOC( CV_LNLOC ) )
+                IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
 
                 DO CV_LILOC = 1, CV_LNLOC
                    CV_ILOC = CV_GL_LOC(CV_LILOC)
@@ -13011,13 +13008,13 @@ deallocate(NX_ALL)
                 U_LILOC = 1
                 ICORNER = pipe_corner_nds1(IPIPE)
                 U_ILOC = U_LOC_CORNER( ICORNER )
-                U_GL_LOC( CV_LILOC ) = U_ILOC
+                U_GL_LOC( U_LILOC ) = U_ILOC
                 U_LILOC = U_LNLOC
                 ICORNER = pipe_corner_nds2(IPIPE)
                 U_ILOC = U_LOC_CORNER( ICORNER )
-                U_GL_LOC( CV_LILOC ) = U_ILOC
+                U_GL_LOC( U_LILOC ) = U_ILOC
 
-                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( U_GL_LOC( 1 ), U_GL_LOC( U_LNLOC ) )
+                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
 
                 DO U_LILOC = 1, U_LNLOC
                    U_ILOC = U_GL_LOC( U_LILOC )
@@ -13061,7 +13058,7 @@ deallocate(NX_ALL)
                    IU_NOD = U_GL_GL( U_LILOC ) ! U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
 
                    DO P_LJLOC = 1, CV_LNLOC
-                      JCV_NOD = CV_GL_GL(CV_LILOC) ! P_NDGLN( ( ELE - 1 ) * P_NLOC + P_JLOC )
+                      JCV_NOD = CV_GL_GL(P_LJLOC) ! P_NDGLN( ( ELE - 1 ) * P_NLOC + P_JLOC )
                       ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
                       ! over the element of the pressure like source term.
                       ! Put into matrix
@@ -13070,7 +13067,7 @@ deallocate(NX_ALL)
                       END DO
 
                       ! Prepare aid variable NMX_ALL to improve the speed of the calculations
-                      NMX_ALL( : ) = matmul( L_CVFENX_ALL_REVERSED( :, :, P_LJLOC ), DETWEI( : ) * L_UFEN_REVERSED( :, U_LILOC ) )
+                      NMX_ALL( : ) = matmul( L_CVFENX_ALL_REVERSED( :, P_LJLOC, : ), DETWEI( : ) * L_UFEN_REVERSED( :, U_LILOC ) )
 
                       ! Put into matrix
                       DO IDIM = 1, NDIM
@@ -13153,7 +13150,7 @@ deallocate(NX_ALL)
        IF(NDIM==3) THEN
           CV_MID_SIDE(1,4)=7
           CV_MID_SIDE(2,4)=8
-          CV_MID_SIDE(4,4)=9
+          CV_MID_SIDE(3,4)=9
           CV_LOC_CORNER(4)=10
        END IF
        DO ICORN=1,CV_NCORNER
