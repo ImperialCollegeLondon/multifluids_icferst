@@ -1386,15 +1386,6 @@ ELSE
                END DO
 
             end if
-In file "multi_matrix_operations.F90":
-------------------------------
-352:          got_free_surf,  MASS_SUF, &
-353:          C, CT, storage_state, indx, halos, symmetric_P )
-354:       !use multiphase_1D_engine
-355:       !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
-356:       implicit none
-357:       ! form pressure matrix CMC using a colouring approach
-
 
 END IF
 
