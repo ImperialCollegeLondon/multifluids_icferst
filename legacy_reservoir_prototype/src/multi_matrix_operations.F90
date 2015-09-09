@@ -1267,9 +1267,10 @@ END IF
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
 
-               if (MASS_CVFEM2PIPE( COUNT )/= 0.0 ) ld(ipres, cv_nod) = 1.0
-
                DO IPRES = 1, NPRES
+
+                  if (MASS_CVFEM2PIPE( COUNT )/= 0.0 ) ld(ipres, cv_nod) = 1.0
+
                   DO JPRES = 1, NPRES
                      IF(PIPES_1D) THEN
                         call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
