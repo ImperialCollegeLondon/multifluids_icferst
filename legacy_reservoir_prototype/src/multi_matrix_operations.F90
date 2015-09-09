@@ -392,11 +392,9 @@
       INTEGER :: NCOLOR, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
       INTEGER :: I, ELE,u_inod,u_nod
       INTEGER, DIMENSION( : ), allocatable :: ndpset
-      REAL :: RSUM, auxR(1)
       !Variables for CMC_petsc
       integer, dimension( : ), allocatable :: dnnz
       integer :: cmc_rows
-      INTEGER :: cv_nod, cv_jnod, ipres, jpres, i_indx, j_indx, ierr
 
       !Initialize CMC_petsc
 
@@ -1041,7 +1039,7 @@ END IF
       REAL, DIMENSION( :, :, : ), allocatable :: CDP
       INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
       INTEGER :: I, ELE,u_inod,u_nod, ierr, IV_STAR, IV_FINI, N_IN_PRES, i_indx, j_indx, IPRES, JPRES
-      REAL :: RSUM, RSUM_SUF, v
+      REAL :: RSUM, RSUM_SUF
 
       ALLOCATE( NEED_COLOR( CV_NONODS ) )
       ALLOCATE( COLOR_VEC( CV_NONODS ) )
@@ -1225,14 +1223,8 @@ END IF
                   CV_JNOD = COLCMC( COUNT )
                   DO IPRES = 1, NPRES
                      JPRES = IPRES ! Add contributions to the block diagonal only.
-
-                     v = CMC_COLOR_VEC( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD )
-
                      call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-                          val = v )
-
-                     if (v==0.0 .and. npres>1) ld(ipres, cv_nod) = 1.0
-
+                          val = CMC_COLOR_VEC( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD ) )
                      !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                      IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
                           CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD )
@@ -1274,6 +1266,9 @@ END IF
             RSUM_SUF = 0.0
             DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                CV_JNOD = COLCMC( COUNT )
+
+               if (MASS_CVFEM2PIPE( COUNT )/= 0.0 ) ld(ipres, cv_nod) = 1.0
+
                DO IPRES = 1, NPRES
                   DO JPRES = 1, NPRES
                      IF(PIPES_1D) THEN
@@ -1298,7 +1293,6 @@ END IF
             END DO
          END DO
       END IF ! ENDOF IF(NPRES > 1) THEN
-
 
       !If we have a reference node with pressure zero we impose that here.
       DO IPRES = 1, NPRES
@@ -1327,7 +1321,6 @@ END IF
             END DO
          END IF
       END DO
-
 
 
       DO CV_NOD = 1, CV_NONODS
