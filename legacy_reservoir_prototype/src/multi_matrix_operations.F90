@@ -398,8 +398,6 @@
       integer :: cmc_rows
       INTEGER :: cv_nod, cv_jnod, ipres, jpres, i_indx, j_indx, ierr
 
-      type(csr_sparsity) :: sparsity
-
       !Initialize CMC_petsc
 
       call zero( CMC_petsc )
@@ -441,25 +439,9 @@
       END IF
 
 
-
-
-      DO CV_NOD = 1, CV_NONODS
-         DO IPRES = 2, NPRES
-            i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
-            CV_JNOD = CV_NOD
-            JPRES = IPRES
-            j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
-            call MatGetValues(CMC_petsc%M, 1, (/ i_indx /), 1, (/ j_indx /), auxR, ierr)
-            if ( auxR(1) == 0.0 ) then
-               call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, INSERT_VALUES, ierr)
-            end if
-         END DO
-      END DO
       !Re-assemble just in case
       CMC_petsc%is_assembled=.false.
       call assemble( CMC_petsc )
-
-
 
       !Final step to prepare the CMC_petsc
       !call assemble( CMC_petsc )
@@ -532,7 +514,6 @@
          IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
          N_IN_PRES = NPHASE / NPRES
          EXPLICIT_PIPES2 = .true.
-
 
          MAX_COLOR_IN_ROW = 0
          DO CV_NOD = 1, CV_NONODS
@@ -1055,12 +1036,12 @@ END IF
       logical, DIMENSION( CV_NONODS ) :: to_color
       LOGICAL :: EXPLICIT_PIPES2
       REAL, DIMENSION( : ), allocatable :: COLOR_VEC
-      REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC, CMC_COLOR_VEC2, CMC_COLOR_VEC_PHASE, CMC_COLOR_VEC2_PHASE
+      REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC, CMC_COLOR_VEC2, CMC_COLOR_VEC_PHASE, CMC_COLOR_VEC2_PHASE, ld
       REAL, DIMENSION( : ), allocatable :: DU, DV, DW, DU_LONG
       REAL, DIMENSION( :, :, : ), allocatable :: CDP
       INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
       INTEGER :: I, ELE,u_inod,u_nod, ierr, IV_STAR, IV_FINI, N_IN_PRES, i_indx, j_indx, IPRES, JPRES
-      REAL :: RSUM, RSUM_SUF
+      REAL :: RSUM, RSUM_SUF, v
 
       ALLOCATE( NEED_COLOR( CV_NONODS ) )
       ALLOCATE( COLOR_VEC( CV_NONODS ) )
@@ -1071,6 +1052,8 @@ END IF
       ALLOCATE( DW( U_NONODS * NPHASE ) )
       ALLOCATE( CMC_COLOR_VEC( NPRES, CV_NONODS ) )
       ALLOCATE( CMC_COLOR_VEC2( NPRES, CV_NONODS ) )
+      ALLOCATE( ld( NPRES, CV_NONODS ) ) ; ld = 0.0
+
 
       IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
       N_IN_PRES = NPHASE / NPRES
@@ -1242,8 +1225,14 @@ END IF
                   CV_JNOD = COLCMC( COUNT )
                   DO IPRES = 1, NPRES
                      JPRES = IPRES ! Add contributions to the block diagonal only.
+
+                     v = CMC_COLOR_VEC( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD )
+
                      call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-                          val = CMC_COLOR_VEC( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD ) )
+                          val = v )
+
+                     if (v==0.0 .and. npres>1) ld(ipres, cv_nod) = 1.0
+
                      !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                      IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
                           CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD )
@@ -1339,6 +1328,17 @@ END IF
          END IF
       END DO
 
+
+
+      DO CV_NOD = 1, CV_NONODS
+         CV_JNOD = CV_NOD
+         DO IPRES = 2, NPRES
+            JPRES = IPRES
+            if (ld(ipres, cv_nod) == 1.0 ) call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, val = 1.0 )
+         END DO
+      END DO
+
+
       CMC_petsc%is_assembled = .false.
       call assemble( CMC_petsc )
 
@@ -1349,6 +1349,7 @@ END IF
       DEALLOCATE( DU, DV, DW )
       DEALLOCATE( CMC_COLOR_VEC )
       DEALLOCATE( CMC_COLOR_VEC2 )
+      DEALLOCATE( ld )
 
       RETURN
     END SUBROUTINE COLOR_GET_CMC_PHA_SLOW

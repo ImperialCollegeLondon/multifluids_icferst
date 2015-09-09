@@ -12286,6 +12286,7 @@ deallocate(NX_ALL)
     allocate( x_all_corn(ndim, NCORNER) )
 
     mass_pipe = 0.0
+    MASS_CVFEM2PIPE = 0.0 ; MASS_PIPE2CVFEM = 0.0
 
     DO ELE = 1, TOTELE
 
@@ -12382,8 +12383,8 @@ deallocate(NX_ALL)
              IF ( NDIM == 2 ) THEN
                 ELE_ANGLE = PI
              ELSE
-                ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(1 )), X_ALL_CORN(:, CV_LOC_CORNER(2)), &
-                     &                               X_ALL_CORN(:, CV_LOC_CORNER(3 )), X_ALL_CORN(:, CV_LOC_CORNER(4)) )
+                ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(1)), X_ALL_CORN(:, CV_LOC_CORNER(2)), &
+                     &                               X_ALL_CORN(:, CV_LOC_CORNER(3)), X_ALL_CORN(:, CV_LOC_CORNER(4)) )
              END IF
 
 
@@ -12782,10 +12783,10 @@ deallocate(NX_ALL)
     X_PIPE3 = X_ALL_CORN_PIPE3 - X_ALL_CORN_PIPE1
     X_PIPE4 = X_ALL_CORN_PIPE4 - X_ALL_CORN_PIPE1
 
-    ! Rotate to be aligned with x-axies
-    Norm = X_PIPE2 / SUM( X_PIPE2(:)**2 )
+    ! Rotate to be aligned with x-axis
+    Norm = X_PIPE2 / SQRT( SUM( X_PIPE2(:)**2 ) )
 
-    ! Determine th tangent and bi-normal vectors from the normal NormX, NormY, NormZ
+    ! Determine the tangent and bi-normal vectors from the normal NormX, NormY, NormZ
     CALL GET_TANG_BINORM( Norm(1), Norm(2), Norm(3), T1(1), T1(2), T1(3), T2(1), T2(2), T2(3), 1 )
 
     A(1,:) = NORM(:)
