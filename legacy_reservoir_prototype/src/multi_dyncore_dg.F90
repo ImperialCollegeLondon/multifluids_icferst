@@ -5867,7 +5867,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
         if ( npres > 1 ) CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
-             &                                    C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, pivit_mat )
+             &                                    C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, pivit_mat, &
+             &                                    CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL )
 
 
         ! This subroutine combines the distributed and block diagonal for an element

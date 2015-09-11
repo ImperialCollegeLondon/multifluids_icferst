@@ -12126,7 +12126,7 @@ deallocate(NX_ALL)
 
 
     ! Local variables
-    INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc
+    INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase
     INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, i_indx, j_indx, ele, cv_gi, iloop, ICORNER, NPIPES, i
 
     integer, dimension(:), pointer :: cv_neigh_ptr
@@ -12563,8 +12563,8 @@ deallocate(NX_ALL)
                          do iphase = n_in_pres+1, nphase
                             LOC_CV_RHS_J( IPHASE ) =  LOC_CV_RHS_J( IPHASE ) &
                                 ! subtract 1st order adv. soln.
-                                 - NDOTQ(IPHASE) * suf_DETWEI( BGI ) * LIMD(IPHASE) * FVT(IPHASE) * BCZERO(IPHASE) &
-                                 +  suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
+                                 -NDOTQ(IPHASE) * suf_DETWEI( BGI ) * LIMD(IPHASE) * FVT(IPHASE) * BCZERO(IPHASE) &
+                                 +suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
                          end do
                       end if
                       ! Put into matrix...
@@ -12591,7 +12591,22 @@ deallocate(NX_ALL)
           END DO ! DO IPIPE2 = 1, NPIPES_IN_ELE
        END IF ! IF ( ELE_HAS_PIPE ) THEN
 
-    END DO
+    END DO ! DO ELE = 1, TOTELE
+
+
+    IF ( GETCV_DISC ) THEN
+       do iphase = n_in_pres+1, nphase
+          do cv_nodi = 1, cv_nonods
+             if ( pipe_diameter%val(cv_nodi)==0.0 ) then
+                cv_nodj = cv_nodi ; jphase = iphase
+                i_indx = petsc_acv%row_numbering%gnn2unn( cv_nodi, iphase )
+                j_indx = petsc_acv%column_numbering%gnn2unn( cv_nodj, jphase )
+                call MatSetValue( petsc_acv, i_indx, j_indx, 1.0, INSERT_VALUES, ierr )
+             end if
+          end do
+       end do
+    END IF
+
 
     RETURN
 
@@ -12782,7 +12797,7 @@ deallocate(NX_ALL)
 
 
 
-  REAL FUNCTION CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2,  X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 )
+  REAL FUNCTION CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2, X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 )
     ! Calculate element angle sweeped out by element and pipe
     ! X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2 are the coordinates of the ends of the pipe within an element.
     ! X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 are the other corner 2 nodes of an element. 
@@ -12827,15 +12842,18 @@ deallocate(NX_ALL)
 
 
   SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
-       &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, pivit_mat )
+       &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, pivit_mat, &
+       &                         CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
     TYPE(STATE_TYPE),DIMENSION(:),INTENT(IN)::STATE
     TYPE(STATE_TYPE),INTENT(IN)::packed_STATE
 
-    INTEGER, INTENT( IN ) :: NPHASE, N_IN_PRES, NDIM, CV_NLOC, U_NLOC, TOTELE
+    INTEGER, INTENT( IN ) :: CV_NONODS, NPRES, NPHASE, N_IN_PRES, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_SNLOC,STOTEL
     REAL, DIMENSION( :, :, : ), INTENT( INOUT ) :: U_RHS, C, pivit_mat
-    INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC
+    REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL
+    INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, P_SNDGLN
+    INTEGER, DIMENSION( :,:,: ), INTENT( IN ) :: WIC_P_BC_ALL
 
     LOGICAL, INTENT( IN ) :: GOT_C_MATRIX
 
@@ -12844,7 +12862,7 @@ deallocate(NX_ALL)
          &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, IDIM, &
          &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc, cv_lngi, u_lngi
     INTEGER, DIMENSION(:), ALLOCATABLE :: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, U_GL_LOC, U_GL_GL
-    INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE
+    INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE, WIC_P_BC_ALL_NODS
     TYPE(SCALAR_FIELD), POINTER :: PIPE_DIAMETER
     TYPE(VECTOR_FIELD), POINTER :: X
 
@@ -12858,20 +12876,21 @@ deallocate(NX_ALL)
 
     REAL, DIMENSION( :, :, : ), ALLOCATABLE :: L_CVFENX_ALL_REVERSED
     REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED
-    REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN
+    REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN, SUF_P_BC_ALL_NODS, RVEC_SUM, LOC_U_RHS_U_ILOC
     REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
-    REAL :: DIRECTION( NDIM ), DX, ELE_ANGLE, NN
+    REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM ),DX, ELE_ANGLE, NN, suf_area, PIPE_DIAM_END
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
          &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4
+    INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD
 
     X_NLOC = CV_NLOC
     ncorner = ndim + 1
 
 
     ! Set rhs of the force balce equation to zero just for the pipes...
-    U_RHS( :, N_IN_PRES:NPHASE, : ) = 0.0
+    U_RHS( :, N_IN_PRES+1:NPHASE, : ) = 0.0
 
 
     ! Calculate C:
@@ -12961,6 +12980,41 @@ deallocate(NX_ALL)
 
        allocate( CV_GL_LOC(cv_lnloc), CV_GL_GL(cv_lnloc), X_GL_GL(cv_lnloc) )
        allocate( U_GL_LOC(U_lnloc), U_GL_GL(U_lnloc) )
+
+
+! SET UP THE SURFACE B.C'S
+       allocate(WIC_P_BC_ALL_NODS(NPRES,CV_NONODS)) ! Integer
+       allocate(SUF_P_BC_ALL_NODS(NPRES,CV_NONODS),RVEC_SUM(NPRES,CV_NONODS)) ! Reals
+       allocate(LOC_U_RHS_U_ILOC(NPRES,NPHASE)) ! Reals
+       
+
+                WIC_P_BC_ALL_NODS=0
+
+                RVEC_SUM=0.0
+                SUF_P_BC_ALL_NODS=0.0
+
+                DO SELE=1,STOTEL
+                   DO CV_SILOC=1,CV_SNLOC
+
+                      DO IPRES=2,NPRES
+                   IF( WIC_P_BC_ALL( 1,IPRES, (SELE-1)*CV_SNLOC + CV_SILOC ) == WIC_P_BC_DIRICHLET ) THEN
+                      CV_NOD = P_SNDGLN((SELE-1)*CV_SNLOC + CV_SILOC ) 
+                      WIC_P_BC_ALL_NODS( IPRES, CV_NOD ) = WIC_P_BC_DIRICHLET 
+                      SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) = SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) + SUF_P_BC_ALL( 1,IPRES, (SELE-1)*CV_SNLOC + CV_SILOC )
+                      RVEC_SUM( IPRES, CV_NOD ) = RVEC_SUM( IPRES, CV_NOD )+1.0
+                   ENDIF
+                      END DO ! ENDOF DO IPRES=2,NPRES
+
+                   END DO
+                END DO
+
+                DO CV_NOD=1,CV_NONODS
+                   DO IPRES=2,NPRES
+                      IF(WIC_P_BC_ALL_NODS( IPRES, CV_NOD ).NE.0) SUF_P_BC_ALL_NODS( IPRES,CV_NOD )=SUF_P_BC_ALL_NODS( IPRES,CV_NOD )/RVEC_SUM( IPRES,CV_NOD )
+                   END DO
+                END DO
+! END OF SET UP THE SURFACE B.C'S
+
 
 
        C( :, N_IN_PRES+1:NPHASE, : ) = 0.0
@@ -13120,6 +13174,62 @@ deallocate(NX_ALL)
 
                 END DO ! DO U_LILOC = 1, U_LNLOC
 
+
+
+! ***********Add pressure b.c to matrix and rhs...
+                JCV_NOD1 = CV_GL_GL(CV_LOC_CORNER( ICORNER1 )) 
+                JCV_NOD2 = CV_GL_GL(CV_LOC_CORNER( ICORNER2 )) 
+                DO IPRES = 2, NPRES
+                   JCV_NOD=0
+                   IF( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD1 ) == WIC_P_BC_DIRICHLET ) THEN
+                      CV_LILOC = 1
+                      JCV_NOD=JCV_NOD1
+                      U_LILOC = 1
+                      JU_NOD=U_GL_GL( U_LILOC )
+                      direction_norm=-direction
+                      PIPE_DIAM_END = PIPE_DIAM_GI(1)
+                   ENDIF
+                   IF( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD2 ) == WIC_P_BC_DIRICHLET ) THEN
+                      CV_LILOC = CV_LNLOC
+                      JCV_NOD=JCV_NOD2
+                      U_LILOC = U_LNLOC
+                      JU_NOD=U_GL_GL( U_LILOC )
+                      direction_norm=direction
+                      PIPE_DIAM_END = PIPE_DIAM_GI(scvngi)
+                   ENDIF
+                   
+                   IF(JCV_NOD .NE. 0) THEN
+                ! Add in C matrix contribution: (DG velocities)
+                      ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
+                      ! over the element of the pressure like source term.
+                      ! Put into matrix
+                      DO COUNT2 = FINDC(JU_NOD), FINDC(JU_NOD+1)-1
+                         IF ( COLC(COUNT2) == JCV_NOD ) COUNT = COUNT2
+                      END DO
+
+                      ! Prepare aid variable NMX_ALL to improve the speed of the calculations
+                      suf_area=PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
+                      NMX_ALL( : ) = direction_norm(:)* suf_area
+
+                      LOC_U_RHS_U_ILOC = 0.0
+                      DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
+                         DO IDIM = 1, NDIM
+                                        
+                            C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) + NMX_ALL( IDIM ) 
+
+                            LOC_U_RHS_U_ILOC( IDIM, IPHASE) =  LOC_U_RHS_U_ILOC( IDIM, IPHASE ) &
+                                                - NMX_ALL( IDIM ) * SUF_P_BC_ALL_NODS( IPRES,JCV_NOD ) 
+                         END DO
+                      END DO
+
+                      U_RHS( :, N_IN_PRES+1:NPHASE, JU_NOD ) = U_RHS( :, N_IN_PRES+1:NPHASE, JU_NOD ) + LOC_U_RHS_U_ILOC( :, N_IN_PRES+1:NPHASE)
+
+                   ENDIF ! ENDOF IF(JCV_NOD.NE.0) THEN
+               END DO ! ENDOF DO IPRES = 2, NPRES
+! ***********END OF Add pressure b.c to matrix and rhs...
+
+
+
              END DO ! DO IPIPE = 1, NPIPES
           END IF ! IF ( ELE_HAS_PIPE ) THEN
 
@@ -13141,7 +13251,10 @@ deallocate(NX_ALL)
           END DO
        END DO
 
+
     END IF ! IF ( .NOT.GOT_C_MATRIX ) THEN
+
+
 
     RETURN
   END SUBROUTINE MOD_1D_FORCE_BAL_C
