@@ -12126,7 +12126,7 @@ deallocate(NX_ALL)
 
 
     ! Local variables
-    INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc
+    INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, cv_iloc, cv_jloc, jphase
     INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, i_indx, j_indx, ele, cv_gi, iloop, ICORNER, NPIPES, i
 
     integer, dimension(:), pointer :: cv_neigh_ptr
@@ -12547,8 +12547,8 @@ deallocate(NX_ALL)
                          do iphase = n_in_pres+1, nphase
                             LOC_CV_RHS_J( IPHASE ) =  LOC_CV_RHS_J( IPHASE ) &
                                 ! subtract 1st order adv. soln.
-                                 - NDOTQ(IPHASE) * suf_DETWEI( BGI ) * LIMD(IPHASE) * FVT(IPHASE) * BCZERO(IPHASE) &
-                                 +  suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
+                                 -NDOTQ(IPHASE) * suf_DETWEI( BGI ) * LIMD(IPHASE) * FVT(IPHASE) * BCZERO(IPHASE) &
+                                 +suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
                          end do
                       end if
                       ! Put into matrix...
@@ -12575,7 +12575,22 @@ deallocate(NX_ALL)
           END DO ! DO IPIPE2 = 1, NPIPES_IN_ELE
        END IF ! IF ( ELE_HAS_PIPE ) THEN
 
-    END DO
+    END DO ! DO ELE = 1, TOTELE
+
+
+    IF ( GETCV_DISC ) THEN
+       do iphase = n_in_pres+1, nphase
+          do cv_nodi = 1, cv_nonods
+             if ( pipe_diameter%val(cv_nodi)==0.0 ) then
+                cv_nodj = cv_nodi ; jphase = iphase
+                i_indx = petsc_acv%row_numbering%gnn2unn( cv_nodi, iphase )
+                j_indx = petsc_acv%column_numbering%gnn2unn( cv_nodj, jphase )
+                call MatSetValue( petsc_acv, i_indx, j_indx, 1.0, INSERT_VALUES, ierr )
+             end if
+          end do
+       end do
+    END IF
+
 
     RETURN
 
@@ -12766,7 +12781,7 @@ deallocate(NX_ALL)
 
 
 
-  REAL FUNCTION CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2,  X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 )
+  REAL FUNCTION CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2, X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 )
     ! Calculate element angle sweeped out by element and pipe
     ! X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2 are the coordinates of the ends of the pipe within an element.
     INTEGER, intent( in ) :: NDIM
