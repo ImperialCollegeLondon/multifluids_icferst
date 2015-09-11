@@ -12146,7 +12146,8 @@ deallocate(NX_ALL)
 
     real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign
     integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
-         u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi
+         u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
+         icorner1, icorner2, icorner3, icorner4
 
     real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
 
@@ -12321,10 +12322,12 @@ deallocate(NX_ALL)
              ! DEFINE CV_LILOC:
              CV_LILOC = 1
              ICORNER = pipe_corner_nds1(IPIPE)
+             ICORNER1=ICORNER
              CV_ILOC = CV_LOC_CORNER( ICORNER )
              CV_GL_LOC( CV_LILOC ) = CV_ILOC 
              CV_LILOC = CV_LNLOC
              ICORNER = pipe_corner_nds2(IPIPE)
+             ICORNER2=ICORNER
              CV_ILOC = CV_LOC_CORNER( ICORNER )
              CV_GL_LOC( CV_LILOC ) = CV_ILOC 
 
@@ -12381,10 +12384,23 @@ deallocate(NX_ALL)
 
              ! Calculate element angle sweeped out by element and pipe
              IF ( NDIM == 2 ) THEN
-                ELE_ANGLE = PI
+                   ELE_ANGLE = PI
              ELSE
-                ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(1)), X_ALL_CORN(:, CV_LOC_CORNER(2)), &
-                     &                               X_ALL_CORN(:, CV_LOC_CORNER(3)), X_ALL_CORN(:, CV_LOC_CORNER(4)) )
+! find the nodes other than the pipe end corner nodes...
+                   ICORNER3=0
+                   DO ICORNER = 1, NCORNER
+                      IF(ICORNER.NE.ICORNER1) THEN
+                      IF(ICORNER.NE.ICORNER2) THEN
+                         IF(ICORNER3==0) THEN
+                            ICORNER3=ICORNER
+                         ELSE
+                            ICORNER4=ICORNER
+                         ENDIF 
+                      ENDIF 
+                      ENDIF 
+                   END DO
+                   ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1 )),   X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
+                        &                               X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3 )),   X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
              END IF
 
 
@@ -12769,6 +12785,7 @@ deallocate(NX_ALL)
   REAL FUNCTION CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2,  X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 )
     ! Calculate element angle sweeped out by element and pipe
     ! X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2 are the coordinates of the ends of the pipe within an element.
+    ! X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 are the other corner 2 nodes of an element. 
     INTEGER, intent( in ) :: NDIM
     REAL, intent( in ) :: X_ALL_CORN_PIPE1(3), X_ALL_CORN_PIPE2(3),  X_ALL_CORN_PIPE3(3), X_ALL_CORN_PIPE4(3)
     REAL :: X_PIPE1(3), X_PIPE2(3), X_PIPE3(3), X_PIPE4(3)
@@ -12847,7 +12864,7 @@ deallocate(NX_ALL)
 
     REAL :: DIRECTION( NDIM ), DX, ELE_ANGLE, NN
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
-         &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc
+         &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4
 
     X_NLOC = CV_NLOC
     ncorner = ndim + 1
@@ -12912,7 +12929,7 @@ deallocate(NX_ALL)
 
        allocate( detwei(scvngi), &
             l_cvfenx_all(cv_lnloc, scvngi), l_ufenx_all(u_lnloc, scvngi), &
-            l_cvfenx_all_reversed(ndim, cv_lnloc, scvngi), &
+            l_cvfenx_all_reversed(ndim, scvngi, cv_lnloc) , &
             l_ufen_reversed(scvngi, u_lnloc), &
             nmx_all( ndim ), X_ALL_CORN(ndim, ncorner) )
 
@@ -12983,10 +13000,12 @@ deallocate(NX_ALL)
                 ! DEFINE CV_LILOC:
                 CV_LILOC = 1
                 ICORNER = pipe_corner_nds1(IPIPE)
+                ICORNER1=ICORNER
                 CV_ILOC = CV_LOC_CORNER( ICORNER )
                 CV_GL_LOC( CV_LILOC ) = CV_ILOC 
                 CV_LILOC = CV_LNLOC
                 ICORNER = pipe_corner_nds2(IPIPE)
+                ICORNER2=ICORNER
                 CV_ILOC = CV_LOC_CORNER( ICORNER )
                 CV_GL_LOC( CV_LILOC ) = CV_ILOC 
 
@@ -13020,8 +13039,21 @@ deallocate(NX_ALL)
                 IF ( NDIM == 2 ) THEN
                    ELE_ANGLE = PI
                 ELSE
-                   ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(1 )),   X_ALL_CORN(:, CV_LOC_CORNER(2)) , &
-                        &                               X_ALL_CORN(:, CV_LOC_CORNER(3 )),   X_ALL_CORN(:, CV_LOC_CORNER(4)) )
+! find the nodes other than the pipe end corner nodes...
+                   ICORNER3=0
+                   DO ICORNER = 1, NCORNER
+                      IF(ICORNER.NE.ICORNER1) THEN
+                      IF(ICORNER.NE.ICORNER2) THEN
+                         IF(ICORNER3==0) THEN
+                            ICORNER3=ICORNER
+                         ELSE
+                            ICORNER4=ICORNER
+                         ENDIF 
+                      ENDIF 
+                      ENDIF 
+                   END DO
+                   ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1 )),   X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
+                        &                               X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3 )),   X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
                 END IF
 
                 DIRECTION(:) = X_ALL_CORN( :, CV_GL_LOC(CV_LNLOC) ) - X_ALL_CORN( :, CV_GL_LOC(1) )
@@ -13040,8 +13072,10 @@ deallocate(NX_ALL)
                 L_CVFENX_ALL(:,:) = 2.0 * SCVFENLX(:,:) / DX
                 L_UFENX_ALL(:,:) = 2.0 * SUFENLX(:,:) / DX
 
-                DO IDIM = 1, NDIM
-                   L_CVFENX_ALL_REVERSED( IDIM, :, : ) = L_CVFENX_ALL( :, : ) * DIRECTION( IDIM )
+                DO CV_LILOC = 1, CV_LNLOC
+                   DO IDIM = 1, NDIM
+                      L_CVFENX_ALL_REVERSED( IDIM, :, CV_LILOC ) = L_CVFENX_ALL( CV_LILOC, : ) * DIRECTION( IDIM )
+                   END DO
                 END DO
                 DO U_LILOC = 1, U_LNLOC
                    L_UFEN_REVERSED( :, U_LILOC ) = SUFEN( U_LILOC, : )
@@ -13061,7 +13095,7 @@ deallocate(NX_ALL)
                       END DO
 
                       ! Prepare aid variable NMX_ALL to improve the speed of the calculations
-                      NMX_ALL( : ) = matmul( L_CVFENX_ALL_REVERSED( :, P_LJLOC, : ), DETWEI( : ) * L_UFEN_REVERSED( :, U_LILOC ) )
+                      NMX_ALL( : ) = matmul( L_CVFENX_ALL_REVERSED( :, :, P_LJLOC ), DETWEI( : ) * L_UFEN_REVERSED( :, U_LILOC ) )
 
                       ! Put into matrix
                       DO IDIM = 1, NDIM
