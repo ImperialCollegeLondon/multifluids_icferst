@@ -589,7 +589,7 @@ contains
 
 
       if ( npres > 1 )then
-         reservoir_P( 1 ) = 1.0e+7
+         reservoir_P( 1 ) = 0.0 !1.0e+7
          reservoir_P( 2 ) = 0.0
       else
          reservoir_P = 0.0
@@ -12883,7 +12883,7 @@ deallocate(NX_ALL)
     REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM ),DX, ELE_ANGLE, NN, suf_area, PIPE_DIAM_END
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
          &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4
-    INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD
+    INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2
 
     X_NLOC = CV_NLOC
     ncorner = ndim + 1
@@ -12982,39 +12982,30 @@ deallocate(NX_ALL)
        allocate( U_GL_LOC(U_lnloc), U_GL_GL(U_lnloc) )
 
 
-! SET UP THE SURFACE B.C'S
-       allocate(WIC_P_BC_ALL_NODS(NPRES,CV_NONODS)) ! Integer
-       allocate(SUF_P_BC_ALL_NODS(NPRES,CV_NONODS),RVEC_SUM(NPRES,CV_NONODS)) ! Reals
-       allocate(LOC_U_RHS_U_ILOC(NPRES,NPHASE)) ! Reals
-       
+       ! set up the surface B.C.'s
+       allocate( WIC_P_BC_ALL_NODS(NPRES, CV_NONODS) )
+       allocate( SUF_P_BC_ALL_NODS(NPRES, CV_NONODS), RVEC_SUM(NPRES, CV_NONODS) )
+       allocate( LOC_U_RHS_U_ILOC(NDIM, NPHASE) )
+       WIC_P_BC_ALL_NODS=0 ; RVEC_SUM=0.0 ; SUF_P_BC_ALL_NODS=0.0
 
-                WIC_P_BC_ALL_NODS=0
-
-                RVEC_SUM=0.0
-                SUF_P_BC_ALL_NODS=0.0
-
-                DO SELE=1,STOTEL
-                   DO CV_SILOC=1,CV_SNLOC
-
-                      DO IPRES=2,NPRES
-                   IF( WIC_P_BC_ALL( 1,IPRES, (SELE-1)*CV_SNLOC + CV_SILOC ) == WIC_P_BC_DIRICHLET ) THEN
-                      CV_NOD = P_SNDGLN((SELE-1)*CV_SNLOC + CV_SILOC ) 
-                      WIC_P_BC_ALL_NODS( IPRES, CV_NOD ) = WIC_P_BC_DIRICHLET 
-                      SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) = SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) + SUF_P_BC_ALL( 1,IPRES, (SELE-1)*CV_SNLOC + CV_SILOC )
-                      RVEC_SUM( IPRES, CV_NOD ) = RVEC_SUM( IPRES, CV_NOD )+1.0
-                   ENDIF
-                      END DO ! ENDOF DO IPRES=2,NPRES
-
-                   END DO
+       DO SELE = 1, STOTEL
+          DO IPRES = 2, NPRES
+             IF( WIC_P_BC_ALL( 1, IPRES, SELE ) == WIC_P_BC_DIRICHLET ) THEN
+                DO CV_SILOC = 1, CV_SNLOC
+                   CV_NOD = P_SNDGLN((SELE-1)*CV_SNLOC + CV_SILOC )
+                   WIC_P_BC_ALL_NODS( IPRES, CV_NOD ) = WIC_P_BC_DIRICHLET
+                   SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) = SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) + SUF_P_BC_ALL( 1,IPRES, (SELE-1)*CV_SNLOC + CV_SILOC )
+                   RVEC_SUM( IPRES, CV_NOD ) = RVEC_SUM( IPRES, CV_NOD ) + 1.0
                 END DO
+             END IF
+          END Do
+       END DO
 
-                DO CV_NOD=1,CV_NONODS
-                   DO IPRES=2,NPRES
-                      IF(WIC_P_BC_ALL_NODS( IPRES, CV_NOD ).NE.0) SUF_P_BC_ALL_NODS( IPRES,CV_NOD )=SUF_P_BC_ALL_NODS( IPRES,CV_NOD )/RVEC_SUM( IPRES,CV_NOD )
-                   END DO
-                END DO
-! END OF SET UP THE SURFACE B.C'S
-
+       DO CV_NOD = 1, CV_NONODS
+          DO IPRES = 2, NPRES
+             IF ( WIC_P_BC_ALL_NODS(IPRES, CV_NOD) /= 0 ) SUF_P_BC_ALL_NODS(IPRES, CV_NOD) = SUF_P_BC_ALL_NODS(IPRES, CV_NOD) / RVEC_SUM(IPRES, CV_NOD)
+          END DO
+       END DO
 
 
        C( :, N_IN_PRES+1:NPHASE, : ) = 0.0
@@ -13053,13 +13044,13 @@ deallocate(NX_ALL)
 
                 ! DEFINE CV_LILOC:
                 CV_LILOC = 1
-                ICORNER = pipe_corner_nds1(IPIPE)
-                ICORNER1=ICORNER
+                ICORNER = pipe_corner_nds1( IPIPE )
+                ICORNER1 = ICORNER
                 CV_ILOC = CV_LOC_CORNER( ICORNER )
                 CV_GL_LOC( CV_LILOC ) = CV_ILOC 
                 CV_LILOC = CV_LNLOC
-                ICORNER = pipe_corner_nds2(IPIPE)
-                ICORNER2=ICORNER
+                ICORNER = pipe_corner_nds2( IPIPE )
+                ICORNER2 = ICORNER
                 CV_ILOC = CV_LOC_CORNER( ICORNER )
                 CV_GL_LOC( CV_LILOC ) = CV_ILOC 
 
@@ -13093,21 +13084,21 @@ deallocate(NX_ALL)
                 IF ( NDIM == 2 ) THEN
                    ELE_ANGLE = PI
                 ELSE
-! find the nodes other than the pipe end corner nodes...
-                   ICORNER3=0
+                   ! find the nodes other than the pipe end corner nodes...
+                   ICORNER3 = 0
                    DO ICORNER = 1, NCORNER
-                      IF(ICORNER.NE.ICORNER1) THEN
-                      IF(ICORNER.NE.ICORNER2) THEN
-                         IF(ICORNER3==0) THEN
-                            ICORNER3=ICORNER
-                         ELSE
-                            ICORNER4=ICORNER
-                         ENDIF 
-                      ENDIF 
-                      ENDIF 
+                      IF ( ICORNER /= ICORNER1 ) THEN
+                         IF ( ICORNER /= ICORNER2 ) THEN
+                            IF ( ICORNER3 == 0 ) THEN
+                               ICORNER3 = ICORNER
+                            ELSE
+                               ICORNER4 = ICORNER
+                            END IF
+                         END IF
+                      END IF
                    END DO
-                   ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1 )),   X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
-                        &                               X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3 )),   X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+                   ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
+                        &                               X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
                 END IF
 
                 DIRECTION(:) = X_ALL_CORN( :, CV_GL_LOC(CV_LNLOC) ) - X_ALL_CORN( :, CV_GL_LOC(1) )
@@ -13175,31 +13166,34 @@ deallocate(NX_ALL)
                 END DO ! DO U_LILOC = 1, U_LNLOC
 
 
+                ! Add pressure b.c to matrix and rhs...
+                CV_LOC1 = CV_LOC_CORNER( ICORNER1 )
+                JCV_NOD1 = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_LOC1 )
 
-! ***********Add pressure b.c to matrix and rhs...
-                JCV_NOD1 = CV_GL_GL(CV_LOC_CORNER( ICORNER1 )) 
-                JCV_NOD2 = CV_GL_GL(CV_LOC_CORNER( ICORNER2 )) 
+                CV_LOC2 = CV_LOC_CORNER( ICORNER2 )
+                JCV_NOD2 = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_LOC2 )
+
                 DO IPRES = 2, NPRES
-                   JCV_NOD=0
-                   IF( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD1 ) == WIC_P_BC_DIRICHLET ) THEN
+                   JCV_NOD = 0
+                   IF ( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD1 ) == WIC_P_BC_DIRICHLET ) THEN
                       CV_LILOC = 1
-                      JCV_NOD=JCV_NOD1
+                      JCV_NOD = JCV_NOD1
                       U_LILOC = 1
-                      JU_NOD=U_GL_GL( U_LILOC )
-                      direction_norm=-direction
+                      JU_NOD = U_GL_GL( U_LILOC )
+                      direction_norm = -direction
                       PIPE_DIAM_END = PIPE_DIAM_GI(1)
-                   ENDIF
-                   IF( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD2 ) == WIC_P_BC_DIRICHLET ) THEN
+                   END IF
+                   IF ( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD2 ) == WIC_P_BC_DIRICHLET ) THEN
                       CV_LILOC = CV_LNLOC
-                      JCV_NOD=JCV_NOD2
+                      JCV_NOD = JCV_NOD2
                       U_LILOC = U_LNLOC
-                      JU_NOD=U_GL_GL( U_LILOC )
-                      direction_norm=direction
+                      JU_NOD = U_GL_GL( U_LILOC )
+                      direction_norm = direction
                       PIPE_DIAM_END = PIPE_DIAM_GI(scvngi)
-                   ENDIF
-                   
-                   IF(JCV_NOD .NE. 0) THEN
-                ! Add in C matrix contribution: (DG velocities)
+                   END IF
+
+                   IF ( JCV_NOD /= 0 ) THEN
+                      ! Add in C matrix contribution: (DG velocities)
                       ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
                       ! over the element of the pressure like source term.
                       ! Put into matrix
@@ -13208,13 +13202,13 @@ deallocate(NX_ALL)
                       END DO
 
                       ! Prepare aid variable NMX_ALL to improve the speed of the calculations
-                      suf_area=PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
+                      suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
                       NMX_ALL( : ) = direction_norm(:)* suf_area
 
                       LOC_U_RHS_U_ILOC = 0.0
-                      DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
+                      DO IPHASE = 1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
                          DO IDIM = 1, NDIM
-                                        
+
                             C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) + NMX_ALL( IDIM ) 
 
                             LOC_U_RHS_U_ILOC( IDIM, IPHASE) =  LOC_U_RHS_U_ILOC( IDIM, IPHASE ) &
@@ -13224,9 +13218,8 @@ deallocate(NX_ALL)
 
                       U_RHS( :, N_IN_PRES+1:NPHASE, JU_NOD ) = U_RHS( :, N_IN_PRES+1:NPHASE, JU_NOD ) + LOC_U_RHS_U_ILOC( :, N_IN_PRES+1:NPHASE)
 
-                   ENDIF ! ENDOF IF(JCV_NOD.NE.0) THEN
-               END DO ! ENDOF DO IPRES = 2, NPRES
-! ***********END OF Add pressure b.c to matrix and rhs...
+                   END IF ! IF ( JCV_NOD /= 0 ) THEN
+               END DO ! DO IPRES = 2, NPRES
 
 
 
