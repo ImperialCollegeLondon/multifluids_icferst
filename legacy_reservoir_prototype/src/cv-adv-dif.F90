@@ -589,7 +589,7 @@ contains
 
 
       if ( npres > 1 )then
-         reservoir_P( 1 ) = 0.0 !1.0e+7
+         reservoir_P( 1 ) = 1.0e+7
          reservoir_P( 2 ) = 0.0
       else
          reservoir_P = 0.0
@@ -2732,9 +2732,9 @@ contains
               cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, CV_RHS_field, &
               findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, mass_pipe, SIGMA_INV_APPROX )
 
-! Used for pipe modelling...
+            ! Used for pipe modelling...
             DO CV_NODI = 1, CV_NONODS
-               MASS_CV_PLUS(2:NPRES,CV_NONODS) = mass_pipe(CV_NODI)
+               MASS_CV_PLUS(2:NPRES,CV_NODI) = mass_pipe(CV_NODI)
             END DO
          END IF
 
@@ -2921,7 +2921,7 @@ contains
 if ( npres > 1 ) then
 
                call addto(ct_rhs, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*n_in_pres:ipres*n_in_pres)) &
-                   - MASS_CV_PLUS(IPRES,CV_NODI) * SUM(DIAG_SCALE_PRES_COUP(IPRES,:, cv_nodi) * RESERVOIR_P( : ))    )
+                   - MASS_CV_PLUS(IPRES,CV_NODI) * SUM(DIAG_SCALE_PRES_COUP(IPRES,:, cv_nodi) * RESERVOIR_P( : )) )
 
 else
 
