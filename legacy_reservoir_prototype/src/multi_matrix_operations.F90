@@ -1269,7 +1269,7 @@ END IF
 
                DO IPRES = 1, NPRES
 
-                  if (MASS_CVFEM2PIPE( COUNT )/= 0.0 ) ld(ipres, cv_nod) = 1.0
+                  if (MASS_CVFEM2PIPE( COUNT )== 0.0 ) ld(ipres, cv_nod) = 1.0
 
                   DO JPRES = 1, NPRES
                      IF(PIPES_1D) THEN
@@ -1323,15 +1323,13 @@ END IF
          END IF
       END DO
 
-
       DO CV_NOD = 1, CV_NONODS
          CV_JNOD = CV_NOD
          DO IPRES = 2, NPRES
             JPRES = IPRES
-            if (ld(ipres, cv_nod) == 1.0 ) call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, val = 1.0 )
+            if ( ld(ipres, cv_nod) == 1.0 ) call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, val = 1.0 )
          END DO
       END DO
-
 
       CMC_petsc%is_assembled = .false.
       call assemble( CMC_petsc )
