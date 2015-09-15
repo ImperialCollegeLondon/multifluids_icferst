@@ -12208,7 +12208,8 @@ deallocate(NX_ALL)
     logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
     real :: LOC_CV_RHS_I(NPHASE),LOC_CV_RHS_J(NPHASE)
 
-    real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END
+    real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, INFINY
+    real :: TMAX(NPHASE), TMIN(NPHASE), DENMAX(NPHASE), DENMIN(NPHASE)
     integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
          u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
          icorner1, icorner2, icorner3, icorner4, WIC_B_BC_DIRICHLET, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
@@ -12222,6 +12223,7 @@ deallocate(NX_ALL)
 
     integrate_other_side_and_not_boundary = .FALSE.
     WIC_B_BC_DIRICHLET = 1
+    INFINY=1.0E+20
 
     NCORNER = NDIM + 1
 
@@ -12377,16 +12379,30 @@ deallocate(NX_ALL)
     T_ALL => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
     DEN_ALL => extract_tensor_field( packed_state, "PackedDensity" )
     U_ALL => extract_tensor_field( packed_state, "PackedVelocity" )
+    PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe1" )
+    X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
 
+!    TMAX_ALL=0.0; TMIN_ALL=0.0; DENMAX_ALL=0.0; DENMIN_ALL = 0.0
     DO CV_NODI = 1, CV_NONODS
-       cv_neigh_ptr => colacv( finacv(cv_nodi) : finacv(cv_nodi+1)-1 )
-       DO IPHASE = 1, NPHASE
-          TMAX_ALL( IPHASE, CV_NODI ) = maxval(T_ALL%val( 1, IPHASE, cv_neigh_ptr ))
-          TMIN_ALL( IPHASE, CV_NODI ) = minval(T_ALL%val( 1, IPHASE, cv_neigh_ptr ))
-          DENMAX_ALL( IPHASE, CV_NODI ) = maxval(DEN_ALL%val( 1, IPHASE, cv_neigh_ptr ))
-          DENMIN_ALL( IPHASE, CV_NODI ) = minval(DEN_ALL%val( 1, IPHASE, cv_neigh_ptr ))
+       IF(PIPE_DIAMETER%VAL(CV_NODI).NE.0.0) THEN
+       cv_nodj = colacv(finacv(cv_nodi))
+       TMAX(:) = -INFINY
+       TMIN(:) = +INFINY
+       DENMAX(:) = -INFINY
+       DENMIN(:) = +INFINY
+       do count = finacv(cv_nodi), finacv(cv_nodi+1)-1
+          cv_nodj = colacv(count)
+          IF(PIPE_DIAMETER%VAL(CV_NODJ).NE.0.0) THEN
+             DO IPHASE = 1, NPHASE
+                TMAX_ALL( IPHASE, CV_NODI ) = max(TMAX(IPHASE),T_ALL%val( 1, IPHASE, cv_nodj ))
+                TMIN_ALL( IPHASE, CV_NODI ) = min(TMIN(IPHASE),T_ALL%val( 1, IPHASE, cv_nodj ))
+                DENMAX_ALL( IPHASE, CV_NODI ) = max(DENMAX(IPHASE),DEN_ALL%val( 1, IPHASE, cv_nodj ))
+                DENMIN_ALL( IPHASE, CV_NODI ) = min(DENMIN(IPHASE),DEN_ALL%val( 1, IPHASE, cv_nodj ))
+             END DO
+          ENDIF
        END DO
+       ENDIF
     END DO
 
     IF ( GETCV_DISC ) THEN
@@ -12408,9 +12424,6 @@ deallocate(NX_ALL)
        CT( :, N_IN_PRES+1:NPHASE, : ) = 0.0
        CT_RHS%val( 2:NPRES, : ) = 0.0
     END IF
-
-    PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe1" )
-    X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
 
     allocate( CV_GL_LOC( cv_lnloc ), CV_GL_GL( cv_lnloc ), X_GL_GL( cv_lnloc ), &
