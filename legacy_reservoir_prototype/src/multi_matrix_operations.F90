@@ -1039,7 +1039,7 @@ END IF
       REAL, DIMENSION( :, :, : ), allocatable :: CDP
       INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
       INTEGER :: I, ELE,u_inod,u_nod, ierr, IV_STAR, IV_FINI, N_IN_PRES, i_indx, j_indx, IPRES, JPRES
-      REAL :: RSUM, RSUM_SUF
+      REAL :: RSUM, RSUM_SUF, auxR(1)
 
       ALLOCATE( NEED_COLOR( CV_NONODS ) )
       ALLOCATE( COLOR_VEC( CV_NONODS ) )
@@ -1323,16 +1323,87 @@ END IF
          END IF
       END DO
 
+
       DO CV_NOD = 1, CV_NONODS
          CV_JNOD = CV_NOD
          DO IPRES = 2, NPRES
             JPRES = IPRES
-            if ( ld(ipres, cv_nod) == 1.0 ) call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, val = 1.0 )
+            if (ld(ipres, cv_nod) == 1.0 ) call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, val = 1.0 )
          END DO
       END DO
 
+
+
+
+
+
+
+
+
+
+
+if ( .false. ) then
+
+
+      cv_nod = 226
+      IPRES = 2
+            i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
+            DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+               CV_JNOD = COLCMC( COUNT )
+               jpres = ipres
+               j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod,jpres)
+               IF ( CV_JNOD /= CV_NOD ) THEN
+                  call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr)
+               ELSE
+                  call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0,INSERT_VALUES, ierr)
+               END IF
+            END DO
+
+
+
+
+      cv_nod = 151
+      IPRES = 2
+            i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
+            DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+               CV_JNOD = COLCMC( COUNT )
+               jpres = ipres
+               j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod,jpres)
+               IF ( CV_JNOD /= CV_NOD ) THEN
+                  call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr)
+               ELSE
+                  call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0,INSERT_VALUES, ierr)
+               END IF
+            END DO
+
+
+end if
+
+
+
+
+
+
+
+
       CMC_petsc%is_assembled = .false.
       call assemble( CMC_petsc )
+
+
+
+
+      !DO CV_NOD = 1, CV_NONODS
+      !   CV_JNOD = CV_NOD
+      !   DO IPRES = 1, NPRES
+      !      JPRES = IPRES
+      !      i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+      !      j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD, jpres )
+      !      call MatGetValues(cmc_petsc%M, 1, (/ i_indx /), 1, (/ j_indx /), auxR, ierr)
+      !      print *, cv_nod, ipres, auxR, ld(ipres,cv_nod)
+      !   END DO
+      !END DO
+
+
 
       DEALLOCATE( NEED_COLOR )
       DEALLOCATE( COLOR_VEC )

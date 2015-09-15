@@ -541,6 +541,10 @@ contains
       logical :: satisfactory_convergence
       integer :: its, n_in_pres, useful_sats
 
+      integer :: count, count2, cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr
+      real :: rconst
+
+
       N_IN_PRES = NPHASE / NPRES
 
       !Extract variables from packed_state
@@ -697,7 +701,6 @@ contains
                if (its==1) first_res = res!Variable to check total convergence of the SFPI method
             end if
          end if
-
 
          call zero(vtracer)
          call zero_non_owned(cv_rhs_field)
@@ -1441,6 +1444,13 @@ END IF
             call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
             'prognostic/reference_node', ndpset, default = 0 )
             if ( ndpset /= 0 ) rhs_p%val( 1, ndpset ) = 0.0
+
+
+if ( .false. ) then
+             rhs_p%val( 2, 226 ) = 100.0 ! top
+             rhs_p%val( 2, 151 ) = 0.0 ! bottom
+end if
+
 
             ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
             ewrite(3,*)'about to solve for pressure'
