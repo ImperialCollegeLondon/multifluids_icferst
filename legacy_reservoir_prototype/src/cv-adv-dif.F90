@@ -2994,7 +2994,6 @@ IF( GETCV_DISC .and. .false. ) THEN
       cv_rhs_field%val( 3, cv_nod ) = 1.0
       cv_rhs_field%val( 4, cv_nod ) = 0.0
 
-
 end if
 
 
@@ -12612,6 +12611,7 @@ deallocate(NX_ALL)
                    CV_NODI = CV_GL_GL(CV_LILOC)
                    CV_NODJ = CV_GL_GL(CV_LJLOC)
 
+                   ! This is for outgoing T:
                    DO IPHASE = 1, NPHASE
                       IF(NDOTQ(IPHASE)>0.0) THEN ! This is for outgoing T:
                          IF ( T_ALL%val( 1, IPHASE, CV_NODI ) > T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
