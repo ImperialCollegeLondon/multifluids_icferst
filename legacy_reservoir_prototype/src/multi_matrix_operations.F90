@@ -1034,7 +1034,7 @@ END IF
       logical, DIMENSION( CV_NONODS ) :: to_color
       LOGICAL :: EXPLICIT_PIPES2
       REAL, DIMENSION( : ), allocatable :: COLOR_VEC
-      REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC, CMC_COLOR_VEC2, CMC_COLOR_VEC_PHASE, CMC_COLOR_VEC2_PHASE, ld
+      REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC, CMC_COLOR_VEC2, CMC_COLOR_VEC_PHASE, CMC_COLOR_VEC2_PHASE!, ld
       REAL, DIMENSION( : ), allocatable :: DU, DV, DW, DU_LONG
       REAL, DIMENSION( :, :, : ), allocatable :: CDP
       INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IDIM, IPHASE, CV_COLJ, U_JNOD, CV_JNOD2
@@ -1050,7 +1050,7 @@ END IF
       ALLOCATE( DW( U_NONODS * NPHASE ) )
       ALLOCATE( CMC_COLOR_VEC( NPRES, CV_NONODS ) )
       ALLOCATE( CMC_COLOR_VEC2( NPRES, CV_NONODS ) )
-      ALLOCATE( ld( NPRES, CV_NONODS ) ) ; ld = 0.0
+!      ALLOCATE( ld( NPRES, CV_NONODS ) ) ; ld = 0.0
 
 
       IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
@@ -1269,7 +1269,9 @@ END IF
 
                DO IPRES = 1, NPRES
 
-                  if (MASS_CVFEM2PIPE( COUNT )== 0.0 ) ld(ipres, cv_nod) = 1.0
+                  !if ( CV_NOD == CV_JNOD ) then
+                   !  if ( MASS_CVFEM2PIPE( COUNT ) == 0.0 ) ld(ipres, cv_nod) = 1.0
+                 ! end if
 
                   DO JPRES = 1, NPRES
                      IF(PIPES_1D) THEN
@@ -1325,19 +1327,16 @@ END IF
 
 
       DO CV_NOD = 1, CV_NONODS
-         CV_JNOD = CV_NOD
-         DO IPRES = 2, NPRES
-            JPRES = IPRES
-            if (ld(ipres, cv_nod) == 1.0 ) call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, val = 1.0 )
-         END DO
+         if ( mass_pipe(cv_nod) == 0.0 ) then
+            CV_JNOD = CV_NOD
+            DO IPRES = 2, NPRES
+               JPRES = IPRES
+               i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+               j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD, jpres )
+               call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, INSERT_VALUES, ierr)
+            END DO
+         end if
       END DO
-
-
-
-
-
-
-
 
 
 
@@ -1412,7 +1411,7 @@ end if
       DEALLOCATE( DU, DV, DW )
       DEALLOCATE( CMC_COLOR_VEC )
       DEALLOCATE( CMC_COLOR_VEC2 )
-      DEALLOCATE( ld )
+      !DEALLOCATE( ld )
 
       RETURN
     END SUBROUTINE COLOR_GET_CMC_PHA_SLOW
