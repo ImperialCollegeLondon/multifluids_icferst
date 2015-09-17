@@ -12831,6 +12831,7 @@ deallocate(NX_ALL)
                 IF ( GETCV_DISC ) THEN ! this is on the boundary...
 
                    ! Put results into the RHS vector
+                   LOC_CV_RHS_I = 0.0
                    do iphase = n_in_pres+1, nphase
                       LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
                            ! subtract 1st order adv. soln.
