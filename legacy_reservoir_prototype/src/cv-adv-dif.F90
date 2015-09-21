@@ -12207,6 +12207,7 @@ deallocate(NX_ALL)
     real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
     real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
     logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
+    logical :: UPWIND_PIPES
     real :: LOC_CV_RHS_I(NPHASE),LOC_CV_RHS_J(NPHASE)
 
     real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, INFINY
@@ -12214,7 +12215,7 @@ deallocate(NX_ALL)
     integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
          u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
          icorner1, icorner2, icorner3, icorner4, WIC_B_BC_DIRICHLET, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
-         U_NOD, U_SILOC
+         U_NOD, U_SILOC, count2
 
     real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
 
@@ -12223,6 +12224,7 @@ deallocate(NX_ALL)
     type(vector_field), pointer :: X
 
     integrate_other_side_and_not_boundary = .FALSE.
+    UPWIND_PIPES=.TRUE. ! Used for testing...
     WIC_B_BC_DIRICHLET = 1
     INFINY=1.0E+20
 
@@ -12687,6 +12689,10 @@ deallocate(NX_ALL)
                    D_CV_NODJ(:) = DEN_ALL%val( 1, :, CV_NODJ)
 
 
+               IF(UPWIND_PIPES) THEN ! Used for testing...
+                  LIMT(:) = T_CV_NODI(:)*(1.0-INCOME(:)) + T_CV_NODJ(:)*INCOME(:) 
+                  LIMD(:) = D_CV_NODI(:)*(1.0-INCOME(:)) + D_CV_NODJ(:)*INCOME(:) 
+               ELSE
                    ! Call the limiter for T...
                    CALL ONVDLIM_ANO_MANY( NPHASE, &
                         LIMT(:), FEMTGI(:), INCOME(:), &
@@ -12698,6 +12704,7 @@ deallocate(NX_ALL)
                         LIMD(:), FEMDGI(:), INCOME(:), &
                         D_CV_NODI(:), D_CV_NODJ(:), XI_LIMIT(:), &
                         DUPWIND_IN(:), DUPWIND_OUT(:) )
+               ENDIF
 
                    LIMDT(:) = LIMD(:) * LIMT(:)
 
