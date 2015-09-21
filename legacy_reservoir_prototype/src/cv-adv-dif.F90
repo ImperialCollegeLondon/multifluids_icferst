@@ -13127,7 +13127,7 @@ deallocate(NX_ALL)
     LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE
     INTEGER :: CV_NCORNER, ELE, PIPE_NOD_COUNT, ICORNER, &
          &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, IDIM, &
-         &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc, cv_lngi, u_lngi
+         &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc
     INTEGER, DIMENSION(:), ALLOCATABLE :: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, U_GL_LOC, U_GL_GL
     INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE, WIC_P_BC_ALL_NODS
     TYPE(SCALAR_FIELD), POINTER :: PIPE_DIAMETER
@@ -13184,20 +13184,16 @@ deallocate(NX_ALL)
 
        scvngi = 2
        if ( CV_QUADRATIC ) then
-          cv_lngi = 3
           cv_lnloc = 3
           scvngi = 3
        else
-          cv_lngi = 2
           cv_lnloc = 2
        end if
 
        if ( U_QUADRATIC ) then
-          u_lngi = 3
           u_lnloc = 3
           scvngi = 3
        else
-          u_lngi = 2
           u_lnloc = 2
        end if
 
