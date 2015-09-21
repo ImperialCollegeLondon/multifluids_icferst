@@ -2640,13 +2640,24 @@ contains
                      END IF
                   ELSE
                      ! This is the edge approach
+!                     IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
+!                        GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+!                        MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log( 0.5*pipe_Diameter%val( cv_nodi ) / rp ) + Skin )
+!                     ELSE
+!                        GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+!                        MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log( 0.5*pipe_Diameter%val( cv_nodi ) / rp ) + Skin )
+!                     END IF
+
+
+
                      IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                        MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log( 0.5*pipe_Diameter%val( cv_nodi ) / rp ) + Skin )
+                        MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log(    rp   /max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
                      ELSE
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                        MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log( 0.5*pipe_Diameter%val( cv_nodi ) / rp ) + Skin )
+                        MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log(    rp    /max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10)  ) + Skin )
                      END IF
+
 
                   END IF
 
@@ -12966,7 +12977,6 @@ deallocate(NX_ALL)
 
     IF ( NPIPES==1 ) THEN
 
-       ipipe = 1
        i_nd = 0
        DO ICORN = 1, NDIM+1
           IF ( PIPE_INDEX_LOGICAL(ICORN) ) THEN
@@ -12981,7 +12991,7 @@ deallocate(NX_ALL)
        pipe_corner_nds1(ipipe) = i_nd
        pipe_corner_nds2(ipipe) = j_nd
 
-    ELSE
+    ELSE  ! IF ( NPIPES==1 ) THEN
 
        IF ( NDIM==2 ) THEN
 
@@ -13011,7 +13021,7 @@ deallocate(NX_ALL)
              IF ( PIPE_INDEX_LOGICAL(I) .AND. PIPE_INDEX_LOGICAL(J) .AND. PIPE_INDEX_LOGICAL(K) ) THEN
                 IFACE = IFACE+1
                 call CrossProduct( ndim, cp,  ( X_ALL_CORN(:,j) - X_ALL_CORN(:,i) ), ( X_ALL_CORN(:,k) - X_ALL_CORN(:,i) ) )
-                area_sqr(IFACE) = abs( sum(cp(:)**2 ) )
+                area_sqr(IFACE) =  sum(cp(:)**2 ) 
                 ii(IFACE)=i ; jj(IFACE)=j ; kk(IFACE)=k
              END IF
           END DO ! ENDOF DO III=1,4
@@ -13057,7 +13067,7 @@ deallocate(NX_ALL)
           end do
        end do
 
-    END IF
+    END IF ! IF ( NPIPES==1 ) THEN ELSE
 
     RETURN
   END SUBROUTINE CALC_PIPES_IN_ELE
@@ -13101,7 +13111,7 @@ deallocate(NX_ALL)
     X_PIPE4_2D(1:2) = X_PIPE4_N(2:3)
 
     ! Use cosine rule....
-    CALC_ELE_ANGLE_3D = ACOS( SUM( X_PIPE3_2D(:) * X_PIPE4_2D(:) ) / ( ABS( SUM( X_PIPE3_2D(:)**2 ) ) * ABS( SUM( X_PIPE4_2D(:)**2 ) ) ) )
+    CALC_ELE_ANGLE_3D = ACOS( SUM( X_PIPE3_2D(:) * X_PIPE4_2D(:) ) / ( SQRT( SUM( X_PIPE3_2D(:)**2 ) ) * SQRT( SUM( X_PIPE4_2D(:)**2 ) ) ) )
 
     RETURN
   END FUNCTION CALC_ELE_ANGLE_3D
@@ -13373,6 +13383,7 @@ deallocate(NX_ALL)
                    CV_KNOD = CV_GL_GL( CV_LILOC )
                    PIPE_DIAM_GI(:) = PIPE_DIAM_GI(:) + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
                 END DO
+                PIPE_DIAM_GI(:) = MAX(PIPE_DIAM_GI(:), 0.0) 
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 ! Adjust according to the volume of the pipe...
@@ -13492,7 +13503,7 @@ deallocate(NX_ALL)
        END DO ! DO ELE = 1, TOTELE
 
        DO U_ILOC = 1, U_NLOC
-          DO U_JLOC = 1, U_NLOC
+          U_JLOC = U_ILOC
              DO IPHASE = N_IN_PRES+1, NPHASE
                 JPHASE = IPHASE
                 DO IDIM = 1, NDIM
@@ -13504,7 +13515,6 @@ deallocate(NX_ALL)
                    END WHERE
                 END DO
              END DO
-          END DO
        END DO
 
 
