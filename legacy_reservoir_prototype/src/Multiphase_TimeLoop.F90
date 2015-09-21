@@ -699,10 +699,10 @@
 !!$ FEMDEM...
 #ifdef USING_FEMDEM
         if ( (is_multifracture ) ) then
-            call fracking(packed_state, state,nphase) 
-        elseif ( have_option( '/blasting') ) then 
+            call fracking(packed_state, state,nphase)
+        elseif ( have_option( '/blasting') ) then
             call blasting( packed_state, nphase )
-            call update_blasting_memory( packed_state, state, timestep )  
+            call update_blasting_memory( packed_state, state, timestep )
         end if
 #endif
 
