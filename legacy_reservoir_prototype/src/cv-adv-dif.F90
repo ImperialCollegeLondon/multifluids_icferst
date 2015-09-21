@@ -12207,7 +12207,7 @@ deallocate(NX_ALL)
     real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
     real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
     logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
-    real :: LOC_CV_RHS_I(NPHASE),LOC_CV_RHS_J(NPHASE)
+    real :: LOC_CV_RHS_I(NPHASE)
 
     real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, INFINY
     real :: TMAX(NPHASE), TMIN(NPHASE), DENMAX(NPHASE), DENMIN(NPHASE)
@@ -12597,8 +12597,6 @@ deallocate(NX_ALL)
              DO BGI = 1, cv_bngi
                 DO ILOOP = 1, 2
 
-                   LOC_CV_RHS_I = 0.0 ; LOC_CV_RHS_J = 0.0
-
                    IF ( ILOOP==1 ) THEN
                       CV_LILOC = BGI
                       CV_LJLOC = BGI + 1
@@ -12661,7 +12659,7 @@ deallocate(NX_ALL)
                    END DO
 
                    DO IPHASE = 1, NPHASE
-                      NDOTQ(IPHASE) =  SUM( DIRECTION_norm(:) * UGI_all(:,IPHASE) )
+                      NDOTQ(IPHASE) = SUM( DIRECTION_norm(:) * UGI_all(:,IPHASE) )
                    END DO
 
                    ! When NDOTQ == 0, INCOME_J has to be 1 as well, not 0
@@ -12717,14 +12715,14 @@ deallocate(NX_ALL)
 
                    IF ( GETCV_DISC ) THEN
 
-                      FVT(:) = T_ALL%val(1,:,CV_NODI)*(1.0-INCOME(:)) + T_ALL%val(1,:,CV_NODJ)*INCOME(:)
+                      FVT(:) = T_CV_NODI(:)*(1.0-INCOME(:)) + T_CV_NODJ(:)*INCOME(:)
 
                       ! Put results into the RHS vector
                       LOC_CV_RHS_I = 0.0
                       do iphase = n_in_pres+1, nphase
                          LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
                                 ! subtract 1st order adv. soln.
-                              + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE)  &
+                              + suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
                               - suf_DETWEI( bGI ) * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
                       end do
 
@@ -12736,7 +12734,7 @@ deallocate(NX_ALL)
                               +suf_DETWEI( bGI ) * NDOTQ(iphase) * INCOME(iphase) * LIMD(iphase) )
                       end do
 
-                      call addto(cv_rhs_field,CV_NODI,LOC_CV_RHS_I)
+                      call addto( cv_rhs_field, CV_NODI, LOC_CV_RHS_I )
 
                    END IF
 
@@ -12748,27 +12746,27 @@ deallocate(NX_ALL)
              JCV_NOD1 = CV_NDGLN( (ELE-1)*CV_NLOC + CV_LOC_CORNER( ICORNER1 ) ) 
              JCV_NOD2 = CV_NDGLN( (ELE-1)*CV_NLOC + CV_LOC_CORNER( ICORNER2 ) ) 
              JCV_NOD=0
-             IF( WIC_B_BC_ALL_NODS( JCV_NOD1 ) == WIC_B_BC_DIRICHLET ) THEN
+             IF ( WIC_B_BC_ALL_NODS( JCV_NOD1 ) == WIC_B_BC_DIRICHLET ) THEN
                 CV_LILOC = 1
                 JCV_NOD=JCV_NOD1
                 U_LILOC = 1
                 JU_NOD=U_GL_GL( U_LILOC )
                 direction_norm = - direction ! for the b.c it must be -ve at the bottom of element
-             ENDIF
-             IF( WIC_B_BC_ALL_NODS( JCV_NOD2 ) == WIC_B_BC_DIRICHLET ) THEN
+             END IF
+             IF ( WIC_B_BC_ALL_NODS( JCV_NOD2 ) == WIC_B_BC_DIRICHLET ) THEN
                 CV_LILOC = CV_LNLOC
                 JCV_NOD=JCV_NOD2
                 U_LILOC = U_LNLOC
                 JU_NOD=U_GL_GL( U_LILOC )
                 direction_norm = + direction ! for the b.c it must be +ve at the top of element
-             ENDIF
+             END IF
                    
              IF ( JCV_NOD /= 0 ) THEN
                    
                 PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD ) 
                 NDOTQ = 0.0
-                DO IPHASE=N_IN_PRES+1,NPHASE
-                   NDOTQ(IPHASE) = SUM( direction_norm(:) * U_ALL%val(:,IPHASE,JU_NOD) * INV_SIGMA_GI(IPHASE)  )
+                DO IPHASE = N_IN_PRES+1, NPHASE
+                   NDOTQ(IPHASE) = SUM( direction_norm(:) * U_ALL%val(:,IPHASE,JU_NOD) * INV_SIGMA_GI(IPHASE) )
                 END DO
                    
                 INCOME(:) = 0.5*( 1. + SIGN(1.0, -NDOTQ(:)) )
@@ -12776,30 +12774,30 @@ deallocate(NX_ALL)
                 LIMT(:)=0.0
                 LIMD(:)=0.0
                 FVT(:) =0.0
-                DO IPHASE=N_IN_PRES+1,NPHASE
-                   IF( WIC_T_BC_ALL_NODS( IPHASE, JCV_NOD ) == WIC_T_BC_DIRICHLET ) THEN
+                DO IPHASE = N_IN_PRES+1, NPHASE
+                   IF ( WIC_T_BC_ALL_NODS( IPHASE, JCV_NOD ) == WIC_T_BC_DIRICHLET ) THEN
                       LIMT(IPHASE)=T_ALL%val(1,IPHASE,JCV_NOD)*(1.0-INCOME(IPHASE)) + SUF_T_BC_ALL_NODS(IPHASE,JCV_NOD)*INCOME(IPHASE) 
                    ELSE
                       LIMT(IPHASE)=T_ALL%val(1,IPHASE,JCV_NOD)
-                   ENDIF
+                   END IF
                    FVT(IPHASE) = LIMT(IPHASE)
                 END DO
-                DO IPHASE=N_IN_PRES+1,NPHASE
-                   IF( WIC_D_BC_ALL_NODS( IPHASE, JCV_NOD ) == WIC_D_BC_DIRICHLET ) THEN
+                DO IPHASE = N_IN_PRES+1, NPHASE
+                   IF ( WIC_D_BC_ALL_NODS( IPHASE, JCV_NOD ) == WIC_D_BC_DIRICHLET ) THEN
                       LIMD(IPHASE)=DEN_ALL%val(1,IPHASE,JCV_NOD)*(1.0-INCOME(IPHASE)) + SUF_D_BC_ALL_NODS(IPHASE,JCV_NOD)*INCOME(IPHASE) 
                    ELSE
                       LIMD(IPHASE)=DEN_ALL%val(1,IPHASE,JCV_NOD)
-                   ENDIF
+                   END IF
                 END DO
                       
-                LIMDT(:)=LIMD(:)*LIMT(:)
+                LIMDT(:) = LIMD(:) * LIMT(:)
                 ! Add in C matrix contribution: (DG velocities)
                 ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
                 ! over the element of the pressure like source term.
                 ! Put into matrix
 
                 ! Prepare aid variable NMX_ALL to improve the speed of the calculations
-                suf_area=PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
+                suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
 
                 IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS on the boundary...
                    DO IDIM = 1, NDIM
@@ -12814,19 +12812,19 @@ deallocate(NX_ALL)
                    END DO
                    
                    LOC_CT_RHS_U_ILOC = 0.0
-                   DO IPHASE=N_IN_PRES+1,NPHASE
-                      IF( WIC_U_BC_ALL_NODS( IPHASE, JU_NOD ) == WIC_U_BC_DIRICHLET ) THEN
+                   DO IPHASE = N_IN_PRES+1, NPHASE
+                      IF ( WIC_U_BC_ALL_NODS( IPHASE, JU_NOD ) == WIC_U_BC_DIRICHLET ) THEN
                          DO IDIM=1,NDIM
-                            LOC_CT_RHS_U_ILOC( IPHASE) = LOC_CT_RHS_U_ILOC( IPHASE)  &
+                            LOC_CT_RHS_U_ILOC(IPHASE) = LOC_CT_RHS_U_ILOC(IPHASE) &
                                  - CT_CON(IDIM,IPHASE) * SUF_U_BC_ALL_NODS(IDIM,IPHASE,JU_NOD) 
                          END DO
                       ELSE
                          CT( :, IPHASE, COUNT2 ) = CT( :, IPHASE, COUNT2 ) + CT_CON( :, IPHASE )
-                      ENDIF
+                      END IF
                    END DO
 
                    call addto( ct_rhs, JCV_NOD, LOC_CT_RHS_U_ILOC )
-                END IF ! ENDOF IF ( GETCT ) THEN
+                END IF ! IF ( GETCT ) THEN
 
                 IF ( GETCV_DISC ) THEN ! this is on the boundary...
 
@@ -12835,7 +12833,7 @@ deallocate(NX_ALL)
                    do iphase = n_in_pres+1, nphase
                       LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
                            ! subtract 1st order adv. soln.
-                           + suf_area * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE)  &
+                           + suf_area * NDOTQ(IPHASE) * LIMD(IPHASE) * FVT(IPHASE) &
                            - suf_area * NDOTQ(IPHASE) * LIMDT(IPHASE) ! hi order adv
                    end do
 
