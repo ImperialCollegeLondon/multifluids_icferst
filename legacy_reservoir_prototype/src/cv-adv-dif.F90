@@ -12221,10 +12221,10 @@ deallocate(NX_ALL)
     real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
     real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
     logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
-    logical :: UPWIND_PIPES
+    logical :: UPWIND_PIPES, PIPE_MIN_DIAM
     real :: LOC_CV_RHS_I(NPHASE)
 
-    real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, INFINY
+    real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, INFINY, MIN_DIAM
     real :: TMAX(NPHASE), TMIN(NPHASE), DENMAX(NPHASE), DENMIN(NPHASE)
     integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
          u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
@@ -12238,7 +12238,8 @@ deallocate(NX_ALL)
     type(vector_field), pointer :: X
 
     integrate_other_side_and_not_boundary = .FALSE.
-    UPWIND_PIPES=.TRUE. ! Used for testing...
+    UPWIND_PIPES=.FALSE. ! Used for testing...
+    PIPE_MIN_DIAM=.TRUE.
     WIC_B_BC_DIRICHLET = 1
     INFINY=1.0E+20
 
@@ -12544,15 +12545,23 @@ deallocate(NX_ALL)
              L_CVFENX_ALL(:,:) = 2.0 * cvn_femlx(:,:) / DX
              L_UFENX_ALL(:,:) = 2.0 * UNLX(:,:) / DX
 
-             PIPE_DIAM_GI_VOL(:) = 0.0
-             PIPE_DIAM_GI_SUF(:) = 0.0
-             DO CV_LILOC = 1, CV_LNLOC
-                CV_KNOD = CV_GL_GL( CV_LILOC )
-                PIPE_DIAM_GI_VOL(:) = PIPE_DIAM_GI_VOL(:) + PIPE_diameter%val( CV_KNOD ) * cvn_fem( CV_LILOC, : )
-                PIPE_DIAM_GI_SUF(:) = PIPE_DIAM_GI_SUF(:) + PIPE_diameter%val( CV_KNOD ) * SBCVFEN( CV_LILOC, : )
-             END DO
-
-
+             IF(PIPE_MIN_DIAM) THEN
+                MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
+                PIPE_DIAM_GI_VOL(:) = MIN_DIAM
+                PIPE_DIAM_GI_SUF(:) = MIN_DIAM
+             ELSE
+                PIPE_DIAM_GI_VOL(:) = 0.0
+                PIPE_DIAM_GI_SUF(:) = 0.0
+                DO CV_LILOC = 1, CV_LNLOC
+                   CV_KNOD = CV_GL_GL( CV_LILOC )
+                   PIPE_DIAM_GI_VOL(:) = PIPE_DIAM_GI_VOL(:) + PIPE_diameter%val( CV_KNOD ) * cvn_fem( CV_LILOC, : )
+                   PIPE_DIAM_GI_SUF(:) = PIPE_DIAM_GI_SUF(:) + PIPE_diameter%val( CV_KNOD ) * SBCVFEN( CV_LILOC, : )
+                END DO
+                PIPE_DIAM_GI_VOL(:) = max(0.0, PIPE_DIAM_GI_VOL(:) )
+                PIPE_DIAM_GI_SUF(:) = max(0.0, PIPE_DIAM_GI_SUF(:) )
+             ENDIF
+             
+             
 
              DO IDIM = 1, NDIM
                 L_CVFENX_ALL_REVERSED(IDIM,:,:) = cvn_femlx(:,:) * DIRECTION(IDIM)
@@ -13030,6 +13039,50 @@ deallocate(NX_ALL)
                 ii(IFACE)=i ; jj(IFACE)=j ; kk(IFACE)=k
              END IF
           END DO ! ENDOF DO III=1,4
+          
+          IF(IFACE==1) THEN ! A 3d adjustment for when we have only 2 pipes...
+             i=ii(IFACE) ; j=jj(IFACE) ; k=kk(IFACE) ! nodes on the face
+          
+             area_sqr(1) = sum( ( X_ALL_CORN(:,i) - X_ALL_CORN(:,j) )**2 ) ! THIS IS THE LENGTH SQUARED
+          
+             area_sqr(2) = sum( ( X_ALL_CORN(:,i) - X_ALL_CORN(:,k) )**2 ) ! THIS IS THE LENGTH SQUARED
+          
+             area_sqr(3) = sum( ( X_ALL_CORN(:,j) - X_ALL_CORN(:,k) )**2 ) ! THIS IS THE LENGTH SQUARED
+             
+             ik = 1
+             max_area = area_sqr(ik)
+             do i = 2, 3
+                if ( max_area < area_sqr(i) ) then
+                   max_area = area_sqr(i)
+                   ik = i
+                end if
+             end do
+             
+             if(ik==1) then
+                   ipipe = 1
+                   pipe_corner_nds1(ipipe) = i
+                   pipe_corner_nds2(ipipe) = k
+                   ipipe = 2
+                   pipe_corner_nds1(ipipe) = j
+                   pipe_corner_nds2(ipipe) = k
+             else if(ik==2) then
+                   ipipe = 1
+                   pipe_corner_nds1(ipipe) = i
+                   pipe_corner_nds2(ipipe) = j
+                   ipipe = 2
+                   pipe_corner_nds1(ipipe) = j
+                   pipe_corner_nds2(ipipe) = k
+             else 
+                   ipipe = 1
+                   pipe_corner_nds1(ipipe) = i
+                   pipe_corner_nds2(ipipe) = j
+                   ipipe = 2
+                   pipe_corner_nds1(ipipe) = i
+                   pipe_corner_nds2(ipipe) = k
+            endif
+            RETURN
+
+          ENDIF  ! IF(IFACE==1) THEN
 
        END IF ! ENDOF IF(NDIM==2) THEN
 
@@ -13138,7 +13191,7 @@ deallocate(NX_ALL)
 
     LOGICAL, INTENT( IN ) :: GOT_C_MATRIX
 
-    LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE
+    LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM
     INTEGER :: CV_NCORNER, ELE, PIPE_NOD_COUNT, ICORNER, &
          &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, IDIM, &
          &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc
@@ -13161,13 +13214,14 @@ deallocate(NX_ALL)
     REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
-    REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM ),DX, ELE_ANGLE, NN, suf_area, PIPE_DIAM_END
+    REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM ),DX, ELE_ANGLE, NN, suf_area, PIPE_DIAM_END, MIN_DIAM
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
          &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4
     INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2
 
     X_NLOC = CV_NLOC
     ncorner = ndim + 1
+    PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
 
 
     ! Set rhs of the force balce equation to zero just for the pipes...
@@ -13382,12 +13436,17 @@ deallocate(NX_ALL)
                 DX = SQRT( SUM( DIRECTION(:)**2 ) )
                 DIRECTION(:) = DIRECTION(:) / DX
 
-                PIPE_DIAM_GI(:) = 0.0
-                DO CV_LILOC = 1, CV_LNLOC
-                   CV_KNOD = CV_GL_GL( CV_LILOC )
-                   PIPE_DIAM_GI(:) = PIPE_DIAM_GI(:) + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
-                END DO
-                PIPE_DIAM_GI(:) = MAX(PIPE_DIAM_GI(:), 0.0)
+                IF(PIPE_MIN_DIAM) THEN
+                   MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
+                   PIPE_DIAM_GI(:) = MIN_DIAM
+                ELSE
+                   PIPE_DIAM_GI(:) = 0.0
+                   DO CV_LILOC = 1, CV_LNLOC
+                      CV_KNOD = CV_GL_GL( CV_LILOC )
+                      PIPE_DIAM_GI(:) = PIPE_DIAM_GI(:) + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
+                   END DO
+                   PIPE_DIAM_GI(:) = MAX(PIPE_DIAM_GI(:), 0.0)
+                ENDIF
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 ! Adjust according to the volume of the pipe...
