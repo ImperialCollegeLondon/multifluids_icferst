@@ -2649,6 +2649,7 @@ contains
 !                     END IF
 
 
+                   IF(IPRES.NE.JPRES) THEN
 
                      IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
@@ -2657,6 +2658,8 @@ contains
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
                         MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log(    rp    /max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10)  ) + Skin )
                      END IF
+
+                   ENDIF
 
 
                   END IF
@@ -12575,8 +12578,8 @@ deallocate(NX_ALL)
                       ENDIF
                    ENDIF
                 END DO
-                ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
-                     &                               X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+                ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
+                     &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
              END IF
 
              ! Adjust according to the volume of the pipe...
@@ -12962,13 +12965,13 @@ deallocate(NX_ALL)
   SUBROUTINE CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX_LOGICAL, NDIM, &
        pipe_corner_nds1, pipe_corner_nds2, npipes )
     ! Calculate the pipes within an element...
-    ! we return the pipe corner nodes for each pipe in
+    ! Return the pipe corner nodes for each pipe in element.
     INTEGER, intent( in ) :: NDIM, npipes
     REAL, intent( in ) :: X_ALL_CORN(NDIM,NDIM+1)
     LOGICAL, intent( in ) :: PIPE_INDEX_LOGICAL(NDIM+1)
     integer, intent( inout ) :: pipe_corner_nds1(npipes), pipe_corner_nds2(npipes)
     ! logal variables...
-    REAL :: cp(ndim+1)
+    REAL :: cp(ndim)
     REAL :: area_sqr(ndim+1)
     INTEGER :: I,J,K, II(ndim+1),JJ(ndim+1),KK(ndim+1), ipipe, i_nd,j_nd, iSTORE(4), jSTORE(4), kSTORE(4)
     INTEGER :: icorn, iface, iii, ik
@@ -12980,7 +12983,7 @@ deallocate(NX_ALL)
        i_nd = 0
        DO ICORN = 1, NDIM+1
           IF ( PIPE_INDEX_LOGICAL(ICORN) ) THEN
-             IF ( I_ND==0 ) THEN
+             IF ( I_ND == 0 ) THEN
                 I_ND = ICORN
              ELSE
                 J_ND = ICORN
@@ -13006,6 +13009,8 @@ deallocate(NX_ALL)
           i=2 ; j=3
           area_sqr(3) = sum( ( X_ALL_CORN(:,2) - X_ALL_CORN(:,3) )**2 )
           ii(3)=i ; jj(3)=j
+          
+          kk(:)=0
 
        ELSE ! ENDOF IF(NDIM==2) THEN...(THIS IS FOR 3D)
 
@@ -13074,11 +13079,10 @@ deallocate(NX_ALL)
 
 
 
-  REAL FUNCTION CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2, X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 )
+  REAL FUNCTION CALC_ELE_ANGLE_3D( X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2, X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 )
     ! Calculate element angle sweeped out by element and pipe
     ! X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2 are the coordinates of the ends of the pipe within an element.
     ! X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 are the other corner 2 nodes of an element.
-    INTEGER, intent( in ) :: NDIM
     REAL, intent( in ) :: X_ALL_CORN_PIPE1(3), X_ALL_CORN_PIPE2(3),  X_ALL_CORN_PIPE3(3), X_ALL_CORN_PIPE4(3)
     REAL :: X_PIPE1(3), X_PIPE2(3), X_PIPE3(3), X_PIPE4(3)
     REAL :: X_PIPE3_N(3), X_PIPE4_N(3)
@@ -13102,7 +13106,7 @@ deallocate(NX_ALL)
     A(2,:) = T1(:)
     A(3,:) = T2(:)
 
-    DO IDIM = 1, NDIM
+    DO IDIM = 1, 3
        X_PIPE3_N(IDIM) = SUM( A(IDIM,:) * X_PIPE3(:) )
        X_PIPE4_N(IDIM) = SUM( A(IDIM,:) * X_PIPE4(:) )
     END DO
@@ -13370,8 +13374,8 @@ deallocate(NX_ALL)
                          END IF
                       END IF
                    END DO
-                   ELE_ANGLE = CALC_ELE_ANGLE_3D( NDIM, X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
-                        &                               X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+                   ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
+                        &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
                 END IF
 
                 DIRECTION(:) = X_ALL_CORN( :, CV_GL_LOC(CV_LNLOC) ) - X_ALL_CORN( :, CV_GL_LOC(1) )
