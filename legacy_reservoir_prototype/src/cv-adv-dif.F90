@@ -13026,7 +13026,7 @@ deallocate(NX_ALL)
              IF ( PIPE_INDEX_LOGICAL(I) .AND. PIPE_INDEX_LOGICAL(J) .AND. PIPE_INDEX_LOGICAL(K) ) THEN
                 IFACE = IFACE+1
                 call CrossProduct( ndim, cp,  ( X_ALL_CORN(:,j) - X_ALL_CORN(:,i) ), ( X_ALL_CORN(:,k) - X_ALL_CORN(:,i) ) )
-                area_sqr(IFACE) =  sum(cp(:)**2 ) 
+                area_sqr(IFACE) =  sum(cp(:)**2 )
                 ii(IFACE)=i ; jj(IFACE)=j ; kk(IFACE)=k
              END IF
           END DO ! ENDOF DO III=1,4
@@ -13387,7 +13387,7 @@ deallocate(NX_ALL)
                    CV_KNOD = CV_GL_GL( CV_LILOC )
                    PIPE_DIAM_GI(:) = PIPE_DIAM_GI(:) + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
                 END DO
-                PIPE_DIAM_GI(:) = MAX(PIPE_DIAM_GI(:), 0.0) 
+                PIPE_DIAM_GI(:) = MAX(PIPE_DIAM_GI(:), 0.0)
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 ! Adjust according to the volume of the pipe...
@@ -13508,17 +13508,17 @@ deallocate(NX_ALL)
 
        DO U_ILOC = 1, U_NLOC
           U_JLOC = U_ILOC
-             DO IPHASE = N_IN_PRES+1, NPHASE
-                JPHASE = IPHASE
-                DO IDIM = 1, NDIM
-                   JDIM = IDIM
-                   i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
-                   j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
-                   WHERE ( abs( pivit_mat(i_indx, j_indx, :) ) < 1.0e-10 )
-                      pivit_mat(i_indx, j_indx, :) = 1.0
-                   END WHERE
-                END DO
+          DO IPHASE = N_IN_PRES+1, NPHASE
+             JPHASE = IPHASE
+             DO IDIM = 1, NDIM
+                JDIM = IDIM
+                i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
+                j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
+                WHERE ( abs( pivit_mat(i_indx, j_indx, :) ) < 1.0e-10 )
+                   pivit_mat(i_indx, j_indx, :) = 1.0
+                END WHERE
              END DO
+          END DO
        END DO
 
 
