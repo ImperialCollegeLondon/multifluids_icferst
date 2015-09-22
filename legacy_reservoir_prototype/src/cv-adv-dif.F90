@@ -12630,7 +12630,7 @@ deallocate(NX_ALL)
                    TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
                    TUPWIND_IN=0.0; DUPWIND_IN=0.0
                    DO IPHASE = N_IN_PRES+1, NPHASE
-                      IF(NDOTQ(IPHASE)>0.0) THEN ! This is for outgoing T:
+ !                     IF(NDOTQ(IPHASE)>0.0) THEN ! This is for outgoing T:
                          IF ( T_ALL%val( 1, IPHASE, CV_NODI ) > T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
                             TUPWIND_OUT( IPHASE ) = TMAX_ALL( IPHASE, CV_NODI )
                          ELSE
@@ -12641,7 +12641,7 @@ deallocate(NX_ALL)
                          ELSE
                             DUPWIND_OUT( IPHASE ) = DENMIN_ALL( IPHASE, CV_NODI )
                          END IF
-                      ELSE ! This is for incomming T:
+ !                     ELSE ! This is for incomming T:
                          IF ( T_ALL%val( 1, IPHASE, CV_NODI ) < T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
                             TUPWIND_IN( IPHASE ) = TMAX_ALL( IPHASE, CV_NODJ )
                          ELSE
@@ -12652,7 +12652,7 @@ deallocate(NX_ALL)
                          ELSE
                             DUPWIND_IN( IPHASE ) = DENMIN_ALL( IPHASE, CV_NODJ )
                          END IF
-                      ENDIF
+ !                     ENDIF
                    END DO
 
                    ! Value of sigma in the force balance eqn...
