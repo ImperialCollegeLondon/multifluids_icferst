@@ -2618,7 +2618,7 @@ contains
             ! variables used in the edge approach
             if ( .true. ) then
                h = mass_cv( cv_nodi )**(1.0/ndim)
-               rp = 0.1 * h**2
+               rp = 0.1 * h  ! = 0.1 * h**2
                Skin = 0.0
             end if
 
@@ -12238,9 +12238,9 @@ deallocate(NX_ALL)
     type(vector_field), pointer :: X
 
     integrate_other_side_and_not_boundary = .FALSE.
-    UPWIND_PIPES = .FALSE.
+    UPWIND_PIPES=.TRUE. ! Used for testing...
     WIC_B_BC_DIRICHLET = 1
-    INFINY = 1.0E+20
+    INFINY=1.0E+20
 
     NCORNER = NDIM + 1
 
@@ -13009,7 +13009,7 @@ deallocate(NX_ALL)
           i=2 ; j=3
           area_sqr(3) = sum( ( X_ALL_CORN(:,2) - X_ALL_CORN(:,3) )**2 )
           ii(3)=i ; jj(3)=j
-
+          
           kk(:)=0
 
        ELSE ! ENDOF IF(NDIM==2) THEN...(THIS IS FOR 3D)
