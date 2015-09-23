@@ -12991,7 +12991,7 @@ deallocate(NX_ALL)
     REAL :: cp(ndim)
     REAL :: area_sqr(ndim+1)
     INTEGER :: I,J,K, II(ndim+1),JJ(ndim+1),KK(ndim+1), ipipe, i_nd,j_nd, iSTORE(4), jSTORE(4), kSTORE(4)
-    INTEGER :: icorn, iface, iii, ik
+    INTEGER :: icorn, iface, iii, ik, il
     logical :: found_i, found_j
     real :: max_area
 
@@ -13059,10 +13059,10 @@ deallocate(NX_ALL)
              
              ik = 1
              max_area = area_sqr(ik)
-             do i = 2, 3
-                if ( max_area < area_sqr(i) ) then
-                   max_area = area_sqr(i)
-                   ik = i
+             do il = 2, 3
+                if ( max_area < area_sqr(il) ) then
+                   max_area = area_sqr(il)
+                   ik = il
                 end if
              end do
              
