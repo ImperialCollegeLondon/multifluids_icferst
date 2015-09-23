@@ -12225,6 +12225,7 @@ deallocate(NX_ALL)
     real :: LOC_CV_RHS_I(NPHASE)
 
     real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, INFINY, MIN_DIAM
+    real :: MIN_INV_SIG
     real :: TMAX(NPHASE), TMIN(NPHASE), DENMAX(NPHASE), DENMIN(NPHASE)
     integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
          u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
@@ -12239,7 +12240,7 @@ deallocate(NX_ALL)
 
     integrate_other_side_and_not_boundary = .FALSE.
     UPWIND_PIPES=.FALSE. ! Used for testing...
-    PIPE_MIN_DIAM=.TRUE.
+    PIPE_MIN_DIAM=.TRUE. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
     WIC_B_BC_DIRICHLET = 1
     INFINY=1.0E+20
 
@@ -12665,13 +12666,20 @@ deallocate(NX_ALL)
                    END DO
 
                    ! Value of sigma in the force balance eqn...
-                   INV_SIGMA_GI(:) = 0.0
-                   DO CV_LKLOC = 1, CV_LNLOC
-                      CV_KNOD = CV_GL_GL(CV_LKLOC)
+                   IF(PIPE_MIN_DIAM) THEN
                       DO IPHASE = 1, NPHASE
-                         INV_SIGMA_GI(IPHASE) = INV_SIGMA_GI(IPHASE) + SBCVFEN( CV_LKLOC, BGI ) * INV_SIGMA(IPHASE,CV_KNOD)
+                         MIN_INV_SIG = MINVAL( INV_SIGMA(IPHASE,CV_GL_GL( : ) ) )
+                         INV_SIGMA_GI(IPHASE) = MIN_INV_SIG
                       END DO
-                   END DO
+                   ELSE
+                      INV_SIGMA_GI(:) = 0.0
+                      DO CV_LKLOC = 1, CV_LNLOC
+                         CV_KNOD = CV_GL_GL(CV_LKLOC)
+                         DO IPHASE = 1, NPHASE
+                            INV_SIGMA_GI(IPHASE) = INV_SIGMA_GI(IPHASE) + SBCVFEN( CV_LKLOC, BGI ) * INV_SIGMA(IPHASE,CV_KNOD)
+                         END DO
+                      END DO
+                   ENDIF
 
                    ! Velocity in the pipe
                    UGI_ALL(:,:) = 0.0
