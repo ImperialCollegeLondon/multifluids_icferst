@@ -2637,6 +2637,7 @@ contains
                   h = mass_cv( cv_nodi )**(1.0/ndim)
                ENDIF
                rp = 0.1 * h  ! = 0.1 * h**2
+               h = mass_cv( cv_nodi )**(1.0/ndim)
                Skin = 0.0
             end if
 
