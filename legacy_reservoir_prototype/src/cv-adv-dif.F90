@@ -12468,6 +12468,10 @@ deallocate(NX_ALL)
 
 
 
+
+
+
+
     DO ELE = 1, TOTELE
 
        ! Look for pipe indicator in element:
