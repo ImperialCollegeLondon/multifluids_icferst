@@ -2595,17 +2595,6 @@ contains
 
       IF ( NPRES > 1 ) THEN
 
-         IF(PIPES_1D) THEN
-            CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, SMALL_FINDRM, SMALL_COLM, &
-              U_NONODS,U_SNLOC,CV_SNLOC,STOTEL,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-              cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
-              findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, mass_pipe, SIGMA_INV_APPROX )
-
-            ! Used for pipe modelling...
-            DO CV_NODI = 1, CV_NONODS
-               MASS_CV_PLUS(2:NPRES,CV_NODI) = mass_pipe(CV_NODI)
-            END DO
-         END IF
 
          OPT_VEL_UPWIND_COEFS_NEW_CV=0.0 ; N=0.0
          DO ELE = 1, TOTELE
@@ -2624,6 +2613,19 @@ contains
          DO CV_NODI = 1, CV_NONODS
             SIGMA_INV_APPROX( :, CV_NODI ) = 1.0 / ( OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) / N( CV_NODI ) )
          END DO
+         
+        
+         IF(PIPES_1D) THEN
+            CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, SMALL_FINDRM, SMALL_COLM, &
+              U_NONODS,U_SNLOC,CV_SNLOC,STOTEL,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+              cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
+              findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, mass_pipe, SIGMA_INV_APPROX )
+
+            ! Used for pipe modelling...
+            DO CV_NODI = 1, CV_NONODS
+               MASS_CV_PLUS(2:NPRES,CV_NODI) = mass_pipe(CV_NODI)
+            END DO
+         END IF
 
  !        IF(PIPES_1D) PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe1" )
          GAMMA_PRES_ABS2 = 0.0
@@ -2700,6 +2702,16 @@ contains
 
          PIPE_ABS = 0.0
          DO CV_NODI = 1, CV_NONODS
+            if ( .true. ) then
+               IF(PIPES_1D) THEN
+                  h = mass_pipe( cv_nodi )/( pi*(0.5*PIPE_DIAMETER%val(cv_nodi))**2 )
+               ELSE
+                  h = mass_cv( cv_nodi )**(1.0/ndim)
+               ENDIF
+               rp = 0.1 * h  ! = 0.1 * h**2
+               h = mass_cv( cv_nodi )**(1.0/ndim)
+               Skin = 0.0
+            end if
             DO IPHASE = 1, NPHASE
                DO JPHASE = 1, NPHASE
                   IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
@@ -2707,6 +2719,7 @@ contains
                   IF ( IPRES /= JPRES ) THEN
                      DeltaP = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
                      ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
+            if(.false.) then
                      IF ( DeltaP >= 0.0 ) THEN
                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
                              !MEAN_PORE_CV( IPRES, CV_NODI ) *  &
@@ -2719,6 +2732,17 @@ contains
                              !MEAN_PORE_CV( IPRES, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI ) * &
                              DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * SIGMA_INV_APPROX( JPHASE, CV_NODI )
                      END IF
+            else
+                     IF ( DeltaP >= 0.0 ) THEN
+                        PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
+                             DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                        2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log(    rp   /max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
+                     ELSE
+                        PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
+                             DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                        2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log(    rp    /max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10)  ) + Skin )
+                     END IF
+            endif
                   END IF
                END DO
             END DO
