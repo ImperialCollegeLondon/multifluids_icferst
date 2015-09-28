@@ -73,7 +73,7 @@ for i in range(len(tC)):
     L1_sum4 = L1_sum4 + abs(fn4(tC[i]) - t2C[i])/len(tC)
 
 
-print  L1_sum1, L1_sum2, L1_sum3, L1_sum4
+#print  L1_sum1, L1_sum2, L1_sum3, L1_sum4
 
 if(L1_sum1 < tolerance1 and L1_sum2 < tolerance1 and  L1_sum3 < tolerance2 and L1_sum4 < tolerance2) :
     print "BL with fluxes works OK"
