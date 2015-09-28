@@ -460,7 +460,7 @@ contains
            TMID, TOLDMID, TMID_J, TOLDMID_J, &
            RSUM, &
            THERM_FTHETA, &
-           W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin
+           W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, c
       REAL :: FTHETA(NPHASE), FTHETA_T2(NPHASE), ONE_M_FTHETA_T2OLD(NPHASE), FTHETA_T2_J(NPHASE), ONE_M_FTHETA_T2OLD_J(NPHASE)
       REAL :: ROBIN1(NPHASE), ROBIN2(NPHASE)
 
@@ -2585,16 +2585,13 @@ contains
          END DO
       ENDIF
 
-! Used for pipe modelling...
+      ! Used for pipe modelling...
       ALLOCATE(MASS_CV_PLUS(NPRES,CV_NONODS))
-
       DO CV_NODI = 1, CV_NONODS
          MASS_CV_PLUS(:,CV_NODI)= MASS_CV(CV_NODI)
       END DO
-!      MASS_PIPE=MASS_CV
 
       IF ( NPRES > 1 ) THEN
-
 
          OPT_VEL_UPWIND_COEFS_NEW_CV=0.0 ; N=0.0
          DO ELE = 1, TOTELE
@@ -2615,11 +2612,11 @@ contains
          END DO
          
         
-         IF(PIPES_1D) THEN
+         IF ( PIPES_1D ) THEN
             CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, SMALL_FINDRM, SMALL_COLM, &
-              U_NONODS,U_SNLOC,CV_SNLOC,STOTEL,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-              cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
-              findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, mass_pipe, SIGMA_INV_APPROX )
+                 U_NONODS,U_SNLOC,CV_SNLOC,STOTEL,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+                 cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
+                 findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, mass_pipe, SIGMA_INV_APPROX )
 
             ! Used for pipe modelling...
             DO CV_NODI = 1, CV_NONODS
@@ -2627,17 +2624,21 @@ contains
             END DO
          END IF
 
- !        IF(PIPES_1D) PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe1" )
          GAMMA_PRES_ABS2 = 0.0
          DO CV_NODI = 1, CV_NONODS
 
             ! variables used in the edge approach
             if ( .true. ) then
                IF(PIPES_1D) THEN
-                  h = mass_pipe( cv_nodi )/( pi*(0.5*PIPE_DIAMETER%val(cv_nodi))**2 )
+                  h = mass_pipe( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi), 1.0e-10))**2 )
                ELSE
                   h = mass_cv( cv_nodi )**(1.0/ndim)
                ENDIF
+               h = max( h, 1.0e-10 )
+
+               c=0.0
+               if ( mass_pipe( cv_nodi )>0.0 ) c=1.0
+
                rp = 0.1 * h  ! = 0.1 * h**2
                h = mass_cv( cv_nodi )**(1.0/ndim)
                Skin = 0.0
@@ -2661,23 +2662,13 @@ contains
                      END IF
                   ELSE
                      ! This is the edge approach
-!                     IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
-!                        GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-!                        MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log( 0.5*pipe_Diameter%val( cv_nodi ) / rp ) + Skin )
-!                     ELSE
-!                        GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-!                        MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log( 0.5*pipe_Diameter%val( cv_nodi ) / rp ) + Skin )
-!                     END IF
-
-
                    IF(IPRES.NE.JPRES) THEN
-
                      IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                        MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log(    rp   /max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
+                             c * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
                      ELSE
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                        MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log(    rp    /max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10)  ) + Skin )
+                             c * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
                      END IF
 
                    ENDIF
@@ -2704,10 +2695,15 @@ contains
          DO CV_NODI = 1, CV_NONODS
             if ( .true. ) then
                IF(PIPES_1D) THEN
-                  h = mass_pipe( cv_nodi )/( pi*(0.5*PIPE_DIAMETER%val(cv_nodi))**2 )
+                  h = mass_pipe( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
                ELSE
                   h = mass_cv( cv_nodi )**(1.0/ndim)
                ENDIF
+               h = max( h, 1.0e-10 )
+
+               c=0.0
+               if ( mass_pipe( cv_nodi )>0.0 ) c=1.0
+
                rp = 0.1 * h  ! = 0.1 * h**2
                h = mass_cv( cv_nodi )**(1.0/ndim)
                Skin = 0.0
@@ -2720,6 +2716,7 @@ contains
                      DeltaP = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) - ( CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) )
                      ! MEAN_PORE_CV( JPRES, CV_NODI ) is taken out of the following and will be put back only for solving for saturation...
             if(.false.) then
+
                      IF ( DeltaP >= 0.0 ) THEN
                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
                              !MEAN_PORE_CV( IPRES, CV_NODI ) *  &
@@ -2736,11 +2733,11 @@ contains
                      IF ( DeltaP >= 0.0 ) THEN
                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
                              DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                        2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log(    rp   /max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
+                             c * 2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
                      ELSE
                         PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
                              DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                        2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log(    rp    /max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10)  ) + Skin )
+                             c * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
                      END IF
             endif
                   END IF
@@ -12252,7 +12249,7 @@ deallocate(NX_ALL)
     real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
     real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
     logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
-    logical :: UPWIND_PIPES, PIPE_MIN_DIAM
+    logical :: UPWIND_PIPES, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES
     real :: LOC_CV_RHS_I(NPHASE)
 
     real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, INFINY, MIN_DIAM
@@ -12271,9 +12268,10 @@ deallocate(NX_ALL)
 
     integrate_other_side_and_not_boundary = .FALSE.
     UPWIND_PIPES=.FALSE. ! Used for testing...
-    PIPE_MIN_DIAM=.TRUE. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
+    PIPE_MIN_DIAM=.false. ! Use the pipe min diamter along a pipe element edge and min inv_sigma (max. drag reflcting min pipe diameter)
     WIC_B_BC_DIRICHLET = 1
     INFINY=1.0E+20
+    IGNORE_DIAGONAL_PIPES=.TRUE.
 
     NCORNER = NDIM + 1
 
@@ -12576,6 +12574,10 @@ deallocate(NX_ALL)
              DIRECTION(:) = X_ALL_CORN( :, CV_GL_LOC(CV_LNLOC) ) - X_ALL_CORN( :, CV_GL_LOC(1) )
              DX = SQRT( SUM( DIRECTION(:)**2 ) )
              DIRECTION(:) = DIRECTION(:) / DX
+
+             IF ( IGNORE_DIAGONAL_PIPES ) THEN
+                IF ( ABS(DIRECTION(1))<0.99 .AND. ABS(DIRECTION(2))<0.99.AND. ABS(DIRECTION(NDIM))<0.99 ) CYCLE
+             END IF
 
              ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
              L_CVFENX_ALL(:,:) = 2.0 * cvn_femlx(:,:) / DX
@@ -13234,7 +13236,7 @@ deallocate(NX_ALL)
 
     LOGICAL, INTENT( IN ) :: GOT_C_MATRIX
 
-    LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM
+    LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES
     INTEGER :: CV_NCORNER, ELE, PIPE_NOD_COUNT, ICORNER, &
          &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, IDIM, &
          &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc
@@ -13264,8 +13266,8 @@ deallocate(NX_ALL)
 
     X_NLOC = CV_NLOC
     ncorner = ndim + 1
-    PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
-
+    PIPE_MIN_DIAM=.false. ! Take the min diamter of the pipe as the real diameter.
+    IGNORE_DIAGONAL_PIPES=.TRUE.
 
     ! Set rhs of the force balce equation to zero just for the pipes...
     U_RHS( :, N_IN_PRES+1:NPHASE, : ) = 0.0
@@ -13479,6 +13481,10 @@ deallocate(NX_ALL)
                 DX = SQRT( SUM( DIRECTION(:)**2 ) )
                 DIRECTION(:) = DIRECTION(:) / DX
 
+                IF ( IGNORE_DIAGONAL_PIPES ) THEN
+                   IF ( ABS(DIRECTION(1))<0.99 .AND. ABS(DIRECTION(2))<0.99.AND. ABS(DIRECTION(NDIM))<0.99 ) CYCLE
+                END IF
+
                 IF(PIPE_MIN_DIAM) THEN
                    MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
                    PIPE_DIAM_GI(:) = MIN_DIAM
@@ -13493,7 +13499,7 @@ deallocate(NX_ALL)
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 ! Adjust according to the volume of the pipe...
-                DETWEI(:) = SCVFEWEIGH(:) * DX * PI * ( (0.5*PIPE_DIAM_GI(:))**2 ) * ELE_ANGLE / ( 2.0 * PI )
+                DETWEI(:) = SCVFEWEIGH(:) * DX * PI * ( (0.5*PIPE_DIAM_GI(:))**2 ) !* ELE_ANGLE / ( 2.0 * PI )
                 L_CVFENX_ALL(:,:) = 2.0 * SCVFENLX(:,:) / DX
                 L_UFENX_ALL(:,:) = 2.0 * SUFENLX(:,:) / DX
 
@@ -13582,7 +13588,7 @@ deallocate(NX_ALL)
                       END DO
 
                       ! Prepare aid variable NMX_ALL to improve the speed of the calculations
-                      suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE / ( 2.0 * PI )
+                      suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) !* ELE_ANGLE/ ( 2.0 * PI )
                       NMX_ALL( : ) = direction_norm(:)* suf_area
 
                       LOC_U_RHS_U_ILOC = 0.0
