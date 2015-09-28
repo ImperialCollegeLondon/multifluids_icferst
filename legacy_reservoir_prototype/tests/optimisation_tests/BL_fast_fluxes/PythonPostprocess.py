@@ -15,10 +15,10 @@ tolerance2 = 0.015
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system('rm -f ' + path+ '/outfluxes.txt')
+os.system('rm -f ' + path+ '/outfluxes.csv')
 os.system(binpath + ' ' + path + '/*mpml')
 
-with open('outfluxes.txt','r') as f1:
+with open('outfluxes.csv','r') as f1:
 # Need a slightly modified script to correctly read this file in       
     f1.readline()
     for row in f1:
@@ -73,7 +73,7 @@ for i in range(len(tC)):
     L1_sum4 = L1_sum4 + abs(fn4(tC[i]) - t2C[i])/len(tC)
 
 
-#print  L1_sum1, L1_sum2, L1_sum3, L1_sum4
+print  L1_sum1, L1_sum2, L1_sum3, L1_sum4
 
 if(L1_sum1 < tolerance1 and L1_sum2 < tolerance1 and  L1_sum3 < tolerance2 and L1_sum4 < tolerance2) :
     print "BL with fluxes works OK"

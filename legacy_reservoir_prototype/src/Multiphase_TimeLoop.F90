@@ -2096,9 +2096,9 @@
 
     if (itime == 1) then
     !The first time, remove file if already exists
-        open(unit=default_stat%conv_unit, file="outfluxes.txt", status="replace", action="write")
+        open(unit=default_stat%conv_unit, file="outfluxes.csv", status="replace", action="write")
     else
-       open(unit=default_stat%conv_unit, file="outfluxes.txt", action="write", position="append")
+       open(unit=default_stat%conv_unit, file="outfluxes.csv", action="write", position="append")
     end if
 
 
@@ -2137,7 +2137,7 @@
                whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
            enddo
            do iphase = 1, size(outflux,1)
-               write(intfluxstring(iphase),*) "Phase", iphase,  "time integrated flux"
+               write(intfluxstring(iphase),*) "Phase", iphase,  "time integrated flux (volume/time)"
                whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
            enddo
            counter = counter + 1
