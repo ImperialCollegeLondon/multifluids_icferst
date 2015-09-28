@@ -15,10 +15,10 @@ tolerance2 = 0.015
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system('rm -f ' + path+ '/outfluxes.txt')
+os.system('rm -f ' + path+ '/outfluxes.csv')
 os.system(binpath + ' ' + path + '/*mpml')
 
-with open('outfluxes.txt','r') as f1:
+with open('outfluxes.csv','r') as f1:
 # Need a slightly modified script to correctly read this file in       
     f1.readline()
     for row in f1:

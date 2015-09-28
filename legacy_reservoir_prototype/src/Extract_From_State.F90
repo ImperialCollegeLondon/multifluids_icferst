@@ -4453,12 +4453,12 @@
                       surf = (sele - 1 ) * cv_snloc + cv_siloc
                       if(ndotqnew(i) < 0 ) then
                           ! Inlet boundary - so use boundary phase volume fraction
-                          totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i,gi)!/PorG
+                          totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)!*DensVG(i,gi)!/PorG
                           !totoutflux(i) = totoutflux(i) + ndotqnew(i)*detwei(gi)*DensVG(i,gi)/PorG
 
                       else
                           ! Outlet boundary - so use internal (to the domain) phase volume fraction
-                          totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i,gi)*detwei(gi)*DensVG(i,gi)!/PorG
+                          totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i,gi)*detwei(gi)!*DensVG(i,gi)!/PorG
                       endif
               enddo
 
