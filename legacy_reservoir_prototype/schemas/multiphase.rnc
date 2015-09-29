@@ -436,13 +436,15 @@ start =
                     ##
                     ## Defined as: 0 < dumping_parameter < 1. Negative values => automatically 
                     ##
-                    ## For Fixed Dumping parameters:
+                    ## Default value is 1.
+                    ##
+                    ## For FIXED dumping parameters:
                     ## Recommended settings: Non-linear iterations >= 100
                     ##
                     ## Recommended settings: Courant < 1 => dumping_parameter = 1;
                     ## Courant > 1 => dumping_parameter from 1.0 to 0.1;
                     ##
-                    ## For dynamic Dumping parameters:
+                    ## For DYNAMIC dumping parameters:
                     ##
                     ## Recommended settings: Non-linear iterations >= 30
                     ## The Dumping value introduced is used as reference, so it may have a big impact on the convergence

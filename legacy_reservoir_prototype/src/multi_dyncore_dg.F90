@@ -555,9 +555,12 @@ contains
            totele, cv_nloc, CV_NDGLN, IDs2CV_ndgln)
 
       !Get variable for global convergence method
-      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Dumping_factor',&
-           Dumping_factor, default = 1.1)
-
+      if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
+        Dumping_factor = 1.1
+      else !Get value with the default value of 1.
+          call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Dumping_factor',&
+               Dumping_factor, default = 1.0)
+      end if
       GET_THETA_FLUX = .FALSE.
       IGOT_T2 = 0
 

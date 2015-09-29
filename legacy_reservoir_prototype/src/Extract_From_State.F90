@@ -149,6 +149,11 @@
 
 !!$ Get the vel element type.
       is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
+      if (is_porous_media) then!Check that the FPI method is on
+        if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
+            ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow"
+        end if
+      end if
       is_multifracture = have_option( '/femdem_fracture' )
 
       positions => extract_vector_field( state, 'Coordinate' )

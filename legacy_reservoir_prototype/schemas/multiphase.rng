@@ -508,13 +508,15 @@ Sat = Sat(Previous FPI) + dumping_parameter * dSat
 
 Defined as: 0 &lt; dumping_parameter &lt; 1. Negative values =&gt; automatically 
 
-For Fixed Dumping parameters:
+Default value is 1.
+
+For FIXED dumping parameters:
 Recommended settings: Non-linear iterations &gt;= 100
 
 Recommended settings: Courant &lt; 1 =&gt; dumping_parameter = 1;
 Courant &gt; 1 =&gt; dumping_parameter from 1.0 to 0.1;
 
-For dynamic Dumping parameters:
+For DYNAMIC dumping parameters:
 
 Recommended settings: Non-linear iterations &gt;= 30
 The Dumping value introduced is used as reference, so it may have a big impact on the convergence
