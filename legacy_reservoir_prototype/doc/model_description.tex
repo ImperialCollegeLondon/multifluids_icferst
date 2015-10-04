@@ -3717,7 +3717,8 @@ for a time step is to determine $y_i^j$.
 
 
 
-\section{Well modelling using extended multi-phase flow equations} 
+\section{Well modelling using extended multi-phase flow equations 
+and imbedded one-dimensional pipe models} 
 \label{Well modelling using extended multi-phase flow equations}
 Here we outline an approach for modelling wells based on extending the number of 
 fluid phases one solves for. The new phases include each of the phases (e.g. water, oil, gas) 
@@ -3742,6 +3743,10 @@ to use this technology with embedded 1d pipe/well models.
 \par\noindent
 5) With the use of mesh adaptivity one can start to resolve the flows locally, around the 
 wells, that are important or important parts of these wells.   
+\par\noindent
+6) One can replace the multi-phase flow equations with 1D imbeded pipe models that 
+follow the edges of elements and have variables collocated at the FEM nodes without 
+effecting the solvers or rest of the formulation. 
 
 The main disadvantage of this approach is that one needs to solve for two or more 
 coupled pressure fields as opposed to one in the conventional approach. 
@@ -4070,11 +4075,11 @@ of $q_i^{j\,k}$ in equations \ref{saturation_wells_7}.
 \subsection{Cylindrical geometry and skin effect adjustment} 
 
 Now assuming the well is cylindericial and a cyclindrically symmetric analytical solution 
-as well as the intorduction of the skin effect coefficient $Skin$ (an adjustment for fracturing of the porious media by the introduction of the well) the result is that the maximum flux can 
+as well as the intorduction of the skin effect coefficient $Skin$ (an adjustment for fracturing of the porious media by the introduction of the well) the result is that the maximum total mass flux can 
 be written as: 
 
 \begin{equation}
-q_k = \frac{2 \pi h}{\sigma_i} \frac{(p_{reservior}- p_{well})}{ ( log(\frac{r_p}{r_e}) + Skin)} 
+{q_{total}}_k = \frac{2 \pi h}{\sigma_i} \frac{(p_{reservior}- p_{well})}{ ( log(\frac{r_p}{r_e}) + Skin)} 
 \label{saturation_wells_11-cyl-skin}
 \end{equation}
 in which the Peacman correction is:
@@ -4087,7 +4092,10 @@ Complex expression exist for the skin effect coefficient $Skin$.
 From equation \ref{saturation_wells_11-cyl-skin} then:
 
 \begin{equation}
-\gamma_{i}^{well\, reservoir}=\frac{2 \pi h}{\sigma_i} \frac{1}{ ( log(\frac{r_p}{r_e}) + Skin)} ,
+\gamma_{i}^{well\, reservoir}
+=\frac{2 \pi h}{\sigma_i h\pi r_e^2} \frac{1}{ ( log(\frac{r_p}{r_e}) + Skin)}
+=\frac{2 }{\sigma_i r_e^2} \frac{1}{ ( log(\frac{r_p}{r_e}) + Skin)}
+ ,
 \label{saturation_wells_15-well10reservoir-cyl-skin}
 \end{equation}
 
@@ -4208,6 +4216,25 @@ multi-grid solvers which are needed to solve for pressure.
 The formation of the pressure matrix equation is as described in section \ref{Projection method of solution} and the matrix ${\bf B}$ in the continuity equation \ref{glob-cty-matrix2} (a discretization of equation \ref{saturation_wells_4}) is formed from the terms involving $\hat\gamma^{j\, k}$ which couple the phases. 
 
 
+
+
+\subsection{Imbedded one-dimensional pipe model} 
+\label{1d-well-dicsretization}
+A key advantage of the formulation above, that is described in differential equation 
+form, is that one can use with 1D imbedded pipe models that 
+follow the edges of elements and have variables collocated at the FEM nodes without 
+effecting the solvers or rest of the formulation. 
+
+This is achieved by using discretizing the equations along the edges of elements along which the 
+pipes are placed. So for a P1DG-P1 formulation there would be a linear pressure variation 
+along the edges of the elements with corresponding 2 control-volumes with a cylindrical 
+cross-section with a diameter equal o the diameter of the pipe along that edge. The velocity 
+is then linear discontinuous along that edge and within each volume element. 
+A number of volume elements surround an edge so the DG velocities are calculated within 
+each of these volume elements. Whenever there is no pipe we place on the diagonal unity and 
+zero the r.h.s. and the rest of the non-zero's in the associated rows. 
+This allows the solvers to be unchanged as they simple assume the number of pressure variables 
+at each pressure node is uniform across space and similarly for all the other variables. 
 
 
 \subsection{Scaling of the equations with wells} 
