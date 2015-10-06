@@ -548,7 +548,9 @@ contains
       N_IN_PRES = NPHASE / NPRES
 
       !Extract variables from packed_state
-      call get_var_from_packed_state(packed_state,FEPressure = P)
+      !call get_var_from_packed_state(packed_state,FEPressure = P)
+      call get_var_from_packed_state(packed_state,CVPressure = P)
+
       call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
       !Get information for capillary pressure to be use in CV_ASSEMB
       call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, &
