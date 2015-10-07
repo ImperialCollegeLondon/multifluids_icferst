@@ -2662,6 +2662,7 @@ contains
                      END IF
                   ELSE
                      ! This is the edge approach
+                     ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
                    IF(IPRES.NE.JPRES) THEN
                      IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
