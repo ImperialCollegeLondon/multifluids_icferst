@@ -13028,6 +13028,7 @@ deallocate(NX_ALL)
        pipe_corner_nds1, pipe_corner_nds2, npipes )
     ! Calculate the pipes within an element...
     ! Return the pipe corner nodes for each pipe in element.
+    IMPLICIT NONE
     INTEGER, intent( in ) :: NDIM, npipes
     REAL, intent( in ) :: X_ALL_CORN(NDIM,NDIM+1)
     LOGICAL, intent( in ) :: PIPE_INDEX_LOGICAL(NDIM+1)
@@ -13128,7 +13129,7 @@ deallocate(NX_ALL)
              else 
                    ipipe = 1
                    pipe_corner_nds1(ipipe) = i
-                   pipe_corner_nds2(ipipe) = j
+                   pipe_corner_nds2(ipipe) = j																																																																		
                    ipipe = 2
                    pipe_corner_nds1(ipipe) = i
                    pipe_corner_nds2(ipipe) = k
@@ -13189,6 +13190,7 @@ deallocate(NX_ALL)
     ! Calculate element angle sweeped out by element and pipe
     ! X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2 are the coordinates of the ends of the pipe within an element.
     ! X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 are the other corner 2 nodes of an element.
+    IMPLICIT NONE
     REAL, intent( in ) :: X_ALL_CORN_PIPE1(3), X_ALL_CORN_PIPE2(3),  X_ALL_CORN_PIPE3(3), X_ALL_CORN_PIPE4(3)
     REAL :: X_PIPE1(3), X_PIPE2(3), X_PIPE3(3), X_PIPE4(3)
     REAL :: X_PIPE3_N(3), X_PIPE4_N(3)
@@ -13233,6 +13235,7 @@ deallocate(NX_ALL)
        &                         CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
+    IMPLICIT NONE
     TYPE(STATE_TYPE),DIMENSION(:),INTENT(IN)::STATE
     TYPE(STATE_TYPE),INTENT(IN)::packed_STATE
 
@@ -13650,6 +13653,7 @@ deallocate(NX_ALL)
   SUBROUTINE CALC_CORNER_NODS( CV_LOC_CORNER, NDIM, CV_NLOC, CV_QUADRATIC, CV_MID_SIDE )
     ! Calculate the local corner nodes...
     ! CV_MID_SIDE(ICORN,JCORN)= CV_ILOC local node number for node between these two corner nodes
+    IMPLICIT NONE
     INTEGER, INTENT( IN ) :: CV_NLOC, NDIM
     INTEGER, DIMENSION( : ), INTENT( INOUT ) :: CV_LOC_CORNER
     INTEGER, DIMENSION( :, : ), INTENT( INOUT ) :: CV_MID_SIDE
