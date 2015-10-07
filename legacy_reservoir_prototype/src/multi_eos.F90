@@ -1,6 +1,6 @@
 
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -70,7 +70,7 @@
        integer :: radial_distribution_function
     end type solid_solid_interaction_phase_option_type
 
-    
+
     type solid_solid_interaction_option_type
        type(solid_solid_interaction_phase_option_type),&
             dimension(:), allocatable :: list
@@ -135,8 +135,8 @@
             sc = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
             ec = ( icomp - 1 ) * nphase * cv_nonods + iphase * cv_nonods
 
-            sp = ( iphase - 1 ) * cv_nonods + 1 
-            ep = iphase * cv_nonods 
+            sp = ( iphase - 1 ) * cv_nonods + 1
+            ep = iphase * cv_nonods
 
             Rho=0. ; dRhodP=0. ; Cp=1.
             call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
@@ -210,8 +210,8 @@
       !sf => extract_scalar_field( packed_state, "SolidConcentration" )
 
       do iphase = 1, nphase
-         sp = ( iphase - 1 ) * cv_nonods + 1 
-         ep = iphase * cv_nonods 
+         sp = ( iphase - 1 ) * cv_nonods + 1
+         ep = iphase * cv_nonods
 
          field1 % val ( 1, iphase, :) = Density_Bulk( sp : ep )         !* ( 1. - sf%val)     +   1000. *  sf%val
          field2 % val ( 1, iphase, :) = DensityCp_Bulk( sp : ep )       !* ( 1. - sf%val)     +   1000. *  sf%val
@@ -414,7 +414,7 @@
          deallocate( eos_coefs )
 
 
-      
+
          elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/JWL_equation' ) then
 !!P=A*(1-w/(R1*V))*exp(-R1*V)+B*(1-w/(R2*V))*exp(-R2/V)+w*E0/V;
 !!The ratio V =roe/ro is defined by using roe = density of the explosive (solid part) and ro = density of the detonation products.
@@ -435,24 +435,24 @@
         call get_option( trim( eos_option_path ) // '/E0', eos_coefs( 6 ) )
         call get_option( trim( eos_option_path ) // '/w', eos_coefs( 7 ) )
         JWLn=size(pressure%val(1, 1, :));
-       
+
         allocate(ro0(JWLn))
-        ro0=eos_coefs(1)      
-      
+        ro0=eos_coefs(1)
+
       Rho=JWLdensity(eos_coefs, pressure%val(1, 1, :), ro0, JWLn)
 
       perturbation_pressure = max( toler, 1.e-2 * abs( pressure%val(1, 1, :) ) )
 
       RhoPlus=JWLdensity(eos_coefs, pressure%val(1, 1, :) + perturbation_pressure, ro0, JWLn)
       RhoMinus=JWLdensity(eos_coefs, pressure%val(1, 1, :) - perturbation_pressure, ro0, JWLn)
-              
+
       dRhodP = 0.5 * (  RhoPlus - RhoMinus ) / perturbation_pressure
-      
+
       do JWLi=1, JWLn
         if (pressure%val(1, 1, JWLi)<JWL(eos_coefs( 2 ), eos_coefs( 3 ), eos_coefs( 7 ), eos_coefs( 4 ), eos_coefs( 5 ), eos_coefs( 6 ), 0.0,  eos_coefs( 1 ), 1.205)) then
                perturbation_pressure(JWLi)=1.
                dRhodP(JWLi)=2.5
-        else 
+        else
               ! perturbation_pressure(JWLi)=1.
               ! dRhodP(JWLi)=1000.
         end if
@@ -492,8 +492,8 @@
       elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_oil_gas' ) then
 !!$ Den = Den0 * Exp[ C0 * ( P - P0 ) ]
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
-         call get_option( trim( eos_option_path ) // '/compressibility', eos_coefs( 1 ) )   ! compressibility_factor 
-         call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 2 ) ) ! reference_density 
+         call get_option( trim( eos_option_path ) // '/compressibility', eos_coefs( 1 ) )   ! compressibility_factor
+         call get_option( trim( eos_option_path ) // '/reference_density', eos_coefs( 2 ) ) ! reference_density
          if ( .not. initialised ) then
             allocate( reference_pressure( node_count( pressure ) ) )
             reference_pressure = pressure % val(1,1,:)
@@ -502,13 +502,13 @@
          Rho = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( pressure % val(1,1,:) - reference_pressure ) )
          perturbation_pressure = max( toler, 1.e-3 * ( abs( pressure % val(1,1,:) ) ) )
          RhoPlus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val(1,1,:) + perturbation_pressure ) - &
-              reference_pressure ) ) 
+              reference_pressure ) )
          RhoMinus = eos_coefs( 2 ) * exp( eos_coefs( 1 ) * ( ( pressure % val(1,1,:) - perturbation_pressure ) - &
-              reference_pressure ) ) 
+              reference_pressure ) )
          dRhodP = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure
          deallocate( eos_coefs )
 
-      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_in_pressure' ) then 
+      elseif( trim( eos_option_path ) == trim( option_path_comp ) // '/exponential_in_pressure' ) then
 !!$ Den = C0 * ( P ^ C1 )
          allocate( eos_coefs( 2 ) ) ; eos_coefs = 0.
          call get_option( trim( eos_option_path ) // '/coefficient_A', eos_coefs( 1 ) )
@@ -564,7 +564,7 @@
          call python_run_string("time="//trim(buffer))
          call get_option("/timestepping/timestep", dt)
          write(buffer,*) dt
-         call python_run_string("dt="//trim(buffer))  
+         call python_run_string("dt="//trim(buffer))
 
          ! Get the code
          call get_option( trim( option_path_python ) // '/algorithm', pycode )
@@ -575,7 +575,7 @@
          ! Copy result to protoype memory
          Rho = density % val
 
-         ! Back up pressure and density before we start perturbing stuff... 
+         ! Back up pressure and density before we start perturbing stuff...
          allocate( pressure_back_up( node_count( pressure ) ), density_back_up( node_count( pressure ) ) )
          pressure_back_up = 0. ; density_back_up = 0.
          pressure_back_up = pressure % val(1,1,:)
@@ -600,7 +600,7 @@
          call python_run_string("time="//trim(buffer))
          call get_option("/timestepping/timestep", dt)
          write(buffer,*) dt
-         call python_run_string("dt="//trim(buffer))  
+         call python_run_string("dt="//trim(buffer))
 
          call python_run_string(trim(pycode))
          RhoPlus = density % val
@@ -672,7 +672,7 @@
          Conditional_for_Compressibility_Option: if( have_option( trim( eos_option_path_out ) // '/stiffened_gas' ) ) then
             eos_option_path_out = trim( eos_option_path_out ) // '/stiffened_gas'
 
-          
+
          elseif( have_option( trim( eos_option_path_out ) // '/JWL_equation' ) ) then
             eos_option_path_out = trim( eos_option_path_out ) // '/JWL_equation'
 
@@ -705,7 +705,7 @@
 
          end if Conditional_for_Incompressibility_Option
 
-      elseif( have_option( trim( eos_option_path_out ) // '/python_state' ) ) then 
+      elseif( have_option( trim( eos_option_path_out ) // '/python_state' ) ) then
          eos_option_path_out = trim( eos_option_path_out ) // '/python_state'
 
       else
@@ -956,7 +956,7 @@
       RETURN
 
     END SUBROUTINE calculate_absorption2
-    
+
 
     subroutine initialize_drag_matrix(absorption,state,nphase)
       type(block_csr_matrix), intent(inout) :: absorption
@@ -967,7 +967,7 @@
       type(scalar_field), pointer :: volume_fraction
       type(csr_sparsity), pointer :: sparsity
       type(mesh_type), pointer :: mesh
-      
+
       velocity=>extract_vector_field(state,"Velocity")
       volume_fraction=>extract_scalar_field(state,"PhaseVolumeFraction")
       mesh=>extract_mesh(state,"PressureMesh_Discontinuous")
@@ -1022,7 +1022,7 @@
        call deallocate(drag_abs_matrix)
 
     end subroutine add_drag_to_old_style_matrix_and_cleanup
-      
+
 
     function radial_distribution_function_Lebowitz(&
          d_i,d_j,phi_c,phi_i,phi_j) result(g_ij)
@@ -1041,7 +1041,7 @@
          iphase_drag_options,jphase_drag_options,&
          iphase_solid_solid_interaction_options,&
          jphase_solid_solid_interaction_options)
-      
+
       type(state_type), dimension(:), intent(inout) :: state
       type(block_csr_matrix), intent(inout) :: absorption
       integer, intent(in) :: continuous_phase, iphase,jphase
@@ -1062,7 +1062,7 @@
       real, dimension(:), allocatable :: r_i,r_j,g_ij
 
 
-      !! extract data from state 
+      !! extract data from state
 
       mesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
       CVF=>extract_scalar_field(state(continuous_phase),&
@@ -1076,7 +1076,7 @@
 
 
       !! Useful convenience variables
-      
+
       d_i=iphase_drag_options%diameter
       d_j=jphase_drag_options%diameter
 
@@ -1096,7 +1096,7 @@
       allocate(r_i(ele_loc(rho_i,1)),&
            r_j(ele_loc(rho_j,1)),&
            g_ij(ele_loc(mesh,1)))
-            
+
       do iopt=1, size(iphase_solid_solid_interaction_options%list)
          do jopt=1, size(iphase_solid_solid_interaction_options%list)
             if (iphase_solid_solid_interaction_options%list(iopt)%type/=&
@@ -1127,7 +1127,7 @@
       do IDIM=1,ndim
          block1=(iphase-1)*ndim+IDIM
          block2=(jphase-1)*ndim+IDIM
-         
+
          do ele=1,ele_count(mesh)
 
             dg_nodes=>ele_nodes(mesh,ele)
@@ -1146,9 +1146,9 @@
       call deallocate(ivf_dg)
       call deallocate(jvf_dg)
       call deallocate(deltaV)
-      
+
       deallocate(r_i,r_j,g_ij)
-      
+
 
 
     end subroutine add_solid_solid_interaction_term
@@ -1157,7 +1157,7 @@
                        iphase_drag_options,jphase_drag_options,&
                        iphase_polydispersive_drag_options,&
                        jphase_polydispersive_drag_options)
-      
+
       type(state_type), dimension(:), intent(inout) :: state
       type(block_csr_matrix), intent(inout) :: absorption
       integer, intent(in) :: iphase,jphase
@@ -1231,10 +1231,10 @@
       integer :: iphase, jphase
       type(drag_option_type) :: drag_options
       type(scalar_field) :: ivf_dg,jvf_dg
-      
+
       type(vector_field), pointer :: ivel, jvel
       type(vector_field) :: deltaV
-      
+
       call zero(beta)
       call allocate(deltaV,mesh_dim(beta%mesh),beta%mesh,"Veldifference")
 
@@ -1261,15 +1261,15 @@
       end select
 
       call deallocate(deltaV)
-      
+
 
     end subroutine calculate_drag_as_scalar
-      
+
 
     subroutine add_drag_term(state,absorption,dispersed_phase,continuous_phase,drag_options)
       type(state_type), dimension(:), intent(inout) :: state
       type(block_csr_matrix), intent(inout) :: absorption
-      type(vector_field), pointer :: continuous_velocity, dispersed_velocity 
+      type(vector_field), pointer :: continuous_velocity, dispersed_velocity
       integer, intent(in) :: dispersed_phase, continuous_phase
       type(drag_option_type) :: drag_options
       type(scalar_field), pointer :: continuous_volume_fraction, dispersed_volume_fraction,rho_g
@@ -1285,11 +1285,11 @@
 
       continuous_velocity=>extract_vector_field(state(continuous_phase),"Velocity",stat)
 
-      
+
 !!      mesh=>extract_mesh(state(1),"PressureMesh_Continuous")
-    
+
       mesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
-      
+
       if (stat/=0) then
          FLAbort("Attempting to add drag term, when no velocity in continuous phase")
       end if
@@ -1431,7 +1431,7 @@
          end do
 
 !         print*, maxval(coeff%val), minval(coeff%val), minval(Re_s)
-         
+
          do IDIM=1,ndim
             block1=(continuous_phase-1)*ndim+IDIM
             block2=(dispersed_phase-1)*ndim+IDIM
@@ -1499,7 +1499,7 @@
          end do
 
          print*, maxval(coeff%val), minval(coeff%val), minval(Re_s)
-         
+
          do IDIM=1,ndim
             block1=(continuous_phase-1)*ndim+IDIM
             block2=(dispersed_phase-1)*ndim+IDIM
@@ -1524,7 +1524,7 @@
       call deallocate(ratio)
 
     end subroutine add_drag_term
-    
+
 
     subroutine get_solid_solid_interaction_options(phase,state,options)
       integer :: phase
@@ -1565,7 +1565,7 @@
        end do
 
     end subroutine get_solid_solid_interaction_options
-  
+
     subroutine get_drag_options(phase,state,options)
       integer :: phase
       type(state_type), dimension(:) :: state
@@ -1628,7 +1628,7 @@
             end select
          end if
       end do
-      
+
     end subroutine clean_drag_options
 
     SUBROUTINE relperm_corey_epsilon( ABSP, visc_phase, INV_PERM, SAT, IPHASE,&
@@ -1988,7 +1988,7 @@
 
             cv_nloc = ele_loc( t_field, ele )
             linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
-            allocate( component_tmp( cv_nloc ), mu_tmp( ndim, ndim, cv_nloc ) ) 
+            allocate( component_tmp( cv_nloc ), mu_tmp( ndim, ndim, cv_nloc ) )
 
 
             if ( ncomp > 1 ) then
@@ -2168,7 +2168,7 @@
            mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, x_nonods
       integer, dimension( : ), intent( in ) :: finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, IDs_ndgln
       real, dimension( :, :, : ), intent( inout ) :: material_absorption
-      type(state_type), dimension( : ) :: state  
+      type(state_type), dimension( : ) :: state
 
       real, dimension( stotel * cv_snloc * nphase_total, ndim ), intent( inout ) :: suf_sig_diagten_bc
 
@@ -2326,7 +2326,7 @@
 
                   end if
                end if
-               
+
             end do
          end do
 
@@ -2477,13 +2477,13 @@
 
       implicit none
 
-      integer, intent( in ) :: ndim, nphase, mat_nonods 
+      integer, intent( in ) :: ndim, nphase, mat_nonods
       type( state_type ), dimension( : ), intent( in ) :: states
       real, dimension( :, :, : ), intent( inout ) :: velocity_absorption
 
       type( vector_field ), pointer :: absorption
       integer :: iphase, idim
-      logical :: have_absorption 
+      logical :: have_absorption
       character( len = option_path_len ) :: option_path
 
       velocity_absorption = 0.
@@ -2501,7 +2501,7 @@
             end do
          else
             do idim = 1, ndim
-               velocity_absorption( :, idim + (iphase-1)*ndim, idim + (iphase-1)*ndim ) = 0.0 
+               velocity_absorption( :, idim + (iphase-1)*ndim, idim + (iphase-1)*ndim ) = 0.0
             end do
          end if
       end do
@@ -2514,7 +2514,7 @@
 
       implicit none
 
-      integer, intent( in ) :: ndim, nphase 
+      integer, intent( in ) :: ndim, nphase
       type( state_type ), dimension( : ), intent( in ) :: states
       real, dimension( :, :, : ), intent( inout ) :: sigma
 
@@ -2540,7 +2540,7 @@
 
       implicit none
 
-      integer, intent( in ) :: ndim, nphase, u_nonods 
+      integer, intent( in ) :: ndim, nphase, u_nonods
       type( state_type ), dimension( : ), intent( in ) :: states
       real, dimension( :, :, : ), intent( inout ) :: velocity_u_source
 
@@ -2563,7 +2563,7 @@
             end do
          else
             do idim = 1, ndim
-               velocity_u_source( idim, iphase, : ) = 0.0 
+               velocity_u_source( idim, iphase, : ) = 0.0
             end do
          end if
       end do
@@ -3315,7 +3315,7 @@ function JWL( A, B, w, R1, R2, E0, p,  roe, ro) result(fro)
       real, intent( in ) ::  A, B, w, R1, R2, E0, p,  roe, ro
       real :: fro
       real :: V
-      V=roe/ro      
+      V=roe/ro
       fro=(A*(1.0-w/(R1*V))*exp(-R1*V)+B*(1.0-w/(R2*V))*exp(-R2/V)+w*E0/V)-p
 end function JWL
 
@@ -3324,7 +3324,7 @@ end function JWL
 function diffJWL(A, B, w, R1, R2, E0, roe, ro)  result(difffro)
       implicit none
       real, intent( in ) ::  A, B, w, R1, R2, E0, roe, ro
-      real ::  difffro  
+      real ::  difffro
 
 difffro=(E0*w)/roe + (B*R2*exp(-(R2*ro)/roe)*((ro*w)/(R2*roe) - 1.0))/roe- (A*w*exp(-(R1*roe)/ro))/(R1*roe) - (B*w*exp(-(R2*ro)/roe))/(R2*roe)- (A*R1*roe*exp(-(R1*roe)/ro)*((ro*w)/(R1*roe) - 1.0))/ro**2.0
 
@@ -3359,15 +3359,15 @@ function JWLdensity(eos_coefs, pressure, ro0, JWLn) result(Rho)
  !              Rho=JWLdensity(eos_coefs, pressure%val, ro0, JWLn)
  !          end if
  !      end do
- 
 
-  
+
+
       do JWLi=1, JWLn
           if (pressure(JWLi)<JWL(eos_coefs( 2 ), eos_coefs( 3 ), eos_coefs( 7 ), eos_coefs( 4 ), eos_coefs( 5 ), eos_coefs( 6 ), 0.0,  eos_coefs( 1 ), 1.205) ) then
                 Rho(JWLi) = 1.205
-          elseif(pressure(JWLi)<1.0e6) then 
+          elseif(pressure(JWLi)<1.0e6) then
                 Rho(JWLi)=2.5*pressure(JWLi)/210217.842
-        
+
           else
 
           do JWLj=1, 10000
@@ -3381,7 +3381,7 @@ function JWLdensity(eos_coefs, pressure, ro0, JWLn) result(Rho)
            end if
       end do
 
-     
+
 
 !      deallocate(eos_coefs);
 !      deallocate(pressure);
