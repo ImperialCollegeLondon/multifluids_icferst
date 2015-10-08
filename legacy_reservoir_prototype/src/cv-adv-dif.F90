@@ -12640,8 +12640,10 @@ deallocate(NX_ALL)
                       ENDIF
                    ENDIF
                 END DO
-                ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
-                     &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+!                ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
+!                     &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+                ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, ICORNER1 ), X_ALL_CORN(:, ICORNER2) , &
+                     &                         X_ALL_CORN(:, ICORNER3 ), X_ALL_CORN(:, ICORNER4) )
              END IF
 
              ! Adjust according to the volume of the pipe...
@@ -13450,10 +13452,11 @@ deallocate(NX_ALL)
 
                 IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
 
-                DO CV_LILOC = 1, CV_LNLOC
-                   CV_ILOC = CV_GL_LOC(CV_LILOC)
-                   CV_GL_GL( CV_LILOC ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
-                END DO
+!                DO CV_LILOC = 1, CV_LNLOC
+!                   CV_ILOC = CV_GL_LOC(CV_LILOC)
+!                   CV_GL_GL( CV_LILOC ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
+!                END DO
+                CV_GL_GL( : ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_GL_LOC(:) )
 
 
                 ! DEFINE U_LILOC:
@@ -13468,10 +13471,11 @@ deallocate(NX_ALL)
 
                 IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
 
-                DO U_LILOC = 1, U_LNLOC
-                   U_ILOC = U_GL_LOC( U_LILOC )
-                   U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
-                END DO
+!                DO U_LILOC = 1, U_LNLOC
+!                   U_ILOC = U_GL_LOC( U_LILOC )
+!                   U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
+!                END DO
+                U_GL_GL(:) = U_NDGLN( (ELE-1)*U_NLOC + U_GL_LOC( : ) )
 
 
                 ! Calculate element angle sweeped out by element and pipe
@@ -13491,8 +13495,10 @@ deallocate(NX_ALL)
                          END IF
                       END IF
                    END DO
-                   ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
-                        &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+!                   ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
+!                        &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+                   ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, ICORNER1), X_ALL_CORN(:, ICORNER2) , &
+                        &                         X_ALL_CORN(:, ICORNER3), X_ALL_CORN(:, ICORNER4) )
                 END IF
 
                 DIRECTION(:) = X_ALL_CORN( :, CV_GL_LOC(CV_LNLOC) ) - X_ALL_CORN( :, CV_GL_LOC(1) )
