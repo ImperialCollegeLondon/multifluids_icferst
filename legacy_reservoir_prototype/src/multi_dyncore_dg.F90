@@ -2480,6 +2480,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
         REAL, DIMENSION( : ), allocatable :: sf_val_min
+        REAL, DIMENSION( :,: ), allocatable :: SIGMA
 
         !Variables to store things in state
         type(mesh_type), pointer :: fl_mesh
@@ -5876,9 +5877,16 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! **********REVIEWER 4-END**********************
 
 
-        if ( npres > 1 ) CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
+        if ( npres > 1 ) then
+           ALLOCATE(SIGMA(NPHASE,CV_NONODS)) 
+           DO IPHASE=1,NPHASE
+              SIGMA(IPHASE,:) = U_ABSORB( (IPHASE-1) *NDIM_VEL+1, (IPHASE-1) *NDIM_VEL+1, : )
+           END DO
+           CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
              &                                    C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, pivit_mat, &
-             &                                    CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL )
+             &                                    CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA )
+            DEALLOCATE(SIGMA) 
+        ENDIF
 
 
         ! This subroutine combines the distributed and block diagonal for an element

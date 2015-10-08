@@ -12264,7 +12264,7 @@ deallocate(NX_ALL)
     real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
     real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
     logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
-    logical :: UPWIND_PIPES, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES
+    logical :: UPWIND_PIPES, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL
     real :: LOC_CV_RHS_I(NPHASE)
 
     real :: cv_ldx, u_ldx, dx, ele_angle, cv_m, sigma_gi, M_CVFEM2PIPE, M_PIPE2CVFEM, rnorm_sign, suf_area, PIPE_DIAM_END, INFINY, MIN_DIAM
@@ -12287,6 +12287,7 @@ deallocate(NX_ALL)
     WIC_B_BC_DIRICHLET = 1
     INFINY=1.0E+20
     IGNORE_DIAGONAL_PIPES=.TRUE.
+    SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
 
     NCORNER = NDIM + 1
 
@@ -12722,19 +12723,23 @@ deallocate(NX_ALL)
                    END DO
 
                    ! Value of sigma in the force balance eqn...
-                   IF(PIPE_MIN_DIAM) THEN
-                      DO IPHASE = 1, NPHASE
-                         MIN_INV_SIG = MINVAL( INV_SIGMA(IPHASE,CV_GL_GL( : ) ) )
-                         INV_SIGMA_GI(IPHASE) = MIN_INV_SIG
-                      END DO
+                   IF(SOLVE_ACTUAL_VEL) THEN
+                      INV_SIGMA_GI=1.0
                    ELSE
-                      INV_SIGMA_GI(:) = 0.0
-                      DO CV_LKLOC = 1, CV_LNLOC
-                         CV_KNOD = CV_GL_GL(CV_LKLOC)
+                      IF(PIPE_MIN_DIAM) THEN
                          DO IPHASE = 1, NPHASE
-                            INV_SIGMA_GI(IPHASE) = INV_SIGMA_GI(IPHASE) + SBCVFEN( CV_LKLOC, BGI ) * INV_SIGMA(IPHASE,CV_KNOD)
+                            MIN_INV_SIG = MINVAL( INV_SIGMA(IPHASE,CV_GL_GL( : ) ) )
+                            INV_SIGMA_GI(IPHASE) = MIN_INV_SIG
                          END DO
-                      END DO
+                      ELSE
+                         INV_SIGMA_GI(:) = 0.0
+                         DO CV_LKLOC = 1, CV_LNLOC
+                            CV_KNOD = CV_GL_GL(CV_LKLOC)
+                            DO IPHASE = 1, NPHASE
+                               INV_SIGMA_GI(IPHASE) = INV_SIGMA_GI(IPHASE) + SBCVFEN( CV_LKLOC, BGI ) * INV_SIGMA(IPHASE,CV_KNOD)
+                            END DO
+                         END DO
+                      ENDIF
                    ENDIF
 
                    ! Velocity in the pipe
@@ -12859,7 +12864,11 @@ deallocate(NX_ALL)
                 PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD )
                 NDOTQ = 0.0
                 DO IPHASE = N_IN_PRES+1, NPHASE
-                   NDOTQ(IPHASE) = SUM( direction_norm(:) * U_ALL%val(:,IPHASE,JU_NOD) * INV_SIGMA_GI(IPHASE) )
+                   IF(SOLVE_ACTUAL_VEL) THEN
+                      NDOTQ(IPHASE) = SUM( direction_norm(:) * U_ALL%val(:,IPHASE,JU_NOD)  )
+                   ELSE
+                      NDOTQ(IPHASE) = SUM( direction_norm(:) * U_ALL%val(:,IPHASE,JU_NOD) * INV_SIGMA_GI(IPHASE) )
+                   ENDIF
                 END DO
 
                 INCOME(:) = 0.5*( 1. + SIGN(1.0, -NDOTQ(:)) )
@@ -13138,7 +13147,7 @@ deallocate(NX_ALL)
              else
                    ipipe = 1
                    pipe_corner_nds1(ipipe) = i
-                   pipe_corner_nds2(ipipe) = j																																																																		
+                   pipe_corner_nds2(ipipe) = j
                    ipipe = 2
                    pipe_corner_nds1(ipipe) = i
                    pipe_corner_nds2(ipipe) = k
@@ -13241,7 +13250,7 @@ deallocate(NX_ALL)
 
   SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
        &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, pivit_mat, &
-       &                         CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL )
+       &                         CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
     IMPLICIT NONE
@@ -13249,14 +13258,17 @@ deallocate(NX_ALL)
     TYPE(STATE_TYPE),INTENT(IN)::packed_STATE
 
     INTEGER, INTENT( IN ) :: CV_NONODS, NPRES, NPHASE, N_IN_PRES, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_SNLOC,STOTEL
+
     REAL, DIMENSION( :, :, : ), INTENT( INOUT ) :: U_RHS, C, pivit_mat
     REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL
+    REAL, DIMENSION( :, : ), INTENT( IN ) :: SIGMA
+
     INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, P_SNDGLN
     INTEGER, DIMENSION( :,:,: ), INTENT( IN ) :: WIC_P_BC_ALL
 
     LOGICAL, INTENT( IN ) :: GOT_C_MATRIX
 
-    LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES
+    LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL
     INTEGER :: CV_NCORNER, ELE, PIPE_NOD_COUNT, ICORNER, &
          &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, IDIM, &
          &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc
@@ -13277,6 +13289,7 @@ deallocate(NX_ALL)
     REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED
     REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN, SUF_P_BC_ALL_NODS, RVEC_SUM, LOC_U_RHS_U_ILOC
     REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL
+    REAL, DIMENSION( :, : ), ALLOCATABLE :: SIGMA_GI
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
     REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM ),DX, ELE_ANGLE, NN, suf_area, PIPE_DIAM_END, MIN_DIAM
@@ -13288,6 +13301,7 @@ deallocate(NX_ALL)
     ncorner = ndim + 1
     PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
     IGNORE_DIAGONAL_PIPES=.TRUE.
+    SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
 
     ! Set rhs of the force balce equation to zero just for the pipes...
     U_RHS( :, N_IN_PRES+1:NPHASE, : ) = 0.0
@@ -13334,6 +13348,7 @@ deallocate(NX_ALL)
        X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
        allocate( PIPE_DIAM_GI(scvngi) )
+       allocate( SIGMA_GI(NPHASE,scvngi) )
 
        ! Get the 1D shape functions...
        allocate( scvfeweigh(scvngi), &
@@ -13512,6 +13527,11 @@ deallocate(NX_ALL)
                 IF(PIPE_MIN_DIAM) THEN
                    MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
                    PIPE_DIAM_GI(:) = MIN_DIAM
+                   IF(SOLVE_ACTUAL_VEL) THEN
+                      DO IPHASE=N_IN_PRES+1,NPHASE
+                        SIGMA_GI(IPHASE,:) = MINVAL( SIGMA(IPHASE, CV_GL_GL( : ) ) )
+                      END DO
+                   ENDIF
                 ELSE
                    PIPE_DIAM_GI(:) = 0.0
                    DO CV_LILOC = 1, CV_LNLOC
@@ -13519,6 +13539,15 @@ deallocate(NX_ALL)
                       PIPE_DIAM_GI(:) = PIPE_DIAM_GI(:) + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
                    END DO
                    PIPE_DIAM_GI(:) = MAX(PIPE_DIAM_GI(:), 0.0)
+                   IF(SOLVE_ACTUAL_VEL) THEN
+                      SIGMA_GI(:,:)=0.0
+                      DO IPHASE=N_IN_PRES+1,NPHASE
+                         DO CV_LILOC = 1, CV_LNLOC
+                            CV_KNOD = CV_GL_GL( CV_LILOC )
+                            SIGMA_GI(IPHASE,:) = SIGMA_GI(IPHASE,:)  + SIGMA( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, : )
+                         END DO
+                      END DO
+                   ENDIF
                 ENDIF
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
@@ -13561,8 +13590,13 @@ deallocate(NX_ALL)
                    U_ILOC = U_GL_LOC( U_LILOC )
                    DO U_LJLOC = 1, U_LNLOC
                       U_JLOC = U_GL_LOC( U_LJLOC )
-                      NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
+                      IF(.NOT.SOLVE_ACTUAL_VEL) THEN
+                         NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
+                      ENDIF
                       DO IPHASE = N_IN_PRES+1, NPHASE
+                         IF(SOLVE_ACTUAL_VEL) THEN
+                            NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_GI(IPHASE,:) )
+                         ENDIF
                          JPHASE = IPHASE
                          DO IDIM = 1, NDIM
                             JDIM = IDIM
