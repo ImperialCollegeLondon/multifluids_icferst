@@ -2639,7 +2639,7 @@ contains
                c=0.0
                if ( mass_pipe( cv_nodi )>0.0 ) c=1.0
 
-               rp = 0.1 * h  ! = 0.1 * h**2
+               rp = 0.1 * h
                h = mass_cv( cv_nodi )**(1.0/ndim)
                Skin = 0.0
             end if
@@ -2666,16 +2666,14 @@ contains
                    IF(IPRES.NE.JPRES) THEN
                      IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                             !c * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
                              c * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
-                                 !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-                                 / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                            !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                             / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                      ELSE
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                             !c * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
                              c * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
-                                 !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-                                 / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                            !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                             / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                      END IF
 
                    ENDIF
@@ -2711,7 +2709,7 @@ contains
                c=0.0
                if ( mass_pipe( cv_nodi )>0.0 ) c=1.0
 
-               rp = 0.1 * h  ! = 0.1 * h**2
+               rp = 0.1 * h
                h = mass_cv( cv_nodi )**(1.0/ndim)
                Skin = 0.0
             end if
@@ -2741,17 +2739,15 @@ contains
                      IF ( DeltaP >= 0.0 ) THEN
                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
                              DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                             !c * 2.0 * pi * h * SIGMA_INV_APPROX( IPHASE, CV_NODI ) / ( log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
                              c * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
-                                 !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-                                 / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                            !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                             / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                      ELSE
                         PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
                              DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                             !c * 2.0 * pi * h * SIGMA_INV_APPROX( JPHASE, CV_NODI ) / ( log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin )
                              c * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
-                                 !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-                                 / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                            !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                             / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                      END IF
             endif
 
@@ -12801,7 +12797,7 @@ deallocate(NX_ALL)
                       DO U_LKLOC = 1, U_LNLOC
                          U_KNOD = U_GL_GL(U_LKLOC)
                          DO IDIM = 1, NDIM
-                            CT_CON(IDIM,:) = SBUFEN( U_LKLOC, BGI ) * LIMDT(:) * suf_DETWEI( BGI ) * DIRECTION_norm(IDIM) * INV_SIGMA_GI(:)
+                            CT_CON(IDIM,:) = SBUFEN( U_LKLOC, BGI ) * LIMDT(:) * suf_DETWEI( BGI ) * DIRECTION_norm(IDIM) !* INV_SIGMA_GI(:)
                          END DO
                          ! Put into CT matrix...
                          DO COUNT = FINDCT(CV_NODI), FINDCT(CV_NODI+1)-1
@@ -12903,7 +12899,7 @@ deallocate(NX_ALL)
 
                 IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS on the boundary...
                    DO IDIM = 1, NDIM
-                      CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:)
+                      CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) !* INV_SIGMA_GI(:)
                    END DO
                    ! Put into CT matrix...
                    COUNT2=0
