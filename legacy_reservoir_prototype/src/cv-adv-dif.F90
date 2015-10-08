@@ -2662,6 +2662,7 @@ contains
                      END IF
                   ELSE
                      ! This is the edge approach
+                     ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
                    IF(IPRES.NE.JPRES) THEN
                      IF ( CV_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > CV_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
@@ -12553,7 +12554,7 @@ deallocate(NX_ALL)
              CV_ILOC = CV_LOC_CORNER( ICORNER )
              CV_GL_LOC( CV_LILOC ) = CV_ILOC
 
-             IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
+             IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( ICORNER1, ICORNER2 )
 
              DO CV_LILOC = 1, CV_LNLOC
                 CV_ILOC = CV_GL_LOC(CV_LILOC)
@@ -12573,7 +12574,7 @@ deallocate(NX_ALL)
              U_ILOC = U_LOC_CORNER( ICORNER )
              U_GL_LOC( U_LILOC ) = U_ILOC
 
-             IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
+             IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
 
              DO U_LILOC = 1, U_LNLOC
                 U_ILOC = U_GL_LOC( U_LILOC )
@@ -12581,7 +12582,7 @@ deallocate(NX_ALL)
              END DO
 
 
-             DIRECTION(:) = X_ALL_CORN( :, CV_GL_LOC(CV_LNLOC) ) - X_ALL_CORN( :, CV_GL_LOC(1) )
+             DIRECTION(:) = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
              DX = SQRT( SUM( DIRECTION(:)**2 ) )
              DIRECTION(:) = DIRECTION(:) / DX
 
@@ -12635,8 +12636,10 @@ deallocate(NX_ALL)
                       ENDIF
                    ENDIF
                 END DO
-                ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
-                     &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+!                ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
+!                     &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+                ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, ICORNER1 ), X_ALL_CORN(:, ICORNER2) , &
+                     &                         X_ALL_CORN(:, ICORNER3 ), X_ALL_CORN(:, ICORNER4) )
              END IF
 
              ! Adjust according to the volume of the pipe...
@@ -13030,6 +13033,7 @@ deallocate(NX_ALL)
        pipe_corner_nds1, pipe_corner_nds2, npipes )
     ! Calculate the pipes within an element...
     ! Return the pipe corner nodes for each pipe in element.
+    IMPLICIT NONE
     INTEGER, intent( in ) :: NDIM, npipes
     REAL, intent( in ) :: X_ALL_CORN(NDIM,NDIM+1)
     LOGICAL, intent( in ) :: PIPE_INDEX_LOGICAL(NDIM+1)
@@ -13130,7 +13134,7 @@ deallocate(NX_ALL)
              else
                    ipipe = 1
                    pipe_corner_nds1(ipipe) = i
-                   pipe_corner_nds2(ipipe) = j
+                   pipe_corner_nds2(ipipe) = j																																																																		
                    ipipe = 2
                    pipe_corner_nds1(ipipe) = i
                    pipe_corner_nds2(ipipe) = k
@@ -13191,6 +13195,7 @@ deallocate(NX_ALL)
     ! Calculate element angle sweeped out by element and pipe
     ! X_ALL_CORN_PIPE1, X_ALL_CORN_PIPE2 are the coordinates of the ends of the pipe within an element.
     ! X_ALL_CORN_PIPE3, X_ALL_CORN_PIPE4 are the other corner 2 nodes of an element.
+    IMPLICIT NONE
     REAL, intent( in ) :: X_ALL_CORN_PIPE1(3), X_ALL_CORN_PIPE2(3),  X_ALL_CORN_PIPE3(3), X_ALL_CORN_PIPE4(3)
     REAL :: X_PIPE1(3), X_PIPE2(3), X_PIPE3(3), X_PIPE4(3)
     REAL :: X_PIPE3_N(3), X_PIPE4_N(3)
@@ -13235,6 +13240,7 @@ deallocate(NX_ALL)
        &                         CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
+    IMPLICIT NONE
     TYPE(STATE_TYPE),DIMENSION(:),INTENT(IN)::STATE
     TYPE(STATE_TYPE),INTENT(IN)::packed_STATE
 
@@ -13440,12 +13446,13 @@ deallocate(NX_ALL)
                 CV_ILOC = CV_LOC_CORNER( ICORNER )
                 CV_GL_LOC( CV_LILOC ) = CV_ILOC
 
-                IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
+                IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( ICORNER1, ICORNER2 )
 
-                DO CV_LILOC = 1, CV_LNLOC
-                   CV_ILOC = CV_GL_LOC(CV_LILOC)
-                   CV_GL_GL( CV_LILOC ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
-                END DO
+!                DO CV_LILOC = 1, CV_LNLOC
+!                   CV_ILOC = CV_GL_LOC(CV_LILOC)
+!                   CV_GL_GL( CV_LILOC ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
+!                END DO
+                CV_GL_GL( : ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_GL_LOC(:) )
 
 
                 ! DEFINE U_LILOC:
@@ -13458,12 +13465,13 @@ deallocate(NX_ALL)
                 U_ILOC = U_LOC_CORNER( ICORNER )
                 U_GL_LOC( U_LILOC ) = U_ILOC
 
-                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
+                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
 
-                DO U_LILOC = 1, U_LNLOC
-                   U_ILOC = U_GL_LOC( U_LILOC )
-                   U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
-                END DO
+!                DO U_LILOC = 1, U_LNLOC
+!                   U_ILOC = U_GL_LOC( U_LILOC )
+!                   U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
+!                END DO
+                U_GL_GL(:) = U_NDGLN( (ELE-1)*U_NLOC + U_GL_LOC( : ) )
 
 
                 ! Calculate element angle sweeped out by element and pipe
@@ -13483,11 +13491,13 @@ deallocate(NX_ALL)
                          END IF
                       END IF
                    END DO
-                   ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
-                        &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+!                   ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
+!                        &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
+                   ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, ICORNER1), X_ALL_CORN(:, ICORNER2) , &
+                        &                         X_ALL_CORN(:, ICORNER3), X_ALL_CORN(:, ICORNER4) )
                 END IF
 
-                DIRECTION(:) = X_ALL_CORN( :, CV_GL_LOC(CV_LNLOC) ) - X_ALL_CORN( :, CV_GL_LOC(1) )
+                DIRECTION(:) = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
                 DX = SQRT( SUM( DIRECTION(:)**2 ) )
                 DIRECTION(:) = DIRECTION(:) / DX
 
@@ -13653,6 +13663,7 @@ deallocate(NX_ALL)
   SUBROUTINE CALC_CORNER_NODS( CV_LOC_CORNER, NDIM, CV_NLOC, CV_QUADRATIC, CV_MID_SIDE )
     ! Calculate the local corner nodes...
     ! CV_MID_SIDE(ICORN,JCORN)= CV_ILOC local node number for node between these two corner nodes
+    IMPLICIT NONE
     INTEGER, INTENT( IN ) :: CV_NLOC, NDIM
     INTEGER, DIMENSION( : ), INTENT( INOUT ) :: CV_LOC_CORNER
     INTEGER, DIMENSION( :, : ), INTENT( INOUT ) :: CV_MID_SIDE
