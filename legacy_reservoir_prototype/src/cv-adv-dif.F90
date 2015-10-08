@@ -12558,7 +12558,7 @@ deallocate(NX_ALL)
              CV_ILOC = CV_LOC_CORNER( ICORNER )
              CV_GL_LOC( CV_LILOC ) = CV_ILOC
 
-             IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
+             IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( ICORNER1, ICORNER2 )
 
              DO CV_LILOC = 1, CV_LNLOC
                 CV_ILOC = CV_GL_LOC(CV_LILOC)
@@ -12578,7 +12578,7 @@ deallocate(NX_ALL)
              U_ILOC = U_LOC_CORNER( ICORNER )
              U_GL_LOC( U_LILOC ) = U_ILOC
 
-             IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
+             IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
 
              DO U_LILOC = 1, U_LNLOC
                 U_ILOC = U_GL_LOC( U_LILOC )
@@ -12586,7 +12586,7 @@ deallocate(NX_ALL)
              END DO
 
 
-             DIRECTION(:) = X_ALL_CORN( :, CV_GL_LOC(CV_LNLOC) ) - X_ALL_CORN( :, CV_GL_LOC(1) )
+             DIRECTION(:) = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
              DX = SQRT( SUM( DIRECTION(:)**2 ) )
              DIRECTION(:) = DIRECTION(:) / DX
 
@@ -13450,7 +13450,7 @@ deallocate(NX_ALL)
                 CV_ILOC = CV_LOC_CORNER( ICORNER )
                 CV_GL_LOC( CV_LILOC ) = CV_ILOC
 
-                IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
+                IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( ICORNER1, ICORNER2 )
 
 !                DO CV_LILOC = 1, CV_LNLOC
 !                   CV_ILOC = CV_GL_LOC(CV_LILOC)
@@ -13469,7 +13469,7 @@ deallocate(NX_ALL)
                 U_ILOC = U_LOC_CORNER( ICORNER )
                 U_GL_LOC( U_LILOC ) = U_ILOC
 
-                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( pipe_corner_nds1(IPIPE), pipe_corner_nds2(IPIPE) )
+                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
 
 !                DO U_LILOC = 1, U_LNLOC
 !                   U_ILOC = U_GL_LOC( U_LILOC )
@@ -13501,7 +13501,7 @@ deallocate(NX_ALL)
                         &                         X_ALL_CORN(:, ICORNER3), X_ALL_CORN(:, ICORNER4) )
                 END IF
 
-                DIRECTION(:) = X_ALL_CORN( :, CV_GL_LOC(CV_LNLOC) ) - X_ALL_CORN( :, CV_GL_LOC(1) )
+                DIRECTION(:) = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
                 DX = SQRT( SUM( DIRECTION(:)**2 ) )
                 DIRECTION(:) = DIRECTION(:) / DX
 
