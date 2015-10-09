@@ -2615,7 +2615,7 @@ contains
          IF ( PIPES_1D ) THEN
             CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, SMALL_FINDRM, SMALL_COLM, &
                  U_NONODS,U_SNLOC,CV_SNLOC,STOTEL,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-                 cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
+                 cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
                  findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, mass_pipe, SIGMA_INV_APPROX )
 
             ! Used for pipe modelling...
@@ -12214,7 +12214,7 @@ deallocate(NX_ALL)
 
   SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, FINACV, COLACV, &
        U_NONODS,U_SNLOC,CV_SNLOC,STOTEL,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
+       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
        findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, mass_pipe, INV_SIGMA )
 
     ! This sub modified either CT or the Advection-diffusion equation for 1D pipe modelling
@@ -12224,7 +12224,7 @@ deallocate(NX_ALL)
 
     INTEGER, intent( in ) :: nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, cv_nonods, totele, CV_SNLOC, U_SNLOC, STOTEL, U_NONODS
     integer, dimension(:), intent( in ), target :: FINACV, COLACV
-    integer, dimension(:), intent( in ) :: cv_ndgln, x_ndgln, u_ndgln, findct, colct, findcmc, colcmc
+    integer, dimension(:), intent( in ) :: cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, findct, colct, findcmc, colcmc
     integer, dimension(:), intent( in ) :: CV_SNDGLN, U_SNDGLN
     integer, dimension(:,:,:), intent( in ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL
     real, dimension(:,:,:), intent( in ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL
@@ -12243,7 +12243,7 @@ deallocate(NX_ALL)
     INTEGER :: cv_ncorner, cv_lnloc, u_lnloc, i_indx, j_indx, ele, cv_gi, iloop, ICORNER, NPIPES, i
 
     integer, dimension(:), pointer :: cv_neigh_ptr
-    integer, dimension(:), allocatable:: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, u_GL_LOC, u_GL_GL, &
+    integer, dimension(:), allocatable:: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, u_GL_LOC, u_GL_GL, &
          pipe_corner_nds1, pipe_corner_nds2
     INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE
 
@@ -12269,7 +12269,7 @@ deallocate(NX_ALL)
     integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
          u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
          icorner1, icorner2, icorner3, icorner4, WIC_B_BC_DIRICHLET, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
-         U_NOD, U_SILOC, COUNT2
+         U_NOD, U_SILOC, COUNT2, MAT_KNOD
 
     real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
 
@@ -12486,7 +12486,7 @@ deallocate(NX_ALL)
     END IF
 
 
-    allocate( CV_GL_LOC( cv_lnloc ), CV_GL_GL( cv_lnloc ), X_GL_GL( cv_lnloc ), &
+    allocate( CV_GL_LOC( cv_lnloc ), CV_GL_GL( cv_lnloc ), X_GL_GL( cv_lnloc ), MAT_GL_GL( cv_lnloc ), &
          U_GL_LOC( u_lnloc ), U_GL_GL( u_lnloc ) )
 
     allocate( pipe_corner_nds1(ndim), pipe_corner_nds2(ndim), direction(ndim), direction_NORM(ndim)  )
@@ -12562,6 +12562,7 @@ deallocate(NX_ALL)
                 X_ILOC = CV_ILOC
                 CV_GL_GL( CV_LILOC ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
                 X_GL_GL( CV_LILOC ) = X_NDGLN( (ELE-1)*CV_NLOC + X_ILOC )
+                MAT_GL_GL( CV_LILOC ) = MAT_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
              END DO
 
 
@@ -12724,15 +12725,15 @@ deallocate(NX_ALL)
                    ELSE
                       IF(PIPE_MIN_DIAM) THEN
                          DO IPHASE = 1, NPHASE
-                            MIN_INV_SIG = MINVAL( INV_SIGMA(IPHASE,CV_GL_GL( : ) ) )
+                            MIN_INV_SIG = MINVAL( INV_SIGMA(IPHASE,MAT_GL_GL( : ) ) )
                             INV_SIGMA_GI(IPHASE) = MIN_INV_SIG
                          END DO
                       ELSE
                          INV_SIGMA_GI(:) = 0.0
                          DO CV_LKLOC = 1, CV_LNLOC
-                            CV_KNOD = CV_GL_GL(CV_LKLOC)
+                            MAT_KNOD = MAT_GL_GL(CV_LKLOC)
                             DO IPHASE = 1, NPHASE
-                               INV_SIGMA_GI(IPHASE) = INV_SIGMA_GI(IPHASE) + SBCVFEN( CV_LKLOC, BGI ) * INV_SIGMA(IPHASE,CV_KNOD)
+                               INV_SIGMA_GI(IPHASE) = INV_SIGMA_GI(IPHASE) + SBCVFEN( CV_LKLOC, BGI ) * INV_SIGMA(IPHASE,MAT_KNOD)
                             END DO
                          END DO
                       ENDIF
@@ -13245,7 +13246,7 @@ deallocate(NX_ALL)
 
 
   SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
-       &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, pivit_mat, &
+       &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
        &                         CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
@@ -13259,16 +13260,16 @@ deallocate(NX_ALL)
     REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL
     REAL, DIMENSION( :, : ), INTENT( IN ) :: SIGMA
 
-    INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, FINDC, COLC, P_SNDGLN
+    INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, P_SNDGLN
     INTEGER, DIMENSION( :,:,: ), INTENT( IN ) :: WIC_P_BC_ALL
 
     LOGICAL, INTENT( IN ) :: GOT_C_MATRIX
 
     LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL
     INTEGER :: CV_NCORNER, ELE, PIPE_NOD_COUNT, ICORNER, &
-         &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, IDIM, &
+         &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
          &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc
-    INTEGER, DIMENSION(:), ALLOCATABLE :: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, U_GL_LOC, U_GL_GL
+    INTEGER, DIMENSION(:), ALLOCATABLE :: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, U_GL_LOC, U_GL_GL
     INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE, WIC_P_BC_ALL_NODS
     TYPE(SCALAR_FIELD), POINTER :: PIPE_DIAMETER
     TYPE(VECTOR_FIELD), POINTER :: X
@@ -13385,7 +13386,7 @@ deallocate(NX_ALL)
           CV_LNLOC = 2
        END IF
 
-       allocate( CV_GL_LOC(cv_lnloc), CV_GL_GL(cv_lnloc), X_GL_GL(cv_lnloc) )
+       allocate( CV_GL_LOC(cv_lnloc), CV_GL_GL(cv_lnloc), X_GL_GL(cv_lnloc), MAT_GL_GL(cv_lnloc) )
        allocate( U_GL_LOC(U_lnloc), U_GL_GL(U_lnloc) )
 
 
@@ -13463,12 +13464,8 @@ deallocate(NX_ALL)
 
                 IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( ICORNER1, ICORNER2 )
 
-!                DO CV_LILOC = 1, CV_LNLOC
-!                   CV_ILOC = CV_GL_LOC(CV_LILOC)
-!                   CV_GL_GL( CV_LILOC ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
-!                END DO
                 CV_GL_GL( : ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_GL_LOC(:) )
-
+                MAT_GL_GL( : ) = MAT_NDGLN( (ELE-1)*CV_NLOC + CV_GL_LOC(:) )
 
                 ! DEFINE U_LILOC:
                 U_LILOC = 1
@@ -13482,10 +13479,6 @@ deallocate(NX_ALL)
 
                 IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
 
-!                DO U_LILOC = 1, U_LNLOC
-!                   U_ILOC = U_GL_LOC( U_LILOC )
-!                   U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
-!                END DO
                 U_GL_GL(:) = U_NDGLN( (ELE-1)*U_NLOC + U_GL_LOC( : ) )
 
 
@@ -13524,8 +13517,8 @@ deallocate(NX_ALL)
                    MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
                    PIPE_DIAM_GI(:) = MIN_DIAM
                    IF(SOLVE_ACTUAL_VEL) THEN
-                      DO IPHASE=N_IN_PRES+1,NPHASE
-                        SIGMA_GI(IPHASE,:) = MINVAL( SIGMA(IPHASE, CV_GL_GL( : ) ) )
+                      DO IPHASE = N_IN_PRES+1, NPHASE
+                        SIGMA_GI(IPHASE,:) = MINVAL( SIGMA(IPHASE, MAT_GL_GL( : ) ) )
                       END DO
                    ENDIF
                 ELSE
@@ -13539,8 +13532,8 @@ deallocate(NX_ALL)
                       SIGMA_GI(:,:)=0.0
                       DO IPHASE=N_IN_PRES+1,NPHASE
                          DO CV_LILOC = 1, CV_LNLOC
-                            CV_KNOD = CV_GL_GL( CV_LILOC )
-                            SIGMA_GI(IPHASE,:) = SIGMA_GI(IPHASE,:)  + SIGMA( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, : )
+                            MAT_KNOD = MAT_GL_GL( CV_LILOC )
+                            SIGMA_GI(IPHASE,:) = SIGMA_GI(IPHASE,:)  + SIGMA( IPHASE, MAT_KNOD ) * SCVFEN( CV_LILOC, : )
                          END DO
                       END DO
                    ENDIF
