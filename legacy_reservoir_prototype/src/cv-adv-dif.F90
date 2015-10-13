@@ -38,7 +38,7 @@ module cv_advection
 
   use solvers_module
   use spud
-  use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media, pi
+  use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media, pi, after_adapt
   use futils, only: int2str
   use adapt_state_prescribed_module
   use sparse_tools
@@ -74,6 +74,8 @@ module cv_advection
 
    type(csr_matrix) :: mat1
    type(csr_matrix) :: mat2
+
+   real, allocatable, dimension(:,:,:) :: u_rhs_store
 
 #include "petsc_legacy.h"
 
@@ -13247,14 +13249,14 @@ deallocate(NX_ALL)
 
   SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
        &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
-       &                         CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA )
+       &                         CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
     IMPLICIT NONE
     TYPE(STATE_TYPE),DIMENSION(:),INTENT(IN)::STATE
     TYPE(STATE_TYPE),INTENT(IN)::packed_STATE
 
-    INTEGER, INTENT( IN ) :: CV_NONODS, NPRES, NPHASE, N_IN_PRES, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_SNLOC,STOTEL
+    INTEGER, INTENT( IN ) :: CV_NONODS, U_NONODS, NPRES, NPHASE, N_IN_PRES, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_SNLOC,STOTEL
 
     REAL, DIMENSION( :, :, : ), INTENT( INOUT ) :: U_RHS, C, pivit_mat
     REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL
@@ -13303,9 +13305,11 @@ deallocate(NX_ALL)
     ! Set rhs of the force balce equation to zero just for the pipes...
     U_RHS( :, N_IN_PRES+1:NPHASE, : ) = 0.0
 
-
     ! Calculate C:
     IF ( .NOT.GOT_C_MATRIX ) THEN
+
+       if ( after_adapt ) deallocate( U_RHS_STORE )
+       allocate(  U_RHS_STORE( NDIM, NPHASE, U_NONODS ) ) ; U_RHS_STORE=0.0
 
        DO U_ILOC = 1, U_NLOC
           DO U_JLOC = 1, U_NLOC
@@ -13345,7 +13349,7 @@ deallocate(NX_ALL)
        X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
        allocate( PIPE_DIAM_GI(scvngi) )
-       allocate( SIGMA_GI(NPHASE,scvngi) )
+       allocate( SIGMA_GI(NPHASE,scvngi) ) ; SIGMA_GI=1.0
 
        ! Get the 1D shape functions...
        allocate( scvfeweigh(scvngi), &
@@ -13662,6 +13666,8 @@ deallocate(NX_ALL)
 
        END DO ! DO ELE = 1, TOTELE
 
+       U_RHS_STORE( :, N_IN_PRES+1:NPHASE, : ) = U_RHS( :, N_IN_PRES+1:NPHASE, : )
+
        DO U_ILOC = 1, U_NLOC
           U_JLOC = U_ILOC
           DO IPHASE = N_IN_PRES+1, NPHASE
@@ -13677,6 +13683,9 @@ deallocate(NX_ALL)
           END DO
        END DO
 
+    ELSE
+
+       U_RHS( :, N_IN_PRES+1:NPHASE, : ) = U_RHS_STORE( :, N_IN_PRES+1:NPHASE, : )
 
     END IF ! IF ( .NOT.GOT_C_MATRIX ) THEN
 
