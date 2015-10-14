@@ -1241,7 +1241,7 @@ contains
             TOTELE, U_NLOC, U_NDGLN, &
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
-            MASS_PIPE, MASS_CVFEM2PIPE,  &
+            MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
             got_free_surf,  MASS_SUF, &
             C, CT, storage_state, StorageIndexes(11), halo, symmetric_P )
         END IF
@@ -1418,8 +1418,18 @@ END IF
                DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                   CV_JNOD = COLCMC( COUNT )
                   DO IPRES = 1, NPRES
-                     rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                     IF (( NPRES > 1 ).AND.PIPES_1D) THEN
+                        IF(IPRES==1) THEN
+                           rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                           -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                        ELSE
+                           rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                           -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_CVFEM2PIPE_TRUE( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                        ENDIF
+                     ELSE
+                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                           -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                     ENDIF
                      if ( got_free_surf ) then
                         rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                              -MASS_SUF( COUNT ) * ( P_ALL%VAL( 1, IPRES, CV_JNOD ) - POLD_ALL%VAL( 1, IPRES, CV_JNOD ) )
@@ -1558,20 +1568,50 @@ end if
 
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         CVP_ALL%VAL = 0.0
-        MASS_CV = 0.0
-        DO CV_NOD = 1, CV_NONODS
-           if (node_owned(CVP_all,CV_NOD)) then
-              DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
-                 CVP_all%val( 1, :, CV_NOD ) = CVP_all%val( 1, :, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, :, COLCMC( COUNT ) )
-                 MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
-              END DO
-           else
-              Mass_CV(CV_NOD)=1.0
-           end if
-        END DO
-        DO IPRES = 1, NPRES
+        IF(NPRES>1.AND.PIPES_1D) THEN
+           MASS_CV = 0.0
+           IPRES = 1
+           DO CV_NOD = 1, CV_NONODS
+              if (node_owned(CVP_all,CV_NOD)) then
+                 DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                    CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, IPRES, COLCMC( COUNT ) )
+                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                 END DO
+              else
+                 Mass_CV(CV_NOD)=1.0
+              end if
+           END DO
            CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
-        END DO
+
+           MASS_CV = 0.0
+           IPRES = NPRES
+           DO CV_NOD = 1, CV_NONODS
+              if (node_owned(CVP_all,CV_NOD)) then
+                 DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                    CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, COLCMC( COUNT ) )
+                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT )
+                 END DO
+              else
+                 Mass_CV(CV_NOD)=1.0
+              end if
+           END DO
+           CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+        ELSE
+           MASS_CV = 0.0
+           DO CV_NOD = 1, CV_NONODS
+              if (node_owned(CVP_all,CV_NOD)) then
+                 DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                    CVP_all%val( 1, :, CV_NOD ) = CVP_all%val( 1, :, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, :, COLCMC( COUNT ) )
+                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                 END DO
+              else
+                 Mass_CV(CV_NOD)=1.0
+              end if
+           END DO
+           DO IPRES = 1, NPRES
+              CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+           END DO
+        ENDIF
         call halo_update(CVP_all)
 
         DEALLOCATE( CT )
