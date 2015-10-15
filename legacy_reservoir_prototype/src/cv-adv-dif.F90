@@ -3022,7 +3022,6 @@ end if
 
          END DO  ! endof DO CV_NODI = 1, CV_NONODS
 
-
          deallocate(ct_rhs_phase, DIAG_SCALE_PRES_phase)
          !deallocate(R_PRES,R_PHASE,MEAN_PORE_CV_PHASE)
 
@@ -12211,7 +12210,7 @@ deallocate(NX_ALL)
     real, dimension(:,:,:), intent( in ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL
     real, dimension(:,:,:,:), intent( in ) :: OPT_VEL_UPWIND_COEFS_NEW
     real, dimension(:,:,:),intent( inout ) :: ct
-    real, dimension(:,:),intent( inOUT ) :: INV_SIGMA, INV_SIGMA_NANO
+    real, dimension(:,:),intent( inout ) :: INV_SIGMA, INV_SIGMA_NANO
     type(vector_field), intent( inout ) :: CV_RHS_field, CT_RHS
     real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
     real, dimension(:),intent( inout ) :: mass_pipe, MASS_PIPE_FOR_COUP ! of length cv_nonods
@@ -12347,7 +12346,7 @@ deallocate(NX_ALL)
        end do
     end do
 
-! Adjust DX for volume integrations... 
+    ! Adjust DX for volume integrations...
     allocate(CVN_VOL_ADJ(CV_LNLOC))
     CVN_VOL_ADJ=0.5
     IF(CV_LNLOC==3) THEN
@@ -12502,11 +12501,7 @@ deallocate(NX_ALL)
     mass_pipe = 0.0; MASS_PIPE_FOR_COUP = 0.0
     MASS_CVFEM2PIPE = 0.0; MASS_PIPE2CVFEM = 0.0; MASS_CVFEM2PIPE_TRUE = 0.0
 
-    DO IPHASE=1,N_IN_PRES
-       INV_SIGMA(IPHASE,:) = 0.0
-       INV_SIGMA_NANO(IPHASE,:) = 0.0
-    END DO
-
+    INV_SIGMA(1:N_IN_PRES,:) = 0.0; INV_SIGMA_NANO(1:N_IN_PRES,:) = 0.0
 
 
     DO ELE = 1, TOTELE
@@ -12634,8 +12629,6 @@ deallocate(NX_ALL)
                       ENDIF
                    ENDIF
                 END DO
-!                ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
-!                     &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3 )), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
                 ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, ICORNER1 ), X_ALL_CORN(:, ICORNER2) , &
                      &                         X_ALL_CORN(:, ICORNER3 ), X_ALL_CORN(:, ICORNER4) )
              END IF
@@ -12691,40 +12684,42 @@ deallocate(NX_ALL)
                 END DO
              END IF
 
-! Calculate INV_SIGMA_APPROX for the 1st N_IN_PRES phases...
+             ! Calculate INV_SIGMA_APPROX for the 1st N_IN_PRES phases...
 
-! Determine the tangent and bi-normal vectors from the normal NormX, NormY, NormZ: 
+             ! Determine the tangent and bi-normal vectors from the normal NormX, NormY, NormZ:
              IF(NDIM==2) THEN
                 RZ=0.0
                 CALL GET_TANG_BINORM( DIRECTION(1), DIRECTION(2), RZ,           T1(1), T1(2), R1,    T2(1), T2(2), R2, 1 )
              ELSE
                 CALL GET_TANG_BINORM( DIRECTION(1), DIRECTION(2), DIRECTION(3), T1(1), T1(2), T1(3), T2(1), T2(2), T2(3), 1 )
-             ENDIF
+             END IF
 
              DO CV_LILOC = 1, CV_LNLOC
                 MAT_NODI = MAT_GL_GL(CV_LILOC)
-                DO IPHASE=1,N_IN_PRES
-                   TT1(:)=MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T1(:)) 
-                   T1TT1=SUM(T1(:)*TT1(:))
-                   IF(NDIM==3) THEN
-                      TT2(:)=MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T2(:)) 
-                   
-                      T1TT2=SUM(T1(:)*TT2(:))
-                      T2TT1=SUM(T2(:)*TT1(:))
-                      T2TT2=SUM(T2(:)*TT2(:))
+                CV_NODI = CV_GL_GL(CV_LILOC)
+
+                DO IPHASE = 1, N_IN_PRES
+                   TT1(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T1(:) )
+                   T1TT1 = SUM(T1(:)*TT1(:))
+                   IF ( NDIM==3 ) THEN
+                      TT2(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), T2(:) )
+
+                      T1TT2 = SUM( T1(:)*TT2(:) )
+                      T2TT1 = SUM( T2(:)*TT1(:) )
+                      T2TT2 = SUM( T2(:)*TT2(:) )
                    ELSE
-                      T1TT2=0.0
-                      T2TT1=0.0
-                      T2TT2=T1TT1
-                   ENDIF
+                      T1TT2 = 0.0
+                      T2TT1 = 0.0
+                      T2TT2 = T1TT1
+                   END IF
                    DET_SQRT = SQRT( ABS( T1TT1*T2TT2 - T1TT2*T2TT1 ) )
-                   INV_SIGMA_ND = 1.0/MAX(1.E-25, DET_SQRT)
-                   INV_SIGMA(IPHASE,MAT_NODI) = INV_SIGMA(IPHASE,MAT_NODI) + INV_SIGMA_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
-! For the nano laterals...
-                   NN1(:)=MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), DIRECTION(:)) 
-                   N1NN1=SUM(DIRECTION(:)*NN1(:))
+                   INV_SIGMA_ND = 1.0 / MAX( 1.E-25, DET_SQRT)
+                   INV_SIGMA(IPHASE,CV_NODI) = INV_SIGMA(IPHASE,CV_NODI) + INV_SIGMA_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
+                   ! For the nano laterals...
+                   NN1(:) = MATMUL( OPT_VEL_UPWIND_COEFS_NEW(:,:,IPHASE, MAT_NODI), DIRECTION(:) )
+                   N1NN1 = SUM( DIRECTION(:)*NN1(:) )
                    INV_SIGMA_NANO_ND = 1.0/MAX(1.E-25, N1NN1)
-                   INV_SIGMA_NANO(IPHASE,MAT_NODI) = INV_SIGMA_NANO(IPHASE,MAT_NODI) + INV_SIGMA_NANO_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
+                   INV_SIGMA_NANO(IPHASE,CV_NODI) = INV_SIGMA_NANO(IPHASE,CV_NODI) + INV_SIGMA_NANO_ND * SUM( CVN(CV_LILOC,:) * CVN_VOL_ADJ(CV_LILOC) * VOL_DETWEI( : ) )
                 END DO
              END DO
 
@@ -12751,7 +12746,7 @@ deallocate(NX_ALL)
                    TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
                    TUPWIND_IN=0.0; DUPWIND_IN=0.0
                    DO IPHASE = N_IN_PRES+1, NPHASE
- !                     IF(NDOTQ(IPHASE)>0.0) THEN ! This is for outgoing T:
+
                          IF ( T_ALL%val( 1, IPHASE, CV_NODI ) > T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
                             TUPWIND_OUT( IPHASE ) = TMAX_ALL( IPHASE, CV_NODI )
                          ELSE
@@ -12762,7 +12757,7 @@ deallocate(NX_ALL)
                          ELSE
                             DUPWIND_OUT( IPHASE ) = DENMIN_ALL( IPHASE, CV_NODI )
                          END IF
- !                     ELSE ! This is for incomming T:
+
                          IF ( T_ALL%val( 1, IPHASE, CV_NODI ) < T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
                             TUPWIND_IN( IPHASE ) = TMAX_ALL( IPHASE, CV_NODJ )
                          ELSE
@@ -12773,15 +12768,15 @@ deallocate(NX_ALL)
                          ELSE
                             DUPWIND_IN( IPHASE ) = DENMIN_ALL( IPHASE, CV_NODJ )
                          END IF
- !                     ENDIF
+
                    END DO
 
 
                    ! Value of sigma in the force balance eqn...
-                   IF(SOLVE_ACTUAL_VEL) THEN
-                      INV_SIGMA_GI=1.0
+                   IF ( SOLVE_ACTUAL_VEL ) THEN
+                      INV_SIGMA_GI = 1.0
                    ELSE
-                      IF(PIPE_MIN_DIAM) THEN
+                      IF ( PIPE_MIN_DIAM ) THEN
                          DO IPHASE = 1, NPHASE
                             MIN_INV_SIG = MINVAL( INV_SIGMA(IPHASE,MAT_GL_GL( : ) ) )
                             INV_SIGMA_GI(IPHASE) = MIN_INV_SIG
@@ -12794,11 +12789,11 @@ deallocate(NX_ALL)
                                INV_SIGMA_GI(IPHASE) = INV_SIGMA_GI(IPHASE) + SBCVFEN( CV_LKLOC, BGI ) * INV_SIGMA(IPHASE,MAT_KNOD)
                             END DO
                          END DO
-                      ENDIF
+                      END IF
                       IF(CALC_SIGMA_PIPE) THEN
                           STOP 'OPTION NOT READY YET AS WE NEED TO CALCULATE INV_SIGMA_GI WHICH IS A FUNCTION OF VELOCITY'
-                      ENDIF
-                   ENDIF
+                      END IF
+                   END IF
 
 
                    ! Velocity in the pipe
@@ -12822,8 +12817,6 @@ deallocate(NX_ALL)
                       INCOME_J = 1.0
                    END WHERE
                    INCOME = 1.0 - INCOME_J
-
-
 
 
                    ! high order values...
@@ -13016,14 +13009,11 @@ deallocate(NX_ALL)
 
     END DO ! DO ELE = 1, TOTELE
 
-
-    DO IPHASE=1,N_IN_PRES
-       INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) /MAX(MASS_PIPE(:),1.E-15) 
-       INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) /MAX(MASS_PIPE(:),1.E-15) 
-       INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) /MAX(MASS_PIPE_FOR_COUP(:),1.E-15) ! we divid by this so that we get the right source term 
-! for nano-laterals 
+    DO IPHASE = 1, N_IN_PRES
+       INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
+       INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
+       INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE_FOR_COUP(:), 1.E-15 ) ! we divide by this so that we get the right source term
     END DO
-
 
     IF ( GETCV_DISC ) THEN
        do iphase = n_in_pres+1, nphase

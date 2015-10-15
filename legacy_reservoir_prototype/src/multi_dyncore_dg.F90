@@ -1392,9 +1392,6 @@ ELSE
 
 END IF
 
-
-
-
             rhs_p%val = -rhs_p%val + CT_RHS%val
 
             if(got_free_surf) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
@@ -1455,13 +1452,6 @@ END IF
             'prognostic/reference_node', ndpset, default = 0 )
             if ( ndpset /= 0 ) rhs_p%val( 1, ndpset ) = 0.0
 
-
-if ( .false. ) then
-             rhs_p%val( 2, 226 ) = 100.0 ! top
-             rhs_p%val( 2, 151 ) = 0.0 ! bottom
-end if
-
-
             ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
             ewrite(3,*)'about to solve for pressure'
 
@@ -1518,17 +1508,15 @@ end if
                 call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
             end if
 
-            if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver &
-                 .and. nonlinear_iteration == 1) then!For discontinuous mesh
-            !We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
-                !Solver that agglomerates all the DG informaton into a CG mesh
-                call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
+            if ( (x_nonods /= cv_nonods) .and. use_continuous_pressure_solver &
+                 .and. nonlinear_iteration == 1 ) then !For discontinuous mesh
+               ! We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
+               ! Solver that agglomerates all the DG informaton into a CG mesh
+               call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
                     NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
                     totele, cv_nloc, x_nonods, x_ndgln, trim(pressure%option_path))
             else
-
                call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
-
             end if
 
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
@@ -1542,7 +1530,7 @@ end if
 
             ! Use a projection method
             ! CDP = C * DP
-!            CALL C_MULT2( CDP_tensor%val, deltap%val, CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC )
+            !CALL C_MULT2( CDP_tensor%val, deltap%val, CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC )
 
             DO IPRES = 1, NPRES
                CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*n_in_pres : ipres*n_in_pres, : ), deltap%val( IPRES, : ), &
@@ -1589,7 +1577,7 @@ end if
               if (node_owned(CVP_all,CV_NOD)) then
                  DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                     CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, COLCMC( COUNT ) )
-                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT )
+                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + max( 1.0e-15, MASS_CVFEM2PIPE_TRUE( COUNT ) )
                  END DO
               else
                  Mass_CV(CV_NOD)=1.0
@@ -1613,6 +1601,7 @@ end if
            END DO
         ENDIF
         call halo_update(CVP_all)
+
 
         DEALLOCATE( CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B )
