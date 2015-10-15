@@ -159,7 +159,7 @@ contains
     logical :: lump_eqns
     REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
     REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
-    REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM
+    REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
     real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
     REAL, DIMENSION( : , : , : ), allocatable :: CT
     REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
@@ -194,7 +194,7 @@ contains
     allocate(den_all(nphase,cv_nonods),denold_all(nphase,cv_nonods))
     allocate(Ct(0,0,0),DIAG_SCALE_PRES(0,0))
     allocate(DIAG_SCALE_PRES_COUP(0,0,0),GAMMA_PRES_ABS(0,0,0),INV_B(0,0,0))
-    allocate(MASS_PIPE(0), MASS_CVFEM2PIPE(0), MASS_PIPE2CVFEM(0))
+    allocate(MASS_PIPE(0), MASS_CVFEM2PIPE(0), MASS_PIPE2CVFEM(0), MASS_CVFEM2PIPE_TRUE(0))
 
     allocate( T_SOURCE( nphase, cv_nonods ) ) ; T_SOURCE=0.0
 
@@ -282,7 +282,7 @@ contains
             CV_RHS_field, &
             petsc_acv, &
             SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-            NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, CT_RHS, FINDCT, COLCT, &
+            NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
             CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
             CV_ELE_TYPE, &
             NPHASE, NPRES, &
@@ -501,7 +501,7 @@ contains
       REAL, DIMENSION( : ), allocatable :: mass_mn_pres
       REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
-      REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM
+      REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
       REAL, DIMENSION( :,:,: ), allocatable :: CT
       REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
       REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
@@ -580,7 +580,7 @@ contains
       ALLOCATE( CT( 0,0,0 ) )
       ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
       ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( NPHASE,NPHASE,CV_NONODS ), INV_B( 0,0,0 ) )
-      allocate(MASS_PIPE(cv_nonods), MASS_CVFEM2PIPE( size(small_colacv)), MASS_PIPE2CVFEM( size(small_colacv)))
+      allocate(MASS_PIPE(cv_nonods), MASS_CVFEM2PIPE( size(small_colacv)), MASS_PIPE2CVFEM( size(small_colacv)), MASS_CVFEM2PIPE_TRUE(size(small_colacv)))
       ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) ) ; TDIFFUSION = 0.
       ALLOCATE( MEAN_PORE_CV( NPRES, CV_NONODS ) )
 
@@ -654,7 +654,7 @@ contains
               CV_RHS_field, &
               petsc_acv, &
               SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-              NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, CT_RHS, FINDCT, COLCT, &
+              NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
               CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
               CV_ELE_TYPE,  &
               NPHASE, NPRES, &
@@ -917,7 +917,7 @@ contains
         UP_VEL
         REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, CMC_PRECON
-        REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM
+        REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
@@ -983,7 +983,7 @@ contains
         call allocate(ct_rhs,npres,pressure%mesh,"CT_rhs")
         ALLOCATE( DIAG_SCALE_PRES( NPRES,CV_NONODS )) ; DIAG_SCALE_PRES=0.
         ALLOCATE(DIAG_SCALE_PRES_COUP(NPRES,NPRES,CV_NONODS),GAMMA_PRES_ABS(NPHASE,NPHASE,CV_NONODS),INV_B(NPHASE,NPHASE,CV_NONODS))
-        allocate(MASS_PIPE(cv_nonods), MASS_CVFEM2PIPE(ncolcmc), MASS_PIPE2CVFEM(ncolcmc))
+        allocate(MASS_PIPE(cv_nonods), MASS_CVFEM2PIPE(ncolcmc), MASS_PIPE2CVFEM(ncolcmc), MASS_CVFEM2PIPE_TRUE(ncolcmc))
 
 
         ALLOCATE( U_RHS( NDIM, NPHASE, U_NONODS )) ; U_RHS=0.
@@ -1206,7 +1206,7 @@ contains
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         NCOLM, FINDM, COLM, MIDM, &
         XU_NLOC, XU_NDGLN, &
-        U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, GLOBAL_SOLVE, &
+        U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
         NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -1244,7 +1244,7 @@ contains
             TOTELE, U_NLOC, U_NDGLN, &
             NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
             CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
-            MASS_PIPE, MASS_CVFEM2PIPE,  &
+            MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
             got_free_surf,  MASS_SUF, &
             C, CT, storage_state, StorageIndexes(11), halo, symmetric_P )
         END IF
@@ -1395,9 +1395,6 @@ ELSE
 
 END IF
 
-
-
-
             rhs_p%val = -rhs_p%val + CT_RHS%val
 
             if(got_free_surf) POLD_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldFEPressure" )
@@ -1421,8 +1418,18 @@ END IF
                DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                   CV_JNOD = COLCMC( COUNT )
                   DO IPRES = 1, NPRES
-                     rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                     IF (( NPRES > 1 ).AND.PIPES_1D) THEN
+                        IF(IPRES==1) THEN
+                           rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                           -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                        ELSE
+                           rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
+                           -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_CVFEM2PIPE_TRUE( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                        ENDIF
+                     ELSE
+                        rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                           -DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * P_ALL%VAL( 1, IPRES, CV_JNOD )
+                     ENDIF
                      if ( got_free_surf ) then
                         rhs_p%val( IPRES, CV_NOD ) = rhs_p%val( IPRES, CV_NOD ) &
                              -MASS_SUF( COUNT ) * ( P_ALL%VAL( 1, IPRES, CV_JNOD ) - POLD_ALL%VAL( 1, IPRES, CV_JNOD ) )
@@ -1447,13 +1454,6 @@ END IF
             call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
             'prognostic/reference_node', ndpset, default = 0 )
             if ( ndpset /= 0 ) rhs_p%val( 1, ndpset ) = 0.0
-
-
-if ( .false. ) then
-             rhs_p%val( 2, 226 ) = 100.0 ! top
-             rhs_p%val( 2, 151 ) = 0.0 ! bottom
-end if
-
 
             ! solve for pressure correction DP that is solve CMC*DP=P_RHS...
             ewrite(3,*)'about to solve for pressure'
@@ -1511,17 +1511,15 @@ end if
                 call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
             end if
 
-            if ((x_nonods /= cv_nonods).and. use_continuous_pressure_solver &
-                 .and. nonlinear_iteration == 1) then!For discontinuous mesh
-            !We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
-                !Solver that agglomerates all the DG informaton into a CG mesh
-                call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
+            if ( (x_nonods /= cv_nonods) .and. use_continuous_pressure_solver &
+                 .and. nonlinear_iteration == 1 ) then !For discontinuous mesh
+               ! We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
+               ! Solver that agglomerates all the DG informaton into a CG mesh
+               call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
                     NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
                     totele, cv_nloc, x_nonods, x_ndgln, trim(pressure%option_path))
             else
-
                call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
-
             end if
 
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
@@ -1535,7 +1533,7 @@ end if
 
             ! Use a projection method
             ! CDP = C * DP
-!            CALL C_MULT2( CDP_tensor%val, deltap%val, CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC )
+            !CALL C_MULT2( CDP_tensor%val, deltap%val, CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC )
 
             DO IPRES = 1, NPRES
                CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*n_in_pres : ipres*n_in_pres, : ), deltap%val( IPRES, : ), &
@@ -1561,25 +1559,56 @@ end if
 
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         CVP_ALL%VAL = 0.0
-        MASS_CV = 0.0
-        DO CV_NOD = 1, CV_NONODS
-           if (node_owned(CVP_all,CV_NOD)) then
-              DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
-                 CVP_all%val( 1, :, CV_NOD ) = CVP_all%val( 1, :, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, :, COLCMC( COUNT ) )
-                 MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
-              END DO
-           else
-              Mass_CV(CV_NOD)=1.0
-           end if
-        END DO
-        DO IPRES = 1, NPRES
+        IF(NPRES>1.AND.PIPES_1D) THEN
+           MASS_CV = 0.0
+           IPRES = 1
+           DO CV_NOD = 1, CV_NONODS
+              if (node_owned(CVP_all,CV_NOD)) then
+                 DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                    CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, IPRES, COLCMC( COUNT ) )
+                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                 END DO
+              else
+                 Mass_CV(CV_NOD)=1.0
+              end if
+           END DO
            CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
-        END DO
+
+           MASS_CV = 0.0
+           IPRES = NPRES
+           DO CV_NOD = 1, CV_NONODS
+              if (node_owned(CVP_all,CV_NOD)) then
+                 DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                    CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, COLCMC( COUNT ) )
+                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + max( 1.0e-15, MASS_CVFEM2PIPE_TRUE( COUNT ) )
+                 END DO
+              else
+                 Mass_CV(CV_NOD)=1.0
+              end if
+           END DO
+           CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+        ELSE
+           MASS_CV = 0.0
+           DO CV_NOD = 1, CV_NONODS
+              if (node_owned(CVP_all,CV_NOD)) then
+                 DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
+                    CVP_all%val( 1, :, CV_NOD ) = CVP_all%val( 1, :, CV_NOD ) + MASS_MN_PRES( COUNT ) * P_all%val( 1, :, COLCMC( COUNT ) )
+                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_MN_PRES( COUNT )
+                 END DO
+              else
+                 Mass_CV(CV_NOD)=1.0
+              end if
+           END DO
+           DO IPRES = 1, NPRES
+              CVP_all%val(1,IPRES,:) = CVP_all%val(1,IPRES,:) / MASS_CV
+           END DO
+        ENDIF
         call halo_update(CVP_all)
+
 
         DEALLOCATE( CT )
         DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B )
-        DEALLOCATE( MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM )
+        DEALLOCATE( MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE )
         DEALLOCATE( U_RHS )
         DEALLOCATE( MCY_RHS )
         DEALLOCATE( MCY )
@@ -1758,7 +1787,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
     NCOLM, FINDM, COLM, MIDM, &
     XU_NLOC, XU_NDGLN, &
-    U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, GLOBAL_SOLVE, &
+    U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
     NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
     UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -1837,7 +1866,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         type(vector_field), intent( inout ) :: CT_RHS
         REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B
-        REAL, DIMENSION( : ), intent( inout ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM
+        REAL, DIMENSION( : ), intent( inout ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         LOGICAL, intent( in ) :: GLOBAL_SOLVE
         INTEGER, DIMENSION( : ), intent( in ) :: FINMCY
         REAL, DIMENSION( : ), intent( inout ) :: MCY
@@ -1973,7 +2002,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         CV_RHS, &
         ACV, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-        NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, CT_RHS, FINDCT, COLCT, &
+        NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
         CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
         CV_ELE_TYPE, &
         NPHASE, NPRES, &
@@ -5887,7 +5916,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            END DO
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
              &                      C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
-             &                      CV_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA )
+             &                      CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL )
             DEALLOCATE(SIGMA)
         ENDIF
 
