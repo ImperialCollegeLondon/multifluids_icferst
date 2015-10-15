@@ -69,7 +69,7 @@
          print_from_state, update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
          get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
          CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,&
-         get_Convergence_Functional, get_DarcyVelocity
+         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix
 
 
 !    interface Get_Ndgln
@@ -3948,6 +3948,51 @@
       print *,"";
     end subroutine PrintMatrix
 
+    !Subroutine to print CSR matrix by (row, column)
+    !Dimensions and phases are printed in different rows
+    !So for example Matrix(2,2,10) with two rows would be presented as
+    !a matrix ( 8 x 10)
+    subroutine printCSRMatrix(Matrix, find, col)
+      implicit none
+      integer, intent(in), dimension(:) :: find, col
+      real, intent(in), dimension(:,:,:):: Matrix
+
+      !Local
+      Integer :: i,j, k, row, column, pos, ncols
+      character (len=100000) :: cadena
+      character (len=100) :: aux
+      real :: val
+
+
+      ncols = maxval(col)
+
+      do row = 1, size(find)-1
+          do j = 1, size(Matrix,1)
+              do i = 1, size(Matrix,2)
+                print *,""!jump line
+                cadena = ""
+                k = 0
+                  do column = 1, ncols!size(col)
+                      if (col(find(row)+k) == column .and. k < find(row + 1) - find( row ) ) then
+                          val = Matrix(j, i, find( row )+k)
+                          k = k + 1
+                      else
+                          val = 0.0
+                      end if
+                      write(aux,*), val
+                      pos = index(trim(aux),"E",.true.)
+                      if (pos/=0) then
+                          aux = aux(1:pos-6)//trim(aux(pos:))
+                      end if
+                      cadena = trim(cadena)//' '//trim(aux)//','
+                  end do
+                  print '(A $)', trim(cadena)!print line
+              end do
+          end do
+      end do
+
+
+    end subroutine printCSRMatrix
 
     logical function is_constant(tfield)
       type(tensor_field), intent(in) :: tfield
