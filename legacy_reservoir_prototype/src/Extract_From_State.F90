@@ -3952,46 +3952,74 @@
     !Dimensions and phases are printed in different rows
     !So for example Matrix(2,2,10) with two rows would be presented as
     !a matrix ( 8 x 10)
-    subroutine printCSRMatrix(Matrix, find, col)
+    subroutine printCSRMatrix(Matrix, find, col, dim_same_row)
       implicit none
       integer, intent(in), dimension(:) :: find, col
       real, intent(in), dimension(:,:,:):: Matrix
-
+      logical, optional, intent(in) :: dim_same_row
       !Local
       Integer :: i,j, k, row, column, pos, ncols
       character (len=100000) :: cadena
       character (len=100) :: aux
       real :: val
 
-
       ncols = maxval(col)
 
-      do row = 1, size(find)-1
-          do j = 1, size(Matrix,1)
+      if (.not.present_and_true(dim_same_row)) then
+          do row = 1, size(find)-1
               do i = 1, size(Matrix,2)
+                  do j = 1, size(Matrix,1)
+                    print *,""!jump line
+                    cadena = ""
+                    k = 0
+                      do column = 1, ncols!size(col)
+                          if (col(find(row)+k) == column .and. k < find(row + 1) - find( row ) ) then
+                              val = Matrix(j, i, find( row )+k)
+                              k = k + 1
+                          else
+                              val = 0.0
+                          end if
+                          write(aux,*), val
+                          pos = index(trim(aux),"E",.true.)
+                          if (pos/=0) then
+                              aux = aux(1:pos-6)//trim(aux(pos:))
+                          end if
+                          cadena = trim(cadena)//' '//trim(aux)//','
+                      end do
+                      print '(A $)', trim(cadena)!print line
+                  end do
+              end do
+          end do
+        else
+
+            do row = 1, size(find)-1
                 print *,""!jump line
                 cadena = ""
                 k = 0
-                  do column = 1, ncols!size(col)
-                      if (col(find(row)+k) == column .and. k < find(row + 1) - find( row ) ) then
-                          val = Matrix(j, i, find( row )+k)
-                          k = k + 1
-                      else
-                          val = 0.0
-                      end if
-                      write(aux,*), val
-                      pos = index(trim(aux),"E",.true.)
-                      if (pos/=0) then
-                          aux = aux(1:pos-6)//trim(aux(pos:))
-                      end if
-                      cadena = trim(cadena)//' '//trim(aux)//','
-                  end do
-                  print '(A $)', trim(cadena)!print line
-              end do
-          end do
-      end do
+                do column = 1, ncols!size(col)
+                    do i = 1, size(Matrix,2)
+                        do j = 1, size(Matrix,1)
+                            if (col(find(row)+k) == column .and. k < find(row + 1) - find( row ) ) then
+                                val = Matrix(j, i, find( row )+k)
+                                if (j == size(Matrix,1) .and. i == size(Matrix,2)) k = k + 1
+                            else
+                                val = 0.0
+                            end if
+                            write(aux,*), val
+                            pos = index(trim(aux),"E",.true.)
+                            if (pos/=0) then
+                                aux = aux(1:pos-6)//trim(aux(pos:))
+                            end if
+                            cadena = trim(cadena)//' '//trim(aux)//','
+                        end do
+                    end do
+                end do
+                print '(A $)', trim(cadena)!print line
+            end do
 
 
+
+        end if
     end subroutine printCSRMatrix
 
     logical function is_constant(tfield)
