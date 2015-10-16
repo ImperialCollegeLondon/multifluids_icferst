@@ -120,7 +120,7 @@ contains
          tracer, velocity, density, &
          CV_RHS_field, PETSC_ACV,&
          SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
-         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
+         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
          CV_ELE_TYPE,  &
          NPHASE, NPRES, &
@@ -295,7 +295,7 @@ contains
       ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
       REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (npres, npres, cv_nonods)
-      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS, INV_B ! (nphase, nphase, cv_nonods)
+      REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B ! (nphase, nphase, cv_nonods)
       REAL, DIMENSION( : ), intent( inout ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
       type(vector_field), intent( inout ) :: CT_RHS
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
@@ -570,7 +570,7 @@ contains
       logical :: symmetric_P
 
       ! pipe diamter for reservior modelling
-      type( scalar_field ), pointer :: sfield, pipe_Diameter
+      type( scalar_field ), pointer :: sfield, pipe_Diameter, pipe_Diameter_nano, pipe_Length_nano
       !Permeability
       type( tensor_field ), pointer :: perm
 
@@ -593,8 +593,8 @@ contains
 
 
       integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr
-      real :: rconst, h_nano,RP_NANO
-
+      real :: rconst, h_nano, RP_NANO
+      logical :: got_nano
 
       if ( npres > 1 )then
          reservoir_P( 1 ) = 0.0 !1.0e+7
@@ -608,6 +608,12 @@ contains
          ! this should really be (npres, cv_nonods)
          ! we assume one extra pressure for now
          pipe_Diameter => extract_scalar_field( state(1), "DiameterPipe1" )
+
+         got_nano = .false.
+         if ( got_nano ) then
+            pipe_Diameter_nano => extract_scalar_field( state(1), "DiameterPipeNano1" )
+            pipe_Length_nano => extract_scalar_field( state(1), "LengthPipeNano1" )
+         end if
       end if
 
       symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
@@ -2633,21 +2639,21 @@ contains
 
             ! variables used in the edge approach
             if ( .true. ) then
-               IF(PIPES_1D) THEN
+               IF ( PIPES_1D ) THEN
                   h = mass_pipe( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi), 1.0e-10))**2 )
                ELSE
                   h = mass_cv( cv_nodi )**(1.0/ndim)
-               ENDIF
+               END IF
                h = max( h, 1.0e-10 )
                h_nano = h
 
-               c=0.0
-               if ( mass_pipe( cv_nodi )>0.0 ) c=1.0
-               h = (mass_cv( cv_nodi )/h)**(1.0/(ndim-1))  ! This is the lengthscale normal to the wells.
+               c = 0.0
+               if ( mass_pipe( cv_nodi )>0.0 ) c = 1.0
+               h = (mass_cv( cv_nodi )/h)**(1.0/(ndim-1)) ! This is the lengthscale normal to the wells.
 
                rp = 0.14 * h
 
-               rp_NANO = 0.14 * h_NANO
+               rp_nano = 0.14 * h_nano
                Skin = 0.0
             end if
 
@@ -2656,33 +2662,33 @@ contains
                DO JPHASE = 1, NPHASE
                   JPRES = 1 + INT( (JPHASE-1)/N_IN_PRES )
 
-                     ! This is the edge approach
-                     ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
-                   IF(IPRES.NE.JPRES) THEN
+                  ! This is the edge approach
+                  ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
+                  IF ( IPRES /= JPRES ) THEN
                      IF ( FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
                              c * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-! Dimitrios uncomment this...
-!                        IF(GOT_NANO) THEN
-!                        GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) +GAMMA_PRES_ABS_nano( IPHASE, JPHASE, CV_NODI ) * &
-!                             c * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
-!                             / ( 1.0*(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                        ENDIF
+
+                        IF ( GOT_NANO ) THEN
+                           GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) +GAMMA_PRES_ABS_nano( IPHASE, JPHASE, CV_NODI ) * &
+                                c * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
+                                / ( 1.0*(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                        END IF
                      ELSE
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
                              c * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                        IF(GOT_NANO) THEN
-!                        GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) +GAMMA_PRES_ABS_nano( IPHASE, JPHASE, CV_NODI ) * &
-!                             c * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
-!                             / ( 1.0*(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                        ENDIF
+                        IF ( GOT_NANO ) THEN
+                           GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) +GAMMA_PRES_ABS_nano( IPHASE, JPHASE, CV_NODI ) * &
+                                c * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
+                                / ( 1.0*(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                        END IF
                      END IF
 
-                  END IF ! IF(IPRES.NE.JPRES) THEN
+                  END IF ! IF ( IPRES /= JPRES ) THEN
 
                END DO
             END DO
@@ -2721,16 +2727,16 @@ contains
          PIPE_ABS = 0.0
          DO CV_NODI = 1, CV_NONODS
             if ( .true. ) then
-               IF(PIPES_1D) THEN
+               IF ( PIPES_1D ) THEN
                   h = mass_pipe( cv_nodi )/( pi*(0.5*max(PIPE_DIAMETER%val(cv_nodi),1.0e-10))**2)
                ELSE
                   h = mass_cv( cv_nodi )**(1.0/ndim)
-               ENDIF
+               END IF
                h = max( h, 1.0e-10 )
                h_nano = h
 
-               c=0.0
-               if ( mass_pipe( cv_nodi )>0.0 ) c=1.0
+               c = 0.0
+               if ( mass_pipe( cv_nodi )>0.0 ) c = 1.0
                h = (mass_cv( cv_nodi )/h)**(1.0/(ndim-1))  ! This is the lengthscale normal to the wells.
 
                rp = 0.14 * h
@@ -2752,24 +2758,24 @@ contains
                              c * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                        IF(GOT_NANO) THEN
-!                        PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
-!                             DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * &
-!                             c * 2.0 * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
-!                             / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                        ENDIF
+                        IF ( GOT_NANO ) THEN
+                           PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
+                                DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * &
+                                c * 2.0 * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
+                                / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                        END IF
                      ELSE
                         PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
                              DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
                              c * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                        IF(GOT_NANO) THEN
-!                        PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
-!                             DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * &
-!                             c * 2.0 * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
-!                             / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
-!                        ENDIF
+                        IF ( GOT_NANO ) THEN
+                           PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
+                                DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * &
+                                c * 2.0 * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
+                                / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                        END IF
                      END IF
 
 
@@ -2812,7 +2818,7 @@ contains
                      IPRES = 1 + INT( (IPHASE-1)/N_IN_PRES )
                      JPRES = 1 + INT( (JPHASE-1)/N_IN_PRES )
 !                     PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) * MEAN_PORE_CV( JPRES, CV_NODI )
-                     PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) 
+                     PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI )
                   END DO
                END DO
             END DO
@@ -12267,7 +12273,7 @@ deallocate(NX_ALL)
     INFINY=1.0E+20
     IGNORE_DIAGONAL_PIPES = .TRUE.
     SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
-    LUMP_COUPLING_RES_PIPES = .TRUE. ! Lump the coupling term which couples the pressure between the pipe and reservior. 
+    LUMP_COUPLING_RES_PIPES = .TRUE. ! Lump the coupling term which couples the pressure between the pipe and reservior.
     CALC_SIGMA_PIPE = .FALSE. ! Calculate sigma based on friction factors...
 
     NCORNER = NDIM + 1
@@ -13014,7 +13020,7 @@ deallocate(NX_ALL)
        INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
        INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
 ! we divide by this so that we get the right source term for the nano laterals...
-       INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE_FOR_COUP(:), 1.E-15 ) 
+       INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE_FOR_COUP(:), 1.E-15 )
     END DO
 
     IF ( GETCV_DISC ) THEN
@@ -13367,7 +13373,7 @@ deallocate(NX_ALL)
     PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
     IGNORE_DIAGONAL_PIPES=.TRUE.
     SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
-    CALC_SIGMA_PIPE = .FALSE. 
+    CALC_SIGMA_PIPE = .FALSE.
     DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
 
     ! Set rhs of the force balce equation to zero just for the pipes...
@@ -13621,7 +13627,7 @@ deallocate(NX_ALL)
                       DO GI = 1, scvngi
                          U_GI= 0.0
                          DO IDIM=1,NDIM
-                            U_GI= U_GI + SUM( SUFEN( : , GI )*NU_ALL(IDIM,IPHASE,U_GL_GL( : )))*DIRECTION(IDIM) 
+                            U_GI= U_GI + SUM( SUFEN( : , GI )*NU_ALL(IDIM,IPHASE,U_GL_GL( : )))*DIRECTION(IDIM)
                          END DO
                          CALL DEF_SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, IPHASE_IN_PIPE)
                       END DO
@@ -13793,7 +13799,7 @@ deallocate(NX_ALL)
 ! Local variables
     REAL :: E_ROUGHNESS, DEFAULT_DEN(2), DEFAULT_VISC(2)
 
-    E_ROUGHNESS = 1.E-6 ! Pipe roughness. 
+    E_ROUGHNESS = 1.E-6 ! Pipe roughness.
     DEFAULT_DEN(1) = 1000.0 ! Density of water
     DEFAULT_DEN(2) = 900.0 ! Density of oil
     DEFAULT_VISC(1) = 1.E-3 ! Viscocity of water
@@ -13827,14 +13833,14 @@ deallocate(NX_ALL)
     W = MAX(0.0,  MIN(1.0,(RE-2000.0)/2000.0)  ) ! Relaxation factor between 2 friction factor expressions
 
     F = (1-W)*F1 + W*F2
-    
+
     SIGMA = (F/DIAM)*2.0*DEN*ABS(U)  ! based on fanning friction factor
 
 
     RETURN
     END SUBROUTINE SIGMA_PIPE_FRICTION
 
-    
+
 
 
 
