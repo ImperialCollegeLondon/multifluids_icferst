@@ -4068,6 +4068,9 @@ and for $p_{well}\leq p_{reservoir}$ for phase $i$ the value of $\gamma_i^{well\
 in which $A_{open}$ is the cross section area density of the open pipe. One can include  
 gravitational forces for each phase in the above calculations which would provide non-zero values 
 of $q_i^{j\,k}$ in equations \ref{saturation_wells_7}. 
+For open wells at the larger scale a similar adjustment to the   
+Peacman correction is needed, but this time for a point source rather than a linear source. 
+However, with loss of accuracy, the Peacman correction may still be applied, see below. 
 
 
 
@@ -4243,7 +4246,7 @@ at each pressure node is uniform across space and similarly for all the other va
 One can scale the equations with wells in order to make the numbers generated on the 
 computer easier to deal with in terms of round off error as well as for the iterative 
 solvers. 
-Consider the force balance equation:
+Consider the force balance equation in the reservior:
 
 \begin{equation}
 \sigma u = -\nabla p. 
@@ -4262,23 +4265,23 @@ Thus,
 \begin{equation}
 \sigma^* u^* = -\nabla^* p^*. 
 \end{equation}
-A simplified saturation equation looks like:
+A simplified saturation equation in the reservior with exchnage of mass with wells (the term involving pressure the reservior pressure $p$ and the well pressure $p_w$) is:
 \begin{equation}
 \phi_i \frac{\partial S_k}{\partial t} 
 + \nabla \cdot u_k S_k
-+ \gamma (p-p_0)=0,
++ \gamma (p-p_w)=0,
 \end{equation}
 and thus:
 \begin{equation}
 \frac{U}{L} \phi_i \frac{\partial S_k}{\partial t^*} 
 + \frac{U}{L} \nabla^* \cdot u_k^* S_k
-+ \gamma \Sigma U L  (p^*-p^*_0)=0, 
++ \gamma \Sigma U L  (p^*-p^*_w)=0, 
 \end{equation}
 also:
 \begin{equation}
 \phi_i \frac{\partial S_k}{\partial t^*} 
 + \nabla^* \cdot u_k^* S_k
-+ \gamma \Sigma  L^2  (p^*-p^*_0)=0, 
++ \gamma \Sigma  L^2  (p^*-p^*_w)=0, 
 \end{equation}
 and:
 \begin{equation}

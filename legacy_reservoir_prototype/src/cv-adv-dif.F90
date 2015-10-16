@@ -12746,7 +12746,7 @@ deallocate(NX_ALL)
                    TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
                    TUPWIND_IN=0.0; DUPWIND_IN=0.0
                    DO IPHASE = N_IN_PRES+1, NPHASE
-
+! CV incomming T:
                          IF ( T_ALL%val( 1, IPHASE, CV_NODI ) > T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
                             TUPWIND_OUT( IPHASE ) = TMAX_ALL( IPHASE, CV_NODI )
                          ELSE
@@ -12758,6 +12758,7 @@ deallocate(NX_ALL)
                             DUPWIND_OUT( IPHASE ) = DENMIN_ALL( IPHASE, CV_NODI )
                          END IF
 
+! CV outgoing T:
                          IF ( T_ALL%val( 1, IPHASE, CV_NODI ) < T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
                             TUPWIND_IN( IPHASE ) = TMAX_ALL( IPHASE, CV_NODJ )
                          ELSE
@@ -13012,7 +13013,8 @@ deallocate(NX_ALL)
     DO IPHASE = 1, N_IN_PRES
        INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
        INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
-       INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE_FOR_COUP(:), 1.E-15 ) ! we divide by this so that we get the right source term
+! we divide by this so that we get the right source term for the nano laterals...
+       INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE_FOR_COUP(:), 1.E-15 ) 
     END DO
 
     IF ( GETCV_DISC ) THEN

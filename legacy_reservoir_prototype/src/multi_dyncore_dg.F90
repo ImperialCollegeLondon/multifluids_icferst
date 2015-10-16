@@ -1580,8 +1580,9 @@ END IF
               if (node_owned(CVP_all,CV_NOD)) then
                  DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
                     CVP_all%val( 1, IPRES, CV_NOD ) = CVP_all%val( 1, IPRES, CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT ) * P_all%val( 1, IPRES, COLCMC( COUNT ) )
-                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + max( 1.0e-15, MASS_CVFEM2PIPE_TRUE( COUNT ) )
+                    MASS_CV( CV_NOD ) = MASS_CV( CV_NOD ) + MASS_CVFEM2PIPE_TRUE( COUNT ) 
                  END DO
+                 MASS_CV( CV_NOD ) = max( 1.0e-15, MASS_CV( CV_NOD ) )
               else
                  Mass_CV(CV_NOD)=1.0
               end if
