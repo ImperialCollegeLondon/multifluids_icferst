@@ -53,7 +53,7 @@
     use petsc_tools
     use petsc
     use multiphase_caching, only : get_caching_level, test_caching_level, reshape_vector2pointer
-    use global_parameters, only : FIELD_NAME_LEN
+    use global_parameters, only : FIELD_NAME_LEN, is_porous_media
     use boundary_conditions
     implicit none
 
@@ -411,8 +411,8 @@
             if (GetProcNo()>1) ndpset=0
       end if
 
-
-      IF ( test_caching_level(6) ) THEN
+         !Currently this is false, over-ride switch for porous media since it is slower than memory hungry
+      IF ( test_caching_level(6) .or.is_porous_media) THEN
          ! Fast but memory intensive...
          CALL COLOR_GET_CMC_PHA_FAST( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
               NCOLC, FINDC, COLC, &
