@@ -4087,10 +4087,20 @@ be written as:
 \end{equation}
 in which the Peacman correction is:
 \begin{equation}
-r_p= 0.1 \Delta x_{grid} 
+r_p= 0.14 \Delta x_{norm-well} 
 \end{equation}
-and $h$ is the length of the completion - length over which the well is perforated. Also $\Delta x_{grid}$ 
-is  the length scale of the elements - for CV-FEM it may be calculated from the dertminant of the FEM Jacobian. 
+and $h$ is the length of the completion - length over which the well is perforated. Also $\Delta x_{norm-well}$ 
+is  the length scale of the elements normal to the well - for CV-FEM it may be calculated from the dertminant of the FEM Jacobian. 
+Assuming the length of pipe/well in CV $i$ is ${\Delta x_{well}}_i$ then ${\Delta x_{norm-well}}_i$ is 
+calculated from the CV volume $V_i$, that is: 
+\begin{equation}
+ {\Delta x_{norm-well}}_i = \left(  
+\frac{V_i}{ {\Delta x_{well}}_i }
+\right)^\frac{1}{2} . 
+\end{equation}
+The main drawback of this expresssion is that it does not take into account 
+the anisotropy in the permability in the plane normal to the well. However, its simplicity means that it is commonly 
+used, see ***. 
 Complex expression exist for the skin effect coefficient $Skin$. 
 From equation \ref{saturation_wells_11-cyl-skin} then:
 
@@ -4098,9 +4108,13 @@ From equation \ref{saturation_wells_11-cyl-skin} then:
 \gamma_{i}^{well\, reservoir}
 =\frac{2 \pi h}{\sigma_i h\pi r_e^2} \frac{1}{ ( log(\frac{r_p}{r_e}) + Skin)}
 =\frac{2 }{\sigma_i r_e^2} \frac{1}{ ( log(\frac{r_p}{r_e}) + Skin)}
- ,
+ . 
 \label{saturation_wells_15-well10reservoir-cyl-skin}
 \end{equation}
+
+
+\subsection{Modelling rather than resolving laterals} 
+\label{Modelling rather than resolving laterals}  
 
 
 
