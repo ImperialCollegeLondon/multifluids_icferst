@@ -4082,7 +4082,7 @@ as well as the intorduction of the skin effect coefficient $Skin$ (an adjustment
 be written as: 
 
 \begin{equation}
-{q_{total}}_k = \frac{2 \pi h}{\sigma_i} \frac{(p_{reservior}- p_{well})}{ ( log(\frac{r_p}{r_e}) + Skin)} 
+q_{total}^k = \frac{2 S_i^k \pi h}{\tilde\sigma_i^{k} }\frac{(p_{reservior}- p_{well})}{ ( log(\frac{r_p}{r_e}) + Skin)} 
 \label{saturation_wells_11-cyl-skin}
 \end{equation}
 in which the Peacman correction is:
@@ -4106,15 +4106,98 @@ From equation \ref{saturation_wells_11-cyl-skin} then:
 
 \begin{equation}
 \gamma_{i}^{well\, reservoir}
-=\frac{2 \pi h}{\sigma_i h\pi r_e^2} \frac{1}{ ( log(\frac{r_p}{r_e}) + Skin)}
-=\frac{2 }{\sigma_i r_e^2} \frac{1}{ ( log(\frac{r_p}{r_e}) + Skin)}
+=\frac{2 S_i^k \pi h}{ \tilde\sigma_i^k h\pi r_e^2} \frac{1}{ ( log(\frac{r_p}{r_e}) + Skin)}
+=\frac{2 S_i^k }{\tilde\sigma_i^k r_e^2} \frac{1}{ ( log(\frac{r_p}{r_e}) + Skin)}
  . 
 \label{saturation_wells_15-well10reservoir-cyl-skin}
 \end{equation}
+The scalar $\tilde\sigma_i$ repflects the permeability normal to the wells 
+and is obtained from forming an orthornal system ${\bf b}={\bf t}\times {\bf n}$ in which $\bf n$ is the direction 
+along the wells and $\bf t$ and $\bf b$ are orthonormal vectors to $\bf n$ and themselves; then: 
+\begin{equation}
+\tilde\sigma_i^k = \left( det\left( ({\bf b} \; {\bf t})^T \underline{\underline\sigma}_i^k ({\bf b} \; {\bf t}) \right) \right)^{\frac{1}{2}}. 
+\label{perm-well-orthogonal}
+\end{equation}
+It will also be useful to consider the permability of the reservior along the well: 
+\begin{equation}
+\hat\sigma_i^k =  {\bf n}^T \underline{\underline\sigma}_i^k {\bf n} . 
+\label{perm-well-orthogonal}
+\end{equation}
+
 
 
 \subsection{Modelling rather than resolving laterals} 
 \label{Modelling rather than resolving laterals}  
+The previous section describes a method of 1D based modelling of wells and laterals 
+(micro-laterals and nano-laterals) which necessitates substantial parameterization 
+due to the lack of resolution near the well within the reserviour. Using the same approach 
+we can model laterals eminating from a well simly by exchaning the mass between 
+the reservior and laterals at a point or CV of the well. 
+This works well when there is not enough resolution within the reservior to be able to 
+hold the unresolved laterals. 
+
+The approach works by repeating the above and again assuming the well is cylindericial and a cyclindrically symmetric analytical solution 
+as well as the intorduction of the skin effect coefficient $\widehat{Skin}$ (an adjustment for fracturing of the porious media by the introduction of the well) the result is that the maximum total mass flux can 
+be written as: 
+
+\begin{equation}
+\hat{q}_{total}^k = \frac{2 S_i^k \pi \hat{h}}{\hat\sigma_i^{k} }\frac{(p_{reservior}- p_{well})}{ ( log(\frac{\hat{r}_p}{\hat{r}_e}) + \widehat{Skin})} 
+\label{saturation_wells_11-cyl-skin-model-lat}
+\end{equation}
+in which the Peacman correction is:
+\begin{equation}
+\hat{r}_p= 0.14 \Delta x_{well} 
+\end{equation}
+and $\hat h$ is the length of the modelled (rather than resolved) completion - length over which the well is perforated and modelled. 
+From equation \ref{saturation_wells_11-cyl-skin-model-lat} then:
+
+\begin{equation}
+\hat\gamma_{i}^{well\, reservoir}
+=\frac{2 S_i^k \pi \hat{h}}{ \hat\sigma_i^k h\pi {r}_e^2} \frac{1}{ ( log(\frac{\hat{r}_p}{\hat{r}_e}) + \widehat{Skin})}
+=\frac{2 S_i^k \hat{h}}{\hat\sigma_i^k h {r}_e^2} \frac{1}{ ( log(\frac{\hat{r}_p}{\hat{r}_e}) + \widehat{Skin})}
+ . 
+\label{saturation_wells_15-well10reservoir-cyl-skin-model-lat}
+\end{equation}
+Notice that the resolved well radius ${r}_e$ that the modelled lateral comes from is used in this expression. 
+This value of $\hat\gamma_{i}^{well\, reservoir}$ is then added to $\gamma_{i}^{well\, reservoir}$ 
+in equation \ref{saturation_wells_15-well10reservoir-cyl-skin} to get the overall mass exchange terms with the pipes. 
+
+
+
+\subsection{Friction and pressure drop of the flows within wells} 
+\label{Friction and pressure drop of the flows within wells} 
+
+Within the approach outlined here we solve simultaniously (coupled through mass echannge 
+terms in the continuity equation) for the pressure in the reservior and the pressure 
+in the wells. There can be substanital differences between the 
+pipe and reservior pressures. 
+The pressure drop across the pipes is determined through the pipes friction - assuming 
+a multi-phase Darcey equation governs the force balance with the pipes. That is: 
+
+\begin{equation}
+\sigma^k u^k = -\nabla p_w - \rho^k g 
+\end{equation}
+in which $\sigma^k $ determins the frictional losses. 
+To this aim we define the friction factor:
+\begin{equation}
+f^k = (1-w^k) \frac{16}{Re} - w^k 3.6 log_{10}\left(  \frac{6.9}{Re^k} + \left(\frac{e}{3.7D}\right)^{\frac{10}{9}} \right) 
+\end{equation}
+in which 
+\begin{equation}
+w^k= max(0,  min(1,(Re^k-2000)/2000)  ) , 
+\end{equation}
+and $e\in\left[1 \times 10^{-6}, 0.1 \right] $ m is the absolute roughness of the inside of the pipe  
+and the pipe Reynolds number for phase $k$ is: 
+\begin{equation}
+Re^k= \frac{ \rho^k \vert u^k\vert 2 r_e }{\mu} 
+\end{equation}
+where $\rho^k$ and $\mu^k$ are the density and viscocity of phase $k$. 
+The resulting $sigma^k$ is then: 
+
+\begin{equation}
+\sigma^k u^k
+    = \frac{f}{2r_e} 2 \rho^k \vert u^k \vert  = \frac{f}{r_e}  \rho^k \vert u^k \vert. 
+\end{equation}
 
 
 
