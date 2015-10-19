@@ -374,7 +374,7 @@ over domain $V$ with a source term \textit{S}, advection velocity vector $\left(
 \label{CV1}
 \end {equation}
 \noindent
-in which $\mathcal{M}$ is the number of CV's which is not necessarily equal to the number of nodes $\mathcal{N}$ of the FEM mesh and $s$ is the discretized source. This is combined with an expansion of the approximate solution \textit{T} to $\text{T}$ in terms of the control volume basis functions $M_{j}$ with:
+in which $\mathcal{M}$ is the number of CVs which is not necessarily equal to the number of nodes $\mathcal{N}$ of the FEM mesh and $s$ is the discretized source. This is combined with an expansion of the approximate solution \textit{T} to $\text{T}$ in terms of the control volume basis functions $M_{j}$ with:
 \begin{equation}  
 T\left(\mathbf{r},t\right)=\sum\limits_{j=1}^{\mathcal{M}} M_{j}\left(\mathbf{r}\right) T_{j}(t) \approx \text{T}.
 \end{equation}
@@ -398,7 +398,7 @@ The value of $\widetilde{T}$ is calculated, guided by a high order FEM interpola
 \includegraphics[width=15.0cm,height=10.cm]{./doc_figures/1D_FEM_CV}
 \end{center}
 \vspace{-5cm}}
-\caption{1-D finite element showing CV's {\it u, c, d} and face {\it f}.}
+\caption{1-D finite element showing CVs {\it u, c, d} and face {\it f}.}
 \label{fem_cv_represent_a}
 \end{figure}
 
@@ -440,7 +440,7 @@ with $B = \int\limits_{V} N_{i} N_{j} \,d V$ and $Q =\int\limits_{V} N_{i} M_{j}
 
 \subsection{Extrema detecting}
 
-To determine where to apply first order instead of high order fluxes, extremas must be detected and if there is a smooth transition between the high and low order fluxes, the closeness to an extrema must be quantified. This is achieved using the normal variable diagram NVD approach \index{\fluidity Module! Transport methods! NVD approach} as follows. Suppose $T_{u}, T_{c}, T_{d}$ are ordered consecutively and $T_{f}$ is the face value between CV's \textit{c} and \textit{d} (see Fig. \ref{fem_cv_represent_a}). In which case for a monotonic solution
+To determine where to apply first order instead of high order fluxes, extremas must be detected and if there is a smooth transition between the high and low order fluxes, the closeness to an extrema must be quantified. This is achieved using the normal variable diagram NVD approach \index{\fluidity Module! Transport methods! NVD approach} as follows. Suppose $T_{u}, T_{c}, T_{d}$ are ordered consecutively and $T_{f}$ is the face value between CVs \textit{c} and \textit{d} (see Fig. \ref{fem_cv_represent_a}). In which case for a monotonic solution
 %%
 %% - begin equation
 %%
@@ -473,17 +473,17 @@ $\widetilde{\mathcal{T}}_{f}$ (see Fig. \ref{fem_cv_represent_a}) in this equati
   \end{cases}
 \label{2.1c}
 \end{equation}
-with $\widetilde{\gamma} = 2.0$. Thus at an extrema the first order non-oscillatory method will be applied.  The curve $\mathcal{T}_{f} = 2\mathcal{T}_{c}$ has been chosen as an upper bound on $\widetilde{\mathcal{T}}_{f}$ as this corresponds to a TVD condition in 1-D \index{\fluidity Module! Transport methods! TVD condition} with equally spaced cells/elements \citep[see][]{hirsch_1990}.  One can use larger values of the gradient $\widetilde{\gamma}$ but convergence of the resulting non-linear iteration can suffer.  However, a larger gradient can help maintain sharper features in the solution, as reported by \citet{jasak_1999}.  They recommend the use of a gradient of 6 ($\widetilde{\gamma} = 6$, Eqn. \ref{2.1c}), they also recommend that the gradient should not be greater than 10 and not less than 2.  \citet{piperno_1998} explain some useful criteria for constructing limiting functions.  In addition, they use a maximum NVD curve with C$^{1}$ continuity, which is claimed to improve convergence, and use a quotient of gradients as opposed to the quotient of differences used here in Eqns. \ref{p4a}-\ref{2.1a}. 
+with $\widetilde{\gamma} = 2.0$. Thus, at an extrema the first order non-oscillatory method will be applied.  The curve $\mathcal{T}_{f} = 2\mathcal{T}_{c}$ has been chosen as an upper bound on $\widetilde{\mathcal{T}}_{f}$ as this corresponds to a TVD condition in 1-D \index{\fluidity Module! Transport methods! TVD condition} with equally spaced cells/elements \citep[see][]{hirsch_1990}.  One can use larger values of the gradient $\widetilde{\gamma}$ but convergence of the resulting non-linear iteration can suffer.  However, a larger gradient can help maintain sharper features in the solution, as reported by \citet{jasak_1999}.  They recommend the use of a gradient of 6 ($\widetilde{\gamma} = 6$, Eqn. \ref{2.1c}), they also recommend that the gradient should not be greater than 10 and not less than 2.  \citet{piperno_1998} explain some useful criteria for constructing limiting functions.  In addition, they use a maximum NVD curve with C$^{1}$ continuity, which is claimed to improve convergence, and use a quotient of gradients as opposed to the quotient of differences used here in Eqns. \ref{p4a}-\ref{2.1a}. 
 
 
 \subsection{Extrema detection in multi-dimensions and isotropic limiting}
 
 When integrating over a face of a CV in multi-dimensions we denote the cell from which the velocity is coming from as \textit{c} and the cell to which the velocity is pointing to \textit{d} (as in the previous section) with corresponding solution variables of $T_{c}$ and $T_{d}$ and the far field upwind value $T_{u}$. The value of $T_{u}$, for multi-dimensional  problems, is not well defined and thus it is this the the remainder of this section concerns.
 
-The surface integral in Eqn. \ref{a} is calculated by summing the surface integrals over each face of CV \textit{i}. This face surface integral is evaluated using Gaussian quadrature. The values of $\widehat{T}$ at the Gauss points are limited using the NVD approach as described in the previous section, so that no new extrema are introduced into the solution \textit{T}. This is achieved by considering the velocity at the Gauss points on the face of an element. Out of the two CV's sharing this face, the CV from which the velocity is pointing away from is chosen as CV $c$ and the other CV denoted as \text{d}.
+The surface integral in Eqn. \ref{a} is calculated by summing the surface integrals over each face of CV \textit{i}. This face surface integral is evaluated using Gaussian quadrature. The values of $\widehat{T}$ at the Gauss points are limited using the NVD approach as described in the previous section, so that no new extrema are introduced into the solution \textit{T}. This is achieved by considering the velocity at the Gauss points on the face of an element. Out of the two CVs sharing this face, the CV from which the velocity is pointing away from is chosen as CV $c$ and the other CV denoted as \text{d}.
 
 
-The minimum and maximum value of $T$ of the six CV's in 3-D and four CV's in 2-D, sharing a face with (less than this if near a boundary) with CV $c$ and CV \textit{c} itself, which we denote as $T_{\min}$ and $T_{\max}$. A non-dimensional temperature is then obtained at the Gaussisn integration point from the high order temperature $T_{f}$, via Eqn. \ref{2.1b} with the value of $T_{u}$ obtained from
+The minimum and maximum value of $T$ of the six CVs in 3-D and four CVs in 2-D, sharing a face with (less than this if near a boundary) with CV $c$ and CV \textit{c} itself, which we denote as $T_{\min}$ and $T_{\max}$. A non-dimensional temperature is then obtained at the Gaussisn integration point from the high order temperature $T_{f}$, via Eqn. \ref{2.1b} with the value of $T_{u}$ obtained from
 %%
 %% - begin equation
 %%
@@ -528,7 +528,7 @@ A new time discretisation method is developed here. When high order discretizati
 is sought then the method is based on Crank-Nicholson time stepping.  The Crank-Nicholson method was chosen, because it has the simplicity of a two level time stepping method, is unconditionally stable and second order accurate. 
 However, if interface capturing then the scheme is based on explicit forward Euler time stepping which 
 introduces negative dissipation and is thus a compressive scheme which helps maintain sharp interfaces. 
-Moreover, the use of time steps of the order of the grid Courant number and above can result in numerical oscillations and unphysical solutions. Thus a parameter $\theta$ is introduced, in which $\theta$ = 0 corresponds to the forward Euler time stepping method, 
+Moreover, the use of time steps of the order of the grid Courant number and above can result in numerical oscillations and unphysical solutions. Thus, a parameter $\theta$ is introduced, in which $\theta$ = 0 corresponds to the forward Euler time stepping method, 
 $\theta$ = $\frac{1}{2}$ corresponds to the Crank-Nicholson time stepping method and $\theta$ = 1 backward-Euler.
 Then using Eqns. \ref{CV1} and \ref{a} the time stepping for Eqn. \ref{traneq} takes the form:
 %%
@@ -628,7 +628,7 @@ with
 \begin{displaymath}
 \widehat{\theta}_{i-\frac{1}{2}}^{n+\frac{1}{2}}  = 1-\theta_{i-\frac{1}{2}}^{n+\frac{1}{2}}.
 \end{displaymath}
-Now since backward Euler time stepping is TVD in the same way that first order upwind scheme is spatially, a positive definite mass matrix is a sufficient condition for the backward Euler scheme above to be TVD \citep[see][]{hirsch_1990}\index{\fluidity Module! Transport methods! TVD condition}.  Thus the diagonal mass matrix (the term in brackets) must be non-negative, after re-arranging this requirement becomes
+Now since backward Euler time stepping is TVD in the same way that first order upwind scheme is spatially, a positive definite mass matrix is a sufficient condition for the backward Euler scheme above to be TVD \citep[see][]{hirsch_1990}\index{\fluidity Module! Transport methods! TVD condition}.  Thus, the diagonal mass matrix (the term in brackets) must be non-negative, after re-arranging this requirement becomes
 %%
 %% - begin displaymath
 %%
@@ -669,7 +669,7 @@ q_{i-\frac{1}{2}}^{n+\frac{1}{2}} \geq
 \frac{1}{2}
 \label{half}
 \end{equation}
-Thus to make the value of $\theta_{i-\frac{1}{2}}^{n+\frac{1}{2}}= 1 - \widehat{\theta}_{i-\frac{1}{2}}^{n+\frac{1}{2}}$ as close to $\theta_{aim}$ as possible we choose
+Thus, to make the value of $\theta_{i-\frac{1}{2}}^{n+\frac{1}{2}}= 1 - \widehat{\theta}_{i-\frac{1}{2}}^{n+\frac{1}{2}}$ as close to $\theta_{aim}$ as possible we choose
 %%
 %% - begin displaymath
 %%
@@ -714,7 +714,7 @@ and
 g_f^{n+\frac{1}{2}}= (\tilde{h}_{f}^{n} - \tilde{h}_f^{n+1})
 \label{gf}
 \end{equation}
-CV's \textit{c} and \textit{d} in these equations refer to the two CV's that are adjacent to face \textit{f}, (see Fig. \ref{fem_cv_represent_b}). Extensions of this method to differential equations with time-dependent terms like $\frac{\partial \rho T}{\partial t}$ are realized by replacing, in Eqn. \ref{thet2}, $T_j^n$ and $T_j^{n+1}$ by $T_{j}^{n} \rho_{j}^{n}$ and $T_{j}^{n+1} \rho_j^{n+1}$ respectively for $j = c$ and $j = d$.
+CVs \textit{c} and \textit{d} in these equations refer to the two CVs that are adjacent to face \textit{f}, (see Fig. \ref{fem_cv_represent_b}). Extensions of this method to differential equations with time-dependent terms like $\frac{\partial \rho T}{\partial t}$ are realized by replacing, in Eqn. \ref{thet2}, $T_j^n$ and $T_j^{n+1}$ by $T_{j}^{n} \rho_{j}^{n}$ and $T_{j}^{n+1} \rho_j^{n+1}$ respectively for $j = c$ and $j = d$.
 
 
 
@@ -746,7 +746,7 @@ For quadratic elements the default amends this slightly for the quadrature point
 in the corners of the tetrahedra to include only the current element and out of the other two elements the 
 one that is closes to this quadrature point. 
 For quadrature points between elements (used only in fully discontinuous elements) one simply considers the two 
-elements neighboring this quadrature point to form the ENO solution.  
+elements neighbouring this quadrature point to form the ENO solution.  
 
 
 
@@ -790,7 +790,7 @@ where $n_x$ is the normal to the control volume. Now if the underlying scheme th
 \begin{displaymath}
 \frac{\partial T^n}{\partial n_x}\Big\vert_{no_f} = \frac{\partial T^n}{\partial n_x} \Big\vert_{f} = \frac{T_{c}^{n} - T_{d}^{n}}{\Delta x_{f}}
 \end{displaymath}
-in which, as before, the subscripts denote cells that share face \textit{f} (see Fig. \ref{fem_cv_represent_b}), $\Delta x_{f}$ is a measure of the component of distance between the centres of the CV's \textit{c} and \textit{d} in the normal direction to face $f$. This equation also serves as a definition of $\frac{\partial T^{n}}{\partial n_x}\vert_{no_f}$. The accuracy of this approximation can be improved, but once again non-linearity must be used to ensure boundedness of the scheme. Suppose the underlying non-oscillatory approximation to $\frac{\partial T}{\partial n_x}$ is $\frac{\partial T^n}{\partial n_x}\vert_{no_f}$ then any positive multiple of this will result in a bounded scheme and as such the TVD condition is
+in which, as before, the subscripts denote cells that share face \textit{f} (see Fig. \ref{fem_cv_represent_b}), $\Delta x_{f}$ is a measure of the component of distance between the centres of the CVs \textit{c} and \textit{d} in the normal direction to face $f$. This equation also serves as a definition of $\frac{\partial T^{n}}{\partial n_x}\vert_{no_f}$. The accuracy of this approximation can be improved, but once again non-linearity must be used to ensure boundedness of the scheme. Suppose the underlying non-oscillatory approximation to $\frac{\partial T}{\partial n_x}$ is $\frac{\partial T^n}{\partial n_x}\vert_{no_f}$ then any positive multiple of this will result in a bounded scheme and as such the TVD condition is
 %%
 %% - begin displaymath
 %%
@@ -1295,7 +1295,7 @@ For example:
 \end{equation} 
 in order to evaluate the derivative $\frac{\partial u}{\partial x}$ 
 on the boundary of the element ${\Gamma_E}$ we integrate over the volume 
-of two neighboring elements in order to calculate the derivative on the element 
+of two neighbouring elements in order to calculate the derivative on the element 
 face between the two elements using: 
 
 
@@ -1353,7 +1353,7 @@ Summing these discretizations, we obtain the discretization of the viscouse term
 In which $S_k$ is the volume fraction of phase $k$ and ${S_k}_{nab}$ is the 
 volume fraction on the boundary of an element on the other side of the boundary or on the 
 neighbouring element.  
-Thus the surface integrals for the viscouse terms given in the previous section 
+Thus, the surface integrals for the viscouse terms given in the previous section 
 become: 
 for velocity component of phase $k$ that is $u_k$:
 \begin{equation}
@@ -1372,7 +1372,7 @@ for $w_k$:
 
 
 \subsection{Finite element interpolation of the control volume solution} 
-To obtain the finite element solution $T_{fem}^n$ we use a Galerkin projection of $T_{fem}^n$ onto the control volume solution $T^n$. This is tested with the finite element basis functions $N_i$. $N_i$ is discontinuous between elements only when $T$ is. Thus when there is no discontinuity of solution between all elements then a global mass matrix system needs to be solved:
+To obtain the finite element solution $T_{fem}^n$ we use a Galerkin projection of $T_{fem}^n$ onto the control volume solution $T^n$. This is tested with the finite element basis functions $N_i$. $N_i$ is discontinuous between elements only when $T$ is. Thus, when there is no discontinuity of solution between all elements then a global mass matrix system needs to be solved:
  \begin{displaymath}
  \int_V N_i (T_{fem}^n- T^n) d\Omega =0, 
 \end{displaymath}
@@ -1497,12 +1497,12 @@ with
 = L \Lambda R. 
 \label{stab_matrix}
 \end{equation}
-which is the eigen-value decomposition into matrices of left $L$ and right $R$ eigen vectors and diagonal matrix of eigen-values $\Lambda$. Typically if there are no losses then (e.g. conservation of mass) then $\hat H$ is a discrete Laplacian. Thus we obtain the diagonal system: 
+which is the eigen-value decomposition into matrices of left $L$ and right $R$ eigen vectors and diagonal matrix of eigen-values $\Lambda$. Typically if there are no losses then (e.g. conservation of mass) then $\hat H$ is a discrete Laplacian. Thus, we obtain the diagonal system: 
 \begin{equation}
 \frac{\partial \hat {\hat \Psi}}{\partial t} + \Lambda \hat{\hat\Psi} = \hat{\hat s}_\psi
 \label{e-prob}
 \end{equation} 
-with $\hat\Psi=R\Psi$ the solution will grow (ignoring other losses) if any of the eigen-values in $\Lambda$ are negative. In general their values will be non-negative (based on the physics and conservation) and $H$ sym-pos-semi-definite.  Thus this can be treated as a set of independent equations and an optimal values for the contributions in the diagonal matrix $\Theta$ chosen. So the time discretisation becomes:
+with $\hat\Psi=R\Psi$ the solution will grow (ignoring other losses) if any of the eigen-values in $\Lambda$ are negative. In general their values will be non-negative (based on the physics and conservation) and $H$ sym-pos-semi-definite.  Thus, this can be treated as a set of independent equations and an optimal values for the contributions in the diagonal matrix $\Theta$ chosen. So the time discretisation becomes:
 
 
 \begin{equation}
@@ -1635,7 +1635,7 @@ Alternatively, the source can be placed (lumped by add all the $\underline{\unde
 
 One of the main advantages of the finite element high resolution method (HRFEM) that it shares with most other FEM methods, is that the equations involve diagonal dominant mass matrixes which are well conditioned and have a condition number independent of the grid size.
 
-In contrast to first order discretization methods, the HRFEM equations have coupling in all directions. The HRFEM method used here is obtained by making each element a CV and using a mapping between the CV and the FEM solution. The FEM solution is then used as the high order flux along the CV faces. The HRFEM method requires the inverse of the consistent mass matrix in order to calculate incoming control volume fluxes accurately - this inverse is a full matrix. Thus this coupling in practice can only be realized explicitly in the iterative scheme.  The HRFEM method has been generalised with a bi-jective mapping between the FEM and CV solutions. The discontinuous HRFEM method also uses consistent mass matrices, but these are local to an element so they are more manageable and can be treated implicitly.
+In contrast to first order discretization methods, the HRFEM equations have coupling in all directions. The HRFEM method used here is obtained by making each element a CV and using a mapping between the CV and the FEM solution. The FEM solution is then used as the high order flux along the CV faces. The HRFEM method requires the inverse of the consistent mass matrix in order to calculate incoming control volume fluxes accurately - this inverse is a full matrix. Thus, this coupling in practice can only be realized explicitly in the iterative scheme.  The HRFEM method has been generalised with a bi-jective mapping between the FEM and CV solutions. The discontinuous HRFEM method also uses consistent mass matrices, but these are local to an element so they are more manageable and can be treated implicitly.
 
 There are a number of options available for solving the non-linear HRFEM equations. One can linearize the global equation set, treating implicitly or explicitly the down stream element coupling (inclusion of down stream coupling may result in poorer conditioned matrices from the discretization). Then a global set of linear equations would be solved each non-linear iteration by for example using SSOR preconditioning for GMRES \citep{saad_1986}.  Alternatively, one can sweep through each CV, resolving all the non-linear equations local to each CV with a suitable liberalization procedure.
 
@@ -1740,7 +1740,7 @@ $M_i$ for pressure and in which in 3D ${\mathbf Q}_i$ becomes:
 \label{m_sigma_matrix}
 \end{equation}
 
- Thus the discretete force balance becomes:
+ Thus, the discretete force balance becomes:
 
 \begin{equation}
 \int_\Omega {\mathbf Q}_i ({\underline {\underline \sigma}}_k {\mathbf u}_k - \nabla p -{\mathbf s}_u) dV 
@@ -1798,10 +1798,10 @@ and
 \end{equation}
 where ${\mathbf n}$ is the surface normal. 
 
-Thus as usual with mixed formulations not specifying a 
+Thus, as usual with mixed formulations, not specifying a 
 boundary condition for pressure corresponds to a no 
-normal flow conditions which is realized through the continuity 
-equation and a weakly applied Dirichlet no normal 
+normal flow condition which is realized through the continuity 
+equation by weakly appling a Dirichlet no normal 
 flow boundary condition. 
 
 
@@ -1835,14 +1835,14 @@ on the boundaries of each finite element, that is for example:
 + \frac{1}{2} \int_{\Gamma_E} {\mathbf Q}_i {\mathbf n} (p-p_{nab}) dV
 \label{dg-sat-form}
 \end{equation}
-where $p_{nab}$ is the pressure from the neighboring 
+where $p_{nab}$ is the pressure from the neighbouring 
 element and ${\mathbf n}$ is the surface normal. 
 
 
 \subsection{The overlapping finite element method for multi-phase Darcy Flow} 
 
 So far for uniform ${\underline{\underline \sigma}}_k$ within each element and the use of the P1DG-P2 element type 
-and its equivalent in 1D the Darcy flow equation is 
+and its equivalent in one dimensional the Darcy flow equation is 
 exactly enforced. Although this is not true of the DG variants 
 for pressure it is observed that it is close 
 as the pressure does not have large discontinuities 
@@ -1850,7 +1850,7 @@ between elements at least in one dimension.
 
 However, ${\underline{\underline \sigma_k}}$ depends on the saturation $S_k$ which has 
 a control volume (CV) distribution and is a non-linear function of $S_k$. 
-Thus 			
+Thus, 			
 
 \begin{equation}
 {\underline {\underline \sigma}}_k 
@@ -1859,17 +1859,17 @@ Thus
 in which the permeability tensor 
 ${\underline{\underline K}}$ has an element wise variation 
 and ${Rel}_k$ is the relative permeability. 
-Thus in general ${\underline {\underline \sigma}}_k$ varies between elements and within each element 
+Thus, in general ${\underline {\underline \sigma}}_k$ varies between elements and within each element 
 depending on the same variation as the CV saturation $S_k$ that is $Rel_k$. 
-Thus ${\underline {\underline \sigma}}_k$ is piecewise constant 
+Thus, ${\underline {\underline \sigma}}_k$ is piecewise constant 
 within each element and a natural 
 way to obtain an exact solution would be to use basis functions 
 local to each CV within each element. 
-Thus if for quadratic pressure variation there will be 
+Thus, if for quadratic pressure variation there will be 
 a piecewise 
 linear velocity field with simple discontinuity between 
 elements and one could then use linear basis functions 
-and test functions within each control volume. Thus in 1D 
+and test functions within each control volume. Thus, in one dimension 
 there would be $2\times 3$ velocity nodal values associated with 
 each phase.  
 
@@ -1880,7 +1880,7 @@ based on the observation
 that the only difference between the velocities 
 within each CV is a multiplication factor 
 and this multiplication factor is ${\underline {\underline \sigma}}_k^{-1}$. 
-Thus one can discretise  
+Thus, one can discretise  
 using: 
 \begin{equation}
 \int_\Omega {\mathbf Q}_i^\mu ({\underline{\underline\sigma}}_k^\mu {\mathbf u}_k^\mu - \nabla p -s^\mu) dV + 
@@ -1890,7 +1890,8 @@ using:
 in which ${\mathbf Q}_i^\mu$ are the weighting functions. 
 ${\mathbf Q}_i^\mu$ are also the  
 velocity basis functions which span the whole 
-element that they belong too and also ${\mathbf Q}_i^\mu={\mathbf Q}_i^1\;\; \forall \mu\in\{1,2,...,{\cal N}_{locCV}\}$
+element that they belong to 
+and also ${\mathbf Q}_i^\mu={\mathbf Q}_i^1\;\; \forall \mu\in\{1,2,...,{\cal N}_{locCV}\}$
 where ${\cal N}_{locCV}$ is the number of local control volumes within each 
 finite element and ${\mathbf u}_k =\sum_\mu \sum_j H^\mu {{\mathbf u}_k}_j^\mu$ where 
 $H^\mu=1$ in local control volume $o$ and $=0$ otherwise. 
@@ -2041,7 +2042,7 @@ The force balance equation with gravity is at time level $n+1$:
 in which ${\mathbf g}$ is the gravitational vector with a 
 magnitude $\vert{\mathbf g}\vert$ 
 equal to the stength of gravity and the direction in which gravity acts. 
-Thus this becomes on inserting \ref{sat-part} into this equation 
+Thus, this becomes on inserting \ref{sat-part} into this equation 
 for $\rho_k$:
 
 
@@ -2124,7 +2125,7 @@ n\cdot \tilde u_k^{n+1}    u_k^{n+1}  d\Gamma
 \label{inertia-disc-cons-3} 
 \end{equation}
 in which $nab$ refers to variables associated 
-with neighboring elements and the surface 
+with neighbouring elements and the surface 
 $\Gamma_e (n\cdot \tilde u_k^{n+1}<0)$ is 
 the incoming surface to 
 element $e$ in which 
@@ -2303,7 +2304,7 @@ Notice that in equation \ref{detail-global-cty} the
 control volume-wise variation of pressure ${p_{CV}}_i^n$ has been 
 used and in order to get to the equation  \ref{glob-cty-matrix} 
 above the finite element variation of pressure with basis 
-functions $N_i$ has been used. Thus to get to equation 
+functions $N_i$ has been used. Thus, to get to equation 
 \ref{glob-cty-matrix} the Galerkin projection
 
 \begin{equation}
@@ -2336,7 +2337,7 @@ avoids differentiating complex EoS's.
 \subsection{Upwind velocity/relative permeability} 
 \label{opt-up} 
 
-It remains to us to dertmine the velocity to be used 
+It remains to us to determine the velocity to be used 
 at the interface between control volumes in the 
 saturation \ref{detail-sat-eqn-k} and therefore 
 the global continuity equations \ref{detail-global-cty}. 
@@ -2349,9 +2350,9 @@ is due to the differing relative permeabilities of
 $\sigma_k$'s in each CV and is the only way that 
 equation \ref{force-semi-disc} can be strongly enforced. 
 This discontinuity happens between elements for the DG 
-formulation and as well as between CV's within each element. 
+formulation and as well as between CVs within each element. 
 
-One way to dertmine dertmine the value of the velocity 
+One way to determine the value of the velocity 
 $({{\mathbf n}\cdot{\mathbf u}_k})_{int}$ 
 on the interface between two control volumes 
 is to dermine the value of ${\sigma_k}_{int}$ on this boundary 
@@ -2363,14 +2364,14 @@ When $({{\mathbf n}\cdot{\mathbf u}_k})_{int}$
 is determined one can turn this 
 into the proportion of each of the surrounding control 
 volumes goes up to make 
-$({{\mathbf n}\cdot{\mathbf u}_k})_{int}$. Here we any downwind 
+$({{\mathbf n}\cdot{\mathbf u}_k})_{int}$. Here any downwind 
 biased averages are simply set to a central difference 
 (which may not just be a simple average if we have 
 unequal CV sizes or are using the FEM saturation 
 on the control volume boundary) and in the case 
 when there is an upwind bias then this is accepted. 
 This choice is used in order to maintain consistency 
-with the characteristics of the BL equations say. 
+with the characteristics of the BL equations. 
 
 \subsubsection{Upwind fraction $w_k$} 
 The upwind parameter $w_k$ is 
@@ -2394,7 +2395,7 @@ source in each element then
 {\sigma_k}_{left} {{\mathbf n}\cdot{\mathbf u}_k}_{left} =  {\sigma_k}_{right} {{\mathbf n}\cdot{\mathbf u}_k}_{right}
 \label{u_int} 
 \end{equation}
-or for the case when equal sized CV's then a simple mean may be used:
+or for the case when equal sized CVs then a simple mean may be used:
 
 \begin{equation}
 ({{\mathbf n}\cdot{\mathbf u}_k})_{int}= \frac{\frac{1}{2} {\sigma_k}_{left}{{\mathbf n}\cdot{\mathbf u}_k}_{left}  
@@ -2414,7 +2415,7 @@ control volumes at the surface quadatruee point
 where we are evaluating the velocity. Now limiting 
 $w_k$ so we have not down-winding using the 
 geometrically centered value of $w_k$ that is ${w_k}_{geom}$ 
-(${w_k}_{geom}$ may equal $\frac{1}{2}$ for same sized CV's) 
+(${w_k}_{geom}$ may equal $\frac{1}{2}$ for same sized CVs) 
 then
 
 \begin{equation}
@@ -2433,21 +2434,21 @@ used to exadurate the unwinding.
 \subsubsection{Determining the interface absorption ${\sigma_k}_{int}$ }
 
 First of all the value of that saturations ${S_k}_{int}$ 
-are dertmined on the intefrcae between the CV's. 
-From these we can then dertmine the values of ${\sigma_k}_{int}$ 
+are determined on the intefrcae between the CVs. 
+From these we can then determine the values of ${\sigma_k}_{int}$ 
 using the relative permeability equations. However, 
 this may be expensive and thus we store 
 in each CV the values of $\sigma_k$ as well 
 as the derivatives $\frac{\partial \sigma_k}{\partial S_k}$. We then 
-can use a first order tailer series to dertmine 
+can use a first order tailer series to determine 
 (by projecting the gradient 
 to the CV quadrature point. In fact this is done for 
-both CV's surrounding the interface to give the 
+both CVs surrounding the interface to give the 
 two values of predicted interface ${\sigma_k}$. 
 We then choose the value in a conservative way that 
 is associated with the most unwinding. 
 
-Thus using a Taylor series about the $left$ CV:
+Thus, using a Taylor series about the $left$ CV:
 
 \begin{equation}
 {{\sigma_k}_{left}}_{int}
@@ -2540,7 +2541,7 @@ Then the interface velocities either side of the interface can be obtained from:
 \label{two-vels}
 \end{equation} 
 Notice that these velocities point in the same direction and are just different in magnitude. 
-Thus using them to define an upwind direction is not ambiguous and a good approach or alternative 
+Thus, using them to define an upwind direction is not ambiguous and a good approach or alternative 
 to Roe averaging. 
 So an alternative to using Roe averaging is to use: 
 \begin{equation}
@@ -2556,7 +2557,7 @@ within an element or between DG finite elements.
 
 The two values of velocity provide, in equation \ref{two-vels}, provide the two extremes within which the final interface 
 velocity is obtained. Notice that if the saturation and density are equal in 
-CV's $i$ and $j$ then these velocities will be identical. This is important in order to 
+CVs $i$ and $j$ then these velocities will be identical. This is important in order to 
 solve the elliptic nature of the resulting pressure equation. 
 
 If we are to apply an upwind method of calculating the interface velocity then 
@@ -2600,7 +2601,7 @@ and for ${\bf n}\cdot {\bf a}_k<0$ - CV $i$ incoming information:
 \label{sigma-in}
 \end{equation} 
 and $\tilde\sigma_k$ is also adjusted to ensure that it lies between ${\sigma_k}_i$, ${\sigma_k}_j$ - since 
-in general $\tilde\sigma_k$ is a tensor on the boundaries of the CV's we only require its 
+in general $\tilde\sigma_k$ is a tensor on the boundaries of the CVs we only require its 
 normal component ${\bf n}^T\tilde\sigma_k {\bf n}$ which is then subject to this boundedness constraint. 
 It should be noted that for high order elements it may be advantageous to use $\tilde\sigma_k = \sigma_k (\tilde S_k)$ 
 directly so as to maintain the high order convergence. In addition, for robustness, one can 
@@ -2608,7 +2609,7 @@ choose to only add the second order terms in equations  \ref{sigma-out}, \ref{si
 $\tilde\sigma_k $ is closer to the upwind value of $\sigma_k$, either ${\sigma_k}_i$ or ${\sigma_k}_j$ 
 depending on the direction of the velocity ${\bf a}_k$. 
 
-Thus the final interface velocity is obtained from:
+Thus, the final interface velocity is obtained from:
 \begin{equation}
 {\tilde{\bf u}_k} = {\tilde\sigma_k}^{-1}  \frac{1}{2} ( {\sigma_k}_i {{\bf u}_k}_i + {\sigma_k}_j {{\bf u}_k}_j ), 
 \label{mean_int_vel}  
@@ -2650,7 +2651,7 @@ Determining the velocity between finite elements in a fully discontinuous is nee
 between the elements. It is also needed in order to obtain the discretised 
 non-symmetric pressure equation which has elliptic like properies. These properties 
 mean it is necessary to propogate information in all directions across the domain. 
-Thus taking the upwind velocity (as commonly done within an element) is not necesserily 
+Thus, taking the upwind velocity (as commonly done within an element) is not necesserily 
 a good idea. 
 A simple way of obtaining the interface velocity is to choose as the interface velocity the mean 
 velocity of velocities either side of the interface: 
@@ -2659,9 +2660,9 @@ velocity of velocities either side of the interface:
 {\tilde{\bf u}_k} = \frac{1}{2} ({{\bf u}_k}_i+{{\bf u}_k}_j). 
 \end{equation} 
 However, more accurate velocities may be obtained. 
-For the two neibouring CV's $i$ and $j$ which have an interface 
+For the two neibouring CVs $i$ and $j$ which have an interface 
 between finite elements a way of determining a field ${\bf u}_k$ is by using a volume 
-weighting or in 1D this is equivalent to simple interpolation to the interface, that is: 
+weighting or in one dimension this is equivalent to simple interpolation to the interface, that is: 
 
 \begin{equation}
 {\tilde{\bf u}_k} = \frac{ V_j {{\bf u}_k}_i + V_i {{\bf u}_k}_j  } {V_i +V_j} 
@@ -2710,7 +2711,7 @@ no flow can occur for the phase in question and thus its saturation can not chan
 beyond its limits. 
 Numerically, this is realized with the CVFEM approach when the velocities are $\it upwinded$. 
 That is the upwind value of the discontinuous velocity (either side of a control volume interface) 
-is chosen. Thus if the relative permeability approaches zero for the upwind cell, the 
+is chosen. Thus, if the relative permeability approaches zero for the upwind cell, the 
 corresponding velocity also approaches zero and thus saturation can not exit this cell - that is 
 no flux of that saturation can occur from the upwind cell and thus the saturation can 
 never decrease. However, since we are taking the upwind velocities (within this argument)  
@@ -2723,10 +2724,10 @@ boundedness between $S_w\in\left[ S_{wir}, 1-S_{sor} \right]$.
 For the discontinuous method above we do not have this property that the upwind velocity is 
 necessarily chosen as the velocity to us. However, we can choose this velocity if 
 the method detects that there is a rapid variation in the relative permeability functions 
-associated with both neighboring cells. 
+associated with both neighbouring cells. 
 
-Thus a variable $h$ is introduced either side of the interface for 
-neighboring cells $i$ and $j$, that is ${h_k}_{i}$, ${h_k}_{j}$: 
+Thus, a variable $h$ is introduced either side of the interface for 
+neighbouring cells $i$ and $j$, that is ${h_k}_{i}$, ${h_k}_{j}$: 
 
 \begin{equation}
 {h_k}_{i} = min\{ 1,  \frac{\tilde{\sigma_k}_i}{{\sigma_k}_i} \}, \;\;\;
@@ -2748,7 +2749,7 @@ then
 ${h_k}_{ij}= {h_k}_{i}$ and if ${\bf a}_k\cdot {\bf n}<0$ (incomming information) then
 ${h_k}_{ij}= {h_k}_{j}$.   
 
-Thus  there are a number of schemes:
+Thus,  there are a number of schemes:
 
 \noindent
 {\it Scheme 1: Simple combined average and upwind method} 
@@ -2846,7 +2847,7 @@ ${\sigma_k}_{upwind}$ is the upwind value - either ${\sigma_k}_i$ or ${\sigma_k}
 Both these modification, effectively set the velocity to zero or a small value 
 for outcomming velocities of a CV which is close to violating the boundedness 
 condition  $S_w\in \left[ S_{wir}, 1-S_{sor} \right]$. 
-Thus if there is no velocity or mass flux going out of a CV close to 
+Thus, if there is no velocity or mass flux going out of a CV close to 
 the minimum value of saturation then there can be no further reduction of this saturation and no 
 violation of the boundedness criteria. 
 This is essentially why the upwind method works to ensure boundedness as the 
@@ -2860,11 +2861,11 @@ velocity.
 \label{bcs-rel-perm} 
 Suitable boundary conditions can be guided by the 
 discontinuous formulations above as well as the up-winding in 
-the continuous formulations. In fact exactly the same 
+the continuous formulations. In fact, exactly the same 
 boundary condition implementations can be applied as used in 
 the discontinuous formulations but across the boundaries 
 of the domain and taking information from just outside the domain 
-rather than in the neighboring elements. 
+rather than in the neighbouring elements. 
 
 Saturation boundary conditions are relatively straightforward. 
 One typically takes the saturation from just outside the domain 
@@ -3577,7 +3578,7 @@ and
 $\widehat{{(1-\Theta)}^j}_m^{n+\frac{1}{2}}=0$. 
 The summations must be realized 
 at the discrete level which includes the treatment of the spatial derivatives. 
-Thus the simplest way to achieve consistency and therefore bounded 
+Thus, the simplest way to achieve consistency and therefore bounded 
 and conservative solutions is to use upwind differencing. 
 However, this may not be efficient and when more accurate 
 flux limiting methods are used then something like equations \ref{disc-phasej-X-i}, \ref{disc-phasej-X-i} may be used as the 
@@ -3707,7 +3708,7 @@ equations
 (during an iteration within a time level) for the coupled saturation/velocity and 
 pressure. When the velocity/pressure equations are solved for, then an improved 
 value of the future density ${\rho^j_i}^{n+1}$ can be determined and used in 
-the equations to calculate the saturations. Thus the final step in the iteration 
+the equations to calculate the saturations. Thus, the final step in the iteration 
 for a time step is to determine $y_i^j$. 
 
 
@@ -3727,42 +3728,42 @@ within the wells/pipes. There are five main reasons why this approach is desirab
 1) Having more phases can incur little extra CPU overhead. 
 The implementation of the multi-phase flow model is such that the inner most loops 
 are over phases with no indirect addressing associated with this. The outer loops 
-are over CV's and FEM nodes with indirect addressing associated with the unstructured meshes 
+are over CVs and FEM nodes with indirect addressing associated with the unstructured meshes 
 which is the CPU intensive part of the 
 computation.  
 \par\noindent 
 2) One can use the discretization infrastructure of the fluids model so that we can solve the 
 multi-phase 
-Navier Stokes or Darcy's equations within the well's and given very substantial numerical 
+Navier Stokes or Darcy's equations within the wells and given very substantial numerical 
 resolution one could resolve the 3D multi-phase equations within the wells/pipes. 
 \par\noindent
 3) One can use the adaptivity and parallel methods without the re-coding necessary 
-to use this technology with embedded 1d pipe/well models. 
+to use this technology with embedded one dimensional pipe/well models. 
 \par\noindent
 4) The well and reservoir equations are solved in a fully coupled fashion. 
 \par\noindent
 5) With the use of mesh adaptivity one can start to resolve the flows locally, around the 
 wells, that are important or important parts of these wells.   
 \par\noindent
-6) One can replace the multi-phase flow equations with 1D imbeded pipe models that 
+6) One can replace the multi-phase flow equations with one dimensional imbeded pipe models that 
 follow the edges of elements and have variables collocated at the FEM nodes without 
 effecting the solvers or rest of the formulation. 
 
 The main disadvantage of this approach is that one needs to solve for two or more 
 coupled pressure fields as opposed to one in the conventional approach. 
-However, again the indirect addressing can be associated with CV's and not 
+However, again the indirect addressing can be associated with CVs and not 
 extra fields within the linear solvers if they are chosen carefully.   
 
 There can be a need to have multiple well phase sets (a phase set may comprise oil, water and gas say) 
 in order to keep the 
 pipes going through the reservoir distinct when there is inadequate spatial resolution 
 between the wells to do that. So one does not normally have a different phase set for each well and to minimize the 
-number of phase sets pipe coloring methods can be used. The pipes may be assumed connected (in the graph coloring algorithm) if they share the same fluid finite element. 
+number of phase sets pipe colouring methods can be used. The pipes may be assumed connected (in the graph colouring algorithm) if they share the same fluid finite element. 
 
 
 \subsection{Continuity equations for well modelling} 
 \label{Continuity equation for well modelling} 
-Using the general formulation for multi-well's (${\cal N}_{well}$ is the number of wells, plus the reservoir, 
+Using the general formulation for multi-wells (${\cal N}_{well}$ is the number of wells, plus the reservoir, 
 that are represented as different phases), multi-phase's (${\cal N}_{phase}$ is the number of phases within each well or reservoir phase set) the mass conservation equation of each well or reservoir $j$ and for phase $i$ is: 
 \begin{equation} 
 \phi^j \displaystyle\frac{\partial}{\partial t}\left( \rho_{i}^{j}S_i^{j}\right) + \nabla\cdot\left(\rho_{i}^{j}S_i^{j}\mathbf{u}_i^{j}\right) - Q_{i}^j = 0,
@@ -3860,9 +3861,9 @@ or equivalently,
 \end{equation}
 in which $p^j$ is the pressure of well or reservoir $j$ and 
 superscript $k$ refers to the other wells or the reservoir. 
-Thus the reservoir and the wells have different pressures within 
-their phases, $p^k, \forall k\in\{1,2,...,{\cal N}_{well}\}$. It is worth noting that 
-$1$ needs to be retained in equation \ref{saturation_wells_4} during the computation to 
+Thus, the reservoir and the wells have different pressures within 
+their phases, $p^k, \forall k\in\{1,2,...,{\cal N}_{well}\}$. It is worth noting that the 
+'$1$' needs to be retained in equation \ref{saturation_wells_4} during the computation to 
 ensure satisfaction of equation \ref{saturation_wells_3c}. 
 $\gamma^{j\,k}$ is made up of phase contributions
 
@@ -3938,7 +3939,7 @@ A_{pipe-wall}  \rho_i^{reservoir} S_i^{reservoir} v_i = \frac{A_{pipe-wall}  \rh
 =\gamma_i^{well\, reservoir} (p_{well} - p_{reserviour}) + q_i^{well\, reservoir}. 
 \label{saturation_wells_10}
 \end{equation}
-Thus if $p_{well}>p_{reservoir}$ then for phase $i$ the value of $\gamma_i^{well\, reservoir}$ is: 
+Thus, if $p_{well}>p_{reservoir}$ then for phase $i$ the value of $\gamma_i^{well\, reservoir}$ is: 
 \begin{equation}
 \gamma_{up_i}^{well\, reservoir}=\frac{A_{pipe-wall}  \rho_i^{well} S_i^{well} }{{{\Delta x}_{wall}\sigma_{wall}}_i} 
 \;\;\;
@@ -3964,14 +3965,14 @@ q_{i}^{well\, reservoir}=\frac{A_{pipe-wall}  \rho_i^{reservoir} S_i^{reservoir}
 {{\sigma_{wall}}_i} ,
 \label{saturation_wells_12}
 \end{equation}
-in which $A_{pipe-wall}$ is the surface area density of the of the surface of the well or pipe - cross section area of pipe per unity volume which has dimensions of $m^{-1}$. Thus for CV $l$ the $A_{pipe-wall}$ is:
+in which $A_{pipe-wall}$ is the surface area density of the surface of the well or pipe - cross section area of pipe per unity volume which has dimensions of $m^{-1}$. Thus, for CV $l$ the $A_{pipe-wall}$ is:
 \begin{equation}
 {A_{pipe-wall}}_l =  \frac{  {\Gamma_{pipe-wall}}_l  }{ {\cal V}_l }
 \label{saturation_wells_12b}
 \end{equation}
 in which ${\Gamma_{pipe-wall}}_l$ is the outer surface area of the well/pipe inside CV $l$ 
 and the volume of CV $l$ is ${\cal V}_l$. 
-For stability (avoiding moving mass too or from phases with near zero porocity) it is useful to use $\widehat{A_{pipe-wall}}_l$ rather than ${A_{pipe-wall}}_l$ in which 
+For stability (avoiding moving mass to or from phases with near zero porocity) it is useful to use $\widehat{A_{pipe-wall}}_l$ rather than ${A_{pipe-wall}}_l$ in which 
 \begin{equation}
 {A_{pipe-wall}}_l =  \phi^{well}_l \phi^{reservoir}_l \widehat{ A_{pipe-wall}}_l. 
 \label{saturation_wells_12b-hat}
@@ -4016,7 +4017,7 @@ not resolvable on the mesh.
 If two pipes or wells (well 1 and well 2) are connected then we can use an arbitrary large value of 
 $\gamma_i^{well1\, well2}$ which will instantly equalize the pressures between the two pipes 
 where they meet and freely exchange mass between them. If however one considers that 
-their exchange occurs over a distance equal to the size of the CV's ${\Delta x}_{grid}$ at the intersection then, 
+their exchange occurs over a distance equal to the size of the CVs ${\Delta x}_{grid}$ at the intersection then, 
 analogous to equation \ref{saturation_wells_14}, one obtains: 
 
 \par\noindent
@@ -4031,7 +4032,7 @@ and for $p_{well1}\leq p_{well2}$ for phase $i$ the value of $\gamma_i^{well\, w
 \label{saturation_wells_12}
 \end{equation}
 in which $A_{well12}$ is the cross-section area density of the pipes at their join and $\sigma_{well1}$,  $\sigma_{well2}$ 
-are the volumetric drag coefficients for wells 1 and 2.  Thus for CV $l$ the $A_{well12}$ is:
+are the volumetric drag coefficients for wells 1 and 2.  Thus, for CV $l$ the $A_{well12}$ is:
 \begin{equation}
 {A_{well12}}_l =  \frac{  {\Gamma_{well1-well2}}_l  }{ {\cal V}_l }
 \label{saturation_wells_12b}
@@ -4041,8 +4042,8 @@ and the volume of CV $l$ is ${\cal V}_l$. Notice that $\gamma_i^{well1 \, well2}
 neither well is present. 
 
 There are two basic ways of dealing with a situation when there are multiple wells close to one 
-another. One way is to use a well coloring method in which we assign different colours to wells  
-close to one another in terms of numbers of CV's. The other is to use an anisotropic permeability 
+another. One way is to use a well colouring method in which we assign different colours to wells  
+close to one another in terms of numbers of CVs. The other is to use an anisotropic permeability 
 guiding the well flows along the direction of the pipes and minimizing mixing between the 
 pipes. This is achieved with a low permeability orthogonal to the pipes. 
 
@@ -4090,7 +4091,7 @@ in which the Peacman correction is:
 r_p= 0.14 \Delta x_{norm-well} 
 \end{equation}
 and $h$ is the length of the completion - length over which the well is perforated. Also $\Delta x_{norm-well}$ 
-is  the length scale of the elements normal to the well - for CV-FEM it may be calculated from the dertminant of the FEM Jacobian. 
+is  the length scale of the elements normal to the well - for CV-FEM it may be calculated from the determinant of the FEM Jacobian. 
 Assuming the length of pipe/well in CV $i$ is ${\Delta x_{well}}_i$ then ${\Delta x_{norm-well}}_i$ is 
 calculated from the CV volume $V_i$, that is: 
 \begin{equation}
@@ -4111,7 +4112,7 @@ From equation \ref{saturation_wells_11-cyl-skin} then:
  . 
 \label{saturation_wells_15-well10reservoir-cyl-skin}
 \end{equation}
-The scalar $\tilde\sigma_i$ repflects the permeability normal to the wells 
+The scalar $\tilde\sigma_i$ reflects the permeability normal to the wells 
 and is obtained from forming an orthornal system ${\bf b}={\bf t}\times {\bf n}$ in which $\bf n$ is the direction 
 along the wells and $\bf t$ and $\bf b$ are orthonormal vectors to $\bf n$ and themselves; then: 
 \begin{equation}
@@ -4126,18 +4127,19 @@ It will also be useful to consider the permability of the reservior along the we
 
 
 
+
 \subsection{Modelling rather than resolving laterals} 
 \label{Modelling rather than resolving laterals}  
-The previous section describes a method of 1D based modelling of wells and laterals 
+The previous section describes a method of one dimensional based modelling of wells and laterals 
 (micro-laterals and nano-laterals) which necessitates substantial parameterization 
 due to the lack of resolution near the well within the reserviour. Using the same approach 
-we can model laterals eminating from a well simly by exchaning the mass between 
-the reservior and laterals at a point or CV of the well. 
-This works well when there is not enough resolution within the reservior to be able to 
+we can model laterals emanating from a well simply by exchanging the mass between 
+the reservoir and laterals at a point or CV of the well. 
+This works well when there is not enough resolution within the reservoir to be able to 
 hold the unresolved laterals. 
 
-The approach works by repeating the above and again assuming the well is cylindericial and a cyclindrically symmetric analytical solution 
-as well as the intorduction of the skin effect coefficient $\widehat{Skin}$ (an adjustment for fracturing of the porious media by the introduction of the well) the result is that the maximum total mass flux can 
+The approach works by repeating the above and again assuming the well is cylindericial and a cylindrically symmetric analytical solution 
+as well as the introduction of the skin effect coefficient $\widehat{Skin}$ (an adjustment for fracturing of the porous media by the introduction of the well) the result is that the maximum total mass flux can 
 be written as: 
 
 \begin{equation}
@@ -4154,7 +4156,7 @@ From equation \ref{saturation_wells_11-cyl-skin-model-lat} then:
 \begin{equation}
 \hat\gamma_{i}^{well\, reservoir}
 =\frac{2 S_i^k \pi \hat{h}}{ \hat\sigma_i^k h\pi {r}_e^2} \frac{1}{ ( log(\frac{\hat{r}_p}{\hat{r}_e}) + \widehat{Skin})}
-=\frac{2 S_i^k \hat{h}}{\hat\sigma_i^k h {r}_e^2} \frac{1}{ ( log(\frac{\hat{r}_p}{\hat{r}_e}) + \widehat{Skin})}
+=\frac{2 S_i^k \hat{h}}{\hat\sigma_{i}^k  h\pi {r}_e^2} \frac{1}{ ( log(\frac{\hat{r}_p}{\hat{r}_e}) + \widehat{Skin})}
  . 
 \label{saturation_wells_15-well10reservoir-cyl-skin-model-lat}
 \end{equation}
@@ -4164,23 +4166,73 @@ in equation \ref{saturation_wells_15-well10reservoir-cyl-skin} to get the overal
 
 
 
+
+\subsubsection{Simple analytical well models} 
+\label{Simple analytical well models}
+As well as enabling imbedding of analytical models 
+such as the above for modelled rather than resolved laterals, 
+simple analytical expressions can help validate forward models and 
+provide insights into the physics involved. 
+By dividing up the pipes into a number of pipe sets, one of the simplest models can be obtained: 
+
+Volume production rate = 
+\begin{equation}
+\sum\limits_{{pipe}=1}^{{\cal NPIPE}} 
+\frac{2 S_{pipe}^k \pi {h}_{pipe} }{\sigma_{pipe}^k } \frac{\Delta p_{pipe}}{ ( log(\frac{ {r_p}_{pipe} }{ {r_e}_{pipe} }) + {Skin}_{pipe})}
+\end{equation}
+in which ${r_p}_{pipe} = 0.14 * dx-normal2pipe_{pipe}$ - it is suggested that $dx-normal2pipe_{pipe}$  
+is some length scale across the reservoir and is the cell width normal to the wells in the simulator; 
+\par\noindent
+${\cal NPIPE}$ is the number of pipe sets that have rather different properties e.g. different 
+pressure differences or permeabilities in their local vicinities; 
+\par\noindent
+${r_e}_{pipe}$ is the pipe or well internal diameter for pipe set $pipe$; 
+\par\noindent
+$S_{pipe}^k $ is the saturation of phase $k$ near the well or pipe set $pipe$; 
+\par\noindent
+similarly $\sigma_{pipe}^k$ is a result of the permeability and relative permeability for 
+phase $k$  near the well or pipe set $pipe$; 
+\par\noindent
+ ${Skin}_{pipe}$ is the skin effect adjustment for pipe set $pipe$ which takes into account 
+the fracturing of the porous media around this pipe set resulting from the drilling of the pipes 
+(${Skin}_{pipe}=0$ is 
+often used); 
+\par\noindent
+$\Delta p_{pipe}$ is pressure difference between the reservoir and the well/pipe set $pipe$ - this 
+as a first approximation can be assumed to be the pressure difference between the know well pressure 
+and the known reservoir pressure before extracting oil from the wells. This is where the biggest 
+approximation lies as when extracting oil/water/gas the pressure difference will be substantially less 
+and making this assumption will result in estimated values 
+greater than those obtained by a detailed reservoir model. However, if one has some experience from 
+more detailed modelling one may be able to estimate $\Delta p_{pipe}$ which will greatly enhance the accuracy of the 
+predictions using the above equation.  
+
+When there are a number of smaller in diameter laterals coming from a larger diameter motherbore 
+then generally the mass production rate increase will be greater than suggested by the surface area ratio 
+of the motherbore to the motherbore plus the laterals.    This is due to the fact that even fairly thin 
+wells/laterals/pipes can be effective at producing. 
+
+
+
+
+
 \subsection{Friction and pressure drop of the flows within wells} 
 \label{Friction and pressure drop of the flows within wells} 
 
-Within the approach outlined here we solve simultaniously (coupled through mass echannge 
-terms in the continuity equation) for the pressure in the reservior and the pressure 
-in the wells. There can be substanital differences between the 
-pipe and reservior pressures. 
+Within the approach outlined here we solve simultaneously (coupled through mass echannge 
+terms in the continuity equation) for the pressure in the reservoir and the pressure 
+in the wells. There can be substantial differences between the 
+pipe and reservoir pressures. 
 The pressure drop across the pipes is determined through the pipes friction - assuming 
-a multi-phase Darcey equation governs the force balance with the pipes. That is: 
+a multi-phase Darcy equation governs the force balance with the pipes. That is: 
 
 \begin{equation}
 \sigma^k u^k = -\nabla p_w - \rho^k g 
 \end{equation}
-in which $\sigma^k $ determins the frictional losses. 
-To this aim we define the friction factor:
+in which $\sigma^k $ determines the frictional losses. 
+To this aim we define the friction factor for phase $k$ as:
 \begin{equation}
-f^k = (1-w^k) \frac{16}{Re} - w^k 3.6 log_{10}\left(  \frac{6.9}{Re^k} + \left(\frac{e}{3.7D}\right)^{\frac{10}{9}} \right) 
+f^k = (1-w^k) \frac{16}{Re} + w^k \left( -3.6 log_{10}\left(  \frac{6.9}{Re^k} + \left(\frac{e}{3.7D}\right)^{\frac{10}{9}} \right) \right)^{-\frac{1}{2}} 
 \end{equation}
 in which 
 \begin{equation}
@@ -4191,13 +4243,15 @@ and the pipe Reynolds number for phase $k$ is:
 \begin{equation}
 Re^k= \frac{ \rho^k \vert u^k\vert 2 r_e }{\mu} 
 \end{equation}
-where $\rho^k$ and $\mu^k$ are the density and viscocity of phase $k$. 
-The resulting $sigma^k$ is then: 
+where $\rho^k$ and $\mu^k$ are the density and viscosity of phase $k$. 
+The resulting $\sigma^k$ is then: 
 
 \begin{equation}
-\sigma^k u^k
+\sigma^k 
     = \frac{f}{2r_e} 2 \rho^k \vert u^k \vert  = \frac{f}{r_e}  \rho^k \vert u^k \vert. 
 \end{equation}
+
+
 
 
 
@@ -4310,7 +4364,7 @@ the coupling is full and thus if the number of non-zeros in the pressure matrix
 for one pressure variables is ${\cal M}_p$ then the number of non-zeros in the pressure 
 matrix with ${\cal P}$ pressures is  ${\cal P}\times{\cal P}\times{\cal M}_p$. 
 In principle this means that efficient methods can be used for solving with the extra degrees of 
-freedome for pressure, but these are not supported (generally) in the current generation of 
+freedom for pressure, but these are not supported (generally) in the current generation of 
 multi-grid solvers which are needed to solve for pressure. 
 
 The formation of the pressure matrix equation is as described in section \ref{Projection method of solution} and the matrix ${\bf B}$ in the continuity equation \ref{glob-cty-matrix2} (a discretization of equation \ref{saturation_wells_4}) is formed from the terms involving $\hat\gamma^{j\, k}$ which couple the phases. 
@@ -4321,14 +4375,14 @@ The formation of the pressure matrix equation is as described in section \ref{Pr
 \subsection{Imbedded one-dimensional pipe model} 
 \label{1d-well-dicsretization}
 A key advantage of the formulation above, that is described in differential equation 
-form, is that one can use with 1D imbedded pipe models that 
+form, is that one can use with one dimensional imbedded pipe models that 
 follow the edges of elements and have variables collocated at the FEM nodes without 
 effecting the solvers or rest of the formulation. 
 
 This is achieved by using discretizing the equations along the edges of elements along which the 
 pipes are placed. So for a P1DG-P1 formulation there would be a linear pressure variation 
 along the edges of the elements with corresponding 2 control-volumes with a cylindrical 
-cross-section with a diameter equal o the diameter of the pipe along that edge. The velocity 
+cross-section with a diameter equal to the diameter of the pipe along that edge. The velocity 
 is then linear discontinuous along that edge and within each volume element. 
 A number of volume elements surround an edge so the DG velocities are calculated within 
 each of these volume elements. Whenever there is no pipe we place on the diagonal unity and 
@@ -4337,7 +4391,555 @@ This allows the solvers to be unchanged as they simple assume the number of pres
 at each pressure node is uniform across space and similarly for all the other variables. 
 
 
-\subsection{Scaling of the equations with wells} 
+
+
+
+\subsubsection{Discretisation of force balance - continuous pressure formulation} 
+
+
+
+The force balance equation is:
+\begin{equation}
+{\underline {\underline \sigma}}_k {\mathbf u}_k = - \nabla p + {\mathbf s}_u, 
+\label{pipe-force-bal}
+\end{equation}
+with boundary conditions of either
+${{\mathbf u}_k}\cdot {\mathbf n} = {{ u}_k}_{bc}$ (applied through the continuity  
+or saturation 
+equation below) or $p = p_{bc}$. 
+
+The basic force balance equation is obtained by 
+using the discontinuous basis function ${\mathbf Q}_i$ for velocity and 
+$M_i$ for pressure and in which in 3D ${\mathbf Q}_i$ becomes:
+\begin{equation}
+{\mathbf Q}_i = 
+  \begin{pmatrix}
+    Q_i   & 0 & 0 \\
+    0   & Q_i & 0 \\
+    0 & 0 & Q_i
+  \end{pmatrix}
+\label{pipe-m_sigma_matrix}
+\end{equation}
+
+Thus, the discretete force balance becomes:
+
+\begin{equation}
+\int_\Omega {\mathbf Q}_i ({\underline {\underline \sigma}}_k {\mathbf u}_k - \nabla p -{\mathbf s}_u) dV 
++  \int_{\Gamma_{\Omega}} {\mathbf Q}_i {\mathbf n} (p - p_{bc}) d\Gamma =0
+\label{pipe-force-semi-disc}
+\end{equation}
+where ${\mathbf n}$ is the normal to the surface 
+and $\Omega$ is the domain of solution and 
+${\Gamma_{\Omega}}$ the surface of the domain, ${\mathbf s}_u$ is 
+the source and the velocity ${\mathbf u}_k = \phi {\mathbf v}_k$, 
+$\phi$ is the 
+element-wise 
+porosity and ${\mathbf v}_k$ is the interstitial fluid velocity of phase $k$. 
+
+Since $p$ is continuous between elements this becomes:
+
+\begin{equation}
+{\mathbf M}_\sigma \underline {\mathbf u} = {\mathbf C} \underline {\bf p} 
++ \underline {\bf s}_u. 
+\label{pipe-force-balance-matrix-form}
+\end{equation}
+The pressure vector is $\underline{\bf p} =(p_1\; p_2 \; p_3\; ...\; p_{\cal M})^T$, 
+the velocity vector is decomposed into phases, thus for two phases, 
+$\underline{\mathbf u}=(\underline{\mathbf u}_1^T \;\; \underline{\mathbf u}_2^T)^T$ 
+and $\underline{\mathbf u}_k=({{\mathbf u}_k}_1\; {{\mathbf u}_k}_2\; {{\mathbf u}_k}_3\; ...\; {{\mathbf u}_k}_{\cal Q}) $ 
+and ${\mathbf u}_k = \sum_{j=1}^{\cal Q} {\mathbf Q}_j{{\mathbf u}_k}_j$ and 
+$p=\sum_{j=1}^{\cal M} M_j{p}_j$. Also 
+
+
+\begin{equation}
+{{\mathbf M}_\sigma}^{kk}_{ij} =  \int_\Omega {\mathbf Q}_i 
+{\underline {\underline \sigma}}_k {\mathbf Q}_j dV, 
+\end{equation}
+and for two phase flow
+
+\begin{equation}
+{{\mathbf M}_\sigma} = 
+  \begin{pmatrix}
+    {{\mathbf M}_\sigma}^{11}   & 0 \\
+    0   & {{\mathbf M}_\sigma}^{22} 
+  \end{pmatrix}
+\label{pipe-m_sigma_matrix}
+\end{equation}
+and 
+
+\begin{equation}
+{\mathbf C}_{ij}=\int_\Omega {\mathbf Q}_i \nabla M_j dV 
++ \int_\Gamma \frac{1}{2}{\mathbf Q}_i {\mathbf n}  M_j d\Gamma,
+\end{equation} 
+and 
+
+\begin{equation}
+{{\bf s}_u}_i= \int_\Omega {\mathbf Q}_i {\mathbf s}_u dV 
+- \int_\Gamma \frac{1}{2}{\mathbf Q}_i {\mathbf n} p_{bc} d\Gamma. 
+\end{equation}
+where ${\mathbf n}$ is the surface normal. 
+
+Thus, as usual with mixed formulations, not specifying a 
+boundary condition for pressure corresponds to a no 
+normal flow condition which is realized through the continuity 
+equation by weakly appling a Dirichlet no normal 
+flow boundary condition. 
+
+
+
+\subsubsection{Discretisation of force balance - discontinuous pressure formulation} 
+
+The only difference between this formulations (as far as the force balance 
+is concerned) and the continuous formulation is the treatment of pressure 
+which is discontinuous along with saturation and density at element 
+boundaries. The descrete force balance becomes:
+\begin{equation}
+\int_{\Omega_E} {\mathbf Q}_i ( {\underline {\underline \sigma}}_k 
+{\mathbf u}_k - \nabla p -{\mathbf s}_u) dV 
++  \int_{\Gamma_{E}} \frac{1}{2}{\mathbf Q}_i {\mathbf n} (p - p_{nab}) d\Gamma 
++  \int_{\Gamma_{E}-\Gamma} {\mathbf Q}_i {\mathbf n} (p - p_{bc}) d\Gamma =0
+\end{equation}
+and thus: 
+
+\begin{equation}
+{\mathbf C}_{ij}=\int_{\Omega_E} {\mathbf Q}_i \nabla M_j dV 
++ \int_{\Gamma_{E}-\Gamma} \frac{1}{2}{\mathbf Q}_i {\mathbf n} M_j d\Gamma 
++ \int_\Gamma {\mathbf Q}_i {\mathbf n} M_j d\Gamma .
+\end{equation}
+This corresponds to a central difference discretisation for pressure 
+on the boundaries of each finite element, that is for example:
+
+\begin{equation}
+\int_{\Omega_E} {\mathbf Q}_i \nabla p dV = -\int_{\Omega_E} \nabla {\mathbf Q}_i  p dV 
++ \int_{\Gamma_E} {\mathbf Q}_i {\mathbf n} p_{nab} dV 
+= \int_{\Omega_E} {\mathbf Q}_i \nabla p dV 
++ \frac{1}{2} \int_{\Gamma_E} {\mathbf Q}_i {\mathbf n} (p-p_{nab}) dV
+\label{pipe-dg-sat-form}
+\end{equation}
+where $p_{nab}$ is the pressure from the neighbouring 
+element and ${\mathbf n}$ is the surface normal. 
+
+
+\subsubsection{The overlapping finite element method for multi-phase Darcy Flow} 
+
+So far for uniform ${\underline{\underline \sigma}}_k$ within each element and the use of the P1DG-P2 element type 
+and its equivalent in one dimension the Darcy flow equation is 
+exactly enforced. Although this is not true of the DG variants 
+for pressure it is observed that it is close 
+as the pressure does not have large discontinuities 
+between elements at least in one dimension. 
+
+However, ${\underline{\underline \sigma_k}}$ depends on the saturation $S_k$ which has 
+a control volume (CV) distribution and is a non-linear function of $S_k$. 
+Thus, 			
+
+\begin{equation}
+{\underline {\underline \sigma}}_k 
+= \frac{1}{{Rel}_k} {\underline{\underline K}}^{-1} 	
+\end{equation}
+in which the permeability tensor 
+${\underline{\underline K}}$ has an element wise variation 
+and ${Rel}_k$ is the relative permeability. 
+Thus, in general ${\underline {\underline \sigma}}_k$ varies between elements and within each element 
+depending on the same variation as the CV saturation $S_k$ that is $Rel_k$. 
+Thus, ${\underline {\underline \sigma}}_k$ is piecewise constant 
+within each element and a natural 
+way to obtain an exact solution would be to use basis functions 
+local to each CV within each element. 
+Thus, if for quadratic pressure variation there will be 
+a piecewise 
+linear velocity field with simple discontinuity between 
+elements and one could then use linear basis functions 
+and test functions within each control volume. Thus, in one dimension 
+there would be $2\times 3$ velocity nodal values associated with 
+each phase.  
+
+However, such an approach is cumbersome especially in multi-dimensions. 
+In fact it may become inpracticle. To overcome this 
+problem overlapping basis functions are used. The approach is derived 
+based on the observation 
+that the only difference between the velocities 
+within each CV is a multiplication factor 
+and this multiplication factor is ${\underline {\underline \sigma}}_k^{-1}$. 
+Thus, one can discretise  
+using: 
+\begin{equation}
+\int_\Omega {\mathbf Q}_i^\mu ({\underline{\underline\sigma}}_k^\mu {\mathbf u}_k^\mu - \nabla p -s^\mu) dV + 
+\int_{\Gamma}\gamma {\mathbf Q}_i^\mu {\mathbf n} (p-p_{bc}) d\Gamma =0 
+\label{pipe-overlap-eqn} 
+\end{equation}
+in which ${\mathbf Q}_i^\mu$ are the weighting functions. 
+${\mathbf Q}_i^\mu$ are also the  
+velocity basis functions which span the whole 
+element that they belong to 
+and also ${\mathbf Q}_i^\mu={\mathbf Q}_i^1\;\; \forall \mu\in\{1,2,...,{\cal N}_{locCV}\}$
+where ${\cal N}_{locCV}$ is the number of local control volumes within each 
+finite element and ${\mathbf u}_k =\sum_\mu \sum_j H^\mu {{\mathbf u}_k}_j^\mu$ where 
+$H^\mu=1$ in local control volume $o$ and $=0$ otherwise. 
+It also enables relatively low order quadrature rules to be used 
+across each finite element.  
+For 2D quadatric pressure triangular elements (see figure \ref{pipe-p1dgp2_ele-dgsat_pics}) 
+there are $3\times6=18$ velocity basis 
+functions for each of the two directions and each phase. 
+For 3D quadatric pressure 
+tetrahedra elements there are $4\times 10=40$ velocity basis 
+functions for each of the two directions and each phase.
+
+The result is again the recovery of the exact enforcement of 
+the differential equation at least away from the boundaries. 
+Now including in the previous formulation $\gamma=1$ however 
+we now need to take into account the difference in the 
+volumes of the elements as we integrate right 
+across the whole element. This is taken into account 
+using 
+
+\begin{equation}
+\gamma^\mu = \frac{V^\mu_E}{V_E} \frac{S^\mu_E}{S_E}
+\label{pipe-overlap-eqn-gamma}
+\end{equation}
+in which $V_E$ is the volume of element $E$ 
+and $V^\mu_E$ is the volume of control volume $\mu$ 
+in element $E$ and $S_E$ is the surface area of the element 
+on the boundary and $S^\mu_E$ is the surface 
+area of element $E$ of CV $\mu$ in element $E$ on the boundary 
+of the domain. 
+
+The discontinuous formulation is also easily extended 
+to this overlapping finite element approach and becomes: 
+
+\begin{equation}
+\int_{\Omega_E} \hat{\mathbf Q}_i^\mu ({\underline{\underline{\sigma}}}_k^\mu {\mathbf u}_k^\mu - \nabla p -{\mathbf s}_u^\mu) dV 
++  \frac{1}{2}\int_{\Gamma_{E-\Omega}} \gamma^\mu_E {\mathbf Q}_i^\mu {\mathbf n} (p - p_{nab}) d\Gamma 
++  \int_{\Gamma_{\Omega}}  \gamma^\mu_E \hat{\mathbf Q}_i^\mu {\mathbf n} (p - p_{bc}) d\Gamma =0. 
+\label{pipe-overlap-eqn-dg}
+\end{equation}
+and given that 
+\begin{equation}
+{\mathbf Q}_j=\hat{\mathbf Q}_i^\mu 
+\end{equation}
+for a suitable index $j$ the discretisation can be expressed 
+similar to equation \ref{pipe-force-semi-disc} for the continuous formulation and 
+equation \ref{pipe-dg-sat-form} for the discontinuouse 
+between elements pressure/saturation formulation. 
+
+
+
+
+\subsubsection{Discretised saturation equation and global mass balance} 
+
+This section outlines the discrete saturation equations and derives the global mass balance equations from the saturation equations. The resulting equation can then be solved simultaneously with equation \ref{pipe-force-balance-matrix-form}. 
+							
+
+The saturation equation 
+
+\begin{equation}
+\phi\frac{\partial \rho_k S_k }{\partial t} 
++ \nabla \cdot {\mathbf u}_k \rho_k S_k = {s_{cty}}_k, 
+\end{equation}
+discretised by testing it with CV basis functions 
+ $M_i$ is and discretising in time using the 
+ $\theta-$method is:
+ 
+\begin{equation}
+\int_\Omega M_i (\frac{\phi{\rho_k}_i^n ({S_k}_i^{n+1}-{S_k}_i^n) }{\Delta t} 
++ \frac{\phi{S_k}_i^n( {\rho_k}_i^{n+1}-{\rho_k}_i^n)} {\Delta t} ) dV
++ \int_{\Gamma_{CV_i}} {\mathbf n} \cdot {\mathbf u}_k^{n+\theta} \rho_k^{n+\theta} S_k^{n+\theta} 
+d\Gamma 
+= \int_\Omega M_i {s_{cty}}_k^{n+\theta} dV.
+\label{pipe-detail-sat-eqn-k}
+\end{equation}
+ 
+ 
+\subsubsection{Discretised global continuity equation} 
+ 
+Dividing equation \ref{pipe-detail-sat-eqn-k} by ${\rho_k}^n_i $ and summing 
+over all phases one obtains the global continuity equation: 
+
+ 
+\begin{equation}
+ \sum_k \left(
+\int_\Omega M_i (\frac{ \phi({S_k}_i^{n+1}-{S_k}_i^n) }{\Delta t} 
++ \frac{\phi{S_k}_i^n( {\rho_k}_i^{n+1}-{\rho_k}_i^n)} {{\rho_k}_i^n\Delta t} ) dV
++ \frac{1}{{\rho_k}_i^n}\int_{{\Gamma_{CV}}_i} 
+{\mathbf n} \cdot {\mathbf u}_k^{n+\theta} \rho_k^{n+\theta}   S_k^{n+\theta} d\Gamma
+- \frac{1}{{\rho_k}_i^n} \int_\Omega M_i {s_{cty}}_k^{n+\theta} dV \right) =0,
+\label{pipe-detail-sat-eqn-k-sum}
+\end{equation}
+
+The saturations and densities are flux limited in space and 
+time as explained in section \ref{pipe-fluid_transport_methods_section}. This uses a finite element 
+interpolation of the saturations and densities which are limited. 
+			
+
+
+Using $\sum_{k=1}^{\cal K} {S_k}_i^n =1, \;\; \forall n$ and linear 
+$\rho_k^{n+1}$ about the CV pressure variation $P_{CV}^{n+1}$ then 
+
+\begin{equation}
+ \sum_k ( \int_{\Omega} M_i 
+( \frac{{S_k}_i^n \frac{\partial \tilde{\rho_k}_i^{n+1}}{\partial \tilde{ p_{CV}}_i^{n+1}}({p_{CV}}_i^{n+1}-\tilde{p_{CV}}_i^{n+1})
+} {{\rho_k}_i^n\Delta t} 
++ \frac{{S_k}_i^n( \tilde{\rho_k}_i^{n+1}-{\rho_k}_i^n)} 
+{{\rho_k}_i^n \Delta t} ) dV
+\end{equation}
+\begin{equation}
++ \frac{1}{{\rho_k}_i^n}\int_{{\Gamma_{CV}}_i} {\mathbf n} \cdot {\mathbf u}_k^{n+\theta} \rho_k^{n+\theta} S_k^{n+\theta} d\Gamma
+- \frac{1}{{\rho_k}_i^n} \int_\Omega M_i {s_{cty}}_k dV ) =0.
+\label{pipe-detail-global-cty}
+\end{equation}
+In matrix form this becomes:
+
+\begin{equation}
+{\mathbf M}_p \underline{\bf p}^{n+1} + {\mathbf B}^T \underline{\bf u}^{n+1} 
+= \underline{\bf s}_p. 
+\label{pipe-glob-cty-matrix}
+\end{equation}
+
+Notice that in equation \ref{pipe-detail-global-cty} the 
+control volume-wise variation of pressure ${p_{CV}}_i^n$ has been 
+used and in order to get to the equation  \ref{pipe-glob-cty-matrix} 
+above the finite element variation of pressure with basis 
+functions $N_i$ has been used. Thus, to get to equation 
+\ref{pipe-glob-cty-matrix} the Galerkin projection
+
+\begin{equation}
+\int_{\Omega} M_i (p_{CV}^n-p^n) dV =0
+\end{equation}
+for $p^n$ is used. This results in solving the matrix 
+equation for ${\bf p}^n$: 
+
+\begin{equation}
+{\mathbf M}_{CV} \underline{\bf p}_{CV}^n = {\mathbf N}_{CVfem} \underline {\bf p}^n
+\end{equation}
+in which the matrix ${\mathbf M}_{CV}$ is diagonal and thus 
+this can easily help form the matrix ${\mathbf M}_p$ in equation 
+\ref{pipe-glob-cty-matrix}. 
+
+\subsubsection{Compressibility - CV and FEM pressure variations}
+
+Having both a CV and FEM variation of pressure allows us to 
+simultaneously have an exact representation of the force balance 
+equation as well as ensuring robustness of the the scheme 
+e.g. positive densities from potentially complex equations 
+of state. When using complex EoS's $\frac{\partial \tilde { \rho_k}_i^{n+1}}{\partial \tilde {p_{CV}}_i^{n+1}}$ is formed 
+using a pertabation approach, that is 
+perturbing the pressure $\tilde {p_{CV}}_i^{n+1}$ and looking how 
+it effects the densities $\tilde {\rho_k}_i^{n+1}$. This 
+avoids differentiating complex EoS's. 
+
+				
+
+\subsubsection{Upwind velocity/relative permeability} 
+\label{pipe-opt-up} 
+
+It remains to us to determine the velocity to be used 
+at the interface between control volumes in the 
+saturation \ref{pipe-detail-sat-eqn-k} and therefore 
+the global continuity equations \ref{pipe-detail-global-cty}. 
+
+The problem is that on a CV boundary it is unclear 
+which side of the control volume boundary the velocity 
+should be taken from as there is a discontinuity 
+of velocity at the CV boundary. The discontinuity 
+is due to the differing relative permeabilities of 
+$\sigma_k$'s in each CV and is the only way that 
+equation \ref{pipe-force-semi-disc} can be strongly enforced. 
+This discontinuity happens between elements for the DG 
+formulation and as well as between CVs within each element. 
+
+One way to determine the value of the velocity 
+$({{\mathbf n}\cdot{\mathbf u}_k})_{int}$ 
+on the interface between two control volumes 
+is to dermine the value of ${\sigma_k}_{int}$ on this boundary 
+and then one can obtain the value of 
+$({{\mathbf n}\cdot{\mathbf u}_k})_{int}$ that 
+corresponds to this from equation \ref{pipe-force-semi-disc}. 
+
+When $({{\mathbf n}\cdot{\mathbf u}_k})_{int}$ 
+is determined one can turn this 
+into the proportion of each of the surrounding control 
+volumes goes up to make 
+$({{\mathbf n}\cdot{\mathbf u}_k})_{int}$. Here any downwind 
+biased averages are simply set to a central difference 
+(which may not just be a simple average if we have 
+unequal CV sizes or are using the FEM saturation 
+on the control volume boundary) and in the case 
+when there is an upwind bias then this is accepted. 
+This choice is used in order to maintain consistency 
+with the characteristics of the BL equations. 
+
+
+
+
+
+
+
+\subsubsection{Boundary conditions for saturation, pressure and relative permeability} 
+\label{pipe-bcs-rel-perm} 
+Suitable boundary conditions can be guided by the 
+discontinuous formulations above as well as the up-winding in 
+the continuous formulations. In fact, exactly the same 
+boundary condition implementations can be applied as used in 
+the discontinuous formulations but across the boundaries 
+of the domain and taking information from just outside the domain 
+rather than in the neighbouring elements. 
+
+Saturation boundary conditions are relatively straightforward. 
+One typically takes the saturation from just outside the domain 
+(the saturation boundary condition ${S_k}_{bc}$) 
+as part of the incoming flux 
+(when ${\bf n}\cdot {\bf u}_k<0$) for phase $k$:
+
+\begin{equation}
+{\bf n}\cdot {\bf u}_k {S_k}_{bc} .
+\end{equation}
+
+When in addition the velocity 
+${\bf n}\cdot {{\bf u}_k}_{bc}$ is 
+specified then this too must be part of the 
+incoming flux (when ${\bf n}\cdot {{\bf u}_k}_{bc}<0$) for phase $k$:
+
+\begin{equation}
+{\bf n}\cdot {{\bf u}_k}_{bc} {S_k}_{bc} .
+\end{equation}
+
+Similar, boundary conditions can be applied using Riemann 
+variables to work out if information is travelling into 
+or out of the domain although most models do not follow this 
+more rigorous approach. 
+
+Specified pressure boundary conditions for outlet 
+flux (when ${\bf n}\cdot {\bf u}_k>0$) for phase $k$ are:
+
+\begin{equation}
+{\bf n}\cdot {\bf u}_k {S_k},
+\end{equation}
+in which neither ${\bf u}_k$, ${S_k}$ are specified. 
+
+Specified pressure boundary conditions for the inlet 
+flux (when ${\bf n}\cdot {\bf u}_k<0$) for phase $k$ are:
+
+\begin{equation}
+{\bf n}\cdot {{\bf u}_k}_{rel} {S_k}_{bc},
+\label{pipe-flux-adjust-rel} 
+\end{equation}
+in which the relative permeability is up-winded and thus taken 
+from outside the domain resulting in a value of ${\underline {\underline \sigma}}_k$ of 
+${{\underline {\underline \sigma}}_k}_{outside}$. The latter is calculated from 
+the saturation boundary condition value ${S_k}_{bc}$. 
+
+
+
+A third approach for up-winding the 
+relative permeability on incoming specified pressure 
+boundaries is to simply adjust the value of ${{\underline {\underline \sigma}}_k}_{inside}$ 
+just inside the domain by setting it to the 
+value just outside the domain 
+\begin{equation}
+{{\underline {\underline \sigma}}_k}_{inside}={{\underline {\underline \sigma}}_k}_{outside} ,
+\end{equation}
+and the flux 
+condition then becomes: 
+
+
+\begin{equation}
+{\bf n}\cdot{{\bf u}_k} {S_k}_{bc}.
+\end{equation}
+It should be noted that the flux conditions above 
+must be used in both the discretised saturation equations 
+as well as the global continuity equation - since the latter 
+is a summation of the former. 
+
+The specified pressure condition becomes a surface flux 
+condition in the force balance equation of 
+
+\begin{equation}
+{\bf n} (p-p_{bc}),
+\end{equation}
+which effectively relaxes the pressure $p$ to its boundary 
+value $p_{bc}$ at the boundary. 
+
+
+
+\subsubsection{Projection method of solution} 
+\label{pipe-Projection method of solution}
+
+The  
+global mass balance equation \ref{pipe-glob-cty-matrix} and 
+force balance equations \ref{pipe-force-balance-matrix-form} are solved here 
+by using a projection method. This effectively eliminates 
+out velocity and solves a system of equations for 
+pressure or pressure correction. 
+
+The force balance (at time level $n+1$) 
+and global continuity equations are:
+
+\begin{equation}
+({\mathbf M}_\sigma +{\mathbf A}) \underline{\bf u}^{n+1} = {\mathbf C} \underline{\bf p}^{n+1} + \underline{\bf s}_u^{n+1},
+\label{pipe-force-balance-matrix-form2}
+\end{equation}
+
+\begin{equation}
+{\mathbf M}_p \underline{\bf p}^{n+1} + {\mathbf B}^T \underline{\bf u}^{n+1} = \underline{\bf s}_p^{n+1}. 
+\label{pipe-glob-cty-matrix2}
+\end{equation}
+
+For generality we have introduced a matrix ${\mathbf A}$ which may be 
+distributed and thus can not be easily inverted. 
+This allows the method to be applied to inertia dominated 
+or viscous dominated flows without modification. 
+Using the discontinuous velocity within an element 
+formulation the matrix ${\mathbf M}_\sigma$ is block diagonal 
+and thus easily inverted - each block being local to an element. 
+
+The solution method proceeds by first solving for 
+an intermediate velocity $\underline{\bf u}^{n+1}_*$ using a 
+guessed pressure $\underline{\bf p}^{n+1}_*$ on the first iteration 
+within a time step one may use $\underline{\bf p}^{n+1}_*=\underline{\bf p}^n$ say. 
+The equation is: 
+
+\begin{equation}
+({\mathbf M}_\sigma +{\mathbf A}) \underline{\bf u}^{n+1}_* = {\mathbf C} {\bf p}^{n+1}_* + \underline{\bf s}_u^{n+1}. 
+\label{pipe-force-balance-matrix-form2-guess}
+\end{equation}
+The matrix equation for velocity to be satisifed is: 
+\begin{equation}
+{\mathbf M}_\sigma\underline{\bf u}^{n+1} +{\mathbf A} \underline{\bf u}^{n+1}_* = {\mathbf C} \underline{\bf p}^{n+1} + \underline{\bf s}_u^{n+1}. 
+\label{pipe-force-balance-matrix-form2-guess-2}
+\end{equation}
+Subtracting these two equations the   
+velocity correction equation is obtained:
+\begin{equation}
+{\mathbf M}_\sigma ( \underline{\bf u}^{n+1} -\underline{\bf u}^{n+1}_*) 
+= {\mathbf C} (\underline{\bf p}^{n+1} - \underline{\bf p}^{n+1}_*). 
+\label{pipe-force-balance-matrix-form2-guess}
+\end{equation}
+Multiplying this equation by ${\mathbf B}^T {\mathbf M}_\sigma^{-1}$ 
+(see global continuity 
+equation \ref{pipe-glob-cty-matrix2}) and using the global comntinuity 
+equation to eliminate out $ \underline{\mathbf u}^{n+1} $ one obtains 
+the pressure correction equation:
+
+\begin{equation}
+({\mathbf B}^T {\mathbf M}_\sigma^{-1} {\mathbf C} + {\mathbf M}_p) (\underline{\bf p}^{n+1} - \underline{\bf p}^{n+1}_*) 
+= - {\mathbf M}_p \underline{\bf p}^{n+1}_* - {\mathbf B}^T \underline{\bf u}^{n+1}_* + \underline{\bf s}_p^{n+1}.
+\end{equation}
+this equation is solved for the pressure  $\underline{\bf p}^{n+1}$ and the 
+velocity is corrected using equation \ref{pipe-force-balance-matrix-form2-guess}.
+
+
+
+
+
+
+
+
+
+
+
+
+
+\subsection{Non-dimensional scaling of the equations with wells} 
 \label{well-scaling}
 
 One can scale the equations with wells in order to make the numbers generated on the 
@@ -4362,7 +4964,7 @@ Thus,
 \begin{equation}
 \sigma^* u^* = -\nabla^* p^*. 
 \end{equation}
-A simplified saturation equation in the reservior with exchnage of mass with wells (the term involving pressure the reservior pressure $p$ and the well pressure $p_w$) is:
+A simplified saturation equation in the reservior with exchange of mass with wells (the term involving pressure the reservior pressure $p$ and the well pressure $p_w$) is:
 \begin{equation}
 \phi_i \frac{\partial S_k}{\partial t} 
 + \nabla \cdot u_k S_k
@@ -4404,6 +5006,55 @@ for $p_{well}< p_{reservior}$:
 
 
 
+\subsection{Methods of enhancing production rate from perforated wells:} 
+\label{Methods of enhancing production rate from perforated wells:} 
+\par\noindent
+1) Changing the diameter of the wells does have an increased 
+effect on production but it may be more effective (see Peacman correction 
+for example) to have more numerous or longer wells. 
+\par\noindent
+2) Having deeper wells: The deeper the wells often the greater the reservoir pressure 
+and thus the greater the pressure difference which governs the production rate. 
+However, this has to more than compensate for the hydrostatic pressure within the wells. 
+\par\noindent
+3) Having longer wells away from the main motherbore: This may be more effective 
+than having more numerous wells of the same length from the motherbore as the 
+greater the distance from the motherbore the greater the pressure within the 
+reservoir is likely to be or, more specifically, the pressure difference between the 
+well pressure and the reservoir. This can have a substantial effect on production. 
+\par\noindent
+4) Methods of increasing fracturing around the wells increases production rate (making the effective 
+diameter of the wells greater) and is modelled here through the skin effect. 
+\par\noindent
+5) Increasing the permeability of well casing with numerous holes will increase production   
+but perhaps not greatly, after a certain point, as its often the pressure gradients 
+across the porous media that is the critical factor. So even a highly perforated well may only 
+produce slightly more than one with a casing with a few holes, say. This effect, however, 
+needs to be understood better. 
+\par\noindent
+6) Taking into account the heterogeneous geology of the reservoir: From the modelling 
+perspective this is the major strength of IC-FERST and will need to be developed in the future. 
+If this is not an issue then one is advised to use standard reservoir simulators like ECLIPSE 
+that also have highly sophisticated well modelling capabilities. The only exception to this 
+is if one wants to do combined modelling and resolving of laterals which IC-FERST has a unique capability for. 
+\par\noindent
+7) Taking into account anisotropy in the permeabilities of the reservoir: Generally speaking drilling 
+the wells in the direction of lowest permeability will take the wells to areas where 
+larger pressure gradients between the reservoir and the well can be achieved enhancing production. 
+\par\noindent
+8) Confinement of the reservoir: If for example the reservoir has limited extent in the 
+vertical then it may be more benefitical to drill horizontally so that the wells enter 
+areas of higher pressure. In this case there may be little variation (other than hydrostatic) 
+of pressure gradient in the vertical. 
+\par\noindent
+9) Reducing the friction within the well/pipe: The friction can be reduced by polishing the 
+inside surfaces or increasing the diameter of the pipes. However, this, generally, has only a 
+small effect on production rate as the pressure drop across the pipes due to friction is 
+relatively small compared to the pressure drop across the reservior. 
+\par\noindent
+10) Formal optimization methods of the placement and length of the motherbore, the laterals, 
+micro-laterals and nano-laterals could substantially increase production. This may involve 
+rapid reduced order or analytical models to help speed up the optimization process.
 
 
 \pagebreak
@@ -4840,7 +5491,7 @@ Also the speed of sound $c$ is obtained from:
 \subsection{Summary}
 Here new methods of solving the compressible flow equations 
 which are being developed for multi-phase flow are 
-applied to simple benchmark test cases. Some of the 1D 
+applied to simple benchmark test cases. Some of the one dimensional 
 test case results are compared against an explicit linear Discontinuous 
 Galerkin (DG) Riemann solver with Roe-averaging of 
 the fluxes between the elements. 
@@ -4960,7 +5611,7 @@ Notice that in equation \ref{detail-global-cty} the
 control volume-wise variation of pressure ${p_{CV}}_i^n$ has been 
 used and in order to get to the equation  \ref{glob-cty-matrix} 
 above the finite element variation of pressure with basis 
-functions $N_i$ has been used. Thus to get to equation 
+functions $N_i$ has been used. Thus, to get to equation 
 \ref{glob-cty-matrix} the Galerkin projection
 
 \begin{equation}
@@ -5045,9 +5696,9 @@ Suppose the differential equation to be solved is:
 \end{equation}
 in which ${\bf H}$ is a positive semi-definite and diagonal 
 scattering-removal matrix operator. 
-Thus for 1D ${\bf A}_{xt}=({\bf A}_t \;\; {\bf A}_x)^T$ and 3D 
+Thus, for one dimension ${\bf A}_{xt}=({\bf A}_t \;\; {\bf A}_x)^T$ and 3D 
 ${\bf A}_{xt}=({\bf A}_t \;\; {\bf A}_x\;\; {\bf A}_y\;\; {\bf A}_z)^T$ and in 
-1D this equation becomes: 
+one dimension this equation becomes: 
 
 \begin{equation}
  {\bf A}_t \frac{\partial \Psi}{\partial t} +
@@ -5064,7 +5715,7 @@ the projection of ${\bf A}_{xt}$ onto ${\nabla_{xt}} \Psi$ may be written:
  {\bf V}({\vert\vert{\nabla_{xt}} \Psi\vert\vert^2_2})^{-1} {\nabla_{xt}} \Psi. 
 \label{a*-def-matrix} 
 \end{equation}
- Thus 
+ Thus, 
  
 \begin{equation}
  {\bf A}_{xt}^* \cdot {\nabla_{xt}} \Psi = {\bf A}_{xt} \cdot {\nabla_{xt}} \Psi 
@@ -5397,7 +6048,7 @@ The domain is discretized in 2D with one triangle element in
 the vertical and $2E$ is the horizontal in which 
 $E$ represents the number of elements in the horizontal 
 for comparison purposes with the DG explicit method.  
-For the DG explicit method a 1D discretization is used. 
+For the DG explicit method a one dimension discretization is used. 
 The line out for the 2D triangular element simulation is 
 taken through the middle of the domain. 
 
@@ -5553,7 +6204,7 @@ P1DG-P2 results show the FEM interpolation of the CV density solution.  }
 \vspace{-0.cm}}
 \label{Screenshot-123prob-res}
 \caption{ Results at $t=0.15$ from state of the art models 
-with 100 CV's compared with the exact solution.   }
+with 100 CVs compared with the exact solution.   }
 \end{figure}
 
 
@@ -5604,7 +6255,7 @@ at $t=0.15$ for 40 and 200 elements. }
 \vspace{-0.cm}}
 \label{Screenshot-blast-wave-prob-res}
 \caption{ Results at $t=0.038$ from state of the art models 
-with 100 CV's compared with the exact solution.   }
+with 100 CVs compared with the exact solution.   }
 \end{figure}
 
 %%%
@@ -6017,11 +6668,11 @@ must conserve is:
 \begin{eqnarray}
 \int_V (\alpha_s(\alpha_f s_c))^f dV.
 \end{eqnarray}
-Thus one can move the interface slightly as long as this expression 
+Thus, one can move the interface slightly as long as this expression 
 is conserved so that it moves into a area in which there is a 
 larger volume fraction of fluid $\alpha_f$ and thus we 
 can divide through $(\alpha_s(\alpha_f s_c))^f$ by $\alpha_f$ as in equation 
-\ref{divid-f-by-alpha-f}. If the force is moved to a neighboring cell/node 
+\ref{divid-f-by-alpha-f}. If the force is moved to a neighbouring cell/node 
 then one must adjust its force according to the volume ration 
 of the two cells/nodes. That is if the force is moved 
 from cell/node $k$ to $i$ then: 
@@ -6127,7 +6778,7 @@ with as before the bulk velocity defined:
 Notice that if $u_s^s$ is mapped from the solids mesh to 
 the fluids mesh we get $\hat u_s^f$. 
 
-Thus from equation \ref{sigma-hat-eqn} when $\alpha_f=1$, $\alpha_s=0$ 
+Thus, from equation \ref{sigma-hat-eqn} when $\alpha_f=1$, $\alpha_s=0$ 
 then $\hat u^f=u_f^f$ and when $\alpha_f=0$, 
 $\alpha_s=1$ then $\hat u^f=u_s^f$.  
 
@@ -6178,7 +6829,7 @@ M_c^{-1}=\frac{1}{ \frac{\hat\sigma\rho_f}{\Delta t}}
 \end{pmatrix}  
 \end{eqnarray}
 
-Thus the pressure equation becomes:
+Thus, the pressure equation becomes:
 
 \begin{eqnarray}
 (0 \;\; C^T) {\bf M}_c^{-1} 
@@ -6192,7 +6843,7 @@ C^T M_{\rho L}^{-1} C \underline{\Delta p}= - C^T \underline{ \hat u^f }
 \end{eqnarray} 
 with diagonal entries of ${M_{\rho L}}_{ii}=\int_V N_i \rho_f dV$.
 
-Thus this equation is identical to the previous pressure equation. 
+Thus, this equation is identical to the previous pressure equation. 
 
 \subsection{Traditional immersed boundary forcing} 
 If one is willing to use the traditionally used 
@@ -6325,7 +6976,7 @@ In matrix form equation \ref{cty-solid-half-impl-fluid} becomes:
 {r}_{cty}^* =M_p \frac{p^{n+1}}{\Delta t} + \tilde B^T \hat u_f^{n+1} + B^T u^{n+1} + res_{cty} . 
 \end{eqnarray} 
 
-Thus in this multi-phase flow case the coupling matrix $M_c$ between between $u_f^f$ and $\hat u$: 
+Thus, in this multi-phase flow case the coupling matrix $M_c$ between between $u_f^f$ and $\hat u$: 
 
 \begin{eqnarray}
 M_c 
@@ -6358,7 +7009,7 @@ M_\rho^{-1}  & 0 \\
 \hat N M_\rho^{-1}   & I 
 \end{pmatrix}  . 
 \end{eqnarray}
-Thus the pressure equation becomes:
+Thus, the pressure equation becomes:
 
 \begin{eqnarray}
 \left( M_p + (B^T \;\; \hat B^T) { M}_c^{-1} 
@@ -6871,7 +7522,7 @@ and for turbulent flows, with a log law, it might for example take on the form:
 \end{eqnarray} 
 in which $\Delta y$ is the wall-normal distance
 of the first off-wall node, $k$ is the von Karman constant and $E$ is the dimensionless wall roughness. 
-Thus in the equations above \ref{as-for-x},\ref{as-for-y},\ref{as-for-z},\ref{as-for-f}: 
+Thus, in the equations above \ref{as-for-x},\ref{as-for-y},\ref{as-for-z},\ref{as-for-f}: 
 \begin{eqnarray}
 a_{xx}=a_{yy}=a_{zz}=\lambda
 \end{eqnarray} 
@@ -6971,7 +7622,7 @@ which will be neglected. If there is a density variation in the water
 then retaining the term involving $\frac{\partial \rho}{\partial z}$ 
 enhances the stability of the formulation at least for stably stratified 
 fluids in other circumstances it can be ignored for stability. 
-Thus \ref{ns-dis} becomes:
+Thus, \ref{ns-dis} becomes:
 
 \begin{equation}
 \int_\Omega N_i \rho_0 \frac{u^{n+1}- u^n}{\Delta t} d V= 
@@ -7418,7 +8069,7 @@ In the above the advection of tracers as well as
 $T^n$ and $S^n$ may be done by a discontinuous 
 finite element method and the EoS for density $\rho^n=\rho^{n}
 (  T^{n},  S^{n},  p^{n})$ may be a 
-complex function. Thus $\rho^{n}
+complex function. Thus, $\rho^{n}
 (  T^{n},  S^{n},  p^{n})$ may be a complex function within 
 an element and discontinuous between the elements. 
 
@@ -7510,7 +8161,7 @@ with is the eigen-value decomposition into matrices
 of left $L$ and right $R$ eigen vectors and 
 diagonal matrix of eigen-values $\Lambda$. For simplicity one may assume 
 $k_w=0.$. 
-Thus assuming homogeneous material properties: 
+Thus, assuming homogeneous material properties: 
 \begin{equation}
 \frac{\partial \hat \Psi}{\partial t} + \Lambda \hat\Psi = \hat s_\psi, 
 \label{e-prob}
@@ -7603,7 +8254,7 @@ in the ordering: cv-inod, iphase, is for a 3 phase system:
 in which the matricies $\widetilde {DCV}_{iphase\; jphase}$ are diagonal and represent the 
 coupling between the phases and the matricies $\widetilde {ACV}_{iphase\; jphase}$ represent 
 a typical sparcity pattern of a CV single variable matrix i.e. in which control volumes are 
-directly connected only to CV's next to them within the matrix structure. 
+directly connected only to CVs next to them within the matrix structure. 
 
 Nor rearranging this ordering in the form of our prefered ordering:  iphase, icv-nod, 
 the matrix sparcity for 3-phase and a 2 CV system:
@@ -7631,7 +8282,7 @@ a two CV problem the matrix structure is (*-potentially a non-zero value):
   \end{pmatrix},
 \label{optimal-CV-mat-spar}
 \end{equation}
-and for three 1D CV's the matrix would typically look like: 
+and for three 1D CVs the matrix would typically look like: 
 
 \begin{equation}
   \begin{pmatrix}
@@ -7649,7 +8300,7 @@ and for three 1D CV's the matrix would typically look like:
   \end{pmatrix},
 \label{optimal-CV-mat-spar-3CV}
 \end{equation}
-with no coupling between CV's 1 and 3 and 2 couples directly with CV's 
+with no coupling between CVs 1 and 3 and 2 couples directly with CVs 
 1 and 3. 
 
 
@@ -7701,7 +8352,7 @@ K_{31}  &  K_{32}  &  K_{33}
 in which the stctucutre of each of the matricies $K_{idim\; jdim}$ is the same as 
 for a typical finite element system. So for continuous FEM nodes are connected in the sparcity 
 if they share a finite element. For DG discretizations $K_{idim\; jdim}$ has a block structure 
-each block representing the variables within an element. Thus one only needs an element connectivity 
+each block representing the variables within an element. Thus, one only needs an element connectivity 
 list to manipulate the matrices $K_{idim\; jdim}$. 
 
 
@@ -7899,9 +8550,9 @@ and
 \label{ML-def}
 \end{equation}
 
-The major problem with this iterative scheme is that it substantially adjusts the CV's 
+The major problem with this iterative scheme is that it substantially adjusts the CVs 
 that are bounded. This tendancy can be reduced by sweeping though each CV $k$, say, 
-and finding the neighbouring CV's, to CV $k$, with the maximum +ve defect adjustment needed and 
+and finding the neighbouring CVs, to CV $k$, with the maximum +ve defect adjustment needed and 
 the minium -ve defect adjustment needed, $i$ and $j$ say and exchanging masses between theses 
 (repeating this process until no mass adjustment can be made for this CV $k$ and 
 move onto next next CV):  
@@ -7911,7 +8562,7 @@ move onto next next CV):
 \ref{q_dev}. 
 
 \par\noindent
-2) For CV's $i$ and $j$ set: 
+2) For CVs $i$ and $j$ set: 
 \begin{equation}
 {\psi^{new}_{alt}}_i \leftarrow {\psi^{new}_{dev}}_i, \;\;\;  {\psi^{new}_{alt}}_j \leftarrow {\psi^{new}_{dev}}_j .
 \end{equation}
@@ -7919,7 +8570,7 @@ move onto next next CV):
 \par\noindent
 3) If $
 {\psi^{new}_{alt}}_i
-{\psi^{new}_{alt}}_j  < 0 $ (share mass if the necessary mass adjustments in both CV's have opposit signs) 
+{\psi^{new}_{alt}}_j  < 0 $ (share mass if the necessary mass adjustments in both CVs have opposit signs) 
 \begin{equation}
 \text{then} \;\;\; 
   \begin{cases}
@@ -7947,15 +8598,15 @@ move onto next next CV):
 \end{equation}
 The mass adjustment associated with step 3 above takes the CV with the minimal needed mass adjustment, 
 that is CV $j$ if ${{\psi^{new}_{alt}}_i {m_{CV}}_i> {\psi^{new}_{alt}}_j {m_{CV}}_j}$ and CV $i$ otherwise, 
-and adds its mass deficiency (-ve or +ve mass) to the other CV reducing the other CV's mass deficiency and 
-eliminating the first CV's mass deficiency, hence 
+and adds its mass deficiency (-ve or +ve mass) to the other CV reducing the other CVs mass deficiency and 
+eliminating the first CVs mass deficiency, hence 
 either ${\psi^{new}_{alt}}_i \leftarrow 0$  or ${\psi^{new}_{alt}}_j \leftarrow 0$.
 
 This algorithm may not be abe to eliminate all the mass deficiencies and 
 thus needs to be combined with the 
 similar mass adjustment shown in equation \ref{q_alt}. 
 For the parallel implementation of this mass adjustment algorithm it is suggested that 
-one ignores the CV's that are not stictly on the current processor, iterate on the above, then exchange halo CV information.  
+one ignores the CVs that are not stictly on the current processor, iterate on the above, then exchange halo CV information.  
 
 
 \pagebreak
@@ -8022,7 +8673,7 @@ Three control volumes are within each finite element
 and these are interpolating using a quadratic finite element 
 method basis function. The fem provides the high order 
 flux which is limited as described previously.  
-To this end we solve the 1D advection diffusion equation:
+To this end we solve the one dimensional advection diffusion equation:
 
 \begin{equation} 
 \frac{\partial T}{\partial t} + \frac{\partial u T}{\partial x} 
@@ -8052,7 +8703,7 @@ the discontinuouties.
 
 In figure \ref{compar-dg-bdt} we have increased the Courant number ($\frac{u \Delta t}{\Delta x}$)  based on the 
 element size to ${\Delta x}=0.5$. The Courant number based on the smallest 
-control volume is $2$. Thus this represents and large time step. 
+control volume is $2$. Thus, this represents and large time step. 
 And we perform two time steps which is a difficult test 
 of the non-linear $\theta$ time stepping method. 
 Notice that due to the large time 
