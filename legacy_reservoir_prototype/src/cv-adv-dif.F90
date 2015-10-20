@@ -12507,7 +12507,7 @@ deallocate(NX_ALL)
     mass_pipe = 0.0; MASS_PIPE_FOR_COUP = 0.0
     MASS_CVFEM2PIPE = 0.0; MASS_PIPE2CVFEM = 0.0; MASS_CVFEM2PIPE_TRUE = 0.0
 
-    INV_SIGMA(1:N_IN_PRES,:) = 0.0; INV_SIGMA_NANO(1:N_IN_PRES,:) = 0.0
+    INV_SIGMA = 0.0; INV_SIGMA_NANO = 0.0
 
 
     DO ELE = 1, TOTELE
@@ -13019,7 +13019,7 @@ deallocate(NX_ALL)
     DO IPHASE = 1, N_IN_PRES
        INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
        INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
-! we divide by this so that we get the right source term for the nano laterals...
+       ! We divide by this so that we get the right source term for the nano laterals...
        INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE_FOR_COUP(:), 1.E-15 )
     END DO
 
