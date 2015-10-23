@@ -4163,6 +4163,13 @@ From equation \ref{saturation_wells_11-cyl-skin-model-lat} then:
 Notice that the resolved well radius ${r}_e$ that the modelled lateral comes from is used in this expression. 
 This value of $\hat\gamma_{i}^{well\, reservoir}$ is then added to $\gamma_{i}^{well\, reservoir}$ 
 in equation \ref{saturation_wells_15-well10reservoir-cyl-skin} to get the overall mass exchange terms with the pipes. 
+It should be pointed out that the modelling of the laterals described here tends to produce less production than the resolved laterals do. The reason is that the pressure difference is increased with the resolved modelling away from the mother pipe that 
+the unresolved laterals come from. This pressure difference is directly related to 
+the production rate hence we get less production. This effect is small if the 
+modelled lateral lengths are of the order of the element size or less which is 
+what the method above is designed for. If this is not the case then there is 
+good argument to resolve the laterals. 
+
 
 
 
@@ -5034,9 +5041,8 @@ needs to be understood better.
 \par\noindent
 6) Taking into account the heterogeneous geology of the reservoir: From the modelling 
 perspective this is the major strength of IC-FERST and will need to be developed in the future. 
-If this is not an issue then one is advised to use standard reservoir simulators like ECLIPSE 
-that also have highly sophisticated well modelling capabilities. The only exception to this 
-is if one wants to do combined modelling and resolving of laterals which IC-FERST has a unique capability for. 
+Another strength of IC-FERST is its unique capability for combined modelling and resolving of laterals 
+which can make the modelling highly efficient. 
 \par\noindent
 7) Taking into account anisotropy in the permeabilities of the reservoir: Generally speaking drilling 
 the wells in the direction of lowest permeability will take the wells to areas where 
