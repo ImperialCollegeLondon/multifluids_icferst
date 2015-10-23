@@ -412,7 +412,7 @@
       end if
 
          !Currently this is false, over-ride switch for porous media since it is slower than memory hungry
-      IF ( test_caching_level(6) .or.is_porous_media) THEN
+      IF ( ( test_caching_level(6) .or.is_porous_media ) .and. npres==1 ) THEN
          ! Fast but memory intensive...
          CALL COLOR_GET_CMC_PHA_FAST( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
               NCOLC, FINDC, COLC, &
