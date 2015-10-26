@@ -593,7 +593,7 @@ contains
 
 
       integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr
-      real :: rconst, h_nano, RP_NANO
+      real :: rconst, h_nano, RP_NANO, dt_pipe_factor
       logical :: got_nano
 
       if ( npres > 1 )then
@@ -602,6 +602,8 @@ contains
       else
          reservoir_P = 0.0
       end if
+
+      dt_pipe_factor=1.0
 
       if ( npres > 1 .and. .true. ) then
          ! Edge approach - pipe location and radius field
@@ -614,7 +616,10 @@ contains
             pipe_Diameter_nano => extract_scalar_field( state(1), "DiameterPipeNano1" )
             pipe_Length_nano => extract_scalar_field( state(1), "LengthPipeNano1" )
          end if
+! factor by which to reduce the pipe eqns time step size e.g. 10^{-3} 
+         dt_pipe_factor=1.0
       end if
+
 
       symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
 
@@ -1269,6 +1274,12 @@ contains
       DO IPRES = 1, NPRES
          MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
       END DO
+! Scale effectively the time step size used within the pipes...
+! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3} 
+      DO IPRES = 2, NPRES
+         MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / dt_pipe_factor
+      END DO
+     
       ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
 
       IANISOLIM = 0
@@ -12507,7 +12518,7 @@ deallocate(NX_ALL)
     mass_pipe = 0.0; MASS_PIPE_FOR_COUP = 0.0
     MASS_CVFEM2PIPE = 0.0; MASS_PIPE2CVFEM = 0.0; MASS_CVFEM2PIPE_TRUE = 0.0
 
-    INV_SIGMA(1:N_IN_PRES,:) = 0.0; INV_SIGMA_NANO(1:N_IN_PRES,:) = 0.0
+    INV_SIGMA = 0.0; INV_SIGMA_NANO = 0.0
 
 
     DO ELE = 1, TOTELE
@@ -13019,7 +13030,7 @@ deallocate(NX_ALL)
     DO IPHASE = 1, N_IN_PRES
        INV_SIGMA(IPHASE,:) = INV_SIGMA(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
        INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE(:), 1.E-15 )
-! we divide by this so that we get the right source term for the nano laterals...
+       ! We divide by this so that we get the right source term for the nano laterals...
        INV_SIGMA_NANO(IPHASE,:) = INV_SIGMA_NANO(IPHASE,:) / MAX( MASS_PIPE_FOR_COUP(:), 1.E-15 )
     END DO
 
