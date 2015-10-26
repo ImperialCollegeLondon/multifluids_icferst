@@ -593,7 +593,7 @@ contains
 
 
       integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr
-      real :: rconst, h_nano, RP_NANO
+      real :: rconst, h_nano, RP_NANO, dt_pipe_factor
       logical :: got_nano
 
       if ( npres > 1 )then
@@ -602,6 +602,8 @@ contains
       else
          reservoir_P = 0.0
       end if
+
+      dt_pipe_factor=1.0
 
       if ( npres > 1 .and. .true. ) then
          ! Edge approach - pipe location and radius field
@@ -614,7 +616,10 @@ contains
             pipe_Diameter_nano => extract_scalar_field( state(1), "DiameterPipeNano1" )
             pipe_Length_nano => extract_scalar_field( state(1), "LengthPipeNano1" )
          end if
+! factor by which to reduce the pipe eqns time step size e.g. 10^{-3} 
+         dt_pipe_factor=1.0
       end if
+
 
       symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
 
@@ -1269,6 +1274,12 @@ contains
       DO IPRES = 1, NPRES
          MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
       END DO
+! Scale effectively the time step size used within the pipes...
+! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3} 
+      DO IPRES = 2, NPRES
+         MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / dt_pipe_factor
+      END DO
+     
       ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
 
       IANISOLIM = 0
@@ -2771,7 +2782,7 @@ contains
                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                         IF ( GOT_NANO ) THEN
-                           PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
+                           PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
                                 DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * &
                                 c * 2.0 * PI * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
                                 / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )

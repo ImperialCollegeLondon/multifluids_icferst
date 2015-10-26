@@ -473,6 +473,14 @@ start =
                     }?
                   ),
                   (
+                    ## Tolerance for the infinite norm of the variation in saturation
+                    ## between two FPI
+                    ## By default 0.03; Recommended between 0.05 and 0.005
+                    element Inifinite_norm_tol{
+                    real
+                    }?
+                  ),
+                  (
                     ## Prints the number of iterations and
                     ## the final convergence achieved by the FPI solver
                     element Show_Convergence{comment}?

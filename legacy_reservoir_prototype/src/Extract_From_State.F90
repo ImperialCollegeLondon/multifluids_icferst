@@ -3350,14 +3350,19 @@
       !        real, dimension(:,:), pointer :: sVar, sVar_it
 
       !Variables for automatic non-linear iterations
-      real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts, increase_ts_switch, decrease_ts_switch
+      real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts, increase_ts_switch, decrease_ts_switch,&
+        Inifinite_norm_tol
       !Variables for adaptive time stepping based on non-linear iterations
-      real :: increaseFactor, decreaseFactor, ts_ref_val, acctim
+      real :: increaseFactor, decreaseFactor, ts_ref_val, acctim, inf_norm_val
       integer :: variable_selection, NonLinearIteration
 !ewrite(0,*) "entering"
       !First of all, check if the user wants to do something
       call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
       if (tolerance_between_non_linear<0) return
+      !Tolerance for the infinite norm
+      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',&
+             Inifinite_norm_tol, default = 0.03 )
+      !retirve number of Fixed Point Iterations
       call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
       !Get data from diamond. Despite this is slow, as it is done in the outest loop, it should not affect the performance.
       !Variable to check how good nonlinear iterations are going 1 (Pressure), 2 (Velocity), 3 (Saturation)
@@ -3461,10 +3466,11 @@
             case (2)
                ts_ref_val = maxval(abs(reference_field-velocity))
             case default
-!               ts_ref_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))
+               !Calculate infinite norm
+               inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/dumping_in_sat
 
-                !Calculate value of the functional
-                ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), dumping_in_sat)
+               !Calculate value of the functional
+               ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), dumping_in_sat)
             end select
 
             !If it is parallel then we want to be consistent between cpus
@@ -3477,15 +3483,16 @@
             !information about convergence to the trust_region_method
             dumping_in_sat = ts_ref_val
 
-            ewrite(1,*) "FPI convergence:", ts_ref_val, "Total iterations:", its
+            ewrite(1,*) "FPI convergence: ", "L2^2 norm=>",ts_ref_val,"; L_inf norm =>", inf_norm_val, "; Total iterations:", its
 
             !If only non-linear iterations
             if (.not.nonLinearAdaptTs) then
                !Automatic non-linear iteration checking
-                ExitNonLinearLoop = (ts_ref_val < tolerance_between_non_linear .or. its >= NonLinearIteration)
+                ExitNonLinearLoop = ((ts_ref_val < tolerance_between_non_linear .and. inf_norm_val < Inifinite_norm_tol)&
+                     .or. its >= NonLinearIteration)
                    if (ExitNonLinearLoop .and. show_FPI_conv) then
                         !Tell the user the number of FPI and final convergence to help improving the parameters
-                         print *, "FPI convergence:", ts_ref_val, "Total iterations:", its
+                         print *, "FPI convergence: ", "L2^2 norm=>",ts_ref_val,"; L_inf norm =>", inf_norm_val, "; Total iterations:", its
                    end if
                return
             end if
