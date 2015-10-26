@@ -1473,6 +1473,7 @@ contains
         real, dimension(History_order) :: Coefficients
         logical, save :: allow_undo = .true.
         real, save :: convergence_tol
+        real, save :: Inifinite_norm_tol
         type (tensor_field), pointer :: sat_field
         !Initialize variables
         new_dumping = 1.0
@@ -1494,6 +1495,9 @@ contains
                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration',&
                      convergence_tol, default = 0. )
                 convergence_tol =  convergence_tol
+               !Tolerance for the infinite norm
+               call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',&
+                     Inifinite_norm_tol, default = 0.03 )
                 Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-2)
                 !Retrieve the shape of the function to use to weight the importance of previous saturations
                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Acceleration_exp',&
@@ -1519,7 +1523,8 @@ contains
 
                 !####Check convergence of the method####
                 satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv) &
-                    .or. (get_Convergence_Functional(Satura, Sat_bak, Dumpings(2)) < convergence_tol)!<= exit if final convergence is achieved
+                    .or. (get_Convergence_Functional(Satura, Sat_bak, Dumpings(2)) < convergence_tol .and.&
+                    maxval(abs(Sat_bak-Satura))/Dumpings(2) < Inifinite_norm_tol)!<= exit if final convergence is achieved
                 !If a dumping parameter turns out not to be useful, then undo that iteration
                 if (its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.) then
                     Satura = backtrack_sat
