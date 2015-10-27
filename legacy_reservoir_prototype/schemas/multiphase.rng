@@ -1324,6 +1324,12 @@ This will over-write the field specified in Sigma1.</a:documentation>
                   <empty/>
                 </element>
               </optional>
+              <optional>
+                <element name="dt_pipe_factor">
+                  <a:documentation>Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
             </element>
           </optional>
         </element>
