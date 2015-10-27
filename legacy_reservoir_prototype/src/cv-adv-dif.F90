@@ -13376,7 +13376,7 @@ deallocate(NX_ALL)
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
     REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM )
-    REAL :: DX, ELE_ANGLE, NN, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI
+    REAL :: DX, ELE_ANGLE, NN, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
          &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4
     INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2, IPHASE_IN_PIPE, GI
@@ -13388,6 +13388,7 @@ deallocate(NX_ALL)
     SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
     CALC_SIGMA_PIPE = have_option("/porous_media/well_options/calculate_sigma_pipe")
     DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
+    E_ROUGHNESS=1.0E-6 ! Pipe roughness m
 
 
     allocate( well_density(nphase), well_viscosity(nphase) )
@@ -13650,7 +13651,8 @@ deallocate(NX_ALL)
                          DO IDIM=1,NDIM
                             U_GI= U_GI + SUM( SUFEN( : , GI )*NU_ALL(IDIM,IPHASE,U_GL_GL( : )))*DIRECTION(IDIM)
                          END DO
-                         CALL DEF_SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, IPHASE_IN_PIPE)
+!                         CALL DEF_SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, IPHASE_IN_PIPE)
+                         CALL SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, WELL_DENSITY(IPHASE), WELL_VISCOSITY(IPHASE), E_ROUGHNESS)
                       END DO
                    END DO
                 ENDIF
