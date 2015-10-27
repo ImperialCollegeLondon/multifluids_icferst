@@ -13806,8 +13806,6 @@ deallocate(NX_ALL)
 
     END IF ! IF ( .NOT.GOT_C_MATRIX ) THEN
 
-    deallocate( wd, wm )
-
     RETURN
   END SUBROUTINE MOD_1D_FORCE_BAL_C
 
