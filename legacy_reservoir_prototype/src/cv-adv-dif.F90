@@ -603,7 +603,7 @@ contains
          reservoir_P = 0.0
       end if
 
-      call get_option( "/porous_media/well_option/dt_pipe_factor", dt_pipe_factor, default = 1.0 )
+      dt_pipe_factor = 1.0
 
       if ( npres > 1 .and. .true. ) then
          ! Edge approach - pipe location and radius field
