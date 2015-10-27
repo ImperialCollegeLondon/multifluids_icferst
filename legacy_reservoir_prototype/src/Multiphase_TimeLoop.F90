@@ -279,7 +279,7 @@
       StorageIndexes = 0!Initialize them as zero !
 
       ! Number of pressures to solve for
-      npres = 1
+      npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
 
       !Read info for adaptive timestep based on non_linear_iterations
 
