@@ -603,7 +603,7 @@ contains
          reservoir_P = 0.0
       end if
 
-      dt_pipe_factor = 1.0
+      call get_option( "/porous_media/well_option/dt_pipe_factor", dt_pipe_factor, default = 1.0 )
 
       if ( npres > 1 .and. .true. ) then
          ! Edge approach - pipe location and radius field
@@ -617,7 +617,7 @@ contains
             pipe_Length_nano => extract_scalar_field( state(1), "LengthPipeNano1" )
          end if
          ! factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
-         dt_pipe_factor = 1.0
+         call get_option( "/porous_media/well_option/dt_pipe_factor", dt_pipe_factor, default = 1.0 )
       end if
 
 
@@ -1274,8 +1274,8 @@ contains
       DO IPRES = 1, NPRES
          MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
       END DO
-! Scale effectively the time step size used within the pipes...
-! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
+      ! Scale effectively the time step size used within the pipes...
+      ! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
       DO IPRES = 2, NPRES
          MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / dt_pipe_factor
       END DO

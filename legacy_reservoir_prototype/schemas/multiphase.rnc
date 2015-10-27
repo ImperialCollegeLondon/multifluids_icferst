@@ -997,8 +997,9 @@ start =
                ## Calculate the well \sigma field internally
                ## using a non-linear friction factor.
                ## This will over-write the field specified in Sigma1.
-               element calculate_sigma_pipe{ empty }?
-
+               element calculate_sigma_pipe{ empty }?,
+               ## Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
+               element dt_pipe_factor{ real }?
             }?
          }?,
         ## Fracking options
