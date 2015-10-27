@@ -13391,13 +13391,15 @@ deallocate(NX_ALL)
     E_ROUGHNESS=1.0E-6 ! Pipe roughness m
 
 
-    allocate( well_density(nphase), well_viscosity(nphase) )
-    do iphase = n_in_pres+1, nphase
-       wd => extract_scalar_field( state(iphase), "Density" )
-       wm => extract_tensor_field( state(iphase), "VelocityViscosity" )
-       well_density( iphase ) = wd%val(1)
-       well_viscosity( iphase ) = wm%val(1,1,1)
-    end do
+    if(CALC_SIGMA_PIPE) then
+       allocate( well_density(nphase), well_viscosity(nphase) )
+       do iphase = n_in_pres+1, nphase
+          wd => extract_scalar_field( state(iphase), "Density" )
+          wm => extract_tensor_field( state(iphase), "VelocityViscosity" )
+          well_density( iphase ) = wd%val(1)
+          well_viscosity( iphase ) = wm%val(1,1,1)
+       end do
+    endif
 
 
     ! Set rhs of the force balce equation to zero just for the pipes...
