@@ -603,7 +603,7 @@ contains
          reservoir_P = 0.0
       end if
 
-      dt_pipe_factor=1.0
+      dt_pipe_factor = 1.0
 
       if ( npres > 1 .and. .true. ) then
          ! Edge approach - pipe location and radius field
@@ -616,8 +616,8 @@ contains
             pipe_Diameter_nano => extract_scalar_field( state(1), "DiameterPipeNano1" )
             pipe_Length_nano => extract_scalar_field( state(1), "LengthPipeNano1" )
          end if
-! factor by which to reduce the pipe eqns time step size e.g. 10^{-3} 
-         dt_pipe_factor=1.0
+         ! factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
+         dt_pipe_factor = 1.0
       end if
 
 
@@ -1275,11 +1275,11 @@ contains
          MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
       END DO
 ! Scale effectively the time step size used within the pipes...
-! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3} 
+! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
       DO IPRES = 2, NPRES
          MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / dt_pipe_factor
       END DO
-     
+
       ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
 
       IANISOLIM = 0
@@ -12285,7 +12285,8 @@ deallocate(NX_ALL)
     IGNORE_DIAGONAL_PIPES = .TRUE.
     SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
     LUMP_COUPLING_RES_PIPES = .TRUE. ! Lump the coupling term which couples the pressure between the pipe and reservior.
-    CALC_SIGMA_PIPE = .FALSE. ! Calculate sigma based on friction factors...
+    CALC_SIGMA_PIPE = have_option("/porous_media/well_options/calculate_sigma_pipe") ! Calculate sigma based on friction factors...
+
 
     NCORNER = NDIM + 1
 
@@ -12763,7 +12764,7 @@ deallocate(NX_ALL)
                    TUPWIND_OUT=0.0; DUPWIND_OUT=0.0
                    TUPWIND_IN=0.0; DUPWIND_IN=0.0
                    DO IPHASE = N_IN_PRES+1, NPHASE
-! CV incomming T:
+                         ! CV incomming T:
                          IF ( T_ALL%val( 1, IPHASE, CV_NODI ) > T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
                             TUPWIND_OUT( IPHASE ) = TMAX_ALL( IPHASE, CV_NODI )
                          ELSE
@@ -12775,7 +12776,7 @@ deallocate(NX_ALL)
                             DUPWIND_OUT( IPHASE ) = DENMIN_ALL( IPHASE, CV_NODI )
                          END IF
 
-! CV outgoing T:
+                         ! CV outgoing T:
                          IF ( T_ALL%val( 1, IPHASE, CV_NODI ) < T_ALL%val( 1, IPHASE, CV_NODJ ) ) THEN
                             TUPWIND_IN( IPHASE ) = TMAX_ALL( IPHASE, CV_NODJ )
                          ELSE
@@ -13355,8 +13356,9 @@ deallocate(NX_ALL)
          &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc, MAT_NODI
     INTEGER, DIMENSION(:), ALLOCATABLE :: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, U_GL_LOC, U_GL_GL
     INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE, WIC_P_BC_ALL_NODS
-    TYPE(SCALAR_FIELD), POINTER :: PIPE_DIAMETER
+    TYPE(SCALAR_FIELD), POINTER :: PIPE_DIAMETER, WD
     TYPE(VECTOR_FIELD), POINTER :: X
+    TYPE(TENSOR_FIELD), POINTER :: WM
 
 
     REAL, DIMENSION( :, : ), ALLOCATABLE :: scvfen, scvfenslx, scvfensly, &
@@ -13369,7 +13371,7 @@ deallocate(NX_ALL)
     REAL, DIMENSION( :, :, : ), ALLOCATABLE :: L_CVFENX_ALL_REVERSED
     REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED
     REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN, SUF_P_BC_ALL_NODS, RVEC_SUM, LOC_U_RHS_U_ILOC
-    REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL
+    REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL, WELL_DENSITY, WELL_VISCOSITY
     REAL, DIMENSION( :, : ), ALLOCATABLE :: SIGMA_GI
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
@@ -13384,8 +13386,18 @@ deallocate(NX_ALL)
     PIPE_MIN_DIAM=.TRUE. ! Take the min diamter of the pipe as the real diameter.
     IGNORE_DIAGONAL_PIPES=.TRUE.
     SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
-    CALC_SIGMA_PIPE = .FALSE.
+    CALC_SIGMA_PIPE = have_option("/porous_media/well_options/calculate_sigma_pipe")
     DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
+
+
+    allocate( well_density(nphase), well_viscosity(nphase) )
+    do iphase = n_in_pres+1, nphase
+       wd => extract_scalar_field( state(iphase), "Density" )
+       wm => extract_tensor_field( state(iphase), "VelocityViscosity" )
+       well_density( iphase ) = wd%val(1)
+       well_viscosity( iphase ) = wm%val(1,1,1)
+    end do
+
 
     ! Set rhs of the force balce equation to zero just for the pipes...
     U_RHS( :, N_IN_PRES+1:NPHASE, : ) = 0.0
@@ -13589,8 +13601,6 @@ deallocate(NX_ALL)
                          END IF
                       END IF
                    END DO
-!                   ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, CV_LOC_CORNER(ICORNER1)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER2)) , &
-!                        &                         X_ALL_CORN(:, CV_LOC_CORNER(ICORNER3)), X_ALL_CORN(:, CV_LOC_CORNER(ICORNER4)) )
                    ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, ICORNER1), X_ALL_CORN(:, ICORNER2) , &
                         &                         X_ALL_CORN(:, ICORNER3), X_ALL_CORN(:, ICORNER4) )
                 END IF
@@ -13629,8 +13639,8 @@ deallocate(NX_ALL)
                       END DO
                    ENDIF
                 ENDIF
-!
-! Recalculate SIGMA if we need to...
+
+                ! Recalculate SIGMA if we need to...
                 IF(CALC_SIGMA_PIPE) THEN
                    MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
                    DO IPHASE = N_IN_PRES+1, NPHASE
@@ -13792,7 +13802,7 @@ deallocate(NX_ALL)
 
     END IF ! IF ( .NOT.GOT_C_MATRIX ) THEN
 
-
+    deallocate( wd, wm )
 
     RETURN
   END SUBROUTINE MOD_1D_FORCE_BAL_C

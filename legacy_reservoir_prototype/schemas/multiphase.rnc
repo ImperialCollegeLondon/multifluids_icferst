@@ -991,7 +991,15 @@ start =
                   attribute name { xsd:string },
                   element background_permeability { real }
                }
-            )
+            ),
+            ## Specify well-related options
+            element well_options {
+               ## Calculate the well \sigma field internally
+               ## using a non-linear friction factor.
+               ## This will over-write the field specified in Sigma1.
+               element calculate_sigma_pipe{ empty }?
+
+            }?
          }?,
         ## Fracking options
          element femdem_fracture {

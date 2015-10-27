@@ -1313,6 +1313,19 @@ Tip: if Diffusive_cap_only is activated Pe is ignored.</a:documentation>
               </element>
             </element>
           </choice>
+          <optional>
+            <element name="well_options">
+              <a:documentation>Specify well-related options</a:documentation>
+              <optional>
+                <element name="calculate_sigma_pipe">
+                  <a:documentation>Calculate the well \sigma field internally
+using a non-linear friction factor.
+This will over-write the field specified in Sigma1.</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+          </optional>
         </element>
       </optional>
       <optional>
