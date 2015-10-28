@@ -2885,8 +2885,7 @@ contains
                   DO IPHASE = 1,NPHASE
                      call addto(petsc_acv,iphase,iphase,&
                              cv_nodi, cv_nodi,&
-                       + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
-                       + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) ) &
+                       + DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
                        * R_PHASE(IPHASE))
                   END DO
 
@@ -2902,8 +2901,7 @@ contains
                   DO IPHASE = 1,NPHASE
                       call addto(petsc_acv,iphase,iphase,&
                              cv_nodi, cv_nodi,&
-                       + (CV_BETA * DEN_ALL( IPHASE, CV_NODI ) &
-                       + (1.-CV_BETA) * DEN_ALL( IPHASE, CV_NODI ) )  &
+                       + DEN_ALL( IPHASE, CV_NODI )  &
                        * R_PHASE(IPHASE) )
                   END DO
 
