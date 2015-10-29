@@ -379,6 +379,11 @@ contains
       logical, PARAMETER :: EXPLICIT_PIPES= .false.
       logical, PARAMETER :: EXPLICIT_PIPES2= .true.
       logical, PARAMETER :: MULTB_BY_POROSITY= .false.
+      REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
+! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement 
+! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained 
+! by correlating the IC-FERST production results with Eclipse results on a regular mesh 
+! of linear tetrahedra elements and a single well at steady state. =0.0 is no correction =0.35 recommended.
 
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
       LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
@@ -2659,7 +2664,7 @@ contains
                h_nano = h
 
                c = 0.0
-               if ( mass_pipe( cv_nodi )>0.0 ) c = 1.0
+               if ( mass_pipe( cv_nodi )>0.0 ) c = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
                h = (mass_cv( cv_nodi )/h)**(1.0/(ndim-1)) ! This is the lengthscale normal to the wells.
 
                rp = 0.14 * h
@@ -2747,7 +2752,7 @@ contains
                h_nano = h
 
                c = 0.0
-               if ( mass_pipe( cv_nodi )>0.0 ) c = 1.0
+               if ( mass_pipe( cv_nodi )>0.0 ) c = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
                h = (mass_cv( cv_nodi )/h)**(1.0/(ndim-1))  ! This is the lengthscale normal to the wells.
 
                rp = 0.14 * h
