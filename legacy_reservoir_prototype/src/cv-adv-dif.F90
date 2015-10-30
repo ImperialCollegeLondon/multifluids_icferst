@@ -13333,7 +13333,8 @@ deallocate(NX_ALL)
 
   SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
        &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
-       &                         CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL )
+       &                         CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
+       &                         U_SOURCE, U_SOURCE_CV )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
     IMPLICIT NONE
@@ -13343,7 +13344,7 @@ deallocate(NX_ALL)
     INTEGER, INTENT( IN ) :: CV_NONODS, U_NONODS, NPRES, NPHASE, N_IN_PRES, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_SNLOC,STOTEL
 
     REAL, DIMENSION( :, :, : ), INTENT( INOUT ) :: U_RHS, C, pivit_mat
-    REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL
+    REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL, U_SOURCE, U_SOURCE_CV
     REAL, DIMENSION( :, : ), INTENT( IN ) :: SIGMA
     REAL, DIMENSION( :, :, : ), INTENT( IN ) :: NU_ALL
 
@@ -13379,7 +13380,7 @@ deallocate(NX_ALL)
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
     REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM )
-    REAL :: DX, ELE_ANGLE, NN, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
+    REAL :: DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
          &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4
     INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2, IPHASE_IN_PIPE, GI
@@ -13693,16 +13694,22 @@ deallocate(NX_ALL)
 
                       ! Prepare aid variable NMX_ALL to improve the speed of the calculations
                       NMX_ALL( : ) = matmul( L_CVFENX_ALL_REVERSED( :, :, P_LJLOC ), DETWEI( : ) * L_UFEN_REVERSED( :, U_LILOC ) )
+                      NM = sum( L_UFEN_REVERSED( :, U_LILOC ) * SCVFEN( P_LJLOC, : ) * DETWEI( : ) )
 
                       ! Put into matrix
                       DO IDIM = 1, NDIM
                          C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) = C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) - NMX_ALL( IDIM )
                       END DO
+
+                      U_RHS( :, N_IN_PRES+1:NPHASE, IU_NOD ) =  U_RHS( :, N_IN_PRES+1:NPHASE, IU_NOD ) + NM * U_SOURCE_CV( :, N_IN_PRES+1:NPHASE, JCV_NOD )
+
                    END DO ! DO P_LJLOC = 1, CV_LNLOC
 
                    U_ILOC = U_GL_LOC( U_LILOC )
                    DO U_LJLOC = 1, U_LNLOC
                       U_JLOC = U_GL_LOC( U_LJLOC )
+                      JU_NOD = U_GL_GL(U_LJLOC)
+
                       IF(.NOT.SOLVE_ACTUAL_VEL) THEN
                          NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
                       ENDIF
@@ -13719,6 +13726,10 @@ deallocate(NX_ALL)
                             !pivit_mat(i_indx, i_indx, ele) = pivit_mat(i_indx, i_indx, ele) + NN
                          END DO
                       END DO
+
+                      NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
+                      U_RHS( :, N_IN_PRES+1:NPHASE, IU_NOD ) =  U_RHS( :, N_IN_PRES+1:NPHASE, IU_NOD ) + NN * U_SOURCE( :, N_IN_PRES+1:NPHASE, JU_NOD )
+
                    END DO ! DO U_LJLOC = 1, U_LNLOC
 
                 END DO ! DO U_LILOC = 1, U_LNLOC
