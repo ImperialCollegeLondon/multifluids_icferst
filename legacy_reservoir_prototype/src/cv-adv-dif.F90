@@ -121,6 +121,7 @@ contains
          CV_RHS_field, PETSC_ACV,&
          SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
          NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
+         C, FINDC, COLC, &
          CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
          CV_ELE_TYPE,  &
          NPHASE, NPRES, &
@@ -272,7 +273,7 @@ contains
       type( state_type ), intent( inout ) :: packed_state, storage_state
       type(tensor_field), intent(inout), target :: tracer
       type(tensor_field), intent(in), target :: density
-      type(tensor_field), intent(in) :: velocity
+      type(tensor_field), intent(in) :: velocity 
 
       INTEGER, intent( in ) :: NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, &
            TOTELE, &
@@ -292,6 +293,7 @@ contains
       type(vector_field), intent( inout ) :: CV_RHS_field
       type( petsc_csr_matrix ), intent(inout) :: petsc_ACV
       REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
+      REAL, DIMENSION( :, :, : ), intent( inout ) :: C
       ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
       REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
       REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (npres, npres, cv_nonods)
@@ -300,6 +302,8 @@ contains
       type(vector_field), intent( inout ) :: CT_RHS
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
       INTEGER, DIMENSION( : ), intent( in ) :: COLCT
+      INTEGER, DIMENSION( : ), intent( in ) :: FINDC
+      INTEGER, DIMENSION( : ), intent( in ) :: COLC
       INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
       INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
       REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
@@ -379,6 +383,8 @@ contains
       logical, PARAMETER :: EXPLICIT_PIPES= .false.
       logical, PARAMETER :: EXPLICIT_PIPES2= .true.
       logical, PARAMETER :: MULTB_BY_POROSITY= .false.
+! If GET_C_IN_CV_ADVDIF then form the C matrix in here also based on control-volume pressure.
+      logical, PARAMETER :: GET_C_IN_CV_ADVDIF = .false.
       REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
 ! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement 
 ! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained 
@@ -390,7 +396,9 @@ contains
            CVFEM_ON_FACE, UFEM_ON_FACE
       INTEGER, DIMENSION( : ), allocatable :: &
            CV_OTHER_LOC, U_OTHER_LOC, MAT_OTHER_LOC, &
-           JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, CV_SLOC2LOC, U_SLOC2LOC
+           JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
+           C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, &
+           CV_SLOC2LOC, U_SLOC2LOC
       INTEGER, DIMENSION( : , : ), allocatable :: FACE_ELE
       REAL, DIMENSION( : ), allocatable ::  &
            MASS_CV, MASS_ELE,  &
@@ -467,7 +475,7 @@ contains
            TMID, TOLDMID, TMID_J, TOLDMID_J, &
            RSUM, &
            THERM_FTHETA, &
-           W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, c
+           W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc
       REAL :: FTHETA(NPHASE), FTHETA_T2(NPHASE), ONE_M_FTHETA_T2OLD(NPHASE), FTHETA_T2_J(NPHASE), ONE_M_FTHETA_T2OLD_J(NPHASE)
       REAL :: ROBIN1(NPHASE), ROBIN2(NPHASE)
 
@@ -808,6 +816,12 @@ contains
        ALLOCATE( JCOUNT_KLOC2( U_NLOC ))
        ALLOCATE( ICOUNT_KLOC( U_NLOC ))
        ALLOCATE( ICOUNT_KLOC2( U_NLOC ))
+       IF(GET_C_IN_CV_ADVDIF) THEN
+          ALLOCATE( C_JCOUNT_KLOC( U_NLOC ))
+          ALLOCATE( C_JCOUNT_KLOC2( U_NLOC ))
+          ALLOCATE( C_ICOUNT_KLOC( U_NLOC ))
+          ALLOCATE( C_ICOUNT_KLOC2( U_NLOC ))
+       ENDIF
     ENDIF
 
 
@@ -1365,6 +1379,7 @@ contains
       IF ( GETCT ) THEN ! Obtain the CV discretised CT eqns plus RHS
          call zero(CT_RHS)
          CT = 0.0
+         IF(GET_C_IN_CV_ADVDIF) C = 0.0
          if ( got_free_surf .and. .not.symmetric_P ) MASS_SUF=0.0
       END IF
 
@@ -1676,6 +1691,66 @@ contains
                             endif
                         END DO
                      END IF ! endof IF ( between_elements ) THEN
+
+                  IF(GET_C_IN_CV_ADVDIF) THEN
+! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
+                     DO U_KLOC = 1, U_NLOC
+                        U_NODK = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_KLOC )
+                        JCOUNT = 0
+!                        DO COUNT = FINDC( CV_NODI ), FINDC( CV_NODI + 1 ) - 1
+!                           IF ( COLC( COUNT ) == U_NODK ) THEN
+                        DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
+                           IF ( COLC( COUNT ) == CV_NODI ) THEN
+                              JCOUNT = COUNT
+                              EXIT
+                           END IF
+                        END DO
+                        C_JCOUNT_KLOC( U_KLOC ) = JCOUNT
+                        if(integrate_other_side) then
+                            ! for integrating just on one side...
+                            ICOUNT = 0
+!                            DO COUNT = FINDC( CV_NODJ ), FINDC( CV_NODJ + 1 ) - 1
+!                               IF ( COLC( COUNT ) == U_NODK ) THEN
+                            DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
+                               IF ( COLC( COUNT ) == CV_NODJ ) THEN
+                                  ICOUNT = COUNT
+                                  EXIT
+                               END IF
+                            END DO
+                            C_ICOUNT_KLOC( U_KLOC ) = ICOUNT
+                        endif
+                     END DO
+
+                     IF ( between_elements ) THEN
+                        DO U_KLOC =  1, U_NLOC
+                           U_NODK = U_NDGLN( ( ELE2 - 1 ) * U_NLOC + U_KLOC )
+                           JCOUNT = 0
+!                           DO COUNT = FINDC( CV_NODI ), FINDC( CV_NODI + 1 ) - 1
+!                              IF ( COLC( COUNT ) == U_NODK ) THEN
+                           DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
+                              IF ( COLC( COUNT ) == CV_NODI ) THEN
+                                 JCOUNT = COUNT
+                                 EXIT
+                              END IF
+                           END DO
+                           C_JCOUNT_KLOC2( U_KLOC ) = JCOUNT
+                            if(integrate_other_side) then
+! for integrating just on one side...
+                               ICOUNT = 0
+!                               DO COUNT = FINDC( CV_NODJ ), FINDC( CV_NODJ + 1 ) - 1
+!                                  IF ( COLC( COUNT ) == U_NODK ) THEN
+                               DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
+                                  IF ( COLC( COUNT ) == CV_NODJ ) THEN
+                                     ICOUNT = COUNT
+                                     EXIT
+                                  END IF
+                               END DO
+                               C_ICOUNT_KLOC2( U_KLOC ) = ICOUNT
+                            endif
+                        END DO
+                     END IF ! endof IF ( between_elements ) THEN
+                  ENDIF ! ENDOF IF(GET_C_IN_CV_ADVDIF) THEN
+
                   END IF ! endof IF( GETCT ) THEN
 
                   ! Compute the distance HDC between the nodes either side of the CV face
@@ -2321,9 +2396,9 @@ contains
                         END IF
 
                         ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
-                        CALL PUT_IN_CT_RHS( CT, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+                        CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
                              CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary,  &
-                             JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, &
+                             JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, &
                              SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
                              UGI_COEF_ELE_ALL,  &
                              UGI_COEF_ELE2_ALL,  &
@@ -2663,8 +2738,8 @@ contains
                h = max( h, 1.0e-10 )
                h_nano = h
 
-               c = 0.0
-               if ( mass_pipe( cv_nodi )>0.0 ) c = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
+               cc = 0.0
+               if ( mass_pipe( cv_nodi )>0.0 ) cc = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
                h = (mass_cv( cv_nodi )/h)**(1.0/(ndim-1)) ! This is the lengthscale normal to the wells.
 
                rp = 0.14 * h
@@ -2683,23 +2758,23 @@ contains
                   IF ( IPRES /= JPRES ) THEN
                      IF ( FEM_P( 1, IPRES, CV_NODI ) + reservoir_P( ipres ) > FEM_P( 1, JPRES, CV_NODI ) + reservoir_P( jpres ) ) THEN
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                             c * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
+                             cc * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
 
                         IF ( GOT_NANO ) THEN
                            GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) +GAMMA_PRES_ABS_nano( IPHASE, JPHASE, CV_NODI ) * &
-                                c * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * PI * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
+                                cc * MIN( MAX( 0.0, T_ALL( IPHASE, CV_NODI ) ), 1.0 ) * 2.0 * PI * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
                                 / ( 1.0*(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                         END IF
                      ELSE
                         GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                             c * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                             cc * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                         IF ( GOT_NANO ) THEN
                            GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) = GAMMA_PRES_ABS2( IPHASE, JPHASE, CV_NODI ) +GAMMA_PRES_ABS_nano( IPHASE, JPHASE, CV_NODI ) * &
-                                c * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * PI * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
+                                cc * MIN( MAX( 0.0, T_ALL( JPHASE, CV_NODI ) ), 1.0 ) * 2.0 * PI * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
                                 / ( 1.0*(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                         END IF
                      END IF
@@ -2751,8 +2826,8 @@ contains
                h = max( h, 1.0e-10 )
                h_nano = h
 
-               c = 0.0
-               if ( mass_pipe( cv_nodi )>0.0 ) c = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
+               cc = 0.0
+               if ( mass_pipe( cv_nodi )>0.0 ) cc = 1.0 * (1.-FEM_PIPE_CORRECTION) ! to convert Peacement to FEM.
                h = (mass_cv( cv_nodi )/h)**(1.0/(ndim-1))  ! This is the lengthscale normal to the wells.
 
                rp = 0.14 * h
@@ -2771,25 +2846,25 @@ contains
                      IF ( DeltaP >= 0.0 ) THEN
                         PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
                              DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                             c * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
+                             cc * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                         IF ( GOT_NANO ) THEN
                            PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
                                 DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * &
-                                c * 2.0 * PI * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
+                                cc * 2.0 * PI * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
                                 / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                         END IF
                      ELSE
                         PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
                              DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
-                             c * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
+                             cc * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                         IF ( GOT_NANO ) THEN
                            PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
                                 DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * &
-                                c * 2.0 * PI * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
+                                cc * 2.0 * PI * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
                                 / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                         END IF
                      END IF
@@ -10045,9 +10120,9 @@ CONTAINS
 
 
 
-  SUBROUTINE PUT_IN_CT_RHS( CT, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+  SUBROUTINE PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
        CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary, &
-       JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC, U_SLOC2LOC,   &
+       JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, U_SLOC2LOC,   &
        SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
        UGI_COEF_ELE_ALL,  &
        UGI_COEF_ELE2_ALL,  &
@@ -10065,10 +10140,12 @@ CONTAINS
     INTEGER, intent( in ) :: U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
          CV_NONODS, U_NONODS, NPHASE, CV_NODI, CV_NODJ
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: loc_u, loc2_u
-    LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary
+    LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary, GET_C_IN_CV_ADVDIF
     INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
+    INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
     INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
     REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
+    REAL, DIMENSION( :, :, : ), intent( inout ) :: C
     REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
     REAL, DIMENSION( :, : ), intent( in ) :: SUFEN
@@ -10141,6 +10218,14 @@ CONTAINS
           CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) = CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) &
                + rcon_in_ct(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
        END DO
+       IF(GET_C_IN_CV_ADVDIF) THEN
+          RCON_IN_CT(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
+          DO IPHASE=1,NPHASE
+             C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+               = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+               + RCON_IN_CT(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
+          END DO
+       ENDIF
 !     if(more_in_ct) then
 !       DO IPHASE = 1, NPHASE
 !          CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) + (rcon_in_ct(IPHASE)-rcon(IPHASE)) * SUM( UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )*LOC_U(:,IPHASE, U_KLOC ) )
@@ -10169,6 +10254,14 @@ CONTAINS
              CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) = CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) &
                   - RCON_J(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
           END DO
+          IF(GET_C_IN_CV_ADVDIF) THEN
+             RCON_J(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
+             DO IPHASE=1,NPHASE
+                C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                  = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                  - RCON_J(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
+             END DO
+          ENDIF
        end if  ! endof if ( integrate_other_side_and_not_boundary ) then
 
     END DO
@@ -10238,6 +10331,14 @@ CONTAINS
                      = CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
                      + RCON_IN_CT(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
              END DO
+             IF(GET_C_IN_CV_ADVDIF) THEN
+                RCON(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
+                DO IPHASE=1,NPHASE
+                   C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
+                     = C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
+                     + RCON(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
+                END DO
+             ENDIF
 !     if(more_in_ct) then
 !       DO IPHASE = 1, NPHASE
 !          CT_RHS( CV_NODI ) = CT_RHS( CV_NODI ) + (rcon_in_ct(IPHASE)-rcon(IPHASE))* SUM(  UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )*LOC2_U(:,IPHASE, U_KLOC2 )  )
@@ -10265,6 +10366,15 @@ CONTAINS
                         = CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
                         - RCON_J(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
                 END DO
+
+                IF(GET_C_IN_CV_ADVDIF) THEN
+                   RCON_J(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
+                   DO IPHASE=1,NPHASE
+                      C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
+                        = C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
+                        - RCON_J(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
+                   END DO
+                ENDIF
 !     if(more_in_ct) then
 !       DO IPHASE= 1, NPHASE
 !          CT_RHS( CV_NODJ ) = CT_RHS( CV_NODJ ) - (rcon_J_in_ct(IPHASE)-rcon_J(IPHASE))* SUM(  UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )*LOC2_U(:,IPHASE, U_KLOC2 )  )
