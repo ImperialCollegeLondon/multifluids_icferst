@@ -13444,7 +13444,7 @@ deallocate(NX_ALL)
   SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
        &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
        &                         CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
-       &                         U_SOURCE, U_SOURCE_CV )
+       &                         U_SOURCE, U_SOURCE_CV, FEM_VOL_FRAC )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
     IMPLICIT NONE
@@ -13457,6 +13457,7 @@ deallocate(NX_ALL)
     REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL, U_SOURCE, U_SOURCE_CV
     REAL, DIMENSION( :, : ), INTENT( IN ) :: SIGMA
     REAL, DIMENSION( :, :, : ), INTENT( IN ) :: NU_ALL
+    REAL, DIMENSION( :, : ), intent( in ) :: FEM_VOL_FRAC
 
     INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, P_SNDGLN
     INTEGER, DIMENSION( :,:,: ), INTENT( IN ) :: WIC_P_BC_ALL
@@ -13464,7 +13465,7 @@ deallocate(NX_ALL)
     LOGICAL, INTENT( IN ) :: GOT_C_MATRIX
 
     LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL
-    LOGICAL :: CALC_SIGMA_PIPE, DEFAULT_SIGMA_PIPE_OPTIONS
+    LOGICAL :: CALC_SIGMA_PIPE, DEFAULT_SIGMA_PIPE_OPTIONS, SWITCH_PIPES_ON_AND_OFF
     INTEGER :: CV_NCORNER, ELE, PIPE_NOD_COUNT, ICORNER, &
          &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
          &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc, MAT_NODI
@@ -13487,13 +13488,16 @@ deallocate(NX_ALL)
     REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN, SUF_P_BC_ALL_NODS, RVEC_SUM, LOC_U_RHS_U_ILOC
     REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL, WELL_DENSITY, WELL_VISCOSITY
     REAL, DIMENSION( :, : ), ALLOCATABLE :: SIGMA_GI
+    REAL, DIMENSION( :, : ), ALLOCATABLE :: PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
+    INTEGER, DIMENSION(:), ALLOCATABLE :: PHASE_EXCLUDE
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
     REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM )
     REAL :: DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
+    REAL :: S_WATER, S_WATER_MIN, S_WATER_MAX, SIGMA_SWITCH_ON_OFF_PIPE_GI, PIPE_SWITCH
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
          &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4
-    INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2, IPHASE_IN_PIPE, GI
+    INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2, IPHASE_IN_PIPE, GI, IWATER
 
     X_NLOC = CV_NLOC
     ncorner = ndim + 1
@@ -13502,7 +13506,8 @@ deallocate(NX_ALL)
     SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
     CALC_SIGMA_PIPE = have_option("/porous_media/well_options/calculate_sigma_pipe")
     DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
-    E_ROUGHNESS=1.0E-6 ! Pipe roughness m
+    E_ROUGHNESS=1.0E-6 ! Pipe roughness 
+    SWITCH_PIPES_ON_AND_OFF = .FALSE.  ! Add the sigma associated with the switch to switch the pipe flow on and off...
 
 
     if(CALC_SIGMA_PIPE) then
@@ -13513,6 +13518,9 @@ deallocate(NX_ALL)
           well_density( iphase ) = wd%val(1)
           well_viscosity( iphase ) = wm%val(1,1,1)
        end do
+    endif
+    IF(SWITCH_PIPES_ON_AND_OFF) THEN
+! Define PHASE_EXCLUDE, PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
     endif
 
 
@@ -13772,6 +13780,28 @@ deallocate(NX_ALL)
                       END DO
                    END DO
                 ENDIF
+
+
+                ! Add the sigma associated with the switch to switch the pipe flow on and off...
+                IF(SWITCH_PIPES_ON_AND_OFF) THEN
+                   DO IPHASE = N_IN_PRES+1, NPHASE
+                      IWATER = PHASE_EXCLUDE(IPHASE)
+                      DO GI = 1, scvngi
+                         S_WATER = 0.0; S_WATER_MIN = 0.0; S_WATER_MAX = 0.0
+                         SIGMA_SWITCH_ON_OFF_PIPE_GI = 0.0
+                         DO CV_LILOC = 1, CV_LNLOC
+                            CV_KNOD = CV_GL_GL( CV_LILOC )
+                            S_WATER = S_WATER  + FEM_VOL_FRAC( IWATER, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
+                            S_WATER_MIN = S_WATER_MIN  + PHASE_EXCLUDE_PIPE_SAT_MIN( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
+                            S_WATER_MAX = S_WATER_MAX  + PHASE_EXCLUDE_PIPE_SAT_MAX( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
+                            SIGMA_SWITCH_ON_OFF_PIPE_GI = SIGMA_SWITCH_ON_OFF_PIPE_GI  + SIGMA_SWITCH_ON_OFF_PIPE( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
+                         END DO
+                         PIPE_SWITCH =  MIN(1.0, MAX(0.0,   (S_WATER-S_WATER_MAX)/MIN(S_WATER_MIN-S_WATER_MAX,-1.E-20)  ))
+                         SIGMA_GI(IPHASE,GI)= SIGMA_GI(IPHASE,GI)  + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI 
+                      END DO
+                   END DO
+                ENDIF
+
 
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE

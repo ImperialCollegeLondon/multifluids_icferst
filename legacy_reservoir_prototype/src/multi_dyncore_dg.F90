@@ -5923,7 +5923,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
              &                      C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
              &                      CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
-             &                      U_SOURCE, U_SOURCE_CV )
+             &                      U_SOURCE, U_SOURCE_CV, FEM_VOL_FRAC )
             DEALLOCATE(SIGMA)
         ENDIF
 
