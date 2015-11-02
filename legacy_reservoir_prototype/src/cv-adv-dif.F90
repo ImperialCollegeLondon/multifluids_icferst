@@ -13506,7 +13506,7 @@ deallocate(NX_ALL)
     SOLVE_ACTUAL_VEL = .TRUE. ! Solve for the actual real velocity in the pipes.
     CALC_SIGMA_PIPE = have_option("/porous_media/well_options/calculate_sigma_pipe")
     DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
-    E_ROUGHNESS=1.0E-6 ! Pipe roughness 
+    call get_option("/porous_media/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
     SWITCH_PIPES_ON_AND_OFF = .FALSE.  ! Add the sigma associated with the switch to switch the pipe flow on and off...
 
 
