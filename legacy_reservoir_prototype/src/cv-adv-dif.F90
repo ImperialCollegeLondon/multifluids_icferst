@@ -12988,7 +12988,7 @@ deallocate(NX_ALL)
                       DO U_LKLOC = 1, U_LNLOC
                          U_KNOD = U_GL_GL(U_LKLOC)
                          DO IDIM = 1, NDIM
-                            CT_CON(IDIM,:) = SBUFEN( U_LKLOC, BGI ) * LIMDT(:) * suf_DETWEI( BGI ) * DIRECTION_norm(IDIM) * INV_SIGMA_GI(:)
+                            CT_CON(IDIM,:) = SBUFEN( U_LKLOC, BGI ) * LIMDT(:) * suf_DETWEI( BGI ) * DIRECTION_norm(IDIM) * INV_SIGMA_GI(:)/D_CV_NODI(:)
                          END DO
                          ! Put into CT matrix...
                          DO COUNT = FINDCT(CV_NODI), FINDCT(CV_NODI+1)-1
@@ -13090,7 +13090,7 @@ deallocate(NX_ALL)
 
                 IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS on the boundary...
                    DO IDIM = 1, NDIM
-                      CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:)
+                      CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:)/DEN_ALL%val(1,:,JCV_NOD)
                    END DO
                    ! Put into CT matrix...
                    COUNT2=0
