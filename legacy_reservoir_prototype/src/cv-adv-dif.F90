@@ -3079,6 +3079,7 @@ contains
                DO IPRES=1,NPRES
                   DO JPRES=1,NPRES
                      DO jphase=1+(jpres-1)*n_in_pres, jpres*n_in_pres
+! dont divid the pipe to reservoir mass exchange term by density...
                      DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) = DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi)  &
                         !+ sum( A_GAMMA_PRES_ABS( 1+(ipres-1)*n_in_pres:ipres*n_in_pres    , 1+(jpres-1)*n_in_pres:jpres*n_in_pres, CV_NODI ) )
                         + sum( A_GAMMA_PRES_ABS(1+(ipres-1)*n_in_pres:ipres*n_in_pres,JPHASE, CV_NODI )  )
