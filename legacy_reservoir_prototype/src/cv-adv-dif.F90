@@ -13842,7 +13842,9 @@ deallocate(NX_ALL)
                          C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) = C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) - NMX_ALL( IDIM )
                       END DO
 
-                      U_RHS( :, N_IN_PRES+1:NPHASE, IU_NOD ) =  U_RHS( :, N_IN_PRES+1:NPHASE, IU_NOD ) + NM * U_SOURCE_CV( :, N_IN_PRES+1:NPHASE, JCV_NOD )
+                      DO IDIM = 1, NDIM
+                         U_RHS( IDIM, N_IN_PRES+1:NPHASE, IU_NOD ) =  U_RHS( IDIM, N_IN_PRES+1:NPHASE, IU_NOD ) + NM * U_SOURCE_CV( IDIM, N_IN_PRES+1:NPHASE, JCV_NOD ) * ABS( DIRECTION( IDIM ) )
+                      END DO
 
                    END DO ! DO P_LJLOC = 1, CV_LNLOC
 
@@ -13869,7 +13871,10 @@ deallocate(NX_ALL)
                       END DO
 
                       NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
-                      U_RHS( :, N_IN_PRES+1:NPHASE, IU_NOD ) =  U_RHS( :, N_IN_PRES+1:NPHASE, IU_NOD ) + NN * U_SOURCE( :, N_IN_PRES+1:NPHASE, JU_NOD )
+
+		      DO IDIM = 1, NDIM
+		         U_RHS( IDIM, N_IN_PRES+1:NPHASE, IU_NOD ) =  U_RHS( IDIM, N_IN_PRES+1:NPHASE, IU_NOD ) + NN * U_SOURCE( IDIM, N_IN_PRES+1:NPHASE, JU_NOD ) * ABS( DIRECTION( IDIM ) )
+                      END DO
 
                    END DO ! DO U_LJLOC = 1, U_LNLOC
 
