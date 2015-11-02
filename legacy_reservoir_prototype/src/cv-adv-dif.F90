@@ -3079,6 +3079,7 @@ contains
                DO IPRES=1,NPRES
                   DO JPRES=1,NPRES
                      DO jphase=1+(jpres-1)*n_in_pres, jpres*n_in_pres
+! dont divid the pipe to reservoir mass exchange term by density...
                      DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi) = DIAG_SCALE_PRES_COUP(IPRES,JPRES, cv_nodi)  &
                         !+ sum( A_GAMMA_PRES_ABS( 1+(ipres-1)*n_in_pres:ipres*n_in_pres    , 1+(jpres-1)*n_in_pres:jpres*n_in_pres, CV_NODI ) )
                         + sum( A_GAMMA_PRES_ABS(1+(ipres-1)*n_in_pres:ipres*n_in_pres,JPHASE, CV_NODI )  )
@@ -10224,7 +10225,7 @@ CONTAINS
           DO IPHASE=1,NPHASE
              C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-               + RCON_IN_CT(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
+               + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI )
           END DO
        ENDIF
 !     if(more_in_ct) then
@@ -10260,7 +10261,7 @@ CONTAINS
              DO IPHASE=1,NPHASE
                 C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                   = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                  - RCON_J(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
+                  - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )
              END DO
           ENDIF
        end if  ! endof if ( integrate_other_side_and_not_boundary ) then
@@ -10337,7 +10338,7 @@ CONTAINS
                 DO IPHASE=1,NPHASE
                    C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                      = C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
-                     + RCON(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
+                     + RCON(IPHASE) * CVNORMX_ALL( :, GI )
                 END DO
              ENDIF
 !     if(more_in_ct) then
@@ -10373,7 +10374,7 @@ CONTAINS
                    DO IPHASE=1,NPHASE
                       C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                         = C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
-                        - RCON_J(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
+                        - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )
                    END DO
                 ENDIF
 !     if(more_in_ct) then
@@ -11933,6 +11934,12 @@ deallocate(NX_ALL)
          !Make sure the value of sigma is between bounds
          abs_tilde = min(max(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), &
              max(min(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA),  abs_tilde ))
+
+!Harmonic mean test
+!abs_tilde = 2.0*(ABS_CV_NODI_IPHA * ABS_CV_NODJ_IPHA )/(ABS_CV_NODI_IPHA + ABS_CV_NODJ_IPHA )
+!Inverse of sigmas
+!abs_tilde = (1./ABS_CV_NODI_IPHA + 1./ABS_CV_NODJ_IPHA ) / (2.0*(1./ABS_CV_NODI_IPHA * 1./ABS_CV_NODJ_IPHA ))
+
          !We need the projected velocity from the other node
          NDOTQ2 = MATMUL( CVNORMX_ALL(:, GI), UDGI2_ALL )
          !Calculation of the velocity at the interface using the sigma at the interface
