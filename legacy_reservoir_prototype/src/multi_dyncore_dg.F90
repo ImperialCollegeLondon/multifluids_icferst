@@ -283,6 +283,7 @@ contains
             petsc_acv, &
             SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
             NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
+            CT, FINDCT, COLCT, &
             CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
             CV_ELE_TYPE, &
             NPHASE, NPRES, &
@@ -657,6 +658,7 @@ contains
               petsc_acv, &
               SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
               NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
+              CT, FINDCT, COLCT, &
               CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
               CV_ELE_TYPE,  &
               NPHASE, NPRES, &
@@ -2006,6 +2008,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ACV, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
+        C, FINDC, COLC, & ! C sparsity - global cty eqn
         CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
         CV_ELE_TYPE, &
         NPHASE, NPRES, &
@@ -5919,7 +5922,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            END DO
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
              &                      C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
-             &                      CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL )
+             &                      CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
+             &                      U_SOURCE, U_SOURCE_CV, FEM_VOL_FRAC )
             DEALLOCATE(SIGMA)
         ENDIF
 

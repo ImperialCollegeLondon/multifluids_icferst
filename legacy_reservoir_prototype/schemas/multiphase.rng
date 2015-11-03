@@ -1313,6 +1313,36 @@ Tip: if Diffusive_cap_only is activated Pe is ignored.</a:documentation>
               </element>
             </element>
           </choice>
+          <optional>
+            <element name="well_options">
+              <a:documentation>Specify well-related options</a:documentation>
+              <optional>
+                <element name="calculate_sigma_pipe">
+                  <a:documentation>Calculate the well \sigma field internally
+using a non-linear friction factor.
+This will over-write the field specified in Sigma1.</a:documentation>
+                  <optional>
+                    <!-- Defaults to 1.0e-6. -->
+                    <element name="pipe_roughness">
+                      <ref name="real"/>
+                    </element>
+                  </optional>
+                </element>
+              </optional>
+              <optional>
+                <element name="dt_pipe_factor">
+                  <a:documentation>Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}</a:documentation>
+                  <ref name="real"/>
+                </element>
+              </optional>
+              <optional>
+                <element name="switch_wells_on_and_off">
+                  <a:documentation>Switches wells on and off to optimise production</a:documentation>
+                  <empty/>
+                </element>
+              </optional>
+            </element>
+          </optional>
         </element>
       </optional>
       <optional>

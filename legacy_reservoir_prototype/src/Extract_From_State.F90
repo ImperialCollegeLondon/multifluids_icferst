@@ -2094,7 +2094,7 @@
 
       type(scalar_field), pointer :: pressure, sfield
       type(vector_field), pointer :: velocity, position, vfield
-      type(tensor_field), pointer :: tfield, p2
+      type(tensor_field), pointer :: tfield, p2, d2
 
       type(vector_field) :: porosity, vec_field
       type(vector_field) :: p_position, u_position, m_position
@@ -2236,6 +2236,11 @@
       call insert_sfield(packed_state,"Density",1,nphase)
       call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
 
+      d2=>extract_tensor_field(packed_state,"PackedFEDensity")
+
+      do icomp=1,ncomp
+         call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
+      end do
 
       if (option_count("/material_phase/scalar_field::Temperature")>0) then
          call insert_sfield(packed_state,"Temperature",1,nphase,&
@@ -2352,9 +2357,9 @@
             if (stat==0) velocity%wrapped=.true.
 
             call unpack_component_sfield(state(i),packed_state,"FEComponentDensity",icomp)
-            !call unpack_component_sfield(state(i),packed_state,"FEOldComponentDensity",icomp)
+            call unpack_component_sfield(state(i),packed_state,"OldFEComponentDensity",icomp,prefix='Old')
             call unpack_component_sfield(state(i),packed_state,"FEComponentMassFraction",icomp)
-            !call unpack_component_sfield(state(i),packed_state,"FEOldComponentMassFraction",icomp)
+            call unpack_component_sfield(state(i),packed_state,"OldFEComponentMassFraction",icomp,prefix='Old')
 
 
             call unpack_component_sfield(state(i),packed_state,"OldComponentDensity",icomp,prefix='Old')
@@ -2432,7 +2437,6 @@
          call unpack_sfield(state(i),packed_state,"Pressure",1,ipres)
          call insert(multi_state(1,ipres), extract_scalar_field(state(i),"Pressure"),"FEPressure")
       end do
-
 
       if (option_count("/material_phase/scalar_field::Temperature")>0) call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
       call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Density")
@@ -2647,7 +2651,7 @@
       subroutine unpack_multiphase(mstate,mpstate)
         type(state_type) :: mstate
         type(state_type), dimension(:) :: mpstate
-        integer :: index, iphase, si
+        integer :: index, iphase, si, s1, s2
 
         type(tensor_field), pointer :: tfield
         type(tensor_field) :: mp_tfield
@@ -2656,9 +2660,10 @@
         do index=1,size(mstate%tensor_fields)
            tfield=>extract_tensor_field(mstate,index)
            si=len(trim(tfield%name))
-!!-PY changed it
-           if(tfield%name(si-7:si)=="Pressure")then
-!           if(tfield%name(si-3:si)=="Pressure")then
+           s1=max(0,si) ; s2=si
+
+           if(tfield%name(s1:s2)=="Pressure")then
+
               ! do nothing...
            else if(tfield%name(:6)=="Packed")then
               do iphase=1,nphase
