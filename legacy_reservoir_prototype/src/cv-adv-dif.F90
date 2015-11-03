@@ -384,7 +384,7 @@ contains
       logical, PARAMETER :: EXPLICIT_PIPES2= .true.
       logical, PARAMETER :: MULTB_BY_POROSITY= .false.
 ! If GET_C_IN_CV_ADVDIF then form the C matrix in here also based on control-volume pressure.
-      logical, PARAMETER :: GET_C_IN_CV_ADVDIF = .false.
+      logical :: GET_C_IN_CV_ADVDIF
       REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
 ! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement 
 ! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained 
@@ -633,6 +633,8 @@ contains
          call get_option( "/porous_media/well_option/dt_pipe_factor", dt_pipe_factor, default = 1.0 )
       end if
 
+      !Check pressure matrix based on Control Volumes
+      GET_C_IN_CV_ADVDIF = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
 
       symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
 

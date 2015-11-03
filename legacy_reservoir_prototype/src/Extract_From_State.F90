@@ -2660,9 +2660,9 @@
         do index=1,size(mstate%tensor_fields)
            tfield=>extract_tensor_field(mstate,index)
            si=len(trim(tfield%name))
-           s1=max(0,si) ; s2=si
-
-           if(tfield%name(s1:s2)=="Pressure")then
+!!-PY changed it
+!           s1=max(0,si) ; s2=si
+           if(tfield%name(si-7:si)=="Pressure")then
 
               ! do nothing...
            else if(tfield%name(:6)=="Packed")then
