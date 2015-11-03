@@ -10224,8 +10224,8 @@ CONTAINS
           RCON_IN_CT(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
           DO IPHASE=1,NPHASE
              C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-               = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-               + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI )
+               = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &          !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+               + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI ) * min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
           END DO
        ENDIF
 !     if(more_in_ct) then
@@ -10260,8 +10260,8 @@ CONTAINS
              RCON_J(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
              DO IPHASE=1,NPHASE
                 C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                  = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                  - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )
+                  = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &         !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                  - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
              END DO
           ENDIF
        end if  ! endof if ( integrate_other_side_and_not_boundary ) then
@@ -10337,8 +10337,8 @@ CONTAINS
                 RCON(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
                 DO IPHASE=1,NPHASE
                    C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
-                     = C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
-                     + RCON(IPHASE) * CVNORMX_ALL( :, GI )
+                     = C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &              !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                     + RCON(IPHASE) * CVNORMX_ALL( :, GI )* min(1.0, 1e20 * abs(UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 )))
                 END DO
              ENDIF
 !     if(more_in_ct) then
@@ -10373,8 +10373,8 @@ CONTAINS
                    RCON_J(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
                    DO IPHASE=1,NPHASE
                       C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
-                        = C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
-                        - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )
+                        = C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &                 !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                        - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* min(1.0, 1e20 * abs(UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 )))
                    END DO
                 ENDIF
 !     if(more_in_ct) then
