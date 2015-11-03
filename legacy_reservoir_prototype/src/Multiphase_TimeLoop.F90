@@ -211,7 +211,7 @@
 
       !Variables related to the deteccion and correction of bad elements
       real, parameter :: Max_bad_angle = 105.0
-      real, parameter :: Min_bad_angle = 0.0
+      real, parameter :: Min_bad_angle = 0.
       type(bad_elements), allocatable, dimension(:) :: Quality_list
 
 

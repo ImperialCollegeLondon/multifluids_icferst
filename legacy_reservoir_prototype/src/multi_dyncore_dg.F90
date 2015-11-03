@@ -1128,8 +1128,8 @@ contains
 
         ! stabilisation for high aspect ratio problems - switched off
         if (is_porous_media) then
-!            call calculate_u_abs_stab_porous_media( packed_state, U_ABS_STAB, &
-!                     nphase, ndim, totele, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
+            call calculate_u_abs_stab_porous_media( packed_state, U_ABS_STAB, &
+                     nphase, ndim, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
         else
             call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
                opt_vel_upwind_coefs_new, nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods, mat_ndgln )
@@ -1509,9 +1509,9 @@ END IF
             end if
             !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
             !inside the same element to reduce the ill conditioning of the matrix
-            if (is_porous_media .and. present(Quality_list)) then
-                call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
-            end if
+!            if (is_porous_media .and. present(Quality_list)) then                   !TEMPORARY OFF
+!                call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
+!            end if
 
             if ( (x_nonods /= cv_nonods) .and. use_continuous_pressure_solver &
                  .and. nonlinear_iteration == 1 ) then !For discontinuous mesh

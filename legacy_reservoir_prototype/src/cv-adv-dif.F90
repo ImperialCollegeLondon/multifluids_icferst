@@ -11819,6 +11819,7 @@ deallocate(NX_ALL)
          !Make sure the value of sigma is between bounds
          abs_tilde = min(max(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA), &
              max(min(ABS_CV_NODI_IPHA,  ABS_CV_NODJ_IPHA),  abs_tilde ))
+
          !We need the projected velocity from the other node
          NDOTQ2 = MATMUL( CVNORMX_ALL(:, GI), UDGI2_ALL )
          !Calculation of the velocity at the interface using the sigma at the interface
