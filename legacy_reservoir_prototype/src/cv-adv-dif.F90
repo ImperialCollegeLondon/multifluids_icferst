@@ -13490,6 +13490,8 @@ deallocate(NX_ALL)
     TYPE(SCALAR_FIELD), POINTER :: PIPE_DIAMETER, WD
     TYPE(VECTOR_FIELD), POINTER :: X
     TYPE(TENSOR_FIELD), POINTER :: WM
+!    type(tensor_field), pointer :: CV_VOL_FRAC
+    type(tensor_field), pointer :: CV_VOL_FRAC
 
 
     REAL, DIMENSION( :, : ), ALLOCATABLE :: scvfen, scvfenslx, scvfensly, &
@@ -13542,6 +13544,7 @@ deallocate(NX_ALL)
        phase_exclude_pipe_sat_min => extract_scalar_field( state(1), "phase_exclude_pipe_sat_min" )
        phase_exclude_pipe_sat_max => extract_scalar_field( state(1), "phase_exclude_pipe_sat_max" )
        sigma_switch_on_off_pipe => extract_scalar_field( state(1), "sigma_switch_on_off_pipe" )
+       CV_VOL_FRAC=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
     end if
 
 
@@ -13810,12 +13813,14 @@ deallocate(NX_ALL)
                       SIGMA_SWITCH_ON_OFF_PIPE_GI = 0.0
                       DO CV_LILOC = 1, CV_LNLOC
                          CV_KNOD = CV_GL_GL( CV_LILOC )
-                         S_WATER = S_WATER  + FEM_VOL_FRAC( IWATER, CV_KNOD ) * SCVFEN( CV_LILOC, GI )
+                   !      S_WATER = S_WATER  + CV_VOL_FRAC%VAL( IWATER, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) ! Dimitrios can you fix this
+                         stop 143
                          S_WATER_MIN = S_WATER_MIN + PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
                          S_WATER_MAX = S_WATER_MAX + PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
                          SIGMA_SWITCH_ON_OFF_PIPE_GI = SIGMA_SWITCH_ON_OFF_PIPE_GI + SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
                       END DO
-                         S_WATER = max(S_WATER, MINVAL(FEM_VOL_FRAC( IWATER, CV_GL_GL( : ) )) )
+                    !     S_WATER = max(S_WATER, MINVAL(CV_VOL_FRAC%VAL( IWATER, CV_GL_GL( : ) )) ) ! Dimitrios can you fix this
+                          stop 111
                          S_WATER_MIN = max(S_WATER_MIN, MINVAL(PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_GL_GL( : ) )) )
                          S_WATER_MAX = max(S_WATER_MAX, MINVAL(PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_GL_GL( : ) )) )
                          SIGMA_SWITCH_ON_OFF_PIPE_GI = max(SIGMA_SWITCH_ON_OFF_PIPE_GI, MINVAL(SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) )) )
