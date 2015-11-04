@@ -13492,8 +13492,8 @@ deallocate(NX_ALL)
     REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN, SUF_P_BC_ALL_NODS, RVEC_SUM, LOC_U_RHS_U_ILOC
     REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL, WELL_DENSITY, WELL_VISCOSITY
     REAL, DIMENSION( :, : ), ALLOCATABLE :: SIGMA_GI
-    REAL, DIMENSION( :, : ), ALLOCATABLE :: PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
-    INTEGER, DIMENSION(:), ALLOCATABLE :: PHASE_EXCLUDE
+    TYPE( SCALAR_FIELD ), POINTER :: PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
+    INTEGER :: PHASE_EXCLUDE
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
     REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM )
@@ -13511,10 +13511,10 @@ deallocate(NX_ALL)
     CALC_SIGMA_PIPE = have_option("/porous_media/well_options/calculate_sigma_pipe")
     DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
     call get_option("/porous_media/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
-    SWITCH_PIPES_ON_AND_OFF = .FALSE.  ! Add the sigma associated with the switch to switch the pipe flow on and off...
+    ! Add the sigma associated with the switch to switch the pipe flow on and off...
+    SWITCH_PIPES_ON_AND_OFF= have_option("/porous_media/well_options/switch_wells_on_and_off")
 
-
-    if(CALC_SIGMA_PIPE) then
+    if ( CALC_SIGMA_PIPE ) then
        allocate( well_density(nphase), well_viscosity(nphase) )
        do iphase = n_in_pres+1, nphase
           wd => extract_scalar_field( state(iphase), "Density" )
@@ -13522,10 +13522,15 @@ deallocate(NX_ALL)
           well_density( iphase ) = wd%val(1)
           well_viscosity( iphase ) = wm%val(1,1,1)
        end do
-    endif
-    IF(SWITCH_PIPES_ON_AND_OFF) THEN
-! Define PHASE_EXCLUDE, PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
-    endif
+    end if
+
+    if ( SWITCH_PIPES_ON_AND_OFF ) then
+       ! Define PHASE_EXCLUDE, PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
+       call get_option( "/porous_media/well_options/switch_wells_on_and_off/phase_exclude", phase_exclude )
+       phase_exclude_pipe_sat_min => extract_scalar_field( state(1), "phase_exclude_pipe_sat_min" )
+       phase_exclude_pipe_sat_max => extract_scalar_field( state(1), "phase_exclude_pipe_sat_max" )
+       sigma_switch_on_off_pipe => extract_scalar_field( state(1), "sigma_switch_on_off_pipe" )
+    end if
 
 
     ! Set rhs of the force balce equation to zero just for the pipes...
@@ -13770,43 +13775,38 @@ deallocate(NX_ALL)
                 ENDIF
 
                 ! Recalculate SIGMA if we need to...
-                IF(CALC_SIGMA_PIPE) THEN
+                IF ( CALC_SIGMA_PIPE ) THEN
                    MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
                    DO IPHASE = N_IN_PRES+1, NPHASE
                       IPHASE_IN_PIPE=IPHASE-N_IN_PRES
                       DO GI = 1, scvngi
-                         U_GI= 0.0
-                         DO IDIM=1,NDIM
-                            U_GI= U_GI + SUM( SUFEN( : , GI )*NU_ALL(IDIM,IPHASE,U_GL_GL( : )))*DIRECTION(IDIM)
+                         U_GI = 0.0
+                         DO IDIM = 1, NDIM
+                            U_GI = U_GI + SUM( SUFEN( : , GI ) * NU_ALL( IDIM, IPHASE, U_GL_GL( : ) ) ) * DIRECTION( IDIM )
                          END DO
-!                         CALL DEF_SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, IPHASE_IN_PIPE)
-                         CALL SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, WELL_DENSITY(IPHASE), WELL_VISCOSITY(IPHASE), E_ROUGHNESS)
+                         !CALL DEF_SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, IPHASE_IN_PIPE)
+                         CALL SIGMA_PIPE_FRICTION( SIGMA_GI( IPHASE, GI ), U_GI, MIN_DIAM, WELL_DENSITY( IPHASE ), WELL_VISCOSITY( IPHASE ), E_ROUGHNESS )
                       END DO
                    END DO
-                ENDIF
-
+                END IF
 
                 ! Add the sigma associated with the switch to switch the pipe flow on and off...
-                IF(SWITCH_PIPES_ON_AND_OFF) THEN
-                   DO IPHASE = N_IN_PRES+1, NPHASE
-                      IWATER = PHASE_EXCLUDE(IPHASE)
-                      DO GI = 1, scvngi
-                         S_WATER = 0.0; S_WATER_MIN = 0.0; S_WATER_MAX = 0.0
-                         SIGMA_SWITCH_ON_OFF_PIPE_GI = 0.0
-                         DO CV_LILOC = 1, CV_LNLOC
-                            CV_KNOD = CV_GL_GL( CV_LILOC )
-                            S_WATER = S_WATER  + FEM_VOL_FRAC( IWATER, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
-                            S_WATER_MIN = S_WATER_MIN  + PHASE_EXCLUDE_PIPE_SAT_MIN( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
-                            S_WATER_MAX = S_WATER_MAX  + PHASE_EXCLUDE_PIPE_SAT_MAX( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
-                            SIGMA_SWITCH_ON_OFF_PIPE_GI = SIGMA_SWITCH_ON_OFF_PIPE_GI  + SIGMA_SWITCH_ON_OFF_PIPE( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
-                         END DO
-                         PIPE_SWITCH =  MIN(1.0, MAX(0.0,   (S_WATER-S_WATER_MAX)/MIN(S_WATER_MIN-S_WATER_MAX,-1.E-20)  ))
-                         SIGMA_GI(IPHASE,GI)= SIGMA_GI(IPHASE,GI)  + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI 
+                IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
+                   IWATER = PHASE_EXCLUDE
+                   DO GI = 1, SCVNGI
+                      S_WATER = 0.0; S_WATER_MIN = 0.0; S_WATER_MAX = 0.0
+                      SIGMA_SWITCH_ON_OFF_PIPE_GI = 0.0
+                      DO CV_LILOC = 1, CV_LNLOC
+                         CV_KNOD = CV_GL_GL( CV_LILOC )
+                         S_WATER = S_WATER  + FEM_VOL_FRAC( IWATER, CV_KNOD ) * SCVFEN( CV_LILOC, GI )
+                         S_WATER_MIN = S_WATER_MIN + PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
+                         S_WATER_MAX = S_WATER_MAX + PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
+                         SIGMA_SWITCH_ON_OFF_PIPE_GI = SIGMA_SWITCH_ON_OFF_PIPE_GI + SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
                       END DO
+                      PIPE_SWITCH = MIN( 1.0, MAX( 0.0, (S_WATER-S_WATER_MAX)/MIN(S_WATER_MIN-S_WATER_MAX,-1.E-20) ) )
+                      SIGMA_GI( N_IN_PRES+1:NPHASE, GI ) = SIGMA_GI( N_IN_PRES+1:NPHASE, GI ) + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
                    END DO
-                ENDIF
-
-
+                END IF
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 ! Adjust according to the volume of the pipe...

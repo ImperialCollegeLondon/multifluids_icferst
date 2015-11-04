@@ -1338,7 +1338,9 @@ This will over-write the field specified in Sigma1.</a:documentation>
               <optional>
                 <element name="switch_wells_on_and_off">
                   <a:documentation>Switches wells on and off to optimise production</a:documentation>
-                  <empty/>
+                  <element name="phase_exclude">
+                    <ref name="integer"/>
+                  </element>
                 </element>
               </optional>
             </element>

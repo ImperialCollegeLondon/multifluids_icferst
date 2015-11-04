@@ -1004,7 +1004,9 @@ start =
                ## Factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
                element dt_pipe_factor{ real }?,
                ## Switches wells on and off to optimise production
-               element switch_wells_on_and_off{ empty }?
+               element switch_wells_on_and_off{
+                  element phase_exclude{ integer }
+               }?
             }?
          }?,
         ## Fracking options
