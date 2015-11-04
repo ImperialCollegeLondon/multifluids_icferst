@@ -2660,9 +2660,9 @@
         do index=1,size(mstate%tensor_fields)
            tfield=>extract_tensor_field(mstate,index)
            si=len(trim(tfield%name))
-           s1=max(0,si) ; s2=si
-
-           if(tfield%name(s1:s2)=="Pressure")then
+!!-PY changed it
+!           s1=max(0,si) ; s2=si
+           if(tfield%name(si-7:si)=="Pressure")then
 
               ! do nothing...
            else if(tfield%name(:6)=="Packed")then
@@ -3600,14 +3600,30 @@
         real, dimension(:,:), intent(in) :: phasevolumefraction, reference_sat
         real, intent(in) :: dumping
         !Local variables
-        integer :: iphase
+        integer :: cv_inod, modified_vals, iphase
+        real :: aux
+        real, parameter :: tol = 1d-5
 
-
+        modified_vals = 0
         get_Convergence_Functional = 0.0
+
+        !(L2)**2 norm of all the elements
         do iphase = 1, size(phasevolumefraction,1)
             get_Convergence_Functional = max(sum((abs(reference_sat(iphase,:)-phasevolumefraction(iphase,:))&
             /size(phasevolumefraction,2))**2.0), get_Convergence_Functional)
         end do
+
+!        !(L2)**2 norm of all the elements whose value has changed (has problems to converge at
+!        !the beginning since only a shock front is happening, however it is better than simple l2 norm)
+!        do cv_inod = 1, size(phasevolumefraction,2)
+!            aux = maxval(abs(reference_sat(:,cv_inod)-phasevolumefraction(:,cv_inod)))
+!            if (aux > tol) then
+!                get_Convergence_Functional = get_Convergence_Functional + aux**2.0
+!                modified_vals = modified_vals + 1
+!            end if
+!        end do
+!        get_Convergence_Functional = (get_Convergence_Functional / dble(modified_vals)**2.0)
+
         !Rescale using the dumping in saturation to get a more efficient number to compare with
         !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
         !To make consistent the dumping parameter with the Potential, we have to raise it to 2.0
@@ -4370,17 +4386,38 @@
 
                 !If we have not added elements already in that element, check for small angles
                 if (.not.Check_element) then
-                    if (alpha(1) < MinAngle .or. alpha(2) < MinAngle .or. alpha(3) < MinAngle) then
-                        !No diffusion between nodes, just add a perturbation in the diagonal
-                        Quality_list%weights(1) = 0.0
-                        Quality_list%weights(2) = 0.0
+                    if (alpha(1) < MinAngle ) then
+                        Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(1) / lenght(2))
+                        Quality_list%weights(2) = abs(cos(alpha(2)) * lenght(3) / lenght(2))
                         !Store nodes, the first one is the bad node
                         Quality_list%nodes(1) = Pos1
                         Quality_list%nodes(2) = Pos2
                         Quality_list%nodes(3) = Pos3
                         !We fake this parameter since it is preapred for obtuse angles
                         !we consider a medium angle
-                        Quality_list%angle = 135
+                        Quality_list%angle = alpha(1) * 180 / pi
+                        Check_element = .true.
+                    else if (alpha(2) < MinAngle) then
+                        Quality_list%weights(1) = abs(cos(alpha(2)) * lenght(2) / lenght(3))
+                        Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(1) / lenght(3))
+                        !Store nodes, the first one is the bad node
+                        Quality_list%nodes(1) = Pos2
+                        Quality_list%nodes(2) = Pos3
+                        Quality_list%nodes(3) = Pos1
+                        !We fake this parameter since it is preapred for obtuse angles
+                        !we consider a medium angle
+                        Quality_list%angle = alpha(2) * 180 / pi
+                        Check_element = .true.
+                    else if (alpha(3) < MinAngle) then
+                        Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(2) / lenght(1))
+                        Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(3) / lenght(1))
+                        !Store nodes, the first one is the bad node
+                        Quality_list%nodes(1) = Pos3
+                        Quality_list%nodes(2) = Pos1
+                        Quality_list%nodes(3) = Pos2
+                        !We fake this parameter since it is preapred for obtuse angles
+                        !we consider a medium angle
+                        Quality_list%angle = alpha(3) * 180 / pi
                         Check_element = .true.
                     end if
                 end if

@@ -1130,8 +1130,8 @@ contains
 
         ! stabilisation for high aspect ratio problems - switched off
         if (is_porous_media) then
-!            call calculate_u_abs_stab_porous_media( packed_state, U_ABS_STAB, &
-!                     nphase, ndim, totele, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
+            call calculate_u_abs_stab_porous_media( packed_state, U_ABS_STAB, &
+                     nphase, ndim, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
         else
             call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
                opt_vel_upwind_coefs_new, nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods, mat_ndgln )

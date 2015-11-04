@@ -2403,51 +2403,58 @@
     end subroutine calculate_u_abs_stab
 
     subroutine calculate_u_abs_stab_porous_media( packed_state, Material_Absorption_Stab, &
-         nphase, ndim, totele, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
+         nphase, ndim, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
 
       implicit none
       type(state_type), intent( inout ) :: packed_state
       real, dimension( :, :, : ), intent( inout ) :: Material_Absorption_Stab
-      integer, intent( in ) :: nphase, ndim, totele, x_nloc, cv_nloc, mat_nloc
+      integer, intent( in ) :: nphase, ndim, x_nloc, cv_nloc, mat_nloc
       integer, dimension( : ), intent( in ) :: X_ndgln, MAT_NDGLN
       type(bad_elements), dimension(:), intent(in) :: Quality_list
 
       !Local variables
-      integer :: i, ipha_idim, iphase, ele, cv_iloc, imat, ipha_ndim, node, node2, node3, mat_nod
-      real :: factor, delta_ratio, aux, aux2
+      integer :: i, ipha_idim, iphase, ele, cv_iloc, ipha_ndim, node1, node2, node3, mat_nod
+      real :: factor, delta_ratio, weight_max, aux
       real, parameter :: pi = acos(0.d0) * 2d0
       real, dimension(3,3) :: A, R
       real, dimension(:,:), pointer:: X_ALL
       !Initialize variable
       Material_Absorption_Stab = 0.
       call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)
-      !Factor is the desired aspect ratio
-      factor = 10.
+      !Factor is the desired aspect ratio, maybe modifiable from diamond
+      factor = 1.
       i = 1
-      do while (quality_list(i)%ele > 0)
-        ele = quality_list(i)%ele
-          !Create A here
-          A = 0. ; R = 0.
-          aux = quality_list(i)%weights(1) * (1-quality_list(i)%weights(1))
-          aux2 = aux * tan(quality_list(i)%angle * pi/180)
-          !Obtain aspect ratio from the bad angle by using trigonometrics
-          !Only the positive value is physical (second order system)
-          delta_ratio = (-1./aux2 + sqrt(aux2**(-2) + 4. / aux))/2.
-          !This is the parameter we want to introduce in stab (delta_X^2/(desired_aspect_ratio^2 * delta_Z^2))
-          A(ndim,ndim) = (delta_ratio/factor)**2
 
+      do while (quality_list(i)%ele > 0)
+
+          ele = quality_list(i)%ele
           !Get normal, towards the bad angle
-          node = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(1))
+          node1 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(1))
           node2 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(2))
           node3 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(3))
 
-!          !Get normal vector pointing to the bad element
-!          R(1:ndim, 1) = X_ALL(1:ndim,node) - (X_ALL(1:ndim,node2) + &
-!            quality_list(i)%weights(1)*(X_ALL(1:ndim,node3) - X_ALL(1:ndim,node2)))
+          !We consider the closest weigth
+          weight_max = max(quality_list(i)%weights(1), (1.-quality_list(i)%weights(1)))
+          !Initiliaze
+          A = 0. ; R = 0.
 
-          !GET_TANG_BINORM creates a rotational matrix to the tangent of the vector introduced
-          !and the interest it to introduce this pointing to the bad angle
-          R(1:ndim, 1) = abs(X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3))
+          !For acute angles:
+          if (quality_list(i)%angle < 90) then
+              !Aspect ratio based on angles
+              delta_ratio = abs(weight_max* tan(quality_list(i)%angle * pi/180))
+              !Vector of the base of the triangle, since the subroutine returns the perpendicular
+              R(1:ndim, 1) = abs(X_ALL(:,node1) - X_ALL(:,node2))
+
+          else!for obtuse triangles
+              !Lenght of the side opposite to the bad angle
+              aux = sqrt(dot_product(X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3), X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3)))
+              !Obtain aspect ratio of the bad angle by using trigonometrics
+              delta_ratio = abs(1./tan(quality_list(i)%angle * pi/180) + aux * weight_max * (1. + weight_max))
+              !Get normal perpendicular to the bad angle
+              R(1:ndim, 1) = abs(X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3))
+          end if
+          !This is the parameter we want to introduce in stab (delta_X^2/(desired_aspect_ratio^2 * delta_Z^2))
+          A(ndim,ndim) = (delta_ratio/factor)**(-2)
 
           !normalize
           R(1:ndim, 1) = R(1:ndim, 1) / sqrt(dot_product(R(1:ndim, 1),R(1:ndim, 1)))
@@ -2455,14 +2462,12 @@
           call GET_TANG_BINORM(R(1, 1),R(2, 1),R(3, 1), R(1, 2),R(2, 2),R(3, 2), R(1, 3),R(2, 3),R(3, 3), 1)
           !Rotate matrix
           A = matmul(transpose(R), matmul(A,R))
-
           !Add matrix into Stab
           do cv_iloc = 1, cv_nloc
             mat_nod = mat_ndgln(( ele - 1 ) * mat_nloc + cv_iloc)
               do iphase = 1, nphase
                   ipha_idim = ( iphase - 1 ) * ndim + 1
                   ipha_ndim = ( iphase - 1 ) * ndim + ndim
-
                   Material_Absorption_Stab( mat_nod, ipha_idim:ipha_ndim, ipha_idim:ipha_ndim ) = A(1:ndim, 1:ndim)
               end do
           end do
