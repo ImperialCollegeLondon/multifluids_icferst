@@ -1194,23 +1194,23 @@ contains
         !Check if the pressure matrix is a CV matrix
         GET_C_IN_CV_ADVDIF = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         RECALC_C_CV = .false. !Only calculate C_CV if it has not been calculated already
+        !IF I STORE IN STORAGE_STATE IT FAILS...NEED TO FIX THIS!
         if (GET_C_IN_CV_ADVDIF) then
 !            !If we do not have an index where we have stored C_CV, then we need to calculate it
             if (StorageIndexes(38)<=0) then
                 !Prepare stuff to store C_CV in storage_state
                 RECALC_C_CV = .true.
-                if (has_scalar_field(storage_state, "C_CV_MAT")) then
+                if (has_scalar_field(state(1), "C_CV_MAT")) then
                     !If we are recalculating due to a mesh modification then
                     !we return to the original situation
-                    call remove_scalar_field(storage_state, "C_CV_MAT")
+                    call remove_scalar_field(state(1), "C_CV_MAT")
                 end if
                 !Get mesh file just to be able to allocate the fields we want to store
-                fl_mesh => extract_mesh( storage_state, "FakeMesh" )
+                fl_mesh => extract_mesh( state(1), "FakeMesh" )
                 Auxmesh = fl_mesh
                 !The number of nodes I want does not coincide
                 Auxmesh%nodes = NDIM * NPHASE * size(COLC)
                 call allocate (Targ_C_Mat, Auxmesh,'CCVMatrixAsScalar')
-!IF I STORE IN STORAGE_STATE IT FAILS...
                 !Now we insert them in state and store the index
                 call insert(state(1), Targ_C_Mat, "C_CV_MAT")
                 StorageIndexes(38) = size(state(1)%scalar_fields)

@@ -147,7 +147,7 @@ contains
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
          option_path_spatial_discretisation, &
-         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln, Courant_number)
+         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln, Courant_number, RECALC_C_CV)
 
       !  =====================================================================
       !     In this subroutine the advection terms in the advection-diffusion
@@ -347,6 +347,7 @@ contains
       integer, optional ::indx
       character(len=*), optional :: Storname
       real, optional, intent(inout) :: Courant_number
+      logical, optional, intent(in) :: RECALC_C_CV
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
       ! Variables needed when calculating boundary outfluxes. Totoutflux will be used to sum up over elements for each phase the outflux through a specified boundary
