@@ -1206,7 +1206,7 @@ contains
                     call remove_scalar_field(state(1), "C_CV_MAT")
                 end if
                 !Get mesh file just to be able to allocate the fields we want to store
-                fl_mesh => extract_mesh( state(1), "FakeMesh" )
+                fl_mesh => extract_mesh( storage_state, "FakeMesh" )
                 Auxmesh = fl_mesh
                 !The number of nodes I want does not coincide
                 Auxmesh%nodes = NDIM * NPHASE * size(COLC)
