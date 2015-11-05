@@ -913,7 +913,7 @@ contains
 ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
         LOGICAL :: got_free_surf
         !This is to force the use of a Pressure discretized using CVs everywhere not only to calculate the pressure
-        LOGICAL, PARAMETER :: everything_c_cv = .FALSE.
+        LOGICAL :: everything_c_cv
         character( len = option_path_len ) :: opt, bc_type
 
         type( vector_field ) :: ct_rhs
@@ -1196,6 +1196,9 @@ contains
         RECALC_C_CV = .false. !Only calculate C_CV if it has not been calculated already
         !IF I STORE IN STORAGE_STATE IT FAILS...NEED TO FIX THIS!
         if (GET_C_IN_CV_ADVDIF) then
+            !Check if use C_CV to get velocities or use C
+            everything_c_cv = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix_for_velocity' )
+
 !            !If we do not have an index where we have stored C_CV, then we need to calculate it
             if (StorageIndexes(38)<=0) then
                 !Prepare stuff to store C_CV in storage_state
