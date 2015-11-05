@@ -147,7 +147,7 @@ contains
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
          option_path_spatial_discretisation, &
-         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln, Courant_number, RECALC_C_CV)
+         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln, Courant_number)
 
       !  =====================================================================
       !     In this subroutine the advection terms in the advection-diffusion
@@ -347,7 +347,6 @@ contains
       integer, optional ::indx
       character(len=*), optional :: Storname
       real, optional, intent(inout) :: Courant_number
-      logical, optional, intent(in) :: RECALC_C_CV
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
       ! Variables needed when calculating boundary outfluxes. Totoutflux will be used to sum up over elements for each phase the outflux through a specified boundary
@@ -10230,10 +10229,15 @@ CONTAINS
        IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
           RCON_IN_CT(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
           DO IPHASE=1,NPHASE
-
+    IF ( between_elements ) THEN
+             C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+               = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &          !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+               + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI ) * 0.5 * min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
+    else
              C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &          !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI ) * min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
+    endif
           END DO
        ENDIF
 !     if(more_in_ct) then
@@ -10267,9 +10271,15 @@ CONTAINS
           IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
              RCON_J(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
              DO IPHASE=1,NPHASE
+    IF ( between_elements ) THEN
+                C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                  = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &         !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                  - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* 0.5* min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
+    else
                 C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                   = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &         !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                   - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
+    endif
              END DO
           ENDIF
        end if  ! endof if ( integrate_other_side_and_not_boundary ) then
@@ -10345,8 +10355,8 @@ CONTAINS
                 RCON(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
                 DO IPHASE=1,NPHASE
                    C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
-                     = C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
-                     + RCON(IPHASE) * CVNORMX_ALL( :, GI )
+                     = C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &              !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                     + RCON(IPHASE) * CVNORMX_ALL( :, GI )* 0.5 * min(1.0, 1e20 * abs(UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 )))
                 END DO
              ENDIF
 !     if(more_in_ct) then
@@ -10381,8 +10391,8 @@ CONTAINS
                    RCON_J(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
                    DO IPHASE=1,NPHASE
                       C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
-                        = C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
-                        - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )
+                        = C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &                 !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                        - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* 0.5* min(1.0, 1e20 * abs(UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 )))
                    END DO
                 ENDIF
 !     if(more_in_ct) then
@@ -12083,9 +12093,6 @@ deallocate(NX_ALL)
                    !We limit the value
                    abs_tilde(IPHASE) = min(1000.*max(ABS_CV_NODI_IPHA(IPHASE),  ABS_CV_NODJ_IPHA(IPHASE)), &
                        max(0.001*min(ABS_CV_NODI_IPHA(IPHASE),  ABS_CV_NODJ_IPHA(IPHASE)), abs_tilde(IPHASE) ))
-
-!abs_tilde(IPHASE) = (1./ABS_CV_NODI_IPHA(IPHASE) + 1./ABS_CV_NODJ_IPHA(IPHASE) ) / (2.0*(1./ABS_CV_NODI_IPHA(IPHASE) * 1./ABS_CV_NODJ_IPHA(IPHASE) ))
-
                    wrelax(IPHASE)= min( 1.0, abs_tilde(IPHASE)/ABS_CV_NODI_IPHA(IPHASE) )
 
                    !Calculate importance of each side
@@ -12097,9 +12104,6 @@ deallocate(NX_ALL)
                    !We limit the value
                    abs_tilde(IPHASE) = min(1000.*max(ABS_CV_NODI_IPHA(IPHASE),  ABS_CV_NODJ_IPHA(IPHASE)), &
                        max(0.001*min(ABS_CV_NODI_IPHA(IPHASE),  ABS_CV_NODJ_IPHA(IPHASE)), abs_tilde(IPHASE) ))
-
-!abs_tilde = (1./ABS_CV_NODI_IPHA + 1./ABS_CV_NODJ_IPHA ) / (2.0*(1./ABS_CV_NODI_IPHA * 1./ABS_CV_NODJ_IPHA ))
-
                    wrelax(IPHASE)= min( 1.0, abs_tilde(IPHASE)/ABS_CV_NODJ_IPHA(IPHASE)  )
 
                    !Calculate importance of each side
@@ -13489,7 +13493,7 @@ deallocate(NX_ALL)
     INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE, WIC_P_BC_ALL_NODS
     TYPE(SCALAR_FIELD), POINTER :: PIPE_DIAMETER, WD
     TYPE(VECTOR_FIELD), POINTER :: X
-    TYPE(TENSOR_FIELD), POINTER :: WM
+    TYPE(TENSOR_FIELD), POINTER :: WM, CV_VOL_FRAC
 
 
     REAL, DIMENSION( :, : ), ALLOCATABLE :: scvfen, scvfenslx, scvfensly, &
@@ -13504,8 +13508,8 @@ deallocate(NX_ALL)
     REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN, SUF_P_BC_ALL_NODS, RVEC_SUM, LOC_U_RHS_U_ILOC
     REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL, WELL_DENSITY, WELL_VISCOSITY
     REAL, DIMENSION( :, : ), ALLOCATABLE :: SIGMA_GI
-    REAL, DIMENSION( :, : ), ALLOCATABLE :: PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
-    INTEGER, DIMENSION(:), ALLOCATABLE :: PHASE_EXCLUDE
+    TYPE( SCALAR_FIELD ), POINTER :: PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
+    INTEGER :: PHASE_EXCLUDE
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
     REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM )
@@ -13523,10 +13527,10 @@ deallocate(NX_ALL)
     CALC_SIGMA_PIPE = have_option("/porous_media/well_options/calculate_sigma_pipe")
     DEFAULT_SIGMA_PIPE_OPTIONS = .FALSE. ! Use default pipe options for water and oil including density and viscocity
     call get_option("/porous_media/well_options/calculate_sigma_pipe/pipe_roughness", E_ROUGHNESS, default=1.0E-6)
-    SWITCH_PIPES_ON_AND_OFF = .FALSE.  ! Add the sigma associated with the switch to switch the pipe flow on and off...
+    ! Add the sigma associated with the switch to switch the pipe flow on and off...
+    SWITCH_PIPES_ON_AND_OFF= have_option("/porous_media/well_options/switch_wells_on_and_off")
 
-
-    if(CALC_SIGMA_PIPE) then
+    if ( CALC_SIGMA_PIPE ) then
        allocate( well_density(nphase), well_viscosity(nphase) )
        do iphase = n_in_pres+1, nphase
           wd => extract_scalar_field( state(iphase), "Density" )
@@ -13534,10 +13538,16 @@ deallocate(NX_ALL)
           well_density( iphase ) = wd%val(1)
           well_viscosity( iphase ) = wm%val(1,1,1)
        end do
-    endif
-    IF(SWITCH_PIPES_ON_AND_OFF) THEN
-! Define PHASE_EXCLUDE, PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
-    endif
+    end if
+
+    if ( SWITCH_PIPES_ON_AND_OFF ) then
+       ! Define PHASE_EXCLUDE, PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
+       call get_option( "/porous_media/well_options/switch_wells_on_and_off/phase_exclude", phase_exclude )
+       phase_exclude_pipe_sat_min => extract_scalar_field( state(1), "phase_exclude_pipe_sat_min" )
+       phase_exclude_pipe_sat_max => extract_scalar_field( state(1), "phase_exclude_pipe_sat_max" )
+       sigma_switch_on_off_pipe => extract_scalar_field( state(1), "sigma_switch_on_off_pipe" )
+       cv_vol_frac => extract_tensor_field( packed_state,"PackedPhaseVolumeFraction" )
+    end if
 
 
     ! Set rhs of the force balce equation to zero just for the pipes...
@@ -13782,43 +13792,42 @@ deallocate(NX_ALL)
                 ENDIF
 
                 ! Recalculate SIGMA if we need to...
-                IF(CALC_SIGMA_PIPE) THEN
+                IF ( CALC_SIGMA_PIPE ) THEN
                    MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
                    DO IPHASE = N_IN_PRES+1, NPHASE
                       IPHASE_IN_PIPE=IPHASE-N_IN_PRES
                       DO GI = 1, scvngi
-                         U_GI= 0.0
-                         DO IDIM=1,NDIM
-                            U_GI= U_GI + SUM( SUFEN( : , GI )*NU_ALL(IDIM,IPHASE,U_GL_GL( : )))*DIRECTION(IDIM)
+                         U_GI = 0.0
+                         DO IDIM = 1, NDIM
+                            U_GI = U_GI + SUM( SUFEN( : , GI ) * NU_ALL( IDIM, IPHASE, U_GL_GL( : ) ) ) * DIRECTION( IDIM )
                          END DO
-!                         CALL DEF_SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, IPHASE_IN_PIPE)
-                         CALL SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, WELL_DENSITY(IPHASE), WELL_VISCOSITY(IPHASE), E_ROUGHNESS)
+                         !CALL DEF_SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, IPHASE_IN_PIPE)
+                         CALL SIGMA_PIPE_FRICTION( SIGMA_GI( IPHASE, GI ), U_GI, MIN_DIAM, WELL_DENSITY( IPHASE ), WELL_VISCOSITY( IPHASE ), E_ROUGHNESS )
                       END DO
                    END DO
-                ENDIF
-
+                END IF
 
                 ! Add the sigma associated with the switch to switch the pipe flow on and off...
-                IF(SWITCH_PIPES_ON_AND_OFF) THEN
-                   DO IPHASE = N_IN_PRES+1, NPHASE
-                      IWATER = PHASE_EXCLUDE(IPHASE)
-                      DO GI = 1, scvngi
-                         S_WATER = 0.0; S_WATER_MIN = 0.0; S_WATER_MAX = 0.0
-                         SIGMA_SWITCH_ON_OFF_PIPE_GI = 0.0
-                         DO CV_LILOC = 1, CV_LNLOC
-                            CV_KNOD = CV_GL_GL( CV_LILOC )
-                            S_WATER = S_WATER  + FEM_VOL_FRAC( IWATER, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
-                            S_WATER_MIN = S_WATER_MIN  + PHASE_EXCLUDE_PIPE_SAT_MIN( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
-                            S_WATER_MAX = S_WATER_MAX  + PHASE_EXCLUDE_PIPE_SAT_MAX( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
-                            SIGMA_SWITCH_ON_OFF_PIPE_GI = SIGMA_SWITCH_ON_OFF_PIPE_GI  + SIGMA_SWITCH_ON_OFF_PIPE( IPHASE, CV_KNOD ) * SCVFEN( CV_LILOC, GI ) 
-                         END DO
-                         PIPE_SWITCH =  MIN(1.0, MAX(0.0,   (S_WATER-S_WATER_MAX)/MIN(S_WATER_MIN-S_WATER_MAX,-1.E-20)  ))
-                         SIGMA_GI(IPHASE,GI)= SIGMA_GI(IPHASE,GI)  + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI 
+                IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
+                   IWATER = PHASE_EXCLUDE
+                   DO GI = 1, SCVNGI
+                      S_WATER = 0.0 ; S_WATER_MIN = 0.0 ; S_WATER_MAX = 0.0
+                      SIGMA_SWITCH_ON_OFF_PIPE_GI = 0.0
+                      DO CV_LILOC = 1, CV_LNLOC
+                         CV_KNOD = CV_GL_GL( CV_LILOC )
+                         S_WATER = S_WATER  + CV_VOL_FRAC%VAL( 1, IWATER, CV_KNOD ) * SCVFEN( CV_LILOC, GI )
+                         S_WATER_MIN = S_WATER_MIN + PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
+                         S_WATER_MAX = S_WATER_MAX + PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
+                         SIGMA_SWITCH_ON_OFF_PIPE_GI = SIGMA_SWITCH_ON_OFF_PIPE_GI + SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
                       END DO
+                      S_WATER = max( S_WATER, MINVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) ) )
+                      S_WATER_MIN = max( S_WATER_MIN, MINVAL( PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_GL_GL( : ) ) ) )
+                      S_WATER_MAX = max( S_WATER_MAX, MINVAL( PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_GL_GL( : ) ) ) )
+                      SIGMA_SWITCH_ON_OFF_PIPE_GI = max( SIGMA_SWITCH_ON_OFF_PIPE_GI, MINVAL( SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) ) ) )
+                      PIPE_SWITCH = MIN( 1.0, MAX( 0.0, (S_WATER-S_WATER_MAX) / MIN( S_WATER_MIN-S_WATER_MAX, -1.E-20 ) ) )
+                      SIGMA_GI( N_IN_PRES+1:NPHASE, GI ) = SIGMA_GI( N_IN_PRES+1:NPHASE, GI ) + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
                    END DO
-                ENDIF
-
-
+                END IF
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                 ! Adjust according to the volume of the pipe...
