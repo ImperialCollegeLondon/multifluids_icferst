@@ -9643,7 +9643,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                end do
             end do
 
-            min_den = 0.0
+            min_den = 1.e+20
             do cv_iloc = 1, cv_nloc
                cv_inod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
                mat_inod = mat_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
@@ -9672,8 +9672,10 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
                end do
             end do
-            den_gi = max( den_gi, min_den, 1.0e-20 )
-
+            den_gi=1.0e-20
+            do iphase = 1, nphase
+                den_gi(:,iphase) = max( den_gi(:,iphase), min_den(iphase))
+            end do
             !inv_den_gi = 1.0 / ( den_gi + dt * sigma_gi )
             inv_den_gi = 1.0 / den_gi
 
