@@ -9287,6 +9287,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
            &     ph_ele_type, iloop, u_nonods, cv_nonods, &
            &     cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, cv_nloc, &
            &     ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
+      real, dimension( nphase ) :: min_den
       real, dimension( : ), pointer :: phweight, phweight_short, sphfeweigh, sbphfeweigh, &
            &                           sele_overlap_scale
       real, dimension( :, : ), pointer :: phn, phn_short, phfen, phfen_short, ufen, &
@@ -9535,6 +9536,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
                end do
             end do
 
+            min_den = 0.0
             do cv_iloc = 1, cv_nloc
                cv_inod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
                mat_inod = mat_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
@@ -9551,9 +9553,11 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
                   if ( boussinesq ) then
                      den_gi( :, iphase ) = 1.0
+                     min_den( iphase ) = 1.0
                   else
                      den_gi( :, iphase ) = den_gi( :, iphase ) + &
                           tmp_cvfen( cv_iloc, : ) * rho % val( 1, iphase, cv_inod )
+                     min_den( iphase ) = min( min_den( iphase ), rho % val( 1, iphase, cv_inod ) )
                   end if
 
                   sigma_gi( :, iphase ) = sigma_gi( :, iphase ) + &
@@ -9561,6 +9565,7 @@ deallocate(CVFENX_ALL, UFENX_ALL)
 
                end do
             end do
+            den_gi = max( den_gi, min_den, 1.0e-20 )
 
             !inv_den_gi = 1.0 / ( den_gi + dt * sigma_gi )
             inv_den_gi = 1.0 / den_gi
