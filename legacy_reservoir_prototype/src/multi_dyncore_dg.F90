@@ -912,6 +912,8 @@ contains
         LOGICAL :: RETRIEVE_SOLID_CTY = .FALSE.
 ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
         LOGICAL :: got_free_surf
+        !This is to force the use of a Pressure discretized using CVs everywhere not only to calculate the pressure
+        LOGICAL, PARAMETER :: everything_c_cv = .FALSE.
         character( len = option_path_len ) :: opt, bc_type
 
         type( vector_field ) :: ct_rhs
@@ -923,14 +925,18 @@ contains
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
-        real, dimension( : , :, :), pointer :: C, PIVIT_MAT
+        real, dimension( : , :, :), pointer :: C, C_CV, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
-        LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY, diag
+        LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY, diag, GET_C_IN_CV_ADVDIF, RECALC_C_CV
         INTEGER :: IDIM, stat
         !Re-scale parameter can be re-used
         real, save :: rescaleVal = -1.0
         !CMC using petsc format
         type(petsc_csr_matrix)::  CMC_petsc
+        !Variables to store things in state
+        type(mesh_type), pointer :: fl_mesh
+        type(mesh_type) :: Auxmesh
+        type(scalar_field), target :: Targ_C_Mat
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: MAT_INOD, IPRES, JPRES, iphase_real, jphase_real
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
@@ -1130,8 +1136,8 @@ contains
 
         ! stabilisation for high aspect ratio problems - switched off
         if (is_porous_media) then
-            call calculate_u_abs_stab_porous_media( packed_state, U_ABS_STAB, &
-                     nphase, ndim, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
+!            call calculate_u_abs_stab_porous_media( packed_state, U_ABS_STAB, &
+!                     nphase, ndim, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
         else
             call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
                opt_vel_upwind_coefs_new, nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods, mat_ndgln )
@@ -1185,6 +1191,39 @@ contains
         END DO
         !##########TEMPORARY ADAPT FROM OLD VARIABLES TO NEW############
 
+        !Check if the pressure matrix is a CV matrix
+        GET_C_IN_CV_ADVDIF = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
+        RECALC_C_CV = .false. !Only calculate C_CV if it has not been calculated already
+        if (GET_C_IN_CV_ADVDIF) then
+!            !If we do not have an index where we have stored C_CV, then we need to calculate it
+            if (StorageIndexes(38)<=0) then
+                !Prepare stuff to store C_CV in storage_state
+                RECALC_C_CV = .true.
+                if (has_scalar_field(storage_state, "C_CV_MAT")) then
+                    !If we are recalculating due to a mesh modification then
+                    !we return to the original situation
+                    call remove_scalar_field(storage_state, "C_CV_MAT")
+                end if
+                !Get mesh file just to be able to allocate the fields we want to store
+                fl_mesh => extract_mesh( storage_state, "FakeMesh" )
+                Auxmesh = fl_mesh
+                !The number of nodes I want does not coincide
+                Auxmesh%nodes = NDIM * NPHASE * size(COLC)
+                call allocate (Targ_C_Mat, Auxmesh,'CCVMatrixAsScalar')
+!IF I STORE IN STORAGE_STATE IT FAILS...
+                !Now we insert them in state and store the index
+                call insert(state(1), Targ_C_Mat, "C_CV_MAT")
+                StorageIndexes(38) = size(state(1)%scalar_fields)
+                call deallocate (Targ_C_Mat)
+    !            call deallocate(Auxmesh)
+                !Initilize it to zero
+                state(1)%scalar_fields(StorageIndexes(38))%ptr%val = 0.
+            end if
+            !Get C_CV from storage_state
+            call reshape_vector2pointer(state(1)%scalar_fields(&
+            StorageIndexes(38))%ptr%val, C_CV, NDIM, NPHASE, size(COLC))
+        end if
+
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, storage_state, &
              velocity, pressure, &
         NDIM, NPHASE, NPRES, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
@@ -1210,7 +1249,7 @@ contains
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         NCOLM, FINDM, COLM, MIDM, &
         XU_NLOC, XU_NDGLN, &
-        U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
+        U_RHS, MCY_RHS, C, C_CV, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
         NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -1219,8 +1258,10 @@ contains
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,scale_momentum_by_volume_fraction ,&
-        StorageIndexes, symmetric_P, boussinesq, IDs_ndgln )
+        StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
 
+        !If pressure in CV only then overwrite the FE matrix C
+        if(everything_c_cv .and. GET_C_IN_CV_ADVDIF) c = c_cv
 
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
@@ -1242,15 +1283,29 @@ contains
                nullify(halo)
             end if
 
-            CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
-            NCOLC, FINDC, COLC, &
-            PIVIT_MAT, &
-            TOTELE, U_NLOC, U_NDGLN, &
-            NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-            CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
-            MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
-            got_free_surf,  MASS_SUF, &
-            C, CT, storage_state, StorageIndexes(11), halo, symmetric_P )
+
+            if (GET_C_IN_CV_ADVDIF) then
+                !Use C_CV to form the CMC matrix
+                CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
+                NCOLC, FINDC, COLC, &
+                PIVIT_MAT, &
+                TOTELE, U_NLOC, U_NDGLN, &
+                NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+                MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
+                got_free_surf,  MASS_SUF, &
+                C_CV, CT, storage_state, StorageIndexes(11), halo, symmetric_P )
+            else
+                CALL COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
+                NCOLC, FINDC, COLC, &
+                PIVIT_MAT, &
+                TOTELE, U_NLOC, U_NDGLN, &
+                NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+                MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
+                got_free_surf,  MASS_SUF, &
+                C, CT, storage_state, StorageIndexes(11), halo, symmetric_P )
+            end if
         END IF
 
         NO_MATRIX_STORE = ( NCOLDGM_PHA <= 1 )
@@ -1511,9 +1566,9 @@ END IF
             end if
             !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
             !inside the same element to reduce the ill conditioning of the matrix
-            if (is_porous_media .and. present(Quality_list)) then
-                call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
-            end if
+!            if (is_porous_media .and. present(Quality_list)) then
+!                call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
+!            end if
 
             if ( (x_nonods /= cv_nonods) .and. use_continuous_pressure_solver &
                  .and. nonlinear_iteration == 1 ) then !For discontinuous mesh
@@ -1792,7 +1847,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
     NCOLM, FINDM, COLM, MIDM, &
     XU_NLOC, XU_NDGLN, &
-    U_RHS, MCY_RHS, C, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
+    U_RHS, MCY_RHS, C, C_CV, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
     NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
     UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -1801,7 +1856,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
     RETRIEVE_SOLID_CTY, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL ,scale_momentum_by_volume_fraction,&
-    StorageIndexes, symmetric_P, boussinesq, IDs_ndgln )
+    StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
         implicit none
 
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
@@ -1864,7 +1919,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         INTEGER, DIMENSION( : ), intent( in ) :: MIDM
         REAL, DIMENSION( :, :, : ), intent( inout ) :: U_RHS
         REAL, DIMENSION( : ), intent( inout ) :: MCY_RHS
-        REAL, DIMENSION( :, :, : ), pointer, intent( inout ) :: C
+        REAL, DIMENSION( :, :, : ), pointer, intent( inout ) :: C, C_CV
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: CT
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
@@ -1885,6 +1940,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( :, :), intent( in ) :: PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL
         integer, dimension(:), intent(inout) :: StorageIndexes
+        logical, intent(in) :: RECALC_C_CV
         ! Local variables
         REAL, PARAMETER :: V_BETA = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -2008,7 +2064,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ACV, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
-        C, FINDC, COLC, & ! C sparsity - global cty eqn
+        C_CV, FINDC, COLC, & ! C sparsity - global cty eqn
         CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
         CV_ELE_TYPE, &
         NPHASE, NPRES, &
@@ -2032,7 +2088,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
         got_free_surf,  MASS_SUF, &
         dummy_transp, &
-        StorageIndexes, 3, IDs_ndgln=IDs_ndgln)
+        StorageIndexes, 3, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV)
 
         ewrite(3,*)'Back from cv_assemb'
 
@@ -2526,6 +2582,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         type(scalar_field), target :: Targ_C_Mat
         !Capillary pressure variables
         logical :: capillary_pressure_activated, Diffusive_cap_only
+
+        !Logical to control wether to create a CV pressure or FE pressure in multi_dyncore
+        logical, parameter :: GET_C_IN_CV_IN_DYNCORE = .false.
+
+
 !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: sf
@@ -2637,10 +2698,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         got_c_matrix  = StorageIndexes(12)/=0
         if (.not.got_c_matrix) then
             !Prepare stuff to store C in state
-            if (has_scalar_field(state(1), "C_MAT")) then
+            if (has_scalar_field(storage_state, "C_MAT")) then
                 !If we are recalculating due to a mesh modification then
                 !we return to the original situation
-                call remove_scalar_field(state(1), "C_MAT")
+                call remove_scalar_field(storage_state, "C_MAT")
             end if
             !Get mesh file just to be able to allocate the fields we want to store
             fl_mesh => extract_mesh( storage_state, "FakeMesh" )
@@ -2764,11 +2825,15 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! Do NOT divide element into CV's to form quadrature.
         QUAD_OVER_WHOLE_ELE = is_porous_media
         QUAD_OVER_WHOLE_ELE = .true.
-
         FEM_BUOYANCY = have_option( "/physical_parameters/gravity/fem_buoyancy" )
+
+
+        !The different quadrature set
+        QUAD_OVER_WHOLE_ELE = .not. GET_C_IN_CV_IN_DYNCORE
 
         call retrieve_ngi( ndim, u_ele_type, cv_nloc, u_nloc, &
         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE)
+
 
         GOT_DIFFUS = .FALSE.
 
@@ -3170,8 +3235,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            cvn_short => cvfen_short
            sbcvn => sbcvfen
         end if
-
-
 
 ! ALLOCATE reversed ordering for computational speed****************
            ALLOCATE( CVFENX_ALL_REVERSED(NDIM,CV_NGI,CV_NLOC), UFENX_ALL_REVERSED(NDIM,CV_NGI,U_NLOC) ) ! NOT CALCULATED IN SUB cv_fem_shape_funs_plus_storage
@@ -4173,7 +4236,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     END IF
 
                     !Prepare aid variable NMX_ALL to improve the speed of the calculations
-                    NMX_ALL( : ) = matmul(CVFENX_ALL_REVERSED(:,:,P_JLOC),  DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ))
+                    if (GET_C_IN_CV_IN_DYNCORE) then
+                        NMX_ALL( : ) =  - matmul(UFENX_ALL_REVERSED(:,:,U_ILOC),  DETWEI( : ) * CVN_REVERSED( :, P_JLOC ))
+                    else
+                        NMX_ALL( : ) = matmul(CVFENX_ALL_REVERSED(:,:,P_JLOC),  DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ))
+                    end if
                     Loop_Phase1: DO IPHASE = 1, NPHASE
 
                         ! Put into matrix
@@ -4962,7 +5029,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             if(.not.got_c_matrix) JCV_NOD = P_SNDGLN(( SELE - 1 ) * P_SNLOC + P_SJLOC )
 
                             !Calculate aid variable NMX_ALL
-                            NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * SBCVFEN_REVERSED( :, P_SJLOC ) * SDETWE( : ))
+                            if (GET_C_IN_CV_IN_DYNCORE) then                                                   !WE NEED A REVERSED SBCVN
+                                NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * SBCVN( P_SJLOC, : ) * SDETWE( : ))
+                            else
+                                NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * SBCVFEN_REVERSED( :, P_SJLOC ) * SDETWE( : ))
+                            end if
                             IF(IGOT_VOL_X_PRESSURE==1) THEN
                                 DO IPHASE = 1, NPHASE
                                     VOL_FRA_NMX_ALL( :, IPHASE ) = VOL_FRA_NMX_ALL( :, IPHASE ) + sum(SVOL_FRA( IPHASE, : )) * NMX_ALL( : )
@@ -4993,18 +5064,36 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                 - VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC * ( SELE - 1) ) * SELE_OVERLAP_SCALE( P_JLOC )
                                         ELSE
-                                           IF ( .NOT.GOT_C_MATRIX ) THEN
-                                              C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-                                                   + NMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                           END IF
-                                           LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC* ( SELE - 1 ) ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                            if(GET_C_IN_CV_IN_DYNCORE) then
+!                                                IF ( .NOT.GOT_C_MATRIX ) THEN
+!                                                    C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+!                                                        - NMX_ALL( IDIM) ! subtract out as we have added it in the surface of the elements
+!                                                END IF
+                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                    - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC* ( SELE - 1 ) )
+
+                                            else!ORIGINAL FORMULATION
+                                                IF ( .NOT.GOT_C_MATRIX ) THEN
+                                                    C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                        + NMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                                END IF
+                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                    - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC* ( SELE - 1 ) ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                            endif
                                         END IF
                                      END DO
                                   END DO
+                               else if(GET_C_IN_CV_IN_DYNCORE) then !Surface contribution
+                                   IF ( .NOT.GOT_C_MATRIX ) THEN
+                                       DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
+                                           DO IDIM = 1, NDIM_VEL
+                                               C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                   - NMX_ALL( IDIM) ! subtract out as we have added it in the surface of the elements
+                                           end do
+                                       end do
+                                   END IF
                                END IF
-                            END DO
-
+                           END DO
                         END DO Loop_JLOC2
                     END DO Loop_ILOC2
 
@@ -5041,9 +5130,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
                 If_ele2_notzero: IF(ELE2 /= 0) THEN
-
-                    got_c_matrix1: if(.not.got_c_matrix) then
-                        discontinuous_pres: IF(DISC_PRES) THEN
+                    got_c_matrix1: if(.not.got_c_matrix) then   !NOT VERY ELEGANT THE GET_C_IN_CV_IN_DYNCORE
+                        discontinuous_pres: IF(DISC_PRES.or. GET_C_IN_CV_IN_DYNCORE) THEN
 
                             IF( VOL_ELE_INT_PRES ) THEN
                                             ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
@@ -5065,16 +5153,22 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                     U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
                                     VNMX_ALL = 0.0
                                     DO SGI = 1, SBCVNGI
-                                        RNN = SDETWE( SGI ) * SBUFEN_REVERSED( SGI, U_SILOC ) * SBCVFEN_REVERSED( SGI, P_SJLOC )
-                                        VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
+
+                                        if (GET_C_IN_CV_IN_DYNCORE) then                                       !WE NEED A REVERSED SBCVN
+                                            RNN = SDETWE( SGI ) * SBUFEN_REVERSED( SGI, U_SILOC ) * SBCVN( P_SJLOC, SGI )
+                                            VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
+                                        else
+                                            RNN = SDETWE( SGI ) * SBUFEN_REVERSED( SGI, U_SILOC ) * SBCVFEN_REVERSED( SGI, P_SJLOC )
+                                            VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
+                                        end if
                                     END DO
 
                                     CALL USE_POSINMAT_C_STORE( COUNT, U_INOD, P_JNOD,  &
                                     U_NONODS, FINDC, COLC, NCOLC, &
                                     IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE, ELE, U_ILOC, P_JLOC, &
                                     TOTELE, U_NLOC, P_NLOC )
-
-                                    CALL USE_POSINMAT_C_STORE_SUF_DG( COUNT2, U_INOD, P_JNOD2,  &
+                    !NOT VERY ELEGANT
+                      IF(DISC_PRES) CALL USE_POSINMAT_C_STORE_SUF_DG( COUNT2, U_INOD, P_JNOD2,  &
                                     U_NONODS, FINDC, COLC, NCOLC, &
                                     IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE_SUF_DG, ELE, IFACE, U_SILOC, P_SJLOC,  &
                                     TOTELE, NFACE, U_SNLOC, P_SNLOC )
@@ -5085,13 +5179,26 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                         ! SELE_OVERLAP_SCALE(P_JNOD) is the scaling needed to convert to overlapping element surfaces.
                                         IF ( .NOT.GOT_C_MATRIX ) THEN
                                             DO IDIM = 1, NDIM_VEL
-                                                C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-                                                + VNMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC ) * MASSE / ( MASSE + MASSE2 )
+                                                !NOT VERY ELEGANT
+                                                IF(GET_C_IN_CV_IN_DYNCORE) THEN
+                                                    IF (DISC_PRES) THEN
+                                                        C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                            + VNMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC ) * 0.5
+                                                        C( IDIM, IPHASE, COUNT2 ) = C( IDIM, IPHASE, COUNT2 ) &
+                                                            + VNMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC ) * 0.5
+                                                    ELSE
+                                                        C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                            - VNMX_ALL( IDIM )
+                                                    END IF
+                                                ELSE!ORIGINAL DISCONTINUOUS BETWEEN ELEMENTS FORMULATION
+                                                    C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                        + VNMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC ) * MASSE / ( MASSE + MASSE2 )
 
-                                                C( IDIM, IPHASE, COUNT2 ) = C( IDIM, IPHASE, COUNT2 ) &
-                                                - VNMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC ) * MASSE / ( MASSE + MASSE2 )
+                                                    C( IDIM, IPHASE, COUNT2 ) = C( IDIM, IPHASE, COUNT2 ) &
+                                                        - VNMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC ) * MASSE / ( MASSE + MASSE2 )
+                                                END IF
                                             END DO
-                                        END IF
+                                         END IF
                                     END DO Loop_Phase5
                                 END DO
                             END DO

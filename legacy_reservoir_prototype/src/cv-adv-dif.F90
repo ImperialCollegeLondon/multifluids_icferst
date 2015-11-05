@@ -383,8 +383,8 @@ contains
       logical, PARAMETER :: EXPLICIT_PIPES= .false.
       logical, PARAMETER :: EXPLICIT_PIPES2= .true.
       logical, PARAMETER :: MULTB_BY_POROSITY= .false.
-! If GET_C_IN_CV_ADVDIF then form the C matrix in here also based on control-volume pressure.
-      logical :: GET_C_IN_CV_ADVDIF
+! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the C matrix in here also based on control-volume pressure.
+      logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
       REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
 ! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement 
 ! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained 
@@ -634,7 +634,12 @@ contains
       end if
 
       !Check pressure matrix based on Control Volumes
-      GET_C_IN_CV_ADVDIF = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
+      !If we do not have an index where we have stored C_CV, then we need to calculate it
+      if (present_and_true(RECALC_C_CV)) then
+        GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .true.
+      else
+        GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
+      end if
 
       symmetric_P = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P' )
 
@@ -818,7 +823,7 @@ contains
        ALLOCATE( JCOUNT_KLOC2( U_NLOC ))
        ALLOCATE( ICOUNT_KLOC( U_NLOC ))
        ALLOCATE( ICOUNT_KLOC2( U_NLOC ))
-       IF(GET_C_IN_CV_ADVDIF) THEN
+       IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
           ALLOCATE( C_JCOUNT_KLOC( U_NLOC ))
           ALLOCATE( C_JCOUNT_KLOC2( U_NLOC ))
           ALLOCATE( C_ICOUNT_KLOC( U_NLOC ))
@@ -1381,7 +1386,6 @@ contains
       IF ( GETCT ) THEN ! Obtain the CV discretised CT eqns plus RHS
          call zero(CT_RHS)
          CT = 0.0
-         IF(GET_C_IN_CV_ADVDIF) C = 0.0
          if ( got_free_surf .and. .not.symmetric_P ) MASS_SUF=0.0
       END IF
 
@@ -1694,7 +1698,7 @@ contains
                         END DO
                      END IF ! endof IF ( between_elements ) THEN
 
-                  IF(GET_C_IN_CV_ADVDIF) THEN
+                  IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
 ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
                      DO U_KLOC = 1, U_NLOC
                         U_NODK = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_KLOC )
@@ -1751,7 +1755,7 @@ contains
                             endif
                         END DO
                      END IF ! endof IF ( between_elements ) THEN
-                  ENDIF ! ENDOF IF(GET_C_IN_CV_ADVDIF) THEN
+                  ENDIF ! ENDOF IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
 
                   END IF ! endof IF( GETCT ) THEN
 
@@ -2398,7 +2402,7 @@ contains
                         END IF
 
                         ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
-                        CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+                        CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
                              CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary,  &
                              JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, &
                              SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -10124,7 +10128,7 @@ CONTAINS
 
 
 
-  SUBROUTINE PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+  SUBROUTINE PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
        CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary, &
        JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, U_SLOC2LOC,   &
        SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -10144,7 +10148,7 @@ CONTAINS
     INTEGER, intent( in ) :: U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
          CV_NONODS, U_NONODS, NPHASE, CV_NODI, CV_NODJ
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: loc_u, loc2_u
-    LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary, GET_C_IN_CV_ADVDIF
+    LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
     INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
     INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
@@ -10222,7 +10226,7 @@ CONTAINS
           CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) = CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) &
                + rcon_in_ct(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
        END DO
-       IF(GET_C_IN_CV_ADVDIF) THEN
+       IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
           RCON_IN_CT(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
           DO IPHASE=1,NPHASE
     IF ( between_elements ) THEN
@@ -10264,7 +10268,7 @@ CONTAINS
              CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) = CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) &
                   - RCON_J(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
           END DO
-          IF(GET_C_IN_CV_ADVDIF) THEN
+          IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
              RCON_J(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
              DO IPHASE=1,NPHASE
     IF ( between_elements ) THEN
@@ -10347,7 +10351,7 @@ CONTAINS
                      = CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
                      + RCON_IN_CT(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
              END DO
-             IF(GET_C_IN_CV_ADVDIF) THEN
+             IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                 RCON(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
                 DO IPHASE=1,NPHASE
                    C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
@@ -10383,7 +10387,7 @@ CONTAINS
                         - RCON_J(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
                 END DO
 
-                IF(GET_C_IN_CV_ADVDIF) THEN
+                IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                    RCON_J(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
                    DO IPHASE=1,NPHASE
                       C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
