@@ -227,7 +227,7 @@
       !Array to map nodes to region ids
       integer, dimension(:), allocatable :: IDs_ndgln, IDs2CV_ndgln
       !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-      integer, dimension (37) :: StorageIndexes
+      integer, dimension (38) :: StorageIndexes
       !Distribution of the indexes of StorageIndexes:
       !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
       !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
@@ -245,6 +245,7 @@
       !Bound                         : 35
       !Ph 1                          : 36
       !Ph 2                          : 37
+      !Matrix C_CV                   : 38
 
 
       !Working pointers
@@ -712,7 +713,7 @@
 
             call calculate_rheologies(state,rheology)
             !To force the recalculation of all the stored variables uncomment the following line:
-!           call Clean_Storage(state, StorageIndexes)
+!           call Clean_Storage(storage_state, StorageIndexes)
 
             !call set_nu_to_u( packed_state )
             !call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
