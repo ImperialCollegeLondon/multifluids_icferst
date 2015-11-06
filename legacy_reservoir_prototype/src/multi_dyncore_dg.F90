@@ -1195,6 +1195,7 @@ contains
         GET_C_IN_CV_ADVDIF = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         RECALC_C_CV = .false. !Only calculate C_CV if it has not been calculated already
         !IF I STORE IN STORAGE_STATE IT FAILS...NEED TO FIX THIS!
+        !WHEN FIXED, REMEMBER TO CHANGE ALSO CLEAN_STORAGE
         if (GET_C_IN_CV_ADVDIF) then
             !Check if use C_CV to get velocities or use C
             everything_c_cv = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/CV_P_matrix_for_velocity' )

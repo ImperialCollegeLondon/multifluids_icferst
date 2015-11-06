@@ -4116,9 +4116,13 @@
       character (len = 100) :: StorName
       integer :: maxpos, ignored_var_pos, i
 
-         !This loop is the most robust, so by default we still use this one
+         !Look for the position of stored things and remove them
          do while (maxval(abs(StorageIndexes)) > 0)
             maxpos = maxloc(abs(StorageIndexes), dim =1)
+if (maxpos==38) then!TEMPORARY EXCEPTION => DO NOT REMOVE FROM STORAGE_STATE
+StorageIndexes(maxpos) = 0
+    CYCLE
+end if
             StorName = trim(storage_state%scalar_names(abs(StorageIndexes(maxpos))))!This lines is
             call remove_scalar_field(storage_state, trim(StorName))           !failing for Xie when using adaptive meshing
             StorageIndexes(maxpos) = 0
