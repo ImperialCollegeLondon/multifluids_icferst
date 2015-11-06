@@ -13811,23 +13811,15 @@ deallocate(NX_ALL)
                 ! Add the sigma associated with the switch to switch the pipe flow on and off...
                 IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
                    IWATER = PHASE_EXCLUDE
-                   DO GI = 1, SCVNGI
-                      S_WATER = 0.0 ; S_WATER_MIN = 0.0 ; S_WATER_MAX = 0.0
-                      SIGMA_SWITCH_ON_OFF_PIPE_GI = 0.0
-                      DO CV_LILOC = 1, CV_LNLOC
-                         CV_KNOD = CV_GL_GL( CV_LILOC )
-                         S_WATER = S_WATER  + CV_VOL_FRAC%VAL( 1, IWATER, CV_KNOD ) * SCVFEN( CV_LILOC, GI )
-                         S_WATER_MIN = S_WATER_MIN + PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
-                         S_WATER_MAX = S_WATER_MAX + PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
-                         SIGMA_SWITCH_ON_OFF_PIPE_GI = SIGMA_SWITCH_ON_OFF_PIPE_GI + SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_KNOD ) * SCVFEN( CV_LILOC, GI )
-                      END DO
-                      S_WATER = max( S_WATER, MINVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) ) )
-                      S_WATER_MIN = max( S_WATER_MIN, MINVAL( PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_GL_GL( : ) ) ) )
-                      S_WATER_MAX = max( S_WATER_MAX, MINVAL( PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_GL_GL( : ) ) ) )
-                      SIGMA_SWITCH_ON_OFF_PIPE_GI = max( SIGMA_SWITCH_ON_OFF_PIPE_GI, MINVAL( SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) ) ) )
-                      PIPE_SWITCH = MIN( 1.0, MAX( 0.0, (S_WATER-S_WATER_MAX) / MIN( S_WATER_MIN-S_WATER_MAX, -1.E-20 ) ) )
-                      SIGMA_GI( N_IN_PRES+1:NPHASE, GI ) = SIGMA_GI( N_IN_PRES+1:NPHASE, GI ) + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
-                   END DO
+
+                   S_WATER = MAXVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) )
+                   S_WATER_MIN = MAXVAL( PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_GL_GL( : ) ) )
+                   S_WATER_MAX = MAXVAL( PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_GL_GL( : ) ) )
+
+                   SIGMA_SWITCH_ON_OFF_PIPE_GI = MAXVAL( SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) ) )
+
+                   PIPE_SWITCH = 1.0 - MIN( 1.0, MAX( 0.0, ( S_WATER_MAX - S_WATER ) / MAX( S_WATER_MAX - S_WATER_MIN, 1.E-20 ) ) )
+                   SIGMA_GI( N_IN_PRES+1:NPHASE, : ) = PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
                 END IF
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
