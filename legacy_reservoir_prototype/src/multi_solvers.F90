@@ -1572,8 +1572,10 @@ contains
 
         !If it is parallel then we want to be consistent between cpus
         !we use the smallest value, since it is more conservative
-        if (IsParallel()) call allmin(Dumpings(1))
-
+        if (IsParallel()) then
+            call allmin(Dumpings(1))
+            call allmin(Convergences(1))
+        end if
         !***Calculate new saturation***
         !Obtain new saturation using the backtracking method
         if (useful_sats < 2 .or. satisfactory_convergence) then
