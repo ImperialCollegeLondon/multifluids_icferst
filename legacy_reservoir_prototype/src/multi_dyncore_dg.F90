@@ -1197,7 +1197,7 @@ contains
         !IF I STORE IN STORAGE_STATE IT FAILS...NEED TO FIX THIS!
         if (GET_C_IN_CV_ADVDIF) then
             !Check if use C_CV to get velocities or use C
-            everything_c_cv = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix_for_velocity' )
+            everything_c_cv = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/CV_P_matrix_for_velocity' )
 
 !            !If we do not have an index where we have stored C_CV, then we need to calculate it
             if (StorageIndexes(38)<=0) then
@@ -2345,7 +2345,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         LOGICAL, PARAMETER :: STORED_AC_SPAR_PT=.FALSE.
         INTEGER, PARAMETER :: IDO_STORE_AC_SPAR_PT=0
         ! re-calculate C matrix...
-        LOGICAL :: got_c_matrix
+        LOGICAL :: got_c_matrix, everything_c_cv
 
         INTEGER, DIMENSION( :, : ), allocatable ::  FACE_ELE
         INTEGER, DIMENSION( : ), allocatable :: CV_SLOC2LOC, U_SLOC2LOC, &
@@ -2700,9 +2700,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !If we do not have an index where we have stored C, then we need to calculate it
         got_c_matrix  = StorageIndexes(12)/=0
         !If not use C, only C_CV then don't calculate it
-        if ( have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix_for_velocity' )) then
-            got_c_matrix = .true.
-        end if
+        everything_c_cv = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/CV_P_matrix_for_velocity' )
+        if ( everything_c_cv ) got_c_matrix = .true.
+
 
         if (.not.got_c_matrix) then
             !Prepare stuff to store C in state
@@ -2728,7 +2728,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         end if
 
         !Get from state
-        call reshape_vector2pointer(storage_state%scalar_fields(&
+        if (.not.everything_c_cv) call reshape_vector2pointer(storage_state%scalar_fields(&
         StorageIndexes(12))%ptr%val, C, NDIM, NPHASE, NCOLC)
 
         ewrite(3,*) 'In ASSEMB_FORCE_CTY'
