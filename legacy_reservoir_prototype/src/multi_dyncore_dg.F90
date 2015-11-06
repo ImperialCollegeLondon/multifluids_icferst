@@ -1263,8 +1263,8 @@ contains
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,scale_momentum_by_volume_fraction ,&
         StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
 
-        !If pressure in CV only then overwrite the FE matrix C
-        if(everything_c_cv .and. GET_C_IN_CV_ADVDIF) c = c_cv
+        !If pressure in CV only then point the FE matrix C to C_CV
+        if(everything_c_cv .and. GET_C_IN_CV_ADVDIF) c => c_cv
 
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
@@ -2699,6 +2699,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         Porous_media_PIVIT_not_stored_yet = (.not.is_porous_media .or. StorageIndexes(34) <= 0)
         !If we do not have an index where we have stored C, then we need to calculate it
         got_c_matrix  = StorageIndexes(12)/=0
+        !If not use C, only C_CV then don't calculate it
+        if ( have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix_for_velocity' )) then
+            got_c_matrix = .true.
+        end if
+
         if (.not.got_c_matrix) then
             !Prepare stuff to store C in state
             if (has_scalar_field(storage_state, "C_MAT")) then
