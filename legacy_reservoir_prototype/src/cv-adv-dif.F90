@@ -13809,7 +13809,7 @@ deallocate(NX_ALL)
                 END IF
 
                 ! Add the sigma associated with the switch to switch the pipe flow on and off...
-                IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
+                IF ( SWITCH_PIPES_ON_AND_OFF ) THEN ! Dimitrios it may be that SWITCH_PIPES_ON_AND_OFF =.false. always
                    IWATER = PHASE_EXCLUDE
 
                    S_WATER = MAXVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) )
@@ -13819,7 +13819,7 @@ deallocate(NX_ALL)
                    SIGMA_SWITCH_ON_OFF_PIPE_GI = MAXVAL( SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) ) )
 
                    PIPE_SWITCH = 1.0 - MIN( 1.0, MAX( 0.0, ( S_WATER_MAX - S_WATER ) / MAX( S_WATER_MAX - S_WATER_MIN, 1.E-20 ) ) )
-                   SIGMA_GI( N_IN_PRES+1:NPHASE, : ) = PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
+                   SIGMA_GI( N_IN_PRES+1:NPHASE, : ) = SIGMA_GI( N_IN_PRES+1:NPHASE, : ) + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
                 END IF
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
