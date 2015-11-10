@@ -2722,7 +2722,7 @@ contains
             allocate(MASS_PIPE_FOR_COUP(cv_nonods))
             CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, SMALL_FINDRM, SMALL_COLM, &
                  U_NONODS,U_SNLOC,CV_SNLOC,STOTEL,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-                 cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
+                 cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, c, findct, colct, findc, colc, CV_RHS_field, CT_RHS, &
                  findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                  SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, OPT_VEL_UPWIND_COEFS_NEW )
 
@@ -10230,15 +10230,15 @@ CONTAINS
        IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
           RCON_IN_CT(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
           DO IPHASE=1,NPHASE
-    IF ( between_elements ) THEN
-             C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-               = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &          !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
-               + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI ) * 0.5 * min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
-    else
-             C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-               = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &          !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
-               + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI ) * min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
-    endif
+             IF ( between_elements ) THEN
+                C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+                     = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &          !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                     + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI ) * 0.5 * min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
+             else
+                C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+                     = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &          !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                     + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI ) * min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
+             end if
           END DO
        ENDIF
 !     if(more_in_ct) then
@@ -12344,7 +12344,7 @@ deallocate(NX_ALL)
 
   SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, FINACV, COLACV, &
        U_NONODS,U_SNLOC,CV_SNLOC,STOTEL,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
+       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, c, findct, colct, findc, colc, CV_RHS_field, CT_RHS, &
        findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
        INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW )
 
@@ -12355,12 +12355,12 @@ deallocate(NX_ALL)
 
     INTEGER, intent( in ) :: nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, cv_nonods, totele, CV_SNLOC, U_SNLOC, STOTEL, U_NONODS
     integer, dimension(:), intent( in ), target :: FINACV, COLACV
-    integer, dimension(:), intent( in ) :: cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, findct, colct, findcmc, colcmc
+    integer, dimension(:), intent( in ) :: cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, findct, colct, findc, colc, findcmc, colcmc
     integer, dimension(:), intent( in ) :: CV_SNDGLN, U_SNDGLN
     integer, dimension(:,:,:), intent( in ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL
     real, dimension(:,:,:), intent( in ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL
     real, dimension(:,:,:,:), intent( in ) :: OPT_VEL_UPWIND_COEFS_NEW
-    real, dimension(:,:,:),intent( inout ) :: ct
+    real, dimension(:,:,:),intent( inout ) :: ct, c
     real, dimension(:,:),intent( inout ) :: INV_SIGMA, INV_SIGMA_NANO
     type(vector_field), intent( inout ) :: CV_RHS_field, CT_RHS
     real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
@@ -12393,7 +12393,7 @@ deallocate(NX_ALL)
     real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
     real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
     logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
-    logical :: UPWIND_PIPES, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL, LUMP_COUPLING_RES_PIPES, CALC_SIGMA_PIPE
+    logical :: UPWIND_PIPES, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL, LUMP_COUPLING_RES_PIPES, CALC_SIGMA_PIPE, get_c_pipes
     real :: LOC_CV_RHS_I(NPHASE)
     real :: T1(NDIM), T2(NDIM), TT1(NDIM), TT2(NDIM), NN1(NDIM), T1TT1, T1TT2, T2TT1, T2TT2, DET_SQRT, INV_SIGMA_ND, N1NN1, INV_SIGMA_NANO_ND
 
@@ -12403,7 +12403,7 @@ deallocate(NX_ALL)
     integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
          u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
          icorner1, icorner2, icorner3, icorner4, WIC_B_BC_DIRICHLET, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
-         U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI
+         U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3
 
     real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
 
@@ -12626,9 +12626,12 @@ deallocate(NX_ALL)
        CV_RHS_field%val( N_IN_PRES+1:NPHASE, : ) = 0.0
     END IF
 
+    GET_C_PIPES = .FALSE.
+
     IF ( GETCT ) THEN
        CT( :, N_IN_PRES+1:NPHASE, : ) = 0.0
        CT_RHS%val( 2:NPRES, : ) = 0.0
+       IF ( GET_C_PIPES ) C( :, N_IN_PRES+1:NPHASE, : ) = 0.0
     END IF
 
 
@@ -13009,13 +13012,25 @@ deallocate(NX_ALL)
                       DO U_LKLOC = 1, U_LNLOC
                          U_KNOD = U_GL_GL(U_LKLOC)
                          DO IDIM = 1, NDIM
-                            CT_CON(IDIM,:) = SBUFEN( U_LKLOC, BGI ) * LIMDT(:) * suf_DETWEI( BGI ) * DIRECTION_norm(IDIM) * INV_SIGMA_GI(:)/D_CV_NODI(:)
+                            CT_CON(IDIM,:) = SBUFEN( U_LKLOC, BGI ) * LIMDT(:) * suf_DETWEI( BGI ) * DIRECTION_norm(IDIM) * INV_SIGMA_GI(:) / D_CV_NODI(:)
                          END DO
                          ! Put into CT matrix...
                          DO COUNT = FINDCT(CV_NODI), FINDCT(CV_NODI+1)-1
                             IF ( COLCT(COUNT)==U_KNOD ) CT( :, N_IN_PRES+1:NPHASE, COUNT ) = &
                                  CT( :, N_IN_PRES+1:NPHASE, COUNT ) + CT_CON( :, N_IN_PRES+1:NPHASE )
                          END DO
+
+                         IF ( GET_C_PIPES ) THEN
+                            DO COUNT = FINDC(U_KNOD), FINDC(U_KNOD+1)-1
+                               IF ( COLC(COUNT)==CV_NODI )  THEN
+                                  DO IDIM = 1, NDIM
+                                     C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) = C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) + &
+                                          SBUFEN( U_LKLOC, BGI ) * SUF_DETWEI( BGI ) * DIRECTION_NORM(IDIM)
+                                  END DO
+                               END IF
+                            END DO
+                         END IF
+
                       END DO
                    END IF
 
@@ -13111,13 +13126,20 @@ deallocate(NX_ALL)
 
                 IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS on the boundary...
                    DO IDIM = 1, NDIM
-                      CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:)/DEN_ALL%val(1,:,JCV_NOD)
+                      CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:) / DEN_ALL%val(1,:,JCV_NOD)
                    END DO
                    ! Put into CT matrix...
                    COUNT2=0
                    DO COUNT = FINDCT(JCV_NOD), FINDCT(JCV_NOD+1)-1
                       IF ( COLCT(COUNT)==JU_NOD ) COUNT2=COUNT
                    END DO
+
+                   IF ( GET_C_PIPES ) THEN
+                      COUNT3=0
+                      DO COUNT = FINDC(JU_NOD), FINDC(JU_NOD+1)-1
+                         IF ( COLC(COUNT)==JCV_NOD ) COUNT3=COUNT
+                      END DO
+                   END IF
 
                    LOC_CT_RHS_U_ILOC = 0.0
                    DO IPHASE = N_IN_PRES+1, NPHASE
@@ -13128,6 +13150,9 @@ deallocate(NX_ALL)
                          END DO
                       ELSE
                          CT( :, IPHASE, COUNT2 ) = CT( :, IPHASE, COUNT2 ) + CT_CON( :, IPHASE )
+                         IF ( GET_C_PIPES ) THEN
+                            C( :, IPHASE, COUNT3 ) = C( :, IPHASE, COUNT3 ) + suf_area * DIRECTION_NORM(:)
+                         END IF
                       END IF
                    END DO
 
