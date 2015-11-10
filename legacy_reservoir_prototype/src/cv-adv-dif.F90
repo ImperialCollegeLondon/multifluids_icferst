@@ -147,7 +147,8 @@ contains
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
          option_path_spatial_discretisation, &
-         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln, Courant_number, RECALC_C_CV)
+         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln, Courant_number&
+            , RECALC_C_CV, SUF_INT_MASS_MATRIX, MASS_P_CV)
 
       !  =====================================================================
       !     In this subroutine the advection terms in the advection-diffusion
@@ -347,7 +348,9 @@ contains
       integer, optional ::indx
       character(len=*), optional :: Storname
       real, optional, intent(inout) :: Courant_number
-      logical, optional, intent(in) :: RECALC_C_CV
+      !IF SUF_INT_MASS_MATRIX then we form the Mass matrix here instead of doing it in multi_dyncore
+      logical, optional, intent(in) :: RECALC_C_CV, SUF_INT_MASS_MATRIX
+      REAL, optional, DIMENSION( :, :, : ), intent( inout ) :: MASS_P_CV
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
       ! Variables needed when calculating boundary outfluxes. Totoutflux will be used to sum up over elements for each phase the outflux through a specified boundary
@@ -386,6 +389,8 @@ contains
       logical, PARAMETER :: MULTB_BY_POROSITY= .false.
 ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the C matrix in here also based on control-volume pressure.
       logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
+      !IF SUF_INT_MASS_MATRIX2 then we form the Mass matrix here instead of doing it in multi_dyncore
+      logical :: SUF_INT_MASS_MATRIX2
       REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
 ! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement 
 ! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained 
@@ -605,8 +610,7 @@ contains
       real :: reservoir_P( npres ) ! this is the background reservoir pressure
       real, dimension( :, :, : ), pointer :: fem_p
 
-
-      integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr
+      integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, istart, ifini, U_JLOC, J
       real :: rconst, h_nano, RP_NANO, dt_pipe_factor
       logical :: got_nano
 
@@ -636,6 +640,15 @@ contains
 
       !Check pressure matrix based on Control Volumes
       !If we do not have an index where we have stored C_CV, then we need to calculate it
+      SUF_INT_MASS_MATRIX2 = .false.
+      !Check that MASS_P_CV has been passed down
+      if (present_and_true(SUF_INT_MASS_MATRIX)) then
+          !Somehow this automatically detects it has been stored and it is not recalculated
+          !unless removed from the storage => present(MASS_P_CV) = false when it has been calculated once
+          SUF_INT_MASS_MATRIX2 = present(MASS_P_CV)
+          if (SUF_INT_MASS_MATRIX2) MASS_P_CV = 0.!Initialize matrix
+
+      end if
       if (present_and_true(RECALC_C_CV)) then
         GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .true.
       else
@@ -2403,7 +2416,7 @@ contains
                         END IF
 
                         ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
-                        CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+                        CALL PUT_IN_CT_RHS( CT, C, MASS_P_CV, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX2, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, ELE, ELE2, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
                              CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary,  &
                              JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, &
                              SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -2414,7 +2427,7 @@ contains
                              FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                              RETRIEVE_SOLID_CTY,theta_cty_solid, &
                              loc_u, loc2_u, THETA_VEL, &
-                             rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX )
+                             rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX, HDC )
                         do ipres=1,npres
                            call addto(ct_rhs,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*n_in_pres:ipres*n_in_pres) ))
                         if ( integrate_other_side_and_not_boundary ) then
@@ -2684,6 +2697,45 @@ contains
       END DO Loop_Elements
 
 
+        !Adjust the value introduced in MASS_P_CV to compensate the fact that we are doing a
+        !surface integral of what should be a volume integral
+        if (SUF_INT_MASS_MATRIX2) then
+            do ele =1, totele
+                DO IPHASE = 1, NPHASE
+                    DO IDIM = 1, NDIM
+                        JPHASE = IPHASE
+                        JDIM = IDIM
+                        rsum=0.0
+                        DO U_JLOC = 1, U_NLOC
+                            DO U_ILOC = 1, U_NLOC
+                                I = IDIM+(IPHASE-1)*NDIM+(U_ILOC-1)*NDIM*NPHASE
+                                J = JDIM+(JPHASE-1)*NDIM+(U_JLOC-1)*NDIM*NPHASE
+                                rsum = rsum +mass_p_cv(i,j,ele)
+                            end do
+                        end do
+
+                        DO U_JLOC = 1, U_NLOC
+                            DO U_ILOC = 1, U_NLOC
+                                I = IDIM+(IPHASE-1)*NDIM+(U_ILOC-1)*NDIM*NPHASE
+                                J = JDIM+(JPHASE-1)*NDIM+(U_JLOC-1)*NDIM*NPHASE
+                                mass_p_cv(i,j,ele) =mass_p_cv(i,j,ele)* volume/rsum
+                            end do
+                        end do
+
+                    end do
+                end do
+            !Obtain the volume of this element
+            !Adjust the value
+!            do idim=1,ndim
+!                do iphase=1,nphase
+!                    istart = IDIM
+!                    ifini = NDIM + (IPHASE - 1) * NDIM + (U_NLOC-1) * NDIM * NPHASE
+!                    rsum = sum(MASS_P_CV(istart : ifini, istart : ifini, ELE))
+!                    MASS_P_CV(:,:, ELE) = MASS_P_CV(:,:, ELE) * volume/ rsum
+!                end do
+!            end do
+            end do
+        end if
 
       IF(GET_GTHETA) THEN
          DO CV_NODI = 1, CV_NONODS
@@ -10128,8 +10180,7 @@ CONTAINS
 
 
 
-
-  SUBROUTINE PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+  SUBROUTINE PUT_IN_CT_RHS( CT, C, MASS_P_CV, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, ELE, ELE2, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
        CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary, &
        JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, U_SLOC2LOC,   &
        SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -10141,20 +10192,21 @@ CONTAINS
        RETRIEVE_SOLID_CTY,theta_cty_solid, &
        loc_u, loc2_u, THETA_VEL, &
 ! local memory sent down for speed...
-       UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, CAP_DIFF_COEF_DIVDX)
+       UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, CAP_DIFF_COEF_DIVDX, HDC)
     ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
     IMPLICIT NONE
 ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO CT MATRIX
 !    LOGICAL, PARAMETER :: more_in_ct=.false.
     INTEGER, intent( in ) :: U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
-         CV_NONODS, U_NONODS, NPHASE, CV_NODI, CV_NODJ
+         CV_NONODS, U_NONODS, NPHASE, CV_NODI, CV_NODJ, ELE, ELE2
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: loc_u, loc2_u
-    LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
+    LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, &
+        on_domain_boundary, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX
     INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
     INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
     REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
-    REAL, DIMENSION( :, :, : ), intent( inout ) :: C
+    REAL, DIMENSION( :, :, : ), intent( inout ) :: C, MASS_P_CV
     REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
     REAL, DIMENSION( :, : ), intent( in ) :: SUFEN
@@ -10162,7 +10214,7 @@ CONTAINS
     REAL, DIMENSION( NDIM, SCVNGI ), intent( in ) :: CVNORMX_ALL
     REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DEN_ALL
     REAL, DIMENSION( NPHASE ), intent( in ) :: NDOTQ, NDOTQOLD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, LIMD
-    REAL, intent( in ) :: NDOTQ_HAT
+    REAL, intent( in ) :: NDOTQ_HAT, HDC
     REAL, DIMENSION( NPHASE ), intent( in ) :: THETA_VEL
     ! LIMT_HAT is the normalised voln fraction
     REAL, intent( in ) :: theta_cty_solid
@@ -10179,7 +10231,8 @@ CONTAINS
     ! Local variables...
     INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
          U_KLOC_LEV, U_NLOC_LEV, IPHASE, U_SKLOC
-
+    !Varibles for mass matrix
+    integer :: jphase, I, J, u_kkloc
              ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
 
 !         do iphase = 1, nphase
@@ -10238,6 +10291,18 @@ CONTAINS
              C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &          !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI ) * min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
+              !Calculate mass matrix
+              if (SUF_INT_MASS_MATRIX) then
+                  do IDIM = 1, NDIM
+                      do u_kkloc=1,u_nloc
+                      I = IDIM+(IPHASE-1)*NDIM+(U_KLOC-1) * NDIM * NPHASE
+                      J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+                      MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                         + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC )))&
+                          * HDC! * SCVDETWEI( GI )
+                    end do
+                  end do
+              end if
     endif
           END DO
        ENDIF
@@ -10280,6 +10345,18 @@ CONTAINS
                 C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                   = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &         !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                   - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
+              !Calculate mass matrix
+              if (SUF_INT_MASS_MATRIX) then
+                  do IDIM = 1, NDIM
+                      do u_kkloc=1,u_nloc
+                      I = IDIM+(IPHASE-1)*NDIM+(U_KLOC-1) * NDIM * NPHASE
+                      J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+                      MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                         + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC )))&
+                          * HDC! * SCVDETWEI( GI )
+                    end do
+                  end do
+              end if
     endif
              END DO
           ENDIF
@@ -10358,6 +10435,20 @@ CONTAINS
                    C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                      = C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &              !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                      + RCON(IPHASE) * CVNORMX_ALL( :, GI )* 0.5 * min(1.0, 1e20 * abs(UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 )))
+
+                      !Calculate mass matrix
+                      if (SUF_INT_MASS_MATRIX) then
+                          do IDIM = 1, NDIM
+                              do u_kkloc=1,u_nloc
+                              I = IDIM+(IPHASE-1)*NDIM+(U_KLOC2-1) * NDIM * NPHASE
+                              J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+                              MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                                 + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC2 )))!&
+    !                              * SCVDETWEI( GI )
+                            end do
+                          end do
+                      end if
+
                 END DO
              ENDIF
 !     if(more_in_ct) then
@@ -10394,6 +10485,20 @@ CONTAINS
                       C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                         = C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &                 !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                         - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* 0.5* min(1.0, 1e20 * abs(UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 )))
+
+                      !Calculate mass matrix
+                      if (SUF_INT_MASS_MATRIX) then
+                          do IDIM = 1, NDIM
+                              do u_kkloc=1,u_nloc
+                              I = IDIM+(IPHASE-1)*NDIM+(U_KLOC2-1) * NDIM * NPHASE
+                              J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+                              MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+                                 + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC2 )))!&
+    !                              * SCVDETWEI( GI )
+                            end do
+                          end do
+                      end if
+
                    END DO
                 ENDIF
 !     if(more_in_ct) then

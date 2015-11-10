@@ -695,7 +695,7 @@ contains
             sat_bak = satura
             !If using ADAPTIVE FPI with backtracking
             if (Dumping_factor < 0) then
-               !Calculate the residual using a previous dumping
+               !Calculate the actual residual using a previous dumping
                call mult(residual, petsc_acv, vtracer)
                !Calculate residual
                residual%val = cv_rhs_field%val - residual%val
@@ -927,7 +927,7 @@ contains
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
         real, dimension( : , :, :), pointer :: C, C_CV, PIVIT_MAT
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
-        LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY, diag, GET_C_IN_CV_ADVDIF, RECALC_C_CV
+        LOGICAL :: JUST_BL_DIAG_MAT, NO_MATRIX_STORE, LINEARISE_DENSITY, diag, GET_C_IN_CV_ADVDIF, RECALC_C_CV, SUF_INT_MASS_MATRIX
         INTEGER :: IDIM, stat
         !Re-scale parameter can be re-used
         real, save :: rescaleVal = -1.0
@@ -1194,6 +1194,8 @@ contains
         !Check if the pressure matrix is a CV matrix
         GET_C_IN_CV_ADVDIF = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         RECALC_C_CV = .false. !Only calculate C_CV if it has not been calculated already
+        !Check if as well the Mass matrix
+        SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
         !IF I STORE IN STORAGE_STATE IT FAILS...NEED TO FIX THIS!
         !WHEN FIXED, REMEMBER TO CHANGE ALSO CLEAN_STORAGE
         if (GET_C_IN_CV_ADVDIF) then
@@ -1262,7 +1264,7 @@ contains
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,scale_momentum_by_volume_fraction ,&
-        StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
+        StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV, SUF_INT_MASS_MATRIX)
 
         !If pressure in CV only then point the FE matrix C to C_CV
         if(everything_c_cv .and. GET_C_IN_CV_ADVDIF) c => c_cv
@@ -1860,7 +1862,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
     RETRIEVE_SOLID_CTY, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL ,scale_momentum_by_volume_fraction,&
-    StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
+    StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV, SUF_INT_MASS_MATRIX)
         implicit none
 
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
@@ -1944,7 +1946,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( :, :), intent( in ) :: PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL
         integer, dimension(:), intent(inout) :: StorageIndexes
-        logical, intent(in) :: RECALC_C_CV
+        logical, intent(in) :: RECALC_C_CV, SUF_INT_MASS_MATRIX
         ! Local variables
         REAL, PARAMETER :: V_BETA = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
@@ -2092,7 +2094,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
         got_free_surf,  MASS_SUF, &
         dummy_transp, &
-        StorageIndexes, 3, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV)
+        StorageIndexes, 3, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV,&
+        SUF_INT_MASS_MATRIX = SUF_INT_MASS_MATRIX, MASS_P_CV = PIVIT_MAT)
 
         ewrite(3,*)'Back from cv_assemb'
 
@@ -2555,6 +2558,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, :, :, : ), allocatable :: UDIFFUSION_ALL, LES_UDIFFUSION
         REAL, DIMENSION ( :, : ), allocatable :: UDIFFUSION_VOL_ALL, LES_UDIFFUSION_VOL
         logical :: Porous_media_PIVIT_not_stored_yet
+        !Variables to account for the lumping homogeneization
+        logical :: homogenize_mass_matrix
+        real :: lump_weight
+
 ! memory for linear high order viscocity calculation...
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: STRESS_IJ_ELE_EXT
         REAL, DIMENSION ( :, :, : ), allocatable :: S_INV_NNX_MAT12
@@ -2784,6 +2791,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         if ( have_option( &
         '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix') &
         ) lump_mass = .true.
+
+        !retrieve lump_weight parameter
+        call get_option( &
+        '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix/lump_weight', &
+        lump_weight, default = -1. )
+        !Act only if the parameter is above zero
+        homogenize_mass_matrix = (lump_weight > 0)
 
         lump_absorption = .false.
         if ( have_option( &
@@ -3365,8 +3379,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         endif
 
 
-
-
         Loop_Elements: DO ELE = 1, TOTELE ! Volume integral
 
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
@@ -3807,6 +3819,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                         DO GI = 1, CV_NGI
 
                             RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI )
+
                             if ( lump_absorption ) then
                                NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) = &
                                     NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) + RNN * LOC_U_ABSORB( :, :, U_ILOC)
@@ -3896,14 +3909,21 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                         I = IDIM+(IPHASE-1)*NDIM_VEL+(U_ILOC-1)*NDIM_VEL*NPHASE
                                         !Assemble
                                         IF ( LUMP_MASS ) THEN
-! Chris re-order NN_SIGMAGI_ELE also
-                                            PIVIT_MAT( I, I, ELE ) =   &
+
+                                            PIVIT_MAT( I, I, ELE ) =  PIVIT_MAT( I, I, ELE ) + &
                                             NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
 
+                                            if (homogenize_mass_matrix) then
+                                                PIVIT_MAT( I, I, ELE ) =  PIVIT_MAT( I, I, ELE ) + &
+                                                lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+
+                                                PIVIT_MAT( I, J, ELE ) = PIVIT_MAT( I, J, ELE ) - &
+                                                lump_weight*NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )
+                                            end if
                                         ELSE
-                                            PIVIT_MAT( I, J, ELE ) =  &
+                                           PIVIT_MAT( I, J, ELE ) =  &
                                             NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT

@@ -678,7 +678,12 @@ prognostic_velocity_field =
                element mass_terms{
                   ## Lump the mass matrix
                   element lump_mass_matrix {
-                    empty
+                        ## Weighting used to homogenize the Mass matrix.
+                        ## Only valid for PnDGPn(DG). 
+                        ## Recommended: For CG pressure => 100; For DG pressure => 15           
+                        element lump_weight {
+                          real
+                       }?
                   }?,
                   ## Remove the mass terms from the equation.
                   element exclude_mass_terms {
