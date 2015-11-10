@@ -147,8 +147,7 @@ contains
          MASS_ELE_TRANSP, &
          StorageIndexes, Field_selector, icomp,&
          option_path_spatial_discretisation, &
-         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln, Courant_number&
-            , RECALC_C_CV, SUF_INT_MASS_MATRIX, MASS_P_CV)
+         saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln, Courant_number, RECALC_C_CV)
 
       !  =====================================================================
       !     In this subroutine the advection terms in the advection-diffusion
@@ -348,9 +347,7 @@ contains
       integer, optional ::indx
       character(len=*), optional :: Storname
       real, optional, intent(inout) :: Courant_number
-      !IF SUF_INT_MASS_MATRIX then we form the Mass matrix here instead of doing it in multi_dyncore
-      logical, optional, intent(in) :: RECALC_C_CV, SUF_INT_MASS_MATRIX
-      REAL, optional, DIMENSION( :, :, : ), intent( inout ) :: MASS_P_CV
+      logical, optional, intent(in) :: RECALC_C_CV
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
       ! Variables needed when calculating boundary outfluxes. Totoutflux will be used to sum up over elements for each phase the outflux through a specified boundary
@@ -389,8 +386,6 @@ contains
       logical, PARAMETER :: MULTB_BY_POROSITY= .false.
 ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the C matrix in here also based on control-volume pressure.
       logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
-      !IF SUF_INT_MASS_MATRIX2 then we form the Mass matrix here instead of doing it in multi_dyncore
-      logical :: SUF_INT_MASS_MATRIX2
       REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
 ! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement 
 ! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained 
@@ -610,7 +605,8 @@ contains
       real :: reservoir_P( npres ) ! this is the background reservoir pressure
       real, dimension( :, :, : ), pointer :: fem_p
 
-      integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, istart, ifini, U_JLOC, J
+
+      integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr
       real :: rconst, h_nano, RP_NANO, dt_pipe_factor
       logical :: got_nano
 
@@ -640,15 +636,6 @@ contains
 
       !Check pressure matrix based on Control Volumes
       !If we do not have an index where we have stored C_CV, then we need to calculate it
-      SUF_INT_MASS_MATRIX2 = .false.
-      !Check that MASS_P_CV has been passed down
-      if (present_and_true(SUF_INT_MASS_MATRIX)) then
-          !Somehow this automatically detects it has been stored and it is not recalculated
-          !unless removed from the storage => present(MASS_P_CV) = false when it has been calculated once
-          SUF_INT_MASS_MATRIX2 = present(MASS_P_CV)
-          if (SUF_INT_MASS_MATRIX2) MASS_P_CV = 0.!Initialize matrix
-
-      end if
       if (present_and_true(RECALC_C_CV)) then
         GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .true.
       else
@@ -2416,7 +2403,7 @@ contains
                         END IF
 
                         ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
-                        CALL PUT_IN_CT_RHS( CT, C, MASS_P_CV, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX2, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, ELE, ELE2, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+                        CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
                              CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary,  &
                              JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, &
                              SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -2427,7 +2414,7 @@ contains
                              FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                              RETRIEVE_SOLID_CTY,theta_cty_solid, &
                              loc_u, loc2_u, THETA_VEL, &
-                             rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX, HDC )
+                             rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX )
                         do ipres=1,npres
                            call addto(ct_rhs,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*n_in_pres:ipres*n_in_pres) ))
                         if ( integrate_other_side_and_not_boundary ) then
@@ -2697,45 +2684,6 @@ contains
       END DO Loop_Elements
 
 
-        !Adjust the value introduced in MASS_P_CV to compensate the fact that we are doing a
-        !surface integral of what should be a volume integral
-        if (SUF_INT_MASS_MATRIX2) then
-            do ele =1, totele
-                DO IPHASE = 1, NPHASE
-                    DO IDIM = 1, NDIM
-                        JPHASE = IPHASE
-                        JDIM = IDIM
-                        rsum=0.0
-                        DO U_JLOC = 1, U_NLOC
-                            DO U_ILOC = 1, U_NLOC
-                                I = IDIM+(IPHASE-1)*NDIM+(U_ILOC-1)*NDIM*NPHASE
-                                J = JDIM+(JPHASE-1)*NDIM+(U_JLOC-1)*NDIM*NPHASE
-                                rsum = rsum +mass_p_cv(i,j,ele)
-                            end do
-                        end do
-
-                        DO U_JLOC = 1, U_NLOC
-                            DO U_ILOC = 1, U_NLOC
-                                I = IDIM+(IPHASE-1)*NDIM+(U_ILOC-1)*NDIM*NPHASE
-                                J = JDIM+(JPHASE-1)*NDIM+(U_JLOC-1)*NDIM*NPHASE
-                                mass_p_cv(i,j,ele) =mass_p_cv(i,j,ele)* volume/rsum
-                            end do
-                        end do
-
-                    end do
-                end do
-            !Obtain the volume of this element
-            !Adjust the value
-!            do idim=1,ndim
-!                do iphase=1,nphase
-!                    istart = IDIM
-!                    ifini = NDIM + (IPHASE - 1) * NDIM + (U_NLOC-1) * NDIM * NPHASE
-!                    rsum = sum(MASS_P_CV(istart : ifini, istart : ifini, ELE))
-!                    MASS_P_CV(:,:, ELE) = MASS_P_CV(:,:, ELE) * volume/ rsum
-!                end do
-!            end do
-            end do
-        end if
 
       IF(GET_GTHETA) THEN
          DO CV_NODI = 1, CV_NONODS
@@ -2774,7 +2722,7 @@ contains
             allocate(MASS_PIPE_FOR_COUP(cv_nonods))
             CALL MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, SMALL_FINDRM, SMALL_COLM, &
                  U_NONODS,U_SNLOC,CV_SNLOC,STOTEL,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-                 cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
+                 cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, c, findct, colct, findc, colc, CV_RHS_field, CT_RHS, &
                  findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                  SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, OPT_VEL_UPWIND_COEFS_NEW )
 
@@ -10180,7 +10128,8 @@ CONTAINS
 
 
 
-  SUBROUTINE PUT_IN_CT_RHS( CT, C, MASS_P_CV, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, ELE, ELE2, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+
+  SUBROUTINE PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
        CV_NONODS, U_NONODS, NPHASE, between_elements, on_domain_boundary, &
        JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, U_SLOC2LOC,   &
        SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -10192,21 +10141,20 @@ CONTAINS
        RETRIEVE_SOLID_CTY,theta_cty_solid, &
        loc_u, loc2_u, THETA_VEL, &
 ! local memory sent down for speed...
-       UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, CAP_DIFF_COEF_DIVDX, HDC)
+       UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, CAP_DIFF_COEF_DIVDX)
     ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
     IMPLICIT NONE
 ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO CT MATRIX
 !    LOGICAL, PARAMETER :: more_in_ct=.false.
     INTEGER, intent( in ) :: U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
-         CV_NONODS, U_NONODS, NPHASE, CV_NODI, CV_NODJ, ELE, ELE2
+         CV_NONODS, U_NONODS, NPHASE, CV_NODI, CV_NODJ
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: loc_u, loc2_u
-    LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, &
-        on_domain_boundary, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX
+    LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
     INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
     INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
     INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
     REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
-    REAL, DIMENSION( :, :, : ), intent( inout ) :: C, MASS_P_CV
+    REAL, DIMENSION( :, :, : ), intent( inout ) :: C
     REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
     REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
     REAL, DIMENSION( :, : ), intent( in ) :: SUFEN
@@ -10214,7 +10162,7 @@ CONTAINS
     REAL, DIMENSION( NDIM, SCVNGI ), intent( in ) :: CVNORMX_ALL
     REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DEN_ALL
     REAL, DIMENSION( NPHASE ), intent( in ) :: NDOTQ, NDOTQOLD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, LIMD
-    REAL, intent( in ) :: NDOTQ_HAT, HDC
+    REAL, intent( in ) :: NDOTQ_HAT
     REAL, DIMENSION( NPHASE ), intent( in ) :: THETA_VEL
     ! LIMT_HAT is the normalised voln fraction
     REAL, intent( in ) :: theta_cty_solid
@@ -10231,8 +10179,7 @@ CONTAINS
     ! Local variables...
     INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
          U_KLOC_LEV, U_NLOC_LEV, IPHASE, U_SKLOC
-    !Varibles for mass matrix
-    integer :: jphase, I, J, u_kkloc
+
              ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
 
 !         do iphase = 1, nphase
@@ -12449,7 +12396,7 @@ deallocate(NX_ALL)
 
   SUBROUTINE MOD_1D_CT_AND_ADV( state, packed_state, nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, FINACV, COLACV, &
        U_NONODS,U_SNLOC,CV_SNLOC,STOTEL,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, findct, colct, CV_RHS_field, CT_RHS, &
+       cv_nonods, getcv_disc, getct, petsc_acv, totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, c, findct, colct, findc, colc, CV_RHS_field, CT_RHS, &
        findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
        INV_SIGMA, INV_SIGMA_NANO, OPT_VEL_UPWIND_COEFS_NEW )
 
@@ -12460,12 +12407,12 @@ deallocate(NX_ALL)
 
     INTEGER, intent( in ) :: nphase, npres, n_in_pres, ndim, u_nloc, cv_nloc, x_nloc, cv_nonods, totele, CV_SNLOC, U_SNLOC, STOTEL, U_NONODS
     integer, dimension(:), intent( in ), target :: FINACV, COLACV
-    integer, dimension(:), intent( in ) :: cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, findct, colct, findcmc, colcmc
+    integer, dimension(:), intent( in ) :: cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, findct, colct, findc, colc, findcmc, colcmc
     integer, dimension(:), intent( in ) :: CV_SNDGLN, U_SNDGLN
     integer, dimension(:,:,:), intent( in ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_U_BC_ALL
     real, dimension(:,:,:), intent( in ) :: SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL
     real, dimension(:,:,:,:), intent( in ) :: OPT_VEL_UPWIND_COEFS_NEW
-    real, dimension(:,:,:),intent( inout ) :: ct
+    real, dimension(:,:,:),intent( inout ) :: ct, c
     real, dimension(:,:),intent( inout ) :: INV_SIGMA, INV_SIGMA_NANO
     type(vector_field), intent( inout ) :: CV_RHS_field, CT_RHS
     real, dimension(:),intent( inout ) :: MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE ! of length NCMC
@@ -12498,7 +12445,7 @@ deallocate(NX_ALL)
     real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
     real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
     logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
-    logical :: UPWIND_PIPES, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL, LUMP_COUPLING_RES_PIPES, CALC_SIGMA_PIPE
+    logical :: UPWIND_PIPES, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL, LUMP_COUPLING_RES_PIPES, CALC_SIGMA_PIPE, get_c_pipes
     real :: LOC_CV_RHS_I(NPHASE)
     real :: T1(NDIM), T2(NDIM), TT1(NDIM), TT2(NDIM), NN1(NDIM), T1TT1, T1TT2, T2TT1, T2TT2, DET_SQRT, INV_SIGMA_ND, N1NN1, INV_SIGMA_NANO_ND
 
@@ -12508,7 +12455,7 @@ deallocate(NX_ALL)
     integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
          u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
          icorner1, icorner2, icorner3, icorner4, WIC_B_BC_DIRICHLET, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
-         U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI
+         U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3
 
     real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
 
@@ -12731,9 +12678,12 @@ deallocate(NX_ALL)
        CV_RHS_field%val( N_IN_PRES+1:NPHASE, : ) = 0.0
     END IF
 
+    GET_C_PIPES = .FALSE.
+
     IF ( GETCT ) THEN
        CT( :, N_IN_PRES+1:NPHASE, : ) = 0.0
        CT_RHS%val( 2:NPRES, : ) = 0.0
+       IF ( GET_C_PIPES ) C( :, N_IN_PRES+1:NPHASE, : ) = 0.0
     END IF
 
 
@@ -13114,13 +13064,25 @@ deallocate(NX_ALL)
                       DO U_LKLOC = 1, U_LNLOC
                          U_KNOD = U_GL_GL(U_LKLOC)
                          DO IDIM = 1, NDIM
-                            CT_CON(IDIM,:) = SBUFEN( U_LKLOC, BGI ) * LIMDT(:) * suf_DETWEI( BGI ) * DIRECTION_norm(IDIM) * INV_SIGMA_GI(:)/D_CV_NODI(:)
+                            CT_CON(IDIM,:) = SBUFEN( U_LKLOC, BGI ) * LIMDT(:) * suf_DETWEI( BGI ) * DIRECTION_norm(IDIM) * INV_SIGMA_GI(:) / D_CV_NODI(:)
                          END DO
                          ! Put into CT matrix...
                          DO COUNT = FINDCT(CV_NODI), FINDCT(CV_NODI+1)-1
                             IF ( COLCT(COUNT)==U_KNOD ) CT( :, N_IN_PRES+1:NPHASE, COUNT ) = &
                                  CT( :, N_IN_PRES+1:NPHASE, COUNT ) + CT_CON( :, N_IN_PRES+1:NPHASE )
                          END DO
+
+                         IF ( GET_C_PIPES ) THEN
+                            DO COUNT = FINDC(U_KNOD), FINDC(U_KNOD+1)-1
+                               IF ( COLC(COUNT)==CV_NODI )  THEN
+                                  DO IDIM = 1, NDIM
+                                     C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) = C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) + &
+                                          SBUFEN( U_LKLOC, BGI ) * SUF_DETWEI( BGI ) * DIRECTION_NORM(IDIM)
+                                  END DO
+                               END IF
+                            END DO
+                         END IF
+
                       END DO
                    END IF
 
@@ -13216,13 +13178,20 @@ deallocate(NX_ALL)
 
                 IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS on the boundary...
                    DO IDIM = 1, NDIM
-                      CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:)/DEN_ALL%val(1,:,JCV_NOD)
+                      CT_CON(IDIM,:) = LIMDT(:) * suf_area * DIRECTION_NORM(IDIM) * INV_SIGMA_GI(:) / DEN_ALL%val(1,:,JCV_NOD)
                    END DO
                    ! Put into CT matrix...
                    COUNT2=0
                    DO COUNT = FINDCT(JCV_NOD), FINDCT(JCV_NOD+1)-1
                       IF ( COLCT(COUNT)==JU_NOD ) COUNT2=COUNT
                    END DO
+
+                   IF ( GET_C_PIPES ) THEN
+                      COUNT3=0
+                      DO COUNT = FINDC(JU_NOD), FINDC(JU_NOD+1)-1
+                         IF ( COLC(COUNT)==JCV_NOD ) COUNT3=COUNT
+                      END DO
+                   END IF
 
                    LOC_CT_RHS_U_ILOC = 0.0
                    DO IPHASE = N_IN_PRES+1, NPHASE
@@ -13233,6 +13202,9 @@ deallocate(NX_ALL)
                          END DO
                       ELSE
                          CT( :, IPHASE, COUNT2 ) = CT( :, IPHASE, COUNT2 ) + CT_CON( :, IPHASE )
+                         IF ( GET_C_PIPES ) THEN
+                            C( :, IPHASE, COUNT3 ) = C( :, IPHASE, COUNT3 ) + suf_area * DIRECTION_NORM(:)
+                         END IF
                       END IF
                    END DO
 
@@ -13914,7 +13886,7 @@ deallocate(NX_ALL)
                 END IF
 
                 ! Add the sigma associated with the switch to switch the pipe flow on and off...
-                IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
+                IF ( SWITCH_PIPES_ON_AND_OFF ) THEN ! Dimitrios it may be that SWITCH_PIPES_ON_AND_OFF =.false. always
                    IWATER = PHASE_EXCLUDE
 
                    S_WATER = MAXVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) )
@@ -13924,7 +13896,7 @@ deallocate(NX_ALL)
                    SIGMA_SWITCH_ON_OFF_PIPE_GI = MAXVAL( SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) ) )
 
                    PIPE_SWITCH = 1.0 - MIN( 1.0, MAX( 0.0, ( S_WATER_MAX - S_WATER ) / MAX( S_WATER_MAX - S_WATER_MIN, 1.E-20 ) ) )
-                   SIGMA_GI( N_IN_PRES+1:NPHASE, : ) = PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
+                   SIGMA_GI( N_IN_PRES+1:NPHASE, : ) = SIGMA_GI( N_IN_PRES+1:NPHASE, : ) + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
                 END IF
 
                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
