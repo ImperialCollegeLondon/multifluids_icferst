@@ -595,6 +595,9 @@ contains
       !Variables for get_int_vel_porous_vel
       logical :: anisotropic_and_frontier, anisotropic_perm, not_use_DG_within_ele
 
+      !Logical to do a surface integral for the Mass matrix
+      logical :: SUF_INT_MASS_MATRIX2
+
       real, dimension(nphase):: rsum_nodi, rsum_nodj
       integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
       REAL :: MM_GRAVTY
@@ -10238,18 +10241,18 @@ CONTAINS
              C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &          !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                + RCON_IN_CT(IPHASE) * CVNORMX_ALL( :, GI ) * min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
-              !Calculate mass matrix
-              if (SUF_INT_MASS_MATRIX) then
-                  do IDIM = 1, NDIM
-                      do u_kkloc=1,u_nloc
-                      I = IDIM+(IPHASE-1)*NDIM+(U_KLOC-1) * NDIM * NPHASE
-                      J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
-                      MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
-                         + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC )))&
-                          * HDC! * SCVDETWEI( GI )
-                    end do
-                  end do
-              end if
+!              !Calculate mass matrix
+!              if (SUF_INT_MASS_MATRIX) then
+!                  do IDIM = 1, NDIM
+!                      do u_kkloc=1,u_nloc
+!                      I = IDIM+(IPHASE-1)*NDIM+(U_KLOC-1) * NDIM * NPHASE
+!                      J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+!                      MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+!                         + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC )))&
+!                          * HDC! * SCVDETWEI( GI )
+!                    end do
+!                  end do
+!              end if
     endif
           END DO
        ENDIF
@@ -10292,18 +10295,18 @@ CONTAINS
                 C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                   = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &         !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                   - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* min(1.0, 1e20 * abs(UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC )))
-              !Calculate mass matrix
-              if (SUF_INT_MASS_MATRIX) then
-                  do IDIM = 1, NDIM
-                      do u_kkloc=1,u_nloc
-                      I = IDIM+(IPHASE-1)*NDIM+(U_KLOC-1) * NDIM * NPHASE
-                      J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
-                      MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
-                         + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC )))&
-                          * HDC! * SCVDETWEI( GI )
-                    end do
-                  end do
-              end if
+!              !Calculate mass matrix
+!              if (SUF_INT_MASS_MATRIX) then
+!                  do IDIM = 1, NDIM
+!                      do u_kkloc=1,u_nloc
+!                      I = IDIM+(IPHASE-1)*NDIM+(U_KLOC-1) * NDIM * NPHASE
+!                      J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+!                      MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+!                         + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC )))&
+!                          * HDC! * SCVDETWEI( GI )
+!                    end do
+!                  end do
+!              end if
     endif
              END DO
           ENDIF
@@ -10383,18 +10386,18 @@ CONTAINS
                      = C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &              !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                      + RCON(IPHASE) * CVNORMX_ALL( :, GI )* 0.5 * min(1.0, 1e20 * abs(UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 )))
 
-                      !Calculate mass matrix
-                      if (SUF_INT_MASS_MATRIX) then
-                          do IDIM = 1, NDIM
-                              do u_kkloc=1,u_nloc
-                              I = IDIM+(IPHASE-1)*NDIM+(U_KLOC2-1) * NDIM * NPHASE
-                              J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
-                              MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
-                                 + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC2 )))!&
-    !                              * SCVDETWEI( GI )
-                            end do
-                          end do
-                      end if
+!                      !Calculate mass matrix
+!                      if (SUF_INT_MASS_MATRIX) then
+!                          do IDIM = 1, NDIM
+!                              do u_kkloc=1,u_nloc
+!                              I = IDIM+(IPHASE-1)*NDIM+(U_KLOC2-1) * NDIM * NPHASE
+!                              J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+!                              MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+!                                 + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC2 )))!&
+!    !                              * SCVDETWEI( GI )
+!                            end do
+!                          end do
+!                      end if
 
                 END DO
              ENDIF
@@ -10433,18 +10436,18 @@ CONTAINS
                         = C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &                 !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                         - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* 0.5* min(1.0, 1e20 * abs(UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 )))
 
-                      !Calculate mass matrix
-                      if (SUF_INT_MASS_MATRIX) then
-                          do IDIM = 1, NDIM
-                              do u_kkloc=1,u_nloc
-                              I = IDIM+(IPHASE-1)*NDIM+(U_KLOC2-1) * NDIM * NPHASE
-                              J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
-                              MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
-                                 + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC2 )))!&
-    !                              * SCVDETWEI( GI )
-                            end do
-                          end do
-                      end if
+!                      !Calculate mass matrix
+!                      if (SUF_INT_MASS_MATRIX) then
+!                          do IDIM = 1, NDIM
+!                              do u_kkloc=1,u_nloc
+!                              I = IDIM+(IPHASE-1)*NDIM+(U_KLOC2-1) * NDIM * NPHASE
+!                              J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+!                              MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
+!                                 + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC2 )))!&
+!    !                              * SCVDETWEI( GI )
+!                            end do
+!                          end do
+!                      end if
 
                    END DO
                 ENDIF
