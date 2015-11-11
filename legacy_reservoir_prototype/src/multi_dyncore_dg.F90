@@ -2070,7 +2070,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ACV, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
-        C, FINDC, COLC, & ! C sparsity - global cty eqn
+        C_CV, FINDC, COLC, & ! C sparsity - global cty eqn
         CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
         CV_ELE_TYPE, &
         NPHASE, NPRES, &
@@ -2094,7 +2094,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
         got_free_surf,  MASS_SUF, &
         dummy_transp, &
-        StorageIndexes, 3, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV)
+        StorageIndexes, 3, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false., MASS_P_CV = PIVIT_MAT)
 
         ewrite(3,*)'Back from cv_assemb'
 
