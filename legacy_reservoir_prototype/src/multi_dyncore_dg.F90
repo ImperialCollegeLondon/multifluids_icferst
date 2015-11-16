@@ -942,7 +942,7 @@ contains
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
         REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, UDEN3
         REAL, DIMENSION( :, :, :, : ), allocatable :: UDIFFUSION_ALL
-        REAL, DIMENSION( :, : ), allocatable :: UDIFFUSION_VOL_ALL, rhs_p2
+        REAL, DIMENSION( :, : ), allocatable :: UDIFFUSION_VOL_ALL, rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
         type( tensor_field ), pointer :: p_all, pold_all, cvp_all
@@ -960,6 +960,9 @@ contains
         logical :: cty_proj_after_adapt, high_order_Ph, symmetric_P, boussinesq, fem_density_buoyancy
         logical :: EXPLICIT_PIPES2
 
+        REAL, DIMENSION ( :, :, : ), pointer :: SUF_P_BC_ALL
+        INTEGER, DIMENSION ( 1, npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
+        type( tensor_field ) :: pressure_BCs
 
         EXPLICIT_PIPES2 = .true.
 
@@ -1268,6 +1271,30 @@ contains
 
         !If pressure in CV only then point the FE matrix C to C_CV
         if(everything_c_cv .and. GET_C_IN_CV_ADVDIF) c => c_cv
+
+
+if (.false.) then
+        if ( npres > 1 ) then
+           ALLOCATE( SIGMA( NPHASE, MAT_NONODS ) )
+           DO IPHASE = 1, NPHASE
+              SIGMA( IPHASE, : ) = U_ABSORB_ALL( (IPHASE-1)*NDIM+1, (IPHASE-1)*NDIM+1, : )
+           END DO
+
+           call get_entire_boundary_condition( pressure,&
+                ['weakdirichlet','freesurface  '],&
+                pressure_BCs, WIC_P_BC_ALL )
+           SUF_P_BC_ALL=>pressure_BCs%val
+
+           CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, .not.recalc_c_cv, &
+                &                      C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
+                &                      CV_NONODS, U_NONODS, NPRES, CV_SNLOC, STOTEL, P_SNDGLN, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, U_ALL, &
+                &                      U_SOURCE, U_SOURCE_CV, FEM_VOL_FRAC )
+           DEALLOCATE( SIGMA )
+        end if
+end if
+
+
+
 
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
@@ -2706,6 +2733,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         Porous_media_PIVIT_not_stored_yet = (.not.is_porous_media .or. StorageIndexes(34) <= 0)
         !If we do not have an index where we have stored C, then we need to calculate it
         got_c_matrix  = StorageIndexes(12)/=0
+
         !If not use C, only C_CV then don't calculate it
         everything_c_cv = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/CV_P_matrix_for_velocity' )
         if ( everything_c_cv ) got_c_matrix = .true.
@@ -6050,18 +6078,19 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! **********REVIEWER 4-END**********************
 
 
+if ( .true. ) then
         if ( npres > 1 ) then
            ALLOCATE(SIGMA(NPHASE,MAT_NONODS))
            DO IPHASE=1,NPHASE
               SIGMA(IPHASE,:) = U_ABSORB( (IPHASE-1) *NDIM_VEL+1, (IPHASE-1) *NDIM_VEL+1, : )
            END DO
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
-             &                      C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
-             &                      CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
-             &                      U_SOURCE, U_SOURCE_CV, FEM_VOL_FRAC )
-            DEALLOCATE(SIGMA)
-        ENDIF
-
+                &                      C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
+                &                      CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
+                &                      U_SOURCE*0.0, U_SOURCE_CV*0.0, FEM_VOL_FRAC )
+           DEALLOCATE(SIGMA)
+        end if
+end if
 
         ! This subroutine combines the distributed and block diagonal for an element
         ! into the matrix DGM_PHA.
