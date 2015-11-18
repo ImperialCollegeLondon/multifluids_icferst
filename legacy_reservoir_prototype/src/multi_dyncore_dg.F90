@@ -9335,6 +9335,10 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         nphase = size(satura,1)
         cv_nonods = size(satura,2)
 
+        !#######Only apply this method if it has been explicitly invoked through Pe_stab!######
+        if (.not.have_option_for_any_phase("/multiphase_properties/Pe_stab", nphase)) return
+        !######################################################################################
+
         !Check capillary pressure options
         Phase_with_Pc = -1
         do iphase = Nphase, 1, -1!Going backwards since the wetting phase should be phase 1
