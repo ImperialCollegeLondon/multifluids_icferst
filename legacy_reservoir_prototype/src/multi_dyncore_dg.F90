@@ -9336,7 +9336,10 @@ deallocate(CVFENX_ALL, UFENX_ALL)
         cv_nonods = size(satura,2)
 
         !#######Only apply this method if it has been explicitly invoked through Pe_stab!######
-        if (.not.have_option_for_any_phase("/multiphase_properties/Pe_stab", nphase)) return
+        if (.not.have_option_for_any_phase("/multiphase_properties/Pe_stab", nphase)) then
+            Overrelaxation = 0.0; Phase_with_Pc = -10
+            return
+        end if
         !######################################################################################
 
         !Check capillary pressure options
