@@ -1514,7 +1514,7 @@ end if
          reshape(PIVIT_MAT2,[NBLOCK * NBLOCK * TOTELE])
          deallocate(PIVIT_MAT2)
          indx = abs(indx)
-     end if
+      end if
 
       !Set the pointer to the  solution
       from = 1; to = NBLOCK * NBLOCK * TOTELE

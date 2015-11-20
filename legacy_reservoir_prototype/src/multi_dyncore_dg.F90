@@ -1039,10 +1039,12 @@ contains
         end do
         GAMMA_PRES_ABS_NANO = GAMMA_PRES_ABS
 
+        ! this can be optimised in the future...
+        if ( npres > 1 ) storageIndexes(34)=0
 
-        if (storageIndexes(34)<=0 .or. .not.is_porous_media) then
-            nullify(PIVIT_MAT)
-            ALLOCATE( PIVIT_MAT( NDIM * NPHASE * U_NLOC, NDIM * NPHASE * U_NLOC, TOTELE )); PIVIT_MAT=0.0
+        if ( storageIndexes(34)<=0 .or. .not.is_porous_media ) then
+           nullify( PIVIT_MAT )
+           ALLOCATE( PIVIT_MAT( NDIM * NPHASE * U_NLOC, NDIM * NPHASE * U_NLOC, TOTELE ) ) ; PIVIT_MAT=0.0
         end if
 
         !################TEMPORARY ADAPT FROM OLD VARIABLES TO NEW###############
@@ -1233,6 +1235,8 @@ contains
             StorageIndexes(38))%ptr%val, C_CV, NDIM, NPHASE, size(COLC))
         end if
 
+
+
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, storage_state, &
              velocity, pressure, &
         NDIM, NPHASE, NPRES, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
@@ -1270,10 +1274,8 @@ contains
         StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
 
         !If pressure in CV only then point the FE matrix C to C_CV
-        if(everything_c_cv .and. GET_C_IN_CV_ADVDIF) c => c_cv
+        if ( everything_c_cv .and. GET_C_IN_CV_ADVDIF ) c => c_cv
 
-
-if (.false.) then
         if ( npres > 1 ) then
            ALLOCATE( SIGMA( NPHASE, MAT_NONODS ) )
            DO IPHASE = 1, NPHASE
@@ -1283,18 +1285,16 @@ if (.false.) then
            call get_entire_boundary_condition( pressure,&
                 ['weakdirichlet','freesurface  '],&
                 pressure_BCs, WIC_P_BC_ALL )
-           SUF_P_BC_ALL=>pressure_BCs%val
+           SUF_P_BC_ALL => pressure_BCs%val
 
-           CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, .not.recalc_c_cv, &
-                &                      C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
-                &                      CV_NONODS, U_NONODS, NPRES, CV_SNLOC, STOTEL, P_SNDGLN, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, U_ALL, &
-                &                      U_SOURCE, U_SOURCE_CV, FEM_VOL_FRAC )
+           CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, associated(pivit_mat), &
+                &                   C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
+                &                   CV_NONODS, U_NONODS, NPRES, CV_SNLOC, STOTEL, P_SNDGLN, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, U_ALL, &
+                &                   U_SOURCE*0.0, U_SOURCE_CV*0.0, FEM_VOL_FRAC ) ! No sources in the wells for now...
+
+           call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
-end if
-
-
-
 
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
@@ -6076,21 +6076,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            !      END DO Loop_Elements
         END DO Loop_Elements2
         ! **********REVIEWER 4-END**********************
-
-
-if ( .true. ) then
-        if ( npres > 1 ) then
-           ALLOCATE(SIGMA(NPHASE,MAT_NONODS))
-           DO IPHASE=1,NPHASE
-              SIGMA(IPHASE,:) = U_ABSORB( (IPHASE-1) *NDIM_VEL+1, (IPHASE-1) *NDIM_VEL+1, : )
-           END DO
-           CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
-                &                      C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
-                &                      CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
-                &                      U_SOURCE*0.0, U_SOURCE_CV*0.0, FEM_VOL_FRAC )
-           DEALLOCATE(SIGMA)
-        end if
-end if
 
         ! This subroutine combines the distributed and block diagonal for an element
         ! into the matrix DGM_PHA.
