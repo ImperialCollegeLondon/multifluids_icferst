@@ -1226,7 +1226,6 @@ contains
          call set_all(psi_ave(1)%ptr,X_ALL)
       end if
 
-
       call PROJ_CV_TO_FEM_state( packed_state,FEMPSI(1:FEM_IT),&
            PSI(1:FEM_IT), NDIM, &
        PSI_AVE, PSI_INT, MASS_ELE, &
@@ -1235,7 +1234,6 @@ contains
        CVFEN_SHORT, CVFENLX_SHORT_ALL, &
        X_NONODS, X_ALL, NCOLM, FINDM, COLM, MIDM, &
        IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC)
-
       XC_CV_ALL=0.0
       XC_CV_ALL(1:NDIM,:)=psi_ave(1)%ptr%val
       MASS_CV=psi_int(1)%ptr%val(1,:)
@@ -1243,11 +1241,12 @@ contains
       FEMT_ALL(:,:)=FEMPSI(1)%ptr%val(1,:,:)
       FEMTOLD_ALL(:,:)=FEMPSI(2)%ptr%val(1,:,:)
       FEM_IT=3
+      
       if (.not. is_constant(density)) then
          FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,:,:)
-         FEM_IT=FEM_IT+1
          tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
          tfield%val = psi(FEM_IT)%ptr%val
+         FEM_IT=FEM_IT+1
       else
          FEMDEN_ALL=density%val(1,:,:)
       end if
