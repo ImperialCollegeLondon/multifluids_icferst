@@ -880,7 +880,7 @@ END IF
                         IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = 0.0
                         DO COUNT2 = FINDCMC( CV_JNOD ), FINDCMC( CV_JNOD + 1 ) - 1
                            CV_JNOD2 = COLCMC( COUNT2 )
-                           IF ( CV_JNOD2 == CV_NOD ) then
+                           IF ( CV_JNOD2 /= CV_NOD ) then
                               i_indx = CMC_petsc%row_numbering%gnn2unn( cv_jnod, ipres )
                               j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD2, jpres )
                               call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, INSERT_VALUES, ierr) ! not the diagonal
