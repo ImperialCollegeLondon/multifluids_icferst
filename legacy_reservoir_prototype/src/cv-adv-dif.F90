@@ -14118,7 +14118,7 @@ deallocate(NX_ALL)
     REAL :: RE, A, MAX_RE, F, F1, F2, W, MAX_U
 
     MAX_U = MAX( TOLER, ABS( U ) )
-    RE = DEN * MAX_U * DIAM / VISC * 1.0e+5
+    RE = DEN * MAX_U * DIAM / VISC
 
     MAX_RE = RE
     A = LOG10( 6.9/MAX_RE + (E_ROUGHNESS/(3.7*DIAM))**(10.0/9.0) )
@@ -14131,7 +14131,8 @@ deallocate(NX_ALL)
     F = ( 1 - W ) * F1 + W * F2
 
     SIGMA = ( F / DIAM ) * 2.0 * DEN * ABS( U ) ! Based on Fanning friction factor
-
+    !SIGMA = ( F / DIAM ) * 2.0 * DEN * 1.0 ! Based on Fanning friction factor
+    !SIGMA = ( F / DIAM ) * 2.0 * DEN * MAX_U ! Based on Fanning friction factor
 
     RETURN
   END SUBROUTINE SIGMA_PIPE_FRICTION
