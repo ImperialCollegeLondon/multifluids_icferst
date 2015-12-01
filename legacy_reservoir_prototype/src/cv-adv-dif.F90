@@ -1454,7 +1454,7 @@ contains
 
 
       IF(GETCT) THEN
-      IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV.AND. .FALSE.) THEN
+      IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV.AND. .false.) THEN
          Loop_CV_ILOC2: DO CV_ILOC = 1, CV_NLOC ! Loop over the nodes of the element
 
             ! Global node number of the local node
