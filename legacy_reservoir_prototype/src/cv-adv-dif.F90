@@ -75,8 +75,6 @@ module cv_advection
    type(csr_matrix) :: mat1
    type(csr_matrix) :: mat2
 
-   real, allocatable, dimension(:,:,:) :: u_rhs_store
-
 #include "petsc_legacy.h"
 
   INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1, WIC_T_BC_ROBIN = 2, &
@@ -1226,7 +1224,6 @@ contains
          call set_all(psi_ave(1)%ptr,X_ALL)
       end if
 
-
       call PROJ_CV_TO_FEM_state( packed_state,FEMPSI(1:FEM_IT),&
            PSI(1:FEM_IT), NDIM, &
        PSI_AVE, PSI_INT, MASS_ELE, &
@@ -1235,7 +1232,6 @@ contains
        CVFEN_SHORT, CVFENLX_SHORT_ALL, &
        X_NONODS, X_ALL, NCOLM, FINDM, COLM, MIDM, &
        IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC)
-
       XC_CV_ALL=0.0
       XC_CV_ALL(1:NDIM,:)=psi_ave(1)%ptr%val
       MASS_CV=psi_int(1)%ptr%val(1,:)
@@ -1243,11 +1239,12 @@ contains
       FEMT_ALL(:,:)=FEMPSI(1)%ptr%val(1,:,:)
       FEMTOLD_ALL(:,:)=FEMPSI(2)%ptr%val(1,:,:)
       FEM_IT=3
+      
       if (.not. is_constant(density)) then
          FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,:,:)
-         FEM_IT=FEM_IT+1
          tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
          tfield%val = psi(FEM_IT)%ptr%val
+         FEM_IT=FEM_IT+1
       else
          FEMDEN_ALL=density%val(1,:,:)
       end if
@@ -2900,28 +2897,28 @@ contains
 
                      ! We do NOT divide by r**2 here because we have not multiplied by r**2 in the MASS_CVFEM2PIPE matrix (in MOD_1D_CT_AND_ADV)
                      IF ( DeltaP >= 0.0 ) THEN
-                        PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
-                             DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                        PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) + &
+                             DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_ALL( IPHASE, CV_NODI ) * &
                              cc * 2.0 * SIGMA_INV_APPROX( IPHASE, CV_NODI ) &
-                            !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                         IF ( GOT_NANO ) THEN
                            PIPE_ABS( IPHASE, IPHASE, CV_NODI ) = PIPE_ABS( IPHASE, IPHASE, CV_NODI ) +&
-                                DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * &
+                                DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * DEN_ALL( IPHASE, CV_NODI ) * &
                                 cc * 2.0 * PI * SIGMA_INV_APPROX_NANO( IPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
-                                / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                                / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin ) )
                         END IF
                      ELSE
                         PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = &
-                             DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * &
+                             DeltaP * GAMMA_PRES_ABS( IPHASE, JPHASE, CV_NODI ) * DEN_ALL( JPHASE, CV_NODI ) * &
                              cc * 2.0 * SIGMA_INV_APPROX( JPHASE, CV_NODI ) &
-                            !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                             !/ ( max( 0.25*pipe_Diameter%val( cv_nodi )**2,1.e-9)*(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                              / ( 1.0 *(log( rp / max( 0.5*pipe_Diameter%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
                         IF ( GOT_NANO ) THEN
                            PIPE_ABS( IPHASE, JPHASE, CV_NODI ) = PIPE_ABS( IPHASE, JPHASE, CV_NODI ) + &
-                                DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * &
+                                DeltaP * GAMMA_PRES_ABS_NANO( IPHASE, JPHASE, CV_NODI ) * DEN_ALL( JPHASE, CV_NODI ) * &
                                 cc * 2.0 * PI * SIGMA_INV_APPROX_NANO( JPHASE, CV_NODI ) * pipe_length_nano%val( cv_nodi ) &
-                                / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin) )
+                                / ( 1.0 *(log( rp_nano / max( 0.5*pipe_Diameter_nano%val( cv_nodi ), 1.0e-10 ) ) + Skin ) )
                         END IF
                      END IF
 
@@ -13590,15 +13587,15 @@ deallocate(NX_ALL)
 
 
 
-  SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GOT_C_MATRIX, &
+  SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GET_PIVIT_MAT, &
        &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
        &                         CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
        &                         U_SOURCE, U_SOURCE_CV, FEM_VOL_FRAC )
     ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
     IMPLICIT NONE
-    TYPE(STATE_TYPE),DIMENSION(:),INTENT(IN)::STATE
-    TYPE(STATE_TYPE),INTENT(IN)::packed_STATE
+    TYPE(STATE_TYPE), DIMENSION( : ), INTENT( IN ) :: STATE
+    TYPE(STATE_TYPE), INTENT( IN ) :: packed_STATE
 
     INTEGER, INTENT( IN ) :: CV_NONODS, U_NONODS, NPRES, NPHASE, N_IN_PRES, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_SNLOC,STOTEL
 
@@ -13611,7 +13608,7 @@ deallocate(NX_ALL)
     INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, P_SNDGLN
     INTEGER, DIMENSION( :,:,: ), INTENT( IN ) :: WIC_P_BC_ALL
 
-    LOGICAL, INTENT( IN ) :: GOT_C_MATRIX
+    LOGICAL, INTENT( IN ) :: GET_PIVIT_MAT
 
     LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL
     LOGICAL :: CALC_SIGMA_PIPE, DEFAULT_SIGMA_PIPE_OPTIONS, SWITCH_PIPES_ON_AND_OFF
@@ -13663,7 +13660,7 @@ deallocate(NX_ALL)
        allocate( well_density(nphase), well_viscosity(nphase) )
        do iphase = n_in_pres+1, nphase
           wd => extract_scalar_field( state(iphase), "Density" )
-          wm => extract_tensor_field( state(iphase), "VelocityViscosity" )
+          wm => extract_tensor_field( state(iphase), "Viscosity" )
           well_density( iphase ) = wd%val(1)
           well_viscosity( iphase ) = wm%val(1,1,1)
        end do
@@ -13675,20 +13672,14 @@ deallocate(NX_ALL)
        phase_exclude_pipe_sat_min => extract_scalar_field( state(1), "phase_exclude_pipe_sat_min" )
        phase_exclude_pipe_sat_max => extract_scalar_field( state(1), "phase_exclude_pipe_sat_max" )
        sigma_switch_on_off_pipe => extract_scalar_field( state(1), "sigma_switch_on_off_pipe" )
-       cv_vol_frac => extract_tensor_field( packed_state,"PackedPhaseVolumeFraction" )
+       cv_vol_frac => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
     end if
 
 
     ! Set rhs of the force balce equation to zero just for the pipes...
     U_RHS( :, N_IN_PRES+1:NPHASE, : ) = 0.0
 
-
-    ! Calculate C:
-    IF ( .NOT.GOT_C_MATRIX ) THEN
-
-       if ( after_adapt ) deallocate( U_RHS_STORE )
-       allocate(  U_RHS_STORE( NDIM, NPHASE, U_NONODS ) ) ; U_RHS_STORE=0.0
-
+    IF ( GET_PIVIT_MAT ) THEN
        DO U_ILOC = 1, U_NLOC
           DO U_JLOC = 1, U_NLOC
              DO IPHASE = N_IN_PRES+1, NPHASE
@@ -13702,313 +13693,314 @@ deallocate(NX_ALL)
              END DO
           END DO
        END DO
+    END IF
 
-       CV_QUADRATIC = (CV_NLOC==6.AND.NDIM==2) .OR. (CV_NLOC==10.AND.NDIM==3)
-       U_QUADRATIC = (U_NLOC==6.AND.NDIM==2) .OR. (U_NLOC==10.AND.NDIM==3)
+    CV_QUADRATIC = (CV_NLOC==6.AND.NDIM==2) .OR. (CV_NLOC==10.AND.NDIM==3)
+    U_QUADRATIC = (U_NLOC==6.AND.NDIM==2) .OR. (U_NLOC==10.AND.NDIM==3)
 
-       ! The following is for 1d integration...
+    ! The following is for 1d integration...
 
-       scvngi = 2
-       if ( CV_QUADRATIC ) then
-          cv_lnloc = 3
-          scvngi = 3
-       else
-          cv_lnloc = 2
-       end if
+    scvngi = 2
+    if ( CV_QUADRATIC ) then
+       cv_lnloc = 3
+       scvngi = 3
+    else
+       cv_lnloc = 2
+    end if
 
-       if ( U_QUADRATIC ) then
-          u_lnloc = 3
-          scvngi = 3
-       else
-          u_lnloc = 2
-       end if
+    if ( U_QUADRATIC ) then
+       u_lnloc = 3
+       scvngi = 3
+    else
+       u_lnloc = 2
+    end if
 
-       PIPE_Diameter => EXTRACT_SCALAR_FIELD(STATE(1), "DiameterPipe1")
-       X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
+    PIPE_Diameter => EXTRACT_SCALAR_FIELD(STATE(1), "DiameterPipe1")
+    X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
-       allocate( PIPE_DIAM_GI(scvngi) )
-       allocate( SIGMA_GI(NPHASE,scvngi) )
+    allocate( PIPE_DIAM_GI(scvngi) )
+    allocate( SIGMA_GI(NPHASE,scvngi) )
 
-       ! Get the 1D shape functions...
-       allocate( scvfeweigh(scvngi), &
-            scvfen(cv_lnloc, scvngi), scvfenslx(cv_lnloc, scvngi), scvfensly(cv_lnloc, scvngi), &
-            scvfenlx(cv_lnloc, scvngi), scvfenly(cv_lnloc, scvngi), scvfenlz(cv_lnloc, scvngi), &
-            sufen(u_lnloc, scvngi), sufenslx(u_lnloc, scvngi), sufensly(u_lnloc, scvngi), &
-            sufenlx(u_lnloc, scvngi), sufenly(u_lnloc, scvngi), sufenlz(u_lnloc, scvngi) )
+    ! Get the 1D shape functions...
+    allocate( scvfeweigh(scvngi), &
+         scvfen(cv_lnloc, scvngi), scvfenslx(cv_lnloc, scvngi), scvfensly(cv_lnloc, scvngi), &
+         scvfenlx(cv_lnloc, scvngi), scvfenly(cv_lnloc, scvngi), scvfenlz(cv_lnloc, scvngi), &
+         sufen(u_lnloc, scvngi), sufenslx(u_lnloc, scvngi), sufensly(u_lnloc, scvngi), &
+         sufenlx(u_lnloc, scvngi), sufenly(u_lnloc, scvngi), sufenlz(u_lnloc, scvngi) )
 
-       allocate( detwei(scvngi), &
-            l_cvfenx_all(cv_lnloc, scvngi), l_ufenx_all(u_lnloc, scvngi), &
-            l_cvfenx_all_reversed(ndim, scvngi, cv_lnloc) , &
-            l_ufen_reversed(scvngi, u_lnloc), &
-            nmx_all( ndim ), X_ALL_CORN(ndim, ncorner) )
+    allocate( detwei(scvngi), &
+         l_cvfenx_all(cv_lnloc, scvngi), l_ufenx_all(u_lnloc, scvngi), &
+         l_cvfenx_all_reversed(ndim, scvngi, cv_lnloc) , &
+         l_ufen_reversed(scvngi, u_lnloc), &
+         nmx_all( ndim ), X_ALL_CORN(ndim, ncorner) )
 
-       allocate(PIPE_INDEX_LOGICAL(ncorner))
+    allocate(PIPE_INDEX_LOGICAL(ncorner))
 
-       allocate( cv_loc_corner(ncorner), cv_mid_side(ncorner, ncorner), &
-            u_loc_corner(ncorner), u_mid_side(ncorner, ncorner) )
+    allocate( cv_loc_corner(ncorner), cv_mid_side(ncorner, ncorner), &
+         u_loc_corner(ncorner), u_mid_side(ncorner, ncorner) )
 
-       call fv_1d_quad( scvngi, cv_lnloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-            scvfenlx, scvfenly, scvfenlz ) ! For scalar fields
-       call fv_1d_quad( scvngi, u_lnloc, sufen, sufenslx, sufensly, scvfeweigh, &
-            sufenlx, sufenly, sufenlz ) ! For U fields
+    call fv_1d_quad( scvngi, cv_lnloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
+         scvfenlx, scvfenly, scvfenlz ) ! For scalar fields
+    call fv_1d_quad( scvngi, u_lnloc, sufen, sufenslx, sufensly, scvfeweigh, &
+         sufenlx, sufenly, sufenlz ) ! For U fields
 
-       ! Calculate the local corner nodes...
-       CALL CALC_CORNER_NODS(CV_LOC_CORNER, NDIM, CV_NLOC, CV_QUADRATIC, CV_MID_SIDE)
-       CALL CALC_CORNER_NODS(U_LOC_CORNER, NDIM, U_NLOC, U_QUADRATIC, U_MID_SIDE)
+    ! Calculate the local corner nodes...
+    CALL CALC_CORNER_NODS(CV_LOC_CORNER, NDIM, CV_NLOC, CV_QUADRATIC, CV_MID_SIDE)
+    CALL CALC_CORNER_NODS(U_LOC_CORNER, NDIM, U_NLOC, U_QUADRATIC, U_MID_SIDE)
 
-       IF ( U_QUADRATIC ) THEN
-          U_LNLOC = 3
-       ELSE
-          U_LNLOC = 2
-       END IF
+    IF ( U_QUADRATIC ) THEN
+       U_LNLOC = 3
+    ELSE
+       U_LNLOC = 2
+    END IF
 
-       IF ( CV_QUADRATIC ) THEN
-          CV_LNLOC = 3
-       ELSE
-          CV_LNLOC = 2
-       END IF
+    IF ( CV_QUADRATIC ) THEN
+       CV_LNLOC = 3
+    ELSE
+       CV_LNLOC = 2
+    END IF
 
-       allocate( CV_GL_LOC(cv_lnloc), CV_GL_GL(cv_lnloc), X_GL_GL(cv_lnloc), MAT_GL_GL(cv_lnloc) )
-       allocate( U_GL_LOC(U_lnloc), U_GL_GL(U_lnloc) )
+    allocate( CV_GL_LOC(cv_lnloc), CV_GL_GL(cv_lnloc), X_GL_GL(cv_lnloc), MAT_GL_GL(cv_lnloc) )
+    allocate( U_GL_LOC(U_lnloc), U_GL_GL(U_lnloc) )
 
 
-       ! set up the surface B.C.'s
-       allocate( WIC_P_BC_ALL_NODS(NPRES, CV_NONODS) )
-       allocate( SUF_P_BC_ALL_NODS(NPRES, CV_NONODS), RVEC_SUM(NPRES, CV_NONODS) )
-       allocate( LOC_U_RHS_U_ILOC(NDIM, NPHASE) )
-       WIC_P_BC_ALL_NODS=0 ; RVEC_SUM=0.0 ; SUF_P_BC_ALL_NODS=0.0
+    ! set up the surface B.C.'s
+    allocate( WIC_P_BC_ALL_NODS(NPRES, CV_NONODS) )
+    allocate( SUF_P_BC_ALL_NODS(NPRES, CV_NONODS), RVEC_SUM(NPRES, CV_NONODS) )
+    allocate( LOC_U_RHS_U_ILOC(NDIM, NPHASE) )
+    WIC_P_BC_ALL_NODS=0 ; RVEC_SUM=0.0 ; SUF_P_BC_ALL_NODS=0.0
 
-       DO SELE = 1, STOTEL
-          DO IPRES = 2, NPRES
-             IF ( WIC_P_BC_ALL( 1, IPRES, SELE ) == WIC_P_BC_DIRICHLET ) THEN
-                DO CV_SILOC = 1, CV_SNLOC
-                   CV_NOD = P_SNDGLN((SELE-1)*CV_SNLOC + CV_SILOC )
-                   WIC_P_BC_ALL_NODS( IPRES, CV_NOD ) = WIC_P_BC_DIRICHLET
-                   SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) = SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) + SUF_P_BC_ALL( 1,IPRES, (SELE-1)*CV_SNLOC + CV_SILOC )
-                   RVEC_SUM( IPRES, CV_NOD ) = RVEC_SUM( IPRES, CV_NOD ) + 1.0
-                END DO
-             END IF
-          END DO
+    DO SELE = 1, STOTEL
+       DO IPRES = 2, NPRES
+          IF ( WIC_P_BC_ALL( 1, IPRES, SELE ) == WIC_P_BC_DIRICHLET ) THEN
+             DO CV_SILOC = 1, CV_SNLOC
+                CV_NOD = P_SNDGLN((SELE-1)*CV_SNLOC + CV_SILOC )
+                WIC_P_BC_ALL_NODS( IPRES, CV_NOD ) = WIC_P_BC_DIRICHLET
+                SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) = SUF_P_BC_ALL_NODS( IPRES, CV_NOD ) + SUF_P_BC_ALL( 1,IPRES, (SELE-1)*CV_SNLOC + CV_SILOC )
+                RVEC_SUM( IPRES, CV_NOD ) = RVEC_SUM( IPRES, CV_NOD ) + 1.0
+             END DO
+          END IF
        END DO
+    END DO
 
-       DO CV_NOD = 1, CV_NONODS
-          DO IPRES = 2, NPRES
-             IF ( WIC_P_BC_ALL_NODS(IPRES, CV_NOD) /= 0 ) SUF_P_BC_ALL_NODS(IPRES, CV_NOD) = SUF_P_BC_ALL_NODS(IPRES, CV_NOD) / RVEC_SUM(IPRES, CV_NOD)
-          END DO
+    DO CV_NOD = 1, CV_NONODS
+       DO IPRES = 2, NPRES
+          IF ( WIC_P_BC_ALL_NODS(IPRES, CV_NOD) /= 0 ) SUF_P_BC_ALL_NODS(IPRES, CV_NOD) = SUF_P_BC_ALL_NODS(IPRES, CV_NOD) / RVEC_SUM(IPRES, CV_NOD)
        END DO
+    END DO
 
 
-       C( :, N_IN_PRES+1:NPHASE, : ) = 0.0
+    C( :, N_IN_PRES+1:NPHASE, : ) = 0.0
 
-       DO ELE = 1, TOTELE
+    DO ELE = 1, TOTELE
 
-          ! Look for pipe indicator in element:
-          PIPE_NOD_COUNT = 0
-          PIPE_INDEX_LOGICAL = .false.
-          DO ICORNER = 1, NCORNER ! Number of corner nodes in element
+       ! Look for pipe indicator in element:
+       PIPE_NOD_COUNT = 0
+       PIPE_INDEX_LOGICAL = .false.
+       DO ICORNER = 1, NCORNER ! Number of corner nodes in element
+          CV_ILOC = CV_LOC_CORNER( ICORNER )
+          CV_NODI = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
+          IF ( PIPE_Diameter%val( CV_NODI ) > 0.0 ) THEN
+             PIPE_NOD_COUNT = PIPE_NOD_COUNT + 1
+             PIPE_INDEX_LOGICAL(ICORNER) = .true.
+          END IF
+       END DO
+       ELE_HAS_PIPE = PIPE_NOD_COUNT > 1
+       npipes = PIPE_NOD_COUNT - 1
+
+
+       IF ( ELE_HAS_PIPE ) THEN
+
+          X_ALL_CORN(:, :) = x%val(:, X_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_LOC_CORNER(1:NCORNER)) )
+
+          ! If we have more than one pipe then choose the 2 edges with the shortest sides
+          ! and have a maximum of 2 pipes per element...
+
+          ! Calculate the pipes within an element...
+          ! we return the pipe corner nodes for each pipe in
+          CALL CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX_LOGICAL, NDIM, &
+               pipe_corner_nds1, pipe_corner_nds2, npipes )
+
+
+          DO IPIPE = 1, NPIPES
+
+             ! DEFINE CV_LILOC:
+             CV_LILOC = 1
+             ICORNER = pipe_corner_nds1( IPIPE )
+             ICORNER1 = ICORNER
              CV_ILOC = CV_LOC_CORNER( ICORNER )
-             CV_NODI = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
-             IF ( PIPE_Diameter%val( CV_NODI ) > 0.0 ) THEN
-                PIPE_NOD_COUNT = PIPE_NOD_COUNT + 1
-                PIPE_INDEX_LOGICAL(ICORNER) = .true.
-             END IF
-          END DO
-          ELE_HAS_PIPE = PIPE_NOD_COUNT > 1
-          npipes = PIPE_NOD_COUNT - 1
+             CV_GL_LOC( CV_LILOC ) = CV_ILOC
+             CV_LILOC = CV_LNLOC
+             ICORNER = pipe_corner_nds2( IPIPE )
+             ICORNER2 = ICORNER
+             CV_ILOC = CV_LOC_CORNER( ICORNER )
+             CV_GL_LOC( CV_LILOC ) = CV_ILOC
+
+             IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( ICORNER1, ICORNER2 )
+
+             CV_GL_GL( : ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_GL_LOC(:) )
+             MAT_GL_GL( : ) = MAT_NDGLN( (ELE-1)*CV_NLOC + CV_GL_LOC(:) )
+
+             ! DEFINE U_LILOC:
+             U_LILOC = 1
+             ICORNER = pipe_corner_nds1(IPIPE)
+             U_ILOC = U_LOC_CORNER( ICORNER )
+             U_GL_LOC( U_LILOC ) = U_ILOC
+             U_LILOC = U_LNLOC
+             ICORNER = pipe_corner_nds2(IPIPE)
+             U_ILOC = U_LOC_CORNER( ICORNER )
+             U_GL_LOC( U_LILOC ) = U_ILOC
+
+             IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
+
+             U_GL_GL(:) = U_NDGLN( (ELE-1)*U_NLOC + U_GL_LOC( : ) )
 
 
-          IF ( ELE_HAS_PIPE ) THEN
-
-             X_ALL_CORN(:, :) = x%val(:, X_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_LOC_CORNER(1:NCORNER)) )
-
-             ! If we have more than one pipe then choose the 2 edges with the shortest sides
-             ! and have a maximum of 2 pipes per element...
-
-             ! Calculate the pipes within an element...
-             ! we return the pipe corner nodes for each pipe in
-             CALL CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX_LOGICAL, NDIM, &
-                  pipe_corner_nds1, pipe_corner_nds2, npipes )
-
-
-             DO IPIPE = 1, NPIPES
-
-                ! DEFINE CV_LILOC:
-                CV_LILOC = 1
-                ICORNER = pipe_corner_nds1( IPIPE )
-                ICORNER1 = ICORNER
-                CV_ILOC = CV_LOC_CORNER( ICORNER )
-                CV_GL_LOC( CV_LILOC ) = CV_ILOC
-                CV_LILOC = CV_LNLOC
-                ICORNER = pipe_corner_nds2( IPIPE )
-                ICORNER2 = ICORNER
-                CV_ILOC = CV_LOC_CORNER( ICORNER )
-                CV_GL_LOC( CV_LILOC ) = CV_ILOC
-
-                IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( ICORNER1, ICORNER2 )
-
-                CV_GL_GL( : ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_GL_LOC(:) )
-                MAT_GL_GL( : ) = MAT_NDGLN( (ELE-1)*CV_NLOC + CV_GL_LOC(:) )
-
-                ! DEFINE U_LILOC:
-                U_LILOC = 1
-                ICORNER = pipe_corner_nds1(IPIPE)
-                U_ILOC = U_LOC_CORNER( ICORNER )
-                U_GL_LOC( U_LILOC ) = U_ILOC
-                U_LILOC = U_LNLOC
-                ICORNER = pipe_corner_nds2(IPIPE)
-                U_ILOC = U_LOC_CORNER( ICORNER )
-                U_GL_LOC( U_LILOC ) = U_ILOC
-
-                IF ( U_QUADRATIC ) U_GL_LOC( 2 ) = U_MID_SIDE( ICORNER1, ICORNER2 )
-
-                U_GL_GL(:) = U_NDGLN( (ELE-1)*U_NLOC + U_GL_LOC( : ) )
-
-
-                ! Calculate element angle sweeped out by element and pipe
-                IF ( NDIM == 2 ) THEN
-                   ELE_ANGLE = PI
-                ELSE
-                   ! find the nodes other than the pipe end corner nodes...
-                   ICORNER3 = 0
-                   DO ICORNER = 1, NCORNER
-                      IF ( ICORNER /= ICORNER1 ) THEN
-                         IF ( ICORNER /= ICORNER2 ) THEN
-                            IF ( ICORNER3 == 0 ) THEN
-                               ICORNER3 = ICORNER
-                            ELSE
-                               ICORNER4 = ICORNER
-                            END IF
+             ! Calculate element angle sweeped out by element and pipe
+             IF ( NDIM == 2 ) THEN
+                ELE_ANGLE = PI
+             ELSE
+                ! find the nodes other than the pipe end corner nodes...
+                ICORNER3 = 0
+                DO ICORNER = 1, NCORNER
+                   IF ( ICORNER /= ICORNER1 ) THEN
+                      IF ( ICORNER /= ICORNER2 ) THEN
+                         IF ( ICORNER3 == 0 ) THEN
+                            ICORNER3 = ICORNER
+                         ELSE
+                            ICORNER4 = ICORNER
                          END IF
                       END IF
-                   END DO
-                   ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, ICORNER1), X_ALL_CORN(:, ICORNER2) , &
-                        &                         X_ALL_CORN(:, ICORNER3), X_ALL_CORN(:, ICORNER4) )
-                END IF
+                   END IF
+                END DO
+                ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, ICORNER1), X_ALL_CORN(:, ICORNER2) , &
+                     &                         X_ALL_CORN(:, ICORNER3), X_ALL_CORN(:, ICORNER4) )
+             END IF
 
-                DIRECTION(:) = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
-                DX = SQRT( SUM( DIRECTION(:)**2 ) )
-                DIRECTION(:) = DIRECTION(:) / DX
+             DIRECTION(:) = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
+             DX = SQRT( SUM( DIRECTION(:)**2 ) )
+             DIRECTION(:) = DIRECTION(:) / DX
 
-                IF ( IGNORE_DIAGONAL_PIPES ) THEN
-                   IF ( ABS(DIRECTION(1))<0.99 .AND. ABS(DIRECTION(2))<0.99.AND. ABS(DIRECTION(NDIM))<0.99 ) CYCLE
-                END IF
+             IF ( IGNORE_DIAGONAL_PIPES ) THEN
+                IF ( ABS(DIRECTION(1))<0.99 .AND. ABS(DIRECTION(2))<0.99.AND. ABS(DIRECTION(NDIM))<0.99 ) CYCLE
+             END IF
 
 
-                IF(PIPE_MIN_DIAM) THEN
-                   MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
-                   PIPE_DIAM_GI(:) = MIN_DIAM
-                   IF(SOLVE_ACTUAL_VEL) THEN
-                      DO IPHASE = N_IN_PRES+1, NPHASE
-                        SIGMA_GI(IPHASE,:) = MINVAL( SIGMA(IPHASE, MAT_GL_GL( : ) ) )
-                      END DO
-                   ENDIF
-                ELSE
-                   PIPE_DIAM_GI(:) = 0.0
-                   DO CV_LILOC = 1, CV_LNLOC
-                      CV_KNOD = CV_GL_GL( CV_LILOC )
-                      PIPE_DIAM_GI(:) = PIPE_DIAM_GI(:) + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
-                   END DO
-                   PIPE_DIAM_GI(:) = MAX(PIPE_DIAM_GI(:), 0.0)
-                   IF(SOLVE_ACTUAL_VEL) THEN
-                      SIGMA_GI(:,:)=0.0
-                      DO IPHASE=N_IN_PRES+1,NPHASE
-                         DO CV_LILOC = 1, CV_LNLOC
-                            MAT_KNOD = MAT_GL_GL( CV_LILOC )
-                            SIGMA_GI(IPHASE,:) = SIGMA_GI(IPHASE,:)  + SIGMA( IPHASE, MAT_KNOD ) * SCVFEN( CV_LILOC, : )
-                         END DO
-                      END DO
-                   ENDIF
-                ENDIF
-
-                ! Recalculate SIGMA if we need to...
-                IF ( CALC_SIGMA_PIPE ) THEN
-                   MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
+             IF(PIPE_MIN_DIAM) THEN
+                MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
+                PIPE_DIAM_GI(:) = MIN_DIAM
+                IF(SOLVE_ACTUAL_VEL) THEN
                    DO IPHASE = N_IN_PRES+1, NPHASE
-                      IPHASE_IN_PIPE=IPHASE-N_IN_PRES
-                      DO GI = 1, scvngi
-                         U_GI = 0.0
-                         DO IDIM = 1, NDIM
-                            U_GI = U_GI + SUM( SUFEN( : , GI ) * NU_ALL( IDIM, IPHASE, U_GL_GL( : ) ) ) * DIRECTION( IDIM )
-                         END DO
-                         !CALL DEF_SIGMA_PIPE_FRICTION(SIGMA_GI(IPHASE,GI), U_GI, MIN_DIAM, IPHASE_IN_PIPE)
-                         CALL SIGMA_PIPE_FRICTION( SIGMA_GI( IPHASE, GI ), U_GI, MIN_DIAM, WELL_DENSITY( IPHASE ), WELL_VISCOSITY( IPHASE ), E_ROUGHNESS )
-                      END DO
+                      SIGMA_GI(IPHASE,:) = MINVAL( SIGMA(IPHASE, MAT_GL_GL( : ) ) )
                    END DO
-                END IF
-
-                ! Add the sigma associated with the switch to switch the pipe flow on and off...
-                IF ( SWITCH_PIPES_ON_AND_OFF ) THEN ! Dimitrios it may be that SWITCH_PIPES_ON_AND_OFF =.false. always
-                   IWATER = PHASE_EXCLUDE
-
-                   S_WATER = MAXVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) )
-                   S_WATER_MIN = MAXVAL( PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_GL_GL( : ) ) )
-                   S_WATER_MAX = MAXVAL( PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_GL_GL( : ) ) )
-
-                   SIGMA_SWITCH_ON_OFF_PIPE_GI = MAXVAL( SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) ) )
-
-                   PIPE_SWITCH = 1.0 - MIN( 1.0, MAX( 0.0, ( S_WATER_MAX - S_WATER ) / MAX( S_WATER_MAX - S_WATER_MIN, 1.E-20 ) ) )
-                   SIGMA_GI( N_IN_PRES+1:NPHASE, : ) = SIGMA_GI( N_IN_PRES+1:NPHASE, : ) + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
-                END IF
-
-                ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-                ! Adjust according to the volume of the pipe...
-                DETWEI(:) = SCVFEWEIGH(:) * 0.5* DX * PI * ( (0.5*PIPE_DIAM_GI(:))**2 ) * ELE_ANGLE / ( 2.0 * PI )
-                L_CVFENX_ALL(:,:) = 2.0 * SCVFENLX(:,:) / DX
-                L_UFENX_ALL(:,:) = 2.0 * SUFENLX(:,:) / DX
-
+                ENDIF
+             ELSE
+                PIPE_DIAM_GI(:) = 0.0
                 DO CV_LILOC = 1, CV_LNLOC
-                   DO IDIM = 1, NDIM
-                      L_CVFENX_ALL_REVERSED( IDIM, :, CV_LILOC ) = L_CVFENX_ALL( CV_LILOC, : ) * DIRECTION( IDIM )
+                   CV_KNOD = CV_GL_GL( CV_LILOC )
+                   PIPE_DIAM_GI(:) = PIPE_DIAM_GI(:) + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
+                END DO
+                PIPE_DIAM_GI(:) = MAX(PIPE_DIAM_GI(:), 0.0)
+                IF(SOLVE_ACTUAL_VEL) THEN
+                   SIGMA_GI(:,:)=0.0
+                   DO IPHASE=N_IN_PRES+1,NPHASE
+                      DO CV_LILOC = 1, CV_LNLOC
+                         MAT_KNOD = MAT_GL_GL( CV_LILOC )
+                         SIGMA_GI(IPHASE,:) = SIGMA_GI(IPHASE,:)  + SIGMA( IPHASE, MAT_KNOD ) * SCVFEN( CV_LILOC, : )
+                      END DO
+                   END DO
+                ENDIF
+             ENDIF
+
+             ! Recalculate SIGMA if we need to...
+             IF ( CALC_SIGMA_PIPE ) THEN
+                MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
+                DO IPHASE = N_IN_PRES+1, NPHASE
+                   IPHASE_IN_PIPE=IPHASE-N_IN_PRES
+                   DO GI = 1, scvngi
+                      U_GI = 0.0
+                      DO IDIM = 1, NDIM
+                         U_GI = U_GI + SUM( SUFEN( : , GI ) * NU_ALL( IDIM, IPHASE, U_GL_GL( : ) ) ) * DIRECTION( IDIM )
+                      END DO
+                      CALL SIGMA_PIPE_FRICTION( SIGMA_GI( IPHASE, GI ), U_GI, MIN_DIAM, WELL_DENSITY( IPHASE ), WELL_VISCOSITY( IPHASE ), E_ROUGHNESS )
                    END DO
                 END DO
-                DO U_LILOC = 1, U_LNLOC
-                   L_UFEN_REVERSED( :, U_LILOC ) = SUFEN( U_LILOC, : )
+             END IF
+
+             ! Add the sigma associated with the switch to switch the pipe flow on and off...
+             IF ( SWITCH_PIPES_ON_AND_OFF ) THEN ! Dimitrios it may be that SWITCH_PIPES_ON_AND_OFF =.false. always
+                IWATER = PHASE_EXCLUDE
+
+                S_WATER = MAXVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) )
+                S_WATER_MIN = MAXVAL( PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_GL_GL( : ) ) )
+                S_WATER_MAX = MAXVAL( PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_GL_GL( : ) ) )
+
+                SIGMA_SWITCH_ON_OFF_PIPE_GI = MAXVAL( SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) ) )
+
+                PIPE_SWITCH = 1.0 - MIN( 1.0, MAX( 0.0, ( S_WATER_MAX - S_WATER ) / MAX( S_WATER_MAX - S_WATER_MIN, 1.E-20 ) ) )
+                SIGMA_GI( N_IN_PRES+1:NPHASE, : ) = SIGMA_GI( N_IN_PRES+1:NPHASE, : ) + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
+             END IF
+
+             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
+             ! Adjust according to the volume of the pipe...
+             DETWEI(:) = SCVFEWEIGH(:) * 0.5* DX * PI * ( (0.5*PIPE_DIAM_GI(:))**2 ) * ELE_ANGLE / ( 2.0 * PI )
+             L_CVFENX_ALL(:,:) = 2.0 * SCVFENLX(:,:) / DX
+             L_UFENX_ALL(:,:) = 2.0 * SUFENLX(:,:) / DX
+
+             DO CV_LILOC = 1, CV_LNLOC
+                DO IDIM = 1, NDIM
+                   L_CVFENX_ALL_REVERSED( IDIM, :, CV_LILOC ) = L_CVFENX_ALL( CV_LILOC, : ) * DIRECTION( IDIM )
                 END DO
+             END DO
+             DO U_LILOC = 1, U_LNLOC
+                L_UFEN_REVERSED( :, U_LILOC ) = SUFEN( U_LILOC, : )
+             END DO
 
-                ! Add in C matrix contribution: (DG velocities)
-                DO U_LILOC = 1, U_LNLOC
-                   IU_NOD = U_GL_GL( U_LILOC ) ! U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+             ! Add in C matrix contribution: (DG velocities)
+             DO U_LILOC = 1, U_LNLOC
+                IU_NOD = U_GL_GL( U_LILOC ) ! U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
 
-                   DO P_LJLOC = 1, CV_LNLOC
-                      JCV_NOD = CV_GL_GL(P_LJLOC) ! P_NDGLN( ( ELE - 1 ) * P_NLOC + P_JLOC )
-                      ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
-                      ! over the element of the pressure like source term.
-                      ! Put into matrix
-                      DO COUNT2 = FINDC(IU_NOD), FINDC(IU_NOD+1)-1
-                         IF ( COLC(COUNT2) == JCV_NOD ) COUNT = COUNT2
-                      END DO
+                DO P_LJLOC = 1, CV_LNLOC
+                   JCV_NOD = CV_GL_GL(P_LJLOC) ! P_NDGLN( ( ELE - 1 ) * P_NLOC + P_JLOC )
+                   ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
+                   ! over the element of the pressure like source term.
+                   ! Put into matrix
+                   DO COUNT2 = FINDC(IU_NOD), FINDC(IU_NOD+1)-1
+                      IF ( COLC(COUNT2) == JCV_NOD ) COUNT = COUNT2
+                   END DO
 
-                      ! Prepare aid variable NMX_ALL to improve the speed of the calculations
-                      NMX_ALL( : ) = matmul( L_CVFENX_ALL_REVERSED( :, :, P_LJLOC ), DETWEI( : ) * L_UFEN_REVERSED( :, U_LILOC ) )
-                      NM = sum( L_UFEN_REVERSED( :, U_LILOC ) * SCVFEN( P_LJLOC, : ) * DETWEI( : ) )
+                   ! Prepare aid variable NMX_ALL to improve the speed of the calculations
+                   NMX_ALL( : ) = matmul( L_CVFENX_ALL_REVERSED( :, :, P_LJLOC ), DETWEI( : ) * L_UFEN_REVERSED( :, U_LILOC ) )
+                   NM = sum( L_UFEN_REVERSED( :, U_LILOC ) * SCVFEN( P_LJLOC, : ) * DETWEI( : ) )
 
-                      ! Put into matrix
+                   ! Put into matrix
+                   DO IDIM = 1, NDIM
+                      C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) = C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) - NMX_ALL( IDIM )
+                   END DO
+
+                   DO IPHASE = N_IN_PRES+1, NPHASE
                       DO IDIM = 1, NDIM
-                         C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) = C( IDIM, N_IN_PRES+1:NPHASE, COUNT ) - NMX_ALL( IDIM )
+                         ! This is ( S \dot n ) n
+                         U_RHS( IDIM, IPHASE, IU_NOD ) =  U_RHS( IDIM, IPHASE, IU_NOD ) + &
+                              NM * SUM(U_SOURCE_CV( :, IPHASE, JCV_NOD ) * DIRECTION( : ) ) * DIRECTION( IDIM )
                       END DO
+                   END DO
 
+
+                END DO ! DO P_LJLOC = 1, CV_LNLOC
+
+                U_ILOC = U_GL_LOC( U_LILOC )
+                DO U_LJLOC = 1, U_LNLOC
+                   U_JLOC = U_GL_LOC( U_LJLOC )
+                   JU_NOD = U_GL_GL(U_LJLOC)
+
+                   IF ( GET_PIVIT_MAT ) THEN
+                      IF ( .NOT.SOLVE_ACTUAL_VEL ) THEN
+                         NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
+                      END IF
                       DO IPHASE = N_IN_PRES+1, NPHASE
-                         DO IDIM = 1, NDIM
-                            ! This is ( S \dot n ) n
-                            U_RHS( IDIM, IPHASE, IU_NOD ) =  U_RHS( IDIM, IPHASE, IU_NOD ) + &
-                                 NM * SUM(U_SOURCE_CV( :, IPHASE, JCV_NOD ) * DIRECTION( : ) ) * DIRECTION( IDIM )
-                         END DO
-                      END DO
-
-
-                   END DO ! DO P_LJLOC = 1, CV_LNLOC
-
-                   U_ILOC = U_GL_LOC( U_LILOC )
-                   DO U_LJLOC = 1, U_LNLOC
-                      U_JLOC = U_GL_LOC( U_LJLOC )
-                      JU_NOD = U_GL_GL(U_LJLOC)
-
-                      IF(.NOT.SOLVE_ACTUAL_VEL) THEN
-                         NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
-                      ENDIF
-                      DO IPHASE = N_IN_PRES+1, NPHASE
-                         IF(SOLVE_ACTUAL_VEL) THEN
-                            NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_GI(IPHASE,:) )
+                         IF ( SOLVE_ACTUAL_VEL ) THEN
+                            NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_GI(IPHASE,:) )
                          ENDIF
                          JPHASE = IPHASE
                          DO IDIM = 1, NDIM
@@ -14019,86 +14011,86 @@ deallocate(NX_ALL)
                             !pivit_mat(i_indx, i_indx, ele) = pivit_mat(i_indx, i_indx, ele) + NN
                          END DO
                       END DO
-
-                      NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
-
-                      DO IPHASE = N_IN_PRES+1, NPHASE
-                         DO IDIM = 1, NDIM
-                            ! This is ( S \dot n ) n
-                            U_RHS( IDIM, IPHASE, IU_NOD ) =  U_RHS( IDIM, IPHASE, IU_NOD ) + &
-                                 NN * SUM(U_SOURCE( :, IPHASE, JU_NOD ) * DIRECTION( : ) ) * DIRECTION( IDIM )
-                         END DO
-                      END DO
-
-                   END DO ! DO U_LJLOC = 1, U_LNLOC
-
-                END DO ! DO U_LILOC = 1, U_LNLOC
-
-
-                ! Add pressure b.c to matrix and rhs...
-                CV_LOC1 = CV_LOC_CORNER( ICORNER1 )
-                JCV_NOD1 = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_LOC1 )
-
-                CV_LOC2 = CV_LOC_CORNER( ICORNER2 )
-                JCV_NOD2 = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_LOC2 )
-
-                DO IPRES = 2, NPRES
-                   JCV_NOD = 0
-                   IF ( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD1 ) == WIC_P_BC_DIRICHLET ) THEN
-                      CV_LILOC = 1
-                      JCV_NOD = JCV_NOD1
-                      U_LILOC = 1
-                      JU_NOD = U_GL_GL( U_LILOC )
-                      direction_norm = - direction ! for the b.c it must be -ve at the bottom of element
-                   END IF
-                   IF ( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD2 ) == WIC_P_BC_DIRICHLET ) THEN
-                      CV_LILOC = CV_LNLOC
-                      JCV_NOD = JCV_NOD2
-                      U_LILOC = U_LNLOC
-                      JU_NOD = U_GL_GL( U_LILOC )
-                      direction_norm = +direction ! for the b.c it must be +ve at the top of element
                    END IF
 
-                   IF ( JCV_NOD /= 0 ) THEN
-                      ! Add in C matrix contribution: (DG velocities)
-                      ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
-                      ! over the element of the pressure like source term.
-                      ! Put into matrix
-                      PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD )
+                   NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
 
-                      DO COUNT2 = FINDC(JU_NOD), FINDC(JU_NOD+1)-1
-                         IF ( COLC(COUNT2) == JCV_NOD ) COUNT = COUNT2
+                   DO IPHASE = N_IN_PRES+1, NPHASE
+                      DO IDIM = 1, NDIM
+                         ! This is ( S \dot n ) n
+                         U_RHS( IDIM, IPHASE, IU_NOD ) =  U_RHS( IDIM, IPHASE, IU_NOD ) + &
+                              NN * SUM(U_SOURCE( :, IPHASE, JU_NOD ) * DIRECTION( : ) ) * DIRECTION( IDIM )
                       END DO
+                   END DO
 
-                      ! Prepare aid variable NMX_ALL to improve the speed of the calculations
-                      suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE/ ( 2.0 * PI )
-                      NMX_ALL( : ) = direction_norm(:)* suf_area
+                END DO ! DO U_LJLOC = 1, U_LNLOC
 
-                      LOC_U_RHS_U_ILOC = 0.0
-                      DO IPHASE = 1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
-                         DO IDIM = 1, NDIM
+             END DO ! DO U_LILOC = 1, U_LNLOC
 
-                            C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) + NMX_ALL( IDIM )
 
-                            LOC_U_RHS_U_ILOC( IDIM, IPHASE) =  LOC_U_RHS_U_ILOC( IDIM, IPHASE ) &
-                                                - NMX_ALL( IDIM ) * SUF_P_BC_ALL_NODS( IPRES,JCV_NOD )
-                         END DO
+             ! Add pressure b.c to matrix and rhs...
+             CV_LOC1 = CV_LOC_CORNER( ICORNER1 )
+             JCV_NOD1 = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_LOC1 )
+
+             CV_LOC2 = CV_LOC_CORNER( ICORNER2 )
+             JCV_NOD2 = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_LOC2 )
+
+             DO IPRES = 2, NPRES
+                JCV_NOD = 0
+                IF ( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD1 ) == WIC_P_BC_DIRICHLET ) THEN
+                   CV_LILOC = 1
+                   JCV_NOD = JCV_NOD1
+                   U_LILOC = 1
+                   JU_NOD = U_GL_GL( U_LILOC )
+                   direction_norm = - direction ! for the b.c it must be -ve at the bottom of element
+                END IF
+                IF ( WIC_P_BC_ALL_NODS( IPRES, JCV_NOD2 ) == WIC_P_BC_DIRICHLET ) THEN
+                   CV_LILOC = CV_LNLOC
+                   JCV_NOD = JCV_NOD2
+                   U_LILOC = U_LNLOC
+                   JU_NOD = U_GL_GL( U_LILOC )
+                   direction_norm = +direction ! for the b.c it must be +ve at the top of element
+                END IF
+
+                IF ( JCV_NOD /= 0 ) THEN
+                   ! Add in C matrix contribution: (DG velocities)
+                   ! In this section we multiply the shape functions over the GI points. i.e: we perform the integration
+                   ! over the element of the pressure like source term.
+                   ! Put into matrix
+                   PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD )
+
+                   DO COUNT2 = FINDC(JU_NOD), FINDC(JU_NOD+1)-1
+                      IF ( COLC(COUNT2) == JCV_NOD ) COUNT = COUNT2
+                   END DO
+
+                   ! Prepare aid variable NMX_ALL to improve the speed of the calculations
+                   suf_area = PI * ( (0.5*PIPE_DIAM_END)**2 ) * ELE_ANGLE/ ( 2.0 * PI )
+                   NMX_ALL( : ) = direction_norm(:)* suf_area
+
+                   LOC_U_RHS_U_ILOC = 0.0
+                   DO IPHASE = 1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
+                      DO IDIM = 1, NDIM
+
+                         C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) + NMX_ALL( IDIM )
+
+                         LOC_U_RHS_U_ILOC( IDIM, IPHASE) =  LOC_U_RHS_U_ILOC( IDIM, IPHASE ) &
+                              - NMX_ALL( IDIM ) * SUF_P_BC_ALL_NODS( IPRES,JCV_NOD )
                       END DO
+                   END DO
 
-                      U_RHS( :, N_IN_PRES+1:NPHASE, JU_NOD ) = U_RHS( :, N_IN_PRES+1:NPHASE, JU_NOD ) + LOC_U_RHS_U_ILOC( :, N_IN_PRES+1:NPHASE)
+                   U_RHS( :, N_IN_PRES+1:NPHASE, JU_NOD ) = U_RHS( :, N_IN_PRES+1:NPHASE, JU_NOD ) + LOC_U_RHS_U_ILOC( :, N_IN_PRES+1:NPHASE)
 
-                   END IF ! IF ( JCV_NOD /= 0 ) THEN
-                END DO ! DO IPRES = 2, NPRES
+                END IF ! IF ( JCV_NOD /= 0 ) THEN
+             END DO ! DO IPRES = 2, NPRES
 
 
 
-             END DO ! DO IPIPE = 1, NPIPES
-          END IF ! IF ( ELE_HAS_PIPE ) THEN
+          END DO ! DO IPIPE = 1, NPIPES
+       END IF ! IF ( ELE_HAS_PIPE ) THEN
 
-       END DO ! DO ELE = 1, TOTELE
+    END DO ! DO ELE = 1, TOTELE
 
-       U_RHS_STORE( :, N_IN_PRES+1:NPHASE, : ) = U_RHS( :, N_IN_PRES+1:NPHASE, : )
-
+    if ( GET_PIVIT_MAT ) then
        DO U_ILOC = 1, U_NLOC
           U_JLOC = U_ILOC
           DO IPHASE = N_IN_PRES+1, NPHASE
@@ -14113,69 +14105,39 @@ deallocate(NX_ALL)
              END DO
           END DO
        END DO
-
-    ELSE
-
-       U_RHS( :, N_IN_PRES+1:NPHASE, : ) = U_RHS_STORE( :, N_IN_PRES+1:NPHASE, : )
-
-    END IF ! IF ( .NOT.GOT_C_MATRIX ) THEN
+    end if
 
     RETURN
   END SUBROUTINE MOD_1D_FORCE_BAL_C
 
 
-
-
-
-    SUBROUTINE DEF_SIGMA_PIPE_FRICTION(SIGMA, U, DIAM, IPHASE)
-    IMPLICIT NONE
-    REAL, INTENT( IN ) :: U, DIAM
-    INTEGER, INTENT( IN ) :: IPHASE
-    REAL, INTENT( INOUT ) :: SIGMA
-
-! Local variables
-    REAL :: E_ROUGHNESS, DEFAULT_DEN(2), DEFAULT_VISC(2)
-
-    E_ROUGHNESS = 1.E-6 ! Pipe roughness.
-    DEFAULT_DEN(1) = 1000.0 ! Density of water
-    DEFAULT_DEN(2) = 900.0 ! Density of oil
-    DEFAULT_VISC(1) = 1.E-3 ! Viscocity of water
-    DEFAULT_VISC(2) = 1.E-2 ! Viscocity of oil
-
-    CALL SIGMA_PIPE_FRICTION(SIGMA,U,DIAM,DEFAULT_DEN(IPHASE),DEFAULT_VISC(IPHASE),E_ROUGHNESS)
-    RETURN
-    END SUBROUTINE DEF_SIGMA_PIPE_FRICTION
-
-
-
-
-
-    SUBROUTINE SIGMA_PIPE_FRICTION(SIGMA,U,DIAM,DEN,VISC,E_ROUGHNESS)
+  SUBROUTINE SIGMA_PIPE_FRICTION( SIGMA, U, DIAM, DEN, VISC, E_ROUGHNESS )
     IMPLICIT NONE
     REAL, INTENT( IN ) :: U,DIAM,DEN,VISC,E_ROUGHNESS
     REAL, INTENT( INOUT ) :: SIGMA
-! Local variables
+
     REAL, PARAMETER :: TOLER=1.E-10
     REAL :: RE, A, MAX_RE, F, F1, F2, W, MAX_U
 
-    MAX_U = MAX(TOLER, ABS(U) )
-    RE = DEN*MAX_U*DIAM/VISC
-!    MAX_RE=MAX(TOLER,RE)
+    MAX_U = MAX( TOLER, ABS( U ) )
+    RE = DEN * MAX_U * DIAM / VISC
+
     MAX_RE = RE
     A = LOG10( 6.9/MAX_RE + (E_ROUGHNESS/(3.7*DIAM))**(10.0/9.0) )
 
-    F1 = 16.0/MAX_RE
-    F2 = 1.0/MAX( -3.6*A, TOLER )
+    F1 = 16.0 / MAX_RE
+    F2 = 1.0 / MAX( -3.6 * A, TOLER )
 
-    W = MAX(0.0,  MIN(1.0,(RE-2000.0)/2000.0)  ) ! Relaxation factor between 2 friction factor expressions
+    W = MAX( 0.0,  MIN( 1.0, (RE-2000.0)/2000.0 ) ) ! Relaxation factor between 2 friction factor expressions
 
-    F = (1-W)*F1 + W*F2
+    F = ( 1 - W ) * F1 + W * F2
 
-    SIGMA = (F/DIAM)*2.0*DEN*ABS(U)  ! based on fanning friction factor
-
+    SIGMA = ( F / DIAM ) * 2.0 * DEN * ABS( U ) ! Based on Fanning friction factor
+    !SIGMA = ( F / DIAM ) * 2.0 * DEN * 1.0 ! Based on Fanning friction factor
+    !SIGMA = ( F / DIAM ) * 2.0 * DEN * MAX_U ! Based on Fanning friction factor
 
     RETURN
-    END SUBROUTINE SIGMA_PIPE_FRICTION
+  END SUBROUTINE SIGMA_PIPE_FRICTION
 
 
 
