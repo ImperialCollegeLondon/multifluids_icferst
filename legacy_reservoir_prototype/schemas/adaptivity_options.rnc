@@ -415,6 +415,10 @@ hr_adaptivity =
             ## Adapt period in timesteps.
             element period_in_timesteps {
                integer
+            }|
+            ## Adapt within the non-linear solver
+            element adapt_mesh_within_FPI {
+               empty
             }
          ),
          ## Time interval (in cpu time) when mesh adaptivity performed

@@ -707,7 +707,7 @@ contains
        call MatZeroRows(matrix%M,size(PetscRows),PetscRows,diag, x,b,ierr)
     else
        call MatZeroRows(matrix%M,size(PetscRows),PetscRows, diag, ierr)
-    end if 
+    end if
 
 
   end subroutine petsc_csr_zero_block_rows

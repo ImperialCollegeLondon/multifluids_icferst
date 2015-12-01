@@ -412,7 +412,7 @@
       end if
 
          !Currently this is false, over-ride switch for porous media since it is slower than memory hungry
-      IF ( ( test_caching_level(6) .or.is_porous_media ) .and. npres==1 ) THEN
+      IF ( ( test_caching_level(6) .or.is_porous_media ) .and. npres==1) THEN
          ! Fast but memory intensive...
          CALL COLOR_GET_CMC_PHA_FAST( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
               NCOLC, FINDC, COLC, &
@@ -892,9 +892,11 @@ END IF
                END DO
             END IF
          END DO
-         !Re-assemble just in case
+
+         !Re-assemble
          CMC_petsc%is_assembled=.false.
          call assemble( CMC_petsc )
+
          IF ( IGOT_CMC_PRECON /= 0 ) deallocate(CMC_COLOR_VEC2_MANY)
 
          deallocate(COLOR_IN_ROW, COLOR_IN_ROW2 )

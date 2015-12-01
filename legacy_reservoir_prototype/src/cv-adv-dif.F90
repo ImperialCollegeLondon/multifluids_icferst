@@ -4905,13 +4905,12 @@ end if
        else
           call get_option( trim(PSI(1)%ptr%option_path)//"/prognostic/solver/max_iterations", &
                max_iterations,  default =  500 )
-          if (max_iterations ==0) then
+          if (max_iterations == 0) then
              option_path="/material_phase[0]/scalar_field::Pressure/prognostic"
           else
              option_path=trim(PSI(1)%ptr%option_path)//"/prognostic"
           end if
        end if
-
        DO IT = 1, size(fempsi)
           call zero_non_owned(fempsi_rhs(it))
           CALL petsc_solve(  FEMPSI(IT)%ptr,  &
@@ -10392,7 +10391,7 @@ CONTAINS
                       J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
                       MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                          + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC )))&
-                          * HDC * 0.5* abs(CVNORMX_ALL( IDIM, GI )) * SCVDETWEI( GI )
+                         * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                     end do
                   end do
               end if
@@ -10446,7 +10445,7 @@ CONTAINS
                       J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
                       MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                          + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC )))&
-                          * HDC * 0.5 * abs(CVNORMX_ALL( IDIM, GI )) * SCVDETWEI( GI )
+                          * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                     end do
                   end do
               end if
@@ -10537,7 +10536,8 @@ CONTAINS
                               J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
                               MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                                  + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC2 )))&
-                                  * HDC * abs(CVNORMX_ALL( IDIM, GI )) * SCVDETWEI( GI )
+                                * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
+
                             end do
                           end do
                       end if
@@ -10587,7 +10587,7 @@ CONTAINS
                               J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
                               MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                                  + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC2 )))&
-                               * HDC * abs(CVNORMX_ALL( IDIM, GI )) * SCVDETWEI( GI )
+                                * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                             end do
                           end do
                       end if
@@ -10872,7 +10872,7 @@ CONTAINS
     INTEGER, DIMENSION( : ), ALLOCATABLE, SAVE :: ELEMATPSI
     REAL, DIMENSION( :  ), ALLOCATABLE, SAVE :: ELEMATWEI
     LOGICAL, SAVE :: STORE_ELE=.TRUE., RET_STORE_ELE=.FALSE.
-
+    LOGICAL, SAVE :: adapt_in_FPI = .false.
     LOGICAL :: D3,DCYL
     ! Allocate memory for the interpolated upwind values
     LOGICAL, PARAMETER :: BOUND  = .TRUE., REFLECT = .FALSE. ! limiting options
@@ -10942,8 +10942,10 @@ CONTAINS
        if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps') ) then
           call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', &
                adapt_time_steps )
+           if( mod( timestep, adapt_time_steps ) == 0 ) store_ele = .true.
+       else if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI') ) then
+            STORE_ELE=.TRUE.; RET_STORE_ELE=.FALSE.
        end if
-       if( mod( timestep, adapt_time_steps ) == 0 ) store_ele = .true.
     elseif( have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric') ) then
        if( have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric/period_in_timesteps') ) then
           call get_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric/period_in_timesteps', &
