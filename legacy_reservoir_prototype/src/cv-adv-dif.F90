@@ -609,7 +609,7 @@ contains
 
 
       integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, U_JLOC, CV_JLOC2, CV_NODJ2 
-      real :: rconst, h_nano, RP_NANO, dt_pipe_factor
+      real :: rconst, h_nano, RP_NANO, dt_pipe_factor, xc_ele(ndim), xs_pt(ndim)
       logical :: got_nano
 
       if ( npres > 1 )then
@@ -1476,6 +1476,19 @@ contains
                        X_NDGLN, X_NONODS, SCVDETWEI, CVNORMX_ALL,  &
                        SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, XC_CV_ALL( 1:NDIM, CV_NODI ), & 
                        X_ALL(1:NDIM,:),  D1, D3, DCYL )
+
+
+! centre of element...
+                xc_ele(:)=0.0
+                xs_pt(:)=0.0
+                DO CV_JLOC2 = 1, CV_NLOC
+                    X_NODI = X_NDGLN( (ELE-1)*X_NLOC + CV_JLOC2 )
+                    xc_ele(:)=xc_ele(:) + X_ALL( :, X_NODI )/real( CV_NLOC )
+                    xs_pt(:)=xs_pt(:) + X_ALL( :, X_NODI ) * SCVFEN(CV_JLOC2, GI)
+                END DO
+! make sure normal is pointing out of element...
+                CVNORMX_ALL(:,gi) = CVNORMX_ALL(:,gi) * SIGN( 1.0, sum(CVNORMX_ALL(:,gi)*(xs_pt(:)-xc_ele(:))  )  )
+
 
 
 ! FOR CV PRESSURE PART *************
