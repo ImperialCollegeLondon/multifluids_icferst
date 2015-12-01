@@ -1453,18 +1453,13 @@ contains
 
 
 
-
+      IF(GETCT) THEN
       IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV.AND. .FALSE.) THEN
          Loop_CV_ILOC2: DO CV_ILOC = 1, CV_NLOC ! Loop over the nodes of the element
 
             ! Global node number of the local node
             CV_NODI = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
-            X_NODI = X_NDGLN( ( ELE - 1 ) * X_NLOC  + CV_ILOC )
-            MAT_NODI = MAT_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
-            IMID = SMALL_CENTRM(CV_NODI)
 
-! Generate some local F variables ***************
-            F_CV_NODI(:)= LOC_F(:, CV_ILOC)
 ! Generate some local F variables ***************
 
             ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
@@ -1496,7 +1491,7 @@ contains
                               EXIT
                            END IF
                         END DO
-                        C_JCOUNT_KLOC( U_KLOC ) = JCOUNT
+                        C_ICOUNT_KLOC( U_KLOC ) = JCOUNT
                      END DO
 
                      DO U_KLOC = 1, U_NLOC
@@ -1524,7 +1519,7 @@ contains
                               EXIT
                            END IF
                         END DO
-                        C_JCOUNT_KLOC( U_KLOC ) = JCOUNT
+                        C_ICOUNT_KLOC( U_KLOC ) = JCOUNT
                      END DO
 
                      DO U_KLOC = 1, U_NLOC
@@ -1547,6 +1542,7 @@ contains
             END DO Loop_GCOUNT2
          END DO Loop_CV_ILOC2
       endif  ! IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
+      endif  ! IF(GETct) then
 
 
 
