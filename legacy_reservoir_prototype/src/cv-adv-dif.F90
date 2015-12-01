@@ -1474,7 +1474,7 @@ contains
                   ! Calculate the control volume normals at the Gauss pts.
                   CALL SCVDETNX_new( ELE, GI, X_NLOC, SCVNGI, TOTELE, NDIM, &
                        X_NDGLN, X_NONODS, SCVDETWEI, CVNORMX_ALL,  &
-                       SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, XC_CV_ALL( 1:NDIM, CV_NODI ), &
+                       SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, XC_CV_ALL( 1:NDIM, CV_NODI ), & 
                        X_ALL(1:NDIM,:),  D1, D3, DCYL )
 
 
