@@ -608,7 +608,7 @@ contains
       real, dimension( :, :, : ), pointer :: fem_p
 
 
-      integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, U_JLOC
+      integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, U_JLOC, CV_JLOC2, CV_NODJ2 
       real :: rconst, h_nano, RP_NANO, dt_pipe_factor
       logical :: got_nano
 
@@ -1449,6 +1449,106 @@ contains
               SCVFEN, SCVFENLX_ALL, SCVFEWEIGH, SCVDETWEI, SCVRA, VOLUME, DCYL, &
               SCVFENX_ALL, &
               NDIM, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
+
+
+
+
+
+      IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV.AND. .FALSE.) THEN
+         Loop_CV_ILOC2: DO CV_ILOC = 1, CV_NLOC ! Loop over the nodes of the element
+
+            ! Global node number of the local node
+            CV_NODI = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
+            X_NODI = X_NDGLN( ( ELE - 1 ) * X_NLOC  + CV_ILOC )
+            MAT_NODI = MAT_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
+            IMID = SMALL_CENTRM(CV_NODI)
+
+! Generate some local F variables ***************
+            F_CV_NODI(:)= LOC_F(:, CV_ILOC)
+! Generate some local F variables ***************
+
+            ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
+            Loop_GCOUNT2: DO GCOUNT = FINDGPTS( CV_ILOC ), FINDGPTS( CV_ILOC + 1 ) - 1
+               ! COLGPTS stores the local Gauss-point number in the ELE
+               GI = COLGPTS( GCOUNT )
+               ! Get the neighbouring node for node ILOC and Gauss point GI
+               CV_JLOC = CV_NEILOC( CV_ILOC, GI )
+               Conditional_CheckingNeighbourhood2: IF ( CV_JLOC == -1 ) THEN
+
+! On surface of element...
+                  ! Calculate the control volume normals at the Gauss pts.
+                  CALL SCVDETNX_new( ELE, GI, X_NLOC, SCVNGI, TOTELE, NDIM, &
+                       X_NDGLN, X_NONODS, SCVDETWEI, CVNORMX_ALL,  &
+                       SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, XC_CV_ALL( 1:NDIM, CV_NODI ), &
+                       X_ALL(1:NDIM,:),  D1, D3, DCYL )
+
+
+! FOR CV PRESSURE PART *************
+! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
+                     DO U_KLOC = 1, U_NLOC
+                        U_NODK = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_KLOC )
+                        JCOUNT = 0
+!                        DO COUNT = FINDC( CV_NODI ), FINDC( CV_NODI + 1 ) - 1
+!                           IF ( COLC( COUNT ) == U_NODK ) THEN
+                        DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
+                           IF ( COLC( COUNT ) == CV_NODI ) THEN
+                              JCOUNT = COUNT
+                              EXIT
+                           END IF
+                        END DO
+                        C_JCOUNT_KLOC( U_KLOC ) = JCOUNT
+                     END DO
+
+                     DO U_KLOC = 1, U_NLOC
+                        DO IPHASE=1, NPHASE
+                           C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
+                            = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
+                              - SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) 
+                        END DO
+                     END DO
+! FOR CV PRESSURE PART *************
+
+
+! FOR fem PRESSURE PART *************
+                  DO CV_JLOC2=1,CV_NLOC
+                     CV_NODJ2 = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC2 )
+! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
+                     DO U_KLOC = 1, U_NLOC
+                        U_NODK = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_KLOC )
+                        JCOUNT = 0
+!                        DO COUNT = FINDC( CV_NODJ2 ), FINDC( CV_NODJ2 + 1 ) - 1
+!                           IF ( COLC( COUNT ) == U_NODK ) THEN
+                        DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
+                           IF ( COLC( COUNT ) == CV_NODJ2 ) THEN
+                              JCOUNT = COUNT
+                              EXIT
+                           END IF
+                        END DO
+                        C_JCOUNT_KLOC( U_KLOC ) = JCOUNT
+                     END DO
+
+                     DO U_KLOC = 1, U_NLOC
+                        DO IPHASE=1, NPHASE
+                           C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
+                            = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
+                              + SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) * SCVFEN(CV_JLOC2, GI)
+                        END DO
+                     END DO
+                 END DO ! ENDOF DO CV_JLOC2=1,CV_NLOC
+! FOR fem PRESSURE PART *************
+
+
+
+                   
+               END IF Conditional_CheckingNeighbourhood2
+
+
+
+            END DO Loop_GCOUNT2
+         END DO Loop_CV_ILOC2
+      endif  ! IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
+
+
 
 
 ! Generate some local F variables ***************
