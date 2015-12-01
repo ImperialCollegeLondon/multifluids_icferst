@@ -477,6 +477,10 @@ Usually set to 10-20 times the timestep.</a:documentation>
           <a:documentation>Adapt period in timesteps.</a:documentation>
           <ref name="integer"/>
         </element>
+        <element name="adapt_mesh_within_FPI">
+          <a:documentation>Adapt within the non-linear solver</a:documentation>
+          <empty/>
+        </element>
       </choice>
       <optional>
         <element name="cpu_period">

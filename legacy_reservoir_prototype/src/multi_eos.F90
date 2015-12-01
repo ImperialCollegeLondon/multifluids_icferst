@@ -1730,7 +1730,6 @@
       end if
       call get_var_from_packed_state(packed_state,CapPressure = CapPressure, &
         Immobile_fraction = Immobile_fraction, Cap_entry_pressure = Cap_entry_pressure, Cap_exponent = Cap_exponent)
-
       nphase =size(Satura,1)
       allocate(Cont_correction(size(satura,2)))
 
@@ -1743,7 +1742,7 @@
             "]/multiphase_properties/capillary_pressure/type_Brooks_Corey") ) then
 
               !Apply Brooks-Corey model
-              do jphase =1, nphase
+              do jphase = 1, nphase
                 Cont_correction = 0
                 if (jphase /= iphase) then!Don't know how this will work for more than 2 phases
                     do ele = 1, totele
@@ -1762,7 +1761,6 @@
 
           end if
       END DO
-
 
         deallocate(Cont_correction)
       RETURN
