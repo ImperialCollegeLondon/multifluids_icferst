@@ -1498,7 +1498,7 @@ contains
                         DO IPHASE=1, NPHASE
                            C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
                             = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
-                              - SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) 
+                              + SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) 
                         END DO
                      END DO
 ! FOR CV PRESSURE PART *************
@@ -1526,7 +1526,7 @@ contains
                         DO IPHASE=1, NPHASE
                            C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
                             = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
-                              + SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) * SCVFEN(CV_JLOC2, GI)
+                              - SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) * SCVFEN(CV_JLOC2, GI)
                         END DO
                      END DO
                  END DO ! ENDOF DO CV_JLOC2=1,CV_NLOC
