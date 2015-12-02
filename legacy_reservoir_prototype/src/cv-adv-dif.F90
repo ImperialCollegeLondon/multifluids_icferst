@@ -271,7 +271,7 @@ contains
       type( state_type ), intent( inout ) :: packed_state, storage_state
       type(tensor_field), intent(inout), target :: tracer
       type(tensor_field), intent(in), target :: density
-      type(tensor_field), intent(in) :: velocity 
+      type(tensor_field), intent(in) :: velocity
 
       INTEGER, intent( in ) :: NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, &
            TOTELE, &
@@ -386,9 +386,9 @@ contains
 ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the C matrix in here also based on control-volume pressure.
       logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
       REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
-! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement 
-! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained 
-! by correlating the IC-FERST production results with Eclipse results on a regular mesh 
+! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement
+! model is derived for a 7-point 3D finite difference stencil. This correction factor is obtained
+! by correlating the IC-FERST production results with Eclipse results on a regular mesh
 ! of linear tetrahedra elements and a single well at steady state. =0.0 is no correction =0.35 recommended.
 
       LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
@@ -1239,7 +1239,7 @@ contains
       FEMT_ALL(:,:)=FEMPSI(1)%ptr%val(1,:,:)
       FEMTOLD_ALL(:,:)=FEMPSI(2)%ptr%val(1,:,:)
       FEM_IT=3
-      
+
       if (.not. is_constant(density)) then
          FEMDEN_ALL=psi(FEM_IT)%ptr%val(1,:,:)
          tfield => extract_tensor_field( packed_state, "PackedFEDensity" )
@@ -13631,17 +13631,22 @@ deallocate(NX_ALL)
     REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED
     REAL, DIMENSION( :, : ), ALLOCATABLE :: X_ALL_CORN, SUF_P_BC_ALL_NODS, RVEC_SUM, LOC_U_RHS_U_ILOC
     REAL, DIMENSION( : ), ALLOCATABLE :: DETWEI, PIPE_DIAM_GI, NMX_ALL, WELL_DENSITY, WELL_VISCOSITY
-    REAL, DIMENSION( :, : ), ALLOCATABLE :: SIGMA_GI
+    REAL, DIMENSION( :, : ), ALLOCATABLE :: SIGMA_GI, SIGMA_ON_OFF_GI
     TYPE( SCALAR_FIELD ), POINTER :: PHASE_EXCLUDE_PIPE_SAT_MIN, PHASE_EXCLUDE_PIPE_SAT_MAX, SIGMA_SWITCH_ON_OFF_PIPE
     INTEGER :: PHASE_EXCLUDE
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
-    REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM )
-    REAL :: DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
+    REAL :: DIRECTION( NDIM ), MOTHER_DIRECTION( NDIM ), SECOND_DIRECTION( NDIM ), THIRD_DIRECTION( NDIM ), DIRECTION_NORM( NDIM ), IDENT( NDIM, NDIM )
+    REAL :: DX, MOTHER_DX, THIRD_DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
     REAL :: S_WATER, S_WATER_MIN, S_WATER_MAX, SIGMA_SWITCH_ON_OFF_PIPE_GI, PIPE_SWITCH
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
-         &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4
-    INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2, IPHASE_IN_PIPE, GI, IWATER
+         &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4, JCORNER
+    INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2, IPHASE_IN_PIPE, GI, IWATER, CV_JLOC, CV_NODJ
+
+    IDENT = 0.0
+    DO IDIM = 1, NDIM
+       IDENT( IDIM, IDIM ) = 1.0
+    END DO
 
     X_NLOC = CV_NLOC
     ncorner = ndim + 1
@@ -13717,7 +13722,7 @@ deallocate(NX_ALL)
     X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
     allocate( PIPE_DIAM_GI(scvngi) )
-    allocate( SIGMA_GI(NPHASE,scvngi) )
+    allocate( SIGMA_GI(NPHASE,scvngi), SIGMA_ON_OFF_GI(NPHASE,scvngi) )
 
     ! Get the 1D shape functions...
     allocate( scvfeweigh(scvngi), &
@@ -13819,6 +13824,25 @@ deallocate(NX_ALL)
           CALL CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX_LOGICAL, NDIM, &
                pipe_corner_nds1, pipe_corner_nds2, npipes )
 
+          IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
+             MOTHER_DIRECTION = 0.0
+             DO ICORNER = 1, NCORNER
+                CV_ILOC = CV_LOC_CORNER( ICORNER )
+                CV_NODI = CV_NDGLN( (ELE-1 )*CV_NLOC + CV_ILOC )
+                DO JCORNER = ICORNER+1, NCORNER
+                   CV_JLOC = CV_LOC_CORNER(ICORNER)
+                   CV_NODJ = CV_NDGLN( (ELE-1 )*CV_NLOC + CV_JLOC )
+
+                   IF ( PIPE_DIAMETER%VAL(CV_NODI)>0.0 .AND. PIPE_DIAMETER%VAL(CV_NODJ)>0.0 ) THEN
+                      IF ( SIGMA_SWITCH_ON_OFF_PIPE%VAL(CV_NODI)==0.0 .AND. SIGMA_SWITCH_ON_OFF_PIPE%VAL(CV_NODJ)==0.0 ) THEN
+                         MOTHER_DIRECTION(:) = X_ALL_CORN( :, ICORNER ) - X_ALL_CORN( :, JCORNER )
+                         MOTHER_DX = SQRT( SUM( DIRECTION(:)**2 ) )
+                         MOTHER_DIRECTION(:) = MOTHER_DIRECTION(:) / MOTHER_DX
+                      END IF
+                   END IF
+                END DO
+             END DO
+          END IF
 
           DO IPIPE = 1, NPIPES
 
@@ -13879,19 +13903,26 @@ deallocate(NX_ALL)
              DX = SQRT( SUM( DIRECTION(:)**2 ) )
              DIRECTION(:) = DIRECTION(:) / DX
 
+             IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
+                CALL CrossProduct( NDIM, SECOND_DIRECTION, MOTHER_DIRECTION, DIRECTION )
+                CALL CrossProduct( NDIM, THIRD_DIRECTION, SECOND_DIRECTION, MOTHER_DIRECTION )
+                THIRD_DX = SQRT( SUM( THIRD_DIRECTION(:)**2 ) )
+                THIRD_DIRECTION(:) = THIRD_DIRECTION(:) / MAX( 1.E-10, THIRD_DX )
+             END IF
+
              IF ( IGNORE_DIAGONAL_PIPES ) THEN
                 IF ( ABS(DIRECTION(1))<0.99 .AND. ABS(DIRECTION(2))<0.99.AND. ABS(DIRECTION(NDIM))<0.99 ) CYCLE
              END IF
 
 
-             IF(PIPE_MIN_DIAM) THEN
+             IF ( PIPE_MIN_DIAM ) THEN
                 MIN_DIAM = MINVAL( PIPE_diameter%val( CV_GL_GL( : ) ) )
                 PIPE_DIAM_GI(:) = MIN_DIAM
-                IF(SOLVE_ACTUAL_VEL) THEN
+                IF ( SOLVE_ACTUAL_VEL ) THEN
                    DO IPHASE = N_IN_PRES+1, NPHASE
                       SIGMA_GI(IPHASE,:) = MINVAL( SIGMA(IPHASE, MAT_GL_GL( : ) ) )
                    END DO
-                ENDIF
+                END IF
              ELSE
                 PIPE_DIAM_GI(:) = 0.0
                 DO CV_LILOC = 1, CV_LNLOC
@@ -13899,16 +13930,16 @@ deallocate(NX_ALL)
                    PIPE_DIAM_GI(:) = PIPE_DIAM_GI(:) + PIPE_DIAMETER%val( CV_KNOD ) * SCVFEN( CV_LILOC, : )
                 END DO
                 PIPE_DIAM_GI(:) = MAX(PIPE_DIAM_GI(:), 0.0)
-                IF(SOLVE_ACTUAL_VEL) THEN
+                IF ( SOLVE_ACTUAL_VEL ) THEN
                    SIGMA_GI(:,:)=0.0
                    DO IPHASE=N_IN_PRES+1,NPHASE
                       DO CV_LILOC = 1, CV_LNLOC
                          MAT_KNOD = MAT_GL_GL( CV_LILOC )
-                         SIGMA_GI(IPHASE,:) = SIGMA_GI(IPHASE,:)  + SIGMA( IPHASE, MAT_KNOD ) * SCVFEN( CV_LILOC, : )
+                         SIGMA_GI(IPHASE,:) = SIGMA_GI(IPHASE,:) + SIGMA( IPHASE, MAT_KNOD ) * SCVFEN( CV_LILOC, : )
                       END DO
                    END DO
-                ENDIF
-             ENDIF
+                END IF
+             END IF
 
              ! Recalculate SIGMA if we need to...
              IF ( CALC_SIGMA_PIPE ) THEN
@@ -13936,7 +13967,8 @@ deallocate(NX_ALL)
                 SIGMA_SWITCH_ON_OFF_PIPE_GI = MAXVAL( SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) ) )
 
                 PIPE_SWITCH = 1.0 - MIN( 1.0, MAX( 0.0, ( S_WATER_MAX - S_WATER ) / MAX( S_WATER_MAX - S_WATER_MIN, 1.E-20 ) ) )
-                SIGMA_GI( N_IN_PRES+1:NPHASE, : ) = SIGMA_GI( N_IN_PRES+1:NPHASE, : ) + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
+                !SIGMA_GI( N_IN_PRES+1:NPHASE, : ) = SIGMA_GI( N_IN_PRES+1:NPHASE, : ) + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
+                SIGMA_ON_OFF_GI( N_IN_PRES+1:NPHASE, : ) = PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
              END IF
 
              ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
@@ -13990,7 +14022,7 @@ deallocate(NX_ALL)
                 U_ILOC = U_GL_LOC( U_LILOC )
                 DO U_LJLOC = 1, U_LNLOC
                    U_JLOC = U_GL_LOC( U_LJLOC )
-                   JU_NOD = U_GL_GL(U_LJLOC)
+                   JU_NOD = U_GL_GL( U_LJLOC )
 
                    IF ( GET_PIVIT_MAT ) THEN
                       IF ( .NOT.SOLVE_ACTUAL_VEL ) THEN
@@ -13998,18 +14030,40 @@ deallocate(NX_ALL)
                       END IF
                       DO IPHASE = N_IN_PRES+1, NPHASE
                          IF ( SOLVE_ACTUAL_VEL ) THEN
-                            NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_GI(IPHASE,:) )
-                         ENDIF
+                            NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_GI( IPHASE , : ) )
+                         END IF
                          JPHASE = IPHASE
+
                          DO IDIM = 1, NDIM
-                            JDIM = IDIM
-                            i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
-                            j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
-                            pivit_mat(i_indx, j_indx, ele) = pivit_mat(i_indx, j_indx, ele) + NN
-                            !pivit_mat(i_indx, i_indx, ele) = pivit_mat(i_indx, i_indx, ele) + NN
+                            DO JDIM = 1, NDIM
+                               i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
+                               j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
+                               pivit_mat(i_indx, j_indx, ele) = pivit_mat(i_indx, j_indx, ele) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
+                               !pivit_mat(i_indx, i_indx, ele) = pivit_mat(i_indx, i_indx, ele) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
+                            END DO
                          END DO
                       END DO
-                   END IF
+
+                      IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
+                         DO IPHASE = N_IN_PRES+1, NPHASE
+                            IF ( SOLVE_ACTUAL_VEL ) THEN
+                               NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_ON_OFF_GI(IPHASE,:) )
+                            END IF
+                            JPHASE = IPHASE
+                            DO IDIM = 1, NDIM
+                               DO JDIM = 1, NDIM
+                                  i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
+                                  j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
+                                  pivit_mat(i_indx, j_indx, ele) = pivit_mat(i_indx, j_indx, ele) + NN * THIRD_DIRECTION( IDIM ) * THIRD_DIRECTION( JDIM )
+                                  !pivit_mat(i_indx, j_indx, ele) = pivit_mat(i_indx, j_indx, ele) + NN *( IDENT(IDIM, JDIM) - MOTHER_DIRECTION( IDIM ) * MOTHER_DIRECTION( JDIM ) )
+                                  !pivit_mat(i_indx, i_indx, ele) = pivit_mat(i_indx, i_indx, ele) + NN * ( IDENT(IDIM, JDIM) - MOTHER_DIRECTION( IDIM ) * MOTHER_DIRECTION( JDIM ) )
+                               END DO
+                            END DO
+                         END DO
+                      END IF ! SWITCH_PIPES_ON_AND_OFF
+
+                   END IF ! GET_PIVIT_MAT
+
 
                    NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
 
