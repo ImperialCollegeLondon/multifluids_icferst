@@ -608,8 +608,8 @@ contains
       real, dimension( :, :, : ), pointer :: fem_p
 
 
-      integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, U_JLOC
-      real :: rconst, h_nano, RP_NANO, dt_pipe_factor
+      integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, U_JLOC, CV_JLOC2, CV_NODJ2 
+      real :: rconst, h_nano, RP_NANO, dt_pipe_factor, xc_ele(ndim), xs_pt(ndim)
       logical :: got_nano
 
       if ( npres > 1 )then
@@ -1449,6 +1449,115 @@ contains
               SCVFEN, SCVFENLX_ALL, SCVFEWEIGH, SCVDETWEI, SCVRA, VOLUME, DCYL, &
               SCVFENX_ALL, &
               NDIM, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
+
+
+
+
+      IF(GETCT) THEN
+      IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV.AND. .false.) THEN
+         Loop_CV_ILOC2: DO CV_ILOC = 1, CV_NLOC ! Loop over the nodes of the element
+
+            ! Global node number of the local node
+            CV_NODI = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
+
+! Generate some local F variables ***************
+
+            ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
+            Loop_GCOUNT2: DO GCOUNT = FINDGPTS( CV_ILOC ), FINDGPTS( CV_ILOC + 1 ) - 1
+               ! COLGPTS stores the local Gauss-point number in the ELE
+               GI = COLGPTS( GCOUNT )
+               ! Get the neighbouring node for node ILOC and Gauss point GI
+               CV_JLOC = CV_NEILOC( CV_ILOC, GI )
+               Conditional_CheckingNeighbourhood2: IF ( CV_JLOC == -1 ) THEN
+
+! On surface of element...
+                  ! Calculate the control volume normals at the Gauss pts.
+                  CALL SCVDETNX_new( ELE, GI, X_NLOC, SCVNGI, TOTELE, NDIM, &
+                       X_NDGLN, X_NONODS, SCVDETWEI, CVNORMX_ALL,  &
+                       SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, XC_CV_ALL( 1:NDIM, CV_NODI ), & 
+                       X_ALL(1:NDIM,:),  D1, D3, DCYL )
+
+
+! centre of element...
+                xc_ele(:)=0.0
+                xs_pt(:)=0.0
+                DO CV_JLOC2 = 1, CV_NLOC
+                    X_NODI = X_NDGLN( (ELE-1)*X_NLOC + CV_JLOC2 )
+                    xc_ele(:)=xc_ele(:) + X_ALL( :, X_NODI )/real( CV_NLOC )
+                    xs_pt(:)=xs_pt(:) + X_ALL( :, X_NODI ) * SCVFEN(CV_JLOC2, GI)
+                END DO
+! make sure normal is pointing out of element...
+                CVNORMX_ALL(:,gi) = CVNORMX_ALL(:,gi) * SIGN( 1.0, sum(CVNORMX_ALL(:,gi)*(xs_pt(:)-xc_ele(:))  )  )
+
+
+
+! FOR CV PRESSURE PART *************
+! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
+                     DO U_KLOC = 1, U_NLOC
+                        U_NODK = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_KLOC )
+                        JCOUNT = 0
+!                        DO COUNT = FINDC( CV_NODI ), FINDC( CV_NODI + 1 ) - 1
+!                           IF ( COLC( COUNT ) == U_NODK ) THEN
+                        DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
+                           IF ( COLC( COUNT ) == CV_NODI ) THEN
+                              JCOUNT = COUNT
+                              EXIT
+                           END IF
+                        END DO
+                        C_ICOUNT_KLOC( U_KLOC ) = JCOUNT
+                     END DO
+
+                     DO U_KLOC = 1, U_NLOC
+                        DO IPHASE=1, NPHASE
+                           C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
+                            = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
+                              + SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) 
+                        END DO
+                     END DO
+! FOR CV PRESSURE PART *************
+
+
+! FOR fem PRESSURE PART *************
+                  DO CV_JLOC2=1,CV_NLOC
+                     CV_NODJ2 = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC2 )
+! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
+                     DO U_KLOC = 1, U_NLOC
+                        U_NODK = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_KLOC )
+                        JCOUNT = 0
+!                        DO COUNT = FINDC( CV_NODJ2 ), FINDC( CV_NODJ2 + 1 ) - 1
+!                           IF ( COLC( COUNT ) == U_NODK ) THEN
+                        DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
+                           IF ( COLC( COUNT ) == CV_NODJ2 ) THEN
+                              JCOUNT = COUNT
+                              EXIT
+                           END IF
+                        END DO
+                        C_ICOUNT_KLOC( U_KLOC ) = JCOUNT
+                     END DO
+
+                     DO U_KLOC = 1, U_NLOC
+                        DO IPHASE=1, NPHASE
+                           C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
+                            = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
+                              - SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) * SCVFEN(CV_JLOC2, GI)
+                        END DO
+                     END DO
+                 END DO ! ENDOF DO CV_JLOC2=1,CV_NLOC
+! FOR fem PRESSURE PART *************
+
+
+
+                   
+               END IF Conditional_CheckingNeighbourhood2
+
+
+
+            END DO Loop_GCOUNT2
+         END DO Loop_CV_ILOC2
+      endif  ! IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
+      endif  ! IF(GETct) then
+
+
 
 
 ! Generate some local F variables ***************
@@ -4805,13 +4914,12 @@ end if
        else
           call get_option( trim(PSI(1)%ptr%option_path)//"/prognostic/solver/max_iterations", &
                max_iterations,  default =  500 )
-          if (max_iterations ==0) then
+          if (max_iterations == 0) then
              option_path="/material_phase[0]/scalar_field::Pressure/prognostic"
           else
              option_path=trim(PSI(1)%ptr%option_path)//"/prognostic"
           end if
        end if
-
        DO IT = 1, size(fempsi)
           call zero_non_owned(fempsi_rhs(it))
           CALL petsc_solve(  FEMPSI(IT)%ptr,  &
@@ -10292,7 +10400,7 @@ CONTAINS
                       J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
                       MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                          + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC )))&
-                          * HDC * 0.5* abs(CVNORMX_ALL( IDIM, GI )) * SCVDETWEI( GI )
+                         * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                     end do
                   end do
               end if
@@ -10346,7 +10454,7 @@ CONTAINS
                       J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
                       MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                          + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC )))&
-                          * HDC * 0.5 * abs(CVNORMX_ALL( IDIM, GI )) * SCVDETWEI( GI )
+                          * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                     end do
                   end do
               end if
@@ -10437,7 +10545,8 @@ CONTAINS
                               J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
                               MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                                  + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC2 )))&
-                                  * HDC * abs(CVNORMX_ALL( IDIM, GI )) * SCVDETWEI( GI )
+                                * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
+
                             end do
                           end do
                       end if
@@ -10487,7 +10596,7 @@ CONTAINS
                               J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
                               MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &       !TEMPORARY TO ACCOUNT FOR THE BOUNDARY CONDITIONS
                                  + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )*min(1.0, 1.e20 * abs(UGI_COEF_ELE_ALL( IDIM, IPHASE, U_KLOC2 )))&
-                               * HDC * abs(CVNORMX_ALL( IDIM, GI )) * SCVDETWEI( GI )
+                                * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                             end do
                           end do
                       end if
@@ -10772,7 +10881,7 @@ CONTAINS
     INTEGER, DIMENSION( : ), ALLOCATABLE, SAVE :: ELEMATPSI
     REAL, DIMENSION( :  ), ALLOCATABLE, SAVE :: ELEMATWEI
     LOGICAL, SAVE :: STORE_ELE=.TRUE., RET_STORE_ELE=.FALSE.
-
+    LOGICAL, SAVE :: adapt_in_FPI = .false.
     LOGICAL :: D3,DCYL
     ! Allocate memory for the interpolated upwind values
     LOGICAL, PARAMETER :: BOUND  = .TRUE., REFLECT = .FALSE. ! limiting options
@@ -10842,8 +10951,10 @@ CONTAINS
        if( have_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps') ) then
           call get_option( '/mesh_adaptivity/hr_adaptivity/period_in_timesteps', &
                adapt_time_steps )
+           if( mod( timestep, adapt_time_steps ) == 0 ) store_ele = .true.
+       else if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI') ) then
+            STORE_ELE=.TRUE.; RET_STORE_ELE=.FALSE.
        end if
-       if( mod( timestep, adapt_time_steps ) == 0 ) store_ele = .true.
     elseif( have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric') ) then
        if( have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric/period_in_timesteps') ) then
           call get_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric/period_in_timesteps', &

@@ -35,7 +35,7 @@ module populate_state_module
   use vtk_cache_module
   use global_parameters, only: OPTION_PATH_LEN, is_active_process, pi, &
     no_active_processes, topology_mesh_name, adaptivity_mesh_name, &
-    periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius
+    periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius, is_porous_media
   use field_options
   use reserve_state_module
   use fields_manipulation
@@ -70,7 +70,7 @@ module populate_state_module
        initialise_prognostic_fields, set_prescribed_field_values, &
        alias_fields, mesh_name, &
        allocate_and_insert_auxilliary_fields, &
-       allocate_and_insert_tensor_field, &
+       allocate_and_insert_tensor_field, allocate_and_insert_scalar_field, &
        initialise_field, allocate_metric_limits, &
        make_mesh_periodic_from_options, make_mesh_unperiodic_from_options, &
        compute_domain_statistics
@@ -1283,6 +1283,17 @@ contains
                states(i))
           end if
        end do
+    end if
+
+
+    ! insert auxiliary fields if is_porous_media and adapting the mesh within the non-linear solver
+    if (is_porous_media) then
+        if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+            do i=1, nstates
+                call allocate_and_insert_scalar_field('/material_phase['//int2str(i-1)//']/scalar_field::Density', &
+                 states(i), field_name = "Saturation_bak", parent_mesh = "PressureMesh")
+            end do
+        end if
     end if
 
     ! insert electrical property fields
