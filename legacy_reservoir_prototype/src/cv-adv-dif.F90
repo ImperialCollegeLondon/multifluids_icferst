@@ -608,7 +608,7 @@ contains
       real, dimension( :, :, : ), pointer :: fem_p
 
 
-      integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, U_JLOC, CV_JLOC2, CV_NODJ2 
+      integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, U_JLOC, CV_JLOC2, CV_NODJ2
       real :: rconst, h_nano, RP_NANO, dt_pipe_factor, xc_ele(ndim), xs_pt(ndim)
       logical :: got_nano
 
@@ -1474,7 +1474,7 @@ contains
                   ! Calculate the control volume normals at the Gauss pts.
                   CALL SCVDETNX_new( ELE, GI, X_NLOC, SCVNGI, TOTELE, NDIM, &
                        X_NDGLN, X_NONODS, SCVDETWEI, CVNORMX_ALL,  &
-                       SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, XC_CV_ALL( 1:NDIM, CV_NODI ), & 
+                       SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, XC_CV_ALL( 1:NDIM, CV_NODI ), &
                        X_ALL(1:NDIM,:),  D1, D3, DCYL )
 
 
@@ -1509,9 +1509,9 @@ contains
 
                      DO U_KLOC = 1, U_NLOC
                         DO IPHASE=1, NPHASE
-                           C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
-                            = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
-                              + SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) 
+                           C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                            = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                              + SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI )
                         END DO
                      END DO
 ! FOR CV PRESSURE PART *************
@@ -1537,8 +1537,8 @@ contains
 
                      DO U_KLOC = 1, U_NLOC
                         DO IPHASE=1, NPHASE
-                           C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
-                            = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) & 
+                           C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                            = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                               - SCVDETWEI( GI ) * SUFEN( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) * SCVFEN(CV_JLOC2, GI)
                         END DO
                      END DO
@@ -1547,7 +1547,7 @@ contains
 
 
 
-                   
+
                END IF Conditional_CheckingNeighbourhood2
 
 
@@ -12598,7 +12598,7 @@ deallocate(NX_ALL)
     real, dimension(:,:), allocatable:: cvn, n, nlx, un, unlx, sbcvfen, sbcvfenslx, sbufen, L_CVFENX_ALL, L_UFENX_ALL,L_UFEN_REVERSED,L_UFEN,&
          UGI_ALL, ct_con, x_all_corn
     real, dimension(:,:), allocatable:: cvn_fem, cvn_femlx, cvnn_fem, cvnn_femlx
-    real, dimension(:,:), allocatable:: SUF_T_BC_ALL_NODS, SUF_D_BC_ALL_NODS, RVEC_SUM_T, RVEC_SUM_D, RVEC_SUM_U
+    real, dimension(:,:), allocatable:: SUF_T_BC_ALL_NODS, SUF_D_BC_ALL_NODS, RVEC_SUM_T, RVEC_SUM_D, RVEC_SUM_U, MEAN_U
     real, dimension(:,:,:), allocatable:: SUF_U_BC_ALL_NODS
     real, dimension(:,:,:), allocatable:: L_CVFENX_ALL_REVERSED
     logical :: CV_QUADRATIC, U_QUADRATIC, ndiff, diff, PIPE_INDEX_LOGICAL(ndim+1), ELE_HAS_PIPE, integrate_other_side_and_not_boundary
@@ -12721,15 +12721,17 @@ deallocate(NX_ALL)
     allocate(WIC_B_BC_ALL_NODS(CV_NONODS))
     allocate(WIC_T_BC_ALL_NODS(NPHASE,CV_NONODS))
     allocate(WIC_D_BC_ALL_NODS(NPHASE,CV_NONODS))
-    allocate(WIC_U_BC_ALL_NODS(NPHASE,U_NONODS))
+    allocate(WIC_U_BC_ALL_NODS(NPHASE,CV_NONODS))
 
     allocate(SUF_T_BC_ALL_NODS(NPHASE,CV_NONODS))
     allocate(SUF_D_BC_ALL_NODS(NPHASE,CV_NONODS))
-    allocate(SUF_U_BC_ALL_NODS(NDIM,NPHASE,U_NONODS))
+    allocate(SUF_U_BC_ALL_NODS(NDIM,NPHASE,CV_NONODS))
 
     allocate(RVEC_SUM_T(NPHASE,CV_NONODS))
     allocate(RVEC_SUM_D(NPHASE,CV_NONODS))
-    allocate(RVEC_SUM_U(NPHASE,U_NONODS))
+    allocate(RVEC_SUM_U(NPHASE,CV_NONODS))
+
+    allocate(MEAN_U(NDIM,NPHASE))
 
     WIC_B_BC_ALL_NODS=0
     WIC_T_BC_ALL_NODS=0
@@ -12743,46 +12745,52 @@ deallocate(NX_ALL)
     SUF_D_BC_ALL_NODS=0.0
     SUF_U_BC_ALL_NODS=0.0
 
-    DO SELE=1,STOTEL
-       DO CV_SILOC=1,CV_SNLOC
-          CV_NOD = CV_SNDGLN((SELE-1)*CV_SNLOC + CV_SILOC )
+    DO SELE = 1, STOTEL
+       DO CV_SILOC = 1, CV_SNLOC
+          CV_NOD = CV_SNDGLN( (SELE-1)*CV_SNLOC + CV_SILOC )
           WIC_B_BC_ALL_NODS( CV_NOD ) = WIC_B_BC_DIRICHLET
 
-          DO IPHASE=N_IN_PRES+1,NPHASE
-             IF( WIC_T_BC_ALL( 1,IPHASE, SELE ) == WIC_T_BC_DIRICHLET ) THEN
+          DO IPHASE = N_IN_PRES+1, NPHASE
+             IF ( WIC_T_BC_ALL( 1,IPHASE, SELE ) == WIC_T_BC_DIRICHLET ) THEN
                 WIC_T_BC_ALL_NODS( IPHASE, CV_NOD ) = WIC_T_BC_DIRICHLET
                 SUF_T_BC_ALL_NODS( IPHASE, CV_NOD ) = SUF_T_BC_ALL_NODS( IPHASE, CV_NOD ) + SUF_T_BC_ALL( 1,IPHASE, (SELE-1)*CV_SNLOC + CV_SILOC )
-                RVEC_SUM_T( IPHASE, CV_NOD ) = RVEC_SUM_T( IPHASE, CV_NOD )+1.0
-             ENDIF
-             IF( WIC_D_BC_ALL( 1,IPHASE, SELE ) == WIC_D_BC_DIRICHLET ) THEN
+                RVEC_SUM_T( IPHASE, CV_NOD ) = RVEC_SUM_T( IPHASE, CV_NOD ) + 1.0
+             END IF
+             IF ( WIC_D_BC_ALL( 1,IPHASE, SELE ) == WIC_D_BC_DIRICHLET ) THEN
                 WIC_D_BC_ALL_NODS( IPHASE, CV_NOD ) = WIC_D_BC_DIRICHLET
                 SUF_D_BC_ALL_NODS( IPHASE, CV_NOD ) = SUF_D_BC_ALL_NODS( IPHASE, CV_NOD ) + SUF_D_BC_ALL( 1,IPHASE, (SELE-1)*CV_SNLOC + CV_SILOC )
-                RVEC_SUM_D( IPHASE, CV_NOD ) = RVEC_SUM_D( IPHASE, CV_NOD )+1.0
-             ENDIF
+                RVEC_SUM_D( IPHASE, CV_NOD ) = RVEC_SUM_D( IPHASE, CV_NOD ) + 1.0
+             END IF
           END DO ! ENDOF DO IPHASE=N_IN_PRES+1,NPHASE
        END DO ! DO CV_SILOC=1,CV_SNLOC
 
-       DO U_SILOC=1,U_SNLOC
-          DO IPHASE=N_IN_PRES+1,NPHASE
-             IF( WIC_U_BC_ALL( 1, IPHASE, SELE ) == WIC_U_BC_DIRICHLET ) THEN
-                U_NOD = U_SNDGLN((SELE-1)*U_SNLOC + U_SILOC )
-                WIC_U_BC_ALL_NODS( IPHASE, U_NOD ) = WIC_U_BC_DIRICHLET
-                SUF_U_BC_ALL_NODS( :,IPHASE, U_NOD ) = SUF_U_BC_ALL_NODS( :,IPHASE, U_NOD ) + SUF_U_BC_ALL( 1,IPHASE, (SELE-1)*U_SNLOC + U_SILOC )
-                RVEC_SUM_U( IPHASE, U_NOD ) = RVEC_SUM_U( IPHASE, U_NOD )+1.0
-             ENDIF
+       MEAN_U = 0.0
+       DO U_SILOC = 1, U_SNLOC
+          DO IPHASE = N_IN_PRES+1, NPHASE
+             IF ( WIC_U_BC_ALL( 1, IPHASE, SELE ) == WIC_U_BC_DIRICHLET ) THEN
+                U_NOD = U_SNDGLN( (SELE-1)*U_SNLOC + U_SILOC )
+                MEAN_U(:,IPHASE) = MEAN_U(:,IPHASE) + SUF_U_BC_ALL( :,IPHASE, (SELE-1)*U_SNLOC + U_SILOC ) / REAL(U_SNLOC)
+             END IF
           END DO ! ENDOF DO IPHASE=N_IN_PRES+1,NPHASE
        END DO ! DO U_SILOC=1,U_SNLOC
+
+       DO CV_SILOC = 1, CV_SNLOC
+          DO IPHASE = N_IN_PRES+1, NPHASE
+             IF ( WIC_U_BC_ALL( 1, IPHASE, SELE ) == WIC_U_BC_DIRICHLET ) THEN
+                CV_NOD = CV_SNDGLN( (SELE-1)*CV_SNLOC + CV_SILOC )
+                WIC_U_BC_ALL_NODS( IPHASE, CV_NOD ) = WIC_U_BC_DIRICHLET
+                SUF_U_BC_ALL_NODS( :,IPHASE, CV_NOD ) = SUF_U_BC_ALL_NODS( :,IPHASE, CV_NOD ) + MEAN_U(:,IPHASE)
+                RVEC_SUM_U( IPHASE, CV_NOD ) = RVEC_SUM_U( IPHASE, CV_NOD ) + 1.0
+             END IF
+          END DO ! ENDOF DO IPHASE=N_IN_PRES+1,NPHASE
+       END DO ! DO CV_SILOC=1,CV_SNLOC
     END DO
 
-    DO CV_NOD=1,CV_NONODS
-       DO IPHASE=N_IN_PRES+1,NPHASE
-          IF(WIC_T_BC_ALL_NODS( IPHASE, CV_NOD ).NE.0) SUF_T_BC_ALL_NODS( IPHASE,CV_NOD )=SUF_T_BC_ALL_NODS( IPHASE,CV_NOD )/RVEC_SUM_T( IPHASE,CV_NOD )
-          IF(WIC_D_BC_ALL_NODS( IPHASE, CV_NOD ).NE.0) SUF_D_BC_ALL_NODS( IPHASE,CV_NOD )=SUF_D_BC_ALL_NODS( IPHASE,CV_NOD )/RVEC_SUM_D( IPHASE,CV_NOD )
-       END DO
-    END DO
-    DO U_NOD=1,U_NONODS
-       DO IPHASE=N_IN_PRES+1,NPHASE
-          IF(WIC_U_BC_ALL_NODS( IPHASE, U_NOD ).NE.0) SUF_U_BC_ALL_NODS( :,IPHASE,U_NOD )=SUF_U_BC_ALL_NODS( :,IPHASE,U_NOD )/RVEC_SUM_U( IPHASE,U_NOD)
+    DO CV_NOD = 1, CV_NONODS
+       DO IPHASE = N_IN_PRES+1, NPHASE
+          IF ( WIC_T_BC_ALL_NODS( IPHASE, CV_NOD ) /= 0 ) SUF_T_BC_ALL_NODS( IPHASE,CV_NOD ) = SUF_T_BC_ALL_NODS( IPHASE,CV_NOD ) / RVEC_SUM_T( IPHASE,CV_NOD )
+          IF ( WIC_D_BC_ALL_NODS( IPHASE, CV_NOD ) /= 0 ) SUF_D_BC_ALL_NODS( IPHASE,CV_NOD ) = SUF_D_BC_ALL_NODS( IPHASE,CV_NOD ) / RVEC_SUM_D( IPHASE,CV_NOD )
+          IF ( WIC_U_BC_ALL_NODS( IPHASE, CV_NOD ) /= 0 ) SUF_U_BC_ALL_NODS( :,IPHASE,CV_NOD ) = SUF_U_BC_ALL_NODS( :,IPHASE,CV_NOD ) / RVEC_SUM_U( IPHASE,CV_NOD )
        END DO
     END DO
     ! END OF SET UP THE SURFACE B.C'S
@@ -12797,27 +12805,24 @@ deallocate(NX_ALL)
     PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe1" )
     X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
-
-    !TMAX_ALL=0.0; TMIN_ALL=0.0; DENMAX_ALL=0.0; DENMIN_ALL = 0.0
     DO CV_NODI = 1, CV_NONODS
-       IF(PIPE_DIAMETER%VAL(CV_NODI).NE.0.0) THEN
-       !cv_nodj = colacv(finacv(cv_nodi))
-       TMAX(:) = -INFINY
-       TMIN(:) = +INFINY
-       DENMAX(:) = -INFINY
-       DENMIN(:) = +INFINY
-       do count = finacv(cv_nodi), finacv(cv_nodi+1)-1
-          cv_nodj = colacv(count)
-          IF(PIPE_DIAMETER%VAL(CV_NODJ).NE.0.0) THEN
-             DO IPHASE = 1, NPHASE
-                TMAX_ALL( IPHASE, CV_NODI ) = max(TMAX(IPHASE),T_ALL%val( 1, IPHASE, cv_nodj ))
-                TMIN_ALL( IPHASE, CV_NODI ) = min(TMIN(IPHASE),T_ALL%val( 1, IPHASE, cv_nodj ))
-                DENMAX_ALL( IPHASE, CV_NODI ) = max(DENMAX(IPHASE),DEN_ALL%val( 1, IPHASE, cv_nodj ))
-                DENMIN_ALL( IPHASE, CV_NODI ) = min(DENMIN(IPHASE),DEN_ALL%val( 1, IPHASE, cv_nodj ))
-             END DO
-          ENDIF
-       END DO
-       ENDIF
+       IF ( PIPE_DIAMETER%VAL(CV_NODI) /= 0.0 ) THEN
+          TMAX(:) = -INFINY
+          TMIN(:) = +INFINY
+          DENMAX(:) = -INFINY
+          DENMIN(:) = +INFINY
+          do count = finacv(cv_nodi), finacv(cv_nodi+1)-1
+             cv_nodj = colacv(count)
+             IF ( PIPE_DIAMETER%VAL(CV_NODJ) /= 0.0 ) THEN
+                DO IPHASE = 1, NPHASE
+                   TMAX_ALL( IPHASE, CV_NODI ) = max( TMAX(IPHASE),T_ALL%val( 1, IPHASE, cv_nodj ) )
+                   TMIN_ALL( IPHASE, CV_NODI ) = min( TMIN(IPHASE),T_ALL%val( 1, IPHASE, cv_nodj ) )
+                   DENMAX_ALL( IPHASE, CV_NODI ) = max( DENMAX(IPHASE),DEN_ALL%val( 1, IPHASE, cv_nodj ) )
+                   DENMIN_ALL( IPHASE, CV_NODI ) = min( DENMIN(IPHASE),DEN_ALL%val( 1, IPHASE, cv_nodj ) )
+                END DO
+             END IF
+          END DO
+       END IF
     END DO
 
     IF ( GETCV_DISC ) THEN
@@ -12900,34 +12905,33 @@ deallocate(NX_ALL)
 
              ! DEFINE CV_LILOC:
              CV_LILOC = 1
-             ICORNER = pipe_corner_nds1(IPIPE)
+             ICORNER = pipe_corner_nds1( IPIPE )
              ICORNER1 = ICORNER
              CV_ILOC = CV_LOC_CORNER( ICORNER )
              CV_GL_LOC( CV_LILOC ) = CV_ILOC
              CV_LILOC = CV_LNLOC
-             ICORNER = pipe_corner_nds2(IPIPE)
+             ICORNER = pipe_corner_nds2( IPIPE )
              ICORNER2 = ICORNER
              CV_ILOC = CV_LOC_CORNER( ICORNER )
              CV_GL_LOC( CV_LILOC ) = CV_ILOC
 
-             IF ( CV_QUADRATIC ) CV_GL_LOC(2) = CV_MID_SIDE( ICORNER1, ICORNER2 )
+             IF ( CV_QUADRATIC ) CV_GL_LOC( 2 ) = CV_MID_SIDE( ICORNER1, ICORNER2 )
 
              DO CV_LILOC = 1, CV_LNLOC
-                CV_ILOC = CV_GL_LOC(CV_LILOC)
+                CV_ILOC = CV_GL_LOC( CV_LILOC )
                 X_ILOC = CV_ILOC
                 CV_GL_GL( CV_LILOC ) = CV_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
                 X_GL_GL( CV_LILOC ) = X_NDGLN( (ELE-1)*CV_NLOC + X_ILOC )
                 MAT_GL_GL( CV_LILOC ) = MAT_NDGLN( (ELE-1)*CV_NLOC + CV_ILOC )
              END DO
 
-
              ! DEFINE U_LILOC:
              U_LILOC = 1
-             ICORNER = pipe_corner_nds1(IPIPE)
+             ICORNER = pipe_corner_nds1( IPIPE )
              U_ILOC = U_LOC_CORNER( ICORNER )
              U_GL_LOC( U_LILOC ) = U_ILOC
              U_LILOC = U_LNLOC
-             ICORNER = pipe_corner_nds2(IPIPE)
+             ICORNER = pipe_corner_nds2( IPIPE )
              U_ILOC = U_LOC_CORNER( ICORNER )
              U_GL_LOC( U_LILOC ) = U_ILOC
 
@@ -12935,9 +12939,8 @@ deallocate(NX_ALL)
 
              DO U_LILOC = 1, U_LNLOC
                 U_ILOC = U_GL_LOC( U_LILOC )
-                U_GL_GL(U_LILOC) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
+                U_GL_GL( U_LILOC ) = U_NDGLN( (ELE-1)*U_NLOC + U_ILOC )
              END DO
-
 
              DIRECTION(:) = X_ALL_CORN( :, ICORNER2 ) - X_ALL_CORN( :, ICORNER1 )
              DX = SQRT( SUM( DIRECTION(:)**2 ) )
@@ -12963,8 +12966,8 @@ deallocate(NX_ALL)
                    PIPE_DIAM_GI_VOL(:) = PIPE_DIAM_GI_VOL(:) + PIPE_diameter%val( CV_KNOD ) * cvn_fem( CV_LILOC, : )
                    PIPE_DIAM_GI_SUF(:) = PIPE_DIAM_GI_SUF(:) + PIPE_diameter%val( CV_KNOD ) * SBCVFEN( CV_LILOC, : )
                 END DO
-                PIPE_DIAM_GI_VOL(:) = max(0.0, PIPE_DIAM_GI_VOL(:) )
-                PIPE_DIAM_GI_SUF(:) = max(0.0, PIPE_DIAM_GI_SUF(:) )
+                PIPE_DIAM_GI_VOL(:) = max( 0.0, PIPE_DIAM_GI_VOL(:) )
+                PIPE_DIAM_GI_SUF(:) = max( 0.0, PIPE_DIAM_GI_SUF(:) )
              ENDIF
 
 
@@ -12983,15 +12986,15 @@ deallocate(NX_ALL)
                 ! find the nodes other than the pipe end corner nodes...
                 ICORNER3 = 0
                 DO ICORNER = 1, NCORNER
-                   IF(ICORNER.NE.ICORNER1) THEN
-                      IF(ICORNER.NE.ICORNER2) THEN
-                         IF(ICORNER3==0) THEN
+                   IF ( ICORNER /= ICORNER1 ) THEN
+                      IF ( ICORNER /= ICORNER2 ) THEN
+                         IF ( ICORNER3 == 0 ) THEN
                             ICORNER3 = ICORNER
                          ELSE
                             ICORNER4 = ICORNER
-                         ENDIF
-                      ENDIF
-                   ENDIF
+                         END IF
+                      END IF
+                   END IF
                 END DO
                 ELE_ANGLE = CALC_ELE_ANGLE_3D( X_ALL_CORN(:, ICORNER1 ), X_ALL_CORN(:, ICORNER2) , &
                      &                         X_ALL_CORN(:, ICORNER3 ), X_ALL_CORN(:, ICORNER4) )
@@ -13276,18 +13279,19 @@ deallocate(NX_ALL)
              JCV_NOD1 = CV_NDGLN( (ELE-1)*CV_NLOC + CV_LOC_CORNER( ICORNER1 ) )
              JCV_NOD2 = CV_NDGLN( (ELE-1)*CV_NLOC + CV_LOC_CORNER( ICORNER2 ) )
              JCV_NOD=0
+
              IF ( WIC_B_BC_ALL_NODS( JCV_NOD1 ) == WIC_B_BC_DIRICHLET ) THEN
                 CV_LILOC = 1
-                JCV_NOD=JCV_NOD1
+                JCV_NOD = JCV_NOD1
                 U_LILOC = 1
-                JU_NOD=U_GL_GL( U_LILOC )
+                JU_NOD = U_GL_GL( U_LILOC )
                 direction_norm = - direction ! for the b.c it must be -ve at the bottom of element
              END IF
              IF ( WIC_B_BC_ALL_NODS( JCV_NOD2 ) == WIC_B_BC_DIRICHLET ) THEN
                 CV_LILOC = CV_LNLOC
-                JCV_NOD=JCV_NOD2
+                JCV_NOD = JCV_NOD2
                 U_LILOC = U_LNLOC
-                JU_NOD=U_GL_GL( U_LILOC )
+                JU_NOD = U_GL_GL( U_LILOC )
                 direction_norm = + direction ! for the b.c it must be +ve at the top of element
              END IF
 
@@ -13296,14 +13300,14 @@ deallocate(NX_ALL)
                 PIPE_DIAM_END = PIPE_diameter%val( JCV_NOD )
                 NDOTQ = 0.0
                 DO IPHASE = N_IN_PRES+1, NPHASE
-                   IF(SOLVE_ACTUAL_VEL) THEN
-                      NDOTQ(IPHASE) = SUM( direction_norm(:) * U_ALL%val(:,IPHASE,JU_NOD)  )
+                   IF ( SOLVE_ACTUAL_VEL ) THEN
+                      NDOTQ(IPHASE) = SUM( direction_norm(:) * U_ALL%val(:,IPHASE,JU_NOD) )
                    ELSE
                       NDOTQ(IPHASE) = SUM( direction_norm(:) * U_ALL%val(:,IPHASE,JU_NOD) * INV_SIGMA_GI(IPHASE) )
-                   ENDIF
+                   END IF
                 END DO
 
-                INCOME(:) = 0.5*( 1. + SIGN(1.0, -NDOTQ(:)) )
+                INCOME(:) = 0.5 * ( 1. + SIGN( 1.0, -NDOTQ(:) ) )
 
                 LIMT(:)=0.0
                 LIMD(:)=0.0
@@ -13352,10 +13356,10 @@ deallocate(NX_ALL)
 
                    LOC_CT_RHS_U_ILOC = 0.0
                    DO IPHASE = N_IN_PRES+1, NPHASE
-                      IF ( WIC_U_BC_ALL_NODS( IPHASE, JU_NOD ) == WIC_U_BC_DIRICHLET ) THEN
-                         DO IDIM=1,NDIM
+                      IF ( WIC_U_BC_ALL_NODS( IPHASE, JCV_NOD ) == WIC_U_BC_DIRICHLET ) THEN
+                         DO IDIM = 1, NDIM
                             LOC_CT_RHS_U_ILOC(IPHASE) = LOC_CT_RHS_U_ILOC(IPHASE) &
-                                 - CT_CON(IDIM,IPHASE) * SUF_U_BC_ALL_NODS(IDIM,IPHASE,JU_NOD)
+                                 - CT_CON(IDIM,IPHASE) * SUF_U_BC_ALL_NODS(IDIM,IPHASE,JCV_NOD)
                          END DO
                       ELSE
                          CT( :, IPHASE, COUNT2 ) = CT( :, IPHASE, COUNT2 ) + CT_CON( :, IPHASE )
@@ -14144,7 +14148,6 @@ deallocate(NX_ALL)
                             NN = SUM( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) * SIGMA_GI( IPHASE , : ) )
                          END IF
                          JPHASE = IPHASE
-
                          DO IDIM = 1, NDIM
                             DO JDIM = 1, NDIM
                                i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
