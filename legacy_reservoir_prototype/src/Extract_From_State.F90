@@ -4641,7 +4641,7 @@ end if
 
         type (tensor_field), pointer :: t_field
         type(mesh_type), pointer :: fl_mesh
-        integer :: i, j, k, number_of_ids, nphase,mtemp
+        integer :: i, j, k, number_of_ids, nphase,mtemp, CV_NLOC
         integer, dimension(:), allocatable :: region_ids
         logical :: stored, all_fields_costant
         integer, dimension(1) :: aux
@@ -4768,16 +4768,18 @@ end if
             end do
         end if
 
+
         !If fake_IDs_ndgln, then we are not using compacted data and
         !IDs_ndgln and IDs2CV_ndgln will point to the same position
         if (present_and_true(fake_IDs_ndgln) .or. .not. all_fields_costant) then
+            CV_NLOC = size(CV_ndgln)/size(IDs_ndgln)
             do i = 1, size(IDs_ndgln)
                 IDs_ndgln(i) = i
             end do
 
             do i = 1, size(IDs_ndgln)
-                do j = 1, size(CV_ndgln)/size(IDs_ndgln)
-                    k = CV_ndgln((i-1)* size(CV_ndgln)/size(IDs_ndgln) + j)
+                do j = 1, CV_NLOC
+                    k = CV_ndgln((i-1)* CV_NLOC + j)
                     IDs2CV_ndgln(k) = IDs_ndgln(i)
                 end do
             end do
