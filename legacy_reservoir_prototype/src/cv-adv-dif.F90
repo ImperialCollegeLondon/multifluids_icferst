@@ -13734,13 +13734,11 @@ deallocate(NX_ALL)
     TYPE(VECTOR_FIELD), POINTER :: X
     TYPE(TENSOR_FIELD), POINTER :: WM, CV_VOL_FRAC
 
-
     REAL, DIMENSION( :, : ), ALLOCATABLE :: scvfen, scvfenslx, scvfensly, &
          &                                  scvfenlx, scvfenly, scvfenlz, &
          &                                  sufen, sufenslx, sufensly, &
          &                                  sufenlx, sufenly, sufenlz
     REAL, DIMENSION( : ), ALLOCATABLE :: scvfeweigh
-
 
     REAL, DIMENSION( :, :, : ), ALLOCATABLE :: L_CVFENX_ALL_REVERSED
     REAL, DIMENSION( :, : ), ALLOCATABLE :: L_CVFENX_ALL, L_UFENX_ALL, L_UFEN_REVERSED
@@ -13751,17 +13749,12 @@ deallocate(NX_ALL)
     INTEGER :: PHASE_EXCLUDE
     LOGICAL, DIMENSION( : ), ALLOCATABLE :: PIPE_INDEX_LOGICAL
 
-    REAL :: DIRECTION( NDIM ), MOTHER_DIRECTION( NDIM ), SECOND_DIRECTION( NDIM ), THIRD_DIRECTION( NDIM ), DIRECTION_NORM( NDIM ), IDENT( NDIM, NDIM )
-    REAL :: DX, MOTHER_DX, THIRD_DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
+    REAL :: DIRECTION( NDIM ), DIRECTION_NORM( NDIM )
+    REAL :: DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
     REAL :: S_WATER, S_WATER_MIN, S_WATER_MAX, SIGMA_SWITCH_ON_OFF_PIPE_GI, PIPE_SWITCH
     INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
          &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4, JCORNER
     INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2, IPHASE_IN_PIPE, GI, IWATER, CV_JLOC, CV_NODJ
-
-    IDENT = 0.0
-    DO IDIM = 1, NDIM
-       IDENT( IDIM, IDIM ) = 1.0
-    END DO
 
     X_NLOC = CV_NLOC
     ncorner = ndim + 1
@@ -13939,26 +13932,6 @@ deallocate(NX_ALL)
           CALL CALC_PIPES_IN_ELE( X_ALL_CORN, PIPE_INDEX_LOGICAL, NDIM, &
                pipe_corner_nds1, pipe_corner_nds2, npipes )
 
-          IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
-             MOTHER_DIRECTION = 0.0
-             DO ICORNER = 1, NCORNER
-                CV_ILOC = CV_LOC_CORNER( ICORNER )
-                CV_NODI = CV_NDGLN( (ELE-1 )*CV_NLOC + CV_ILOC )
-                DO JCORNER = ICORNER+1, NCORNER
-                   CV_JLOC = CV_LOC_CORNER(ICORNER)
-                   CV_NODJ = CV_NDGLN( (ELE-1 )*CV_NLOC + CV_JLOC )
-
-                   IF ( PIPE_DIAMETER%VAL(CV_NODI)>0.0 .AND. PIPE_DIAMETER%VAL(CV_NODJ)>0.0 ) THEN
-                      IF ( SIGMA_SWITCH_ON_OFF_PIPE%VAL(CV_NODI)==0.0 .AND. SIGMA_SWITCH_ON_OFF_PIPE%VAL(CV_NODJ)==0.0 ) THEN
-                         MOTHER_DIRECTION(:) = X_ALL_CORN( :, ICORNER ) - X_ALL_CORN( :, JCORNER )
-                         MOTHER_DX = SQRT( SUM( DIRECTION(:)**2 ) )
-                         MOTHER_DIRECTION(:) = MOTHER_DIRECTION(:) / MOTHER_DX
-                      END IF
-                   END IF
-                END DO
-             END DO
-          END IF
-
           DO IPIPE = 1, NPIPES
 
              ! DEFINE CV_LILOC:
@@ -14018,12 +13991,6 @@ deallocate(NX_ALL)
              DX = SQRT( SUM( DIRECTION(:)**2 ) )
              DIRECTION(:) = DIRECTION(:) / DX
 
-             IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
-                CALL CrossProduct( NDIM, SECOND_DIRECTION, MOTHER_DIRECTION, DIRECTION )
-                CALL CrossProduct( NDIM, THIRD_DIRECTION, SECOND_DIRECTION, MOTHER_DIRECTION )
-                THIRD_DX = SQRT( SUM( THIRD_DIRECTION(:)**2 ) )
-                THIRD_DIRECTION(:) = THIRD_DIRECTION(:) / MAX( 1.E-10, THIRD_DX )
-             END IF
 
              IF ( IGNORE_DIAGONAL_PIPES ) THEN
                 IF ( ABS(DIRECTION(1))<0.99 .AND. ABS(DIRECTION(2))<0.99.AND. ABS(DIRECTION(NDIM))<0.99 ) CYCLE
@@ -14072,7 +14039,7 @@ deallocate(NX_ALL)
              END IF
 
              ! Add the sigma associated with the switch to switch the pipe flow on and off...
-             IF ( SWITCH_PIPES_ON_AND_OFF ) THEN ! Dimitrios it may be that SWITCH_PIPES_ON_AND_OFF =.false. always
+             IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
                 IWATER = PHASE_EXCLUDE
 
                 S_WATER = MAXVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) )
@@ -14082,7 +14049,6 @@ deallocate(NX_ALL)
                 SIGMA_SWITCH_ON_OFF_PIPE_GI = MAXVAL( SIGMA_SWITCH_ON_OFF_PIPE%VAL( CV_GL_GL( : ) ) )
 
                 PIPE_SWITCH = 1.0 - MIN( 1.0, MAX( 0.0, ( S_WATER_MAX - S_WATER ) / MAX( S_WATER_MAX - S_WATER_MIN, 1.E-20 ) ) )
-                !SIGMA_GI( N_IN_PRES+1:NPHASE, : ) = SIGMA_GI( N_IN_PRES+1:NPHASE, : ) + PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
                 SIGMA_ON_OFF_GI( N_IN_PRES+1:NPHASE, : ) = PIPE_SWITCH * SIGMA_SWITCH_ON_OFF_PIPE_GI
              END IF
 
@@ -14152,8 +14118,8 @@ deallocate(NX_ALL)
                             DO JDIM = 1, NDIM
                                i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
                                j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
-                               pivit_mat(i_indx, j_indx, ele) = pivit_mat(i_indx, j_indx, ele) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
-                               !pivit_mat(i_indx, i_indx, ele) = pivit_mat(i_indx, i_indx, ele) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
+                               pivit_mat( i_indx, j_indx, ele ) = pivit_mat( i_indx, j_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
+                               !pivit_mat( i_indx, i_indx, ele ) = pivit_mat( i_indx, i_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
                             END DO
                          END DO
                       END DO
@@ -14168,9 +14134,8 @@ deallocate(NX_ALL)
                                DO JDIM = 1, NDIM
                                   i_indx = IDIM + (IPHASE-1)*NDIM + (U_ILOC-1)*NDIM*NPHASE
                                   j_indx = JDIM + (JPHASE-1)*NDIM + (U_JLOC-1)*NDIM*NPHASE
-                                  pivit_mat(i_indx, j_indx, ele) = pivit_mat(i_indx, j_indx, ele) + NN * THIRD_DIRECTION( IDIM ) * THIRD_DIRECTION( JDIM )
-                                  !pivit_mat(i_indx, j_indx, ele) = pivit_mat(i_indx, j_indx, ele) + NN *( IDENT(IDIM, JDIM) - MOTHER_DIRECTION( IDIM ) * MOTHER_DIRECTION( JDIM ) )
-                                  !pivit_mat(i_indx, i_indx, ele) = pivit_mat(i_indx, i_indx, ele) + NN * ( IDENT(IDIM, JDIM) - MOTHER_DIRECTION( IDIM ) * MOTHER_DIRECTION( JDIM ) )
+                                  pivit_mat( i_indx, j_indx, ele ) = pivit_mat( i_indx, j_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
+                                  !pivit_mat( i_indx, i_indx, ele ) = pivit_mat( i_indx, i_indx, ele ) + NN * DIRECTION( IDIM ) * DIRECTION( JDIM )
                                END DO
                             END DO
                          END DO
