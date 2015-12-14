@@ -14042,7 +14042,7 @@ deallocate(NX_ALL)
              IF ( SWITCH_PIPES_ON_AND_OFF ) THEN
                 IWATER = PHASE_EXCLUDE
 
-                S_WATER = MAXVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) )
+                S_WATER = MINVAL( CV_VOL_FRAC%VAL( 1, IWATER, CV_GL_GL( : ) ) )
                 S_WATER_MIN = MAXVAL( PHASE_EXCLUDE_PIPE_SAT_MIN%VAL( CV_GL_GL( : ) ) )
                 S_WATER_MAX = MAXVAL( PHASE_EXCLUDE_PIPE_SAT_MAX%VAL( CV_GL_GL( : ) ) )
 
