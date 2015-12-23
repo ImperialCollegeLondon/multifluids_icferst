@@ -12805,20 +12805,17 @@ deallocate(NX_ALL)
     PIPE_DIAMETER => extract_scalar_field( state(1), "DiameterPipe1" )
     X => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
 
+    TMAX_ALL=-INFINY; TMIN_ALL=+INFINY; DENMAX_ALL=-INFINY; DENMIN_ALL = +INFINY
     DO CV_NODI = 1, CV_NONODS
        IF ( PIPE_DIAMETER%VAL(CV_NODI) /= 0.0 ) THEN
-          TMAX(:) = -INFINY
-          TMIN(:) = +INFINY
-          DENMAX(:) = -INFINY
-          DENMIN(:) = +INFINY
           do count = finacv(cv_nodi), finacv(cv_nodi+1)-1
              cv_nodj = colacv(count)
              IF ( PIPE_DIAMETER%VAL(CV_NODJ) /= 0.0 ) THEN
                 DO IPHASE = 1, NPHASE
-                   TMAX_ALL( IPHASE, CV_NODI ) = max( TMAX(IPHASE),T_ALL%val( 1, IPHASE, cv_nodj ) )
-                   TMIN_ALL( IPHASE, CV_NODI ) = min( TMIN(IPHASE),T_ALL%val( 1, IPHASE, cv_nodj ) )
-                   DENMAX_ALL( IPHASE, CV_NODI ) = max( DENMAX(IPHASE),DEN_ALL%val( 1, IPHASE, cv_nodj ) )
-                   DENMIN_ALL( IPHASE, CV_NODI ) = min( DENMIN(IPHASE),DEN_ALL%val( 1, IPHASE, cv_nodj ) )
+                   TMAX_ALL( IPHASE, CV_NODI ) = max( TMAX_ALL( IPHASE, CV_NODI ),T_ALL%val( 1, IPHASE, cv_nodj ) )
+                   TMIN_ALL( IPHASE, CV_NODI ) = min( TMIN_ALL( IPHASE, CV_NODI ),T_ALL%val( 1, IPHASE, cv_nodj ) )
+                   DENMAX_ALL( IPHASE, CV_NODI ) = max( DENMAX_ALL( IPHASE, CV_NODI ),DEN_ALL%val( 1, IPHASE, cv_nodj ) )
+                   DENMIN_ALL( IPHASE, CV_NODI ) = min( DENMIN_ALL( IPHASE, CV_NODI ),DEN_ALL%val( 1, IPHASE, cv_nodj ) )
                 END DO
              END IF
           END DO
