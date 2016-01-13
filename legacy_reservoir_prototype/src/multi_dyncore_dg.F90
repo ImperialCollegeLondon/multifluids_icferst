@@ -2891,7 +2891,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             call deallocate (Targ_C_Mat)
 !            call deallocate(Auxmesh)
             !Initilize it to zero
-            state(1)%scalar_fields(StorageIndexes(12))%ptr%val = 0.
+            storage_state%scalar_fields(StorageIndexes(12))%ptr%val = 0.
         end if
 
         !Get from state
