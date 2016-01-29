@@ -4430,178 +4430,104 @@ end if
 
     end subroutine CheckElementAngles
 
-    subroutine calculate_outflux(packed_state, ndotqnew, sele, surface_ids, totoutflux, ele , x_ndgln,&
-         cv_ndgln, cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, detwei, IDs_ndgln, cv_snloc, cv_siloc ,SUF_T_BC_ALL)
-
-!    subroutine calculate_outflux(packed_state, ndotqnew, sele, surface_ids, totoutflux, &
-!         cv_sndgln, cv_snloc, SCVFEN, gi, cv_nonods, totele, nphase, detwei, IDs_ndgln, SUF_T_BC_ALL)
+    subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, surface_ids, totoutflux, ele , sele, &
+                                 cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL)
 
        implicit none
 
-! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
+       ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
 
-! Input/Output variables
+       ! Input/output variables
+       
+       integer, intent(in) :: nphase
+       type(tensor_field), intent(in), pointer :: CVPressure
+       real, dimension( : , : ),  intent(in), allocatable :: phaseV
+       real, dimension( : , : ), intent(in), allocatable :: Dens
+       real, dimension( : ), intent(in), pointer :: Por
 
-       type(state_type), intent(in) :: packed_state
        real, dimension(:), intent(in) :: ndotqnew
-       integer, intent(in) :: sele
        integer, dimension(1), intent(in) :: surface_ids
        real, dimension(:), intent(inout) :: totoutflux
        integer, intent(in) :: ele
-       integer, dimension(:), intent( in ) ::  x_ndgln
-       integer, dimension(:), intent( in ) :: IDs_ndgln
+       integer, intent(in) :: sele
+
        integer, dimension(:), intent( in ) ::  cv_ndgln
-       !integer, dimension(:), intent( in ) ::  cv_sndgln
-       integer, intent(in) :: cv_nloc
+       integer, dimension(:), intent( in ) :: IDs_ndgln
        integer, intent(in) :: cv_snloc
+       integer, intent(in) :: cv_nloc
        integer, intent(in) :: cv_siloc
-       real, dimension( : , : ), intent(in), pointer :: SCVFEN
+       integer, intent(in) :: cv_iloc
+
        integer, intent(in) :: gi
-       integer, intent(in) :: cv_nonods
-       integer, intent(in) :: totele
-       integer, intent(in) :: nphase
        real, pointer, dimension( : ), intent(in) :: detwei
+
        real, dimension( :,:, : ), intent( in ) :: SUF_T_BC_ALL
 
-! Local variables
+       ! Local variables
 
-       type(scalar_field), pointer :: sfield
-       type(vector_field), pointer :: vfield
-       !real, dimension(:), pointer :: CVPressure
-       real, dimension(:,:,:), pointer :: CVPressure
-       real, dimension(:), pointer :: Por
-       logical :: test
-       type(tensor_field), pointer :: tfield
-       type(tensor_field), pointer :: t2field, t3field
-       integer  :: x_knod
-       integer  :: cv_knod
-       integer  :: cv_sknod
-       integer :: x_ele
-       integer  :: cv_kloc
-       integer  :: cv_skloc
-       real, dimension( : , : ), allocatable :: phaseV
-       real, dimension( : , : ), allocatable :: phaseVG
-       real, dimension( : , : ), allocatable :: Dens
-       real, dimension( : , : ), allocatable :: DensVG
-       !real, dimension( : ), allocatable :: PorG
+       real, dimension( : ), allocatable :: phaseVG  ! G suffix for "at Gauss point"
+       real, dimension( : ), allocatable :: DensVG
        real :: PorG
+       logical :: test
+       integer  :: cv_knod 
        integer :: surf
        integer :: i
 
-       ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
-       allocate(phaseV(nphase,cv_nonods), phaseVG(nphase,cv_nonods))
-       allocate(Dens(nphase,cv_nonods), DensVG(nphase,cv_nonods))
-       !allocate(PorG(totele))
+      ! ALLOCATIONS
+      allocate(phaseVG(nphase))
+      allocate(DensVG(nphase))
 
-! Extract the pressure
+      ! Having extracted the saturation field (phase volume fraction) in cv_adv_diff at control volume nodes, need to calculate it at quadrature points gi.
+      ! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes). 
+      ! Since the CV shape functions are 1 or 0, the value at Gauss point gi, is given by the value at the nearest CV_node. So
+      ! we pass down the value of cv_iloc from cv_adv_diff and calculate cv_knod. This will be the node corresponding to a given
+      ! value of gi in the gcount loop in cv_adv_diff. This then gives the value of phaseVG that we need to associate to that particular Gauss point. 
+      ! Similar calculation done for density.
 
-      !sfield => extract_scalar_field( packed_state, "CVPressure" )
-      !CVPressure =>  sfield%val(:)
+      cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
+      phaseVG(:) = phaseV(:,cv_knod) 
 
-      ! Modified 25/06/15 to account for the changes to the treatment of Pressure in the code (Using DPPs multiple pressures formulation)
+      ! Having extracted the density at control volume nodes, need to calculate it at quadrature points gi.
+      ! (Density lives on the pressure mesh). 
 
-      t3field => extract_tensor_field( packed_state, "PackedCVPressure" )
-      CVPressure => t3field%val(:,:,:)
+      cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_iloc)
+      DensVG(:) = Dens(:,cv_knod)
 
-! Extract the phase volume fraction
+      ! Porosity constant element-wise so simply extract that value associated to a given element ele 
 
-      tfield => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-      phaseV = tfield%val(1,:,:)
+      PorG = Por(IDs_ndgln(ele))
 
- ! Extract the density
+      ! This function will return true for surfaces we should be integrating over (this entire subroutine is called inside a loop over ele, cv_iloc, gi in cv-adv-dif)
+      ! i.e. when sele is part of a surface labelled by ID = surface_ids. We then add up (integrate) flux contributions from all elements that test true.
 
-      t2field => extract_tensor_field( packed_state, "PackedDensity" )
-      Dens =  t2field%val(1,:,:)
+      test = integrate_over_surface_element(CVPressure, sele, surface_ids)
 
-! Extract the porosity (still should confirm whether or not totoutflux needs to be divided by the porosity - matter of which velocity to use : q or v)
+      ! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
+      ! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
 
-      vfield => extract_vector_field( packed_state, "Porosity" )
-      Por =>  vfield%val(1,:)
-
-! Having extracted the saturation field (phase volume fraction) at control volume nodes, need to calculate it at quadrature points gi.
-! (Note saturation is defined on a control volume basis and so the field is stored at control volume nodes). Therefore need cv_ndgln below
-
-      phaseVG = 0.0
-      do cv_kloc=1,cv_nloc
-      cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_kloc)
-      phaseVG(:,gi) = phaseVG(:,gi) + phaseV(:,cv_knod)*SCVFEN(cv_kloc,gi)
-      end do
-
-!      phaseVG = 0.0
-!      do cv_skloc=1,cv_snloc
-!      cv_sknod=cv_sndgln((sele-1)*cv_snloc+cv_skloc)
-!      phaseVG(:,gi) = phaseVG(:,gi) + phaseV(:,cv_sknod)*SCVFEN(cv_skloc,gi)
-!      end do
-
-! Having extracted the density at control volume nodes, need to calculate it at quadrature points gi.
-! Density is a function of pressure and therefore lives on the pressure mesh. It is therefore stored at
-! control volume nodes (easiest to see in a diagram of the elements). Hence, the global variable we need in the calculation below is cv_ndgln
-
-      DensVG = 0.0
-      do cv_kloc=1,cv_nloc
-      cv_knod=cv_ndgln((ele-1)*cv_nloc+cv_kloc)
-      DensVG(:,gi) = DensVG(:,gi) + Dens(:,cv_knod)*SCVFEN(cv_kloc,gi)
-      end do
-
-!      DensVG = 0.0
-!      do cv_skloc=1,cv_snloc
-!      cv_sknod=cv_sndgln((sele-1)*cv_snloc+cv_skloc)
-!      DensVG(:,gi) = DensVG(:,gi) + Dens(:,cv_sknod)*SCVFEN(cv_skloc,gi)
-!      end do
-
-
-! Porosity is on the P0DG mesh. The value is constant across an element. Can calculate it at any point in an element and assign this to be the value
-! at the Gauss point. (Strictly this last bit is unnecessary - may tidy up in the future). x_ndgln((ele-1)*cvnloc +1) allows us to extract the
-! x-coordinate of the '1st physical' triangle node for each element. We then calculate the porosity at this value of x and assign it to PorG(ele).
-! [Check that porosity is constant across an element and not across a control volume - else this needs modification].
-
-      ! x_ele calculates a coordinate on each element
-      !x_ele=x_ndgln((ele-1)*cv_nloc+1)
-      !PorG(ele) = Por(x_ele)
-
-     PorG = Por(IDs_ndgln(ele))
-
-!      PorG = Por(IDs_ndgln(sele))
-
-! This function will return true for surfaces we should be integrating over (this entire subroutine is called in a loop over ele,(sele),gi in cv-adv-dif)
-! Need the condition that sele > 0 Check why it can be zero/negative.
-
-      if(sele > 0) then
-
-          test = integrate_over_surface_element(t3field, sele, surface_ids)
-
-! Need to integrate the fluxes over the boundary in question (i.e. those that test true). Totoutflux initialised to zero out of this subroutine. Ndotqnew caclulated in cv-adv-diff
-! Need to add up these flow velocities multiplied by the saturation phaseVG to get the correct velocity and by the Gauss weights to get an integral. Density needed to get a mass flux
-! Divide by porosity to get a physical flux (check this)
-
-          if(test) then
+      if(test) then
 
               ! In the case of an inflow boundary, need to use the boundary value of saturation (not the value inside the domain)
               ! Need to pass down an array with the saturation boundary conditions to deal with these cases
               ! i.e need to pass down SUF_T_BC_ALL(1, nphase, surface_element)
 
-              do i = 1, size(ndotqnew)
-                      surf = (sele - 1 ) * cv_snloc + cv_siloc
-                      if(ndotqnew(i) < 0 ) then
-                          ! Inlet boundary - so use boundary phase volume fraction
-                          totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)!*DensVG(i,gi)!/PorG
-                          !totoutflux(i) = totoutflux(i) + ndotqnew(i)*detwei(gi)*DensVG(i,gi)/PorG
+          do i = 1, size(ndotqnew)
+                  surf = (sele - 1 ) * cv_snloc + cv_siloc
+                  if(ndotqnew(i) < 0 ) then
+                      ! Inlet boundary - so use boundary phase volume fraction
+                      totoutflux(i) = totoutflux(i) + ndotqnew(i)*SUF_T_BC_ALL(1, i, surf)*detwei(gi)*DensVG(i) ! totoutflux initialised to zero in cv_adv_diff
 
-                      else
-                          ! Outlet boundary - so use internal (to the domain) phase volume fraction
-                          totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i,gi)*detwei(gi)!*DensVG(i,gi)!/PorG
-                      endif
-              enddo
-
-          endif
+                  else
+                      ! Outlet boundary - so use internal (to the domain) phase volume fraction
+                      totoutflux(i) = totoutflux(i) + ndotqnew(i)*phaseVG(i)*detwei(gi)*DensVG(i)
+                  endif
+          enddo
 
       endif
-
-      deallocate(phaseV)
+     
+      ! DEALLOCATIONS
       deallocate(phaseVG)
-      deallocate(dens)
       deallocate(densVG)
-      !deallocate(PorG)
 
       return
 

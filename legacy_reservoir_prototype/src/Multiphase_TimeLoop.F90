@@ -1181,11 +1181,16 @@
          ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
 
          if(calculate_flux) then
-             intflux = intflux + totout*dt
 
-                 ! We will output totout normalised as a fractional flow
+             ! We will output totout normalised as f1/(f1+f2). 29/01/2016 - corrected the normalisation (was incorrect for n_outlets > 1)
 
-                 totout = totout/sum(totout)
+             do ioutlet = 1, size(outlet_id)
+
+             intflux(:, ioutlet) = intflux(:, ioutlet) + totout(:, ioutlet)*dt
+
+             totout(:, ioutlet) = totout(:, ioutlet)/sum(totout(:, ioutlet))
+
+             enddo
 
          endif
 
@@ -2135,25 +2140,6 @@
     else
        open(unit=default_stat%conv_unit, file="outfluxes.csv", action="write", position="append")
     end if
-
-
-!   ! Write column headings to file
-!   if(itime.eq.1) then
-!       !write(default_stat%conv_unit,*) "Current Time"
-!       do ioutlet =1, size(outflux,2)
-!           write(default_stat%conv_unit,*) "Current Time","Surface id:",outlet_id(ioutlet),&
-!           "Phase1 boundary flux","Phase2 boundary flux","Phase1 integrated flux","Phase2 integrated flux"
-!           whole_line = trim(whole_line) //","// trim(numbers)//","
-!       end do
-!   endif
-
-!   write(whole_line,*) current_time
-!   do ioutlet =1, size(outflux,2)
-!       write(numbers,*) outflux(:, ioutlet),  intflux(:, ioutlet)
-!       whole_line = trim(whole_line) //","// trim(numbers)//","
-!   end do
-!    !Write a line
-!   write(default_stat%conv_unit,*), trim(whole_line)
 
    ! Write column headings to file
    counter = 0

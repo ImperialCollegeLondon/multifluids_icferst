@@ -349,13 +349,6 @@ contains
       real, dimension(:,:,:), optional, intent(inout):: MASS_P_CV
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
-      ! Variables needed when calculating boundary outfluxes. Totoutflux will be used to sum up over elements for each phase the outflux through a specified boundary
-      ! Ioutlet counts the number of boundaries that are integrated over for the 'totoutflux calculation'.
-
-      real, dimension(nphase, size(outlet_id)) :: totoutflux
-      integer :: ioutlet
-
-
       ! Local variables
       REAL :: ZERO_OR_TWO_THIRDS
 ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
@@ -611,6 +604,23 @@ contains
       integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, U_JLOC, CV_JLOC2, CV_NODJ2
       real :: rconst, h_nano, RP_NANO, dt_pipe_factor, xc_ele(ndim), xs_pt(ndim)
       logical :: got_nano
+
+     !#########################################
+     ! 27/01/2016 Variables needed when doing calculate_outflux(). For each phase, totoutflux will be sum up over elements 
+     ! the outgoing flux through a specified boundary.
+     ! Ioutlet counts the number of boundaries that are integrated over for the 'totoutflux calculation'.
+
+      real, dimension(nphase, size(outlet_id)) :: totoutflux
+      integer :: ioutlet
+
+      type(tensor_field), pointer :: CVPressure
+      type(tensor_field), pointer :: tenfield1, tenfield2
+      type(vector_field), pointer :: vecfield
+      real, dimension( : , : ), allocatable :: phaseV
+      real, dimension( : , : ), allocatable :: Dens
+      real, dimension(:), pointer :: Por
+
+     !#########################################
 
       if ( npres > 1 )then
          reservoir_P( 1 ) = 0.0 !1.0e+7
@@ -1424,6 +1434,37 @@ contains
 
 
       GLOBAL_FACE = 0
+
+      !###########################################
+      !27/01/2016
+      ! Previously memory extractions for calculate_outflux() were happening inside the loop over elements below. 
+      ! This was causing extreme slowdown in the code. Hence we now do all the necessary extractions from state relevant
+      ! to calculate_outflux() here. i.e. they happen every time-step still but OUTSIDE the element loop!
+
+      ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
+      allocate(phaseV(nphase,cv_nonods))
+      allocate(Dens(nphase,cv_nonods))
+
+      ! Extract Pressure
+
+      CVPressure => extract_tensor_field( packed_state, "PackedCVPressure" ) ! Note no %val(:,:,:) needed here anymore
+
+      ! Extract the Phase Volume Fraction
+
+      tenfield1 => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+      phaseV = tenfield1%val(1,:,:)
+
+      ! Extract the Density
+
+      tenfield2 => extract_tensor_field( packed_state, "PackedDensity" )
+      Dens =  tenfield2%val(1,:,:)
+
+      ! Extract the Porosity 
+
+      vecfield => extract_vector_field( packed_state, "Porosity" )
+      Por =>  vecfield%val(1,:)
+
+      !###########################################
 
       Loop_Elements: DO ELE = 1, TOTELE
 
@@ -2543,19 +2584,26 @@ contains
 
                      ENDIF Conditional_GETCT2
 
+                    
+                   !########################################################################################
+                   ! 27/01/2016
 
-                    if ( GETCT .and. calculate_flux ) then
+                    if(sele > 0) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
 
-                        do ioutlet = 1, size(outlet_id)
-                            ! Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
+		            if ( GETCT .and. calculate_flux ) then                  
 
-                            call calculate_outflux(packed_state, ndotqnew, sele, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , x_ndgln, cv_ndgln,&
-                                 cv_nloc, SCVFEN, gi, cv_nonods, totele, nphase, SCVDETWEI, IDs_ndgln, cv_snloc, cv_siloc ,SUF_T_BC_ALL)
+		                do ioutlet = 1, size(outlet_id)
+		                     !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
 
-                        enddo
+				     call calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
+                                 			   cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, SCVDETWEI , SUF_T_BC_ALL)
 
+		                enddo
+
+		            end if
                     end if
 
+                  !#########################################################################################
 
                   Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
                   ! Obtain the CV discretised advection/diffusion equations
@@ -2801,6 +2849,14 @@ contains
          END DO Loop_CV_ILOC
 
       END DO Loop_Elements
+
+      !#########################
+      ! Deallocations for the calculate_outflux() code
+      ! 27/01/2016
+
+      deallocate(phaseV)
+      deallocate(dens)
+      !#########################
 
 
         !Adjust the value introduced in MASS_P_CV to compensate the fact that we are doing a
@@ -3289,9 +3345,10 @@ end if
        if(GETCT .and. calculate_flux) then
 
            ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
-
-           totout = totoutflux
+           
            do ioutlet = 1,size(outlet_id)
+
+           totout(:, ioutlet) = totoutflux(:, ioutlet)
 
            ! Ensure all processors have the correct value of totout for parallel runs
             call allsum(totout(:,ioutlet))
