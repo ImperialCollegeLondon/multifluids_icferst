@@ -606,7 +606,7 @@ contains
       logical :: got_nano
 
      !#########################################
-     ! 27/01/2016 Variables needed when doing calculate_outflux(). For each phase, totoutflux will be sum up over elements 
+     ! 27/01/2016 Variables needed when doing calculate_outflux(). For each phase, totoutflux will be sum up over elements
      ! the outgoing flux through a specified boundary.
      ! Ioutlet counts the number of boundaries that are integrated over for the 'totoutflux calculation'.
 
@@ -1437,7 +1437,7 @@ contains
 
       !###########################################
       !27/01/2016
-      ! Previously memory extractions for calculate_outflux() were happening inside the loop over elements below. 
+      ! Previously memory extractions for calculate_outflux() were happening inside the loop over elements below.
       ! This was causing extreme slowdown in the code. Hence we now do all the necessary extractions from state relevant
       ! to calculate_outflux() here. i.e. they happen every time-step still but OUTSIDE the element loop!
 
@@ -1459,7 +1459,7 @@ contains
       tenfield2 => extract_tensor_field( packed_state, "PackedDensity" )
       Dens =  tenfield2%val(1,:,:)
 
-      ! Extract the Porosity 
+      ! Extract the Porosity
 
       vecfield => extract_vector_field( packed_state, "Porosity" )
       Por =>  vecfield%val(1,:)
@@ -2584,23 +2584,23 @@ contains
 
                      ENDIF Conditional_GETCT2
 
-                    
+
                    !########################################################################################
                    ! 27/01/2016
 
                     if(sele > 0) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
 
-		            if ( GETCT .and. calculate_flux ) then                  
+                    if ( GETCT .and. calculate_flux ) then
 
-		                do ioutlet = 1, size(outlet_id)
-		                     !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
+                        do ioutlet = 1, size(outlet_id)
+                             !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
 
-				     call calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
-                                 			   cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, SCVDETWEI , SUF_T_BC_ALL)
+                     call calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
+                                               cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, SCVDETWEI , SUF_T_BC_ALL)
 
-		                enddo
+                        enddo
 
-		            end if
+                    end if
                     end if
 
                   !#########################################################################################
@@ -3345,7 +3345,7 @@ end if
        if(GETCT .and. calculate_flux) then
 
            ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
-           
+
            do ioutlet = 1,size(outlet_id)
 
            totout(:, ioutlet) = totoutflux(:, ioutlet)
@@ -12669,7 +12669,7 @@ deallocate(NX_ALL)
     integer :: ierr, PIPE_NOD_COUNT, NPIPES_IN_ELE, ipipe, CV_LILOC, CV_LJLOC, U_LILOC, &
          u_iloc, x_iloc, cv_knod, idim, cv_lkloc, u_lkloc, u_knod, gi, ncorner, cv_lngi, u_lngi, cv_bngi, bgi, &
          icorner1, icorner2, icorner3, icorner4, WIC_B_BC_DIRICHLET, JCV_NOD1, JCV_NOD2, CV_NOD, JCV_NOD, JU_NOD, &
-         U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3
+         U_NOD, U_SILOC, COUNT2, MAT_KNOD, MAT_NODI, COUNT3, IPRES
 
     real, dimension(:,:), allocatable:: tmax_all, tmin_all, denmax_all, denmin_all
 
@@ -12851,7 +12851,6 @@ deallocate(NX_ALL)
        END DO
     END DO
     ! END OF SET UP THE SURFACE B.C'S
-
 
     allocate( tmax_all(nphase, cv_nonods), tmin_all(nphase, cv_nonods), &
          denmax_all(nphase, cv_nonods), denmin_all(nphase, cv_nonods) )
@@ -13423,7 +13422,11 @@ deallocate(NX_ALL)
                       END IF
                    END DO
 
-                   call addto( ct_rhs, JCV_NOD, LOC_CT_RHS_U_ILOC )
+                   DO IPRES = 2, NPRES
+                     call addto( ct_rhs, ipres, jcv_nod, &
+                        sum( LOC_CT_RHS_U_ILOC( 1+(ipres-1)*n_in_pres : ipres*n_in_pres ) ) )
+                   END DO
+
                 END IF ! IF ( GETCT ) THEN
 
                 IF ( GETCV_DISC ) THEN ! this is on the boundary...
