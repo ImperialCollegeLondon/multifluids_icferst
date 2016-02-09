@@ -3508,7 +3508,7 @@
                 !Increase Ts section
                 if ((ts_ref_val < increase_ts_switch .and.dt*increaseFactor<max_ts).and..not.Repeat_time_step) then
                    call get_option( '/timestepping/timestep', dt )
-                   dt = dt * increaseFactor
+                   dt = min(dt * increaseFactor,max_ts)
                    call set_option( '/timestepping/timestep', dt )
                    ewrite(1,*) "Time step increased to:", dt
                    ExitNonLinearLoop = .true.
@@ -3534,7 +3534,7 @@
                    call get_option( '/timestepping/current_time', acctim )
                    acctim = acctim - dt
                    call set_option( '/timestepping/current_time', acctim )
-                   dt = dt / decreaseFactor
+                   dt = max(dt / decreaseFactor, min_ts)
                    call set_option( '/timestepping/timestep', dt )
                    ewrite(1,*) "Time step decreased to:", dt
                    Repeat_time_step = .true.
@@ -3545,7 +3545,7 @@
                     if (its < int(0.25 * NonLinearIteration) .and..not.Repeat_time_step) then
                        !Increase time step
                        call get_option( '/timestepping/timestep', dt )
-                       dt = dt * increaseFactor
+                       dt = min(dt * increaseFactor, max_ts)
                        call set_option( '/timestepping/timestep', dt )
                        ewrite(1,*) "Time step increased to:", dt
                        ExitNonLinearLoop = .true.
@@ -3568,7 +3568,7 @@
                        call get_option( '/timestepping/current_time', acctim )
                        acctim = acctim - dt
                        call set_option( '/timestepping/current_time', acctim )
-                       dt = dt / decreaseFactor
+                       dt = max(dt / decreaseFactor,min_ts)
                        call set_option( '/timestepping/timestep', dt )
                        ewrite(1,*) "Time step decreased to:", dt
                        Repeat_time_step = .true.
