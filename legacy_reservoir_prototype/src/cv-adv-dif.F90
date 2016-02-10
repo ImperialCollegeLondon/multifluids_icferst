@@ -10397,7 +10397,7 @@ CONTAINS
 
 
       !If using C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
-      if (present(U_RHS) .and. RECAL_C_CV_RHS) call prepare_boundary_conditions(U_RHS, Bound_ele_correct)
+      if (present(U_RHS) .and. RECAL_C_CV_RHS) call introduce_C_CV_boundary_conditions(U_RHS, Bound_ele_correct)
 
              ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
 
@@ -10524,26 +10524,6 @@ CONTAINS
               ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
               + FTHETA_T2(:)  * LIMDT(:) * (NDOTQ(:)-NDOTQ_IMP(:)) &
               ) / DEN_ALL( :, CV_NODI ) )
-          !If C_CV formulation, apply weak pressure boundary conditions if any
-          if (present(U_RHS) .and. RECAL_C_CV_RHS) then
-              DO IPRES = 1, NPRES
-                  IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
-                      DO U_SILOC = 1, size(U_SLOC2LOC)
-                          U_ILOC = U_SLOC2LOC( U_SILOC )
-                          U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-!print *, U_SILOC,U_ILOC, U_INOD
-                          DO P_SJLOC = 1, size(CV_SLOC2LOC)
-                              U_KLOC = U_SLOC2LOC( P_SJLOC )
-                              DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
-                                  U_RHS( :, IPHASE, U_INOD ) = U_RHS( :, IPHASE, U_INOD ) &
-                                      - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )&
-                                      * SUF_P_BC_ALL( 1,1,P_SJLOC + size(CV_SLOC2LOC)* ( SELE - 1 ) )
-                              end do
-                          end do
-                      end do
-                  end if
-              end do
-          end if
       ELSE
           ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
               - SCVDETWEI( GI ) * (  ( &
@@ -10645,7 +10625,7 @@ CONTAINS
 
       contains
 
-      subroutine prepare_boundary_conditions(U_RHS, Bound_ele_correct)
+      subroutine introduce_C_CV_boundary_conditions(U_RHS, Bound_ele_correct)
         !This subroutine populates Bound_ele_correct and Bound_ele2_correct to properly apply the BCs when creating the
         !C_CV matrix
         implicit none
@@ -10665,14 +10645,20 @@ CONTAINS
                     end do
                 end if
             end do
-            do ipres = 1, size(WIC_P_BC_ALL,2)
-                IF( WIC_P_BC_ALL( 1,ipres, SELE ) == WIC_P_BC_DIRICHLET ) THEN
+            !If C_CV formulation, apply weak pressure boundary conditions if any
+            DO IPRES = 1, NPRES
+                IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
                     Bound_ele_correct = 0
                     DO U_SILOC = 1, size(U_SLOC2LOC)
+                        U_ILOC = U_SLOC2LOC( U_SILOC )
+                        U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
                         DO P_SJLOC = 1, size(CV_SLOC2LOC)
                             U_KLOC = U_SLOC2LOC( P_SJLOC )
                             DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
                                 Bound_ele_correct( :, IPHASE, U_KLOC ) = Bound_ele_correct( :, IPHASE, U_KLOC ) + 1
+                                U_RHS( :, IPHASE, U_INOD ) = U_RHS( :, IPHASE, U_INOD ) &
+                                    - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )&
+                                    * SUF_P_BC_ALL( 1,1,P_SJLOC + size(CV_SLOC2LOC)* ( SELE - 1 ) )
                             end do
                         end do
                     end do
@@ -10680,7 +10666,7 @@ CONTAINS
             end do
         end if
 
-      end subroutine prepare_boundary_conditions
+      end subroutine introduce_C_CV_boundary_conditions
 
   END SUBROUTINE PUT_IN_CT_RHS
 
