@@ -10397,7 +10397,6 @@ CONTAINS
 
 
       !If using C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
-!      IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV)
       if (present(U_RHS) .and. RECAL_C_CV_RHS) call prepare_boundary_conditions(U_RHS, Bound_ele_correct)
 
              ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
@@ -10532,6 +10531,7 @@ CONTAINS
                       DO U_SILOC = 1, size(U_SLOC2LOC)
                           U_ILOC = U_SLOC2LOC( U_SILOC )
                           U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
+!print *, U_SILOC,U_ILOC, U_INOD
                           DO P_SJLOC = 1, size(CV_SLOC2LOC)
                               U_KLOC = U_SLOC2LOC( P_SJLOC )
                               DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
@@ -10652,7 +10652,7 @@ CONTAINS
         REAL, DIMENSION( :, :, : ), intent( inout ) :: U_RHS
         real, dimension(:,:,:), intent(out) :: Bound_ele_correct
         !Local variables
-        integer :: U_KLOC, IPHASE, U_SKLOC, U_INOD, ipres
+        integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres
         !By default no modification is required
         Bound_ele_correct = 1.0
         IF ( on_domain_boundary ) THEN
@@ -10663,14 +10663,18 @@ CONTAINS
                         U_KLOC = U_SLOC2LOC( U_SKLOC )
                         Bound_ele_correct( :, IPHASE, U_KLOC ) = 0.
                     end do
-                else
-                    do ipres = 1, size(WIC_P_BC_ALL,2)
-                        IF( WIC_P_BC_ALL( 1,ipres, SELE ) == WIC_P_BC_DIRICHLET ) THEN
-                            DO U_SKLOC = 1, size(U_SLOC2LOC)
-                                U_KLOC = U_SLOC2LOC( U_SKLOC )
-                                Bound_ele_correct( :, IPHASE, U_KLOC ) = 2.
+                end if
+            end do
+            do ipres = 1, size(WIC_P_BC_ALL,2)
+                IF( WIC_P_BC_ALL( 1,ipres, SELE ) == WIC_P_BC_DIRICHLET ) THEN
+                    Bound_ele_correct = 0
+                    DO U_SILOC = 1, size(U_SLOC2LOC)
+                        DO P_SJLOC = 1, size(CV_SLOC2LOC)
+                            U_KLOC = U_SLOC2LOC( P_SJLOC )
+                            DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
+                                Bound_ele_correct( :, IPHASE, U_KLOC ) = Bound_ele_correct( :, IPHASE, U_KLOC ) + 1
                             end do
-                        end if
+                        end do
                     end do
                 end if
             end do
