@@ -949,7 +949,7 @@ contains
         type( scalar_field ), pointer ::  pressure_state, sf, soldf, gamma
 
         type( vector_field ) :: packed_vel, rhs
-        type( vector_field ) :: deltap, rhs_p
+        type( vector_field ) :: deltap, rhs_p, P_correction
         type( petsc_csr_matrix ) :: mat
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
@@ -962,6 +962,7 @@ contains
         REAL, DIMENSION ( :, :, : ), pointer :: SUF_P_BC_ALL
         INTEGER, DIMENSION ( 1, npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         type( tensor_field ) :: pressure_BCs
+
 
         EXPLICIT_PIPES2 = .true.
 
@@ -1365,8 +1366,14 @@ contains
 !            CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC)
 
             DO IPRES = 1, NPRES
-               CALL C_MULT2( CDP_TENSOR%VAL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), P_ALL%val( 1, IPRES, : ), &
-                    CV_NONODS, U_NONODS, NDIM, N_IN_PRES, C( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
+!                if (GET_C_IN_CV_ADVDIF) then
+!                    !Use C_CV to form the CMC matrix
+!                   CALL C_MULT2( CDP_TENSOR%VAL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), P_ALL%val( 1, IPRES, : ), &
+!                       CV_NONODS, U_NONODS, NDIM, N_IN_PRES, C_CV( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
+!                else
+                   CALL C_MULT2( CDP_TENSOR%VAL( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), P_ALL%val( 1, IPRES, : ), &
+                        CV_NONODS, U_NONODS, NDIM, N_IN_PRES, C( :, 1+(IPRES-1)*N_IN_PRES : IPRES*N_IN_PRES, : ), NCOLC, FINDC, COLC )
+!                end if
             END DO
 
             if ( high_order_Ph ) then
@@ -1574,9 +1581,7 @@ END IF
 !            mat2=csr2petsc_csr(cmat)
 !            call deallocate(cmat)
 
-            !Solve the system
-            call zero(deltaP)
-
+            !########Solve the system#############
             !Re-scale of the matrix to allow working with small values of sigma
             !this is a hack to deal with bad preconditioners and divide by zero errors.
             if (is_porous_media) then
@@ -1599,7 +1604,7 @@ END IF
 !            if (is_porous_media .and. present(Quality_list)) then
 !                call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, totele, p_nloc, p_ndgln, Quality_list)
 !            end if
-
+            call zero(deltaP)
             if ( (x_nonods /= cv_nonods) .and. use_continuous_pressure_solver &
                  .and. nonlinear_iteration == 1 ) then !For discontinuous mesh
                ! We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
@@ -1611,11 +1616,24 @@ END IF
                call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
             end if
 
+            !If two matrices method to obtain pressure and velocities, we project the CV pressure
+            !to FE to make it consistent with the FE C matrix
+!            if(GET_C_IN_CV_ADVDIF .and..not.everything_c_cv) then
+!                !This might be doing the projection wrongly... using diamond the result is different
+!                call project_CV_P_TO_FE(deltap, packed_state, storage_state, X_ALL, ndim, x_nloc,&
+!                 cv_nonods, u_nloc, cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes,&
+!                 .false., ncolm, findm, colm, midm)
+!            end if
+
+
+
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
 
 
             call halo_update(p_all)
-
+            deallocate( UP_VEL )
+            deallocate(U_RHS_CDP2)
+            deallocate(U_ALL)
             call deallocate(rhs_p)
             call deallocate(cmc_petsc)
 
@@ -1623,14 +1641,6 @@ END IF
 
 
 
-            !If two matrices method to obtain pressure and velocities, we project the CV pressure
-            !to FE to make it consistent with the FE C matrix
-            if(GET_C_IN_CV_ADVDIF .and..not.everything_c_cv) then
-                !This might be doing the projection wrongly... using diamond the difference is different
-                call project_CV_P_TO_FE(deltap, packed_state, storage_state, X_ALL, ndim, x_nloc,&
-                 cv_nonods, u_nloc, cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes,&
-                 .false., ncolm, findm, colm, midm)
-            end if
             ! Use a projection method
             ! CDP = C * DP
             !CALL C_MULT2( CDP_tensor%val, deltap%val, CV_NONODS, U_NONODS, NDIM, NPHASE, C, NCOLC, FINDC, COLC )
@@ -1717,7 +1727,7 @@ END IF
         call deallocate(ct_rhs)
         call DEALLOCATE( CDP_tensor )
         DEALLOCATE( DU_VEL )
-        DEALLOCATE( UP_VEL )
+
 
         if (.not.is_porous_media) DEALLOCATE( PIVIT_MAT )
 
@@ -1834,7 +1844,6 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
                 PSI_AVE_ptr, PSI_AVE_ptr, MASS_ELE, &
                 CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
                 CV_NGI, CV_NLOC, CVN, CVWEIGHT, CVFEN, CVFENLX_ALL, &
-!CV_NGI, CV_NLOC, CVN, CVWEIGHT, UFEN, UFENLX_ALL, &
                 X_NONODS, X_ALL, NCOLM, FINDM, COLM, MIDM, &
                 0, MASS_MN_PRES, FINDM, COLM, NCOLM)
 
@@ -2247,7 +2256,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
         got_free_surf,  MASS_SUF, &
         dummy_transp, &
-        StorageIndexes, 3, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false., MASS_P_CV = PIVIT_MAT)
+        StorageIndexes, 3, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false., MASS_P_CV = PIVIT_MAT,&
+        U_RHS = U_RHS)
 
         ewrite(3,*)'Back from cv_assemb'
 
@@ -2748,7 +2758,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
         !Logical to control wether to create a CV pressure or FE pressure in multi_dyncore
         logical, parameter :: GET_C_IN_CV_IN_DYNCORE = .false.
-
 
 !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
@@ -5286,51 +5295,49 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE, ELE, U_ILOC, P_JLOC, &
                                 TOTELE, U_NLOC, P_NLOC )
                             END IF
-
-
-
-                            DO IPRES = 1, NPRES
-                               IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
-                                  DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
-                                     DO IDIM = 1, NDIM_VEL
-                                        IF ( IGOT_VOL_X_PRESSURE == 1 ) THEN
-                                           IF ( .NOT.GOT_C_MATRIX ) THEN
-                                              C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-                                                   + VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                           END IF
-                                           LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                - VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC * ( SELE - 1) ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                        ELSE
-                                            if(GET_C_IN_CV_IN_DYNCORE) then
-!                                                IF ( .NOT.GOT_C_MATRIX ) THEN
-!                                                    C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-!                                                        - NMX_ALL( IDIM) ! subtract out as we have added it in the surface of the elements
-!                                                END IF
-                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                    - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC* ( SELE - 1 ) )
-
-                                            else!ORIGINAL FORMULATION
-                                                IF ( .NOT.GOT_C_MATRIX ) THEN
-                                                    C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-                                                        + NMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                                END IF
-                                                LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                    - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC* ( SELE - 1 ) ) * SELE_OVERLAP_SCALE( P_JLOC )
-                                            endif
-                                        END IF
-                                     END DO
-                                  END DO
-                               else if(GET_C_IN_CV_IN_DYNCORE) then !Surface contribution
-                                   IF ( .NOT.GOT_C_MATRIX ) THEN
-                                       DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
-                                           DO IDIM = 1, NDIM_VEL
-                                               C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
-                                                   - NMX_ALL( IDIM) ! subtract out as we have added it in the surface of the elements
+                            if (.not.everything_c_cv) then!If C_CV then BCs are introduced in CV_ASSEMB
+                                DO IPRES = 1, NPRES
+                                   IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
+                                      DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
+                                         DO IDIM = 1, NDIM_VEL
+                                            IF ( IGOT_VOL_X_PRESSURE == 1 ) THEN
+                                               IF ( .NOT.GOT_C_MATRIX ) THEN
+                                                  C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                       + VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                               END IF
+                                               LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                    - VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC * ( SELE - 1) ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                            ELSE
+                                                if(GET_C_IN_CV_IN_DYNCORE) then
+!                                                    IF ( .NOT.GOT_C_MATRIX ) THEN
+!                                                        C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+!                                                            - NMX_ALL( IDIM) ! subtract out as we have added it in the surface of the elements
+!                                                    END IF
+                                                    LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                        - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC* ( SELE - 1 ) )
+                                                else!ORIGINAL FORMULATION
+                                                    IF ( .NOT.GOT_C_MATRIX ) THEN
+                                                        C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                            + NMX_ALL( IDIM ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                                    END IF
+                                                    LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                        - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + P_SNLOC* ( SELE - 1 ) ) * SELE_OVERLAP_SCALE( P_JLOC )
+                                                endif
+                                            END IF
+                                         END DO
+                                      END DO
+                                   else if(GET_C_IN_CV_IN_DYNCORE) then !Surface contribution
+                                       IF ( .NOT.GOT_C_MATRIX ) THEN
+                                           DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
+                                               DO IDIM = 1, NDIM_VEL
+                                                   C( IDIM, IPHASE, COUNT ) = C( IDIM, IPHASE, COUNT ) &
+                                                       - NMX_ALL( IDIM) ! subtract out as we have added it in the surface of the elements
+                                               end do
                                            end do
-                                       end do
+                                       END IF
                                    END IF
-                               END IF
-                           END DO
+                               END DO
+                           end if
                         END DO Loop_JLOC2
                     END DO Loop_ILOC2
 
