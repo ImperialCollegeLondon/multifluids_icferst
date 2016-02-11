@@ -3396,7 +3396,7 @@ end if
       call deallocate(tracer_BCs_robin2)
       call deallocate(density_BCs)
       call deallocate(velocity_BCs)
-      if(got_free_surf) call deallocate(pressure_BCs)
+      if(got_free_surf .or. RECAL_C_CV_RHS) call deallocate(pressure_BCs)
       if (present(saturation)) then
          call deallocate(saturation_BCs)
          call deallocate(saturation_BCs_robin2)
