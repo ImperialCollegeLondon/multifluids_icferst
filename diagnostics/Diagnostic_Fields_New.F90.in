@@ -328,14 +328,14 @@ contains
 
       do j = 1, tensor_field_count(states(i))
         t_field => extract_tensor_field(states(i), j)
-        cycle
+        
         ! Only calculate non-aliased diagnostic fields
         if(aliased(t_field) .or. .not. have_option(trim(t_field%option_path) // "/diagnostic")) cycle
         ! Check whether this field should be calculated
         if(.not. recalculate_diagnostic_variable(t_field, exclude_nonrecalculated = exclude_nonrecalculated)) cycle
         ! and whether this field has already been calculated (as a dependency)
         if(has_tensor_field(calculated_states(i), trim(t_field%name))) cycle
-
+        
         ! Calculate dependencies
         call calculate_dependencies(states, i, t_field, &
           & dep_states_mask = calculated_states, exclude_nonrecalculated = exclude_nonrecalculated)

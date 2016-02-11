@@ -301,14 +301,6 @@ Diagnostic_variables.o ../include/diagnostic_variables.mod: \
    ../include/unittest_tools.mod ../include/version.h \
    ../include/vtk_interfaces.mod ../include/write_state_module.mod
 
-../include/distance_function.mod: DistanceFunction.o
-	@true
-
-DistanceFunction.o ../include/distance_function.mod: DistanceFunction.F90 \
-   ../include/fdebug.h ../include/field_derivatives.mod ../include/fields.mod \
-   ../include/fldebug.mod ../include/global_parameters.mod ../include/spud.mod \
-   ../include/state_module.mod
-
 ../include/dynamic_bin_sort_module.mod: Dynamic_Bin_Sort.o
 	@true
 
@@ -362,11 +354,11 @@ Exodusii_F_Interface.o ../include/exodusii_f_interface.mod: \
 	@true
 
 FEFields.o ../include/fefields.mod: FEFields.F90 \
-   ../include/element_numbering.mod ../include/elements.mod \
-   ../include/fdebug.h ../include/fetools.mod ../include/field_options.mod \
-   ../include/fields.mod ../include/sparse_matrices_fields.mod \
-   ../include/sparse_tools.mod ../include/state_module.mod \
-   ../include/transform_elements.mod
+   ../include/data_structures.mod ../include/element_numbering.mod \
+   ../include/elements.mod ../include/fdebug.h ../include/fetools.mod \
+   ../include/field_options.mod ../include/fields.mod ../include/halos.mod \
+   ../include/sparse_matrices_fields.mod ../include/sparse_tools.mod \
+   ../include/state_module.mod ../include/transform_elements.mod
 
 ../include/fetools.mod: FETools.o
 	@true
@@ -412,15 +404,13 @@ Fields.o ../include/fields.mod: Fields.F90 ../include/fdebug.h \
 
 Fields_Allocates.o ../include/fields_allocates.mod: Fields_Allocates.F90 \
    ../include/adjacency_lists.mod ../include/data_structures.mod \
-   ../include/element_numbering.mod ../include/elements.mod \
-   ../include/fdebug.h ../include/fields_base.mod \
+   ../include/elements.mod ../include/fdebug.h ../include/fields_base.mod \
    ../include/fields_data_types.mod ../include/global_numbering.mod \
    ../include/global_parameters.mod ../include/halo_data_types.mod \
    ../include/halos_allocates.mod ../include/halos_repair.mod \
    ../include/ieee_arithmetic.mod ../include/memory_diagnostics.mod \
    ../include/parallel_tools.mod ../include/pickers_deallocates.mod \
-   ../include/shape_functions.mod ../include/spud.mod \
-   Reference_count_interface_mesh_type.F90 \
+   ../include/shape_functions.mod Reference_count_interface_mesh_type.F90 \
    Reference_count_interface_scalar_field.F90 \
    Reference_count_interface_tensor_field.F90 \
    Reference_count_interface_vector_field.F90 Reference_count_mesh_type.F90 \
@@ -669,9 +659,9 @@ Interpolation.o ../include/interpolation_module.mod: Interpolation.F90 \
    ../include/fdebug.h ../include/field_derivatives.mod \
    ../include/field_options.mod ../include/fields.mod ../include/futils.mod \
    ../include/meshdiagnostics.mod ../include/node_ownership.mod \
-   ../include/sparse_tools.mod ../include/state_module.mod \
-   ../include/superconvergence.mod ../include/supermesh_construction.mod \
-   ../include/transform_elements.mod
+   ../include/parallel_fields.mod ../include/sparse_tools.mod \
+   ../include/state_module.mod ../include/superconvergence.mod \
+   ../include/supermesh_construction.mod ../include/transform_elements.mod
 
 ../include/intersection_finder_module.mod: Intersection_finder.o
 	@true

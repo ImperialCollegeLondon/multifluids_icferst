@@ -26,12 +26,6 @@
 #    USA
 
 SHELL = @SHELL@
-PACKAGE_NAME = fluidity
-
-FLUIDITY = $(PACKAGE_NAME)
-PACKAGE_NAME = fluidity
-
-FLUIDITY = $(PACKAGE_NAME)
 
 PACKAGE_NAME = @PACKAGE_NAME@
 FLUIDITY = $(PACKAGE_NAME)
@@ -56,7 +50,7 @@ LIB = ../lib/lib$(FLUIDITY).a
 TESTLIBS = $(shell echo @LIBS@ | sed 's@./lib/lib\([a-z]*\)\.a@-l\1@g')
 
 # These are all the objects that are supposed to go into the makefile
-OBJS = Extrude.o Extrude_radially.o Advancing_front.o Metric_based_extrude.o Combine_Meshes.o
+OBJS = Extrude.o Advancing_front.o Metric_based_extrude.o Combine_Meshes.o
 
 .SUFFIXES: .F90 .c .o .a
 

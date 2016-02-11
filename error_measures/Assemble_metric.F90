@@ -5,7 +5,6 @@ module metric_assemble
   use VTK_interfaces
   use surfacelabels
 !  use fields
-  use elements
   use field_derivatives
   use form_metric_field
   use merge_tensors
@@ -143,10 +142,6 @@ module metric_assemble
       call limit_metric(positions, error_metric)
     end if
     call halo_update(error_metric)
-
-    if (limit_by_region) then
-       call apply_gradation(error_metric, positions, state(1))
-    end if
     
   end subroutine assemble_metric
   

@@ -2,8 +2,10 @@
 module fefields
   !!< Module containing general tools for discretising Finite Element problems.
 
+  use data_structures
   use fields
   use field_options, only: get_coordinate_field
+  use halos
   use elements, only: element_type
   use element_numbering
   use fetools, only: shape_shape
@@ -18,12 +20,13 @@ module fefields
   end interface add_source_to_rhs
 
   interface project_field
-     module procedure project_scalar_field, project_vector_field, project_tensor_field
+     module procedure project_scalar_field, project_vector_field
   end interface
   
   private
   public :: compute_lumped_mass, compute_mass, compute_projection_matrix, add_source_to_rhs, &
             compute_lumped_mass_on_submesh, compute_cv_mass, project_field
+  public :: create_subdomain_mesh
 
 contains
   
@@ -191,7 +194,7 @@ contains
     deallocate(subcv_ele_volf)
     
   end subroutine compute_cv_mass
-
+  
   subroutine compute_lumped_mass(positions, lumped_mass, density, vfrac)
     type(vector_field), intent(in) :: positions
     type(scalar_field), intent(inout) :: lumped_mass
@@ -465,27 +468,25 @@ contains
 
        else
           ! DG to CG case
-
+        
           cg_mesh=to_field%mesh
-          
-          call allocate(masslump, cg_mesh, "LumpedMass")
 
+          call allocate(masslump, cg_mesh, "LumpedMass")
+      
           call compute_lumped_mass(X, masslump)
           ! Invert lumped mass.
           masslump%val=1./masslump%val
 
-          do ele=1,element_count(to_field)
-             call cg_projection_ele(ele, from_field, to_field, masslump, X)
-          end do
-
-          masslump%val=1./masslump%val
-
+          dg_mesh=from_field%mesh
+      
+          P=compute_projection_matrix(cg_mesh, dg_mesh , X)
+      
           call zero(to_field) 
           ! Perform projection.
           call mult(to_field, P, from_field)
           ! Apply inverted lumped mass to projected quantity.
           call scale(to_field, masslump)
-          
+
           call deallocate(masslump)
           call deallocate(P)
           
@@ -518,27 +519,6 @@ contains
            shape_rhs(to_shape, ele_val_at_quad(from_field, ele)*detwei)))
 
     end subroutine dg_projection_ele
-
-    subroutine cg_projection_ele(ele, from_field, to_field, masslump, X)
-      integer :: ele
-      type(scalar_field), intent(in) :: from_field
-      type(scalar_field), intent(inout) :: to_field, masslump
-      type(vector_field), intent(in) :: X
-      
-      real, dimension(ele_ngi(to_field,ele)) :: detwei
-      type(element_type), pointer :: to_shape
-
-      to_shape=>ele_shape(to_field, ele)
-
-      call transform_to_physical(X, ele, detwei)
-
-      call addto(masslump, ele_nodes(to_field, ele), &
-           shape_rhs(to_shape, detwei))
-
-      call addto(to_field, ele_nodes(to_field, ele), &
-           shape_rhs(to_shape, ele_val(from_field, ele)*detwei))
-
-    end subroutine cg_projection_ele
 
   end subroutine project_scalar_field
   
@@ -574,9 +554,9 @@ contains
           ! CG case
 
           cg_mesh=to_field%mesh
-          
-          call allocate(masslump, cg_mesh, "LumpedMass")
 
+          call allocate(masslump, cg_mesh, "LumpedMass")
+      
           call compute_lumped_mass(X, masslump)
           ! Invert lumped mass.
           masslump%val=1./masslump%val
@@ -596,7 +576,7 @@ contains
 
           ! Apply inverted lumped mass to projected quantity.
           call scale(to_field, masslump)
-          
+
           call deallocate(masslump)
           call deallocate(P)
           
@@ -629,7 +609,7 @@ contains
       do dim=1,to_field%dim
          call set(to_field, dim, ele_nodes(to_field, ele), &
               matmul(mass, &
-              shape_rhs(to_shape, ele_val_at_quad(from_field,ele,dim)*detwei)))
+              shape_rhs(to_shape, ele_val_at_quad(from_field, dim, ele)*detwei)))
       end do
 
     end subroutine dg_projection_ele
@@ -657,110 +637,6 @@ contains
     end subroutine cg_projection_ele
 
   end subroutine project_vector_field
-
-subroutine project_tensor_field(from_field, to_field, X)
-    !!< Project from_field onto to_field. If to_field is discontinuous then
-    !!< this will be calculated using the full mass matrix locally.
-    !!< Otherwise, the mass will be lumped.
-    type(tensor_field), intent(in) :: from_field
-    type(tensor_field), intent(inout) :: to_field    
-    type(vector_field), intent(in) :: X
-
-    type(scalar_field) ::  masslump
-    integer :: ele
-
-    
-    if(from_field%mesh==to_field%mesh) then
-       
-       call set(to_field, from_field)
-       
-    else
-
-       if (to_field%mesh%continuity<0) then
-          ! DG case
-
-          do ele=1,element_count(to_field)
-             call dg_projection_ele(ele, from_field, to_field, X)
-          end do
-
-       else
-          ! CG case
-
-          call zero(to_field)
-          
-          call allocate(masslump, to_field%mesh, "MassLump")
-
-          call zero(masslump)
-
-          do ele=1,element_count(to_field)
-             call cg_projection_ele(ele, from_field, to_field, masslump, X)
-          end do
-
-          masslump%val=1./masslump%val
-
-          call scale(to_field, masslump)
-          
-          call deallocate(masslump)
-          
-       end if
-
-    end if
-
-  contains
-
-    subroutine dg_projection_ele(ele, from_field, to_field, X)
-      integer :: ele
-      type(tensor_field), intent(in) :: from_field
-      type(tensor_field), intent(inout) :: to_field    
-      type(vector_field), intent(in) :: X
-      
-      real, dimension(ele_loc(to_field,ele), ele_loc(to_field,ele)) :: mass
-      real, dimension(ele_ngi(to_field,ele)) :: detwei
-      type(element_type), pointer :: to_shape
-
-      integer :: dim2, dim1
-
-      call transform_to_physical(X, ele, detwei)
-
-      to_shape=>ele_shape(to_field, ele)
-
-      mass=shape_shape(to_shape, to_shape, detwei) 
-      
-      call invert(mass)
-
-      do dim2=1,to_field%dim(2)
-         do dim1=1,to_field%dim(1)
-            call set(to_field, dim1, dim2,ele_nodes(to_field, ele), &
-                 matmul(mass, &
-                 shape_rhs(to_shape, ele_val_at_quad(from_field,ele,dim1,dim2)*detwei)))
-         end do
-      end do
-
-    end subroutine dg_projection_ele
-
-    subroutine cg_projection_ele(ele, from_field, to_field, masslump, X)
-      integer :: ele
-      type(tensor_field), intent(in) :: from_field
-      type(tensor_field), intent(inout) :: to_field
-      type(scalar_field), intent(inout) :: masslump
-      type(vector_field), intent(in) :: X
-      
-      real, dimension(ele_ngi(to_field,ele)) :: detwei
-      type(element_type), pointer :: to_shape
-
-      to_shape=>ele_shape(to_field, ele)
-
-      call transform_to_physical(X, ele, detwei)
-
-      call addto(masslump, ele_nodes(to_field, ele), &
-           shape_rhs(to_shape, detwei))
-
-      call addto(to_field, ele_nodes(to_field, ele), &
-           shape_tensor_rhs(to_shape, ele_val_at_quad(from_field, ele), detwei))
-
-    end subroutine cg_projection_ele
-
-  end subroutine project_tensor_field
   
   subroutine add_source_to_rhs_scalar(rhs, source, positions)
     !!< Add in a source field to the rhs of a FE equation, 
@@ -818,5 +694,201 @@ subroutine project_tensor_field(from_field, to_field, X)
     end do
       
   end subroutine add_source_to_rhs_vector
+
+  subroutine create_subdomain_mesh(mesh, element_list, name, submesh, node_list)
+    !!< Create a mesh that only covers part of the domain
+
+    ! full mesh to take submesh from
+    type(mesh_type), intent(in), target :: mesh
+    ! elements that will make up the submesh
+    integer, dimension(:), intent(in):: element_list
+    ! name for the new submesh
+    character(len=*), intent(in) :: name
+    ! submesh created
+    type(mesh_type), intent(out) :: submesh
+    ! list of nodes in submesh (also functions as node map from submesh to full mesh)
+    integer, dimension(:), pointer :: node_list
+
+    ! integer set containing nodes in submesh:
+    type(integer_set) :: submesh_node_set
+    ! node mapping functions from full to submesh (=0 if not in submesh)
+    integer, dimension(:), allocatable :: inverse_node_list
+
+    ! Others:
+    integer :: ele, ele_2, ni, edge_count, i, node, loc, sloc, face, surf_ele_count
+    integer, dimension(:), pointer :: neigh, faces
+
+    type(element_type), pointer :: shape     
+
+    type(integer_hash_table) :: face_ele_list
+
+    integer, allocatable, dimension(:) :: sndglno, boundary_ids, element_owner
+
+    ewrite(1,*) "Entering create_subdomain_mesh"
+
+    ! Build element mapping functions to and from sub mesh:
+
+    ewrite(1,*) 'Number of elements in submesh:', size(element_list)
+
+    ! Derive node list for subdomain_mesh:
+    call allocate(submesh_node_set)
+    do i = 1, size(element_list)
+       ele = element_list(i)
+       call insert(submesh_node_set, ele_nodes(mesh, ele))
+    end do
+
+    allocate(node_list(key_count(submesh_node_set))) ! Nodal map from sub mesh --> full mesh
+    node_list = set2vector(submesh_node_set)
+    ewrite(1,*) 'Number of nodes in submesh:', size(node_list)
+
+    allocate(inverse_node_list(node_count(mesh))) ! Nodal map from full mesh --> sub mesh
+    ! if after it is set up, the value in inverse_subnode_list = 0, this means that that element of 
+    ! the full mesh does not have a corresponding element on the subdomain_mesh - i.e. it is not a part
+    ! of the prognostic subdomain.
+    inverse_node_list = 0
+    do i = 1, key_count(submesh_node_set)
+       node = node_list(i)
+       inverse_node_list(node) = i
+    end do
+
+    ! Allocate subdomain_mesh:
+    shape => mesh%shape
+    call allocate(submesh, nodes=size(node_list), elements=size(element_list),&
+         & shape=shape, name=trim(name))
+    submesh%option_path = mesh%option_path
+    if (associated(mesh%region_ids)) then
+      allocate(submesh%region_ids(size(element_list)))
+      submesh%region_ids = mesh%region_ids(element_list)
+    end if
+
+    ! Determine ndglno (connectivity matrix) on subdomain_mesh:
+    loc = shape%loc
+    do i = 1, size(element_list)
+      ele = element_list(i)
+      ! can't use set_ele_nodes as it would create circularity between fields_allocates and fields_manipulation modules
+      submesh%ndglno(loc*(i-1)+1:loc*i) = inverse_node_list(ele_nodes(mesh, ele))
+    end do
+
+    ! Calculate sndglno - an array of nodes corresponding to edges along surface:
+    sloc = mesh%faces%shape%loc
+    surf_ele_count = surface_element_count(mesh)
+
+    ! Begin by determining which faces are on submesh boundaries:
+    call allocate(face_ele_list)
+    do i = 1, size(element_list)
+      ele = element_list(i)
+      neigh => ele_neigh(mesh, ele) ! Determine element neighbours on parent mesh
+      faces => ele_faces(mesh, ele) ! Determine element faces on parent mesh
+      do ni = 1, size(neigh)
+        ele_2 = neigh(ni)
+        face = faces(ni)
+        ! If this face is part of the full surface mesh (which includes internal faces) then
+        ! it must be on the submesh boundary, and not on a processor boundary (if parallel).
+        ! note that for internal facets that are on now on the boundary of the subdomain, we only
+        ! collect one copy, whereas for internal facets that remain internal we collect both
+        ! this is dealt with using the allow_duplicate_internal_facets flag to add_faces()
+        if (face  <= surf_ele_count) then
+           call insert(face_ele_list, face, ele)
+        end if
+      end do
+    end do
+
+    ! Set up sndglno and boundary_ids:
+    edge_count = key_count(face_ele_list)
+    allocate(sndglno(edge_count*sloc), boundary_ids(1:edge_count))
+    do i = 1, edge_count
+      call fetch_pair(face_ele_list, i, face, ele)
+      sndglno((i-1)*sloc+1:i*sloc) = inverse_node_list(face_global_nodes(mesh, face))
+      boundary_ids(i) = surface_element_id(mesh, face)
+    end do
+    call deallocate(face_ele_list)
+
+    ewrite(2,*) "Number of surface elements: ", edge_count
+    ! Add faces to submesh:
+    if (has_discontinuous_internal_boundaries(mesh)) then
+      allocate(element_owner(1:edge_count))
+      do i=1, edge_count
+        call fetch_pair(face_ele_list, i, face, ele)
+        element_owner(i) = ele
+      end do
+      call add_faces(submesh, sndgln=sndglno, boundary_ids=boundary_ids, &
+        element_owner=element_owner)
+      deallocate(element_owner)
+    else
+      call add_faces(submesh, sndgln=sndglno, boundary_ids=boundary_ids, &
+        allow_duplicate_internal_facets=.true.)
+    end if
+
+    deallocate(sndglno)
+    deallocate(boundary_ids)
+
+    ! If parallel then set up node and element halos, by checking whether mesh halos
+    ! exist on submesh:
+
+    if(isparallel()) then
+       call generate_subdomain_halos(mesh, submesh, node_list, inverse_node_list)
+    end if
+
+    deallocate(inverse_node_list)
+    call deallocate(submesh_node_set)
+
+    ewrite(1,*) "Leaving create_subdomain_mesh"
+
+  end subroutine create_subdomain_mesh
+
+  subroutine generate_subdomain_halos(external_mesh,subdomain_mesh,node_list,inverse_node_list)
+
+    type(mesh_type), intent(in) :: external_mesh
+    type(mesh_type), intent(inout) :: subdomain_mesh
+    integer, dimension(:) :: node_list, inverse_node_list 
+
+    integer :: nhalos, communicator, nprocs, procno, ihalo, inode, iproc, nowned_nodes
+
+    ewrite(1, *) "In generate_subdomain_halos"
+
+    assert(continuity(subdomain_mesh) == 0)
+    assert(.not. associated(subdomain_mesh%halos))
+    assert(.not. associated(subdomain_mesh%element_halos))
+
+    ! Initialise key MPI information:
+
+    nhalos = halo_count(external_mesh)
+    ewrite(2,*) "Number of subdomain_mesh halos = ",nhalos
+
+    if(nhalos == 0) return
+
+    communicator = halo_communicator(external_mesh%halos(nhalos))
+    nprocs = getnprocs(communicator = communicator)
+    ewrite(2,*) 'Number of processes = ', nprocs
+    procno = getprocno(communicator = communicator)
+    ewrite(2,*) 'Processor ID/number = ', procno
+
+    ! Allocate subdomain mesh halos:
+    allocate(subdomain_mesh%halos(nhalos))
+
+    ! Derive subdomain_mesh halos:
+    do ihalo = 1, nhalos
+
+       subdomain_mesh%halos(ihalo) = derive_sub_halo(external_mesh%halos(ihalo),node_list)
+       
+       assert(trailing_receives_consistent(subdomain_mesh%halos(ihalo)))
+      
+       if(.not. serial_storage_halo(external_mesh%halos(ihalo))) then
+          assert(halo_valid_for_communication(subdomain_mesh%halos(ihalo)))
+          call create_global_to_universal_numbering(subdomain_mesh%halos(ihalo))
+          call create_ownership(subdomain_mesh%halos(ihalo))
+       end if
+       
+    end do ! ihalo 
     
+    if(all(serial_storage_halo(subdomain_mesh%halos))) then
+      allocate(subdomain_mesh%element_halos(0))
+    else
+      allocate(subdomain_mesh%element_halos(nhalos))
+      call derive_element_halo_from_node_halo(subdomain_mesh, &
+        & ordering_scheme = HALO_ORDER_TRAILING_RECEIVES, create_caches = .true.)
+    end if
+
+  end subroutine generate_subdomain_halos
+
 end module fefields

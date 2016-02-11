@@ -77,33 +77,6 @@ be set to use this option.</a:documentation>
           </element>
         </element>
       </element>
-      <element name="plugin_function">
-        <a:documentation>Initialize the field from a subroutine defined in an 
-external shared object library.
-Set path to the absolute or relative path to the .so file
-and set name to the function name to be called. This should
-have an interface of the form
-
- subroutine f(field,X,t)
-
- double precision :: field(:), X(:,:), t
-
-end subroutine 
-
-"field" is the data array for the field being set.
-"X" is the physical location of the nodes ordered
-[dimension,node number]
-"t" is the current model time.
-
-The code file should be compiled like
-   gfortran -fPIC -shared -o example.so example.F90</a:documentation>
-        <attribute name="path">
-          <data type="string"/>
-        </attribute>
-        <attribute name="name">
-          <data type="string"/>
-        </attribute>
-      </element>
     </choice>
   </define>
   <define name="input_choice_real_plus_map">
@@ -126,14 +99,12 @@ not necessarily correspond to the data in a given file.</a:documentation>
         </optional>
         <optional>
           <element name="surface_height">
-            <a:documentation>For use with 2D depth maps.
-If you are reading data from a file whose top layer height
+            <a:documentation>If you are reading data from a file whose top layer height
 is not equal to zero, set the height of that top layer here.
 Note however that the height of the top layer in the the 
-extruded mesh will still be equal to zero, the given domain
-will in effect have been shifted down.
-This option has no effect when extruding meshes on the surface
-of a sphere.</a:documentation>
+extruded mesh will still be equal to zero (if planar) or 
+the radius of the shell mesh (if spherical), the given domain
+will in effect have been shifted down.</a:documentation>
             <ref name="real"/>
           </element>
         </optional>
@@ -291,11 +262,6 @@ Simulations using the format 'other' should be updated to use 'raw'.</a:document
           </element>
         </element>
       </element>
-      <element name="no_initial_condition">
-        <a:documentation>Indicate that no initial condition exists. Users should not set this;
-this is only used in adjoint runs.</a:documentation>
-        <empty/>
-      </element>
     </choice>
   </define>
   <define name="input_choice_initial_condition_pressure">
@@ -371,11 +337,6 @@ Simulations using the format 'other' should be updated to use 'raw'.</a:document
           </element>
         </element>
       </element>
-      <element name="no_initial_condition">
-        <a:documentation>Indicate that no initial condition exists. Users should not set this;
-this is only used in adjoint runs.</a:documentation>
-        <empty/>
-      </element>
     </choice>
   </define>
   <!-- Choice of input method, e.g. for boundary conditions -->
@@ -406,11 +367,6 @@ be set to use this option.</a:documentation>
             <value>Velocity</value>
           </element>
         </element>
-      </element>
-      <element name="no_initial_condition">
-        <a:documentation>Indicate that no initial condition exists. Users should not set this;
-this is only used in adjoint runs.</a:documentation>
-        <empty/>
       </element>
     </choice>
   </define>
@@ -503,11 +459,6 @@ be set to use this option.</a:documentation>
             <value>Velocity</value>
           </element>
         </element>
-      </element>
-      <element name="no_initial_condition">
-        <a:documentation>Indicate that no initial condition exists. Users should not set this;
-this is only used in adjoint runs.</a:documentation>
-        <empty/>
       </element>
     </choice>
   </define>

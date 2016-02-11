@@ -97,10 +97,6 @@ module sparse_tools_petsc
      module procedure petsc_csr_zero
   end interface
 
-  interface zero_rows
-     module procedure petsc_csr_zero_block_rows
-  end interface zero_rows
-
   interface addto
      module procedure petsc_csr_addto, petsc_csr_vaddto, &
        petsc_csr_blocks_addto_withmask, petsc_csr_block_addto, &
@@ -133,10 +129,6 @@ module sparse_tools_petsc
      module procedure petsc_csr_assemble
   end interface
 
-  interface decrrf
-     module procedure addref_petsc_csr_matrix
-  end interface decrrf
-
 #include "Reference_count_interface_petsc_csr_matrix.F90"
 
   public :: petsc_csr_matrix, petsc_csr_matrix_pointer, &
@@ -144,10 +136,8 @@ module sparse_tools_petsc
      size, block_size, blocks, entries, &
      zero, addto, addto_diag, scale, &
      extract_diagonal, assemble, incref_petsc_csr_matrix, &
-     addref_petsc_csr_matrix, &
-     decref, &
      ptap, mult, mult_T, dump_matrix, &
-     csr2petsc_csr, dump_petsc_csr_matrix,zero_rows
+     csr2petsc_csr, dump_petsc_csr_matrix
 
 contains
 
@@ -204,8 +194,8 @@ contains
         matrix%column_numbering, ldiagonal, use_inodes=use_inodes)
       
     else
-    
-      if (associated(sparsity%row_halo)) then
+
+       if (associated(sparsity%row_halo)) then
         if (sparsity%row_halo%data_type==HALO_TYPE_CG_NODE) then
           ! Mask out non-local rows.  FIXME: with local assembly this
           ! shouldn't be needed
@@ -365,7 +355,7 @@ contains
         end if
       end if
     end if
-    
+
     if (use_element_blocks .and. .not. IsParallel()) then
       
       assert( size(dnnz)==urows/element_size )
@@ -690,27 +680,6 @@ contains
     matrix%is_assembled=.true.
     
   end subroutine petsc_csr_zero
-
-  subroutine petsc_csr_zero_block_rows(matrix, blocki, rows , diag, x, b)
-    type(petsc_csr_matrix), intent(inout) :: matrix
-    integer, intent(in) :: blocki
-    integer, intent(in), dimension(:) :: rows
-    real :: diag
-    Vec , optional :: x, b
-
-    PetscErrorCode:: ierr
-    PetscInt, dimension(size(rows)) :: PetscRows
-
-    PetscRows=matrix%row_numbering%gnn2unn(rows,blocki)
-
-    if (present(x)) then
-       call MatZeroRows(matrix%M,size(PetscRows),PetscRows,diag, x,b,ierr)
-    else
-       call MatZeroRows(matrix%M,size(PetscRows),PetscRows, diag, ierr)
-    end if
-
-
-  end subroutine petsc_csr_zero_block_rows
   
   subroutine petsc_csr_addto(matrix, blocki, blockj, i, j, val)
     !!< Add value to matrix(blocki, blockj, i,j)
@@ -744,8 +713,8 @@ contains
     idxn=matrix%column_numbering%gnn2unn(j,blockj)
     
     call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, real(val, kind=PetscScalar_kind), &
-          ADD_VALUES, ierr)
-    
+        ADD_VALUES, ierr)
+
     matrix%is_assembled=.false.
 
   end subroutine petsc_csr_vaddto
@@ -765,7 +734,7 @@ contains
     idxm=matrix%row_numbering%gnn2unn(i,:)
     idxn=matrix%column_numbering%gnn2unn(j,:)
     
-      call MatSetValues(matrix%M, size(idxm), idxm, size(idxn), idxn, &
+    call MatSetValues(matrix%M, size(idxm), idxm, size(idxn), idxn, &
                   real(val, kind=PetscScalar_kind), ADD_VALUES, ierr)
 
     matrix%is_assembled=.false.
@@ -786,14 +755,14 @@ contains
     PetscInt, dimension(size(j)):: idxn
     PetscErrorCode:: ierr
     integer:: blocki, blockj
-
+    
     do blocki=1, size(matrix%row_numbering%gnn2unn,2)
       idxm=matrix%row_numbering%gnn2unn(i,blocki)
       do blockj=1, size(matrix%column_numbering%gnn2unn,2)
         idxn=matrix%column_numbering%gnn2unn(j,blockj)
         ! unfortunately we need a copy here to pass contiguous memory
         value=val(blocki, blockj, :, :)
-          call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, &
+        call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, &
               value, ADD_VALUES, ierr)
       end do
     end do
@@ -817,7 +786,7 @@ contains
     PetscInt, dimension(size(j)):: idxn
     PetscErrorCode:: ierr
     integer:: blocki, blockj
-
+    
     do blocki=1, size(matrix%row_numbering%gnn2unn,2)
       idxm=matrix%row_numbering%gnn2unn(i,blocki)
       do blockj=1, size(matrix%column_numbering%gnn2unn,2)
@@ -825,9 +794,9 @@ contains
           idxn=matrix%column_numbering%gnn2unn(j,blockj)
           ! unfortunately we need a copy here to pass contiguous memory
           value=val(blocki, blockj, :, :)
-            call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, &
+          call MatSetValues(matrix%M, size(i), idxm, size(j), idxn, &
                 value, ADD_VALUES, ierr)
-          end if
+        end if
       end do
     end do
 

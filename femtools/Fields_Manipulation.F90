@@ -61,13 +61,11 @@ implicit none
   public :: remap_to_subdomain, remap_to_full_domain
   public :: get_coordinates_remapped_to_surface, get_remapped_coordinates
   public :: power
-  public :: mark_as_updated, unmark_as_updated
   
   integer, parameter, public :: REMAP_ERR_DISCONTINUOUS_CONTINUOUS = 1, &
                                 REMAP_ERR_HIGHER_LOWER_CONTINUOUS  = 2, &
                                 REMAP_ERR_UNPERIODIC_PERIODIC      = 3, &
-                                REMAP_ERR_BUBBLE_LAGRANGE          = 4, &
-                                REMAP_ERR_OVERLAPPING_LAGRANGIAN   = 5
+                                REMAP_ERR_BUBBLE_LAGRANGE          = 4
 
   interface addto
      module procedure scalar_field_vaddto, scalar_field_addto, &
@@ -95,7 +93,6 @@ implicit none
                    & set_vector_field_nodes, &
                    & set_vector_field_nodes_dim, &
                    & set_tensor_field_nodes, &
-                   & set_tensor_field_nodes_dim, &
                    & set_scalar_field_field, &
                    & set_scalar_field_from_vector_field, &
                    & set_vector_field_field, &
@@ -185,14 +182,6 @@ implicit none
   interface clone_header
     module procedure clone_header_scalar, clone_header_vector, clone_header_tensor
   end interface clone_header
-
-  interface mark_as_updated
-     module procedure mark_scalar_as_updated, mark_vector_as_updated, mark_tensor_as_updated
-  end interface mark_as_updated
-
-  interface unmark_as_updated
-     module procedure unmark_scalar_as_updated, unmark_vector_as_updated, unmark_tensor_as_updated
-  end interface unmark_as_updated
   
   interface normalise
     module procedure normalise_scalar, normalise_vector
@@ -205,11 +194,6 @@ implicit none
   interface remap_to_full_domain
     module procedure remap_to_full_domain_scalar, remap_to_full_domain_vector, remap_to_full_domain_tensor
   end interface
-
-  interface clone_field
-     module procedure clone_one_scalar_field, clone_one_vector_field, clone_one_tensor_field
-     module procedure clone_many_scalar_field, clone_many_vector_field, clone_many_tensor_field
-  end interface clone_field
 
 
   type patch_type
@@ -247,56 +231,14 @@ implicit none
          do dim1 = 1, t_field_local%dim(1)
             do dim2 = 1, t_field_local%dim(2) 
                val = val + node_val(t_field_local,dim1,dim2,node)**2
-             end do
-      end do
+            end do
+         end do
          call set(second_invariant,node,sqrt(val/2.))
       end do
 
       call deallocate(t_field_local)
-
+               
   end subroutine tensor_second_invariant
-
-  
-
-
-  subroutine zero_scalar_field_nodes(field, node_numbers)
-    !!< Zeroes the scalar field at the specified node_numbers
-    !!< Does not work for constant fields
-    type(scalar_field), intent(inout) :: field
-    integer, dimension(:), intent(in) :: node_numbers
-
-    assert(field%field_type==FIELD_TYPE_NORMAL)
-    
-    field%val(node_numbers) = 0.0
-    
-  end subroutine zero_scalar_field_nodes
-  
-  subroutine zero_vector_field_nodes(field, node_numbers)
-    !!< Zeroes the vector field at the specified nodes
-    !!< Does not work for constant fields
-    type(vector_field), intent(inout) :: field
-    integer, dimension(:), intent(in) :: node_numbers
-    integer :: i
-
-    assert(field%field_type==FIELD_TYPE_NORMAL)
-    
-    do i=1,field%dim
-      field%val(i,node_numbers) = 0.0
-    end do
-    
-  end subroutine zero_vector_field_nodes
-
-  subroutine zero_tensor_field_nodes(field, node_numbers)
-    !!< Zeroes the tensor field at the specified nodes
-    !!< Does not work for constant fields
-    type(tensor_field), intent(inout) :: field
-    integer, dimension(:), intent(in) :: node_numbers
-
-    assert(field%field_type==FIELD_TYPE_NORMAL)
-
-    field%val(:, :, node_numbers) = 0.0
-    
-  end subroutine zero_tensor_field_nodes
   
   subroutine scalar_field_vaddto(field, node_numbers, val)
     !!< Add val to the field%val(node_numbers) for a vector of
@@ -789,13 +731,12 @@ implicit none
     
   end subroutine tensor_field_addto_field_dim_dim
 
-  subroutine tensor_field_addto_tensor_field(field1, field2, scale,sscale)
+  subroutine tensor_field_addto_tensor_field(field1, field2, scale)
     !!< Compute field1(dim1,dim2)=field1(dim1,dim2)+scale*field2.
     !!< Works for constant and space varying fields.
     type(tensor_field), intent(inout) :: field1
     type(tensor_field), intent(in) :: field2
     real, intent(in), optional :: scale
-    type(scalar_field), intent(in), optional :: sscale
     integer :: i
     
     type(tensor_field) lfield2
@@ -825,10 +766,6 @@ implicit none
           forall(i=1:size(field1%val, 3))
             field1%val(:, :, i)=field1%val(:, :, i)+scale*field2%val(:, :, 1)
           end forall
-       else if (present(sscale)) then
-           forall(i=1:size(field1%val, 3))
-              field1%val(:, :, i)=field1%val(:, :, i)+sscale%val(i)*field2%val(:, :, 1)
-           end forall
        else
           forall(i=1:size(field1%val, 3))
             field1%val(:, :, i)=field1%val(:, :, i)+field2%val(:, :, 1)
@@ -924,7 +861,7 @@ implicit none
 
     assert(field%field_type==FIELD_TYPE_NORMAL)
     assert(size(node_numbers)==size(val))
-    
+
     field%val(node_numbers) = val
     
   end subroutine set_scalar_field_nodes
@@ -1097,7 +1034,7 @@ implicit none
     real, intent(in), dimension(:, :) :: val
     integer :: i
 
-    assert(field%field_type == FIELD_TYPE_NORMAL)
+    assert(field%field_type==FIELD_TYPE_NORMAL)
     
     do i=1,field%dim
       field%val(i,:) = val(i, :)
@@ -1111,7 +1048,7 @@ implicit none
     real, intent(in), dimension(:) :: val
     integer, intent(in):: dim
     
-    assert(field%field_type == FIELD_TYPE_NORMAL)
+    assert(field%field_type==FIELD_TYPE_NORMAL)
     assert(dim>=1 .and. dim<=field%dim)
     
     field%val(dim,:) = val
@@ -1126,10 +1063,15 @@ implicit none
     
     integer :: dim
 
+#ifndef NDEBUG
     assert(mesh_compatible(out_field%mesh, in_field%mesh))
     assert(out_field%field_type/=FIELD_TYPE_PYTHON)
-    assert(out_field%field_type==FIELD_TYPE_NORMAL .or. in_field%field_type==FIELD_TYPE_CONSTANT)
+    if (.not. (out_field%field_type==FIELD_TYPE_NORMAL .or. &
+      (out_field%field_type==FIELD_TYPE_CONSTANT .and. in_field%field_type==FIELD_TYPE_CONSTANT))) then
+      FLAbort("Wrong field_type in set()")
+    end if
     assert(in_field%dim==out_field%dim)
+#endif
 
     select case (in_field%field_type)
     case (FIELD_TYPE_NORMAL)
@@ -1193,10 +1135,15 @@ implicit none
     type(scalar_field), intent(in) :: in_field
     integer, intent(in):: dim
 
+#ifndef NDEBUG
     assert(mesh_compatible(out_field%mesh, in_field%mesh))
     assert(out_field%field_type/=FIELD_TYPE_PYTHON)
-    assert(out_field%field_type==FIELD_TYPE_NORMAL.or.in_field%field_type==FIELD_TYPE_CONSTANT)
+    if (.not. (out_field%field_type==FIELD_TYPE_NORMAL .or. &
+      (out_field%field_type==FIELD_TYPE_CONSTANT .and. in_field%field_type==FIELD_TYPE_CONSTANT))) then
+      FLAbort("Wrong field_type in set()")
+    end if
     assert(dim>=1 .and. dim<=out_field%dim)
+#endif
 
     select case (in_field%field_type)
     case (FIELD_TYPE_NORMAL)
@@ -1217,10 +1164,15 @@ implicit none
     type(vector_field), intent(in) :: in_field
     integer, intent(in):: dim
 
+#ifndef NDEBUG
     assert(mesh_compatible(out_field%mesh, in_field%mesh))
     assert(out_field%field_type/=FIELD_TYPE_PYTHON)
-    assert(out_field%field_type==FIELD_TYPE_NORMAL.or.in_field%field_type==FIELD_TYPE_CONSTANT)
+    if (.not. (out_field%field_type==FIELD_TYPE_NORMAL .or. &
+      (out_field%field_type==FIELD_TYPE_CONSTANT .and. in_field%field_type==FIELD_TYPE_CONSTANT))) then
+      FLAbort("Wrong field_type in set()")
+    end if
     assert(dim>=1 .and. dim<=out_field%dim .and. dim<=in_field%dim)
+#endif
 
     select case (in_field%field_type)
     case (FIELD_TYPE_NORMAL)
@@ -1414,20 +1366,6 @@ implicit none
     
   end subroutine set_tensor_field_nodes
     
-  subroutine set_tensor_field_nodes_dim(field, i,j, node_numbers, val)
-    !!< Set the tensor field at the specified nodes
-    !!< Does not work for constant fields
-    type(tensor_field), intent(inout) :: field
-    integer, intent(in) :: i,j
-    integer, dimension(:), intent(in) :: node_numbers
-    real, intent(in), dimension(:) :: val
-
-    assert(field%field_type==FIELD_TYPE_NORMAL)
-
-    field%val(i, j, node_numbers) = val
-    
-  end subroutine set_tensor_field_nodes_dim
-    
   subroutine set_tensor_field(field, val)
     !!< Sets tensor with constant value
     !!< Works for constant and space varying fields.
@@ -1442,7 +1380,7 @@ implicit none
     end do
     
   end subroutine set_tensor_field
-
+    
   subroutine set_tensor_field_dim(field, dim1, dim2, val)
     !!< Sets one component of a tensor with constant value
     !!< Works for constant and space varying fields.
@@ -1816,7 +1754,7 @@ implicit none
   ! Mapping of fields between different meshes
   ! ------------------------------------------------------------------------
   
-subroutine test_remap_validity_scalar(from_field, to_field, stat)
+  subroutine test_remap_validity_scalar(from_field, to_field, stat)
     type(scalar_field), intent(in):: from_field, to_field
     integer, intent(out), optional:: stat
 
@@ -2029,7 +1967,7 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
 
     real, dimension(to_field%mesh%shape%loc, from_field%mesh%shape%loc) :: locweight
 
-    integer :: fromloc, toloc, ele, i, sub_ele , n_lev, nloc
+    integer :: fromloc, toloc, ele, i
     integer, dimension(:), pointer :: from_ele, to_ele
     
     if(present(stat)) stat = 0
@@ -2049,53 +1987,6 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
     if(from_field%mesh==to_field%mesh) then
     
       call set(to_field, from_field)
-      
-
-       !! code to deal with "overlapping" element type from multiphase code
-
-    else if (from_field%mesh%shape%numbering%type==ELEMENT_OVERLAPPING .and. &
-            to_field%mesh%shape%numbering%type==ELEMENT_LAGRANGIAN ) then
-       if (present(stat)) then
-          stat = REMAP_ERR_OVERLAPPING_LAGRANGIAN
-       else
-          FLAbort("Trying to remap from overlapping to Lagrangian vector field.")
-       end if
-          
-       call zero(to_field)
-
-       n_lev=from_field%mesh%overlapping_shape%loc
-       nloc=ele_loc(from_field,1)
-
-       ! First construct remapping weights.
-        do toloc=1,size(locweight,1)
-          do fromloc=1,size(locweight,2)
-              locweight(toloc,fromloc)=eval_shape(from_field%mesh%shape, fromloc, &
-                  local_coords(toloc, to_field%mesh%shape))
-          end do
-        end do
-        
-        ! Now loop over the elements.
-        do ele=1,element_count(to_field)
-
-           to_ele=>ele_nodes(to_field, ele)
-           from_ele=>ele_nodes(from_field,ele)
-           
-           do sub_ele=1,n_lev
-              
-              do i=1,from_field%dim
-                 to_field%val(i,to_ele)= &
-                      to_field%val(i,to_ele)&
-                      + matmul(locweight,from_field%val(i,from_ele+nloc*(sub_ele-1)+nloc*n_lev*(ele-1)-nloc*(ele-1)))    
-              end do
-
-
-              
-           end do
-        end do
-        
-        to_field%val=to_field%val/n_lev
-       
-
       
     else
     
@@ -2128,6 +2019,8 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
         do i=1,from_field%dim
           to_field%val(i,:) = from_field%val(i,1)
         end do
+      case default
+        FLAbort("Wrong field_type for remap_field")
       end select
   
     end if
@@ -2167,6 +2060,8 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
         output(:, i, :) = from_field%val(i,1)
       end do
       return
+    case default
+      FLAbort("Wrong field_type for remap_field")
     end select
 
     call test_remap_validity(from_field, to_field, stat=stat)
@@ -2270,7 +2165,7 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
 
     select case(from_field%field_type)
     case(FIELD_TYPE_NORMAL)
-    
+
       call test_remap_validity(from_field, to_field, stat=stat)
     
       ! the remapping happens from a face of from_field which is at the same
@@ -2361,6 +2256,8 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
       do i=1, from_field%dim
         to_field%val(i,:) = from_field%val(i,1)
       end do
+    case default
+      FLAbort("Unknown field type in remap_field_to_surface")
     end select
 
     ! Zero any left-over dimensions
@@ -2511,9 +2408,9 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
     if (present(dim)) then
       field%val(dim,:) = field%val(dim,:) * factor
     else
-    do i=1,field%dim
-      field%val(i,:) = field%val(i,:) * factor
-    end do
+      do i=1,field%dim
+        field%val(i,:) = field%val(i,:) * factor
+      end do
     end if
       
   end subroutine vector_scale
@@ -2794,7 +2691,7 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
     end select
     
   end subroutine tensor_power_scalar_field
-    
+
   subroutine bound_scalar_field(field, lower_bound, upper_bound)
     !!< Bound a field by the lower and upper bounds supplied
     type(scalar_field), intent(inout) :: field
@@ -3939,6 +3836,8 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
                                size(output_mesh%faces%face_element_list), &
                                trim(output_mesh%name)//" face_element_list.")
 #endif
+      output_mesh%faces%unique_surface_element_count = input_positions%mesh%faces%unique_surface_element_count
+      output_mesh%faces%has_discontinuous_internal_boundaries = has_discontinuous_internal_boundaries(input_positions%mesh)
       allocate(output_mesh%faces%boundary_ids(size(input_positions%mesh%faces%boundary_ids)))
       output_mesh%faces%boundary_ids = input_positions%mesh%faces%boundary_ids
 #ifdef HAVE_MEMORY_STATS
@@ -4012,6 +3911,7 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
     integer :: ele, node, halo_num, lelement_halo_ordering_scheme, proc
     type(halo_type), pointer :: input_halo, output_halo
     integer, dimension(:), allocatable :: sndgln
+    integer :: no_unique_facets
 
     ewrite(1, *) "In renumber_positions_elements"
 
@@ -4044,11 +3944,17 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
     ! Now here comes the damnable face information
 
     if (associated(input_positions%mesh%faces)) then
-      allocate(sndgln(surface_element_count(input_positions) * face_loc(input_positions, 1)))
+      no_unique_facets = unique_surface_element_count(input_positions%mesh)
+      allocate(sndgln(no_unique_facets * face_loc(input_positions, 1)))
       call getsndgln(input_positions%mesh, sndgln)
-      call add_faces(output_mesh, sndgln=sndgln, element_owner=permutation(input_positions%mesh%faces%face_element_list(1:surface_element_count(input_positions))))
+      if (has_discontinuous_internal_boundaries(input_positions%mesh)) then
+        assert(surface_element_count(input_positions%mesh)==no_unique_facets)
+        call add_faces(output_mesh, sndgln=sndgln, boundary_ids=input_positions%mesh%faces%boundary_ids, &
+          element_owner=permutation(input_positions%mesh%faces%face_element_list(1:no_unique_facets)))
+      else
+        call add_faces(output_mesh, sndgln=sndgln, boundary_ids=input_positions%mesh%faces%boundary_ids(1:no_unique_facets))
+      end if
       deallocate(sndgln)
-      output_mesh%faces%boundary_ids = input_positions%mesh%faces%boundary_ids
       if (associated(input_positions%mesh%faces%coplanar_ids)) then
         allocate(output_mesh%faces%coplanar_ids(size(input_positions%mesh%faces%coplanar_ids)))
         output_mesh%faces%coplanar_ids = input_positions%mesh%faces%coplanar_ids
@@ -4175,7 +4081,7 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
 
     mesh => positions%mesh
     if(has_faces(mesh)) then
-      allocate(sndgln(face_loc(mesh, 1) * surface_element_count(mesh)))
+      allocate(sndgln(face_loc(mesh, 1) * unique_surface_element_count(mesh)))
       call getsndgln(mesh, sndgln)
     end if
     
@@ -4223,31 +4129,39 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
 
     subroutine update_faces(mesh, sndgln)
       type(mesh_type), intent(inout) :: mesh
-      integer, dimension(face_loc(mesh, 1) * surface_element_count(mesh)), intent(in) :: sndgln
+      integer, dimension(face_loc(mesh, 1) * unique_surface_element_count(mesh)), intent(in) :: sndgln
 
-      integer, dimension(surface_element_count(mesh)) :: boundary_ids
-      integer, dimension(:), allocatable :: coplanar_ids, element_owners
+      integer, dimension(:), allocatable :: boundary_ids, coplanar_ids, element_owners
 
       assert(has_faces(mesh))
 
-      boundary_ids = mesh%faces%boundary_ids
       if(associated(mesh%faces%coplanar_ids)) then
         allocate(coplanar_ids(surface_element_count(mesh)))
         coplanar_ids = mesh%faces%coplanar_ids
       end if
 
-      allocate(element_owners((surface_element_count(mesh))))
-      element_owners = mesh%faces%face_element_list(1:surface_element_count(mesh))
+      allocate(boundary_ids(1:unique_surface_element_count(mesh)))
+      boundary_ids = mesh%faces%boundary_ids(1:size(boundary_ids))
 
-      call deallocate_faces(mesh)
-      call add_faces(mesh, sndgln = sndgln, element_owner=element_owners)
-      mesh%faces%boundary_ids = boundary_ids
+      if (has_discontinuous_internal_boundaries(mesh)) then
+        allocate(element_owners((surface_element_count(mesh))))
+        element_owners = mesh%faces%face_element_list(1:surface_element_count(mesh))
+
+        call deallocate_faces(mesh)
+        call add_faces(mesh, sndgln = sndgln, boundary_ids=boundary_ids, &
+          element_owner=element_owners)
+        deallocate(element_owners)
+      else
+        call deallocate_faces(mesh)
+        call add_faces(mesh, sndgln = sndgln, boundary_ids=boundary_ids)
+      end if
+
       if(allocated(coplanar_ids)) then
         allocate(mesh%faces%coplanar_ids(size(coplanar_ids)))
         mesh%faces%coplanar_ids = coplanar_ids
         deallocate(coplanar_ids)
       end if
-      deallocate(element_owners)
+      deallocate(boundary_ids)
 
     end subroutine update_faces
 
@@ -4412,368 +4326,6 @@ subroutine test_remap_validity_scalar(from_field, to_field, stat)
     end if
 
   end function get_coordinates_remapped_to_surface
-
- subroutine mark_scalar_as_updated(infield)
-    !! subroutine for multiphase code, marks input field as updated and
-    !! sets all dependancies as NOT updated
-
-    type(scalar_field), intent(inout) :: infield
-
-    if (associated(infield%updated)) then
-       infield%updated=.true.
-    else
-       allocate(infield%updated)
-       infield%updated=.true.
-    end if
-    
-    
-    if (associated(infield%dependant_scalar_field)) then
-       call unmark_scalar_children(infield%dependant_scalar_field)
-    end if
-
-    if (associated(infield%dependant_vector_field)) then
-       call unmark_vector_children(infield%dependant_vector_field)
-    end if
-
-    if (associated(infield%dependant_tensor_field)) then
-       call unmark_tensor_children(infield%dependant_tensor_field)
-    end if
-
-  end subroutine mark_scalar_as_updated
-
-  subroutine mark_vector_as_updated(infield)
-    !! subroutine for multiphase code, marks input field as updated and
-    !! sets all dependancies as NOT updated
-
-    type(vector_field), intent(inout) :: infield
-
-    if (associated(infield%updated)) then
-       infield%updated=.true.
-    else
-       allocate(infield%updated)
-       infield%updated=.true.
-    end if
-    
-    
-    if (associated(infield%dependant_scalar_field)) then
-       call unmark_scalar_children(infield%dependant_scalar_field)
-    end if
-
-    if (associated(infield%dependant_vector_field)) then
-       call unmark_vector_children(infield%dependant_vector_field)
-    end if
-
-    if (associated(infield%dependant_tensor_field)) then
-       call unmark_tensor_children(infield%dependant_tensor_field)
-    end if
-
-  end subroutine mark_vector_as_updated
-
-  subroutine mark_tensor_as_updated(infield)
-    !! subroutine for multiphase code, marks input field as updated and
-    !! sets all dependancies as NOT updated
-
-    type(tensor_field), intent(inout) :: infield
-
-    if (associated(infield%updated)) then
-       infield%updated=.true.
-    else
-       allocate(infield%updated)
-       infield%updated=.true.
-    end if
-    
-    
-    if (associated(infield%dependant_scalar_field)) then
-       call unmark_scalar_children(infield%dependant_scalar_field)
-    end if
-
-    if (associated(infield%dependant_vector_field)) then
-       call unmark_vector_children(infield%dependant_vector_field)
-    end if
-
-    if (associated(infield%dependant_tensor_field)) then
-       call unmark_tensor_children(infield%dependant_tensor_field)
-    end if
-
-  end subroutine mark_tensor_as_updated
-
-  recursive subroutine unmark_scalar_children(field_ptr)
-    type(scalar_field_pointer), dimension(:) :: field_ptr
-
-    integer :: i
-    logical :: traverse
-    
-    ! helper subprogram to the mark_as_updated subroutines
-    ! recursively traverse child dependant fields and mark as
-    ! NOT updated. Only fail to recurse if child is already marked as
-    ! not updated. This prevents infinite loops, but will lead to greedy evalutation
-    ! if the dependant fields form a cycle
-
-    do i=1,size(field_ptr)
-
-       traverse=.false.
-    
-       if (associated(field_ptr(i)%ptr)) then
-          if (associated(field_ptr(i)%ptr%updated)) then
-             traverse=field_ptr(i)%ptr%updated
-             field_ptr(i)%ptr%updated=.false.
-          end if
-
-          if (traverse) then
-                
-             if (associated(field_ptr(i)%ptr%dependant_scalar_field)) then
-                call unmark_scalar_children(field_ptr(i)%ptr%dependant_scalar_field)
-             end if
-             
-             if (associated(field_ptr(i)%ptr%dependant_vector_field)) then
-                call unmark_vector_children(field_ptr(i)%ptr%dependant_vector_field)
-             end if
-
-             if (associated(field_ptr(i)%ptr%dependant_tensor_field)) then
-                call unmark_tensor_children(field_ptr(i)%ptr%dependant_tensor_field)
-             end if
-
-          end if
-       end if
-    end do
-
-  end subroutine unmark_scalar_children
-
-  recursive subroutine unmark_vector_children(field_ptr)
-    type(vector_field_pointer), dimension(:) :: field_ptr
-
-    integer :: i
-    logical :: traverse
-    
-    ! helper subprogram to the mark_as_updated subroutines
-    ! recursively traverse child dependant fields and mark as
-    ! NOT updated. Only fail to recurse if child is already marked as
-    ! not updated. This prevents infinite loops, but will lead to greedy evalutation
-    ! if the dependant fields form a cycle
-
-    do i=1,size(field_ptr)
-
-       traverse=.false.
-    
-       if (associated(field_ptr(i)%ptr)) then
-          if (associated(field_ptr(i)%ptr%updated)) then
-             traverse=field_ptr(i)%ptr%updated
-             field_ptr(i)%ptr%updated=.false.
-          end if
-
-          if (traverse) then
-                
-             if (associated(field_ptr(i)%ptr%dependant_scalar_field)) then
-                call unmark_scalar_children(field_ptr(i)%ptr%dependant_scalar_field)
-             end if
-             
-             if (associated(field_ptr(i)%ptr%dependant_vector_field)) then
-                call unmark_vector_children(field_ptr(i)%ptr%dependant_vector_field)
-             end if
-
-             if (associated(field_ptr(i)%ptr%dependant_tensor_field)) then
-                call unmark_tensor_children(field_ptr(i)%ptr%dependant_tensor_field)
-             end if
-
-          end if
-       end if
-    end do
-
-  end subroutine unmark_vector_children
-
-  recursive subroutine unmark_tensor_children(field_ptr)
-    type(tensor_field_pointer), dimension(:) :: field_ptr
-
-    integer :: i
-    logical :: traverse
-    
-    ! helper subprogram to the mark_as_updated subroutines
-    ! recursively traverse child dependant fields and mark as
-    ! NOT updated. Only fail to recurse if child is already marked as
-    ! not updated. This prevents infinite loops, but will lead to greedy evalutation
-    ! if the dependant fields form a cycle
-
-    do i=1,size(field_ptr)
-
-       traverse=.false.
-    
-       if (associated(field_ptr(i)%ptr)) then
-          if (associated(field_ptr(i)%ptr%updated)) then
-             traverse=field_ptr(i)%ptr%updated
-             field_ptr(i)%ptr%updated=.false.
-          end if
-
-          if (traverse) then
-             
-             if (associated(field_ptr(i)%ptr%dependant_scalar_field)) then
-                call unmark_scalar_children(field_ptr(i)%ptr%dependant_scalar_field)
-             end if
-                
-             if (associated(field_ptr(i)%ptr%dependant_vector_field)) then
-                call unmark_vector_children(field_ptr(i)%ptr%dependant_vector_field)
-             end if
-
-             if (associated(field_ptr(i)%ptr%dependant_tensor_field)) then
-                call unmark_tensor_children(field_ptr(i)%ptr%dependant_tensor_field)
-             end if
-
-          end if
-       end if
-    end do
-
-  end subroutine unmark_tensor_children
-
- subroutine unmark_scalar_as_updated(infield)
-    !! subroutine for multiphase code, marks input field as NOT updated and
-    !! leaves dependancies unmodified
-
-    type(scalar_field), intent(inout) :: infield
-
-    if (associated(infield%updated)) then
-       infield%updated=.false.
-    else
-       allocate(infield%updated)
-       infield%updated=.false.
-    end if
-
-  end subroutine unmark_scalar_as_updated
-
-  subroutine unmark_vector_as_updated(infield)
-    !! subroutine for multiphase code, marks input field as NOT updated and
-    !! leaves dependancies unmodified
-
-    type(vector_field), intent(inout) :: infield
-
-    if (associated(infield%updated)) then
-       infield%updated=.false.
-    else
-       allocate(infield%updated)
-       infield%updated=.false.
-    end if
-
-  end subroutine unmark_vector_as_updated
-
-subroutine unmark_tensor_as_updated(infield)
-    !! subroutine for multiphase code, marks input field as NOT updated and
-    !! leaves dependancies unmodified
-
-    type(tensor_field), intent(inout) :: infield
-
-    if (associated(infield%updated)) then
-       infield%updated=.false.
-    else
-       allocate(infield%updated)
-       infield%updated=.false.
-    end if
-
-  end subroutine unmark_tensor_as_updated
-
-             
-  function clone_one_scalar_field(model,name) result(clone)
-    ! convenience function creates a field with new memory and name, but 
-    ! mesh and option_path information from another model field.
-
-    ! result must be deallocated when it is finished with
-
-    type(scalar_field), intent(inout) :: model
-    type(scalar_field) :: clone
-    character(len=*) :: name
-
-    call allocate(field=clone,mesh=model%mesh,name=name)
-    clone%option_path=model%option_path
-
-  end function clone_one_scalar_field
-
-function clone_many_scalar_field(model,names) result(clones)
-    ! convenience function creates many fields with new memory and names, but 
-    ! mesh and option_path information from another model field.
-
-    ! results must be calldeallocated when it is finished with.
-
-    type(scalar_field), intent(inout) :: model
-    character(len=*), dimension(:) :: names
-    type(scalar_field), dimension(:), pointer  :: clones
-    
-    integer :: i
-
-    allocate(clones(size(names)))
-
-    do i=1,size(names)
-       clones(i)=clone_one_scalar_field(model,names(i))
-    end do
-
-  end function clone_many_scalar_field
-
-  function clone_one_vector_field(model,name) result(clone)
-    ! convenience function creates a field with new memory and name, but 
-    ! mesh and option_path information from another model field.
-
-    ! result must be deallocated when it is finished with
-
-    type(vector_field), intent(inout) :: model
-    type(vector_field) :: clone
-    character(len=*) :: name
-
-    call allocate(field=clone,mesh=model%mesh,name=name,dim=model%dim)
-    clone%option_path=model%option_path
-
-  end function clone_one_vector_field
-
-function clone_many_vector_field(model,names) result(clones)
-    ! convenience function creates many fields with new memory and names, but 
-    ! mesh and option_path information from another model field.
-
-    ! results must be calldeallocated when it is finished with.
-
-    type(vector_field), intent(inout) :: model
-    character(len=*), dimension(:) :: names
-    type(vector_field), dimension(:), pointer  :: clones
-    
-    integer :: i
-
-    allocate(clones(size(names)))
-
-    do i=1,size(names)
-       clones(i)=clone_one_vector_field(model,names(i))
-    end do
-
-  end function clone_many_vector_field
-
-
-  function clone_one_tensor_field(model,name) result(clone)
-    ! convenience function creates a field with new memory and name, but 
-    ! mesh and option_path information from another model field.
-
-    ! result must be deallocated when it is finished with
-
-    type(tensor_field), intent(inout) :: model
-    type(tensor_field) :: clone
-    character(len=*) :: name
-
-    call allocate(field=clone,mesh=model%mesh,name=name,dim=model%dim)
-    clone%option_path=model%option_path
-
-  end function clone_one_tensor_field
-
-function clone_many_tensor_field(model,names) result(clones)
-    ! convenience function creates many fields with new memory and names, but 
-    ! mesh and option_path information from another model field.
-
-    ! results must be calldeallocated when it is finished with.
-
-    type(tensor_field), intent(inout) :: model
-    character(len=*), dimension(:) :: names
-    type(tensor_field), dimension(:), pointer  :: clones
-    
-    integer :: i
-
-    allocate(clones(size(names)))
-
-    do i=1,size(names)
-       clones(i)=clone_one_tensor_field(model,names(i))
-    end do
-
-  end function clone_many_tensor_field
   
 end module fields_manipulation
 

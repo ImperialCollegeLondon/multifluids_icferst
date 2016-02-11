@@ -152,12 +152,7 @@ module global_parameters
   real, dimension(:, :), allocatable :: domain_bbox
 
   real :: domain_volume
-  logical :: running_adjoint = .false.
 
-  !! Are we using a new mesh?
-  logical :: new_mesh = .false.
-  !! New timestep for limiter
-  logical :: new_lim = .false.
   !! When on-the-sphere, the planet radius is needed.
   ! The variable is initiliased as unity, to avoid garbage
   ! being passed around.
@@ -169,20 +164,6 @@ module global_parameters
   integer, parameter :: COLOURING_DG1 = 3
   integer, parameter :: COLOURING_DG2 = 4
   integer, parameter :: NUM_COLOURINGS = 4
-
-  !! Overlapping method
-  logical :: is_porous_media = .false.
-
-  !! Checking multifracture
-  logical :: is_multifracture = .false.
-
-  !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
-  real :: dumping_in_sat
-
-  logical :: FPI_have_converged = .false.
-
-
-  logical :: after_adapt = .false.
 
   contains
 

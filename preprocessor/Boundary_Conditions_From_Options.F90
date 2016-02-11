@@ -259,7 +259,7 @@ contains
        select case(trim(bc_type))
 
        case("dirichlet", "neumann", "weakdirichlet", &
-            "buoyancy", "flux","freesurface")
+            "buoyancy", "flux")
 
           call allocate(surface_field, surface_mesh, name="value")
           call insert_surface_field(field, i+1, surface_field)
@@ -355,14 +355,8 @@ contains
          bc_type = "weak"//trim(bc_type)
        end if
 
-       if(have_option(trim(bc_path_i)//"/type[0]/boundary/open")) then
-          bc_type = trim(bc_type)//"inout"
-       end if
-
-
        select case(trim(bc_type))
-       case("dirichlet", "neumann", "weakdirichlet", "momentum", &
-            "momentuminout","weakdirichlet_continuity","weakdirichlet_viscosity","weakdirichlet_advection", "flux")
+       case("dirichlet", "neumann", "weakdirichlet", "flux")
 
           if(have_option(trim(bc_path_i)//"/type[0]/align_bc_with_cartesian")) then
              aligned_components=cartesian_aligned_components
@@ -754,7 +748,7 @@ contains
        ! be constant or set from a generic or python function.
        select case(trim(bc_type))
 
-       case("dirichlet", "neumann", "weakdirichlet", "flux","freesurface")
+       case("dirichlet", "neumann", "weakdirichlet", "flux")
 
           bc_type_path=trim(bc_path_i)//"/type[0]"
 
@@ -918,8 +912,7 @@ contains
        end if
 
        select case(trim(bc_type))
-       case("dirichlet", "neumann", "weakdirichlet", "momentum", &
-            "momentuminout","weakdirichlet_continuity","weakdirichlet_viscosity","weakdirichlet_advection","flux")
+       case("dirichlet", "neumann", "weakdirichlet", "flux")
 
           if(have_option(trim(bc_path_i)//"/align_bc_with_cartesian")) then
              aligned_components=cartesian_aligned_components

@@ -96,7 +96,7 @@ module Petsc_Tools
   interface petsc2field
     module procedure Petsc2VectorFields, Petsc2ScalarFields, Petsc2VectorField, Petsc2ScalarField
   end interface
-    
+
   interface petsc_numbering_create_is
     module procedure petsc_numbering_create_is_dim
   end interface
@@ -110,7 +110,6 @@ module Petsc_Tools
   public field2petsc, petsc2field, petsc_numbering_create_is
   public petsc_numbering_type, PetscNumberingCreateVec, allocate, deallocate
   public csr2petsc_CreateSeqAIJ, csr2petsc_CreateMPIAIJ
-  public full_CreateSeqAIJ, full_CreateMPIAIJ
   public addup_global_assembly
   ! for petsc_numbering:
   public incref, decref, addref
@@ -143,7 +142,7 @@ contains
   ! as group to avoid confusion with the above definition.
   
   subroutine allocate_petsc_numbering(petsc_numbering, &
-       nnodes, nfields, halo, ghost_nodes,fluidity_ordering)
+       nnodes, nfields, halo, ghost_nodes)
     !!< Set ups the 'universal'(what most people call global)
     !!< numbering used in PETSc. In serial this is trivial
     !!< but could still be used for reordering schemes.
@@ -157,7 +156,6 @@ contains
     type(halo_type), pointer, optional :: halo
     !! If supplied number these as -1, so they'll be skipped by Petsc
     integer, dimension(:), optional, intent(in):: ghost_nodes 
-    logical, optional, intent(in) :: fluidity_ordering 
     integer, dimension(:), allocatable:: ghost_marker
     integer i, g, f, start, offset
     integer nuniversalnodes, ngroups, lgroup_size, ierr
@@ -182,9 +180,6 @@ contains
 
        ! *** Serial case *or* parallel without halo
 
-       if (present_and_true(fluidity_ordering)) then
-          petsc_numbering%gnn2unn=transpose(reshape([(i,i=0,nfields*nnodes-1)],[nfields,nnodes]))
-       else
        ! standard, trivial numbering, starting at 0:
        start=0 ! start of each field -1
        do g=1, nfields
@@ -192,7 +187,6 @@ contains
                (/ ( start+i, i=0, nnodes-1 ) /)
           start=start+nnodes
        end do
-       end if
 
        if (isParallel()) then
 
@@ -218,7 +212,7 @@ contains
        ! *** Parallel case with halo:
 
        ! get 'universal' numbering
-       call get_universal_numbering(halo, petsc_numbering%gnn2unn,fluidity_ordering)
+       call get_universal_numbering(halo, petsc_numbering%gnn2unn)
        ! petsc uses base 0
        petsc_numbering%gnn2unn = petsc_numbering%gnn2unn-1
          
@@ -368,11 +362,11 @@ contains
   end subroutine reorder
 
   subroutine Array2Petsc(array, petsc_numbering, vec)
-  !!< Assembles petsc array using the specified numbering.
-  !!< Allocates a petsc Vec that should be destroyed with VecDestroy
-  real, dimension(:), intent(in):: array
-  type(petsc_numbering_type), intent(in):: petsc_numbering
-  Vec, intent(inout) :: vec
+    !!< Assembles petsc array using the specified numbering.
+    !!< Allocates a petsc Vec that should be destroyed with VecDestroy
+    real, dimension(:), intent(in):: array
+    type(petsc_numbering_type), intent(in):: petsc_numbering
+    Vec, intent(inout) :: vec
   
     integer ierr, nnodp, start, b, nfields, nnodes
 
@@ -387,12 +381,12 @@ contains
     
     ! start of each field -1
     start=0
-    
+
     if (associated(petsc_numbering%halo)) then
        if (.not. ((petsc_numbering%halo%data_type .eq. HALO_TYPE_CG_NODE) &
             .or. (petsc_numbering%halo%data_type .eq. HALO_TYPE_DG_NODE))) then
           FLAbort("Matrices can only be assembled on the basis of node halos")
-    end if
+       end if
     end if
 
     do b=1, nfields
@@ -419,10 +413,10 @@ contains
   
   subroutine VectorFields2Petsc(fields, petsc_numbering, vec)
     !!< Assembles contiguous petsc array using the specified numbering from the given fields.
-  !!< Allocates a petsc Vec that should be destroyed with VecDestroy
-  type(vector_field), dimension(:), intent(in):: fields
-  type(petsc_numbering_type), intent(in):: petsc_numbering
-  Vec :: vec
+    !!< Allocates a petsc Vec that should be destroyed with VecDestroy
+    type(vector_field), dimension(:), intent(in):: fields
+    type(petsc_numbering_type), intent(in):: petsc_numbering
+    Vec :: vec
   
     integer ierr, nnodp, b, nfields, nnodes
     integer i, j
@@ -470,9 +464,9 @@ contains
   
   subroutine VectorField2Petsc(field, petsc_numbering, vec)
     !!< Assembles contiguous petsc array using the specified numbering from the given field.
-  type(vector_field), intent(in):: field
-  type(petsc_numbering_type), intent(in):: petsc_numbering
-  Vec, intent(out) :: vec
+    type(vector_field), intent(in):: field
+    type(petsc_numbering_type), intent(in):: petsc_numbering
+    Vec, intent(out) :: vec
   
     call VectorFields2Petsc( (/ field /), petsc_numbering, vec)
     
@@ -480,9 +474,9 @@ contains
   
   subroutine ScalarFields2Petsc(fields, petsc_numbering, vec)
     !!< Assembles contiguous petsc array using the specified numbering from the given fields.
-  type(scalar_field), dimension(:), intent(in):: fields
-  type(petsc_numbering_type), intent(in):: petsc_numbering
-  Vec, intent(inout) :: vec
+    type(scalar_field), dimension(:), intent(in):: fields
+    type(petsc_numbering_type), intent(in):: petsc_numbering
+    Vec, intent(inout) :: vec
   
     integer ierr, nnodp, b, nfields, nnodes
 
@@ -523,22 +517,22 @@ contains
   end subroutine ScalarFields2Petsc
   
   subroutine ScalarField2Petsc(field, petsc_numbering, vec)
-  !!< Assembles petsc array using the specified numbering.
-  !!< Allocates a petsc Vec that should be destroyed with VecDestroy
-  type(scalar_field), intent(in):: field
-  type(petsc_numbering_type), intent(in):: petsc_numbering
-  Vec, intent(inout) :: vec
+    !!< Assembles petsc array using the specified numbering.
+    !!< Allocates a petsc Vec that should be destroyed with VecDestroy
+    type(scalar_field), intent(in):: field
+    type(petsc_numbering_type), intent(in):: petsc_numbering
+    Vec, intent(inout) :: vec
   
     call ScalarFields2Petsc( (/ field /), petsc_numbering, vec)
   
   end subroutine ScalarField2Petsc
   
   function PetscNumberingCreateVec(petsc_numbering) result (vec)
-  !!< Creates a petsc array with size corresponding to petsc_numbering.
-  !!< After use it should be destroyed with VecDestroy. No vector values
-  !!< are set in this function.
-  type(petsc_numbering_type), intent(in):: petsc_numbering
-  Vec vec
+    !!< Creates a petsc array with size corresponding to petsc_numbering.
+    !!< After use it should be destroyed with VecDestroy. No vector values
+    !!< are set in this function.
+    type(petsc_numbering_type), intent(in):: petsc_numbering
+    Vec vec
   
     
     integer ierr, nnodp, plength, ulength, nfields
@@ -569,7 +563,7 @@ contains
     call VecSetOption(vec, VEC_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE, ierr)
 
   end function PetscNumberingCreateVec
-  
+
   function petsc_numbering_create_is_dim(petsc_numbering, dim) result (index_set)
     IS:: index_set
     type(petsc_numbering_type), intent(in):: petsc_numbering
@@ -591,11 +585,11 @@ contains
   end function petsc_numbering_create_is_dim
   
   subroutine Petsc2Array(vec, petsc_numbering, array)
-  !!< Copies the values of a PETSc Vec into an array. The PETSc Vec
-  !!< must have been assembled using the same petsc_numbering.
-  Vec, intent(in):: vec
-  type(petsc_numbering_type), intent(in):: petsc_numbering
-  real, dimension(:), intent(out) :: array
+    !!< Copies the values of a PETSc Vec into an array. The PETSc Vec
+    !!< must have been assembled using the same petsc_numbering.
+    Vec, intent(in):: vec
+    type(petsc_numbering_type), intent(in):: petsc_numbering
+    real, dimension(:), intent(out) :: array
     
     integer ierr, nnodp, start, b, nfields, nnodes
 #ifndef DOUBLEP
@@ -619,9 +613,9 @@ contains
       
       ! this check should be unnecessary but is a work around for a bug in petsc, fixed in 18ae1927 (pops up with intel 15)
       if (nnodp>0) then
-      call VecGetValues(vec, nnodp, &
-        petsc_numbering%gnn2unn( 1:nnodp, b ), &
-        array( start+1:start+nnodp ), ierr)
+        call VecGetValues(vec, nnodp, &
+          petsc_numbering%gnn2unn( 1:nnodp, b ), &
+          array( start+1:start+nnodp ), ierr)
       end if
         
       ! go to next field:
@@ -639,10 +633,10 @@ contains
     do b=1, nfields
       
       if (nnodp>0) then
-      call VecGetValues(vec, nnodp, &
-        petsc_numbering%gnn2unn( 1:nnodp, b ), &
-        vals, ierr)
-      array( start+1:start+nnodp ) = vals
+        call VecGetValues(vec, nnodp, &
+          petsc_numbering%gnn2unn( 1:nnodp, b ), &
+          vals, ierr)
+        array( start+1:start+nnodp ) = vals
       end if
         
       ! go to next field:
@@ -661,13 +655,13 @@ contains
   end subroutine Petsc2Array
 
   subroutine Petsc2ScalarFields(vec, petsc_numbering, fields, rhs)
-  !!< Copies the values of a PETSc Vec into scalar fields. The PETSc Vec
-  !!< must have been assembled using the same petsc_numbering.
-  Vec, intent(in):: vec
-  type(petsc_numbering_type), intent(in):: petsc_numbering
-  type(scalar_field), dimension(:), intent(inout) :: fields
-  !! for ghost_nodes the value of the rhs gets copied into fields
-  type(scalar_field), dimension(:), intent(in), optional :: rhs
+    !!< Copies the values of a PETSc Vec into scalar fields. The PETSc Vec
+    !!< must have been assembled using the same petsc_numbering.
+    Vec, intent(in):: vec
+    type(petsc_numbering_type), intent(in):: petsc_numbering
+    type(scalar_field), dimension(:), intent(inout) :: fields
+    !! for ghost_nodes the value of the rhs gets copied into fields
+    type(scalar_field), dimension(:), intent(in), optional :: rhs
     
     integer ierr, nnodp, b, nfields, nnodes
 #ifndef DOUBLEP
@@ -689,9 +683,9 @@ contains
       call profiler_tic(fields(b), "petsc2field")
       ! this check should be unnecessary but is a work around for a bug in petsc, fixed in 18ae1927 (pops up with intel 15)
       if (nnodp>0) then
-      call VecGetValues(vec, nnodp, &
-        petsc_numbering%gnn2unn( 1:nnodp, b ), &
-        fields(b)%val( 1:nnodp ), ierr)
+        call VecGetValues(vec, nnodp, &
+          petsc_numbering%gnn2unn( 1:nnodp, b ), &
+          fields(b)%val( 1:nnodp ), ierr)
       end if
       call profiler_toc(fields(b), "petsc2field")
         
@@ -702,9 +696,9 @@ contains
       
       call profiler_tic(fields(b), "petsc2field")
       if (nnodp>0) then
-      call VecGetValues(vec, nnodp, &
-        petsc_numbering%gnn2unn( 1:nnodp, b ), &
-        vals, ierr)
+        call VecGetValues(vec, nnodp, &
+          petsc_numbering%gnn2unn( 1:nnodp, b ), &
+          vals, ierr)
       end if
       fields(b)%val( 1:nnodp ) = vals
       call profiler_toc(fields(b), "petsc2field")
@@ -792,9 +786,9 @@ contains
       do j=1, fields(i)%dim
          ! this check should be unnecessary but is a work around for a bug in petsc, fixed in 18ae1927 (pops up with intel 15)
          if (nnodp>0) then
-         call VecGetValues(vec, nnodp, &
-           petsc_numbering%gnn2unn( 1:nnodp, b ), &
-           fields(i)%val(j, 1:nnodp ), ierr)
+           call VecGetValues(vec, nnodp, &
+             petsc_numbering%gnn2unn( 1:nnodp, b ), &
+             fields(i)%val(j, 1:nnodp ), ierr)
          end if
          b=b+1
       end do
@@ -809,9 +803,9 @@ contains
       call profiler_tic(fields(i), "petsc2field")
       do j=1, fields(i)%dim
          if (nnodp>0) then
-         call VecGetValues(vec, nnodp, &
-           petsc_numbering%gnn2unn( 1:nnodp, b ), &
-           vals, ierr)
+           call VecGetValues(vec, nnodp, &
+             petsc_numbering%gnn2unn( 1:nnodp, b ), &
+             vals, ierr)
          end if
          fields(i)%val(j, 1:nnodp ) = vals
          b=b+1
@@ -990,7 +984,7 @@ contains
     
       ! Create parallel matrix:
       M=csr2petsc_CreateMPIAIJ(A%sparsity, row_numbering, col_numbering, A%diagonal, use_inodes=use_inodes)
-      
+
       call MatSetOption(M, MAT_IGNORE_OFF_PROC_ENTRIES, PETSC_TRUE, ierr)
     endif 
 
@@ -1141,7 +1135,7 @@ contains
     deallocate(colidx, vals)
 
   end function CreatePrivateMatrixFromSparsity
-  
+
   function csr2petsc_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal_blocks, use_inodes) result(M)
   !!< Creates a sequential PETSc Mat of size corresponding with
   !!< row_numbering and col_numbering.
@@ -1283,140 +1277,6 @@ contains
     deallocate(d_nnz, o_nnz)
 
   end function csr2petsc_CreateMPIAIJ
-
-function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal_blocks, use_inodes) result(M)
-        !!< Creates a parallel PETSc Mat of size corresponding with
-        !!< row_numbering and col_numbering.
-        type(csr_sparsity), intent(in):: sparsity
-        type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
-        logical, intent(in):: only_diagonal_blocks
-        !! petsc's inodes don't work with certain preconditioners ("mg" and "eisenstat")
-        !! that's why we default to not use them
-        logical, intent(in), optional:: use_inodes
-        Mat M
-  
-        integer, dimension(:), allocatable:: nnz
-        integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh
-        integer row, len
-        integer bv, i, ierr
-
-        ! total number of rows and cols:
-        nrows=row_numbering%universal_length
-        ncols=col_numbering%universal_length
-        ! rows and cols per block:
-        nbrows=size(row_numbering%gnn2unn, 1)
-        nbcols=size(col_numbering%gnn2unn, 1)
-        ! number of vertical and horizontal blocks:
-        nblocksv=size(row_numbering%gnn2unn, 2)
-        nblocksh=size(col_numbering%gnn2unn, 2)
-        
-
-        allocate(nnz(0:nrows-1))
-        ! loop over complete horizontal rows within a block of rows
-        nnz=1
-        ! loop over complete horizontal rows within a block of rows
-        do i=1, nbrows
-           do bv=1, nblocksv
-           ! this is a full row
-              len = row_length(sparsity, bv+(i-1)*nblocksv)
-      
-              row=row_numbering%gnn2unn(i,bv)
-              if (row/=-1) then
-                 nnz(row)=len
-              end if
-           end do
-        end do
-
-        call MatCreateSeqAIJ(MPI_COMM_SELF, nrows, ncols, &
-             PETSC_NULL_INTEGER, nnz, M, ierr)
-      
-        if (.not. present_and_true(use_inodes)) then
-           call MatSetOption(M, MAT_USE_INODES, PETSC_FALSE, ierr)
-        end if
-
-        deallocate(nnz)
-        
-      end function full_CreateSeqAIJ
-
-   function full_CreateMPIAIJ(sparsity, row_numbering, col_numbering, only_diagonal_blocks, use_inodes) result(M)
-        !!< Creates a parallel PETSc Mat of size corresponding with
-        !!< row_numbering and col_numbering.
-        type(csr_sparsity), intent(in):: sparsity
-        type(petsc_numbering_type), intent(in):: row_numbering, col_numbering
-        logical, intent(in):: only_diagonal_blocks
-        !! petsc's inodes don't work with certain preconditioners ("mg" and "eisenstat")
-        !! that's why we default to not use them
-        logical, intent(in), optional:: use_inodes
-        Mat M
-  
-        integer, dimension(:), pointer:: cols 
-        integer, dimension(:), allocatable:: d_nnz, o_nnz
-        integer nrows, ncols, nbrows, nbcols, nblocksv, nblocksh
-        integer nrowsp, ncolsp, nbrowsp, nbcolsp, row_offset
-        integer row, len, private_len, ghost_len
-        integer bv, i, ierr
-
-        ! total number of rows and cols:
-        nrows=row_numbering%universal_length
-        ncols=col_numbering%universal_length
-        ! rows and cols per block:
-        nbrows=size(row_numbering%gnn2unn, 1)
-        nbcols=size(col_numbering%gnn2unn, 1)
-        ! number of vertical and horizontal blocks:
-        nblocksv=size(row_numbering%gnn2unn, 2)
-        nblocksh=size(col_numbering%gnn2unn, 2)
-        
-        ! number of private rows and cols in each block
-        nbrowsp=row_numbering%nprivatenodes
-        nbcolsp=col_numbering%nprivatenodes
-    
-        ! number of private rows and cols in total
-        ! (this will be the number of local rows and cols for petsc)
-        nrowsp=nbrowsp*nblocksv
-        ncolsp=nbcolsp*nblocksh
-
-        ! the universal numbers used by petsc for private nodes are in the range
-        ! row_offset:row_offset+nrowsp-1
-        row_offset=row_numbering%offset
-    
-        ! for each private row we have to count the number of column indices 
-        ! refering to private nodes and refering to ghost/halos nodes
-        allocate(d_nnz(row_offset:row_offset+nrowsp-1), &
-             o_nnz(row_offset:row_offset+nrowsp-1))
-        ! ghost rows are skipped below, and only have a diagonal
-        d_nnz=1
-        o_nnz=0
-        ! loop over complete horizontal rows within a block of rows
-        do i=1, nbrowsp
-           do bv=1, nblocksv
-           ! this is a full row
-              cols => row_m_ptr(sparsity, bv+(i-1)*nblocksv)
-           ! the row length over all blocks from left to right
-              len=size(cols)
-           ! number of entries refering to private nodes:
-              private_len=count(cols<=ncolsp)
-      ! the rest refers to ghost/halo nodes:
-              ghost_len=len-private_len
-      
-              row=row_numbering%gnn2unn(i,bv)
-              if (row/=-1) then
-                 ASSERT(row>=row_offset .and. row<row_offset+nrowsp)
-                 d_nnz(row)=private_len
-                 o_nnz(row)=ghost_len
-              end if
-           end do
-        end do
-
-        call MatCreateMPIAIJ(MPI_COMM_FEMTOOLS, nrowsp, ncolsp, nrows, ncols, &
-             PETSC_NULL_INTEGER, d_nnz, PETSC_NULL_INTEGER, o_nnz, M, ierr)
-      
-        if (.not. present_and_true(use_inodes)) then
-           call MatSetOption(M, MAT_USE_INODES, PETSC_FALSE, ierr)
-        end if
-
-        deallocate(d_nnz, o_nnz)
-        
-      end function full_CreateMPIAIJ
 
   function petsc2csr(matrix, column_numbering) result(A)
   !!< Converts a PETSc matrix into a csr_matrix from Sparse_Tools.
@@ -1625,16 +1485,14 @@ function full_CreateSeqAIJ(sparsity, row_numbering, col_numbering, only_diagonal
     PetscErrorCode :: ierr
     call PetscInitialize(PETSC_NULL_CHARACTER, ierr); CHKERRQ(ierr);
   end subroutine Initialize_Petsc
-  
+
 ! Simple dummy error handler that just tracks whether it's been called or not
 ! Useful for unittesting to see that petsc gives error messages at the right moment
 #if PETSC_VERSION_MINOR>=2
 subroutine petsc_test_error_handler(comm,line, func, file, dir, n, p, mess, ctx, ierr)
-#include "finclude/petsc.h"
   MPI_Comm:: comm
 #else
 subroutine petsc_test_error_handler(line, func, file, dir, n, p, mess, ctx, ierr)
-#include "finclude/petsc.h"
 #endif
   PetscInt:: line
   character(len=*):: func, file, dir
@@ -1737,7 +1595,6 @@ end module Petsc_Tools
 ! the module (and only including petsc headers and not use petsc modules)
 ! this routine calls MatGetInfo with an implicit interface.
 subroutine myMatGetInfo(A, flag, info, ierr)
-#include "finclude/petsc.h"
 Mat, intent(in):: A
 MatInfoType, intent(in):: flag
 double precision, dimension(:), intent(out):: info

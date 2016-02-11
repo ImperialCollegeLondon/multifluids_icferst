@@ -48,6 +48,7 @@ module adapt_state_module
   use hadapt_extrude
   use hadapt_metric_based_extrude
   use halos
+  use fefields
   use interpolation_manager
   use interpolation_module
   use mba_adapt_module
@@ -96,36 +97,122 @@ contains
   subroutine adapt_mesh_simple(old_positions, metric, new_positions, node_ownership, force_preserve_regions, &
       lock_faces, allow_boundary_elements)
     type(vector_field), intent(in) :: old_positions
-    type(tensor_field), intent(inout) :: metric
+    type(tensor_field), intent(in) :: metric
+    type(vector_field) :: stripped_positions
+    type(tensor_field) :: stripped_metric
     type(vector_field), intent(out) :: new_positions
     integer, dimension(:), pointer, optional :: node_ownership
     logical, intent(in), optional :: force_preserve_regions
     type(integer_set), intent(in), optional :: lock_faces
     logical, intent(in), optional :: allow_boundary_elements
+    type(vector_field) :: expanded_positions
 
     assert(.not. mesh_periodic(old_positions))
 
-    select case(old_positions%dim)
+    if(isparallel()) then
+      ! generate stripped versions of the position and metric fields
+      call strip_l2_halo(old_positions, metric, stripped_positions, stripped_metric)
+    else
+      stripped_positions = old_positions
+      stripped_metric = metric
+      call incref(stripped_positions)
+      call incref(stripped_metric)
+    end if
+
+    select case(stripped_positions%dim)
       case(1)
-        call adapt_mesh_1d(old_positions, metric, new_positions, &
+        call adapt_mesh_1d(stripped_positions, stripped_metric, new_positions, &
           & node_ownership = node_ownership, force_preserve_regions = force_preserve_regions)
       case(2)
-        call adapt_mesh_mba2d(old_positions, metric, new_positions, &
+        call adapt_mesh_mba2d(stripped_positions, stripped_metric, new_positions, &
           & force_preserve_regions=force_preserve_regions, lock_faces=lock_faces, &
           & allow_boundary_elements=allow_boundary_elements)
       case(3)
         if(have_option("/mesh_adaptivity/hr_adaptivity/adaptivity_library/libmba3d")) then
           assert(.not. present(lock_faces))
-          call adapt_mesh_mba3d(old_positions, metric, new_positions, &
+          call adapt_mesh_mba3d(stripped_positions, stripped_metric, new_positions, &
                              force_preserve_regions=force_preserve_regions)
         else
-          call adapt_mesh_3d(old_positions, metric, new_positions, node_ownership = node_ownership, &
+          call adapt_mesh_3d(stripped_positions, stripped_metric, new_positions, &
                              force_preserve_regions=force_preserve_regions, lock_faces=lock_faces)
         end if
       case default
         FLAbort("Mesh adaptivity requires a 1D, 2D or 3D mesh")
     end select
+
+    if(isparallel()) then
+      expanded_positions = expand_positions_halo(new_positions)
+      call deallocate(new_positions)
+      new_positions = expanded_positions
+    end if
+
+    ! deallocate stripped metric and positions - we don't need these anymore
+    call deallocate(stripped_metric)
+    call deallocate(stripped_positions)
+
   end subroutine adapt_mesh_simple
+
+  subroutine strip_l2_halo(positions, metric, stripped_positions, stripped_metric)
+    ! strip level 2 halo from mesh before going into adapt so we don't unnecessarily lock
+    ! the halo 2 region (in addition to halo 1) - halo 2 regions will be regrown automatically
+    ! after repartioning in zoltan
+    type(vector_field), intent(in) :: positions
+    type(tensor_field), intent(in):: metric
+    type(vector_field), intent(out) :: stripped_positions
+    type(tensor_field), intent(out):: stripped_metric
+
+    type(halo_type), dimension(:), pointer :: save_halos
+    type(mesh_type):: stripped_mesh, mesh
+    integer, dimension(:), pointer :: node_list, nodes
+    integer, dimension(:), allocatable :: non_halo2_elements
+    integer :: ele, j, non_halo2_count
+
+    ewrite(1,*) "Inside strip_l2_halo"
+
+    allocate(non_halo2_elements(1:element_count(positions)))
+    non_halo2_count = 0
+    ele_loop: do ele=1, element_count(positions)
+      nodes => ele_nodes(positions, ele)
+      do j=1, size(nodes)
+        if (node_owned(positions, nodes(j))) then
+          non_halo2_count = non_halo2_count + 1
+          non_halo2_elements(non_halo2_count) = ele
+          cycle ele_loop
+        end if
+      end do
+    end do ele_loop
+
+    ! to avoid create_subdomain_mesh recreating a new halo 2
+    ! temporarily take it away from the input positions%mesh
+    ! (create_sudomain_mesh would correctly recreate a halo2, but since
+    ! all halo2 nodes are stripped, it would end up being the same as halo 1)
+    ! the new element halos are recreated from the new nodal halo without
+    ! using those of the input positions%mesh
+    mesh = positions%mesh
+    if (.not. size(save_halos)/=2) then
+      FLAbort("In strip_l2_halo: halo2 is already stripped?")
+    end if
+    ! since mesh is a copy of positons%mesh, we can change mesh%halos
+    ! without changing positions%mesh%halos
+    allocate(mesh%halos(1))
+    mesh%halos(1)=positions%mesh%halos(1)
+
+    call create_subdomain_mesh(mesh, non_halo2_elements(1:non_halo2_count), &
+      mesh%name, stripped_mesh, node_list)
+
+    deallocate(mesh%halos)
+
+    call allocate(stripped_positions, positions%dim, stripped_mesh, name=positions%name)
+    call allocate(stripped_metric, stripped_mesh, name=metric%name)
+    call set_all(stripped_positions, node_val(positions, node_list))
+    call set_all(stripped_metric, node_val(metric, node_list))
+
+    call deallocate(stripped_mesh)
+    deallocate(node_list)
+
+    ewrite(1,*) "Exiting strip_l2_halo"
+
+  end subroutine strip_l2_halo
 
   subroutine adapt_mesh_periodic(old_positions, metric, new_positions, force_preserve_regions)
     type(vector_field), intent(in) :: old_positions
@@ -832,13 +919,12 @@ contains
     end if
   end subroutine adapt_mesh
 
-  subroutine adapt_state_single(state, metric, initialise_fields,suppress_reference_warnings)
+  subroutine adapt_state_single(state, metric, initialise_fields)
 
     type(state_type), intent(inout) :: state
     type(tensor_field), intent(inout) :: metric
     !! If present and .true., initialise fields rather than interpolate them
     logical, optional, intent(in) :: initialise_fields
-    logical, optional, intent(in) :: suppress_reference_warnings
 
     type(state_type), dimension(1) :: states
 
@@ -848,13 +934,12 @@ contains
 
   end subroutine adapt_state_single
 
-  subroutine adapt_state_multiple(states, metric, initialise_fields,suppress_reference_warnings)
+  subroutine adapt_state_multiple(states, metric, initialise_fields)
 
     type(state_type), dimension(:), intent(inout) :: states
     type(tensor_field), intent(inout) :: metric
     !! If present and .true., initialise fields rather than interpolate them
     logical, optional, intent(in) :: initialise_fields
-    logical, optional, intent(in) :: suppress_reference_warnings
 
     call tictoc_clear(TICTOC_ID_SERIAL_ADAPT)
     call tictoc_clear(TICTOC_ID_DATA_MIGRATION)
@@ -863,8 +948,7 @@ contains
 
     call tic(TICTOC_ID_ADAPT)
 
-    call adapt_state_internal(states, metric, initialise_fields = initialise_fields,&
-         suppress_reference_warnings=suppress_reference_warnings)
+    call adapt_state_internal(states, metric, initialise_fields = initialise_fields)
 
     call toc(TICTOC_ID_ADAPT)
 
@@ -937,7 +1021,7 @@ contains
 
   end subroutine adapt_state_first_timestep
 
-  subroutine adapt_state_internal(states, metric, initialise_fields,suppress_reference_warnings)
+  subroutine adapt_state_internal(states, metric, initialise_fields)
     !!< Adapt the supplied states according to the supplied metric. In parallel,
     !!< additionally re-load-balance with libsam. metric is deallocated by this
     !!< routine. Based on adapt_state_2d.
@@ -949,11 +1033,6 @@ contains
     !! according to the specified initial condition in the options tree, except
     !! if these fields are initialised from_file (checkpointed).
     logical, optional, intent(in) :: initialise_fields
-    !! If present and .true., then suppress warnings for old references remaining following
-    !! mesh adaptivity. Use only if you expect references to remain external to state and are
-    !! willing and able to handle the deallocation yourself. The references will still be
-    !! tagged.
-    logical, optional, intent(in) :: suppress_reference_warnings
 
     character(len = FIELD_NAME_LEN) :: metric_name
     integer :: i, j, k, max_adapt_iteration
@@ -969,7 +1048,6 @@ contains
     type(vector_field) :: extruded_positions
     type(tensor_field) :: full_metric
     logical :: vertically_structured_adaptivity
-    logical :: show_reference_warnings
 
     ! Zoltan with detectors stuff
     integer :: my_num_detectors, total_num_detectors_before_zoltan, total_num_detectors_after_zoltan
@@ -980,10 +1058,6 @@ contains
     real :: global_min_quality, quality_tolerance
 
     ewrite(1, *) "In adapt_state_internal"
-
-    show_reference_warnings=.true.
-    if (present(suppress_reference_warnings)) &
-         show_reference_warnings = .not. suppress_reference_warnings
 
     nullify(node_ownership)
 
@@ -1164,9 +1238,9 @@ contains
 
       ! Interpolate fields
       if(associated(node_ownership)) then
-        call interpolate(interpolate_states, states, map = node_ownership)
+        call interpolate(interpolate_states, states, map = node_ownership, only_owned=.true.)
       else
-        call interpolate(interpolate_states, states)
+        call interpolate(interpolate_states, states, only_owned=.true.)
       end if
 
       ! Deallocate the old fields used for interpolation, referenced in
@@ -1185,6 +1259,8 @@ contains
         ! the next adapt iteration. If we will be calling sam_drive, always
         ! extract the new metric.
         metric = extract_and_remove_metric(states(1), metric_name)
+        ! we haven't interpolated in halo2 nodes, so we need to halo update it
+        call halo_update(metric)
       end if
 
       if(present_and_true(initialise_fields)) then
@@ -1288,15 +1364,13 @@ contains
         end if
       end if
 
-      if (show_reference_warnings) then
-         if(vertical_only) then
-            ewrite(2,*) "Using vertical_only adaptivity, so skipping the printing of references"
-         else if (no_reserved_meshes()) then
-            ewrite(2, *) "Tagged references remaining:"
-            call print_tagged_references(0)
-         else
-            ewrite(2, *) "There are reserved meshes, so skipping printing of references."
-         end if
+      if(vertical_only) then
+        ewrite(2,*) "Using vertical_only adaptivity, so skipping the printing of references"
+      else if (no_reserved_meshes()) then
+        ewrite(2, *) "Tagged references remaining:"
+        call print_tagged_references(0)
+      else
+        ewrite(2, *) "There are reserved meshes, so skipping printing of references."
       end if
 
       call write_adapt_state_debug_output(states, final_adapt_iteration, &

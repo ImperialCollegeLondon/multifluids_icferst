@@ -79,7 +79,7 @@ module implicit_solids
 
   implicit none
 
-#ifdef USING_FEMDEM3D
+#ifdef USING_FEMDEM
   interface
      subroutine y3d_allocate_femdem(string, nodes, elements, edges)
        character(len=*), intent(in) :: string
@@ -146,7 +146,7 @@ module implicit_solids
   public:: solids, implicit_solids_nonlinear_iteration_converged, &
        &   remove_dummy_field, add_mass_source_absorption, &
        &   implicit_solids_register_diagnostic, implicit_solids_update, &
-       &   implicit_solids_check_options, interpolation_galerkin_femdem
+       &   implicit_solids_check_options
 
 contains
 
@@ -836,7 +836,7 @@ contains
     loc = 4
     sloc= 3
 
-#ifdef USING_FEMDEM3D
+#ifdef USING_FEMDEM
     call y3d_allocate_femdem(trim(external_mesh_name)//char(0), &
          nodes, elements, edges)
 
@@ -924,7 +924,7 @@ contains
     assert(node_count(external_positions) == node_count(ext_pos_solid_force))
     assert(node_count(ext_pos_fluid_vel) == node_count(ext_pos_solid_force))
 
-#ifdef USING_FEMDEM3D
+#ifdef USING_FEMDEM
     deallocate(ele1, ele2, ele3, ele4)
     deallocate(face1, face2, face3)
     deallocate(xs, ys, zs)
@@ -1009,7 +1009,7 @@ contains
     call zero(external_positions)
     call zero(ext_pos_solid_vel)
 
-#ifdef USING_FEMDEM3D
+#ifdef USING_FEMDEM
 
     ewrite(2, *) "about to call femdem"
 
@@ -1683,7 +1683,7 @@ contains
     inversion_matrix_B = transpose(inversion_matrix_B)
 
     ! Second thing: assemble the mass matrix of B on the left.
-    call compute_inverse_jacobian(ele_val(new_position, ele_B), ele_shape(new_position, ele_B), invJ=invJ, detJ=detJ, detwei=detwei_B)
+    call compute_inverse_jacobian(new_position, ele_B, invJ=invJ, detJ=detJ, detwei=detwei_B)
 
     do mesh = 1, mesh_count
       if(field_counts(mesh)>0) then
@@ -1817,18 +1817,11 @@ contains
 
    end do ! nintersection loop, i.e. ele_A loop 
 
-!!$   if (.not.femdem_out) then
-!!$    ele_B_nodes => ele_nodes(new_position, ele_B)
-!!$    do loc = 1, size(ele_B_nodes)
-!!$       call addto(solid, ele_B_nodes(loc), all_vols_C / vol_B)
-!!$     end do
-!!$   end if
-
    if (.not.femdem_out) then
-      ele_B_nodes => ele_nodes(solid, ele_B)
-      do loc = 1, size(ele_B_nodes)
-         call addto(solid, ele_B_nodes(loc), all_vols_C / vol_B)
-      end do
+     ele_B_nodes => ele_nodes(new_position, ele_B)
+     do loc = 1, size(ele_B_nodes)
+       call addto(solid, ele_B_nodes(loc), all_vols_C / vol_B)
+     end do
    end if
 
    if (femdem_out) then
@@ -1942,8 +1935,6 @@ contains
     else
       l_force_bounded = .false.
     end if
-
-    l_force_bounded=.true.
     
     ! Linear positions -- definitely linear positions.
     assert(old_position%mesh%shape%degree == 1)

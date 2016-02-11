@@ -33,7 +33,6 @@ subroutine fladapt(input_basename_, input_basename_len, &
   !!< Outputs the resulting mesh.
  
   use iso_c_binding
-  use data_structures
   use adapt_state_module
   use diagnostic_fields_wrapper
   use diagnostic_fields_new, only : &
@@ -78,10 +77,6 @@ subroutine fladapt(input_basename_, input_basename_len, &
   type(vector_field), pointer :: new_mesh_field_ptr, old_mesh_field
   type(tensor_field) :: metric, t_edge_lengths
   character(len=FIELD_NAME_LEN) :: mesh_format
-
-  type(integer_set), dimension(:), allocatable :: region_list
-  integer, dimension(:), allocatable :: max_nodes, min_nodes
-  integer :: no_of_nodes
 
   ! now turn into proper fortran strings (is there an easier way to do this?)
   do i=1, input_basename_len
@@ -130,10 +125,8 @@ subroutine fladapt(input_basename_, input_basename_len, &
   ! Assemble the error metric
   call allocate(metric, old_mesh, "ErrorMetric")
   call assemble_metric(states, metric)
-
-  call build_region_list(region_list,max_nodes, min_nodes)
   
-  ewrite(0, *) "Expected nodes = ", expected_nodes(old_mesh_field,metric,region_list)
+  ewrite(0, *) "Expected nodes = ", expected_nodes(old_mesh_field, metric)
   
   call allocate(t_edge_lengths, metric%mesh, "TensorEdgeLengths")
   call get_edge_lengths(metric, t_edge_lengths)

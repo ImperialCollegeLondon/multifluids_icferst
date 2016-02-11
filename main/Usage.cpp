@@ -36,9 +36,6 @@ using namespace Spud;
 map<string, string> fl_command_line_options;
 
 void print_version(ostream& stream){  
-  // line added as quick fix to build on vader. This needs proper work.
-#define __FLUIDITY_VERSION__ " multiphase_working"
-// fix ends here
   stream<<"Revision: "<<__FLUIDITY_VERSION__
 #ifdef DDEBUG
       <<" (debugging)"

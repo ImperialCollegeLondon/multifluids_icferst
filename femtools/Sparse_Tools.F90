@@ -189,7 +189,7 @@ module sparse_tools
        & mult,mult_T, zero_column, addref, incref, decref, has_references, &
        & csr_matrix_pointer, block_csr_matrix_pointer, &
        & csr_sparsity, csr_sparsity_pointer, logical_array_ptr,&
-       & initialise_inactive, has_inactive, mult_addto, mult_t_addto, pos
+       & initialise_inactive, has_inactive, mult_addto, mult_t_addto
 
   TYPE node
      !!< A node in a linked list
@@ -249,7 +249,7 @@ module sparse_tools
        csr_sparsity_pos
   end interface
   
-  !private ::  pos
+  private ::  pos
 
   interface row_m
      module procedure csr_row_m, block_csr_row_m, dcsr_row_m,&
@@ -774,7 +774,7 @@ contains
     totalmem=rows+1 + lentries
     
     if (ldiag) then
-       allocate(sparsity%centrm(min(rows, columns)), stat=lstat)
+       allocate(sparsity%centrm(rows), stat=lstat)
        if (lstat/=0) goto 42
        totalmem=totalmem + size(sparsity%centrm)
     else

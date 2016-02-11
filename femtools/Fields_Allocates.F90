@@ -27,12 +27,11 @@
 #include "fdebug.h"
 module fields_allocates
 use elements
-use spud
 use fields_data_types
 use fields_base
 use shape_functions, only: make_element_shape
 use global_parameters, only: PYTHON_FUNC_LEN, empty_path, empty_name, &
-     topology_mesh_name, NUM_COLOURINGS, option_path_len
+     topology_mesh_name, NUM_COLOURINGS
 use halo_data_types
 use halos_allocates
 use halos_repair
@@ -44,39 +43,33 @@ use memory_diagnostics
 use ieee_arithmetic
 use data_structures
 use parallel_tools
-use element_numbering, only: tr, te
 
 implicit none
 
   private
-  
+
   public :: allocate, deallocate, incref, decref, has_references, add_faces, &
     & deallocate_faces, zero
   public :: make_element_shape, make_mesh, make_mesh_periodic, make_submesh, &
     & create_surface_mesh, make_fake_mesh_linearnonconforming
   public :: extract_scalar_field, wrap_mesh, wrap_scalar_field, &
-    & wrap_vector_field, wrap_tensor_field
+    & wrap_tensor_field
   public :: add_lists, extract_lists, add_nnlist, extract_nnlist, add_nelist, &
     & extract_nelist, add_eelist, extract_eelist, remove_lists, remove_nnlist, &
     & remove_nelist, remove_eelist, extract_elements, remove_boundary_conditions
-  public :: is_updated
-  public add_dependant_field
 
   interface allocate
      module procedure allocate_scalar_field, allocate_vector_field,&
           & allocate_tensor_field, allocate_mesh, &
           & allocate_scalar_boundary_condition, &
-          & allocate_vector_boundary_condition, &
-          & allocate_tensor_boundary_condition
-     
+          & allocate_vector_boundary_condition
   end interface
 
   interface deallocate
      module procedure deallocate_mesh, deallocate_scalar_field,&
           & deallocate_vector_field, deallocate_tensor_field, &
           & deallocate_scalar_boundary_condition, &
-          & deallocate_vector_boundary_condition, &
-          & deallocate_tensor_boundary_condition
+          & deallocate_vector_boundary_condition
   end interface
 
   interface zero
@@ -147,30 +140,8 @@ implicit none
     
   interface remove_boundary_conditions
     module procedure remove_boundary_conditions_scalar, &
-      remove_boundary_conditions_vector, &
-      remove_boundary_conditions_tensor
+      remove_boundary_conditions_vector
   end interface remove_boundary_conditions
-  
-  interface is_updated
-    module procedure is_updated_scalar_field
-    module procedure is_updated_vector_field
-    module procedure is_updated_tensor_field
-
- end interface
-
-
- interface add_dependant_field
-     module procedure add_dependant_scalar_field_to_scalar
-     module procedure add_dependant_vector_field_to_scalar
-     module procedure add_dependant_tensor_field_to_scalar
-     module procedure add_dependant_scalar_field_to_vector
-     module procedure add_dependant_vector_field_to_vector
-     module procedure add_dependant_tensor_field_to_vector
-     module procedure add_dependant_scalar_field_to_tensor
-     module procedure add_dependant_vector_field_to_tensor
-     module procedure add_dependant_tensor_field_to_tensor 
-  end interface add_dependant_field
-
   
 #include "Reference_count_interface_mesh_type.F90"
 #include "Reference_count_interface_scalar_field.F90"
@@ -188,7 +159,7 @@ contains
 #ifdef _OPENMP
     integer :: j
 #endif
-        
+    
     mesh%nodes=nodes
 
     mesh%elements=elements
@@ -208,7 +179,7 @@ contains
     nullify(mesh%faces)
     nullify(mesh%columns)
     nullify(mesh%element_columns)
-    
+
     allocate(mesh%colourings(NUM_COLOURINGS))
     do i = 1, NUM_COLOURINGS
        nullify(mesh%colourings(i)%sets)
@@ -332,8 +303,6 @@ contains
     field%aliased=.false.
     field%option_path=empty_path
     allocate(field%bc)
-    allocate(field%updated)
-    field%updated=.false.
     nullify(field%refcount) ! Hacks for gfortran component initialisation
     !                         bug.
     call addref(field)
@@ -348,10 +317,8 @@ contains
     type(mesh_type), intent(in), target :: mesh
     character(len=*), intent(in), optional :: name
     integer, intent(in), optional :: field_type
-    integer :: n_count, degree, stat
+    integer :: n_count
     integer :: lfield_type
-
-    character(len=OPTION_PATH_LEN) :: element_type
 
     if (present(field_type)) then
       lfield_type = field_type
@@ -361,7 +328,6 @@ contains
     
     field%dim=dim
     field%option_path=empty_path
-    field%val_stride=(/1,1/)
 
     field%mesh=mesh
     call incref(mesh)
@@ -373,20 +339,6 @@ contains
     end if
 
     field%field_type = lfield_type
-    call get_option("/geometry/mesh::"//trim(mesh%name)//"/from_mesh/mesh_shape/element_type", element_type, stat)
-    if (stat/=0) element_type="ordinary"
-    if(trim(element_type)=="overlapping" .and. dim>1) then
-       ! Just make sure that velocity is the right size for us at the moment
-       call get_option("/geometry/mesh::"//trim(mesh%name)//"/from_mesh/mesh_shape/polynomial_degree", degree)
-       select case(dim)
-!          case(1)
-!             allocate(field%val(dim,mesh%elements*(degree+2)*2))
-          case(2)
-             allocate(field%val(dim,mesh%elements*(tr(degree+2))*3))
-          case(3)
-             allocate(field%val(dim,mesh%elements*(te(degree+2))*4))
-       end select
-    else
     select case(lfield_type)
     case(FIELD_TYPE_NORMAL)
       n_count = node_count(mesh)
@@ -403,7 +355,6 @@ contains
     case(FIELD_TYPE_DEFERRED)
       allocate(field%val(0,0))
     end select
-    endif
 
     field%wrapped = .false.
     field%aliased = .false.
@@ -413,22 +364,18 @@ contains
     
     allocate(field%picker)
     
-    allocate(field%updated)
-    field%updated=.false.
-    
     call addref(field)
 
     call zero(field)
 
   end subroutine allocate_vector_field
 
-  subroutine allocate_tensor_field(field, mesh, name, field_type, dim, contiguous)
+  subroutine allocate_tensor_field(field, mesh, name, field_type, dim)
     type(tensor_field), intent(inout) :: field
     type(mesh_type), intent(in), target :: mesh
     character(len=*), intent(in), optional :: name
     integer, intent(in), optional :: field_type
     integer, intent(in), dimension(2), optional :: dim
-    logical, intent(in), optional :: contiguous
     integer :: lfield_type
 
     if (present(field_type)) then
@@ -442,13 +389,6 @@ contains
     else
       field%dim=(/mesh_dim(mesh),mesh_dim(mesh)/)
     end if
-
-    if (present(contiguous)) then
-       field%contiguous=contiguous
-    else
-       field%contiguous=.false.
-    end if
-
     field%option_path=empty_path
 
     field%mesh=mesh
@@ -463,13 +403,7 @@ contains
     field%field_type = lfield_type
     select case(lfield_type)
     case(FIELD_TYPE_NORMAL)
-       if (field%contiguous) then
-          !allocate(field%contiguous_val(field%dim(1), field%dim(2),&
-          !     node_count(mesh)))
-          !field%val=>field%contiguous_val
-       else
-          allocate(field%val(field%dim(1), field%dim(2), node_count(mesh)))
-       end if
+      allocate(field%val(field%dim(1), field%dim(2), node_count(mesh)))
 
 #ifdef HAVE_MEMORY_STATS
       call register_allocation("tensor_field", "real", &
@@ -490,11 +424,9 @@ contains
     field%aliased=.false.
     nullify(field%refcount) ! Hack for gfortran component initialisation
     !                         bug.
-    allocate(field%bc)
-    nullify(field%bc%boundary_condition)
-    allocate(field%updated)
-    field%updated=.false.
     call addref(field)
+
+    call zero(field)
 
   end subroutine allocate_tensor_field
   
@@ -614,7 +546,7 @@ contains
     if(associated(mesh%element_columns)) then
       deallocate(mesh%element_columns)
     end if
-    
+
     if(associated(mesh%colourings)) then
        do i = 1, NUM_COLOURINGS
           if(associated(mesh%colourings(i)%sets)) then
@@ -661,7 +593,6 @@ contains
       field%val = ieee_value(0.0, ieee_quiet_nan)
 #endif
       deallocate(field%val)
-      if (associated(field%updated)) deallocate(field%updated) 
     case(FIELD_TYPE_PYTHON)
       call deallocate(field%py_positions)
       call deallocate(field%py_positions_shape)
@@ -677,11 +608,6 @@ contains
     call remove_boundary_conditions(field)
     deallocate(field%bc)
     
-    !deallocate pointers related with fields storage
-    call remove_dependencies(field%dependant_scalar_field, &
-                             field%dependant_vector_field, &
-                             field%dependant_tensor_field)
-
   end subroutine deallocate_scalar_field
     
   subroutine remove_boundary_conditions_scalar(field)
@@ -694,7 +620,6 @@ contains
         do i=1, size(field%bc%boundary_condition)
            call deallocate(field%bc%boundary_condition(i))
         end do
-        if (.not. associated(field%bc%boundary_condition(1)%surface_fields)) &
        deallocate(field%bc%boundary_condition)
      end if
     
@@ -737,11 +662,6 @@ contains
     call remove_picker(field)
     deallocate(field%picker)
     nullify(field%picker)
-    !deallocate pointers related with fields storage
-
-    call remove_dependencies(field%dependant_scalar_field, &
-                             field%dependant_vector_field, &
-                             field%dependant_tensor_field)
     
   end subroutine deallocate_vector_field
  
@@ -765,7 +685,6 @@ contains
     !!< is called on the mesh which will delete one reference to it and
     !!< deallocate it if the count drops to zero.
     type(tensor_field), intent(inout) :: field
-    integer :: i
     
     call decref(field)
     if (has_references(field)) then
@@ -790,71 +709,9 @@ contains
       end select
     end if
 
-    call remove_boundary_conditions(field)
-    if (associated(field%bc)) deallocate(field%bc)
-
     call deallocate(field%mesh)
-    !deallocate pointers related with fields storage
-    if (associated(field%updated)) field%updated => null()
-    if (associated(field%dependant_scalar_field)) field%dependant_scalar_field=> null()
-    if (associated(field%dependant_vector_field)) field%dependant_vector_field=> null()
-    if (associated(field%dependant_tensor_field)) field%dependant_tensor_field=> null()
-
-
-    if (associated(field%updated)) deallocate(field%updated)
 
   end subroutine deallocate_tensor_field
-  
-  subroutine remove_boundary_conditions_tensor(field)
-     !!< Removes and deallocates all boundary conditions from a field
-     type(tensor_field), intent(inout):: field
-     
-     integer:: i
-     
-     if (associated(field%bc)) then
-        if (associated(field%bc%boundary_condition)) then
-           do i=1, size(field%bc%boundary_condition)
-              call deallocate(field%bc%boundary_condition(i))
-           end do
-           deallocate(field%bc%boundary_condition)
-        end if
-     end if
-    
-  end subroutine remove_boundary_conditions_tensor
-
-
-  subroutine remove_dependencies(scalar_ptr,vector_ptr,tensor_ptr)
-
-    type(scalar_field_pointer), dimension(:), pointer :: scalar_ptr
-    type(vector_field_pointer), dimension(:), pointer :: vector_ptr
-    type(tensor_field_pointer), dimension(:), pointer :: tensor_ptr
-
-    integer :: i
-    if (associated(scalar_ptr)) then
-    print *, size(scalar_ptr)
-       do i=1,size(scalar_ptr)
-          nullify(scalar_ptr(i)%ptr)
-       end do
-       deallocate(scalar_ptr)
-       nullify(scalar_ptr)
-    end if
-
-    if (associated(vector_ptr)) then
-       do i=1,size(vector_ptr)
-          nullify(vector_ptr(i)%ptr)
-       end do
-       deallocate(vector_ptr)
-       nullify(vector_ptr)
-    end if
-    if (associated(tensor_ptr)) then
-       do i=1,size(tensor_ptr)
-          nullify(tensor_ptr(i)%ptr)
-       end do
-       deallocate(tensor_ptr)
-       nullify(tensor_ptr)
-    end if
-
-  end subroutine remove_dependencies
   
   subroutine allocate_scalar_boundary_condition(bc, mesh, surface_element_list, &
     name, type)
@@ -911,43 +768,6 @@ contains
     
   end subroutine allocate_vector_boundary_condition
     
-  subroutine allocate_tensor_boundary_condition(bc, mesh, surface_element_list, &
-    applies, name, type, dims)
-    !!< Allocate a vector boundary condition
-    type(tensor_boundary_condition), intent(out):: bc
-    type(mesh_type), intent(in):: mesh
-    !! surface elements of this mesh to which this b.c. applies (is copied in):
-    integer, dimension(:), intent(in):: surface_element_list
-  !! all things should have a name 
-    character(len=*), intent(in):: name
-    !! type can be any of: ...
-    character(len=*), intent(in):: type
-    !! b.c. only applies for components with applies==.true.
-    logical, dimension(:,:), intent(in), optional:: applies
-    integer, dimension(2), intent(in) :: dims 
-  
-    bc%name=name
-    bc%type=type
-    allocate( bc%surface_element_list(1:size(surface_element_list)) )
-    bc%surface_element_list=surface_element_list
-    allocate(bc%surface_mesh)
-    call create_surface_mesh(bc%surface_mesh, bc%surface_node_list, &
-      mesh, bc%surface_element_list, name=trim(name)//'Mesh')
-
-
-    allocate(bc%applies(dims(1),dims(2)))
-    if (present(applies)) then
-      
-      assert (all(shape(applies)==shape(bc%applies)))
-
-      bc%applies=applies
-    else
-      ! default .true. for all components
-      bc%applies=.true.
-    end if
-    
-  end subroutine allocate_tensor_boundary_condition
-    
   subroutine deallocate_scalar_boundary_condition(bc)
   !! deallocate a scalar boundary condition
   type(scalar_boundary_condition), intent(inout):: bc
@@ -958,20 +778,13 @@ contains
       do i=1, size(bc%surface_fields)
         call deallocate(bc%surface_fields(i))
       end do
-      if (.not. has_references(bc%surface_fields(1))) then
       deallocate(bc%surface_fields)
-         nullify(bc%surface_fields)
-      end if
     end if
     
     call deallocate(bc%surface_mesh)
-
-    if (.not. has_references(bc%surface_mesh)) then
     deallocate(bc%surface_mesh)
     
     deallocate(bc%surface_element_list, bc%surface_node_list)
-    end if
-
 
   end subroutine deallocate_scalar_boundary_condition
   
@@ -985,7 +798,6 @@ contains
       do i=1, size(bc%surface_fields)
         call deallocate(bc%surface_fields(i))
       end do
-      if (.not. has_references(bc%surface_fields(1)))&
       deallocate(bc%surface_fields)
     end if
     
@@ -993,64 +805,14 @@ contains
       do i=1, size(bc%scalar_surface_fields)
         call deallocate(bc%scalar_surface_fields(i))
       end do
-      if (.not. has_references(bc%scalar_surface_fields(1)))&
       deallocate(bc%scalar_surface_fields)
     end if
     
     call deallocate(bc%surface_mesh)
-
-    if (.not. has_references(bc%surface_mesh)) then
     deallocate(bc%surface_mesh)
     
     deallocate(bc%surface_element_list, bc%surface_node_list)
-    end if
-
   end subroutine deallocate_vector_boundary_condition
-    
- subroutine deallocate_tensor_boundary_condition(bc)
-  !! deallocate a vector boundary condition
-  type(tensor_boundary_condition), intent(inout):: bc
-    
-    integer i
-    
-    if (associated(bc%surface_fields)) then
-      do i=1, size(bc%surface_fields)
-        call deallocate(bc%surface_fields(i))
-      end do
-      if (.not. has_references(bc%surface_fields(1)))&
-           deallocate(bc%surface_fields)
-    end if
-    
-    if (associated(bc%vector_surface_fields)) then
-       do i=1, size(bc%vector_surface_fields)
-          call deallocate(bc%vector_surface_fields(i))
-       end do
-       if (.not. has_references(bc%vector_surface_fields(1)))&
-            deallocate(bc%vector_surface_fields)
-    end if
-
-    if (associated(bc%scalar_surface_fields)) then
-      do i=1, size(bc%scalar_surface_fields)
-        call deallocate(bc%scalar_surface_fields(i))
-      end do
-      if (.not. has_references(bc%scalar_surface_fields(1)))&
-           deallocate(bc%scalar_surface_fields)
-    end if
-    
-    call deallocate(bc%surface_mesh)
-    if (.not. has_references(bc%surface_mesh)) then
-       deallocate(bc%surface_mesh)
-       deallocate(bc%surface_element_list, bc%surface_node_list)
-    end if
-
-    if (associated(bc%applies)) then
-       deallocate(bc%applies)
-       nullify(bc%applies)
-    end if
-       
-
-  end subroutine deallocate_tensor_boundary_condition
-
     
   !---------------------------------------------------------------------
   ! routines for wrapping meshes and fields around provided arrays
@@ -1116,38 +878,6 @@ contains
 
   end function wrap_scalar_field
 
-  function wrap_vector_field(mesh, val, name, val_stride) result (field)
-    !!< Return a vector field wrapped around the arrays provided.
-    type(vector_field) :: field
-    
-    type(mesh_type), target, intent(in) :: mesh
-    real, dimension(:,:), target, intent(in) :: val
-    character(len=*), intent(in) :: name
-    !! has to be provided if the val array is non-contiguous in memory!
-    integer, optional:: val_stride
-    
-    field%val=>val
-    field%mesh=mesh
-    field%dim=size(val,1)
-    
-    field%name=name
-    if (present(val_stride)) then
-      field%val_stride=val_stride
-    else
-      field%val_stride=1
-    end if
-    
-    allocate(field%picker)
-
-    field%wrapped = .true.
-    call incref(mesh)
-    allocate(field%bc)
-    nullify(field%refcount) ! Hack for gfortran component initialisation
-    !                         bug.
-    call addref(field)
-
-  end function wrap_vector_field
-
   function wrap_tensor_field(mesh, val, name) result (field)
     !!< Return a tensor field wrapped around the arrays provided.
     type(tensor_field) :: field
@@ -1171,7 +901,7 @@ contains
 
   end function wrap_tensor_field
 
-   function make_mesh (model, shape, continuity, name,overlapping_shape) &
+  function make_mesh (model, shape, continuity, name) &
        result (mesh)
     !!< Produce a mesh based on an old mesh but with a different shape and/or continuity.
     type(mesh_type) :: mesh
@@ -1180,11 +910,13 @@ contains
     type(element_type), target, intent(in), optional :: shape
     integer, intent(in), optional :: continuity
     character(len=*), intent(in), optional :: name
-    type(element_type), intent(in), optional :: overlapping_shape
     
     integer, dimension(:), allocatable :: ndglno
     real, dimension(:), pointer :: val
-    integer :: i, j, K, input_nodes, n_faces
+    integer :: i, input_nodes, n_faces
+#ifdef _OPENMP
+    integer :: j
+#endif
 
     if (present(continuity)) then
        mesh%continuity=continuity
@@ -1194,9 +926,6 @@ contains
 
     allocate(mesh%adj_lists)
     mesh%elements=model%elements
-    if (present(overlapping_shape)) then
-       mesh%elements=mesh%elements*overlapping_shape%loc
-    end if
     mesh%periodic=model%periodic
     mesh%wrapped=.false.
 
@@ -1368,7 +1097,8 @@ contains
   end function make_mesh
 
   subroutine add_faces(mesh, model, sndgln, sngi, boundary_ids, &
-    periodic_face_map, element_owner, incomplete_surface_mesh, stat)
+    periodic_face_map, element_owner, incomplete_surface_mesh, &
+    allow_duplicate_internal_facets, stat)
     !!< Subroutine to add a faces component to mesh. Since mesh may be 
     !!< discontinuous, a continuous model mesh must
     !!< be provided. To avoid duplicate computations, and ensure 
@@ -1412,15 +1142,25 @@ contains
     !! is provided, internal facets in sndgln are assumed to only appear once
     !! and a copy will be made, its boundary id will be copied as well. This 
     !! means afterwards the surface_element_count() will be higher than the 
-    !! number of facets provided in sndgln.
+    !! number of facets provided in sndgln. The original number of (unique)
+    !! facets is returned by unique_surface_element_count() and the copies
+    !! are numbered between unique_surface_element_count() and surface_element_count()
+    !! If element_owner is present, both copies of the interior facets should be
+    !! present in sndgln (each with a different adjacent element owner)
     integer, dimension(:), intent(in), optional :: element_owner
     !! See comments above sndgln
     logical, intent(in), optional :: incomplete_surface_mesh
+    !! if provided and true duplicate entries in sndgln are allowed for interior facets
+    !! but only if their boundary ids match. The duplicate entries will be stripped out
+    !! meaning that the facet numbering will no longer match that provided in sndgln
+    !! As always interior facets will occur twice, with one copy numbered <=unique_surface_element_count()
+    !! and one copy numbered <=surface_element_count()
+    logical, intent(in), optional :: allow_duplicate_internal_facets
     integer, intent(out), optional :: stat
 
     type(integer_hash_table):: lperiodic_face_map
     type(mesh_type), pointer :: lmodel
-    type(element_type), pointer :: element
+    type(element_type) :: element_s
     type(quadrature_type) :: quad_face
     integer, dimension(:), pointer :: faces, neigh, model_ele_glno, model_ele_glno2
     integer, dimension(1:mesh%shape%numbering%vertices) :: vertices, &
@@ -1444,6 +1184,11 @@ contains
       end if
     end if
 
+    if (present(element_owner) .and. present_and_true(allow_duplicate_internal_facets)) then
+      ! if element_owner is provided, each internal facet should occur exactly twice (possibly with differen boundary id)
+      FLAbort("You may not provide both element_owner and allow_duplicate_internal_facets in add_faces")
+    end if
+
     allocate(mesh%faces)
     
     ! only created in the first call to get_dg_surface_mesh()
@@ -1459,7 +1204,9 @@ contains
        !       (i.e. there are 2 opposite faces between two elements)
        ! and mesh%faces%face_element_list  storing the element adjacent to
        !     each face
-       call add_faces_face_list(mesh, sndgln, &
+       call add_faces_face_list(mesh, &
+         allow_duplicate_internal_facets=present_and_true(allow_duplicate_internal_facets), &
+         sndgln=sndgln, &
          boundary_ids=boundary_ids, &
          element_owner=element_owner, &
          incomplete_surface_mesh=incomplete_surface_mesh)
@@ -1549,22 +1296,25 @@ contains
     ! ready (either newly computed or copied from model)
     ! now we only have to work out mesh%faces%face_lno
 
-    element => ele_shape(mesh, 1)
     if (present(sngi)) then
        ! if specified use quadrature with sngi gausspoints
-       quad_face = make_quadrature(vertices=face_vertices(element), &
-            & dim=mesh_dim(mesh)-1, ngi=sngi, family=element%quadrature%family)
+       quad_face = make_quadrature(vertices=face_vertices(mesh%shape), &
+            & dim=mesh_dim(mesh)-1, ngi=sngi, family=mesh%shape%quadrature%family)
       ! quad_face will be deallocated inside deallocate_faces!
     else
        ! otherwise use degree of full mesh
-       quad_face = make_quadrature(vertices=face_vertices(element), &
-            & dim=mesh_dim(mesh)-1, degree=element%quadrature%degree, family=element%quadrature%family)
+       quad_face = make_quadrature(vertices=face_vertices(mesh%shape), &
+            & dim=mesh_dim(mesh)-1, degree=mesh%shape%quadrature%degree, family=mesh%shape%quadrature%family)
       ! quad_face will be deallocated inside deallocate_faces!
     end if
 
+    element_s = make_element_shape(mesh%shape, quad_s = quad_face)
+    call deallocate(mesh%shape)
+    mesh%shape = element_s
+
     allocate(mesh%faces%shape)
-    mesh%faces%shape = make_element_shape(vertices=face_vertices(element), &
-         & dim=mesh_dim(mesh)-1, degree=element%degree, quad=quad_face)
+    mesh%faces%shape = make_element_shape(vertices=face_vertices(mesh%shape), &
+         & dim=mesh_dim(mesh)-1, degree=mesh%shape%degree, quad=quad_face)
 
     face_count=entries(mesh%faces%face_list)
     snloc=mesh%faces%shape%loc
@@ -1653,12 +1403,17 @@ contains
 
   end subroutine add_faces
 
-  subroutine add_faces_face_list(mesh, sndgln, boundary_ids, &
+  subroutine add_faces_face_list(mesh, allow_duplicate_internal_facets, &
+    sndgln, boundary_ids, &
     element_owner, incomplete_surface_mesh)
     !!< Subroutine to calculate the face_list and face_element_list of the 
     !!< faces component of a 'model mesh'. This should be the linear continuous 
     !!< mesh that may serve as a 'model' for other meshes.
     type(mesh_type), intent(inout) :: mesh
+    !! if true duplicate entries in sndgln are allowed for interior facets
+    !! but only if their boundary ids match
+    !! the duplicate entries will be stripped out
+    logical, intent(in) :: allow_duplicate_internal_facets
     !! surface mesh (ndglno using the same node numbering as in 'mesh')
     !! if present the N elements in this mesh will correspond to the first
     !! N faces of the new faces component.
@@ -1667,12 +1422,12 @@ contains
     integer, dimension(:), intent(in), optional :: element_owner
     logical, intent(in), optional :: incomplete_surface_mesh
 
-    type(integer_hash_table):: internal_facet_map
+    type(integer_hash_table):: internal_facet_map, duplicate_facets
     type(element_type), pointer :: mesh_shape
     type(element_type) :: face_shape
-    logical:: surface_elements_added
+    logical:: surface_elements_added, registered_already
     ! listen very carefully, I shall say this only once:
-    logical, save :: warning_given=.false. 
+    logical, save :: warning_given=.false.
     integer, dimension(:), pointer :: faces, neigh, snodes
     integer, dimension(2) :: common_elements
     integer :: snloc, stotel
@@ -1703,6 +1458,7 @@ contains
     mesh%faces%has_discontinuous_internal_boundaries = present(element_owner)
 
     call allocate(internal_facet_map)
+    call allocate(duplicate_facets)
     
     snloc=face_vertices(mesh_shape)
     if (present(sndgln)) then
@@ -1727,7 +1483,7 @@ contains
               ewrite(0,*) "Provided element owner: ", element_owner(sele)
               ewrite(0,*) "Found adjacent element: ", ele
               FLExit("Provided element ownership information is incorrect")
-          end if
+            end if
           end if
           call register_external_surface_element(mesh, sele, ele, snodes)
         else if (no_found==2 .and. present(element_owner)) then
@@ -1735,32 +1491,46 @@ contains
           ! so we assume both of the coinciding internal facets are
           ! present in the provided surface mesh and register only
           ! one of them here
-          ele=element_owner(sele)
+          ele = element_owner(sele)
           if (ele==common_elements(1)) then
             neighbour_ele = common_elements(2)
           else if (ele==common_elements(2)) then
             neighbour_ele = common_elements(1)
-        else
+          else
             ewrite(0,*) "Surface element: ", sele
             ewrite(0,*) "Provided element owner: ", ele
             ewrite(0,*) "Found adjacent elements: ", common_elements
             FLExit("Provided element owner ship information is incorrect")
-        end if
-          call register_internal_surface_element(mesh, sele, ele, neighbour_ele)
+          end if
+          call register_internal_surface_element(mesh, sele, ele, neighbour_ele, snodes)
         else if (no_found==2) then
           ! internal facet but not element ownership information:
           ! we assume this facet only occurs once and we register both
           ! copies at once
-        
+
           ! first one using the current surface element number:
-          call register_internal_surface_element(mesh, sele, common_elements(1), common_elements(2))
-        
-          ! for the second one we create a new facet number at the end of the provided number surface
-          ! elements:
-          bdry_count = bdry_count+1
-          call register_internal_surface_element(mesh, bdry_count, common_elements(2), common_elements(1))
-          ! store this pair so we can later copy the boundary id of the first (sele) to the second one (bdry_count)
-          call insert(internal_facet_map, sele, bdry_count)
+          if (allow_duplicate_internal_facets) then
+            ! don't error for duplicate facets
+            call register_internal_surface_element(mesh, sele, common_elements(1), common_elements(2), &
+              snodes, duplicate_facets=duplicate_facets)
+            registered_already = has_key(duplicate_facets, sele)
+          else
+            ! do error for duplicate facets
+            call register_internal_surface_element(mesh, sele, common_elements(1), common_elements(2), &
+              snodes)
+            registered_already = .false.
+          end if
+
+          if (.not. registered_already) then
+            ! for the second one we create a new facet number at the end of the provided number surface
+            ! elements:
+            bdry_count = bdry_count+1
+            ! note that we don't allow duplicate ones here, since we should have picked this up
+            ! in the first call - so if only one side is registered already something is definitely wrong
+            call register_internal_surface_element(mesh, bdry_count, common_elements(2), common_elements(1), snodes)
+            ! store this pair so we can later copy the boundary id of the first (sele) to the second one (bdry_count)
+            call insert(internal_facet_map, sele, bdry_count)
+          end if
 
         else if (no_found==0) then
           ewrite(0,*) "Current surface element: ", sele
@@ -1827,6 +1597,7 @@ contains
       end if
 
     end if
+
       
     ! the size of this array will be the way to store the n/o
     ! exterior boundaries (returned by surface_element_count())
@@ -1854,6 +1625,12 @@ contains
         call fetch_pair(internal_facet_map, j, sele, sele2)
         mesh%faces%boundary_ids(sele2) = boundary_ids(sele)
       end do
+    end if
+
+    if (key_count(duplicate_facets)>0) then
+      call remove_duplicate_facets(mesh, duplicate_facets, sndgln)
+      ! update bdry_count
+      bdry_count = size(mesh%faces%boundary_ids)
     end if
 
     ! register the rest of the boundaries (the interior ones):
@@ -1886,17 +1663,19 @@ contains
     assert(.not.any(mesh%faces%face_list%ival==0))
 
     call deallocate(internal_facet_map)
+    call deallocate(duplicate_facets)
     
   end subroutine add_faces_face_list
-    
-  subroutine register_internal_surface_element(mesh, sele, ele, neighbour_ele)
+
+  subroutine register_internal_surface_element(mesh, sele, ele, neighbour_ele, snodes, duplicate_facets)
     type(mesh_type), intent(inout):: mesh
     integer, intent(in):: sele, ele, neighbour_ele
+    integer, dimension(:), intent(in):: snodes ! only used to give a more helpful error message
+    ! if provided do not error for facets that have already been registered, but store the map between the two
+    type(integer_hash_table), intent(inout), optional:: duplicate_facets
 
     integer, dimension(:), pointer:: neigh, faces
     integer:: j
-
-    mesh%faces%face_element_list(sele)=ele
 
     ! neigh should contain correct neighbours already for internal facets:
     neigh=>row_m_ptr(mesh%faces%face_list, ele)
@@ -1913,7 +1692,23 @@ contains
       FLAbort("Something wrong with the mesh, sndgln, or mesh%nelist")
     end if
 
-    ! register the surface element in face_list
+    if (faces(j)/=0) then
+      if (present(duplicate_facets)) then
+        call insert(duplicate_facets, sele, faces(j))
+        return
+      else
+        ! if you hit this at the start of your simulation you have
+        ! marked the same part of the boundary more than once in gmsh
+        ! if this occurs later on in the run (e.g. during an adapt)
+        ! there may be a bug / unimplemented feature related to internal boundary facets
+        ewrite(0,*) 'Surface element:', faces(j),' and ',sele
+        ewrite(0,*) 'Both define the surface element:', snodes
+        FLExit("Provided surface mesh has duplicate surface elements")
+      end if
+    end if
+
+    ! register the surface element in surface_element_list and face_list
+    mesh%faces%face_element_list(sele)=ele
     faces(j)=sele
 
   end subroutine register_internal_surface_element
@@ -1963,6 +1758,74 @@ contains
     neigh(j)=-j ! negative number indicates exterior boundary
 
   end subroutine register_external_surface_element
+
+  subroutine remove_duplicate_facets(mesh, duplicate_facets, sndgln)
+    type(mesh_type), intent(inout) :: mesh
+    type(integer_hash_table), intent(in) :: duplicate_facets
+    integer, dimension(:), intent(in) :: sndgln
+
+    integer, dimension(:), pointer :: old_boundary_ids, faces
+    integer, dimension(:), allocatable :: old_to_new_facet_number
+    integer :: snloc, i, j, facets_to_keep, new_surface_element_count
+
+    old_boundary_ids => mesh%faces%boundary_ids
+    new_surface_element_count = size(old_boundary_ids)-key_count(duplicate_facets)
+    mesh%faces%unique_surface_element_count = mesh%faces%unique_surface_element_count-key_count(duplicate_facets)
+    allocate(old_to_new_facet_number(size(old_boundary_ids)))
+    allocate(mesh%faces%boundary_ids(new_surface_element_count))
+
+    ! number the facets to keep, and check that the duplicate actually have consistent surface ids
+    facets_to_keep = 0
+    do i=1, size(old_boundary_ids)
+      if (has_key(duplicate_facets, i)) then
+        ! check that the boundary ids match
+        if (old_boundary_ids(i)/=old_boundary_ids(fetch(duplicate_facets,i))) then
+          ewrite(0,*) 'Surface element:', i,' and ', fetch(duplicate_facets, i)
+          ewrite(0,*) 'Both define the surface element:', sndgln((i-1)*snloc+1:i*snloc)
+          ewrite(0,*) 'but define different surface ids:', old_boundary_ids(i), old_boundary_ids(fetch(duplicate_facets, i))
+          ! if we hit this here, it's probably a bug as we've explicitly told add_faces() that we expect duplicate
+          ! interior facets but with boundary ids that agreee.
+          FLAbort("Provided surface mesh has duplicate surface elements")
+        end if
+      else
+        facets_to_keep = facets_to_keep+1
+        mesh%faces%boundary_ids(facets_to_keep) = old_boundary_ids(i)
+        ! note that we don't need to reallocate this one: we're merely shifting it forward
+        mesh%faces%face_element_list(facets_to_keep) = mesh%faces%face_element_list(i)
+        old_to_new_facet_number(i) = facets_to_keep
+      end if
+    end do
+
+    if (facets_to_keep/=new_surface_element_count) then
+      FLAbort("Something wrong in mesh faces administration.")
+    end if
+
+    ! now we can safely deallocate the old boundary ids and fix the mem stats
+    deallocate(old_boundary_ids)
+#ifdef HAVE_MEMORY_STATS
+    call register_deallocation("mesh_type", "integer", size(old_boundary_ids), &
+         trim(mesh%name)//" boundary_ids")
+    call register_allocation("mesh_type", "integer", new_surface_element_count, &
+         trim(mesh%name)//" boundary_ids")
+#endif
+
+    ! now renumber the facet numbers we've already stored in face_list
+    do i=1, size(mesh%faces%face_list,1)
+      faces=>row_ival_ptr(mesh%faces%face_list, i)
+      do j=1, size(faces)
+        if (faces(j)/=0) then
+          faces(j) = old_to_new_facet_number(faces(j))
+        end if
+      end do
+    end do
+
+    deallocate(old_to_new_facet_number)
+
+    ewrite(2,*) "After removing duplicate interior facets:"
+    ewrite(2,*) "Number of surface elements: ", size(mesh%faces%boundary_ids)
+    ewrite(2,*) "Number of unique surface elements: ", mesh%faces%unique_surface_element_count
+
+  end subroutine remove_duplicate_facets
 
   subroutine add_faces_face_list_periodic_from_non_periodic_model( &
      mesh, model, periodic_face_map)
@@ -2213,7 +2076,7 @@ contains
       
     surface_mesh%periodic=mesh%periodic
     surface_mesh%continuity=mesh%continuity
-    
+
     allocate(surface_nodes(1:sufnod))
     
     ! create numbering in the same order as full nodal numbering:
@@ -3431,244 +3294,10 @@ contains
     field%val(:, :, node_numbers) = 0.0
     
   end subroutine zero_tensor_field_nodes
-    
+
 #include "Reference_count_mesh_type.F90"
 #include "Reference_count_scalar_field.F90"
 #include "Reference_count_vector_field.F90"
 #include "Reference_count_tensor_field.F90"
-
-    logical function is_updated_scalar_field(field)
-        !Checks if the updated pointer is associated and if it is
-        !returns the value
-        implicit none
-        !Global variables
-        type(scalar_field) :: field
-        !By default calculate the field
-        is_updated_scalar_field = .false.
-        if (associated(field%updated)) is_updated_scalar_field = field%updated
-    end function is_updated_scalar_field
-
-    logical function is_updated_vector_field(field)
-        !Checks if the updated pointer is associated and if it is
-        !returns the value
-        implicit none
-        !Global variables
-        type(vector_field) :: field
-        !By default calculate the field
-        is_updated_vector_field = .false.
-        if (associated(field%updated)) is_updated_vector_field = field%updated
-    end function is_updated_vector_field
-
-    logical function is_updated_tensor_field(field)
-        !Checks if the updated pointer is associated and if it is
-        !returns the value
-        implicit none
-        !Global variables
-        type(tensor_field) :: field
-        !By default calculate the field
-        is_updated_tensor_field = .false.
-        if (associated(field%updated)) is_updated_tensor_field = field%updated
-    end function is_updated_tensor_field
-
-subroutine add_dependant_scalar_field_to_scalar(infield,outfield)
-
-      type(scalar_field), intent(inout) ::  infield
-      type(scalar_field), intent(in), target    ::  outfield
-
-      type(scalar_field_pointer), dimension(:), pointer :: temp
-      integer :: N
-
-      if( associated(infield%dependant_scalar_field)) then
-         temp=>infield%dependant_scalar_field
-         N=size(infield%dependant_scalar_field)
-         allocate(infield%dependant_scalar_field(N+1))
-         infield%dependant_scalar_field(1:N)=temp
-         infield%dependant_scalar_field(N+1)%ptr=>outfield
-         deallocate(temp)
-      else
-         allocate(infield%dependant_scalar_field(1))
-         infield%dependant_scalar_field(1)%ptr=>outfield
-      end if
-
-    end subroutine add_dependant_scalar_field_to_scalar
-
-    subroutine add_dependant_vector_field_to_scalar(infield,outfield)
-
-      type(scalar_field), intent(inout) ::  infield
-      type(vector_field), intent(in), target    ::  outfield
-
-      type(vector_field_pointer), dimension(:), pointer :: temp
-      integer :: N
-
-      if( associated(infield%dependant_vector_field)) then
-         temp=>infield%dependant_vector_field
-         N=size(infield%dependant_vector_field)
-         allocate(infield%dependant_vector_field(N+1))
-         infield%dependant_vector_field(1:N)=temp
-         infield%dependant_vector_field(N+1)%ptr=>outfield
-         deallocate(temp)
-      else
-         allocate(infield%dependant_vector_field(1))
-         infield%dependant_vector_field(1)%ptr=>outfield
-      end if
-
-    end subroutine add_dependant_vector_field_to_scalar
-         
-subroutine add_dependant_tensor_field_to_scalar(infield,outfield)
-
-      type(scalar_field), intent(inout) ::  infield
-      type(tensor_field), intent(in), target    ::  outfield
-
-      type(tensor_field_pointer), dimension(:), pointer :: temp
-      integer :: N
-
-      if( associated(infield%dependant_tensor_field)) then
-         temp=>infield%dependant_tensor_field
-         N=size(infield%dependant_tensor_field)
-         allocate(infield%dependant_tensor_field(N+1))
-         infield%dependant_tensor_field(1:N)=temp
-         infield%dependant_tensor_field(N+1)%ptr=>outfield
-         deallocate(temp)
-      else
-         allocate(infield%dependant_tensor_field(1))
-         infield%dependant_tensor_field(1)%ptr=>outfield
-      end if
-
-    end subroutine add_dependant_tensor_field_to_scalar
-
-    subroutine add_dependant_scalar_field_to_vector(infield,outfield)
-
-      type(vector_field), intent(inout) ::  infield
-      type(scalar_field), intent(in), target    ::  outfield
-
-      type(scalar_field_pointer), dimension(:), pointer :: temp
-      integer :: N
-
-      if( associated(infield%dependant_scalar_field)) then
-         temp=>infield%dependant_scalar_field
-         N=size(infield%dependant_scalar_field)
-         allocate(infield%dependant_scalar_field(N+1))
-         infield%dependant_scalar_field(1:N)=temp
-         infield%dependant_scalar_field(N+1)%ptr=>outfield
-         deallocate(temp)
-      else
-         allocate(infield%dependant_scalar_field(1))
-         infield%dependant_scalar_field(1)%ptr=>outfield
-      end if
-
-    end subroutine add_dependant_scalar_field_to_vector
-
-    subroutine add_dependant_vector_field_to_vector(infield,outfield)
-
-      type(vector_field), intent(inout) ::  infield
-      type(vector_field), intent(in), target    ::  outfield
-
-      type(vector_field_pointer), dimension(:), pointer :: temp
-      integer :: N
-
-      if( associated(infield%dependant_vector_field)) then
-         temp=>infield%dependant_vector_field
-         N=size(infield%dependant_vector_field)
-         allocate(infield%dependant_vector_field(N+1))
-         infield%dependant_vector_field(1:N)=temp
-         infield%dependant_vector_field(N+1)%ptr=>outfield
-         deallocate(temp)
-      else
-         allocate(infield%dependant_vector_field(1))
-         infield%dependant_vector_field(1)%ptr=>outfield
-      end if
-
-    end subroutine add_dependant_vector_field_to_vector
-         
-subroutine add_dependant_tensor_field_to_vector(infield,outfield)
-
-      type(vector_field), intent(inout) ::  infield
-      type(tensor_field), intent(in), target    ::  outfield
-
-      type(tensor_field_pointer), dimension(:), pointer :: temp
-      integer :: N
-
-      if( associated(infield%dependant_tensor_field)) then
-         temp=>infield%dependant_tensor_field
-         N=size(infield%dependant_tensor_field)
-         allocate(infield%dependant_tensor_field(N+1))
-         infield%dependant_tensor_field(1:N)=temp
-         infield%dependant_tensor_field(N+1)%ptr=>outfield
-         deallocate(temp)
-      else
-         allocate(infield%dependant_tensor_field(1))
-         infield%dependant_tensor_field(1)%ptr=>outfield
-      end if
-
-    end subroutine add_dependant_tensor_field_to_vector
-
-
-    subroutine add_dependant_scalar_field_to_tensor(infield,outfield)
-
-      type(tensor_field), intent(inout) ::  infield
-      type(scalar_field), intent(in), target    ::  outfield
-
-      type(scalar_field_pointer), dimension(:), pointer :: temp
-      integer :: N
-
-      if( associated(infield%dependant_scalar_field)) then
-         temp=>infield%dependant_scalar_field
-         N=size(infield%dependant_scalar_field)
-         allocate(infield%dependant_scalar_field(N+1))
-         infield%dependant_scalar_field(1:N)=temp
-         infield%dependant_scalar_field(N+1)%ptr=>outfield
-         deallocate(temp)
-      else
-         allocate(infield%dependant_scalar_field(1))
-         infield%dependant_scalar_field(1)%ptr=>outfield
-      end if
-
-    end subroutine add_dependant_scalar_field_to_tensor
-
-    subroutine add_dependant_vector_field_to_tensor(infield,outfield)
-
-      type(tensor_field), intent(inout) ::  infield
-      type(vector_field), intent(in), target    ::  outfield
-
-      type(vector_field_pointer), dimension(:), pointer :: temp
-      integer :: N
-
-      if( associated(infield%dependant_vector_field)) then
-         temp=>infield%dependant_vector_field
-         N=size(infield%dependant_vector_field)
-         allocate(infield%dependant_vector_field(N+1))
-         infield%dependant_vector_field(1:N)=temp
-         infield%dependant_vector_field(N+1)%ptr=>outfield
-         deallocate(temp)
-      else
-         allocate(infield%dependant_vector_field(1))
-         infield%dependant_vector_field(1)%ptr=>outfield
-      end if
-
-    end subroutine add_dependant_vector_field_to_tensor
-    
-subroutine add_dependant_tensor_field_to_tensor(infield,outfield)
-
-      type(tensor_field), intent(inout) ::  infield
-      type(tensor_field), intent(in), target    ::  outfield
-
-      type(tensor_field_pointer), dimension(:), pointer :: temp
-      integer :: N
-
-      if( associated(infield%dependant_tensor_field)) then
-         temp=>infield%dependant_tensor_field
-         N=size(infield%dependant_tensor_field)
-         allocate(infield%dependant_tensor_field(N+1))
-         infield%dependant_tensor_field(1:N)=temp
-         infield%dependant_tensor_field(N+1)%ptr=>outfield
-         deallocate(temp)
-      else
-         allocate(infield%dependant_tensor_field(1))
-         infield%dependant_tensor_field(1)%ptr=>outfield
-      end if
-
-    end subroutine add_dependant_tensor_field_to_tensor
-
-      
 
 end module fields_allocates

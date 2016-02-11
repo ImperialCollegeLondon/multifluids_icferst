@@ -41,8 +41,8 @@ Assemble_metric.o ../include/metric_assemble.mod: Assemble_metric.F90 \
    ../include/anisotropic_gradation.mod ../include/anisotropic_zz_module.mod \
    ../include/aspect_ratios_module.mod ../include/boundary_metric.mod \
    ../include/bounding_box_metric.mod ../include/edge_length_module.mod \
-   ../include/elements.mod ../include/fdebug.h \
-   ../include/field_derivatives.mod ../include/form_metric_field.mod \
+   ../include/fdebug.h ../include/field_derivatives.mod \
+   ../include/form_metric_field.mod \
    ../include/geometric_constraints_metric.mod ../include/goal_metric.mod \
    ../include/goals.mod ../include/gradation_metric.mod \
    ../include/hadapt_metric_based_extrude.mod ../include/halos.mod \
@@ -184,9 +184,8 @@ Interpolation_metric.o ../include/interpolation_metric.mod: \
 	@true
 
 Limit_metric.o ../include/limit_metric_module.mod: Limit_metric.F90 \
-   ../include/data_structures.mod ../include/elements.mod ../include/fdebug.h \
-   ../include/fields.mod ../include/fldebug.mod ../include/meshdiagnostics.mod \
-   ../include/parallel_fields.mod ../include/spud.mod \
+   ../include/elements.mod ../include/fdebug.h ../include/fields.mod \
+   ../include/fldebug.mod ../include/meshdiagnostics.mod ../include/spud.mod \
    ../include/vector_tools.mod
 
 ../include/mba_adapt_module.mod: Mba_adapt.o

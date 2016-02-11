@@ -48,29 +48,6 @@ input_choice_real_plus_file =
                   "Temperature"|"Salinity"|"Free-surface height"
               }
           }
-      }|
-      ## Initialize the field from a subroutine defined in an 
-      ## external shared object library.
-      ## Set path to the absolute or relative path to the .so file
-      ## and set name to the function name to be called. This should
-      ## have an interface of the form
-      ##
-      ##  subroutine f(field,X,t)
-      ##
-      ##  double precision :: field(:), X(:,:), t
-      ##
-      ## end subroutine 
-      ##
-      ## "field" is the data array for the field being set.
-      ## "X" is the physical location of the nodes ordered
-      ## [dimension,node number]
-      ## "t" is the current model time.
-      ##
-      ## The code file should be compiled like
-      ##    gfortran -fPIC -shared -o example.so example.F90
-      element plugin_function {
-         attribute path { xsd:string },
-	 attribute name { xsd:string }	    
       }
    )
 
@@ -88,14 +65,12 @@ input_choice_real_plus_map =
          element min_depth {
            real
          }?,
-         ## For use with 2D depth maps.
          ## If you are reading data from a file whose top layer height
          ## is not equal to zero, set the height of that top layer here.
          ## Note however that the height of the top layer in the the 
-         ## extruded mesh will still be equal to zero, the given domain
+         ## extruded mesh will still be equal to zero (if planar) or 
+         ## the radius of the shell mesh (if spherical), the given domain
          ## will in effect have been shifted down.
-         ## This option has no effect when extruding meshes on the surface
-         ## of a sphere.
          element surface_height {
            real
          }?
@@ -234,11 +209,6 @@ input_choice_initial_condition_real =
                   "raw"
               }
           }
-      }|
-      ## Indicate that no initial condition exists. Users should not set this;
-      ## this is only used in adjoint runs.
-      element no_initial_condition {
-         empty
       }
    )
 
@@ -306,11 +276,6 @@ input_choice_initial_condition_pressure =
                   "raw"
               }
           }
-      }|
-      ## Indicate that no initial condition exists. Users should not set this;
-      ## this is only used in adjoint runs.
-      element no_initial_condition {
-         empty
       }
    )
 
@@ -344,11 +309,6 @@ input_choice_real_dim_vector_plus_file =
                   "Velocity"
               }
           }
-      }|
-      ## Indicate that no initial condition exists. Users should not set this;
-      ## this is only used in adjoint runs.
-      element no_initial_condition {
-         empty
       }
    )
    
@@ -435,11 +395,6 @@ input_choice_initial_condition_vector =
                   "Velocity"
               }
           }
-      }|
-      ## Indicate that no initial condition exists. Users should not set this;
-      ## this is only used in adjoint runs.
-      element no_initial_condition {
-         empty
       }
    )
 
