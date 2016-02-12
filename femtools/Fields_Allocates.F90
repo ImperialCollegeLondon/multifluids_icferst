@@ -665,6 +665,7 @@ contains
     assert(associated(field%picker))
     call remove_picker(field)
     deallocate(field%picker)
+    deallocate(field%updated) !!-PY this is the problem
     nullify(field%picker)
     
   end subroutine deallocate_vector_field
