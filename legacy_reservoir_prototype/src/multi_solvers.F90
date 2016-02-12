@@ -54,21 +54,7 @@ module solvers_module
 
   implicit none
 
-#include "petscversion.h"
-#ifdef HAVE_PETSC_MODULES
-#include "finclude/petscvecdef.h"
-#include "finclude/petscmatdef.h"
-#include "finclude/petsckspdef.h"
-#include "finclude/petscpcdef.h"
-#else
-#include "finclude/petsc.h"
-#if PETSC_VERSION_MINOR==0
-#include "finclude/petscvec.h"
-#include "finclude/petscmat.h"
-#include "finclude/petscksp.h"
-#include "finclude/petscpc.h"
-#endif
-#endif
+#include "petsc_legacy.h"
 
   private
 
