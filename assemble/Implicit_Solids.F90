@@ -79,7 +79,7 @@ module implicit_solids
 
   implicit none
 
-#ifdef USING_FEMDEM
+#ifdef USING_FEMDEM3D
   interface
      subroutine y3d_allocate_femdem(string, nodes, elements, edges)
        character(len=*), intent(in) :: string
@@ -836,7 +836,7 @@ contains
     loc = 4
     sloc= 3
 
-#ifdef USING_FEMDEM
+#ifdef USING_FEMDEM3D
     call y3d_allocate_femdem(trim(external_mesh_name)//char(0), &
          nodes, elements, edges)
 
@@ -924,7 +924,7 @@ contains
     assert(node_count(external_positions) == node_count(ext_pos_solid_force))
     assert(node_count(ext_pos_fluid_vel) == node_count(ext_pos_solid_force))
 
-#ifdef USING_FEMDEM
+#ifdef USING_FEMDEM3D
     deallocate(ele1, ele2, ele3, ele4)
     deallocate(face1, face2, face3)
     deallocate(xs, ys, zs)
@@ -1009,7 +1009,7 @@ contains
     call zero(external_positions)
     call zero(ext_pos_solid_vel)
 
-#ifdef USING_FEMDEM
+#ifdef USING_FEMDEM3D
 
     ewrite(2, *) "about to call femdem"
 
@@ -1935,6 +1935,8 @@ contains
     else
       l_force_bounded = .false.
     end if
+
+    l_force_bounded=.true.
     
     ! Linear positions -- definitely linear positions.
     assert(old_position%mesh%shape%degree == 1)
