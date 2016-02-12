@@ -35,7 +35,7 @@ module populate_state_module
   use vtk_cache_module
   use global_parameters, only: OPTION_PATH_LEN, is_active_process, pi, &
     no_active_processes, topology_mesh_name, adaptivity_mesh_name, &
-    periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius
+    periodic_boundary_option_path, domain_bbox, domain_volume, surface_radius, is_porous_media
   use field_options
   use reserve_state_module
   use fields_manipulation
@@ -69,6 +69,7 @@ module populate_state_module
        initialise_prognostic_fields, set_prescribed_field_values, &
        alias_fields, mesh_name, &
        allocate_and_insert_auxilliary_fields, &
+       allocate_and_insert_tensor_field, allocate_and_insert_scalar_field, &
        initialise_field, allocate_metric_limits, &
        make_mesh_periodic_from_options, make_mesh_unperiodic_from_options, &
        compute_domain_statistics
@@ -1277,6 +1278,35 @@ contains
     ! solar irradiance submodel (hyperlight)
     if (have_option("/ocean_biology/lagrangian_ensemble/hyperlight")) then 
        call allocate_and_insert_irradiance(states(1))
+    end if
+
+    ! insert porous media fields
+    if (have_option('/porous_media')) then
+       do i=1, nstates
+          call allocate_and_insert_scalar_field('/porous_media/scalar_field::Porosity', &
+             states(i), field_name='Porosity')
+          if (have_option("/porous_media/scalar_field::Permeability")) then
+             call allocate_and_insert_scalar_field('/porous_media/scalar_field::Permeability', &
+               states(i), field_name='Permeability')
+          elseif (have_option("/porous_media/vector_field::Permeability")) then
+             call allocate_and_insert_vector_field('/porous_media/vector_field::Permeability', &
+               states(i))
+          elseif (have_option("/porous_media/tensor_field::Permeability")) then
+             call allocate_and_insert_tensor_field('/porous_media/tensor_field::Permeability', &
+               states(i))
+          end if
+       end do
+    end if
+
+
+    ! insert auxiliary fields if is_porous_media and adapting the mesh within the non-linear solver
+    if (is_porous_media) then
+        if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+            do i=1, nstates
+                call allocate_and_insert_scalar_field('/material_phase['//int2str(i-1)//']/scalar_field::Density', &
+                 states(i), field_name = "Saturation_bak", parent_mesh = "PressureMesh")
+            end do
+        end if
     end if
 
     ! insert electrical property fields
@@ -3061,7 +3091,7 @@ contains
     type(tensor_field) :: min_eigen, max_eigen
     character(len=*), parameter :: path = &
     & "/mesh_adaptivity/hr_adaptivity/"
-    logical :: is_constant
+    logical :: is_constant, have_regions
     type(mesh_type), pointer :: mesh
     type(vector_field), pointer :: X
     integer :: node
@@ -3082,14 +3112,19 @@ contains
     end if
 
     is_constant = (have_option(path // "/tensor_field::MinimumEdgeLengths/anisotropic_symmetric/constant"))
+    have_regions = (have_option(path // "/tensor_field::MinimumEdgeLengths/value"))
     if (is_constant) then
       call allocate(min_edge, mesh, "MinimumEdgeLengths", field_type=FIELD_TYPE_CONSTANT)
-      call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
+         call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
       call allocate(max_eigen, mesh, "MaxMetricEigenbound", field_type=FIELD_TYPE_CONSTANT)
       call set(max_eigen, eigenvalue_from_edge_length(node_val(min_edge, 1)))
     else
       call allocate(min_edge, mesh, "MinimumEdgeLengths")
-      call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
+      if (have_regions) then
+         call initialise_field_over_regions(min_edge, path // "/tensor_field::MinimumEdgeLengths/value", X)
+      else
+         call initialise_field(min_edge, path // "/tensor_field::MinimumEdgeLengths", X)
+      end if
       call allocate(max_eigen, mesh, "MaxMetricEigenbound")
       do node=1,node_count(mesh)
         call set(max_eigen, node, eigenvalue_from_edge_length(node_val(min_edge, node)))
@@ -3101,6 +3136,8 @@ contains
     call deallocate(max_eigen)
 
     is_constant = (have_option(path // "/tensor_field::MaximumEdgeLengths/anisotropic_symmetric/constant"))
+    have_regions = (have_option(path // "/tensor_field::MaximumEdgeLengths/value"))
+
     if (is_constant) then
       call allocate(max_edge, mesh, "MaximumEdgeLengths", field_type=FIELD_TYPE_CONSTANT)
       call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
@@ -3108,7 +3145,11 @@ contains
       call set(min_eigen, eigenvalue_from_edge_length(node_val(max_edge, 1)))
     else
       call allocate(max_edge, mesh, "MaximumEdgeLengths")
-      call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
+      if (have_regions) then
+         call initialise_field_over_regions(max_edge, path // "/tensor_field::MaximumEdgeLengths/value", X)
+      else
+         call initialise_field(max_edge, path // "/tensor_field::MaximumEdgeLengths", X)
+      end if
       call allocate(min_eigen, mesh, "MinMetricEigenbound")
       do node=1,node_count(mesh)
         call set(min_eigen, node, eigenvalue_from_edge_length(node_val(max_edge, node)))
@@ -3200,6 +3241,8 @@ contains
        call check_large_scale_ocean_options
     case ("multimaterial")
        call check_multimaterial_options
+    case ("porous_media")
+       call check_porous_media_options
     case ("stokes")
        call check_stokes_options
     case ("foams")
@@ -3820,6 +3863,36 @@ if (.not.have_option("/material_phase[0]/vector_field::Velocity/prognostic/vecto
     end if
 
   end subroutine check_multimaterial_options
+
+  subroutine check_porous_media_options
+
+    integer :: nmat, i
+    logical :: have_vfrac, have_viscosity, have_porosity, have_permeability
+
+    nmat = option_count("/material_phase")
+    ewrite(2,*) 'nmat:',nmat
+
+    have_porosity = have_option("/porous_media/scalar_field::Porosity")
+    have_permeability = have_option("/porous_media/scalar_field::Permeability").or.&
+                       &have_option("/porous_media/vector_field::Permeability").or.&
+                       &have_option("/porous_media/tensor_field::Permeability")
+    if((.not.have_porosity).or.(.not.have_permeability)) then
+       FLExit("For porous media problems we need porosity and permeability.")
+    end if
+! Need to sort this out for multiphase!!!
+    do i = 0, nmat-1
+       if(have_option("/porous_media/multiphase_parameters")) then
+          have_vfrac = have_option("/material_phase["//int2str(i)//&
+               "]/scalar_field::PhaseVolumeFraction")
+          have_viscosity = have_option("/materical_phase["//int2str(i)//&
+               "]/tensor_field::MaterialViscosity")
+          if((.not.have_vfrac).or.(.not.have_viscosity)) then
+             FLExit("Need volume fractions and viscosities for each material phase.")
+          endif
+       endif
+    end do
+
+  end subroutine check_porous_media_options
 
   subroutine check_stokes_options
 

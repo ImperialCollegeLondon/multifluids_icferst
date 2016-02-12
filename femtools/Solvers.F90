@@ -1836,7 +1836,9 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
   integer, optional, intent(in) :: internal_smoothing_option
   ! if present and true, don't setup sor and eisenstat as subpc (again)
   logical, optional, intent(in) :: is_subpc
-    
+  ! option to "mg" to tell it not to do a direct solve at the coarsest level
+  character(len=500):: gamg_options
+  real :: GAMGThreshold
     KSP:: subksp
     PC:: subpc
     PCType:: pctype, hypretype
@@ -1961,7 +1963,31 @@ subroutine SetupKSP(ksp, mat, pmat, solver_option_path, parallel, &
       if (pctype==PCGAMG) then
         ! we think this is a more useful default - the default value of 0.0
         ! causes spurious "unsymmetric" failures as well
-        call PCGAMGSetThreshold(pc, 0.01, ierr)
+        call get_option(trim(option_path)//'/GAMG_threshold', GAMGThreshold, default =-0.1)
+
+        call PCGAMGSetThreshold(pc, abs(GAMGThreshold), ierr)
+
+        !Extra option for multiphase flow
+        if (GAMGThreshold < 0) then
+            !Improves the efficiency of the solver
+!            call PCGAMGSetUseASMAggs(pc, .true., ierr)!Use aggregation agragates for GASM smoother. By default is false
+            !Add options via "commands"
+            gamg_options = '-multigrid'
+            !Set type of cycle v (faster) or w (more robust)
+            gamg_options = trim(gamg_options) // " " // "-pc_mg_cycle_type v"
+            !Set number of smoothup and smooth down
+            gamg_options = trim(gamg_options) // " " // "-pc_mg_smoothdown 1 -pc_mg_smoothup 2"
+            !Type of multigrid: additive,multiplicative,full,kaskade
+            gamg_options = trim(gamg_options) // " " // "-pc_mg_type multiplicative"
+            !Set to use GMRES as smoother, needs FGMRES outside
+!            gamg_options = trim(gamg_options) // " " // "-mg_levels_KSP_type gmres -mg_levels_pc_type sor -mg_levels_pc_sor_omega 1.0"
+            !Set SOR or eisenstat as smoother
+            gamg_options = trim(gamg_options) // " " // "-mg_levels_pc_type eisenstat -mg_levels_pc_eisenstat_omega 1.0"
+            !Set solver for the coarsest grid
+!            gamg_options = trim(gamg_options) // " " // "-mg_coarse_ksp_type preonly -mg_coarse_pc_type lu"
+            !Insert into petsc
+            call PetscOptionsInsertString(trim(gamg_options), ierr)
+        end if
       end if
 #endif
       

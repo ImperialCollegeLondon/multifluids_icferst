@@ -129,6 +129,10 @@ module sparse_tools_petsc
      module procedure petsc_csr_assemble
   end interface
 
+  interface decrrf
+     module procedure addref_petsc_csr_matrix
+  end interface decrrf
+
 #include "Reference_count_interface_petsc_csr_matrix.F90"
 
   public :: petsc_csr_matrix, petsc_csr_matrix_pointer, &
@@ -136,6 +140,8 @@ module sparse_tools_petsc
      size, block_size, blocks, entries, &
      zero, addto, addto_diag, scale, &
      extract_diagonal, assemble, incref_petsc_csr_matrix, &
+     addref_petsc_csr_matrix, &
+     decref, &
      ptap, mult, mult_T, dump_matrix, &
      csr2petsc_csr, dump_petsc_csr_matrix
 

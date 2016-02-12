@@ -4,15 +4,28 @@ import glob
 import re
 import sys
 import sha
+from optparse import OptionParser
+
+parser = OptionParser()
+parser.add_option("-b","--basename",dest="baseName",
+                  action="store",type="string",
+                  help="set base name for script",
+                  default="Diagnostic_Fields_New") 
+parser.add_option("-p","--path",dest="path",
+                  action="store",type="string",
+                  help="set directory search path for script",
+                  default="") 
+(options,args)=parser.parse_args()
 
 def Error(msg):
   sys.stderr.write("Diagnostics error: " + str(msg) + "\n")
   sys.stderr.flush()
   sys.exit(1)
 
-baseName = "Diagnostic_Fields_New"
+baseName = options.baseName
+searchPath= options.path.split(':')
 disabledDiags = ["Diagnostic_Source_Fields.F90", \
-  "Diagnostic_Fields_Interfaces.F90"]
+  "Diagnostic_Fields_Interfaces.F90","Diagnostic_Fields_New.F90"]
 
 inputFilename = baseName + ".F90.in"
 outputFilename = baseName + ".F90"
@@ -57,12 +70,24 @@ multipleStateTensorDiagnosticsCode = ""
 moduleRe = re.compile(r"^\s*module\s+(\w+)\s*$", re.IGNORECASE | re.MULTILINE)
 subroutineRe = re.compile(r"^\s*subroutine\s+(\w+)\(?([\w,\s]*)\)?\s*$", re.IGNORECASE | re.MULTILINE)
 
+try:
+  searchPath.remove("")
+except ValueError:
+  pass
+    
 diagFiles = glob.glob("*.F90")
 for file in [inputFilename, outputFilename] + disabledDiags:
   try:
     diagFiles.remove(file)
   except ValueError:
     pass
+for directory in searchPath:
+  diagFiles += glob.glob(directory+"*.F90")
+  for file in [inputFilename, outputFilename] + disabledDiags:
+    try:
+      diagFiles.remove(directory+file)
+    except ValueError:
+      pass
     
 for file in diagFiles:
   fileHandle = open(file, "r")

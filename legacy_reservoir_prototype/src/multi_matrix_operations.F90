@@ -41,7 +41,7 @@
     use sparse_tools
     use sparse_tools_petsc, only : petsc_csr_matrix, petsc_csr_matrix_pointer, &
      allocate, deallocate, &
-     entries, zero_rows,  &
+     entries,  &
      zero, addto, addto_diag, scale, &
      extract_diagonal, assemble, incref_petsc_csr_matrix, &
      addref_petsc_csr_matrix, &
@@ -2248,81 +2248,6 @@ end if
 
     end subroutine allocate_global_multiphase_petsc_csr
 
-    function wrap_momentum_matrix(DGM_PHA,FINDGM_PHA,COLDGM_PHA,velocity) result(mat)
-      type(petsc_csr_matrix)    ::  mat
-      real, dimension(:), intent(in) :: dgm_pha
-      integer, dimension(:), intent(in) :: findgm_pha
-      integer, dimension(:), intent(in) :: coldgm_pha
-      type(tensor_field) :: velocity
-
-
-      integer :: n,nc, j,k, next, nfields, ierr
-      integer, dimension(:), pointer :: row
-      type(csr_sparsity) :: sparsity
-      type(halo_type), pointer:: halo
-
-
-      if (associated(velocity%mesh%halos)) then
-       halo => velocity%mesh%halos(2)
-    else
-       nullify(halo)
-    end if
-
-    if (associated(halo)) then
-       sparsity=wrap(findgm_pha,colm=coldgm_pha,&
-            name='MomentumSparsity',row_halo=halo,column_halo=halo)
-       mat%row_halo => halo
-       call incref(mat%row_halo)
-       mat%column_halo => halo
-       call incref(mat%column_halo)
-       nc=halo_nowned_nodes(halo)
-    else
-       sparsity=wrap(findgm_pha,colm=coldgm_pha,name='MomentumSparsity')
-       nc=node_count(velocity)
-    end if
-
-
-    mat%name="MomentumMatrix"
-
-    call allocate(mat%row_numbering,node_count(velocity),&
-         product(velocity%dim),halo,fluidity_ordering=.true.)
-    call allocate(mat%column_numbering,node_count(velocity),&
-         product(velocity%dim),halo,fluidity_ordering=.true.)
-
-    if (.not. IsParallel()) then
-       mat%M=full_CreateSeqAIJ(sparsity, mat%row_numbering, &
-        mat%column_numbering, .true., use_inodes=.false.)
-    else
-       mat%M=full_CreateMPIAIJ(sparsity, mat%row_numbering, &
-            mat%column_numbering, .true., use_inodes=.false.)
-    end if
-
-    call MatSetOption(mat%M, MAT_IGNORE_ZERO_ENTRIES, PETSC_TRUE, ierr)
-    call MatSetOption(mat%M, MAT_NEW_NONZERO_ALLOCATION_ERR, PETSC_TRUE, ierr)
-    call MatSetOption(mat%M, MAT_ROW_ORIENTED, PETSC_FALSE, ierr)
-    nullify(mat%refcount)
-    call addref_petsc_csr_matrix(mat)
-    call zero(mat)
-
-
-    next=1
-    nfields=product(velocity%dim)
-    do n=1,nc!node_count(velocity)
-       do k=1,nfields
-          row=>row_m_ptr(sparsity,k+nfields*(n-1))
-          do j=1,size(row)
-             call addto(mat,k,mod(row(j)-1,nfields)+1,&
-                   n,(row(j)-1)/nfields+1,dgm_pha(next))
-             next=next+1
-             
-          end do
-       end do
-    end do    
-
-    call deallocate(sparsity)
-    
-  end function wrap_momentum_matrix
-
   function allocate_momentum_matrix(sparsity,velocity) result(Mat)
     type(csr_sparsity), intent (inout) :: sparsity
     type(tensor_field), intent (inout) :: velocity
@@ -2352,9 +2277,9 @@ end if
     end if
 
     call allocate(mat%row_numbering,node_count(velocity),&
-         product(velocity%dim),halo,fluidity_ordering=.true.)
+         product(velocity%dim),halo)
     call allocate(mat%column_numbering,node_count(velocity),&
-         product(velocity%dim),halo,fluidity_ordering=.true.)
+         product(velocity%dim),halo)
 
     if (.not. IsParallel()) then
        mat%M=full_CreateSeqAIJ(sparsity, mat%row_numbering, &
@@ -2372,46 +2297,6 @@ end if
 
 
   end function allocate_momentum_matrix
-
-
-  subroutine apply_strong_bcs_multiphase(A , x , b)
-
-    type(petsc_csr_matrix) :: a
-    type(tensor_field)     :: x
-    type(vector_field)     :: b
-
-    character(len=FIELD_NAME_LEN)  :: bc_type
-    logical, dimension(x%dim(1),x%dim(2)) :: applies
-    integer, dimension(:), pointer:: surface_node_list
-    integer :: i,j,k,t
-    type(vector_field), pointer:: vector_surface_field
-
-    real, parameter :: diag=1.0e6
-
-    call assemble(A)
-
-    do t=1, get_boundary_condition_count(x)
-          call get_boundary_condition(x, t, type=bc_type, &
-               surface_node_list=surface_node_list,&
-               applies=applies)
-
-          if (bc_type=="dirichlet") then
-
-             vector_surface_field => x%bc%boundary_condition(t)%vector_surface_fields(1)
-
-             do j=1,x%dim(2)
-                do i=1,x%dim(1)
-                   if (.not. applies(i,j)) cycle
-                   k=i + x%dim(1)*(j-1)
-                   call zero_rows(A,k,surface_node_list,diag)
-                   call set(x,i,j,surface_node_list,vector_surface_field%val(i,:))
-                   call set(b,k,surface_node_list,diag*vector_surface_field%val(i,:))
-                end do
-             end do
-          end if
-       end do
-
-  end subroutine apply_strong_bcs_multiphase
 
   end module matrix_operations
 

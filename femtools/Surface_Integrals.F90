@@ -47,7 +47,7 @@ module surface_integrals
   public :: calculate_surface_integral, gradient_normal_surface_integral, &
     & normal_surface_integral, surface_integral, surface_gradient_normal, &
     & surface_normal_distance_sele
-  public :: diagnostic_body_drag
+  public :: diagnostic_body_drag,integrate_over_surface_element
   
   interface integrate_over_surface_element
     module procedure integrate_over_surface_element_mesh, &
