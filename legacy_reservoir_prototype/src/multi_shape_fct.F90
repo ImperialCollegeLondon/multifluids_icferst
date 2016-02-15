@@ -35,17 +35,17 @@
 
 module shape_functions_prototype
 
-    use fldebug
-    use element_numbering
-    use shape_functions
-    use state_module
-    use spud
-    use global_parameters, only: option_path_len, is_porous_media
-    use shape_functions_Linear_Quadratic
-    use shape_functions_NDim
-    use Fields_Allocates, only : allocate, make_mesh
+  use fldebug
+  use element_numbering
+  use shape_functions
+  use state_module
+  use spud
+  use global_parameters, only: option_path_len, is_porous_media
+  use shape_functions_Linear_Quadratic
+  use shape_functions_NDim
+  use Fields_Allocates, only : allocate, make_mesh
 
-    implicit none
+  implicit none
 
 contains
 
@@ -53,10 +53,10 @@ contains
 !!!   SHAPESV AND RELATED SUBRTS & FUNCTIONS
 !!!
 
-subroutine shape_cv_n( ndim, cv_ele_type, &
-    cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
-    n, nlx, nly, nlz, &
-    un, unlx, unly, unlz )
+  subroutine shape_cv_n( ndim, cv_ele_type, &
+       cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
+       n, nlx, nly, nlz, &
+       un, unlx, unly, unlz )
     ! Shape functions associated with volume integration using both CV basis
     ! functions CVN as well as FEM basis functions N (and its derivatives NLX, NLY, NLZ)
     ! also for velocity basis functions UN, UNLX, UNLY, UNLZ
@@ -68,63 +68,63 @@ subroutine shape_cv_n( ndim, cv_ele_type, &
     real, dimension( u_nloc, cv_ngi ), intent( inout ) :: un, unlx, unly, unlz
 
     ! new quadratic element quadrature by James and Zhi and Chris:
-      
+
 
     ewrite(3,*) 'In SHAPE_CV_N'
 
     Select Case( cv_ele_type )
-        case( 1, 2 ) ! 1D
-            call quad_1d_shape( cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, n, nlx, un, unlx )
-            nly = 0.
-            nlz = 0.
-            unly = 0.
-            unlz = 0.
+    case( 1, 2 ) ! 1D
+       call quad_1d_shape( cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, n, nlx, un, unlx )
+       nly = 0.
+       nlz = 0.
+       unly = 0.
+       unlz = 0.
 
-        case( 5, 6, 9, 10 ) ! Quadrilaterals and Hexahedra
-            call quad_nd_shape( ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
-                n, nlx, nly, nlz, &
-                un, unlx, unly, unlz )
+    case( 5, 6, 9, 10 ) ! Quadrilaterals and Hexahedra
+       call quad_nd_shape( ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
+            n, nlx, nly, nlz, &
+            un, unlx, unly, unlz )
 
-        case( 3, 4, 7, 8 ) ! Triangles and Tetrahedra
-            if( new_quadratic_ele_quadrature .and. cv_ele_type==8) then
-                call new_pt_qua_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, &
-                    cvweigh, n, nlx, nly, nlz, &
-                    un, unlx, unly, unlz )
-            else
-                call vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, &
-                    cvweigh, n, nlx, nly, nlz, &
-                    un, unlx, unly, unlz )
-            endif
-           !stop 12
-        case default; FLExit( "Wrong integer for CV_ELE_TYPE" )
+    case( 3, 4, 7, 8 ) ! Triangles and Tetrahedra
+       if( new_quadratic_ele_quadrature .and. cv_ele_type==8) then
+          call new_pt_qua_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, &
+               cvweigh, n, nlx, nly, nlz, &
+               un, unlx, unly, unlz )
+       else
+          call vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, &
+               cvweigh, n, nlx, nly, nlz, &
+               un, unlx, unly, unlz )
+       endif
+       !stop 12
+    case default; FLExit( "Wrong integer for CV_ELE_TYPE" )
     end Select
 
-  !ewrite(3,*) 'Leaving SHAPE_CV_N'
+    !ewrite(3,*) 'Leaving SHAPE_CV_N'
 
-end subroutine shape_cv_n
+  end subroutine shape_cv_n
 
-subroutine cv_fem_shape_funs_plus_storage( &
-    ndim, cv_ele_type, &
-    cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
-                           ! Volume shape functions
-    cvweight, cvfen, cvfenlx_all, &
-    cvweight_short, cvfen_short, cvfenlx_short_all, &
-    ufen, ufenlx_all, &
-                           ! Surface of each CV shape functions
-    scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-    scvfen, scvfenslx, scvfensly, scvfeweigh, &
-    scvfenlx_all, &
-    sufen, sufenslx, sufensly, &
-    sufenlx_all, &
-                           ! Surface element shape funcs
-    u_on_face, ufem_on_face, nface, &
-    sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx_all, &
-    sbufen, sbufenslx, sbufensly, sbufenlx_all, &
-    cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-                           ! Define the gauss points that lie on the surface of the CV
-    findgpts, colgpts, ncolgpts, &
-    sele_overlap_scale, QUAD_OVER_WHOLE_ELE,&
-    storage_state, StorName , indx )
+  subroutine cv_fem_shape_funs_plus_storage( &
+       ndim, cv_ele_type, &
+       cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
+                                ! Volume shape functions
+       cvweight, cvfen, cvfenlx_all, &
+       cvweight_short, cvfen_short, cvfenlx_short_all, &
+       ufen, ufenlx_all, &
+                                ! Surface of each CV shape functions
+       scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
+       scvfen, scvfenslx, scvfensly, scvfeweigh, &
+       scvfenlx_all, &
+       sufen, sufenslx, sufensly, &
+       sufenlx_all, &
+                                ! Surface element shape funcs
+       u_on_face, ufem_on_face, nface, &
+       sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx_all, &
+       sbufen, sbufenslx, sbufensly, sbufenlx_all, &
+       cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
+                                ! Define the gauss points that lie on the surface of the CV
+       findgpts, colgpts, ncolgpts, &
+       sele_overlap_scale, QUAD_OVER_WHOLE_ELE,&
+       storage_state, StorName , indx )
     implicit none
     !This subroutine calls cv_fem_shape_funs only if the shape functions have not been calculated already
     !If they are in storage, the values are returned without calculations
@@ -180,7 +180,7 @@ subroutine cv_fem_shape_funs_plus_storage( &
     real, dimension( : ), allocatable :: cvweight_short2!dimension( cv_ngi_short )
     real, dimension(  : , : ), allocatable :: cvfen_short2
     real, dimension(:,:,:), allocatable :: cvfenlx_all2, cvfenlx_short_all2, ufenlx_all2, scvfenlx_all2,&
-        sufenlx_all2, sbcvfenlx_all2, sbufenlx_all2
+         sufenlx_all2, sbcvfenlx_all2, sbufenlx_all2
     real, dimension(  : , : ), allocatable :: ufen2!dimension( u_nloc, cv_ngi )
     integer, dimension(  : , : ), allocatable :: cv_neiloc2!dimension( cv_nloc, scvngi )
     real, dimension(  : , : ), allocatable :: scvfen2, scvfenslx2, scvfensly2!dimension( cv_nloc, scvngi )
@@ -214,44 +214,44 @@ subroutine cv_fem_shape_funs_plus_storage( &
 
     !If values not stored then create space in state
     if (indx <=0) then
-        if (has_scalar_field(storage_state,trim(Storname))) then
-            !               !We have to deallocate also the mesh type we are using inside the scalar field?
-            !               pntr_Storage => extract_scalar_field(storage_state, StorName)
-            !               !deallocate mesh
-            !               call deallocate(pntr_Storage%mesh)!Can I remove this without incurring in memory leaking?
+       if (has_scalar_field(storage_state,trim(Storname))) then
+          !               !We have to deallocate also the mesh type we are using inside the scalar field?
+          !               pntr_Storage => extract_scalar_field(storage_state, StorName)
+          !               !deallocate mesh
+          !               call deallocate(pntr_Storage%mesh)!Can I remove this without incurring in memory leaking?
 
-            call remove_scalar_field(storage_state, trim(Storname))
-        end if
-        !Get mesh file just to be able to allocate the fields we want to store
-        fl_mesh => extract_mesh( storage_state, "FakeMesh" )
-        aux_shape=make_element_shape(fl_mesh%shape,degree=0)
+          call remove_scalar_field(storage_state, trim(Storname))
+       end if
+       !Get mesh file just to be able to allocate the fields we want to store
+       fl_mesh => extract_mesh( storage_state, "FakeMesh" )
+       aux_shape=make_element_shape(fl_mesh%shape,degree=0)
 
-        !The number of nodes I want does not coincide
-        Auxmesh_nodes = CV_NLOC*CV_NGI*(2+ndim) + CV_NLOC*CV_NGI_SHORT*(2+ndim) + CV_NGI + CV_NGI_SHORT +&
+       !The number of nodes I want does not coincide
+       Auxmesh_nodes = CV_NLOC*CV_NGI*(2+ndim) + CV_NLOC*CV_NGI_SHORT*(2+ndim) + CV_NGI + CV_NGI_SHORT +&
             SCVNGI + SBCVNGI + U_NLOC*CV_NGI * (1+ndim) + CV_NLOC * SCVNGI * (3+ndim)+ U_NLOC*SCVNGI * (3+ndim) + &
             CV_SNLOC * SBCVNGI * (4+ndim) + U_SNLOC * SBCVNGI * (3+ndim) + CV_NLOC
 
-        call allocate ( Auxmesh ,auxmesh_nodes,auxmesh_nodes ,aux_shape, name=Storname)
-        !The number of nodes I want does not coincide
+       call allocate ( Auxmesh ,auxmesh_nodes,auxmesh_nodes ,aux_shape, name=Storname)
+       !The number of nodes I want does not coincide
 
-        call allocate (targ_Storage, Auxmesh,name=StorName)
-        
-        !Now we insert them in state and store the index
+       call allocate (targ_Storage, Auxmesh,name=StorName)
 
-        call insert(storage_state,Auxmesh,StorName)
-        call insert(storage_state, targ_Storage,StorName)
-        call deallocate (targ_Storage)
-        call deallocate( AuxMesh)
-        call deallocate(aux_shape)
+       !Now we insert them in state and store the index
 
-        indx = size(storage_state%scalar_fields)
+       call insert(storage_state,Auxmesh,StorName)
+       call insert(storage_state, targ_Storage,StorName)
+       call deallocate (targ_Storage)
+       call deallocate( AuxMesh)
+       call deallocate(aux_shape)
+
+       indx = size(storage_state%scalar_fields)
 
     end if
 
     if (.not.recovering_values) then
 
-        !Allocate local variables
-        allocate(cvn2( cv_nloc, cv_ngi ), cvn_short2( cv_nloc, cv_ngi_short ), cvweight2( cv_ngi ), cvfen2( cv_nloc, cv_ngi ),&
+       !Allocate local variables
+       allocate(cvn2( cv_nloc, cv_ngi ), cvn_short2( cv_nloc, cv_ngi_short ), cvweight2( cv_ngi ), cvfen2( cv_nloc, cv_ngi ),&
             cvfenlx_all2( 3, cv_nloc, cv_ngi ), cvweight_short2( cv_ngi_short ),&
             cvfen_short2( cv_nloc, cv_ngi_short ), cvfenlx_short_all2( 3, cv_nloc, cv_ngi_short ), ufen2( u_nloc, cv_ngi ),&
             ufenlx_all2( 3, u_nloc, cv_ngi ), cv_neiloc2( cv_nloc, scvngi ),scvfen2( cv_nloc, scvngi ), scvfenslx2( cv_nloc, scvngi ), &
@@ -263,179 +263,179 @@ subroutine cv_fem_shape_funs_plus_storage( &
             sbufenslx2( u_snloc, sbcvngi ), sbufensly2( u_snloc, sbcvngi ), sbufenlx_all2(3, u_snloc, sbcvngi ),&
             cv_sloclist2( nface, cv_snloc ),  u_sloclist2( nface, u_snloc ), findgpts2( cv_nloc + 1 ),&
             colgpts2( cv_nloc * scvngi ), sele_overlap_scale2( cv_nloc ))
-          
-        findgpts2 = 0; colgpts2= 0; ncolgpts2 = 0
 
-        call cv_fem_shape_funs( &
+       findgpts2 = 0; colgpts2= 0; ncolgpts2 = 0
+
+       call cv_fem_shape_funs( &
             ndim, cv_ele_type, &
             cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn2, cvn_short2, &
-                                   ! Volume shape functions
+                                ! Volume shape functions
             cvweight2, cvfen2, cvfenlx_all2(1,:,:), cvfenlx_all2(2,:,:), cvfenlx_all2(3,:,:), &
             cvweight_short2, cvfen_short2, cvfenlx_short_all2(1,:,:), cvfenlx_short_all2(2,:,:), cvfenlx_short_all2(3,:,:), &
             ufen2, ufenlx_all2(1,:,:), ufenlx_all2(2,:,:), ufenlx_all2(3,:,:), &
-                                   ! Surface of each CV shape functions
+                                ! Surface of each CV shape functions
             scvngi, cv_neiloc2, cv_on_face, cvfem_on_face, &
             scvfen2, scvfenslx2, scvfensly2, scvfeweigh2, &
             scvfenlx_all2(1,:,:), scvfenlx_all2(2,:,:), scvfenlx_all2(3,:,:), &
             sufen2, sufenslx2, sufensly2, &
             sufenlx_all2(1,:,:), sufenlx_all2(2,:,:), sufenlx_all2(3,:,:), &
-                                   ! Surface element shape funcs
+                                ! Surface element shape funcs
             u_on_face, ufem_on_face, nface, &
             sbcvngi, sbcvn2, sbcvfen2, sbcvfenslx2, sbcvfensly2, sbcvfeweigh2, sbcvfenlx_all2(1,:,:),&
             sbcvfenlx_all2(2,:,:), sbcvfenlx_all2(3,:,:), &
             sbufen2, sbufenslx2, sbufensly2, sbufenlx_all2(1,:,:), sbufenlx_all2(2,:,:), sbufenlx_all2(3,:,:), &
             cv_sloclist2, u_sloclist2, cv_snloc, u_snloc, &
-                                   ! Define the gauss points that lie on the surface of the CV
+                                ! Define the gauss points that lie on the surface of the CV
             findgpts2, colgpts2, ncolgpts2, &
             sele_overlap_scale2, QUAD_OVER_WHOLE_ELE)
 
-          !Calculate the CVN shape functions manually as for compact_overlapping is not calculated by the previous subroutine
-        IF(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_nloc==10).and.(ndim==3)) THEN
-            cvn_short2 = cvn2
-        ELSE
-            if (is_porous_media)  then
-                call get_CVN_compact_overlapping( CV_ELE_TYPE, NDIM, CV_NGI, CV_NLOC, cvn2, cvweight2)
-                cvn_short2 = cvn2
-            end if
-        ENDIF
+       !Calculate the CVN shape functions manually as for compact_overlapping is not calculated by the previous subroutine
+       IF(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_nloc==10).and.(ndim==3)) THEN
+          cvn_short2 = cvn2
+       ELSE
+          if (is_porous_media)  then
+             call get_CVN_compact_overlapping( CV_ELE_TYPE, NDIM, CV_NGI, CV_NLOC, cvn2, cvweight2)
+             cvn_short2 = cvn2
+          end if
+       ENDIF
 
-        !Store calculated data into state, indx is an input
-        !###cv_nloc*cv_ngi section###
-        siz1 = cv_nloc;  siz2 = cv_ngi
-        counter_from = 1; counter_to = siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvn2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfen2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
-        !###cv_nloc*cv_ngi_short section###
-        siz1 = cv_nloc;  siz2 = cv_ngi_short
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvn_short2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfen_short2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfenlx_short_all2(1:ndim,:,:),[ndim*siz1*siz2])
-        !###u_nloc*cv_ngi section###
-        siz1 = u_nloc;  siz2 = cv_ngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(ufen2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(ufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+       !Store calculated data into state, indx is an input
+       !###cv_nloc*cv_ngi section###
+       siz1 = cv_nloc;  siz2 = cv_ngi
+       counter_from = 1; counter_to = siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvn2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfen2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+       !###cv_nloc*cv_ngi_short section###
+       siz1 = cv_nloc;  siz2 = cv_ngi_short
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvn_short2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfen_short2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(cvfenlx_short_all2(1:ndim,:,:),[ndim*siz1*siz2])
+       !###u_nloc*cv_ngi section###
+       siz1 = u_nloc;  siz2 = cv_ngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(ufen2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(ufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
 
-        !###cv_nloc*scvngi section###
-        siz1 = cv_nloc;  siz2 = scvngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfen2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfenslx2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfensly2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+       !###cv_nloc*scvngi section###
+       siz1 = cv_nloc;  siz2 = scvngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfen2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfenslx2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfensly2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(scvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
 
-        !###u_nloc*scvngi section###
-        siz1 = u_nloc;  siz2 = scvngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufen2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufenslx2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufensly2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+       !###u_nloc*scvngi section###
+       siz1 = u_nloc;  siz2 = scvngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufen2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufenslx2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufensly2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
 
-        !###cv_snloc*sbcvngi section###
-        siz1 = cv_snloc;  siz2 = sbcvngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvn2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfen2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfenslx2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfensly2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+       !###cv_snloc*sbcvngi section###
+       siz1 = cv_snloc;  siz2 = sbcvngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvn2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfen2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfenslx2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfensly2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbcvfenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
 
-        !###u_snloc*sbcvngi section###
-        siz1 = u_snloc;  siz2 = sbcvngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufen2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufenslx2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufensly2,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
+       !###u_snloc*sbcvngi section###
+       siz1 = u_snloc;  siz2 = sbcvngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufen2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufenslx2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufensly2,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2*ndim
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = reshape(sbufenlx_all2(1:ndim,:,:),[ndim*siz1*siz2])
 
-        !###cv_ngi###
-        siz1 = cv_ngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = cvweight2(1:siz1)
-        !###cv_ngi_short###
-        siz1 = cv_ngi_short
-        counter_from = counter_to + 1; counter_to = counter_to + siz1
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = cvweight_short2(1:siz1)
+       !###cv_ngi###
+       siz1 = cv_ngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = cvweight2(1:siz1)
+       !###cv_ngi_short###
+       siz1 = cv_ngi_short
+       counter_from = counter_to + 1; counter_to = counter_to + siz1
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = cvweight_short2(1:siz1)
 
-        !###scvngi###
-        siz1 = scvngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = scvfeweigh2(1:siz1)
+       !###scvngi###
+       siz1 = scvngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = scvfeweigh2(1:siz1)
 
-        !###sbcvngi###
-        siz1 = sbcvngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = sbcvfeweigh2(1:siz1)
+       !###sbcvngi###
+       siz1 = sbcvngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = sbcvfeweigh2(1:siz1)
 
-        !###cv_nloc###
-        siz1 = cv_nloc
-        counter_from = counter_to + 1; counter_to = counter_to + siz1
-        storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = sele_overlap_scale2(1:siz1)
+       !###cv_nloc###
+       siz1 = cv_nloc
+       counter_from = counter_to + 1; counter_to = counter_to + siz1
+       storage_state%scalar_fields(indx)%ptr%val(counter_from:counter_to) = sele_overlap_scale2(1:siz1)
 
-        !###STORE INTEGERS###
-        !###cv_nloc + 1###
-        siz1 = cv_nloc + 1
-        counter_from = 1; counter_to = siz1
-        storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = findgpts2(1:siz1)
-        !###cv_nloc * scvngi###
-        siz1 = cv_nloc * scvngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1
-        storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = colgpts2(1:siz1)
-        !###cv_nloc*scvngi section###
-        siz1 = cv_nloc;  siz2 = scvngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_neiloc2,[siz1*siz2])
-        !###nface*cv_snloc section###
-        siz1 = nface;  siz2 = cv_snloc
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_sloclist2,[siz1*siz2])
-        !###nface*u_snloc section###
-        siz1 = nface;  siz2 = u_snloc
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(u_sloclist2,[siz1*siz2])
-        !###1###
-        siz1 = 1
-        counter_from = counter_to + 1; counter_to = counter_to + siz1
-        storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from) = ncolgpts2
-        !Store logicals as integer since there are no data types to store logicals in state
-        !###u_nloc*scvngi section###
-        siz1 = u_nloc;  siz2 = scvngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(u_on_face,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(ufem_on_face,[siz1*siz2])
+       !###STORE INTEGERS###
+       !###cv_nloc + 1###
+       siz1 = cv_nloc + 1
+       counter_from = 1; counter_to = siz1
+       storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = findgpts2(1:siz1)
+       !###cv_nloc * scvngi###
+       siz1 = cv_nloc * scvngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1
+       storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = colgpts2(1:siz1)
+       !###cv_nloc*scvngi section###
+       siz1 = cv_nloc;  siz2 = scvngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_neiloc2,[siz1*siz2])
+       !###nface*cv_snloc section###
+       siz1 = nface;  siz2 = cv_snloc
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_sloclist2,[siz1*siz2])
+       !###nface*u_snloc section###
+       siz1 = nface;  siz2 = u_snloc
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(u_sloclist2,[siz1*siz2])
+       !###1###
+       siz1 = 1
+       counter_from = counter_to + 1; counter_to = counter_to + siz1
+       storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from) = ncolgpts2
+       !Store logicals as integer since there are no data types to store logicals in state
+       !###u_nloc*scvngi section###
+       siz1 = u_nloc;  siz2 = scvngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(u_on_face,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(ufem_on_face,[siz1*siz2])
 
-        !###cv_nloc*scvngi section###
-        siz1 = cv_nloc;  siz2 = scvngi
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_on_face,[siz1*siz2])
-        counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
-        storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cvfem_on_face,[siz1*siz2])
+       !###cv_nloc*scvngi section###
+       siz1 = cv_nloc;  siz2 = scvngi
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cv_on_face,[siz1*siz2])
+       counter_from = counter_to + 1; counter_to = counter_to + siz1*siz2
+       storage_state%scalar_fields(indx)%ptr%mesh%ndglno(counter_from:counter_to) = reshape(cvfem_on_face,[siz1*siz2])
 
 
-        !deallocate local variables
-        deallocate(cvn2, cvn_short2, cvweight2, cvfen2,&
+       !deallocate local variables
+       deallocate(cvn2, cvn_short2, cvweight2, cvfen2,&
             cvfenlx_all2, cvweight_short2,&
             cvfen_short2, cvfenlx_short_all2,&
             ufen2, ufenlx_all2, cv_neiloc2,scvfen2, scvfenslx2, &
@@ -452,228 +452,228 @@ subroutine cv_fem_shape_funs_plus_storage( &
     siz1 = cv_nloc;  siz2 = cv_ngi
     counter_from = 1; counter_to = siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), cvn, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), cvn, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), cvfen, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), cvfen, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2*ndim
+         & siz1*siz2*ndim
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), cvfenlx_all,&
-        &ndim, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), cvfenlx_all,&
+         &ndim, siz1,siz2)
     !###cv_nloc*cv_ngi_short section###
     siz1 = cv_nloc;  siz2 = cv_ngi_short
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), cvn_short, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), cvn_short, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), cvfen_short, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), cvfen_short, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2*ndim
+         & siz1*siz2*ndim
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), cvfenlx_short_all,&
-        &ndim, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), cvfenlx_short_all,&
+         &ndim, siz1,siz2)
 
     !###u_nloc*cv_ngi section###
     siz1 = u_nloc;  siz2 = cv_ngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), ufen, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), ufen, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2*ndim
+         & siz1*siz2*ndim
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), ufenlx_all,&
-        & ndim, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), ufenlx_all,&
+         & ndim, siz1,siz2)
 
     !###cv_nloc*scvngi section###
     siz1 = cv_nloc;  siz2 = scvngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), scvfen, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), scvfen, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), scvfenslx, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), scvfenslx, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), scvfensly, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), scvfensly, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2*ndim
+         & siz1*siz2*ndim
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), scvfenlx_all,&
-        & ndim, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), scvfenlx_all,&
+         & ndim, siz1,siz2)
 
     !###u_nloc*scvngi section###
     siz1 = u_nloc;  siz2 = scvngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sufen, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sufen, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sufenslx, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sufenslx, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sufensly, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sufensly, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2*ndim
+         & siz1*siz2*ndim
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sufenlx_all,&
-        & ndim, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sufenlx_all,&
+         & ndim, siz1,siz2)
 
     !###cv_snloc*sbcvngi section###
     siz1 = cv_snloc;  siz2 = sbcvngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sbcvn, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sbcvn, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sbcvfen, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sbcvfen, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sbcvfenslx, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sbcvfenslx, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sbcvfensly, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sbcvfensly, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2*ndim
+         & siz1*siz2*ndim
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sbcvfenlx_all,&
-        & ndim, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sbcvfenlx_all,&
+         & ndim, siz1,siz2)
 
     !###u_snloc*sbcvngi section###
     siz1 = u_snloc;  siz2 = sbcvngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sbufen, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sbufen, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sbufenslx, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sbufenslx, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sbufensly, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sbufensly, siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2*ndim
+         & siz1*siz2*ndim
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to), sbufenlx_all,&
-        & ndim, siz1,siz2)
+         &%ptr%val(counter_from:counter_to), sbufenlx_all,&
+         & ndim, siz1,siz2)
 
     !###cv_ngi###
     siz1 = cv_ngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1
+         & siz1
     cvweight => storage_state%scalar_fields(indx)%ptr&
-        &%val(counter_from:counter_to)
+         &%val(counter_from:counter_to)
     !###cv_ngi_short###
     siz1 = cv_ngi_short
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1
+         & siz1
     cvweight_short=> storage_state%scalar_fields(indx)%ptr&
-        &%val(counter_from:counter_to)
+         &%val(counter_from:counter_to)
 
     !###scvngi###
     siz1 = scvngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1
+         & siz1
     scvfeweigh => storage_state%scalar_fields(indx)%ptr&
-        &%val(counter_from:counter_to)
+         &%val(counter_from:counter_to)
 
     !###sbcvngi###
     siz1 = sbcvngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1
+         & siz1
     sbcvfeweigh => storage_state%scalar_fields(indx)%ptr&
-        &%val(counter_from:counter_to)
+         &%val(counter_from:counter_to)
 
     !###cv_nloc###
     siz1 = cv_nloc
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1
+         & siz1
     sele_overlap_scale => storage_state%scalar_fields(indx)&
-        &%ptr%val(counter_from:counter_to)
+         &%ptr%val(counter_from:counter_to)
 
     !###STORE INTEGERS###
     !###cv_nloc + 1###
     siz1 = cv_nloc + 1
     counter_from = 1; counter_to = siz1
     findgpts => storage_state%scalar_fields(indx)%ptr%mesh&
-        &%ndglno(counter_from:counter_to)
+         &%ndglno(counter_from:counter_to)
     !###cv_nloc * scvngi###
     siz1 = cv_nloc * scvngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1
+         & siz1
     colgpts => storage_state%scalar_fields(indx)%ptr%mesh&
-        &%ndglno(counter_from:counter_to)
+         &%ndglno(counter_from:counter_to)
     !###cv_nloc*scvngi section###
     siz1 = cv_nloc;  siz2 = scvngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%mesh%ndglno(counter_from:counter_to), cv_neiloc,&
-        & siz1,siz2)
+         &%ptr%mesh%ndglno(counter_from:counter_to), cv_neiloc,&
+         & siz1,siz2)
     !###nface*cv_snloc section###
     siz1 = nface;  siz2 = cv_snloc
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%mesh%ndglno(counter_from:counter_to), cv_sloclist,&
-        & siz1,siz2)
+         &%ptr%mesh%ndglno(counter_from:counter_to), cv_sloclist,&
+         & siz1,siz2)
     !###nface*u_snloc section###
     siz1 = nface;  siz2 = u_snloc
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%mesh%ndglno(counter_from:counter_to), u_sloclist,&
-        & siz1,siz2)
+         &%ptr%mesh%ndglno(counter_from:counter_to), u_sloclist,&
+         & siz1,siz2)
     !###1###
     siz1 = 1
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1
+         & siz1
     ncolgpts => storage_state%scalar_fields(indx)%ptr%mesh&
-        &%ndglno(counter_from)
+         &%ndglno(counter_from)
     !Store logicals as integer since there are no data types to
     ! store logicals in state
     !###u_nloc*scvngi section###
     siz1 = u_nloc;  siz2 = scvngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%mesh%ndglno(counter_from:counter_to), ptr_u_on_face,&
-        & siz1,siz2)
+         &%ptr%mesh%ndglno(counter_from:counter_to), ptr_u_on_face,&
+         & siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%mesh%ndglno(counter_from:counter_to),ptr_ufem_on_face,&
-        & siz1,siz2)
+         &%ptr%mesh%ndglno(counter_from:counter_to),ptr_ufem_on_face,&
+         & siz1,siz2)
 
     !###cv_nloc*scvngi section###
     siz1 = cv_nloc;  siz2 = scvngi
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%mesh%ndglno(counter_from:counter_to), ptr_cv_on_face,&
-        & siz1,siz2)
+         &%ptr%mesh%ndglno(counter_from:counter_to), ptr_cv_on_face,&
+         & siz1,siz2)
     counter_from = counter_to + 1; counter_to = counter_to +&
-        & siz1*siz2
+         & siz1*siz2
     call reshape_vector2pointer(storage_state%scalar_fields(indx)&
-        &%ptr%mesh%ndglno(counter_from:counter_to),ptr_cvfem_on_face,&
-        & siz1,siz2)
+         &%ptr%mesh%ndglno(counter_from:counter_to),ptr_cvfem_on_face,&
+         & siz1,siz2)
 
     !Recover logical values from integer storage...not the
     !best way to store logicals...
@@ -684,30 +684,30 @@ subroutine cv_fem_shape_funs_plus_storage( &
     cvfem_on_face = ptr_cvfem_on_face
 
 
-end subroutine
+  end subroutine cv_fem_shape_funs_plus_storage
 
 
-subroutine cv_fem_shape_funs( &
-    ndim, cv_ele_type, &
-    cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
-                           ! Volume shape functions
-    cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
-    cvweight_short, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
-    ufen, ufenlx, ufenly, ufenlz, &
-                           ! Surface of each CV shape functions
-    scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-    scvfen, scvfenslx, scvfensly, scvfeweigh, &
-    scvfenlx, scvfenly, scvfenlz, &
-    sufen, sufenslx, sufensly, &
-    sufenlx, sufenly, sufenlz, &
-                           ! Surface element shape funcs
-    u_on_face, ufem_on_face, nface, &
-    sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx, sbcvfenly, sbcvfenlz, &
-    sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz, &
-    cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-                           ! Define the gauss points that lie on the surface of the CV
-    findgpts, colgpts, ncolgpts, &
-    sele_overlap_scale, QUAD_OVER_WHOLE_ELE )
+  subroutine cv_fem_shape_funs( &
+       ndim, cv_ele_type, &
+       cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
+                                ! Volume shape functions
+       cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
+       cvweight_short, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
+       ufen, ufenlx, ufenly, ufenlz, &
+                                ! Surface of each CV shape functions
+       scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
+       scvfen, scvfenslx, scvfensly, scvfeweigh, &
+       scvfenlx, scvfenly, scvfenlz, &
+       sufen, sufenslx, sufensly, &
+       sufenlx, sufenly, sufenlz, &
+                                ! Surface element shape funcs
+       u_on_face, ufem_on_face, nface, &
+       sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx, sbcvfenly, sbcvfenlz, &
+       sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz, &
+       cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
+                                ! Define the gauss points that lie on the surface of the CV
+       findgpts, colgpts, ncolgpts, &
+       sele_overlap_scale, QUAD_OVER_WHOLE_ELE )
     ! This subrt defines the sub-control volume and FEM shape functions.
     ! Shape functions associated with volume integration using both CV basis
     ! functions CVN as well as FEM basis functions CVFEN (and its derivatives
@@ -720,7 +720,7 @@ subroutine cv_fem_shape_funs( &
     real, dimension( :, : ), intent( inout ) :: cvfen, cvfenlx, cvfenly, cvfenlz
     real, dimension( : ), intent( inout ) :: cvweight_short
     real, dimension( :, : ), intent( inout ) :: cvfen_short, cvfenlx_short, &
-        cvfenly_short, cvfenlz_short
+         cvfenly_short, cvfenlz_short
     real, dimension( :, : ), intent( inout ) :: ufen, ufenlx, ufenly, ufenlz
     integer, intent( in ) :: scvngi
     integer, dimension( :, : ), intent( inout ) :: cv_neiloc
@@ -729,7 +729,7 @@ subroutine cv_fem_shape_funs( &
     real, dimension( : ), intent( inout ) :: scvfeweigh
     real, dimension( :, : ), intent( inout ) :: scvfenlx, scvfenly, scvfenlz
     real, dimension( :, : ), intent( inout ) :: sufen, sufenslx, sufensly, sufenlx, &
-        sufenly, sufenlz
+         sufenly, sufenlz
     logical, dimension( :, : ), intent( inout ) :: u_on_face, ufem_on_face
     integer, intent( in ) :: nface, sbcvngi
     logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
@@ -740,7 +740,7 @@ subroutine cv_fem_shape_funs( &
     real, dimension( :, : ), intent( inout ) :: sbcvfenlx, sbcvfenly, sbcvfenlz
     integer, intent( in ) :: cv_snloc, u_snloc
     real, dimension( :, : ), intent( inout ) :: sbufen, sbufenslx, sbufensly, &
-        sbufenlx, sbufenly, sbufenlz
+         sbufenlx, sbufenly, sbufenlz
     integer, dimension( :, : ), intent( inout ) :: cv_sloclist
     integer, dimension( :, : ), intent( inout ) :: u_sloclist
     integer, dimension( : ), intent( inout ) :: findgpts
@@ -751,8 +751,8 @@ subroutine cv_fem_shape_funs( &
     logical, dimension( :, : ), allocatable :: ufem_on_face2
     integer, dimension( :, : ), allocatable :: u_sloclist2
     real, dimension( :, : ), allocatable :: ufen2, ufenlx2, ufenly2, ufenlz2, &
-        sufen2, sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2, &
-        sbufen2, sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, sbufenlz2
+         sufen2, sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2, &
+         sbufen2, sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, sbufenlz2
     real, dimension( :, : ), allocatable :: M,MLX,MLY,MLZ, sm,SMLX,SMLY
     character( len = option_path_len ) :: dummy_path, dummypath2
     integer :: u_ele_type2, gi, MLOC, SMLOC
@@ -775,25 +775,25 @@ subroutine cv_fem_shape_funs( &
     sele_overlap_scale = 1.
 
     if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
-        ewrite(3,*)'2 going into SHAPE_one_ele'
-        call SHAPE_one_ele2(&
+       ewrite(3,*)'2 going into SHAPE_one_ele'
+       call SHAPE_one_ele2(&
             ndim, cv_ele_type, &
             cv_ngi, cv_nloc, u_nloc,  &
-                           ! Volume shape functions
+                                ! Volume shape functions
             cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
             ufen, ufenlx, ufenly, ufenlz, &
-                           ! Surface of each CV shape functions
+                                ! Surface of each CV shape functions
             sbcvngi,  &
             sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
             sbufen, sbufenslx, sbufensly, &
-                           ! Surface element shape funcs
+                                ! Surface element shape funcs
             nface, &
             cv_sloclist, u_sloclist, cv_snloc, u_snloc )
 
-        if(scvngi/=sbcvngi) FLAbort("scvngi/=sbcvngi")
+       if(scvngi/=sbcvngi) FLAbort("scvngi/=sbcvngi")
 
     else
-        call shape_cv_n( ndim, cv_ele_type, &
+       call shape_cv_n( ndim, cv_ele_type, &
             cv_ngi, cv_nloc, u_nloc, cvn, cvweight, &
             cvfen, cvfenlx, cvfenly, cvfenlz, &
             ufen, ufenlx, ufenly, ufenlz )
@@ -806,20 +806,20 @@ subroutine cv_fem_shape_funs( &
     cvweight_short = cvweight
 
 
-     !
-     !(a) scvfen( cv_nloc, scvngi ): the shape function evaluated for each node
-     !          at each surface gauss point
-     !(b) scvfenslx[y/z]( cv_nloc, scvngi ): the surface derivatives of the shape
-     !          function for each node at those same points, and the derivatives
-     !          of the shape
-     !(c) scvfeweigh( scvngi ): the Gauss weights to use when integrating around
-     !          the control volume surface
-     !(d) cv_neiloc( cv_nloc, scvngi ): neighbour node for a given node/gauss-point
-     !          pair. This also include quadature points around the element.
-     !
+    !
+    !(a) scvfen( cv_nloc, scvngi ): the shape function evaluated for each node
+    !          at each surface gauss point
+    !(b) scvfenslx[y/z]( cv_nloc, scvngi ): the surface derivatives of the shape
+    !          function for each node at those same points, and the derivatives
+    !          of the shape
+    !(c) scvfeweigh( scvngi ): the Gauss weights to use when integrating around
+    !          the control volume surface
+    !(d) cv_neiloc( cv_nloc, scvngi ): neighbour node for a given node/gauss-point
+    !          pair. This also include quadature points around the element.
+    !
 
     if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element
-        call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
+       call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
             ufem_on_face, &
             cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
             scvfenlx, scvfenly, scvfenlz, &
@@ -827,9 +827,9 @@ subroutine cv_fem_shape_funs( &
             sufenlx, sufenly, sufenlz, &
             ndim )
 
-        ! Determine the surface element shape functions from those
-        ! calculated in SHAPESV_FEM_PLUS and also CV_SLOCLIST( NFACE,CV_SNLOC )
-        call det_suf_ele_shape( scvngi, nface, &
+       ! Determine the surface element shape functions from those
+       ! calculated in SHAPESV_FEM_PLUS and also CV_SLOCLIST( NFACE,CV_SNLOC )
+       call det_suf_ele_shape( scvngi, nface, &
             cvfem_on_face, &
             cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
             scvfenlx, scvfenly, scvfenlz, &
@@ -841,21 +841,21 @@ subroutine cv_fem_shape_funs( &
             sbufenlx, sbufenly, sbufenlz, &
             cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
             ndim, cv_ele_type )
-        ! Define the gauss points that lie on the surface of the
-        ! control volume surrounding a given local node (iloc)
-        ! that is FINDGPTS, COLGPTS, NCOLGPTS
-        call gaussiloc( findgpts, colgpts, ncolgpts, &
+       ! Define the gauss points that lie on the surface of the
+       ! control volume surrounding a given local node (iloc)
+       ! that is FINDGPTS, COLGPTS, NCOLGPTS
+       call gaussiloc( findgpts, colgpts, ncolgpts, &
             cv_neiloc, cv_nloc, scvngi )
     endif
 
     ! Set to zero anything that should be zero in case it was not pre-defined
     if( ndim < 2 ) then
-        cvfenly = 0.0 ; cvfenly_short = 0.0 ; ufenly = 0.0 ; scvfenslx = 0.0 ; &
+       cvfenly = 0.0 ; cvfenly_short = 0.0 ; ufenly = 0.0 ; scvfenslx = 0.0 ; &
             scvfenly = 0.0 ; sufenslx = 0.0 ; sufenly = 0.0 ; sbcvfenslx = 0.0 ;  &
             sbcvfenly = 0.0 ; sbufenslx = 0.0 ; sbufenly = 0.0
 
     elseif( ndim < 3 ) then
-        cvfenlz = 0.0 ; cvfenlz_short = 0.0 ; ufenlz = 0.0 ; scvfensly = 0.0 ; &
+       cvfenlz = 0.0 ; cvfenlz_short = 0.0 ; ufenlz = 0.0 ; scvfensly = 0.0 ; &
             scvfenlz = 0.0 ; sufensly = 0.0 ; sufenlz = 0.0 ; sbcvfensly = 0.0 ; &
             sbcvfenlz = 0.0 ; sbufensly = 0.0 ;sbufenlz = 0.0
 
@@ -864,37 +864,37 @@ subroutine cv_fem_shape_funs( &
     ! calculate sbcvn from sbcvfen - Use the max scvfen at a quadrature pt and set to 1:
     SBCVN=0.0
     DO SGI=1,SBCVNGI
-        RMAX=-100.0 ! Find max value of sbcvfen...
-        DO CV_SILOC=1,CV_SNLOC
-            IF(sbcvfen(CV_SILOC,SGI).GT.RMAX) THEN
-                RMAX=sbcvfen(CV_SILOC,SGI)
-                CV_SKLOC=CV_SILOC
-            ENDIF
-        END DO
-        SBCVN(CV_SKLOC,SGI)=1.0
+       RMAX=-100.0 ! Find max value of sbcvfen...
+       DO CV_SILOC=1,CV_SNLOC
+          IF(sbcvfen(CV_SILOC,SGI).GT.RMAX) THEN
+             RMAX=sbcvfen(CV_SILOC,SGI)
+             CV_SKLOC=CV_SILOC
+          ENDIF
+       END DO
+       SBCVN(CV_SKLOC,SGI)=1.0
     END DO
 
     deallocate( m, mlx, mly, mlz, sm, smlx, smly )
 
     return
-end subroutine cv_fem_shape_funs
+  end subroutine cv_fem_shape_funs
 
 
 
 
 
-SUBROUTINE DET_SUF_ELE_SHAPE( SCVNGI, NFACE, &
-    CVFEM_ON_FACE, &
-    CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
-    SCVFENLX, SCVFENLY, SCVFENLZ,  &
-    U_NLOC,  SUFEN, SUFENSLX, SUFENSLY,  &
-    SUFENLX, SUFENLY, SUFENLZ,  &
-    SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-    SBCVFENLX, SBCVFENLY, SBCVFENLZ, &
-    SBUFEN, SBUFENSLX, SBUFENSLY, &
-    SBUFENLX, SBUFENLY, SBUFENLZ, &
-    CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
-    NDIM, CV_ELE_TYPE )
+  SUBROUTINE DET_SUF_ELE_SHAPE( SCVNGI, NFACE, &
+       CVFEM_ON_FACE, &
+       CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
+       SCVFENLX, SCVFENLY, SCVFENLZ,  &
+       U_NLOC,  SUFEN, SUFENSLX, SUFENSLY,  &
+       SUFENLX, SUFENLY, SUFENLZ,  &
+       SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
+       SBCVFENLX, SBCVFENLY, SBCVFENLZ, &
+       SBUFEN, SBUFENSLX, SBUFENSLY, &
+       SBUFENLX, SBUFENLY, SBUFENLZ, &
+       CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
+       NDIM, CV_ELE_TYPE )
     !
     !     - this subroutine generates the FE basis functions, weights and the
     !     - derivatives of the shape functions for a variety of elements on the
@@ -904,23 +904,23 @@ SUBROUTINE DET_SUF_ELE_SHAPE( SCVNGI, NFACE, &
     !     -------------------------------
     !     - date last modified : 21/02/2012
     !     -------------------------------
- 
+
     IMPLICIT NONE
 
     INTEGER, intent( in ) :: SCVNGI, CV_NLOC, U_NLOC, NFACE, &
-        SBCVNGI, CV_SNLOC, U_SNLOC
+         SBCVNGI, CV_SNLOC, U_SNLOC
     LOGICAL, DIMENSION( CV_NLOC, SCVNGI ), intent( in ) :: CVFEM_ON_FACE
     ! CV_ON_FACE(CV_KLOC,GI)=.TRUE. if CV_KLOC is on the face that GI is centred on.
     REAL, DIMENSION( CV_NLOC, SCVNGI ), intent( in ) :: SCVFEN, SCVFENSLX, SCVFENSLY, &
-        SCVFENLX, SCVFENLY, SCVFENLZ
+         SCVFENLX, SCVFENLY, SCVFENLZ
     REAL, DIMENSION( SCVNGI ), intent( inout ) :: SCVFEWEIGH
     REAL, DIMENSION( U_NLOC, SCVNGI ), intent( in ) :: SUFEN, SUFENSLX, SUFENSLY, &
-        SUFENLX, SUFENLY, SUFENLZ
+         SUFENLX, SUFENLY, SUFENLZ
     REAL, DIMENSION( CV_SNLOC, SBCVNGI ), intent( inout ) :: SBCVFEN, SBCVFENSLX, &
-        SBCVFENSLY, SBCVFENLX, SBCVFENLY, SBCVFENLZ
+         SBCVFENSLY, SBCVFENLX, SBCVFENLY, SBCVFENLZ
     REAL, DIMENSION( SBCVNGI ), intent( inout ) :: SBCVFEWEIGH
     REAL, DIMENSION( U_SNLOC, SBCVNGI ), intent( inout ) :: SBUFEN, SBUFENSLX, SBUFENSLY, &
-        SBUFENLX, SBUFENLY, SBUFENLZ
+         SBUFENLX, SBUFENLY, SBUFENLZ
     INTEGER, DIMENSION( NFACE, CV_SNLOC ), intent( inout ) ::  CV_SLOCLIST
     INTEGER, DIMENSION( NFACE, U_SNLOC ), intent( inout ) ::  U_SLOCLIST
     INTEGER, intent( in ) :: NDIM, CV_ELE_TYPE
@@ -928,33 +928,33 @@ SUBROUTINE DET_SUF_ELE_SHAPE( SCVNGI, NFACE, &
     INTEGER :: CV_KLOC, CV_SKLOC, U_KLOC, U_SKLOC, CV_BSNGI
 
     ewrite(3,*) 'In DET_SUF_ELE_SHAPE'
-    
+
     ! Obtain SBCVFEN from SCVFEN:
     !ewrite(3,*)'for cv:'
     CALL SCVFEN_2_SBCVFEN( CV_NLOC, CV_SNLOC, SCVNGI, SBCVNGI, &
-        CV_NLOC, CV_SNLOC, CVFEM_ON_FACE, &
-        SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFENLX, SBCVFENLY, SBCVFENLZ, SBCVFEWEIGH, &
-        SCVFEN, SCVFENSLX, SCVFENSLY, SCVFENLX, SCVFENLY, SCVFENLZ, SCVFEWEIGH )
+         CV_NLOC, CV_SNLOC, CVFEM_ON_FACE, &
+         SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFENLX, SBCVFENLY, SBCVFENLZ, SBCVFEWEIGH, &
+         SCVFEN, SCVFENSLX, SCVFENSLY, SCVFENLX, SCVFENLY, SCVFENLZ, SCVFEWEIGH )
 
     !ewrite(3,*)'U_NLOC, U_SNLOC, SCVNGI, SBCVNGI, CV_NLOC, CV_SNLOC:', &
     !         U_NLOC, U_SNLOC, SCVNGI, SBCVNGI, CV_NLOC, CV_SNLOC
     !ewrite(3,*)'for u:'
     ! Obtain SBUFEN from SUFEN:
     CALL SCVFEN_2_SBCVFEN( U_NLOC, U_SNLOC, SCVNGI, SBCVNGI, &
-        CV_NLOC, CV_SNLOC, CVFEM_ON_FACE, &
-        SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX, SBUFENLY, SBUFENLZ, SBCVFEWEIGH, &
-        SUFEN, SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ, SCVFEWEIGH )
-     !ewrite(3,*)'SBUFEN:',SBUFEN
-     !ewrite(3,*)'SUFEN:',SUFEN
+         CV_NLOC, CV_SNLOC, CVFEM_ON_FACE, &
+         SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX, SBUFENLY, SBUFENLZ, SBCVFEWEIGH, &
+         SUFEN, SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ, SCVFEWEIGH )
+    !ewrite(3,*)'SBUFEN:',SBUFEN
+    !ewrite(3,*)'SUFEN:',SUFEN
 
     ! Determine CV_SLOCLIST & U_SLOCLIST
     CALL DETERMIN_SLOCLIST( CV_SLOCLIST, CV_NLOC, CV_SNLOC, NFACE, &
-        NDIM, CV_ELE_TYPE )
+         NDIM, CV_ELE_TYPE )
     IF( U_SNLOC == 1 ) THEN
-        U_SLOCLIST( 1, 1 ) = 1
-        U_SLOCLIST( 2, 1 ) = U_NLOC
+       U_SLOCLIST( 1, 1 ) = 1
+       U_SLOCLIST( 2, 1 ) = U_NLOC
     ELSE
-        CALL DETERMIN_SLOCLIST( U_SLOCLIST, U_NLOC, U_SNLOC, NFACE, &
+       CALL DETERMIN_SLOCLIST( U_SLOCLIST, U_NLOC, U_SNLOC, NFACE, &
             NDIM, CV_ELE_TYPE )
     ENDIF
     !ewrite(3,*)'CV_SNLOC, U_SNLOC, SCVNGI:', CV_SNLOC, U_SNLOC, SCVNGI
@@ -962,23 +962,23 @@ SUBROUTINE DET_SUF_ELE_SHAPE( SCVNGI, NFACE, &
     !ewrite(3,*)'U_SLOCLIST:', U_SLOCLIST
 
     RETURN
-END SUBROUTINE DET_SUF_ELE_SHAPE
+  END SUBROUTINE DET_SUF_ELE_SHAPE
 
 
-subroutine scvfen_2_sbcvfen( cv_nloc, cv_snloc, scvngi, sbcvngi, &
-    cv_nloc_cells, cv_snloc_cells, cvfem_on_face, &
-    sbcvfen, sbcvfenslx, sbcvfensly, sbcvfenlx, sbcvfenly, sbcvfenlz, sbcvfeweigh, &
-    scvfen, scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz, scvfeweigh )
+  subroutine scvfen_2_sbcvfen( cv_nloc, cv_snloc, scvngi, sbcvngi, &
+       cv_nloc_cells, cv_snloc_cells, cvfem_on_face, &
+       sbcvfen, sbcvfenslx, sbcvfensly, sbcvfenlx, sbcvfenly, sbcvfenlz, sbcvfeweigh, &
+       scvfen, scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz, scvfeweigh )
     ! Compute SBCVFEN from SCVFEN
     implicit none
     integer, intent( in ) :: cv_nloc, cv_snloc, scvngi, sbcvngi
     integer, intent( in ) :: cv_nloc_cells, cv_snloc_cells
     logical, dimension( cv_nloc_cells, scvngi ), intent( in ) :: cvfem_on_face
     real, dimension( cv_snloc, sbcvngi ), intent( inout ) :: sbcvfen, sbcvfenslx, &
-        sbcvfensly, sbcvfenlx, sbcvfenly, sbcvfenlz
+         sbcvfensly, sbcvfenlx, sbcvfenly, sbcvfenlz
     real, dimension( sbcvngi ), intent( inout ) :: sbcvfeweigh
     real, dimension( cv_nloc, scvngi ), intent( in ) ::  scvfen, &
-        scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz
+         scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz
     real, dimension( scvngi ), intent( in ) :: scvfeweigh
     ! Local variables
     logical, dimension( : ), allocatable :: candidate_gi,candidate_gi2
@@ -992,75 +992,75 @@ subroutine scvfen_2_sbcvfen( cv_nloc, cv_snloc, scvngi, sbcvngi, &
     allocate( candidate_gi( scvngi ) )
     allocate( candidate_gi2( scvngi ) )
 
-       ! The CV_SNLOC surface nodes are the only nodes that are candidates.
+    ! The CV_SNLOC surface nodes are the only nodes that are candidates.
 
     if(.true.) then
-        do cv_sgi = 1, scvngi
-            candidate_gi2( cv_sgi ) = .true.
-            do cv_iloc_cells = 1, cv_snloc_cells
-                if( .not.cvfem_on_face(cv_iloc_cells,cv_sgi) ) candidate_gi2( cv_sgi ) = .false.
-               !ewrite(3,*)'cv_iloc_cells, cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi):', &
-               !     cv_iloc_cells,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
-            end do
-        end do
+       do cv_sgi = 1, scvngi
+          candidate_gi2( cv_sgi ) = .true.
+          do cv_iloc_cells = 1, cv_snloc_cells
+             if( .not.cvfem_on_face(cv_iloc_cells,cv_sgi) ) candidate_gi2( cv_sgi ) = .false.
+             !ewrite(3,*)'cv_iloc_cells, cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi):', &
+             !     cv_iloc_cells,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
+          end do
+       end do
     else
-        do cv_sgi = 1, scvngi
-            candidate_gi2( cv_sgi ) = .false.
-            do cv_iloc_cells = 1, cv_snloc_cells
-                if( cvfem_on_face(cv_iloc_cells,cv_sgi) ) candidate_gi2( cv_sgi ) = .true.
-               !ewrite(3,*)'cv_iloc_cells, cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi):', &
-               !     cv_iloc_cells,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
-            end do
-        end do
+       do cv_sgi = 1, scvngi
+          candidate_gi2( cv_sgi ) = .false.
+          do cv_iloc_cells = 1, cv_snloc_cells
+             if( cvfem_on_face(cv_iloc_cells,cv_sgi) ) candidate_gi2( cv_sgi ) = .true.
+             !ewrite(3,*)'cv_iloc_cells, cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi):', &
+             !     cv_iloc_cells,cv_sgi, cvfem_on_face(cv_iloc_cells,cv_sgi)
+          end do
+       end do
     endif
     !
     ! the below does not seem correct - Chris look at **************
     !   if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc_cells==6).and.(cv_nloc_cells==10)) then ! make sure its a quadratic tet...
     if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_snloc==6).and.(cv_nloc==10).and.(sbcvngi==6)) then ! make sure its a quadratic tet
-                                                                                         !without QUAD_OVER_WHOLE_ELE=.true...
-        sbcvfen( 1:cv_snloc, 1:sbcvngi ) = scvfen( 1:cv_snloc, 1:sbcvngi )
-        sbcvfenslx( 1:cv_snloc, 1:sbcvngi ) = scvfenslx( 1:cv_snloc, 1:sbcvngi )
-        sbcvfensly( 1:cv_snloc, 1:sbcvngi ) = scvfensly( 1:cv_snloc, 1:sbcvngi )
-        sbcvfenlx( 1:cv_snloc, 1:sbcvngi ) = scvfenlx( 1:cv_snloc, 1:sbcvngi )
-        sbcvfenly( 1:cv_snloc, 1:sbcvngi ) = scvfenly( 1:cv_snloc, 1:sbcvngi )
-        sbcvfenlz( 1:cv_snloc, 1:sbcvngi ) = scvfenlz( 1:cv_snloc, 1:sbcvngi )
-        sbcvfeweigh( 1:sbcvngi ) = scvfeweigh( 1:sbcvngi )
+       !without QUAD_OVER_WHOLE_ELE=.true...
+       sbcvfen( 1:cv_snloc, 1:sbcvngi ) = scvfen( 1:cv_snloc, 1:sbcvngi )
+       sbcvfenslx( 1:cv_snloc, 1:sbcvngi ) = scvfenslx( 1:cv_snloc, 1:sbcvngi )
+       sbcvfensly( 1:cv_snloc, 1:sbcvngi ) = scvfensly( 1:cv_snloc, 1:sbcvngi )
+       sbcvfenlx( 1:cv_snloc, 1:sbcvngi ) = scvfenlx( 1:cv_snloc, 1:sbcvngi )
+       sbcvfenly( 1:cv_snloc, 1:sbcvngi ) = scvfenly( 1:cv_snloc, 1:sbcvngi )
+       sbcvfenlz( 1:cv_snloc, 1:sbcvngi ) = scvfenlz( 1:cv_snloc, 1:sbcvngi )
+       sbcvfeweigh( 1:sbcvngi ) = scvfeweigh( 1:sbcvngi )
 
     else
-        Loop_SNLOC: do cv_siloc = 1, cv_snloc
-            cv_iloc = cv_siloc
-            cv_bsgi = 0
-            Loop_SGI2: do cv_sgi = 1, scvngi
-                Conditional_2: if( candidate_gi2( cv_sgi ) ) then
-                    cv_bsgi = cv_bsgi + 1
-                    !ewrite(3,*) 'cv_siloc, cv_bsgi,cv_iloc, cv_sgi:', &
-                    !     cv_siloc, cv_bsgi,cv_iloc, cv_sgi
-                    !ewrite(3,*) 'scvfen( cv_iloc, cv_sgi ):', scvfen( cv_iloc, cv_sgi )
-                    sbcvfen( cv_siloc, cv_bsgi ) = scvfen( cv_iloc, cv_sgi )
-                    sbcvfenslx( cv_siloc, cv_bsgi ) = scvfenslx( cv_iloc, cv_sgi )
-                    sbcvfensly( cv_siloc, cv_bsgi ) = scvfensly( cv_iloc, cv_sgi )
-                    sbcvfenlx( cv_siloc, cv_bsgi ) = scvfenlx( cv_iloc, cv_sgi )
-                    sbcvfenly( cv_siloc, cv_bsgi ) = scvfenly( cv_iloc, cv_sgi )
-                    sbcvfenlz( cv_siloc, cv_bsgi ) = scvfenlz( cv_iloc, cv_sgi )
-                    sbcvfeweigh( cv_bsgi ) = scvfeweigh( cv_sgi )
-                end if Conditional_2
-            end do Loop_SGI2
-        end do Loop_SNLOC
+       Loop_SNLOC: do cv_siloc = 1, cv_snloc
+          cv_iloc = cv_siloc
+          cv_bsgi = 0
+          Loop_SGI2: do cv_sgi = 1, scvngi
+             Conditional_2: if( candidate_gi2( cv_sgi ) ) then
+                cv_bsgi = cv_bsgi + 1
+                !ewrite(3,*) 'cv_siloc, cv_bsgi,cv_iloc, cv_sgi:', &
+                !     cv_siloc, cv_bsgi,cv_iloc, cv_sgi
+                !ewrite(3,*) 'scvfen( cv_iloc, cv_sgi ):', scvfen( cv_iloc, cv_sgi )
+                sbcvfen( cv_siloc, cv_bsgi ) = scvfen( cv_iloc, cv_sgi )
+                sbcvfenslx( cv_siloc, cv_bsgi ) = scvfenslx( cv_iloc, cv_sgi )
+                sbcvfensly( cv_siloc, cv_bsgi ) = scvfensly( cv_iloc, cv_sgi )
+                sbcvfenlx( cv_siloc, cv_bsgi ) = scvfenlx( cv_iloc, cv_sgi )
+                sbcvfenly( cv_siloc, cv_bsgi ) = scvfenly( cv_iloc, cv_sgi )
+                sbcvfenlz( cv_siloc, cv_bsgi ) = scvfenlz( cv_iloc, cv_sgi )
+                sbcvfeweigh( cv_bsgi ) = scvfeweigh( cv_sgi )
+             end if Conditional_2
+          end do Loop_SGI2
+       end do Loop_SNLOC
 
-        !         ewrite(3,*)'cv_bsgi,sbcvngi:',cv_bsgi,sbcvngi
-        !         ewrite(3,*)'candidate_gi2:',candidate_gi2
-        !         ewrite(3,*)'cvfem_on_face:',cvfem_on_face
-        !         do cv_sgi = 1, scvngi
-        !            print *,'cvfem_on_face(:,cv_sgi):',cvfem_on_face(:,cv_sgi)
-        !         end do
+       !         ewrite(3,*)'cv_bsgi,sbcvngi:',cv_bsgi,sbcvngi
+       !         ewrite(3,*)'candidate_gi2:',candidate_gi2
+       !         ewrite(3,*)'cvfem_on_face:',cvfem_on_face
+       !         do cv_sgi = 1, scvngi
+       !            print *,'cvfem_on_face(:,cv_sgi):',cvfem_on_face(:,cv_sgi)
+       !         end do
 
-        if(cv_bsgi/=sbcvngi) then
-            ewrite(3,*)'cv_bsgi,sbcvngi:',cv_bsgi,sbcvngi
-            ewrite(3,*)'candidate_gi2:',candidate_gi2
-            ewrite(3,*)'cvfem_on_face:',cvfem_on_face
-            FLAbort("cv_bsgi/=sbcvngi")
-        endif
-    !         stop 921
+       if(cv_bsgi/=sbcvngi) then
+          ewrite(3,*)'cv_bsgi,sbcvngi:',cv_bsgi,sbcvngi
+          ewrite(3,*)'candidate_gi2:',candidate_gi2
+          ewrite(3,*)'cvfem_on_face:',cvfem_on_face
+          FLAbort("cv_bsgi/=sbcvngi")
+       endif
+       !         stop 921
     endif
 
 
@@ -1068,17 +1068,17 @@ subroutine scvfen_2_sbcvfen( cv_nloc, cv_snloc, scvngi, sbcvngi, &
     deallocate( candidate_gi2 )
 
     return
-end subroutine scvfen_2_sbcvfen
+  end subroutine scvfen_2_sbcvfen
 
 
 
-subroutine shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-    ufem_on_face, &
-    cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-    scvfenlx, scvfenly, scvfenlz, &
-    u_nloc, sufen, sufenslx, sufensly, &
-    sufenlx, sufenly, sufenlz, &
-    ndim )
+  subroutine shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
+       ufem_on_face, &
+       cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
+       scvfenlx, scvfenly, scvfenlz, &
+       u_nloc, sufen, sufenslx, sufensly, &
+       sufenlx, sufenly, sufenlz, &
+       ndim )
     implicit none
     !-
     !- This subroutine generates the FE basis functions, weights and the
@@ -1099,7 +1099,7 @@ subroutine shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
     real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfenlx, scvfenly, scvfenlz
     integer, intent( in ) :: u_nloc
     real, dimension( u_nloc, scvngi ), intent( inout ) :: sufen, sufenslx, sufensly, &
-        sufenlx, sufenly, sufenlz
+         sufenlx, sufenly, sufenlz
     integer, intent( in ) :: ndim
     ! Local variables
     integer :: iloc, gi
@@ -1121,69 +1121,69 @@ subroutine shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
     tri_tet=.false.
 
     Cond_ShapeType: Select Case( cv_ele_type )
-        case( 1, 2 ) ! 1D
-            call fv_1d_quad( scvngi, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-                scvfenlx, scvfenly, scvfenlz ) ! For scalar fields
-            call fv_1d_quad( scvngi, u_nloc, sufen, sufenslx, sufensly, scvfeweigh, &
-                sufenlx, sufenly, sufenlz ) ! For U fields
+    case( 1, 2 ) ! 1D
+       call fv_1d_quad( scvngi, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
+            scvfenlx, scvfenly, scvfenlz ) ! For scalar fields
+       call fv_1d_quad( scvngi, u_nloc, sufen, sufenslx, sufensly, scvfeweigh, &
+            sufenlx, sufenly, sufenlz ) ! For U fields
 
-        case( 3, 4, 7, 8 ) ! Triangle and Tetrahedra
-            tri_tet=.true.
-            call suf_cv_tri_tet_shape( cv_ele_type, ndim, scvngi, cv_nloc, u_nloc, scvfeweigh, &
-                scvfen, scvfenlx, scvfenly, scvfenlz, scvfenslx, scvfensly,  &
-                sufen, sufenlx, sufenly, sufenlz, sufenslx, sufensly, &
-                cv_neiloc, cvfem_neiloc, ufem_neiloc )
-        case( 5 ) ! Bi-linear Quadrilateral
-            call fvquad( scvngi, cv_nloc, scvngi, &
-                m, scvfen, scvfenslx, &
-                scvfeweigh )
-            call fvquad( scvngi, u_nloc, scvngi, &
-                mu, sufen, sufenslx, &
-                scvfeweigh )
-            call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
-                scvfen, scvfenlx, scvfenly, scvfenlz, &
-                sufen, sufenlx, sufenly, sufenlz )
+    case( 3, 4, 7, 8 ) ! Triangle and Tetrahedra
+       tri_tet=.true.
+       call suf_cv_tri_tet_shape( cv_ele_type, ndim, scvngi, cv_nloc, u_nloc, scvfeweigh, &
+            scvfen, scvfenlx, scvfenly, scvfenlz, scvfenslx, scvfensly,  &
+            sufen, sufenlx, sufenly, sufenlz, sufenslx, sufensly, &
+            cv_neiloc, cvfem_neiloc, ufem_neiloc )
+    case( 5 ) ! Bi-linear Quadrilateral
+       call fvquad( scvngi, cv_nloc, scvngi, &
+            m, scvfen, scvfenslx, &
+            scvfeweigh )
+       call fvquad( scvngi, u_nloc, scvngi, &
+            mu, sufen, sufenslx, &
+            scvfeweigh )
+       call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
+            scvfen, scvfenlx, scvfenly, scvfenlz, &
+            sufen, sufenlx, sufenly, sufenlz )
 
-        case( 6 ) ! Tri-linear Quadrilateral
-            call fvqquad( scvngi, cv_nloc, scvngi, &
-                m, scvfen, scvfenslx, &
-                scvfeweigh )
-            call fvqquad( scvngi, u_nloc, scvngi, &
-                mu, sufen, sufenslx, &
-                scvfeweigh )
-            call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
-                scvfen, scvfenlx, scvfenly, scvfenlz, &
-                sufen, sufenlx, sufenly, sufenlz )
+    case( 6 ) ! Tri-linear Quadrilateral
+       call fvqquad( scvngi, cv_nloc, scvngi, &
+            m, scvfen, scvfenslx, &
+            scvfeweigh )
+       call fvqquad( scvngi, u_nloc, scvngi, &
+            mu, sufen, sufenslx, &
+            scvfeweigh )
+       call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
+            scvfen, scvfenlx, scvfenly, scvfenlz, &
+            sufen, sufenlx, sufenly, sufenlz )
 
-        case( 9 ) ! Tri-linear Hexahedron
-            call fvhex( scvngi, cv_nloc, scvngi, &
-                m, scvfen, scvfenslx, &
-                scvfensly, scvfeweigh )
-            call fvhex( scvngi, u_nloc, scvngi, &
-                mu, sufen, sufenslx, &
-                sufensly, scvfeweigh )
-            call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
-                scvfen, scvfenlx, scvfenly, scvfenlz, &
-                sufen, sufenlx, sufenly, sufenlz )
+    case( 9 ) ! Tri-linear Hexahedron
+       call fvhex( scvngi, cv_nloc, scvngi, &
+            m, scvfen, scvfenslx, &
+            scvfensly, scvfeweigh )
+       call fvhex( scvngi, u_nloc, scvngi, &
+            mu, sufen, sufenslx, &
+            sufensly, scvfeweigh )
+       call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
+            scvfen, scvfenlx, scvfenly, scvfenlz, &
+            sufen, sufenlx, sufenly, sufenlz )
 
-        case( 10 ) ! Tri-linear Hexahedron
-            call fvqhex( scvngi, cv_nloc, scvngi, &
-                m, scvfen, scvfenslx, &
-                scvfensly, scvfeweigh )
-            call fvqhex( scvngi, u_nloc, scvngi, &
-                mu, sufen, sufenslx, &
-                sufensly, scvfeweigh )
-            call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
-                scvfen, scvfenlx, scvfenly, scvfenlz, &
-                sufen, sufenlx, sufenly, sufenlz )
+    case( 10 ) ! Tri-linear Hexahedron
+       call fvqhex( scvngi, cv_nloc, scvngi, &
+            m, scvfen, scvfenslx, &
+            scvfensly, scvfeweigh )
+       call fvqhex( scvngi, u_nloc, scvngi, &
+            mu, sufen, sufenslx, &
+            sufensly, scvfeweigh )
+       call quad_nd_shape( ndim, cv_ele_type, scvngi, cv_nloc, u_nloc, cvn_dummy, cvweigh_dummy, &
+            scvfen, scvfenlx, scvfenly, scvfenlz, &
+            sufen, sufenlx, sufenly, sufenlz )
 
-        case default; FLExit( "Wrong integer for CV_ELE_TYPE" )
+    case default; FLExit( "Wrong integer for CV_ELE_TYPE" )
 
     end Select Cond_ShapeType
 
 
     if(.not.tri_tet) then
-        call volnei( cv_neiloc, cvfem_neiloc, cv_nloc, scvngi, cv_ele_type )
+       call volnei( cv_neiloc, cvfem_neiloc, cv_nloc, scvngi, cv_ele_type )
     end if
 
     ewrite(3,*)'cv_ele_type:', cv_ele_type
@@ -1191,59 +1191,59 @@ subroutine shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
 
     cv_on_face = .false. ; cvfem_on_face = .false.
     if ( ( cv_ele_type == 1 ) .or. ( cv_ele_type == 2 ) ) then ! 1D
-        do iloc = 1, cv_nloc
-            cv_on_face( iloc, iloc ) = .true.
-            cv_on_face( iloc, iloc + 1 ) = .true.
-        end do
-        cv_on_face = cvfem_on_face
+       do iloc = 1, cv_nloc
+          cv_on_face( iloc, iloc ) = .true.
+          cv_on_face( iloc, iloc + 1 ) = .true.
+       end do
+       cv_on_face = cvfem_on_face
     else
-        do iloc = 1, cv_nloc
-            do gi = 1, scvngi 
-                ! ewrite(3,*)'cv_neiloc, cvfem_on_face:', iloc, gi, &
-                !      cv_neiloc( iloc, gi ), cvfem_neiloc( iloc, gi )
-                if ( cv_neiloc( iloc, gi ) == -1 ) &
-                    cv_on_face( iloc, gi ) = .true.
-                if ( cvfem_neiloc( iloc, gi ) == -1 ) &
-                    cvfem_on_face( iloc, gi ) = .true. 
-            end do
-        end do
+       do iloc = 1, cv_nloc
+          do gi = 1, scvngi 
+             ! ewrite(3,*)'cv_neiloc, cvfem_on_face:', iloc, gi, &
+             !      cv_neiloc( iloc, gi ), cvfem_neiloc( iloc, gi )
+             if ( cv_neiloc( iloc, gi ) == -1 ) &
+                  cv_on_face( iloc, gi ) = .true.
+             if ( cvfem_neiloc( iloc, gi ) == -1 ) &
+                  cvfem_on_face( iloc, gi ) = .true. 
+          end do
+       end do
 
 
-        if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_nloc==10).and.(ndim==3)) then
-            ! Exterior faces :  1,3,6  ----James is this face the face with the 1st 6 surface quadrature points and the 1st 6 CV's.
-            !                     This is only the exterior surface faces on the triangle with 1,2,3,4,5,6
-            cvfem_on_face=.false.
-            cvfem_on_face(1:6,1:6)=.true.
-            ! Exterior faces :  1,3,10
-            cvfem_on_face(1,7:12)=.true.
-            cvfem_on_face(2,7:17)=.true.
-            cvfem_on_face(3,7:12)=.true.
-            cvfem_on_face(7,7:12)=.true.
-            cvfem_on_face(8,7:12)=.true.
-            cvfem_on_face(10,7:12)=.true.
-            ! Exterior faces :  1,6,10
-            cvfem_on_face(1,13:18)=.true.
-            cvfem_on_face(4,13:18)=.true.
-            cvfem_on_face(6,13:18)=.true.
-            cvfem_on_face(7,13:18)=.true.
-            cvfem_on_face(9,13:18)=.true.
-            cvfem_on_face(10,13:18)=.true.
-            ! Exterior faces :  3,6,10
-            cvfem_on_face(3,19:24)=.true.
-            cvfem_on_face(5,19:24)=.true.
-            cvfem_on_face(6,19:24)=.true.
-            cvfem_on_face(8,19:24)=.true.
-            cvfem_on_face(9,19:24)=.true.
-            cvfem_on_face(10,19:24)=.true.
-        endif
+       if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_nloc==10).and.(ndim==3)) then
+          ! Exterior faces :  1,3,6  ----James is this face the face with the 1st 6 surface quadrature points and the 1st 6 CV's.
+          !                     This is only the exterior surface faces on the triangle with 1,2,3,4,5,6
+          cvfem_on_face=.false.
+          cvfem_on_face(1:6,1:6)=.true.
+          ! Exterior faces :  1,3,10
+          cvfem_on_face(1,7:12)=.true.
+          cvfem_on_face(2,7:17)=.true.
+          cvfem_on_face(3,7:12)=.true.
+          cvfem_on_face(7,7:12)=.true.
+          cvfem_on_face(8,7:12)=.true.
+          cvfem_on_face(10,7:12)=.true.
+          ! Exterior faces :  1,6,10
+          cvfem_on_face(1,13:18)=.true.
+          cvfem_on_face(4,13:18)=.true.
+          cvfem_on_face(6,13:18)=.true.
+          cvfem_on_face(7,13:18)=.true.
+          cvfem_on_face(9,13:18)=.true.
+          cvfem_on_face(10,13:18)=.true.
+          ! Exterior faces :  3,6,10
+          cvfem_on_face(3,19:24)=.true.
+          cvfem_on_face(5,19:24)=.true.
+          cvfem_on_face(6,19:24)=.true.
+          cvfem_on_face(8,19:24)=.true.
+          cvfem_on_face(9,19:24)=.true.
+          cvfem_on_face(10,19:24)=.true.
+       endif
 
 
     end if
 
     do iloc = 1, u_nloc
-        do gi = 1, scvngi
-            ufem_on_face( iloc, gi ) = ( ufem_neiloc( iloc, gi ) == -1 )
-        end do
+       do gi = 1, scvngi
+          ufem_on_face( iloc, gi ) = ( ufem_neiloc( iloc, gi ) == -1 )
+       end do
     end do
 
     !do iloc = 1, cv_nloc
@@ -1259,11 +1259,11 @@ subroutine shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
     deallocate( cvfem_neiloc )
 
     return
-end subroutine shapesv_fem_plus
+  end subroutine shapesv_fem_plus
 
 
-SUBROUTINE FV_1D_QUAD( SCVNGI, CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
-    SCVFENLX, SCVFENLY, SCVFENLZ )
+  SUBROUTINE FV_1D_QUAD( SCVNGI, CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
+       SCVFENLX, SCVFENLY, SCVFENLZ )
     !
     !     - this subroutine generates the FE basis functions, weights and the
     !     - derivatives of the shape functions for a variety of elements.
@@ -1277,7 +1277,7 @@ SUBROUTINE FV_1D_QUAD( SCVNGI, CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH
 
     INTEGER, intent( in ) :: SCVNGI, CV_NLOC
     REAL, DIMENSION( CV_NLOC, SCVNGI ), intent( inout ) :: SCVFEN, SCVFENSLX, SCVFENSLY, &
-        SCVFENLX, SCVFENLY, SCVFENLZ
+         SCVFENLX, SCVFENLY, SCVFENLZ
     REAL, DIMENSION( SCVNGI ), intent( inout ) :: SCVFEWEIGH
     ! Local variables
     INTEGER, PARAMETER :: TWO = 2, THREE = 3, FOUR = 4
@@ -1293,29 +1293,29 @@ SUBROUTINE FV_1D_QUAD( SCVNGI, CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH
 
     SCVFEWEIGH = 1.0
     IF(SCVNGI==2) THEN
-        NCV_BOU = 2
-        LX(1) = -1.0
-        LX(2) = +1.0
+       NCV_BOU = 2
+       LX(1) = -1.0
+       LX(2) = +1.0
     ELSE IF(SCVNGI==3) THEN
-        NCV_BOU = 3
-        LX(1) = -1.0
-        LX(2) =  0.0
-        LX(3) = +1.0
+       NCV_BOU = 3
+       LX(1) = -1.0
+       LX(2) =  0.0
+       LX(3) = +1.0
     ELSE IF(SCVNGI==4) THEN
-        NCV_BOU = 4
-        LX(1) = -1.0
-        LX(2) = -0.5
-        LX(3) = +0.5
-        LX(4) = +1.0
+       NCV_BOU = 4
+       LX(1) = -1.0
+       LX(2) = -0.5
+       LX(3) = +0.5
+       LX(4) = +1.0
     ELSE IF(SCVNGI==5) THEN
-        NCV_BOU = 5
-        LX(1) = -1.0
-        LX(2) = -1.0 + 1./3.
-        LX(3) = +0.0
-        LX(4) = +1.0 - 1./3.
-        LX(5) = +1.0
+       NCV_BOU = 5
+       LX(1) = -1.0
+       LX(2) = -1.0 + 1./3.
+       LX(3) = +0.0
+       LX(4) = +1.0 - 1./3.
+       LX(5) = +1.0
     ELSE
-        FLAbort(" Wrong number of computed surface quadrature points for CV ")
+       FLAbort(" Wrong number of computed surface quadrature points for CV ")
     ENDIF
 
     DIFF=.TRUE.
@@ -1328,14 +1328,14 @@ SUBROUTINE FV_1D_QUAD( SCVNGI, CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH
 
     Loop_P2: DO GPOI = 1, NCV_BOU
 
-        Loop_ILX2: DO  ILOC = 1, CV_NLOC
-            SCVFEN( ILOC, GPOI )  = LAGRAN( NDIFF, LX( GPOI ), ILOC, CV_NLOC, CV_NODPOS )
-            SCVFENSLX( ILOC, GPOI ) = 1.0
-            SCVFENSLY( ILOC, GPOI ) = 0.0
-            SCVFENLX( ILOC, GPOI ) = LAGRAN( DIFF, LX( GPOI ), ILOC, CV_NLOC, CV_NODPOS )
-            SCVFENLY( ILOC, GPOI ) = 0.0
-            SCVFENLZ( ILOC, GPOI ) = 0.0
-        END DO Loop_ILX2
+       Loop_ILX2: DO  ILOC = 1, CV_NLOC
+          SCVFEN( ILOC, GPOI )  = LAGRAN( NDIFF, LX( GPOI ), ILOC, CV_NLOC, CV_NODPOS )
+          SCVFENSLX( ILOC, GPOI ) = 1.0
+          SCVFENSLY( ILOC, GPOI ) = 0.0
+          SCVFENLX( ILOC, GPOI ) = LAGRAN( DIFF, LX( GPOI ), ILOC, CV_NLOC, CV_NODPOS )
+          SCVFENLY( ILOC, GPOI ) = 0.0
+          SCVFENLZ( ILOC, GPOI ) = 0.0
+       END DO Loop_ILX2
 
     end do Loop_P2
 
@@ -1343,18 +1343,18 @@ SUBROUTINE FV_1D_QUAD( SCVNGI, CV_NLOC, SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH
     DEALLOCATE( CV_NODPOS )
     DEALLOCATE( WEI )
 
-END SUBROUTINE FV_1D_QUAD
+  END SUBROUTINE FV_1D_QUAD
 
 
 
 
-SUBROUTINE SHAPESV( ELETYP, NEILOC, FEM_NEILOC,  &
-    NGI, NLOC,   &
-    SVNGI, &
-    SVN, &
-    SVNLX, SVNLY,  &
-    SVWEIGH,    &
-    M, D1 )
+  SUBROUTINE SHAPESV( ELETYP, NEILOC, FEM_NEILOC,  &
+       NGI, NLOC,   &
+       SVNGI, &
+       SVN, &
+       SVNLX, SVNLY,  &
+       SVWEIGH,    &
+       M, D1 )
     !
     !     - this subroutine generates the FE basis functions, weights and the
     !     - derivatives of the shape functions for a variety of elements.
@@ -1385,90 +1385,90 @@ SUBROUTINE SHAPESV( ELETYP, NEILOC, FEM_NEILOC,  &
     !
     Cond_ShapeType: IF(ELETYP == 1) THEN ! calculate the shape functions on the control volume boundaries
 
-        Cond_Dimension: IF( D1 ) THEN
+       Cond_Dimension: IF( D1 ) THEN
 
-            SVWEIGH = 1.0
-            NQUAD = 2
-            LX(1) = 1./3.
-            LX(2) = 2./3.
+          SVWEIGH = 1.0
+          NQUAD = 2
+          LX(1) = 1./3.
+          LX(2) = 2./3.
 
-            Loop_P: DO P = 1, NQUAD
+          Loop_P: DO P = 1, NQUAD
 
-                GPOI = P
-                XN( 1 ) = 0.5 * LX( P ) * ( LX( P ) - 1. )
-                XN( 2 ) = 1. - LX( P ) * LX( P )
-                XN( 3 ) = 0.5 * LX( P ) * ( LX( P ) + 1. )
-                DXN( 1 ) = 0.5 * ( 2. * LX( P ) - 1. )
-                DXN( 2 ) = - 2. * LX( P )
-                DXN( 3 ) = 0.5 * ( 2. * LX( P ) + 1. )
+             GPOI = P
+             XN( 1 ) = 0.5 * LX( P ) * ( LX( P ) - 1. )
+             XN( 2 ) = 1. - LX( P ) * LX( P )
+             XN( 3 ) = 0.5 * LX( P ) * ( LX( P ) + 1. )
+             DXN( 1 ) = 0.5 * ( 2. * LX( P ) - 1. )
+             DXN( 2 ) = - 2. * LX( P )
+             DXN( 3 ) = 0.5 * ( 2. * LX( P ) + 1. )
 
-                Loop_ILX: DO  ILX = 1, THREE
-                    NL = ILX
-                    SVN( NL, GPOI )  = XN( ILX )
-                    SVNLX( NL, GPOI ) = DXN( ILX )
-                    SVNLY( NL, GPOI ) = 0.0
-                END DO Loop_ILX
+             Loop_ILX: DO  ILX = 1, THREE
+                NL = ILX
+                SVN( NL, GPOI )  = XN( ILX )
+                SVNLX( NL, GPOI ) = DXN( ILX )
+                SVNLY( NL, GPOI ) = 0.0
+             END DO Loop_ILX
 
-            END DO Loop_P
+          END DO Loop_P
 
-        ELSE
+       ELSE
 
-            IF(ELETYP == 1) THEN
+          IF(ELETYP == 1) THEN
 
-                CALL FVQUAD( NGI,    NLOC, SVNGI,&
-                    M,      SVN,  SVNLX,&
-                    SVWEIGH              )
+             CALL FVQUAD( NGI,    NLOC, SVNGI,&
+                  M,      SVN,  SVNLX,&
+                  SVWEIGH              )
 
-            ELSE IF(ELETYP == 2) THEN
+          ELSE IF(ELETYP == 2) THEN
 
-                CALL FVTRI( NGI,    NLOC, SVNGI,&
-                    M,      SVN,  SVNLX,&
-                    SVWEIGH              )
+             CALL FVTRI( NGI,    NLOC, SVNGI,&
+                  M,      SVN,  SVNLX,&
+                  SVWEIGH              )
 
-            ELSE IF(ELETYP == 3) THEN
+          ELSE IF(ELETYP == 3) THEN
 
-                CALL FVHEX( NGI,    NLOC,    SVNGI,&
-                    M,      SVN,     SVNLX, &
-                    SVNLY,  SVWEIGH         )
+             CALL FVHEX( NGI,    NLOC,    SVNGI,&
+                  M,      SVN,     SVNLX, &
+                  SVNLY,  SVWEIGH         )
 
-            ELSE IF(ELETYP == 4) THEN
+          ELSE IF(ELETYP == 4) THEN
 
-                CALL FVTET( NGI,    NLOC,    SVNGI,&
-                    M,      SVN,     SVNLX, &
-                    SVNLY,  SVWEIGH         )
+             CALL FVTET( NGI,    NLOC,    SVNGI,&
+                  M,      SVN,     SVNLX, &
+                  SVNLY,  SVWEIGH         )
 
-            ELSE IF(ELETYP == 5) THEN
+          ELSE IF(ELETYP == 5) THEN
 
-                CALL FVQQUAD(  NGI,    NLOC,    SVNGI,&
-                    M,      SVN,     SVNLX, &
-                    SVWEIGH                 )
+             CALL FVQQUAD(  NGI,    NLOC,    SVNGI,&
+                  M,      SVN,     SVNLX, &
+                  SVWEIGH                 )
 
-            ELSE IF(ELETYP == 6) THEN
+          ELSE IF(ELETYP == 6) THEN
 
-                CALL FVQHEX( NGI,   NLOC,   SVNGI,&
-                    M,     SVN,    SVNLX,&
-                    SVNLY, SVWEIGH        )
+             CALL FVQHEX( NGI,   NLOC,   SVNGI,&
+                  M,     SVN,    SVNLX,&
+                  SVNLY, SVWEIGH        )
 
-            ELSE IF(ELETYP == 7) THEN ! quadratic triangles
+          ELSE IF(ELETYP == 7) THEN ! quadratic triangles
 
-                CALL FVQTRI( NGI,    NLOC, SVNGI,&
-                    M,      SVN,  SVNLX,  &
-                    SVWEIGH              )
+             CALL FVQTRI( NGI,    NLOC, SVNGI,&
+                  M,      SVN,  SVNLX,  &
+                  SVWEIGH              )
 
-            ELSE IF(ELETYP == 8) THEN
+          ELSE IF(ELETYP == 8) THEN
 
-                CALL FVQTET( NGI,   NLOC,   SVNGI,&
-                    M,     SVN,    SVNLX,&
-                    SVNLY, SVWEIGH        )
+             CALL FVQTET( NGI,   NLOC,   SVNGI,&
+                  M,     SVN,    SVNLX,&
+                  SVNLY, SVWEIGH        )
 
-            END IF
+          END IF
 
 
-        ENDIF Cond_Dimension
+       ENDIF Cond_Dimension
 
     ELSE
 
-        EWRITE(3,*)'NOT GOT THIS YET'
+       EWRITE(3,*)'NOT GOT THIS YET'
 
     END IF Cond_ShapeType
 
@@ -1479,13 +1479,13 @@ SUBROUTINE SHAPESV( ELETYP, NEILOC, FEM_NEILOC,  &
     DEALLOCATE( DXN )
 
     RETURN
-END SUBROUTINE SHAPESV
+  END SUBROUTINE SHAPESV
 
 
 
-SUBROUTINE FVQUAD( NGI,    NLOC,    SVNGI,&
-    M,      SVN,     SVNLX, &
-    SVWEIGH                 )
+  SUBROUTINE FVQUAD( NGI,    NLOC,    SVNGI,&
+       M,      SVN,     SVNLX, &
+       SVWEIGH                 )
     !     --------------------------------------------
     !
     !     - this routine generates the shape functions associated
@@ -1622,63 +1622,63 @@ SUBROUTINE FVQUAD( NGI,    NLOC,    SVNGI,&
     !     - points on the faces of the subcells.
     !
     do ILOC = 1, NLOC! Was loop
-        !
-        do IFACE = 1, NFACE! Was loop
-            !     
-            do GJ = 1, FNGI! Was loop 
+       !
+       do IFACE = 1, NFACE! Was loop
+          !     
+          do GJ = 1, FNGI! Was loop 
+             !
+             GI = IFACE
+             !
+             do ICOORD = 1, NCOORD! Was loop
                 !
-                GI = IFACE
+                POS(ICOORD)    = 0.0
+                DPDXI(ICOORD)  = 0.0
+                DPDETA(ICOORD) = 0.0
                 !
-                do ICOORD = 1, NCOORD! Was loop
-                    !
-                    POS(ICOORD)    = 0.0
-                    DPDXI(ICOORD)  = 0.0
-                    DPDETA(ICOORD) = 0.0
-                    !
-                    do JLOC = 1, FNLOC! Was loop
-                        !
-                        POS(ICOORD) = POS(ICOORD)&
-                            &                    + CORN(IFACE,ICOORD,JLOC)&
-                            &                    *0.5*(1.+XIP(JLOC)*XIGP(GJ))
-                        !
-                        DPDXI(ICOORD) = DPDXI(ICOORD)&
-                            &                    + CORN(IFACE,ICOORD,JLOC)&
-                            &                    *0.5*XIP(JLOC)
-                       !
-                    END DO
+                do JLOC = 1, FNLOC! Was loop
+                   !
+                   POS(ICOORD) = POS(ICOORD)&
+                        &                    + CORN(IFACE,ICOORD,JLOC)&
+                        &                    *0.5*(1.+XIP(JLOC)*XIGP(GJ))
+                   !
+                   DPDXI(ICOORD) = DPDXI(ICOORD)&
+                        &                    + CORN(IFACE,ICOORD,JLOC)&
+                        &                    *0.5*XIP(JLOC)
                    !
                 END DO
                 !
-                SVN(ILOC,GI) = 0.25*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )
-                !
-                SVNLX(ILOC,GI) = 0.25*XI(ILOC)*DPDXI(1)&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              + 0.25*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *ETA(ILOC)*DPDXI(2)
-               !     
-            END DO
-           !
-        END DO
+             END DO
+             !
+             SVN(ILOC,GI) = 0.25*( 1.0 + XI(ILOC)*POS(1) )&
+                  &              *( 1.0 + ETA(ILOC)*POS(2) )
+             !
+             SVNLX(ILOC,GI) = 0.25*XI(ILOC)*DPDXI(1)&
+                  &              *( 1.0 + ETA(ILOC)*POS(2) )&
+                  &              + 0.25*( 1.0 + XI(ILOC)*POS(1) )&
+                  &              *ETA(ILOC)*DPDXI(2)
+             !     
+          END DO
+          !
+       END DO
        !
     END DO
     !
     !     - set the weights for the surface integration
     !
     do GI = 1, SVNGI! Was loop
-        !
-        SVWEIGH(GI) = 2.0
+       !
+       SVWEIGH(GI) = 2.0
        !
     END DO
+    !
+  END SUBROUTINE FVQUAD
   !
-END SUBROUTINE FVQUAD
-!
-!
-!
-!
-SUBROUTINE FVTRI( NGI,    NLOC, SVNGI,&
-    M,      SVN,  SVNLX,  &
-    SVWEIGH              )
+  !
+  !
+  !
+  SUBROUTINE FVTRI( NGI,    NLOC, SVNGI,&
+       M,      SVN,  SVNLX,  &
+       SVWEIGH              )
     !     ----------------------------------------
     !
     !     - this routine generates the shape functions associated
@@ -1792,55 +1792,55 @@ SUBROUTINE FVTRI( NGI,    NLOC, SVNGI,&
     !     - points on the faces of the subcells.
     !     
     do ILOC = 1, NLOC! Was loop
-        !
-        do IFACE = 1, NFACE! Was loop
-            !     
-            do GJ = 1, FNGI! Was loop 
+       !
+       do IFACE = 1, NFACE! Was loop
+          !     
+          do GJ = 1, FNGI! Was loop 
+             !
+             GI = IFACE
+             !
+             do ICOORD = 1, NCOORD! Was loop
                 !
-                GI = IFACE
+                POS(ICOORD)    = 0.0
+                DPDXI(ICOORD)  = 0.0
                 !
-                do ICOORD = 1, NCOORD! Was loop
-                    !
-                    POS(ICOORD)    = 0.0
-                    DPDXI(ICOORD)  = 0.0
-                    !
-                    do JLOC = 1, FNLOC! Was loop
-                        !
-                        POS(ICOORD) = POS(ICOORD)&
-                            + CORN(IFACE,ICOORD,JLOC)&
-                            *0.5*(1.+XI(JLOC)*XIGP(GJ))
-                        !
-                        DPDXI(ICOORD) = DPDXI(ICOORD)&
-                            + CORN(IFACE,ICOORD,JLOC)&
-                            *0.5*XI(JLOC)
-                       !
-                    END DO
+                do JLOC = 1, FNLOC! Was loop
+                   !
+                   POS(ICOORD) = POS(ICOORD)&
+                        + CORN(IFACE,ICOORD,JLOC)&
+                        *0.5*(1.+XI(JLOC)*XIGP(GJ))
+                   !
+                   DPDXI(ICOORD) = DPDXI(ICOORD)&
+                        + CORN(IFACE,ICOORD,JLOC)&
+                        *0.5*XI(JLOC)
                    !
                 END DO
                 !
-                SVN(ILOC,GI)   = POS(ILOC)
-                SVNLX(ILOC,GI) = DPDXI(ILOC)
-               !     
-            END DO
-           !
-        END DO
+             END DO
+             !
+             SVN(ILOC,GI)   = POS(ILOC)
+             SVNLX(ILOC,GI) = DPDXI(ILOC)
+             !     
+          END DO
+          !
+       END DO
        !
     END DO
     !
     !     - set the weights for the surface integration
     !
     do GI = 1, SVNGI! Was loop
-        !
-        SVWEIGH(GI) = 2.0
+       !
+       SVWEIGH(GI) = 2.0
        !
     END DO
-  !
-END SUBROUTINE FVTRI
+    !
+  END SUBROUTINE FVTRI
 
-SUBROUTINE FVHEX( NGI,    NLOC,    SVNGI,&
+  SUBROUTINE FVHEX( NGI,    NLOC,    SVNGI,&
                                 !     - REALS
-         M,      SVN,     SVNLX, &
-         SVNLY,  SVWEIGH          )
+       M,      SVN,     SVNLX, &
+       SVNLY,  SVWEIGH          )
     !     --------------------------------------------
     !
     !     - this routine generates the shape functions associated
@@ -2190,67 +2190,67 @@ SUBROUTINE FVHEX( NGI,    NLOC,    SVNGI,&
     !     - points on the faces of the subcells.
     !
     do ILOC = 1, NLOC! Was loop
-        !
-        do IFACE = 1, NFACE! Was loop
-            !     
-            do GJ = 1, FNGI! Was loop 
+       !
+       do IFACE = 1, NFACE! Was loop
+          !     
+          do GJ = 1, FNGI! Was loop 
+             !
+             GI = IFACE
+             !
+             do ICOORD = 1, NCOORD! Was loop
                 !
-                GI = IFACE
+                POS(ICOORD)    = 0.0
+                DPDXI(ICOORD)  = 0.0
+                DPDETA(ICOORD) = 0.0
                 !
-                do ICOORD = 1, NCOORD! Was loop
-                    !
-                    POS(ICOORD)    = 0.0
-                    DPDXI(ICOORD)  = 0.0
-                    DPDETA(ICOORD) = 0.0
-                    !
-                    do JLOC = 1, FNLOC! Was loop
-                        !
-                        POS(ICOORD) = POS(ICOORD)&
-                            &                    + CORN(IFACE,ICOORD,JLOC)&
-                            &                    *0.25*(1.+XIP(JLOC)*XIGP(GJ))&
-                            &                    *(1.+ETAP(JLOC)*ETAGP(GJ))
-                        !
-                        DPDXI(ICOORD) = DPDXI(ICOORD)&
-                            &                    + CORN(IFACE,ICOORD,JLOC)&
-                            &                    *0.25*XIP(JLOC)&
-                            &                    *(1.+ETAP(JLOC)*ETAGP(GJ))
-                        !
-                        DPDETA(ICOORD) = DPDETA(ICOORD)&
-                            &                    + CORN(IFACE,ICOORD,JLOC)&
-                            &                    *0.25*(1.+XIP(JLOC)*XIGP(GJ))&
-                            &                    *ETAP(JLOC)
-                       !
-                    END DO
+                do JLOC = 1, FNLOC! Was loop
+                   !
+                   POS(ICOORD) = POS(ICOORD)&
+                        &                    + CORN(IFACE,ICOORD,JLOC)&
+                        &                    *0.25*(1.+XIP(JLOC)*XIGP(GJ))&
+                        &                    *(1.+ETAP(JLOC)*ETAGP(GJ))
+                   !
+                   DPDXI(ICOORD) = DPDXI(ICOORD)&
+                        &                    + CORN(IFACE,ICOORD,JLOC)&
+                        &                    *0.25*XIP(JLOC)&
+                        &                    *(1.+ETAP(JLOC)*ETAGP(GJ))
+                   !
+                   DPDETA(ICOORD) = DPDETA(ICOORD)&
+                        &                    + CORN(IFACE,ICOORD,JLOC)&
+                        &                    *0.25*(1.+XIP(JLOC)*XIGP(GJ))&
+                        &                    *ETAP(JLOC)
                    !
                 END DO
                 !
-                SVN(ILOC,GI) = 0.125*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              *( 1.0 + ZETA(ILOC)*POS(3) )
-                !
-                SVNLX(ILOC,GI) = 0.125*XI(ILOC)*DPDXI(1)&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              *( 1.0 + ZETA(ILOC)*POS(3) )&
-                    &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *ETA(ILOC)*DPDXI(2)&
-                    &              *( 1.0 + ZETA(ILOC)*POS(3) )&
-                    &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              *ZETA(ILOC)*DPDXI(3)
-                !
-                SVNLY(ILOC,GI) = 0.125*XI(ILOC)*DPDETA(1)&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              *( 1.0 + ZETA(ILOC)*POS(3) )&
-                    &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *ETA(ILOC)*DPDETA(2)&
-                    &              *( 1.0 + ZETA(ILOC)*POS(3) )&
-                    &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
-                    &              *( 1.0 + ETA(ILOC)*POS(2) )&
-                    &              *ZETA(ILOC)*DPDETA(3)
-               !     
-            END DO
-           !
-        END DO
+             END DO
+             !
+             SVN(ILOC,GI) = 0.125*( 1.0 + XI(ILOC)*POS(1) )&
+                  &              *( 1.0 + ETA(ILOC)*POS(2) )&
+                  &              *( 1.0 + ZETA(ILOC)*POS(3) )
+             !
+             SVNLX(ILOC,GI) = 0.125*XI(ILOC)*DPDXI(1)&
+                  &              *( 1.0 + ETA(ILOC)*POS(2) )&
+                  &              *( 1.0 + ZETA(ILOC)*POS(3) )&
+                  &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
+                  &              *ETA(ILOC)*DPDXI(2)&
+                  &              *( 1.0 + ZETA(ILOC)*POS(3) )&
+                  &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
+                  &              *( 1.0 + ETA(ILOC)*POS(2) )&
+                  &              *ZETA(ILOC)*DPDXI(3)
+             !
+             SVNLY(ILOC,GI) = 0.125*XI(ILOC)*DPDETA(1)&
+                  &              *( 1.0 + ETA(ILOC)*POS(2) )&
+                  &              *( 1.0 + ZETA(ILOC)*POS(3) )&
+                  &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
+                  &              *ETA(ILOC)*DPDETA(2)&
+                  &              *( 1.0 + ZETA(ILOC)*POS(3) )&
+                  &              + 0.125*( 1.0 + XI(ILOC)*POS(1) )&
+                  &              *( 1.0 + ETA(ILOC)*POS(2) )&
+                  &              *ZETA(ILOC)*DPDETA(3)
+             !     
+          END DO
+          !
+       END DO
        !
     END DO
     !
@@ -2259,16 +2259,16 @@ SUBROUTINE FVHEX( NGI,    NLOC,    SVNGI,&
     !     - two 1-D weights for integration over a 2-D quadrilateral.
     !
     do GI = 1, SVNGI! Was loop
-        !
-        SVWEIGH(GI) = 4.0
+       !
+       SVWEIGH(GI) = 4.0
        !
     END DO
+    !
+  END SUBROUTINE FVHEX
   !
-END SUBROUTINE FVHEX
-!
-SUBROUTINE FVTET( NGI,   NLOC, SVNGI,&
-    M,     SVN,  SVNLX,&
-    SVNLY, SVWEIGH      )
+  SUBROUTINE FVTET( NGI,   NLOC, SVNGI,&
+       M,     SVN,  SVNLX,&
+       SVNLY, SVWEIGH      )
     !     ---------------------------------------
     !
     !     - this routine generates the shape functions associated
@@ -2325,10 +2325,10 @@ SUBROUTINE FVTET( NGI,   NLOC, SVNGI,&
     M=0.0
     COUNT = 1
     do ILOC = 1, NLOC! Was loop
-        do GI = COUNT, COUNT+7! Was loop
-            M(ILOC,GI) = 1.0
-        END DO
-        COUNT = COUNT + 8
+       do GI = COUNT, COUNT+7! Was loop
+          M(ILOC,GI) = 1.0
+       END DO
+       COUNT = COUNT + 8
     END DO
 
     !
@@ -2497,65 +2497,65 @@ SUBROUTINE FVTET( NGI,   NLOC, SVNGI,&
     !     - points on the faces of the subcells.
     !
     do ILOC = 1, NLOC! Was loop
-        !
-        do IFACE = 1, NFACE! Was loop
-            !     
-            do GJ = 1, FNGI! Was loop 
+       !
+       do IFACE = 1, NFACE! Was loop
+          !     
+          do GJ = 1, FNGI! Was loop 
+             !
+             GI = IFACE
+             !
+             do ICOORD = 1, NCOORD! Was loop
                 !
-                GI = IFACE
+                POS(ICOORD)    = 0.0
+                DPDXI(ICOORD)  = 0.0
+                DPDETA(ICOORD) = 0.0
                 !
-                do ICOORD = 1, NCOORD! Was loop
-                    !
-                    POS(ICOORD)    = 0.0
-                    DPDXI(ICOORD)  = 0.0
-                    DPDETA(ICOORD) = 0.0
-                    !
-                    do JLOC = 1, FNLOC! Was loop
-                        !
-                        POS(ICOORD) = POS(ICOORD)&
-                            &                    + CORN(IFACE,ICOORD,JLOC)&
-                            &                    *0.25*(1.+XI(JLOC)*XIGP(GJ))&
-                            &                    *(1.+ETA(JLOC)*ETAGP(GJ))
-                        !
-                        DPDXI(ICOORD) = DPDXI(ICOORD)&
-                            &                    + CORN(IFACE,ICOORD,JLOC)&
-                            &                    *0.25*XI(JLOC)&
-                            &                    *(1.+ETA(JLOC)*ETAGP(GJ))
-                        !
-                        DPDETA(ICOORD) = DPDETA(ICOORD)&
-                            &                    + CORN(IFACE,ICOORD,JLOC)&
-                            &                    *0.25*(1.+XI(JLOC)*XIGP(GJ))&
-                            &                    *ETA(JLOC)
-                       !
-                    END DO
+                do JLOC = 1, FNLOC! Was loop
+                   !
+                   POS(ICOORD) = POS(ICOORD)&
+                        &                    + CORN(IFACE,ICOORD,JLOC)&
+                        &                    *0.25*(1.+XI(JLOC)*XIGP(GJ))&
+                        &                    *(1.+ETA(JLOC)*ETAGP(GJ))
+                   !
+                   DPDXI(ICOORD) = DPDXI(ICOORD)&
+                        &                    + CORN(IFACE,ICOORD,JLOC)&
+                        &                    *0.25*XI(JLOC)&
+                        &                    *(1.+ETA(JLOC)*ETAGP(GJ))
+                   !
+                   DPDETA(ICOORD) = DPDETA(ICOORD)&
+                        &                    + CORN(IFACE,ICOORD,JLOC)&
+                        &                    *0.25*(1.+XI(JLOC)*XIGP(GJ))&
+                        &                    *ETA(JLOC)
                    !
                 END DO
                 !
-                SVN(ILOC,GI)   = POS(ILOC)
-                SVNLX(ILOC,GI) = DPDXI(ILOC)
-                SVNLY(ILOC,GI) = DPDETA(ILOC)
-               !     
-            END DO
-           !
-        END DO
+             END DO
+             !
+             SVN(ILOC,GI)   = POS(ILOC)
+             SVNLX(ILOC,GI) = DPDXI(ILOC)
+             SVNLY(ILOC,GI) = DPDETA(ILOC)
+             !     
+          END DO
+          !
+       END DO
        !
     END DO
     !
     !     - set the weights for the quadrature points
     !
     do GI = 1, SVNGI! Was loop
-        !
-        SVWEIGH(GI) = 4.0
+       !
+       SVWEIGH(GI) = 4.0
        !
     END DO
+    !
+  END SUBROUTINE FVTET
   !
-END SUBROUTINE FVTET
-!
-!
-SUBROUTINE FVQQUAD( NGI,    NLOC,    SVNGI,&
-                           !     - REALS
-    M,      SVN,     SVNLX, &
-    SVWEIGH                 )
+  !
+  SUBROUTINE FVQQUAD( NGI,    NLOC,    SVNGI,&
+                                !     - REALS
+       M,      SVN,     SVNLX, &
+       SVWEIGH                 )
     !     ---------------------------------------------
     !
     !     - this routine generates the shape functions associated
@@ -2612,14 +2612,14 @@ SUBROUTINE FVQQUAD( NGI,    NLOC,    SVNGI,&
     COUNT = 1
     !     
     do ILOC = 1, NLOC! Was loop
-        !
-        do GI = COUNT, COUNT + 3! Was loop
-            !     
-            M(ILOC,GI) = 1.0
-           !
-        END DO
-        !
-        COUNT = COUNT + 4
+       !
+       do GI = COUNT, COUNT + 3! Was loop
+          !     
+          M(ILOC,GI) = 1.0
+          !
+       END DO
+       !
+       COUNT = COUNT + 4
        !
     END DO
     !
@@ -2743,83 +2743,83 @@ SUBROUTINE FVQQUAD( NGI,    NLOC,    SVNGI,&
     !     - points on the faces of the subcells.
     !
     do IFACE = 1, NFACE! Was loop
-        !
-        do GJ = 1, FNGI! Was loop
-            !     
-            GI = (IFACE-1)*FNGI+GJ
-            !     
-            do ICOORD = 1, NCOORD! Was loop 
+       !
+       do GJ = 1, FNGI! Was loop
+          !     
+          GI = (IFACE-1)*FNGI+GJ
+          !     
+          do ICOORD = 1, NCOORD! Was loop 
+             !
+             POS(ICOORD)    = 0.0
+             DPDXI(ICOORD)  = 0.0
+             DPDETA(ICOORD) = 0.0
+             !
+             do JLOC = 1, FNLOC! Was loop
                 !
-                POS(ICOORD)    = 0.0
-                DPDXI(ICOORD)  = 0.0
-                DPDETA(ICOORD) = 0.0
+                POS(ICOORD) = POS(ICOORD)&
+                     &                 + CORN(IFACE,ICOORD,JLOC)&
+                     &                 *0.5*(1.+XIP(JLOC)*XIGP(GJ))
                 !
-                do JLOC = 1, FNLOC! Was loop
-                    !
-                    POS(ICOORD) = POS(ICOORD)&
-                        &                 + CORN(IFACE,ICOORD,JLOC)&
-                        &                 *0.5*(1.+XIP(JLOC)*XIGP(GJ))
-                    !
-                    DPDXI(ICOORD) = DPDXI(ICOORD)&
-                        &                 + CORN(IFACE,ICOORD,JLOC)&
-                        &                 *0.5*XIP(JLOC)
-                   !
-                END DO
-               !     
-            END DO
-            !     
-            XI  = POS(1)
-            ETA = POS(2)
-            !     
-            LIJXI(1)   =  0.5*XI*(XI-1.0)
-            LIJXI(2)   =  1.0-XI*XI
-            LIJXI(3)   =  0.5*XI*(XI+1.0)
-            !     
-            LIJETA(1)  =  0.5*ETA*(ETA-1.0)
-            LIJETA(2)  =  1.0-ETA*ETA
-            LIJETA(3)  =  0.5*ETA*(ETA+1.0)
-            !     
-            DLIJXIDXI(1) =  0.5*(2.0*XI-1.0)*DPDXI(1)
-            DLIJXIDXI(2) = -2.0*XI*DPDXI(1)
-            DLIJXIDXI(3) =  0.5*(2.0*XI+1.0)*DPDXI(1)
-            !     
-            DLIJETADXI(1) =  0.5*(2.0*ETA-1.0)*DPDXI(2)
-            DLIJETADXI(2) = -2.0*ETA*DPDXI(2)
-            DLIJETADXI(3) =  0.5*(2.0*ETA+1.0)*DPDXI(2)
-            !     
-            do I = 1, 3! Was loop 
+                DPDXI(ICOORD) = DPDXI(ICOORD)&
+                     &                 + CORN(IFACE,ICOORD,JLOC)&
+                     &                 *0.5*XIP(JLOC)
                 !
-                do J = 1, 3! Was loop
-                    !
-                    ILOC = I+(J-1)*3
-                    !
-                    SVN(ILOC,GI) = LIJXI(I)*LIJETA(J)
-                    !
-                    SVNLX(ILOC,GI) = LIJXI(I)*DLIJETADXI(J)&
-                        &                 + LIJETA(J)*DLIJXIDXI(I)
-                   !
-                END DO
-               !     
-            END DO
-           !
-        END DO
+             END DO
+             !     
+          END DO
+          !     
+          XI  = POS(1)
+          ETA = POS(2)
+          !     
+          LIJXI(1)   =  0.5*XI*(XI-1.0)
+          LIJXI(2)   =  1.0-XI*XI
+          LIJXI(3)   =  0.5*XI*(XI+1.0)
+          !     
+          LIJETA(1)  =  0.5*ETA*(ETA-1.0)
+          LIJETA(2)  =  1.0-ETA*ETA
+          LIJETA(3)  =  0.5*ETA*(ETA+1.0)
+          !     
+          DLIJXIDXI(1) =  0.5*(2.0*XI-1.0)*DPDXI(1)
+          DLIJXIDXI(2) = -2.0*XI*DPDXI(1)
+          DLIJXIDXI(3) =  0.5*(2.0*XI+1.0)*DPDXI(1)
+          !     
+          DLIJETADXI(1) =  0.5*(2.0*ETA-1.0)*DPDXI(2)
+          DLIJETADXI(2) = -2.0*ETA*DPDXI(2)
+          DLIJETADXI(3) =  0.5*(2.0*ETA+1.0)*DPDXI(2)
+          !     
+          do I = 1, 3! Was loop 
+             !
+             do J = 1, 3! Was loop
+                !
+                ILOC = I+(J-1)*3
+                !
+                SVN(ILOC,GI) = LIJXI(I)*LIJETA(J)
+                !
+                SVNLX(ILOC,GI) = LIJXI(I)*DLIJETADXI(J)&
+                     &                 + LIJETA(J)*DLIJXIDXI(I)
+                !
+             END DO
+             !     
+          END DO
+          !
+       END DO
        !
     END DO
     !
     !     - set the weights for the surface integration
     !
     do GI = 1, SVNGI! Was loop
-        !
-        SVWEIGH(GI) = 1.0
+       !
+       SVWEIGH(GI) = 1.0
        !
     END DO
-  !
-END SUBROUTINE FVQQUAD
+    !
+  END SUBROUTINE FVQQUAD
 
-SUBROUTINE FVQHEX( NGI,   NLOC,   SVNGI,&
-                           !     - REALS
-    M,     SVN,    SVNLX,&
-    SVNLY, SVWEIGH        )
+  SUBROUTINE FVQHEX( NGI,   NLOC,   SVNGI,&
+                                !     - REALS
+       M,     SVN,    SVNLX,&
+       SVNLY, SVWEIGH        )
     !     ------------------------------------------
     !
     !     - this routine generates the shape functions associated
@@ -3908,120 +3908,120 @@ SUBROUTINE FVQHEX( NGI,   NLOC,   SVNGI,&
     !     - points on the faces of the subcells.
     !
     do IFACE = 1, NFACE! Was loop
-        !
-        do GJ = 1, FNGI! Was loop
-            !     
-            GI = (IFACE-1)*FNGI+GJ
-            !     
-            do ICOORD = 1, NCOORD! Was loop 
+       !
+       do GJ = 1, FNGI! Was loop
+          !     
+          GI = (IFACE-1)*FNGI+GJ
+          !     
+          do ICOORD = 1, NCOORD! Was loop 
+             !
+             POS(ICOORD)    = 0.0
+             DPDXI(ICOORD)  = 0.0
+             DPDETA(ICOORD) = 0.0
+             !
+             do JLOC = 1, FNLOC! Was loop
                 !
-                POS(ICOORD)    = 0.0
-                DPDXI(ICOORD)  = 0.0
-                DPDETA(ICOORD) = 0.0
+                POS(ICOORD) = POS(ICOORD)&
+                     &                 + CORN(IFACE,ICOORD,JLOC)&
+                     &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
+                     &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
                 !
-                do JLOC = 1, FNLOC! Was loop
-                    !
-                    POS(ICOORD) = POS(ICOORD)&
-                        &                 + CORN(IFACE,ICOORD,JLOC)&
-                        &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
-                        &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
-                    !
-                    DPDXI(ICOORD) = DPDXI(ICOORD)&
-                        &                 + CORN(IFACE,ICOORD,JLOC)&
-                        &                 *0.25*XIP(JLOC)&
-                        &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
-                    !
-                    DPDETA(ICOORD) = DPDETA(ICOORD)&
-                        &                 + CORN(IFACE,ICOORD,JLOC)&
-                        &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
-                        &                 *ETAP(JLOC)
+                DPDXI(ICOORD) = DPDXI(ICOORD)&
+                     &                 + CORN(IFACE,ICOORD,JLOC)&
+                     &                 *0.25*XIP(JLOC)&
+                     &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
+                !
+                DPDETA(ICOORD) = DPDETA(ICOORD)&
+                     &                 + CORN(IFACE,ICOORD,JLOC)&
+                     &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
+                     &                 *ETAP(JLOC)
+                !
+             END DO
+             !     
+          END DO
+          !     
+          XI   = POS(1)
+          ETA  = POS(2)
+          ZETA = POS(3)
+          !     
+          LIJXI(1)   =  0.5*XI*(XI-1.0)
+          LIJXI(2)   =  1.0-XI*XI
+          LIJXI(3)   =  0.5*XI*(XI+1.0)
+          !     
+          LIJETA(1)  =  0.5*ETA*(ETA-1.0)
+          LIJETA(2)  =  1.0-ETA*ETA
+          LIJETA(3)  =  0.5*ETA*(ETA+1.0)
+          !     
+          LIJZETA(1) =  0.5*ZETA*(ZETA-1.0)
+          LIJZETA(2) =  1.0-ZETA*ZETA
+          LIJZETA(3) =  0.5*ZETA*(ZETA+1.0)
+          !     
+          DLIJXIDXI(1)   =  0.5*(2.0*XI-1.0)*DPDXI(1)
+          DLIJXIDXI(2)   = -2.0*XI*DPDXI(1)
+          DLIJXIDXI(3)   =  0.5*(2.0*XI+1.0)*DPDXI(1)
+          !     
+          DLIJETADXI(1)  =  0.5*(2.0*ETA-1.0)*DPDXI(2)
+          DLIJETADXI(2)  = -2.0*ETA*DPDXI(2)
+          DLIJETADXI(3)  =  0.5*(2.0*ETA+1.0)*DPDXI(2)
+          !     
+          DLIJZETADXI(1) =  0.5*(2.0*ZETA-1.0)*DPDXI(3)
+          DLIJZETADXI(2) = -2.0*ZETA*DPDXI(3)
+          DLIJZETADXI(3) =  0.5*(2.0*ZETA+1.0)*DPDXI(3)
+          !     
+          DLIJXIDETA(1)  =  0.5*(2.0*XI-1.0)*DPDETA(1)
+          DLIJXIDETA(2)  = -2.0*XI*DPDETA(1)
+          DLIJXIDETA(3)  =  0.5*(2.0*XI+1.0)*DPDETA(1)
+          !     
+          DLIJETADETA(1) =  0.5*(2.0*ETA-1.0)*DPDETA(2)
+          DLIJETADETA(2) = -2.0*ETA*DPDETA(2)
+          DLIJETADETA(3) =  0.5*(2.0*ETA+1.0)*DPDETA(2)
+          !     
+          DLIJZETADETA(1) =  0.5*(2.0*ZETA-1.0)*DPDETA(3)
+          DLIJZETADETA(2) = -2.0*ZETA*DPDETA(3)
+          DLIJZETADETA(3) =  0.5*(2.0*ZETA+1.0)*DPDETA(3)
+          !     
+          do I = 1, 3! Was loop 
+             !
+             do J = 1, 3! Was loop
+                !
+                do K = 1, 3! Was loop
+                   !
+                   ILOC = I+(J-1)*3+(K-1)*9
+                   !
+                   SVN(ILOC,GI)   = LIJXI(I)*LIJETA(J)*LIJZETA(K)
+                   !
+                   SVNLX(ILOC,GI) = LIJXI(I)*LIJETA(J)*DLIJZETADXI(K)&
+                        &                    + LIJXI(I)*DLIJETADXI(J)*LIJZETA(K)&
+                        &                    + DLIJXIDXI(I)*LIJETA(J)*LIJZETA(K)
+                   !
+                   SVNLY(ILOC,GI) = LIJXI(I)*LIJETA(J)*DLIJZETADETA(K)&
+                        &                    + LIJXI(I)*DLIJETADETA(J)*LIJZETA(K)&
+                        &                    + DLIJXIDETA(I)*LIJETA(J)*LIJZETA(K)
                    !
                 END DO
-               !     
-            END DO
-            !     
-            XI   = POS(1)
-            ETA  = POS(2)
-            ZETA = POS(3)
-            !     
-            LIJXI(1)   =  0.5*XI*(XI-1.0)
-            LIJXI(2)   =  1.0-XI*XI
-            LIJXI(3)   =  0.5*XI*(XI+1.0)
-            !     
-            LIJETA(1)  =  0.5*ETA*(ETA-1.0)
-            LIJETA(2)  =  1.0-ETA*ETA
-            LIJETA(3)  =  0.5*ETA*(ETA+1.0)
-            !     
-            LIJZETA(1) =  0.5*ZETA*(ZETA-1.0)
-            LIJZETA(2) =  1.0-ZETA*ZETA
-            LIJZETA(3) =  0.5*ZETA*(ZETA+1.0)
-            !     
-            DLIJXIDXI(1)   =  0.5*(2.0*XI-1.0)*DPDXI(1)
-            DLIJXIDXI(2)   = -2.0*XI*DPDXI(1)
-            DLIJXIDXI(3)   =  0.5*(2.0*XI+1.0)*DPDXI(1)
-            !     
-            DLIJETADXI(1)  =  0.5*(2.0*ETA-1.0)*DPDXI(2)
-            DLIJETADXI(2)  = -2.0*ETA*DPDXI(2)
-            DLIJETADXI(3)  =  0.5*(2.0*ETA+1.0)*DPDXI(2)
-            !     
-            DLIJZETADXI(1) =  0.5*(2.0*ZETA-1.0)*DPDXI(3)
-            DLIJZETADXI(2) = -2.0*ZETA*DPDXI(3)
-            DLIJZETADXI(3) =  0.5*(2.0*ZETA+1.0)*DPDXI(3)
-            !     
-            DLIJXIDETA(1)  =  0.5*(2.0*XI-1.0)*DPDETA(1)
-            DLIJXIDETA(2)  = -2.0*XI*DPDETA(1)
-            DLIJXIDETA(3)  =  0.5*(2.0*XI+1.0)*DPDETA(1)
-            !     
-            DLIJETADETA(1) =  0.5*(2.0*ETA-1.0)*DPDETA(2)
-            DLIJETADETA(2) = -2.0*ETA*DPDETA(2)
-            DLIJETADETA(3) =  0.5*(2.0*ETA+1.0)*DPDETA(2)
-            !     
-            DLIJZETADETA(1) =  0.5*(2.0*ZETA-1.0)*DPDETA(3)
-            DLIJZETADETA(2) = -2.0*ZETA*DPDETA(3)
-            DLIJZETADETA(3) =  0.5*(2.0*ZETA+1.0)*DPDETA(3)
-            !     
-            do I = 1, 3! Was loop 
                 !
-                do J = 1, 3! Was loop
-                    !
-                    do K = 1, 3! Was loop
-                        !
-                        ILOC = I+(J-1)*3+(K-1)*9
-                        !
-                        SVN(ILOC,GI)   = LIJXI(I)*LIJETA(J)*LIJZETA(K)
-                        !
-                        SVNLX(ILOC,GI) = LIJXI(I)*LIJETA(J)*DLIJZETADXI(K)&
-                            &                    + LIJXI(I)*DLIJETADXI(J)*LIJZETA(K)&
-                            &                    + DLIJXIDXI(I)*LIJETA(J)*LIJZETA(K)
-                        !
-                        SVNLY(ILOC,GI) = LIJXI(I)*LIJETA(J)*DLIJZETADETA(K)&
-                            &                    + LIJXI(I)*DLIJETADETA(J)*LIJZETA(K)&
-                            &                    + DLIJXIDETA(I)*LIJETA(J)*LIJZETA(K)
-                       !
-                    END DO
-                   !
-                END DO
-               !     
-            END DO
-           !
-        END DO
+             END DO
+             !     
+          END DO
+          !
+       END DO
        !
     END DO
     !
     !     - set the weights for the surface integration
     !
     do GI = 1, SVNGI! Was loop
-        !
-        SVWEIGH(GI) = 1.0
+       !
+       SVWEIGH(GI) = 1.0
        !
     END DO
-  !
-  !     stop 11
-END SUBROUTINE FVQHEX
+    !
+    !     stop 11
+  END SUBROUTINE FVQHEX
 
-SUBROUTINE FVQTRI( NGI,    NLOC, SVNGI,&
-    M,      SVN,  SVNLX,  &
-    SVWEIGH              )
+  SUBROUTINE FVQTRI( NGI,    NLOC, SVNGI,&
+       M,      SVN,  SVNLX,  &
+       SVWEIGH              )
     !     ----------------------------------------
     !
     !     - this routine generates the shape functions associated
@@ -4073,24 +4073,24 @@ SUBROUTINE FVQTRI( NGI,    NLOC, SVNGI,&
     COUNT = 1
     !
     do ILOC = 1, NLOC! Was loop
-        !
-        IF((ILOC == 1).OR.(ILOC == 3).OR.(ILOC == 5)) THEN
-            INC = 3
-        ELSE
-            INC = 7
-        END IF
-        !
-        do GI = COUNT, COUNT+INC! Was loop
-            !     
-            M(ILOC,GI) = 1.0
-           !
-        END DO
-        !
-        IF((ILOC == 1).OR.(ILOC == 3).OR.(ILOC == 5)) THEN
-            COUNT = COUNT + 4
-        ELSE
-            COUNT = COUNT + 8
-        END IF
+       !
+       IF((ILOC == 1).OR.(ILOC == 3).OR.(ILOC == 5)) THEN
+          INC = 3
+       ELSE
+          INC = 7
+       END IF
+       !
+       do GI = COUNT, COUNT+INC! Was loop
+          !     
+          M(ILOC,GI) = 1.0
+          !
+       END DO
+       !
+       IF((ILOC == 1).OR.(ILOC == 3).OR.(ILOC == 5)) THEN
+          COUNT = COUNT + 4
+       ELSE
+          COUNT = COUNT + 8
+       END IF
        !
     END DO
     !
@@ -4208,64 +4208,64 @@ SUBROUTINE FVQTRI( NGI,    NLOC, SVNGI,&
     !     - points on the faces of the subcells.
     !
     do IFACE = 1, NFACE! Was loop
-        !
-        do GJ = 1, FNGI! Was loop
-            !     
-            GI = (IFACE-1)*FNGI+GJ
-            !     
-            do ICOORD = 1, NCOORD! Was loop 
+       !
+       do GJ = 1, FNGI! Was loop
+          !     
+          GI = (IFACE-1)*FNGI+GJ
+          !     
+          do ICOORD = 1, NCOORD! Was loop 
+             !
+             POS(ICOORD)   = 0.0
+             DPDXI(ICOORD) = 0.0
+             !
+             do JLOC = 1, FNLOC! Was loop
                 !
-                POS(ICOORD)   = 0.0
-                DPDXI(ICOORD) = 0.0
+                POS(ICOORD) = POS(ICOORD)&
+                     &                 + CORN(IFACE,ICOORD,JLOC)&
+                     &                 *0.5*(1.+XIP(JLOC)*XIPGP(GJ))
                 !
-                do JLOC = 1, FNLOC! Was loop
-                    !
-                    POS(ICOORD) = POS(ICOORD)&
-                        &                 + CORN(IFACE,ICOORD,JLOC)&
-                        &                 *0.5*(1.+XIP(JLOC)*XIPGP(GJ))
-                    !
-                    DPDXI(ICOORD) = DPDXI(ICOORD)&
-                        &                 + CORN(IFACE,ICOORD,JLOC)&
-                        &                 *0.5*XIP(JLOC)
-                   !
-                END DO
-               !     
-            END DO
-            !     
-            L1 = POS(1)
-            L2 = POS(2)
-            L3 = POS(3)
-            !     
-            SVN(1,GI) = (2.0*L1-1.0)*L1
-            SVN(2,GI) =  4.0*L1*L2
-            SVN(3,GI) = (2.0*L2-1.0)*L2
-            SVN(4,GI) =  4.0*L2*L3
-            SVN(5,GI) = (2.0*L3-1.0)*L3
-            SVN(6,GI) =  4.0*L1*L3
-            !     
-            SVNLX(1,GI) = (4.0*L1-1.0)*DPDXI(1)
-            SVNLX(2,GI) =  4.0*DPDXI(1)*L2 + 4.0*L1*DPDXI(2)
-            SVNLX(3,GI) = (4.0*L2-1.0)*DPDXI(2)
-            SVNLX(4,GI) =  4.0*DPDXI(2)*L3 + 4.0*L2*DPDXI(3)
-            SVNLX(5,GI) = (4.0*L3-1.0)*DPDXI(3)
-            SVNLX(6,GI) =  4.0*DPDXI(1)*L3 + 4.0*L1*DPDXI(3)
-           !
-        END DO
+                DPDXI(ICOORD) = DPDXI(ICOORD)&
+                     &                 + CORN(IFACE,ICOORD,JLOC)&
+                     &                 *0.5*XIP(JLOC)
+                !
+             END DO
+             !     
+          END DO
+          !     
+          L1 = POS(1)
+          L2 = POS(2)
+          L3 = POS(3)
+          !     
+          SVN(1,GI) = (2.0*L1-1.0)*L1
+          SVN(2,GI) =  4.0*L1*L2
+          SVN(3,GI) = (2.0*L2-1.0)*L2
+          SVN(4,GI) =  4.0*L2*L3
+          SVN(5,GI) = (2.0*L3-1.0)*L3
+          SVN(6,GI) =  4.0*L1*L3
+          !     
+          SVNLX(1,GI) = (4.0*L1-1.0)*DPDXI(1)
+          SVNLX(2,GI) =  4.0*DPDXI(1)*L2 + 4.0*L1*DPDXI(2)
+          SVNLX(3,GI) = (4.0*L2-1.0)*DPDXI(2)
+          SVNLX(4,GI) =  4.0*DPDXI(2)*L3 + 4.0*L2*DPDXI(3)
+          SVNLX(5,GI) = (4.0*L3-1.0)*DPDXI(3)
+          SVNLX(6,GI) =  4.0*DPDXI(1)*L3 + 4.0*L1*DPDXI(3)
+          !
+       END DO
        !
     END DO
     !
     do GI = 1, SVNGI! Was loop
-        !
-        SVWEIGH(GI) = 1.0
+       !
+       SVWEIGH(GI) = 1.0
        !
     END DO
-  !
-END SUBROUTINE FVQTRI
+    !
+  END SUBROUTINE FVQTRI
 
-SUBROUTINE FVQTET( NGI,   NLOC,   SVNGI,&
-                           !     - REALS
-    M,     SVN,    SVNLX,&
-    SVNLY, SVWEIGH        )
+  SUBROUTINE FVQTET( NGI,   NLOC,   SVNGI,&
+                                !     - REALS
+       M,     SVN,    SVNLX,&
+       SVNLY, SVWEIGH        )
     !     ------------------------------------------
     !
     !     - this routine generates the shape functions associated
@@ -4325,26 +4325,26 @@ SUBROUTINE FVQTET( NGI,   NLOC,   SVNGI,&
     COUNT = 1
     !
     do ILOC = 1, NLOC! Was loop
-        !
-        IF((ILOC == 1).OR.(ILOC == 3).OR.&
+       !
+       IF((ILOC == 1).OR.(ILOC == 3).OR.&
             &        (ILOC == 5).OR.(ILOC == 10)) THEN
-            INC = 7
-        ELSE
-            INC = 15
-        END IF
-        !
-        do GI = COUNT, COUNT + INC! Was loop
-            !     
-            M(ILOC,GI) = 1.0
-           !
-        END DO
-        !
-        IF((ILOC == 1).OR.(ILOC == 3).OR.&
+          INC = 7
+       ELSE
+          INC = 15
+       END IF
+       !
+       do GI = COUNT, COUNT + INC! Was loop
+          !     
+          M(ILOC,GI) = 1.0
+          !
+       END DO
+       !
+       IF((ILOC == 1).OR.(ILOC == 3).OR.&
             &        (ILOC == 5).OR.(ILOC == 10)) THEN
-            COUNT = COUNT + 8
-        ELSE
-            COUNT = COUNT + 16
-        END IF
+          COUNT = COUNT + 8
+       ELSE
+          COUNT = COUNT + 16
+       END IF
        !
     END DO
     !
@@ -4918,95 +4918,95 @@ SUBROUTINE FVQTET( NGI,   NLOC,   SVNGI,&
     !     - points on the faces of the subcells.
     !
     do IFACE = 1, NFACE! Was loop
-        !
-        do GJ = 1, FNGI! Was loop
-            !     
-            GI = (IFACE-1)*FNGI+GJ
-            !     
-            do ICOORD = 1, NCOORD! Was loop 
+       !
+       do GJ = 1, FNGI! Was loop
+          !     
+          GI = (IFACE-1)*FNGI+GJ
+          !     
+          do ICOORD = 1, NCOORD! Was loop 
+             !
+             POS(ICOORD)    = 0.0
+             DPDXI(ICOORD)  = 0.0
+             DPDETA(ICOORD) = 0.0
+             !
+             do JLOC = 1, FNLOC! Was loop
                 !
-                POS(ICOORD)    = 0.0
-                DPDXI(ICOORD)  = 0.0
-                DPDETA(ICOORD) = 0.0
+                POS(ICOORD) = POS(ICOORD)&
+                     &                 + CORN(IFACE,ICOORD,JLOC)&
+                     &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
+                     &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
                 !
-                do JLOC = 1, FNLOC! Was loop
-                    !
-                    POS(ICOORD) = POS(ICOORD)&
-                        &                 + CORN(IFACE,ICOORD,JLOC)&
-                        &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
-                        &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
-                    !
-                    DPDXI(ICOORD) = DPDXI(ICOORD)&
-                        &                 + CORN(IFACE,ICOORD,JLOC)&
-                        &                 *0.25*XIP(JLOC)&
-                        &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
-                    !
-                    DPDETA(ICOORD) = DPDETA(ICOORD)&
-                        &                 + CORN(IFACE,ICOORD,JLOC)&
-                        &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
-                        &                 *ETAP(JLOC)
-                   !
-                END DO
-               !     
-            END DO
-            !     
-            L1 = POS(1)
-            L2 = POS(2)
-            L3 = POS(3)
-            L4 = POS(4)
-            !     
-            SVN(1,GI)  = (2.0*L1-1.0)*L1
-            SVN(2,GI)  =  4.0*L1*L3
-            SVN(3,GI)  = (2.0*L3-1.0)*L3
-            SVN(4,GI)  =  4.0*L2*L3
-            SVN(5,GI)  = (2.0*L2-1.0)*L2
-            SVN(6,GI)  =  4.0*L1*L2
-            SVN(7,GI)  =  4.0*L1*L4
-            SVN(8,GI)  =  4.0*L3*L4
-            SVN(9,GI)  =  4.0*L2*L4
-            SVN(10,GI) = (2.0*L4-1.0)*L4
-            !     
-            SVNLX(1,GI)  = (4.0*L1-1.0)*DPDXI(1)
-            SVNLX(2,GI)  =  4.0*DPDXI(1)*L3 + 4.0*L1*DPDXI(3)
-            SVNLX(3,GI)  = (4.0*L3-1.0)*DPDXI(3)
-            SVNLX(4,GI)  =  4.0*DPDXI(2)*L3 + 4.0*L2*DPDXI(3)
-            SVNLX(5,GI)  = (4.0*L2-1.0)*DPDXI(2)
-            SVNLX(6,GI)  =  4.0*DPDXI(1)*L2 + 4.0*L1*DPDXI(2)
-            SVNLX(7,GI)  =  4.0*DPDXI(1)*L4 + 4.0*L1*DPDXI(4)
-            SVNLX(8,GI)  =  4.0*DPDXI(3)*L4 + 4.0*L3*DPDXI(4)
-            SVNLX(9,GI)  =  4.0*DPDXI(2)*L4 + 4.0*L2*DPDXI(4)
-            SVNLX(10,GI) = (4.0*L4-1.0)*DPDXI(4)
-            !     
-            SVNLY(1,GI)  = (4.0*L1-1.0)*DPDETA(1)
-            SVNLY(2,GI)  =  4.0*DPDETA(1)*L3 + 4.0*L1*DPDETA(3)
-            SVNLY(3,GI)  = (4.0*L3-1.0)*DPDETA(3)
-            SVNLY(4,GI)  =  4.0*DPDETA(2)*L3 + 4.0*L2*DPDETA(3)
-            SVNLY(5,GI)  = (4.0*L2-1.0)*DPDETA(2)
-            SVNLY(6,GI)  =  4.0*DPDETA(1)*L2 + 4.0*L1*DPDETA(2)
-            SVNLY(7,GI)  =  4.0*DPDETA(1)*L4 + 4.0*L1*DPDETA(4)
-            SVNLY(8,GI)  =  4.0*DPDETA(3)*L4 + 4.0*L3*DPDETA(4)
-            SVNLY(9,GI)  =  4.0*DPDETA(2)*L4 + 4.0*L2*DPDETA(4)
-            SVNLY(10,GI) = (4.0*L4-1.0)*DPDETA(4)
-           !
-        END DO
+                DPDXI(ICOORD) = DPDXI(ICOORD)&
+                     &                 + CORN(IFACE,ICOORD,JLOC)&
+                     &                 *0.25*XIP(JLOC)&
+                     &                 *(1.+ETAP(JLOC)*ETAPGP(GJ))
+                !
+                DPDETA(ICOORD) = DPDETA(ICOORD)&
+                     &                 + CORN(IFACE,ICOORD,JLOC)&
+                     &                 *0.25*(1.+XIP(JLOC)*XIPGP(GJ))&
+                     &                 *ETAP(JLOC)
+                !
+             END DO
+             !     
+          END DO
+          !     
+          L1 = POS(1)
+          L2 = POS(2)
+          L3 = POS(3)
+          L4 = POS(4)
+          !     
+          SVN(1,GI)  = (2.0*L1-1.0)*L1
+          SVN(2,GI)  =  4.0*L1*L3
+          SVN(3,GI)  = (2.0*L3-1.0)*L3
+          SVN(4,GI)  =  4.0*L2*L3
+          SVN(5,GI)  = (2.0*L2-1.0)*L2
+          SVN(6,GI)  =  4.0*L1*L2
+          SVN(7,GI)  =  4.0*L1*L4
+          SVN(8,GI)  =  4.0*L3*L4
+          SVN(9,GI)  =  4.0*L2*L4
+          SVN(10,GI) = (2.0*L4-1.0)*L4
+          !     
+          SVNLX(1,GI)  = (4.0*L1-1.0)*DPDXI(1)
+          SVNLX(2,GI)  =  4.0*DPDXI(1)*L3 + 4.0*L1*DPDXI(3)
+          SVNLX(3,GI)  = (4.0*L3-1.0)*DPDXI(3)
+          SVNLX(4,GI)  =  4.0*DPDXI(2)*L3 + 4.0*L2*DPDXI(3)
+          SVNLX(5,GI)  = (4.0*L2-1.0)*DPDXI(2)
+          SVNLX(6,GI)  =  4.0*DPDXI(1)*L2 + 4.0*L1*DPDXI(2)
+          SVNLX(7,GI)  =  4.0*DPDXI(1)*L4 + 4.0*L1*DPDXI(4)
+          SVNLX(8,GI)  =  4.0*DPDXI(3)*L4 + 4.0*L3*DPDXI(4)
+          SVNLX(9,GI)  =  4.0*DPDXI(2)*L4 + 4.0*L2*DPDXI(4)
+          SVNLX(10,GI) = (4.0*L4-1.0)*DPDXI(4)
+          !     
+          SVNLY(1,GI)  = (4.0*L1-1.0)*DPDETA(1)
+          SVNLY(2,GI)  =  4.0*DPDETA(1)*L3 + 4.0*L1*DPDETA(3)
+          SVNLY(3,GI)  = (4.0*L3-1.0)*DPDETA(3)
+          SVNLY(4,GI)  =  4.0*DPDETA(2)*L3 + 4.0*L2*DPDETA(3)
+          SVNLY(5,GI)  = (4.0*L2-1.0)*DPDETA(2)
+          SVNLY(6,GI)  =  4.0*DPDETA(1)*L2 + 4.0*L1*DPDETA(2)
+          SVNLY(7,GI)  =  4.0*DPDETA(1)*L4 + 4.0*L1*DPDETA(4)
+          SVNLY(8,GI)  =  4.0*DPDETA(3)*L4 + 4.0*L3*DPDETA(4)
+          SVNLY(9,GI)  =  4.0*DPDETA(2)*L4 + 4.0*L2*DPDETA(4)
+          SVNLY(10,GI) = (4.0*L4-1.0)*DPDETA(4)
+          !
+       END DO
        !
     END DO
     !
     !     - set the weights for the surface integration
     !
     do GI = 1, SVNGI! Was loop
-        !
-        SVWEIGH(GI) = 1.0
+       !
+       SVWEIGH(GI) = 1.0
        !
     END DO
-  !
-END SUBROUTINE FVQTET
+    !
+  END SUBROUTINE FVQTET
 
 
 
 !!!==============================================================
 
-SUBROUTINE VOLNEI( NEILOC, FEM_NEILOC, NLOC, SVNGI, CV_ELE_TYPE )
+  SUBROUTINE VOLNEI( NEILOC, FEM_NEILOC, NLOC, SVNGI, CV_ELE_TYPE )
     !--------------------------------------------------------
     !- this subroutine calculates NEILOC which is the
     !- array containing information given a local node
@@ -5029,1307 +5029,1307 @@ SUBROUTINE VOLNEI( NEILOC, FEM_NEILOC, NLOC, SVNGI, CV_ELE_TYPE )
 
     Conditional_Type: SELECT CASE( CV_ELE_TYPE )
 
-        CASE( 1, 2 ) ! 1D
-            DO ILOC = 1, NLOC
-                NEILOC( ILOC, ILOC ) = ILOC - 1
-                NEILOC( ILOC, ILOC + 1 ) = ILOC + 1
-            END DO
-            NEILOC( 1, 1 ) = -1
-            NEILOC( NLOC, SVNGI ) = -1
-            FEM_NEILOC = NEILOC
-
-        CASE( 3 ) ! Linear Triangle
-            FLAbort( " Defined elsewhere -- it needs to be updated " )
-
-            ILOC = 1 ! CV 1
-            NEILOC( ILOC, 1 ) = 2
-            NEILOC( ILOC, 3 ) = 3
-            ! External
-            neiloc( iloc, 4 ) = -1
-            neiloc( iloc, 9 ) = -1
-
-            ILOC = 2 ! CV 2
-            NEILOC( ILOC, 1 ) = 1
-            NEILOC( ILOC, 2 ) = 3
-            ! External
-            neiloc( iloc, 5 ) = -1
-            neiloc( iloc, 6 ) = -1
-
-            ILOC = 3 ! CV 3
-            NEILOC( ILOC, 2) = 2
-            NEILOC( ILOC, 3) = 1
-            ! External
-            neiloc( iloc, 7 ) = -1
-            neiloc( iloc, 8 ) = -1
-
-            fem_neiloc = neiloc
-
-        CASE( 4 ) ! Quadratic Triangle
-            FLAbort( " Defined elsewhere -- it needs to be updated " )
-            ILOC = 1
-            ! Face 1
-            NEILOC( ILOC, 1 ) = 2
-            NEILOC( ILOC, 2 ) = 2
-            ! Face 2
-            NEILOC( ILOC,3 ) = 6
-            NEILOC( ILOC,4 ) = 6
-            ! External
-            neiloc( iloc, 19 ) = -1
-            neiloc( iloc, 20 ) = -1
-            neiloc( iloc, 35 ) = -1
-            neiloc( iloc, 36 ) = -1
-
-            ILOC = 2
-            ! Face 1
-            NEILOC( ILOC,1 ) = 1
-            NEILOC( ILOC,2 ) = 1
-            ! Face 7
-            NEILOC( ILOC,13 ) = 6
-            NEILOC( ILOC,14 ) = 6
-            ! Face 8
-            NEILOC( ILOC,15 ) = 4
-            NEILOC( ILOC,16 ) = 4
-            ! Face 3
-            NEILOC( ILOC,5 ) = 3
-            NEILOC( ILOC,6 ) = 3
-            ! External
-            neiloc( iloc, 21 ) = -1
-            neiloc( iloc, 22 ) = -1
-
-            ILOC = 3
-            ! Face 3
-            NEILOC( ILOC,5 ) = 2
-            NEILOC( ILOC,6 ) = 2
-            ! Face 4
-            NEILOC( ILOC,7 ) = 4
-            NEILOC( ILOC,8 ) = 4
-            ! External
-            neiloc( iloc, 23 ) = -1
-            neiloc( iloc, 24 ) = -1
-            neiloc( iloc, 25 ) = -1
-            neiloc( iloc, 26 ) = -1
-
-            ILOC = 4
-            ! Face 4
-            NEILOC( ILOC,7 ) = 3
-            NEILOC( ILOC,8 ) = 3
-            ! Face 8
-            NEILOC( ILOC,15 ) = 2
-            NEILOC( ILOC,16 ) = 2
-            ! Face 9
-            NEILOC( ILOC,17 ) = 6
-            NEILOC( ILOC,18 ) = 6
-            ! Face 5
-            NEILOC( ILOC,9 )  = 5
-            NEILOC( ILOC,10 ) = 5
-            ! External
-            neiloc( iloc, 27 ) = -1
-            neiloc( iloc, 28 ) = -1
-
-            ILOC = 5
-            ! Face 5
-            NEILOC( ILOC,9 )  = 4
-            NEILOC( ILOC,10 ) = 4
-            ! Face 6
-            NEILOC( ILOC,11 ) = 6
-            NEILOC( ILOC,12 ) = 6
-            ! External
-            neiloc( iloc, 29 ) = -1
-            neiloc( iloc, 30 ) = -1
-            neiloc( iloc, 31 ) = -1
-            neiloc( iloc, 32 ) = -1
-
-            ILOC = 6
-            ! Face 6
-            NEILOC( ILOC,11 ) = 5
-            NEILOC( ILOC,12 ) = 5
-            ! Face 9
-            NEILOC( ILOC,17 ) = 4
-            NEILOC( ILOC,18 ) = 4
-            ! Face 7
-            NEILOC( ILOC,13 ) = 2
-            NEILOC( ILOC,14 ) = 2
-            ! Face 2
-            NEILOC( ILOC,3 ) = 1
-            NEILOC( ILOC,4 ) = 1
-            ! External
-            neiloc( iloc, 35 ) = -1
-            neiloc( iloc, 36 ) = -1
-
-        CASE( 5  ) ! Bi-linear Quadrilateral
-            ILOC = 1
-            NEILOC( ILOC, 1 ) = 3
-            NEILOC( ILOC, 3 ) = 2
-            ! External
-            neiloc( iloc, 5 ) = -1
-            neiloc( iloc, 6 ) = -1
-
-            ILOC = 2
-            NEILOC( ILOC, 2 ) = 4
-            NEILOC( ILOC, 3 ) = 1
-            ! External
-            neiloc( iloc, 7 ) = -1
-            neiloc( iloc, 8 ) = -1
-
-            ILOC = 3
-            NEILOC( ILOC, 1 ) = 1
-            NEILOC( ILOC, 4 ) = 4
-            ! External
-            neiloc( iloc, 11 ) = -1
-            neiloc( iloc, 12 ) = -1
-
-            ILOC = 4
-            NEILOC( ILOC, 2 ) = 2
-            NEILOC( ILOC, 4 ) = 3
-            ! External
-            neiloc( iloc, 9 ) = -1
-            neiloc( iloc, 10 ) = -1
-
-        CASE( 6 ) ! Bi-quadratic Quadrilateral
-            ILOC = 1
-            NEILOC( ILOC, 1 ) = 2
-            NEILOC( ILOC, 2 ) = 2
-            NEILOC( ILOC, 5 ) = 4
-            NEILOC( ILOC, 6 ) = 4
-            ! External
-            neiloc( iloc, 25 ) = -1
-            neiloc( iloc, 26 ) = -1
-            neiloc( iloc, 27 ) = -1
-            neiloc( iloc, 28 ) = -1
-
-            ILOC = 2
-            NEILOC( ILOC, 1 ) = 1
-            NEILOC( ILOC, 2 ) = 1
-            NEILOC( ILOC, 7 ) = 5
-            NEILOC( ILOC, 8 ) = 5
-            NEILOC( ILOC, 3 ) = 3
-            NEILOC( ILOC, 4 ) = 3
-            ! External
-            neiloc( iloc, 47 ) = -1
-            neiloc( iloc, 48 ) = -1
-
-            ILOC = 3
-            NEILOC( ILOC, 3) = 2
-            NEILOC( ILOC, 4) = 2
-            NEILOC( ILOC, 9) = 6
-            NEILOC( ILOC, 10 ) = 6
-            ! External
-            neiloc( iloc, 43 ) = -1
-            neiloc( iloc, 44 ) = -1
-            neiloc( iloc, 45 ) = -1
-            neiloc( iloc, 46 ) = -1
-
-            ILOC = 4
-            NEILOC( ILOC, 5) = 1
-            NEILOC( ILOC, 6) = 1
-            NEILOC( ILOC, 11 ) = 5
-            NEILOC( ILOC, 12 ) = 5
-            NEILOC( ILOC, 15 ) = 7
-            NEILOC( ILOC, 16 ) = 7
-            ! External
-            neiloc( iloc, 29 ) = -1
-            neiloc( iloc, 30 ) = -1
-
-            ILOC = 5
-            NEILOC( ILOC, 7) = 2
-            NEILOC( ILOC, 8) = 2
-            NEILOC( ILOC, 13 ) = 6
-            NEILOC( ILOC, 14 ) = 6
-            NEILOC( ILOC, 18 ) = 8
-            NEILOC( ILOC, 17 ) = 8
-            NEILOC( ILOC, 12 ) = 4
-            NEILOC( ILOC, 11 ) = 4
-
-            ILOC = 6
-            NEILOC( ILOC, 9) = 3
-            NEILOC( ILOC, 10 ) = 3
-            NEILOC( ILOC, 13 ) = 5
-            NEILOC( ILOC, 14 ) = 5
-            NEILOC( ILOC, 19 ) = 9
-            NEILOC( ILOC, 20 ) = 9
-            ! External
-            neiloc( iloc, 41 ) = -1
-            neiloc( iloc, 42 ) = -1
-
-            ILOC = 7
-            NEILOC( ILOC, 15 ) = 4
-            NEILOC( ILOC, 16 ) = 4
-            NEILOC( ILOC, 21 ) = 8
-            NEILOC( ILOC, 22 ) = 8
-            ! External
-            neiloc( iloc, 31 ) = -1
-            neiloc( iloc, 32 ) = -1
-            neiloc( iloc, 33 ) = -1
-            neiloc( iloc, 34 ) = -1
-
-            ILOC = 8
-            NEILOC( ILOC, 21 ) = 7
-            NEILOC( ILOC, 22 ) = 7
-            NEILOC( ILOC, 17 ) = 5
-            NEILOC( ILOC, 18 ) = 5
-            NEILOC( ILOC, 23 ) = 9
-            NEILOC( ILOC, 24 ) = 9
-            ! External
-            neiloc( iloc, 35 ) = -1
-            neiloc( iloc, 36 ) = -1
-
-            ILOC = 9
-            NEILOC( ILOC, 23 ) = 8
-            NEILOC( ILOC, 24 ) = 8
-            NEILOC( ILOC, 19 ) = 6
-            NEILOC( ILOC, 20 ) = 6
-            ! External
-            neiloc( iloc, 37 ) = -1
-            neiloc( iloc, 38 ) = -1
-            neiloc( iloc, 39 ) = -1
-            neiloc( iloc, 40 ) = -1
-
-        CASE( 7 ) ! Linear Tetrahedron
-            iext = 6
-            igp = 1
-            ILOC = 1
-            NEILOC( ILOC, 1 ) = 2
-            NEILOC( ILOC, 3 ) = 3
-            NEILOC( ILOC, 4 ) = 4
-            ! External
-            neiloc( iloc, iext + 1 : iext + 3 * igp ) = -1
-
-            ILOC = 2
-            NEILOC( ILOC, 1 ) = 1
-            NEILOC( ILOC, 2 ) = 3
-            NEILOC( ILOC, 5 ) = 4
-            ! External
-            neiloc( iloc, iext + 3 * igp + 1 : iext + 6 * igp ) = -1
-
-            ILOC = 3
-            NEILOC( ILOC, 2 ) = 2
-            NEILOC( ILOC, 3 ) = 1
-            NEILOC( ILOC, 6 ) = 4
-            ! External
-            neiloc( iloc, iext + 6 * igp + 1 : iext + 9 * igp ) = -1
-
-            ILOC = 4
-            NEILOC( ILOC, 4 ) = 1
-            NEILOC( ILOC, 5 ) = 2
-            NEILOC( ILOC, 6 ) = 3
-            ! External
-            neiloc( iloc, iext + 9 * igp + 1 : iext + 12 * igp ) = -1
-
-        CASE( 8 ) ! Quadratic Tetrahedron
-            iext = 96
-            igp = 4
-            ILOC = 1
-            ! Face 1
-            NEILOC( ILOC, 1 ) = 6
-            NEILOC( ILOC, 2 ) = 6
-            NEILOC( ILOC, 3 ) = 6
-            NEILOC( ILOC, 4 ) = 6
-            ! Face 2
-            NEILOC( ILOC, 5 ) = 2
-            NEILOC( ILOC, 6 ) = 2
-            NEILOC( ILOC, 7 ) = 2
-            NEILOC( ILOC, 8 ) = 2
-            ! Face 3
-            NEILOC( ILOC, 9 )  = 7
-            NEILOC( ILOC, 10 ) = 7
-            NEILOC( ILOC, 11 ) = 7
-            NEILOC( ILOC, 12 ) = 7
-            ! External
-            neiloc( iloc, iext + 1 : iext + 3 * igp ) = -1
-
-            ILOC = 2
-            ! Face 2
-            NEILOC( ILOC, 5 ) = 1
-            NEILOC( ILOC, 6 ) = 1
-            NEILOC( ILOC, 7 ) = 1
-            NEILOC( ILOC, 8 ) = 1
-            ! Face 5
-            NEILOC( ILOC, 17 ) = 3
-            NEILOC( ILOC, 18 ) = 3
-            NEILOC( ILOC, 19 ) = 3
-            NEILOC( ILOC, 20 ) = 3
-            ! Face 20
-            NEILOC( ILOC, 77 ) = 8
-            NEILOC( ILOC, 78 ) = 8
-            NEILOC( ILOC, 79 ) = 8
-            NEILOC( ILOC, 80 ) = 8
-            ! Face 21
-            NEILOC( ILOC, 81 ) = 7
-            NEILOC( ILOC, 82 ) = 7
-            NEILOC( ILOC, 83 ) = 7
-            NEILOC( ILOC, 84 ) = 7
-            ! Face 23
-            NEILOC( ILOC, 89 ) = 6
-            NEILOC( ILOC, 80 ) = 6
-            NEILOC( ILOC, 91 ) = 6
-            NEILOC( ILOC, 92 ) = 6
-            ! Face 24
-            NEILOC( ILOC, 93 ) = 4
-            NEILOC( ILOC, 94 ) = 4
-            NEILOC( ILOC, 95 ) = 4
-            NEILOC( ILOC, 96 ) = 4
-            ! External
-            neiloc( iloc, iext + 3 * igp + 1 : iext + 5 * igp ) = -1
-
-            ILOC = 3
-            ! Face 4
-            NEILOC( ILOC, 13 ) = 4
-            NEILOC( ILOC, 14 ) = 4
-            NEILOC( ILOC, 15 ) = 4
-            NEILOC( ILOC, 16 ) = 4
-            ! Face 5
-            NEILOC( ILOC, 17 ) = 2
-            NEILOC( ILOC, 18 ) = 2
-            NEILOC( ILOC, 19 ) = 2
-            NEILOC( ILOC, 20 ) = 2
-            ! Face 6
-            NEILOC( ILOC, 21 ) = 8
-            NEILOC( ILOC, 22 ) = 8
-            NEILOC( ILOC, 23 ) = 8
-            NEILOC( ILOC, 24 ) = 8
-            ! External
-            neiloc( iloc, iext + 5 * igp + 1 : iext + 8 * igp ) = -1
-
-            ILOC = 4
-            ! Face 4
-            NEILOC( ILOC, 13 ) = 3
-            NEILOC( ILOC, 14 ) = 3
-            NEILOC( ILOC, 15 ) = 3
-            NEILOC( ILOC, 16 ) = 3
-            ! Face 8
-            NEILOC( ILOC, 29 ) = 5
-            NEILOC( ILOC, 30 ) = 5
-            NEILOC( ILOC, 31 ) = 5
-            NEILOC( ILOC, 32 ) = 5
-            ! Face 18
-            NEILOC( ILOC, 69 ) = 9
-            NEILOC( ILOC, 70 ) = 9
-            NEILOC( ILOC, 71 ) = 9
-            NEILOC( ILOC, 72 ) = 9
-            ! Face 19
-            NEILOC( ILOC, 73 ) = 8
-            NEILOC( ILOC, 74 ) = 8
-            NEILOC( ILOC, 75 ) = 8
-            NEILOC( ILOC, 76 ) = 8
-            ! Face 22
-            NEILOC( ILOC, 85 ) = 6
-            NEILOC( ILOC, 86 ) = 6
-            NEILOC( ILOC, 87 ) = 6
-            NEILOC( ILOC, 88 ) = 6
-            ! Face 24
-            NEILOC( ILOC, 93 ) = 2
-            NEILOC( ILOC, 94 ) = 2
-            NEILOC( ILOC, 95 ) = 2
-            NEILOC( ILOC, 96 ) = 2
-            ! External
-            neiloc( iloc, iext + 8 * igp + 1 : iext + 10 * igp ) = -1
-
-            ILOC = 5
-            ! Face 7
-            NEILOC( ILOC, 25 ) = 6
-            NEILOC( ILOC, 26 ) = 6
-            NEILOC( ILOC, 27 ) = 6
-            NEILOC( ILOC, 28 ) = 6
-            ! Face 8
-            NEILOC( ILOC, 29 ) = 4
-            NEILOC( ILOC, 30 ) = 4
-            NEILOC( ILOC, 31 ) = 4
-            NEILOC( ILOC, 32 ) = 4
-            ! Face 9
-            NEILOC( ILOC, 33 ) = 9
-            NEILOC( ILOC, 34 ) = 9
-            NEILOC( ILOC, 35 ) = 9
-            NEILOC( ILOC, 36 ) = 9
-            ! External
-            neiloc( iloc, iext + 10 * igp + 1 : iext + 13 * igp ) = -1
-
-            ILOC = 6
-            ! Face 1
-            NEILOC( ILOC, 1 ) = 1
-            NEILOC( ILOC, 2 ) = 1
-            NEILOC( ILOC, 3 ) = 1
-            NEILOC( ILOC, 4 ) = 1
-            ! Face 7
-            NEILOC( ILOC, 25 ) = 5
-            NEILOC( ILOC, 26 ) = 5
-            NEILOC( ILOC, 27 ) = 5
-            NEILOC( ILOC, 28 ) = 5
-            ! Face 16
-            NEILOC( ILOC, 61 ) = 7
-            NEILOC( ILOC, 62 ) = 7
-            NEILOC( ILOC, 63 ) = 7
-            NEILOC( ILOC, 64 ) = 7
-            ! Face 17
-            NEILOC( ILOC, 65 ) = 9
-            NEILOC( ILOC, 66 ) = 9
-            NEILOC( ILOC, 67 ) = 9
-            NEILOC( ILOC, 68 ) = 9
-            ! Face 22
-            NEILOC( ILOC, 85 ) = 4
-            NEILOC( ILOC, 86 ) = 4
-            NEILOC( ILOC, 87 ) = 4
-            NEILOC( ILOC, 88 ) = 4
-            ! Face 23
-            NEILOC( ILOC, 89 ) = 2
-            NEILOC( ILOC, 90 ) = 2
-            NEILOC( ILOC, 91 ) = 2
-            NEILOC( ILOC, 92 ) = 2
-            ! External
-            neiloc( iloc, iext + 13 * igp + 1 : iext + 15 * igp ) = -1
-            !
-            ILOC = 7
-            ! Face 3
-            NEILOC( ILOC, 9 )  = 1
-            NEILOC( ILOC, 10 ) = 1
-            NEILOC( ILOC, 11 ) = 1
-            NEILOC( ILOC, 12 ) = 1
-            ! Face 11
-            NEILOC( ILOC, 41 ) = 10
-            NEILOC( ILOC, 42 ) = 10
-            NEILOC( ILOC, 43 ) = 10
-            NEILOC( ILOC, 44 ) = 10
-            ! Face 13
-            NEILOC( ILOC, 49 ) = 9
-            NEILOC( ILOC, 50 ) = 9
-            NEILOC( ILOC, 51 ) = 9
-            NEILOC( ILOC, 52 ) = 9
-            ! Face 15
-            NEILOC( ILOC, 57 ) = 8
-            NEILOC( ILOC, 58 ) = 8
-            NEILOC( ILOC, 59 ) = 8
-            NEILOC( ILOC, 60 ) = 8
-            ! Face 16
-            NEILOC( ILOC, 61 ) = 6
-            NEILOC( ILOC, 62 ) = 6
-            NEILOC( ILOC, 63 ) = 6
-            NEILOC( ILOC, 64 ) = 6
-            ! Face 21
-            NEILOC( ILOC, 81 ) = 2
-            NEILOC( ILOC, 82 ) = 2
-            NEILOC( ILOC, 83 ) = 2
-            NEILOC( ILOC, 84 ) = 2
-            ! External
-            neiloc( iloc, iext + 15 * igp + 1 : iext + 17 * igp ) = -1
-
-            ILOC = 8
-            ! Face 6
-            NEILOC( ILOC, 21 ) = 3
-            NEILOC( ILOC, 22 ) = 3
-            NEILOC( ILOC, 23 ) = 3
-            NEILOC( ILOC, 24 ) = 3
-            ! Face 12
-            NEILOC( ILOC, 45 ) = 10
-            NEILOC( ILOC, 46 ) = 10
-            NEILOC( ILOC, 47 ) = 10
-            NEILOC( ILOC, 48 ) = 10
-            ! Face 14
-            NEILOC( ILOC, 53 ) = 9
-            NEILOC( ILOC, 54 ) = 9
-            NEILOC( ILOC, 55 ) = 9
-            NEILOC( ILOC, 56 ) = 9
-            ! Face 15
-            NEILOC( ILOC, 57 ) = 7
-            NEILOC( ILOC, 58 ) = 7
-            NEILOC( ILOC, 59 ) = 7
-            NEILOC( ILOC, 60 ) = 7
-            ! Face 19
-            NEILOC( ILOC, 73 ) = 4
-            NEILOC( ILOC, 74 ) = 4
-            NEILOC( ILOC, 75 ) = 4
-            NEILOC( ILOC, 76 ) = 4
-            ! Face 20
-            NEILOC( ILOC, 77 ) = 2
-            NEILOC( ILOC, 78 ) = 2
-            NEILOC( ILOC, 79 ) = 2
-            NEILOC( ILOC, 80 ) = 2
-            ! External
-            neiloc( iloc, iext + 17 * igp + 1 : iext + 20 * igp ) = -1
-
-            ILOC = 9
-            ! Face 9
-            NEILOC( ILOC, 33 ) = 5
-            NEILOC( ILOC, 34 ) = 5
-            NEILOC( ILOC, 35 ) = 5
-            NEILOC( ILOC, 36 ) = 5
-            ! Face 10
-            NEILOC( ILOC, 37 ) = 10
-            NEILOC( ILOC, 38 ) = 10
-            NEILOC( ILOC, 39 ) = 10
-            NEILOC( ILOC, 40 ) = 10
-            ! Face 13
-            NEILOC( ILOC, 49 ) = 7
-            NEILOC( ILOC, 50 ) = 7
-            NEILOC( ILOC, 51 ) = 7
-            NEILOC( ILOC, 52 ) = 7
-            ! Face 14
-            NEILOC( ILOC, 53 ) = 8
-            NEILOC( ILOC, 54 ) = 8
-            NEILOC( ILOC, 55 ) = 8
-            NEILOC( ILOC, 56 ) = 8
-            ! Face 17
-            NEILOC( ILOC, 65 ) = 6
-            NEILOC( ILOC, 66 ) = 6
-            NEILOC( ILOC, 67 ) = 6
-            NEILOC( ILOC, 68 ) = 6
-            ! Face 18
-            NEILOC( ILOC, 69 ) = 4
-            NEILOC( ILOC, 70 ) = 4
-            NEILOC( ILOC, 71 ) = 4
-            NEILOC( ILOC, 72 ) = 4
-            ! External
-            neiloc( iloc, iext + 20 * igp + 1 : iext + 22 * igp ) = -1
-
-            ILOC = 10
-            ! Face 10
-            NEILOC( ILOC, 37 ) = 9
-            NEILOC( ILOC, 38 ) = 9
-            NEILOC( ILOC, 39 ) = 9
-            NEILOC( ILOC, 40 ) = 9
-            ! Face 11
-            NEILOC( ILOC, 41 ) = 7
-            NEILOC( ILOC, 42 ) = 7
-            NEILOC( ILOC, 43 ) = 7
-            NEILOC( ILOC, 44 ) = 7
-            ! Face 12
-            NEILOC( ILOC, 45 ) = 8
-            NEILOC( ILOC, 46 ) = 8
-            NEILOC( ILOC, 47 ) = 8
-            NEILOC( ILOC, 48 ) = 8
-            ! External
-            neiloc( iloc, iext + 22 * igp + 1 : iext + 24 * igp ) = -1
-
-        CASE( 9 ) ! Tri-linear Hexahedron
-            ILOC = 1
-            NEILOC( ILOC, 1 ) = 3
-            NEILOC( ILOC, 3 ) = 2
-            NEILOC( ILOC, 5 ) = 5
-            ! External
-            neiloc( iloc, 13 ) = -1
-            neiloc( iloc, 17 ) = -1
-            neiloc( iloc, 21 ) = -1
-
-            ILOC = 2
-            NEILOC( ILOC, 2 ) = 4
-            NEILOC( ILOC, 3 ) = 1
-            NEILOC( ILOC, 6 ) = 6
-            ! External
-            neiloc( iloc, 14 ) = -1
-            neiloc( iloc, 18 ) = -1
-            neiloc( iloc, 25 ) = -1
-
-            ILOC = 3
-            NEILOC( ILOC, 1 ) = 1
-            NEILOC( ILOC, 4 ) = 4
-            NEILOC( ILOC, 7 ) = 7
-            ! External
-            neiloc( iloc, 16 ) = -1
-            neiloc( iloc, 22 ) = -1
-            neiloc( iloc, 31 ) = -1
-
-            ILOC = 4
-            NEILOC( ILOC, 2 ) = 2
-            NEILOC( ILOC, 4 ) = 3
-            NEILOC( ILOC, 8 ) = 8
-            ! External
-            neiloc( iloc, 15 ) = -1
-            neiloc( iloc, 26 ) = -1
-            neiloc( iloc, 30 ) = -1
-
-            ILOC = 5
-            NEILOC( ILOC, 5 ) = 1
-            NEILOC( ILOC, 9 ) = 7
-            NEILOC( ILOC, 11 ) = 6
-            ! External
-            neiloc( iloc, 19 ) = -1
-            neiloc( iloc, 24 ) = -1
-            neiloc( iloc, 33 ) = -1
-
-            ILOC = 6
-            NEILOC( ILOC, 6 ) = 2
-            NEILOC( ILOC, 10 ) = 8
-            NEILOC( ILOC, 11 ) = 5
-            ! External
-            neiloc( iloc, 20 ) = -1
-            neiloc( iloc, 27 ) = -1
-            neiloc( iloc, 34 ) = -1
-
-            ILOC = 7
-            NEILOC( ILOC, 7 ) = 3
-            NEILOC( ILOC, 9 ) = 5
-            NEILOC( ILOC, 12 ) = 8
-            ! External
-            neiloc( iloc, 23 ) = -1
-            neiloc( iloc, 32 ) = -1
-            neiloc( iloc, 36 ) = -1
-
-            ILOC = 8
-            NEILOC( ILOC, 8 ) = 4
-            NEILOC( ILOC, 10 ) = 6
-            NEILOC( ILOC, 12 ) = 7
-            ! External
-            neiloc( iloc, 28 ) = -1
-            neiloc( iloc, 29 ) = -1
-            neiloc( iloc, 35 ) = -1
-
-        CASE( 10 ) ! Tri-quadratic Hexahedron
-            iext = 216
-            igp = 4
-            ILOC = 1
-            ! Face 1
-            NEILOC( ILOC, 1 ) = 2
-            NEILOC( ILOC, 2 ) = 2
-            NEILOC( ILOC, 3 ) = 2
-            NEILOC( ILOC, 4 ) = 2
-            ! Face 3
-            NEILOC( ILOC, 9 ) = 4
-            NEILOC( ILOC, 10 ) = 4
-            NEILOC( ILOC, 11 ) = 4
-            NEILOC( ILOC, 12 ) = 4
-            ! Face 13
-            NEILOC( ILOC, 49 ) = 10
-            NEILOC( ILOC, 50 ) = 10
-            NEILOC( ILOC, 51 ) = 10
-            NEILOC( ILOC, 52 ) = 10
-            ! External
-            neiloc( iloc, iext + 1 : iext + 3 * igp ) = -1
-
-            ILOC = 2
-            ! Face 1
-            NEILOC( ILOC, 1 ) = 1
-            NEILOC( ILOC, 2 ) = 1
-            NEILOC( ILOC, 3 ) = 1
-            NEILOC( ILOC, 4 ) = 1
-            ! Face 4
-            NEILOC( ILOC, 13 ) = 5
-            NEILOC( ILOC, 14 ) = 5
-            NEILOC( ILOC, 15 ) = 5
-            NEILOC( ILOC, 16 ) = 5
-            ! Face 2
-            NEILOC( ILOC, 5 ) = 3
-            NEILOC( ILOC, 6 ) = 3
-            NEILOC( ILOC, 7 ) = 3
-            NEILOC( ILOC, 8 ) = 3
-            ! Face 14
-            NEILOC( ILOC, 53 ) = 11
-            NEILOC( ILOC, 54 ) = 11
-            NEILOC( ILOC, 55 ) = 11
-            NEILOC( ILOC, 56 ) = 11
-            ! External
-            neiloc( iloc, iext + 3 * igp + 1 : iext + 5 * igp ) = -1
-
-            ILOC = 3
-            ! Face 2
-            NEILOC( ILOC, 5 ) = 2
-            NEILOC( ILOC, 6 ) = 2
-            NEILOC( ILOC, 7 ) = 2
-            NEILOC( ILOC, 8 ) = 2
-            ! Face 5
-            NEILOC( ILOC, 17 ) = 6
-            NEILOC( ILOC, 18 ) = 6
-            NEILOC( ILOC, 19 ) = 6
-            NEILOC( ILOC, 20 ) = 6
-            ! Face 15
-            NEILOC( ILOC, 57 ) = 12
-            NEILOC( ILOC, 58 ) = 12
-            NEILOC( ILOC, 59 ) = 12
-            NEILOC( ILOC, 60 ) = 12
-            ! External
-            neiloc( iloc, iext + 5 * igp + 1 : iext + 8 * igp ) = -1
-
-            ILOC = 4
-            ! Face 3
-            NEILOC( ILOC, 9 ) = 1
-            NEILOC( ILOC, 10 ) = 1
-            NEILOC( ILOC, 11 ) = 1
-            NEILOC( ILOC, 12 ) = 1
-            ! Face 6
-            NEILOC( ILOC, 21 ) = 5
-            NEILOC( ILOC, 22 ) = 5
-            NEILOC( ILOC, 23 ) = 5
-            NEILOC( ILOC, 24 ) = 5
-            ! Face 8
-            NEILOC( ILOC, 29 ) = 7
-            NEILOC( ILOC, 30 ) = 7
-            NEILOC( ILOC, 31 ) = 7
-            NEILOC( ILOC, 32 ) = 7
-            ! Face 16
-            NEILOC( ILOC, 61 ) = 13
-            NEILOC( ILOC, 62 ) = 13
-            NEILOC( ILOC, 63 ) = 13
-            NEILOC( ILOC, 64 ) = 13
-            ! External
-            neiloc( iloc, iext + 8 * igp + 1 : iext + 10 * igp ) = -1
-
-            ILOC = 5
-            ! Face 4
-            NEILOC( ILOC, 13 ) = 2
-            NEILOC( ILOC, 14 ) = 2
-            NEILOC( ILOC, 15 ) = 2
-            NEILOC( ILOC, 16 ) = 2
-            ! Face 7
-            NEILOC( ILOC, 25 ) = 6
-            NEILOC( ILOC, 26 ) = 6
-            NEILOC( ILOC, 27 ) = 6
-            NEILOC( ILOC, 28 ) = 6
-            ! Face 9
-            NEILOC( ILOC, 33 ) = 8
-            NEILOC( ILOC, 34 ) = 8
-            NEILOC( ILOC, 35 ) = 8
-            NEILOC( ILOC, 36 ) = 8
-            ! Face 6
-            NEILOC( ILOC, 21 ) = 4
-            NEILOC( ILOC, 22 ) = 4
-            NEILOC( ILOC, 23 ) = 4
-            NEILOC( ILOC, 24 ) = 4
-            ! Face 17
-            NEILOC( ILOC, 65 ) = 14
-            NEILOC( ILOC, 66 ) = 14
-            NEILOC( ILOC, 67 ) = 14
-            NEILOC( ILOC, 68 ) = 14
-            ! External
-            neiloc( iloc, iext + 10 * igp + 1 : iext + 11 * igp ) = -1
-
-            ILOC = 6
-            ! Face 5
-            NEILOC( ILOC, 17 ) = 3
-            NEILOC( ILOC, 18 ) = 3
-            NEILOC( ILOC, 19 ) = 3
-            NEILOC( ILOC, 20 ) = 3
-            ! Face 7
-            NEILOC( ILOC, 25 ) = 5
-            NEILOC( ILOC, 26 ) = 5
-            NEILOC( ILOC, 27 ) = 5
-            NEILOC( ILOC, 28 ) = 5
-            ! Face 10
-            NEILOC( ILOC, 37 ) = 9
-            NEILOC( ILOC, 38 ) = 9
-            NEILOC( ILOC, 39 ) = 9
-            NEILOC( ILOC, 40 ) = 9
-            ! Face 18
-            NEILOC( ILOC, 69 ) = 15
-            NEILOC( ILOC, 70 ) = 15
-            NEILOC( ILOC, 71 ) = 15
-            NEILOC( ILOC, 72 ) = 15
-            ! External
-            neiloc( iloc, iext + 11 * igp + 1 : iext + 13 * igp ) = -1
-
-            ILOC = 7
-            ! Face 8
-            NEILOC( ILOC, 29 ) = 4
-            NEILOC( ILOC, 30 ) = 4
-            NEILOC( ILOC, 31 ) = 4
-            NEILOC( ILOC, 32 ) = 4
-            ! Face 11
-            NEILOC( ILOC, 41 ) = 8
-            NEILOC( ILOC, 42 ) = 8
-            NEILOC( ILOC, 43 ) = 8
-            NEILOC( ILOC, 44 ) = 8
-            ! Face 19
-            NEILOC( ILOC, 73 ) = 16
-            NEILOC( ILOC, 74 ) = 16
-            NEILOC( ILOC, 75 ) = 16
-            NEILOC( ILOC, 76 ) = 16
-            ! External
-            neiloc( iloc, iext + 13 * igp + 1 : iext + 16 * igp ) = -1
-
-            ILOC = 8
-            ! Face 11
-            NEILOC( ILOC, 41 ) = 7
-            NEILOC( ILOC, 42 ) = 7
-            NEILOC( ILOC, 43 ) = 7
-            NEILOC( ILOC, 44 ) = 7
-            ! Face 9
-            NEILOC( ILOC, 33 ) = 5
-            NEILOC( ILOC, 34 ) = 5
-            NEILOC( ILOC, 35 ) = 5
-            NEILOC( ILOC, 36 ) = 5
-            ! Face 12
-            NEILOC( ILOC, 45 ) = 9
-            NEILOC( ILOC, 46 ) = 9
-            NEILOC( ILOC, 47 ) = 9
-            NEILOC( ILOC, 48 ) = 9
-            ! Face 20
-            NEILOC( ILOC, 77 ) = 17
-            NEILOC( ILOC, 78 ) = 17
-            NEILOC( ILOC, 79 ) = 17
-            NEILOC( ILOC, 80 ) = 17
-            ! External
-            neiloc( iloc, iext + 16 * igp + 1 : iext + 18 * igp ) = -1
-
-            ILOC = 9
-            ! Face 10
-            NEILOC( ILOC, 37 ) = 6
-            NEILOC( ILOC, 38 ) = 6
-            NEILOC( ILOC, 39 ) = 6
-            NEILOC( ILOC, 40 ) = 6
-            ! Face 12
-            NEILOC( ILOC, 45 ) = 8
-            NEILOC( ILOC, 46 ) = 8
-            NEILOC( ILOC, 47 ) = 8
-            NEILOC( ILOC, 48 ) = 8
-            ! Face 21
-            NEILOC( ILOC, 81 ) = 18
-            NEILOC( ILOC, 82 ) = 18
-            NEILOC( ILOC, 83 ) = 18
-            NEILOC( ILOC, 84 ) = 18
-            ! External
-            neiloc( iloc, iext + 18 * igp + 1 : iext + 21 * igp ) = -1
-
-            ILOC = 10
-            ! Face 13
-            NEILOC( ILOC, 49 ) = 1
-            NEILOC( ILOC, 50 ) = 1
-            NEILOC( ILOC, 51 ) = 1
-            NEILOC( ILOC, 52 ) = 1
-            ! Face 22
-            NEILOC( ILOC, 85 ) = 11
-            NEILOC( ILOC, 86 ) = 11
-            NEILOC( ILOC, 87 ) = 11
-            NEILOC( ILOC, 88 ) = 11
-            ! Face 24
-            NEILOC( ILOC, 93 ) = 13
-            NEILOC( ILOC, 94 ) = 13
-            NEILOC( ILOC, 95 ) = 13
-            NEILOC( ILOC, 96 ) = 13
-            ! Face 34
-            NEILOC( ILOC, 133 ) = 19
-            NEILOC( ILOC, 134 ) = 19
-            NEILOC( ILOC, 135 ) = 19
-            NEILOC( ILOC, 136 ) = 19
-            ! External
-            neiloc( iloc, iext + 21 * igp + 1 : iext + 23 * igp ) = -1
-
-            ILOC = 11
-            ! Face 14
-            NEILOC( ILOC, 53 ) = 2
-            NEILOC( ILOC, 54 ) = 2
-            NEILOC( ILOC, 55 ) = 2
-            NEILOC( ILOC, 56 ) = 2
-            ! Face 22
-            NEILOC( ILOC, 85 ) = 10
-            NEILOC( ILOC, 86 ) = 10
-            NEILOC( ILOC, 87 ) = 10
-            NEILOC( ILOC, 88 ) = 10
-            ! Face 25
-            NEILOC( ILOC, 97 ) = 14
-            NEILOC( ILOC, 98 ) = 14
-            NEILOC( ILOC, 99 ) = 14
-            NEILOC( ILOC, 100 ) = 14
-            ! Face 23
-            NEILOC( ILOC, 89 ) = 12
-            NEILOC( ILOC, 90 ) = 12
-            NEILOC( ILOC, 91 ) = 12
-            NEILOC( ILOC, 92 ) = 12
-            ! Face 35
-            NEILOC( ILOC, 137 ) = 20
-            NEILOC( ILOC, 138 ) = 20
-            NEILOC( ILOC, 139 ) = 20
-            NEILOC( ILOC, 140 ) = 20
-            ! External
-            neiloc( iloc, iext + 23 * igp + 1 : iext + 24 * igp ) = -1
-
-            ILOC = 12
-            ! Face 15
-            NEILOC( ILOC, 57 ) = 3
-            NEILOC( ILOC, 58 ) = 3
-            NEILOC( ILOC, 59 ) = 3
-            NEILOC( ILOC, 60 ) = 3
-            ! Face 23
-            NEILOC( ILOC, 89 ) = 11
-            NEILOC( ILOC, 90 ) = 11
-            NEILOC( ILOC, 91 ) = 11
-            NEILOC( ILOC, 92 ) = 11
-            ! Face 26
-            NEILOC( ILOC, 101 ) = 15
-            NEILOC( ILOC, 102 ) = 15
-            NEILOC( ILOC, 103 ) = 15
-            NEILOC( ILOC, 104 ) = 15
-            ! Face 36
-            NEILOC( ILOC, 141 ) = 21
-            NEILOC( ILOC, 142 ) = 21
-            NEILOC( ILOC, 143 ) = 21
-            NEILOC( ILOC, 144 ) = 21
-            ! External
-            neiloc( iloc, iext + 24 * igp + 1 : iext + 26 * igp ) = -1
-
-            ILOC = 13
-            ! Face 16
-            NEILOC( ILOC, 61 ) = 4
-            NEILOC( ILOC, 62 ) = 4
-            NEILOC( ILOC, 63 ) = 4
-            NEILOC( ILOC, 64 ) = 4
-            ! Face 24
-            NEILOC( ILOC, 93 ) = 10
-            NEILOC( ILOC, 94 ) = 10
-            NEILOC( ILOC, 95 ) = 10
-            NEILOC( ILOC, 96 ) = 10
-            ! Face 27
-            NEILOC( ILOC, 105 ) = 14
-            NEILOC( ILOC, 106 ) = 14
-            NEILOC( ILOC, 107 ) = 14
-            NEILOC( ILOC, 108 ) = 14
-            ! Face 29
-            NEILOC( ILOC, 113 ) = 16
-            NEILOC( ILOC, 114 ) = 16
-            NEILOC( ILOC, 115 ) = 16
-            NEILOC( ILOC, 116 ) = 16
-            ! Face 37
-            NEILOC( ILOC, 145 ) = 22
-            NEILOC( ILOC, 146 ) = 22
-            NEILOC( ILOC, 147 ) = 22
-            NEILOC( ILOC, 148 ) = 22
-            ! External
-            neiloc( iloc, iext + 26 * igp + 1 : iext + 27 * igp ) = -1
-
-            ILOC = 14
-            ! Face 17
-            NEILOC( ILOC, 65 ) = 5
-            NEILOC( ILOC, 66 ) = 5
-            NEILOC( ILOC, 67 ) = 5
-            NEILOC( ILOC, 68 ) = 5
-            ! Face 25
-            NEILOC( ILOC, 97 ) = 11
-            NEILOC( ILOC, 98 ) = 11
-            NEILOC( ILOC, 99 ) = 11
-            NEILOC( ILOC, 100 ) = 11
-            ! Face 28
-            NEILOC( ILOC, 109 ) = 15
-            NEILOC( ILOC, 110 ) = 15
-            NEILOC( ILOC, 111 ) = 15
-            NEILOC( ILOC, 112 ) = 15
-            ! Face 30
-            NEILOC( ILOC, 117 ) = 17
-            NEILOC( ILOC, 118 ) = 17
-            NEILOC( ILOC, 119 ) = 17
-            NEILOC( ILOC, 120 ) = 17
-            ! Face 27
-            NEILOC( ILOC, 105 ) = 13
-            NEILOC( ILOC, 106 ) = 13
-            NEILOC( ILOC, 107 ) = 13
-            NEILOC( ILOC, 108 ) = 13
-            ! Face 38
-            NEILOC( ILOC, 149 ) = 23
-            NEILOC( ILOC, 150 ) = 23
-            NEILOC( ILOC, 151 ) = 23
-            NEILOC( ILOC, 152 ) = 23
-
-            ILOC = 15
-            ! Face 18
-            NEILOC( ILOC, 69 ) = 6
-            NEILOC( ILOC, 70 ) = 6
-            NEILOC( ILOC, 71 ) = 6
-            NEILOC( ILOC, 72 ) = 6
-            ! Face 26
-            NEILOC( ILOC, 101 ) = 12
-            NEILOC( ILOC, 102 ) = 12
-            NEILOC( ILOC, 103 ) = 12
-            NEILOC( ILOC, 104 ) = 12
-            ! Face 28
-            NEILOC( ILOC, 109 ) = 14
-            NEILOC( ILOC, 110 ) = 14
-            NEILOC( ILOC, 111 ) = 14
-            NEILOC( ILOC, 112 ) = 14
-            ! Face 31
-            NEILOC( ILOC, 121 ) = 18
-            NEILOC( ILOC, 122 ) = 18
-            NEILOC( ILOC, 123 ) = 18
-            NEILOC( ILOC, 124 ) = 18
-            ! Face 39
-            NEILOC( ILOC, 153 ) = 24
-            NEILOC( ILOC, 154 ) = 24
-            NEILOC( ILOC, 155 ) = 24
-            NEILOC( ILOC, 156 ) = 24
-            ! External
-            neiloc( iloc, iext + 27 * igp + 1 : iext + 28 * igp ) = -1
-
-            ILOC = 16
-            ! Face 19
-            NEILOC( ILOC, 73 ) = 7
-            NEILOC( ILOC, 74 ) = 7
-            NEILOC( ILOC, 75 ) = 7
-            NEILOC( ILOC, 76 ) = 7
-            ! Face 29
-            NEILOC( ILOC, 113 ) = 13
-            NEILOC( ILOC, 114 ) = 13
-            NEILOC( ILOC, 115 ) = 13
-            NEILOC( ILOC, 116 ) = 13
-            ! Face 32
-            NEILOC( ILOC, 125 ) = 17
-            NEILOC( ILOC, 126 ) = 17
-            NEILOC( ILOC, 127 ) = 17
-            NEILOC( ILOC, 128 ) = 17
-            ! Face 40
-            NEILOC( ILOC, 157 ) = 25
-            NEILOC( ILOC, 158 ) = 25
-            NEILOC( ILOC, 159 ) = 25
-            NEILOC( ILOC, 160 ) = 25
-            ! External
-            neiloc( iloc, iext + 28 * igp + 1 : iext + 30 * igp ) = -1
-
-            ILOC = 17
-            ! Face 20
-            NEILOC( ILOC, 77 ) = 8
-            NEILOC( ILOC, 78 ) = 8
-            NEILOC( ILOC, 79 ) = 8
-            NEILOC( ILOC, 80 ) = 8
-            ! Face 32
-            NEILOC( ILOC, 125 ) = 16
-            NEILOC( ILOC, 126 ) = 16
-            NEILOC( ILOC, 127 ) = 16
-            NEILOC( ILOC, 128 ) = 16
-            ! Face 30
-            NEILOC( ILOC, 117 ) = 14
-            NEILOC( ILOC, 118 ) = 14
-            NEILOC( ILOC, 119 ) = 14
-            NEILOC( ILOC, 120 ) = 14
-            ! Face 33
-            NEILOC( ILOC, 129 ) = 18
-            NEILOC( ILOC, 130 ) = 18
-            NEILOC( ILOC, 131 ) = 18
-            NEILOC( ILOC, 132 ) = 18
-            ! Face 41
-            NEILOC( ILOC, 161 ) = 26
-            NEILOC( ILOC, 162 ) = 26
-            NEILOC( ILOC, 163 ) = 26
-            NEILOC( ILOC, 164 ) = 26
-            ! External
-            neiloc( iloc, iext + 30 * igp + 1 : iext + 31 * igp ) = -1
-
-            ILOC = 18
-            ! Face 21
-            NEILOC( ILOC, 81 ) = 9
-            NEILOC( ILOC, 82 ) = 9
-            NEILOC( ILOC, 83 ) = 9
-            NEILOC( ILOC, 84 ) = 9
-            ! Face 31
-            NEILOC( ILOC, 121 ) = 15
-            NEILOC( ILOC, 122 ) = 15
-            NEILOC( ILOC, 123 ) = 15
-            NEILOC( ILOC, 124 ) = 15
-            ! Face 33
-            NEILOC( ILOC, 129 ) = 17
-            NEILOC( ILOC, 130 ) = 17
-            NEILOC( ILOC, 131 ) = 17
-            NEILOC( ILOC, 132 ) = 17
-            ! Face 42
-            NEILOC( ILOC, 165 ) = 27
-            NEILOC( ILOC, 166 ) = 27
-            NEILOC( ILOC, 167 ) = 27
-            NEILOC( ILOC, 168 ) = 27
-            ! External
-            neiloc( iloc, iext + 31 * igp + 1 : iext + 33 * igp ) = -1
-
-            ILOC = 19
-            ! Face 34
-            NEILOC( ILOC, 133 ) = 10
-            NEILOC( ILOC, 134 ) = 10
-            NEILOC( ILOC, 135 ) = 10
-            NEILOC( ILOC, 136 ) = 10
-            ! Face 43
-            NEILOC( ILOC, 169 ) = 20
-            NEILOC( ILOC, 170 ) = 20
-            NEILOC( ILOC, 171 ) = 20
-            NEILOC( ILOC, 172 ) = 20
-            ! Face 45
-            NEILOC( ILOC, 177 ) = 22
-            NEILOC( ILOC, 178 ) = 22
-            NEILOC( ILOC, 179 ) = 22
-            NEILOC( ILOC, 180 ) = 22
-            ! External
-            neiloc( iloc, iext + 33 * igp + 1 : iext + 36 * igp ) = -1
-
-            ILOC = 20
-            ! Face 35
-            NEILOC( ILOC, 137 ) = 11
-            NEILOC( ILOC, 138 ) = 11
-            NEILOC( ILOC, 139 ) = 11
-            NEILOC( ILOC, 140 ) = 11
-            ! Face 43
-            NEILOC( ILOC, 169 ) = 19
-            NEILOC( ILOC, 170 ) = 19
-            NEILOC( ILOC, 171 ) = 19
-            NEILOC( ILOC, 172 ) = 19
-            ! Face 46
-            NEILOC( ILOC, 181 ) = 23
-            NEILOC( ILOC, 182 ) = 23
-            NEILOC( ILOC, 183 ) = 23
-            NEILOC( ILOC, 184 ) = 23
-            ! Face 44
-            NEILOC( ILOC, 173 ) = 21
-            NEILOC( ILOC, 174 ) = 21
-            NEILOC( ILOC, 175 ) = 21
-            NEILOC( ILOC, 176 ) = 21
-            ! External
-            neiloc( iloc, iext + 36 * igp + 1 : iext + 38 * igp ) = -1
-
-            ILOC = 21
-            ! Face 36
-            NEILOC( ILOC, 141 ) = 12
-            NEILOC( ILOC, 142 ) = 12
-            NEILOC( ILOC, 143 ) = 12
-            NEILOC( ILOC, 144 ) = 12
-            ! Face 44
-            NEILOC( ILOC, 173 ) = 20
-            NEILOC( ILOC, 174 ) = 20
-            NEILOC( ILOC, 175 ) = 20
-            NEILOC( ILOC, 176 ) = 20
-            ! Face 47
-            NEILOC( ILOC, 185 ) = 24
-            NEILOC( ILOC, 186 ) = 24
-            NEILOC( ILOC, 187 ) = 24
-            NEILOC( ILOC, 188 ) = 24
-            ! External
-            neiloc( iloc, iext + 38 * igp + 1 : iext + 41 * igp ) = -1
-
-            ILOC = 22
-            ! Face 37
-            NEILOC( ILOC, 145 ) = 13
-            NEILOC( ILOC, 146 ) = 13
-            NEILOC( ILOC, 147 ) = 13
-            NEILOC( ILOC, 148 ) = 13
-            ! Face 45
-            NEILOC( ILOC, 177 ) = 19
-            NEILOC( ILOC, 178 ) = 19
-            NEILOC( ILOC, 179 ) = 19
-            NEILOC( ILOC, 180 ) = 19
-            ! Face 48
-            NEILOC( ILOC, 189 ) = 23
-            NEILOC( ILOC, 190 ) = 23
-            NEILOC( ILOC, 191 ) = 23
-            NEILOC( ILOC, 192 ) = 23
-            ! Face 50
-            NEILOC( ILOC, 197 ) = 25
-            NEILOC( ILOC, 198 ) = 25
-            NEILOC( ILOC, 199 ) = 25
-            NEILOC( ILOC, 200 ) = 25
-            ! External
-            neiloc( iloc, iext + 41 * igp + 1 : iext + 43 * igp ) = -1
-
-            ILOC = 23
-            ! Face 38
-            NEILOC( ILOC, 149 ) = 14
-            NEILOC( ILOC, 150 ) = 14
-            NEILOC( ILOC, 151 ) = 14
-            NEILOC( ILOC, 152 ) = 14
-            ! Face 46
-            NEILOC( ILOC, 181 ) = 20
-            NEILOC( ILOC, 182 ) = 20
-            NEILOC( ILOC, 183 ) = 20
-            NEILOC( ILOC, 184 ) = 20
-            ! Face 49
-            NEILOC( ILOC, 193 ) = 24
-            NEILOC( ILOC, 194 ) = 24
-            NEILOC( ILOC, 195 ) = 24
-            NEILOC( ILOC, 196 ) = 24
-            ! Face 51
-            NEILOC( ILOC, 201 ) = 26
-            NEILOC( ILOC, 202 ) = 26
-            NEILOC( ILOC, 203 ) = 26
-            NEILOC( ILOC, 204 ) = 26
-            ! Face 48
-            NEILOC( ILOC, 189 ) = 22
-            NEILOC( ILOC, 190 ) = 22
-            NEILOC( ILOC, 191 ) = 22
-            NEILOC( ILOC, 192 ) = 22
-            ! External
-            neiloc( iloc, iext + 43 * igp + 1 : iext + 44 * igp ) = -1
-
-            ILOC = 24
-            ! Face 39
-            NEILOC( ILOC, 153 ) = 15
-            NEILOC( ILOC, 154 ) = 15
-            NEILOC( ILOC, 155 ) = 15
-            NEILOC( ILOC, 156 ) = 15
-            ! Face 47
-            NEILOC( ILOC, 185 ) = 21
-            NEILOC( ILOC, 186 ) = 21
-            NEILOC( ILOC, 187 ) = 21
-            NEILOC( ILOC, 188 ) = 21
-            ! Face 49
-            NEILOC( ILOC, 193 ) = 23
-            NEILOC( ILOC, 194 ) = 23
-            NEILOC( ILOC, 195 ) = 23
-            NEILOC( ILOC, 196 ) = 23
-            ! Face 52
-            NEILOC( ILOC, 205 ) = 27
-            NEILOC( ILOC, 206 ) = 27
-            NEILOC( ILOC, 207 ) = 27
-            NEILOC( ILOC, 208 ) = 27
-            ! External
-            neiloc( iloc, iext + 44 * igp + 1 : iext + 46 * igp ) = -1
-
-            ILOC = 25
-            ! Face 40
-            NEILOC( ILOC, 157 ) = 16
-            NEILOC( ILOC, 158 ) = 16
-            NEILOC( ILOC, 159 ) = 16
-            NEILOC( ILOC, 160 ) = 16
-            ! Face 50
-            NEILOC( ILOC, 197 ) = 22
-            NEILOC( ILOC, 198 ) = 22
-            NEILOC( ILOC, 199 ) = 22
-            NEILOC( ILOC, 200 ) = 22
-            ! Face 53
-            NEILOC( ILOC, 209 ) = 26
-            NEILOC( ILOC, 210 ) = 26
-            NEILOC( ILOC, 211 ) = 26
-            NEILOC( ILOC, 212 ) = 26
-            ! External
-            neiloc( iloc, iext + 46 * igp + 1 : iext + 49 * igp ) = -1
-
-            ILOC = 26
-            ! Face 41
-            NEILOC( ILOC, 161 ) = 17
-            NEILOC( ILOC, 162 ) = 17
-            NEILOC( ILOC, 163 ) = 17
-            NEILOC( ILOC, 164 ) = 17
-            ! Face 53
-            NEILOC( ILOC, 209 ) = 25
-            NEILOC( ILOC, 210 ) = 25
-            NEILOC( ILOC, 211 ) = 25
-            NEILOC( ILOC, 212 ) = 25
-            ! Face 51
-            NEILOC( ILOC, 201 ) = 23
-            NEILOC( ILOC, 202 ) = 23
-            NEILOC( ILOC, 203 ) = 23
-            NEILOC( ILOC, 204 ) = 23
-            ! Face 54
-            NEILOC( ILOC, 213 ) = 27
-            NEILOC( ILOC, 214 ) = 27
-            NEILOC( ILOC, 215 ) = 27
-            NEILOC( ILOC, 216 ) = 27
-            ! External
-            neiloc( iloc, iext + 49 * igp + 1 : iext + 51 * igp ) = -1
-
-            ILOC = 27
-            ! Face 42
-            NEILOC( ILOC, 165 ) = 18
-            NEILOC( ILOC, 166 ) = 18
-            NEILOC( ILOC, 167 ) = 18
-            NEILOC( ILOC, 168 ) = 18
-            ! Face 52
-            NEILOC( ILOC, 205 ) = 24
-            NEILOC( ILOC, 206 ) = 24
-            NEILOC( ILOC, 207 ) = 24
-            NEILOC( ILOC, 208 ) = 24
-            ! Face 54
-            NEILOC( ILOC, 213 ) = 26
-            NEILOC( ILOC, 214 ) = 26
-            NEILOC( ILOC, 215 ) = 26
-            NEILOC( ILOC, 216 ) = 26
-            ! External
-            neiloc( iloc, iext + 51 * igp + 1 : iext + 54 * igp ) = -1
-
-        CASE DEFAULT; FLExit( " Invalid integer for cv_ele_type " )
+    CASE( 1, 2 ) ! 1D
+       DO ILOC = 1, NLOC
+          NEILOC( ILOC, ILOC ) = ILOC - 1
+          NEILOC( ILOC, ILOC + 1 ) = ILOC + 1
+       END DO
+       NEILOC( 1, 1 ) = -1
+       NEILOC( NLOC, SVNGI ) = -1
+       FEM_NEILOC = NEILOC
+
+    CASE( 3 ) ! Linear Triangle
+       FLAbort( " Defined elsewhere -- it needs to be updated " )
+
+       ILOC = 1 ! CV 1
+       NEILOC( ILOC, 1 ) = 2
+       NEILOC( ILOC, 3 ) = 3
+       ! External
+       neiloc( iloc, 4 ) = -1
+       neiloc( iloc, 9 ) = -1
+
+       ILOC = 2 ! CV 2
+       NEILOC( ILOC, 1 ) = 1
+       NEILOC( ILOC, 2 ) = 3
+       ! External
+       neiloc( iloc, 5 ) = -1
+       neiloc( iloc, 6 ) = -1
+
+       ILOC = 3 ! CV 3
+       NEILOC( ILOC, 2) = 2
+       NEILOC( ILOC, 3) = 1
+       ! External
+       neiloc( iloc, 7 ) = -1
+       neiloc( iloc, 8 ) = -1
+
+       fem_neiloc = neiloc
+
+    CASE( 4 ) ! Quadratic Triangle
+       FLAbort( " Defined elsewhere -- it needs to be updated " )
+       ILOC = 1
+       ! Face 1
+       NEILOC( ILOC, 1 ) = 2
+       NEILOC( ILOC, 2 ) = 2
+       ! Face 2
+       NEILOC( ILOC,3 ) = 6
+       NEILOC( ILOC,4 ) = 6
+       ! External
+       neiloc( iloc, 19 ) = -1
+       neiloc( iloc, 20 ) = -1
+       neiloc( iloc, 35 ) = -1
+       neiloc( iloc, 36 ) = -1
+
+       ILOC = 2
+       ! Face 1
+       NEILOC( ILOC,1 ) = 1
+       NEILOC( ILOC,2 ) = 1
+       ! Face 7
+       NEILOC( ILOC,13 ) = 6
+       NEILOC( ILOC,14 ) = 6
+       ! Face 8
+       NEILOC( ILOC,15 ) = 4
+       NEILOC( ILOC,16 ) = 4
+       ! Face 3
+       NEILOC( ILOC,5 ) = 3
+       NEILOC( ILOC,6 ) = 3
+       ! External
+       neiloc( iloc, 21 ) = -1
+       neiloc( iloc, 22 ) = -1
+
+       ILOC = 3
+       ! Face 3
+       NEILOC( ILOC,5 ) = 2
+       NEILOC( ILOC,6 ) = 2
+       ! Face 4
+       NEILOC( ILOC,7 ) = 4
+       NEILOC( ILOC,8 ) = 4
+       ! External
+       neiloc( iloc, 23 ) = -1
+       neiloc( iloc, 24 ) = -1
+       neiloc( iloc, 25 ) = -1
+       neiloc( iloc, 26 ) = -1
+
+       ILOC = 4
+       ! Face 4
+       NEILOC( ILOC,7 ) = 3
+       NEILOC( ILOC,8 ) = 3
+       ! Face 8
+       NEILOC( ILOC,15 ) = 2
+       NEILOC( ILOC,16 ) = 2
+       ! Face 9
+       NEILOC( ILOC,17 ) = 6
+       NEILOC( ILOC,18 ) = 6
+       ! Face 5
+       NEILOC( ILOC,9 )  = 5
+       NEILOC( ILOC,10 ) = 5
+       ! External
+       neiloc( iloc, 27 ) = -1
+       neiloc( iloc, 28 ) = -1
+
+       ILOC = 5
+       ! Face 5
+       NEILOC( ILOC,9 )  = 4
+       NEILOC( ILOC,10 ) = 4
+       ! Face 6
+       NEILOC( ILOC,11 ) = 6
+       NEILOC( ILOC,12 ) = 6
+       ! External
+       neiloc( iloc, 29 ) = -1
+       neiloc( iloc, 30 ) = -1
+       neiloc( iloc, 31 ) = -1
+       neiloc( iloc, 32 ) = -1
+
+       ILOC = 6
+       ! Face 6
+       NEILOC( ILOC,11 ) = 5
+       NEILOC( ILOC,12 ) = 5
+       ! Face 9
+       NEILOC( ILOC,17 ) = 4
+       NEILOC( ILOC,18 ) = 4
+       ! Face 7
+       NEILOC( ILOC,13 ) = 2
+       NEILOC( ILOC,14 ) = 2
+       ! Face 2
+       NEILOC( ILOC,3 ) = 1
+       NEILOC( ILOC,4 ) = 1
+       ! External
+       neiloc( iloc, 35 ) = -1
+       neiloc( iloc, 36 ) = -1
+
+    CASE( 5  ) ! Bi-linear Quadrilateral
+       ILOC = 1
+       NEILOC( ILOC, 1 ) = 3
+       NEILOC( ILOC, 3 ) = 2
+       ! External
+       neiloc( iloc, 5 ) = -1
+       neiloc( iloc, 6 ) = -1
+
+       ILOC = 2
+       NEILOC( ILOC, 2 ) = 4
+       NEILOC( ILOC, 3 ) = 1
+       ! External
+       neiloc( iloc, 7 ) = -1
+       neiloc( iloc, 8 ) = -1
+
+       ILOC = 3
+       NEILOC( ILOC, 1 ) = 1
+       NEILOC( ILOC, 4 ) = 4
+       ! External
+       neiloc( iloc, 11 ) = -1
+       neiloc( iloc, 12 ) = -1
+
+       ILOC = 4
+       NEILOC( ILOC, 2 ) = 2
+       NEILOC( ILOC, 4 ) = 3
+       ! External
+       neiloc( iloc, 9 ) = -1
+       neiloc( iloc, 10 ) = -1
+
+    CASE( 6 ) ! Bi-quadratic Quadrilateral
+       ILOC = 1
+       NEILOC( ILOC, 1 ) = 2
+       NEILOC( ILOC, 2 ) = 2
+       NEILOC( ILOC, 5 ) = 4
+       NEILOC( ILOC, 6 ) = 4
+       ! External
+       neiloc( iloc, 25 ) = -1
+       neiloc( iloc, 26 ) = -1
+       neiloc( iloc, 27 ) = -1
+       neiloc( iloc, 28 ) = -1
+
+       ILOC = 2
+       NEILOC( ILOC, 1 ) = 1
+       NEILOC( ILOC, 2 ) = 1
+       NEILOC( ILOC, 7 ) = 5
+       NEILOC( ILOC, 8 ) = 5
+       NEILOC( ILOC, 3 ) = 3
+       NEILOC( ILOC, 4 ) = 3
+       ! External
+       neiloc( iloc, 47 ) = -1
+       neiloc( iloc, 48 ) = -1
+
+       ILOC = 3
+       NEILOC( ILOC, 3) = 2
+       NEILOC( ILOC, 4) = 2
+       NEILOC( ILOC, 9) = 6
+       NEILOC( ILOC, 10 ) = 6
+       ! External
+       neiloc( iloc, 43 ) = -1
+       neiloc( iloc, 44 ) = -1
+       neiloc( iloc, 45 ) = -1
+       neiloc( iloc, 46 ) = -1
+
+       ILOC = 4
+       NEILOC( ILOC, 5) = 1
+       NEILOC( ILOC, 6) = 1
+       NEILOC( ILOC, 11 ) = 5
+       NEILOC( ILOC, 12 ) = 5
+       NEILOC( ILOC, 15 ) = 7
+       NEILOC( ILOC, 16 ) = 7
+       ! External
+       neiloc( iloc, 29 ) = -1
+       neiloc( iloc, 30 ) = -1
+
+       ILOC = 5
+       NEILOC( ILOC, 7) = 2
+       NEILOC( ILOC, 8) = 2
+       NEILOC( ILOC, 13 ) = 6
+       NEILOC( ILOC, 14 ) = 6
+       NEILOC( ILOC, 18 ) = 8
+       NEILOC( ILOC, 17 ) = 8
+       NEILOC( ILOC, 12 ) = 4
+       NEILOC( ILOC, 11 ) = 4
+
+       ILOC = 6
+       NEILOC( ILOC, 9) = 3
+       NEILOC( ILOC, 10 ) = 3
+       NEILOC( ILOC, 13 ) = 5
+       NEILOC( ILOC, 14 ) = 5
+       NEILOC( ILOC, 19 ) = 9
+       NEILOC( ILOC, 20 ) = 9
+       ! External
+       neiloc( iloc, 41 ) = -1
+       neiloc( iloc, 42 ) = -1
+
+       ILOC = 7
+       NEILOC( ILOC, 15 ) = 4
+       NEILOC( ILOC, 16 ) = 4
+       NEILOC( ILOC, 21 ) = 8
+       NEILOC( ILOC, 22 ) = 8
+       ! External
+       neiloc( iloc, 31 ) = -1
+       neiloc( iloc, 32 ) = -1
+       neiloc( iloc, 33 ) = -1
+       neiloc( iloc, 34 ) = -1
+
+       ILOC = 8
+       NEILOC( ILOC, 21 ) = 7
+       NEILOC( ILOC, 22 ) = 7
+       NEILOC( ILOC, 17 ) = 5
+       NEILOC( ILOC, 18 ) = 5
+       NEILOC( ILOC, 23 ) = 9
+       NEILOC( ILOC, 24 ) = 9
+       ! External
+       neiloc( iloc, 35 ) = -1
+       neiloc( iloc, 36 ) = -1
+
+       ILOC = 9
+       NEILOC( ILOC, 23 ) = 8
+       NEILOC( ILOC, 24 ) = 8
+       NEILOC( ILOC, 19 ) = 6
+       NEILOC( ILOC, 20 ) = 6
+       ! External
+       neiloc( iloc, 37 ) = -1
+       neiloc( iloc, 38 ) = -1
+       neiloc( iloc, 39 ) = -1
+       neiloc( iloc, 40 ) = -1
+
+    CASE( 7 ) ! Linear Tetrahedron
+       iext = 6
+       igp = 1
+       ILOC = 1
+       NEILOC( ILOC, 1 ) = 2
+       NEILOC( ILOC, 3 ) = 3
+       NEILOC( ILOC, 4 ) = 4
+       ! External
+       neiloc( iloc, iext + 1 : iext + 3 * igp ) = -1
+
+       ILOC = 2
+       NEILOC( ILOC, 1 ) = 1
+       NEILOC( ILOC, 2 ) = 3
+       NEILOC( ILOC, 5 ) = 4
+       ! External
+       neiloc( iloc, iext + 3 * igp + 1 : iext + 6 * igp ) = -1
+
+       ILOC = 3
+       NEILOC( ILOC, 2 ) = 2
+       NEILOC( ILOC, 3 ) = 1
+       NEILOC( ILOC, 6 ) = 4
+       ! External
+       neiloc( iloc, iext + 6 * igp + 1 : iext + 9 * igp ) = -1
+
+       ILOC = 4
+       NEILOC( ILOC, 4 ) = 1
+       NEILOC( ILOC, 5 ) = 2
+       NEILOC( ILOC, 6 ) = 3
+       ! External
+       neiloc( iloc, iext + 9 * igp + 1 : iext + 12 * igp ) = -1
+
+    CASE( 8 ) ! Quadratic Tetrahedron
+       iext = 96
+       igp = 4
+       ILOC = 1
+       ! Face 1
+       NEILOC( ILOC, 1 ) = 6
+       NEILOC( ILOC, 2 ) = 6
+       NEILOC( ILOC, 3 ) = 6
+       NEILOC( ILOC, 4 ) = 6
+       ! Face 2
+       NEILOC( ILOC, 5 ) = 2
+       NEILOC( ILOC, 6 ) = 2
+       NEILOC( ILOC, 7 ) = 2
+       NEILOC( ILOC, 8 ) = 2
+       ! Face 3
+       NEILOC( ILOC, 9 )  = 7
+       NEILOC( ILOC, 10 ) = 7
+       NEILOC( ILOC, 11 ) = 7
+       NEILOC( ILOC, 12 ) = 7
+       ! External
+       neiloc( iloc, iext + 1 : iext + 3 * igp ) = -1
+
+       ILOC = 2
+       ! Face 2
+       NEILOC( ILOC, 5 ) = 1
+       NEILOC( ILOC, 6 ) = 1
+       NEILOC( ILOC, 7 ) = 1
+       NEILOC( ILOC, 8 ) = 1
+       ! Face 5
+       NEILOC( ILOC, 17 ) = 3
+       NEILOC( ILOC, 18 ) = 3
+       NEILOC( ILOC, 19 ) = 3
+       NEILOC( ILOC, 20 ) = 3
+       ! Face 20
+       NEILOC( ILOC, 77 ) = 8
+       NEILOC( ILOC, 78 ) = 8
+       NEILOC( ILOC, 79 ) = 8
+       NEILOC( ILOC, 80 ) = 8
+       ! Face 21
+       NEILOC( ILOC, 81 ) = 7
+       NEILOC( ILOC, 82 ) = 7
+       NEILOC( ILOC, 83 ) = 7
+       NEILOC( ILOC, 84 ) = 7
+       ! Face 23
+       NEILOC( ILOC, 89 ) = 6
+       NEILOC( ILOC, 80 ) = 6
+       NEILOC( ILOC, 91 ) = 6
+       NEILOC( ILOC, 92 ) = 6
+       ! Face 24
+       NEILOC( ILOC, 93 ) = 4
+       NEILOC( ILOC, 94 ) = 4
+       NEILOC( ILOC, 95 ) = 4
+       NEILOC( ILOC, 96 ) = 4
+       ! External
+       neiloc( iloc, iext + 3 * igp + 1 : iext + 5 * igp ) = -1
+
+       ILOC = 3
+       ! Face 4
+       NEILOC( ILOC, 13 ) = 4
+       NEILOC( ILOC, 14 ) = 4
+       NEILOC( ILOC, 15 ) = 4
+       NEILOC( ILOC, 16 ) = 4
+       ! Face 5
+       NEILOC( ILOC, 17 ) = 2
+       NEILOC( ILOC, 18 ) = 2
+       NEILOC( ILOC, 19 ) = 2
+       NEILOC( ILOC, 20 ) = 2
+       ! Face 6
+       NEILOC( ILOC, 21 ) = 8
+       NEILOC( ILOC, 22 ) = 8
+       NEILOC( ILOC, 23 ) = 8
+       NEILOC( ILOC, 24 ) = 8
+       ! External
+       neiloc( iloc, iext + 5 * igp + 1 : iext + 8 * igp ) = -1
+
+       ILOC = 4
+       ! Face 4
+       NEILOC( ILOC, 13 ) = 3
+       NEILOC( ILOC, 14 ) = 3
+       NEILOC( ILOC, 15 ) = 3
+       NEILOC( ILOC, 16 ) = 3
+       ! Face 8
+       NEILOC( ILOC, 29 ) = 5
+       NEILOC( ILOC, 30 ) = 5
+       NEILOC( ILOC, 31 ) = 5
+       NEILOC( ILOC, 32 ) = 5
+       ! Face 18
+       NEILOC( ILOC, 69 ) = 9
+       NEILOC( ILOC, 70 ) = 9
+       NEILOC( ILOC, 71 ) = 9
+       NEILOC( ILOC, 72 ) = 9
+       ! Face 19
+       NEILOC( ILOC, 73 ) = 8
+       NEILOC( ILOC, 74 ) = 8
+       NEILOC( ILOC, 75 ) = 8
+       NEILOC( ILOC, 76 ) = 8
+       ! Face 22
+       NEILOC( ILOC, 85 ) = 6
+       NEILOC( ILOC, 86 ) = 6
+       NEILOC( ILOC, 87 ) = 6
+       NEILOC( ILOC, 88 ) = 6
+       ! Face 24
+       NEILOC( ILOC, 93 ) = 2
+       NEILOC( ILOC, 94 ) = 2
+       NEILOC( ILOC, 95 ) = 2
+       NEILOC( ILOC, 96 ) = 2
+       ! External
+       neiloc( iloc, iext + 8 * igp + 1 : iext + 10 * igp ) = -1
+
+       ILOC = 5
+       ! Face 7
+       NEILOC( ILOC, 25 ) = 6
+       NEILOC( ILOC, 26 ) = 6
+       NEILOC( ILOC, 27 ) = 6
+       NEILOC( ILOC, 28 ) = 6
+       ! Face 8
+       NEILOC( ILOC, 29 ) = 4
+       NEILOC( ILOC, 30 ) = 4
+       NEILOC( ILOC, 31 ) = 4
+       NEILOC( ILOC, 32 ) = 4
+       ! Face 9
+       NEILOC( ILOC, 33 ) = 9
+       NEILOC( ILOC, 34 ) = 9
+       NEILOC( ILOC, 35 ) = 9
+       NEILOC( ILOC, 36 ) = 9
+       ! External
+       neiloc( iloc, iext + 10 * igp + 1 : iext + 13 * igp ) = -1
+
+       ILOC = 6
+       ! Face 1
+       NEILOC( ILOC, 1 ) = 1
+       NEILOC( ILOC, 2 ) = 1
+       NEILOC( ILOC, 3 ) = 1
+       NEILOC( ILOC, 4 ) = 1
+       ! Face 7
+       NEILOC( ILOC, 25 ) = 5
+       NEILOC( ILOC, 26 ) = 5
+       NEILOC( ILOC, 27 ) = 5
+       NEILOC( ILOC, 28 ) = 5
+       ! Face 16
+       NEILOC( ILOC, 61 ) = 7
+       NEILOC( ILOC, 62 ) = 7
+       NEILOC( ILOC, 63 ) = 7
+       NEILOC( ILOC, 64 ) = 7
+       ! Face 17
+       NEILOC( ILOC, 65 ) = 9
+       NEILOC( ILOC, 66 ) = 9
+       NEILOC( ILOC, 67 ) = 9
+       NEILOC( ILOC, 68 ) = 9
+       ! Face 22
+       NEILOC( ILOC, 85 ) = 4
+       NEILOC( ILOC, 86 ) = 4
+       NEILOC( ILOC, 87 ) = 4
+       NEILOC( ILOC, 88 ) = 4
+       ! Face 23
+       NEILOC( ILOC, 89 ) = 2
+       NEILOC( ILOC, 90 ) = 2
+       NEILOC( ILOC, 91 ) = 2
+       NEILOC( ILOC, 92 ) = 2
+       ! External
+       neiloc( iloc, iext + 13 * igp + 1 : iext + 15 * igp ) = -1
+       !
+       ILOC = 7
+       ! Face 3
+       NEILOC( ILOC, 9 )  = 1
+       NEILOC( ILOC, 10 ) = 1
+       NEILOC( ILOC, 11 ) = 1
+       NEILOC( ILOC, 12 ) = 1
+       ! Face 11
+       NEILOC( ILOC, 41 ) = 10
+       NEILOC( ILOC, 42 ) = 10
+       NEILOC( ILOC, 43 ) = 10
+       NEILOC( ILOC, 44 ) = 10
+       ! Face 13
+       NEILOC( ILOC, 49 ) = 9
+       NEILOC( ILOC, 50 ) = 9
+       NEILOC( ILOC, 51 ) = 9
+       NEILOC( ILOC, 52 ) = 9
+       ! Face 15
+       NEILOC( ILOC, 57 ) = 8
+       NEILOC( ILOC, 58 ) = 8
+       NEILOC( ILOC, 59 ) = 8
+       NEILOC( ILOC, 60 ) = 8
+       ! Face 16
+       NEILOC( ILOC, 61 ) = 6
+       NEILOC( ILOC, 62 ) = 6
+       NEILOC( ILOC, 63 ) = 6
+       NEILOC( ILOC, 64 ) = 6
+       ! Face 21
+       NEILOC( ILOC, 81 ) = 2
+       NEILOC( ILOC, 82 ) = 2
+       NEILOC( ILOC, 83 ) = 2
+       NEILOC( ILOC, 84 ) = 2
+       ! External
+       neiloc( iloc, iext + 15 * igp + 1 : iext + 17 * igp ) = -1
+
+       ILOC = 8
+       ! Face 6
+       NEILOC( ILOC, 21 ) = 3
+       NEILOC( ILOC, 22 ) = 3
+       NEILOC( ILOC, 23 ) = 3
+       NEILOC( ILOC, 24 ) = 3
+       ! Face 12
+       NEILOC( ILOC, 45 ) = 10
+       NEILOC( ILOC, 46 ) = 10
+       NEILOC( ILOC, 47 ) = 10
+       NEILOC( ILOC, 48 ) = 10
+       ! Face 14
+       NEILOC( ILOC, 53 ) = 9
+       NEILOC( ILOC, 54 ) = 9
+       NEILOC( ILOC, 55 ) = 9
+       NEILOC( ILOC, 56 ) = 9
+       ! Face 15
+       NEILOC( ILOC, 57 ) = 7
+       NEILOC( ILOC, 58 ) = 7
+       NEILOC( ILOC, 59 ) = 7
+       NEILOC( ILOC, 60 ) = 7
+       ! Face 19
+       NEILOC( ILOC, 73 ) = 4
+       NEILOC( ILOC, 74 ) = 4
+       NEILOC( ILOC, 75 ) = 4
+       NEILOC( ILOC, 76 ) = 4
+       ! Face 20
+       NEILOC( ILOC, 77 ) = 2
+       NEILOC( ILOC, 78 ) = 2
+       NEILOC( ILOC, 79 ) = 2
+       NEILOC( ILOC, 80 ) = 2
+       ! External
+       neiloc( iloc, iext + 17 * igp + 1 : iext + 20 * igp ) = -1
+
+       ILOC = 9
+       ! Face 9
+       NEILOC( ILOC, 33 ) = 5
+       NEILOC( ILOC, 34 ) = 5
+       NEILOC( ILOC, 35 ) = 5
+       NEILOC( ILOC, 36 ) = 5
+       ! Face 10
+       NEILOC( ILOC, 37 ) = 10
+       NEILOC( ILOC, 38 ) = 10
+       NEILOC( ILOC, 39 ) = 10
+       NEILOC( ILOC, 40 ) = 10
+       ! Face 13
+       NEILOC( ILOC, 49 ) = 7
+       NEILOC( ILOC, 50 ) = 7
+       NEILOC( ILOC, 51 ) = 7
+       NEILOC( ILOC, 52 ) = 7
+       ! Face 14
+       NEILOC( ILOC, 53 ) = 8
+       NEILOC( ILOC, 54 ) = 8
+       NEILOC( ILOC, 55 ) = 8
+       NEILOC( ILOC, 56 ) = 8
+       ! Face 17
+       NEILOC( ILOC, 65 ) = 6
+       NEILOC( ILOC, 66 ) = 6
+       NEILOC( ILOC, 67 ) = 6
+       NEILOC( ILOC, 68 ) = 6
+       ! Face 18
+       NEILOC( ILOC, 69 ) = 4
+       NEILOC( ILOC, 70 ) = 4
+       NEILOC( ILOC, 71 ) = 4
+       NEILOC( ILOC, 72 ) = 4
+       ! External
+       neiloc( iloc, iext + 20 * igp + 1 : iext + 22 * igp ) = -1
+
+       ILOC = 10
+       ! Face 10
+       NEILOC( ILOC, 37 ) = 9
+       NEILOC( ILOC, 38 ) = 9
+       NEILOC( ILOC, 39 ) = 9
+       NEILOC( ILOC, 40 ) = 9
+       ! Face 11
+       NEILOC( ILOC, 41 ) = 7
+       NEILOC( ILOC, 42 ) = 7
+       NEILOC( ILOC, 43 ) = 7
+       NEILOC( ILOC, 44 ) = 7
+       ! Face 12
+       NEILOC( ILOC, 45 ) = 8
+       NEILOC( ILOC, 46 ) = 8
+       NEILOC( ILOC, 47 ) = 8
+       NEILOC( ILOC, 48 ) = 8
+       ! External
+       neiloc( iloc, iext + 22 * igp + 1 : iext + 24 * igp ) = -1
+
+    CASE( 9 ) ! Tri-linear Hexahedron
+       ILOC = 1
+       NEILOC( ILOC, 1 ) = 3
+       NEILOC( ILOC, 3 ) = 2
+       NEILOC( ILOC, 5 ) = 5
+       ! External
+       neiloc( iloc, 13 ) = -1
+       neiloc( iloc, 17 ) = -1
+       neiloc( iloc, 21 ) = -1
+
+       ILOC = 2
+       NEILOC( ILOC, 2 ) = 4
+       NEILOC( ILOC, 3 ) = 1
+       NEILOC( ILOC, 6 ) = 6
+       ! External
+       neiloc( iloc, 14 ) = -1
+       neiloc( iloc, 18 ) = -1
+       neiloc( iloc, 25 ) = -1
+
+       ILOC = 3
+       NEILOC( ILOC, 1 ) = 1
+       NEILOC( ILOC, 4 ) = 4
+       NEILOC( ILOC, 7 ) = 7
+       ! External
+       neiloc( iloc, 16 ) = -1
+       neiloc( iloc, 22 ) = -1
+       neiloc( iloc, 31 ) = -1
+
+       ILOC = 4
+       NEILOC( ILOC, 2 ) = 2
+       NEILOC( ILOC, 4 ) = 3
+       NEILOC( ILOC, 8 ) = 8
+       ! External
+       neiloc( iloc, 15 ) = -1
+       neiloc( iloc, 26 ) = -1
+       neiloc( iloc, 30 ) = -1
+
+       ILOC = 5
+       NEILOC( ILOC, 5 ) = 1
+       NEILOC( ILOC, 9 ) = 7
+       NEILOC( ILOC, 11 ) = 6
+       ! External
+       neiloc( iloc, 19 ) = -1
+       neiloc( iloc, 24 ) = -1
+       neiloc( iloc, 33 ) = -1
+
+       ILOC = 6
+       NEILOC( ILOC, 6 ) = 2
+       NEILOC( ILOC, 10 ) = 8
+       NEILOC( ILOC, 11 ) = 5
+       ! External
+       neiloc( iloc, 20 ) = -1
+       neiloc( iloc, 27 ) = -1
+       neiloc( iloc, 34 ) = -1
+
+       ILOC = 7
+       NEILOC( ILOC, 7 ) = 3
+       NEILOC( ILOC, 9 ) = 5
+       NEILOC( ILOC, 12 ) = 8
+       ! External
+       neiloc( iloc, 23 ) = -1
+       neiloc( iloc, 32 ) = -1
+       neiloc( iloc, 36 ) = -1
+
+       ILOC = 8
+       NEILOC( ILOC, 8 ) = 4
+       NEILOC( ILOC, 10 ) = 6
+       NEILOC( ILOC, 12 ) = 7
+       ! External
+       neiloc( iloc, 28 ) = -1
+       neiloc( iloc, 29 ) = -1
+       neiloc( iloc, 35 ) = -1
+
+    CASE( 10 ) ! Tri-quadratic Hexahedron
+       iext = 216
+       igp = 4
+       ILOC = 1
+       ! Face 1
+       NEILOC( ILOC, 1 ) = 2
+       NEILOC( ILOC, 2 ) = 2
+       NEILOC( ILOC, 3 ) = 2
+       NEILOC( ILOC, 4 ) = 2
+       ! Face 3
+       NEILOC( ILOC, 9 ) = 4
+       NEILOC( ILOC, 10 ) = 4
+       NEILOC( ILOC, 11 ) = 4
+       NEILOC( ILOC, 12 ) = 4
+       ! Face 13
+       NEILOC( ILOC, 49 ) = 10
+       NEILOC( ILOC, 50 ) = 10
+       NEILOC( ILOC, 51 ) = 10
+       NEILOC( ILOC, 52 ) = 10
+       ! External
+       neiloc( iloc, iext + 1 : iext + 3 * igp ) = -1
+
+       ILOC = 2
+       ! Face 1
+       NEILOC( ILOC, 1 ) = 1
+       NEILOC( ILOC, 2 ) = 1
+       NEILOC( ILOC, 3 ) = 1
+       NEILOC( ILOC, 4 ) = 1
+       ! Face 4
+       NEILOC( ILOC, 13 ) = 5
+       NEILOC( ILOC, 14 ) = 5
+       NEILOC( ILOC, 15 ) = 5
+       NEILOC( ILOC, 16 ) = 5
+       ! Face 2
+       NEILOC( ILOC, 5 ) = 3
+       NEILOC( ILOC, 6 ) = 3
+       NEILOC( ILOC, 7 ) = 3
+       NEILOC( ILOC, 8 ) = 3
+       ! Face 14
+       NEILOC( ILOC, 53 ) = 11
+       NEILOC( ILOC, 54 ) = 11
+       NEILOC( ILOC, 55 ) = 11
+       NEILOC( ILOC, 56 ) = 11
+       ! External
+       neiloc( iloc, iext + 3 * igp + 1 : iext + 5 * igp ) = -1
+
+       ILOC = 3
+       ! Face 2
+       NEILOC( ILOC, 5 ) = 2
+       NEILOC( ILOC, 6 ) = 2
+       NEILOC( ILOC, 7 ) = 2
+       NEILOC( ILOC, 8 ) = 2
+       ! Face 5
+       NEILOC( ILOC, 17 ) = 6
+       NEILOC( ILOC, 18 ) = 6
+       NEILOC( ILOC, 19 ) = 6
+       NEILOC( ILOC, 20 ) = 6
+       ! Face 15
+       NEILOC( ILOC, 57 ) = 12
+       NEILOC( ILOC, 58 ) = 12
+       NEILOC( ILOC, 59 ) = 12
+       NEILOC( ILOC, 60 ) = 12
+       ! External
+       neiloc( iloc, iext + 5 * igp + 1 : iext + 8 * igp ) = -1
+
+       ILOC = 4
+       ! Face 3
+       NEILOC( ILOC, 9 ) = 1
+       NEILOC( ILOC, 10 ) = 1
+       NEILOC( ILOC, 11 ) = 1
+       NEILOC( ILOC, 12 ) = 1
+       ! Face 6
+       NEILOC( ILOC, 21 ) = 5
+       NEILOC( ILOC, 22 ) = 5
+       NEILOC( ILOC, 23 ) = 5
+       NEILOC( ILOC, 24 ) = 5
+       ! Face 8
+       NEILOC( ILOC, 29 ) = 7
+       NEILOC( ILOC, 30 ) = 7
+       NEILOC( ILOC, 31 ) = 7
+       NEILOC( ILOC, 32 ) = 7
+       ! Face 16
+       NEILOC( ILOC, 61 ) = 13
+       NEILOC( ILOC, 62 ) = 13
+       NEILOC( ILOC, 63 ) = 13
+       NEILOC( ILOC, 64 ) = 13
+       ! External
+       neiloc( iloc, iext + 8 * igp + 1 : iext + 10 * igp ) = -1
+
+       ILOC = 5
+       ! Face 4
+       NEILOC( ILOC, 13 ) = 2
+       NEILOC( ILOC, 14 ) = 2
+       NEILOC( ILOC, 15 ) = 2
+       NEILOC( ILOC, 16 ) = 2
+       ! Face 7
+       NEILOC( ILOC, 25 ) = 6
+       NEILOC( ILOC, 26 ) = 6
+       NEILOC( ILOC, 27 ) = 6
+       NEILOC( ILOC, 28 ) = 6
+       ! Face 9
+       NEILOC( ILOC, 33 ) = 8
+       NEILOC( ILOC, 34 ) = 8
+       NEILOC( ILOC, 35 ) = 8
+       NEILOC( ILOC, 36 ) = 8
+       ! Face 6
+       NEILOC( ILOC, 21 ) = 4
+       NEILOC( ILOC, 22 ) = 4
+       NEILOC( ILOC, 23 ) = 4
+       NEILOC( ILOC, 24 ) = 4
+       ! Face 17
+       NEILOC( ILOC, 65 ) = 14
+       NEILOC( ILOC, 66 ) = 14
+       NEILOC( ILOC, 67 ) = 14
+       NEILOC( ILOC, 68 ) = 14
+       ! External
+       neiloc( iloc, iext + 10 * igp + 1 : iext + 11 * igp ) = -1
+
+       ILOC = 6
+       ! Face 5
+       NEILOC( ILOC, 17 ) = 3
+       NEILOC( ILOC, 18 ) = 3
+       NEILOC( ILOC, 19 ) = 3
+       NEILOC( ILOC, 20 ) = 3
+       ! Face 7
+       NEILOC( ILOC, 25 ) = 5
+       NEILOC( ILOC, 26 ) = 5
+       NEILOC( ILOC, 27 ) = 5
+       NEILOC( ILOC, 28 ) = 5
+       ! Face 10
+       NEILOC( ILOC, 37 ) = 9
+       NEILOC( ILOC, 38 ) = 9
+       NEILOC( ILOC, 39 ) = 9
+       NEILOC( ILOC, 40 ) = 9
+       ! Face 18
+       NEILOC( ILOC, 69 ) = 15
+       NEILOC( ILOC, 70 ) = 15
+       NEILOC( ILOC, 71 ) = 15
+       NEILOC( ILOC, 72 ) = 15
+       ! External
+       neiloc( iloc, iext + 11 * igp + 1 : iext + 13 * igp ) = -1
+
+       ILOC = 7
+       ! Face 8
+       NEILOC( ILOC, 29 ) = 4
+       NEILOC( ILOC, 30 ) = 4
+       NEILOC( ILOC, 31 ) = 4
+       NEILOC( ILOC, 32 ) = 4
+       ! Face 11
+       NEILOC( ILOC, 41 ) = 8
+       NEILOC( ILOC, 42 ) = 8
+       NEILOC( ILOC, 43 ) = 8
+       NEILOC( ILOC, 44 ) = 8
+       ! Face 19
+       NEILOC( ILOC, 73 ) = 16
+       NEILOC( ILOC, 74 ) = 16
+       NEILOC( ILOC, 75 ) = 16
+       NEILOC( ILOC, 76 ) = 16
+       ! External
+       neiloc( iloc, iext + 13 * igp + 1 : iext + 16 * igp ) = -1
+
+       ILOC = 8
+       ! Face 11
+       NEILOC( ILOC, 41 ) = 7
+       NEILOC( ILOC, 42 ) = 7
+       NEILOC( ILOC, 43 ) = 7
+       NEILOC( ILOC, 44 ) = 7
+       ! Face 9
+       NEILOC( ILOC, 33 ) = 5
+       NEILOC( ILOC, 34 ) = 5
+       NEILOC( ILOC, 35 ) = 5
+       NEILOC( ILOC, 36 ) = 5
+       ! Face 12
+       NEILOC( ILOC, 45 ) = 9
+       NEILOC( ILOC, 46 ) = 9
+       NEILOC( ILOC, 47 ) = 9
+       NEILOC( ILOC, 48 ) = 9
+       ! Face 20
+       NEILOC( ILOC, 77 ) = 17
+       NEILOC( ILOC, 78 ) = 17
+       NEILOC( ILOC, 79 ) = 17
+       NEILOC( ILOC, 80 ) = 17
+       ! External
+       neiloc( iloc, iext + 16 * igp + 1 : iext + 18 * igp ) = -1
+
+       ILOC = 9
+       ! Face 10
+       NEILOC( ILOC, 37 ) = 6
+       NEILOC( ILOC, 38 ) = 6
+       NEILOC( ILOC, 39 ) = 6
+       NEILOC( ILOC, 40 ) = 6
+       ! Face 12
+       NEILOC( ILOC, 45 ) = 8
+       NEILOC( ILOC, 46 ) = 8
+       NEILOC( ILOC, 47 ) = 8
+       NEILOC( ILOC, 48 ) = 8
+       ! Face 21
+       NEILOC( ILOC, 81 ) = 18
+       NEILOC( ILOC, 82 ) = 18
+       NEILOC( ILOC, 83 ) = 18
+       NEILOC( ILOC, 84 ) = 18
+       ! External
+       neiloc( iloc, iext + 18 * igp + 1 : iext + 21 * igp ) = -1
+
+       ILOC = 10
+       ! Face 13
+       NEILOC( ILOC, 49 ) = 1
+       NEILOC( ILOC, 50 ) = 1
+       NEILOC( ILOC, 51 ) = 1
+       NEILOC( ILOC, 52 ) = 1
+       ! Face 22
+       NEILOC( ILOC, 85 ) = 11
+       NEILOC( ILOC, 86 ) = 11
+       NEILOC( ILOC, 87 ) = 11
+       NEILOC( ILOC, 88 ) = 11
+       ! Face 24
+       NEILOC( ILOC, 93 ) = 13
+       NEILOC( ILOC, 94 ) = 13
+       NEILOC( ILOC, 95 ) = 13
+       NEILOC( ILOC, 96 ) = 13
+       ! Face 34
+       NEILOC( ILOC, 133 ) = 19
+       NEILOC( ILOC, 134 ) = 19
+       NEILOC( ILOC, 135 ) = 19
+       NEILOC( ILOC, 136 ) = 19
+       ! External
+       neiloc( iloc, iext + 21 * igp + 1 : iext + 23 * igp ) = -1
+
+       ILOC = 11
+       ! Face 14
+       NEILOC( ILOC, 53 ) = 2
+       NEILOC( ILOC, 54 ) = 2
+       NEILOC( ILOC, 55 ) = 2
+       NEILOC( ILOC, 56 ) = 2
+       ! Face 22
+       NEILOC( ILOC, 85 ) = 10
+       NEILOC( ILOC, 86 ) = 10
+       NEILOC( ILOC, 87 ) = 10
+       NEILOC( ILOC, 88 ) = 10
+       ! Face 25
+       NEILOC( ILOC, 97 ) = 14
+       NEILOC( ILOC, 98 ) = 14
+       NEILOC( ILOC, 99 ) = 14
+       NEILOC( ILOC, 100 ) = 14
+       ! Face 23
+       NEILOC( ILOC, 89 ) = 12
+       NEILOC( ILOC, 90 ) = 12
+       NEILOC( ILOC, 91 ) = 12
+       NEILOC( ILOC, 92 ) = 12
+       ! Face 35
+       NEILOC( ILOC, 137 ) = 20
+       NEILOC( ILOC, 138 ) = 20
+       NEILOC( ILOC, 139 ) = 20
+       NEILOC( ILOC, 140 ) = 20
+       ! External
+       neiloc( iloc, iext + 23 * igp + 1 : iext + 24 * igp ) = -1
+
+       ILOC = 12
+       ! Face 15
+       NEILOC( ILOC, 57 ) = 3
+       NEILOC( ILOC, 58 ) = 3
+       NEILOC( ILOC, 59 ) = 3
+       NEILOC( ILOC, 60 ) = 3
+       ! Face 23
+       NEILOC( ILOC, 89 ) = 11
+       NEILOC( ILOC, 90 ) = 11
+       NEILOC( ILOC, 91 ) = 11
+       NEILOC( ILOC, 92 ) = 11
+       ! Face 26
+       NEILOC( ILOC, 101 ) = 15
+       NEILOC( ILOC, 102 ) = 15
+       NEILOC( ILOC, 103 ) = 15
+       NEILOC( ILOC, 104 ) = 15
+       ! Face 36
+       NEILOC( ILOC, 141 ) = 21
+       NEILOC( ILOC, 142 ) = 21
+       NEILOC( ILOC, 143 ) = 21
+       NEILOC( ILOC, 144 ) = 21
+       ! External
+       neiloc( iloc, iext + 24 * igp + 1 : iext + 26 * igp ) = -1
+
+       ILOC = 13
+       ! Face 16
+       NEILOC( ILOC, 61 ) = 4
+       NEILOC( ILOC, 62 ) = 4
+       NEILOC( ILOC, 63 ) = 4
+       NEILOC( ILOC, 64 ) = 4
+       ! Face 24
+       NEILOC( ILOC, 93 ) = 10
+       NEILOC( ILOC, 94 ) = 10
+       NEILOC( ILOC, 95 ) = 10
+       NEILOC( ILOC, 96 ) = 10
+       ! Face 27
+       NEILOC( ILOC, 105 ) = 14
+       NEILOC( ILOC, 106 ) = 14
+       NEILOC( ILOC, 107 ) = 14
+       NEILOC( ILOC, 108 ) = 14
+       ! Face 29
+       NEILOC( ILOC, 113 ) = 16
+       NEILOC( ILOC, 114 ) = 16
+       NEILOC( ILOC, 115 ) = 16
+       NEILOC( ILOC, 116 ) = 16
+       ! Face 37
+       NEILOC( ILOC, 145 ) = 22
+       NEILOC( ILOC, 146 ) = 22
+       NEILOC( ILOC, 147 ) = 22
+       NEILOC( ILOC, 148 ) = 22
+       ! External
+       neiloc( iloc, iext + 26 * igp + 1 : iext + 27 * igp ) = -1
+
+       ILOC = 14
+       ! Face 17
+       NEILOC( ILOC, 65 ) = 5
+       NEILOC( ILOC, 66 ) = 5
+       NEILOC( ILOC, 67 ) = 5
+       NEILOC( ILOC, 68 ) = 5
+       ! Face 25
+       NEILOC( ILOC, 97 ) = 11
+       NEILOC( ILOC, 98 ) = 11
+       NEILOC( ILOC, 99 ) = 11
+       NEILOC( ILOC, 100 ) = 11
+       ! Face 28
+       NEILOC( ILOC, 109 ) = 15
+       NEILOC( ILOC, 110 ) = 15
+       NEILOC( ILOC, 111 ) = 15
+       NEILOC( ILOC, 112 ) = 15
+       ! Face 30
+       NEILOC( ILOC, 117 ) = 17
+       NEILOC( ILOC, 118 ) = 17
+       NEILOC( ILOC, 119 ) = 17
+       NEILOC( ILOC, 120 ) = 17
+       ! Face 27
+       NEILOC( ILOC, 105 ) = 13
+       NEILOC( ILOC, 106 ) = 13
+       NEILOC( ILOC, 107 ) = 13
+       NEILOC( ILOC, 108 ) = 13
+       ! Face 38
+       NEILOC( ILOC, 149 ) = 23
+       NEILOC( ILOC, 150 ) = 23
+       NEILOC( ILOC, 151 ) = 23
+       NEILOC( ILOC, 152 ) = 23
+
+       ILOC = 15
+       ! Face 18
+       NEILOC( ILOC, 69 ) = 6
+       NEILOC( ILOC, 70 ) = 6
+       NEILOC( ILOC, 71 ) = 6
+       NEILOC( ILOC, 72 ) = 6
+       ! Face 26
+       NEILOC( ILOC, 101 ) = 12
+       NEILOC( ILOC, 102 ) = 12
+       NEILOC( ILOC, 103 ) = 12
+       NEILOC( ILOC, 104 ) = 12
+       ! Face 28
+       NEILOC( ILOC, 109 ) = 14
+       NEILOC( ILOC, 110 ) = 14
+       NEILOC( ILOC, 111 ) = 14
+       NEILOC( ILOC, 112 ) = 14
+       ! Face 31
+       NEILOC( ILOC, 121 ) = 18
+       NEILOC( ILOC, 122 ) = 18
+       NEILOC( ILOC, 123 ) = 18
+       NEILOC( ILOC, 124 ) = 18
+       ! Face 39
+       NEILOC( ILOC, 153 ) = 24
+       NEILOC( ILOC, 154 ) = 24
+       NEILOC( ILOC, 155 ) = 24
+       NEILOC( ILOC, 156 ) = 24
+       ! External
+       neiloc( iloc, iext + 27 * igp + 1 : iext + 28 * igp ) = -1
+
+       ILOC = 16
+       ! Face 19
+       NEILOC( ILOC, 73 ) = 7
+       NEILOC( ILOC, 74 ) = 7
+       NEILOC( ILOC, 75 ) = 7
+       NEILOC( ILOC, 76 ) = 7
+       ! Face 29
+       NEILOC( ILOC, 113 ) = 13
+       NEILOC( ILOC, 114 ) = 13
+       NEILOC( ILOC, 115 ) = 13
+       NEILOC( ILOC, 116 ) = 13
+       ! Face 32
+       NEILOC( ILOC, 125 ) = 17
+       NEILOC( ILOC, 126 ) = 17
+       NEILOC( ILOC, 127 ) = 17
+       NEILOC( ILOC, 128 ) = 17
+       ! Face 40
+       NEILOC( ILOC, 157 ) = 25
+       NEILOC( ILOC, 158 ) = 25
+       NEILOC( ILOC, 159 ) = 25
+       NEILOC( ILOC, 160 ) = 25
+       ! External
+       neiloc( iloc, iext + 28 * igp + 1 : iext + 30 * igp ) = -1
+
+       ILOC = 17
+       ! Face 20
+       NEILOC( ILOC, 77 ) = 8
+       NEILOC( ILOC, 78 ) = 8
+       NEILOC( ILOC, 79 ) = 8
+       NEILOC( ILOC, 80 ) = 8
+       ! Face 32
+       NEILOC( ILOC, 125 ) = 16
+       NEILOC( ILOC, 126 ) = 16
+       NEILOC( ILOC, 127 ) = 16
+       NEILOC( ILOC, 128 ) = 16
+       ! Face 30
+       NEILOC( ILOC, 117 ) = 14
+       NEILOC( ILOC, 118 ) = 14
+       NEILOC( ILOC, 119 ) = 14
+       NEILOC( ILOC, 120 ) = 14
+       ! Face 33
+       NEILOC( ILOC, 129 ) = 18
+       NEILOC( ILOC, 130 ) = 18
+       NEILOC( ILOC, 131 ) = 18
+       NEILOC( ILOC, 132 ) = 18
+       ! Face 41
+       NEILOC( ILOC, 161 ) = 26
+       NEILOC( ILOC, 162 ) = 26
+       NEILOC( ILOC, 163 ) = 26
+       NEILOC( ILOC, 164 ) = 26
+       ! External
+       neiloc( iloc, iext + 30 * igp + 1 : iext + 31 * igp ) = -1
+
+       ILOC = 18
+       ! Face 21
+       NEILOC( ILOC, 81 ) = 9
+       NEILOC( ILOC, 82 ) = 9
+       NEILOC( ILOC, 83 ) = 9
+       NEILOC( ILOC, 84 ) = 9
+       ! Face 31
+       NEILOC( ILOC, 121 ) = 15
+       NEILOC( ILOC, 122 ) = 15
+       NEILOC( ILOC, 123 ) = 15
+       NEILOC( ILOC, 124 ) = 15
+       ! Face 33
+       NEILOC( ILOC, 129 ) = 17
+       NEILOC( ILOC, 130 ) = 17
+       NEILOC( ILOC, 131 ) = 17
+       NEILOC( ILOC, 132 ) = 17
+       ! Face 42
+       NEILOC( ILOC, 165 ) = 27
+       NEILOC( ILOC, 166 ) = 27
+       NEILOC( ILOC, 167 ) = 27
+       NEILOC( ILOC, 168 ) = 27
+       ! External
+       neiloc( iloc, iext + 31 * igp + 1 : iext + 33 * igp ) = -1
+
+       ILOC = 19
+       ! Face 34
+       NEILOC( ILOC, 133 ) = 10
+       NEILOC( ILOC, 134 ) = 10
+       NEILOC( ILOC, 135 ) = 10
+       NEILOC( ILOC, 136 ) = 10
+       ! Face 43
+       NEILOC( ILOC, 169 ) = 20
+       NEILOC( ILOC, 170 ) = 20
+       NEILOC( ILOC, 171 ) = 20
+       NEILOC( ILOC, 172 ) = 20
+       ! Face 45
+       NEILOC( ILOC, 177 ) = 22
+       NEILOC( ILOC, 178 ) = 22
+       NEILOC( ILOC, 179 ) = 22
+       NEILOC( ILOC, 180 ) = 22
+       ! External
+       neiloc( iloc, iext + 33 * igp + 1 : iext + 36 * igp ) = -1
+
+       ILOC = 20
+       ! Face 35
+       NEILOC( ILOC, 137 ) = 11
+       NEILOC( ILOC, 138 ) = 11
+       NEILOC( ILOC, 139 ) = 11
+       NEILOC( ILOC, 140 ) = 11
+       ! Face 43
+       NEILOC( ILOC, 169 ) = 19
+       NEILOC( ILOC, 170 ) = 19
+       NEILOC( ILOC, 171 ) = 19
+       NEILOC( ILOC, 172 ) = 19
+       ! Face 46
+       NEILOC( ILOC, 181 ) = 23
+       NEILOC( ILOC, 182 ) = 23
+       NEILOC( ILOC, 183 ) = 23
+       NEILOC( ILOC, 184 ) = 23
+       ! Face 44
+       NEILOC( ILOC, 173 ) = 21
+       NEILOC( ILOC, 174 ) = 21
+       NEILOC( ILOC, 175 ) = 21
+       NEILOC( ILOC, 176 ) = 21
+       ! External
+       neiloc( iloc, iext + 36 * igp + 1 : iext + 38 * igp ) = -1
+
+       ILOC = 21
+       ! Face 36
+       NEILOC( ILOC, 141 ) = 12
+       NEILOC( ILOC, 142 ) = 12
+       NEILOC( ILOC, 143 ) = 12
+       NEILOC( ILOC, 144 ) = 12
+       ! Face 44
+       NEILOC( ILOC, 173 ) = 20
+       NEILOC( ILOC, 174 ) = 20
+       NEILOC( ILOC, 175 ) = 20
+       NEILOC( ILOC, 176 ) = 20
+       ! Face 47
+       NEILOC( ILOC, 185 ) = 24
+       NEILOC( ILOC, 186 ) = 24
+       NEILOC( ILOC, 187 ) = 24
+       NEILOC( ILOC, 188 ) = 24
+       ! External
+       neiloc( iloc, iext + 38 * igp + 1 : iext + 41 * igp ) = -1
+
+       ILOC = 22
+       ! Face 37
+       NEILOC( ILOC, 145 ) = 13
+       NEILOC( ILOC, 146 ) = 13
+       NEILOC( ILOC, 147 ) = 13
+       NEILOC( ILOC, 148 ) = 13
+       ! Face 45
+       NEILOC( ILOC, 177 ) = 19
+       NEILOC( ILOC, 178 ) = 19
+       NEILOC( ILOC, 179 ) = 19
+       NEILOC( ILOC, 180 ) = 19
+       ! Face 48
+       NEILOC( ILOC, 189 ) = 23
+       NEILOC( ILOC, 190 ) = 23
+       NEILOC( ILOC, 191 ) = 23
+       NEILOC( ILOC, 192 ) = 23
+       ! Face 50
+       NEILOC( ILOC, 197 ) = 25
+       NEILOC( ILOC, 198 ) = 25
+       NEILOC( ILOC, 199 ) = 25
+       NEILOC( ILOC, 200 ) = 25
+       ! External
+       neiloc( iloc, iext + 41 * igp + 1 : iext + 43 * igp ) = -1
+
+       ILOC = 23
+       ! Face 38
+       NEILOC( ILOC, 149 ) = 14
+       NEILOC( ILOC, 150 ) = 14
+       NEILOC( ILOC, 151 ) = 14
+       NEILOC( ILOC, 152 ) = 14
+       ! Face 46
+       NEILOC( ILOC, 181 ) = 20
+       NEILOC( ILOC, 182 ) = 20
+       NEILOC( ILOC, 183 ) = 20
+       NEILOC( ILOC, 184 ) = 20
+       ! Face 49
+       NEILOC( ILOC, 193 ) = 24
+       NEILOC( ILOC, 194 ) = 24
+       NEILOC( ILOC, 195 ) = 24
+       NEILOC( ILOC, 196 ) = 24
+       ! Face 51
+       NEILOC( ILOC, 201 ) = 26
+       NEILOC( ILOC, 202 ) = 26
+       NEILOC( ILOC, 203 ) = 26
+       NEILOC( ILOC, 204 ) = 26
+       ! Face 48
+       NEILOC( ILOC, 189 ) = 22
+       NEILOC( ILOC, 190 ) = 22
+       NEILOC( ILOC, 191 ) = 22
+       NEILOC( ILOC, 192 ) = 22
+       ! External
+       neiloc( iloc, iext + 43 * igp + 1 : iext + 44 * igp ) = -1
+
+       ILOC = 24
+       ! Face 39
+       NEILOC( ILOC, 153 ) = 15
+       NEILOC( ILOC, 154 ) = 15
+       NEILOC( ILOC, 155 ) = 15
+       NEILOC( ILOC, 156 ) = 15
+       ! Face 47
+       NEILOC( ILOC, 185 ) = 21
+       NEILOC( ILOC, 186 ) = 21
+       NEILOC( ILOC, 187 ) = 21
+       NEILOC( ILOC, 188 ) = 21
+       ! Face 49
+       NEILOC( ILOC, 193 ) = 23
+       NEILOC( ILOC, 194 ) = 23
+       NEILOC( ILOC, 195 ) = 23
+       NEILOC( ILOC, 196 ) = 23
+       ! Face 52
+       NEILOC( ILOC, 205 ) = 27
+       NEILOC( ILOC, 206 ) = 27
+       NEILOC( ILOC, 207 ) = 27
+       NEILOC( ILOC, 208 ) = 27
+       ! External
+       neiloc( iloc, iext + 44 * igp + 1 : iext + 46 * igp ) = -1
+
+       ILOC = 25
+       ! Face 40
+       NEILOC( ILOC, 157 ) = 16
+       NEILOC( ILOC, 158 ) = 16
+       NEILOC( ILOC, 159 ) = 16
+       NEILOC( ILOC, 160 ) = 16
+       ! Face 50
+       NEILOC( ILOC, 197 ) = 22
+       NEILOC( ILOC, 198 ) = 22
+       NEILOC( ILOC, 199 ) = 22
+       NEILOC( ILOC, 200 ) = 22
+       ! Face 53
+       NEILOC( ILOC, 209 ) = 26
+       NEILOC( ILOC, 210 ) = 26
+       NEILOC( ILOC, 211 ) = 26
+       NEILOC( ILOC, 212 ) = 26
+       ! External
+       neiloc( iloc, iext + 46 * igp + 1 : iext + 49 * igp ) = -1
+
+       ILOC = 26
+       ! Face 41
+       NEILOC( ILOC, 161 ) = 17
+       NEILOC( ILOC, 162 ) = 17
+       NEILOC( ILOC, 163 ) = 17
+       NEILOC( ILOC, 164 ) = 17
+       ! Face 53
+       NEILOC( ILOC, 209 ) = 25
+       NEILOC( ILOC, 210 ) = 25
+       NEILOC( ILOC, 211 ) = 25
+       NEILOC( ILOC, 212 ) = 25
+       ! Face 51
+       NEILOC( ILOC, 201 ) = 23
+       NEILOC( ILOC, 202 ) = 23
+       NEILOC( ILOC, 203 ) = 23
+       NEILOC( ILOC, 204 ) = 23
+       ! Face 54
+       NEILOC( ILOC, 213 ) = 27
+       NEILOC( ILOC, 214 ) = 27
+       NEILOC( ILOC, 215 ) = 27
+       NEILOC( ILOC, 216 ) = 27
+       ! External
+       neiloc( iloc, iext + 49 * igp + 1 : iext + 51 * igp ) = -1
+
+       ILOC = 27
+       ! Face 42
+       NEILOC( ILOC, 165 ) = 18
+       NEILOC( ILOC, 166 ) = 18
+       NEILOC( ILOC, 167 ) = 18
+       NEILOC( ILOC, 168 ) = 18
+       ! Face 52
+       NEILOC( ILOC, 205 ) = 24
+       NEILOC( ILOC, 206 ) = 24
+       NEILOC( ILOC, 207 ) = 24
+       NEILOC( ILOC, 208 ) = 24
+       ! Face 54
+       NEILOC( ILOC, 213 ) = 26
+       NEILOC( ILOC, 214 ) = 26
+       NEILOC( ILOC, 215 ) = 26
+       NEILOC( ILOC, 216 ) = 26
+       ! External
+       neiloc( iloc, iext + 51 * igp + 1 : iext + 54 * igp ) = -1
+
+    CASE DEFAULT; FLExit( " Invalid integer for cv_ele_type " )
 
     END SELECT Conditional_Type
 
     RETURN
-END SUBROUTINE VOLNEI
+  END SUBROUTINE VOLNEI
 
-subroutine U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi, &
-    cv_neiloc,   &
-    u_on_face )
+  subroutine U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi, &
+       cv_neiloc,   &
+       u_on_face )
     !-----------------------------------------------------------------!
     !- This subroutine calculates U_ON_FACE, a logical that works    -!
     !- in a similar way of CV_ON_FACE.                               -!
@@ -6345,39 +6345,39 @@ subroutine U_Volnei( cv_ele_type, cv_nloc, u_nloc, scvngi, &
 
 
     Conditional_ElementType: if( cv_ele_type <= 2 ) then
-        u_jloc = 0
-        Loop_CV: do cv_iloc = 1, cv_nloc
-            Loop_U: do u_iloc = 1, u_nloc
-                Loop_GI: do gi = 1, scvngi
-                    if (  cv_neiloc( cv_iloc, gi ) == -1 ) then
-                        u_jloc = ( cv_iloc - 1 ) * u_nloc + u_iloc
-                        u_on_face( u_jloc, gi ) = .true.
-                        if( u_iloc == 1 ) cycle Loop_CV
-                    end if
-                end do Loop_GI
-            end do Loop_U
-        end do Loop_CV
+       u_jloc = 0
+       Loop_CV: do cv_iloc = 1, cv_nloc
+          Loop_U: do u_iloc = 1, u_nloc
+             Loop_GI: do gi = 1, scvngi
+                if (  cv_neiloc( cv_iloc, gi ) == -1 ) then
+                   u_jloc = ( cv_iloc - 1 ) * u_nloc + u_iloc
+                   u_on_face( u_jloc, gi ) = .true.
+                   if( u_iloc == 1 ) cycle Loop_CV
+                end if
+             end do Loop_GI
+          end do Loop_U
+       end do Loop_CV
     else
-        u_jloc = 0
-        do cv_iloc = 1, cv_nloc
-            do u_iloc = 1, u_nloc
-                do gi = 1, scvngi
-                    if ( cv_neiloc( cv_iloc, gi ) == -1 ) then
-                        u_jloc = ( cv_iloc - 1 ) * u_nloc + u_iloc
-                        u_on_face( u_jloc, gi ) = .true.
-                    end if
-                end do
-            end do
-        end do
+       u_jloc = 0
+       do cv_iloc = 1, cv_nloc
+          do u_iloc = 1, u_nloc
+             do gi = 1, scvngi
+                if ( cv_neiloc( cv_iloc, gi ) == -1 ) then
+                   u_jloc = ( cv_iloc - 1 ) * u_nloc + u_iloc
+                   u_on_face( u_jloc, gi ) = .true.
+                end if
+             end do
+          end do
+       end do
     end if Conditional_ElementType
 
     return
-end subroutine U_Volnei
+  end subroutine U_Volnei
 
 
 
-SUBROUTINE GAUSSILOC( FINDGPTS, COLGPTS, NCOLGPTS,&
-    NEILOC, NLOC, SVNGI )
+  SUBROUTINE GAUSSILOC( FINDGPTS, COLGPTS, NCOLGPTS,&
+       NEILOC, NLOC, SVNGI )
     !     ----------------------------------------------------
     !
     ! This subroutine calculates FINDGPTS,COLGPTS,NCOLGPTS
@@ -6403,17 +6403,17 @@ SUBROUTINE GAUSSILOC( FINDGPTS, COLGPTS, NCOLGPTS,&
 
     DO ILOC = 1, NLOC
 
-        FINDGPTS( ILOC ) = COUNT + 1
+       FINDGPTS( ILOC ) = COUNT + 1
 
-        DO GI = 1, SVNGI
+       DO GI = 1, SVNGI
 
-            IF( NEILOC( ILOC, GI ) /= 0 ) THEN
-                COUNT = COUNT + 1
-                COLGPTS( COUNT ) = GI
-            END IF
-           !ewrite(3,*)'iloc,gi,NEILOC( ILOC, GI ):',iloc,gi,NEILOC( ILOC, GI )
+          IF( NEILOC( ILOC, GI ) /= 0 ) THEN
+             COUNT = COUNT + 1
+             COLGPTS( COUNT ) = GI
+          END IF
+          !ewrite(3,*)'iloc,gi,NEILOC( ILOC, GI ):',iloc,gi,NEILOC( ILOC, GI )
 
-        END DO
+       END DO
 
     END DO
 
@@ -6422,14 +6422,14 @@ SUBROUTINE GAUSSILOC( FINDGPTS, COLGPTS, NCOLGPTS,&
     !stop 2821
 
     RETURN
-END SUBROUTINE GAUSSILOC
+  END SUBROUTINE GAUSSILOC
 
 
 
-SUBROUTINE DETNLXMAI( ELE, X,Y,Z, XONDGL, TOTELE, XNONODS, NLOC, MLOC, NGI, &
-    NLX, NLY, NLZ, MLX, MLY, MLZ, WEIGHT, DETWEI, &
-    NX, NY, NZ,  MX, MY, MZ,&
-    A11, A12, A13, A21, A22, A23, A31, A32, A33 )
+  SUBROUTINE DETNLXMAI( ELE, X,Y,Z, XONDGL, TOTELE, XNONODS, NLOC, MLOC, NGI, &
+       NLX, NLY, NLZ, MLX, MLY, MLZ, WEIGHT, DETWEI, &
+       NX, NY, NZ,  MX, MY, MZ,&
+       A11, A12, A13, A21, A22, A23, A31, A32, A33 )
     implicit none
     ! Calculate DETWEI,NX,NY,NZ, MX,MY,MZ for element ELE. For coefficient in
     ! the inverse mat of the Jacobian.
@@ -6444,7 +6444,7 @@ SUBROUTINE DETNLXMAI( ELE, X,Y,Z, XONDGL, TOTELE, XNONODS, NLOC, MLOC, NGI, &
     REAL, DIMENSION( NLOC, NGI ), intent( inout ) :: NX, NY, NZ
     REAL, DIMENSION( MLOC, NGI ), intent( inout ) :: MX, MY, MZ
     REAL, DIMENSION( NGI ), intent( inout ):: A11, A12, A13, A21, A22, A23, &
-        A31, A32, A33
+         A31, A32, A33
     ! Local variables
     REAL :: AGI, BGI, CGI, DGI, EGI, FGI, GGI, HGI, KGI, DETJ, VOLUME
     INTEGER :: GI, L, IGLX
@@ -6452,74 +6452,74 @@ SUBROUTINE DETNLXMAI( ELE, X,Y,Z, XONDGL, TOTELE, XNONODS, NLOC, MLOC, NGI, &
     VOLUME = 0.
     Loop_NGI: DO GI = 1, NGI
 
-        AGI = 0.
-        BGI = 0.
-        CGI = 0.
-        DGI = 0.
-        EGI = 0.
-        FGI = 0.
-        GGI = 0.
-        HGI = 0.
-        KGI = 0.
+       AGI = 0.
+       BGI = 0.
+       CGI = 0.
+       DGI = 0.
+       EGI = 0.
+       FGI = 0.
+       GGI = 0.
+       HGI = 0.
+       KGI = 0.
 
-        Loop_NLOC: DO L = 1, NLOC
+       Loop_NLOC: DO L = 1, NLOC
 
-            IGLX = XONDGL(( ELE - 1 ) * NLOC + L ) 
+          IGLX = XONDGL(( ELE - 1 ) * NLOC + L ) 
 
-            AGI = AGI + NLX( L, GI ) * X( IGLX ) 
-            BGI = BGI + NLX( L, GI ) * Y( IGLX ) 
-            CGI = CGI + NLX( L, GI ) * Z( IGLX ) 
-            DGI = DGI + NLY( L, GI ) * X( IGLX ) 
-            EGI = EGI + NLY( L, GI ) * Y( IGLX ) 
-            FGI = FGI + NLY( L, GI ) * Z( IGLX ) 
-            GGI = GGI + NLZ( L, GI ) * X( IGLX ) 
-            HGI = HGI + NLZ( L, GI ) * Y( IGLX ) 
-            KGI = KGI + NLZ( L, GI ) * Z( IGLX ) 
+          AGI = AGI + NLX( L, GI ) * X( IGLX ) 
+          BGI = BGI + NLX( L, GI ) * Y( IGLX ) 
+          CGI = CGI + NLX( L, GI ) * Z( IGLX ) 
+          DGI = DGI + NLY( L, GI ) * X( IGLX ) 
+          EGI = EGI + NLY( L, GI ) * Y( IGLX ) 
+          FGI = FGI + NLY( L, GI ) * Z( IGLX ) 
+          GGI = GGI + NLZ( L, GI ) * X( IGLX ) 
+          HGI = HGI + NLZ( L, GI ) * Y( IGLX ) 
+          KGI = KGI + NLZ( L, GI ) * Z( IGLX ) 
 
-        END DO Loop_NLOC
+       END DO Loop_NLOC
 
-        DETJ = AGI * ( EGI * KGI - FGI * HGI) &
+       DETJ = AGI * ( EGI * KGI - FGI * HGI) &
             -BGI * ( DGI * KGI - FGI * GGI ) &
             +CGI * ( DGI * HGI - EGI *GGI)
 
-        DETWEI( GI ) = ABS( DETJ ) * WEIGHT( GI )
-        VOLUME = VOLUME + DETWEI( GI )
+       DETWEI( GI ) = ABS( DETJ ) * WEIGHT( GI )
+       VOLUME = VOLUME + DETWEI( GI )
 
-        A11( GI )= ( EGI * KGI-FGI * HGI ) / DETJ
-        A21( GI )=-( DGI * KGI-FGI * GGI ) / DETJ
-        A31( GI )= ( DGI * HGI-EGI * GGI ) / DETJ
+       A11( GI )= ( EGI * KGI-FGI * HGI ) / DETJ
+       A21( GI )=-( DGI * KGI-FGI * GGI ) / DETJ
+       A31( GI )= ( DGI * HGI-EGI * GGI ) / DETJ
 
-        A12( GI )=-( BGI * KGI-CGI * HGI ) / DETJ
-        A22( GI )= ( AGI * KGI-CGI * GGI ) / DETJ
-        A32( GI )=-( AGI * HGI-BGI * GGI ) / DETJ
+       A12( GI )=-( BGI * KGI-CGI * HGI ) / DETJ
+       A22( GI )= ( AGI * KGI-CGI * GGI ) / DETJ
+       A32( GI )=-( AGI * HGI-BGI * GGI ) / DETJ
 
-        A13( GI )= ( BGI * FGI-CGI * EGI ) / DETJ
-        A23( GI )=-( AGI * FGI-CGI * DGI ) / DETJ
-        A33( GI )= ( AGI * EGI-BGI * DGI ) / DETJ
+       A13( GI )= ( BGI * FGI-CGI * EGI ) / DETJ
+       A23( GI )=-( AGI * FGI-CGI * DGI ) / DETJ
+       A33( GI )= ( AGI * EGI-BGI * DGI ) / DETJ
 
-        DO L=1,NLOC
-            NX( L, GI )= A11( GI ) * NLX( L, GI ) + A12( GI ) * NLY( L, GI ) + A13( GI ) * NLZ( L, GI )
-            NY( L, GI )= A21( GI ) * NLX( L, GI ) + A22( GI ) * NLY( L, GI ) + A23( GI ) * NLZ( L, GI )
-            NZ( L, GI )= A31( GI ) * NLX( L, GI ) + A32( GI ) * NLY( L, GI ) + A33( GI ) * NLZ( L, GI )
-        END DO
+       DO L=1,NLOC
+          NX( L, GI )= A11( GI ) * NLX( L, GI ) + A12( GI ) * NLY( L, GI ) + A13( GI ) * NLZ( L, GI )
+          NY( L, GI )= A21( GI ) * NLX( L, GI ) + A22( GI ) * NLY( L, GI ) + A23( GI ) * NLZ( L, GI )
+          NZ( L, GI )= A31( GI ) * NLX( L, GI ) + A32( GI ) * NLY( L, GI ) + A33( GI ) * NLZ( L, GI )
+       END DO
 
-        DO L=1,MLOC
-            MX( L, GI )= A11( GI ) * MLX( L, GI ) + A12( GI ) * MLY( L, GI ) + A13( GI ) * MLZ( L, GI )
-            MY( L, GI )= A21( GI ) * MLX( L, GI ) + A22( GI ) * MLY( L, GI ) + A23( GI ) * MLZ( L, GI )
-            MZ( L, GI )= A31( GI ) * MLX( L, GI ) + A32( GI ) * MLY( L, GI ) + A33( GI ) * MLZ( L, GI )
-        END DO
+       DO L=1,MLOC
+          MX( L, GI )= A11( GI ) * MLX( L, GI ) + A12( GI ) * MLY( L, GI ) + A13( GI ) * MLZ( L, GI )
+          MY( L, GI )= A21( GI ) * MLX( L, GI ) + A22( GI ) * MLY( L, GI ) + A23( GI ) * MLZ( L, GI )
+          MZ( L, GI )= A31( GI ) * MLX( L, GI ) + A32( GI ) * MLY( L, GI ) + A33( GI ) * MLZ( L, GI )
+       END DO
 
     END DO Loop_NGI
 
     RETURN
 
-END SUBROUTINE DETNLXMAI
+  END SUBROUTINE DETNLXMAI
 
-SUBROUTINE DETNLXR_PLUS_U_WITH_STORAGE( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
-    X_NLOC, CV_NLOC, NGI, &
-    N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-    NX_ALL, &
-    U_NLOC, UNLX, UNLY, UNLZ, UNX_ALL, storage_state, StorName , indx )
+  SUBROUTINE DETNLXR_PLUS_U_WITH_STORAGE( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
+       X_NLOC, CV_NLOC, NGI, &
+       N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+       NX_ALL, &
+       U_NLOC, UNLX, UNLY, UNLZ, UNX_ALL, storage_state, StorName , indx )
     implicit none
     INTEGER, intent( in ) :: ELE, TOTELE, NONODS, X_NLOC, NGI, CV_NLOC, U_NLOC
     INTEGER, DIMENSION( : ), intent( in ) :: XONDGL
@@ -6546,65 +6546,65 @@ SUBROUTINE DETNLXR_PLUS_U_WITH_STORAGE( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
     if (D3) ndim = 3
 
     if (indx==0 .and. ELE==1) then !The first time we need to introduce the targets in state
-        if (has_scalar_field(storage_state, trim(StorName))) then
-            !If we are recalculating due to a mesh modification then
-            !we return to the original situation
-            call remove_scalar_field(storage_state, trim(StorName))
-        end if
-         !Get mesh file just to be able to allocate the fields we want to store
-        fl_mesh => extract_mesh( storage_state, "FakeMesh" )
-        Auxmesh = fl_mesh
+       if (has_scalar_field(storage_state, trim(StorName))) then
+          !If we are recalculating due to a mesh modification then
+          !we return to the original situation
+          call remove_scalar_field(storage_state, trim(StorName))
+       end if
+       !Get mesh file just to be able to allocate the fields we want to store
+       fl_mesh => extract_mesh( storage_state, "FakeMesh" )
+       Auxmesh = fl_mesh
 
-        !The number of nodes I want does not coincide
-        Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*X_NLOC*NGI*NDIM&
+       !The number of nodes I want does not coincide
+       Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*X_NLOC*NGI*NDIM&
             +merge(totele,1,btest(cache_level,1))*U_NLOC*NDIM*NGI&
             +merge(totele,1,btest(cache_level,2))*NGI*2 + totele
-        call allocate (Targ_NX_ALL, Auxmesh,trim(StorName))
+       call allocate (Targ_NX_ALL, Auxmesh,trim(StorName))
 
-        !Now we insert them in state and store the indexes
-        call insert(storage_state, Targ_NX_ALL, trim(StorName))
-        !Store index with a negative value, because if the index is
-        !zero or negative then we have to calculate stuff
-        indx = -size(storage_state%scalar_fields)
-        call deallocate (Targ_NX_ALL)
-    !         call deallocate(Auxmesh)
+       !Now we insert them in state and store the indexes
+       call insert(storage_state, Targ_NX_ALL, trim(StorName))
+       !Store index with a negative value, because if the index is
+       !zero or negative then we have to calculate stuff
+       indx = -size(storage_state%scalar_fields)
+       call deallocate (Targ_NX_ALL)
+       !         call deallocate(Auxmesh)
 
     end if
 
     !If new mesh or mesh moved indx will be zero (set in Multiphase_TimeLoop)
 
     if (btest(cache_level,0)) then
-        from = 1+NDIM*X_NLOC*NGI*(ELE-1); to = NDIM*X_NLOC*NGI*ELE
-        call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
+       from = 1+NDIM*X_NLOC*NGI*(ELE-1); to = NDIM*X_NLOC*NGI*ELE
+       call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
             NX_ALL, NDIM, X_NLOC, NGI)
-        jump = NDIM*X_NLOC*NGI*totele
-        from = jump + 1+NDIM*U_NLOC*NGI*(ELE-1); to = jump + NDIM*U_NLOC*NGI*ELE
-        call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
+       jump = NDIM*X_NLOC*NGI*totele
+       from = jump + 1+NDIM*U_NLOC*NGI*(ELE-1); to = jump + NDIM*U_NLOC*NGI*ELE
+       call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
             UNX_ALL, NDIM, U_NLOC, NGI)
-        jump = jump + NDIM*U_NLOC*NGI*totele
-        from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-        DETWEI => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
-        jump = jump + NGI*totele
-        from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-        RA => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
-        jump = jump + NGI*totele
-        VOLUME => storage_state%scalar_fields(abs(indx))%ptr%val(jump + ELE)
+       jump = jump + NDIM*U_NLOC*NGI*totele
+       from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
+       DETWEI => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
+       jump = jump + NGI*totele
+       from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
+       RA => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
+       jump = jump + NGI*totele
+       VOLUME => storage_state%scalar_fields(abs(indx))%ptr%val(jump + ELE)
     else
-        from = 1; to = NDIM*X_NLOC*NGI
-        call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
+       from = 1; to = NDIM*X_NLOC*NGI
+       call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
             NX_ALL, NDIM, X_NLOC, NGI)
-        jump = NDIM*X_NLOC*NGI
-        from = jump + 1; to = jump + NDIM*U_NLOC*NGI
-        call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
+       jump = NDIM*X_NLOC*NGI
+       from = jump + 1; to = jump + NDIM*U_NLOC*NGI
+       call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
             UNX_ALL, NDIM, U_NLOC, NGI)
-        jump = jump + NDIM*U_NLOC*NGI
-        from = jump + 1; to = jump + NGI
-        DETWEI => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
-        jump = jump + NGI
-        from = jump + 1; to = jump + NGI
-        RA => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
-        jump = jump + NGI
-        VOLUME => storage_state%scalar_fields(abs(indx))%ptr%val(jump + ELE)
+       jump = jump + NDIM*U_NLOC*NGI
+       from = jump + 1; to = jump + NGI
+       DETWEI => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
+       jump = jump + NGI
+       from = jump + 1; to = jump + NGI
+       RA => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
+       jump = jump + NGI
+       VOLUME => storage_state%scalar_fields(abs(indx))%ptr%val(jump + ELE)
     end if
 
     IF (indx>0 .and. not(cache_level)==0) return
@@ -6614,38 +6614,38 @@ SUBROUTINE DETNLXR_PLUS_U_WITH_STORAGE( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
     !#########Storing area finished########################
 
     call DETNLXR_PLUS_U( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
-        X_NLOC, CV_NLOC, NGI, &
-        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-        NX_ALL, &
-        U_NLOC, UNLX, UNLY, UNLZ, UNX_ALL)
+         X_NLOC, CV_NLOC, NGI, &
+         N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+         NX_ALL, &
+         U_NLOC, UNLX, UNLY, UNLZ, UNX_ALL)
 
     !Store data
     if (btest(cache_level,0)) then
-        from = 1+NDIM*X_NLOC*NGI*(ELE-1); to = NDIM*X_NLOC*NGI*ELE
-        storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
+       from = 1+NDIM*X_NLOC*NGI*(ELE-1); to = NDIM*X_NLOC*NGI*ELE
+       storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
             & reshape(NX_ALL(1:NDIM,1:X_NLOC,1:NGI), [NDIM*X_NLOC*NGI])
-        jump = NDIM*X_NLOC*NGI*totele
-        from = jump + 1+NDIM*U_NLOC*NGI*(ELE-1); to = jump + NDIM*U_NLOC*NGI*ELE
-        storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
+       jump = NDIM*X_NLOC*NGI*totele
+       from = jump + 1+NDIM*U_NLOC*NGI*(ELE-1); to = jump + NDIM*U_NLOC*NGI*ELE
+       storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
             reshape(UNX_ALL(1:NDIM,1:U_NLOC,1:NGI), [NDIM*U_NLOC*NGI])
     else
-        from = 1; to = NDIM*X_NLOC*NGI
-        storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
+       from = 1; to = NDIM*X_NLOC*NGI
+       storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
             & reshape(NX_ALL(1:NDIM,1:X_NLOC,1:NGI), [NDIM*X_NLOC*NGI])
-        jump = NDIM*X_NLOC*NGI
-        from = jump + 1; to = jump + NDIM*U_NLOC*NGI
-        storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
+       jump = NDIM*X_NLOC*NGI
+       from = jump + 1; to = jump + NDIM*U_NLOC*NGI
+       storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
             reshape(UNX_ALL(1:NDIM,1:U_NLOC,1:NGI), [NDIM*U_NLOC*NGI])
     end if
 
     RETURN
-END SUBROUTINE DETNLXR_PLUS_U_WITH_STORAGE
+  END SUBROUTINE DETNLXR_PLUS_U_WITH_STORAGE
 
-SUBROUTINE DETNLXR_PLUS_U( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
-    X_NLOC, CV_NLOC, NGI, &
-    N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-    NX_ALL, &
-    U_NLOC, UNLX, UNLY, UNLZ, UNX_ALL)
+  SUBROUTINE DETNLXR_PLUS_U( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
+       X_NLOC, CV_NLOC, NGI, &
+       N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+       NX_ALL, &
+       U_NLOC, UNLX, UNLY, UNLZ, UNX_ALL)
     implicit none
     INTEGER, intent( in ) :: ELE, TOTELE, NONODS, X_NLOC, NGI, CV_NLOC, U_NLOC
     INTEGER, DIMENSION( : ), intent( in ) :: XONDGL
@@ -6660,7 +6660,7 @@ SUBROUTINE DETNLXR_PLUS_U( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
     ! Local variables
     REAL, PARAMETER :: PIE = 3.141592654
     REAL :: AGI, BGI, CGI, DGI, EGI, FGI, GGI, HGI, KGI, A11, A12, A13, A21, &
-        A22, A23, A31, A32, A33, DETJ, TWOPIE, RGI, rsum
+         A22, A23, A31, A32, A33, DETJ, TWOPIE, RGI, rsum
     INTEGER :: GI, L, IGLX, NDIM
 
     !ewrite(3,*)' In Detnlxr_Plus_U'
@@ -6671,128 +6671,128 @@ SUBROUTINE DETNLXR_PLUS_U( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
     if (D3) ndim = 3
 
     select case (ndim)
-        case (1)
-            Loop_GI14: DO GI = 1, NGI
+    case (1)
+       Loop_GI14: DO GI = 1, NGI
 
-                AGI = 0.
+          AGI = 0.
 
-                Loop_L15: DO L = 1, X_NLOC
-                    IGLX = XONDGL(( ELE - 1 ) * X_NLOC + L )
-                    AGI = AGI + NLX( L, GI ) * X( IGLX )
-                END DO Loop_L15
+          Loop_L15: DO L = 1, X_NLOC
+             IGLX = XONDGL(( ELE - 1 ) * X_NLOC + L )
+             AGI = AGI + NLX( L, GI ) * X( IGLX )
+          END DO Loop_L15
 
-                DETJ = AGI
-                RA( GI ) = 1.0
-                DETWEI( GI ) = ABS(DETJ) * WEIGHT( GI )
-                VOLUME = VOLUME + DETWEI( GI )
+          DETJ = AGI
+          RA( GI ) = 1.0
+          DETWEI( GI ) = ABS(DETJ) * WEIGHT( GI )
+          VOLUME = VOLUME + DETWEI( GI )
 
-                NX_ALL(1, :, GI ) = NLX( :, GI ) / DETJ
+          NX_ALL(1, :, GI ) = NLX( :, GI ) / DETJ
 
-                UNX_ALL(1, :, GI ) = UNLX( :, GI ) / DETJ
+          UNX_ALL(1, :, GI ) = UNLX( :, GI ) / DETJ
 
-            END DO Loop_GI14
-        case (2)
-            TWOPIE = 1.0
-            IF( DCYL ) TWOPIE = 2. * PIE
-            !rsum=0.0
+       END DO Loop_GI14
+    case (2)
+       TWOPIE = 1.0
+       IF( DCYL ) TWOPIE = 2. * PIE
+       !rsum=0.0
 
-            Loop_GI2: DO GI = 1, NGI
+       Loop_GI2: DO GI = 1, NGI
 
-                RGI = 0.
-                AGI = 0.
-                BGI = 0.
-                CGI = 0.
-                DGI = 0.
-                !Get Jacobian of the conversion
-                Loop_L4: DO L = 1, X_NLOC
-                    IGLX = XONDGL(( ELE - 1 ) * X_NLOC + L )
-                    AGI = AGI + NLX( L, GI ) * X( IGLX )
-                    BGI = BGI + NLX( L, GI ) * Y( IGLX )
-                    CGI = CGI + NLY( L, GI ) * X( IGLX )
-                    DGI = DGI + NLY( L, GI ) * Y( IGLX )
-                    RGI = RGI + N( L, GI ) * Y( IGLX )
-                END DO Loop_L4
+          RGI = 0.
+          AGI = 0.
+          BGI = 0.
+          CGI = 0.
+          DGI = 0.
+          !Get Jacobian of the conversion
+          Loop_L4: DO L = 1, X_NLOC
+             IGLX = XONDGL(( ELE - 1 ) * X_NLOC + L )
+             AGI = AGI + NLX( L, GI ) * X( IGLX )
+             BGI = BGI + NLX( L, GI ) * Y( IGLX )
+             CGI = CGI + NLY( L, GI ) * X( IGLX )
+             DGI = DGI + NLY( L, GI ) * Y( IGLX )
+             RGI = RGI + N( L, GI ) * Y( IGLX )
+          END DO Loop_L4
 
-                IF( .NOT. DCYL ) RGI = 1.0
+          IF( .NOT. DCYL ) RGI = 1.0
 
-                DETJ = AGI * DGI - BGI * CGI
-                RA( GI ) = RGI
-                DETWEI( GI ) = TWOPIE * RGI * ABS(DETJ) * WEIGHT( GI )
-                VOLUME = VOLUME + DETWEI( GI )
-                !Jacobian^-1 to apply conversion for the CV shape functions
-                NX_ALL(1, :, GI ) = (  DGI * NLX( :, GI ) - BGI * NLY( :, GI )) / DETJ
-                NX_ALL(2, :, GI ) = ( -CGI * NLX( :, GI ) + AGI * NLY( :, GI )) / DETJ
+          DETJ = AGI * DGI - BGI * CGI
+          RA( GI ) = RGI
+          DETWEI( GI ) = TWOPIE * RGI * ABS(DETJ) * WEIGHT( GI )
+          VOLUME = VOLUME + DETWEI( GI )
+          !Jacobian^-1 to apply conversion for the CV shape functions
+          NX_ALL(1, :, GI ) = (  DGI * NLX( :, GI ) - BGI * NLY( :, GI )) / DETJ
+          NX_ALL(2, :, GI ) = ( -CGI * NLX( :, GI ) + AGI * NLY( :, GI )) / DETJ
 
-                !Jacobian^-1 to apply conversion for the velocity shape functions
-                UNX_ALL(1, :, GI ) = (  DGI * UNLX( :, GI ) - BGI * UNLY( :, GI )) / DETJ
-                UNX_ALL(2,:, GI ) = ( -CGI * UNLX( :, GI ) + AGI * UNLY( :, GI )) / DETJ
+          !Jacobian^-1 to apply conversion for the velocity shape functions
+          UNX_ALL(1, :, GI ) = (  DGI * UNLX( :, GI ) - BGI * UNLY( :, GI )) / DETJ
+          UNX_ALL(2,:, GI ) = ( -CGI * UNLX( :, GI ) + AGI * UNLY( :, GI )) / DETJ
 
 
-            END DO Loop_GI2
+       END DO Loop_GI2
 
-        case default
-            Loop_GI1: DO GI = 1, NGI
+    case default
+       Loop_GI1: DO GI = 1, NGI
 
-                AGI = 0.
-                BGI = 0.
-                CGI = 0.
-                DGI = 0.
-                EGI = 0.
-                FGI = 0.
-                GGI = 0.
-                HGI = 0.
-                KGI = 0.
+          AGI = 0.
+          BGI = 0.
+          CGI = 0.
+          DGI = 0.
+          EGI = 0.
+          FGI = 0.
+          GGI = 0.
+          HGI = 0.
+          KGI = 0.
 
-                Loop_L1: DO L = 1, X_NLOC ! NB R0 does not appear here although the z-coord might be Z+R0.
-                    IGLX = XONDGL(( ELE - 1 ) * X_NLOC + L)
+          Loop_L1: DO L = 1, X_NLOC ! NB R0 does not appear here although the z-coord might be Z+R0.
+             IGLX = XONDGL(( ELE - 1 ) * X_NLOC + L)
 
-                    AGI = AGI + NLX( L, GI) * X( IGLX )
-                    BGI = BGI + NLX( L, GI) * Y( IGLX )
-                    CGI = CGI + NLX( L, GI) * Z( IGLX )
-                    DGI = DGI + NLY( L, GI) * X( IGLX )
-                    EGI = EGI + NLY( L, GI) * Y( IGLX )
-                    FGI = FGI + NLY( L, GI) * Z( IGLX )
-                    GGI = GGI + NLZ( L, GI) * X( IGLX )
-                    HGI = HGI + NLZ( L, GI) * Y( IGLX )
-                    KGI = KGI + NLZ( L, GI) * Z( IGLX )
-                END DO Loop_L1
+             AGI = AGI + NLX( L, GI) * X( IGLX )
+             BGI = BGI + NLX( L, GI) * Y( IGLX )
+             CGI = CGI + NLX( L, GI) * Z( IGLX )
+             DGI = DGI + NLY( L, GI) * X( IGLX )
+             EGI = EGI + NLY( L, GI) * Y( IGLX )
+             FGI = FGI + NLY( L, GI) * Z( IGLX )
+             GGI = GGI + NLZ( L, GI) * X( IGLX )
+             HGI = HGI + NLZ( L, GI) * Y( IGLX )
+             KGI = KGI + NLZ( L, GI) * Z( IGLX )
+          END DO Loop_L1
 
-                DETJ = AGI * ( EGI * KGI - FGI * HGI ) &
-                    -BGI * ( DGI * KGI - FGI * GGI ) &
-                    +CGI * ( DGI * HGI - EGI * GGI )
-                DETWEI( GI ) = ABS( DETJ ) * WEIGHT( GI )
-                RA( GI ) = 1.0
-                VOLUME = VOLUME + DETWEI( GI )
+          DETJ = AGI * ( EGI * KGI - FGI * HGI ) &
+               -BGI * ( DGI * KGI - FGI * GGI ) &
+               +CGI * ( DGI * HGI - EGI * GGI )
+          DETWEI( GI ) = ABS( DETJ ) * WEIGHT( GI )
+          RA( GI ) = 1.0
+          VOLUME = VOLUME + DETWEI( GI )
 
-                ! For coefficient in the inverse mat of the jacobian.
-                A11=   ( EGI * KGI - FGI * HGI ) / DETJ
-                A21= - ( DGI * KGI - FGI * GGI ) / DETJ
-                A31=   ( DGI * HGI - EGI * GGI ) / DETJ
-                A12= - ( BGI * KGI - CGI * HGI ) / DETJ
-                A22=   ( AGI * KGI - CGI * GGI ) / DETJ
-                A32= - ( AGI * HGI - BGI * GGI ) / DETJ
-                A13=   ( BGI * FGI - CGI * EGI ) / DETJ
-                A23= - ( AGI * FGI - CGI * DGI ) / DETJ
-                A33=   ( AGI * EGI - BGI * DGI ) / DETJ
-                !Jacobian^-1 to apply conversion for the CV shape functions
-                NX_ALL(1, :, GI ) = A11 * NLX( :, GI) + A12 * NLY( :, GI ) + A13 * NLZ( :, GI )
-                NX_ALL(2, :, GI ) = A21 * NLX( :, GI) + A22 * NLY( :, GI ) + A23 * NLZ( :, GI )
-                NX_ALL(3, :, GI ) = A31 * NLX( :, GI) + A32 * NLY( :, GI ) + A33 * NLZ( :, GI )
-                !Jacobian^-1 to apply conversion for the velocity shape functions
-                UNX_ALL(1, :, GI ) = A11 * UNLX( :, GI) + A12 * UNLY( :, GI ) + A13 * UNLZ( :, GI )
-                UNX_ALL(2, :, GI ) = A21 * UNLX( :, GI) + A22 * UNLY( :, GI ) + A23 * UNLZ( :, GI )
-                UNX_ALL(3, :, GI ) = A31 * UNLX( :, GI) + A32 * UNLY( :, GI ) + A33 * UNLZ( :, GI )
+          ! For coefficient in the inverse mat of the jacobian.
+          A11=   ( EGI * KGI - FGI * HGI ) / DETJ
+          A21= - ( DGI * KGI - FGI * GGI ) / DETJ
+          A31=   ( DGI * HGI - EGI * GGI ) / DETJ
+          A12= - ( BGI * KGI - CGI * HGI ) / DETJ
+          A22=   ( AGI * KGI - CGI * GGI ) / DETJ
+          A32= - ( AGI * HGI - BGI * GGI ) / DETJ
+          A13=   ( BGI * FGI - CGI * EGI ) / DETJ
+          A23= - ( AGI * FGI - CGI * DGI ) / DETJ
+          A33=   ( AGI * EGI - BGI * DGI ) / DETJ
+          !Jacobian^-1 to apply conversion for the CV shape functions
+          NX_ALL(1, :, GI ) = A11 * NLX( :, GI) + A12 * NLY( :, GI ) + A13 * NLZ( :, GI )
+          NX_ALL(2, :, GI ) = A21 * NLX( :, GI) + A22 * NLY( :, GI ) + A23 * NLZ( :, GI )
+          NX_ALL(3, :, GI ) = A31 * NLX( :, GI) + A32 * NLY( :, GI ) + A33 * NLZ( :, GI )
+          !Jacobian^-1 to apply conversion for the velocity shape functions
+          UNX_ALL(1, :, GI ) = A11 * UNLX( :, GI) + A12 * UNLY( :, GI ) + A13 * UNLZ( :, GI )
+          UNX_ALL(2, :, GI ) = A21 * UNLX( :, GI) + A22 * UNLY( :, GI ) + A23 * UNLZ( :, GI )
+          UNX_ALL(3, :, GI ) = A31 * UNLX( :, GI) + A32 * UNLY( :, GI ) + A33 * UNLZ( :, GI )
 
-            END DO Loop_GI1
+       END DO Loop_GI1
     end select
 
     RETURN
-END SUBROUTINE DETNLXR_PLUS_U
+  END SUBROUTINE DETNLXR_PLUS_U
 
 
 
-SUBROUTINE DETNNN( ELE, X, Y, Z, XONDGL, TOTELE, XNONODS, NLOC, NGI, &
-    N, NLX, NLY, NLZ, WEIGHT, DETWEI, VOLUME, D3, DCYL)
+  SUBROUTINE DETNNN( ELE, X, Y, Z, XONDGL, TOTELE, XNONODS, NLOC, NGI, &
+       N, NLX, NLY, NLZ, WEIGHT, DETWEI, VOLUME, D3, DCYL)
     implicit none
     INTEGER, intent( in ) :: ELE, TOTELE, XNONODS, NLOC, NGI
     INTEGER, DIMENSION( TOTELE * NLOC), intent( in ) :: XONDGL
@@ -6812,82 +6812,82 @@ SUBROUTINE DETNNN( ELE, X, Y, Z, XONDGL, TOTELE, XNONODS, NLOC, NGI, &
 
     Conditional_Dimension: IF( D3 ) THEN
 
-        Loop_NGI: DO GI = 1, NGI
+       Loop_NGI: DO GI = 1, NGI
 
-            AGI = 0.
-            BGI = 0.
-            CGI = 0.
-            DGI = 0.
-            EGI = 0.
-            FGI = 0.
-            GGI = 0.
-            HGI = 0.
-            KGI = 0.
+          AGI = 0.
+          BGI = 0.
+          CGI = 0.
+          DGI = 0.
+          EGI = 0.
+          FGI = 0.
+          GGI = 0.
+          HGI = 0.
+          KGI = 0.
 
-            DO L = 1, NLOC
-                IGLX = XONDGL(( ELE - 1) * NLOC + L )
-                ! NB R0 does not appear here although the z-coord might be Z +R0.
-                AGI = AGI + NLX( L, GI ) * X( IGLX )
-                BGI = BGI + NLX( L, GI ) * Y( IGLX )
-                CGI = CGI + NLX( L, GI ) * Z( IGLX )
+          DO L = 1, NLOC
+             IGLX = XONDGL(( ELE - 1) * NLOC + L )
+             ! NB R0 does not appear here although the z-coord might be Z +R0.
+             AGI = AGI + NLX( L, GI ) * X( IGLX )
+             BGI = BGI + NLX( L, GI ) * Y( IGLX )
+             CGI = CGI + NLX( L, GI ) * Z( IGLX )
 
-                DGI = DGI + NLY( L, GI ) * X( IGLX )
-                EGI = EGI + NLY( L, GI ) * Y( IGLX )
-                FGI = FGI + NLY( L, GI ) * Z( IGLX )
+             DGI = DGI + NLY( L, GI ) * X( IGLX )
+             EGI = EGI + NLY( L, GI ) * Y( IGLX )
+             FGI = FGI + NLY( L, GI ) * Z( IGLX )
 
-                GGI = GGI + NLZ( L, GI ) * X( IGLX )
-                HGI = HGI + NLZ( L, GI ) * Y( IGLX )
-                KGI = KGI + NLZ( L, GI ) * Z( IGLX )
-            END DO
+             GGI = GGI + NLZ( L, GI ) * X( IGLX )
+             HGI = HGI + NLZ( L, GI ) * Y( IGLX )
+             KGI = KGI + NLZ( L, GI ) * Z( IGLX )
+          END DO
 
-            DETJ = AGI * ( EGI * KGI - FGI * HGI ) &
-                - BGI * ( DGI * KGI - FGI * GGI ) &
-                + CGI * ( DGI * HGI - EGI * GGI )
-            DETWEI( GI ) = ABS( DETJ ) * WEIGHT( GI )
-            VOLUME = VOLUME + DETWEI( GI )
+          DETJ = AGI * ( EGI * KGI - FGI * HGI ) &
+               - BGI * ( DGI * KGI - FGI * GGI ) &
+               + CGI * ( DGI * HGI - EGI * GGI )
+          DETWEI( GI ) = ABS( DETJ ) * WEIGHT( GI )
+          VOLUME = VOLUME + DETWEI( GI )
 
-        END DO Loop_NGI
+       END DO Loop_NGI
 
     ELSE
 
-        TWOPIE = 1.0
-        IF( DCYL ) TWOPIE = 2. * PIE
+       TWOPIE = 1.0
+       IF( DCYL ) TWOPIE = 2. * PIE
 
-        DO GI = 1, NGI
+       DO GI = 1, NGI
 
-            RGI = 0.
-            AGI = 0.
-            BGI = 0.
-            CGI = 0.
-            DGI = 0.
+          RGI = 0.
+          AGI = 0.
+          BGI = 0.
+          CGI = 0.
+          DGI = 0.
 
-            DO L = 1, NLOC
-                IGLX = XONDGL(( ELE - 1) * NLOC + L )
-                AGI = AGI  +  NLX( L, GI ) * X( IGLX )
-                BGI = BGI  +  NLX( L, GI ) * Y( IGLX )
-                CGI = CGI  +  NLY( L, GI ) * X( IGLX )
-                DGI = DGI  +  NLY( L, GI ) * Y( IGLX )
-                RGI = RGI + N( L, GI ) * Y( IGLX )
-            END DO
+          DO L = 1, NLOC
+             IGLX = XONDGL(( ELE - 1) * NLOC + L )
+             AGI = AGI  +  NLX( L, GI ) * X( IGLX )
+             BGI = BGI  +  NLX( L, GI ) * Y( IGLX )
+             CGI = CGI  +  NLY( L, GI ) * X( IGLX )
+             DGI = DGI  +  NLY( L, GI ) * Y( IGLX )
+             RGI = RGI + N( L, GI ) * Y( IGLX )
+          END DO
 
-            IF(.NOT.DCYL) RGI = 1.0
+          IF(.NOT.DCYL) RGI = 1.0
 
-            DETJ =  AGI * DGI - BGI * CGI 
-            DETWEI( GI ) = TWOPIE * RGI * ABS(DETJ) * WEIGHT( GI )
-            VOLUME = VOLUME + DETWEI( GI )
-        END DO
+          DETJ =  AGI * DGI - BGI * CGI 
+          DETWEI( GI ) = TWOPIE * RGI * ABS(DETJ) * WEIGHT( GI )
+          VOLUME = VOLUME + DETWEI( GI )
+       END DO
 
     END IF Conditional_Dimension
 
     RETURN
-END subroutine DETNNN
+  END subroutine DETNNN
 
 
-subroutine detnlxmsup( nloc, mloc, ngi, &
-    nlx, nly, nlz, mlx, mly, mlz, weight, detwei, &
-    nx, ny, nz, mx, my, mz, &
-    ncloc, nclx, ncly, nclz, xl, yl, zl, &
-    a11, a12, a13, a21, a22, a23, a31, a32, a33 )
+  subroutine detnlxmsup( nloc, mloc, ngi, &
+       nlx, nly, nlz, mlx, mly, mlz, weight, detwei, &
+       nx, ny, nz, mx, my, mz, &
+       ncloc, nclx, ncly, nclz, xl, yl, zl, &
+       a11, a12, a13, a21, a22, a23, a31, a32, a33 )
     implicit none
     ! Calculate detwei,nx,ny,nz, mx,my,mz for element ele for coefficient in
     ! the inverse mat of the Jacobian.  This works for a superparametric FEM
@@ -6901,7 +6901,7 @@ subroutine detnlxmsup( nloc, mloc, ngi, &
     real, dimension( nloc, ngi ), intent( in ) :: nclx, ncly, nclz
     real, dimension( ncloc ), intent( in ) :: xl, yl, zl
     real, dimension( ngi ), intent( inout ) :: a11, a12, a13, a21, a22, &
-        a23, a31, a32, a33
+         a23, a31, a32, a33
     ! Local variables
     real :: agi, bgi, cgi, dgi, egi, fgi, ggi, hgi, kgi, detj, volume
     integer :: gi, l
@@ -6909,66 +6909,66 @@ subroutine detnlxmsup( nloc, mloc, ngi, &
     volume = 0.
     Loop_GI: do gi = 1,ngi
 
-        agi = 0.
-        bgi = 0.
-        cgi = 0.
-        dgi = 0.
-        egi = 0.
-        fgi = 0.
-        ggi = 0.
-        hgi = 0.
-        kgi = 0.
+       agi = 0.
+       bgi = 0.
+       cgi = 0.
+       dgi = 0.
+       egi = 0.
+       fgi = 0.
+       ggi = 0.
+       hgi = 0.
+       kgi = 0.
 
-        Loop_NCLOC: do l = 1,ncloc
-            agi = agi + nclx( l, gi ) * xl( l ) 
-            bgi = bgi + nclx( l, gi ) * yl( l ) 
-            cgi = cgi + nclx( l, gi ) * zl( l ) 
+       Loop_NCLOC: do l = 1,ncloc
+          agi = agi + nclx( l, gi ) * xl( l ) 
+          bgi = bgi + nclx( l, gi ) * yl( l ) 
+          cgi = cgi + nclx( l, gi ) * zl( l ) 
 
-            dgi = dgi + ncly( l, gi ) * xl( l ) 
-            egi = egi + ncly( l, gi ) * yl( l ) 
-            fgi = fgi + ncly( l, gi ) * zl( l ) 
+          dgi = dgi + ncly( l, gi ) * xl( l ) 
+          egi = egi + ncly( l, gi ) * yl( l ) 
+          fgi = fgi + ncly( l, gi ) * zl( l ) 
 
-            ggi = ggi + nclz( l, gi ) * xl( l ) 
-            hgi = hgi + nclz( l, gi ) * yl( l ) 
-            kgi = kgi + nclz( l, gi ) * zl( l ) 
-        end do Loop_NCLOC
+          ggi = ggi + nclz( l, gi ) * xl( l ) 
+          hgi = hgi + nclz( l, gi ) * yl( l ) 
+          kgi = kgi + nclz( l, gi ) * zl( l ) 
+       end do Loop_NCLOC
 
-        detj = agi * (egi * kgi - fgi * hgi) &
+       detj = agi * (egi * kgi - fgi * hgi) &
             - bgi * (dgi * kgi - fgi * ggi) &
             + cgi * (dgi * hgi - egi * ggi)
 
-        detwei( gi ) = abs( detj ) * weight( gi )
-        volume = volume + detwei( gi )
+       detwei( gi ) = abs( detj ) * weight( gi )
+       volume = volume + detwei( gi )
 
-        a11( gi ) =    (egi * kgi - fgi * hgi) / detj
-        a21( gi ) =  - (dgi * kgi - fgi * ggi) / detj
-        a31( gi ) =    (dgi * hgi - egi * ggi) / detj
+       a11( gi ) =    (egi * kgi - fgi * hgi) / detj
+       a21( gi ) =  - (dgi * kgi - fgi * ggi) / detj
+       a31( gi ) =    (dgi * hgi - egi * ggi) / detj
 
-        a12( gi ) =  - (bgi * kgi - cgi * hgi) / detj
-        a22( gi ) =    (agi * kgi - cgi * ggi) / detj
-        a32( gi ) =  - (agi * hgi - bgi * ggi) / detj
+       a12( gi ) =  - (bgi * kgi - cgi * hgi) / detj
+       a22( gi ) =    (agi * kgi - cgi * ggi) / detj
+       a32( gi ) =  - (agi * hgi - bgi * ggi) / detj
 
-        a13( gi ) =    (bgi * fgi - cgi * egi) / detj
-        a23( gi ) =  - (agi * fgi - cgi * dgi) / detj
-        a33( gi ) =    (agi * egi - bgi * dgi) / detj
+       a13( gi ) =    (bgi * fgi - cgi * egi) / detj
+       a23( gi ) =  - (agi * fgi - cgi * dgi) / detj
+       a33( gi ) =    (agi * egi - bgi * dgi) / detj
 
-        do l = 1,nloc
-            nx( l, gi ) =  a11( gi ) * nlx( l, gi ) + a12( gi ) * nly( l, gi ) + a13( gi ) * nlz( l, gi )
-            ny( l, gi ) =  a21( gi ) * nlx( l, gi ) + a22( gi ) * nly( l, gi ) + a23( gi ) * nlz( l, gi )
-            nz( l, gi ) =  a31( gi ) * nlx( l, gi ) + a32( gi ) * nly( l, gi ) + a33( gi ) * nlz( l, gi )
-        end do
+       do l = 1,nloc
+          nx( l, gi ) =  a11( gi ) * nlx( l, gi ) + a12( gi ) * nly( l, gi ) + a13( gi ) * nlz( l, gi )
+          ny( l, gi ) =  a21( gi ) * nlx( l, gi ) + a22( gi ) * nly( l, gi ) + a23( gi ) * nlz( l, gi )
+          nz( l, gi ) =  a31( gi ) * nlx( l, gi ) + a32( gi ) * nly( l, gi ) + a33( gi ) * nlz( l, gi )
+       end do
 
-        do l = 1,mloc
-            mx( l, gi ) =  a11( gi ) * mlx( l, gi ) + a12( gi ) * mly( l, gi ) + a13( gi ) * mlz( l, gi )
-            my( l, gi ) =  a21( gi ) * mlx( l, gi ) + a22( gi ) * mly( l, gi ) + a23( gi ) * mlz( l, gi )
-            mz( l, gi ) =  a31( gi ) * mlx( l, gi ) + a32( gi ) * mly( l, gi ) + a33( gi ) * mlz( l, gi )
-        enddo
+       do l = 1,mloc
+          mx( l, gi ) =  a11( gi ) * mlx( l, gi ) + a12( gi ) * mly( l, gi ) + a13( gi ) * mlz( l, gi )
+          my( l, gi ) =  a21( gi ) * mlx( l, gi ) + a22( gi ) * mly( l, gi ) + a23( gi ) * mlz( l, gi )
+          mz( l, gi ) =  a31( gi ) * mlx( l, gi ) + a32( gi ) * mly( l, gi ) + a33( gi ) * mlz( l, gi )
+       enddo
 
     end do Loop_GI
 
     return
 
-end subroutine detnlxmsup
+  end subroutine detnlxmsup
 
 end module shape_functions_prototype
 
