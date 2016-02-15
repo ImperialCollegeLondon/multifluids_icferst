@@ -42,6 +42,7 @@ module multiphase_fractures
     use solvers
     use implicit_solids
     use FLDebug
+    use memory_diagnostics
 
     implicit none
 
@@ -176,18 +177,57 @@ contains
         type( state_type ), intent( inout ) :: packed_state
         type( state_type ), dimension( : ), intent( inout ) :: state
 
+        type( tensor_field), pointer :: darc_vel
+        type( vector_field), pointer :: vel
+        character( len = option_path_len ) :: opt
         ! read in ring and solid volume meshes
         ! and simplify the volume mesh
         call initialise_femdem
 
         !!**************************************************************
         if (have_option('/femdem_fracture/oneway_coupling_only')) then
+            call get_option( '/femdem_fracture/oneway_coupling_only', opt )
+            !!**************************************************************
+            vel => extract_vector_field( packed_state, "Darcy_Velocity" ) !!-ao darcy
+            darc_vel => extract_tensor_field(packed_state, "PackedDarcyVelocity")
+            vel%val=darc_vel%val(:,1,:)
+
+            if (trim( opt ) == "1way" ) then
             !calculate volume-fraction for mapping solid concentration
             call calculate_volume_fraction( packed_state)
             ! calculate porosity and permeability
             call calculate_phi_and_perm( packed_state, state )
             ! deallocate
-            call deallocate_femdem
+!                call deallocate_femdem
+
+            else  !! pseudo-2-way-coupling so that fluid is solved of varying geomtery and aperture
+                !!-ao two way coupling
+                r_nonods = node_count( positions_r )
+                v_nonods = node_count( positions_v )
+
+                allocate( p_r( r_nonods ), uf_r( ndim, r_nonods ), muf_r( r_nonods ), &
+                    f( ndim, r_nonods ),   u(ndim, r_nonods) , a( ndim, ndim, r_nonods), &
+                    uf_v( ndim, v_nonods ) , du_s( ndim, v_nonods ), u_s( ndim, v_nonods ))
+                p_r=0.0 ; uf_r=0.0 ; muf_r=1.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0;
+
+                call get_option( "/timestepping/timestep", dt )
+                print *, "pressure:", maxval(p_r), minval(p_r) !!-ao
+
+                call y2dfemdem( trim( femdem_mesh_name ) // char( 0 ), dt, p_r, uf_r( 1, : ), uf_r( 2, : ), &
+                    uf_v( 1, : ), uf_v( 2, : ), du_s( 1, : ), du_s( 2, : ), u_s( 1, : ), u_s( 2, : ), &
+                    muf_r, f( 1, : ), f( 2, : ), u(1, : ), u(2, : ), a( 1, 1, : ), a( 1, 2, : ), a( 2 ,2 , : ) )
+
+                !calculate volume-fraction for mapping solid concentration
+                call calculate_volume_fraction( packed_state)
+
+                ! calculate porosity and permeability
+                call calculate_phi_and_perm( packed_state, state )
+
+
+                ! deallocate
+!                call deallocate_femdem
+                deallocate( p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u)
+            end if
         else
             !!-ao two way coupling
             r_nonods = node_count( positions_r )
@@ -199,7 +239,7 @@ contains
             p_r=0.0 ; uf_r=0.0 ; muf_r=1.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0;
 
             !interpolate presure, velocity and visc from fluid to solid through ring
-            call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r )
+            call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r ) !!-ao is this causing the problem with large negative pressure
             !            call interpolate_fields_out_r_p( packed_state, nphase, p_r) !-ao!use for Darcy flow two-way coupling if problems arise in Y_Drag (solid)
 
             call get_option( "/timestepping/timestep", dt )
@@ -220,12 +260,13 @@ contains
             call interpolate_fields_in_v( packed_state, du_s, u_s )
 
             ! deallocate
-            call deallocate_femdem
+!            call deallocate_femdem
             deallocate( p_r, uf_r, muf_r, uf_v, du_s, u_s, f, a, u)
 
         endif
         !!**************************************************************
 
+                    call deallocate_femdem
         return
     end subroutine fracking
 
@@ -290,6 +331,7 @@ contains
         call y2d_populate_femdem( ele1_r, ele2_r, ele3_r, &
             face1_r, face2_r, x_r, y_r, p1, p2, p3, p4, &
             ele1_v, ele2_v, ele3_v, face1_v, face2_v, x_v, y_v )
+print *, "passed populate here" !!-ao
 
         quad = make_quadrature( loc, ndim, degree = quad_degree )
         shape = make_element_shape( loc, ndim, 1, quad )
@@ -362,6 +404,9 @@ contains
         mesh_r_p0 = make_mesh( positions_r%mesh, shape, continuity, "P0DG" )
 
         ! store ring permeability
+    if (associated(permeability_r%val)) then
+        call deallocate(permeability_r)
+    end if
         call allocate( permeability_r, mesh_r_p0, name = "Permeability" )
         call zero( permeability_r )
 
@@ -394,7 +439,7 @@ contains
         !Local variables
         type( state_type ) :: alg_ext, alg_fl
         type( mesh_type ), pointer :: fl_mesh, p0_fl_mesh
-        type( vector_field ) :: fl_positions
+        type( vector_field ), pointer :: fl_positions
         type( scalar_field ), pointer :: volume_fraction
 
         ewrite(3,*) "inside calculate_volume_fraction"
@@ -403,7 +448,7 @@ contains
         call insert( alg_ext, positions_vc, "Coordinate" )
 
         fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
-        fl_positions = extract_vector_field( packed_state, "Coordinate" )
+        fl_positions => extract_vector_field( packed_state, "Coordinate" )
 
         call insert( alg_fl, fl_mesh, "Mesh" )
         call insert( alg_fl, fl_positions, "Coordinate" )
@@ -424,6 +469,7 @@ contains
         call bound_volume_fraction( volume_fraction%val )
 
         ! deallocate
+!        call deallocate(fl_mesh)
         call deallocate( fl_positions )
         call deallocate( alg_fl )
         call deallocate( alg_ext )
@@ -435,45 +481,45 @@ contains
 
       !----------------------------------------------------------------------------------------------------------
 
-    subroutine calculate_absorption( totele, cv_nloc, cv_nonods, &
-        &                           nphase, cv_ndgln, rho, vf, dt, absorption )
-
-        implicit none
-
-        integer, intent( in ) :: totele, cv_nloc, cv_nonods, nphase
-        integer, dimension( : ), intent( in ) :: cv_ndgln
-        real, intent( in ) :: dt
-        real, dimension( : ), intent( in ) :: vf
-        real, dimension( :), intent( in ) :: rho
-
-        real, dimension( :, :, : ), intent( inout ) :: absorption
-
-        integer :: ele, iloc, mi, ci, iphase, idim, idx
-        real :: sigma
-
-        ewrite(3,*) "inside calculate_absorption"
-
-        do ele = 1, totele
-            do iloc = 1, cv_nloc
-
-                mi = ( ele - 1 ) * cv_nloc + iloc
-                ci = cv_ndgln( ( ele - 1 ) * cv_nloc + iloc )
-
-                do iphase = 1, nphase
-                    sigma = vf( ele ) * rho( ci + ( iphase - 1 ) * cv_nonods ) / dt
-                    do idim = 1, ndim
-                        idx = idim + ( iphase - 1 ) * ndim
-                        absorption( mi, idx, idx ) = absorption( mi, idx, idx ) + sigma
-                    end do
-                end do
-
-            end do
-        end do
-
-        ewrite(3,*) "leaving calculate_absorption"
-
-        return
-    end subroutine calculate_absorption
+!  subroutine calculate_absorption( totele, cv_nloc, cv_nonods, &
+!       &                           nphase, cv_ndgln, rho, vf, dt, absorption )
+!
+!    implicit none
+!
+!    integer, intent( in ) :: totele, cv_nloc, cv_nonods, nphase
+!    integer, dimension( : ), intent( in ) :: cv_ndgln
+!    real, intent( in ) :: dt
+!    real, dimension( : ), intent( in ) :: vf
+!    real, dimension( :), intent( in ) :: rho
+!
+!    real, dimension( :, :, : ), intent( inout ) :: absorption
+!
+!    integer :: ele, iloc, mi, ci, iphase, idim, idx
+!    real :: sigma
+!
+!    ewrite(3,*) "inside calculate_absorption"
+!
+!    do ele = 1, totele
+!       do iloc = 1, cv_nloc
+!
+!          mi = ( ele - 1 ) * cv_nloc + iloc
+!          ci = cv_ndgln( ( ele - 1 ) * cv_nloc + iloc )
+!
+!          do iphase = 1, nphase
+!             sigma = vf( ele ) * rho( ci + ( iphase - 1 ) * cv_nonods ) / dt
+!             do idim = 1, ndim
+!                idx = idim + ( iphase - 1 ) * ndim
+!                absorption( mi, idx, idx ) = absorption( mi, idx, idx ) + sigma
+!             end do
+!          end do
+!
+!       end do
+!    end do
+!
+!    ewrite(3,*) "leaving calculate_absorption"
+!
+!    return
+!  end subroutine calculate_absorption
 
     !----------------------------------------------------------------------------------------------------------
     subroutine calculate_phi_and_perm( packed_state, state )
@@ -486,11 +532,12 @@ contains
         !Local variables
         type( state_type ) :: alg_ext, alg_fl
         type( mesh_type ), pointer :: fl_mesh, p0_fl_mesh
-        type( vector_field ) :: fl_positions
+        type( vector_field ), pointer :: fl_positions, dealloc 
         type( scalar_field ) :: rvf
+        type(vector_field):: fl_positions2
 
         type( tensor_field ), pointer :: permeability, perm_state
-        type( scalar_field ), pointer :: porosity, vf , poro_state, dum, perm_val
+        type( scalar_field ), pointer :: porosity, vf , poro_state, dum, perm_val, perm2_val
         real, dimension( :, :, : ), allocatable :: perm
 
 
@@ -502,28 +549,29 @@ contains
         integer :: stat, totele, ele
         real, dimension( : ), allocatable :: scale
         real, parameter :: tol = 1.0e-10
+        real :: bg_poro, bg_perm
 
         ewrite(3,*) "inside calculate_phi_and_perm"
 
         call insert( alg_ext, positions_r%mesh, "Mesh" )
-        call insert( alg_ext, positions_r, "Coordinate" )
+        call insert( alg_ext, positions_r, "Coordinate" ) !!-ao 140116 Memory leak is here
 
         fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
-        fl_positions = extract_vector_field( packed_state, "Coordinate" )
+        fl_positions => extract_vector_field( packed_state, "Coordinate" )
 
         call insert( alg_fl, fl_mesh, "Mesh" )
-        call insert( alg_fl, fl_positions, "Coordinate" )
+        call insert( alg_fl, fl_positions, "Coordinate" )  !!-ao 140116 Memory leak is here
 
-        call set_solver_options( path, &
-            ksptype = "gmres", &
-            pctype = "hypre", &
-            rtol = 1.0e-10, &
-            atol = 1.0e-15, &
-            max_its = 10000 )
-        call add_option( &
-            trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
-        call set_option( &
-            trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg")
+!        call set_solver_options( path, &
+!        ksptype = "gmres", &
+!        pctype = "hypre", &
+!        rtol = 1.0e-10, &
+!        atol = 1.0e-15, &
+!        max_its = 10000 )
+!        call add_option( &
+!        trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
+!        call set_option( &
+!        trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg")
 
         path = "/tmp"
 
@@ -573,7 +621,7 @@ contains
 
         ewrite(3,*) "...interpolating"
 
-        ! interpolate
+        ! interpolate through ring-mesh
         call interpolation_galerkin_femdem( alg_ext, alg_fl, field = rvf )
 
         ! bound ring volume fraction
@@ -589,10 +637,18 @@ contains
         allocate( perm(ndim, ndim, totele) ) ; perm= 0.0
         do ele=1, totele
             if (rvf % val (ele) > 0.0) then
+              if (have_option('/femdem_fracture/oneway_coupling_only')) then
+                  ! non-normalised and conservative permeability interpolation
                 perm( 1, 1, ele ) = field_fl_p11 % val (ele)
                 perm( 1, 2, ele ) = field_fl_p12 % val (ele)
                 perm( 2, 1, ele ) = field_fl_p21 % val (ele)
                 perm( 2, 2, ele ) = field_fl_p22 % val (ele)
+              else ! this is where we normalise the elements overalpping with the ring to 1 (for permeability)
+                  perm( 1, 1, ele ) = field_fl_p11 % val (ele)/rvf % val (ele)
+                  perm( 1, 2, ele ) = field_fl_p12 % val (ele)/rvf % val (ele)
+                  perm( 2, 1, ele ) = field_fl_p21 % val (ele)/rvf % val (ele)
+                  perm( 2, 2, ele ) = field_fl_p22 % val (ele)/rvf % val (ele)
+              endif
             else
                 perm( 1, 1, ele ) =permeability%val(1,1,ele)
                 perm( 1, 2, ele ) =permeability%val(1,2,ele)
@@ -601,45 +657,72 @@ contains
             end if
         end do
 
+        call get_option("/porous_media/tensor_field::Permeability/prescribed/value::WholeMesh/isotropic/constant", bg_perm)
+        call get_option("/porous_media/scalar_field::Porosity/prescribed/value::WholeMesh/constant", bg_poro)
+
+        ! assign permeability from interpolation to the memory
         permeability % val( 1, 1, : ) =   perm( 1, 1, : )
         permeability % val( 1, 2, : ) =   perm( 1, 2, : )
         permeability % val( 2, 1, : ) =   perm( 2, 1, : )
         permeability % val( 2, 2, : ) =   perm( 2, 2, : )
 
+        ! extract porosity and solid concentration fields from state
         porosity => extract_scalar_field( state(1), "Porosity" )
         vf => extract_scalar_field( packed_state, "SolidConcentration" )
 
 
+!!-ao comment - porosity is not scaled due to problems arising in the wall
+!               where porosities (rvf) can arise lower than background porosity
         allocate( scale( totele ) ) ; scale = 0.0
         do ele = 1, totele
-            if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0
+!            if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0
             if (rvf % val (ele) > 0.0) porosity % val (ele) = 1 ! rvf % val(ele) * scale(ele)
-            vf % val (ele) = vf % val(ele) - rvf % val(ele)    !modify solidconcentration to not include the fracture region (ring)
+!            if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0
+            if ( maxval( permeability % val( :, :, ele ) ) <= bg_perm ) porosity % val (ele) = bg_poro !!-ao making the ring mesh porosity normalised
+!            vf % val (ele) = vf % val(ele) - rvf % val(ele)    !modify solidconcentration to not include the fracture region (ring)
         end do
 
         call bound_volume_fraction( vf%val )
 
+!        !-ao--------------------------------debugging--------------------------------------------------------------------------
+!            open  (unit=100,file="fluid_perm.txt",action="write",status="replace")
+!            do ele=1, totele
+!                write(100,*) "permeabilites on ring", permeability%val(1,1,ele), permeability%val(1,2,ele), permeability%val(2,1,ele), permeability%val(2,2,ele), porosity%val(ele)
+!            end do
+!            close (100)
+!        !-ao--------------------------------debugging--------------------------------------------------------------------------
+!
 
-        !visualising permeability in Dummy field
+        ! for adaptivity (bound perm field)
         perm_val => extract_scalar_field( state(1), "Dummy" )
         allocate(perm_val%val(totele))
         call zero( perm_val)
-        perm_val % val = perm (1,1,:)
+        perm_val % val = perm (1,1,:)/maxval(perm (1,1,:)) !!-ao
+
+!        !visualising permeability in 'totalflux'Dummy field
+        perm2_val => extract_scalar_field( state(1), "TotalFlux" )
+        allocate(perm2_val%val(totele))
+        call zero( perm2_val)
+        perm2_val % val = perm (1,1,:) !!-ao
     
         ! deallocate
         deallocate( perm)
         deallocate( scale )
-        call deallocate( field_fl_p22 )
-        call deallocate( field_fl_p21 )
-        call deallocate( field_fl_p12 )
-        call deallocate( field_fl_p11 )
-
-        return
         call deallocate( rvf )
-        call deallocate( fl_positions )
+  
+    call remove_scalar_field(alg_fl, "Permeability11")
+    call remove_scalar_field(alg_fl, "Permeability12")
+    call remove_scalar_field(alg_fl, "Permeability21")
+    call remove_scalar_field(alg_fl, "Permeability22")
 
-        call deallocate( alg_fl )
+        fl_mesh => extract_mesh( alg_fl, "Mesh" )
+        call deallocate(fl_mesh)
+        nullify(fl_mesh)
+
         call deallocate( alg_ext )
+
+
+!        call deallocate( alg_fl )
 
         ewrite(3,*) "leaving calculate_phi_and_perm"
 
@@ -743,7 +826,8 @@ contains
         else
             ! just copy memory for p1
             field_fl_p % val = pressure % val (1,1,:)
-            field_fl_mu % val = viscosity % val( 1, 1, : )
+!            field_fl_mu % val = viscosity % val( 1, 1, : )
+             field_fl_mu % val = viscosity % val( 1, 1, 1 )
         end if
 
         if ( is_multifracture  ) then
