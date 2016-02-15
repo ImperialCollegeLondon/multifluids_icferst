@@ -3298,9 +3298,9 @@ SUBROUTINE FVTRI( NGI,    NLOC, SVNGI,&
 END SUBROUTINE FVTRI
 
 SUBROUTINE FVHEX( NGI,    NLOC,    SVNGI,&
-                           &     !     - REALS
-    &     M,      SVN,     SVNLX, &
-    &     SVNLY,  SVWEIGH          )
+                                !     - REALS
+         M,      SVN,     SVNLX, &
+         SVNLY,  SVWEIGH          )
     !     --------------------------------------------
     !
     !     - this routine generates the shape functions associated

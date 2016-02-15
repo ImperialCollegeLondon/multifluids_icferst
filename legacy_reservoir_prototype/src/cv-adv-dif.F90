@@ -3782,8 +3782,8 @@ contains
                 ENDIF
 
                 CALL TRI_tet_LOCCORDS(Xpt_GI, LOCCORDS,&
-                                   &        !     The 3 corners of the tri...
-                    &        X_ALL(:,LOCNODS(:)),NDIM,NDIM+1)
+                                           !     The 3 corners of the tri...
+                            X_ALL(:,LOCNODS(:)),NDIM,NDIM+1)
 
                 L1(1) = LOCCORDS(1)
                 L2(1) = LOCCORDS(2)
@@ -3931,19 +3931,19 @@ contains
         IF (NDIM==3) THEN
 
             CALL TRILOCCORDS(Xpt(1),Xpt(2),Xpt(3), &
-                &        LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
-                &        !     The 4 corners of the tet...
-                &        X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),X_CORNERS_ALL(3,1),&
-                &        X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),X_CORNERS_ALL(3,2),&
-                &        X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3),X_CORNERS_ALL(3,3),&
-                &        X_CORNERS_ALL(1,4),X_CORNERS_ALL(2,4),X_CORNERS_ALL(3,4) )
+                        LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
+                        !     The 4 corners of the tet...
+                        X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),X_CORNERS_ALL(3,1),&
+                        X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),X_CORNERS_ALL(3,2),&
+                        X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3),X_CORNERS_ALL(3,3),&
+                        X_CORNERS_ALL(1,4),X_CORNERS_ALL(2,4),X_CORNERS_ALL(3,4) )
         ELSE
             CALL TRILOCCORDS2D(Xpt(1),Xpt(2), &
-                &        LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
-                &        !     The 3 corners of the tri...
-                &        X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),&
-                &        X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),&
-                &        X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3) )
+                        LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
+                        !     The 3 corners of the tri...
+                        X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),&
+                        X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),&
+                        X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3) )
         END IF
         ! From  the local coordinates find the shape function value...
         RETURN
@@ -11149,14 +11149,14 @@ contains
     !
     !
     SUBROUTINE FINPTSSTORE(PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
-        &     MATPSI_ALL,FINDRM,COLM,NCOLM,NDIM, &
-        &     X_NDGLN,X_NONODS, &
-        &     X_ALL, XC_CV_ALL, &
-        &     N,NLX_ALL, WEIGHT,&
-        &     !     work space...
-        &     FINDELE,COLELE,NCOLEL,&
-        &     ELEMATPSI,ELEMATWEI,IGETSTOR,&
-        &     BOUND, REFLECT,&
+             MATPSI_ALL,FINDRM,COLM,NCOLM,NDIM, &
+             X_NDGLN,X_NONODS, &
+             X_ALL, XC_CV_ALL, &
+             N,NLX_ALL, WEIGHT,&
+             !     work space...
+             FINDELE,COLELE,NCOLEL,&
+             ELEMATPSI,ELEMATWEI,IGETSTOR,&
+             BOUND, REFLECT,&
         storage_state, storname,indx)
         !     This sub finds the matrix values MATPSI for a given point on the
         !     stencil
@@ -11298,17 +11298,17 @@ contains
                         X2_ALL = X_ALL(:,XNODJ)
                     ENDIF
                     CALL MATPTSSTORE(MATPSI_ALL,COUNT,NFIELD,NOD,XNOD,&
-                        &              PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
-                        &              NLOC,TOTELE,X_NDGLN,NDGLNO,&
-                        &              NCOLM,&
-                        &              X1_ALL,&
-                        &              X2_ALL,&
-                        &              NORMX1_ALL,&
-                        &              X_ALL,&
-                        &              !     work space...
-                        &              FINDELE,COLELE,NCOLEL, &
-                        &              MINPSI,MAXPSI, &
-                        &              ELEWIC,LOCCORDSK,BOUND,REFLECT,NDIM)
+                                      PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
+                                      NLOC,TOTELE,X_NDGLN,NDGLNO,&
+                                      NCOLM,&
+                                      X1_ALL,&
+                                      X2_ALL,&
+                                      NORMX1_ALL,&
+                                      X_ALL,&
+                                      !     work space...
+                                      FINDELE,COLELE,NCOLEL, &
+                                      MINPSI,MAXPSI, &
+                                      ELEWIC,LOCCORDSK,BOUND,REFLECT,NDIM)
                     IF(IGETSTOR.EQ.1) THEN
                         ELEMATPSI(COUNT)=ELEWIC
                         DO ILOC=1,NLOC! Was loop
@@ -11333,17 +11333,17 @@ contains
     !
     !
     SUBROUTINE MATPTSSTORE(MATPSI_ALL,COUNT,NFIELD,NOD,XNOD,&
-        &     PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
-        &     NLOC,TOTELE,X_NDGLN,NDGLNO,&
-        &     NCOLM,&
-        &     X1_ALL,&
-        &     X2_ALL,&
-        &     NORMX1_ALL,&
-        &     X_ALL,&
-        &     !     work space...
-        &     FINDELE,COLELE,NCOLEL,&
-        &     MINPSI,MAXPSI,  &
-        &     ELEWIC,LOCCORDSK,BOUND,REFLECT,NDIM)
+             PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
+             NLOC,TOTELE,X_NDGLN,NDGLNO,&
+             NCOLM,&
+             X1_ALL,&
+             X2_ALL,&
+             NORMX1_ALL,&
+             X_ALL,&
+             !     work space...
+             FINDELE,COLELE,NCOLEL,&
+             MINPSI,MAXPSI,  &
+             ELEWIC,LOCCORDSK,BOUND,REFLECT,NDIM)
         !     This sub calculates the value of PSI that would be at the
         !     other side of the stencil if we had a linear variation and within
         !     a single element.
@@ -11469,19 +11469,19 @@ contains
                 LOCNODS(4)=X_NDGLN((ELE-1)*NLOC+4)
 
                 CALL TRILOCCORDS(XC_ALL(1),XC_ALL(2),XC_ALL(3), &
-                    &        LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
-                    &        !     The 4 corners of the tet...
-                    &        X_ALL(1,LOCNODS(1)),X_ALL(2,LOCNODS(1)),X_ALL(3,LOCNODS(1)),&
-                    &        X_ALL(1,LOCNODS(2)),X_ALL(2,LOCNODS(2)),X_ALL(3,LOCNODS(2)),&
-                    &        X_ALL(1,LOCNODS(3)),X_ALL(2,LOCNODS(3)),X_ALL(3,LOCNODS(3)),&
-                    &        X_ALL(1,LOCNODS(4)),X_ALL(2,LOCNODS(4)),X_ALL(3,LOCNODS(4)) )
+                            LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
+                            !     The 4 corners of the tet...
+                            X_ALL(1,LOCNODS(1)),X_ALL(2,LOCNODS(1)),X_ALL(3,LOCNODS(1)),&
+                            X_ALL(1,LOCNODS(2)),X_ALL(2,LOCNODS(2)),X_ALL(3,LOCNODS(2)),&
+                            X_ALL(1,LOCNODS(3)),X_ALL(2,LOCNODS(3)),X_ALL(3,LOCNODS(3)),&
+                            X_ALL(1,LOCNODS(4)),X_ALL(2,LOCNODS(4)),X_ALL(3,LOCNODS(4)) )
             ELSE
                 CALL TRILOCCORDS2D(XC_ALL(1),XC_ALL(2), &
-                    &        LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
-                    &        !     The 3 corners of the tri...
-                    &        X_ALL(1,LOCNODS(1)),X_ALL(2,LOCNODS(1)),&
-                    &        X_ALL(1,LOCNODS(2)),X_ALL(2,LOCNODS(2)),&
-                    &        X_ALL(1,LOCNODS(3)),X_ALL(2,LOCNODS(3)) )
+                            LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
+                            !     The 3 corners of the tri...
+                            X_ALL(1,LOCNODS(1)),X_ALL(2,LOCNODS(1)),&
+                            X_ALL(1,LOCNODS(2)),X_ALL(2,LOCNODS(2)),&
+                            X_ALL(1,LOCNODS(3)),X_ALL(2,LOCNODS(3)) )
             END IF
 
             MINCOR=MINVAL( LOCCORDS(1:NLOC) )
@@ -11551,9 +11551,9 @@ contains
     !
     !
     SUBROUTINE PHILNODELE(NONODS,FINDELE,COLELE, &
-        &     NCOLEL,MXNCOLEL, &
-        &     TOTELE,NLOC,NDGLNO, &
-        &     NLIST,INLIST)
+             NCOLEL,MXNCOLEL, &
+             TOTELE,NLOC,NDGLNO, &
+             NLIST,INLIST)
         !=================================================================
         ! This sub calculates the node to element list FINDELE,COLELE
         !
@@ -11636,11 +11636,11 @@ contains
     !
     !
     Subroutine TRILOCCORDS(Xp,Yp,Zp, &
-        &     N1, N2, N3, N4, &
-        &     X1,Y1,Z1, &
-        &     X2,Y2,Z2, &
-        &     X3,Y3,Z3, &
-        &     X4,Y4,Z4  )
+             N1, N2, N3, N4, &
+             X1,Y1,Z1, &
+             X2,Y2,Z2, &
+             X3,Y3,Z3, &
+             X4,Y4,Z4  )
 
         IMPLICIT NONE
         Real Xp, Yp, Zp
@@ -11657,9 +11657,9 @@ contains
         !     calculate element volume...
 
         Volume = TetVolume(X1, Y1, Z1, &
-            &     X2, Y2, Z2, &
-            &     X3, Y3, Z3, &
-            &     X4, Y4, Z4)
+                 X2, Y2, Z2, &
+                 X3, Y3, Z3, &
+                 X4, Y4, Z4)
 
         Volume = Volume /6.0
 
@@ -11667,35 +11667,35 @@ contains
         !     vol coords...
 
         N1 = TetVolume(Xp, Yp, Zp, &
-            &     X2, Y2, Z2, &
-            &     X3, Y3, Z3, &
-            &     X4, Y4, Z4)
+                 X2, Y2, Z2, &
+                 X3, Y3, Z3, &
+                 X4, Y4, Z4)
 
         N1 = N1/(6.0*Volume)
 
 
 
         N2 = TetVolume(X1, Y1, Z1, &
-            &     Xp, Yp, Zp, &
-            &     X3, Y3, Z3, &
-            &     X4, Y4, Z4)
+                 Xp, Yp, Zp, &
+                 X3, Y3, Z3, &
+                 X4, Y4, Z4)
 
         N2 = N2/(6.0*Volume)
 
 
 
         N3 = TetVolume(X1, Y1, Z1, &
-            &     X2, Y2, Z2, &
-            &     Xp, Yp, Zp, &
-            &     X4, Y4, Z4)
+                 X2, Y2, Z2, &
+                 Xp, Yp, Zp, &
+                 X4, Y4, Z4)
 
         N3 = N3/(6.0*Volume)
 
 
         N4 = TetVolume(X1, Y1, Z1, &
-            &     X2, Y2, Z2, &
-            &     X3, Y3, Z3, &
-            &     Xp, Yp, Zp)
+                 X2, Y2, Z2, &
+                 X3, Y3, Z3, &
+                 Xp, Yp, Zp)
 
         N4 = N4/(6.0*Volume)
 
@@ -11716,10 +11716,10 @@ contains
         ! Chris' tets have a clockwise base, hence the sign change in the det
         tetvolume = &
             (  &
-            & - (x1 - x0) * ((y2 - y0) * (z3 - z0) - (y3 - y0) * (z2 - z0)) &
-            & + (y1 - y0) * ((x2 - x0) * (z3 - z0) - (x3 - x0) * (z2 - z0)) &
-            & - (z1 - z0) * ((x2 - x0) * (y3 - y0) - (x3 - x0) * (y2 - y0)) &
-            & ) / 6.0
+             - (x1 - x0) * ((y2 - y0) * (z3 - z0) - (y3 - y0) * (z2 - z0)) &
+             + (y1 - y0) * ((x2 - x0) * (z3 - z0) - (x3 - x0) * (z2 - z0)) &
+             - (z1 - z0) * ((x2 - x0) * (y3 - y0) - (x3 - x0) * (y2 - y0)) &
+             ) / 6.0
 
     end function tetvolume
 
@@ -11729,17 +11729,17 @@ contains
     !
     !
     Subroutine TRILOCCORDS2D(Xp,Yp, &
-        &     N1, N2, N3,  &
-        &     X1,Y1, &
-        &     X2,Y2, &
-        &     X3,Y3 )
+             N1, N2, N3,  &
+             X1,Y1, &
+             X2,Y2, &
+             X3,Y3 )
 
         IMPLICIT NONE
         Real Xp,Yp, &
-            &     N1, N2, N3,  &
-            &     X1,Y1, &
-            &     X2,Y2, &
-            &     X3,Y3
+                 N1, N2, N3,  &
+                 X1,Y1, &
+                 X2,Y2, &
+                 X3,Y3
 
         Real AREA
 
