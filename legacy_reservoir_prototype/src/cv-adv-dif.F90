@@ -1446,27 +1446,32 @@ contains
         ! to calculate_outflux() here. i.e. they happen every time-step still but OUTSIDE the element loop!
 
         ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
-        allocate(phaseV(nphase,cv_nonods))
-        allocate(Dens(nphase,cv_nonods))
+        
+	if(is_porous_media .and. calculate_flux ) then
+        
+          allocate(phaseV(nphase,cv_nonods))
+          allocate(Dens(nphase,cv_nonods))
 
-        ! Extract Pressure
+          ! Extract Pressure
 
-        CVPressure => extract_tensor_field( packed_state, "PackedCVPressure" ) ! Note no %val(:,:,:) needed here anymore
+          CVPressure => extract_tensor_field( packed_state, "PackedCVPressure" ) ! Note no %val(:,:,:) needed here anymore
 
-        ! Extract the Phase Volume Fraction
+          ! Extract the Phase Volume Fraction
 
-        tenfield1 => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-        phaseV = tenfield1%val(1,:,:)
+          tenfield1 => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+          phaseV = tenfield1%val(1,:,:)
 
-        ! Extract the Density
+          ! Extract the Density
 
-        tenfield2 => extract_tensor_field( packed_state, "PackedDensity" )
-        Dens =  tenfield2%val(1,:,:)
+          tenfield2 => extract_tensor_field( packed_state, "PackedDensity" )
+          Dens =  tenfield2%val(1,:,:)
 
-        ! Extract the Porosity
+          ! Extract the Porosity
 
-        vecfield => extract_vector_field( packed_state, "Porosity" )
-        Por =>  vecfield%val(1,:)
+          vecfield => extract_vector_field( packed_state, "Porosity" )
+          Por =>  vecfield%val(1,:)
+
+        endif
 
         !###########################################
 
@@ -2593,16 +2598,17 @@ contains
                             !########################################################################################
                             ! 27/01/2016
 
-                            if(sele > 0) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
-                                if ( GETCT .and. calculate_flux ) then
-                                    do ioutlet = 1, size(outlet_id)
-                                        !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
-                                        call calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
-                                            cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, SCVDETWEI , SUF_T_BC_ALL)
-                                    enddo
-                                end if
-                            end if
+                              if(sele > 0) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
 
+                                  if ( is_porous_media .and. GETCT .and. calculate_flux ) then
+                                      do ioutlet = 1, size(outlet_id)
+                                          !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
+                                          call calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
+                                              cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, SCVDETWEI , SUF_T_BC_ALL)
+                                      enddo
+                                  end if
+
+                              end if
                             !#########################################################################################
 
                             Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
@@ -2854,8 +2860,10 @@ contains
         ! Deallocations for the calculate_outflux() code
         ! 27/01/2016
 
-        deallocate(phaseV)
-        deallocate(dens)
+        if(is_porous_media .and. calculate_flux) then
+          deallocate(phaseV)
+          deallocate(dens)
+        endif
         !#########################
 
 
