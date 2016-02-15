@@ -160,7 +160,7 @@ contains
     REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
     REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
     REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
-    real, dimension( my_size(small_COLACV )) ::  mass_mn_pres
+    real, dimension( my_size(small_COLACV )) ::  mass_mn_pres!sprint_to_do!just use size!! and the remove my_size functions
     REAL, DIMENSION( : , : , : ), allocatable :: CT
     REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
     REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
@@ -367,69 +367,6 @@ contains
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
-    SUBROUTINE SIMPLE_SOLVER( CMC, P, RHS,  &
-    NCMC, NONODS, FINCMC, COLCMC, MIDCMC,  &
-    ERROR, RELAX, RELAX_DIAABS, RELAX_DIA, N_LIN_ITS )
-        !
-        ! Solve CMC * P = RHS for RHS.
-        ! RELAX: overall relaxation coeff; =1 for no relaxation.
-        ! RELAX_DIAABS: relaxation of the absolute values of the sum of the row of the matrix;
-        !               - recommend >=2 for hard problems, =0 for easy
-        ! RELAX_DIA: relaxation of diagonal; =1 no relaxation (normally applied).
-        ! N_LIN_ITS = no of linear iterations
-        ! ERROR= solver tolerence between 2 consecutive iterations
-        implicit none
-        REAL, intent( in ) :: ERROR, RELAX, RELAX_DIAABS, RELAX_DIA
-        INTEGER, intent( in ) ::  N_LIN_ITS, NCMC, NONODS
-        REAL, DIMENSION( : ), intent( in ) ::  CMC
-        REAL, DIMENSION( : ), intent( inout ) ::  P
-        REAL, DIMENSION( : ), intent( in ) :: RHS
-        INTEGER, DIMENSION( : ), intent( in ) :: FINCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: MIDCMC
-        ! Local variables
-        INTEGER :: ITS, ILOOP, ISTART, IFINI, ISTEP, NOD, COUNT
-        REAL :: R, SABS_DIAG, RTOP, RBOT, POLD, MAX_ERR
-
-        ewrite(3,*) 'In Solver'
-
-        Loop_Non_Linear_Iter: DO ITS = 1, N_LIN_ITS
-
-            MAX_ERR = 0.0
-            Loop_Internal: DO ILOOP = 1, 2
-                IF( ILOOP == 1 ) THEN
-                    ISTART = 1
-                    IFINI = NONODS
-                    ISTEP = 1
-                ELSE
-                    ISTART = NONODS
-                    IFINI = 1
-                    ISTEP = -1
-                ENDIF
-
-                Loop_Nods: DO NOD = ISTART, IFINI, ISTEP
-                    R = RELAX_DIA * CMC( MIDCMC( NOD )) * P( NOD ) + RHS( NOD )
-                    SABS_DIAG = 0.0
-                    DO COUNT = FINCMC( NOD ), FINCMC( NOD + 1 ) - 1
-                        R = R - CMC( COUNT ) * P( COLCMC( COUNT ))
-                        SABS_DIAG = SABS_DIAG + ABS( CMC( COUNT ))
-                    END DO
-                    RTOP = R + RELAX_DIAABS * SABS_DIAG * P( NOD )
-                    RBOT = RELAX_DIAABS * SABS_DIAG + RELAX_DIA * CMC( MIDCMC( NOD ))
-                    POLD = P( NOD )
-                    P( NOD ) = RELAX * ( RTOP / RBOT ) + ( 1.0 - RELAX ) * P( NOD )
-                    MAX_ERR = MAX( MAX_ERR, ABS( POLD - P( NOD )))
-                END DO Loop_Nods
-            END DO Loop_Internal
-
-            IF( MAX_ERR < ERROR ) CYCLE
-
-        END DO Loop_Non_Linear_Iter
-
-        ewrite(3,*) 'Leaving Solver'
-
-        RETURN
-    END SUBROUTINE SIMPLE_SOLVER
 
 
 
@@ -1422,23 +1359,6 @@ contains
 
             U_ALL2 % VAL = RESHAPE( UP_VEL, (/ NDIM, NPHASE, U_NONODS /) )
 
-            ! put on rhs the cty eqn; put most recent pressure in RHS of momentum eqn
-            ! NB. P_RHS = -CT * U + CT_RHS
-!            if ( .not.symmetric_P ) then ! original
-!               CALL CT_MULT2( rhs_p%val, UP_VEL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-!                    CT, NCOLCT, FINDCT, COLCT )
-!            else
-!               CALL CT_MULT_WITH_C2( rhs_p%val, UP_VEL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-!                    C, NCOLC, FINDC, COLC )
-!            end if
-!
-!            rhs_p%val = -rhs_p%val + CT_RHS%val
-
-
-
-
-
-
 
 
 
@@ -1557,14 +1477,7 @@ END IF
             ewrite(3,*)'about to solve for pressure'
 
 !            ewrite(3,*)'b4 pressure solve P_RHS:' !, P_RHS
-            ! Add diffusion to DG version of CMC to try and encourage a continuous formulation...
-            ! the idea is to stabilize pressure without effecting the soln i.e. the rhs of the eqns as
-            ! pressure may have some singularities associated with it.
-!            if ( cv_nonods/=x_nonods .and. .false. ) then !DG only...
-!                CALL ADD_DIFF_CMC(CMC, &
-!                NCOLCMC, cv_NONODS, FINDCMC, COLCMC, MIDCMC, &
-!                totele, cv_nloc, x_nonods, cv_ndgln, x_ndgln, p_all%val )
-!            end if
+
 
 !            if( cv_nonods == x_nonods .or. .true. ) then ! a continuous pressure
 
@@ -1585,9 +1498,6 @@ END IF
             !Re-scale of the matrix to allow working with small values of sigma
             !this is a hack to deal with bad preconditioners and divide by zero errors.
             if (is_porous_media) then
-                !The condition number improves but the solver seems more sensitive
-                !We solve (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p
-                !            call Rescale_and_solve(CMC_petsc, FINDCMC, rhs_p, deltap, trim(pressure%option_path))
                 !Since we save the parameter rescaleVal, we only do this one time
                 if (rescaleVal < 0.) then
                     tfield => extract_tensor_field(packed_state,"Permeability")
@@ -1859,135 +1769,6 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
 
 
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
-
-
-
-
-
-
-    ! Add diffusion to CMC to try and encourage a continuous formulation...
-    SUBROUTINE ADD_DIFF_CMC(CMC, &
-    NCOLCMC, cv_NONODS, FINDCMC, COLCMC, MIDCMC, &
-    totele, cv_nloc, x_nonods, cv_ndgln, x_ndgln, p )
-        ! Add diffusion to CMC to try and encourage a continuous formulation...
-        !
-        implicit none
-        INTEGER, intent( in ) ::  NCOLCMC, CV_NONODS, totele, cv_nloc, x_nonods
-        REAL, DIMENSION( : ), intent( inout ) ::  CMC
-        REAL, DIMENSION( : ), intent( inout ) ::  p
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: MIDCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: cv_ndgln, x_ndgln
-
-        ! local variables...
-
-        integer, dimension( : ), allocatable :: dg_nods, MAP_DG2CTY
-        real, dimension( : ), allocatable :: diag_lum, P_TEMP
-        integer :: ele, cv_iloc, dg_nod, cty_nod, CV_NOD, CV_JNOD
-        integer :: count
-        real :: alpha
-
-        ! works...
-        alpha=1.e-3
-        ! can also be used...
-        !    alpha=1.e-1
-        !    alpha=1.e-2
-
-
-        allocate( MAP_DG2CTY(cv_nonods) )
-        allocate( p_TEMP(X_nonods) )
-        allocate( diag_lum(x_nonods) )
-        allocate( dg_nods(x_nonods) )
-
-        ! lump the pressure nodes to take away the discontinuity...
-        DO ELE = 1, TOTELE
-            DO CV_ILOC = 1, CV_NLOC
-                !          dg_nod = (ele-1) * cv_nloc + cv_iloc
-                dg_nod = cv_ndgln( (ele-1) * cv_nloc + cv_iloc )
-                cty_nod = x_ndgln( (ele-1) * cv_nloc + cv_iloc)
-                MAP_DG2CTY(dg_nod) = cty_nod
-            END DO
-        END DO
-
-        diag_lum=0.0
-        dg_nods=0
-        P_TEMP=0.0
-        DO ELE = 1, TOTELE
-            DO CV_ILOC = 1, CV_NLOC
-                !          dg_nod = (ele-1) * cv_nloc + cv_iloc
-                dg_nod = cv_ndgln( (ele-1) * cv_nloc + cv_iloc )
-                cty_nod = x_ndgln( (ele-1) * cv_nloc + cv_iloc )
-                diag_lum(cty_nod)=diag_lum(cty_nod) + abs( cmc(midcmc(dg_nod)) )
-                dg_nods(cty_nod)=dg_nods(cty_nod)+1
-                P_TEMP(cty_nod)=P_TEMP(cty_nod)+P(DG_NOD)
-            END DO
-        END DO
-        P_TEMP=p_TEMP/DG_NODS
-
-
-        DO ELE = 1, TOTELE
-            DO CV_ILOC = 1, CV_NLOC
-                !          dg_nod = (ele-1) * cv_nloc + cv_iloc
-                dg_nod = cv_ndgln( (ele-1) * cv_nloc + cv_iloc )
-                cty_nod = x_ndgln( (ele-1) * cv_nloc + cv_iloc )
-            ! uncomment to get a cty pressure...
-               !P(DG_NOD)=P_TEMP(cty_nod)
-            END DO
-        END DO
-
-        DO ELE = 1, TOTELE
-            DO CV_ILOC = 1, CV_NLOC
-                !          dg_nod = (ele-1) * cv_nloc + cv_iloc
-                dg_nod = cv_ndgln( (ele-1) * cv_nloc + cv_iloc )
-                cty_nod = x_ndgln( (ele-1) * cv_nloc + cv_iloc )
-                CV_NOD=DG_NOD
-                DO COUNT = FINDCMC( CV_NOD ), FINDCMC( CV_NOD + 1 ) - 1
-                    CV_JNOD = COLCMC( COUNT )
-                    IF(CV_JNOD==CV_NOD) THEN ! on the diagonal...
-                        CMC( COUNT ) = CMC( COUNT ) + alpha*diag_lum(cty_nod)
-                    ELSE
-                        IF(MAP_DG2CTY(CV_JNOD)==cty_nod) THEN ! off diagonal...
-                            CMC( COUNT ) = CMC( COUNT ) - alpha*diag_lum(cty_nod)/real(dg_nods(cty_nod)-1)
-                        ENDIF
-                    ENDIF
-                END DO
-
-            END DO
-        END DO
-        RETURN
-    END SUBROUTINE ADD_DIFF_CMC
-
-
-
-
-
-
-!    SUBROUTINE UVW_2_ULONG( U, V, W, UP, U_NONODS, NDIM, NPHASE )
-!        implicit none
-!        INTEGER, intent( in ) :: U_NONODS, NDIM, NPHASE
-!        REAL, DIMENSION( : ), intent( in ) :: U, V, W
-!        REAL, DIMENSION( : ), intent( inout ) :: UP
-!        ! Local variables
-!        INTEGER :: IPHASE
-!
-!        DO IPHASE = 1, NPHASE
-!            UP( 1 + ( IPHASE - 1 ) * NDIM * U_NONODS : U_NONODS + ( IPHASE - 1 ) * NDIM * U_NONODS ) = &
-!            U( 1 + ( IPHASE - 1 ) * U_NONODS : U_NONODS + ( IPHASE - 1 ) * U_NONODS )
-!            IF( NDIM >= 2 ) &
-!            UP( 1 + U_NONODS + ( IPHASE - 1 ) * NDIM * U_NONODS : 2 * U_NONODS + ( IPHASE - 1 ) * NDIM * U_NONODS ) = &
-!            V( 1 + ( IPHASE - 1 ) * U_NONODS : U_NONODS + ( IPHASE - 1 ) * U_NONODS )
-!            IF( NDIM >= 3 ) &
-!            UP( 1 + 2 * U_NONODS + ( IPHASE - 1) * NDIM * U_NONODS : 3 * U_NONODS + ( IPHASE - 1 ) * NDIM * U_NONODS ) = &
-!            W( 1 + ( IPHASE - 1 ) * U_NONODS : U_NONODS + ( IPHASE - 1 ) * U_NONODS )
-!        END DO
-!
-!    END SUBROUTINE UVW_2_ULONG
-
-
-
-
-
 
 
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, storage_state, &
@@ -2345,7 +2126,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
-
+    !SPRINT_TO_DO!!UPDATE MEMORY
     SUBROUTINE PUT_CT_IN_GLOB_MAT( NPHASE, NDIM, U_NONODS, &
     NLENMCY, NCOLMCY, MCY, FINMCY, &
     CV_NONODS, NCOLCT, CT, DIAG_SCALE_PRES, FINDCT, &
@@ -6445,6 +6226,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
     END SUBROUTINE ASSEMB_FORCE_CTY
 
+    !SPRINT_TO_DO!!!MOVE TO UTILITIES SUBROUTINE
     subroutine nan_check(a,k)
 
         real :: a
@@ -6455,6 +6237,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         end if
 
     end subroutine nan_check
+    !SPRINT_TO_DO!!!MOVE TO UTILITIES SUBROUTINE
     subroutine nan_check_arr(a,k)
 
         real, dimension(:,:) :: a
@@ -6963,7 +6746,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
             CALL JACDIA(AA,V,D,NDIM,A,.FALSE.)
 
-            D(:)=D(:)
 
             IF(ONE_OVER_H2) THEN
                 !     SET to metric which has 1/h^2 in it...
@@ -7024,7 +6806,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
     !
-    !
+    !!sprint_to_do!!!!MOVE TO FORTRAN 90
     SUBROUTINE JACDIA(AA,V,D,N, &
                ! Working arrays...
                A,PRISCR)
@@ -7135,7 +6917,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
  !
  !
  !
- !
+ !!sprint_to_do!!!OPTIMIZE, VECTORIZE
  SUBROUTINE JACPRE(SINALF,COSALF,P,Q,A,N)
      ! This sub performs matrix-matrix multiplication A=R*A.
      ! PRE-MULTIPLY matrix A by transpose of Rotation matrix
@@ -7287,66 +7069,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
- REAL FUNCTION dg_oscilat_detect(SNDOTQ_KEEP, SNDOTQ2_KEEP, &
-     N_DOT_DU, N_DOT_DU2, SINCOME, MASS_ELE, MASS_ELE2 )
-     ! Determine if we have an oscillation in the normal direction...
-     ! dg_oscilat_detect=1.0- CENTRAL SCHEME.
-     ! dg_oscilat_detect=0.0- UPWIND SCHEME.
-     real SNDOTQ_KEEP, SNDOTQ2_KEEP, N_DOT_DU, N_DOT_DU2, SINCOME
-     REAL MASS_ELE, MASS_ELE2
-     ! If cons_oscillation then apply upwinding as often as possible...
-     LOGICAL, PARAMETER :: cons_oscillation = .false.
-     REAL H1,H2, U1,U2,U3
-     !              REAL TOLFUN
-
-     if(cons_oscillation) then
-
-         dg_oscilat_detect = 1.0
-
-         if( SINCOME> 0.5 ) then
-             ! velcity comming into element ELE...
-             if( (SNDOTQ_KEEP - SNDOTQ2_KEEP)*N_DOT_DU2 > 0.0 ) dg_oscilat_detect = 0.0
-         !                   if( (SNDOTQ_KEEP - SNDOTQ2_KEEP)*N_DOT_DU2 > 0.0 ) dg_oscilat_detect = 0.333
-         !                   if( (SNDOTQ_KEEP - SNDOTQ2_KEEP)*N_DOT_DU2 > 0.0 ) dg_oscilat_detect = 0.5
-         else
-             ! velcity pointing out of the element ELE...
-             if( (SNDOTQ2_KEEP - SNDOTQ_KEEP)*N_DOT_DU < 0.0 ) dg_oscilat_detect = 0.0
-         !                   if( (SNDOTQ2_KEEP - SNDOTQ_KEEP)*N_DOT_DU < 0.0 ) dg_oscilat_detect = 0.333
-         !                   if( (SNDOTQ2_KEEP - SNDOTQ_KEEP)*N_DOT_DU < 0.0 ) dg_oscilat_detect = 0.5
-         end if
-     else
-         ! tvd in the means...
-
-         dg_oscilat_detect = 1.0
-
-         if( SINCOME> 0.5 ) then
-             ! velcity comming into element ELE...
-             if( (SNDOTQ_KEEP - SNDOTQ2_KEEP)*N_DOT_DU2 > 0.0 ) then
-                 H1=MASS_ELE
-                 H2=MASS_ELE2
-                 U1=SNDOTQ_KEEP - N_DOT_DU* H1
-                 U2=SNDOTQ2_KEEP+ N_DOT_DU2* H2
-                 U3=SNDOTQ2_KEEP+ N_DOT_DU2* 3*H2
-                 ! Have oscillations...
-                 IF( (U1-U2)/TOLFUN(U2-U3) .LE. 0.0) dg_oscilat_detect = 0.0
-             endif
-         else
-             ! velcity pointing out of the element ELE...
-             if( (SNDOTQ2_KEEP - SNDOTQ_KEEP)*N_DOT_DU < 0.0 ) then
-                 H1=MASS_ELE
-                 H2=MASS_ELE2
-                 U1=SNDOTQ_KEEP - N_DOT_DU* 3.*H1
-                 U2=SNDOTQ_KEEP - N_DOT_DU* H1
-                 U3=SNDOTQ2_KEEP+ N_DOT_DU2* H2
-                 ! Have oscillations...
-                 IF( (U1-U2)/TOLFUN(U2-U3) .LE. 0.0) dg_oscilat_detect = 0.0
-             endif
-         end if
-
-     endif
-
-     return
- end function dg_oscilat_detect
 
 
 
@@ -7404,303 +7126,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
- !Currently unused
- !    SUBROUTINE DG_DIFFUSION( ELE, U_NLOC, NONODS, LMMAT1, LINVMMAT1, LMMAT, LNNXMAT, LNXNMAT1, LINVMNXNMAT1, AMAT )
- !        ! Find diffusion contributions at the surface
- !        implicit none
- !
- !        INTEGER, intent( in ) :: ELE, U_NLOC, NONODS
- !        REAL, DIMENSION( :, : ), intent( inout ) :: LMMAT1, LINVMMAT1
- !        REAL, DIMENSION( :, : ), intent( inout ) :: LMMAT, LNNXMAT
- !        REAL, DIMENSION( :, : ), intent( inout ) :: LNXNMAT1, LINVMNXNMAT1
- !        REAL, DIMENSION( :, : ), intent( inout ) :: AMAT
- !        ! Local
- !        INTEGER :: ILOC, GLOBI
- !
- !        ewrite(3,*) 'In DG_DIFFUSION'
- !
- !        ! LMMAT1
- !        LMMAT1( 1 : U_NLOC + 1, 1 : U_NLOC + 1 ) = 0.0
- !        LMMAT1( 1 : U_NLOC    , 1 : U_NLOC ) = LMMAT( 1 : U_NLOC, 1 : U_NLOC )
- !        LMMAT1( 2 : U_NLOC + 1, 2 : U_NLOC + 1 ) = LMMAT1( 2 : U_NLOC + 1 , 2 : U_NLOC + 1 ) + &
- !        LMMAT( 1 : U_NLOC     , 1 : U_NLOC )
- !
- !        ! LNXNMAT1 - surface integral
- !        LNXNMAT1( 1 : U_NLOC    , 1 : U_NLOC )    =  LNNXMAT( 1 : U_NLOC , 1 : U_NLOC )
- !        LNXNMAT1( 2 : U_NLOC + 1, 3 : U_NLOC + 2 )=  LNNXMAT( 1 : U_NLOC , 1 : U_NLOC )
- !
- !        LNXNMAT1( 2, 2 ) = LNXNMAT1( 2, 2 ) - 1.0
- !        LNXNMAT1( 2, 3 ) = LNXNMAT1( 2, 3 ) + 1.0
- !
- !        ! Find inverse:
- !        CALL MATDMATINV( LMMAT1, LINVMMAT1, 2 * U_NLOC - 1 ) ! is the size of LMMAT1 right? DOUBLE CHECK THIS LATER
- !
- !        ! Matrix X Matrix:
- !        CALL ABMATRIXMUL( LINVMNXNMAT1, LINVMMAT1, 2 * U_NLOC - 1, 2 * U_NLOC - 1, &
- !        LNXNMAT1, 2 * U_NLOC - 1, 2 * U_NLOC )
- !
- !        ! RHS OF ELEMENT:
- !        ILOC = U_NLOC
- !        GLOBI = ( ELE - 1 ) * U_NLOC + ILOC
- !        AMAT( GLOBI, GLOBI - 1)  = AMAT( GLOBI, GLOBI - 1 ) - LINVMNXNMAT1( 2, 1 )
- !        AMAT( GLOBI, GLOBI )     = AMAT( GLOBI, GLOBI )     - LINVMNXNMAT1( 2, 2 )
- !        AMAT( GLOBI, GLOBI + 1 ) = AMAT( GLOBI, GLOBI + 1 ) - LINVMNXNMAT1( 2, 3 )
- !        AMAT( GLOBI, GLOBI + 2 ) = AMAT( GLOBI, GLOBI + 2 ) - LINVMNXNMAT1( 2, 4 )
- !
- !        ! LHS OF ELEMENT:
- !        ILOC = 1
- !        GLOBI = ( ELE - 1 ) * U_NLOC + ILOC
- !        AMAT( GLOBI, GLOBI - 2 )= AMAT( GLOBI, GLOBI - 2 ) + LINVMNXNMAT1( 2, 1 )
- !        AMAT( GLOBI, GLOBI - 1 )= AMAT( GLOBI, GLOBI - 1 ) + LINVMNXNMAT1( 2, 2 )
- !        AMAT( GLOBI, GLOBI )    = AMAT( GLOBI, GLOBI )     + LINVMNXNMAT1( 2, 3 )
- !        AMAT( GLOBI, GLOBI + 1 )= AMAT( GLOBI, GLOBI + 1 ) + LINVMNXNMAT1( 2, 4 )
- !
- !        ewrite(3,*) 'Leaving DG_DIFFUSION'
- !
- !    END SUBROUTINE DG_DIFFUSION
-
-
-
-
- !    SUBROUTINE ASSEM_CS( CTP, CT, CTYRHS, FREDOP, NONODS, NCOLCT, FINDCT, COLCT, U, DEN, &
- !    UBOT, UTOP, DEN_IN_TOP, DEN_IN_BOT,  &
- !    BOT_BC_TYPE, TOP_BC_TYPE )
- !        implicit none
- !        ! assemble CTP (eqn 3.22 without time term) & CT operating on P in eqn 3.21
- !        ! and also CTYRHS which is the rhs of the cty eqn.
- !        ! Local variables...
- !        ! 2 types of B.C's:
- !        ! BOT_BC_TYPE or TOP_BC_TYPE =3 is a specified inlet velocity & density b.c.
- !        ! BOT_BC_TYPE or TOP_BC_TYPE =2 is a specified inlet velocity & No density b.c.
- !        ! BOT_BC_TYPE or TOP_BC_TYPE =1 is No velocity b.c (ZERO PRESSURE BC)& but have density b.c.
- !        ! BOT_BC_TYPE or TOP_BC_TYPE =0 is an open zero pressure b.c.
- !
- !        INTEGER, intent( in ) ::  FREDOP, NONODS, NCOLCT
- !        REAL, DIMENSION( : ), intent( inout ) :: CTP, CT
- !        INTEGER, DIMENSION( : ), intent( inout ) :: FINDCT
- !        INTEGER, DIMENSION( : ), intent( inout ) :: COLCT
- !        REAL, DIMENSION( : ), intent( inout ) :: U
- !        REAL, DIMENSION( : ), intent( inout ) :: DEN, CTYRHS
- !        REAL, intent( in ) :: UBOT, UTOP, DEN_IN_TOP, DEN_IN_BOT
- !        INTEGER, intent( in ) :: BOT_BC_TYPE, TOP_BC_TYPE
- !
- !        ! Local
- !        REAL :: NORMX, DENSITY, VEL
- !        INTEGER PNOD, II, COL, COUNT, COUNT2
- !        LOGICAL BOT_BC_VEL, BOT_BC_DEN, TOP_BC_VEL, TOP_BC_DEN
- !
- !        ewrite(3,*) 'In ASSEM_CS'
- !
- !        BOT_BC_VEL = .FALSE.
- !        BOT_BC_DEN = .FALSE.
- !        TOP_BC_VEL = .FALSE.
- !        TOP_BC_DEN = .FALSE.
- !
- !        Case_TOP_BC_TYPE: SELECT CASE( TOP_BC_TYPE )
- !            CASE( 1 ) ; TOP_BC_DEN = .TRUE.
- !            CASE( 2 ) ; TOP_BC_VEL = .TRUE.
- !            CASE( 3 )
- !                TOP_BC_DEN = .TRUE.
- !                TOP_BC_VEL = .TRUE.
- !        END SELECT Case_TOP_BC_TYPE
- !
- !        Case_BOT_BC_TYPE: SELECT CASE( BOT_BC_TYPE )
- !            CASE( 1 ) ; BOT_BC_DEN = .TRUE.
- !            CASE( 2 ) ; BOT_BC_VEL = .TRUE.
- !            CASE( 3 )
- !                BOT_BC_DEN = .TRUE.
- !                BOT_BC_VEL = .TRUE.
- !        END SELECT CASE_BOT_BC_TYPE
- !
- !        CTP = 0.0
- !        CT = 0.0
- !        CTYRHS = 0.0
- !
- !        ! internal node discretisation
- !        Loop_Disc: DO PNOD = 2, FREDOP - 1
- !            Loop_II: DO II = 0, 1
- !                NORMX = REAL( II * 2 - 1 )
- !                VEL = U( PNOD + II )
- !
- !                IF( VEL * NORMX >= 0.0 ) THEN
- !                    DENSITY = DEN( PNOD )
- !                ELSE
- !                    DENSITY = DEN( PNOD + II * 2 - 1 )
- !                ENDIF
- !
- !                COL = PNOD + II
- !                COUNT = 0
- !                DO COUNT2 = FINDCT( PNOD ) , FINDCT( PNOD + 1 ) - 1
- !                    IF( COLCT( COUNT2 ) == COL ) COUNT = COUNT2
- !                END DO
- !                CT(  COUNT ) = CT(  COUNT ) + NORMX
- !                CTP( COUNT ) = CTP( COUNT ) + NORMX * DENSITY
- !            END DO Loop_II
- !        END DO Loop_Disc
- !
- !        ! Part of 1st row
- !        NORMX = 1.0
- !        VEL = U( 2 )
- !        IF( VEL * NORMX >= 0.0 ) THEN
- !            DENSITY = DEN( 1 )
- !        ELSE
- !            DENSITY = DEN( 2 )
- !        ENDIF
- !        CT( 2 ) = CT( 2 ) + NORMX
- !        CTP( 2 ) = CTP( 2 ) + NORMX * DENSITY
- !
- !        ! Part of last st row
- !        NORMX = -1.0
- !        VEL = U( NONODS - 1 )
- !        IF( VEL *NORMX >= 0.0 ) THEN
- !            DENSITY = DEN( FREDOP )
- !        ELSE
- !            DENSITY = DEN( FREDOP - 1 )
- !        ENDIF
- !        CT(  NCOLCT - 1 ) = CT(  NCOLCT - 1 ) + NORMX
- !        CTP( NCOLCT - 1 ) = CTP( NCOLCT - 1 ) + NORMX * DENSITY
- !
- !        ! Left boundary
- !        NORMX = -1.0
- !        VEL = U( 1 )
- !        IF( BOT_BC_VEL ) VEL = UBOT
- !        DENSITY = DEN( 1 )
- !        IF(( VEL * NORMX < 0.0 ) .AND. BOT_BC_DEN ) DENSITY = DEN_IN_BOT
- !
- !        IF( BOT_BC_VEL ) THEN
- !            CTYRHS( 1 ) = CTYRHS( 1 ) - DENSITY * NORMX * UBOT
- !        ELSE
- !            CT(  1 ) = CT(  1 ) + NORMX
- !            CTP( 1 ) = CTP( 1 ) + NORMX * DENSITY
- !        ENDIF
- !
- !        ! Right boundary
- !        NORMX = 1.0
- !        VEL = U( NONODS )
- !        IF( TOP_BC_VEL ) VEL = UTOP
- !        DENSITY = DEN( FREDOP )
- !        IF(( VEL * NORMX <  0.0 ) .AND. TOP_BC_DEN ) DENSITY = DEN_IN_TOP
- !
- !        IF( TOP_BC_VEL ) THEN
- !            CTYRHS( FREDOP ) = CTYRHS( FREDOP ) - DENSITY * NORMX *UTOP
- !        ELSE
- !            CT(  NCOLCT ) = CT(  NCOLCT ) + NORMX
- !            CTP( NCOLCT ) = CTP( NCOLCT ) + NORMX * DENSITY
- !        ENDIF
- !
- !        ewrite(3,*) 'Leaving ASSEM_CS'
- !
- !    END SUBROUTINE ASSEM_CS
-
-
-
-
- !    SUBROUTINE AVESOU( S2AVE, S2, FREDOP )
- !        implicit none
- !
- !        INTEGER, intent( in ) :: FREDOP
- !        REAL, DIMENSION( : ),     intent( inout ) :: S2AVE, S2
- !        ! Local
- !        REAL, DIMENSION( : ), allocatable :: SOURCE
- !        ! Local variables
- !        INTEGER :: ELE
- !
- !        ALLOCATE( SOURCE( FREDOP + 1 ))
- !
- !        SOURCE( 1 ) = S2( 1 )
- !        DO ELE= 2, FREDOP
- !            SOURCE( ELE ) = 0.5 * ( S2( ELE - 1 ) + S2( ELE ))
- !        END DO
- !        SOURCE( FREDOP + 1 ) = S2( FREDOP )
- !
- !        DO ELE= 1, FREDOP
- !            S2AVE( ELE ) = 0.5 * ( SOURCE( ELE ) + SOURCE( ELE + 1 ))
- !        END DO
- !
- !        DEALLOCATE( SOURCE )
- !
- !    END SUBROUTINE AVESOU
-
-
-
-
- !    SUBROUTINE AVESIG( SIGMA2AVE, SIGMA2, FREDOP)
- !        implicit none
- !
- !        INTEGER, intent( in ) :: FREDOP
- !        REAL, DIMENSION( : ), intent( inout ) :: SIGMA2AVE
- !        REAL, DIMENSION( : ), intent( in ) :: SIGMA2
- !        ! Local variables
- !        REAL, DIMENSION( : ), allocatable :: SIGMA
- !        INTEGER :: ELE
- !
- !        ALLOCATE( SIGMA( FREDOP + 1 ))
- !
- !        SIGMA( 1 ) = SIGMA2( 1 )
- !        DO ELE = 2, FREDOP
- !            SIGMA( ELE ) = 0.5 * ( SIGMA2( ELE - 1 ) + SIGMA2( ELE ))
- !        END DO
- !        SIGMA( FREDOP + 1 ) = SIGMA2( FREDOP )
- !
- !        DO ELE = 1, FREDOP
- !            SIGMA2AVE( ELE ) = 0.5 * ( SIGMA( ELE ) + SIGMA( ELE + 1 ))
- !        END DO
- !
- !        DEALLOCATE( SIGMA )
- !
- !    END SUBROUTINE AVESIG
-
-
-
-
- !    SUBROUTINE LUMP_ENERGY_EQNS( CV_NONODS, NPHASE, &
- !    NCOLACV, NCOLACV_SUB, &
- !    FINACV, COLACV, COLACV_SUB, FINACV_SUB, ACV_SUB )
- !        implicit none
- !
- !
- !        INTEGER, intent( in ) :: CV_NONODS, NPHASE, NCOLACV, NCOLACV_SUB
- !        INTEGER, DIMENSION( : ), intent( in ) :: FINACV
- !        INTEGER, DIMENSION( : ), intent( in ) :: COLACV
- !        INTEGER, DIMENSION( : ), intent( inout ) :: COLACV_SUB
- !        INTEGER, DIMENSION( : ), intent( inout ) :: FINACV_SUB
- !        REAL, DIMENSION( :), intent( inout ) :: ACV_SUB
- !        ! Local Variables
- !        INTEGER :: COUNT, COUNT2, CV_NOD, ICOL, ICOL_PHA, CV_NOD_PHA
- !
- !        ewrite(3,*) 'In LUMP_ENERGY_EQNS'
- !
- !        COUNT2 = 0
- !
- !        DO CV_NOD = 1, CV_NONODS
- !            FINACV_SUB( CV_NOD ) = COUNT2 + 1
- !            DO COUNT = FINACV( CV_NOD ), FINACV( CV_NOD + 1 ) - 1, 1
- !                ICOL = COLACV( COUNT )
- !                IF(ICOL <= CV_NONODS) THEN
- !                    COUNT2 = COUNT2 + 1
- !                    COLACV_SUB( COUNT2 ) = ICOL
- !                END IF
- !            END DO
- !        END DO
- !        FINACV_SUB( CV_NONODS + 1 ) = COUNT2 + 1
- !
- !
- !        ACV_SUB = 0.
- !        DO CV_NOD_PHA = 1, CV_NONODS * NPHASE
- !            DO COUNT = 1, FINACV( CV_NOD_PHA + 1 ) - 1
- !                CV_NOD = MOD( CV_NOD_PHA, CV_NONODS )
- !                ICOL_PHA = COLACV( COUNT )
- !                ICOL = MOD ( ICOL_PHA, CV_NONODS )
- !
- !                CALL POSINMAT( COUNT2, CV_NOD, ICOL, &
- !                CV_NONODS, FINACV_SUB, COLACV_SUB, NCOLACV_SUB )
- !
- !            END DO
- !        END DO
- !
- !        ewrite(3,*) 'Leaving LUMP_ENERGY_EQNS'
- !
- !    END SUBROUTINE LUMP_ENERGY_EQNS
 
 
  SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, nphase, ncomp, &
@@ -9430,54 +8855,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      deallocate(cv_on_face, cvfem_on_face, u_on_face, ufem_on_face, NMX_ALL)
  end subroutine Introduce_Cap_press_term
 
- subroutine Rescale_and_solve(CMC_petsc, FINDCMC, rhs_p, deltap, option_path)
-     !We perform (D^-0.5 CMC_petsc D^-0.5) D^0.5 X = D^-0.5 rhs_p
-     !where D is the diagonal of CMC_petsc.
-     !This seems to improve the condition number of the system, but it requires more operations
-     !and also for some reason the solver tend to work worse
-     Implicit none
-     type(petsc_csr_matrix), intent(inout)::  CMC_petsc
-     type( scalar_field ), intent(inout) :: rhs_p, deltap
-     character(len=*), intent(in) :: option_path
-     INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
-     !Local variables
-     real, dimension(size(rhs_p%val)):: D
-     type(petsc_csr_matrix) :: Diagonal, CMC_mod
-     integer, dimension( size(rhs_p%val) ) :: dnnz
-     integer :: i, ierr
-
-     ! find the number of non zeros per row
-     do i = 1, size( dnnz )
-         dnnz( i ) =FINDCMC( i+1 ) - FINDCMC( i )
-     end do
-
-     !Allocate the diagonal matrix
-     call allocate( Diagonal, size(rhs_p%val), size(rhs_p%val), dnnz, dnnz,(/1, 1/)&
-         ,name = 'Diagonal', halo = CMC_petsc%row_halo)
-     call zero(Diagonal)
-     !Create D^-0.5
-     do i = 1, size(rhs_p%val)
-         call MatGetValues(cmc_petsc%M, 1, (/ cmc_petsc%row_numbering%gnn2unn(i,1) /),&
-             1, (/ cmc_petsc%column_numbering%gnn2unn(i,1) /),  D(i), ierr)
-         D(i) = abs(D(i))**(-0.5)
-         call addto( Diagonal, blocki = 1, blockj = 1, i = i, j = i,val = D(i))
-     end do
-     !For some reason we have to impose that it is not assembled to be able to assemble it
-     Diagonal%is_assembled=.false.
-     call assemble( Diagonal )
-     !(D^-0.5 CMC_petsc D^-0.5)
-     call ptap(CMC_mod, CMC_petsc, Diagonal)
-     !Modify rhs_p
-     rhs_p%val = D*rhs_p%val
-     !We solve the new system
-     call petsc_solve(deltap,CMC_mod,rhs_p,trim(option_path))
-     !Obtain actual deltap
-     deltap%val = deltap%val*D
-
-     !Deallocate petsc_csr_matrix variables
-     call deallocate(CMC_mod)
-     call deallocate(Diagonal)
- end subroutine Rescale_and_solve
 
 
  subroutine getOverrelaxation_parameter(state, packed_state, Overrelaxation, Phase_with_Pc, &
@@ -10057,6 +9434,68 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
      return
  end subroutine high_order_pressure_solve
+
+    REAL FUNCTION dg_oscilat_detect(SNDOTQ_KEEP, SNDOTQ2_KEEP, &
+    N_DOT_DU, N_DOT_DU2, SINCOME, MASS_ELE, MASS_ELE2 )
+        ! Determine if we have an oscillation in the normal direction...
+        ! dg_oscilat_detect=1.0- CENTRAL SCHEME.
+        ! dg_oscilat_detect=0.0- UPWIND SCHEME.
+        real SNDOTQ_KEEP, SNDOTQ2_KEEP, N_DOT_DU, N_DOT_DU2, SINCOME
+        REAL MASS_ELE, MASS_ELE2
+        ! If cons_oscillation then apply upwinding as often as possible...
+        LOGICAL, PARAMETER :: cons_oscillation = .false.
+        REAL H1,H2, U1,U2,U3
+        !              REAL TOLFUN
+
+        if(cons_oscillation) then
+
+            dg_oscilat_detect = 1.0
+
+            if( SINCOME> 0.5 ) then
+                ! velcity comming into element ELE...
+                if( (SNDOTQ_KEEP - SNDOTQ2_KEEP)*N_DOT_DU2 > 0.0 ) dg_oscilat_detect = 0.0
+            !                   if( (SNDOTQ_KEEP - SNDOTQ2_KEEP)*N_DOT_DU2 > 0.0 ) dg_oscilat_detect = 0.333
+            !                   if( (SNDOTQ_KEEP - SNDOTQ2_KEEP)*N_DOT_DU2 > 0.0 ) dg_oscilat_detect = 0.5
+            else
+                ! velcity pointing out of the element ELE...
+                if( (SNDOTQ2_KEEP - SNDOTQ_KEEP)*N_DOT_DU < 0.0 ) dg_oscilat_detect = 0.0
+            !                   if( (SNDOTQ2_KEEP - SNDOTQ_KEEP)*N_DOT_DU < 0.0 ) dg_oscilat_detect = 0.333
+            !                   if( (SNDOTQ2_KEEP - SNDOTQ_KEEP)*N_DOT_DU < 0.0 ) dg_oscilat_detect = 0.5
+            end if
+        else
+            ! tvd in the means...
+
+            dg_oscilat_detect = 1.0
+
+            if( SINCOME> 0.5 ) then
+                ! velcity comming into element ELE...
+                if( (SNDOTQ_KEEP - SNDOTQ2_KEEP)*N_DOT_DU2 > 0.0 ) then
+                    H1=MASS_ELE
+                    H2=MASS_ELE2
+                    U1=SNDOTQ_KEEP - N_DOT_DU* H1
+                    U2=SNDOTQ2_KEEP+ N_DOT_DU2* H2
+                    U3=SNDOTQ2_KEEP+ N_DOT_DU2* 3*H2
+                    ! Have oscillations...
+                    IF( (U1-U2)/TOLFUN(U2-U3) .LE. 0.0) dg_oscilat_detect = 0.0
+                endif
+            else
+                ! velcity pointing out of the element ELE...
+                if( (SNDOTQ2_KEEP - SNDOTQ_KEEP)*N_DOT_DU < 0.0 ) then
+                    H1=MASS_ELE
+                    H2=MASS_ELE2
+                    U1=SNDOTQ_KEEP - N_DOT_DU* 3.*H1
+                    U2=SNDOTQ_KEEP - N_DOT_DU* H1
+                    U3=SNDOTQ2_KEEP+ N_DOT_DU2* H2
+                    ! Have oscillations...
+                    IF( (U1-U2)/TOLFUN(U2-U3) .LE. 0.0) dg_oscilat_detect = 0.0
+                endif
+            end if
+
+        endif
+
+        return
+    end function dg_oscilat_detect
+
 
 
 

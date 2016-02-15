@@ -3916,7 +3916,7 @@ contains
     !
     !
     !
-
+    !sprint_to_do !make internal subroutine?
     SUBROUTINE TRI_tet_LOCCORDS(Xpt, LOCCORDS,  &
         !     The 3 corners of the tri...
         X_CORNERS_ALL, NDIM,CV_NLOC)
@@ -4432,163 +4432,9 @@ contains
 
 
 
-    subroutine proj_cv_to_fem_n( packed_state, cvn, n, nlx, nly, nlz, cvweight, &
-        &                       cv_ngi, findm, colm, ncolm )
-
-        implicit none
 
 
-        ! DO NOT CALL THIS SUB...NOT FINISHED..
-
-        integer, intent( in ) :: cv_ngi, ncolm
-        type( state_type ), intent( inout ) :: packed_state
-        real, dimension( :, : ), intent( in ) :: cvn, n, nlx, nly, nlz
-        real, dimension( : ), intent( in ) :: cvweight
-        integer, dimension( : ), intent( in ) :: findm, colm
-
-        type( tensor_field ), pointer :: field
-        type( vector_field ), pointer :: x
-        type( scalar_field ), pointer :: pressure
-        real, dimension( cv_ngi ) :: detwei
-        integer, dimension( : ), pointer :: x_ndgln, cv_ndgln
-        real, dimension( : ), allocatable :: rhs, mat, ra
-        real, dimension( :, : ), allocatable :: xx
-        real, dimension( :, :, : ), allocatable :: nx
-
-        integer :: nfields, nphase, ncomp, cv_nonods, npsi, &
-            ifield, iphase, icomp, ele, totele, x_nonods, &
-            cv_iloc, cv_jloc, cv_nodi, cv_nodj, count, ipsi, &
-            idx, idim, ndim, cv_nloc
-        real :: nn, nm, volume
-        character( len = option_path_len ) :: path
-        character( len = field_name_len ), dimension( : ), allocatable :: cv_name
-        character( len = field_name_len ) :: fe_name
-
-
-        path = "/material_phase[0]/scalar_field::Pressure"
-
-        nfields = tensor_field_count( packed_state )
-
-        pressure => extract_scalar_field( packed_state, "FEPressure" )
-
-        cv_nloc = ele_loc( pressure, 1 )
-
-
-        x => extract_vector_field( packed_state, "PressureCoordinate" )
-        x_nonods = node_count( x )
-
-
-        ndim = x%dim
-
-        allocate( nx( cv_nloc, cv_ngi, 3   ) ) ; xx = 0.0
-
-
-        allocate( xx( x_nonods, 3 ) ) ; xx = 0.0
-        do idim = 1, ndim
-            xx( :, 1 ) = x%val( :, 1 )
-        end do
-
-        x_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh_Continuous" ) )
-        cv_ndgln => get_ndglno( extract_mesh( packed_state, "PressureMesh" ) )
-
-        cv_nonods = node_count( pressure )
-        totele = ele_count( pressure )
-
-        allocate( cv_name( nfields ) )
-
-
-        npsi = 0
-        do ifield = 1, nfields
-            field => extract_tensor_field( packed_state, ifield )
-            if ( trim( field%mesh%name ) == "PressureMesh" ) then
-                nphase = size( field%val, 2 ) ; ncomp =  size( field%val, 1 )
-                npsi = npsi + nphase * ncomp
-                cv_name( ifield ) = trim( field%name )
-            end if
-        end do
-
-        allocate( mat( ncolm ), ra( cv_ngi ), xx( x_nonods, 3 ) )
-        allocate( rhs( npsi * cv_nonods ) ) ; rhs = 0.0
-
-        do ele = 1, totele
-
-            call detnlxr( ele, xx(:,1), xx(:,2), xx(:,3), x_ndgln, totele, x_nonods, cv_nloc, cv_ngi, &
-                n, nlx, nly, nlz, cvweight, detwei, ra, volume, (ndim==1), (ndim==3), .false., &
-                nx( :, :, 1 ), nx( :, :, 2 ), nx( :, :, 3 ) )
-
-            do cv_iloc = 1, cv_nloc
-                cv_nodi = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
-
-                do cv_jloc = 1, cv_nloc
-                    cv_nodj = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_jloc )
-
-                    nn = dot_product( n( cv_iloc, : ), n(   cv_jloc,: ) * detwei )
-                    nm = dot_product( n( cv_iloc, : ), cvn( cv_jloc, : ) * detwei )
-
-                    call posinmat( count, cv_nodi, cv_nodj, cv_nonods, findm, colm, ncolm )
-                    mat( count ) = mat( count ) + nn
-
-                    ipsi = 1
-                    do ifield = 1, nfields
-                        field => extract_tensor_field( packed_state, ifield  )
-                        if ( trim( field%mesh%name ) == "PressureMesh" ) then
-                            do iphase = 1, nphase
-                                do icomp = 1, ncomp
-                                    idx = cv_nodi + (ipsi-1)*cv_nonods
-                                    rhs( idx ) = rhs( idx ) +  field%val( icomp, iphase, cv_nodj )
-                                    ipsi = ipsi + 1
-                                end do
-                            end do
-                        end if
-                    end do
-
-                end do ! jloc
-            end do ! iloc
-        end do ! ele
-
-
-        stop 666
-
-        ! solve...
-        idx = 1
-        do ifield = 1, nfields
-
-            fe_name = trim( cv_name( ifield ) ) ! come up with something clever here...
-
-
-            ! check strings...
-
-            fe_name = "PackedFE" // trim( cv_name( ifield )(5:) )
-
-
-
-            field => extract_tensor_field( packed_state, trim( fe_name ) )
-
-            !this is not good either..
-            if ( trim( field%mesh%name ) == "PressureMesh" ) then
-                do iphase = 1, nphase
-                    do icomp = 1, ncomp
-                        call solver( mat, field%val( icomp, iphase, :  ), &
-                            rhs( 1 + ( idx - 1 ) * cv_nonods : idx * cv_nonods ), &
-                            findm, colm, option_path = trim( path ) )
-                        idx = idx + 1
-                    end do
-                end do
-            end if
-        end do
-
-        deallocate( rhs, mat, ra, xx, nx )
-
-        return
-
-    end subroutine proj_cv_to_fem_n
-
-
-
-
-
-
-
+    !sprint_to_do!remove when updated in surface tension wrapper
     SUBROUTINE PROJ_CV_TO_FEM( FEMPSI, PSI, NTSOL, NDIM, &
         PSI_AVE, NTSOL_AVE, PSI_INT, NTSOL_INT, MASS_ELE, &
         CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
@@ -5533,7 +5379,7 @@ contains
     END SUBROUTINE DG_DERIVS
 
 
-
+    !sprint_to_do try to simplify these 4 subroutines and end up with one using the new structures
     SUBROUTINE DG_DERIVS_ALL( FEMT, FEMTOLD, &
         DTX_ELE, DTOLDX_ELE, &
         NDIM, NPHASE, NCOMP, CV_NONODS, TOTELE, CV_NDGLN, &
@@ -6035,540 +5881,6 @@ contains
 
     END SUBROUTINE DG_DERIVS_ALL2
 
-    SUBROUTINE ONVDLIM_ALL( TOTELE, &
-        TDLIM, TDCEN, INCOME, PELE, PELEOT, &
-        ETDNEW, TDMIN, TDMAX, &
-        TDMIN_2nd_mc, TDMAX_2nd_mc, FIRORD, NOLIMI, LIMIT_USE_2ND, COURANT_OR_MINUS_ONE, &
-        IANISOTROPIC, TUPWIN, TUPWI2 )
-        implicit none
-        ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-        ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-        ! The method is based on a new approach to limiting based on applying
-        ! limiting only when we have a local min or max.
-        ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-        ! LIBETA is the flux limiting parameter.
-        ! TDMAX(PELE)=maximum of the surrounding element values of element PELE.
-        ! TDMIN(PELE)=minimum of the surrounding element values of element PELE.
-        ! TDMIN_2nd_mc(PELE), TDMAX_2nd_mc(PELE) are the second minima and max
-        ! excluding (minus c) these values surrounding them.
-        ! PELEOT=element at other side of current face.
-        ! ELEOT2=element at other side of the element ELEOTH.
-        ! ELESID=element next to oposing current face.
-        ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-        ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-        !---------------------------------------------------
-        !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-        !---------------------------------------------------
-        ! TAIN         THALF       TAOUT
-        !---------------------------------------------------
-        !>TEXTIN
-        !TEXOUT<
-        !---------------------------------------------------
-        INTEGER, intent( in ) :: TOTELE, IANISOTROPIC
-        REAL, intent( inout ) :: TDLIM
-        REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN, TUPWI2
-        INTEGER, intent( in ) :: PELE, PELEOT
-        REAL, DIMENSION( : ), intent( in ) :: ETDNEW, TDMIN, TDMAX, TDMIN_2nd_mc, TDMAX_2nd_mc
-        LOGICAL, intent( in ) :: FIRORD, NOLIMI, LIMIT_USE_2ND
-        REAL :: ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT, &
-            &  TDMIN_2ND_MC_PELE, TDMAX_2ND_MC_PELE, TDMIN_2ND_MC_PELEOT, TDMAX_2ND_MC_PELEOT
-
-        ETDNEW_PELE = ETDNEW( PELE )
-        ETDNEW_PELEOT = ETDNEW( PELEOT )
-        IF( PELEOT /= PELE ) THEN
-            IF ( IANISOTROPIC /= 1 ) THEN
-                TDMIN_PELE   = TDMIN( PELE )
-                TDMAX_PELE   = TDMAX( PELE )
-                TDMIN_PELEOT = TDMIN( PELEOT )
-                TDMAX_PELEOT = TDMAX( PELEOT )
-                IF ( LIMIT_USE_2ND ) THEN
-                    TDMIN_2ND_MC_PELE   = TDMIN_2ND_MC( PELE )
-                    TDMAX_2ND_MC_PELE   = TDMAX_2ND_MC( PELE )
-                    TDMIN_2ND_MC_PELEOT = TDMIN_2ND_MC( PELEOT )
-                    TDMAX_2ND_MC_PELEOT = TDMAX_2ND_MC( PELEOT )
-                END IF
-            END IF
-        END IF
-
-        IF ( IANISOTROPIC == 1 ) THEN ! limit based on 2 largest and 2 minima values of T:
-            CALL ONVDLIM_ANO( TOTELE, &
-                TDLIM, TDCEN, INCOME, PELE, PELEOT, &
-                ETDNEW_PELE, ETDNEW_PELEOT, FIRORD, NOLIMI, COURANT_OR_MINUS_ONE, &
-                TUPWIN, TUPWI2 )
-        ELSE IF ( LIMIT_USE_2ND ) THEN ! limit based on 2 largest and 2 minima values of T:
-            CALL ONVDLIM_2nd( TOTELE, &
-                TDLIM, TDCEN, INCOME, PELE, PELEOT, &
-                ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT, &
-                TDMIN_2ND_MC_PELE, TDMAX_2ND_MC_PELE, TDMIN_2ND_MC_PELEOT, TDMAX_2ND_MC_PELEOT, &
-                FIRORD, NOLIMI )
-        ELSE
-            CALL ONVDLIM( TOTELE, &
-                TDLIM, TDCEN, INCOME, PELE, PELEOT, &
-                ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE,TDMAX_PELE, &
-                TDMIN_PELEOT, TDMAX_PELEOT, FIRORD, NOLIMI, COURANT_OR_MINUS_ONE )
-        END IF
-
-        RETURN
-
-    contains
-
-        SUBROUTINE ONVDLIM_ANO( TOTELE, &
-            TDLIM, TDCEN, INCOME, PELE, PELEOT, &
-            ETDNEW_PELE, ETDNEW_PELEOT, FIRORD, NOLIMI, COURANT_OR_MINUS_ONE, &
-            TUPWIN2, TUPWI22 )
-            implicit none
-            ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-            ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-            ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-            ! LIBETA is the flux limiting parameter.
-            ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-            ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-            ! PELEOT=element at other side of current face.
-            ! ELEOT2=element at other side of the element ELEOTH.
-            ! ELESID=element next to oposing current face.
-            ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-            ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-            !---------------------------------------------------
-            !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-            !---------------------------------------------------
-            ! TAIN         THALF       TAOUT
-            !---------------------------------------------------
-            !>TEXTIN
-            !TEXOUT<
-            !---------------------------------------------------
-            INTEGER, intent( in ) :: TOTELE
-            REAL, intent( inout ) :: TDLIM
-            REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN2, TUPWI22
-            INTEGER, intent( in ) :: PELE, PELEOT
-            REAL, intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
-            LOGICAL, intent( in ) :: FIRORD, NOLIMI
-            ! Local variables
-            REAL, PARAMETER :: TOLER=1.0E-10
-            INTEGER, PARAMETER :: POWER=1
-            REAL :: UCIN, UCOU, TDELE, DENOIN, CTILIN, DENOOU, &
-                CTILOU, FTILIN, FTILOU, TUPWIN, TUPWI2
-            INTEGER :: COUNT
-
-            IF( NOLIMI ) THEN
-                TDLIM = TDCEN
-                RETURN
-            ENDIF
-
-            Conditional_PELEOT: IF( PELEOT /= PELE ) THEN
-
-                TUPWIN = TUPWIN2 ** POWER
-                TUPWI2 = TUPWI22 ** POWER
-
-                ! Calculate normalisation parameters for incomming velocities
-                TDELE = ETDNEW_PELE ** POWER
-                DENOIN = TDELE - TUPWIN
-
-                IF( ABS( DENOIN ) < TOLER ) DENOIN = SIGN( TOLER, DENOIN )
-
-                UCIN = ETDNEW_PELEOT ** POWER
-                CTILIN = ( UCIN - TUPWIN ) / DENOIN
-
-                ! Calculate normalisation parameters for out going velocities
-                TDELE = ETDNEW_PELEOT ** POWER
-                DENOOU = TDELE - TUPWI2
-
-                IF( ABS( DENOOU ) < TOLER ) DENOOU = SIGN( TOLER, DENOOU )
-                UCOU = ETDNEW_PELE ** POWER
-                CTILOU = ( UCOU - TUPWI2 ) / DENOOU
-
-            ELSE
-
-                ! Calculate normalisation parameters for incomming velocities
-                TUPWIN = ETDNEW_PELE
-                UCIN = ETDNEW_PELE
-                DENOIN = 1.
-                CTILIN = 0.
-
-                ! Calculate normalisation parameters for out going velocities
-                TUPWI2 = ETDNEW_PELE
-                UCOU = ETDNEW_PELE
-                DENOOU = 1.
-                CTILOU = 0.
-
-            END IF Conditional_PELEOT
-
-            Conditional_FIRORD: IF( FIRORD ) THEN ! Velocity is pointing into element
-
-                ! Velocity is going out of element
-                TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
-
-            ELSE
-
-                FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-                FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-
-                ! Velocity is going out of element
-                TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW( FTILIN, CTILIN, COURANT_OR_MINUS_ONE ) * DENOIN ) &
-                    + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW( FTILOU, CTILOU, COURANT_OR_MINUS_ONE ) * DENOOU )
-
-                TDLIM = MAX( TDLIM, 0.0 ) ** (1.0/POWER)
-
-            ENDIF Conditional_FIRORD
-
-            RETURN
-
-        END SUBROUTINE ONVDLIM_ANO
-
-
-        SUBROUTINE ONVDLIM_2nd( TOTELE, &
-            TDLIM, TDCEN, INCOME, PELE, PELEOT, &
-            ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT, &
-            TDMIN_2ND_MC_PELE, TDMAX_2ND_MC_PELE, TDMIN_2ND_MC_PELEOT, TDMAX_2ND_MC_PELEOT, &
-            FIRORD, NOLIMI )
-            implicit none
-            ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-            ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-            ! The method is based on a new approach to limiting based on applying
-            ! limiting only when we have a local min or max.
-            ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-            ! LIBETA is the flux limiting parameter.
-            ! TDMAX(PELE)=maximum of the surrounding element values of element PELE.
-            ! TDMIN(PELE)=minimum of the surrounding element values of element PELE.
-            ! TDMIN_2nd_mc(PELE), TDMAX_2nd_mc(PELE) are the second minima and max
-            ! excluding (minus c) these values surrounding them.
-            ! PELEOT=element at other side of current face.
-            ! ELEOT2=element at other side of the element ELEOTH.
-            ! ELESID=element next to oposing current face.
-            ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-            ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-            !---------------------------------------------------
-            !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-            !---------------------------------------------------
-            ! TAIN         THALF       TAOUT
-            !---------------------------------------------------
-            !>TEXTIN
-            !TEXOUT<
-            !---------------------------------------------------
-            INTEGER, intent( in ) :: TOTELE
-            REAL, intent( inout ) :: TDLIM
-            REAL, intent( in ) :: TDCEN, INCOME, ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, &
-                &                TDMIN_PELEOT, TDMAX_PELEOT, TDMIN_2ND_MC_PELE, TDMAX_2ND_MC_PELE, &
-                &                TDMIN_2ND_MC_PELEOT, TDMAX_2ND_MC_PELEOT
-            INTEGER, intent( in ) :: PELE, PELEOT
-            LOGICAL, intent( in ) :: FIRORD, NOLIMI
-            ! Local variables
-            REAL, PARAMETER :: TOLER=1.0E-10
-            REAL :: TC_in, TD_in, TC_out, TD_out
-            REAL :: TUPWIN_in, TUPWIN_out, TD_MAX_in, TD_MAX_out, TD_MIN_in, TD_MIN_out
-            REAL :: TDLIM_in, TDLIM_out
-
-            IF( NOLIMI ) THEN
-                TDLIM = TDCEN
-                RETURN
-            ENDIF
-            Conditional_FIRORD: IF( .NOT.FIRORD ) THEN ! Velocity is pointing into element
-
-                Conditional_PELEOT: IF( PELEOT /= PELE ) THEN
-
-                    TC_in  = ETDNEW_PELEOT ! upwind value for incomming (to cell PELE) vel
-                    TD_in  = ETDNEW_PELE   ! downwind value for incomming vel
-                    TC_out = ETDNEW_PELE   ! upwind value for outgoing vel
-                    TD_out = ETDNEW_PELEOT ! downwind value for outgoing vel
-
-                    IF( ETDNEW_PELEOT > ETDNEW_PELE ) THEN
-                        TUPWIN_out = TDMIN_PELE
-                        TD_MIN_out = TDMIN_2nd_mc_PELE
-                        TD_MAX_out = TDMAX_PELE !1.E+10
-
-                        TUPWIN_in = TDMAX_PELEOT
-                        TD_MAX_in = TDMAX_2nd_mc_PELEOT
-                        TD_MIN_in = TDMIN_PELEOT !-1.E+10 used to bound everything
-                    ELSE
-                        TUPWIN_out = TDMAX_PELE
-                        TD_MAX_out = TDMAX_2nd_mc_PELE
-                        TD_MIN_out = TDMIN_PELE !-1.e+10
-
-                        TUPWIN_in  = TDMIN_PELEOT
-                        TD_MIN_in  = TDMIN_2nd_mc_PELEOT
-                        TD_MAX_in  = TDMAX_PELEOT !+1.e+10 used to bound everything
-                    END IF
-                    ! Calculate normalisation parameters for out going velocities *******
-                    CALL LIM_TC_2MAX2MIN(TDLIM_out, TC_out,TD_out, TUPWIN_out, TDCEN, TD_MIN_out, TD_MAX_out)
-
-                    ! Calculate normalisation parameters for incomming velocities *******
-                    CALL LIM_TC_2MAX2MIN(TDLIM_in, TC_in,TD_in, TUPWIN_in, TDCEN, TD_MIN_in, TD_MAX_in)
-
-                    ! overall TDLIM*******:
-                    TDLIM = INCOME * TDLIM_in + (1.0-INCOME) * TDLIM_out
-
-                ELSE
-                    ! Next to boundary...
-                    TDLIM = ETDNEW_PELE
-
-                ENDIF Conditional_PELEOT
-
-               ! Conditional_FIRORD: IF( .NOT.FIRORD ) THEN...
-            ELSE
-
-                ! Velocity is going out of element
-                TDLIM = INCOME * ETDNEW_PELEOT + ( 1.0 - INCOME ) * ETDNEW_PELE
-
-            ENDIF Conditional_FIRORD
-
-            RETURN
-
-        END SUBROUTINE ONVDLIM_2nd
-
-
-
-        SUBROUTINE ONVDLIM( TOTELE, &
-            TDLIM, TDCEN, INCOME, PELE, PELEOT, &
-            ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, &
-            TDMIN_PELEOT, TDMAX_PELEOT, FIRORD, NOLIMI, COURANT_OR_MINUS_ONE )
-            implicit none
-            ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-            ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-            ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-            ! LIBETA is the flux limiting parameter.
-            ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-            ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-            ! PELEOT=element at other side of current face.
-            ! ELEOT2=element at other side of the element ELEOTH.
-            ! ELESID=element next to oposing current face.
-            ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-            ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-            !---------------------------------------------------
-            !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-            !---------------------------------------------------
-            ! TAIN         THALF       TAOUT
-            !---------------------------------------------------
-            !>TEXTIN
-            !TEXOUT<
-            !---------------------------------------------------
-            INTEGER, intent( in ) :: TOTELE
-            REAL, intent( inout ) :: TDLIM
-            REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, ETDNEW_PELE, ETDNEW_PELEOT, &
-                &                TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT
-            INTEGER, intent( in ) :: PELE, PELEOT
-            LOGICAL, intent( in ) :: FIRORD, NOLIMI
-            ! Local variables
-            REAL, PARAMETER :: TOLER=1.0E-10
-            REAL :: UCIN, UCOU, TUPWIN, TUPWI2, TDELE, DENOIN, CTILIN, DENOOU, &
-                CTILOU, FTILIN, FTILOU
-
-            IF( NOLIMI ) THEN
-                TDLIM = TDCEN
-                RETURN
-            ENDIF
-
-            Conditional_PELEOT: IF( PELEOT /= PELE ) THEN
-
-                IF( ETDNEW_PELEOT > ETDNEW_PELE ) THEN
-                    TUPWIN = TDMAX_PELEOT
-                    TUPWI2 = TDMIN_PELE
-                ELSE
-                    TUPWIN = TDMIN_PELEOT
-                    TUPWI2 = TDMAX_PELE
-                END IF
-
-                ! Calculate normalisation parameters for incomming velocities
-                TDELE = ETDNEW_PELE
-                DENOIN = TDELE - TUPWIN
-
-                IF( ABS( DENOIN ) < TOLER ) DENOIN = SIGN( TOLER, DENOIN )
-
-                UCIN = ETDNEW_PELEOT
-                CTILIN = ( UCIN - TUPWIN ) / DENOIN
-
-                ! Calculate normalisation parameters for out going velocities
-                TDELE = ETDNEW_PELEOT
-                DENOOU = TDELE - TUPWI2
-
-                IF( ABS( DENOOU ) < TOLER) DENOOU = SIGN( TOLER, DENOOU )
-                UCOU = ETDNEW_PELE
-                CTILOU = ( UCOU - TUPWI2 ) / DENOOU
-
-            ELSE
-
-                ! Calculate normalisation parameters for incomming velocities
-                TUPWIN = ETDNEW_PELE
-                UCIN = ETDNEW_PELE
-                DENOIN = 1.
-                CTILIN = 0.
-
-                ! Calculate normalisation parameters for out going velocities
-                TUPWI2 = ETDNEW_PELE
-                UCOU = ETDNEW_PELE
-                DENOOU = 1.
-                CTILOU = 0.
-
-            END IF Conditional_PELEOT
-
-            Conditional_FIRORD: IF( FIRORD ) THEN ! Velocity is pointing into element
-
-                ! Velocity is going out of element
-                TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
-
-            ELSE
-
-                FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-                FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-
-                ! Velocity is going out of element
-                TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW( FTILIN, CTILIN, COURANT_OR_MINUS_ONE ) * DENOIN ) &
-                    + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW( FTILOU, CTILOU, COURANT_OR_MINUS_ONE ) * DENOOU )
-
-            END IF Conditional_FIRORD
-
-            RETURN
-
-        END SUBROUTINE ONVDLIM
-
-
-    END SUBROUTINE ONVDLIM_ALL
-
-
-
-
-
-    SUBROUTINE LIM_TC_2MAX2MIN(TDLIM, TC,TD, TUPWIN, TDCEN, TD_MIN,TD_MAX)
-        ! Calculate normalisation parameters to obtain a
-        ! limited value of the face variable TDLIM based on out going velocities *******
-        ! TC=value of the upwind cell.
-        ! TD=value of the downwind cell.
-        ! TUPWIN=value of the far field upwind cell.
-        ! tdcen=central diff value (suggested) of the face value.
-        ! This sub calculates the downwind cell value TDELE_int and limits
-        ! it between [TD_MIN,TD_MAX].
-        REAL, intent( inout ) :: TDLIM
-        REAL, intent( in ) :: TC,TD, TUPWIN, TDCEN, TD_MIN,TD_MAX
-        ! local variables...
-        REAL :: TDELE_int,tdcen_w,DENOOU,FTILOU,CTILOU,TDLIM_w,w
-
-        TDELE_int = 2.*TC - TUPWIN
-        TDELE_int = max(min(TDELE_int, TD_MAX),TD_MIN)
-        w=min(max((TD-tdcen)/tolfun(TD - TC),0.0),1.0)
-        ! value to be limited along new edge
-        tdcen_w=w*TC +(1.-w)*tdele_int
-        DENOOU = tolfun(TDELE_int - TUPWIN)
-        FTILOU = ( TDCEN_w        - TUPWIN ) / DENOOU
-        CTILOU = ( TC             - TUPWIN ) / DENOOU
-
-        TDLIM_w=  TUPWIN + NVDFUNNEW( FTILOU, CTILOU, -1.0 ) * DENOOU
-        ! project TDLIM_w back onto original edge.
-        w=min(max((TDELE_int-TDLIM_w)/tolfun(TDELE_int - TC),0.0),1.0)
-        TDLIM=w*TC + (1.-w)*TD
-        RETURN
-
-    END SUBROUTINE LIM_TC_2MAX2MIN
-
-
-
-
-
-
-    !   SUBROUTINE ONVDLIMsqrt( TOTELE, &
-    !       TDLIM, TDCEN, INCOME, PELE, PELEOT, &
-    !       ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT, FIRORD, NOLIMI )
-    !    implicit none
-    !    ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-    !    ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-    !    ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-    !    ! LIBETA is the flux limiting parameter.
-    !    ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-    !    ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-    !    ! PELEOT=element at other side of current face.
-    !    ! ELEOT2=element at other side of the element ELEOTH.
-    !    ! ELESID=element next to oposing current face.
-    !    ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-    !    ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-    !    !---------------------------------------------------
-    !    !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-    !    !---------------------------------------------------
-    !    ! TAIN         THALF       TAOUT
-    !    !---------------------------------------------------
-    !    !>TEXTIN
-    !    !TEXOUT<
-    !    !---------------------------------------------------
-    !    INTEGER, intent( in ) :: TOTELE
-    !    REAL, intent( inout ) :: TDLIM
-    !    REAL, intent( in ) :: TDCEN, INCOME, ETDNEW_PELE, ETDNEW_PELEOT, TDMIN_PELE, &
-    !         &                TDMAX_PELE, TDMIN_PELEOT, TDMAX_PELEOT
-    !    INTEGER, intent( in ) :: PELE, PELEOT
-    !    LOGICAL, intent( in ) :: FIRORD, NOLIMI
-    !    ! Local variables
-    !    REAL, PARAMETER :: TOLER=1.0E-10
-    !    INTEGER, PARAMETER :: POWER=2
-    !    REAL :: UCIN, UCOU, TUPWIN, TUPWI2, TDELE, DENOIN, CTILIN, DENOOU, &
-    !         CTILOU, FTILIN, FTILOU
-    !
-    !    IF( NOLIMI ) THEN
-    !       TDLIM = TDCEN
-    !       RETURN
-    !    ENDIF
-    !
-    !    Conditional_PELEOT: IF( PELEOT /= PELE ) THEN
-    !
-    !       IF( ETDNEW_PELEOT > ETDNEW_PELE ) THEN
-    !          TUPWIN = TDMAX_PELEOT ** POWER
-    !          TUPWI2 = TDMIN_PELE ** POWER
-    !       ELSE
-    !          TUPWIN = TDMIN_PELEOT ** POWER
-    !          TUPWI2 = TDMAX_PELE ** POWER
-    !       ENDIF
-    !
-    !       ! Calculate normalisation parameters for incomming velocities
-    !       TDELE = ETDNEW_PELE ** POWER
-    !       DENOIN = TDELE - TUPWIN
-    !
-    !       IF( ABS( DENOIN ) < TOLER ) DENOIN = SIGN( TOLER, DENOIN )
-    !
-    !       UCIN = ETDNEW_PELEOT ** POWER
-    !       CTILIN = ( UCIN - TUPWIN ) / DENOIN
-    !
-    !       ! Calculate normalisation parameters for out going velocities
-    !       TDELE = ETDNEW_PELEOT ** POWER
-    !       DENOOU = TDELE - TUPWI2
-    !
-    !       IF( ABS( DENOOU ) < TOLER) DENOOU = SIGN( TOLER, DENOOU )
-    !       UCOU = ETDNEW_PELE ** POWER
-    !       CTILOU = ( UCOU - TUPWI2 ) / DENOOU
-    !
-    !    ELSE
-    !
-    !       ! Calculate normalisation parameters for incomming velocities
-    !       TUPWIN = ETDNEW_PELE ** POWER
-    !       UCIN = ETDNEW_PELE ** POWER
-    !       DENOIN = 1.
-    !       CTILIN = 0.
-    !
-    !       ! Calculate normalisation parameters for out going velocities
-    !       TUPWI2 = ETDNEW_PELE ** POWER
-    !       UCOU = ETDNEW_PELE ** POWER
-    !       DENOOU = 1.
-    !       CTILOU = 0.
-    !
-    !    ENDIF Conditional_PELEOT
-    !
-    !    Conditional_FIRORD: IF( FIRORD ) THEN ! Velocity is pointing into element
-    !       !     Conditional_FIRORD: IF( .TRUE. ) THEN ! Velocity is pointing into element
-    !
-    !       ! Velocity is going out of element
-    !       TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
-    !       TDLIM = MAX(TDLIM,0.0) ** (1.0/POWER)
-    !
-    !    ELSE
-    !
-    !       FTILIN = ( MAX(0.0,TDCEN) ** POWER - TUPWIN ) / DENOIN
-    !       FTILOU = ( MAX(0.0,TDCEN) ** POWER - TUPWI2 ) / DENOOU
-    !
-    !       ! Velocity is going out of element
-    !       TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEWsqrt( FTILIN, CTILIN, -1.0 ) * DENOIN ) &
-    !            + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEWsqrt( FTILOU, CTILOU, -1.0 ) * DENOOU )
-    !
-    !       TDLIM = MAX( TDLIM, 0.0 ) ** (1.0/POWER)
-    !
-    !    ENDIF Conditional_FIRORD
-    !
-    !    RETURN
-    !
-    !  END SUBROUTINE ONVDLIMsqrt
-
 
 
 
@@ -6644,187 +5956,6 @@ contains
     end function nvdfunnewsqrt
 
 
-    PURE REAL FUNCTION NVDFUNNEW( UF, UC, COURAT )
-        implicit none
-        ! The function computes NVDFUNNEW, the normalised value of the
-        ! advected variable on the face of the control volume, based on
-        ! the normalised value of the advected variable in the donor CV,
-        ! UC, and the high-order estimate of the face value UF.
-        ! NVDFUNNEW is limited so that it is in the non-oscillatory
-        ! region of normalised variable diagram (NVD).
-        !
-        ! This version can also use an extremely compressive advection
-        ! scheme, appropriate for advecting volume/mass fractions in
-        ! multi-material problems.  This scheme is applied if the courant
-        ! number (COURAT) is positive.  IF YOU DO NOT WANT COMPRESSIVE
-        ! ADVECTION: call this function with COURAT=-1.
-        !
-        ! # INPUTS:
-        ! UC     - Normalised advected field value at donor CV (node)
-        ! UF     - High-order estimate of normalised value at CV face
-        ! COURAT - Local courant number (flow_vel*dt/dx)
-        !      (set to -ve number if not using interface tracking scheme)
-        !
-        ! # OUTPUTS:
-        ! NVDFUNNEW - Limited normalised advected field value at CV face
-        !
-        ! The function is based on the flux limiting function in the paper: Riemann
-        ! solvers on 3-D unstructured meshes for radiation transport, written by
-        ! Dr C.C. Pain et al. See also the paper: The ULTIMATE conservative
-        ! difference scheme applied to unsteady 1D advection,
-        ! Leonard B. P., 1991, Computer Methods in Applied Mechanics and
-        ! Engineering, 88, 17-74.
-        !
-        ! Description                                   Programmer      Date
-        ! ==================================================================
-        ! Original subroutine .............................CCP    2002-01-21
-        ! Interface tracking option added..................GSC    2006-03-14
-        ! ==================================================================
-        !
-        ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-        ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
-        ! equal to 3 has been recommended elsewhere
-        !
-        REAL, intent(in)  :: UC, UF, COURAT
-        ! Local variables
-        REAL, PARAMETER :: XI = 2., TOLER=1.0E-10
-        LOGICAL, PARAMETER :: DOWNWIND_EXTRAP = .TRUE.
-        REAL :: TILDEUF, MAXUF
-
-        ! For the region 0 < UC < 1 on the NVD, define the limiter
-        IF( ( UC > 0.0 ) .AND. ( UC < 1.0 ) ) THEN
-            ! For the interface tracking scheme, use Hyper-C (NOTE: at high Courant numbers
-            !  limit is defined by XI, not the Hyper-C scheme.)
-
-            IF( COURAT > TOLER ) THEN
-                IF(DOWNWIND_EXTRAP) THEN
-                    ! new method based on downwind extrapolation...
-                    !               MAXUF = MAX( 0.0, UF )
-                    MAXUF = MAX( 0.0, UF, UC )
-                    !               TILDEUF = MIN( 1.0, UC/ (2.0 * COURAT), MAXUF )
-                    !               TILDEUF = MIN( 1.0, max(UC/ (2.0 * COURAT), XI * UC ), MAXUF )
-                    !               TILDEUF = MIN( 1.0, max(UC/ (3.0 * COURAT), XI * UC ), MAXUF )
-                    !               TILDEUF = MIN( 1.0, UC * 10.0, MAXUF )
-                    IF ( UF < UC ) THEN
-                        TILDEUF = UC
-                    ELSE
-                        TILDEUF = MIN( 1.0, max(UC / (3.0 * COURAT), XI * UC ) )
-                    END IF
-                ELSE
-                    !TILDEUF = MIN( 1.0, max( UC / COURAT, XI * UC ))
-                    ! halve the slope for now...
-                    TILDEUF = MIN( 1.0, max( UC / (2.0 * COURAT), XI * UC ))
-                ENDIF
-            ELSE !For the normal limiting
-                MAXUF = MAX( 0.0, UF )
-                ! MAXUF = MAX( UC, UF )
-                TILDEUF = MIN( 1.0, XI * UC, MAXUF )
-               !TILDEUF = MIN( 1.0, 3.0 * UC, MAXUF )
-            ENDIF
-
-        ELSE ! Outside the region 0<UC<1 on the NVD, use first-order upwinding
-            TILDEUF = UC
-        ENDIF
-
-        NVDFUNNEW = TILDEUF
-
-    end function nvdfunnew
-
-
-
-
-
-    REAL FUNCTION NVDFUNNEW_sqrt( UF, UC, COURAT )
-        implicit none
-        ! The function computes NVDFUNNEW, the normalised value of the
-        ! advected variable on the face of the control volume, based on
-        ! the normalised value of the advected variable in the donor CV,
-        ! UC, and the high-order estimate of the face value UF.
-        ! NVDFUNNEW is limited so that it is in the non-oscillatory
-        ! region of normalised variable diagram (NVD).
-        !
-        ! This version can also use an extremely compressive advection
-        ! scheme, appropriate for advecting volume/mass fractions in
-        ! multi-material problems.  This scheme is applied if the courant
-        ! number (COURAT) is positive.  IF YOU DO NOT WANT COMPRESSIVE
-        ! ADVECTION: call this function with COURAT=-1.
-        !
-        ! # INPUTS:
-        ! UC     - Normalised advected field value at donor CV (node)
-        ! UF     - High-order estimate of normalised value at CV face
-        ! COURAT - Local courant number (flow_vel*dt/dx)
-        !      (set to -ve number if not using interface tracking scheme)
-        !
-        ! # OUTPUTS:
-        ! NVDFUNNEW - Limited normalised advected field value at CV face
-        !
-        ! The function is based on the flux limiting function in the paper: Riemann
-        ! solvers on 3-D unstructured meshes for radiation transport, written by
-        ! Dr C.C. Pain et al. See also the paper: The ULTIMATE conservative
-        ! difference scheme applied to unsteady 1D advection,
-        ! Leonard B. P., 1991, Computer Methods in Applied Mechanics and
-        ! Engineering, 88, 17-74.
-        !
-        ! Description                                   Programmer      Date
-        ! ==================================================================
-        ! Original subroutine .............................CCP    2002-01-21
-        ! Interface tracking option added..................GSC    2006-03-14
-        ! ==================================================================
-        !
-        ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
-        ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
-        ! equal to 3 has been recommended elsewhere
-        !
-        REAL, intent(in)  :: UC, UF, COURAT
-        ! Local variables
-        REAL, PARAMETER :: XI = 2., TOLER=1.0E-10
-        LOGICAL, PARAMETER :: DOWNWIND_EXTRAP = .TRUE.
-        REAL :: TILDEUF, MAXUF
-
-        ! For the region 0 < UC < 1 on the NVD, define the limiter
-        IF( ( UC > 0.0 ) .AND. ( UC < 1.0 ) ) THEN
-            ! For the interface tracking scheme, use Hyper-C (NOTE: at high Courant numbers
-            !  limit is defined by XI, not the Hyper-C scheme.)
-
-            IF( COURAT > TOLER ) THEN
-                IF(DOWNWIND_EXTRAP) THEN
-                    ! new method based on downwind extrapolation...
-                    !               MAXUF = MAX( 0.0, UF )
-                    MAXUF = MAX( 0.0, UF, UC )
-                    !               TILDEUF = MIN( 1.0, UC/ (2.0 * COURAT), MAXUF )
-                    !               TILDEUF = MIN( 1.0, max(UC/ (2.0 * COURAT), XI * UC ), MAXUF )
-                    !               TILDEUF = MIN( 1.0, max(UC/ (3.0 * COURAT), XI * UC ), MAXUF )
-                    !               TILDEUF = MIN( 1.0, UC * 10.0, MAXUF )
-                    IF ( UF < UC ) THEN
-                        TILDEUF = UC
-                    ELSE
-                        TILDEUF = MIN( 1.0, max(UC / (3.0 * COURAT), XI * UC ) )
-                    END IF
-                ELSE
-                    !TILDEUF = MIN( 1.0, max( UC / COURAT, XI * UC ))
-                    ! halve the slope for now...
-                    TILDEUF = MIN( 1.0, max( UC / (2.0 * COURAT), XI * UC ))
-                ENDIF
-            ELSE !For the normal limiting
-                MAXUF = MAX( 0.0, UF )
-                ! MAXUF = MAX( UC, UF )
-                TILDEUF = MIN( 1.0, XI * UC, MAXUF )
-               !TILDEUF = MIN( 1.0, 3.0 * UC, MAXUF )
-            ENDIF
-
-        ELSE ! Outside the region 0<UC<1 on the NVD, use first-order upwinding
-            TILDEUF = UC
-        ENDIF
-
-        NVDFUNNEW_sqrt = TILDEUF
-
-    end function nvdfunnew_sqrt
-
-
-
-
-
-
     PURE FUNCTION NVDFUNNEW_MANY( UF, UC, XI_LIMIT ) result(nvd_limit)
         implicit none
         ! The function computes NVDFUNNEW, the normalised value of the
@@ -6881,7 +6012,7 @@ contains
 
     end function nvdfunnew_many_sqrt
 
-
+    !sprint_to_do!find a new house for this
     SUBROUTINE SCVDETNX_new( ELE,      GI,        &
                                  !     - INTEGERS
         NLOC,     SVNGI,   TOTELE, NDIM,  &
@@ -7108,7 +6239,7 @@ contains
 
 
 
-
+    !sprint_to_do!move to library and update to use new memory
     SUBROUTINE SIMPNORM( NORMX, NORMY, NORMZ, D3, &
         SNDGLN, STOTEL, SNLOC, X_NONODS, NONODS, ELE, &
         X, Y, Z, &
@@ -7205,245 +6336,9 @@ contains
 
 
 
-    SUBROUTINE SDETNX2_PLUS( SELE, CV_SNDGLN,&
-        STOTEL, X_NONODS, CV_SNLOC, SBNGI, X, Y, Z, NDIM, &
-        SBWEIGH, SBDETWEI, &
-        SBUFEN, SBUFENSLX, SBUFENSLY,  &
-        SAREA, SNORMXN, SNORMYN, SNORMZN, SNORMX, SNORMY, SNORMZ )
-        ! use AdvectionDiffusion
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: SELE, STOTEL, X_NONODS, CV_SNLOC, SBNGI, NDIM
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
-        REAL, DIMENSION( :, : ), intent( in ) :: SBUFEN, SBUFENSLX, SBUFENSLY
-        REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-        REAL, DIMENSION( : ), intent( inout ) :: SBDETWEI
-        REAL, DIMENSION( : ), intent( inout ) :: SNORMXN, SNORMYN, SNORMZN
-        REAL, intent( in ) :: SNORMX, SNORMY, SNORMZ
-        REAL, DIMENSION( : ), intent( in ) :: X,Y,Z
-        ! Local variables
-        REAL, PARAMETER :: PIE = 3.141592654
-        INTEGER :: GI, SL, IGLX
-        REAL :: DXDLX, DXDLY, DYDLX, DYDLY, DZDLX, DZDLY, A, B, C, &
-            DETJ, RGI, TWOPIE, SAREA, RSNORMZ
-        LOGICAL :: D1, D3, DCYL
-
-        D1 = NDIM == 1
-        D3 = NDIM == 3
-        DCYL = NDIM == -2
-
-        SAREA=0.
-
-        Conditional_Dimension: IF( D1 ) THEN
-            SNORMXN = SNORMX
-            SNORMYN = 0.0
-            SNORMZN = 0.0
-            SBDETWEI = 1.0
-            SAREA = 1.0
-
-        ELSE IF( D3 ) THEN
-            Loop_Gauss3D: DO GI = 1, SBNGI
-                DXDLX = 0.
-                DXDLY = 0.
-                DYDLX = 0.
-                DYDLY = 0.
-                DZDLX = 0.
-                DZDLY = 0.
-
-                DO SL = 1, CV_SNLOC
-                    IGLX  = CV_SNDGLN(( SELE - 1 ) * CV_SNLOC + SL )
-                    DXDLX = DXDLX + SBUFENSLX( SL, GI ) * X( IGLX )
-                    DXDLY = DXDLY + SBUFENSLY( SL, GI ) * X( IGLX )
-                    DYDLX = DYDLX + SBUFENSLX( SL, GI ) * Y( IGLX )
-                    DYDLY = DYDLY + SBUFENSLY( SL, GI ) * Y( IGLX )
-                    DZDLX = DZDLX + SBUFENSLX( SL, GI ) * Z( IGLX )
-                    DZDLY = DZDLY + SBUFENSLY( SL, GI ) * Z( IGLX )
-                END DO
-
-                A = DYDLX * DZDLY - DYDLY * DZDLX
-                B = DXDLX * DZDLY - DXDLY * DZDLX
-                C = DXDLX * DYDLY - DXDLY * DYDLX
-
-                DETJ = SQRT( A**2 + B**2 + C**2 )
-                SBDETWEI( GI ) = DETJ * SBWEIGH( GI )
-                SAREA = SAREA + SBDETWEI( GI )
-
-                ! Calculate the normal at the Gauss pts:
-                !  TANX1=DXDLX,TANY1=DYDLX,TANZ1=DZDLX,    TANX2=DXDLY,TANY2=DYDLY,TANZ2=DZDLY
-                ! Perform x-product. N=T1 x T2
-                CALL NORMGI( SNORMXN(GI), SNORMYN(GI), SNORMZN(GI), &
-                    DXDLX, DYDLX, DZDLX, DXDLY, DYDLY, DZDLY, &
-                    SNORMX, SNORMY, SNORMZ)
-
-            END DO Loop_Gauss3D
-
-        ELSE
-
-            TWOPIE = 1.0
-            IF( DCYL ) TWOPIE = 2. * PIE
-            !
-            DO GI = 1, SBNGI
-                RGI = 0.
-                DXDLX = 0.
-                DXDLY = 0.
-                DYDLX = 0.
-                DYDLY = 0.
-                DZDLX = 0.
-                DZDLY=1. ! DZDLY=1 is to calculate the normal.
-
-                DO SL = 1, CV_SNLOC
-
-                    IGLX =  CV_SNDGLN(( SELE - 1 ) * CV_SNLOC + SL )
-                    DXDLX = DXDLX + SBUFENSLX( SL, GI ) * X( IGLX )
-                    DYDLX = DYDLX + SBUFENSLX( SL, GI ) * Y( IGLX )
-
-                    RGI =   RGI + SBUFEN( SL, GI ) * Y( IGLX )
-
-                END DO
-
-                IF( .NOT. DCYL) RGI = 1.0
-                DETJ = SQRT( DXDLX**2 + DYDLX**2 )
-                SBDETWEI( GI ) = TWOPIE * RGI * DETJ * SBWEIGH( GI )
-                SAREA = SAREA + SBDETWEI( GI )
-
-                ! Calculate the normal at the Gauss pts:
-                ! TANX1=DXDLX,TANY1=DYDLX,TANZ1=DZDLX,    TANX2=DXDLY,TANY2=DYDLY,TANZ2=DZDLY
-                ! Perform x-product. N=T1 x T2
-
-                RSNORMZ = 0.
-                CALL NORMGI( SNORMXN( GI ), SNORMYN( GI ), SNORMZN( GI ), &
-                    DXDLX, DYDLX, DZDLX, DXDLY, DYDLY, DZDLY, &
-                    SNORMX, SNORMY, RSNORMZ )
-
-            END DO
-
-        ENDIF Conditional_Dimension
-
-        RETURN
-
-    END SUBROUTINE SDETNX2_PLUS
 
 
-
-
-
-    SUBROUTINE SDETNX2( ELE, SNDGLN, &
-        STOTEL, X_NONODS, SNLOC, SNGI, &
-        X, Y, Z, &
-        SN, SNLX, SNLY, SWEIGH, DETWEI, SAREA, D1, D3, DCYL,  &
-        NORMXN, NORMYN, NORMZN, &
-        NORMX, NORMY, NORMZ )
-        ! use AdvectionDiffusion
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: ELE, STOTEL, X_NONODS, SNLOC, SNGI
-        INTEGER, DIMENSION( : ), intent( in ) :: SNDGLN
-        REAL, DIMENSION( :, : ), intent( in ) :: SN, SNLX, SNLY
-        REAL, DIMENSION( : ), intent( in ) :: SWEIGH
-        REAL, DIMENSION( : ), intent( inout ) :: DETWEI
-        REAL, intent( inout ) :: SAREA
-        LOGICAL, intent( in ) :: D1, D3, DCYL
-        REAL, DIMENSION( : ), intent( inout ) :: NORMXN, NORMYN, NORMZN
-        REAL, intent( inout ) :: NORMX, NORMY, NORMZ
-        REAL, DIMENSION( : ), intent( in ) :: X,Y,Z
-        ! Local variables
-        REAL, PARAMETER :: PIE = 3.141592654
-        INTEGER :: GI, SL, IGLX
-        REAL :: DXDLX, DXDLY, DYDLX, DYDLY, DZDLX, DZDLY, A, B, C, &
-            DETJ,RGI,TWOPIE
-        !
-        SAREA=0.
-        !
-
-        Conditional_Dimension: IF( D1 ) THEN
-            NORMXN = NORMX
-            NORMYN = 0.0
-            NORMZN = 0.0
-            DETWEI = 1.0
-            SAREA = 1.0
-
-        ELSE IF( D3 ) THEN
-            Loop_Gauss3D: DO GI = 1, SNGI
-                DXDLX = 0.
-                DXDLY = 0.
-                DYDLX = 0.
-                DYDLY = 0.
-                DZDLX = 0.
-                DZDLY = 0.
-
-                DO SL = 1, SNLOC
-                    IGLX  = SNDGLN(( ELE - 1 ) * SNLOC + SL )
-                    DXDLX = DXDLX + SNLX( SL, GI ) * X( IGLX )
-                    DXDLY = DXDLY + SNLY( SL, GI ) * X( IGLX )
-                    DYDLX = DYDLX + SNLX( SL, GI ) * Y( IGLX )
-                    DYDLY = DYDLY + SNLY( SL, GI ) * Y( IGLX )
-                    DZDLX = DZDLX + SNLX( SL, GI ) * Z( IGLX )
-                    DZDLY = DZDLY + SNLY( SL, GI ) * Z( IGLX )
-                END DO
-
-                A = DYDLX * DZDLY - DYDLY * DZDLX
-                B = DXDLX * DZDLY - DXDLY * DZDLX
-                C = DXDLX * DYDLY - DXDLY * DYDLX
-
-                DETJ = SQRT( A**2 + B**2 + C**2 )
-                DETWEI( GI ) = DETJ * SWEIGH( GI )
-                SAREA = SAREA + DETWEI( GI )
-
-                ! Calculate the normal at the Gauss pts:
-                !  TANX1=DXDLX,TANY1=DYDLX,TANZ1=DZDLX,    TANX2=DXDLY,TANY2=DYDLY,TANZ2=DZDLY
-                ! Perform x-product. N=T1 x T2
-                CALL NORMGI( NORMXN(GI), NORMYN(GI), NORMZN(GI), &
-                    DXDLX, DYDLX, DZDLX, DXDLY, DYDLY, DZDLY, &
-                    NORMX, NORMY, NORMZ)
-
-            END DO Loop_Gauss3D
-
-        ELSE
-
-            TWOPIE = 1.0
-            IF( DCYL ) TWOPIE = 2. * PIE
-            !
-            DO GI = 1, SNGI
-                RGI = 0.
-                DXDLX = 0.
-                DXDLY = 0.
-                DYDLX = 0.
-                DYDLY = 0.
-                DZDLX = 0.
-                DZDLY=1. ! DZDLY=1 is to calculate the normal.
-
-                DO SL = 1, SNLOC
-
-                    IGLX =  SNDGLN(( ELE - 1 ) * SNLOC + SL )
-                    DXDLX = DXDLX + SNLX( SL, GI ) * X( IGLX )
-                    DYDLX = DYDLX + SNLX( SL, GI ) * Y( IGLX )
-
-                    RGI =   RGI + SN( SL, GI ) * Y( IGLX )
-
-                END DO
-
-                IF( .NOT. DCYL) RGI = 1.0
-                DETJ = SQRT( DXDLX**2 + DYDLX**2 )
-                DETWEI( GI ) = TWOPIE *RGI * DETJ * SWEIGH( GI )
-                SAREA = SAREA + DETWEI( GI )
-
-                ! Calculate the normal at the Gauss pts:
-                ! TANX1=DXDLX,TANY1=DYDLX,TANZ1=DZDLX,    TANX2=DXDLY,TANY2=DYDLY,TANZ2=DZDLY
-                ! Perform x-product. N=T1 x T2
-
-                NORMZ = 0.
-                CALL NORMGI( NORMXN( GI ), NORMYN( GI ), NORMZN( GI ), &
-                    DXDLX, DYDLX, DZDLX, DXDLY, DYDLY, DZDLY, &
-                    NORMX, NORMY, NORMZ )
-
-            END DO
-
-        ENDIF Conditional_Dimension
-
-        RETURN
-
-    END SUBROUTINE SDETNX2
-
-
-
+    !sprint_to_do move to library section
     REAL FUNCTION R2NORM( VEC, NVEC )
         IMPLICIT NONE
         INTEGER :: NVEC
@@ -7452,18 +6347,13 @@ contains
         INTEGER :: I
         REAL :: RSUM
 
-        !RSUM = 0.0
-        !DO I = 1, NVEC
-        !   RSUM = RSUM + VEC( I )**2
-        !END DO
-
         R2NORM = SQRT( SUM( VEC**2 ) )
 
         RETURN
     END FUNCTION R2NORM
 
 
-
+    !sprint_to_do!move to new library section
     real function ptolfun(value)
         ! This function is a tolerance function for strictly positive values used as a denominator.
         ! If the value of VALUE less than 1E-10, then it returns TOLERANCE otherwise VALUE.
@@ -7475,19 +6365,13 @@ contains
 
         ptolfun = max( tolerance, value )
 
-        !    if( value > tolerance ) then
-        !       ptolfun = value
-        !    else
-        !       ptolfun = tolerance
-        !    endif
-
         return
 
     end function ptolfun
 
 
 
-
+!sprint_to_do!move to new library section
     real function tolfun(value)
         ! This function is a tolerance function for a value which is used as a denominator.
         ! If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
@@ -7512,7 +6396,7 @@ contains
 
 
 
-
+    !sprint_to_do move to library
     PURE function tolfun_many(val) result(v_tolfun)
 
         implicit none
@@ -8909,7 +7793,7 @@ contains
 
 
 
-
+    !sprint_to_do!make internal subroutines
     SUBROUTINE GET_INT_T_DEN_new(LIMF, &
         CV_DISOPT, CV_NONODS, NPHASE, NFIELD, CV_NODI, CV_NODJ, CV_ILOC, CV_JLOC, CV_SILOC, ELE, ELE2, GI, &
         between_elements, on_domain_boundary, &
@@ -9290,109 +8174,6 @@ contains
 
 
 
-        SUBROUTINE ONVDLIM_ANO( TOTELE, &
-            TDLIM, TDCEN, INCOME, PELE, PELEOT, &
-            ETDNEW_PELE, ETDNEW_PELEOT, FIRORD, NOLIMI, COURANT_OR_MINUS_ONE, &
-            TUPWIN2, TUPWI22 )
-            implicit none
-            ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-            ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-            ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-            ! LIBETA is the flux limiting parameter.
-            ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-            ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-            ! PELEOT=element at other side of current face.
-            ! ELEOT2=element at other side of the element ELEOTH.
-            ! ELESID=element next to oposing current face.
-            ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-            ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-            !---------------------------------------------------
-            !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-            !---------------------------------------------------
-            ! TAIN         THALF       TAOUT
-            !---------------------------------------------------
-            !>TEXTIN
-            !TEXOUT<
-            !---------------------------------------------------
-            INTEGER, intent( in ) :: TOTELE
-            REAL, intent( inout ) :: TDLIM
-            REAL, intent( in ) :: TDCEN, INCOME, COURANT_OR_MINUS_ONE, TUPWIN2, TUPWI22
-            INTEGER, intent( in ) :: PELE, PELEOT
-            REAL, intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
-            LOGICAL, intent( in ) :: FIRORD, NOLIMI
-            ! Local variables
-            REAL, PARAMETER :: TOLER=1.0E-10
-            INTEGER, PARAMETER :: POWER=1
-            REAL :: UCIN, UCOU, TDELE, DENOIN, CTILIN, DENOOU, &
-                CTILOU, FTILIN, FTILOU, TUPWIN, TUPWI2
-            INTEGER :: COUNT
-
-            IF( NOLIMI ) THEN
-                TDLIM = TDCEN
-                RETURN
-            ENDIF
-
-            Conditional_PELEOT: IF( PELEOT /= PELE ) THEN
-
-                TUPWIN = TUPWIN2 ** POWER
-                TUPWI2 = TUPWI22 ** POWER
-
-                ! Calculate normalisation parameters for incomming velocities
-                TDELE = ETDNEW_PELE ** POWER
-                DENOIN = TDELE - TUPWIN
-
-                IF( ABS( DENOIN ) < TOLER ) DENOIN = SIGN( TOLER, DENOIN )
-
-                UCIN = ETDNEW_PELEOT ** POWER
-                CTILIN = ( UCIN - TUPWIN ) / DENOIN
-
-                ! Calculate normalisation parameters for out going velocities
-                TDELE = ETDNEW_PELEOT ** POWER
-                DENOOU = TDELE - TUPWI2
-
-                IF( ABS( DENOOU ) < TOLER ) DENOOU = SIGN( TOLER, DENOOU )
-                UCOU = ETDNEW_PELE ** POWER
-                CTILOU = ( UCOU - TUPWI2 ) / DENOOU
-
-            ELSE
-
-                ! Calculate normalisation parameters for incomming velocities
-                TUPWIN = ETDNEW_PELE
-                UCIN = ETDNEW_PELE
-                DENOIN = 1.
-                CTILIN = 0.
-
-                ! Calculate normalisation parameters for out going velocities
-                TUPWI2 = ETDNEW_PELE
-                UCOU = ETDNEW_PELE
-                DENOOU = 1.
-                CTILOU = 0.
-
-            END IF Conditional_PELEOT
-
-            Conditional_FIRORD: IF( FIRORD ) THEN ! Velocity is pointing into element
-
-                ! Velocity is going out of element
-                TDLIM = INCOME * UCIN + ( 1.0 - INCOME ) * UCOU
-
-            ELSE
-
-                FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-                FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-
-                ! Velocity is going out of element
-                TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW( FTILIN, CTILIN, COURANT_OR_MINUS_ONE ) * DENOIN ) &
-                    + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW( FTILOU, CTILOU, COURANT_OR_MINUS_ONE ) * DENOOU )
-                !       TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW( FTILIN, CTILIN, -1. ) * DENOIN ) &
-                !            + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW( FTILOU, CTILOU, -1. ) * DENOOU )
-
-                TDLIM = MAX( TDLIM, 0.0 ) ** (1.0/POWER)
-
-            ENDIF Conditional_FIRORD
-
-            RETURN
-
-        END SUBROUTINE ONVDLIM_ANO
 
 
     END SUBROUTINE GET_INT_T_DEN_NEW
@@ -9467,45 +8248,6 @@ contains
 
         RETURN
     END SUBROUTINE CAL_LIM_VOL_ADJUST
-
-
-
-
-
-    REAL FUNCTION FACE_THETA( DT, CV_THETA, INTERFACE_TRACK, HDC, NDOTQ, LIMDT, DIFF_COEF_DIVDX, &
-        T_NODJ_IPHA, T_NODI_IPHA,  &
-        NDOTQOLD, LIMDTOLD, DIFF_COEFOLD_DIVDX, TOLD_NODJ_IPHA, TOLD_NODI_IPHA )
-        IMPLICIT NONE
-        ! Define face value of theta
-        REAL, intent(in) :: DT, CV_THETA, HDC, NDOTQ, LIMDT, DIFF_COEF_DIVDX, T_NODJ_IPHA, T_NODI_IPHA,  &
-            NDOTQOLD, LIMDTOLD, DIFF_COEFOLD_DIVDX, TOLD_NODJ_IPHA, TOLD_NODI_IPHA
-        LOGICAL, intent(in) :: INTERFACE_TRACK
-        ! Local variables
-        REAL :: HF, HFOLD, GF, PINVTH, QINVTH
-
-        IF( CV_THETA >= 0.0) THEN ! Specified
-            FACE_THETA = CV_THETA
-        ELSE ! Non-linear
-            HF    = NDOTQ * LIMDT + DIFF_COEF_DIVDX * ( T_NODI_IPHA - T_NODJ_IPHA )
-            HFOLD = NDOTQOLD * LIMDTOLD + DIFF_COEFOLD_DIVDX * ( TOLD_NODI_IPHA - TOLD_NODJ_IPHA )
-            GF = TOLFUN( DT *  (HF - HFOLD) )
-            PINVTH = HDC * ( T_NODI_IPHA - TOLD_NODI_IPHA ) / GF
-            QINVTH = HDC * ( T_NODJ_IPHA - TOLD_NODJ_IPHA ) / GF
-            ! 0.5 is the original value.
-            !       FTHETA = MAX( 0.5, 1. - 0.5 * MIN( ABS( PINVTH ), ABS( QINVTH )))
-            !       FTHETA = MAX( 0.5, 1. - 0.25 * MIN( ABS( PINVTH ), ABS( QINVTH )))
-            IF(INTERFACE_TRACK) THEN ! For interface tracking use forward Euler as much as possible...
-                !            FTHETA = MAX( 0.0, 1. - 0.125 * MIN( ABS( PINVTH ), ABS( QINVTH )))
-                FACE_THETA = MAX( 0.0, 1. - 0.5 * MIN( ABS( PINVTH ), ABS( QINVTH )))
-            ELSE ! for Crank Nickolson time stepping base scheme...
-                FACE_THETA = MAX( 0.5, 1. - 0.125 * MIN( ABS( PINVTH ), ABS( QINVTH )))
-            ENDIF
-        ENDIF
-
-        RETURN
-
-    END FUNCTION FACE_THETA
-
 
 
 
@@ -9586,7 +8328,8 @@ contains
 
 
 
-
+    !sprint_to_do where this is being called use the new one with the new memory
+    !and then remove
     SUBROUTINE DGSIMPLNORM( ELE, SILOC2ILOC, TOTELE, NLOC, SNLOC, XONDGL, &
         X, Y, Z, XNONOD, NORMX, NORMY, NORMZ )
         ! Form approximate surface normal (NORMX,NORMY,NORMZ)
@@ -9958,7 +8701,7 @@ contains
 
 
 
-
+    !sprint_to_do!does this work???
     SUBROUTINE ISOTROPIC_LIMITER_ALL( &
         ! FOR SUB SURRO_CV_MINMAX:
         T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, IGOT_T2, NPHASE, CV_NONODS, nsmall_colm, SMALL_CENTRM, SMALL_FINDRM, SMALL_COLM, &
@@ -10768,6 +9511,7 @@ contains
         RETURN
     END SUBROUTINE CALC_ANISOTROP_LIM
 
+    !sprint_to_do !change name or whatever to this one and CALC_ANISOTROP_LIM_VALS2
     SUBROUTINE CALC_ANISOTROP_LIM_VALS( &
         ! Caculate the upwind values stored in matrix form...
         T_ALL, &
@@ -11331,7 +10075,7 @@ contains
     !
     !
     !
-    !
+    !sprint_to_do!turn this ones into internal subroutines???
     SUBROUTINE MATPTSSTORE(MATPSI_ALL,COUNT,NFIELD,NOD,XNOD,&
              PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
              NLOC,TOTELE,X_NDGLN,NDGLNO,&
@@ -11549,7 +10293,7 @@ contains
     !
     !
     !
-    !
+    !!sprint_to_do!make it internal subroutine
     SUBROUTINE PHILNODELE(NONODS,FINDELE,COLELE, &
              NCOLEL,MXNCOLEL, &
              TOTELE,NLOC,NDGLNO, &
@@ -11634,7 +10378,7 @@ contains
     !
     !
     !
-    !
+    !sprint_to_do!think about this
     Subroutine TRILOCCORDS(Xp,Yp,Zp, &
              N1, N2, N3, N4, &
              X1,Y1,Z1, &
@@ -11704,7 +10448,7 @@ contains
 
     end subroutine triloccords
 
-
+    !sprint_to_do!!move to library
     function tetvolume(x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3)
         IMPLICIT NONE
 
@@ -11727,9 +10471,9 @@ contains
     !
     !
     !
-    !
+    !sprint_to_do!think about this
     Subroutine TRILOCCORDS2D(Xp,Yp, &
-             N1, N2, N3,  &
+        &     N1, N2, N3,  &
              X1,Y1, &
              X2,Y2, &
              X3,Y3 )
@@ -11776,7 +10520,7 @@ contains
     !
     !
     !
-
+    !sprint_to_do ! move to shape functions or something
     subroutine conv_quad_to_lin_tri_tet( ndgln_p2top1, nloc_lin, cv_nloc, sub_lin_totele )
         ! convert quadratic element into a series of linear elements...
         integer, intent( in ) :: nloc_lin, cv_nloc, sub_lin_totele
@@ -12500,71 +11244,6 @@ contains
 
 
 
-        PURE SUBROUTINE ONVDLIM_ANO_MANY_SQRT( NFIELD, &
-            TDLIM, TDCEN, INCOME, &
-            ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
-            TUPWIN, TUPWI2 )
-            implicit none
-            ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-            ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-            ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-            ! LIBETA is the flux limiting parameter.
-            ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-            ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-            ! PELEOT=element at other side of current face.
-            ! ELEOT2=element at other side of the element ELEOTH.
-            ! ELESID=element next to oposing current face.
-            ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-            ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-            !---------------------------------------------------
-            !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-            !---------------------------------------------------
-            ! TAIN         THALF       TAOUT
-            !---------------------------------------------------
-            !>TEXTIN
-            !TEXOUT<
-            !---------------------------------------------------
-            INTEGER, intent( in ) :: NFIELD
-            REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
-            REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
-            REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
-            ! Local variables
-            INTEGER, PARAMETER :: POWER=2
-            REAL :: UCIN(NFIELD), UCOU(NFIELD), TDELE(NFIELD), DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
-                CTILOU(NFIELD), FTILIN(NFIELD), FTILOU(NFIELD)
-
-
-            ! Calculate normalisation parameters for incomming velocities
-            TDELE = ETDNEW_PELE
-
-            DENOIN = TOLFUN_MANY( TDELE** POWER - TUPWIN** POWER )
-
-            UCIN = ETDNEW_PELEOT
-            CTILIN = ( UCIN ** POWER- TUPWIN** POWER ) / DENOIN
-
-            ! Calculate normalisation parameters for out going velocities
-            TDELE = ETDNEW_PELEOT
-
-            DENOOU = TOLFUN_MANY( TDELE** POWER - TUPWI2** POWER )
-            UCOU = ETDNEW_PELE
-            CTILOU = ( UCOU** POWER - TUPWI2** POWER ) / DENOOU
-
-
-
-            FTILIN = ( TDCEN** POWER - TUPWIN** POWER ) / DENOIN
-            FTILOU = ( TDCEN** POWER - TUPWI2 ** POWER) / DENOOU
-
-            ! Velocity is going out of element
-            TDLIM =        INCOME   * ( TUPWIN** POWER + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
-                + ( 1.0 - INCOME ) * ( TUPWI2** POWER + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
-
-            TDLIM = MAX( TDLIM, 0.0 ) ** (1.0/POWER)
-
-
-
-            RETURN
-
-        END SUBROUTINE ONVDLIM_ANO_MANY_SQRT
 
 
     END SUBROUTINE GET_INT_VEL_POROUS_VEL
@@ -12572,7 +11251,7 @@ contains
 
 
 
-
+    !sprint_to_do move to library
     PURE function vtolfun(val) result(v_tolfun)
 
         implicit none
