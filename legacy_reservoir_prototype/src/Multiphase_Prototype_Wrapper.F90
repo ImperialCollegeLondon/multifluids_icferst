@@ -68,9 +68,7 @@
     use tictoc
     implicit none
 
-#ifdef HAVE_PETSC
-#include "finclude/petsc.h"
-#endif
+
 
     type(state_type), dimension(:), pointer :: state
 
