@@ -27,7 +27,7 @@
 
 #include "fdebug.h"
 
-  subroutine multiphase_prototype_wrapper() bind(C)
+subroutine multiphase_prototype_wrapper() bind(C)
 
     use fldebug
     use elements
@@ -43,12 +43,12 @@
     use parallel_tools
     use reference_counting
     use global_parameters, only: current_time, dt, timestep, option_path_len, &
-         simulation_start_time, &
-         simulation_start_cpu_time, &
-         simulation_start_wall_time
+        simulation_start_time, &
+        simulation_start_cpu_time, &
+        simulation_start_wall_time
     use diagnostic_fields_new_multiphase, only : &
-         & calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
-         & check_diagnostic_dependencies
+        & calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
+        & check_diagnostic_dependencies
     use field_priority_lists
     use spud
     use checkpoint
@@ -133,14 +133,14 @@
     ! containing the diagnostic PhaseVolumeFraction) will be zero and 
     ! NonlinearPhaseVolumeFraction will be calculated incorrectly at t=0.
     if(option_count("/material_phase/vector_field::Velocity/prognostic") > 1) then
-       call calculate_diagnostic_phase_volume_fraction(state)
+        call calculate_diagnostic_phase_volume_fraction(state)
     end if
 
     ! set the nonlinear timestepping options, needs to be before the adapt at first timestep
     call get_option('/timestepping/nonlinear_iterations',nonlinear_iterations,&
-         & default=1)
+        & default=1)
     call get_option("/timestepping/nonlinear_iterations/tolerance", &
-         & nonlinear_iteration_tolerance, default=0.0)
+        & nonlinear_iteration_tolerance, default=0.0)
 
     ! Auxilliary fields.
     call allocate_and_insert_auxilliary_fields(state)
@@ -155,8 +155,8 @@
     !     Determine the output format.
     call get_option('/io/dump_format', dump_format)
     if(trim(dump_format) /= "vtk") then
-       ewrite(-1,*) "You must specify a dump format and it must be vtk."
-       FLExit("Rejig your FLML: /io/dump_format")
+        ewrite(-1,*) "You must specify a dump format and it must be vtk."
+        FLExit("Rejig your FLML: /io/dump_format")
     end if
 
     ! initialise the multimaterial fields
@@ -175,22 +175,22 @@
     call initialise_advection_convergence(state)
 
 
-       ! this may already have been done in populate_state, but now
-       ! we evaluate at the correct "shifted" time level:
-       call set_boundary_conditions_values(state, shift_time=.true.)
+    ! this may already have been done in populate_state, but now
+    ! we evaluate at the correct "shifted" time level:
+    call set_boundary_conditions_values(state, shift_time=.true.)
 
-       call enforce_discrete_properties(state, only_prescribed=.true., &
-            exclude_interpolated=.true., &
-            exclude_nonreprescribed=.true.)
+    call enforce_discrete_properties(state, only_prescribed=.true., &
+        exclude_interpolated=.true., &
+        exclude_nonreprescribed=.true.)
 
-       call print_tagged_references(0)
+    call print_tagged_references(0)
 
-       ! Call the multiphase_prototype code  
-       !call multiphase_prototype(state, dt, &
-       !                          nonlinear_iterations, nonlinear_iteration_tolerance, &
-       !                          dump_no) 
-       call MultiFluids_SolveTimeLoop( state, &
-         dt, nonlinear_iterations, dump_no )
+    ! Call the multiphase_prototype code
+    !call multiphase_prototype(state, dt, &
+    !                          nonlinear_iterations, nonlinear_iteration_tolerance, &
+    !                          dump_no)
+    call MultiFluids_SolveTimeLoop( state, &
+        dt, nonlinear_iterations, dump_no )
 
    
 
@@ -199,7 +199,7 @@
 
     ! Deallocate state
     do i = 1, size(state)
-       call deallocate(state(i))
+        call deallocate(state(i))
     end do
     deallocate(state)
 
@@ -221,19 +221,19 @@
     call toc(TICTOC_ID_SIMULATION)
     call tictoc_report(2, TICTOC_ID_SIMULATION)
 
-  contains
+contains
 
     subroutine set_simulation_start_times()
-      !!< Set the simulation start times
+        !!< Set the simulation start times
 
-      call get_option("/timestepping/current_time", simulation_start_time)
+        call get_option("/timestepping/current_time", simulation_start_time)
 
-      call cpu_time(simulation_start_cpu_time)
-      call allmax(simulation_start_cpu_time)
+        call cpu_time(simulation_start_cpu_time)
+        call allmax(simulation_start_cpu_time)
 
-      simulation_start_wall_time = wall_time()
-      call allmax(simulation_start_wall_time)
+        simulation_start_wall_time = wall_time()
+        call allmax(simulation_start_wall_time)
 
     end subroutine set_simulation_start_times
 
-  end subroutine multiphase_prototype_wrapper
+end subroutine multiphase_prototype_wrapper

@@ -27,7 +27,7 @@
 #include "fdebug.h"
 
 
-  module multi_interpolation
+module multi_interpolation
 
     use fldebug
     use state_module
@@ -70,424 +70,424 @@
 
     type(state_type) :: state_old, state_new
 
-  contains
+contains
 
-      subroutine M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv, cv_ele_type, nphase, flag, p_ele_type, cv_nloc, &
-       cv_snloc)
+    subroutine M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv, cv_ele_type, nphase, flag, p_ele_type, cv_nloc, &
+        cv_snloc)
 
-          implicit none
+        implicit none
 
-           ! IMPORTANT: flag is a switch before and after the adapt and tells us which interpolation step (1) or (3) to implement
+         ! IMPORTANT: flag is a switch before and after the adapt and tells us which interpolation step (1) or (3) to implement
 
-          type( state_type ), dimension( : ), intent( inout ) :: state
-          type( state_type ), intent( inout ) :: packed_state, storage_state
-          integer, intent( in ) :: cv_ele_type , cv_nloc, p_ele_type, cv_snloc
-          integer, intent( in ) :: nphase
-          integer, dimension( : ), intent( inout ) :: StorageIndexes
-          integer, intent(in) :: flag
-          integer, dimension(:), pointer, intent(inout) :: small_finacv, small_colacv
+        type( state_type ), dimension( : ), intent( inout ) :: state
+        type( state_type ), intent( inout ) :: packed_state, storage_state
+        integer, intent( in ) :: cv_ele_type , cv_nloc, p_ele_type, cv_snloc
+        integer, intent( in ) :: nphase
+        integer, dimension( : ), intent( inout ) :: StorageIndexes
+        integer, intent(in) :: flag
+        integer, dimension(:), pointer, intent(inout) :: small_finacv, small_colacv
 
-!          ! local variables...checking
-          type ( tensor_field ), pointer :: ufield
-          integer :: ndim, cv_ngi, cv_ngi_short, &
-          u_nloc, u_snloc, scvngi, sbcvngi, nface, &
-          totele, x_nonods, ele, x_nloc, &
-          u_nonods, cv_nonods, &                 ! Check if u_nonods needed
-          cv_iloc, cv_jloc, iphase, &            ! Leave iphase where it is for now (will probably need it for multiphase flow)
-          tmp_cv_nloc, other_nloc
-          real, dimension( : ), pointer :: cvweight, cvweight_short, scvfeweigh, sbcvfeweigh, &
-          sele_overlap_scale
-          real, dimension( :, : ), pointer :: cvn, cvn_short, cvfen, cvfen_short, ufen, &
-          scvfen, scvfenslx, scvfensly, sufen, sufenslx, sufensly, &
-          sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbufen, sbufenslx, sbufensly
-          real, dimension( :, :, : ), pointer :: cvfenlx_all, cvfenlx_short_all, ufenlx_all, &
-          scvfenlx_all, sufenlx_all, sbcvfenlx_all, sbufenlx_all
-          logical, dimension( :, : ), allocatable :: u_on_face, ufem_on_face, &
-          cv_on_face, cvfem_on_face
-          integer, pointer :: ncolgpts
-          integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, u_ndgln, dg_nodes
-          integer, dimension( :, : ), pointer :: cv_neiloc, cv_sloclist, u_sloclist
-          logical :: quad_over_whole_ele, d1, d3, dcyl
-          type( vector_field ), pointer :: x
+        !          ! local variables...checking
+        type ( tensor_field ), pointer :: ufield
+        integer :: ndim, cv_ngi, cv_ngi_short, &
+            u_nloc, u_snloc, scvngi, sbcvngi, nface, &
+            totele, x_nonods, ele, x_nloc, &
+            u_nonods, cv_nonods, &                 ! Check if u_nonods needed
+            cv_iloc, cv_jloc, iphase, &            ! Leave iphase where it is for now (will probably need it for multiphase flow)
+            tmp_cv_nloc, other_nloc
+        real, dimension( : ), pointer :: cvweight, cvweight_short, scvfeweigh, sbcvfeweigh, &
+            sele_overlap_scale
+        real, dimension( :, : ), pointer :: cvn, cvn_short, cvfen, cvfen_short, ufen, &
+            scvfen, scvfenslx, scvfensly, sufen, sufenslx, sufensly, &
+            sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbufen, sbufenslx, sbufensly
+        real, dimension( :, :, : ), pointer :: cvfenlx_all, cvfenlx_short_all, ufenlx_all, &
+            scvfenlx_all, sufenlx_all, sbcvfenlx_all, sbufenlx_all
+        logical, dimension( :, : ), allocatable :: u_on_face, ufem_on_face, &
+            cv_on_face, cvfem_on_face
+        integer, pointer :: ncolgpts
+        integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, u_ndgln, dg_nodes
+        integer, dimension( :, : ), pointer :: cv_neiloc, cv_sloclist, u_sloclist
+        logical :: quad_over_whole_ele, d1, d3, dcyl
+        type( vector_field ), pointer :: x
 
-          real, dimension( : ), pointer :: detwei, ra
-          real, pointer :: volume
+        real, dimension( : ), pointer :: detwei, ra
+        real, pointer :: volume
 
-          real, dimension( : ), pointer :: tmp_cv_weight
-          real, dimension( :, : ), pointer :: tmp_cvfen
-          real, dimension( :, :, : ), pointer :: tmp_cvfenlx_all
-          real, dimension( :, :, : ), pointer :: tmp_cvfenx_all
+        real, dimension( : ), pointer :: tmp_cv_weight
+        real, dimension( :, : ), pointer :: tmp_cvfen
+        real, dimension( :, :, : ), pointer :: tmp_cvfenlx_all
+        real, dimension( :, :, : ), pointer :: tmp_cvfenx_all
 
-          real, dimension( :, :, : ), pointer :: other_fenlx_all
-          real, dimension( :, :, : ), pointer :: other_fenx_all
+        real, dimension( :, :, : ), pointer :: other_fenlx_all
+        real, dimension( :, :, : ), pointer :: other_fenx_all
 
-          type( mesh_type ), pointer :: mesh_pres, mesh_pres_disc
-          type( vector_field ) :: positions_old, positions_new
-          integer :: cv_nodi, cv_nodj
-          real :: MN, MM
+        type( mesh_type ), pointer :: mesh_pres, mesh_pres_disc
+        type( vector_field ) :: positions_old, positions_new
+        integer :: cv_nodi, cv_nodj
+        real :: MN, MM
 
-          ! Element by element inversion variables
-          real, dimension(:,:), allocatable :: MMatrix, MNatrix
-          real, dimension(:,:), allocatable :: EleRHS
-          real, dimension(:,:), allocatable :: EleLHS
-          integer, dimension(:), allocatable :: ipiv
-          logical :: gotdec
-          real, dimension(:,:), allocatable :: Long_EleRHS
-          real, dimension(:), allocatable ::  mass_diag
+        ! Element by element inversion variables
+        real, dimension(:,:), allocatable :: MMatrix, MNatrix
+        real, dimension(:,:), allocatable :: EleRHS
+        real, dimension(:,:), allocatable :: EleLHS
+        integer, dimension(:), allocatable :: ipiv
+        logical :: gotdec
+        real, dimension(:,:), allocatable :: Long_EleRHS
+        real, dimension(:), allocatable ::  mass_diag
 
-          integer :: nfields, ifields, i, j
-          character(len=10000) :: field_name
-          type(scalar_field_pointer), dimension(:), allocatable :: scalar_field_list
-          type(scalar_field), dimension(:), allocatable :: ph_sol_old, ph_sol_new, ph_sol_new_interm
+        integer :: nfields, ifields, i, j
+        character(len=10000) :: field_name
+        type(scalar_field_pointer), dimension(:), allocatable :: scalar_field_list
+        type(scalar_field), dimension(:), allocatable :: ph_sol_old, ph_sol_new, ph_sol_new_interm
 
-          ! Finished variable declarations
+        ! Finished variable declarations
 
-          ! EXTRACT ALL FIELDS WHICH ARE TO HAVE CVGalerkin Interpolation APPLIED TO THEM - put in scalar_field_list
+        ! EXTRACT ALL FIELDS WHICH ARE TO HAVE CVGalerkin Interpolation APPLIED TO THEM - put in scalar_field_list
 
-          nfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
-          allocate(scalar_field_list(nfields))
+        nfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
+        allocate(scalar_field_list(nfields))
 
-          ifields=1
-          do i = 1, size(state) ! Loop over all fields in state
+        ifields=1
+        do i = 1, size(state) ! Loop over all fields in state
 
-             do j=1, option_count(trim(state(i)%option_path)//'/scalar_field') ! Loop over scalars
+            do j=1, option_count(trim(state(i)%option_path)//'/scalar_field') ! Loop over scalars
 
                 if (have_option(trim(state(i)%option_path)//'/scalar_field['//int2str(j-1)//']/prognostic/CVgalerkin_interpolation') ) then ! Check if CVGalerkin is on
 
-                   call get_option(trim(state(i)%option_path)//'/scalar_field['//int2str(j-1)//']/name',field_name) ! If so, then grab the path of that scalar field
+                    call get_option(trim(state(i)%option_path)//'/scalar_field['//int2str(j-1)//']/name',field_name) ! If so, then grab the path of that scalar field
 
-                   scalar_field_list(ifields)%ptr=>extract_scalar_field(state(i),trim(field_name)) ! Put the scalar field into scalar_field_list
+                    scalar_field_list(ifields)%ptr=>extract_scalar_field(state(i),trim(field_name)) ! Put the scalar field into scalar_field_list
 
-                   ifields=ifields+1
+                    ifields=ifields+1
 
                 end if
 
-             enddo
+            enddo
 
-          enddo
+        enddo
 
-          call get_option( '/geometry/dimension', ndim ) ! Get the value of ndim from diamond here
+        call get_option( '/geometry/dimension', ndim ) ! Get the value of ndim from diamond here
 
-          ufield => extract_tensor_field( packed_state, "PackedVelocity" )
+        ufield => extract_tensor_field( packed_state, "PackedVelocity" )
 
-          u_nloc = ele_loc( ufield, 1 ) ; u_snloc = face_loc( ufield, 1 )
+        u_nloc = ele_loc( ufield, 1 ) ; u_snloc = face_loc( ufield, 1 )
 
-          u_nonods = node_count( ufield )  ! May not actually need u_nonods here
+        u_nonods = node_count( ufield )  ! May not actually need u_nonods here
 
-          quad_over_whole_ele = .false.
+        quad_over_whole_ele = .false.
 
-          call retrieve_ngi( ndim, p_ele_type, cv_nloc, u_nloc, &
-          cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, quad_over_whole_ele )
+        call retrieve_ngi( ndim, p_ele_type, cv_nloc, u_nloc, &
+            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, quad_over_whole_ele )
 
-          !**************************************
+        !**************************************
 
-          !ALLOCATIONS
+        !ALLOCATIONS
 
-          allocate(cv_on_face( cv_nloc, scvngi ), cvfem_on_face( cv_nloc, scvngi ))
-          allocate(u_on_face( u_nloc, scvngi ), ufem_on_face( u_nloc, scvngi ))
+        allocate(cv_on_face( cv_nloc, scvngi ), cvfem_on_face( cv_nloc, scvngi ))
+        allocate(u_on_face( u_nloc, scvngi ), ufem_on_face( u_nloc, scvngi ))
 
-          allocate(EleRHS(nfields, cv_nloc))
-          allocate(EleLHS(nfields, cv_nloc))
-          allocate(MMatrix(cv_nloc, cv_nloc))
-          allocate(MNatrix(cv_nloc, cv_nloc))
-          allocate(ipiv(cv_nloc))
+        allocate(EleRHS(nfields, cv_nloc))
+        allocate(EleLHS(nfields, cv_nloc))
+        allocate(MMatrix(cv_nloc, cv_nloc))
+        allocate(MNatrix(cv_nloc, cv_nloc))
+        allocate(ipiv(cv_nloc))
 
-          allocate(ph_sol_old(nfields))
-          if(flag == 1) then
-              allocate(ph_sol_new(nfields))
-              allocate(ph_sol_new_interm(nfields))
-          endif
+        allocate(ph_sol_old(nfields))
+        if(flag == 1) then
+            allocate(ph_sol_new(nfields))
+            allocate(ph_sol_new_interm(nfields))
+        endif
 
-          !**************************************
+        !**************************************
 
-          call cv_fem_shape_funs_plus_storage( &
-                               ! volume shape functions...
-          ndim, p_ele_type,  &
-          cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
-          cvweight, cvfen, cvfenlx_all, &
-          cvweight_short, cvfen_short, cvfenlx_short_all, &
-          ufen, ufenlx_all, &
-                               ! surface of each ph shape functions...
-          scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-          scvfen, scvfenslx, scvfensly, scvfeweigh, &
-          scvfenlx_all,  &
-          sufen, sufenslx, sufensly, &
-          sufenlx_all, &
-                               ! surface element shape funcs...
-          u_on_face, ufem_on_face, nface, &
-          sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx_all, &
-          sbufen, sbufenslx, sbufensly, sbufenlx_all, &
-          cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-                               ! define the gauss points that lie on the surface of the ph...
-          findgpts, colgpts, ncolgpts, &
-          sele_overlap_scale, quad_over_whole_ele, &
-          storage_state, "ph_1" , storageindexes( 36 ) )
+        call cv_fem_shape_funs_plus_storage( &
+                                 ! volume shape functions...
+            ndim, p_ele_type,  &
+            cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
+            cvweight, cvfen, cvfenlx_all, &
+            cvweight_short, cvfen_short, cvfenlx_short_all, &
+            ufen, ufenlx_all, &
+                                 ! surface of each ph shape functions...
+            scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
+            scvfen, scvfenslx, scvfensly, scvfeweigh, &
+            scvfenlx_all,  &
+            sufen, sufenslx, sufensly, &
+            sufenlx_all, &
+                                 ! surface element shape funcs...
+            u_on_face, ufem_on_face, nface, &
+            sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx_all, &
+            sbufen, sbufenslx, sbufensly, sbufenlx_all, &
+            cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
+                                 ! define the gauss points that lie on the surface of the ph...
+            findgpts, colgpts, ncolgpts, &
+            sele_overlap_scale, quad_over_whole_ele, &
+            storage_state, "ph_1" , storageindexes( 36 ) )
 
-          totele = ele_count( ufield )
-          x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
-          cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
-          x_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
-          x => extract_vector_field( packed_state, "PressureCoordinate" )
-          u_ndgln => get_ndglno( extract_mesh( state( 1 ), "VelocityMesh" ) )
-          x_nloc = ele_loc( x, 1 )
-          cv_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh" ) )
-          d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
+        totele = ele_count( ufield )
+        x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+        cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
+        x_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
+        x => extract_vector_field( packed_state, "PressureCoordinate" )
+        u_ndgln => get_ndglno( extract_mesh( state( 1 ), "VelocityMesh" ) )
+        x_nloc = ele_loc( x, 1 )
+        cv_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh" ) )
+        d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
 
-          ! Try to re-order these allocations - they need to be here so cv_nonods is defined
+        ! Try to re-order these allocations - they need to be here so cv_nonods is defined
 
-          allocate(Long_EleRHS(nfields, cv_nonods))
-          allocate(mass_diag(cv_nonods))
+        allocate(Long_EleRHS(nfields, cv_nonods))
+        allocate(mass_diag(cv_nonods))
 
-          ! ALLOCATE MEMORY FOR AN ARRAY OF SCALARS THAT WILL STORE OUR SOLUTION AT THE FIRST STEP
+        ! ALLOCATE MEMORY FOR AN ARRAY OF SCALARS THAT WILL STORE OUR SOLUTION AT THE FIRST STEP
 
-          if (flag == 0) then ! Meshes and Allocations for 1st Interpolation Calculation
+        if (flag == 0) then ! Meshes and Allocations for 1st Interpolation Calculation
 
-              mesh_pres => extract_mesh( packed_state, "PressureMesh" )                     ! Strictly only need mesh_pres_disc in this case but keep it for parity
-              mesh_pres_disc => extract_mesh( packed_state, "PressureMesh_Discontinuous" )
-              positions_old = extract_vector_field( packed_state, "Coordinate" )            ! Check precisely what this "positions_old" is
+            mesh_pres => extract_mesh( packed_state, "PressureMesh" )                     ! Strictly only need mesh_pres_disc in this case but keep it for parity
+            mesh_pres_disc => extract_mesh( packed_state, "PressureMesh_Discontinuous" )
+            positions_old = extract_vector_field( packed_state, "Coordinate" )            ! Check precisely what this "positions_old" is
 
-              ! ALLOCATE ph_sol_old (Note state_old etc. allocated by the insert() lines later)
+            ! ALLOCATE ph_sol_old (Note state_old etc. allocated by the insert() lines later)
 
-              do ifields = 1, nfields
-                  call allocate(ph_sol_old(ifields), mesh_pres_disc, "ph_sol_old" // int2str(ifields) ) ! Lives on finite element mesh ~ discontinuous control volume mesh
-                  call zero( ph_sol_old(ifields) )
-              enddo
+            do ifields = 1, nfields
+                call allocate(ph_sol_old(ifields), mesh_pres_disc, "ph_sol_old" // int2str(ifields) ) ! Lives on finite element mesh ~ discontinuous control volume mesh
+                call zero( ph_sol_old(ifields) )
+            enddo
 
-          endif ! end of if(flag == 0)
+        endif ! end of if(flag == 0)
 
-          ! NOTE THIS step (and all other flag == 1) steps are only called AFTER adapting the mesh - so the second time this routine is called.
+        ! NOTE THIS step (and all other flag == 1) steps are only called AFTER adapting the mesh - so the second time this routine is called.
 
-          if(flag == 1) then
+        if(flag == 1) then
 
-              ! Note: The call to the pure FE mapping through supermeshing happens here
+            ! Note: The call to the pure FE mapping through supermeshing happens here
 
-              mesh_pres => extract_mesh( packed_state, "PressureMesh" )
-              mesh_pres_disc => extract_mesh( packed_state, "PressureMesh_Discontinuous" )
-              positions_new = extract_vector_field( packed_state, "Coordinate" )
+            mesh_pres => extract_mesh( packed_state, "PressureMesh" )
+            mesh_pres_disc => extract_mesh( packed_state, "PressureMesh_Discontinuous" )
+            positions_new = extract_vector_field( packed_state, "Coordinate" )
 
-              ! ALLOCATE MEMORY FOR SCALAR FIELD ARRAYS: ph_sol_new_interm, ph_sol_new
+            ! ALLOCATE MEMORY FOR SCALAR FIELD ARRAYS: ph_sol_new_interm, ph_sol_new
 
-              do ifields = 1, nfields
-                  call allocate( ph_sol_new_interm(ifields), mesh_pres_disc, "ph_sol_interm" // int2str(ifields) ) ! Intermediate solution (i.e. after step 2 but before step 3)
-                  call zero( ph_sol_new_interm(ifields) )
-                  call allocate( ph_sol_new(ifields), mesh_pres, "ph_sol_new" // int2str(ifields) )                ! The solution ph_sol_new is on the pressure mesh (may or may not be discontinuous)
-                  call zero( ph_sol_new(ifields) )
-              enddo
+            do ifields = 1, nfields
+                call allocate( ph_sol_new_interm(ifields), mesh_pres_disc, "ph_sol_interm" // int2str(ifields) ) ! Intermediate solution (i.e. after step 2 but before step 3)
+                call zero( ph_sol_new_interm(ifields) )
+                call allocate( ph_sol_new(ifields), mesh_pres, "ph_sol_new" // int2str(ifields) )                ! The solution ph_sol_new is on the pressure mesh (may or may not be discontinuous)
+                call zero( ph_sol_new(ifields) )
+            enddo
 
-              ! SUPERMESHING I: Allocations for state_new (that will hold the results after the FEM mapping stage)
+            ! SUPERMESHING I: Allocations for state_new (that will hold the results after the FEM mapping stage)
 
-              do ifields = 1, nfields
-                  call insert( state_new, mesh_pres_disc, "Mesh" )
-                  call insert( state_new, positions_new, "Coordinate")
-                  call insert( state_new, ph_sol_new_interm(ifields), "Interpolant" // int2str(ifields) )
-              enddo
+            do ifields = 1, nfields
+                call insert( state_new, mesh_pres_disc, "Mesh" )
+                call insert( state_new, positions_new, "Coordinate")
+                call insert( state_new, ph_sol_new_interm(ifields), "Interpolant" // int2str(ifields) )
+            enddo
 
-              ! SUPERMESHING II: Call interpolation_galerkin() which via supermeshing constructs state_new from state_old (remember the latter is
-              ! global to this module and is the result of the flag == 0 interpolation).
+            ! SUPERMESHING II: Call interpolation_galerkin() which via supermeshing constructs state_new from state_old (remember the latter is
+            ! global to this module and is the result of the flag == 0 interpolation).
 
-              call interpolation_galerkin(state_old, state_new)
+            call interpolation_galerkin(state_old, state_new)
 
-              ! Extract all the fields from state_new having performed the supermeshing step
+            ! Extract all the fields from state_new having performed the supermeshing step
 
-              do ifields = 1, nfields
-                  ph_sol_new_interm(ifields) = extract_scalar_field(state_new, "Interpolant" // int2str(ifields))
-              enddo
+            do ifields = 1, nfields
+                ph_sol_new_interm(ifields) = extract_scalar_field(state_new, "Interpolant" // int2str(ifields))
+            enddo
 
-          endif ! end of if(flag == 1)
+        endif ! end of if(flag == 1)
 
 
-          ! SETTINGS NEEDED TO CALCULATE detwei()
+        ! SETTINGS NEEDED TO CALCULATE detwei()
 
-          if ( cv_nloc == u_nloc ) then
+        if ( cv_nloc == u_nloc ) then
 
-              tmp_cv_nloc = u_nloc
-              tmp_cvfen => ufen
-              tmp_cvfenlx_all => ufenlx_all
-              tmp_cv_weight => cvweight_short
+            tmp_cv_nloc = u_nloc
+            tmp_cvfen => ufen
+            tmp_cvfenlx_all => ufenlx_all
+            tmp_cv_weight => cvweight_short
 
-              other_nloc = cv_nloc
-              other_fenlx_all => cvfenlx_all
+            other_nloc = cv_nloc
+            other_fenlx_all => cvfenlx_all
 
-          else
+        else
 
-              tmp_cv_nloc = cv_nloc
-              tmp_cvfen => cvfen
-              tmp_cvfenlx_all => cvfenlx_all
-              tmp_cv_weight => cvweight_short
+            tmp_cv_nloc = cv_nloc
+            tmp_cvfen => cvfen
+            tmp_cvfenlx_all => cvfenlx_all
+            tmp_cv_weight => cvweight_short
 
-              other_nloc = u_nloc
-              other_fenlx_all => ufenlx_all
+            other_nloc = u_nloc
+            other_fenlx_all => ufenlx_all
 
-          end if
+        end if
 
-          ! INITIALISATIONS for the element loop
-          EleLHS = 0
+        ! INITIALISATIONS for the element loop
+        EleLHS = 0
 
-          if(flag ==1) then
-              Long_EleRHS = 0.0
-              mass_diag = 0.0
-          endif
+        if(flag ==1) then
+            Long_EleRHS = 0.0
+            mass_diag = 0.0
+        endif
 
-          do  ele = 1, totele
+        do  ele = 1, totele
 
-              ! Calculate detwei related quantities
+            ! Calculate detwei related quantities
 
-              call detnlxr_plus_u_with_storage( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
-              x_ndgln, totele, x_nonods, x_nloc, tmp_cv_nloc, cv_ngi, &
-              tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
-              tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
-              other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
-              other_fenx_all, storage_state , "ph_2", StorageIndexes( 37 ) )
+            call detnlxr_plus_u_with_storage( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
+                x_ndgln, totele, x_nonods, x_nloc, tmp_cv_nloc, cv_ngi, &
+                tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
+                tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
+                other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
+                other_fenx_all, storage_state , "ph_2", StorageIndexes( 37 ) )
 
-              ! LOOP to calculate the mass matrices and right hand side element by element and invert the linear problem.
-              ! Problem is inverted element by element
+            ! LOOP to calculate the mass matrices and right hand side element by element and invert the linear problem.
+            ! Problem is inverted element by element
 
-              mesh_pres_disc => extract_mesh( packed_state, "PressureMesh_Discontinuous" )
-              dg_nodes => ele_nodes(mesh_pres_disc, ele)       ! Replaces cv_nodi in DISCONTINUOUS cases. Extract discontinuous pressure mesh nodes
-              EleRHS = 0.0                                     ! Can extract its components as dg_nodes(cv_iloc)
+            mesh_pres_disc => extract_mesh( packed_state, "PressureMesh_Discontinuous" )
+            dg_nodes => ele_nodes(mesh_pres_disc, ele)       ! Replaces cv_nodi in DISCONTINUOUS cases. Extract discontinuous pressure mesh nodes
+            EleRHS = 0.0                                     ! Can extract its components as dg_nodes(cv_iloc)
 
-              do cv_iloc = 1, cv_nloc
+            do cv_iloc = 1, cv_nloc
 
-                  cv_nodi = cv_ndgln(( ele - 1 ) * cv_nloc + cv_iloc ) ! Remember this is CONTINUOUS numbering
+                cv_nodi = cv_ndgln(( ele - 1 ) * cv_nloc + cv_iloc ) ! Remember this is CONTINUOUS numbering
 
-                  do cv_jloc = 1, cv_nloc
+                do cv_jloc = 1, cv_nloc
 
-                      cv_nodj = cv_ndgln(( ele - 1 ) * cv_nloc + cv_jloc )
+                    cv_nodj = cv_ndgln(( ele - 1 ) * cv_nloc + cv_jloc )
 
-                      MN = sum( cvn( cv_iloc, : ) * cvfen( cv_jloc, : )   * detwei( : )  )
-                      MM = sum( cvn( cv_iloc, : ) * cvn( cv_jloc, : )   * detwei( : ) )
+                    MN = sum( cvn( cv_iloc, : ) * cvfen( cv_jloc, : )   * detwei( : )  )
+                    MM = sum( cvn( cv_iloc, : ) * cvn( cv_jloc, : )   * detwei( : ) )
 
-                      if(flag == 0) then
+                    if(flag == 0) then
 
-                          ! Matrices for element by element inversion
+                        ! Matrices for element by element inversion
 
-                          MNatrix(cv_iloc,cv_jloc) = MN
+                        MNatrix(cv_iloc,cv_jloc) = MN
 
-                          do ifields = 1, nfields
-                              EleRHS(ifields, cv_iloc) = EleRHS(ifields, cv_iloc) + MM*scalar_field_list(ifields)%ptr%val(cv_nodj)
-                          enddo
+                        do ifields = 1, nfields
+                            EleRHS(ifields, cv_iloc) = EleRHS(ifields, cv_iloc) + MM*scalar_field_list(ifields)%ptr%val(cv_nodj)
+                        enddo
 
-                      else if(flag ==1) then
+                    else if(flag ==1) then
 
-                          ! Note we cannot invert this case element by element - hence the global storage
-                          !(the reason being that continuous CVs span multiple elements)
+                        ! Note we cannot invert this case element by element - hence the global storage
+                        !(the reason being that continuous CVs span multiple elements)
 
-                          mass_diag(cv_nodi) = mass_diag(cv_nodi)+ MM
+                        mass_diag(cv_nodi) = mass_diag(cv_nodi)+ MM
 
-                          do ifields = 1, nfields
-                              Long_EleRHS(ifields, cv_nodi) = Long_EleRHS(ifields, cv_nodi) + MN*ph_sol_new_interm(ifields)%val(dg_nodes(cv_jloc))
-                          enddo
+                        do ifields = 1, nfields
+                            Long_EleRHS(ifields, cv_nodi) = Long_EleRHS(ifields, cv_nodi) + MN*ph_sol_new_interm(ifields)%val(dg_nodes(cv_jloc))
+                        enddo
 
-                      endif
+                    endif
 
-                  enddo ! cv_jloc loop
+                enddo ! cv_jloc loop
 
-              enddo  ! cv_iloc loop
+            enddo  ! cv_iloc loop
 
-              ! Solve matrix inversion problem element-wise (in the first case i.e. flag == 0). Second case dealt with later
+            ! Solve matrix inversion problem element-wise (in the first case i.e. flag == 0). Second case dealt with later
 
-              if(flag == 0) then ! Solve the element-wise matrix problem MMatrix*EleLHS = EleRHS for EleLHS
-              gotdec = .false.
+            if(flag == 0) then ! Solve the element-wise matrix problem MMatrix*EleLHS = EleRHS for EleLHS
+                gotdec = .false.
 
-                  do ifields = 1, nfields
-                      call SMLINNGOT(MNatrix, EleLHS(ifields,:), EleRHS(ifields,:), cv_nloc, cv_nloc, ipiv, gotdec )
-                      gotdec = .true.
-                  enddo
+                do ifields = 1, nfields
+                    call SMLINNGOT(MNatrix, EleLHS(ifields,:), EleRHS(ifields,:), cv_nloc, cv_nloc, ipiv, gotdec )
+                    gotdec = .true.
+                enddo
 
-                  ! Append this solution to the global ph_sol_old
+                ! Append this solution to the global ph_sol_old
 
-                  do cv_iloc = 1, cv_nloc
-                      dg_nodes => ele_nodes(mesh_pres_disc, ele)
+                do cv_iloc = 1, cv_nloc
+                    dg_nodes => ele_nodes(mesh_pres_disc, ele)
 
-                      do ifields = 1, nfields
-                          ph_sol_old(ifields)%val(dg_nodes(cv_iloc)) = EleLHS(ifields, cv_iloc)
-                      enddo
+                    do ifields = 1, nfields
+                        ph_sol_old(ifields)%val(dg_nodes(cv_iloc)) = EleLHS(ifields, cv_iloc)
+                    enddo
 
-                  enddo
+                enddo
 
-              endif
+            endif
 
-          enddo ! End of loop over ele
+        enddo ! End of loop over ele
 
-          if (flag == 0) then  ! Insert the solutions into 'state_old' ready for projection onto the new mesh in step (2), flag == 1
+        if (flag == 0) then  ! Insert the solutions into 'state_old' ready for projection onto the new mesh in step (2), flag == 1
 
-              positions_old = extract_vector_field( packed_state, "Coordinate" )
+            positions_old = extract_vector_field( packed_state, "Coordinate" )
 
-              do ifields = 1, nfields
-                  call insert( state_old, mesh_pres_disc, "Mesh")
-                  call insert( state_old, positions_old, "Coordinate")
-                  call insert( state_old, ph_sol_old(ifields), "Interpolant" // int2str(ifields) )
-              enddo
+            do ifields = 1, nfields
+                call insert( state_old, mesh_pres_disc, "Mesh")
+                call insert( state_old, positions_old, "Coordinate")
+                call insert( state_old, ph_sol_old(ifields), "Interpolant" // int2str(ifields) )
+            enddo
 
-          end if
+        end if
 
-          if (flag == 1) then  ! Solve the final equation (3) to map back to a CV representation. Assign this value to ph_sol_new
+        if (flag == 1) then  ! Solve the final equation (3) to map back to a CV representation. Assign this value to ph_sol_new
 
-              do ifields = 1, nfields
-                  ph_sol_new(ifields)%val(:) = Long_EleRHS(ifields, :)/mass_diag(:)
-              enddo
+            do ifields = 1, nfields
+                ph_sol_new(ifields)%val(:) = Long_EleRHS(ifields, :)/mass_diag(:)
+            enddo
 
-              ! Copy the output values back into state - DONE!
+            ! Copy the output values back into state - DONE!
 
-              do ifields = 1, nfields
-                  scalar_field_list(ifields)%ptr%val = ph_sol_new(ifields)%val
-              enddo
+            do ifields = 1, nfields
+                scalar_field_list(ifields)%ptr%val = ph_sol_new(ifields)%val
+            enddo
 
-          endif
+        endif
 
-          ! BOUNDEDNESS : Our solutions are currently not bounded to be in [0,1]. The following subroutine call should fix this
-          ! This section needs to be generalised to work for multi-fields (I think the boundedness subroutine may need generalisation)
+        ! BOUNDEDNESS : Our solutions are currently not bounded to be in [0,1]. The following subroutine call should fix this
+        ! This section needs to be generalised to work for multi-fields (I think the boundedness subroutine may need generalisation)
 
-          !print *, nfields
+        !print *, nfields
 
-          if (have_option('/material_phase::phase1/scalar_field::Temperature/prognostic/CVgalerkin_interpolation')) then
+        if (have_option('/material_phase::phase1/scalar_field::Temperature/prognostic/CVgalerkin_interpolation')) then
 
-              if(flag == 1) call BoundedSolutionCorrections(state, packed_state,storage_state,  small_finacv, small_colacv, StorageIndexes, cv_ele_type)
+            if(flag == 1) call BoundedSolutionCorrections(state, packed_state,storage_state,  small_finacv, small_colacv, StorageIndexes, cv_ele_type)
 
-          else if(have_option('/material_phase::phase1/scalar_field::PhaseVolumeFraction/prognostic/CVgalerkin_interpolation')) then
+        else if(have_option('/material_phase::phase1/scalar_field::PhaseVolumeFraction/prognostic/CVgalerkin_interpolation')) then
 
-              if(flag == 1)  call BoundedSolutionCorrections(state, packed_state,storage_state, small_finacv, small_colacv, StorageIndexes, cv_ele_type,.true.)
+            if(flag == 1)  call BoundedSolutionCorrections(state, packed_state,storage_state, small_finacv, small_colacv, StorageIndexes, cv_ele_type,.true.)
 
-          endif
+        endif
 
-          ! DEALLOCATIONS
+        ! DEALLOCATIONS
 
-          deallocate(EleLHS, EleRHS, MMatrix, MNatrix, ipiv)
+        deallocate(EleLHS, EleRHS, MMatrix, MNatrix, ipiv)
 
-          deallocate(cv_on_face, cvfem_on_face, u_on_face, ufem_on_face )
+        deallocate(cv_on_face, cvfem_on_face, u_on_face, ufem_on_face )
 
-          deallocate(Long_EleRHS, mass_diag)
+        deallocate(Long_EleRHS, mass_diag)
 
-          deallocate(scalar_field_list)
+        deallocate(scalar_field_list)
 
-          if(flag == 0) then
-              do ifields = 1, nfields
-                  call deallocate(ph_sol_old(ifields)) ! Check theoretically why it has to be call deallocate, then deallocate (in that order)
-              enddo
-              deallocate(ph_sol_old)
-          endif
+        if(flag == 0) then
+            do ifields = 1, nfields
+                call deallocate(ph_sol_old(ifields)) ! Check theoretically why it has to be call deallocate, then deallocate (in that order)
+            enddo
+            deallocate(ph_sol_old)
+        endif
 
-          if (flag == 1) then
-              do ifields = 1, nfields
-                  call deallocate(ph_sol_new_interm(ifields))
-                  call deallocate(ph_sol_new(ifields))
-              enddo
-              deallocate(ph_sol_new_interm, ph_sol_new)
-          endif
+        if (flag == 1) then
+            do ifields = 1, nfields
+                call deallocate(ph_sol_new_interm(ifields))
+                call deallocate(ph_sol_new(ifields))
+            enddo
+            deallocate(ph_sol_new_interm, ph_sol_new)
+        endif
 
 
-      end subroutine
+    end subroutine
 
-      subroutine MemoryCleanupInterpolation1()
+    subroutine MemoryCleanupInterpolation1()
 
-          call deallocate(state_old)
+        call deallocate(state_old)
 
-      end subroutine
+    end subroutine
 
-      subroutine MemoryCleanupInterpolation2()
+    subroutine MemoryCleanupInterpolation2()
 
-          call deallocate(state_new)
+        call deallocate(state_new)
 
-      end subroutine
+    end subroutine
 
-  end module multi_interpolation
+end module multi_interpolation

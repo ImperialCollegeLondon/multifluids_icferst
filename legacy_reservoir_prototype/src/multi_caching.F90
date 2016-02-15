@@ -28,75 +28,75 @@
 
 module multiphase_caching
 
-  use spud
-  use fldebug
-  use state_module
-  use Fields_Allocates, only : allocate, make_mesh
-  use fields_data_types, only: mesh_type, scalar_field
+    use spud
+    use fldebug
+    use state_module
+    use Fields_Allocates, only : allocate, make_mesh
+    use fields_data_types, only: mesh_type, scalar_field
 
-  implicit none
+    implicit none
 
-  private 
+    private
   
-  public  :: set_caching_level, get_caching_level, test_caching_level, reshape_vector2pointer, initialize_storage
+    public  :: set_caching_level, get_caching_level, test_caching_level, reshape_vector2pointer, initialize_storage
   
-  integer, public :: cache_level=0
+    integer, public :: cache_level=0
 
-  interface reshape_vector2pointer
-      module procedure reshape_vector2pointer_A
-      module procedure reshape_vector2pointer_B
-      module procedure reshape_vector2pointer_C
-      module procedure reshape_vector2pointer_D
-  end interface reshape_vector2pointer
+    interface reshape_vector2pointer
+        module procedure reshape_vector2pointer_A
+        module procedure reshape_vector2pointer_B
+        module procedure reshape_vector2pointer_C
+        module procedure reshape_vector2pointer_D
+    end interface reshape_vector2pointer
 contains
 
-  subroutine set_caching_level()
+    subroutine set_caching_level()
 
-    integer :: i
-    cache_level=0
-    if (.not. have_option('/caching/cache_shape_functions')) then
-       return
-    else
-       do i=1,bit_size(cache_level)
-          cache_level=ibset(cache_level,i)
-       end do
-    end if
+        integer :: i
+        cache_level=0
+        if (.not. have_option('/caching/cache_shape_functions')) then
+            return
+        else
+            do i=1,bit_size(cache_level)
+                cache_level=ibset(cache_level,i)
+            end do
+        end if
 
-  end subroutine set_caching_level
+    end subroutine set_caching_level
 
-  subroutine get_caching_level
-    integer :: i
+    subroutine get_caching_level
+        integer :: i
     
-    do i=1,bit_size(cache_level)
-       ewrite(3,*) btest(cache_level,i)
-    end do
+        do i=1,bit_size(cache_level)
+            ewrite(3,*) btest(cache_level,i)
+        end do
 
-  end subroutine get_caching_level
+    end subroutine get_caching_level
 
- logical pure function test_caching_level(i)
-   integer, intent(in) :: i
+    logical pure function test_caching_level(i)
+        integer, intent(in) :: i
     
-       test_caching_level=btest(cache_level,i)
+        test_caching_level=btest(cache_level,i)
 
-  end function test_caching_level
+    end function test_caching_level
 
-  !Copies a mesh type into storage_state to facilitate the manipulation of the storage
-  subroutine initialize_storage(packed_state, storage_state)
-      type( state_type ), intent( in ) :: packed_state
-      type( state_type ), intent( inout ) :: storage_state
+    !Copies a mesh type into storage_state to facilitate the manipulation of the storage
+    subroutine initialize_storage(packed_state, storage_state)
+        type( state_type ), intent( in ) :: packed_state
+        type( state_type ), intent( inout ) :: storage_state
 
-      !Local variables
-      type(mesh_type), pointer :: fl_mesh
-      type(mesh_type) :: Auxmesh
+        !Local variables
+        type(mesh_type), pointer :: fl_mesh
+        type(mesh_type) :: Auxmesh
 
-      fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
-      Auxmesh = make_mesh(fl_mesh,name="FakeMesh")
+        fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
+        Auxmesh = make_mesh(fl_mesh,name="FakeMesh")
 
-      !Now we insert them in state and store the indexes
-      call insert(storage_state, Auxmesh, "FakeMesh")
-      call deallocate(AuxMesh)
+        !Now we insert them in state and store the indexes
+        call insert(storage_state, Auxmesh, "FakeMesh")
+        call deallocate(AuxMesh)
 
-  end subroutine initialize_storage
+    end subroutine initialize_storage
 
 #ifdef USING_GFORTRAN
     !These subroutines are used to avoid problems with the reshaping under intel compilers.
@@ -134,10 +134,10 @@ contains
 
 #else
     subroutine reshape_vector2pointer_A(vector, pointr, dim1,dim2)
-    implicit none
-    real, dimension(:,:), pointer, intent(inout) :: pointr
-    real, dimension(:), intent(in) :: vector
-    integer, intent(in) :: dim1, dim2
+        implicit none
+        real, dimension(:,:), pointer, intent(inout) :: pointr
+        real, dimension(:), intent(in) :: vector
+        integer, intent(in) :: dim1, dim2
 
         if (.not. associated(pointr)) then
             allocate(pointr(dim1,dim2))
@@ -149,14 +149,14 @@ contains
     end subroutine reshape_vector2pointer_A
 
     subroutine reshape_vector2pointer_B(vector, pointr, dim1,dim2,dim3)
-    implicit none
-    real, dimension(:,:,:), pointer, intent(inout) :: pointr
-    real, dimension(:), intent(in) :: vector
-    integer, intent(in) :: dim1, dim2, dim3
+        implicit none
+        real, dimension(:,:,:), pointer, intent(inout) :: pointr
+        real, dimension(:), intent(in) :: vector
+        integer, intent(in) :: dim1, dim2, dim3
         if (.not. associated(pointr)) then
             allocate(pointr(dim1,dim2,dim3))
         else if (size(pointr,1)/=dim1 .or. size(pointr,2)/=dim2&
-          .or. size(pointr,3)/=dim3) then
+            .or. size(pointr,3)/=dim3) then
             deallocate(pointr)
             allocate(pointr(dim1,dim2,dim3))
         end if
@@ -165,10 +165,10 @@ contains
     end subroutine reshape_vector2pointer_B
 
     subroutine reshape_vector2pointer_C(vector, pointr, dim1,dim2)
-    implicit none
-    integer, dimension(:,:), pointer, intent(inout) :: pointr
-    integer, dimension(:), intent(in) :: vector
-    integer, intent(in) :: dim1, dim2
+        implicit none
+        integer, dimension(:,:), pointer, intent(inout) :: pointr
+        integer, dimension(:), intent(in) :: vector
+        integer, intent(in) :: dim1, dim2
         if (.not. associated(pointr)) then
             allocate(pointr(dim1,dim2))
         else if (size(pointr,1)/=dim1 .or. size(pointr,2)/=dim2) then
@@ -179,14 +179,14 @@ contains
     end subroutine reshape_vector2pointer_C
 
     subroutine reshape_vector2pointer_D(vector, pointr, dim1,dim2,dim3)
-    implicit none
-    integer, dimension(:,:,:), pointer, intent(inout) :: pointr
-    integer, dimension(:), intent(in) :: vector
-    integer, intent(in) :: dim1, dim2, dim3
+        implicit none
+        integer, dimension(:,:,:), pointer, intent(inout) :: pointr
+        integer, dimension(:), intent(in) :: vector
+        integer, intent(in) :: dim1, dim2, dim3
         if (.not. associated(pointr)) then
             allocate(pointr(dim1,dim2,dim3))
         else if (size(pointr,1)/=dim1 .or. size(pointr,2)/=dim2&
-          .or. size(pointr,3)/=dim3) then
+            .or. size(pointr,3)/=dim3) then
             deallocate(pointr)
             allocate(pointr(dim1,dim2,dim3))
         end if
