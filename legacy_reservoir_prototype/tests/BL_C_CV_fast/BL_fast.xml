@@ -1,0 +1,26 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_C_CV_fast</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml</tags>
+<!-- This test case checks: Porous media, CV_pressure formulation, FPI with adaptive backtracking-->
+  <problem_definition length="short" nprocs="1">
+    <command_line>
+        python ./Check_BL.py > log
+    </command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="BL_C_CV_fast" language="python">BL_test = False
+Log=file('log','r')
+while True:
+    cadena=Log.readline()
+    if len(cadena) ==0:
+        break # EOF
+
+if 'OK' in cadena: BL_test = True
+
+Log.close</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

@@ -1,0 +1,25 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Collapsing_Water_Column</name>
+  <owner userid="pablo.salinas"/>
+  <tags>components mpml</tags>
+<!-- This test case checks: Inertia dominated flow-->
+  <problem_definition length="short" nprocs="1">
+    <command_line>
+        python ./Check_CWC.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="Collapsing_Water_Column" language="python">Collapsing_Water_Column = False
+Log=file('Collapsing_Water_Column/log','r')
+while True:
+    cadena=Log.readline()
+    if len(cadena) ==0:
+        break # EOF
+
+if 'OK' in cadena: Collapsing_Water_Column = True
+
+Log.close</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
