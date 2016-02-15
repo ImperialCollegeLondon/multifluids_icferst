@@ -2214,21 +2214,21 @@ contains
         call get_entire_boundary_condition(volfrac,&
             ['weakdirichlet'],volfrac_BCs,WIC_vol_BC)
 
-        if( have_option( '/physical_parameters/mobility' ) )then
-            call get_option( '/physical_parameters/mobility', mobility )
-            visc_phases(1) = 1
-            visc_phases(2) = mobility
+        if( nphase == 1 ) then
+           viscosity_ph => extract_tensor_field( state( 1 ), 'Viscosity' )
+           visc_phases(1) = viscosity_ph%val( 1, 1, 1 )
+           mobility = visc_phases(1)
+        elseif( have_option( '/physical_parameters/mobility' ) )then
+           call get_option( '/physical_parameters/mobility', mobility )
+           visc_phases(1) = 1
+           visc_phases(2) = mobility
         elseif( have_option( '/material_phase[1]/vector_field::Velocity/prognostic/tensor_field::Viscosity' // &
-            '/prescribed/value::WholeMesh/isotropic' ) ) then
-            DO IPHASE = 1, NPHASE ! Get viscosity for all the phases
-                viscosity_ph => extract_tensor_field( state( iphase ), 'Viscosity' )
-                visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 ) ! So far we only consider scalar viscosity
-            end do
-            mobility = visc_phases(2) / visc_phases(1)
-        elseif( nphase == 1 ) then
-            viscosity_ph => extract_tensor_field( state( 1 ), 'Viscosity' )
-            visc_phases(1) = viscosity_ph%val( 1, 1, 1 )
-            mobility = visc_phases(1)
+             '/prescribed/value::WholeMesh/isotropic' ) ) then
+           DO IPHASE = 1, NPHASE ! Get viscosity for all the phases
+              viscosity_ph => extract_tensor_field( state( iphase ), 'Viscosity' )
+              visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 ) ! So far we only consider scalar viscosity
+           end do
+           mobility = visc_phases(2) / visc_phases(1)
         end if
 
         suf_sig_diagten_bc = 1.
