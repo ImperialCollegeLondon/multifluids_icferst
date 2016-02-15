@@ -597,6 +597,7 @@ contains
       field%val = ieee_value(0.0, ieee_quiet_nan)
 #endif
       deallocate(field%val)
+      if (associated(field%updated)) deallocate(field%updated) 
     case(FIELD_TYPE_PYTHON)
       call deallocate(field%py_positions)
       call deallocate(field%py_positions_shape)
@@ -624,6 +625,7 @@ contains
         do i=1, size(field%bc%boundary_condition)
            call deallocate(field%bc%boundary_condition(i))
         end do
+        if (.not. associated(field%bc%boundary_condition(1)%surface_fields)) &
        deallocate(field%bc%boundary_condition)
      end if
     
@@ -713,7 +715,18 @@ contains
       end select
     end if
 
+    call remove_boundary_conditions(field)
+    if (associated(field%bc)) deallocate(field%bc)
+
     call deallocate(field%mesh)
+    !deallocate pointers related with fields storage
+    if (associated(field%updated)) field%updated => null()
+    if (associated(field%dependant_scalar_field)) field%dependant_scalar_field=> null()
+    if (associated(field%dependant_vector_field)) field%dependant_vector_field=> null()
+    if (associated(field%dependant_tensor_field)) field%dependant_tensor_field=> null()
+
+
+    if (associated(field%updated)) deallocate(field%updated)
 
   end subroutine deallocate_tensor_field
   
@@ -870,13 +883,20 @@ contains
       do i=1, size(bc%surface_fields)
         call deallocate(bc%surface_fields(i))
       end do
+      if (.not. has_references(bc%surface_fields(1))) then
       deallocate(bc%surface_fields)
+         nullify(bc%surface_fields)
+      end if
     end if
     
     call deallocate(bc%surface_mesh)
+
+    if (.not. has_references(bc%surface_mesh)) then
     deallocate(bc%surface_mesh)
     
     deallocate(bc%surface_element_list, bc%surface_node_list)
+    end if
+
 
   end subroutine deallocate_scalar_boundary_condition
   
@@ -890,6 +910,7 @@ contains
       do i=1, size(bc%surface_fields)
         call deallocate(bc%surface_fields(i))
       end do
+      if (.not. has_references(bc%surface_fields(1)))&
       deallocate(bc%surface_fields)
     end if
     
@@ -897,13 +918,18 @@ contains
       do i=1, size(bc%scalar_surface_fields)
         call deallocate(bc%scalar_surface_fields(i))
       end do
+      if (.not. has_references(bc%scalar_surface_fields(1)))&
       deallocate(bc%scalar_surface_fields)
     end if
     
     call deallocate(bc%surface_mesh)
+
+    if (.not. has_references(bc%surface_mesh)) then
     deallocate(bc%surface_mesh)
     
     deallocate(bc%surface_element_list, bc%surface_node_list)
+    end if
+
   end subroutine deallocate_vector_boundary_condition
     
  subroutine deallocate_tensor_boundary_condition(bc)
