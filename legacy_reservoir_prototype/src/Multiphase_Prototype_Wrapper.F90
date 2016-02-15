@@ -59,7 +59,7 @@
     use field_equations_cv, only: initialise_advection_convergence
     use memory_diagnostics
     use multiphase_time_loop
-    use multiphase_rheology
+    !use multiphase_rheology
     use MeshDiagnostics
 
     use signals
@@ -103,9 +103,9 @@
     ! Check the diagnostic field dependencies for circular dependencies
     call check_diagnostic_dependencies(state)
 
-    allocate(rheology(size(state)))
-    call initialize_rheologies(state,rheology)
-    call calculate_rheologies(state,rheology)
+    !allocate(rheology(size(state)))
+    !call initialize_rheologies(state,rheology)
+    !call calculate_rheologies(state,rheology)
 
     !--------------------------------------------------------------------------------------------------------
     ! This should be read by the Copy_Outof_Into_State subrts

@@ -78,7 +78,7 @@
 
     use multiphase_fractures
     use boundary_conditions_from_options
-    USE multiphase_rheology
+    !USE multiphase_rheology
     use vtk_interfaces
 
     use multi_interpolation
@@ -92,10 +92,11 @@
 
     implicit none
     private
-    public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
+    !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
+    public :: MultiFluids_SolveTimeLoop, dump_outflux
 
 
-    type(rheology_type), dimension(:), allocatable :: rheology
+    !type(rheology_type), dimension(:), allocatable :: rheology
 
   contains
 
@@ -225,7 +226,7 @@
 
       !Variables for adapting the mesh within the FPI solver
       logical :: adapt_mesh_in_FPI
-      type( scalar_field ) :: Saturation_bak, ConvSats
+      !type( scalar_field ) :: Saturation_bak, ConvSats
 
       integer :: checkpoint_number
       !Array to map nodes to region ids
@@ -723,7 +724,7 @@
          Loop_NonLinearIteration: do  while (its < NonLinearIteration)
             ewrite(2,*) '  NEW ITS', its
 
-            call calculate_rheologies(state,rheology)
+            !call calculate_rheologies(state,rheology)
             !To force the recalculation of all the stored variables uncomment the following line:
 !           call Clean_Storage(storage_state, StorageIndexes)
 
