@@ -8,8 +8,8 @@
       <integer_value rank="0">2</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
-      <from_file file_name="2d_mesh_adaptive">
-        <format name="triangle"/>
+      <from_file file_name="src/2d_mesh_adaptive">
+        <format name="gmsh"/>
         <stat>
           <include_in_stat/>
         </stat>

@@ -6,8 +6,6 @@ input: clean
 
 	gmsh -2 src/2d_mesh_20by20.geo
 
-	../../../bin/gmsh2triangle --2d src/2d_mesh_20by20.msh
-
 clean:
 	rm -f *.d.* fluidity.* ocvn
 	rm -f flog.dat time_count tempfile CheckSparsityMatrix.dat filedim fvalues mirror_int_data.dat fort.*
