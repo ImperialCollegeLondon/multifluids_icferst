@@ -288,21 +288,19 @@
       npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
 
       !Read info for adaptive timestep based on non_linear_iterations
-
       if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
-      if(have_option("/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt")) then
-         call get_option('/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt',nonlinear_iterations_adapt)
-         nonlinear_iterations = nonlinear_iterations_adapt
-       end if
+         if(have_option("/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt")) then
+            call get_option('/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt',nonlinear_iterations_adapt)
+            nonlinear_iterations = nonlinear_iterations_adapt
+         end if
 
-       call adapt_state_first_timestep(state)
-       call allocate_and_insert_auxilliary_fields(state)
+         call adapt_state_first_timestep(state)
+         call allocate_and_insert_auxilliary_fields(state)
 
-       ! Ensure that checkpoints do not adapt at first timestep.
-       call delete_option(&
-            "/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")
-    end if
-
+         ! Ensure that checkpoints do not adapt at first timestep.
+         call delete_option(&
+              "/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")
+      end if
 
       if(use_sub_state()) then
          call populate_sub_state(state,sub_state)
