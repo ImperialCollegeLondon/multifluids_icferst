@@ -1764,6 +1764,7 @@ contains
          call insert( packed_state, tfield, "Viscosity" )
 
       elseif ( have_option( '/femdem_fracture' ) ) then
+        if (have_option('/femdem_fracture/oneway_coupling_only')) then
          sfield => extract_scalar_field( state(1), "SolidConcentration" )
          call insert( packed_state, sfield, "SolidConcentration" )
          call add_new_memory(packed_state,sfield,"OldSolidConcentration")
@@ -1777,12 +1778,31 @@ contains
          vfield => extract_vector_field( state(1), "Darcy_Velocity" )
          call insert( packed_state,vfield, "Darcy_Velocity" )
 
+         sfield => extract_scalar_field( state(1), "TotalFlux" )
+         call insert( packed_state, sfield, "TotalFlux" )
+        else
+         sfield => extract_scalar_field( state(1), "SolidConcentration" )
+         call insert( packed_state, sfield, "SolidConcentration" )
+         call add_new_memory(packed_state,sfield,"OldSolidConcentration")
+
+         tfield => extract_tensor_field( state(1), "Viscosity" )
+         call insert( packed_state, tfield, "Viscosity" )
+
+         sfield => extract_scalar_field( state(1), "Dummy" )
+         call insert( packed_state, sfield, "Dummy" )
+
+         sfield => extract_scalar_field( state(1), "TotalFlux" )
+         call insert( packed_state, sfield, "TotalFlux" )
+
+         vfield => extract_vector_field( state(1), "Darcy_Velocity" )
+         call insert( packed_state,vfield, "Darcy_Velocity" )
          vfield => extract_vector_field( state(1), "delta_U" )
          call insert( packed_state, vfield, "delta_U" )
 
          vfield => extract_vector_field( state(1), "solid_U" )
          call insert( packed_state, vfield, "solid_U" )
 
+        end if
       end if
 #endif
 
