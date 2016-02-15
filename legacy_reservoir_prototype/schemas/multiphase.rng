@@ -1360,7 +1360,13 @@ This will over-write the field specified in Sigma1.</a:documentation>
           </optional>
           <optional>
             <element name="oneway_coupling_only">
-              <empty/>
+              <attribute name="rank">
+                <value>0</value>
+              </attribute>
+              <choice>
+                <value>1way</value>
+                <value>p2way</value>
+              </choice>
             </element>
           </optional>
         </element>
@@ -3870,6 +3876,24 @@ Sums up the divergence of each phase's bulk velocity, i.e. \sum{ div(vfrac*u) }<
         </attribute>
         <attribute name="name">
           <value>Dummy</value>
+        </attribute>
+        <choice>
+          <element name="diagnostic">
+            <ref name="internal_algorithm"/>
+            <ref name="velocity_mesh_choice"/>
+            <ref name="diagnostic_scalar_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="scalar_field">
+        <attribute name="rank">
+          <value>0</value>
+        </attribute>
+        <attribute name="name">
+          <value>TotalFlux</value>
         </attribute>
         <choice>
           <element name="diagnostic">

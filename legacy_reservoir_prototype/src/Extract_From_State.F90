@@ -55,8 +55,6 @@ module Copy_Outof_State
     ! Need to use surface integrals since a function from here is called in the calculate_outflux() subroutine
     use surface_integrals
 
-    !use printout
-    !use quicksort
     use solvers
     use conservative_interpolation_module
 
@@ -65,24 +63,22 @@ module Copy_Outof_State
     private
 
     public :: Get_Primary_Scalars, Compute_Node_Global_Numbers, Extracting_MeshDependentFields_From_State, &
-        Extract_TensorFields_Outof_State, Extract_Position_Field, Get_Ele_Type, Get_Discretisation_Options, &
-        print_from_state, update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
+        Extract_TensorFields_Outof_State, Get_Ele_Type, Get_Discretisation_Options, &
+        update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
         CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix
 
 
-    !    interface Get_Ndgln
-    !       module procedure Get_Scalar_Ndgln, Get_Vector_Ndgln, Get_Mesh_Ndgln
-    !    end interface Get_Ndgln
-
     interface Get_SNdgln
-        module procedure Get_Scalar_SNdgln, Get_Vector_SNdgln
+       module procedure Get_Scalar_SNdgln, Get_Vector_SNdgln
     end interface Get_SNdgln
 
     !This structure is to store data associated with a bad element
     !We store the corresponding element, the node that is in the bad angle
     !and the weights are the values to use to diffuse the bad node to the other nodes
+
+    !sprint_to_do!remove everything related with this.
     type bad_elements
         integer :: ele
         integer, allocatable, dimension(:) :: nodes
@@ -90,6 +86,7 @@ module Copy_Outof_State
         real :: angle
     end type bad_elements
 
+    !sprint_to_do remove these global variables
     ! Used in calculations of the outflux - array of integers containing the gmesh IDs of each boundary that you wish to integrate over
     integer, dimension(:), allocatable :: outlet_id
 
@@ -97,7 +94,7 @@ module Copy_Outof_State
 
 contains
 
-
+    !sprint_to_do! come up with something smarter and more general and remove this one
     subroutine Get_Primary_Scalars( state, &
         nphase, nstate, ncomp, totele, ndim, stotel, &
         u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
@@ -206,6 +203,7 @@ contains
         return
     end subroutine Get_Primary_Scalars
 
+    !sprint_to_do!move to a library pointer something?
     function get_ndglno(mesh) result(ndglno)
         type(mesh_type) :: mesh
         integer, dimension(:), pointer  ::  ndglno
@@ -213,7 +211,7 @@ contains
         ndglno=> mesh%ndglno
     end function get_ndglno
 
-
+    !sprint_to_do!optimize this!
     subroutine Compute_Node_Global_Numbers( state, &
         totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
         cv_snloc, p_snloc, u_snloc, &
@@ -545,200 +543,7 @@ contains
 
 
 
-    subroutine Extract_Position_Field( state, &
-        xu, yu, zu )
-        !!$ This subroutine extracts the spatial coordinates fields from state-space and copy them into
-        !!$ MP-space
-        implicit none
-        type( state_type ), dimension( : ), intent( in ) :: state
-        type( mesh_type ), pointer :: velocity_cg_mesh
-        type( vector_field ), pointer :: positions
-        type( vector_field ) :: velocity_cg
-        real, dimension( : ) :: xu, yu, zu
-        !!$ Local variables
-        integer :: ndim, totele, xu_nloc, xu_nonods, ele, iloc
-        integer, dimension( : ), pointer :: element_nodes
-
-        call get_option( '/geometry/dimension', ndim )
-        positions => extract_vector_field( state, 'Coordinate' )
-        totele = ele_count( positions )
-
-        !!$ Velocity in the continuous space
-        velocity_cg_mesh => extract_mesh( state( 1 ), 'VelocityMesh_Continuous' )
-        call allocate( velocity_cg, ndim, velocity_cg_mesh, 'Velocity_CG_Coordinates' )
-        velocity_cg % val( :, : )= 0
-        call project_field( positions, velocity_cg, positions )
-        xu_nloc = ele_loc( velocity_cg_mesh, 1 )
-        xu_nonods = max( ( xu_nloc - 1 ) * totele + 1, totele )
-
-        Loop_Elements: do ele = 1, totele
-            element_nodes => ele_nodes( velocity_cg_mesh, ele )
-            Loop_Local_Nodes: do iloc = 1, xu_nloc
-                xu( element_nodes( iloc ) ) = velocity_cg % val( 1, element_nodes( iloc ) )
-                if( ndim > 1 )  yu( element_nodes( iloc ) ) = velocity_cg % val( 2, element_nodes( iloc ) )
-                if( ndim > 2 )  zu( element_nodes( iloc ) ) = velocity_cg % val( 3, element_nodes( iloc ) )
-            end do Loop_Local_Nodes
-        end do Loop_Elements
-
-        call deallocate( velocity_cg )
-
-        return
-    end subroutine Extract_Position_Field
-
-    !    subroutine xp1_2_xp2( state, &
-    !         x_nloc_p2, x_nloc_p1, x_nonods_p1, x_nonods_p2, &
-    !         x_ndgln_p1, x_ndgln_p2, &
-    !         x, y, z )
-    !      ! This subrt maps the coordinate P1 mesh into a P2 mesh.
-    !      implicit none
-    !      type( state_type ), dimension( : ), intent( in ) :: state
-    !      type( vector_field ), pointer :: positions
-    !      integer, intent( in ) :: x_nloc_p2, x_nloc_p1, x_nonods_p1, x_nonods_p2
-    !      integer, dimension( : ), intent( in ) :: x_ndgln_p1
-    !      integer, dimension( : ), intent( in ) :: x_ndgln_p2
-    !      real, dimension( : ), intent( inout ) :: x, y, z
-    !
-    !      ! Local variables
-    !      real, dimension( x_nonods_p1 ) :: x_p1, y_p1, z_p1
-    !      integer, dimension( x_nloc_p2 ) :: iloclist_p2
-    !      real, dimension( x_nloc_p2 ) :: x2, y2, z2
-    !      integer :: ndim, totele, ele, iloc, inod
-    !      real :: xnod1, xnod2, ynod1, ynod2, xtemp, ytemp
-    !
-    !      call get_option( '/geometry/dimension', ndim )
-    !      positions => extract_vector_field( state( 1 ), 'Coordinate' )
-    !      totele = ele_count( positions )
-    !
-    !        x2 = 0.;y2 = 0.;z2 = 0.
-    !
-    !      if( ndim == 2 ) then
-    !         iloclist_p2 = (/ 1, 4, 2, 5, 6, 3 /)
-    !      elseif( ndim == 3 ) then
-    !         iloclist_p2 = (/ 1, 5, 2, 6, 7, 3, 8, 9, 10, 4 /)
-    !      else
-    !         iloclist_p2 = (/ 1, 3, 2 /)
-    !      end if
-    !
-    !      Conditional_Pn: if ( x_nloc_p2 == 3 .or. x_nloc_p2 == 4 ) then
-    !
-    !         if( ( x_nloc_p2 == 3 ) .and. ( ndim == 1 ) ) then ! 1D quadratic
-    !            x_p1 = positions % val( 1, : )
-    !            do ele = 1, totele
-    !               x2 = 0.
-    !               do iloc = 1, x_nloc_p1
-    !                  x2( iloc ) = x_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
-    !               end do
-    !               do iloc = 1, x_nloc_p1 - 1
-    !                  xnod1 = x2( iloc )
-    !                  xnod2 = x2( iloc + 1 )
-    !                  x2( x_nloc_p1 + iloc ) = 0.5 * (  xnod1  +  xnod2  )
-    !               end do
-    !               do iloc = 1, x_nloc_p2
-    !                  inod = x_ndgln_p2( ( ele - 1 ) * x_nloc_p2 + iloc )
-    !                  x( inod ) = x2( iloclist_p2( iloc ) )
-    !               end do
-    !            end do
-    !
-    !         else
-    !
-    !            x = positions % val( 1, : )
-    !            if( ndim > 1 ) y = positions % val( 2, : )
-    !            if( ndim > 2 ) z = positions % val( 3, : )
-    !         end if
-    !
-    !      else if ( x_nloc_p2 == 6 .or. x_nloc_p2 == 10 ) then
-    !
-    !         x_p1 = positions % val( 1, : )
-    !         y_p1 = positions % val( 2, : )
-    !         if (ndim == 3)  z_p1 = positions % val( 3, : )
-    !
-    !         if ( ( x_nloc_p2 == 6 ) .and. ( ndim == 2 ) ) then ! 2D P2 Tri
-    !
-    !            do ele = 1, totele
-    !
-    !               x2 = 0. ; y2 = 0.
-    !               do iloc = 1, x_nloc_p1
-    !                  x2( iloc ) = x_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
-    !                  y2( iloc ) = y_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
-    !               end do
-    !
-    !               do iloc = 1, x_nloc_p1
-    !                  if( iloc < x_nloc_p1 ) then
-    !                     xnod1 = x2( iloc )      ; ynod1 = y2( iloc )
-    !                     xnod2 = x2( iloc + 1 ); ynod2 = y2( iloc + 1 )
-    !                  else
-    !                     xnod1 = x2( iloc ) ; ynod1 = y2( iloc )
-    !                     xnod2 = x2( 1 )    ; ynod2 = y2 ( 1 )
-    !                  end if
-    !                  x2( x_nloc_p1 + iloc ) = 0.5 * (  xnod1  +  xnod2  )
-    !                  y2( x_nloc_p1 + iloc ) = 0.5 * (  ynod1  +  ynod2  )
-    !               end do
-    !
-    !               xtemp = x2( 5 ) ; ytemp = y2( 5 )
-    !               x2( 5 ) = x2( 6 ) ; y2( 5 ) = y2( 6 )
-    !               x2( 6 ) = xtemp ; y2( 6 ) = ytemp
-    !
-    !               do iloc = 1, x_nloc_p2
-    !                  inod = x_ndgln_p2( ( ele - 1 ) * x_nloc_p2 + iloc )
-    !                  x( inod ) = x2( iloclist_p2( iloc ) )
-    !                  y( inod ) = y2( iloclist_p2( iloc ) )
-    !               end do
-    !
-    !            end do
-    !
-    !         else ! Quadratic Tets
-    !
-    !            do ele = 1, totele
-    !
-    !               x2 = 0. ; y2 = 0. ; z2 = 0.
-    !               do iloc = 1, x_nloc_p1
-    !                  x2( iloc ) = x_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
-    !                  y2( iloc ) = y_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
-    !                  z2( iloc ) = z_p1( x_ndgln_p1( ( ele - 1 ) * x_nloc_p1 + iloc ))
-    !               end do
-    !
-    !               x2( 5 ) = 0.5 * (x2(1) + x2(2) )
-    !               y2( 5 ) = 0.5 * (y2(1) + y2(2) )
-    !               z2( 5 ) = 0.5 * (z2(1) + z2(2) )
-    !
-    !               x2( 6 ) = 0.5 * (x2(1) + x2(3) )
-    !               y2( 6 ) = 0.5 * (y2(1) + y2(3) )
-    !               z2( 6 ) = 0.5 * (z2(1) + z2(3) )
-    !
-    !               x2( 7 ) = 0.5 * (x2(2) + x2(3) )
-    !               y2( 7 ) = 0.5 * (y2(2) + y2(3) )
-    !               z2( 7 ) = 0.5 * (z2(2) + z2(3) )
-    !
-    !               x2( 8 ) = 0.5 * (x2(1) + x2(4) )
-    !               y2( 8 ) = 0.5 * (y2(1) + y2(4) )
-    !               z2( 8 ) = 0.5 * (z2(1) + z2(4) )
-    !
-    !               x2( 9 ) = 0.5 * (x2(2) + x2(4) )
-    !               y2( 9 ) = 0.5 * (y2(2) + y2(4) )
-    !               z2( 9 ) = 0.5 * (z2(2) + z2(4) )
-    !
-    !               x2( 10 ) = 0.5 * (x2(3) + x2(4) )
-    !               y2( 10 ) = 0.5 * (y2(3) + y2(4) )
-    !               z2( 10 ) = 0.5 * (z2(3) + z2(4) )
-    !
-    !
-    !               do iloc = 1, x_nloc_p2
-    !                  inod = x_ndgln_p2( ( ele - 1 ) * x_nloc_p2 + iloc )
-    !                  x( inod ) = x2( iloclist_p2( iloc ) )
-    !                  y( inod ) = y2( iloclist_p2( iloc ) )
-    !                  z( inod ) = z2( iloclist_p2( iloc ) )
-    !               end do
-    !
-    !            end do
-    !
-    !         end if
-    !      end if Conditional_Pn
-    !
-    !
-    !      return
-    !    end subroutine xp1_2_xp2
-
-
+    !sprint_to_do!optimize
     subroutine Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
         Velocity_U_Source, Velocity_Absorption, &
         Permeability )
@@ -1764,185 +1569,6 @@ contains
     end subroutine Extract_TensorFields_Outof_State
 
 
-    !!$
-    !!$ Module Get_Ndgln Interfaces
-
-    !    subroutine Get_Scalar_Ndgln( ndgln, field, cv_nloc )
-    !      implicit none
-    !      type( scalar_field ), intent( in ) :: field
-    !      integer, intent( in ), optional :: cv_nloc
-    !      integer, dimension( : ), intent( inout ) :: ndgln
-    !      ! Local variables
-    !      integer, dimension( : ), pointer :: nloc
-    !      integer :: ele, iloc
-    !
-    !      do ele = 1, ele_count( field )
-    !         nloc => ele_nodes( field, ele )
-    !         do iloc = 1, ele_loc( field, ele )
-    !            ndgln( ( ele - 1 ) * ele_loc( field, ele ) + iloc ) =  nloc( iloc )
-    !$            ewrite(3,*)'ele, iloc, ndgln:', ele, iloc, &
-    !$                 ndgln( ( ele - 1 ) * ele_loc( field, ele ) + iloc )
-    !         end do
-    !      end do
-    !
-    !      return
-    !    end subroutine Get_Scalar_Ndgln
-
-    !    subroutine Get_Vector_Ndgln( ndgln, field, cv_nloc )
-    !      implicit none
-    !      type( vector_field ), intent( in ) :: field
-    !      integer, intent( in ), optional :: cv_nloc
-    !      integer, dimension( : ), intent( inout ) :: ndgln
-    !      ! Local variables
-    !      integer, dimension( : ), pointer :: nloc
-    !      integer :: ele, iloc, count, cv_nloc2, ndim
-    !
-    !      call get_option( '/geometry/dimension', ndim )
-    !      cv_nloc2 = 1
-    !
-    !      count = 0
-    !      do ele = 1, ele_count( field )
-    !         nloc => ele_nodes( field, ele )
-    !         do iloc = 1, ele_loc( field, 1 ) * cv_nloc2
-    !            ndgln( ( ele - 1 ) * ele_loc( field, 1 ) * cv_nloc2  + iloc ) =  nloc( iloc )
-    !         end do
-    !      end do
-    !
-    !      return
-    !    end subroutine Get_Vector_Ndgln
-
-
-    !    subroutine Get_Mesh_Ndgln( ndgln, mesh, cv_nloc )
-    !      implicit none
-    !      type( mesh_type ), intent( in ) :: mesh
-    !      integer, intent( in ), optional :: cv_nloc
-    !      integer, dimension( : ), intent( inout ) :: ndgln
-    !      ! Local variables
-    !      integer, dimension( : ), pointer :: nloc
-    !      integer :: ele, iloc
-    !
-    !      do ele = 1, ele_count( mesh )
-    !         nloc => ele_nodes( mesh, ele )
-    !         do iloc = 1, ele_loc( mesh, ele )
-    !            ndgln( ( ele - 1 ) * ele_loc( mesh, ele ) + iloc ) =  nloc( iloc )
-    !$            ewrite(3,*)'ele, iloc, ndgln:', ele, iloc, &
-    !$                 ndgln( ( ele - 1 ) * ele_loc( mesh, ele ) + iloc )
-    !         end do
-    !      end do
-    !
-    !      return
-    !    end subroutine Get_Mesh_Ndgln
-
-    !!$
-    !!$ Module Get_SNdgln Interfaces
-
-    subroutine Get_Scalar_SNdgln( sndgln, field, cv_nloc  )
-        implicit none
-        type( scalar_field ), intent( in ) :: field
-        integer, dimension( : ), intent( inout ) :: sndgln
-        integer, intent( in ), optional :: cv_nloc
-        ! Local variables
-        integer, dimension( : ), allocatable :: snloc
-        integer :: sele, iloc
-
-        allocate( snloc( face_loc( field, 1 ) ) )
-        do sele = 1, surface_element_count( field )
-            snloc = face_global_nodes( field, sele )
-            do iloc = 1, face_loc( field, sele )
-                sndgln( ( sele - 1 ) * face_loc( field, sele ) + iloc ) =  snloc( iloc )
-            end do
-        end do
-
-        deallocate( snloc )
-
-        return
-    end subroutine Get_Scalar_SNdgln
-
-    subroutine Get_Vector_SNdgln( sndgln, field, cv_nloc  )
-        implicit none
-        type( vector_field ), intent( in ) :: field
-        integer, dimension( : ), intent( inout ) :: sndgln
-        integer, intent( in ), optional :: cv_nloc
-        ! Local variables
-        integer, dimension( : ), allocatable :: snloc
-        integer :: sele, iloc
-
-        allocate( snloc( face_loc( field, 1 ) ) )
-        do sele = 1, surface_element_count( field )
-            snloc = face_global_nodes( field, sele )
-            do iloc = 1, face_loc( field, sele )
-                sndgln( ( sele - 1 ) * face_loc( field, sele ) + iloc ) =  snloc( iloc )
-            end do
-        end do
-
-        deallocate( snloc )
-
-        return
-    end subroutine Get_Vector_SNdgln
-
-
-
-
-    subroutine print_from_state( state, field_prot )
-        implicit none
-        type( state_type ), dimension( : ), intent( in ) :: state
-        real, dimension( : ), intent( in ) :: field_prot
-        !
-        type( scalar_field ), pointer :: field
-        integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
-            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-            x_snloc, cv_snloc, u_snloc, p_snloc, &
-            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, knod, istate
-        logical :: initialised
-        integer, dimension( : ), pointer :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln
-        integer, dimension( : ), allocatable ::     cv_sndgln, p_sndgln, u_sndgln, Temperature_BC_Spatial
-        real, dimension( : ), allocatable :: Temperature, Temperature_BC
-
-        call Get_Primary_Scalars( state, &
-            nphase, nstate, ncomp, totele, ndim, stotel, &
-            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-            x_snloc, cv_snloc, u_snloc, p_snloc, &
-            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods )
-
-        !!$ Calculating Global Node Numbers
-        allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
-            u_sndgln( stotel * u_snloc ) )
-
-        !    x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
-        cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
-
-        allocate( temperature( nphase * cv_nonods ), temperature_bc_spatial( nphase * stotel ), &
-            temperature_bc( stotel * cv_snloc * nphase ) )
-
-        call Compute_Node_Global_Numbers( state, &
-            totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
-            cv_snloc, p_snloc, u_snloc, &
-            cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
-            cv_sndgln, p_sndgln, u_sndgln )
-
-        initialised = .true.
-        do istate = 1, nstate
-            Conditional_Temperature: if( have_option( '/material_phase[' // int2str( istate - 1 ) // &
-                ']/scalar_field::Temperature' ) ) then
-                field => extract_scalar_field( state( istate ), 'Temperature' )
-                knod = ( istate - 1 ) * node_count( field )
-                call Get_ScalarFields_Outof_State( state, initialised, istate, field, &
-                    Temperature( knod + 1 : knod + node_count( field ) ), &
-                    Temperature_BC_Spatial, Temperature_BC ) !, &
-            !!$                 field_prot_source = Temperature_Source( knod + 1 : knod + node_count( field ) ) )
-            end if Conditional_Temperature
-        end do
-
-        ewrite(3,*)'::temperature::', norm2( temperature )
-        do istate = 1, cv_nonods
-            ewrite(3,*) istate, field_prot( istate ), temperature( istate ), field%val(istate)
-        end do
-
-        deallocate( cv_sndgln, p_sndgln, u_sndgln, Temperature_BC_Spatial, Temperature, Temperature_BC )
-
-        return
-    end subroutine print_from_state
-
 
     subroutine update_boundary_conditions( state, stotel, cv_snloc, nphase, &
         &                                 suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
@@ -2138,6 +1764,7 @@ contains
          call insert( packed_state, tfield, "Viscosity" )
 
       elseif ( have_option( '/femdem_fracture' ) ) then
+        if (have_option('/femdem_fracture/oneway_coupling_only')) then
          sfield => extract_scalar_field( state(1), "SolidConcentration" )
          call insert( packed_state, sfield, "SolidConcentration" )
          call add_new_memory(packed_state,sfield,"OldSolidConcentration")
@@ -2151,12 +1778,31 @@ contains
          vfield => extract_vector_field( state(1), "Darcy_Velocity" )
          call insert( packed_state,vfield, "Darcy_Velocity" )
 
+         sfield => extract_scalar_field( state(1), "TotalFlux" )
+         call insert( packed_state, sfield, "TotalFlux" )
+        else
+         sfield => extract_scalar_field( state(1), "SolidConcentration" )
+         call insert( packed_state, sfield, "SolidConcentration" )
+         call add_new_memory(packed_state,sfield,"OldSolidConcentration")
+
+         tfield => extract_tensor_field( state(1), "Viscosity" )
+         call insert( packed_state, tfield, "Viscosity" )
+
+         sfield => extract_scalar_field( state(1), "Dummy" )
+         call insert( packed_state, sfield, "Dummy" )
+
+         sfield => extract_scalar_field( state(1), "TotalFlux" )
+         call insert( packed_state, sfield, "TotalFlux" )
+
+         vfield => extract_vector_field( state(1), "Darcy_Velocity" )
+         call insert( packed_state,vfield, "Darcy_Velocity" )
          vfield => extract_vector_field( state(1), "delta_U" )
          call insert( packed_state, vfield, "delta_U" )
 
          vfield => extract_vector_field( state(1), "solid_U" )
          call insert( packed_state, vfield, "solid_U" )
 
+        end if
       end if
 #endif
 
@@ -3284,44 +2930,6 @@ end subroutine finalise_multistate
 
 
 
-!    subroutine add_dependant_fields_to_tensor_from_state(infield,state,scalar_field_names,&
-!         vector_field_names,tensor_field_names)
-!
-!      !  Convenience subroutine to add a bunch of fields as dependants of infield in one call.
-!
-!      type(tensor_field) :: infield
-!      type(state_type) :: state
-!      character (len=*) , dimension(:), optional :: scalar_field_names, vector_field_names, &
-!           tensor_field_names
-!
-!      integer :: i
-!      type(scalar_field), pointer :: sfield
-!      type(vector_field), pointer :: vfield
-!      type(tensor_field), pointer :: tfield
-!
-!      if (present(scalar_field_names)) then
-!         do i=1,size(scalar_field_names)
-!            sfield=>extract_scalar_field(state,trim(scalar_field_names(i)))
-!            call add_dependant_field(infield,sfield)
-!         end do
-!      end if
-!
-!      if (present(vector_field_names)) then
-!         do i=1,size(vector_field_names)
-!            vfield=>extract_vector_field(state,trim(vector_field_names(i)))
-!            call add_dependant_field(infield,vfield)
-!         end do
-!      end if
-!
-!      if (present(tensor_field_names)) then
-!         do i=1,size(tensor_field_names)
-!            tfield=>extract_tensor_field(state,tensor_field_names(i))
-!            call add_dependant_field(infield,tfield)
-!         end do
-!      end if
-!
-!    end subroutine add_dependant_fields_to_tensor_from_state
-
 
 subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,order)
@@ -3690,6 +3298,7 @@ subroutine copy_packed_new_to_iterated(packed_state, viceversa)
 
 end subroutine copy_packed_new_to_iterated
 
+!sprint_to_do! move everything to just use pointers and remove this
 subroutine get_var_from_packed_state(packed_state,FEDensity,&
     OldFEDensity,IteratedFEDensity,Density,OldDensity,IteratedDensity,PhaseVolumeFraction,&
     OldPhaseVolumeFraction,IteratedPhaseVolumeFraction, Velocity, OldVelocity, IteratedVelocity, &
@@ -4106,7 +3715,7 @@ function GetFEMName(tfield) result(fem_name)
 
 end function GetFEMName
 
-
+!sprint_to_do!see what happens after modifying the storage
 subroutine Clean_Storage(storage_state, StorageIndexes)
     !This subroutine removes all the storage controlled by StorageIndexes
     Implicit none
@@ -4131,7 +3740,7 @@ subroutine Clean_Storage(storage_state, StorageIndexes)
     StorageIndexes = 0
 end subroutine Clean_Storage
 
-
+!sprint_to_do!remove
 subroutine CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, MaxAngle, MinAngle, Quality_list, degree)
     !This function checks the angles of an input element. If one angle is above
     !the Maxangle or below the MinAngle it will be true in the list
@@ -4549,7 +4158,7 @@ logical function have_option_for_any_phase(path, nphase)
 
 
 end function have_option_for_any_phase
-
+!sprint_to_do!what is happening with this?
 subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln)
     !This subroutine creates a conversor so material variables
     !can be stored based on region ids, but accessed in a normal way (node access)
@@ -4826,6 +4435,7 @@ size(t_field%val,1)*size(t_field%val,2)*size(t_field%val,3), t_field%name)
 
 end subroutine get_regionIDs2nodes
 
+!sprint_to_do!finish during of after the sprint
 subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, MAT_NDGLN, U_NDGLN, CV_NDGLN, &
     state, packed_state, Material_Absorption)
     !This subroutine calculates the actual Darcy velocity, unfinished
@@ -4890,7 +4500,49 @@ subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, MAT_NDGLN, U_NDG
     deallocate(aux)
 end subroutine get_DarcyVelocity
 
+    subroutine Get_Scalar_SNdgln( sndgln, field, cv_nloc  )
+      implicit none
+      type( scalar_field ), intent( in ) :: field
+      integer, dimension( : ), intent( inout ) :: sndgln
+      integer, intent( in ), optional :: cv_nloc
+      ! Local variables
+      integer, dimension( : ), allocatable :: snloc
+      integer :: sele, iloc
 
+      allocate( snloc( face_loc( field, 1 ) ) )
+      do sele = 1, surface_element_count( field )
+         snloc = face_global_nodes( field, sele )
+         do iloc = 1, face_loc( field, sele )
+            sndgln( ( sele - 1 ) * face_loc( field, sele ) + iloc ) =  snloc( iloc )
+         end do
+      end do
+
+      deallocate( snloc )
+
+      return
+    end subroutine Get_Scalar_SNdgln
+
+    subroutine Get_Vector_SNdgln( sndgln, field, cv_nloc  )
+      implicit none
+      type( vector_field ), intent( in ) :: field
+      integer, dimension( : ), intent( inout ) :: sndgln
+      integer, intent( in ), optional :: cv_nloc
+      ! Local variables
+      integer, dimension( : ), allocatable :: snloc
+      integer :: sele, iloc
+
+      allocate( snloc( face_loc( field, 1 ) ) )
+      do sele = 1, surface_element_count( field )
+         snloc = face_global_nodes( field, sele )
+         do iloc = 1, face_loc( field, sele )
+            sndgln( ( sele - 1 ) * face_loc( field, sele ) + iloc ) =  snloc( iloc )
+         end do
+      end do
+
+      deallocate( snloc )
+
+      return
+    end subroutine Get_Vector_SNdgln
 
 
 end module Copy_Outof_State

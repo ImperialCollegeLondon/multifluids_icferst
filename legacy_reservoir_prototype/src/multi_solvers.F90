@@ -59,7 +59,7 @@ module solvers_module
     private
 
     public :: solver, PRES_DG_MULTIGRID, CMC_Agglomerator_solver, Fix_to_bad_elements,&
-        BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_between_bounds, Set_Saturation_to_sum_one
+        BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one
 
     interface solver
         module procedure solve_via_copy_to_petsc_csr_matrix
@@ -68,7 +68,7 @@ module solvers_module
 contains
 
     ! -----------------------------------------------------------------------------
-
+    !sprint_to_do!see if this is still being used
     subroutine solve_via_copy_to_petsc_csr_matrix( A, &
         x, b, findfe, colfe, option_path, block_size )
 
@@ -185,6 +185,7 @@ contains
     end subroutine petsc_solve_scalar_petsc_csr_mp
 
       !Clone of the same subroutine in femtools/Solvers.F90
+      !sprint_to_do!think about this, maybe make it internal of the one on top (petsc_solve_scalar_petsc_csr_mp)
     subroutine petsc_solve_destroy_petsc_csr( y, b, ksp, solver_option_path )
 
         type(Vec), intent(inout):: y
@@ -204,6 +205,7 @@ contains
 
 
     !DO NOT REMOVE, CURRENTLY UNUSED BUT WE PLAN TO CONTINUE!!
+    !sprint_to_do!remove now!!!
     SUBROUTINE PRES_DG_MULTIGRID(CMC, CMC_PRECON, IGOT_CMC_PRECON, P, RHS, &
         NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
         totele, cv_nloc, x_nonods, cv_ndgln, x_ndgln )
@@ -456,13 +458,6 @@ contains
                 end if
 
                 if (.false.) then
-                    CALL SIMPLE_SOLVER( CMC, P, RHS,  &
-                        NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC,  &
-                        ERROR, RELAX, RELAX_DIAABS, RELAX_DIA, N_LIN_ITS )
-                    ewrite(3,*)'after solving:',p
-                end if
-
-                if (.false.) then
                     CALL SOLVER( CMC, P, RHS, &
                         FINDCMC, COLCMC, &
                         option_path = '/material_phase[0]/scalar_field::Pressure' )
@@ -536,7 +531,7 @@ contains
 
         RETURN
     END SUBROUTINE PRES_DG_MULTIGRID
-
+    !sprint_to_do!remove this thing, it never actually worked...
     SUBROUTINE CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
         NCOLCMC, CV_NONODS, FINDCMC, COLCMC, MIDCMC, &
         totele, cv_nloc, x_nonods, x_ndgln,  option_path)
@@ -765,7 +760,7 @@ contains
         RETURN
     END SUBROUTINE CMC_Agglomerator_solver
 
-
+    !sprint_to_do!remove
     SUBROUTINE Fix_to_bad_elements(cmc_petsc, &
         NCOLCMC, FINDCMC, COLCMC, MIDCMC, &
         totele, p_nloc, P_NDGLN, Quality_list)
@@ -957,7 +952,7 @@ contains
     END SUBROUTINE GET_SPAR_CMC_SMALL
          
 
-
+    !sprint_to_do! where this is called, use instead quicksort
     subroutine ibubble2(ivec)
         ! sort ivec in increasing order
         implicit none
@@ -981,95 +976,6 @@ contains
         !        ewrite(3,*)'after ivec:',ivec
         return
     end subroutine ibubble2
-
-
-    SUBROUTINE SIMPLE_SOLVER( CMC, P, RHS,  &
-        NCMC, NONODS, FINCMC, COLCMC, MIDCMC,  &
-        ERROR, RELAX, RELAX_DIAABS, RELAX_DIA, N_LIN_ITS )
-        !
-        ! Solve CMC * P = RHS for RHS.
-        ! RELAX: overall relaxation coeff; =1 for no relaxation.
-        ! RELAX_DIAABS: relaxation of the absolute values of the sum of the row of the matrix;
-        !               - recommend >=2 for hard problems, =0 for easy
-        ! RELAX_DIA: relaxation of diagonal; =1 no relaxation (normally applied).
-        ! N_LIN_ITS = no of linear iterations
-        ! ERROR= solver tolerence between 2 consecutive iterations
-        implicit none
-        REAL, intent( in ) :: ERROR, RELAX, RELAX_DIAABS, RELAX_DIA
-        INTEGER, intent( in ) ::  N_LIN_ITS, NCMC, NONODS
-        REAL, DIMENSION( : ), intent( in ) ::  CMC
-        REAL, DIMENSION( : ), intent( inout ) ::  P
-        REAL, DIMENSION( : ), intent( in ) :: RHS
-        INTEGER, DIMENSION( : ), intent( in ) :: FINCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: MIDCMC
-        ! Local variables
-        INTEGER :: ITS, ILOOP, ISTART, IFINI, ISTEP, NOD, COUNT
-        REAL :: R, SABS_DIAG, RTOP, RBOT, POLD, MAX_ERR
-        LOGICAL :: jacobi
-
-        ewrite(3,*) 'In Solver'
-
-        jacobi = .false. !.true.
-
-        if(jacobi) then
-
-            Loop_Non_Linear_Iter1: DO ITS = 1, N_LIN_ITS
-
-                Loop_Nods1: DO NOD = 1,NONODS
-                    R =  CMC( MIDCMC( NOD ))*P(NOD)+ RHS( NOD )
-                    DO COUNT = FINCMC( NOD ), FINCMC( NOD + 1 ) - 1
-                        R = R - CMC( COUNT ) * P( COLCMC( COUNT ))
-                    END DO
-                    RTOP = R
-                    RBOT = CMC( MIDCMC( NOD ))
-                    P( NOD ) = RELAX * ( RTOP / RBOT ) + ( 1.0 - RELAX ) * P( NOD )
-                END DO Loop_Nods1
-
-            END DO Loop_Non_Linear_Iter1
-        else
-
-            Loop_Non_Linear_Iter: DO ITS = 1, N_LIN_ITS
-
-                MAX_ERR = 0.0
-                Loop_Internal: DO ILOOP = 1, 2
-                    IF( ILOOP == 1 ) THEN
-                        ISTART = 1
-                        IFINI = NONODS
-                        ISTEP = 1
-                    ELSE
-                        ISTART = NONODS
-                        IFINI = 1
-                        ISTEP = -1
-                    ENDIF
-
-                    Loop_Nods: DO NOD = ISTART, IFINI, ISTEP
-                        R = RELAX_DIA * CMC( MIDCMC( NOD )) * P( NOD ) + RHS( NOD )
-                        SABS_DIAG = 0.0
-                        DO COUNT = FINCMC( NOD ), FINCMC( NOD + 1 ) - 1
-                            R = R - CMC( COUNT ) * P( COLCMC( COUNT ))
-                            SABS_DIAG = SABS_DIAG + ABS( CMC( COUNT ))
-                        END DO
-                        RTOP = R + RELAX_DIAABS * SABS_DIAG * P( NOD )
-                        RBOT = RELAX_DIAABS * SABS_DIAG + RELAX_DIA * CMC( MIDCMC( NOD ))
-                        POLD = P( NOD )
-                        P( NOD ) = RELAX * ( RTOP / RBOT ) + ( 1.0 - RELAX ) * P( NOD )
-                        MAX_ERR = MAX( MAX_ERR, ABS( POLD - P( NOD )))
-                    END DO Loop_Nods
-                END DO Loop_Internal
-
-                IF( MAX_ERR < ERROR ) CYCLE
-
-            END DO Loop_Non_Linear_Iter
-        endif
-
-        ewrite(3,*) 'Leaving Solver'
-
-        RETURN
-    END SUBROUTINE SIMPLE_SOLVER
-
-
-
 
 
     subroutine BoundedSolutionCorrections( state, packed_state, storage_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, &
@@ -1426,6 +1332,7 @@ contains
         return
     end subroutine BoundedSolutionCorrections
 
+    !sprint_to_do!not use one global variable
     subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_from_schema, CV_NDGLN, IDs2CV_ndgln,&
         Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration, useful_sats, res, &
         res_ratio, first_res, npres)
@@ -1807,35 +1714,6 @@ contains
 
     end subroutine Set_Saturation_to_sum_one
 
-
-    subroutine Set_Saturation_between_bounds(packed_state, IDs2CV_ndgln)
-        !This subroutines eliminates the oscillations in the saturation that are bigger than a
-        !certain tolerance
-        Implicit none
-        !Global variables
-        type( state_type ), intent(inout) :: packed_state
-        integer, dimension(:), intent(in) :: IDs2CV_ndgln
-        !Local variables
-        integer :: iphase, nphase, cv_nod
-        real :: maxsat, minsat
-        real, dimension(:,:), pointer :: satura, Immobile_fraction
-
-        call get_var_from_packed_state(packed_state, PhaseVolumeFraction = satura)
-        !Get corey options
-        call get_var_from_packed_state(packed_state, Immobile_fraction = Immobile_fraction)
-
-        nphase = size(satura,1)
-        !Set saturation to be between bounds
-        do cv_nod = 1, size(satura,2 )
-            do iphase = 1, nphase
-                minsat = Immobile_fraction(iphase, IDs2CV_ndgln(cv_nod))
-                maxsat = 1 - sum(Immobile_fraction(:, IDs2CV_ndgln(cv_nod))) + minsat
-                !We enforce sat to be between bounds
-                satura(iphase,cv_nod) =  min(max(minsat, satura(iphase,cv_nod)),maxsat)
-            end do
-        end do
-
-    end subroutine Set_Saturation_between_bounds
 
 end module solvers_module
 

@@ -1412,7 +1412,7 @@ contains
 
     contains
 
-
+        !!!!!sprint_to_do!!!rename and/or move elsewhere
         subroutine temp_mem_hacks()
 
             !!! routine puts various CSR sparsities into packed_state
@@ -1987,6 +1987,7 @@ contains
 
     end subroutine copy_packed_new_to_old
 
+        !!!!!sprint_to_do!!!rename and/or move elsewhere
     subroutine set_nu_to_u(packed_state)
         type(state_type), intent(inout) :: packed_state
         type(tensor_field), pointer :: u, uold, nu, nuold
@@ -2002,6 +2003,7 @@ contains
 
     end subroutine set_nu_to_u
 
+    !!!!sprint_to_do!!!!take this somewhere else
     subroutine dump_outflux(current_time, itime, outflux, intflux)
 
         ! Subroutine that dumps the total flux at a given timestep across all specified boudaries to a file  called 'outfluxes.txt'. In addition, the time integrated flux

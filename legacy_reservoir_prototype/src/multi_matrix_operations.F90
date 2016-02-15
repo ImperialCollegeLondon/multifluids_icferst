@@ -166,96 +166,7 @@ contains
         RETURN
     END SUBROUTINE MATINVold
 
-
-
-
-    SUBROUTINE MATMASSINV( MASINV, MMAT, NONODS, NLOC, TOTELE )
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: NONODS, NLOC, TOTELE
-        REAL, DIMENSION( :, : ), intent( inout ) ::  MASINV, MMAT
-        ! matrix is   AGI   BGI
-        !             CGI   DGI
-        ! Local variables
-        REAL :: AGI, BGI, CGI, DGI, DETJ
-        REAL :: AI11, AI12, AI21, AI22
-        INTEGER :: ELE, GLOBI1, GLOBI2
-
-        MASINV( 1 : NONODS, 1 : NONODS ) = 0.0
-
-        Loop_ELE: DO ELE = 1, TOTELE
-
-            GLOBI1 = ( ELE - 1 ) * NLOC + 1
-            GLOBI2 = ( ELE - 1 ) * NLOC + 2
-
-            AGI = MMAT( GLOBI1, GLOBI1 )
-            BGI = MMAT( GLOBI1, GLOBI2 )
-            CGI = MMAT( GLOBI2, GLOBI1 )
-            DGI = MMAT( GLOBI2, GLOBI2 )
-            DETJ = AGI * DGI - BGI * CGI
-            AI11 = DGI / DETJ
-            AI12 = -BGI / DETJ
-            AI21 = -CGI / DETJ
-            AI22 = AGI / DETJ
-
-            MASINV( GLOBI1, GLOBI1 ) = AI11
-            MASINV( GLOBI1, GLOBI2 ) = AI12
-            MASINV( GLOBI2, GLOBI1 ) = AI21
-            MASINV( GLOBI2, GLOBI2 ) = AI22
-
-        END DO Loop_ELE
-
-        RETURN
-    END SUBROUTINE MATMASSINV
-
-    !
-
-    SUBROUTINE SMLINN( A, X, B, NMX, N )
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: NMX, N
-        REAL, DIMENSION( :, : ), intent( inout ) :: A
-        REAL, DIMENSION( : ), intent( inout ) :: X
-        REAL, DIMENSION( : ), intent( in ) :: B
-        ! Local
-        REAL :: R
-        INTEGER ::  K, I, J
-        !     Form X = A^{-1} B
-        !     Useful subroutine for inverse. This sub overwrites matrix A.
-        Loop_K: DO K = 1, N - 1
-            Loop_I: DO I = K + 1, N
-                A( I, K ) = A( I, K ) / A( K, K )
-            END DO Loop_I
-
-            Loop_J: DO J = K + 1, N
-                Loop_I1: DO I = K + 1, N
-                    A( I, J ) = A( I, J ) - A( I, K ) * A( K, J )
-                END DO Loop_I1
-            END DO Loop_J
-
-        END DO Loop_K
-        !
-        !     Solve L_1 x=b
-        Loop_I2: DO I = 1, N
-            R = 0.
-            Loop_J2: DO J = 1, I - 1
-                R = R + A( I, J ) * X( J )
-            END DO Loop_J2
-            X( I ) = B( I ) - R
-        END DO Loop_I2
-        !
-        !     Solve U x=y
-        Loop_I3: DO I = N, 1, -1
-            R = 0.
-            Loop_J3: DO J = I + 1, N
-                R = R + A( I, J) * X( J )
-            END DO Loop_J3
-            X( I ) = ( X( I ) - R ) / A( I, I )
-        END DO Loop_I3
-
-        RETURN
-
-    END SUBROUTINE SMLINN
-    !     
-
+    !sprint_to_do!add some comments
     SUBROUTINE SMLINNGOT( A, X, B, NMX, N, IPIV, GOTDEC )
         IMPLICIT NONE
         INTEGER :: NMX, N
@@ -307,38 +218,6 @@ contains
 
         RETURN
     END SUBROUTINE SMLINNGOT
-    !     
-
-
-    SUBROUTINE ABMATRIXMUL( AB, A, NONODS1, NONODS2, &
-        B, NONODS3, NONODS4 )
-        !
-        ! Perform matrix matrix multiplication: AB = A * B
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: NONODS1, NONODS2, NONODS3, NONODS4
-        REAL, DIMENSION( :, : ), intent( inout ) :: AB
-        REAL, DIMENSION( :, : ), intent( in )    :: A
-        REAL, DIMENSION( :, : ), intent( in )    :: B
-        ! Local
-        INTEGER :: I, J, II
-        !          IF(NONODS2.NE.NONODS3) STOP 8329
-
-        Loop_I: DO I = 1, NONODS1
-
-            Loop_J: DO J = 1, NONODS4
-                AB( I, J ) = 0.0
-
-                Loop_II: DO II = 1, NONODS2
-                    AB( I, J ) = AB( I, J ) + A( I, II ) * B( II, J )
-                END DO Loop_II
-
-            END DO Loop_J
-
-        END DO Loop_I
-
-        RETURN
-    END SUBROUTINE ABMATRIXMUL
-
 
 
 
@@ -449,7 +328,7 @@ contains
 
 
 
-
+    !sprint_to_do!make internal subroutine
     SUBROUTINE COLOR_GET_CMC_PHA_FAST( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
         NCOLC, FINDC, COLC, &
         INV_PIVIT_MAT,  &
@@ -906,7 +785,7 @@ contains
     END SUBROUTINE COLOR_GET_CMC_PHA_FAST
 
 
-
+    !sprint_to_do!move to library and aid subroutines as well
     recursive  subroutine quicksort(vec,n)
 
         implicit none
@@ -984,27 +863,8 @@ contains
     end subroutine insertion_sort
              
 
-    SUBROUTINE IBUBLE(LIST,NLIST)
-
-        INTEGER NLIST,LIST(NLIST)
-        INTEGER I,J,II
-
-        do I=1,NLIST
-            do J=2,NLIST-I+1
-                IF(LIST(J-1).GT.LIST(J)) THEN
-                    II=LIST(J-1)
-                    LIST(J-1)=LIST(J)
-                    LIST(J)=II
-                ENDIF
-            END DO
-        END DO
-    END SUBROUTINE IBUBLE
-
-
-
-
-
-
+    !sprint_to_do!make internal subroutine. try to delete this and only use the fast version
+    !remove if we finally remove this subroutine all the subroutines that are only called in here
     SUBROUTINE COLOR_GET_CMC_PHA_SLOW( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
         NCOLC, FINDC, COLC, &
         INV_PIVIT_MAT,  &
@@ -1444,7 +1304,7 @@ contains
 
 
 
-
+    !sprint_to_do!figure it out why are we not using the blas library
     SUBROUTINE PHA_BLOCK_INV( PIVIT_MAT, TOTELE, NBLOCK )
         implicit none
         INTEGER, intent( in ) :: TOTELE, NBLOCK
@@ -1463,7 +1323,7 @@ contains
         RETURN
     END SUBROUTINE PHA_BLOCK_INV
 
-
+    !sprint_to_do!see what we do with storage
     SUBROUTINE PHA_BLOCK_INV_plus_storage( PIVIT_MAT, TOTELE, &
         NBLOCK, Storage_state, StorName, indx)
           !Retrieves the inverse of the PIVIT_MAT fron the storage
@@ -1795,8 +1655,7 @@ contains
 
     END SUBROUTINE PHA_BLOCK_MAT_VEC_MANY
 
-
-
+    !sprint_to_do!have a look at this one
     SUBROUTINE CT_MULT( CV_RHS, U, V, W, CV_NONODS, U_NONODS, NDIM, NPHASE, &
         CT, NCOLCT, FINDCT, COLCT )
         ! CV_RHS=CT*U
@@ -1838,7 +1697,7 @@ contains
 
 
 
-
+    !sprint_to_do !try to use the many version only
     SUBROUTINE CT_MULT2( CV_RHS, U, CV_NONODS, U_NONODS, NDIM, NPHASE, &
         CT, NCOLCT, FINDCT, COLCT )
         ! CV_RHS=CT*U
@@ -2008,42 +1867,7 @@ contains
 
 
 
-    SUBROUTINE CT_MULT_WITH_C2( DP, U_LONG, CV_NONODS, U_NONODS, NDIM, NPHASE, &
-        C, NCOLC, FINDC, COLC )
-        implicit none
-        ! DP = (C)^T U_LONG
-        INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC
-        REAL, DIMENSION( : ), intent( in ) :: U_LONG
-        REAL, DIMENSION( : ), intent( inout )  :: DP
-        REAL, DIMENSION( :, :, : ), intent( in ) :: C
-        INTEGER, DIMENSION( : ), intent( in ) ::FINDC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLC
-        ! Local variables
-        INTEGER :: U_INOD, COUNT, P_JNOD, IPHASE, I1, IDIM, COUNT_DIM_PHA
-
-        DP = 0.0
-
-        Loop_VelNodes: DO U_INOD = 1, U_NONODS
-
-            Loop_Crow: DO COUNT = FINDC( U_INOD ), FINDC( U_INOD + 1 ) - 1, 1
-                P_JNOD = COLC( COUNT )
-
-                Loop_Phase: DO IPHASE = 1, NPHASE
-                    Loop_Dim: DO IDIM = 1, NDIM
-                        COUNT_DIM_PHA = COUNT + NCOLC*(IDIM-1) + NCOLC*NDIM*(IPHASE-1)
-                        I1 = IDIM + (U_INOD-1)*NDIM + ( IPHASE - 1 ) * NDIM * U_NONODS
-                        DP( P_JNOD ) = DP( P_JNOD ) + C( IDIM, IPHASE, COUNT ) * U_LONG( I1 )
-                    END DO Loop_Dim
-                END DO Loop_Phase
-
-            END DO Loop_Crow
-
-        END DO Loop_VelNodes
-
-        RETURN
-
-    END SUBROUTINE CT_MULT_WITH_C2
-
+    !sprint_to_do!can this go?
     SUBROUTINE CT_MULT_WITH_C3( DP, U_ALL, CV_NONODS, U_NONODS, NDIM, NPHASE, &
         C, NCOLC, FINDC, COLC )
         implicit none
@@ -2078,10 +1902,6 @@ contains
         RETURN
 
     END SUBROUTINE CT_MULT_WITH_C3
-
-
-
-
 
 
     SUBROUTINE CT_MULT_WITH_C_MANY( DP, U_LONG, CV_NONODS, U_NONODS, NDIM, NPHASE, NBLOCK, &
