@@ -49,6 +49,1466 @@ module shape_functions_prototype
 
 contains
 
+    !!!
+    !!! SHAPESE AND RELATED SUBRTS & FUNCTIONS
+
+    SUBROUTINE SHAPESE( SELETYP,  SNEILOC,    &
+        SNGI, SNLOC,   &
+        SN, &
+        SNLX, SNLY,  &
+        SWEIGH )
+        !- this subroutine generates the FE basis functions, weights and the
+        !- derivatives of the surface shape functions for a variety of elements.
+
+        IMPLICIT NONE
+        INTEGER, intent( in ) :: SELETYP, SNGI, SNLOC
+        INTEGER, DIMENSION( SNLOC, SNGI ), intent( inout ) :: SNEILOC
+        REAL, DIMENSION( SNLOC, SNGI ), intent( inout ) :: SN, SNLX, SNLY
+        REAL, DIMENSION( SNGI ), intent( inout ) ::  SWEIGH
+
+        ewrite(3,*) 'In SHAPESE'
+
+        SELECT CASE( SELETYP )
+
+            CASE( 1 ) ; CALL SFELIN( SNGI, SNLOC, SN, SNLX, SWEIGH )
+
+            CASE( 2 ) ; CALL SFEQUAD( SNGI, SNLOC, &
+                SN, SNLX,  &
+                SNLY, SWEIGH )
+
+        CASE( 3 ) ; CALL SFETRI( SNGI, SNLOC, &
+            SN, SNLX,  SNLY, &
+            SWEIGH )
+
+    CASE( 4 ) ; CALL SFEQLIN( SNGI, SNLOC, SN, SNLX, SWEIGH )
+
+    CASE( 5 ) ; CALL SFEQQUAD( SNGI, SNLOC, &
+        SN, SNLX, &
+        SNLY, SWEIGH )
+
+CASE( 6 ) ; CALL SFEQTRI( SNGI, SNLOC, &
+    SN, SNLX, &
+    SNLY, SWEIGH )
+
+END SELECT
+
+CALL SURNEI( SNEILOC, SNLOC, SNGI, SELETYP )
+
+ewrite(3,*) 'Leaving SHAPESE'
+
+
+RETURN
+END SUBROUTINE SHAPESE
+
+
+
+SUBROUTINE SURNEI( SNEILOC, SNLOC, SNGI, SELETYP )
+    !     ------------------------------------------------
+    !
+    ! - this subroutine calculates SNEILOC which is the array containing
+    ! - information if SGI is in the same CV as SILOC then set
+    ! - SNEILOC(SILOC,SGI) = 1 else SNEILOC(SILOC,SGI) = 0. Note that
+    ! - SNEILOC is related to the FV basis functions M(ILOC,GI) for the
+    ! - 2-D elements but instead of 1.0 and 0.0 we have integer values.
+    !
+    !     -------------------------------
+    !     - date last modified : 23/10/2006
+    !     - added by crgw (taken from RADIANT)
+    !     -------------------------------
+    !
+    IMPLICIT NONE
+    !
+    INTEGER, intent( in ) :: SELETYP, SNGI, SNLOC
+    !
+    INTEGER, DIMENSION( SNLOC, SNGI ), intent( inout )  :: SNEILOC
+    !
+    !     - local variables
+    !
+    INTEGER :: COUNT, INC, SILOC, SGI
+
+    ewrite(3,*) 'In SURNEI'
+
+
+    SNEILOC = 0
+
+    SELECT CASE ( SELETYP )
+
+        CASE( 1 : 3 ) ! Linear line (1), quadrilateral (2), triangular (3) surface elements
+
+            COUNT = 1
+            DO SILOC = 1, SNLOC
+
+                DO SGI = COUNT, COUNT
+                    SNEILOC( SILOC, SGI ) = 1
+                END DO
+
+                COUNT = COUNT + 1
+
+            END DO
+           !
+           ! This is a little note for the future if we are: using 16 point quadrature
+           ! for the surface elements then change the loop DO SGI = COUNT, COUNT to
+           ! DO SGI = COUNT, COUNT + 3. Also change the loop increment to
+           ! COUNT = COUNT + 4. This is similar for triangles.
+           !
+
+        CASE( 4 ) ! Quadratic line surface elements
+
+            COUNT = 1
+            DO SILOC = 1, SNLOC
+
+                DO SGI = COUNT, COUNT + 1
+                    SNEILOC( SILOC, SGI ) = 1
+                END DO
+
+                COUNT = COUNT + 2
+
+            END DO
+
+        CASE( 5 ) ! Quadratic quadrilateral surface elements
+
+            COUNT = 1
+            DO SILOC = 1, SNLOC
+
+                DO SGI = COUNT, COUNT + 3
+                    SNEILOC( SILOC, SGI ) = 1
+                END DO
+
+                COUNT = COUNT + 4
+
+            END DO
+
+
+        CASE( 6 ) ! Quadratic triangular surface elements
+
+            COUNT = 1
+
+            Loop_SNLOC: DO SILOC = 1, SNLOC
+
+                IF(( SILOC == 1 ) .OR. ( SILOC == 3 ) .OR. ( SILOC == 5 )) THEN
+                    INC = 3
+                ELSE
+                    INC = 7
+                ENDIF
+
+                DO SGI = COUNT, COUNT + INC
+                    SNEILOC( SILOC, SGI ) = 1
+                END DO
+
+                IF(( SILOC == 1 ) .OR. ( SILOC == 3 ) .OR. ( SILOC == 5 )) THEN
+                    COUNT = COUNT + 4
+                ELSE
+                    COUNT = COUNT + 8
+                ENDIF
+
+            END DO Loop_SNLOC
+           !
+           ! - note that in future that the DO GI = COUNT, COUNT+3
+           ! - will become DO GI = COUNT, COUNT+NGI/NLOC
+           !
+           ! - note the use of NGI/NLOC which gives the number of Gauss
+           ! - points associated with a CV. We might consider the use
+           ! - of another variable NCVGI which gives the number of Gauss
+           ! - points associated with a CV.
+
+        CASE DEFAULT
+            FLAbort(" Wrong option for surface element type ")
+
+    END SELECT
+
+    ewrite(3,*) 'Leaving SURNEI'
+
+    RETURN
+
+END SUBROUTINE SURNEI
+!
+!
+!
+!
+
+SUBROUTINE SFELIN( SNGI, SNLOC, SN, SNLX, SWEIGH )
+    !     --------------------------------------------------
+    !
+    ! - this subroutine generates the FE surface
+    ! - shape functions and the associated derivatives
+    ! - and weights.
+    !
+    !   -------------------------------
+    ! - date last modified : 14/06/2003
+    !   -------------------------------
+    !
+    IMPLICIT NONE
+    !
+    INTEGER, intent( in ) :: SNGI, SNLOC
+    !
+    REAL, DIMENSION( SNLOC, SNGI ), intent( inout ) :: SN, SNLX
+    !
+    REAL, DIMENSION( SNGI ), intent( inout ) :: SWEIGH
+    !
+    ! - local variables
+    !
+    INTEGER ::SILOC, SJLOC, SGI, SGJ
+    !
+    REAL, DIMENSION( : ) , allocatable :: XIGP, XI
+    INTEGER, PARAMETER :: ONE = 1, TWO = 2
+
+    ewrite(3,*) 'In SFELIN'
+
+    ALLOCATE( XIGP( ONE ))
+    ALLOCATE( XI( TWO ))
+    !
+    ! - positions of Gauss points associated with CV's in (ETAP) space
+    !
+    XIGP = 0.0
+    !
+    ! - positions of vertices of line element in (ETA) space
+    !
+    XI(1) = -1.0
+    XI(2) =  1.0
+    !
+    ! - values of FE basis functions at volume integration points
+    !
+    do SILOC = 1, SNLOC
+        do SJLOC = 1, SNLOC
+            do SGJ = 1, 1
+
+                SGI = ( SJLOC - 1 ) * ( SNLOC - 1 ) + SGJ
+                SN( SILOC, SGI ) = 0.5 * ( 1. + XI(SILOC) &
+                    * 0.5 * ( XI( SJLOC ) + XIGP( SGJ )))
+            END DO
+        END DO
+    END DO
+    !
+    ! - derivatives of FE basis functions at the Gauss points
+    !
+    do SILOC = 1, SNLOC
+        do SGI = 1, SNGI
+            SNLX( SILOC, SGI ) = 0.5 * XI( SILOC )
+        END DO
+    END DO
+    !
+    ! - note that the weight of the normal Gauss point is 2.0
+    ! - but this is reduced by 0.5 i.e. 1/2 because of the
+    ! - second Jacobian
+    !
+    do SGI = 1, SNGI
+        SWEIGH( SGI ) = 1.0
+    END DO
+
+    DEALLOCATE( XIGP )
+    DEALLOCATE( XI )
+
+    ewrite(3,*) 'Leaving SFELIN'
+
+    RETURN
+  !
+END SUBROUTINE SFELIN
+
+SUBROUTINE SFEQUAD( SNGI, SNLOC, &
+                           ! - REALS
+    SN,   SNLX, &
+    SNLY, SWEIGH )
+    !     ---------------------------------
+    !
+    ! - this subroutine generates the FE volume shape
+    ! - functions and the associated derivatives and
+    ! - weights.
+    !
+    !   -------------------------------
+    ! - date last modified : 12/10/2002
+    !   -------------------------------
+    !
+    IMPLICIT NONE
+    !
+    INTEGER SNGI, SNLOC
+    !
+    REAL SN(SNLOC,SNGI),   SNLX(SNLOC,SNGI)
+    REAL SNLY(SNLOC,SNGI), SWEIGH(SNGI)
+    !
+    ! - local variables
+    !
+    INTEGER SILOC, SJLOC, SKLOC, ICOORD
+    !
+    INTEGER SGI, SGJ
+    !
+    ! - note that NCOORD is the number of co-ordinates,
+    ! - SBNLOC is the number of local nodes for a subcell
+    ! - and SBNGI is the number of local integration points.
+    !
+    INTEGER, PARAMETER :: NCOORD = 2, SBNLOC = 4, SBNGI = 1
+    REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIGP, ETAGP, &
+        XI, ETA
+    REAL, DIMENSION( : , : , : ), allocatable :: CORN
+
+    ewrite(3,*) 'In SFEQUAD'
+
+    ALLOCATE( POS( NCOORD ))
+    ALLOCATE( DPDXI( NCOORD ))
+    ALLOCATE( DPDETA( NCOORD ))
+    ALLOCATE( XIGP( SBNGI ))
+    ALLOCATE( ETAGP( SBNGI ))
+    ALLOCATE( XI( SBNLOC ))
+    ALLOCATE( ETA( SBNLOC ))
+    ALLOCATE( CORN( SNLOC, NCOORD, SBNLOC ))
+
+    !
+    ! - positions of the corners (vertices) of the subcells in area
+    ! - co-ordinates. Note that CORN(SJLOC,ICOORD,SKLOC). Note that
+    ! - SJLOC ranges from 1-4, and ICOORD ranges from 1-2 and SKLOC
+    ! - ranges from 1-4. SJLOC signifies the particular subcell
+    ! - ICOORD signifies the co-ordinate of the subcell (XI,ETA)
+    ! - and SKLOC signifies the vertex of the subcell (which are quad)
+    !
+    !
+    ! - subcell 1
+    !
+    CORN(1,1,1) = -1.0
+    CORN(1,2,1) = -1.0
+    !
+    CORN(1,1,2) =  0.0
+    CORN(1,2,2) = -1.0
+    !
+    CORN(1,1,3) = -1.0
+    CORN(1,2,3) =  0.0
+    !
+    CORN(1,1,4) =  0.0
+    CORN(1,2,4) =  0.0
+    !
+    ! - subcell 2
+    !
+    CORN(2,1,1) =  0.0
+    CORN(2,2,1) = -1.0
+    !
+    CORN(2,1,2) =  1.0
+    CORN(2,2,2) = -1.0
+    !
+    CORN(2,1,3) =  0.0
+    CORN(2,2,3) =  0.0
+    !
+    CORN(2,1,4) =  1.0
+    CORN(2,2,4) =  0.0
+    !
+    ! - subcell 3
+    !
+    CORN(3,1,1) = -1.0
+    CORN(3,2,1) =  0.0
+    !
+    CORN(3,1,2) =  0.0
+    CORN(3,2,2) =  0.0
+    !
+    CORN(3,1,3) = -1.0
+    CORN(3,2,3) =  1.0
+    !
+    CORN(3,1,4) =  0.0
+    CORN(3,2,4) =  1.0
+    !
+    ! - subcell 4
+    !
+    CORN(4,1,1) =  0.0
+    CORN(4,2,1) =  0.0
+    !
+    CORN(4,1,2) =  1.0
+    CORN(4,2,2) =  0.0
+    !
+    CORN(4,1,3) =  0.0
+    CORN(4,2,3) =  1.0
+    !
+    CORN(4,1,4) =  1.0
+    CORN(4,2,4) =  1.0
+    !
+    ! - define Gaussian integration points in (XIP,ETAP) space.
+    !
+    XIGP(1)   = 0.0
+    ETAGP(1)  = 0.0
+    !
+    ! - define positions of vertices of quadrilateral element in (XIP,ETAP) space.
+    !
+    XI(1)   = -1.0
+    ETA(1)  = -1.0
+    !
+    XI(2)   =  1.0
+    ETA(2)  = -1.0
+    !
+    XI(3)   = -1.0
+    ETA(3)  =  1.0
+    !
+    XI(4)   =  1.0
+    ETA(4)  =  1.0
+    !
+    ! - generate values of the FE basis functions at Gaussian integration points
+    !
+    Loop_SILOC: DO SILOC = 1, SNLOC
+
+        Loop_SJLOC: do SJLOC = 1, SNLOC
+
+            Loop_SGJ: DO SGJ = 1, SBNGI
+
+                SGI = SJLOC-1 + SGJ
+
+                Loop_ICOORD: DO ICOORD = 1, NCOORD
+
+                    POS(ICOORD)     = 0.0
+                    DPDXI(ICOORD)   = 0.0
+                    DPDETA(ICOORD)  = 0.0
+
+                    Loop_SKLOC: do SKLOC = 1, SBNLOC
+
+                        POS(ICOORD) = POS(ICOORD) &
+                            + CORN(SJLOC,ICOORD,SKLOC)&
+                            *0.25*(1.+XI(SKLOC)*XIGP(SGJ))&
+                            *(1.+ETA(SKLOC)*ETAGP(SGJ))
+
+                        DPDXI(ICOORD) = DPDXI(ICOORD) &
+                            + CORN(SJLOC,ICOORD,SKLOC)&
+                            *0.25*XI(SKLOC)&
+                            *(1.+ETA(SKLOC)*ETAGP(SGJ))
+
+                        DPDETA(ICOORD) = DPDETA(ICOORD) &
+                            + CORN(SJLOC,ICOORD,SKLOC)&
+                            *0.25*(1.+XI(SKLOC)*XIGP(SGJ))&
+                            *ETA(SKLOC)
+
+                    END DO Loop_SKLOC
+
+                END DO Loop_ICOORD
+                !
+                SN(SILOC,SGI) = 0.25*( 1.0 + XI(SILOC)*POS(1) )&
+                    *( 1.0 + ETA(SILOC)*POS(2) )
+                !
+                SNLX(SILOC,SGI) = 0.25*XI(SILOC)*DPDXI(1)&
+                    *( 1.0 + ETA(SILOC)*POS(2) )&
+                    + 0.25*( 1.0 + XI(SILOC)*POS(1) )&
+                    *ETA(SILOC)*DPDXI(2)
+                !
+                SNLY(SILOC,SGI) = 0.25*XI(SILOC)*DPDETA(1)&
+                    *( 1.0 + ETA(SILOC)*POS(2) )&
+                    + 0.25*( 1.0 + XI(SILOC)*POS(1) )&
+                    *ETA(SILOC)*DPDETA(2)
+               !
+            END DO Loop_SGJ   ! sjloc
+           !
+        END DO Loop_SJLOC  ! sjloc
+       !
+    END DO Loop_SILOC  ! siloc
+
+    do SGI = 1, SNGI! Was loop
+        !
+        SWEIGH(SGI) = 4.0
+       !
+    END DO
+
+
+    DEALLOCATE( POS )
+    DEALLOCATE( DPDXI )
+    DEALLOCATE( DPDETA )
+    DEALLOCATE( XIGP )
+    DEALLOCATE( ETAGP )
+    DEALLOCATE( XI )
+    DEALLOCATE( ETA )
+    DEALLOCATE( CORN )
+
+    ewrite(3,*) 'Leaving SFEQUAD'
+
+
+    RETURN
+  !
+END SUBROUTINE SFEQUAD
+
+
+SUBROUTINE SFETRI( SNGI, SNLOC, &
+    SN,   SNLX, &
+    SNLY, SWEIGH )
+    !     ---------------------------------
+    !
+    ! - this subroutine generates the FE shape functions
+    ! - and the associated derivatives and weights for
+    ! - surface elements.
+    !
+    !   -------------------------------
+    ! - date last modified : 12/10/2002
+    !   -------------------------------
+    !
+    IMPLICIT NONE
+    !
+    INTEGER SNGI, SNLOC
+    !
+    REAL SN(SNLOC,SNGI),   SNLX(SNLOC,SNGI)
+    REAL SNLY(SNLOC,SNGI), SWEIGH(SNGI)
+    !
+    ! - local variables
+    !
+    INTEGER SILOC, SJLOC, SKLOC, ICOORD
+    !
+    INTEGER SGI, SGJ
+    !
+    ! - note that NCOORD is the number of co-ordinates,
+    ! - SBNLOC is the number of local nodes for a subcell
+    ! - and SBNGI is the number of local integration points.
+    !
+    !
+    INTEGER, PARAMETER :: NCOORD = 3, SBNLOC = 4, SBNGI = 1
+    REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIGP, ETAGP, &
+        XI, ETA
+    REAL, DIMENSION( : , : , : ), allocatable :: CORN
+
+    ewrite(3,*) 'In SFETRI'
+
+    ALLOCATE( POS( NCOORD ))
+    ALLOCATE( DPDXI( NCOORD ))
+    ALLOCATE( DPDETA( NCOORD ))
+    ALLOCATE( XIGP( SBNGI ))
+    ALLOCATE( ETAGP( SBNGI ))
+    ALLOCATE( XI( SBNLOC ))
+    ALLOCATE( ETA( SBNLOC ))
+    ALLOCATE( CORN( SNLOC, NCOORD, SBNLOC ))
+
+    !
+    ! - positions of the corners (vertices) of the subcells in area
+    ! - co-ordinates. Note that CORN(SJLOC,ICOORD,SKLOC). Note that
+    ! - SJLOC ranges from 1-3, and ICOORD ranges from 1-3 and SKLOC
+    ! - ranges from 1-4. SJLOC signifies the particular subcell
+    ! - SJLOC signifies the co-ordinate of the subcell (L1,L2,L3)
+    ! - and SKLOC signifies the vertex of the subcell (which are quads)
+    !
+    !
+    ! - subcell 1
+    !
+    CORN(1,1,1) = 1.0
+    CORN(1,2,1) = 0.0
+    CORN(1,3,1) = 0.0
+    !
+    CORN(1,1,2) = 0.5
+    CORN(1,2,2) = 0.5
+    CORN(1,3,2) = 0.0
+    !
+    CORN(1,1,3) = 0.5
+    CORN(1,2,3) = 0.0
+    CORN(1,3,3) = 0.5
+    !
+    CORN(1,1,4) = 0.33333333
+    CORN(1,2,4) = 0.33333333
+    CORN(1,3,4) = 0.33333333
+    !
+    ! - subcell 2
+    !
+    CORN(2,1,1) = 0.5
+    CORN(2,2,1) = 0.5
+    CORN(2,3,1) = 0.0
+    !
+    CORN(2,1,2) = 0.0
+    CORN(2,2,2) = 1.0
+    CORN(2,3,2) = 0.0
+    !
+    CORN(2,1,3) = 0.33333333
+    CORN(2,2,3) = 0.33333333
+    CORN(2,3,3) = 0.33333333
+    !
+    CORN(2,1,4) = 0.0
+    CORN(2,2,4) = 0.5
+    CORN(2,3,4) = 0.5
+    !
+    ! - subcell 3
+    !
+    CORN(3,1,1) = 0.5
+    CORN(3,2,1) = 0.0
+    CORN(3,3,1) = 0.5
+    !
+    CORN(3,1,2) = 0.33333333
+    CORN(3,2,2) = 0.33333333
+    CORN(3,3,2) = 0.33333333
+    !
+    CORN(3,1,3) = 0.0
+    CORN(3,2,3) = 0.0
+    CORN(3,3,3) = 1.0
+    !
+    CORN(3,1,4) = 0.0
+    CORN(3,2,4) = 0.5
+    CORN(3,3,4) = 0.5
+    !
+    ! - define Gaussian integration points in (XI,ETA) space.
+    !
+    XIGP(1)  =  0.0
+    ETAGP(1) =  0.0
+    !
+    ! - define postions of quadrilateral element in (XI,ETA) space.
+    !
+    XI(1)  = -1.0
+    ETA(1) = -1.0
+    !
+    XI(2)  =  1.0
+    ETA(2) = -1.0
+    !
+    XI(3)  = -1.0
+    ETA(3) =  1.0
+    !
+    XI(4)  =  1.0
+    ETA(4) =  1.0
+    !
+    ! - generate values of FE basis functions at Gaussian integration points
+    !
+    Loop_SNLOCI: DO SILOC = 1, SNLOC
+
+        Loop_SNLOCJ: DO SJLOC = 1, SNLOC
+
+            Loop_SG: DO SGJ = 1, SBNGI
+                !
+                SGI = SJLOC-1 + SGJ
+                !
+                Loop_COORD: DO ICOORD = 1, NCOORD
+                    !
+                    POS(ICOORD)     = 0.0
+                    DPDXI(ICOORD)   = 0.0
+                    DPDETA(ICOORD)  = 0.0
+                    !
+                    Loop_SNLOCK: DO SKLOC = 1, SBNLOC
+                        !
+                        POS(ICOORD) = POS(ICOORD) &
+                            + CORN(SJLOC,ICOORD,SKLOC)*&
+                            0.25*(1.+XI(SKLOC)*XIGP(SGJ))&
+                            *(1.+ETA(SKLOC)*ETAGP(SGJ))
+
+
+                        DPDXI(ICOORD) = DPDXI(ICOORD) &
+                            + CORN(SJLOC,ICOORD,SKLOC)&
+                            *0.25*XI(SKLOC)&
+                            *(1.+ETA(SKLOC)*ETAGP(SGJ))
+
+                        DPDETA(ICOORD) = DPDETA(ICOORD) &
+                            + CORN(SJLOC,ICOORD,SKLOC)&
+                            *0.25*(1.+XI(SKLOC)*XIGP(SGJ))&
+                            *ETA(SKLOC)
+
+                    END DO Loop_SNLOCK
+
+                END DO Loop_COORD
+
+                SN(SILOC,SGI)   = POS(SILOC)
+
+                SNLX(SILOC,SGI) = DPDXI(SILOC)
+
+                SNLY(SILOC,SGI) = DPDETA(SILOC)
+
+            END DO Loop_SG
+           !
+        END DO Loop_SNLOCJ
+       !
+    END DO Loop_SNLOCI
+    !
+    do SGI = 1, SNGI
+        !
+        SWEIGH(SGI) = 4.0
+       !
+    END DO
+
+    DEALLOCATE( POS )
+    DEALLOCATE( DPDXI )
+    DEALLOCATE( DPDETA )
+    DEALLOCATE( XIGP )
+    DEALLOCATE( ETAGP )
+    DEALLOCATE( XI )
+    DEALLOCATE( ETA )
+    DEALLOCATE( CORN )
+
+    ewrite(3,*) 'Leaving SFETRI'
+
+    RETURN
+  !
+END SUBROUTINE SFETRI
+
+
+SUBROUTINE SFEQLIN( SNGI, SNLOC, SN, SNLX, SWEIGH )
+    !     ---------------------------------------------------
+    !
+    ! - this subroutine generates the FE surface
+    ! - shape functions and the associated derivatives
+    ! - and weights.
+    !
+    !   -------------------------------
+    ! - date last modified : 14/06/2003
+    !   -------------------------------
+    !
+    IMPLICIT NONE
+    !
+    INTEGER SNGI, SNLOC
+    !
+    REAL SN(SNLOC,SNGI), SNLX(SNLOC,SNGI)
+    !
+    REAL SWEIGH(SNGI)
+    !
+    ! - local variables
+    !
+    INTEGER SIFACE, SILOC, SJLOC
+    INTEGER SGI,    SGJ
+    !
+    ! - note that SNFACE is the number of surfaces internal to
+    ! - a surface element.
+    !
+    INTEGER SNFACE, SFNGI, SFNLOC
+    !
+    PARAMETER( SNFACE = 3, SFNGI = 2, SFNLOC = 2 )
+    !
+    REAL POS, DPDXI, XI
+    REAL DLIJXIDXI(3), LIJXI(3)
+    REAL XIP(SFNLOC),  XIPGP(SFNGI)
+    REAL CORN(SNFACE,SFNLOC)
+
+    ewrite(3,*) 'In SFEQLIN'
+    !
+    ! - face 1
+    !
+    CORN(1,1) = -1.0
+    CORN(1,2) = -0.5
+    !
+    ! - face 2
+    !
+    CORN(2,1) = -0.5
+    CORN(2,2) =  0.5
+    !
+    ! - face 3
+    !
+    CORN(3,1) =  0.5
+    CORN(3,2) =  1.0
+    !
+    ! - positions of Gauss points associated with SCVs in ETAP space
+    !
+    XIPGP(1) = -1./SQRT(3.0)
+    XIPGP(2) =  1./SQRT(3.0)
+    !
+    ! - define positions of line element assciated with a SCV
+    ! - in XIP space.
+    !
+    XIP(1) = -1.0
+    XIP(2) =  1.0
+    !
+    ! - generate values of the FE basis functions at the quadrature
+    ! - points on the faces of the subcells.
+    !
+    do SIFACE = 1, SNFACE
+        !
+        do SGJ = 1, SFNGI
+            !
+            SGI = (SIFACE-1)*SFNGI+SGJ
+            !
+            POS   = 0.0
+            DPDXI = 0.0
+            !
+            do SJLOC = 1, SFNLOC
+
+                POS   = POS &
+                    + CORN(SIFACE,SJLOC)&
+                    *0.5*(1.+XIP(SJLOC)*XIPGP(SGJ))
+
+                DPDXI = DPDXI&
+                    + CORN(SIFACE,SJLOC)*0.5*XIP(SJLOC)
+
+            END DO
+
+            XI = POS
+
+            LIJXI(1)   =  0.5*XI*(XI-1.0)
+            LIJXI(2)   =  1.0-XI*XI
+            LIJXI(3)   =  0.5*XI*(XI+1.0)
+
+            DLIJXIDXI(1) =  0.5*(2.0*XI-1.0)*DPDXI
+            DLIJXIDXI(2) = -2.0*XI*DPDXI
+            DLIJXIDXI(3) =  0.5*(2.0*XI+1.0)*DPDXI
+
+            do SILOC = 1, SNLOC! Was loop 
+
+                SN(SILOC,SGI)   = LIJXI(SILOC)
+
+                SNLX(SILOC,SGI) = DLIJXIDXI(SILOC)
+
+            END DO
+
+        END DO
+
+    END DO
+    !
+    ! - set the weights for the surface integration
+    !
+    do SGI = 1, SNGI! Was loop
+        !
+        SWEIGH(SGI) = 1.0
+       !
+    END DO
+
+    ewrite(3,*) 'Leaving SFEQLIN'
+
+    RETURN
+  !
+END SUBROUTINE SFEQLIN
+
+SUBROUTINE SFEQQUAD( SNGI, SNLOC, &
+                           ! - REALS
+    SN,   SNLX, &
+    SNLY, SWEIGH )
+    !     -----------------------------------
+    !
+    ! - this subroutine generates the FE surface shape
+    ! - functions and the associated derivatives and
+    ! - weights.
+    !
+    !   -------------------------------
+    ! - date last modified : 12/10/2002
+    !   -------------------------------
+    !
+    IMPLICIT NONE
+    !
+    INTEGER SNGI, SNLOC
+    !
+    REAL SN(SNLOC,SNGI),   SNLX(SNLOC,SNGI)
+    REAL SNLY(SNLOC,SNGI), SWEIGH(SNGI)
+    !
+    ! - local variables
+    !
+    INTEGER SILOC, SJLOC, SKLOC, ICOORD
+    !
+    INTEGER SGI, SGJ
+    !
+    ! - note that NCOORD is the number of co-ordinates,
+    ! - SBNLOC is the number of local nodes for a subcell
+    ! - and SBNGI is the number of local integration points.
+    !
+    INTEGER, PARAMETER :: NCOORD = 2, SBNLOC = 4, SBNGI = 4,  NSCV = 9, THREE = 3
+    REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIGP, ETAGP, XIP, ETAP, &
+        LIJXI, LIJETA, DLIJXIDXI, DLIJXIDETA, DLIJETADXI, DLIJETADETA
+    REAL, DIMENSION( : , : , : ), allocatable :: CORN
+    REAL :: XI, ETA
+    INTEGER ::  I, J
+
+    ewrite(3,*) 'In SFEQQUAD'
+
+    ALLOCATE( POS( NCOORD ))
+    ALLOCATE( DPDXI( NCOORD ))
+    ALLOCATE( DPDETA( NCOORD ))
+    ALLOCATE( XIGP( SBNGI ))
+    ALLOCATE( ETAGP( SBNGI ))
+    ALLOCATE( XIP( SBNLOC ))
+    ALLOCATE( ETAP( SBNLOC ))
+    ALLOCATE( CORN( NSCV, NCOORD, SBNLOC ))
+    ALLOCATE( LIJXI( THREE )) ! for derivatives wrt the second parametric space.
+    ALLOCATE( LIJETA( THREE ))
+    ALLOCATE( DLIJXIDXI( THREE ))
+    ALLOCATE( DLIJXIDETA( THREE ))
+    ALLOCATE( DLIJETADXI( THREE ))
+    ALLOCATE( DLIJETADETA( THREE ))
+
+    !
+    !
+    ! - positions of the corners (vertices) of the subcells in area
+    ! - co-ordinates. Note that CORN(JLOC,ICOORD,KLOC). Note that
+    ! - JLOC ranges from 1-9, and ICOORD ranges from 1-2 and KLOC
+    ! - ranges from 1-4. JLOC signifies the particular subcell
+    ! - ICOORD signifies the co-ordinate of the subcell (XI,ETA)
+    ! - and KLOC signifies the vertex of the subcell (which are quad)
+    !
+    !
+    ! - subcell 1
+    !
+    CORN(1,1,1) = -1.0
+    CORN(1,2,1) = -1.0
+    !
+    CORN(1,1,2) = -0.5
+    CORN(1,2,2) = -1.0
+    !
+    CORN(1,1,3) = -1.0
+    CORN(1,2,3) = -0.5
+    !
+    CORN(1,1,4) = -0.5
+    CORN(1,2,4) = -0.5
+    !
+    ! - subcell 2
+    !
+    CORN(2,1,1) = -0.5
+    CORN(2,2,1) = -1.0
+    !
+    CORN(2,1,2) =  0.5
+    CORN(2,2,2) = -1.0
+    !
+    CORN(2,1,3) = -0.5
+    CORN(2,2,3) = -0.5
+    !
+    CORN(2,1,4) =  0.5
+    CORN(2,2,4) = -0.5
+    !
+    ! - subcell 3
+    !
+    CORN(3,1,1) =  0.5
+    CORN(3,2,1) = -1.0
+    !
+    CORN(3,1,2) =  1.0
+    CORN(3,2,2) = -1.0
+    !
+    CORN(3,1,3) =  0.5
+    CORN(3,2,3) = -0.5
+    !
+    CORN(3,1,4) =  1.0
+    CORN(3,2,4) = -0.5
+    !
+    ! - subcell 4
+    !
+    CORN(4,1,1) = -1.0
+    CORN(4,2,1) = -0.5
+    !
+    CORN(4,1,2) = -0.5
+    CORN(4,2,2) = -0.5
+    !
+    CORN(4,1,3) = -1.0
+    CORN(4,2,3) =  0.5
+    !
+    CORN(4,1,4) = -0.5
+    CORN(4,2,4) =  0.5
+    !
+    ! - subcell 5
+    !
+    CORN(5,1,1) = -0.5
+    CORN(5,2,1) = -0.5
+    !
+    CORN(5,1,2) =  0.5
+    CORN(5,2,2) = -0.5
+    !
+    CORN(5,1,3) = -0.5
+    CORN(5,2,3) =  0.5
+    !
+    CORN(5,1,4) =  0.5
+    CORN(5,2,4) =  0.5
+    !
+    ! - subcell 6
+    !
+    CORN(6,1,1) =  0.5
+    CORN(6,2,1) = -0.5
+    !
+    CORN(6,1,2) =  1.0
+    CORN(6,2,2) = -0.5
+    !
+    CORN(6,1,3) =  0.5
+    CORN(6,2,3) =  0.5
+    !
+    CORN(6,1,4) =  1.0
+    CORN(6,2,4) =  0.5
+    !
+    ! - subcell 7
+    !
+    CORN(7,1,1) = -1.0
+    CORN(7,2,1) =  0.5
+    !
+    CORN(7,1,2) = -0.5
+    CORN(7,2,2) =  0.5
+    !
+    CORN(7,1,3) = -1.0
+    CORN(7,2,3) =  1.0
+    !
+    CORN(7,1,4) = -0.5
+    CORN(7,2,4) =  1.0
+    !
+    ! - subcell 8
+    !
+    CORN(8,1,1) = -0.5
+    CORN(8,2,1) =  0.5
+    !
+    CORN(8,1,2) =  0.5
+    CORN(8,2,2) =  0.5
+    !
+    CORN(8,1,3) = -0.5
+    CORN(8,2,3) =  1.0
+    !
+    CORN(8,1,4) =  0.5
+    CORN(8,2,4) =  1.0
+    !
+    ! - subcell 9
+    !
+    CORN(9,1,1) =  0.5
+    CORN(9,2,1) =  0.5
+    !
+    CORN(9,1,2) =  1.0
+    CORN(9,2,2) =  0.5
+    !
+    CORN(9,1,3) =  0.5
+    CORN(9,2,3) =  1.0
+    !
+    CORN(9,1,4) =  1.0
+    CORN(9,2,4) =  1.0
+    !
+    ! - define Gaussian integration points in (XIP,ETAP) space.
+    !
+    XIGP(1)   = -1/SQRT(3.0)
+    ETAGP(1)  = -1/SQRT(3.0)
+    !
+    XIGP(2)   =  1/SQRT(3.0)
+    ETAGP(2)  = -1/SQRT(3.0)
+    !
+    XIGP(3)   = -1/SQRT(3.0)
+    ETAGP(3)  =  1/SQRT(3.0)
+    !
+    XIGP(4)   =  1/SQRT(3.0)
+    ETAGP(4)  =  1/SQRT(3.0)
+    !
+    ! - define positions of vertices of quadrilateral element in (XIP,ETAP) space.
+    !
+    XIP(1)   = -1.0
+    ETAP(1)  = -1.0
+    !
+    XIP(2)   =  1.0
+    ETAP(2)  = -1.0
+    !
+    XIP(3)   = -1.0
+    ETAP(3)  =  1.0
+    !
+    XIP(4)   =  1.0
+    ETAP(4)  =  1.0
+    !
+    ! - generate values of the FE basis functions at Gaussian integration points
+    !
+    do SJLOC = 1, NSCV! Was loop
+        !
+        do SGJ = 1, SBNGI! Was loop
+            !
+            SGI = (SJLOC-1)*SBNLOC+SGJ
+            !
+            do ICOORD = 1, NCOORD! Was loop 
+                !
+                POS(ICOORD)     = 0.0
+                DPDXI(ICOORD)   = 0.0
+                DPDETA(ICOORD)  = 0.0
+                !
+                do SKLOC = 1, SBNLOC! Was loop
+                    !
+                    POS(ICOORD) = POS(ICOORD) &
+                        + CORN(SJLOC,ICOORD,SKLOC)&
+                        *0.25*(1.+XIP(SKLOC)*XIGP(SGJ))&
+                        *(1.+ETAP(SKLOC)*ETAGP(SGJ))
+                    !
+                    DPDXI(ICOORD) = DPDXI(ICOORD) &
+                        + CORN(SJLOC,ICOORD,SKLOC)&
+                        *0.25*XIP(SKLOC)&
+                        *(1.+ETAP(SKLOC)*ETAGP(SGJ))
+                    !
+                    DPDETA(ICOORD) = DPDETA(ICOORD) &
+                        + CORN(SJLOC,ICOORD,SKLOC)&
+                        *0.25*(1.+XIP(SKLOC)*XIGP(SGJ))&
+                        *ETAP(SKLOC)
+                   !
+                END DO
+               !
+            END DO
+            !
+            XI  = POS(1)
+            ETA = POS(2)
+            !
+            LIJXI(1)   =  0.5*XI*(XI-1.0)
+            LIJXI(2)   =  1.0-XI*XI
+            LIJXI(3)   =  0.5*XI*(XI+1.0)
+            !
+            LIJETA(1)  =  0.5*ETA*(ETA-1.0)
+            LIJETA(2)  =  1.0-ETA*ETA
+            LIJETA(3)  =  0.5*ETA*(ETA+1.0)
+            !
+            DLIJXIDXI(1) =  0.5*(2.0*XI-1.0)*DPDXI(1)
+            DLIJXIDXI(2) = -2.0*XI*DPDXI(1)
+            DLIJXIDXI(3) =  0.5*(2.0*XI+1.0)*DPDXI(1)
+            !
+            DLIJXIDETA(1) =  0.5*(2.0*XI-1.0)*DPDETA(1)
+            DLIJXIDETA(2) = -2.0*XI*DPDETA(1)
+            DLIJXIDETA(3) =  0.5*(2.0*XI+1.0)*DPDETA(1)
+            !
+            DLIJETADXI(1) =  0.5*(2.0*ETA-1.0)*DPDXI(2)
+            DLIJETADXI(2) = -2.0*ETA*DPDXI(2)
+            DLIJETADXI(3) =  0.5*(2.0*ETA+1.0)*DPDXI(2)
+            !           
+            DLIJETADETA(1) =  0.5*(2.0*ETA-1.0)*DPDETA(2)
+            DLIJETADETA(2) = -2.0*ETA*DPDETA(2)
+            DLIJETADETA(3) =  0.5*(2.0*ETA+1.0)*DPDETA(2)
+            !
+            do I = 1, 3! Was loop 
+                !
+                do J = 1, 3! Was loop
+                    !
+                    SILOC = I+(J-1)*3
+                    !
+                    SN(SILOC,SGI)   = LIJXI(I)*LIJETA(J)
+                    !
+                    SNLX(SILOC,SGI) = LIJXI(I)*DLIJETADXI(J)&
+                        + DLIJXIDXI(I)*LIJETA(J)
+                    !
+                    SNLY(SILOC,SGI) = LIJXI(I)*DLIJETADETA(J)&
+                        + DLIJXIDETA(I)*LIJETA(J)
+                   !
+                END DO
+               !
+            END DO
+           !
+        END DO
+       !
+    END DO
+    !
+    do SGI = 1, SNGI! Was loop
+        !
+        SWEIGH(SGI) = 1.0
+       !
+    END DO
+
+    DEALLOCATE( POS )
+    DEALLOCATE( DPDXI )
+    DEALLOCATE( DPDETA )
+    DEALLOCATE( XIGP )
+    DEALLOCATE( ETAGP )
+    DEALLOCATE( XIP )
+    DEALLOCATE( ETAP )
+    DEALLOCATE( CORN )
+    DEALLOCATE( LIJXI ) ! for derivatives wrt the second parametric space.
+    DEALLOCATE( LIJETA )
+    DEALLOCATE( DLIJXIDXI )
+    DEALLOCATE( DLIJXIDETA )
+    DEALLOCATE( DLIJETADXI )
+    DEALLOCATE( DLIJETADETA )
+
+    ewrite(3,*) 'Leaving SFEQQUAD'
+
+    RETURN
+  !
+END SUBROUTINE SFEQQUAD
+
+
+
+
+SUBROUTINE SFEQTRI( SNGI,   SNLOC, &
+                           ! - REALS
+    SN,     SNLX, &
+    SNLY,   SWEIGH )
+    !     ------------------------------------
+    !
+    ! - this subroutine generates the FE surface shape
+    ! - functions and the associated derivatives and
+    ! - weights.
+    !
+    !   -------------------------------
+    ! - date last modified : 12/10/2002
+    !   -------------------------------
+    !
+    IMPLICIT NONE
+    !
+    INTEGER SNGI, SNLOC
+    !
+    REAL SN(SNLOC,SNGI),   SNLX(SNLOC,SNGI)
+    REAL SNLY(SNLOC,SNGI), SWEIGH(SNGI)
+    !
+    ! - local variables
+    !
+    INTEGER  SJLOC, SKLOC, ICOORD
+    !
+    INTEGER SGI, SGJ
+    !
+    ! - note that NCOORD is the number of co-ordinates,
+    ! - SBNLOC is the number of local nodes for a subcell
+    ! - and SBNGI is the number of local integration points.
+    !
+    INTEGER, PARAMETER :: NCOORD = 3, SBNLOC = 4, SBNGI = 4,  NSCV = 9, THREE = 3
+    REAL, DIMENSION( : ), allocatable :: POS, DPDXI, DPDETA, XIPGP, ETAPGP, XIP, ETAP
+    REAL, DIMENSION( : , : , : ), allocatable :: CORN
+    REAL ::  L1, L2, L3
+
+    ewrite(3,*) 'In SFEQTRI'
+
+    ALLOCATE( POS( NCOORD ))
+    ALLOCATE( DPDXI( NCOORD ))
+    ALLOCATE( DPDETA( NCOORD ))
+    ALLOCATE( XIPGP( SBNGI ))
+    ALLOCATE( ETAPGP( SBNGI ))
+    ALLOCATE( CORN( NSCV, NCOORD, SBNLOC ))
+    ALLOCATE( XIP( SBNLOC ))
+    ALLOCATE( ETAP( SBNLOC ))
+    !
+    ! - positions of the corners (vertices) of the subcells in area
+    ! - co-ordinates. Note that CORN(JLOC,ICOORD,KLOC). Note that
+    ! - JLOC ranges from 1-9, and ICOORD ranges from 1-3 and KLOC
+    ! - ranges from 1-4. JLOC signifies the particular subcell
+    ! - JLOC signifies the co-ordinate of the subcell (L1,L2,L3)
+    ! - and KLOC signifies the vertex of the subcell (which are quads)
+    !
+    ! - Note that for quadratic triangles the mid-side nodes
+    ! - produce pentagonal shaped CVs these are broken into
+    ! - two quadrilateral shaped CVs. Thus there are a total
+    ! - of 9 quadrilateral shaped SCVs. But really there are
+    ! - only the six SCVs with three SCVs split into two.
+    !
+    ! - subcell 1
+    !
+    CORN(1,1,1) = 1.0
+    CORN(1,2,1) = 0.0
+    CORN(1,3,1) = 0.0
+    !
+    CORN(1,1,2) = 0.75
+    CORN(1,2,2) = 0.25
+    CORN(1,3,2) = 0.0
+    !
+    CORN(1,1,3) = 0.75
+    CORN(1,2,3) = 0.0
+    CORN(1,3,3) = 0.25
+    !
+    CORN(1,1,4) = 0.66666666
+    CORN(1,2,4) = 0.16666666
+    CORN(1,3,4) = 0.16666666
+    !
+    ! - subcell 2
+    !
+    CORN(2,1,1) = 0.75
+    CORN(2,2,1) = 0.25
+    CORN(2,3,1) = 0.0
+    !
+    CORN(2,1,2) = 0.5
+    CORN(2,2,2) = 0.5
+    CORN(2,3,2) = 0.0
+    !
+    CORN(2,1,3) = 0.66666666
+    CORN(2,2,3) = 0.16666666
+    CORN(2,3,3) = 0.16666666
+    !
+    CORN(2,1,4) = 0.33333333
+    CORN(2,2,4) = 0.33333333
+    CORN(2,3,4) = 0.33333333
+    !
+    ! - subcell 3
+    !
+    CORN(3,1,1) = 0.5
+    CORN(3,2,1) = 0.5
+    CORN(3,3,1) = 0.0
+    !
+    CORN(3,1,2) = 0.25
+    CORN(3,2,2) = 0.75
+    CORN(3,3,2) = 0.0
+    !
+    CORN(3,1,3) = 0.33333333
+    CORN(3,2,3) = 0.33333333
+    CORN(3,3,3) = 0.33333333
+    !
+    CORN(3,1,4) = 0.16666666
+    CORN(3,2,4) = 0.66666666
+    CORN(3,3,4) = 0.16666666
+    !
+    ! - subcell 4
+    !
+    CORN(4,1,1) = 0.25
+    CORN(4,2,1) = 0.75
+    CORN(4,3,1) = 0.0
+    !
+    CORN(4,1,2) = 0.0
+    CORN(4,2,2) = 1.0
+    CORN(4,3,2) = 0.0
+    !
+    CORN(4,1,3) = 0.16666666
+    CORN(4,2,3) = 0.66666666
+    CORN(4,3,3) = 0.16666666
+    !
+    CORN(4,1,4) = 0.0
+    CORN(4,2,4) = 0.75
+    CORN(4,3,4) = 0.25
+    !
+    ! - subcell 5
+    !
+    CORN(5,1,1) = 0.16666666
+    CORN(5,2,1) = 0.66666666
+    CORN(5,3,1) = 0.16666666
+    !
+    CORN(5,1,2) = 0.0
+    CORN(5,2,2) = 0.75
+    CORN(5,3,2) = 0.25
+    !
+    CORN(5,1,3) = 0.33333333
+    CORN(5,2,3) = 0.33333333
+    CORN(5,3,3) = 0.33333333
+    !
+    CORN(5,1,4) = 0.0
+    CORN(5,2,4) = 0.5
+    CORN(5,3,4) = 0.5
+    !
+    ! - subcell 6
+    !
+    CORN(6,1,1) = 0.33333333
+    CORN(6,2,1) = 0.33333333
+    CORN(6,3,1) = 0.33333333
+    !
+    CORN(6,1,2) = 0.0
+    CORN(6,2,2) = 0.5
+    CORN(6,3,2) = 0.5
+    !
+    CORN(6,1,3) = 0.16666666
+    CORN(6,2,3) = 0.16666666
+    CORN(6,3,3) = 0.66666666
+    !
+    CORN(6,1,4) = 0.0
+    CORN(6,2,4) = 0.25
+    CORN(6,3,4) = 0.75
+    !
+    ! - subcell 7
+    !
+    CORN(7,1,1) = 0.16666666
+    CORN(7,2,1) = 0.16666666
+    CORN(7,3,1) = 0.66666666
+    !
+    CORN(7,1,2) = 0.0
+    CORN(7,2,2) = 0.25
+    CORN(7,3,2) = 0.75
+    !
+    CORN(7,1,3) = 0.25
+    CORN(7,2,3) = 0.0
+    CORN(7,3,3) = 0.75
+    !
+    CORN(7,1,4) = 0.0
+    CORN(7,2,4) = 0.0
+    CORN(7,3,4) = 1.0
+    !
+    ! - subcell 8
+    !
+    CORN(8,1,1) = 0.5
+    CORN(8,2,1) = 0.0
+    CORN(8,3,1) = 0.5
+    !
+    CORN(8,1,2) = 0.33333333
+    CORN(8,2,2) = 0.33333333
+    CORN(8,3,2) = 0.33333333
+    !
+    CORN(8,1,3) = 0.25
+    CORN(8,2,3) = 0.0
+    CORN(8,3,3) = 0.75
+    !
+    CORN(8,1,4) = 0.16666666
+    CORN(8,2,4) = 0.16666666
+    CORN(8,3,4) = 0.66666666
+    !
+    ! - subcell 9
+    !
+    CORN(9,1,1) = 0.75
+    CORN(9,2,1) = 0.0
+    CORN(9,3,1) = 0.25
+    !
+    CORN(9,1,2) = 0.66666666
+    CORN(9,2,2) = 0.16666666
+    CORN(9,3,2) = 0.16666666
+    !
+    CORN(9,1,3) = 0.5
+    CORN(9,2,3) = 0.0
+    CORN(9,3,3) = 0.5
+    !
+    CORN(9,1,4) = 0.33333333
+    CORN(9,2,4) = 0.33333333
+    CORN(9,3,4) = 0.33333333
+    !
+    ! - define Gaussian integration points in (XIP,ETAP) space.
+    !
+    XIPGP(1)  = -1./SQRT(3.0)
+    ETAPGP(1) = -1./SQRT(3.0)
+    !
+    XIPGP(2)  =  1./SQRT(3.0)
+    ETAPGP(2) = -1./SQRT(3.0)
+    !
+    XIPGP(3)  = -1./SQRT(3.0)
+    ETAPGP(3) =  1./SQRT(3.0)
+    !
+    XIPGP(4)  =  1./SQRT(3.0)
+    ETAPGP(4) =  1./SQRT(3.0)
+    !
+    ! - define postions of quadrilateral element in (XIP,ETAP) space.
+    !
+    XIP(1)  = -1.0
+    ETAP(1) = -1.0
+    !
+    XIP(2)  =  1.0
+    ETAP(2) = -1.0
+    !
+    XIP(3)  = -1.0
+    ETAP(3) =  1.0
+    !
+    XIP(4)  =  1.0
+    ETAP(4) =  1.0
+    !
+    ! - generate values of FE basis function at Gaussian integration
+    ! - points.
+    !
+    do SJLOC = 1, NSCV! Was loop
+        !
+        do SGJ = 1, SBNGI! Was loop
+            !
+            SGI = (SJLOC-1)*SBNLOC+SGJ
+            !
+            do ICOORD = 1, NCOORD! Was loop 
+                !
+                POS(ICOORD)     = 0.0
+                DPDXI(ICOORD)   = 0.0
+                DPDETA(ICOORD)  = 0.0
+                !
+                do SKLOC = 1, SBNLOC! Was loop
+                    !
+                    POS(ICOORD) = POS(ICOORD) &
+                        + CORN(SJLOC,ICOORD,SKLOC)*&
+                        0.25*(1.+XIP(SKLOC)*XIPGP(SGJ))&
+                        *(1.+ETAP(SKLOC)*ETAPGP(SGJ))
+                    !
+                    DPDXI(ICOORD) = DPDXI(ICOORD) &
+                        + CORN(SJLOC,ICOORD,SKLOC)&
+                        *0.25*XIP(SKLOC)&
+                        *(1.+ETAP(SKLOC)*ETAPGP(SGJ))
+                    !
+                    DPDETA(ICOORD) = DPDETA(ICOORD) &
+                        + CORN(SJLOC,ICOORD,SKLOC)&
+                        *0.25*(1.+XIP(SKLOC)*XIPGP(SGJ))&
+                        *ETAP(SKLOC)
+                   !
+                END DO
+               !
+            END DO
+            !
+            L1 = POS(1)
+            L2 = POS(2)
+            L3 = POS(3)
+            !
+            SN(1,SGI) = (2.0*L1-1.0)*L1
+            SN(2,SGI) =  4.0*L1*L2
+            SN(3,SGI) = (2.0*L2-1.0)*L2
+            SN(4,SGI) =  4.0*L2*L3
+            SN(5,SGI) = (2.0*L3-1.0)*L3
+            SN(6,SGI) =  4.0*L1*L3
+            !
+            SNLX(1,SGI) = (4.0*L1-1.0)*DPDXI(1)
+            SNLX(2,SGI) =  4.0*DPDXI(1)*L2 + 4.0*L1*DPDXI(2)
+            SNLX(3,SGI) = (4.0*L2-1.0)*DPDXI(2)
+            SNLX(4,SGI) =  4.0*DPDXI(2)*L3 + 4.0*L2*DPDXI(3)
+            SNLX(5,SGI) = (4.0*L3-1.0)*DPDXI(3)
+            SNLX(6,SGI) =  4.0*DPDXI(1)*L3 + 4.0*L1*DPDXI(3)
+            !
+            SNLY(1,SGI) = (4.0*L1-1.0)*DPDETA(1)
+            SNLY(2,SGI) =  4.0*DPDETA(1)*L2 + 4.0*L1*DPDETA(2)
+            SNLY(3,SGI) = (4.0*L2-1.0)*DPDETA(2)
+            SNLY(4,SGI) =  4.0*DPDETA(2)*L3 + 4.0*L2*DPDETA(3)
+            SNLY(5,SGI) = (4.0*L3-1.0)*DPDETA(3)
+            SNLY(6,SGI) =  4.0*DPDETA(1)*L3 + 4.0*L1*DPDETA(3)
+           !
+        END DO
+       !
+    END DO
+    !
+    do SGI = 1, SNGI! Was loop
+        !
+        SWEIGH(SGI) = 1.0
+       !
+    END DO
+
+    DEALLOCATE( POS )
+    DEALLOCATE( DPDXI )
+    DEALLOCATE( DPDETA )
+    DEALLOCATE( XIPGP )
+    DEALLOCATE( ETAPGP )
+    DEALLOCATE( CORN )
+    DEALLOCATE( XIP )
+    DEALLOCATE( ETAP )
+
+    ewrite(3,*) 'Leaving SFEQTRI'
+
+    RETURN
+  !
+END SUBROUTINE SFEQTRI
+!
+
 !!!
 !!!   SHAPESV AND RELATED SUBRTS & FUNCTIONS
 !!!
