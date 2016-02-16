@@ -2270,6 +2270,7 @@ contains
                     deallocate(vfield%val)
                     vfield%val=>tfield%val(icomp:icomp,:,:)
                     vfield%wrapped=.true.
+                    vfield%field_type=FIELD_TYPE_NORMAL
                     call insert(mcstate(icomp),vfield,vfield%name)
                     call deallocate(vfield)
                 END do

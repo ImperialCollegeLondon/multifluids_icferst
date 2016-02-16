@@ -28,8 +28,8 @@ os.system(binpath + ' ' + path + '/BL_fast.mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.019
-Tolerance_L2_NORM = 0.0012
+Tolerance_L1_NORM = 0.0183
+Tolerance_L2_NORM = 0.001125
 
 AutomaticLine = 0
 
@@ -245,7 +245,9 @@ if (showPlot):
         x.append(float(detector[i][0])+0.5)#In this test case the origin is in -0.5
         y.append(float(FS[i][0]))
     line = plt.Line2D(x, y, color='red', linewidth=2)
+    line2 = plt.Line2D(Analytical_X, Analytical_Y, color='blue', linewidth=2)
     #line.text.set_color('red')
     #line.text.set_fontsize(16)
     ax.add_line(line)
+    ax.add_line(line2)
     plt.show()
