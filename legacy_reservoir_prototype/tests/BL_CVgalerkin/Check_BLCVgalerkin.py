@@ -30,8 +30,8 @@ os.system(binpath + ' ' + path + '/BLCVgalerkin.mpml')
 #The present values are just above the values I got when writing the script.
 # The purpose of this test case in any event is not to serve as a BL precision test
 # but to make sure that CVgalerkin_interpolation is not crashing.
-Tolerance_L1_NORM = 0.03
-Tolerance_L2_NORM = 0.003
+Tolerance_L1_NORM = 0.0227
+Tolerance_L2_NORM = 0.00155
 
 AutomaticLine = 0
 
@@ -49,7 +49,7 @@ AutomaticFile = AutoFile
 AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = True
+showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'phase1::PhaseVolumeFraction'
@@ -234,9 +234,9 @@ if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
 #print L1_norm, L2_norm
 if (Passed): 
-    print 'BL works OK'
+    print 'BL with CV Galerkin Interpolation works OK'
 else:
-    print 'BL does NOT work'
+    print 'BL with CV Galerkin Interpolation does NOT work OK'
 
 
 if (showPlot):
@@ -259,4 +259,4 @@ if (showPlot):
         y2.append(float(Analytical_Y[i]))
     ax.add_line(plt.Line2D(x2, y2, color='blue', linewidth=2))
 
-    #plt.show()
+    plt.show()

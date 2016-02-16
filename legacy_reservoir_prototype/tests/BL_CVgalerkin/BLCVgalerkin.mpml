@@ -174,11 +174,6 @@
     </nonlinear_iterations>
   </timestepping>
   <caching/>
-  <physical_parameters>
-    <mobility>
-      <real_value rank="0">1</real_value>
-    </mobility>
-  </physical_parameters>
   <material_phase name="phase1">
     <equation_of_state>
       <incompressible>
@@ -718,7 +713,7 @@
             <value name="WholeMesh">
               <isotropic>
                 <constant>
-                  <real_value rank="0">10</real_value>
+                  <real_value rank="0">1</real_value>
                 </constant>
               </isotropic>
             </value>

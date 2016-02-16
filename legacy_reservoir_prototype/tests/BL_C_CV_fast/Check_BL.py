@@ -25,8 +25,8 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.0180
-Tolerance_L2_NORM = 0.0012
+Tolerance_L1_NORM = 0.0173
+Tolerance_L2_NORM = 0.00111
 
 AutomaticLine = 1
 
@@ -227,11 +227,11 @@ Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
-#print L1_norm, L2_norm
+print L1_norm, L2_norm
 if (Passed): 
-    print 'BL thicker works OK'
+    print 'BL control volume pressure works OK'
 else:
-    print 'BL thicker does NOT work'
+    print 'BL control volume pressure does NOT work'
 
 if (showPlot):
     fig, ax = plt.subplots()
@@ -241,7 +241,9 @@ if (showPlot):
         x.append(float(detector[i][0]))
         y.append(float(FS[i][0]))
     line = plt.Line2D(x, y, color='red', linewidth=2)
+    line2 = plt.Line2D(Analytical_X, Analytical_Y, color='blue', linewidth=2)
     #line.text.set_color('red')
     #line.text.set_fontsize(16)
     ax.add_line(line)
+    ax.add_line(line2)
     plt.show()

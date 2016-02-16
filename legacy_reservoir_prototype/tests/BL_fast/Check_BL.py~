@@ -21,33 +21,42 @@ print 'Running the model'
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
 os.system('rm -f ' + path+ '/*.vtu')
-os.system(binpath + ' ' + path + '/*mpml')
+os.system(binpath + ' ' + path + '/BL_fast.mpml')
 #THIS SCRIPT CHECKS THE SOLUTION OBTAINED USING IC-FERST USING P2DGP1DG AND 
 #A STRUCTURED MESH OF 30 ELEMENTS IN THE X-DIRECTION
 #IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.022
-Tolerance_L2_NORM = 0.0014
+Tolerance_L1_NORM = 0.0183
+Tolerance_L2_NORM = 0.001125
 
-AutomaticLine = 1
+AutomaticLine = 0
+
+#RETRIEVE AUTOMATICALLY THE LAST VTU FILE
+AutoNumber = 0
+for files in os.listdir(path):
+    if files.endswith(".vtu"):
+        pos = files.rfind('_')
+        pos2 = files.rfind('.')
+        AutoFile = files[:pos]
+        AutoNumber = max(AutoNumber, int(files[pos+1:pos2]))
 
 
-AutomaticFile = 'QuickTest_DG'
-AutomaticVTU_Number = 20
+AutomaticFile = AutoFile
+AutomaticVTU_Number = AutoNumber
 
 #Plot the results in 2d?
-showPlot = False
+showPlot = True
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
 data_name = 'phase1::PhaseVolumeFraction'
 
 #Initial and last coordinate of the probe
-x0 = 0.0
-x1 = 1.0
+x0 = -0.5
+x1 = 0.5
 
-y0 = 0.033333333333333333 # 1.0/float(NUMBER)
+y0 = 0.0 # 1.0/float(NUMBER)
 y1 = y0 #<==Temporary, it can handle different values
 
 z0 = 0.0
@@ -195,7 +204,8 @@ for i in range(len(Experimental_X)):
         L1_sum = L1_sum + abs(Analytical_Y[i] - Experimental_Y[i])
         L2_sum = L2_sum + (Analytical_Y[i] - Experimental_Y[i])**2
         continue
-    
+    Experimental_X[i] = Experimental_X[i] + 0.5#In this test case the origin is in -0.5
+
     position = Experimental_X[i]
 #    x = getAnalytical_interpolated( Analytical_X, Analytical_Y, position)
     x = f(position)
@@ -220,8 +230,24 @@ Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
-#print L1_norm, L2_norm
+print L1_norm, L2_norm
 if (Passed): 
     print 'BL works OK'
 else:
     print 'BL does NOT work'
+
+
+if (showPlot):
+    fig, ax = plt.subplots()
+    x = []
+    y = []
+    for i in range(len(detector)):
+        x.append(float(detector[i][0])+0.5)#In this test case the origin is in -0.5
+        y.append(float(FS[i][0]))
+    line = plt.Line2D(x, y, color='red', linewidth=2)
+    line2 = plt.Line2D(Analytical_X, Analytical_Y, color='blue', linewidth=2)
+    #line.text.set_color('red')
+    #line.text.set_fontsize(16)
+    ax.add_line(line)
+    ax.add_line(line2)
+    plt.show()

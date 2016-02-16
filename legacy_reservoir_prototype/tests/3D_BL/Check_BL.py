@@ -14,7 +14,7 @@ from scipy.interpolate import interp1d
 import os
 
 
-print 'Running the model'
+#print 'Running the model'
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
 os.system('rm -f ' + path+ '/*.vtu')
@@ -24,9 +24,8 @@ os.system(binpath + ' ' + path + '/*mpml')
 #IT COMPARES THE SOLUTION AGAINST AN ACTUAL ANALYTICAL SOLUTION
 
 #TOLERANCE OF THE CHECKING
-#The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.062
-Tolerance_L2_NORM = 0.0026
+Tolerance_L1_NORM = 0.05
+Tolerance_L2_NORM = 0.002
 
 AutomaticLine = 0
 
@@ -228,17 +227,18 @@ for i in range(len(Experimental_X)):
         
         
 L1_norm= L1_sum / len(Experimental_X) 
-L2_norm = L2_sum**0.5 / len(Experimental_X)    
-
+L2_norm = L2_sum**0.5 / len(Experimental_X) 
+  
 Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
 #print L1_norm, L2_norm
+
 if (Passed): 
-    print 'BL thicker works OK'
+    print '3D BL works OK'
 else:
-    print 'BL thicker does NOT work'
+    print '3D BL does NOT work'
 
 if (showPlot):
     fig, ax = plt.subplots()
@@ -250,7 +250,9 @@ if (showPlot):
         x.append(float(Experimental_X[i]))
         y.append(float(Experimental_Y[i]))
     line = plt.Line2D(x, y, color='red', linewidth=2)
+    line2 = plt.Line2D(Analytical_X, Analytical_Y, color='blue', linewidth=3)
     #line.text.set_color('red')
     #line.text.set_fontsize(16)
     ax.add_line(line)
+    ax.add_line(line2)
     plt.show()

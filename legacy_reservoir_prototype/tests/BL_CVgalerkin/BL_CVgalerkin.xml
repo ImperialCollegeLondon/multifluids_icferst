@@ -3,7 +3,7 @@
   <name>BL_CVgalerkin</name>
   <owner userid="alex.adam"/>
   <tags>porous mpml</tags>
-<!-- This test case checks: Porous media, CV galerkin projection, mesh adapt-->
+<!-- This test case checks: Porous media, CV galerkin interpolation/projection, mesh adaptivity-->
   <problem_definition length="short" nprocs="1">
     <command_line>
         python ./Check_BLCVgalerkin.py &gt; log</command_line>
