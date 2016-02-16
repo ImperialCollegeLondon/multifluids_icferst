@@ -1439,37 +1439,37 @@ contains
 
         GLOBAL_FACE = 0
 
-        !###########################################
-        !27/01/2016
-        ! Previously memory extractions for calculate_outflux() were happening inside the loop over elements below.
-        ! This was causing extreme slowdown in the code. Hence we now do all the necessary extractions from state relevant
-        ! to calculate_outflux() here. i.e. they happen every time-step still but OUTSIDE the element loop!
+                !###########################################
+                !27/01/2016
+                ! Previously memory extractions for calculate_outflux() were happening inside the loop over elements below.
+                ! This was causing extreme slowdown in the code. Hence we now do all the necessary extractions from state relevant
+                ! to calculate_outflux() here. i.e. they happen every time-step still but OUTSIDE the element loop!
 
-        ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
+                ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
         
-	if(is_porous_media .and. calculate_flux ) then
+        if(is_porous_media .and. calculate_flux ) then
         
-          allocate(phaseV(nphase,cv_nonods))
-          allocate(Dens(nphase,cv_nonods))
+            allocate(phaseV(nphase,cv_nonods))
+            allocate(Dens(nphase,cv_nonods))
 
-          ! Extract Pressure
+            ! Extract Pressure
 
-          CVPressure => extract_tensor_field( packed_state, "PackedCVPressure" ) ! Note no %val(:,:,:) needed here anymore
+            CVPressure => extract_tensor_field( packed_state, "PackedCVPressure" ) ! Note no %val(:,:,:) needed here anymore
 
-          ! Extract the Phase Volume Fraction
+            ! Extract the Phase Volume Fraction
 
-          tenfield1 => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-          phaseV = tenfield1%val(1,:,:)
+            tenfield1 => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+            phaseV = tenfield1%val(1,:,:)
 
-          ! Extract the Density
+            ! Extract the Density
 
-          tenfield2 => extract_tensor_field( packed_state, "PackedDensity" )
-          Dens =  tenfield2%val(1,:,:)
+            tenfield2 => extract_tensor_field( packed_state, "PackedDensity" )
+            Dens =  tenfield2%val(1,:,:)
 
-          ! Extract the Porosity
+            ! Extract the Porosity
 
-          vecfield => extract_vector_field( packed_state, "Porosity" )
-          Por =>  vecfield%val(1,:)
+            vecfield => extract_vector_field( packed_state, "Porosity" )
+            Por =>  vecfield%val(1,:)
 
         endif
 
@@ -2379,21 +2379,7 @@ contains
                                   ! Calculate T and DEN on the CV face at quadrature point GI.
                             IF(NFIELD.GT.0) THEN
 
-                                CALL GET_INT_T_DEN_new( LIMF(:), &
-                                    CV_DISOPT, CV_NONODS, NPHASE, NFIELD, CV_NODI, CV_NODJ, CV_ILOC, CV_JLOC, CV_SILOC, ELE, ELE2, GI,   &
-                                    between_elements, on_domain_boundary, &
-                                    CV_NLOC, TOTELE, CV_OTHER_LOC, SCVNGI, SCVFEN, F_INCOME, F_NDOTQ, &
-                                    LOC_F, LOC_FEMF, SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF, &
-                                    SELE, CV_SNLOC,  U_SNLOC,  STOTEL, CV_SLOC2LOC, SLOC_SUF_F_BC, &
-                                    U_SLOC2LOC, U_OTHER_LOC,  &
-                                    SELE_LOC_WIC_F_BC,   &
-                                    WIC_T_BC_DIRICHLET, WIC_D_BC_DIRICHLET,  &
-                                    HDC, DT, &
-                                    SCVFENX_ALL(1:NDIM,:,:), CVNORMX_ALL, &
-                                    LOC_UF,  &
-                                    U_NLOC,U_NONODS,NDIM,SUFEN, INV_JAC, &
-                                    FUPWIND_IN, FUPWIND_OUT, DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, SHAPE_CV_SNL, DOWNWIND_EXTRAP_INDIVIDUAL, &
-                                    F_CV_NODI, F_CV_NODJ)
+                                CALL GET_INT_T_DEN_new( LIMF )
 
                             ENDIF
 
@@ -2598,17 +2584,17 @@ contains
                             !########################################################################################
                             ! 27/01/2016
 
-                              if(sele > 0) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
+                            if(sele > 0) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
 
-                                  if ( is_porous_media .and. GETCT .and. calculate_flux ) then
-                                      do ioutlet = 1, size(outlet_id)
-                                          !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
-                                          call calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
-                                              cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, SCVDETWEI , SUF_T_BC_ALL)
-                                      enddo
-                                  end if
+                                if ( is_porous_media .and. GETCT .and. calculate_flux ) then
+                                    do ioutlet = 1, size(outlet_id)
+                                        !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
+                                        call calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
+                                            cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, SCVDETWEI , SUF_T_BC_ALL)
+                                    enddo
+                                end if
 
-                              end if
+                            end if
                             !#########################################################################################
 
                             Conditional_GETCV_DISC: IF ( GETCV_DISC ) THEN
@@ -2861,8 +2847,8 @@ contains
         ! 27/01/2016
 
         if(is_porous_media .and. calculate_flux) then
-          deallocate(phaseV)
-          deallocate(dens)
+            deallocate(phaseV)
+            deallocate(dens)
         endif
         !#########################
 
@@ -3500,6 +3486,326 @@ contains
 
         end subroutine dump_multiphase
 
+        !sprint_to_do!make internal subroutines
+        SUBROUTINE GET_INT_T_DEN_new( LIMF )
+            !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
+            IMPLICIT NONE
+            ! Calculate T and DEN on the CV face at quadrature point GI.
+            REAL, DIMENSION ( NFIELD), intent( inout ) :: LIMF
+
+            !   REAL, DIMENSION( : ), intent( in ) :: TUPWIND_MAT, DENUPWIND_MAT
+            !   REAL, DIMENSION( : ), intent( in ) :: T2UPWIND_MAT
+            ! Local variables
+            ! If UPWIND then use upwind flux between elements else use central.
+            ! If HI_ORDER_HALF then use high order interpolation when around
+            ! a volume frac of 0.5 and gradually apply limiting near 0 and 1.
+            LOGICAL :: DOWNWIND_EXTRAP ! Extrapolate a downwind value for interface tracking.
+
+            ! Scaling to reduce the downwind bias(=1downwind, =0central)
+            LOGICAL, PARAMETER :: SCALE_DOWN_WIND = .true.
+            ! Non-linear Petrov-Galerkin option for interface tracking...
+            ! =4 is anisotropic downwind diffusion based on a projected 1D system (1st recommend)
+            ! =0 is anisotropic downwind diffusion based on a velocity projection like SUPG
+            ! (2nd recommend, most compressive)
+            ! =2 is isotropic downwind diffusion  (3rd recommend,least compressive)
+            ! =5 is isotropic downwind diffusion with magnitude of =0 option.
+            ! In tests they all produce similar results.
+            !      INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 5
+            INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 3
+            real, parameter :: tolerance = 1.e-10
+
+            LOGICAL :: NOLIMI, RESET_STORE, LIM_VOL_ADJUST
+            REAL :: RELAX, TMIN_STORE, TMAX_STORE, TOLDMIN_STORE, &
+                T2MIN_STORE, T2MAX_STORE, &
+                DENMIN_STORE, DENMAX_STORE
+            INTEGER :: CV_KLOC, CV_NODK, CV_NODK_IPHA, CV_KLOC2, CV_NODK2, CV_NODK2_IPHA, CV_STAR_IPHA, &
+                CV_SKLOC, CV_SNODK, CV_SNODK_IPHA, U_KLOC,U_NODK,U_NODK_IPHA, IDIM, ELE_DOWN
+            REAL :: T_BETWEEN_MIN, T_BETWEEN_MAX
+            REAL :: T_AVE_EDGE, T_AVE_ELE
+            REAL :: T_MIDVAL
+            INTEGER :: U_KLOC2, U_NODK2, U_NODK2_IPHA
+            INTEGER :: U_SKLOC, COUNT, COUNT_IN, COUNT_OUT, COUNT_IN_PHA, COUNT_OUT_PHA
+            INTEGER :: IFIELD,IFI
+
+            REAL, dimension(NDIM,NFIELD) :: FXGI_ALL, UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
+            REAL, dimension(NFIELD) :: courant_or_minus_one_new, XI_LIMIT,&
+                P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
+                RSCALE, COEF2, FEMFGI_CENT, FEMFGI_UP
+
+            ! No limiting if CV_DISOPT is 6 or 7  (why not just define limt=femt and skip to assembly?)
+            NOLIMI = ( INT( CV_DISOPT / 2 ) == 3 )
+
+            ! Make a guess at the CV face value of advected field variable and density
+            ! (Depends on discetisation option, CV_DISOPT)
+            SELECT CASE( CV_DISOPT / 2 )
+
+                !    CASE( 0 ) ! First-order upwinding is achived through the limiting
+                !       FEMFGI(:)    = FVF(:)
+
+                CASE( 1 ) ! Central differencing [Trapezoidal rule (2 OR 3)]
+                    FEMFGI(:)    = 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
+
+                CASE DEFAULT ! Finite element approximation (4 OR 5)(6 or 7)(8 or 9)
+                    FEMFGI(:)    = 0.0
+
+                    Conditional_CV_DISOPT_ELE2: IF ( on_domain_boundary ) THEN
+                        ! Is on boundary of the domain
+                        DO IFIELD=1,NFIELD
+                            IF ( SELE_LOC_WIC_F_BC(IFIELD) /= WIC_T_BC_DIRICHLET ) THEN ! Don't apply a Dirichlet bc
+                                LIMF(IFIELD)    = LOC_F( IFIELD, CV_ILOC )
+                            ELSE
+                                LIMF(IFIELD)    = (1.-F_INCOME(IFIELD))*LOC_F( IFIELD, CV_ILOC )   + F_INCOME(IFIELD)*  SLOC_SUF_F_BC( IFIELD,  CV_SILOC)
+                            END IF
+                        END DO ! END OF DO IFIELD=1,NFIELD
+
+                    ELSE Conditional_CV_DISOPT_ELE2
+                        ! Extrapolate a downwind value for interface tracking.
+
+                        DOWNWIND_EXTRAP = ( cv_disopt>=8 )
+
+                        DO IFIELD=1,NFIELD
+                            IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN
+                                courant_or_minus_one_new(IFIELD) = abs ( dt * F_ndotq(IFIELD) / hdc )
+                                XI_LIMIT(IFIELD)=MAX(1./max(tolerance,(3.*courant_or_minus_one_new(IFIELD))),2.0)
+                            else
+                                courant_or_minus_one_new(IFIELD) = -1.0
+                                XI_LIMIT(IFIELD) = 2.0
+                            end if
+                        END DO
+
+                        IF( .not. between_elements ) THEN
+
+                            RSCALE(:) = 1.0 ! Scaling to reduce the downwind bias(=1downwind, =0central)
+                            IF ( SCALE_DOWN_WIND ) THEN
+
+                                IF ( DOWNWIND_EXTRAP  ) THEN
+
+                                    DO IFIELD=1,MIN(2*NPHASE,NFIELD)
+                                        DO IDIM=1,NDIM
+                                            FXGI_ALL(IDIM,IFIELD) = dot_product(SCVFENX_ALL(IDIM, : , GI ) , LOC_FEMF(IFIELD,:))
+                                        END DO
+                                        !FEMFGI(IFIELD) = dot_product( SCVFEN( : , GI ), LOC_FEMF(IFIELD,:)  )
+
+                                        DO IDIM=1,NDIM
+                                            UDGI_ALL(IDIM,IFIELD) = dot_product(SUFEN( : , GI ) , LOC_UF(IDIM,IFIELD, :) )
+                                        END DO
+                                    END DO
+
+                                    IF ( NON_LIN_PETROV_INTERFACE == 0 ) THEN ! NOT Petrov-Galerkin for interface capturing...
+                                        ! no cosine rule :
+                                        DO IFIELD=1,MIN(2*NPHASE,NFIELD) ! It should be NPHASE because interface tracking only applied to the 1st set of fields.
+                                            RSCALE(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM( UDGI_ALL(:,IFIELD)**2)   ) )
+
+                                            DO IDIM = 1, NDIM
+                                                VEC_VEL2(IDIM,IFIELD) = SUM( INV_JAC(IDIM, 1:NDIM, GI) * UDGI_ALL(1:NDIM,IFIELD) )
+                                            END DO
+                                            ! normalize the velocity in here:
+                                            ELE_LENGTH_SCALE(IFIELD) = 0.5 * SQRT( SUM(UDGI_ALL(:,IFIELD)**2) ) / PTOLFUN( SUM( VEC_VEL2(:,IFIELD)**2 ) )
+                                            ! For discontinuous elements half the length scale...
+                                            IF(DISTCONTINUOUS_METHOD) ELE_LENGTH_SCALE(IFIELD)=0.5*ELE_LENGTH_SCALE(IFIELD)
+                                            ! For quadratic elements...
+                                            IF( QUAD_ELEMENTS ) ELE_LENGTH_SCALE(IFIELD)=0.5*ELE_LENGTH_SCALE(IFIELD)
+                                        END DO
+                                    ELSE ! Interface capturing...
+
+                                        DO IFIELD=1,MIN(2*NPHASE,NFIELD) ! It should be NPHASE because interface tracking only applied to the 1st set of fields.
+
+                                            U_DOT_GRADF_GI(IFIELD) = SUM( UDGI_ALL(:,IFIELD)*FXGI_ALL(:,IFIELD)  )
+
+                                            IF ( NON_LIN_PETROV_INTERFACE == 5 ) THEN
+                                                COEF(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM(FXGI_ALL(IFIELD,:)**2)   ) )
+                                            ELSE
+                                                COEF(IFIELD) = U_DOT_GRADF_GI(IFIELD) / PTOLFUN( SUM( FXGI_ALL(:,IFIELD)**2 )  )
+                                            END IF
+
+                                            A_STAR_F(IFIELD) = 0.0
+                                            A_STAR_X_ALL(:,IFIELD) = COEF(IFIELD) * FXGI_ALL(:,IFIELD)
+
+                                            RESIDGI(IFIELD) = SQRT ( SUM( UDGI_ALL(:,IFIELD)**2 )  ) / HDC
+
+                                            VEC_VEL2(1:NDIM,IFIELD) = matmul( INV_JAC(:,:,GI), A_STAR_X_ALL(1:NDIM,IFIELD) )
+                                            ! Needs 0.25 for quadratic elements...Chris
+                                            P_STAR(IFIELD) = 0.5 * HDC / PTOLFUN( SQRT( SUM( A_STAR_X_ALL(:,IFIELD)**2 )))
+                                            !                                      IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
+
+
+                                            select case (NON_LIN_PETROV_INTERFACE)
+                                                case ( 1 )     ! standard approach
+                                                    DIFF_COEF(IFIELD) = COEF(IFIELD) * P_STAR(IFIELD) * RESIDGI(IFIELD)
+                                                case ( 2 )     ! standard approach making it +ve
+                                                    DIFF_COEF(IFIELD) = MAX( 0.0, COEF(IFIELD) * P_STAR(IFIELD) * RESIDGI(IFIELD) )
+                                                case ( 3 )     ! residual squared approach
+                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
+                                                case ( 4 )     ! anisotropic diffusion in the A* direction.
+                                                    COEF2(IFIELD) =  SUM( CVNORMX_ALL(:,GI)*A_STAR_X_ALL(:,IFIELD) )
+                                                case ( 6 )     ! accurate...
+                                                    P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
+                                                    IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
+                                                case ( 7 )     ! accurate (could be positive or negative)...
+                                                    P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
+                                                    IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
+                                                        / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
+                                                case ( 8 )     ! accurate (force to be positive)...
+                                                    P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
+                                                    IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
+                                                        / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
+                                                    DIFF_COEF(IFIELD) = abs(   DIFF_COEF(IFIELD)  )
+                                                case ( 9 )     ! accurate (simplified residual squared)...
+                                                    P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
+                                                    IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                                    DIFF_COEF(IFIELD) = P_STAR(IFIELD) * (SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc))**2 &
+                                                        / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
+                                                case default   ! isotropic diffusion with u magnitide
+                                                    DIFF_COEF(IFIELD) = SQRT( SUM( UDGI_ALL(:,IFIELD)**2 )) * P_STAR(IFIELD)
+                                            END select
+                                            ! Make the diffusion coefficient negative (compressive)
+                                            DIFF_COEF(IFIELD) = -DIFF_COEF(IFIELD)
+                                            RSCALE(IFIELD) = 1. / TOLFUN( SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD))   )
+
+                                        END DO ! END OF DO IFIELD=1,NFIELD
+
+
+                                    END IF ! Petrov-Galerkin end of IF(NON_LIN_PETROV_INTERFACE==0) THEN
+
+
+                                END IF ! DOWNWIND_EXTRAP
+
+                            END IF ! SCALE_DOWN_WIND
+
+                            FEMFGI=0.0
+                            DO IFIELD=1,NFIELD ! Only perform this loop for the 1st field which is the interface tracking field...
+
+                                IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN ! Extrapolate to the downwind value...
+                                    DO CV_KLOC = 1, CV_NLOC
+
+                                        IF ( NON_LIN_PETROV_INTERFACE.NE.0 ) THEN
+                                            IF ( NON_LIN_PETROV_INTERFACE == 4 ) THEN ! anisotropic diffusion...
+                                                RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                            ELSE
+                                                RGRAY(IFIELD) = - DIFF_COEF(IFIELD) * RSCALE(IFIELD) * SUM( CVNORMX_ALL(:,GI)*SCVFENX_ALL( :, CV_KLOC, GI )  )
+                                            END IF
+                                        ELSE
+                                            RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                        END IF
+
+                                        !                                  FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (SCVFEN( CV_KLOC, GI )*0.0 + RGRAY(IFIELD)*0.0)   * LOC_FEMF( IFIELD, CV_KLOC)
+                                        FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (SCVFEN( CV_KLOC, GI ) + RGRAY(IFIELD))   * LOC_FEMF( IFIELD, CV_KLOC)
+                                    END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
+                                !                              FEMFGI(:)    = FEMFGI(:) + 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
+                                ELSE
+
+                                    DO CV_KLOC = 1, CV_NLOC
+                                        FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  SCVFEN( CV_KLOC, GI ) * LOC_FEMF( IFIELD, CV_KLOC)
+                                    END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
+                                !                              FEMFGI(:)    = 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
+                                END IF
+
+                            END DO ! ENDOF DO IFIELD=1,NPHASE
+
+                        !       ELSE  ! END OF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN  ---DG saturation across elements
+                        ELSE  ! END OF IF( .not. between_elements ) THEN  ---DG saturation across elements
+
+                            FEMFGI_CENT(:) = 0.0
+                            FEMFGI_UP(:)   = 0.0
+                            DO CV_SKLOC = 1, CV_SNLOC
+                                ! Central for DG...
+                                FEMFGI_CENT(:) = FEMFGI_CENT(:) +  SHAPE_CV_SNL( CV_SKLOC ) * 0.5 * ( SLOC_FEMF( :, CV_SKLOC ) &
+                                    + SLOC2_FEMF( :, CV_SKLOC )    )
+                                ! Standard DG upwinding...
+                                FEMFGI_UP(:) = FEMFGI_UP(:) +  SHAPE_CV_SNL( CV_SKLOC ) * ( SLOC2_FEMF( :, CV_SKLOC)  &
+                                    * F_INCOME(:) + SLOC_FEMF( :, CV_SKLOC) * ( 1. - F_INCOME(:) ) )
+                            END DO
+                            DO IFIELD=1,NFIELD
+                                IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN ! Extrapolate to the downwind value...
+                                    FEMFGI(IFIELD) = FEMFGI_CENT(IFIELD)
+                                ELSE
+                                    FEMFGI(IFIELD) = FEMFGI_UP(IFIELD)
+                                ENDIF
+                            END DO
+                        ENDIF ! ENDOF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN ELSE
+
+                        CALL ONVDLIM_ANO_MANY( NFIELD, &
+                            LIMF(:), FEMFGI(:), F_INCOME(:), &
+                            F_CV_NODI(:), F_CV_NODJ(:),XI_LIMIT(:),  &
+                            FUPWIND_IN(:), FUPWIND_OUT(:) )
+
+                    ENDIF Conditional_CV_DISOPT_ELE2
+
+            END SELECT
+
+            RETURN
+
+        END SUBROUTINE GET_INT_T_DEN_NEW
+
+        PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
+            TDLIM, TDCEN, INCOME, &
+            ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
+            TUPWIN, TUPWI2 )
+            implicit none
+            ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
+            ! difference face values TDCEN(1...SNGI) using a NVD shceme.
+            ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
+            ! LIBETA is the flux limiting parameter.
+            ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
+            ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
+            ! PELEOT=element at other side of current face.
+            ! ELEOT2=element at other side of the element ELEOTH.
+            ! ELESID=element next to oposing current face.
+            ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
+            ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
+            !---------------------------------------------------
+            !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
+            !---------------------------------------------------
+            ! TAIN         THALF       TAOUT
+            !---------------------------------------------------
+            !>TEXTIN
+            !TEXOUT<
+            !---------------------------------------------------
+            INTEGER, intent( in ) :: NFIELD
+            REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
+            REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
+            REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
+            ! Local variables
+            REAL, PARAMETER :: TOLER=1.0E-10
+            REAL :: DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
+                CTILOU(NFIELD), FTILIN(NFIELD), FTILOU(NFIELD)
+
+
+            ! Calculate normalisation parameters for incomming velocities
+
+            DENOIN = ( ETDNEW_PELE - TUPWIN )
+            where( ABS( DENOIN ) < TOLER )
+                DENOIN = SIGN( TOLER, DENOIN )
+            end where
+            CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
+
+            ! Calculate normalisation parameters for out going velocities
+
+            DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
+            where( ABS( DENOOU ) < TOLER )
+                DENOOU = SIGN( TOLER, DENOOU )
+            end where
+            CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
+
+            FTILIN = ( TDCEN - TUPWIN ) / DENOIN
+            FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
+
+            ! Velocity is going out of element
+            TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
+                + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
+
+            TDLIM = MAX( TDLIM, 0.0 )
+
+            RETURN
+
+        END SUBROUTINE ONVDLIM_ANO_MANY
 
     END SUBROUTINE CV_ASSEMB
 
@@ -3759,8 +4065,8 @@ contains
                         ENDIF
 
                         CALL TRI_tet_LOCCORDS(Xpt, LOCCORDS,  &
-                                             !     The 3 corners of the tri...
-                                    X_ALL(:,LOCNODS(:)),NDIM,NDIM+1)
+                                     !     The 3 corners of the tri...
+                            X_ALL(:,LOCNODS(:)),NDIM,NDIM+1)
 
                         MINCOR=MINVAL( LOCCORDS(:) )
 
@@ -3790,8 +4096,8 @@ contains
                 ENDIF
 
                 CALL TRI_tet_LOCCORDS(Xpt_GI, LOCCORDS,&
-                                           !     The 3 corners of the tri...
-                            X_ALL(:,LOCNODS(:)),NDIM,NDIM+1)
+                                   !     The 3 corners of the tri...
+                    X_ALL(:,LOCNODS(:)),NDIM,NDIM+1)
 
                 L1(1) = LOCCORDS(1)
                 L2(1) = LOCCORDS(2)
@@ -3939,19 +4245,19 @@ contains
         IF (NDIM==3) THEN
 
             CALL TRILOCCORDS(Xpt(1),Xpt(2),Xpt(3), &
-                        LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
-                        !     The 4 corners of the tet...
-                        X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),X_CORNERS_ALL(3,1),&
-                        X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),X_CORNERS_ALL(3,2),&
-                        X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3),X_CORNERS_ALL(3,3),&
-                        X_CORNERS_ALL(1,4),X_CORNERS_ALL(2,4),X_CORNERS_ALL(3,4) )
+                LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
+                !     The 4 corners of the tet...
+                X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),X_CORNERS_ALL(3,1),&
+                X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),X_CORNERS_ALL(3,2),&
+                X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3),X_CORNERS_ALL(3,3),&
+                X_CORNERS_ALL(1,4),X_CORNERS_ALL(2,4),X_CORNERS_ALL(3,4) )
         ELSE
             CALL TRILOCCORDS2D(Xpt(1),Xpt(2), &
-                        LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
-                        !     The 3 corners of the tri...
-                        X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),&
-                        X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),&
-                        X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3) )
+                LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
+                !     The 3 corners of the tri...
+                X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),&
+                X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),&
+                X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3) )
         END IF
         ! From  the local coordinates find the shape function value...
         RETURN
@@ -6379,7 +6685,7 @@ contains
 
 
 
-!sprint_to_do!move to new library section
+    !sprint_to_do!move to new library section
     real function tolfun(value)
         ! This function is a tolerance function for a value which is used as a denominator.
         ! If the absolute value of VALUE less than 1E-10, then it returns SIGN(A,B) i.e.
@@ -7801,390 +8107,7 @@ contains
 
 
 
-    !sprint_to_do!make internal subroutines
-    SUBROUTINE GET_INT_T_DEN_new(LIMF, &
-        CV_DISOPT, CV_NONODS, NPHASE, NFIELD, CV_NODI, CV_NODJ, CV_ILOC, CV_JLOC, CV_SILOC, ELE, ELE2, GI, &
-        between_elements, on_domain_boundary, &
-        CV_NLOC, TOTELE, CV_OTHER_LOC, SCVNGI, SCVFEN, F_INCOME, F_NDOTQ, &
-        LOC_F, LOC_FEMF, SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF,  &
-        SELE, CV_SNLOC,   U_SNLOC,     STOTEL, CV_SLOC2LOC, SLOC_SUF_F_BC, &
-        U_SLOC2LOC, U_OTHER_LOC,  &
-        SELE_LOC_WIC_F_BC,   &
-        WIC_T_BC_DIRICHLET, WIC_D_BC_DIRICHLET, &
-        HDC, DT, &
-        SCVFENX_ALL, CVNORMX_ALL,  &
-        LOC_UF,  &
-        U_NLOC,U_NONODS,NDIM,SUFEN, INV_JAC, &
-        FUPWIND_IN, FUPWIND_OUT, DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, SHAPE_CV_SNL, DOWNWIND_EXTRAP_INDIVIDUAL, &
-        F_CV_NODI, F_CV_NODJ)
-        !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
-        IMPLICIT NONE
-        ! Calculate T and DEN on the CV face at quadrature point GI.
-        REAL, intent( in ) :: HDC,DT
-        INTEGER, intent( in ) :: CV_DISOPT,CV_NONODS,NPHASE,NFIELD,CV_NODI,CV_NODJ,CV_ILOC,CV_JLOC,CV_SILOC,ELE,ELE2,  &
-            CV_NLOC,TOTELE,SCVNGI,GI,SELE,CV_SNLOC,U_SNLOC,STOTEL, &
-            WIC_T_BC_DIRICHLET,WIC_D_BC_DIRICHLET, U_NLOC,U_NONODS,NDIM
-        LOGICAL, intent( in ) :: between_elements, on_domain_boundary
-        LOGICAL, DIMENSION( NFIELD ), intent( in ) :: DOWNWIND_EXTRAP_INDIVIDUAL
-        LOGICAL, intent( in ) :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_OTHER_LOC
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_SLOC2LOC
-        INTEGER, DIMENSION( NFIELD ), intent( in ) :: SELE_LOC_WIC_F_BC
-        INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC
-        INTEGER, DIMENSION( : ), intent( in ) :: U_OTHER_LOC
-        REAL, DIMENSION(NDIM,CV_NLOC,SCVNGI), intent( in ) :: SCVFENX_ALL
-        REAL, DIMENSION( CV_SNLOC ), intent( in ) :: SHAPE_CV_SNL
-        REAL, DIMENSION( :, :  ), intent( in ) :: SUFEN
-        REAL, DIMENSION( :, :  ), intent( in ) :: SCVFEN
-        !    REAL, DIMENSION( :, :  ), intent( in ) :: SCVFENX, SCVFENY, SCVFENZ
-        REAL, DIMENSION( :, :  ), intent( in ) :: CVNORMX_ALL
-        REAL, DIMENSION ( NFIELD), intent( inout ) :: LIMF
-        REAL, DIMENSION ( NFIELD), intent( in ) :: F_INCOME, F_NDOTQ
-        REAL, DIMENSION ( NFIELD), intent( in ) :: F_CV_NODI, F_CV_NODJ
 
-        REAL, DIMENSION ( NFIELD,CV_NLOC), intent( in ) :: LOC_F, LOC_FEMF
-        REAL, DIMENSION(NFIELD, CV_SNLOC), intent( in ) :: SLOC_SUF_F_BC
-        REAL, DIMENSION(NDIM,NFIELD,U_NLOC), intent( in ) ::  LOC_UF
-
-        REAL, DIMENSION(NFIELD,CV_SNLOC), intent( in ) :: SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF
-
-        REAL, DIMENSION( : , : , : ), intent( in ) :: INV_JAC
-        REAL, DIMENSION( NFIELD  ), intent( in ) :: FUPWIND_IN, FUPWIND_OUT
-
-        !   REAL, DIMENSION( : ), intent( in ) :: TUPWIND_MAT, DENUPWIND_MAT
-        !   REAL, DIMENSION( : ), intent( in ) :: T2UPWIND_MAT
-        ! Local variables
-        ! If UPWIND then use upwind flux between elements else use central.
-        ! If HI_ORDER_HALF then use high order interpolation when around
-        ! a volume frac of 0.5 and gradually apply limiting near 0 and 1.
-        LOGICAL :: DOWNWIND_EXTRAP ! Extrapolate a downwind value for interface tracking.
-
-        ! Scaling to reduce the downwind bias(=1downwind, =0central)
-        LOGICAL, PARAMETER :: SCALE_DOWN_WIND = .true.
-        ! Non-linear Petrov-Galerkin option for interface tracking...
-        ! =4 is anisotropic downwind diffusion based on a projected 1D system (1st recommend)
-        ! =0 is anisotropic downwind diffusion based on a velocity projection like SUPG
-        ! (2nd recommend, most compressive)
-        ! =2 is isotropic downwind diffusion  (3rd recommend,least compressive)
-        ! =5 is isotropic downwind diffusion with magnitude of =0 option.
-        ! In tests they all produce similar results.
-        !      INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 5
-        INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 3
-        real, parameter :: tolerance = 1.e-10
-
-        LOGICAL :: NOLIMI, RESET_STORE, LIM_VOL_ADJUST
-        REAL :: RELAX, TMIN_STORE, TMAX_STORE, TOLDMIN_STORE, &
-            T2MIN_STORE, T2MAX_STORE, &
-            DENMIN_STORE, DENMAX_STORE
-        INTEGER :: CV_KLOC, CV_NODK, CV_NODK_IPHA, CV_KLOC2, CV_NODK2, CV_NODK2_IPHA, CV_STAR_IPHA, &
-            CV_SKLOC, CV_SNODK, CV_SNODK_IPHA, U_KLOC,U_NODK,U_NODK_IPHA, IDIM, ELE_DOWN
-        REAL :: T_BETWEEN_MIN, T_BETWEEN_MAX
-        REAL :: T_AVE_EDGE, T_AVE_ELE
-        REAL :: T_MIDVAL
-        INTEGER :: U_KLOC2, U_NODK2, U_NODK2_IPHA
-        INTEGER :: U_SKLOC, COUNT, COUNT_IN, COUNT_OUT, COUNT_IN_PHA, COUNT_OUT_PHA
-        INTEGER :: IFIELD,IFI
-
-        ! F:
-        REAL :: FXGI_ALL(NDIM,NFIELD)
-
-        REAL :: UDGI_ALL(NDIM,NFIELD)
-        REAL :: A_STAR_X_ALL(NDIM,NFIELD)
-
-        REAL :: courant_or_minus_one_new(NFIELD)
-        REAL :: XI_LIMIT(NFIELD)
-
-        ! Allocate quadrature pt variables...
-
-        REAL, dimension(NFIELD) :: FEMFGI, RGRAY, DIFF_COEF, COEF,&
-            P_STAR, U_DOT_GRADF_GI, A_STAR_F,&
-            RESIDGI, ELE_LENGTH_SCALE, RSCALE, COEF2,&
-            FEMFGI_CENT, FEMFGI_UP
-        REAL :: VEC_VEL2(NDIM,NFIELD)
-
-
-        ! No limiting if CV_DISOPT is 6 or 7  (why not just define limt=femt and skip to assembly?)
-        NOLIMI = ( INT( CV_DISOPT / 2 ) == 3 )
-
-        ! Make a guess at the CV face value of advected field variable and density
-        ! (Depends on discetisation option, CV_DISOPT)
-        SELECT CASE( CV_DISOPT / 2 )
-
-            !    CASE( 0 ) ! First-order upwinding is achived through the limiting
-            !       FEMFGI(:)    = FVF(:)
-
-            CASE( 1 ) ! Central differencing [Trapezoidal rule (2 OR 3)]
-                FEMFGI(:)    = 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
-
-            CASE DEFAULT ! Finite element approximation (4 OR 5)(6 or 7)(8 or 9)
-                FEMFGI(:)    = 0.0
-
-                Conditional_CV_DISOPT_ELE2: IF ( on_domain_boundary ) THEN
-                    ! Is on boundary of the domain
-                    DO IFIELD=1,NFIELD
-                        IF ( SELE_LOC_WIC_F_BC(IFIELD) /= WIC_T_BC_DIRICHLET ) THEN ! Don't apply a Dirichlet bc
-                            LIMF(IFIELD)    = LOC_F( IFIELD, CV_ILOC )
-                        ELSE
-                            LIMF(IFIELD)    = (1.-F_INCOME(IFIELD))*LOC_F( IFIELD, CV_ILOC )   + F_INCOME(IFIELD)*  SLOC_SUF_F_BC( IFIELD,  CV_SILOC)
-                        END IF
-                    END DO ! END OF DO IFIELD=1,NFIELD
-
-                ELSE Conditional_CV_DISOPT_ELE2
-                    ! Extrapolate a downwind value for interface tracking.
-
-                    DOWNWIND_EXTRAP = ( cv_disopt>=8 )
-
-                    DO IFIELD=1,NFIELD
-                        IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN
-                            courant_or_minus_one_new(IFIELD) = abs ( dt * F_ndotq(IFIELD) / hdc )
-                            XI_LIMIT(IFIELD)=MAX(1./max(tolerance,(3.*courant_or_minus_one_new(IFIELD))),2.0)
-                        else
-                            courant_or_minus_one_new(IFIELD) = -1.0
-                            XI_LIMIT(IFIELD) = 2.0
-                        end if
-                    END DO
-
-                    IF( .not. between_elements ) THEN
-
-                        RSCALE(:) = 1.0 ! Scaling to reduce the downwind bias(=1downwind, =0central)
-                        IF ( SCALE_DOWN_WIND ) THEN
-
-                            IF ( DOWNWIND_EXTRAP  ) THEN
-
-                                DO IFIELD=1,MIN(2*NPHASE,NFIELD)
-                                    DO IDIM=1,NDIM
-                                        FXGI_ALL(IDIM,IFIELD) = dot_product(SCVFENX_ALL(IDIM, : , GI ) , LOC_FEMF(IFIELD,:))
-                                    END DO
-                                    !FEMFGI(IFIELD) = dot_product( SCVFEN( : , GI ), LOC_FEMF(IFIELD,:)  )
-
-                                    DO IDIM=1,NDIM
-                                        UDGI_ALL(IDIM,IFIELD) = dot_product(SUFEN( : , GI ) , LOC_UF(IDIM,IFIELD, :) )
-                                    END DO
-                                END DO
-
-                                IF ( NON_LIN_PETROV_INTERFACE == 0 ) THEN ! NOT Petrov-Galerkin for interface capturing...
-                                    ! no cosine rule :
-                                    DO IFIELD=1,MIN(2*NPHASE,NFIELD) ! It should be NPHASE because interface tracking only applied to the 1st set of fields.
-                                        RSCALE(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM( UDGI_ALL(:,IFIELD)**2)   ) )
-
-                                        DO IDIM = 1, NDIM
-                                            VEC_VEL2(IDIM,IFIELD) = SUM( INV_JAC(IDIM, 1:NDIM, GI) * UDGI_ALL(1:NDIM,IFIELD) )
-                                        END DO
-                                        ! normalize the velocity in here:
-                                        ELE_LENGTH_SCALE(IFIELD) = 0.5 * SQRT( SUM(UDGI_ALL(:,IFIELD)**2) ) / PTOLFUN( SUM( VEC_VEL2(:,IFIELD)**2 ) )
-                                        ! For discontinuous elements half the length scale...
-                                        IF(DISTCONTINUOUS_METHOD) ELE_LENGTH_SCALE(IFIELD)=0.5*ELE_LENGTH_SCALE(IFIELD)
-                                        ! For quadratic elements...
-                                        IF( QUAD_ELEMENTS ) ELE_LENGTH_SCALE(IFIELD)=0.5*ELE_LENGTH_SCALE(IFIELD)
-                                    END DO
-                                ELSE ! Interface capturing...
-
-                                    DO IFIELD=1,MIN(2*NPHASE,NFIELD) ! It should be NPHASE because interface tracking only applied to the 1st set of fields.
-
-                                        U_DOT_GRADF_GI(IFIELD) = SUM( UDGI_ALL(:,IFIELD)*FXGI_ALL(:,IFIELD)  )
-
-                                        IF ( NON_LIN_PETROV_INTERFACE == 5 ) THEN
-                                            COEF(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM(FXGI_ALL(IFIELD,:)**2)   ) )
-                                        ELSE
-                                            COEF(IFIELD) = U_DOT_GRADF_GI(IFIELD) / PTOLFUN( SUM( FXGI_ALL(:,IFIELD)**2 )  )
-                                        END IF
-
-                                        A_STAR_F(IFIELD) = 0.0
-                                        A_STAR_X_ALL(:,IFIELD) = COEF(IFIELD) * FXGI_ALL(:,IFIELD)
-
-                                        RESIDGI(IFIELD) = SQRT ( SUM( UDGI_ALL(:,IFIELD)**2 )  ) / HDC
-
-                                        VEC_VEL2(1:NDIM,IFIELD) = matmul( INV_JAC(:,:,GI), A_STAR_X_ALL(1:NDIM,IFIELD) )
-                                        ! Needs 0.25 for quadratic elements...Chris
-                                        P_STAR(IFIELD) = 0.5 * HDC / PTOLFUN( SQRT( SUM( A_STAR_X_ALL(:,IFIELD)**2 )))
-                                        !                                      IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-
-
-                                        select case (NON_LIN_PETROV_INTERFACE)
-                                            case ( 1 )     ! standard approach
-                                                DIFF_COEF(IFIELD) = COEF(IFIELD) * P_STAR(IFIELD) * RESIDGI(IFIELD)
-                                            case ( 2 )     ! standard approach making it +ve
-                                                DIFF_COEF(IFIELD) = MAX( 0.0, COEF(IFIELD) * P_STAR(IFIELD) * RESIDGI(IFIELD) )
-                                            case ( 3 )     ! residual squared approach
-                                                DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
-                                            case ( 4 )     ! anisotropic diffusion in the A* direction.
-                                                COEF2(IFIELD) =  SUM( CVNORMX_ALL(:,GI)*A_STAR_X_ALL(:,IFIELD) )
-                                            case ( 6 )     ! accurate...
-                                                P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
-                                                IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
-                                                DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
-                                            case ( 7 )     ! accurate (could be positive or negative)...
-                                                P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
-                                                IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
-                                                DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
-                                                    / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
-                                            case ( 8 )     ! accurate (force to be positive)...
-                                                P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
-                                                IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
-                                                DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
-                                                    / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
-                                                DIFF_COEF(IFIELD) = abs(   DIFF_COEF(IFIELD)  )
-                                            case ( 9 )     ! accurate (simplified residual squared)...
-                                                P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:NDIM,IFIELD)))  )
-                                                IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
-                                                DIFF_COEF(IFIELD) = P_STAR(IFIELD) * (SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc))**2 &
-                                                    / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
-                                            case default   ! isotropic diffusion with u magnitide
-                                                DIFF_COEF(IFIELD) = SQRT( SUM( UDGI_ALL(:,IFIELD)**2 )) * P_STAR(IFIELD)
-                                        END select
-                                        ! Make the diffusion coefficient negative (compressive)
-                                        DIFF_COEF(IFIELD) = -DIFF_COEF(IFIELD)
-                                        RSCALE(IFIELD) = 1. / TOLFUN( SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD))   )
-
-                                    END DO ! END OF DO IFIELD=1,NFIELD
-
-
-                                END IF ! Petrov-Galerkin end of IF(NON_LIN_PETROV_INTERFACE==0) THEN
-
-
-                            END IF ! DOWNWIND_EXTRAP
-
-                        END IF ! SCALE_DOWN_WIND
-
-                        FEMFGI=0.0
-                        DO IFIELD=1,NFIELD ! Only perform this loop for the 1st field which is the interface tracking field...
-
-                            IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN ! Extrapolate to the downwind value...
-                                DO CV_KLOC = 1, CV_NLOC
-
-                                    IF ( NON_LIN_PETROV_INTERFACE.NE.0 ) THEN
-                                        IF ( NON_LIN_PETROV_INTERFACE == 4 ) THEN ! anisotropic diffusion...
-                                            RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
-                                        ELSE
-                                            RGRAY(IFIELD) = - DIFF_COEF(IFIELD) * RSCALE(IFIELD) * SUM( CVNORMX_ALL(:,GI)*SCVFENX_ALL( :, CV_KLOC, GI )  )
-                                        END IF
-                                    ELSE
-                                        RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
-                                    END IF
-
-                                    !                                  FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (SCVFEN( CV_KLOC, GI )*0.0 + RGRAY(IFIELD)*0.0)   * LOC_FEMF( IFIELD, CV_KLOC)
-                                    FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (SCVFEN( CV_KLOC, GI ) + RGRAY(IFIELD))   * LOC_FEMF( IFIELD, CV_KLOC)
-                                END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
-                            !                              FEMFGI(:)    = FEMFGI(:) + 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
-                            ELSE
-
-                                DO CV_KLOC = 1, CV_NLOC
-                                    FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  SCVFEN( CV_KLOC, GI ) * LOC_FEMF( IFIELD, CV_KLOC)
-                                END DO ! ENDOF DO CV_KLOC = 1, CV_NLOC
-                            !                              FEMFGI(:)    = 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
-                            END IF
-
-                        END DO ! ENDOF DO IFIELD=1,NPHASE
-
-                    !       ELSE  ! END OF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN  ---DG saturation across elements
-                    ELSE  ! END OF IF( .not. between_elements ) THEN  ---DG saturation across elements
-
-                        FEMFGI_CENT(:) = 0.0
-                        FEMFGI_UP(:)   = 0.0
-                        DO CV_SKLOC = 1, CV_SNLOC
-                            ! Central for DG...
-                            FEMFGI_CENT(:) = FEMFGI_CENT(:) +  SHAPE_CV_SNL( CV_SKLOC ) * 0.5 * ( SLOC_FEMF( :, CV_SKLOC ) &
-                                + SLOC2_FEMF( :, CV_SKLOC )    )
-                            ! Standard DG upwinding...
-                            FEMFGI_UP(:) = FEMFGI_UP(:) +  SHAPE_CV_SNL( CV_SKLOC ) * ( SLOC2_FEMF( :, CV_SKLOC)  &
-                                * F_INCOME(:) + SLOC_FEMF( :, CV_SKLOC) * ( 1. - F_INCOME(:) ) )
-                        END DO
-                        DO IFIELD=1,NFIELD
-                            IF( DOWNWIND_EXTRAP_INDIVIDUAL(IFIELD)  ) THEN ! Extrapolate to the downwind value...
-                                FEMFGI(IFIELD) = FEMFGI_CENT(IFIELD)
-                            ELSE
-                                FEMFGI(IFIELD) = FEMFGI_UP(IFIELD)
-                            ENDIF
-                        END DO
-                    ENDIF ! ENDOF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN ELSE
-
-                    CALL ONVDLIM_ANO_MANY( NFIELD, &
-                        LIMF(:), FEMFGI(:), F_INCOME(:), &
-                        F_CV_NODI(:), F_CV_NODJ(:),XI_LIMIT(:),  &
-                        FUPWIND_IN(:), FUPWIND_OUT(:) )
-
-                ENDIF Conditional_CV_DISOPT_ELE2
-
-        END SELECT
-
-        RETURN
-
-    CONTAINS
-
-
-        PURE SUBROUTINE ONVDLIM_ANO_MANY( NFIELD, &
-            TDLIM, TDCEN, INCOME, &
-            ETDNEW_PELE, ETDNEW_PELEOT, XI_LIMIT,  &
-            TUPWIN, TUPWI2 )
-            implicit none
-            ! This sub calculates the limited face values TDADJ(1...SNGI) from the central
-            ! difference face values TDCEN(1...SNGI) using a NVD shceme.
-            ! INCOME(1...SNGI)=1 for incomming to element ELE  else =0.
-            ! LIBETA is the flux limiting parameter.
-            ! TDMAX(PELE)=maximum of the surrounding 6 element values of element PELE.
-            ! TDMIN(PELE)=minimum of the surrounding 6 element values of element PELE.
-            ! PELEOT=element at other side of current face.
-            ! ELEOT2=element at other side of the element ELEOTH.
-            ! ELESID=element next to oposing current face.
-            ! The elements are arranged in this order: ELEOT2,ELE, PELEOT, ELESID.
-            ! This sub finds the neighbouring elements. Suppose that this is the face IFACE.
-            !---------------------------------------------------
-            !|   ELEOT2   |   ELEOTH   |   ELE     |   ELESID   |
-            !---------------------------------------------------
-            ! TAIN         THALF       TAOUT
-            !---------------------------------------------------
-            !>TEXTIN
-            !TEXOUT<
-            !---------------------------------------------------
-            INTEGER, intent( in ) :: NFIELD
-            REAL, DIMENSION( NFIELD ), intent( inout ) :: TDLIM
-            REAL, DIMENSION( NFIELD ), intent( in ) :: TDCEN, INCOME, XI_LIMIT, TUPWIN, TUPWI2
-            REAL, DIMENSION( NFIELD ), intent( in ) :: ETDNEW_PELE, ETDNEW_PELEOT
-            ! Local variables
-            REAL, PARAMETER :: TOLER=1.0E-10
-            REAL :: DENOIN(NFIELD), CTILIN(NFIELD), DENOOU(NFIELD), &
-                CTILOU(NFIELD), FTILIN(NFIELD), FTILOU(NFIELD)
-
-
-            ! Calculate normalisation parameters for incomming velocities
-
-            DENOIN = ( ETDNEW_PELE - TUPWIN )
-            where( ABS( DENOIN ) < TOLER )
-                DENOIN = SIGN( TOLER, DENOIN )
-            end where
-            CTILIN = ( ETDNEW_PELEOT - TUPWIN ) / DENOIN
-
-            ! Calculate normalisation parameters for out going velocities
-
-            DENOOU = ( ETDNEW_PELEOT - TUPWI2 )
-            where( ABS( DENOOU ) < TOLER )
-                DENOOU = SIGN( TOLER, DENOOU )
-            end where
-            CTILOU = ( ETDNEW_PELE - TUPWI2 ) / DENOOU
-
-            FTILIN = ( TDCEN - TUPWIN ) / DENOIN
-            FTILOU = ( TDCEN - TUPWI2 ) / DENOOU
-
-            ! Velocity is going out of element
-            TDLIM =        INCOME   * ( TUPWIN + NVDFUNNEW_MANY( FTILIN, CTILIN, XI_LIMIT ) * DENOIN ) &
-                + ( 1.0 - INCOME ) * ( TUPWI2 + NVDFUNNEW_MANY( FTILOU, CTILOU, XI_LIMIT ) * DENOOU )
-
-            TDLIM = MAX( TDLIM, 0.0 )
-
-            RETURN
-
-        END SUBROUTINE ONVDLIM_ANO_MANY
-
-
-
-
-
-
-    END SUBROUTINE GET_INT_T_DEN_NEW
 
 
 
@@ -9901,14 +9824,14 @@ contains
     !
     !
     SUBROUTINE FINPTSSTORE(PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NFIELD,NONODS,NLOC,NGI,TOTELE,NDGLNO, &
-             MATPSI_ALL,FINDRM,COLM,NCOLM,NDIM, &
-             X_NDGLN,X_NONODS, &
-             X_ALL, XC_CV_ALL, &
-             N,NLX_ALL, WEIGHT,&
-             !     work space...
-             FINDELE,COLELE,NCOLEL,&
-             ELEMATPSI,ELEMATWEI,IGETSTOR,&
-             BOUND, REFLECT,&
+        MATPSI_ALL,FINDRM,COLM,NCOLM,NDIM, &
+        X_NDGLN,X_NONODS, &
+        X_ALL, XC_CV_ALL, &
+        N,NLX_ALL, WEIGHT,&
+        !     work space...
+        FINDELE,COLELE,NCOLEL,&
+        ELEMATPSI,ELEMATWEI,IGETSTOR,&
+        BOUND, REFLECT,&
         storage_state, storname,indx)
         !     This sub finds the matrix values MATPSI for a given point on the
         !     stencil
@@ -10050,17 +9973,17 @@ contains
                         X2_ALL = X_ALL(:,XNODJ)
                     ENDIF
                     CALL MATPTSSTORE(MATPSI_ALL,COUNT,NFIELD,NOD,XNOD,&
-                                      PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
-                                      NLOC,TOTELE,X_NDGLN,NDGLNO,&
-                                      NCOLM,&
-                                      X1_ALL,&
-                                      X2_ALL,&
-                                      NORMX1_ALL,&
-                                      X_ALL,&
-                                      !     work space...
-                                      FINDELE,COLELE,NCOLEL, &
-                                      MINPSI,MAXPSI, &
-                                      ELEWIC,LOCCORDSK,BOUND,REFLECT,NDIM)
+                        PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
+                        NLOC,TOTELE,X_NDGLN,NDGLNO,&
+                        NCOLM,&
+                        X1_ALL,&
+                        X2_ALL,&
+                        NORMX1_ALL,&
+                        X_ALL,&
+                        !     work space...
+                        FINDELE,COLELE,NCOLEL, &
+                        MINPSI,MAXPSI, &
+                        ELEWIC,LOCCORDSK,BOUND,REFLECT,NDIM)
                     IF(IGETSTOR.EQ.1) THEN
                         ELEMATPSI(COUNT)=ELEWIC
                         DO ILOC=1,NLOC! Was loop
@@ -10085,17 +10008,17 @@ contains
     !
     !sprint_to_do!turn this ones into internal subroutines???
     SUBROUTINE MATPTSSTORE(MATPSI_ALL,COUNT,NFIELD,NOD,XNOD,&
-             PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
-             NLOC,TOTELE,X_NDGLN,NDGLNO,&
-             NCOLM,&
-             X1_ALL,&
-             X2_ALL,&
-             NORMX1_ALL,&
-             X_ALL,&
-             !     work space...
-             FINDELE,COLELE,NCOLEL,&
-             MINPSI,MAXPSI,  &
-             ELEWIC,LOCCORDSK,BOUND,REFLECT,NDIM)
+        PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
+        NLOC,TOTELE,X_NDGLN,NDGLNO,&
+        NCOLM,&
+        X1_ALL,&
+        X2_ALL,&
+        NORMX1_ALL,&
+        X_ALL,&
+        !     work space...
+        FINDELE,COLELE,NCOLEL,&
+        MINPSI,MAXPSI,  &
+        ELEWIC,LOCCORDSK,BOUND,REFLECT,NDIM)
         !     This sub calculates the value of PSI that would be at the
         !     other side of the stencil if we had a linear variation and within
         !     a single element.
@@ -10221,19 +10144,19 @@ contains
                 LOCNODS(4)=X_NDGLN((ELE-1)*NLOC+4)
 
                 CALL TRILOCCORDS(XC_ALL(1),XC_ALL(2),XC_ALL(3), &
-                            LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
-                            !     The 4 corners of the tet...
-                            X_ALL(1,LOCNODS(1)),X_ALL(2,LOCNODS(1)),X_ALL(3,LOCNODS(1)),&
-                            X_ALL(1,LOCNODS(2)),X_ALL(2,LOCNODS(2)),X_ALL(3,LOCNODS(2)),&
-                            X_ALL(1,LOCNODS(3)),X_ALL(2,LOCNODS(3)),X_ALL(3,LOCNODS(3)),&
-                            X_ALL(1,LOCNODS(4)),X_ALL(2,LOCNODS(4)),X_ALL(3,LOCNODS(4)) )
+                    LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
+                    !     The 4 corners of the tet...
+                    X_ALL(1,LOCNODS(1)),X_ALL(2,LOCNODS(1)),X_ALL(3,LOCNODS(1)),&
+                    X_ALL(1,LOCNODS(2)),X_ALL(2,LOCNODS(2)),X_ALL(3,LOCNODS(2)),&
+                    X_ALL(1,LOCNODS(3)),X_ALL(2,LOCNODS(3)),X_ALL(3,LOCNODS(3)),&
+                    X_ALL(1,LOCNODS(4)),X_ALL(2,LOCNODS(4)),X_ALL(3,LOCNODS(4)) )
             ELSE
                 CALL TRILOCCORDS2D(XC_ALL(1),XC_ALL(2), &
-                            LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
-                            !     The 3 corners of the tri...
-                            X_ALL(1,LOCNODS(1)),X_ALL(2,LOCNODS(1)),&
-                            X_ALL(1,LOCNODS(2)),X_ALL(2,LOCNODS(2)),&
-                            X_ALL(1,LOCNODS(3)),X_ALL(2,LOCNODS(3)) )
+                    LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
+                    !     The 3 corners of the tri...
+                    X_ALL(1,LOCNODS(1)),X_ALL(2,LOCNODS(1)),&
+                    X_ALL(1,LOCNODS(2)),X_ALL(2,LOCNODS(2)),&
+                    X_ALL(1,LOCNODS(3)),X_ALL(2,LOCNODS(3)) )
             END IF
 
             MINCOR=MINVAL( LOCCORDS(1:NLOC) )
@@ -10303,9 +10226,9 @@ contains
     !
     !!sprint_to_do!make it internal subroutine
     SUBROUTINE PHILNODELE(NONODS,FINDELE,COLELE, &
-             NCOLEL,MXNCOLEL, &
-             TOTELE,NLOC,NDGLNO, &
-             NLIST,INLIST)
+        NCOLEL,MXNCOLEL, &
+        TOTELE,NLOC,NDGLNO, &
+        NLIST,INLIST)
         !=================================================================
         ! This sub calculates the node to element list FINDELE,COLELE
         !
@@ -10388,11 +10311,11 @@ contains
     !
     !sprint_to_do!think about this
     Subroutine TRILOCCORDS(Xp,Yp,Zp, &
-             N1, N2, N3, N4, &
-             X1,Y1,Z1, &
-             X2,Y2,Z2, &
-             X3,Y3,Z3, &
-             X4,Y4,Z4  )
+        N1, N2, N3, N4, &
+        X1,Y1,Z1, &
+        X2,Y2,Z2, &
+        X3,Y3,Z3, &
+        X4,Y4,Z4  )
 
         IMPLICIT NONE
         Real Xp, Yp, Zp
@@ -10409,9 +10332,9 @@ contains
         !     calculate element volume...
 
         Volume = TetVolume(X1, Y1, Z1, &
-                 X2, Y2, Z2, &
-                 X3, Y3, Z3, &
-                 X4, Y4, Z4)
+            X2, Y2, Z2, &
+            X3, Y3, Z3, &
+            X4, Y4, Z4)
 
         Volume = Volume /6.0
 
@@ -10419,35 +10342,35 @@ contains
         !     vol coords...
 
         N1 = TetVolume(Xp, Yp, Zp, &
-                 X2, Y2, Z2, &
-                 X3, Y3, Z3, &
-                 X4, Y4, Z4)
+            X2, Y2, Z2, &
+            X3, Y3, Z3, &
+            X4, Y4, Z4)
 
         N1 = N1/(6.0*Volume)
 
 
 
         N2 = TetVolume(X1, Y1, Z1, &
-                 Xp, Yp, Zp, &
-                 X3, Y3, Z3, &
-                 X4, Y4, Z4)
+            Xp, Yp, Zp, &
+            X3, Y3, Z3, &
+            X4, Y4, Z4)
 
         N2 = N2/(6.0*Volume)
 
 
 
         N3 = TetVolume(X1, Y1, Z1, &
-                 X2, Y2, Z2, &
-                 Xp, Yp, Zp, &
-                 X4, Y4, Z4)
+            X2, Y2, Z2, &
+            Xp, Yp, Zp, &
+            X4, Y4, Z4)
 
         N3 = N3/(6.0*Volume)
 
 
         N4 = TetVolume(X1, Y1, Z1, &
-                 X2, Y2, Z2, &
-                 X3, Y3, Z3, &
-                 Xp, Yp, Zp)
+            X2, Y2, Z2, &
+            X3, Y3, Z3, &
+            Xp, Yp, Zp)
 
         N4 = N4/(6.0*Volume)
 
@@ -10468,10 +10391,10 @@ contains
         ! Chris' tets have a clockwise base, hence the sign change in the det
         tetvolume = &
             (  &
-             - (x1 - x0) * ((y2 - y0) * (z3 - z0) - (y3 - y0) * (z2 - z0)) &
-             + (y1 - y0) * ((x2 - x0) * (z3 - z0) - (x3 - x0) * (z2 - z0)) &
-             - (z1 - z0) * ((x2 - x0) * (y3 - y0) - (x3 - x0) * (y2 - y0)) &
-             ) / 6.0
+            - (x1 - x0) * ((y2 - y0) * (z3 - z0) - (y3 - y0) * (z2 - z0)) &
+            + (y1 - y0) * ((x2 - x0) * (z3 - z0) - (x3 - x0) * (z2 - z0)) &
+            - (z1 - z0) * ((x2 - x0) * (y3 - y0) - (x3 - x0) * (y2 - y0)) &
+            ) / 6.0
 
     end function tetvolume
 
@@ -10482,16 +10405,16 @@ contains
     !sprint_to_do!think about this
     Subroutine TRILOCCORDS2D(Xp,Yp, &
         &     N1, N2, N3,  &
-             X1,Y1, &
-             X2,Y2, &
-             X3,Y3 )
+        X1,Y1, &
+        X2,Y2, &
+        X3,Y3 )
 
         IMPLICIT NONE
         Real Xp,Yp, &
-                 N1, N2, N3,  &
-                 X1,Y1, &
-                 X2,Y2, &
-                 X3,Y3
+            N1, N2, N3,  &
+            X1,Y1, &
+            X2,Y2, &
+            X3,Y3
 
         Real AREA
 

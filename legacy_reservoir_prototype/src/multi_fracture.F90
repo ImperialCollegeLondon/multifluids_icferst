@@ -644,10 +644,10 @@ print *, "passed populate here" !!-ao
                 perm( 2, 1, ele ) = field_fl_p21 % val (ele)
                 perm( 2, 2, ele ) = field_fl_p22 % val (ele)
               else ! this is where we normalise the elements overalpping with the ring to 1 (for permeability)
-                  perm( 1, 1, ele ) = field_fl_p11 % val (ele)/rvf % val (ele)
-                  perm( 1, 2, ele ) = field_fl_p12 % val (ele)/rvf % val (ele)
-                  perm( 2, 1, ele ) = field_fl_p21 % val (ele)/rvf % val (ele)
-                  perm( 2, 2, ele ) = field_fl_p22 % val (ele)/rvf % val (ele)
+                  perm( 1, 1, ele ) = field_fl_p11 % val (ele)!/rvf % val(ele)
+                  perm( 1, 2, ele ) = field_fl_p12 % val (ele)!/rvf % val(ele)
+                  perm( 2, 1, ele ) = field_fl_p21 % val (ele)!/rvf % val(ele)
+                  perm( 2, 2, ele ) = field_fl_p22 % val (ele)!/rvf % val(ele)
               endif
             else
                 perm( 1, 1, ele ) =permeability%val(1,1,ele)
@@ -673,25 +673,22 @@ print *, "passed populate here" !!-ao
 
 !!-ao comment - porosity is not scaled due to problems arising in the wall
 !               where porosities (rvf) can arise lower than background porosity
-        allocate( scale( totele ) ) ; scale = 0.0
+        allocate( scale( totele ) ) ; scale = 1.0
         do ele = 1, totele
 !            if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0
             if (rvf % val (ele) > 0.0) porosity % val (ele) = 1 ! rvf % val(ele) * scale(ele)
 !            if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0
             if ( maxval( permeability % val( :, :, ele ) ) <= bg_perm ) porosity % val (ele) = bg_poro !!-ao making the ring mesh porosity normalised
-!            vf % val (ele) = vf % val(ele) - rvf % val(ele)    !modify solidconcentration to not include the fracture region (ring)
+            if ( porosity%val(ele) <= bg_poro ) then
+                permeability % val( 1, 1, ele ) = bg_perm
+                permeability % val( 1, 2, ele ) = 0
+                permeability % val( 2, 1, ele ) = 0
+                permeability % val( 2, 2, ele ) = bg_perm
+            endif
         end do
 
         call bound_volume_fraction( vf%val )
 
-!        !-ao--------------------------------debugging--------------------------------------------------------------------------
-!            open  (unit=100,file="fluid_perm.txt",action="write",status="replace")
-!            do ele=1, totele
-!                write(100,*) "permeabilites on ring", permeability%val(1,1,ele), permeability%val(1,2,ele), permeability%val(2,1,ele), permeability%val(2,2,ele), porosity%val(ele)
-!            end do
-!            close (100)
-!        !-ao--------------------------------debugging--------------------------------------------------------------------------
-!
 
         ! for adaptivity (bound perm field)
         perm_val => extract_scalar_field( state(1), "Dummy" )
