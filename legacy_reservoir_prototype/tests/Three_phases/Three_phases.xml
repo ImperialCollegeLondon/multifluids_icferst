@@ -3,10 +3,8 @@
   <name>BL_fast</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml gravity 3phases reference_node</tags>
-<!-- This test case checks: Porous media, three phase flow. gravity, reference node(pressure), closed domain-->
   <problem_definition length="short" nprocs="1">
-    <command_line>
-        python ./Check_3_phases.py &gt; log</command_line>
+    <command_line>python ./Check_3_phases.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>

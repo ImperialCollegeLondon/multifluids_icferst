@@ -3,10 +3,8 @@
   <name>BL_fast_fluxes</name>
   <owner userid="alex.adam"/>
   <tags>porous mpml outfluxes</tags>
-<!-- This test case checks: Porous media, calculation of outfluxes, mass conservation-->
   <problem_definition length="short" nprocs="1">
-    <command_line>
-        python ./PythonPostprocess.py &gt; log</command_line>
+    <command_line>python ./PythonPostprocess.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>

@@ -3,10 +3,8 @@
   <name>BL_fast</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml anisotropic</tags>
-<!-- This test case checks: Porous media, full anisotropic tensor defining the permeability, P2DGP1-->
   <problem_definition length="short" nprocs="1">
-    <command_line>
-        python ./*.py &gt; log</command_line>
+    <command_line>python ./*.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>

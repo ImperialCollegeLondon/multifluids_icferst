@@ -3,10 +3,8 @@
   <name>Heterogeneous_test</name>
   <owner userid="pablo.salinas"/>
   <tags>porous heterogenenous capillary mpml</tags>
-<!-- This test case checks: Porous media, heterogenenous relperms, heterogenenous capillary pressures, heterogenenous porosity, heterogeneous permeability-->
   <problem_definition length="short" nprocs="1">
-    <command_line>
-        python ./Check_Heterogenenous.py &gt; log</command_line>
+    <command_line>python ./Check_Heterogenenous.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>

@@ -3,10 +3,8 @@
   <name>BL_fast</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml exodusii</tags>
-<!-- This test case checks: Porous media, P1DGP1-->
   <problem_definition length="short" nprocs="1">
-    <command_line>
-        python ./Check_BL.py &gt; log</command_line>
+    <command_line>python ./Check_BL.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>

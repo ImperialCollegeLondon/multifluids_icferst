@@ -44,7 +44,7 @@ module shape_functions_prototype
   use shape_functions_Linear_Quadratic
   use shape_functions_NDim
   use Fields_Allocates, only : allocate, make_mesh
-
+  use multi_data_types
   implicit none
 
 contains

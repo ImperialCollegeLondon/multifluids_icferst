@@ -3,10 +3,8 @@
   <name>BL_fast_pressure_boundaries</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml adaptive_FPI</tags>
-<!-- This test case checks: Porous media, pressure inlet boundary conditions-->
   <problem_definition length="short" nprocs="1">
-    <command_line>
-        python ./Check_BL.py &gt; log</command_line>
+    <command_line>python ./Check_BL.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>

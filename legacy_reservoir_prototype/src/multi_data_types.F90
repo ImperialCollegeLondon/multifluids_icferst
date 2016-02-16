@@ -72,7 +72,7 @@ contains
         type(multi_shape_funs), intent(inout) :: shape_fun
 
         !Proceed to allocate the variables
-        allocate( shape_fun%cvn(cv_nloc, cv_ngi) )
+        allocate(shape_fun%cvn(cv_nloc, cv_ngi) )
         allocate(shape_fun%cvweight(cv_ngi))
         allocate(shape_fun%cvfen(cv_nloc, cv_ngi ))
         allocate(shape_fun%cvfenlx_all( ndim, cv_nloc, cv_ngi ))

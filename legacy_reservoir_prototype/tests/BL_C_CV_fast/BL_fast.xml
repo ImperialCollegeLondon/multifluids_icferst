@@ -3,11 +3,8 @@
   <name>BL_C_CV_fast</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml</tags>
-<!-- This test case checks: Porous media, CV_pressure formulation, FPI with adaptive backtracking-->
   <problem_definition length="short" nprocs="1">
-    <command_line>
-        python ./Check_BL.py > log
-    </command_line>
+    <command_line>python ./Check_BL.py &gt; log</command_line>
   </problem_definition>
   <variables/>
   <pass_tests>
