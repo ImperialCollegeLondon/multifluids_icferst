@@ -60,6 +60,7 @@ module multi_data_types
         integer, allocatable, dimension(  : , : )  :: u_sloclist!dimension( nface, u_snloc )
         integer, allocatable, dimension( : )  :: findgpts!dimension( cv_nloc + 1 )
         integer, allocatable, dimension( : )  :: colgpts!dimension( cv_nloc * scvngi )
+        integer :: ncolgpts
     end type multi_shape_funs
 
 
