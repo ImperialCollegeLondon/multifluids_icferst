@@ -57,7 +57,7 @@ module Copy_Outof_State
 
     use solvers
     use conservative_interpolation_module
-
+    use multi_data_types
     implicit none
 
     private

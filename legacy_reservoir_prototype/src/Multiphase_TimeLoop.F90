@@ -78,7 +78,7 @@ module multiphase_time_loop
 
     use multiphase_fractures
     use boundary_conditions_from_options
-    !USE multiphase_rheology
+    use multi_data_types
     use vtk_interfaces
 
     use multi_interpolation
