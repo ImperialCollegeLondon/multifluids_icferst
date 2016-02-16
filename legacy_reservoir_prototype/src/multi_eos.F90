@@ -321,7 +321,7 @@ contains
         type( state_type ), intent( inout ) :: packed_state
 
         integer, intent( in ) :: iphase, icomp, nphase, ncomp
-        integer :: JWLn, JWLi, JWLj
+        integer :: JWLn, JWLi
         character( len = option_path_len ), intent( in ) :: eos_option_path
         real, dimension( : ), intent( inout ) :: rho, drhodp
         real, dimension( : ), allocatable :: ro0
@@ -714,7 +714,7 @@ contains
         integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
             u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, x_snloc, cv_snloc, u_snloc, &
             p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-            ele, imat, icv, iphase, cv_iloc, idim, jdim, ij, ipres, n_in_pres, loc, loc2
+            ele, imat, icv, iphase, cv_iloc, idim, jdim, ipres, n_in_pres, loc, loc2
         real :: Mobility, pert
         real, dimension(:), allocatable :: Max_sat
         real, dimension( :, :, : ), allocatable :: u_absorb2
@@ -767,8 +767,8 @@ contains
         allocate( u_absorb2( mat_nonods, nphase * ndim, nphase * ndim ), satura2( N_IN_PRES, size(SATURA,2) ) )
         u_absorb2 = 0. ; satura2 = 0.
 
-        CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, N_IN_PRES, NDIM, SATURA(1:N_IN_PRES,:), TOTELE, CV_NLOC, MAT_NLOC, &
-            CV_NDGLN, MAT_NDGLN, U_ABSORB(:,1:N_IN_PRES*NDIM,1:N_IN_PRES*NDIM), PERM%val, MOBILITY, visc_phases, IDs_ndgln)
+        CALL calculate_absorption2( packed_state, CV_NONODS, N_IN_PRES, NDIM, SATURA(1:N_IN_PRES,:), TOTELE, CV_NLOC, MAT_NLOC, &
+            CV_NDGLN, MAT_NDGLN, U_ABSORB(:,1:N_IN_PRES*NDIM,1:N_IN_PRES*NDIM), PERM%val, visc_phases, IDs_ndgln)
 
         !Introduce perturbation, positive for the increasing and negative for decreasing phase
         !Make sure that the perturbation is between bounds
@@ -786,8 +786,8 @@ contains
             end do
         end do
 
-        CALL calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, N_IN_PRES, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
-            CV_NDGLN, MAT_NDGLN, U_ABSORB2, PERM%val, MOBILITY, visc_phases, IDs_ndgln)
+        CALL calculate_absorption2( packed_state, CV_NONODS, N_IN_PRES, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
+            CV_NDGLN, MAT_NDGLN, U_ABSORB2, PERM%val, visc_phases, IDs_ndgln)
 
         do ipres = 2, npres
 
@@ -844,21 +844,20 @@ contains
 
 
     !sprint_to_do!internal subroutine
-    SUBROUTINE calculate_absorption2( packed_state, MAT_NONODS, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
+    SUBROUTINE calculate_absorption2( packed_state, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
         CV_NDGLN, MAT_NDGLN, &
-        U_ABSORB, PERM2, MOBILITY, visc_phases, IDs_ndgln)
+        U_ABSORB, PERM2, visc_phases, IDs_ndgln)
         ! Calculate absorption for momentum eqns
         use matrix_operations
         !    use cv_advection
         implicit none
         type( state_type ), intent( inout ) :: packed_state
-        INTEGER, intent( in ) :: MAT_NONODS, CV_NONODS, NPHASE, NDIM, TOTELE, CV_NLOC,MAT_NLOC
+        INTEGER, intent( in ) :: CV_NONODS, NPHASE, NDIM, TOTELE, CV_NLOC,MAT_NLOC
         REAL, DIMENSION( :, : ), intent( in ) :: SATURA
         INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
         INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN, IDs_ndgln
         REAL, DIMENSION( :, :, : ), intent( inout ) :: U_ABSORB
         REAL, DIMENSION( :, :, : ), intent( in ) :: PERM2
-        REAL, intent( in ) :: MOBILITY
         real, intent(in), dimension(:) :: visc_phases
         ! Local variable
         type (tensor_field), pointer :: RockFluidProp
@@ -1007,7 +1006,7 @@ contains
 
     end subroutine relperm_stone
 
-    SUBROUTINE calculate_capillary_pressure( state, packed_state, Sat_in_FEM,&
+    SUBROUTINE calculate_capillary_pressure( packed_state, Sat_in_FEM,&
         CV_NDGLN, ids_ndgln, totele, cv_nloc)
 
         ! CAPIL_PRES_OPT is the capillary pressure option for deciding what form it might take.
@@ -1016,7 +1015,6 @@ contains
         ! used to calculate the capillary pressure.
 
         IMPLICIT NONE
-        type(state_type), dimension(:), intent(inout) :: state
         type(state_type), intent(inout) :: packed_state
         integer, dimension(:), intent(in) :: CV_NDGLN, ids_ndgln
         integer, intent(in) :: totele, cv_nloc
