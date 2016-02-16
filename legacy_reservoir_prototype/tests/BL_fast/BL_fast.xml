@@ -11,7 +11,7 @@
   <variables/>
   <pass_tests>
     <test name="BL_fast" language="python">BL_fast = False
-Log=file('BL_fast/log','r')
+Log=file('log','r')
 while True:
     cadena=Log.readline()
     if len(cadena) ==0:

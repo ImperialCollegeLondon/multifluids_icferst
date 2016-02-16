@@ -11,7 +11,7 @@
   <variables/>
   <pass_tests>
     <test name="Collapsing_Water_Column" language="python">Collapsing_Water_Column = False
-Log=file('Collapsing_Water_Column/log','r')
+Log=file('log','r')
 while True:
     cadena=Log.readline()
     if len(cadena) ==0:

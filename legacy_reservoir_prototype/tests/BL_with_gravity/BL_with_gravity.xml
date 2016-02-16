@@ -11,7 +11,7 @@
   <variables/>
   <pass_tests>
     <test name="Check_BL_with_gravity" language="python">Check_BL_with_gravity = False
-Log=file('BL_with_gravity/log','r')
+Log=file('log','r')
 while True:
     cadena=Log.readline()
     if len(cadena) ==0:

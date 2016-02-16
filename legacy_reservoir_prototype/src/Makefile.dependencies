@@ -38,7 +38,7 @@ Multiphase_Prototype_Wrapper.o : Multiphase_Prototype_Wrapper.F90 \
    ../../include/timeloop_utilities.mod ../../include/timers.mod \
    ../../include/write_state_module.mod \
    ../include/diagnostic_fields_new_multiphase.mod \
-   ../include/multiphase_rheology.mod ../include/multiphase_time_loop.mod
+   ../include/multiphase_time_loop.mod
 
 ../include/multiphase_time_loop.mod: Multiphase_TimeLoop.o
 	@true
@@ -65,7 +65,7 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../include/cv_advection.mod ../include/diagnostic_fields_new_multiphase.mod \
    ../include/multi_interpolation.mod ../include/multiphase_1d_engine.mod \
    ../include/multiphase_caching.mod ../include/multiphase_eos.mod \
-   ../include/multiphase_fractures.mod ../include/multiphase_rheology.mod \
+   ../include/multiphase_fractures.mod \
    ../include/shape_functions_linear_quadratic.mod ../include/spact.mod
 
 ../include/cv_advection.mod: cv-adv-dif.o
@@ -97,8 +97,10 @@ multi_IO.o ../include/printout.mod: multi_IO.F90 ../../include/confdefs.h \
 	@true
 
 multi_caching.o ../include/multiphase_caching.mod: multi_caching.F90 \
-   ../../include/confdefs.h ../../include/fdebug.h ../../include/fldebug.mod \
-   ../../include/spud.mod
+   ../../include/confdefs.h ../../include/fdebug.h \
+   ../../include/fields_allocates.mod ../../include/fields_data_types.mod \
+   ../../include/fldebug.mod ../../include/spud.mod \
+   ../../include/state_module.mod
 
 ../include/compositional_terms.mod: multi_compositional.o
 	@true
@@ -153,9 +155,10 @@ multi_fracture.o ../include/multiphase_fractures.mod: multi_fracture.F90 \
    ../../include/fefields.mod ../../include/fields.mod \
    ../../include/fldebug.mod ../../include/futils.mod \
    ../../include/global_parameters.mod ../../include/implicit_solids.mod \
-   ../../include/quadrature.mod ../../include/solvers.mod \
-   ../../include/sparse_tools.mod ../../include/spud.mod \
-   ../../include/state_module.mod ../include/copy_outof_state.mod
+   ../../include/memory_diagnostics.mod ../../include/quadrature.mod \
+   ../../include/solvers.mod ../../include/sparse_tools.mod \
+   ../../include/spud.mod ../../include/state_module.mod \
+   ../include/copy_outof_state.mod
 
 ../include/multi_interpolation.mod: multi_interpolation.o
 	@true
@@ -196,19 +199,6 @@ multi_matrix_operations.o ../include/matrix_operations.mod: \
    ../../include/spud.mod ../../include/state_module.mod \
    ../include/multiphase_caching.mod
 
-../include/multiphase_rheology.mod: multi_rheology.o
-	@true
-
-multi_rheology.o ../include/multiphase_rheology.mod: multi_rheology.F90 \
-   ../../include/confdefs.h ../../include/fdebug.h ../../include/fefields.mod \
-   ../../include/field_derivatives.mod ../../include/field_options.mod \
-   ../../include/fields.mod ../../include/fldebug.mod \
-   ../../include/global_parameters.mod \
-   ../../include/initialise_fields_module.mod \
-   ../../include/populate_state_module.mod ../../include/solvers.mod \
-   ../../include/sparse_tools.mod ../../include/sparsity_patterns.mod \
-   ../../include/spud.mod ../../include/state_module.mod
-
 ../include/shape_functions_prototype.mod: multi_shape_fct.o
 	@true
 
@@ -241,10 +231,10 @@ multi_shape_fct_ND.o ../include/shape_functions_ndim.mod \
 multi_solvers.o ../include/solvers_module.mod: multi_solvers.F90 \
    ../../include/confdefs.h ../../include/fdebug.h ../../include/fields.mod \
    ../../include/fldebug.mod ../../include/global_parameters.mod \
-   ../../include/halo_data_types.mod ../../include/petsc_tools.mod \
-   ../../include/solvers.mod ../../include/sparse_tools_petsc.mod \
-   ../../include/spud.mod ../../include/state_module.mod \
-   ../include/copy_outof_state.mod \
+   ../../include/halo_data_types.mod ../../include/petsc_legacy.h \
+   ../../include/petsc_tools.mod ../../include/solvers.mod \
+   ../../include/sparse_tools_petsc.mod ../../include/spud.mod \
+   ../../include/state_module.mod ../include/copy_outof_state.mod \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_prototype.mod
 
