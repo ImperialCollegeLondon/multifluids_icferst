@@ -11,7 +11,7 @@
   <variables/>
   <pass_tests>
     <test name="Heterogeneous_test" language="python">Heterogeneous_test = False
-Log=file('Heterogeneous_test/log','r')
+Log=file('log','r')
 while True:
     cadena=Log.readline()
     if len(cadena) ==0:

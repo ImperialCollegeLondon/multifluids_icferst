@@ -11,7 +11,7 @@
   <variables/>
   <pass_tests>
     <test name="BL_fast_thicker" language="python">BL_fast_thicker = False
-Log=file('BL_fast_thicker/log','r')
+Log=file('log','r')
 while True:
     cadena=Log.readline()
     if len(cadena) ==0:

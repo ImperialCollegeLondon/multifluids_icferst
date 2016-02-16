@@ -11,7 +11,7 @@
   <variables/>
   <pass_tests>
     <test name="3D_BL" language="python">BL_3d = False
-Log=file('3D_BL/log','r')
+Log=file('log','r')
 while True:
     cadena=Log.readline()
     if len(cadena) ==0:

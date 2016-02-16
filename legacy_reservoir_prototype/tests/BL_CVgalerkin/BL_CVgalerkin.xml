@@ -11,7 +11,7 @@
   <variables/>
   <pass_tests>
     <test name="BL_CVgalerkin" language="python">BL_CVgalerkin = False
-Log=file('BL_CVgalerkin/log','r')
+Log=file('log','r')
 while True:
     cadena=Log.readline()
     if len(cadena) ==0:
