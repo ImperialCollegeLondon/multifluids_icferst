@@ -849,7 +849,7 @@ contains
                         StorageIndexes=StorageIndexes )
                     if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) )then
                                 !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
-                        call calculate_capillary_pressure( state, packed_state, .false., &
+                        call calculate_capillary_pressure(packed_state, .false., &
                             CV_NDGLN, ids_ndgln, totele, cv_nloc)
                     end if
 
