@@ -45,8 +45,8 @@ os.system(binpath + ' ' + path + '/*mpml')
 #The present values are just above the values I got when writing the script
 #The errors seem big but that is 
 #because the MAXIMUM pressure is about 10^6
-Tolerance_L1_NORM = 157.4
-Tolerance_L2_NORM = 10.65
+Tolerance_L1_NORM = 175
+Tolerance_L2_NORM = 12
 
 AutomaticLine = 0
 
@@ -238,7 +238,7 @@ Passed = True
 
 if (L1_norm > Tolerance_L1_NORM): Passed = False
 if (L2_norm > Tolerance_L2_NORM): Passed = False
-#print L1_norm, L2_norm
+print L1_norm, L2_norm
 if (Passed): 
     print 'CWC works OK'
 else:
@@ -251,8 +251,10 @@ if (showPlot):
     for i in range(len(detector)):
         x.append(float(detector[i][0]))
         y.append(float(FS[i][0]))
-    line = plt.Line2D(x, y, color='red', linewidth=2)
+    line = plt.Line2D(x, y, color='red', linewidth=4)
+    line2 = plt.Line2D(Analytical_X, Analytical_Y, color='blue', linewidth=2)
     #line.text.set_color('red')
     #line.text.set_fontsize(16)
     ax.add_line(line)
+    ax.add_line(line2)
     plt.show()
