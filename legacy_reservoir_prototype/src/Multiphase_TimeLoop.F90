@@ -115,7 +115,13 @@ contains
         !!$ additional state variable for storage
         type(state_type) :: storage_state
 
+        !!Define shape functions
+        type (multi_shape_funs) :: CV_funs, FE_funs
+
         !!$ Primary scalars
+        type(multi_dimensions) :: Mdims
+
+        !sprint_to_do !substitute all these instances by the structure Mdims
         integer :: nphase, npres, nstate, ncomp, totele, ndim, stotel, &
             u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
             x_snloc, cv_snloc, u_snloc, p_snloc, n_in_pres, &
@@ -220,7 +226,7 @@ contains
         type( tensor_field ), pointer :: MFC_s, MFCOLD_s
         !! face value storage
         integer :: ncv_faces
-        real::  second_theta
+
         !Courant number for porous media
         real :: Courant_number = -1
 
@@ -332,12 +338,16 @@ contains
         nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
 
         !!$ Compute primary scalars used in most of the code
+        !sprint_to_do!!!remove and use only the new one
         call Get_Primary_Scalars( state, &
             nphase, nstate, ncomp, totele, ndim, stotel, &
             u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
             x_snloc, cv_snloc, u_snloc, p_snloc, &
             cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
         n_in_pres = nphase / npres
+
+        !!$ Compute primary scalars used in most of the code
+        call Get_Primary_Scalars_new( state, Mdims, get_Ph = .true. )
 
         !!$ Calculating Global Node Numbers
         allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -375,6 +385,12 @@ contains
         !!$ Defining element-pair type
         call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
             mat_ele_type, u_sele_type, cv_sele_type )
+
+        !! Compute reference shape functions
+        call allocate_multi_shape_funs(CV_funs, Mdims)
+        call allocate_multi_shape_funs(FE_funs, Mdims)
+        call cv_fem_shape_funs_new(FE_funs, Mdims, cv_ele_type, .true.)
+        call cv_fem_shape_funs_new(CV_funs, Mdims, cv_ele_type, .false.)
 
         !!$ Sparsity Patterns Matrices
         call Get_Sparsity_Patterns( state, &
@@ -721,7 +737,6 @@ contains
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
 
-                !call calculate_rheologies(state,rheology)
                 !To force the recalculation of all the stored variables uncomment the following line:
                 !           call Clean_Storage(storage_state, StorageIndexes)
 
@@ -729,17 +744,6 @@ contains
                 !call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
                 !   ScalarField_Source, velocity_absorption, temperature_absorption )
 
-
-                if( have_temperature_field .and. &
-                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-                    call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation' // &
-                        '/control_volumes/second_theta', second_theta, default=1. )
-                end if
-
-                if( have_component_field ) then
-                    call get_option( '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
-                        'prognostic/temporal_discretisation/control_volumes/second_theta', second_theta, default=1. )
-                end if
 
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
@@ -1392,7 +1396,8 @@ contains
         call deallocate(multicomponent_state)
         call deallocate(storage_state)
         if (allocated(Quality_list)) deallocate(Quality_list)
-
+        call deallocate_multi_shape_funs(CV_funs)
+        call deallocate_multi_shape_funs(FE_funs)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
 

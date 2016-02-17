@@ -1526,17 +1526,6 @@ END IF
                call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
             end if
 
-            !If two matrices method to obtain pressure and velocities, we project the CV pressure
-            !to FE to make it consistent with the FE C matrix
-!            if(GET_C_IN_CV_ADVDIF .and..not.everything_c_cv) then
-!                !This might be doing the projection wrongly... using diamond the result is different
-!                call project_CV_P_TO_FE(deltap, packed_state, storage_state, X_ALL, ndim, x_nloc,&
-!                 cv_nonods, u_nloc, cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes,&
-!                 .false., ncolm, findm, colm, midm)
-!            end if
-
-
-
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
 
 
@@ -1655,118 +1644,6 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         return
 
         contains
-
-        subroutine project_CV_P_TO_FE(delta_P, packed_state, storage_state, X_ALL, ndim, x_nloc,&
-             cv_nonods, u_nloc, cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes,&
-             QUAD_OVER_WHOLE_ELE, ncolm, findm, colm, midm)
-            !This subroutine converts the CV pressure into FE, to be used only with the delta_P
-            Implicit none
-            type( state_type ), intent( inout ) :: packed_state, storage_state
-            type( vector_field ), intent(inout), target :: delta_P
-            integer, intent(in) :: x_nloc, cv_nloc, x_nonods, P_ELE_TYPE, &
-            cv_snloc, totele, u_snloc, ncolm, ndim, cv_nonods, u_nloc
-            INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-            INTEGER, DIMENSION( : ), intent( in ) :: COLM
-            INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-            integer, dimension(:), intent(in) :: cv_ndgln, x_ndgln
-            integer, dimension(:), intent(inout) :: StorageIndexes
-            real, dimension(:,:) :: X_ALL
-            logical, intent(in) :: QUAD_OVER_WHOLE_ELE
-            !Local variables
-            type(mesh_type), pointer :: fl_mesh
-            type(mesh_type) :: Auxmesh
-            type(tensor_field_pointer), dimension(1) :: delta_P_FE_ptr, delta_P_ptr
-!            type(tensor_field), pointer :: pressure
-            type(tensor_field), target :: delta_P_FE, delta_P_CV
-            type(vector_field), target ::  PSI_AVE
-            type(vector_field_pointer), dimension(1) :: PSI_AVE_ptr
-
-            real, dimension(0) :: MASS_MN_PRES
-            real, dimension(totele) :: mass_ele
-
-            integer :: cv_ngi, cv_ngi_short,scvngi, nface, sbcvngi
-            logical, dimension(  : , : ), allocatable :: cv_on_face, cvfem_on_face, u_on_face, ufem_on_face
-            !Pointers for cv_fem_shape_funs_plus_storage
-            integer, pointer :: ncolgpts
-            integer, dimension(:), pointer ::findgpts,colgpts
-            integer, dimension(:,:), pointer :: cv_neiloc, cv_sloclist, u_sloclist
-            real, dimension( : ), pointer :: cvweight,cvweight_short, scvfeweigh,sbcvfeweigh,&
-            SELE_OVERLAP_SCALE
-            real, dimension( : , : ), pointer:: cvn,cvn_short, cvfen, cvfen_short,ufen,&
-            scvfen, scvfenslx, scvfensly, sufen, sufenslx, sufensly,&
-            sbcvn,sbcvfen, sbcvfenslx, sbcvfensly, sbufen, sbufenslx, sbufensly
-            real, dimension(  : , : , :), pointer ::  cvfenlx_all, cvfenlx_short_all, ufenlx_all,&
-            scvfenlx_all, sufenlx_all, sbcvfenlx_all, sbufenlx_all
-
-            !Prepare local variables
-
-            !Prepare variables and pointers for Pressure
-            !Get mesh file just to be able to allocate the fields we want to store
-            fl_mesh => extract_mesh( storage_state, "FakeMesh" )
-            Auxmesh = fl_mesh
-            !The number of nodes I want does not coincide
-            Auxmesh%nodes = size(delta_P%val,2)
-            call allocate(delta_P_FE, Auxmesh, "delta_P_FE", dim =(/1,1/))
-            call allocate(delta_P_CV, Auxmesh, "delta_P_CV", dim =(/1,1/))
-            call allocate(PSI_AVE, 0, Auxmesh, "PSI_AVE_CV_FE")
-            !Copy memory because PROJ_CV_TO_FEM_state only allows tensor fields...
-            delta_P_CV%val(1,:,:) = delta_P%val
-            delta_P_ptr(1)%ptr => delta_P_CV
-            delta_P_FE_ptr(1)%ptr => delta_P_FE
-            PSI_AVE_ptr(1)%ptr => PSI_AVE
-
-            !Use pressure solver options
-            delta_P_ptr(1)%ptr%option_path ="/material_phase[0]/scalar_field::Pressure"
-
-            !#####Area to retrieve the shape functions#####
-            !Only if we need to calculate the shape functions we retrieve the ngi data
-            call retrieve_ngi( ndim, P_ELE_TYPE, cv_nloc, u_nloc, &
-            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
-
-            ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ), CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
-            ALLOCATE( U_ON_FACE( U_NLOC, SCVNGI ), UFEM_ON_FACE( U_NLOC, SCVNGI ))
-
-            CALL cv_fem_shape_funs_plus_storage( &
-                                     ! Volume shape functions...
-                NDIM, CV_ELE_TYPE,  &
-                CV_NGI, CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
-                CVWEIGHT, CVFEN, CVFENLX_ALL, &
-                CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT_ALL, &
-                UFEN, UFENLX_ALL, &
-                                     ! Surface of each CV shape functions...
-                SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
-                SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
-                SCVFENLX_ALL,  &
-                SUFEN, SUFENSLX, SUFENSLY,  &
-                SUFENLX_ALL,  &
-                                     ! Surface element shape funcs...
-                U_ON_FACE, UFEM_ON_FACE, NFACE, &
-                SBCVNGI, SBCVN, SBCVFEN,SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX_ALL, &
-                SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX_ALL, &
-                CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
-                                     ! Define the gauss points that lie on the surface of the CV...
-                FINDGPTS, COLGPTS, NCOLGPTS, &
-                SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
-                storage_state, "Press_mesh" , StorageIndexes(1) )
-!                storage_state, 'Vel_mesh', StorageIndexes(13))
-            !Convert CV_P to FEM_P
-            call PROJ_CV_TO_FEM_state( packed_state, delta_P_FE_ptr, delta_P_ptr, NDIM, &
-                PSI_AVE_ptr, PSI_AVE_ptr, MASS_ELE, &
-                CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-                CV_NGI, CV_NLOC, CVN, CVWEIGHT, CVFEN, CVFENLX_ALL, &
-                X_NONODS, X_ALL, NCOLM, FINDM, COLM, MIDM, &
-                0, MASS_MN_PRES, FINDM, COLM, NCOLM)
-
-            !Overwrite delta_P to make it FE
-!            delta_P%val = 0.5 * delta_P_FE%val(1,:,:) + (1.- 0.5) * delta_P%val
-            delta_P%val = delta_P_FE%val(1,:,:)
-
-            !Deallocate auxiliar variables
-            deallocate(cv_on_face, cvfem_on_face, u_on_face, ufem_on_face)
-            call deallocate(delta_P_FE); call deallocate(PSI_AVE); call deallocate(delta_P_CV)
-        end subroutine project_CV_P_TO_FE
-
-
 
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
