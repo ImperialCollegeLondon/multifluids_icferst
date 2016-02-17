@@ -137,10 +137,3 @@ beta_plane_options =
       }
    }
 
-mobility_options =
-   ## Mobility is defined as the ratio between the phases' viscosity
-   ## In the schema, we will define one viscosity (e.g., gas phase)
-   ## and the remaining viscosity is calculated from the mobility.
-   element mobility {
-      real
-   }

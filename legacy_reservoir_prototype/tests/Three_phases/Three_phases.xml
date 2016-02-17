@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml gravity 3phases reference_node</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./Check_3_phases.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="Three_phases" language="python">BL_fast = False
+Log=file('log','r')
+while True:
+    cadena=Log.readline()
+    if len(cadena) ==0:
+        break # EOF
+
+if 'OK' in cadena: BL_fast = True
+
+Log.close</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

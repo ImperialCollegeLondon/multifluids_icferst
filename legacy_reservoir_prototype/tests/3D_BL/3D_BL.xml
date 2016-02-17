@@ -1,0 +1,23 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>BL_fast</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml 3D</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>python ./*.py &gt; log</command_line>
+  </problem_definition>
+  <variables/>
+  <pass_tests>
+    <test name="3D_BL" language="python">BL_3d = False
+Log=file('log','r')
+while True:
+    cadena=Log.readline()
+    if len(cadena) ==0:
+        break # EOF
+
+if 'OK' in cadena: BL_3d = True
+
+Log.close</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>

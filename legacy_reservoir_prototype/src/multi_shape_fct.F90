@@ -44,7 +44,7 @@ module shape_functions_prototype
   use shape_functions_Linear_Quadratic
   use shape_functions_NDim
   use Fields_Allocates, only : allocate, make_mesh
-
+  use multi_data_types
   implicit none
 
 contains
@@ -686,6 +686,129 @@ contains
 
   end subroutine cv_fem_shape_funs_plus_storage
 
+  subroutine cv_fem_shape_funs_new(shape_fun, ndim, cv_ngi, cv_nloc, u_nloc, nface, &
+            scvngi, sbcvngi, cv_snloc, u_snloc, cv_ele_type, QUAD_OVER_WHOLE_ELE )
+    ! This subrt defines the sub-control volume and FEM shape functions.
+    ! Shape functions associated with volume integration using both CV basis
+    ! functions CVN as well as FEM basis functions CVFEN (and its derivatives
+    ! CVFENLX, CVFENLY, CVFENLZ)
+    implicit none
+    integer, intent(in) :: ndim, cv_ngi, cv_nloc, u_nloc, &
+            nface, scvngi, sbcvngi, cv_snloc, u_snloc, cv_ele_type
+    type(multi_shape_funs), intent(inout) :: shape_fun
+    logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
+
+
+    ! Local variables
+    logical, dimension( :, : ), allocatable :: ufem_on_face2
+    integer, dimension( :, : ), allocatable :: u_sloclist2
+    real, dimension( :, : ), allocatable :: ufen2, ufenlx2, ufenly2, ufenlz2, &
+         sufen2, sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2, &
+         sbufen2, sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, sbufenlz2
+    real, dimension( :, : ), allocatable :: M,MLX,MLY,MLZ, sm,SMLX,SMLY
+    character( len = option_path_len ) :: dummy_path, dummypath2
+    integer :: u_ele_type2, gi, MLOC, SMLOC
+    integer :: sgi, cv_siloc, cv_skloc
+    real :: rmax
+
+    ewrite(3,*) 'in  cv_fem_shape_funs subrt'
+
+    MLOC = 1
+    SMLOC = 1
+    ALLOCATE( M( MLOC, CV_NGI ) )
+    ALLOCATE( MLX( MLOC, CV_NGI ) )
+    ALLOCATE( MLY( MLOC, CV_NGI ) )
+    ALLOCATE( MLZ( MLOC, CV_NGI ) )
+    ALLOCATE( SM( SMLOC, scvngi ) )
+    ALLOCATE( SMLX( SMLOC, scvngi ) )
+    ALLOCATE( SMLY( SMLOC, scvngi ) )
+
+
+    if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
+       ewrite(3,*)'2 going into SHAPE_one_ele'
+       call SHAPE_one_ele2(&
+            ndim, cv_ele_type, &
+            cv_ngi, cv_nloc, u_nloc,  &
+                                ! Volume shape functions
+            shape_fun%cvweight, shape_fun%cvfen, shape_fun%cvfenlx_all(1,:,:), &
+            shape_fun%cvfenlx_all(2,:,:), shape_fun%cvfenlx_all(3,:,:), &
+            shape_fun%ufen, shape_fun%ufenlx_all(1,:,:), shape_fun%ufenlx_all(2,:,:),&
+            shape_fun%ufenlx_all(3,:,:), &
+                                ! Surface of each CV shape functions
+            sbcvngi,  &
+            shape_fun%sbcvfen, shape_fun%sbcvfenslx, shape_fun%sbcvfensly, shape_fun%sbcvfeweigh, &
+            shape_fun%sbufen, shape_fun%sbufenslx, shape_fun%sbufensly, &
+                                ! Surface element shape funcs
+            nface, &
+            shape_fun%cv_sloclist, shape_fun%u_sloclist, cv_snloc, u_snloc )
+
+       if(scvngi/=sbcvngi) FLAbort("scvngi/=sbcvngi")
+
+    else
+       call shape_cv_n( ndim, cv_ele_type, &
+            cv_ngi, cv_nloc, u_nloc, shape_fun%cvn, shape_fun%cvweight, &
+            shape_fun%cvfen, shape_fun%scvfenlx_all(1,:,:), shape_fun%scvfenlx_all(2,:,:), shape_fun%scvfenlx_all(3,:,:), &
+            shape_fun%ufen, shape_fun%ufenlx_all(1,:,:), shape_fun%ufenlx_all(2,:,:), shape_fun%ufenlx_all(3,:,:) )
+    endif
+    !
+    !(a) scvfen( cv_nloc, scvngi ): the shape function evaluated for each node
+    !          at each surface gauss point
+    !(b) scvfenslx[y/z]( cv_nloc, scvngi ): the surface derivatives of the shape
+    !          function for each node at those same points, and the derivatives
+    !          of the shape
+    !(c) scvfeweigh( scvngi ): the Gauss weights to use when integrating around
+    !          the control volume surface
+    !(d) cv_neiloc( cv_nloc, scvngi ): neighbour node for a given node/gauss-point
+    !          pair. This also include quadature points around the element.
+    !
+
+    if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element
+       call shapesv_fem_plus( scvngi, shape_fun%cv_neiloc, shape_fun%cv_on_face, shape_fun%cvfem_on_face, &
+            shape_fun%ufem_on_face, &
+            cv_ele_type, cv_nloc, shape_fun%scvfen, shape_fun%scvfenslx, shape_fun%scvfensly, shape_fun%scvfeweigh, &
+            shape_fun%scvfenlx_all(1,:,:), shape_fun%scvfenlx_all(2,:,:), shape_fun%scvfenlx_all(3,:,:), &
+            u_nloc, shape_fun%sufen, shape_fun%sufenslx, shape_fun%sufensly, &
+            shape_fun%sufenlx_all(1,:,:), shape_fun%sufenlx_all(2,:,:), shape_fun%sufenlx_all(3,:,:), &
+            ndim )
+
+       ! Determine the surface element shape functions from those
+       ! calculated in SHAPESV_FEM_PLUS and also CV_SLOCLIST( NFACE,CV_SNLOC )
+       call det_suf_ele_shape( scvngi, nface, &
+            shape_fun%cvfem_on_face, &
+            cv_nloc, shape_fun%scvfen, shape_fun%scvfenslx, shape_fun%scvfensly, shape_fun%scvfeweigh, &
+            shape_fun%scvfenlx_all(1,:,:), shape_fun%scvfenlx_all(2,:,:), shape_fun%scvfenlx_all(3,:,:), &
+            u_nloc, shape_fun%sufen, shape_fun%sufenslx, shape_fun%sufensly, &
+            shape_fun%sufenlx_all(1,:,:), shape_fun%sufenlx_all(2,:,:), shape_fun%sufenlx_all(3,:,:), &
+            sbcvngi, shape_fun%sbcvfen, shape_fun%sbcvfenslx, shape_fun%sbcvfensly, shape_fun%sbcvfeweigh, &
+            shape_fun%sbcvfenlx_all(1,:,:), shape_fun%sbcvfenlx_all(2,:,:), shape_fun%sbcvfenlx_all(3,:,:),  &
+            shape_fun%sbufen, shape_fun%sbufenslx, shape_fun%sbufensly, &
+            shape_fun%sbufenlx_all(1,:,:), shape_fun%sbufenlx_all(2,:,:), shape_fun%sbufenlx_all(3,:,:), &
+            shape_fun%cv_sloclist, shape_fun%u_sloclist, cv_snloc, u_snloc, &
+            ndim, cv_ele_type )
+       ! Define the gauss points that lie on the surface of the
+       ! control volume surrounding a given local node (iloc)
+       ! that is FINDGPTS, COLGPTS, NCOLGPTS
+       call gaussiloc( shape_fun%findgpts, shape_fun%colgpts, shape_fun%ncolgpts, &
+            shape_fun%cv_neiloc, cv_nloc, scvngi )
+    endif
+
+    ! calculate sbcvn from sbcvfen - Use the max scvfen at a quadrature pt and set to 1:
+    shape_fun%SBCVN=0.0
+    DO SGI=1,SBCVNGI
+       RMAX=-100.0 ! Find max value of sbcvfen...
+       DO CV_SILOC=1,CV_SNLOC
+          IF(shape_fun%sbcvfen(CV_SILOC,SGI).GT.RMAX) THEN
+             RMAX=shape_fun%sbcvfen(CV_SILOC,SGI)
+             CV_SKLOC=CV_SILOC
+          ENDIF
+       END DO
+       shape_fun%SBCVN(CV_SKLOC,SGI)=1.0
+    END DO
+
+    deallocate( m, mlx, mly, mlz, sm, smlx, smly )
+
+    return
+  end subroutine cv_fem_shape_funs_new
 
   subroutine cv_fem_shape_funs( &
        ndim, cv_ele_type, &
