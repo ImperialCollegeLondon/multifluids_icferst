@@ -718,7 +718,7 @@ contains
 
             !!$ Start non-linear loop
             its = 1
-            Loop_NonLinearIteration: do  while (its < NonLinearIteration)
+            Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
 
                 !call calculate_rheologies(state,rheology)
