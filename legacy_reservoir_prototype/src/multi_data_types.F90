@@ -112,7 +112,6 @@ contains
         allocate(shape_fun%cvfen(Mdims%cv_nloc, Mdims%cv_ngi ))
         allocate(shape_fun%cvfenlx_all( Mdims%ndim, Mdims%cv_nloc, Mdims%cv_ngi ))
         allocate(shape_fun%ufen( Mdims%u_nloc, Mdims%cv_ngi ))
-        allocate(shape_fun%ufen( Mdims%u_nloc, Mdims%cv_ngi ))
         allocate(shape_fun%ufenlx_all( Mdims%ndim, Mdims%u_nloc, Mdims%cv_ngi ))
         allocate(shape_fun%cv_neiloc( Mdims%cv_nloc, Mdims%scvngi ))
         allocate(shape_fun%cv_on_face( Mdims%cv_nloc, Mdims%scvngi ))
