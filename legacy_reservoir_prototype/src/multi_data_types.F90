@@ -33,6 +33,41 @@ module multi_data_types
 
     use global_parameters, only: option_path_len, is_porous_media
 
+    type multi_dimensions
+        integer :: ndim       !Number of dimensions
+        integer :: cv_ngi     !Number of gauss integer points
+        integer :: cv_nloc    !Number of local control volumes
+        integer :: u_nloc     !Number of local velocity nodes
+        integer :: nface      !Number of faces per element
+        integer :: scvngi     !Number of gauss integer points in the surface of a control volume
+        integer :: sbcvngi    !Number of gauss integer points in the surface boundary of a control volume
+        integer :: cv_snloc   !Number of local control volumes on the surface?
+        integer :: u_snloc    !Number of local velocity nodes on the surface?
+        integer :: nstate     !Number of states in state
+        integer :: ncomp      !Number of components
+        integer :: xu_nloc    !Number of local velocity nodes of the Continuous mesh
+        integer :: x_nloc     !Number of local control volumes of the Continuous mesh
+        integer :: x_snloc    !Number of local surface control volumes of the Continuous mesh
+        integer :: x_nloc_p1  !???
+        integer :: x_nonods_p1!???
+        integer :: p_nloc     !Number of local pressure nodes
+        integer :: p_snloc    !Number of local pressure nodes on the surface?
+        integer :: mat_nloc   !??
+        integer :: totele     !Total number of elements
+        integer :: stotel     !Total number of surface elements?
+        integer :: cv_nonods  !Total number of control volumes
+        integer :: p_nonods   !Total number of pressure nodes
+        integer :: mat_nonods !Total number of ???
+        integer :: u_nonods   !Total number of velocity nodes
+        integer :: xu_nonods  !Total number of velocity nodes of the Continuous mesh
+        integer :: x_nonods   !Total number of control volumes of the Continuous mesh
+        integer :: ph_nloc    !Number of ????
+        integer :: ph_nonods  !Total number of ????
+        integer :: nphase     !Total number of phases
+        integer :: npres      !Total number of pressure
+        integer :: n_in_pres  !nphase/npres
+
+    end type multi_dimensions
 
     !Data structure to store all the shape functions to facilitate its movement throughtout the code
     type multi_shape_funs

@@ -2556,7 +2556,7 @@ contains
 
                                 ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
                                 CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
-                                    CV_NONODS, U_NONODS, NPHASE, NPRES, n_in_pres, between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
+                                    CV_NONODS, U_NONODS, NPHASE, NPRES, n_in_pres, CV_SNLOC, between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
                                     JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
                                     SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
                                     WIC_U_BC_ALL, WIC_P_BC_ALL, u_ndgln, pressure_BCs%val, &
@@ -9011,7 +9011,7 @@ contains
 
 
     SUBROUTINE PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
-        CV_NONODS, U_NONODS, NPHASE, NPRES, n_in_pres, between_elements, on_domain_boundary, &
+        CV_NONODS, U_NONODS, NPHASE, NPRES, n_in_pres, CV_SNLOC,  between_elements, on_domain_boundary, &
         ELE, ELE2, SELE, HDC, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, &
         U_SLOC2LOC, CV_SLOC2LOC,  &
         SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -9031,7 +9031,7 @@ contains
         ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO CT MATRIX
         !    LOGICAL, PARAMETER :: more_in_ct=.false.
         INTEGER, intent( in ) :: U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
-            CV_NONODS, U_NONODS, NPHASE, CV_NODI, CV_NODJ, ELE, ELE2, SELE, NPRES, n_in_pres
+            CV_NONODS, U_NONODS, NPHASE, CV_NODI, CV_NODJ, ELE, ELE2, SELE, NPRES, n_in_pres, CV_SNLOC
         REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: loc_u, loc2_u
         LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary,&
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS
@@ -9323,10 +9323,10 @@ contains
                 DO IPRES = 1, NPRES
                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
                         Bound_ele_correct = 0
-                        DO U_SILOC = 1, size(U_SLOC2LOC)
+                        DO U_SILOC = 1, U_SNLOC!size(U_SLOC2LOC)
                             U_ILOC = U_SLOC2LOC( U_SILOC )
                             U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                            DO P_SJLOC = 1, size(CV_SLOC2LOC)
+                            DO P_SJLOC = 1, CV_SNLOC!size(CV_SLOC2LOC)
                                 U_KLOC = U_SLOC2LOC( P_SJLOC )
                                 DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
                                     Bound_ele_correct( :, IPHASE, U_KLOC ) = Bound_ele_correct( :, IPHASE, U_KLOC ) + 1
