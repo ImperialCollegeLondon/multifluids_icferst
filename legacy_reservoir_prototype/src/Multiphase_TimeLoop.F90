@@ -115,10 +115,13 @@ contains
         !!$ additional state variable for storage
         type(state_type) :: storage_state
 
+        !!Define shape functions
+        type (multi_shape_funs) :: CV_funs, FE_funs
+
         !!$ Primary scalars
         type(multi_dimensions) :: Mdims
 
-
+        !sprint_to_do !substitute all these instances by the structure Mdims
         integer :: nphase, npres, nstate, ncomp, totele, ndim, stotel, &
             u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
             x_snloc, cv_snloc, u_snloc, p_snloc, n_in_pres, &
@@ -346,7 +349,6 @@ contains
         !!$ Compute primary scalars used in most of the code
         call Get_Primary_Scalars_new( state, Mdims, get_Ph = .true. )
 
-
         !!$ Calculating Global Node Numbers
         allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
             u_sndgln( stotel * u_snloc ) )
@@ -383,6 +385,12 @@ contains
         !!$ Defining element-pair type
         call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
             mat_ele_type, u_sele_type, cv_sele_type )
+
+        !! Compute reference shape functions
+        call allocate_multi_shape_funs(CV_funs, Mdims)
+        call allocate_multi_shape_funs(FE_funs, Mdims)
+        call cv_fem_shape_funs_new(FE_funs, Mdims, cv_ele_type, .true.)
+        call cv_fem_shape_funs_new(CV_funs, Mdims, cv_ele_type, .false.)
 
         !!$ Sparsity Patterns Matrices
         call Get_Sparsity_Patterns( state, &
@@ -1388,7 +1396,8 @@ contains
         call deallocate(multicomponent_state)
         call deallocate(storage_state)
         if (allocated(Quality_list)) deallocate(Quality_list)
-
+        call deallocate_multi_shape_funs(CV_funs)
+        call deallocate_multi_shape_funs(FE_funs)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
 
