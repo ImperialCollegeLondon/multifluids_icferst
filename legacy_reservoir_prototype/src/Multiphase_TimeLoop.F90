@@ -120,7 +120,7 @@ contains
 
         !!$ Primary scalars
         type(multi_dimensions) :: Mdims
-
+        type(multi_gi_dimensions) :: CV_GIdims, FE_GIdims
         !sprint_to_do !substitute all these instances by the structure Mdims
         integer :: nphase, npres, nstate, ncomp, totele, ndim, stotel, &
             u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
@@ -386,12 +386,6 @@ contains
         call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
             mat_ele_type, u_sele_type, cv_sele_type )
 
-        !! Compute reference shape functions
-        call allocate_multi_shape_funs(CV_funs, Mdims)
-        call allocate_multi_shape_funs(FE_funs, Mdims)
-        call cv_fem_shape_funs_new(FE_funs, Mdims, cv_ele_type, .true.)
-        call cv_fem_shape_funs_new(CV_funs, Mdims, cv_ele_type, .false.)
-
         !!$ Sparsity Patterns Matrices
         call Get_Sparsity_Patterns( state, &
             !!$ CV multi-phase eqns (e.g. vol frac, temp)
@@ -507,6 +501,14 @@ contains
 
         call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
             cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
+        !Create the rest of multi_integer
+        call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, .false.)
+        call retrieve_ngi_new(FE_GIdims, Mdims, cv_ele_type, .true.)
+        !! Compute reference shape functions
+        call allocate_multi_shape_funs(CV_funs, Mdims, CV_GIdims)
+        call allocate_multi_shape_funs(FE_funs, Mdims, FE_GIdims)
+        call cv_fem_shape_funs_new(CV_funs, Mdims, CV_GIdims, cv_ele_type, .false.)
+        call cv_fem_shape_funs_new(FE_funs, Mdims, FE_GIdims, cv_ele_type, .true.)
 
         allocate( theta_flux( nphase, ncv_faces * igot_theta_flux ), &
             one_m_theta_flux( nphase, ncv_faces * igot_theta_flux ), &
@@ -782,12 +784,12 @@ contains
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state,storage_state, &
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, Mdims, CV_funs, storage_state, &
                         tracer_field,velocity_field,density_field,&
                         small_FINACV, small_COLACV, small_MIDACV, &
                         NCOLCT, FINDCT, COLCT, &
                         CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-                        U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
+                        CV_ELE_TYPE,&
                         NPHASE, NPRES, &
                         CV_NLOC, U_NLOC, X_NLOC, &
                         CV_NDGLN, X_NDGLN, U_NDGLN, &
@@ -912,26 +914,22 @@ contains
                 end if Conditional_ForceBalanceEquation
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
-                    call VolumeFraction_Assemble_Solve( state, packed_state, storage_state,&
+                    call VolumeFraction_Assemble_Solve( state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state,&
                         small_FINACV, small_COLACV, small_MIDACV, &
                         NCOLCT, FINDCT, COLCT, &
-                        CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                         CV_ELE_TYPE, &
-                        NPHASE, NPRES, &
-                        CV_NLOC, U_NLOC, X_NLOC,  &
                         CV_NDGLN, X_NDGLN, U_NDGLN, &
-                        CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
+                        CV_SNDGLN, U_SNDGLN, &
                         !!$
-                        MAT_NLOC, MAT_NDGLN, MAT_NONODS, &
+                        MAT_NDGLN,&
                         !!$
                         v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                         SUF_SIG_DIAGTEN_BC, &
                         DRhoDPressure, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         !!$
-                        NDIM,nface, &
                         NCOLM, FINDM, COLM, MIDM, &
-                        XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                        XU_NDGLN, FINELE, COLELE, NCOLELE, &
                         !!$
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         igot_theta_flux,scvngi_theta, volfra_use_theta_flux, &
@@ -1006,12 +1004,12 @@ contains
                         Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
                             comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
 
-                            call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), storage_state,&
+                            call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), Mdims, CV_funs, storage_state,&
                                 tracer_field,velocity_field,density_field,&
                                 SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
                                 NCOLCT, FINDCT, COLCT, &
                                 CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-                                U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, &
+                                CV_ELE_TYPE, &
                                 NPHASE, NPRES, &
                                 CV_NLOC, U_NLOC, X_NLOC, &
                                 CV_NDGLN, X_NDGLN, U_NDGLN, &

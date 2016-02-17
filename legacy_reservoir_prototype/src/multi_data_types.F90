@@ -35,12 +35,8 @@ module multi_data_types
 
     type multi_dimensions
         integer :: ndim       !Number of dimensions
-        integer :: cv_ngi     !Number of gauss integer points
         integer :: cv_nloc    !Number of local control volumes
         integer :: u_nloc     !Number of local velocity nodes
-        integer :: nface      !Number of faces per element
-        integer :: scvngi     !Number of gauss integer points in the surface of a control volume
-        integer :: sbcvngi    !Number of gauss integer points in the surface boundary of a control volume
         integer :: cv_snloc   !Number of local control volumes on the surface?
         integer :: u_snloc    !Number of local velocity nodes on the surface?
         integer :: nstate     !Number of states in state
@@ -68,6 +64,14 @@ module multi_data_types
         integer :: n_in_pres  !nphase/npres
 
     end type multi_dimensions
+
+    type multi_gi_dimensions
+        integer :: cv_ngi     !Number of gauss integer points
+        integer :: scvngi     !Number of gauss integer points in the surface of a control volume
+        integer :: sbcvngi    !Number of gauss integer points in the surface boundary of a control volume
+        integer :: nface      !Number of faces per element
+    end type multi_gi_dimensions
+
 
     !Data structure to store all the shape functions to facilitate its movement throughtout the code
     type multi_shape_funs
@@ -100,48 +104,48 @@ module multi_data_types
 
 
 contains
-    subroutine allocate_multi_shape_funs(shape_fun,  Mdims)
+    subroutine allocate_multi_shape_funs(shape_fun,  Mdims, GIdims)
     !This subroutine allocates all the arrays in a multi_shape_funs data type
         implicit none
         type(multi_shape_funs), intent(inout) :: shape_fun
         type(multi_dimensions), intent(in) :: Mdims
+        type(multi_GI_dimensions), intent(in) :: GIdims
 
         !Proceed to allocate the variables
-        allocate(shape_fun%cvn(Mdims%cv_nloc, Mdims%cv_ngi) )
-        allocate(shape_fun%cvweight(Mdims%cv_ngi))
-        allocate(shape_fun%cvfen(Mdims%cv_nloc, Mdims%cv_ngi ))
-        allocate(shape_fun%cvfenlx_all( Mdims%ndim, Mdims%cv_nloc, Mdims%cv_ngi ))
-        allocate(shape_fun%ufen( Mdims%u_nloc, Mdims%cv_ngi ))
-        allocate(shape_fun%ufenlx_all( Mdims%ndim, Mdims%u_nloc, Mdims%cv_ngi ))
-        allocate(shape_fun%cv_neiloc( Mdims%cv_nloc, Mdims%scvngi ))
-        allocate(shape_fun%cv_on_face( Mdims%cv_nloc, Mdims%scvngi ))
-        allocate(shape_fun%cvfem_on_face( Mdims%cv_nloc, Mdims%scvngi ))
-        allocate(shape_fun%scvfen( Mdims%cv_nloc, Mdims%scvngi ))
-        allocate(shape_fun%scvfenslx( Mdims%cv_nloc, Mdims%scvngi ))
-        allocate(shape_fun%scvfensly( Mdims%cv_nloc, Mdims%scvngi ))
-        allocate(shape_fun%scvfeweigh( Mdims%scvngi ))
-        allocate(shape_fun%scvfenlx_all(Mdims%ndim, Mdims%cv_nloc, Mdims%scvngi))
-        allocate(shape_fun%sufen( Mdims%u_nloc, Mdims%scvngi ))
-        allocate(shape_fun%sufenslx( Mdims%u_nloc, Mdims%scvngi ))
-        allocate(shape_fun%sufensly( Mdims%u_nloc, Mdims%scvngi ))
-        allocate(shape_fun%sufenlx_all( Mdims%ndim, Mdims%u_nloc, Mdims%scvngi ))
-        allocate(shape_fun%u_on_face( Mdims%u_nloc, Mdims%scvngi ))
-        allocate(shape_fun%ufem_on_face( Mdims%u_nloc, Mdims%scvngi ))
-        allocate(shape_fun%sbcvn(Mdims%cv_snloc, Mdims%sbcvngi))
-        allocate(shape_fun%sbcvfen( Mdims%cv_snloc, Mdims%sbcvngi ))
-        allocate(shape_fun%sbcvfenslx( Mdims%cv_snloc, Mdims%sbcvngi ))
-        allocate(shape_fun%sbcvfensly( Mdims%cv_snloc, Mdims%sbcvngi ))
-        allocate(shape_fun%sbcvfeweigh(Mdims%sbcvngi))
-        allocate(shape_fun%sbcvfenlx_all( Mdims%ndim, Mdims%cv_snloc, Mdims%sbcvngi ))
-        allocate(shape_fun%sbufen(Mdims%u_snloc, Mdims%sbcvngi))
-        allocate(shape_fun%sbufenslx(Mdims%u_snloc, Mdims%sbcvngi))
-        allocate(shape_fun%sbufensly(Mdims%u_snloc, Mdims%sbcvngi))
-        allocate(shape_fun%sbufenlx_all( Mdims%ndim, Mdims%u_snloc, Mdims%sbcvngi ))
-        allocate(shape_fun%cv_sloclist( Mdims%nface, Mdims%cv_snloc ))
-        allocate(shape_fun%u_sloclist( Mdims%nface, Mdims%u_snloc ))
+        allocate(shape_fun%cvn(Mdims%cv_nloc, GIdims%cv_ngi) )
+        allocate(shape_fun%cvweight(GIdims%cv_ngi))
+        allocate(shape_fun%cvfen(Mdims%cv_nloc, GIdims%cv_ngi ))
+        allocate(shape_fun%cvfenlx_all( Mdims%ndim, Mdims%cv_nloc, GIdims%cv_ngi ))
+        allocate(shape_fun%ufen( Mdims%u_nloc, GIdims%cv_ngi ))
+        allocate(shape_fun%ufenlx_all( Mdims%ndim, Mdims%u_nloc, GIdims%cv_ngi ))
+        allocate(shape_fun%cv_neiloc( Mdims%cv_nloc, GIdims%scvngi ))
+        allocate(shape_fun%cv_on_face( Mdims%cv_nloc, GIdims%scvngi ))
+        allocate(shape_fun%cvfem_on_face( Mdims%cv_nloc, GIdims%scvngi ))
+        allocate(shape_fun%scvfen( Mdims%cv_nloc, GIdims%scvngi ))
+        allocate(shape_fun%scvfenslx( Mdims%cv_nloc, GIdims%scvngi ))
+        allocate(shape_fun%scvfensly( Mdims%cv_nloc, GIdims%scvngi ))
+        allocate(shape_fun%scvfeweigh( GIdims%scvngi ))
+        allocate(shape_fun%scvfenlx_all(Mdims%ndim, Mdims%cv_nloc, GIdims%scvngi))
+        allocate(shape_fun%sufen( Mdims%u_nloc, GIdims%scvngi ))
+        allocate(shape_fun%sufenslx( Mdims%u_nloc, GIdims%scvngi ))
+        allocate(shape_fun%sufensly( Mdims%u_nloc, GIdims%scvngi ))
+        allocate(shape_fun%sufenlx_all( Mdims%ndim, Mdims%u_nloc, GIdims%scvngi ))
+        allocate(shape_fun%u_on_face( Mdims%u_nloc, GIdims%scvngi ))
+        allocate(shape_fun%ufem_on_face( Mdims%u_nloc, GIdims%scvngi ))
+        allocate(shape_fun%sbcvn(Mdims%cv_snloc, GIdims%sbcvngi))
+        allocate(shape_fun%sbcvfen( Mdims%cv_snloc, GIdims%sbcvngi ))
+        allocate(shape_fun%sbcvfenslx( Mdims%cv_snloc, GIdims%sbcvngi ))
+        allocate(shape_fun%sbcvfensly( Mdims%cv_snloc, GIdims%sbcvngi ))
+        allocate(shape_fun%sbcvfeweigh(GIdims%sbcvngi))
+        allocate(shape_fun%sbcvfenlx_all( Mdims%ndim, Mdims%cv_snloc, GIdims%sbcvngi ))
+        allocate(shape_fun%sbufen(Mdims%u_snloc, GIdims%sbcvngi))
+        allocate(shape_fun%sbufenslx(Mdims%u_snloc, GIdims%sbcvngi))
+        allocate(shape_fun%sbufensly(Mdims%u_snloc, GIdims%sbcvngi))
+        allocate(shape_fun%sbufenlx_all( Mdims%ndim, Mdims%u_snloc, GIdims%sbcvngi ))
+        allocate(shape_fun%cv_sloclist( GIdims%nface, Mdims%cv_snloc ))
+        allocate(shape_fun%u_sloclist( GIdims%nface, Mdims%u_snloc ))
         allocate(shape_fun%findgpts(Mdims%cv_nloc + 1))
-        allocate(shape_fun%colgpts( Mdims%cv_nloc * Mdims%scvngi ))
-
+        allocate(shape_fun%colgpts( Mdims%cv_nloc * GIdims%scvngi ))
 
     end subroutine allocate_multi_shape_funs
 

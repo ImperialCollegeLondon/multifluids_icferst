@@ -301,6 +301,9 @@ contains
                 Mdims%ph_nloc = 0
                 Mdims%ph_nonods = 0
             end if
+        else
+            Mdims%ph_nloc = 0
+            Mdims%ph_nonods = 0
         end if
 
         ! Number of pressures to solve for
