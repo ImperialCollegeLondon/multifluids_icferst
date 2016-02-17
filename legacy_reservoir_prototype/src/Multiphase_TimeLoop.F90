@@ -223,7 +223,7 @@ contains
         type( tensor_field ), pointer :: MFC_s, MFCOLD_s
         !! face value storage
         integer :: ncv_faces
-        real::  second_theta
+
         !Courant number for porous media
         real :: Courant_number = -1
 
@@ -726,10 +726,9 @@ contains
 
             !!$ Start non-linear loop
             its = 1
-            Loop_NonLinearIteration: do  while (its < NonLinearIteration)
+            Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
 
-                !call calculate_rheologies(state,rheology)
                 !To force the recalculation of all the stored variables uncomment the following line:
                 !           call Clean_Storage(storage_state, StorageIndexes)
 
@@ -737,17 +736,6 @@ contains
                 !call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
                 !   ScalarField_Source, velocity_absorption, temperature_absorption )
 
-
-                if( have_temperature_field .and. &
-                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-                    call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation' // &
-                        '/control_volumes/second_theta', second_theta, default=1. )
-                end if
-
-                if( have_component_field ) then
-                    call get_option( '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
-                        'prognostic/temporal_discretisation/control_volumes/second_theta', second_theta, default=1. )
-                end if
 
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
