@@ -56,6 +56,7 @@ module multiphase_1D_engine
     use multiphase_caching, only: reshape_vector2pointer
     use memory_diagnostics
     use reference_counting
+    use multi_tools
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, &
