@@ -56,18 +56,12 @@ module multiphase_1D_engine
     use multiphase_caching, only: reshape_vector2pointer
     use memory_diagnostics
     use reference_counting
+    use multi_data_types
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, &
     PUT_CT_IN_GLOB_MAT, &
-    ASSEMB_FORCE_CTY!, &
-!    UVW_2_ULONG, &
-!    PUT_MOM_C_IN_GLOB_MAT, &
-!    DG_DIFFUSION!, &
-!    ASSEM_CS, &
-!    AVESOU, &
-!    AVESIG, &
-!    LUMP_ENERGY_EQNS
+    ASSEMB_FORCE_CTY
 
     public  :: INTENERGE_ASSEM_SOLVE, &
     VolumeFraction_Assemble_Solve, &
@@ -75,12 +69,12 @@ module multiphase_1D_engine
 
 contains
 
-  SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, storage_state, &
+  SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, Mdims, CV_funs, storage_state, &
        tracer, velocity, density, &
        SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
        NCOLCT, FINDCT, COLCT, &
        CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-       U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, &
+       CV_ELE_TYPE,&
        NPHASE, NPRES, &
        CV_NLOC, U_NLOC, X_NLOC,  &
        CV_NDGLN, X_NDGLN, U_NDGLN, &
@@ -103,290 +97,288 @@ contains
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
        StorageIndexes, icomp, saturation, IDs_ndgln )
 
-        ! Solve for internal energy using a control volume method.
+           ! Solve for internal energy using a control volume method.
 
-        implicit none
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state, storage_state
-        type(tensor_field), intent(inout) :: tracer
-        type(tensor_field), intent(in) :: velocity, density
+           implicit none
+           type( state_type ), dimension( : ), intent( inout ) :: state
+           type( state_type ), intent( inout ) :: packed_state, storage_state
+           type(multi_dimensions), intent(in) :: Mdims
+           type(multi_shape_funs), intent(in) :: CV_funs
+           type(tensor_field), intent(inout) :: tracer
+           type(tensor_field), intent(in) :: velocity, density
 
-    INTEGER, intent( in ) :: NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
-         U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE, NPHASE, CV_NLOC, U_NLOC, X_NLOC,  MAT_NLOC, &
-         CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, NCOLM, NCOLELE, &
-         IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux, NPRES
-    LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
-    LOGICAL, intent( in ), optional ::THERMAL
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-    INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-    INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN, IDs_ndgln
-    INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
-    INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
-    INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
-    INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
-    INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV
-    INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-    INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-    REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
-    REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-    REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
-    INTEGER, intent( in ) :: IGOT_THERM_VIS
-    REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
-    REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
-    INTEGER, intent( in ) :: T_DISOPT, T_DG_VEL_INT_OPT
-    REAL, intent( in ) :: DT, T_THETA
-    REAL, intent( in ) :: T_BETA
-    REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-    REAL, DIMENSION( :, : ), intent( in ) :: DERIV
-    REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
-    REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-    INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-    INTEGER, DIMENSION( : ), intent( in ) :: COLM
-    INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-    INTEGER, DIMENSION( : ), intent( in ) :: FINELE
-    INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-    REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-    REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
-    character( len = * ), intent( in ), optional :: option_path
-    real, dimension( : ), intent( inout ), optional :: mass_ele_transp
-    integer, dimension(:), intent(inout) :: StorageIndexes
-    type(tensor_field), intent(in), optional :: saturation
+           INTEGER, intent( in ) :: NCOLCT, CV_NONODS, U_NONODS, X_NONODS, MAT_NONODS, TOTELE, &
+               CV_ELE_TYPE, NPHASE, CV_NLOC, U_NLOC, X_NLOC,  MAT_NLOC, &
+               CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, NCOLM, NCOLELE, &
+               IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux, NPRES
+           LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
+           LOGICAL, intent( in ), optional ::THERMAL
+           INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+           INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
+           INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN, IDs_ndgln
+           INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
+           INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
+           INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
+           INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
+           INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV
+           INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
+           INTEGER, DIMENSION( : ), intent( in ) :: COLCT
+           REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
+           REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+           REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
+           INTEGER, intent( in ) :: IGOT_THERM_VIS
+           REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
+           REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
+           INTEGER, intent( in ) :: T_DISOPT, T_DG_VEL_INT_OPT
+           REAL, intent( in ) :: DT, T_THETA
+           REAL, intent( in ) :: T_BETA
+           REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
+           REAL, DIMENSION( :, : ), intent( in ) :: DERIV
+           REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
+           REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+           INTEGER, DIMENSION( : ), intent( in ) :: FINDM
+           INTEGER, DIMENSION( : ), intent( in ) :: COLM
+           INTEGER, DIMENSION( : ), intent( in ) :: MIDM
+           INTEGER, DIMENSION( : ), intent( in ) :: FINELE
+           INTEGER, DIMENSION( : ), intent( in ) :: COLELE
+           REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
+           REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
+           character( len = * ), intent( in ), optional :: option_path
+           real, dimension( : ), intent( inout ), optional :: mass_ele_transp
+           integer, dimension(:), intent(inout) :: StorageIndexes
+           type(tensor_field), intent(in), optional :: saturation
 
-    integer, optional :: icomp
-    ! Local variables
-    LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
-    integer :: nits_flux_lim, its_flux_lim
-    logical :: lump_eqns
-    REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-    REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-    REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
-    real, dimension( my_size(small_COLACV )) ::  mass_mn_pres!sprint_to_do!just use size!! and the remove my_size functions
-    REAL, DIMENSION( : , : , : ), allocatable :: CT
-    REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
-    REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
-    type( tensor_field ), pointer :: P
-    type( tensor_field ), pointer :: Q
-    INTEGER :: IPHASE
-    REAL :: SECOND_THETA
-    LOGICAL :: RETRIEVE_SOLID_CTY
-    character( len = option_path_len ) :: path
-    type(vector_field) :: cv_rhs_field
-    type(vector_field) :: ct_rhs
-    type( tensor_field ), pointer :: den_all2, denold_all2, a, aold
-    integer :: lcomp, Field_selector, IGOT_T2_loc
+           integer, optional :: icomp
+           ! Local variables
+           LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
+           integer :: nits_flux_lim, its_flux_lim
+           logical :: lump_eqns
+           REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
+           REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+           REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
+           real, dimension( my_size(small_COLACV )) ::  mass_mn_pres!sprint_to_do!just use size!! and the remove my_size functions
+           REAL, DIMENSION( : , : , : ), allocatable :: CT
+           REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
+           REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
+           type( tensor_field ), pointer :: P
+           type( tensor_field ), pointer :: Q
+           INTEGER :: IPHASE
+           REAL :: SECOND_THETA
+           LOGICAL :: RETRIEVE_SOLID_CTY
+           character( len = option_path_len ) :: path
+           type(vector_field) :: cv_rhs_field
+           type(vector_field) :: ct_rhs
+           type( tensor_field ), pointer :: den_all2, denold_all2, a, aold
+           integer :: lcomp, Field_selector, IGOT_T2_loc
 
-    type(petsc_csr_matrix) :: petsc_acv
-    type(vector_field)  :: vtracer
-    type(csr_sparsity), pointer :: sparsity
+           type(petsc_csr_matrix) :: petsc_acv
+           type(vector_field)  :: vtracer
+           type(csr_sparsity), pointer :: sparsity
 
-    if (present(icomp)) then
-       lcomp=icomp
-    else
-       lcomp=0
-    end if
+           if (present(icomp)) then
+               lcomp=icomp
+           else
+               lcomp=0
+           end if
 
-    call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
-    sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
-    call allocate(petsc_acv,sparsity,[nphase,nphase],"ACV",.false.,.false.)
-    call zero(petsc_acv)
-
-
-    allocate(den_all(nphase,cv_nonods),denold_all(nphase,cv_nonods))
-    allocate(Ct(0,0,0),DIAG_SCALE_PRES(0,0))
-    allocate(DIAG_SCALE_PRES_COUP(0,0,0),GAMMA_PRES_ABS(0,0,0),GAMMA_PRES_ABS_NANO(0,0,0),INV_B(0,0,0))
-    allocate(MASS_PIPE(0), MASS_CVFEM2PIPE(0), MASS_PIPE2CVFEM(0), MASS_CVFEM2PIPE_TRUE(0))
-
-    allocate( T_SOURCE( nphase, cv_nonods ) ) ; T_SOURCE=0.0
+           call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
+           sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+           call allocate(petsc_acv,sparsity,[nphase,nphase],"ACV",.false.,.false.)
+           call zero(petsc_acv)
 
 
-    IGOT_T2_loc = 0
+           allocate(den_all(nphase,cv_nonods),denold_all(nphase,cv_nonods))
+           allocate(Ct(0,0,0),DIAG_SCALE_PRES(0,0))
+           allocate(DIAG_SCALE_PRES_COUP(0,0,0),GAMMA_PRES_ABS(0,0,0),GAMMA_PRES_ABS_NANO(0,0,0),INV_B(0,0,0))
+           allocate(MASS_PIPE(0), MASS_CVFEM2PIPE(0), MASS_PIPE2CVFEM(0), MASS_CVFEM2PIPE_TRUE(0))
 
-    if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
-
-       p => extract_tensor_field( packed_state, "PackedCVPressure" )
-       den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
-       denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
-       den_all    = den_all2 % val ( 1, :, : )
-       denold_all = denold_all2 % val ( 1, :, : )
-
-       if ( .false. ) then ! don't the divide int. energy equation by the volume fraction
-          a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-          den_all = den_all * a%val(1,:,:)
-
-          aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
-          denold_all = denold_all * a%val(1,:,:)
-       end if
-
-       IGOT_T2_loc = 1
-
-    else if ( lcomp > 0 ) then
-       p => extract_tensor_field( packed_state, "PackedFEPressure" )
-       den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
-       denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
-       den_all = den_all2 % val ( 1, :, : )
-       denold_all = denold_all2 % val ( 1,  :, : )
-    else
-       p => extract_tensor_field( packed_state, "PackedFEPressure" )
-       den_all=1.0
-       denold_all=1.0
-    end if
+           allocate( T_SOURCE( nphase, cv_nonods ) ) ; T_SOURCE=0.0
 
 
-    if( present( option_path ) ) then ! solving for Temperature or Internal Energy
+           IGOT_T2_loc = 0
 
-       if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
-          call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
-               'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
-       end if
+           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
 
-       path='/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation' // &
-            '/control_volumes/second_theta'
-       call get_option( path, second_theta, default=1. )
+               p => extract_tensor_field( packed_state, "PackedCVPressure" )
+               den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
+               denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
+               den_all    = den_all2 % val ( 1, :, : )
+               denold_all = denold_all2 % val ( 1, :, : )
 
-       Field_selector = 1
+               if ( .false. ) then ! don't the divide int. energy equation by the volume fraction
+                   a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
+                   den_all = den_all * a%val(1,:,:)
 
-       Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
-       T_source( :, : ) = Q % val( 1, :, : )
+                   aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
+                   denold_all = denold_all * a%val(1,:,:)
+               end if
 
-    else ! solving for Composition
+               IGOT_T2_loc = 1
 
-       call get_option( '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
-            'prognostic/temporal_discretisation/control_volumes/number_advection_iterations', nits_flux_lim, default = 1 )
-
-       path= '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
-            'prognostic/temporal_discretisation/control_volumes/second_theta'
-
-       call get_option( path, second_theta, default=1. )
-
-       Field_selector = 2
-
-       IGOT_T2_loc = IGOT_T2
-
-    end if
-
-    lump_eqns = have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/' // &
-         'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
-
-    ! let the coupling work
-    if ( have_option( '/blasting' ) ) then
-       RETRIEVE_SOLID_CTY = .true.
-    else
-       RETRIEVE_SOLID_CTY = .false.
-    end if
+           else if ( lcomp > 0 ) then
+               p => extract_tensor_field( packed_state, "PackedFEPressure" )
+               den_all2 => extract_tensor_field( packed_state, "PackedComponentDensity" )
+               denold_all2 => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
+               den_all = den_all2 % val ( 1, :, : )
+               denold_all = denold_all2 % val ( 1,  :, : )
+           else
+               p => extract_tensor_field( packed_state, "PackedFEPressure" )
+               den_all=1.0
+               denold_all=1.0
+           end if
 
 
-    Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
+           if( present( option_path ) ) then ! solving for Temperature or Internal Energy
 
-       call CV_ASSEMB( state, packed_state, storage_state, &
-            tracer, velocity, density, &
-            CV_RHS_field, &
-            petsc_acv, &
-            SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-            NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
-            CT, FINDCT, COLCT, &
-            CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-            CV_ELE_TYPE, &
-            NPHASE, NPRES, &
-            CV_NLOC, U_NLOC, X_NLOC, &
-            CV_NDGLN, X_NDGLN, U_NDGLN, &
-            CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-            DEN_ALL, DENOLD_ALL, &
-            MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-            T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, SECOND_THETA, T_BETA, &
-            SUF_SIG_DIAGTEN_BC, &
-            DERIV, P%val, &
-            T_SOURCE, T_ABSORB, VOLFRA_PORE, &
-            NDIM, GETCV_DISC, GETCT, &
-            NCOLM, FINDM, COLM, MIDM, &
-            XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-            opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-            IGOT_T2_loc,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
-            THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-            IN_ELE_UPWIND, DG_ELE_UPWIND, &
-            MEAN_PORE_CV, &
-            SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
-            .false.,  mass_Mn_pres, &
-            mass_ele_transp, &
-            StorageIndexes, Field_selector,icomp, &
-            saturation=saturation, IDs_ndgln = IDs_ndgln )
+               if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
+                   call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
+                       'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+               end if
 
-       Conditional_Lumping: IF ( LUMP_EQNS ) THEN
-          ! Lump the multi-phase flow eqns together
-          ALLOCATE( CV_RHS_SUB( CV_NONODS ) )
+               path='/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation' // &
+                   '/control_volumes/second_theta'
+               call get_option( path, second_theta, default=1. )
 
-          CV_RHS_SUB = 0.0
-          DO IPHASE = 1, NPHASE
-             CV_RHS_SUB( : ) = CV_RHS_SUB( : )&
-                  + CV_RHS_field%val(iphase,:)
-          END DO
+               Field_selector = 1
 
-!!$                NCOLACV_SUB = FINACV( CV_NONODS + 1) - 1 - CV_NONODS *( NPHASE - 1 )
-!!$
-!!$                ALLOCATE( ACV_SUB( NCOLACV_SUB ))
-!!$                ALLOCATE( COLACV_SUB( NCOLACV_SUB ))
-!!$                ALLOCATE( FINACV_SUB( CV_NONODS + 1 ))
-!!$                ALLOCATE( MIDACV_SUB( CV_NONODS ))
+               Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
+               T_source( :, : ) = Q % val( 1, :, : )
 
-                !CALL LUMP_ENERGY_EQNS( CV_NONODS, NPHASE, &
-                !NCOLACV, NCOLACV_SUB, &
-                !FINACV, COLACV, COLACV_SUB, FINACV_SUB, ACV_SUB )
-                !CALL SOLVER( ACV_SUB, T, CV_RHS_SUB, &
-                !FINACV_SUB, COLACV_SUB, &
-                !trim(option_path))
+           else ! solving for Composition
 
-       ELSE
+               call get_option( '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
+                   'prognostic/temporal_discretisation/control_volumes/number_advection_iterations', nits_flux_lim, default = 1 )
 
-          IF ( IGOT_T2 == 1) THEN
-             vtracer=as_vector(tracer,dim=2)
-             call zero_non_owned(cv_rhs_field)
-             call zero(vtracer)
+               path= '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
+                   'prognostic/temporal_discretisation/control_volumes/second_theta'
 
-             call petsc_solve(vtracer,petsc_acv,cv_rhs_field,'/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic')
-          ELSE
-             vtracer=as_vector(tracer,dim=2)
-             call zero_non_owned(cv_rhs_field)
-             call zero(vtracer)
+               call get_option( path, second_theta, default=1. )
 
-             call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
+               Field_selector = 2
 
-             do iphase = 1, nphase
-                ewrite(2,*) 'T phase min_max:', iphase, &
-                     minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
-             end do
-          END IF
+               IGOT_T2_loc = IGOT_T2
 
-       END IF Conditional_Lumping
+           end if
+
+           lump_eqns = have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/' // &
+               'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
+
+           ! let the coupling work
+           if ( have_option( '/blasting' ) ) then
+               RETRIEVE_SOLID_CTY = .true.
+           else
+               RETRIEVE_SOLID_CTY = .false.
+           end if
 
 
-    END DO Loop_NonLinearFlux
+           Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
 
-    call deallocate(petsc_acv)
-    call deallocate(cv_RHS_FIELD)
+               call CV_ASSEMB( state, packed_state, storage_state, &
+                   tracer, velocity, density, &
+                   CV_RHS_field, &
+                   petsc_acv, &
+                   SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
+                   NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
+                   CT, FINDCT, COLCT, &
+                   CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
+                   CV_ELE_TYPE, &
+                   NPHASE, NPRES, &
+                   CV_NLOC, U_NLOC, X_NLOC, &
+                   CV_NDGLN, X_NDGLN, U_NDGLN, &
+                   CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
+                   DEN_ALL, DENOLD_ALL, &
+                   MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+                   T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, SECOND_THETA, T_BETA, &
+                   SUF_SIG_DIAGTEN_BC, &
+                   DERIV, P%val, &
+                   T_SOURCE, T_ABSORB, VOLFRA_PORE, &
+                   NDIM, GETCV_DISC, GETCT, &
+                   NCOLM, FINDM, COLM, MIDM, &
+                   XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                   opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                   IGOT_T2_loc,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+                   THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                   IN_ELE_UPWIND, DG_ELE_UPWIND, &
+                   MEAN_PORE_CV, &
+                   SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
+                   .false.,  mass_Mn_pres, &
+                   mass_ele_transp, &
+                   StorageIndexes, Field_selector,icomp, &
+                   saturation=saturation, IDs_ndgln = IDs_ndgln )
 
-    ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
+               Conditional_Lumping: IF ( LUMP_EQNS ) THEN
+                   ! Lump the multi-phase flow eqns together
+                   ALLOCATE( CV_RHS_SUB( CV_NONODS ) )
+
+                   CV_RHS_SUB = 0.0
+                   DO IPHASE = 1, NPHASE
+                       CV_RHS_SUB( : ) = CV_RHS_SUB( : )&
+                           + CV_RHS_field%val(iphase,:)
+                   END DO
+
+               !!$                NCOLACV_SUB = FINACV( CV_NONODS + 1) - 1 - CV_NONODS *( NPHASE - 1 )
+               !!$
+               !!$                ALLOCATE( ACV_SUB( NCOLACV_SUB ))
+               !!$                ALLOCATE( COLACV_SUB( NCOLACV_SUB ))
+               !!$                ALLOCATE( FINACV_SUB( CV_NONODS + 1 ))
+               !!$                ALLOCATE( MIDACV_SUB( CV_NONODS ))
+
+                        !CALL LUMP_ENERGY_EQNS( CV_NONODS, NPHASE, &
+                        !NCOLACV, NCOLACV_SUB, &
+                        !FINACV, COLACV, COLACV_SUB, FINACV_SUB, ACV_SUB )
+                        !CALL SOLVER( ACV_SUB, T, CV_RHS_SUB, &
+                        !FINACV_SUB, COLACV_SUB, &
+                        !trim(option_path))
+
+               ELSE
+
+                   IF ( IGOT_T2 == 1) THEN
+                       vtracer=as_vector(tracer,dim=2)
+                       call zero_non_owned(cv_rhs_field)
+                       call zero(vtracer)
+
+                       call petsc_solve(vtracer,petsc_acv,cv_rhs_field,'/material_phase::Component1/scalar_field::ComponentMassFractionPhase1/prognostic')
+                   ELSE
+                       vtracer=as_vector(tracer,dim=2)
+                       call zero_non_owned(cv_rhs_field)
+                       call zero(vtracer)
+
+                       call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
+
+                       do iphase = 1, nphase
+                           ewrite(2,*) 'T phase min_max:', iphase, &
+                               minval(tracer%val(1,iphase,:)), maxval(tracer%val(1,iphase,:))
+                       end do
+                   END IF
+
+               END IF Conditional_Lumping
+
+
+           END DO Loop_NonLinearFlux
+
+           call deallocate(petsc_acv)
+           call deallocate(cv_RHS_FIELD)
+
+           ewrite(3,*) 'Leaving INTENERGE_ASSEM_SOLVE'
 
   END SUBROUTINE INTENERGE_ASSEM_SOLVE
 
 
 
 
-    subroutine VolumeFraction_Assemble_Solve( state,packed_state, storage_state, &
+    subroutine VolumeFraction_Assemble_Solve( state,packed_state, Mdims, CV_GIdims, CV_funs, storage_state, &
          SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
          NCOLCT, FINDCT, COLCT, &
-         CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
          CV_ELE_TYPE, &
-         NPHASE, NPRES, &
-         CV_NLOC, U_NLOC, X_NLOC, &
          CV_NDGLN, X_NDGLN, U_NDGLN, &
-         CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-         MAT_NLOC,MAT_NDGLN,MAT_NONODS, &
+         CV_SNDGLN, U_SNDGLN, &
+         MAT_NDGLN, &
          V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, V_BETA, &
          SUF_SIG_DIAGTEN_BC, &
          DERIV, &
          V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-         NDIM, nface, &
          NCOLM, FINDM, COLM, MIDM, &
-         XU_NLOC, XU_NDGLN ,FINELE, COLELE, NCOLELE, &
+         XU_NDGLN ,FINELE, COLELE, NCOLELE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
          igot_theta_flux, SCVNGI_THETA, USE_THETA_FLUX, &
          IN_ELE_UPWIND, DG_ELE_UPWIND, &
@@ -396,341 +388,331 @@ contains
          StorageIndexes, Material_Absorption,nonlinear_iteration, IDs_ndgln,&
          IDs2CV_ndgln, Courant_number)
 
-      implicit none
-      type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ) :: packed_state, storage_state
-      INTEGER, intent( in ) :: NCOLCT, &
-           CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-           CV_ELE_TYPE, &
-           NPHASE, CV_NLOC, U_NLOC, X_NLOC, &
-           CV_SNLOC, U_SNLOC, STOTEL, XU_NLOC, NDIM, &
-           NCOLM, NCOLELE, &
-           MAT_NLOC, MAT_NONODS, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND,igot_theta_flux,&
-           nface, NPRES
-      LOGICAL, intent( in ) :: USE_THETA_FLUX
-      INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, MAT_NDGLN, X_NDGLN, U_NDGLN, XU_NDGLN, CV_SNDGLN, U_SNDGLN, IDs_ndgln
-      integer, dimension(:), intent(in)  :: small_finacv,small_colacv,small_midacv, IDs2CV_ndgln
-      INTEGER, DIMENSION( : ), intent( in ) :: FINDCT, COLCT
-      !REAL, DIMENSION( : ), intent( inout ) :: DEN_FEMT
-      REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-      INTEGER, intent( in ) :: V_DISOPT, V_DG_VEL_INT_OPT
-      REAL, intent( in ) :: DT, V_THETA
-      REAL, intent( inout ) :: V_BETA
-      REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
-      REAL, DIMENSION( :, : ), intent( in ) :: DERIV
-      REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
-      REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
-      REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-      INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-      INTEGER, DIMENSION( : ), intent( in ) :: COLM
-      INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-      INTEGER, DIMENSION( : ), intent( in ) :: FINELE
-      INTEGER, DIMENSION( : ), intent( in ) :: COLELE
-      REAL, DIMENSION( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-      character(len= * ), intent(in), optional :: option_path
-      real, dimension( : ), intent( inout ) :: mass_ele_transp
-      integer, dimension(:), intent(inout) :: StorageIndexes
-      real, dimension( :, :, : ), intent(inout) :: Material_Absorption
-      integer, intent(in) :: nonlinear_iteration
-      real, intent(inout) :: Courant_number
-      ! Local Variables
-      LOGICAL, PARAMETER :: THERMAL= .false.
-      integer :: igot_t2
-      REAL, DIMENSION( : ), allocatable :: mass_mn_pres
-      REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-      REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
-      REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
-      REAL, DIMENSION( :,:,: ), allocatable :: CT
-      REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
-      REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
-      REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
-      REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
-      REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
-      REAL, DIMENSION( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
-      REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
-      LOGICAL :: GET_THETA_FLUX
-      REAL :: SECOND_THETA
-      INTEGER :: STAT, IGOT_THERM_VIS, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
-      character( len = option_path_len ) :: path
-      LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
-      type( tensor_field ), pointer :: den_all2, denold_all2
-      !Working pointers
-      real, dimension(:,:,:), pointer :: p
-      real, dimension(:, :), pointer :: satura
-      type(tensor_field), pointer :: tracer, velocity, density
-      type(scalar_field), pointer :: gamma
-      !Variables for global convergence method
-      real :: Dumping_factor
+             implicit none
+             type( state_type ), dimension( : ), intent( inout ) :: state
+             type( state_type ) :: packed_state, storage_state
+             type(multi_dimensions), intent(in) :: Mdims
+             type(multi_GI_dimensions), intent(in) :: CV_GIdims
+             type(multi_shape_funs), intent(in) :: CV_funs
+             INTEGER, intent( in ) :: NCOLM, NCOLCT, NCOLELE, CV_ELE_TYPE, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND,igot_theta_flux
+             LOGICAL, intent( in ) :: USE_THETA_FLUX
+             INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, MAT_NDGLN, X_NDGLN, U_NDGLN, XU_NDGLN, CV_SNDGLN, U_SNDGLN, IDs_ndgln
+             integer, dimension(:), intent(in)  :: small_finacv,small_colacv,small_midacv, IDs2CV_ndgln
+             INTEGER, DIMENSION( : ), intent( in ) :: FINDCT, COLCT
+             !REAL, DIMENSION( : ), intent( inout ) :: DEN_FEMT
+             REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
+             INTEGER, intent( in ) :: V_DISOPT, V_DG_VEL_INT_OPT
+             REAL, intent( in ) :: DT, V_THETA
+             REAL, intent( inout ) :: V_BETA
+             REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
+             REAL, DIMENSION( :, : ), intent( in ) :: DERIV
+             REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
+             REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
+             REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
+             INTEGER, DIMENSION( : ), intent( in ) :: FINDM
+             INTEGER, DIMENSION( : ), intent( in ) :: COLM
+             INTEGER, DIMENSION( : ), intent( in ) :: MIDM
+             INTEGER, DIMENSION( : ), intent( in ) :: FINELE
+             INTEGER, DIMENSION( : ), intent( in ) :: COLELE
+             REAL, DIMENSION( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
+             character(len= * ), intent(in), optional :: option_path
+             real, dimension( : ), intent( inout ) :: mass_ele_transp
+             integer, dimension(:), intent(inout) :: StorageIndexes
+             real, dimension( :, :, : ), intent(inout) :: Material_Absorption
+             integer, intent(in) :: nonlinear_iteration
+             real, intent(inout) :: Courant_number
+             ! Local Variables
+             LOGICAL, PARAMETER :: THERMAL= .false.
+             integer :: igot_t2
+             REAL, DIMENSION( : ), allocatable :: mass_mn_pres
+             REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
+             REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+             REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
+             REAL, DIMENSION( :,:,: ), allocatable :: CT
+             REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
+             REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
+             REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
+             REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
+             REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
+             REAL, DIMENSION( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
+             REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
+             LOGICAL :: GET_THETA_FLUX
+             REAL :: SECOND_THETA
+             INTEGER :: STAT, IGOT_THERM_VIS, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
+             character( len = option_path_len ) :: path
+             LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
+             type( tensor_field ), pointer :: den_all2, denold_all2
+             !Working pointers
+             real, dimension(:,:,:), pointer :: p
+             real, dimension(:, :), pointer :: satura
+             type(tensor_field), pointer :: tracer, velocity, density
+             type(scalar_field), pointer :: gamma
+             !Variables for global convergence method
+             real :: Dumping_factor
 
-      type(petsc_csr_matrix) :: petsc_acv
-      type(vector_field)  :: vtracer, residual
-      type(vector_field) :: cv_rhs_field
-      type(vector_field) :: CT_RHS
-      type(csr_sparsity), pointer :: sparsity
+             type(petsc_csr_matrix) :: petsc_acv
+             type(vector_field)  :: vtracer, residual
+             type(vector_field) :: cv_rhs_field
+             type(vector_field) :: CT_RHS
+             type(csr_sparsity), pointer :: sparsity
 
-      !Variables for capillary pressure
-      real, dimension(cv_nonods) :: OvRelax_param
-      integer :: Phase_with_Pc
+             !Variables for capillary pressure
+             real, dimension(Mdims%cv_nonods) :: OvRelax_param
+             integer :: Phase_with_Pc
 
-      !Variables to stabilize the non-linear iteration solver
-      real, dimension(nphase, cv_nonods) :: sat_bak, backtrack_sat
-      real :: Previous_convergence, updating, new_dumping, aux, resold, first_res
-      real, save :: res = -1
-      logical :: satisfactory_convergence
-      integer :: its, n_in_pres, useful_sats
+             !Variables to stabilize the non-linear iteration solver
+             real, dimension(Mdims%nphase, Mdims%cv_nonods) :: sat_bak, backtrack_sat
+             real :: Previous_convergence, updating, new_dumping, aux, resold, first_res
+             real, save :: res = -1
+             logical :: satisfactory_convergence
+             integer :: its, useful_sats
 
-      integer :: count, count2, cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr
-      real :: rconst
+             integer :: count, count2, cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr
+             real :: rconst
+
+             !Extract variables from packed_state
+             !call get_var_from_packed_state(packed_state,FEPressure = P)
+             call get_var_from_packed_state(packed_state,CVPressure = P)
+
+             call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
+             !Get information for capillary pressure to be use in CV_ASSEMB
+             call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, &
+                 Mdims%totele, Mdims%cv_nloc, CV_NDGLN, IDs2CV_ndgln)
+             !Get variable for global convergence method
+             if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
+                 Dumping_factor = 1.1
+             else !Get value with the default value of 1.
+                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Dumping_factor',&
+                     Dumping_factor, default = 1.0)
+             end if
+             GET_THETA_FLUX = .FALSE.
+             IGOT_T2 = 0
+
+             !ALLOCATE( T2( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 ))
+             !ALLOCATE( T2OLD( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 ))
+             IF ( IGOT_T2 == 1 ) THEN
+                 ALLOCATE( T2( Mdims%nphase, Mdims%cv_nonods ))
+                 ALLOCATE( T2OLD( Mdims%nphase, Mdims%cv_nonods ))
+             END IF
+             ALLOCATE( THETA_GDIFF( Mdims%nphase * IGOT_T2, Mdims%cv_nonods * IGOT_T2 ))
+
+             ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
+
+             ALLOCATE( mass_mn_pres(size(small_colacv)) ) ; mass_mn_pres = 0.
+             ALLOCATE( CT( 0,0,0 ) )
+             ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
+             ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( Mdims%nphase,Mdims%nphase,Mdims%cv_nonods ), GAMMA_PRES_ABS_NANO( Mdims%nphase,Mdims%nphase,Mdims%cv_nonods ), INV_B( 0,0,0 ) )
+             allocate(MASS_PIPE(Mdims%cv_nonods), MASS_CVFEM2PIPE( size(small_colacv)), MASS_PIPE2CVFEM( size(small_colacv)), MASS_CVFEM2PIPE_TRUE(size(small_colacv)))
+             ALLOCATE( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION = 0.
+             ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods ) )
+
+             gamma=>extract_scalar_field(state(1),"Gamma1",stat)
+
+             GAMMA_PRES_ABS = 0.0
+             do ipres = 1, Mdims%npres
+                 do iphase = 1+(ipres-1)*Mdims%n_in_pres, ipres*Mdims%n_in_pres
+                     do jpres = 1, Mdims%npres
+                         if ( ipres /= jpres ) then
+                             do jphase = 1+(jpres-1)*Mdims%n_in_pres, jpres*Mdims%n_in_pres
+                                 iphase_real = iphase-(ipres-1)*Mdims%n_in_pres
+                                 jphase_real = jphase-(jpres-1)*Mdims%n_in_pres
+                                 if ( iphase_real == jphase_real ) then
+                                     GAMMA_PRES_ABS(IPHASE,JPHASE,:) = gamma%val
+                                 end if
+                             end do
+                         end if
+                     end do
+                 end do
+             end do
+             GAMMA_PRES_ABS_NANO = GAMMA_PRES_ABS
 
 
-      N_IN_PRES = NPHASE / NPRES
+             IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
+                 ! use DEN=1 because the density is already in the theta variables
+                 ALLOCATE( DEN_ALL( Mdims%nphase, Mdims%cv_nonods )); DEN_ALL = 1.
+                 ALLOCATE( DENOLD_ALL( Mdims%nphase, Mdims%cv_nonods )); DENOLD_ALL = 1.
+             ELSE
+                 DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
+                 DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
+                 DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
+             END IF
 
-      !Extract variables from packed_state
-      !call get_var_from_packed_state(packed_state,FEPressure = P)
-      call get_var_from_packed_state(packed_state,CVPressure = P)
+             TDIFFUSION = 0.0
+             V_BETA = 1.0
 
-      call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
-      !Get information for capillary pressure to be use in CV_ASSEMB
-      call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, &
-           totele, cv_nloc, CV_NDGLN, IDs2CV_ndgln)
-      !Get variable for global convergence method
-      if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
-        Dumping_factor = 1.1
-      else !Get value with the default value of 1.
-          call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Dumping_factor',&
-               Dumping_factor, default = 1.0)
-      end if
-      GET_THETA_FLUX = .FALSE.
-      IGOT_T2 = 0
+             path = '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/temporal_discretisation/' // &
+                 'control_volumes/'
+             call get_option( trim( path ) // 'second_theta', second_theta, stat , default = 1.0)
 
-      !ALLOCATE( T2( CV_NONODS * NPHASE * IGOT_T2 ))
-      !ALLOCATE( T2OLD( CV_NONODS * NPHASE * IGOT_T2 ))
-      IF ( IGOT_T2 == 1 ) THEN
-         ALLOCATE( T2( NPHASE, CV_NONODS ))
-         ALLOCATE( T2OLD( NPHASE, CV_NONODS ))
-      END IF
-      ALLOCATE( THETA_GDIFF( NPHASE * IGOT_T2, CV_NONODS * IGOT_T2 ))
+             IGOT_THERM_VIS=0
+             ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
+             ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
 
-      ewrite(3,*) 'In VOLFRA_ASSEM_SOLVE'
+             tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+             velocity=>extract_tensor_field(packed_state,"PackedVelocity")
+             density=>extract_tensor_field(packed_state,"PackedDensity")
+             sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
 
-      ALLOCATE( mass_mn_pres(size(small_colacv)) ) ; mass_mn_pres = 0.
-      ALLOCATE( CT( 0,0,0 ) )
-      ALLOCATE( DIAG_SCALE_PRES( 0,0 ) )
-      ALLOCATE( DIAG_SCALE_PRES_COUP( 0,0,0 ), GAMMA_PRES_ABS( NPHASE,NPHASE,CV_NONODS ), GAMMA_PRES_ABS_NANO( NPHASE,NPHASE,CV_NONODS ), INV_B( 0,0,0 ) )
-      allocate(MASS_PIPE(cv_nonods), MASS_CVFEM2PIPE( size(small_colacv)), MASS_PIPE2CVFEM( size(small_colacv)), MASS_CVFEM2PIPE_TRUE(size(small_colacv)))
-      ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE ) ) ; TDIFFUSION = 0.
-      ALLOCATE( MEAN_PORE_CV( NPRES, CV_NONODS ) )
 
-      gamma=>extract_scalar_field(state(1),"Gamma1",stat)
 
-      GAMMA_PRES_ABS = 0.0
-      do ipres = 1, npres
-         do iphase = 1+(ipres-1)*n_in_pres, ipres*n_in_pres
-            do jpres = 1, npres
-               if ( ipres /= jpres ) then
-                  do jphase = 1+(jpres-1)*n_in_pres, jpres*n_in_pres
-                     iphase_real = iphase-(ipres-1)*n_in_pres
-                     jphase_real = jphase-(jpres-1)*n_in_pres
-                     if ( iphase_real == jphase_real ) then
-                        GAMMA_PRES_ABS(IPHASE,JPHASE,:) = gamma%val
+             !This logical is used to loop over the saturation equation until the functional
+             !explained in function get_Convergence_Functional has been reduced enough
+             satisfactory_convergence = .false.
+             updating = 0.0
+             !We store the convergence of the previous FPI to compare with
+             Previous_convergence = dumping_in_sat!<== deprecated?
+             its = 1; useful_sats = 1;
+             if (resold < 0 ) res = huge(res)!<=initialize res once
+             call allocate(cv_rhs_field,Mdims%nphase,tracer%mesh,"RHS")
+             !Allocate residual, to compute the residual
+             if (Dumping_factor < 1.01) call allocate(residual,Mdims%nphase,tracer%mesh,"residual")
+
+             Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
+                 !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
+                 !it works, but it complains...
+                 call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
+
+                 !Assemble the matrix and the RHS
+                 call CV_ASSEMB( state, packed_state, storage_state,&
+                     tracer, velocity, density, &
+                     CV_RHS_field, &
+                     petsc_acv, &
+                     SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
+                     NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
+                     CT, FINDCT, COLCT, &
+                     Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, &
+                     CV_ELE_TYPE,  &
+                     Mdims%nphase, Mdims%npres, &
+                     Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, &
+                     CV_NDGLN, X_NDGLN, U_NDGLN, &
+                     Mdims%cv_snloc, Mdims%u_snloc, Mdims%stotel, CV_SNDGLN, U_SNDGLN, &
+                     DEN_ALL, DENOLD_ALL, &
+                     Mdims%mat_nloc, MAT_NDGLN, Mdims%mat_nonods, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+                     V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, SECOND_THETA, V_BETA, &
+                     SUF_SIG_DIAGTEN_BC, &
+                     DERIV, P, &
+                     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+                     Mdims%ndim, GETCV_DISC, GETCT, &
+                     NCOLM, FINDM, COLM, MIDM, &
+                     Mdims%XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                     IGOT_T2, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+                     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
+                     IN_ELE_UPWIND, DG_ELE_UPWIND, &
+                     MEAN_PORE_CV, &
+                     SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
+                     .false.,  mass_Mn_pres, &
+                     mass_ele_transp,&
+                     StorageIndexes, 3 ,&            !Capillary variables
+                     OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
+                     IDs_ndgln=IDs_ndgln, Courant_number = Courant_number)
+
+                 !Solve the system
+                 vtracer=as_vector(tracer,dim=2)
+
+                 !If using FPI with backtracking
+                 if (Dumping_factor < 1.01) then
+                     !Backup of the saturation field, to adjust the solution
+                     sat_bak = satura
+                     !If using ADAPTIVE FPI with backtracking
+                     if (Dumping_factor < 0) then
+                         !Calculate the actual residual using a previous dumping
+                         call mult(residual, petsc_acv, vtracer)
+                         !Calculate residual
+                         residual%val = cv_rhs_field%val - residual%val
+                         resold = res; res = 0
+                         do iphase = 1, Mdims%nphase
+                             aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
+                             if (aux > res) res = aux
+                         end do
+                         !We use the highest residual across the domain
+                         if (IsParallel()) call allmax(res)
+                         if (its==1) first_res = res!Variable to check total convergence of the SFPI method
                      end if
-                  end do
-               end if
-            end do
-         end do
-      end do
-      GAMMA_PRES_ABS_NANO = GAMMA_PRES_ABS
+                 end if
 
+                 call zero(vtracer)
+                 call zero_non_owned(cv_rhs_field)
+                 call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
 
-      IF ( IGOT_THETA_FLUX == 1 ) THEN ! We have already put density in theta...
-         ! use DEN=1 because the density is already in the theta variables
-         ALLOCATE( DEN_ALL( NPHASE, CV_NONODS )); DEN_ALL = 1.
-         ALLOCATE( DENOLD_ALL( NPHASE, CV_NONODS )); DENOLD_ALL = 1.
-      ELSE
-         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
-         DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
-         DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
-      END IF
+                 !Set to zero the fields
+                 call zero(cv_rhs_field)
+                 call deallocate(petsc_acv)
 
-      TDIFFUSION = 0.0
-      V_BETA = 1.0
+                 !Correct the solution obtained to make sure we are on track towards the final solution
+                 if (Dumping_factor < 1.01) then
 
-      path = '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/temporal_discretisation/' // &
-           'control_volumes/'
-      call get_option( trim( path ) // 'second_theta', second_theta, stat , default = 1.0)
+                     !If convergence is not good, then we calculate a new saturation using backtracking
+                     if (.not. satisfactory_convergence) then
+                         !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
+                         call FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_factor,CV_NDGLN, IDs2CV_ndgln,&
+                             Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration,&
+                             useful_sats,res, res/resold, first_res, Mdims%npres)
+                         !Store the accumulated updated done
+                         updating = updating + new_dumping
+                         !If the dumping factor is not adaptive, then, just one iteration
+                         if (Dumping_factor > 0) then
+                             satisfactory_convergence = .true.
+                             exit Loop_NonLinearFlux
+                         end if
+                         !This have to be consistent between processors
+                         if (IsParallel())  call alland(satisfactory_convergence)
+                         !If looping again, recalculate
+                         if (.not. satisfactory_convergence) then
+                             !Store old saturation to fully undo an iteration if it is very divergent
+                             backtrack_sat = sat_bak
 
-      IGOT_THERM_VIS=0
-      ALLOCATE( THERM_U_DIFFUSION(NDIM,NDIM,NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
-      ALLOCATE( THERM_U_DIFFUSION_VOL(NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
+                             !For the non-linear iteration inside this loop we need to update the velocities
+                             !and that is done through the sigmas, hence, we have to update them
+                             call Calculate_AbsorptionTerm( state, packed_state, Mdims%npres, cv_ndgln, mat_ndgln, &
+                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption,IDs_ndgln, IDs2CV_ndgln)
+                             call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims%totele, Mdims%stotel, Mdims%cv_nloc, &
+                                 Mdims%cv_snloc, Mdims%n_in_pres, Mdims%nphase, Mdims%ndim, CV_GIdims%nface, Mdims%mat_nonods, Mdims%cv_nonods, Mdims%x_nloc, ncolele, cv_ele_type, &
+                                 finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state, Mdims%x_nonods, IDs_ndgln )
+                             !Also recalculate the Over-relaxation parameter
+                             call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, &
+                                 Mdims%totele, Mdims%cv_nloc, CV_NDGLN, IDs2CV_ndgln)
+                         else
+                             exit Loop_NonLinearFlux
+                         end if
+                     end if
+                 else!Just one iteration
+                     exit Loop_NonLinearFlux
+                 end if
+                 its = its + 1
+                 useful_sats = useful_sats + 1
+             END DO Loop_NonLinearFlux
+             !Store the final accumulated dumping_factor to properly calculate the convergence functional
+             if (Dumping_factor < 1.01) then
+                 !Final effective dumping to calculate properly the non linear convergence is:
+                 dumping_in_sat = updating
+             else
+                 dumping_in_sat = 1
+             end if
 
-      tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-      velocity=>extract_tensor_field(packed_state,"PackedVelocity")
-      density=>extract_tensor_field(packed_state,"PackedDensity")
-      sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
+             !Make sure the parameter is consistent between cpus
+             if (IsParallel()) call allmin(dumping_in_sat)
 
+             DEALLOCATE( mass_mn_pres )
+             DEALLOCATE( CT )
+             DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO )
+             DEALLOCATE( TDIFFUSION )
+             IF ( IGOT_T2 == 1 ) THEN
+                 DEALLOCATE( T2 )
+                 DEALLOCATE( T2OLD )
+             END IF
+             DEALLOCATE( THETA_GDIFF )
+             call deallocate(cv_rhs_field)
+             if (Dumping_factor < 1.01) call deallocate(residual)
 
+             !Deallocate pointers only if not pointing to something in packed state
+             if (IGOT_THETA_FLUX == 1) then
+                 deallocate(DEN_ALL, DENOLD_ALL)
+             end if
+             nullify(DEN_ALL); nullify(DENOLD_ALL)
 
-      !This logical is used to loop over the saturation equation until the functional
-      !explained in function get_Convergence_Functional has been reduced enough
-      satisfactory_convergence = .false.
-      updating = 0.0
-      !We store the convergence of the previous FPI to compare with
-      Previous_convergence = dumping_in_sat!<== deprecated?
-      its = 1; useful_sats = 1;
-      if (resold < 0 ) res = huge(res)!<=initialize res once
-      call allocate(cv_rhs_field,nphase,tracer%mesh,"RHS")
-      !Allocate residual, to compute the residual
-      if (Dumping_factor < 1.01) call allocate(residual,nphase,tracer%mesh,"residual")
+             ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
 
-      Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
-         !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
-         !it works, but it complains...
-         call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
-
-         !Assemble the matrix and the RHS
-         call CV_ASSEMB( state, packed_state, storage_state,&
-              tracer, velocity, density, &
-              CV_RHS_field, &
-              petsc_acv, &
-              SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-              NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
-              CT, FINDCT, COLCT, &
-              CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-              CV_ELE_TYPE,  &
-              NPHASE, NPRES, &
-              CV_NLOC, U_NLOC, X_NLOC, &
-              CV_NDGLN, X_NDGLN, U_NDGLN, &
-              CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-              DEN_ALL, DENOLD_ALL, &
-              MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-              V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, SECOND_THETA, V_BETA, &
-              SUF_SIG_DIAGTEN_BC, &
-              DERIV, P, &
-              V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-              NDIM, GETCV_DISC, GETCT, &
-              NCOLM, FINDM, COLM, MIDM, &
-              XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-              opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-              IGOT_T2, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
-              THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-              IN_ELE_UPWIND, DG_ELE_UPWIND, &
-              MEAN_PORE_CV, &
-              SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
-              .false.,  mass_Mn_pres, &
-              mass_ele_transp,&
-              StorageIndexes, 3 ,&            !Capillary variables
-              OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
-              IDs_ndgln=IDs_ndgln, Courant_number = Courant_number)
-
-         !Solve the system
-         vtracer=as_vector(tracer,dim=2)
-
-         !If using FPI with backtracking
-         if (Dumping_factor < 1.01) then
-            !Backup of the saturation field, to adjust the solution
-            sat_bak = satura
-            !If using ADAPTIVE FPI with backtracking
-            if (Dumping_factor < 0) then
-               !Calculate the actual residual using a previous dumping
-               call mult(residual, petsc_acv, vtracer)
-               !Calculate residual
-               residual%val = cv_rhs_field%val - residual%val
-               resold = res; res = 0
-               do iphase = 1, nphase
-                  aux = sqrt(dot_product(residual%val(iphase,:),residual%val(iphase,:)))/ dble(size(residual%val,2))
-                  if (aux > res) res = aux
-               end do
-               !We use the highest residual across the domain
-               if (IsParallel()) call allmax(res)
-               if (its==1) first_res = res!Variable to check total convergence of the SFPI method
-            end if
-         end if
-
-         call zero(vtracer)
-         call zero_non_owned(cv_rhs_field)
-         call petsc_solve(vtracer,petsc_acv,cv_rhs_field,trim(option_path))
-
-         !Set to zero the fields
-         call zero(cv_rhs_field)
-         call deallocate(petsc_acv)
-
-         !Correct the solution obtained to make sure we are on track towards the final solution
-         if (Dumping_factor < 1.01) then
-
-            !If convergence is not good, then we calculate a new saturation using backtracking
-            if (.not. satisfactory_convergence) then
-               !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
-               call FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_factor,CV_NDGLN, IDs2CV_ndgln,&
-                    Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration,&
-                    useful_sats,res, res/resold, first_res, npres)
-               !Store the accumulated updated done
-               updating = updating + new_dumping
-               !If the dumping factor is not adaptive, then, just one iteration
-               if (Dumping_factor > 0) then
-                  satisfactory_convergence = .true.
-                  exit Loop_NonLinearFlux
-               end if
-               !This have to be consistent between processors
-               if (IsParallel())  call alland(satisfactory_convergence)
-               !If looping again, recalculate
-               if (.not. satisfactory_convergence) then
-                  !Store old saturation to fully undo an iteration if it is very divergent
-                  backtrack_sat = sat_bak
-
-                  !For the non-linear iteration inside this loop we need to update the velocities
-                  !and that is done through the sigmas, hence, we have to update them
-                  call Calculate_AbsorptionTerm( state, packed_state, npres, cv_ndgln, mat_ndgln, &
-                       opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption,IDs_ndgln, IDs2CV_ndgln)
-                  call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                       cv_snloc, n_in_pres, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
-                       finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, state, x_nonods, IDs_ndgln )
-                  !Also recalculate the Over-relaxation parameter
-                  call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, &
-                       totele, cv_nloc, CV_NDGLN, IDs2CV_ndgln)
-               else
-                  exit Loop_NonLinearFlux
-               end if
-            end if
-         else!Just one iteration
-            exit Loop_NonLinearFlux
-         end if
-         its = its + 1
-         useful_sats = useful_sats + 1
-      END DO Loop_NonLinearFlux
-      !Store the final accumulated dumping_factor to properly calculate the convergence functional
-      if (Dumping_factor < 1.01) then
-         !Final effective dumping to calculate properly the non linear convergence is:
-         dumping_in_sat = updating
-      else
-         dumping_in_sat = 1
-      end if
-
-      !Make sure the parameter is consistent between cpus
-      if (IsParallel()) call allmin(dumping_in_sat)
-
-      DEALLOCATE( mass_mn_pres )
-      DEALLOCATE( CT )
-      DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO )
-      DEALLOCATE( TDIFFUSION )
-      IF ( IGOT_T2 == 1 ) THEN
-         DEALLOCATE( T2 )
-         DEALLOCATE( T2OLD )
-      END IF
-      DEALLOCATE( THETA_GDIFF )
-      call deallocate(cv_rhs_field)
-      if (Dumping_factor < 1.01) call deallocate(residual)
-
-      !      call deallocate(petsc_acv)
-
-      !Deallocate pointers only if not pointing to something in packed state
-      if (IGOT_THETA_FLUX == 1) then
-         deallocate(DEN_ALL, DENOLD_ALL)
-      end if
-      nullify(DEN_ALL); nullify(DENOLD_ALL)
-
-      ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
-
-      RETURN
     end subroutine VolumeFraction_Assemble_Solve
 
 
@@ -1526,17 +1508,6 @@ END IF
                call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
             end if
 
-            !If two matrices method to obtain pressure and velocities, we project the CV pressure
-            !to FE to make it consistent with the FE C matrix
-!            if(GET_C_IN_CV_ADVDIF .and..not.everything_c_cv) then
-!                !This might be doing the projection wrongly... using diamond the result is different
-!                call project_CV_P_TO_FE(deltap, packed_state, storage_state, X_ALL, ndim, x_nloc,&
-!                 cv_nonods, u_nloc, cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes,&
-!                 .false., ncolm, findm, colm, midm)
-!            end if
-
-
-
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
 
 
@@ -1655,118 +1626,6 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         return
 
         contains
-
-        subroutine project_CV_P_TO_FE(delta_P, packed_state, storage_state, X_ALL, ndim, x_nloc,&
-             cv_nonods, u_nloc, cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes,&
-             QUAD_OVER_WHOLE_ELE, ncolm, findm, colm, midm)
-            !This subroutine converts the CV pressure into FE, to be used only with the delta_P
-            Implicit none
-            type( state_type ), intent( inout ) :: packed_state, storage_state
-            type( vector_field ), intent(inout), target :: delta_P
-            integer, intent(in) :: x_nloc, cv_nloc, x_nonods, P_ELE_TYPE, &
-            cv_snloc, totele, u_snloc, ncolm, ndim, cv_nonods, u_nloc
-            INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-            INTEGER, DIMENSION( : ), intent( in ) :: COLM
-            INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-            integer, dimension(:), intent(in) :: cv_ndgln, x_ndgln
-            integer, dimension(:), intent(inout) :: StorageIndexes
-            real, dimension(:,:) :: X_ALL
-            logical, intent(in) :: QUAD_OVER_WHOLE_ELE
-            !Local variables
-            type(mesh_type), pointer :: fl_mesh
-            type(mesh_type) :: Auxmesh
-            type(tensor_field_pointer), dimension(1) :: delta_P_FE_ptr, delta_P_ptr
-!            type(tensor_field), pointer :: pressure
-            type(tensor_field), target :: delta_P_FE, delta_P_CV
-            type(vector_field), target ::  PSI_AVE
-            type(vector_field_pointer), dimension(1) :: PSI_AVE_ptr
-
-            real, dimension(0) :: MASS_MN_PRES
-            real, dimension(totele) :: mass_ele
-
-            integer :: cv_ngi, cv_ngi_short,scvngi, nface, sbcvngi
-            logical, dimension(  : , : ), allocatable :: cv_on_face, cvfem_on_face, u_on_face, ufem_on_face
-            !Pointers for cv_fem_shape_funs_plus_storage
-            integer, pointer :: ncolgpts
-            integer, dimension(:), pointer ::findgpts,colgpts
-            integer, dimension(:,:), pointer :: cv_neiloc, cv_sloclist, u_sloclist
-            real, dimension( : ), pointer :: cvweight,cvweight_short, scvfeweigh,sbcvfeweigh,&
-            SELE_OVERLAP_SCALE
-            real, dimension( : , : ), pointer:: cvn,cvn_short, cvfen, cvfen_short,ufen,&
-            scvfen, scvfenslx, scvfensly, sufen, sufenslx, sufensly,&
-            sbcvn,sbcvfen, sbcvfenslx, sbcvfensly, sbufen, sbufenslx, sbufensly
-            real, dimension(  : , : , :), pointer ::  cvfenlx_all, cvfenlx_short_all, ufenlx_all,&
-            scvfenlx_all, sufenlx_all, sbcvfenlx_all, sbufenlx_all
-
-            !Prepare local variables
-
-            !Prepare variables and pointers for Pressure
-            !Get mesh file just to be able to allocate the fields we want to store
-            fl_mesh => extract_mesh( storage_state, "FakeMesh" )
-            Auxmesh = fl_mesh
-            !The number of nodes I want does not coincide
-            Auxmesh%nodes = size(delta_P%val,2)
-            call allocate(delta_P_FE, Auxmesh, "delta_P_FE", dim =(/1,1/))
-            call allocate(delta_P_CV, Auxmesh, "delta_P_CV", dim =(/1,1/))
-            call allocate(PSI_AVE, 0, Auxmesh, "PSI_AVE_CV_FE")
-            !Copy memory because PROJ_CV_TO_FEM_state only allows tensor fields...
-            delta_P_CV%val(1,:,:) = delta_P%val
-            delta_P_ptr(1)%ptr => delta_P_CV
-            delta_P_FE_ptr(1)%ptr => delta_P_FE
-            PSI_AVE_ptr(1)%ptr => PSI_AVE
-
-            !Use pressure solver options
-            delta_P_ptr(1)%ptr%option_path ="/material_phase[0]/scalar_field::Pressure"
-
-            !#####Area to retrieve the shape functions#####
-            !Only if we need to calculate the shape functions we retrieve the ngi data
-            call retrieve_ngi( ndim, P_ELE_TYPE, cv_nloc, u_nloc, &
-            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
-
-            ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ), CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
-            ALLOCATE( U_ON_FACE( U_NLOC, SCVNGI ), UFEM_ON_FACE( U_NLOC, SCVNGI ))
-
-            CALL cv_fem_shape_funs_plus_storage( &
-                                     ! Volume shape functions...
-                NDIM, CV_ELE_TYPE,  &
-                CV_NGI, CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
-                CVWEIGHT, CVFEN, CVFENLX_ALL, &
-                CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT_ALL, &
-                UFEN, UFENLX_ALL, &
-                                     ! Surface of each CV shape functions...
-                SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
-                SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
-                SCVFENLX_ALL,  &
-                SUFEN, SUFENSLX, SUFENSLY,  &
-                SUFENLX_ALL,  &
-                                     ! Surface element shape funcs...
-                U_ON_FACE, UFEM_ON_FACE, NFACE, &
-                SBCVNGI, SBCVN, SBCVFEN,SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX_ALL, &
-                SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX_ALL, &
-                CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
-                                     ! Define the gauss points that lie on the surface of the CV...
-                FINDGPTS, COLGPTS, NCOLGPTS, &
-                SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
-                storage_state, "Press_mesh" , StorageIndexes(1) )
-!                storage_state, 'Vel_mesh', StorageIndexes(13))
-            !Convert CV_P to FEM_P
-            call PROJ_CV_TO_FEM_state( packed_state, delta_P_FE_ptr, delta_P_ptr, NDIM, &
-                PSI_AVE_ptr, PSI_AVE_ptr, MASS_ELE, &
-                CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-                CV_NGI, CV_NLOC, CVN, CVWEIGHT, CVFEN, CVFENLX_ALL, &
-                X_NONODS, X_ALL, NCOLM, FINDM, COLM, MIDM, &
-                0, MASS_MN_PRES, FINDM, COLM, NCOLM)
-
-            !Overwrite delta_P to make it FE
-!            delta_P%val = 0.5 * delta_P_FE%val(1,:,:) + (1.- 0.5) * delta_P%val
-            delta_P%val = delta_P_FE%val(1,:,:)
-
-            !Deallocate auxiliar variables
-            deallocate(cv_on_face, cvfem_on_face, u_on_face, ufem_on_face)
-            call deallocate(delta_P_FE); call deallocate(PSI_AVE); call deallocate(delta_P_CV)
-        end subroutine project_CV_P_TO_FE
-
-
 
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
