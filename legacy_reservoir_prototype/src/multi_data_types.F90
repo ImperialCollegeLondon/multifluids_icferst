@@ -161,7 +161,6 @@ contains
         deallocate(shape_fun%cvfen)
         deallocate(shape_fun%cvfenlx_all)
         deallocate(shape_fun%ufen)
-        deallocate(shape_fun%ufen)
         deallocate(shape_fun%ufenlx_all)
         deallocate(shape_fun%cv_neiloc)
         deallocate(shape_fun%cv_on_face)
