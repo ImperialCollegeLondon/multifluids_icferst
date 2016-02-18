@@ -839,23 +839,19 @@ end if
                         tracer_field,velocity_field,density_field,&
                         small_FINACV, small_COLACV, small_MIDACV, &
                         NCOLCT, FINDCT, COLCT, &
-                        CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                         CV_ELE_TYPE,&
-                        NPHASE, NPRES, &
-                        CV_NLOC, U_NLOC, X_NLOC, &
                         CV_NDGLN, X_NDGLN, U_NDGLN, &
-                        CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
+                        CV_SNDGLN, U_SNDGLN, &
                         !!$
-                        MAT_NLOC, MAT_NDGLN, MAT_NONODS, ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+                        MAT_NDGLN, ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc,&
                         DRhoDPressure, &
                         Temperature_Absorption, Porosity_field%val, &
-                        ndim, &
                         !!$
                         NCOLM, FINDM, COLM, MIDM, &
                         !!$
-                        XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                        XU_NDGLN, FINELE, COLELE, NCOLELE, &
                         !!$
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         0, igot_theta_flux, scvngi_theta, &
@@ -1056,22 +1052,18 @@ end if
                                 tracer_field,velocity_field,density_field,&
                                 SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
                                 NCOLCT, FINDCT, COLCT, &
-                                CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
                                 CV_ELE_TYPE, &
-                                NPHASE, NPRES, &
-                                CV_NLOC, U_NLOC, X_NLOC, &
                                 CV_NDGLN, X_NDGLN, U_NDGLN, &
-                                CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
+                                CV_SNDGLN, U_SNDGLN, &
                                 !!$
-                                MAT_NLOC, MAT_NDGLN, MAT_NONODS, Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+                                MAT_NDGLN, Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
                                 DRhoDPressure, &
                                 Component_Absorption, Porosity_field%val, &
                                 !!$
-                                NDIM,  &
                                 NCOLM, FINDM, COLM, MIDM, &
-                                XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                                XU_NDGLN, FINELE, COLELE, NCOLELE, &
                                 !!$
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                                 igot_t2, igot_theta_flux, scvngi_theta, &
