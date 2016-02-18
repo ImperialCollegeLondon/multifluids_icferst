@@ -357,7 +357,7 @@ contains
         n_in_pres = nphase / npres
 
         !!$ Compute primary scalars used in most of the code
-        call Get_Primary_Scalars_new( state, Mdims, get_Ph = .true. )
+        call Get_Primary_Scalars_new( state, Mdims )
 
         !!$ Calculating Global Node Numbers
         allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
@@ -1784,7 +1784,7 @@ end if
                     x_snloc, cv_snloc, u_snloc, p_snloc, &
                     cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
                 !!$ Compute primary scalars used in most of the code
-                call Get_Primary_Scalars_new( state, Mdims, get_Ph = .true. )
+                call Get_Primary_Scalars_new( state, Mdims )
                 !!$ Calculating Global Node Numbers
                 allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
                     u_sndgln( stotel * u_snloc ) )
