@@ -1082,14 +1082,11 @@ contains
             call reshape_vector2pointer(state(1)%scalar_fields(&
             StorageIndexes(38))%ptr%val, C_CV, Mdims%ndim, Mdims%nphase, size(COLC))
         end if
-        CALL CV_ASSEMB_FORCE_CTY( state, packed_state, storage_state, &
+        CALL CV_ASSEMB_FORCE_CTY( state, packed_state, Mdims, CV_GIdims, CV_funs, FE_funs, storage_state, &
              velocity, pressure, &
-        Mdims%ndim, Mdims%nphase, Mdims%npres, Mdims%u_nloc, Mdims%x_nloc, Mdims%p_nloc, Mdims%cv_nloc, Mdims%mat_nloc, Mdims%totele, &
         U_ELE_TYPE, P_ELE_TYPE, &
-        Mdims%u_nonods, Mdims%cv_nonods, Mdims%x_nonods, Mdims%mat_nonods, &
         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
-        Mdims%stotel, CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
-        Mdims%u_snloc, Mdims%p_snloc, Mdims%cv_snloc, &
+        CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
         X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
@@ -1106,7 +1103,7 @@ contains
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         NCOLM, FINDM, COLM, MIDM, &
-        Mdims%xu_nloc, XU_NDGLN, &
+        XU_NDGLN, &
         U_RHS, MCY_RHS, C, C_CV, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
         NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -1461,14 +1458,11 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
 
-    SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, storage_state, &
+    SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, Mdims, CV_GIdims, CV_funs, FE_funs, storage_state, &
          velocity, pressure, &
-    NDIM, NPHASE, NPRES, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
     U_ELE_TYPE, P_ELE_TYPE, &
-    U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
-    STOTEL, CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
-    U_SNLOC, P_SNLOC, CV_SNLOC, &
+    CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
     X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
     U_ALL, UOLD_ALL, &
     P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
@@ -1485,7 +1479,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     SUF_SIG_DIAGTEN_BC, &
     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
     NCOLM, FINDM, COLM, MIDM, &
-    XU_NLOC, XU_NDGLN, &
+    XU_NDGLN, &
     U_RHS, MCY_RHS, C, C_CV, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
     NLENMCY, NCOLMCY, MCY, FINMCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
     UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -1497,21 +1491,17 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL ,scale_momentum_by_volume_fraction,&
     StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
         implicit none
-
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
-
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state, storage_state
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_GI_dimensions), intent(in) :: CV_GIdims
+        type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
         type( tensor_field ), intent(in) :: velocity
         type( tensor_field ), intent(in) :: pressure
-
-        INTEGER, intent( in ) :: NDIM, NPHASE, NPRES, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, &
-        TOTELE, U_ELE_TYPE, P_ELE_TYPE, &
-        U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
-        STOTEL, U_SNLOC, P_SNLOC, &
-        CV_SNLOC, &
+        INTEGER, intent( in ) :: U_ELE_TYPE, P_ELE_TYPE, &
         NCOLC, NCOLELE, NCOLCMC, NCOLCT, &
-        CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, XU_NLOC, &
+        CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, &
         NLENMCY, NCOLMCY, IGOT_THETA_FLUX, SCVNGI_THETA, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, IPLIKE_GRAD_SOU,  IDIVID_BY_VOL_FRAC
         LOGICAL, intent( in ) :: USE_THETA_FLUX,scale_momentum_by_volume_fraction, RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
@@ -1597,36 +1587,29 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM
         type(tensor_field), pointer :: tracer, density
         type(vector_field) :: cv_rhs
-
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
-
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
-
-        !ALLOCATE( T2( CV_NONODS * NPHASE * IGOT_T2 )) ; T2 = 0.
-        !ALLOCATE( T2OLD( CV_NONODS * NPHASE * IGOT_T2 )) ; T2OLD =0.
+        !ALLOCATE( T2( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 )) ; T2 = 0.
+        !ALLOCATE( T2OLD( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 )) ; T2OLD =0.
         IF ( IGOT_T2 == 1 ) THEN
-           ALLOCATE( T2( NPHASE, CV_NONODS )) ; T2 = 0.
-           ALLOCATE( T2OLD( NPHASE, CV_NONODS )) ; T2OLD =0.
+           ALLOCATE( T2( Mdims%nphase, Mdims%cv_nonods )) ; T2 = 0.
+           ALLOCATE( T2OLD( Mdims%nphase, Mdims%cv_nonods )) ; T2OLD =0.
         END IF
-        ALLOCATE( THETA_GDIFF( NPHASE * IGOT_T2, CV_NONODS * IGOT_T2 )) ; THETA_GDIFF = 0.
-        ALLOCATE( TDIFFUSION( MAT_NONODS, NDIM, NDIM, NPHASE )) ; TDIFFUSION = 0.
-        ALLOCATE( MEAN_PORE_CV( NPRES, CV_NONODS )) ; MEAN_PORE_CV = 0.
-        allocate( dummy_transp( totele ) ) ; dummy_transp = 0.
-
-
+        ALLOCATE( THETA_GDIFF( Mdims%nphase * IGOT_T2, Mdims%cv_nonods * IGOT_T2 )) ; THETA_GDIFF = 0.
+        ALLOCATE( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase )) ; TDIFFUSION = 0.
+        ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods )) ; MEAN_PORE_CV = 0.
+        allocate( dummy_transp( Mdims%totele ) ) ; dummy_transp = 0.
         TDIFFUSION = 0.0
-
         IF( GLOBAL_SOLVE ) MCY = 0.0
-
         ! Obtain the momentum and C matricies
         CALL ASSEMB_FORCE_CTY( state, packed_state, storage_state, &
              velocity, pressure, &
-        NDIM, NPHASE, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
-        U_ELE_TYPE, P_ELE_TYPE, NPRES, &
-        U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
+        Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%x_nloc, Mdims%p_nloc, Mdims%cv_nloc, Mdims%mat_nloc, Mdims%totele, &
+        U_ELE_TYPE, P_ELE_TYPE, Mdims%npres, &
+        Mdims%u_nonods, Mdims%cv_nonods, Mdims%x_nonods, Mdims%mat_nonods, &
         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
-        STOTEL, U_SNDGLN, P_SNDGLN, CV_SNDGLN, U_SNLOC, P_SNLOC, CV_SNLOC, &
+        Mdims%stotel, U_SNDGLN, P_SNDGLN, CV_SNDGLN, Mdims%u_snloc, Mdims%p_snloc, Mdims%cv_snloc, &
         X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         U_ALL, UOLD_ALL, &    ! This is nu...
@@ -1638,42 +1621,34 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         DGM_PETSC, NO_MATRIX_STORE, &! Force balance
         NCOLELE, FINELE, COLELE, & ! Element connectivity.
         NCOLM, FINDM, COLM, MIDM,& !for the CV-FEM projection
-        XU_NLOC, XU_NDGLN, &
+        Mdims%xu_nloc, XU_NDGLN, &
         PIVIT_MAT, JUST_BL_DIAG_MAT, &
         UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, DENOLD_ALL, RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, &
-        P, NDIM, StorageIndexes=StorageIndexes, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, SYMMETRIC_P=symmetric_P)
+        P, Mdims%ndim, StorageIndexes=StorageIndexes, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, SYMMETRIC_P=symmetric_P)
         ! scale the momentum equations by the volume fraction / saturation for the matrix and rhs
-
         IF ( GLOBAL_SOLVE ) THEN
             ! put momentum and C matrices into global matrix MCY...
-
             MCY_RHS = 0.0
-            DO ELE = 1, TOTELE
-                DO U_ILOC = 1, U_NLOC
-                    U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                    DO IPHASE = 1, NPHASE
-                        DO IDIM = 1, NDIM
-                            I = U_INOD + (IDIM-1)*U_NONODS + (IPHASE-1)*NDIM*U_NONODS
+            DO ELE = 1, Mdims%totele
+                DO U_ILOC = 1, Mdims%u_nloc
+                    U_INOD = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+                    DO IPHASE = 1, Mdims%nphase
+                        DO IDIM = 1, Mdims%ndim
+                            I = U_INOD + (IDIM-1)*Mdims%u_nonods + (IPHASE-1)*Mdims%ndim*Mdims%u_nonods
                             MCY_RHS( I ) = U_RHS( IDIM, IPHASE, U_INOD )
                         END DO
                     END DO
                 END DO
             END DO
-
 FLAbort('Global solve for pressure-mommentum is broken until nested matrices get impliented.')
-
-!            CALL PUT_MOM_C_IN_GLOB_MAT( NPHASE,NDIM, &
+!            CALL PUT_MOM_C_IN_GLOB_MAT( Mdims%nphase,Mdims%ndim, &
 !            NCOLDGM_PHA, DGM_PETSC, FINDGM_PHA, &
 !            NLENMCY, NCOLMCY, MCY, FINMCY, &
-!            U_NONODS, NCOLC, C, FINDC )
+!            Mdims%u_nonods, NCOLC, C, FINDC )
         END IF
-
-
-
-        ALLOCATE( DEN_OR_ONE( NPHASE, CV_NONODS )); DEN_OR_ONE = 1.
-        ALLOCATE( DENOLD_OR_ONE( NPHASE, CV_NONODS )); DENOLD_OR_ONE = 1.
-
+        ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
+        ALLOCATE( DENOLD_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DENOLD_OR_ONE = 1.
         IF ( USE_THETA_FLUX ) THEN ! We have already put density in theta...
            DEN_OR_ONE = 1.
            DENOLD_OR_ONE = 1.
@@ -1681,22 +1656,17 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            DEN_OR_ONE = DEN_ALL
            DENOLD_OR_ONE = DENOLD_ALL
         END IF
-
         if ( boussinesq ) then
            DEN_OR_ONE = 1.0
            DENOLD_OR_ONE = 1.0
         end if
-
         ! unused at this stage
         second_theta = 0.0
-
         ! no q scheme
         IGOT_THERM_VIS = 0
-
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
         call halo_update(density)
-
         call CV_ASSEMB( state, packed_state, storage_state, &
              tracer, velocity, density, &
         CV_RHS, &
@@ -1704,21 +1674,21 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
         C_CV, FINDC, COLC, & ! C sparsity - global cty eqn
-        CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
+        Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, &
         CV_ELE_TYPE, &
-        NPHASE, NPRES, &
-        CV_NLOC, U_NLOC, X_NLOC, &
+        Mdims%nphase, Mdims%npres, &
+        Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, &
         CV_NDGLN, X_NDGLN, U_NDGLN, &
-        CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
+        Mdims%cv_snloc, Mdims%u_snloc, Mdims%stotel, CV_SNDGLN, U_SNDGLN, &
         DEN_OR_ONE, DENOLD_OR_ONE, &
-        MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+        Mdims%mat_nloc, MAT_NDGLN, Mdims%mat_nonods, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, SECOND_THETA, V_BETA, &
         SUF_SIG_DIAGTEN_BC, &
         DERIV, CV_P, &
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-        NDIM, GETCV_DISC, GETCT, &
+        Mdims%ndim, GETCV_DISC, GETCT, &
         NCOLM, FINDM, COLM, MIDM, &
-        XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+        Mdims%xu_nloc, XU_NDGLN, FINELE, COLELE, NCOLELE, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -1729,24 +1699,17 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         dummy_transp, &
         StorageIndexes, 3, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false., MASS_P_CV = PIVIT_MAT,&
         U_RHS = U_RHS)
-
         ewrite(3,*)'Back from cv_assemb'
-
-
         IF ( GLOBAL_SOLVE ) THEN
             ! Put CT into global matrix MCY...
-            MCY_RHS( U_NONODS * NDIM * NPHASE + 1 : U_NONODS * NDIM * NPHASE + CV_NONODS ) = &
-            CT_RHS%val( 1, 1 : CV_NONODS )
-
-            CALL PUT_CT_IN_GLOB_MAT( NPHASE, NDIM, U_NONODS, &
+            MCY_RHS( Mdims%u_nonods * Mdims%ndim * Mdims%nphase + 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase + Mdims%cv_nonods ) = &
+            CT_RHS%val( 1, 1 : Mdims%cv_nonods )
+            CALL PUT_CT_IN_GLOB_MAT( Mdims%nphase, Mdims%ndim, Mdims%u_nonods, &
             NLENMCY, NCOLMCY, MCY, FINMCY, &
-            CV_NONODS, NCOLCT, CT, DIAG_SCALE_PRES, FINDCT, &
+            Mdims%cv_nonods, NCOLCT, CT, DIAG_SCALE_PRES, FINDCT, &
             FINDCMC, NCOLCMC, MASS_MN_PRES )
         END IF
-
-
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
-
         IF ( IGOT_T2 == 1 ) THEN
            DEALLOCATE( T2 )
            DEALLOCATE( T2OLD )
@@ -1754,65 +1717,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         DEALLOCATE( THETA_GDIFF )
         DEALLOCATE( TDIFFUSION )
         DEALLOCATE( MEAN_PORE_CV )
-
         ewrite(3,*) 'Leaving CV_ASSEMB_FORCE_CTY'
-
     END SUBROUTINE CV_ASSEMB_FORCE_CTY
-
-!    SUBROUTINE PUT_MOM_C_IN_GLOB_MAT( NPHASE, NDIM, &
-!    NCOLDGM_PHA, DGM_PHA, FINDGM_PHA, &
-!    NLENMCY, NCOLMCY, MCY, FINMCY, &
-!    U_NONODS, NCOLC, C, FINDC )
-!        implicit none
-!        ! put momentum and C matrices into global matrix MCY
-!
-!        INTEGER, intent( in ) :: NPHASE, NDIM, U_NONODS, NCOLDGM_PHA, &
-!        NCOLC, NLENMCY, NCOLMCY
-!        INTEGER, DIMENSION( : ), intent( in ) ::  FINDGM_PHA
-!        REAL, DIMENSION( : ), intent( in ) ::  DGM_PHA
-!        INTEGER, DIMENSION( : ), intent( in ) :: FINMCY
-!        INTEGER, DIMENSION( : ), intent( in ) :: FINDC
-!        REAL, DIMENSION( : ), intent( inout ) :: MCY
-!        REAL, DIMENSION( :, :, : ), intent( in ) :: C
-!        ! Local variables...
-!        INTEGER :: U_NOD_PHA, IWID, I, U_NOD, IPHASE, IDIM, U_NOD_PHA_I, COUNT, COUNT2
-!
-!        ewrite(3,*) 'In PUT_MOM_C_IN_GLOB_MAT'
-!
-!        MCY = 0.0
-!        ! Put moment matrix DGM_PHA into global matrix MCY
-!        DO U_NOD_PHA = 1, U_NONODS  * NDIM * NPHASE
-!            IWID = FINDGM_PHA( U_NOD_PHA + 1 ) - FINDGM_PHA( U_NOD_PHA )
-!
-!            DO I = 1, IWID
-!                MCY( FINMCY( U_NOD_PHA ) - 1 + I ) = DGM_PHA( FINDGM_PHA( U_NOD_PHA ) - 1 + I )
-!            END DO
-!
-!        END DO
-!
-!        ! Put C matrix into global matrix MCY
-!
-!        Loop_IPHASE: DO IPHASE = 1, NPHASE
-!
-!            Loop_IDIM: DO IDIM = 1, NDIM
-!                Loop_UNOD: DO U_NOD = 1, U_NONODS
-!
-!                    U_NOD_PHA_I = U_NOD + ( IDIM - 1 ) * U_NONODS + ( IPHASE - 1 ) * U_NONODS * NDIM
-!                    IWID = FINDC( U_NOD + 1 ) - FINDC( U_NOD )
-!
-!                    DO I = 1, IWID
-!                        COUNT2 = FINMCY( U_NOD_PHA_I + 1 ) - I
-!                        COUNT = FINDC( U_NOD + 1 ) - I + ( IDIM - 1 ) * NCOLC + ( IPHASE - 1 ) * NCOLC * NDIM
-!                        MCY( COUNT2 ) = C( IDIM, IPHASE, COUNT )
-!                    END DO
-!
-!                END DO Loop_UNOD
-!            END DO Loop_IDIM
-!        END DO Loop_IPHASE
-!
-!        ewrite(3,*) 'Leaving PUT_MOM_C_IN_GLOB_MAT'
-!
-!    END SUBROUTINE PUT_MOM_C_IN_GLOB_MAT
 
 
 
