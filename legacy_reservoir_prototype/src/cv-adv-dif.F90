@@ -482,8 +482,9 @@ contains
         !REAL :: R2NORM, FACE_THETA
         !        ===>  LOGICALS  <===
         LOGICAL :: GETMAT, &
-            D1, D3, DCYL, GOT_DIFFUS, INTEGRAT_AT_GI, &
+            D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, &
             NORMALISE, SUM2ONE, GET_GTHETA, QUAD_OVER_WHOLE_ELE
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
 
         character( len = option_path_len ) :: option_path, option_path2, path_temp, path_volf, &
             path_comp, path_spatial_discretisation
@@ -906,7 +907,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = ( NDIM == -2 )
+        !DCYL = ( NDIM == -2 )
 
         GETMAT = .TRUE.
 
@@ -5229,7 +5230,8 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
         INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
         ! Local variables
-        LOGICAL :: D1, D3, DCYL
+        LOGICAL :: D1, D3
+        LOGICAL, PARAMETER ::DCYL = .FALSE.
         REAL, DIMENSION( : ), allocatable :: MASS_CV, FEMPSI_RHS, &
             PSI_AVE2, PSI_INT2, MAT, DETWEI, RA
         REAL, DIMENSION( :, : ), allocatable :: NX, NY, NZ
@@ -5263,7 +5265,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = .FALSE.
+        !DCYL = .FALSE.
 
         Loop_Elements: DO ELE = 1, TOTELE
 
@@ -5393,7 +5395,9 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
         INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
         ! Local variables
-        LOGICAL :: D1, D3, DCYL
+        LOGICAL :: D1, D3
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
+
         REAL, DIMENSION( : ), allocatable, target :: DETWEI2, RA2
         REAL, DIMENSION( :, : , :), allocatable, target :: NX_ALL2
         real, target :: VOLUME2
@@ -5474,7 +5478,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = .FALSE.
+        !DCYL = .FALSE.
 
         Loop_Elements: DO ELE = 1, TOTELE
             if (isParallel()) then
@@ -5748,7 +5752,8 @@ contains
         character(len=*), intent(in) :: StorName
         integer, intent(inout) :: indx
         ! Local variables
-        LOGICAL :: D1, D3, DCYL, APPLYBC
+        LOGICAL :: D1, D3, APPLYBC
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
         REAL, pointer, DIMENSION( : ) :: DETWEI, RA
         REAL, pointer, DIMENSION( :, :,: ) :: NX_ALL, X_NX_ALL
         real, pointer :: VOLUME
@@ -5808,7 +5813,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = .FALSE.
+        !DCYL = .FALSE.
         ! ewrite(3,*)'****X_NLX:',X_NLX
         ! ewrite(3,*)'****X_NLY:',X_NLY
 
@@ -6182,7 +6187,8 @@ contains
         ! Local variables
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
-        LOGICAL :: D1, D3, DCYL, APPLYBC( NCOMP, NPHASE )
+        LOGICAL :: D1, D3, APPLYBC( NCOMP, NPHASE )
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
         REAL, pointer, dimension( : ) :: DETWEI, RA
         REAL, pointer, DIMENSION( :,:,:):: NX_ALL
         REAL, pointer, DIMENSION( :, :, : ) :: X_NX_ALL
@@ -6212,7 +6218,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = .FALSE.
+        !DCYL = .FALSE.
 
         Loop_Elements1: DO ELE = 1, TOTELE
 
@@ -6436,7 +6442,8 @@ contains
         ! Local variables
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
-        LOGICAL :: D1, D3, DCYL, APPLYBC( NPHASE )
+        LOGICAL :: D1, D3, APPLYBC( NPHASE )
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
         REAL, pointer, dimension( : ) :: DETWEI, RA
         REAL, pointer, DIMENSION( :,:,:):: NX_ALL
         REAL, pointer, DIMENSION( :, :, : ) :: X_NX_ALL
@@ -6462,7 +6469,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = .FALSE.
+        !DCYL = .FALSE.
 
         Loop_Elements1: DO ELE = 1, TOTELE
 
@@ -9878,7 +9885,6 @@ contains
         REAL, DIMENSION( :  ), ALLOCATABLE, SAVE :: ELEMATWEI
         LOGICAL, SAVE :: STORE_ELE=.TRUE., RET_STORE_ELE=.FALSE.
         LOGICAL, SAVE :: adapt_in_FPI = .false.
-        LOGICAL :: D3,DCYL
         ! Allocate memory for the interpolated upwind values
         LOGICAL, PARAMETER :: BOUND  = .TRUE., REFLECT = .FALSE. ! limiting options
         INTEGER, DIMENSION( : ), allocatable :: NOD_FINDELE,NOD_COLELE, NLIST, INLIST, DUMMYINT
