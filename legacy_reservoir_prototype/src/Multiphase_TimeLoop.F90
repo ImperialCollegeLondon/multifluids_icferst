@@ -913,14 +913,11 @@ end if
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
-                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, storage_state,&
+                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, Mdims, CV_GIdims, CV_funs, FE_funs, storage_state,&
                         velocity_field, pressure_field, &
-                        NDIM, NPHASE, NPRES, NCOMP, U_NLOC, X_NLOC, P_NLOC, CV_NLOC, MAT_NLOC, TOTELE, &
                         U_ELE_TYPE, P_ELE_TYPE, &
-                        U_NONODS, CV_NONODS, X_NONODS, MAT_NONODS, &
                         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN,&
-                        STOTEL, CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
-                        U_SNLOC, P_SNLOC, CV_SNLOC, &
+                        CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
                         !!$
                         Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, Velocity_U_Source, Velocity_U_Source_CV, &
                         DRhoDPressure, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
@@ -940,7 +937,7 @@ end if
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         !!$
                         NCOLM, FINDM, COLM, MIDM, & ! Sparsity for the CV-FEM
-                        XU_NLOC, XU_NDGLN, &
+                        XU_NDGLN, &
                         !!$
                         Momentum_Diffusion, Momentum_Diffusion_Vol, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
