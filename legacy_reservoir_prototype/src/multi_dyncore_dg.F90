@@ -375,7 +375,7 @@ contains
              REAL, DIMENSION( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
              REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
              LOGICAL :: GET_THETA_FLUX
-             REAL :: SECOND_THETA
+             REAL , PARAMETER :: SECOND_THETA = 1.0
              INTEGER :: STAT, IGOT_THERM_VIS, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
              character( len = option_path_len ) :: path
              LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
@@ -1616,7 +1616,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         ! Local variables
         REAL, PARAMETER :: V_BETA = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
-        REAL :: SECOND_THETA
+        REAL, PARAMETER :: SECOND_THETA = 1.0
         LOGICAL, PARAMETER :: GETCV_DISC = .FALSE., GETCT= .TRUE., THERMAL= .FALSE.
         type( petsc_csr_matrix ) :: acv
         REAL, DIMENSION( : ), allocatable ::  dummy_transp
