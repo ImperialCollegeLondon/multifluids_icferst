@@ -664,8 +664,6 @@ start =
             element linearise_component{ empty }?,
             ## The equation of state
             equation_of_state?,
-	    ## The material rheological model
-	    rheology?,
             ## Pressure
             element scalar_field {
                attribute rank { "0" },

@@ -38,13 +38,15 @@ module multiphase_time_loop
         check_diagnostic_dependencies
     use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
         simulation_start_wall_time, new_mesh, &
-        topology_mesh_name, current_time, is_porous_media, after_adapt, is_multifracture
+        topology_mesh_name, current_time, is_porous_media, after_adapt, is_multifracture, &
+        OPTION_PATH_LEN, FIELD_NAME_LEN
     use fldebug
     use reference_counting
     use state_module
     use fields
     use field_options
     use fields_allocates
+    use field_priority_lists
     use spud
     use signal_vars
     use populate_state_module
@@ -119,7 +121,8 @@ contains
         integer :: nphase, npres, nstate, ncomp, totele, ndim, stotel, &
             u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
             x_snloc, cv_snloc, u_snloc, p_snloc, n_in_pres, &
-            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods
+            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc, ph_nonods, &
+            ntsol
 
         !!$ Node global numbers
         integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, &
@@ -272,6 +275,13 @@ contains
 
         ! Variables used in the CVGalerkin interpolation calculation
         integer :: numberfields
+
+        logical :: new_ntsol_loop
+        character(len=OPTION_PATH_LEN) :: option_buffer
+        character(len=FIELD_NAME_LEN) :: tmp_name
+        logical :: use_advdif, multiphase_scalar
+        integer :: it, it2, nphase_scalar
+
 
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
@@ -629,20 +639,68 @@ contains
         endif
 
         checkpoint_number=1
+
+
+!!$ Fields...
+
+        new_ntsol_loop = .false.
+
+if ( new_ntsol_loop  ) then
+
+        call get_ntsol( ntsol )
+        call initialise_field_lists_from_options( state, ntsol )
+
+        do it = 1, ntsol
+
+           call get_option( trim( field_optionpath_list( it ) ) // &
+                '/prognostic/equation[0]/name', &
+                option_buffer, default = "UnknownEquationType" )
+           select case( trim( option_buffer ) )
+           case ( "AdvectionDiffusion", "InternalEnergy" )
+              use_advdif = .true.
+           case default
+              use_advdif = .false.
+           end select
+
+           if ( use_advdif ) then
+
+              ! figure out if scalar field is mutli-phase
+              multiphase_scalar = .false.
+              do it2 = it+1, ntsol
+                 if ( field_name_list( it ) == field_name_list( it2 ) ) then
+                    multiphase_scalar = .true.
+                 end if
+              end do
+
+              tmp_name = field_name_list( it )
+              nphase_scalar = 1
+              if ( multiphase_scalar ) then
+                 nphase_scalar = nphase
+                 tmp_name = "Packed" // field_name_list( it )
+              end if
+
+              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
+
+           end if
+
+        end do
+
+end if
+
+!!$ Time loop
+
         Loop_Time: do
 
-            !!$
             ewrite(2,*) '    NEW DT', itime+1
-
 
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
 
-            if (do_checkpoint_simulation(dtime)) then
-                call checkpoint_simulation(state,cp_no=checkpoint_number,&
-                    protect_simulation_name=.true.,file_type='.mpml')
-                checkpoint_number=checkpoint_number+1
+            if ( do_checkpoint_simulation( dtime ) ) then
+               call checkpoint_simulation( state, cp_no=checkpoint_number, &
+                    protect_simulation_name=.true., file_type='.mpml' )
+               checkpoint_number=checkpoint_number+1
             end if
-            dtime=dtime+1
+            dtime = dtime + 1
 
             ! Adapt mesh within the FPI?
             adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
@@ -651,36 +709,26 @@ contains
             timestep = itime
             call get_option( '/timestepping/timestep', dt )
 
-
             acctim = acctim + dt
             call set_option( '/timestepping/current_time', acctim )
             new_lim = .true.
 
             ! Added a tolerance of 0.001dt to the condition below that stops us exiting the loop before printing the last time step.
-
-            if(calculate_flux) then
-                if ( acctim > finish_time + 0.001*dt) then
-                    ewrite(1,*) "Passed final time"
-                    exit Loop_Time
-                end if
-
+            if ( calculate_flux ) then
+               if ( acctim > finish_time + 0.001*dt ) then
+                  ewrite(1,*) "Passed final time"
+                  exit Loop_Time
+               end if
             else
-
-                if ( acctim > finish_time) then
-                    ewrite(1,*) "Passed final time"
-                    exit Loop_Time
-                end if
-
-            endif
-
-            !         if ( acctim > finish_time) then
-            !            ewrite(1,*) "Passed final time"
-            !            exit Loop_Time
-            !         end if
+               if ( acctim > finish_time ) then
+                  ewrite(1,*) "Passed final time"
+                  exit Loop_Time
+               end if
+            end if
 
             call get_option( '/timestepping/final_timestep', final_timestep, stat )
-            if( stat == spud_no_error ) then
-                if( itime > final_timestep ) then
+            if ( stat == spud_no_error ) then
+                if ( itime > final_timestep ) then
                     ewrite(1,*) "Passed final timestep"
                     exit Loop_Time
                 end if

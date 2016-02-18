@@ -826,11 +826,6 @@ to sum to 1 by adding constraint into compositional source term.</a:documentatio
             </ref>
           </optional>
           <optional>
-            <ref name="rheology">
-              <a:documentation>The material rheological model</a:documentation>
-            </ref>
-          </optional>
-          <optional>
             <element name="scalar_field">
               <a:documentation>Pressure</a:documentation>
               <attribute name="rank">

@@ -257,7 +257,7 @@ prognostic_scalar_field =
             } 
          )
       }?,
-      ## source term
+      ## Source term
       element scalar_field {
          attribute name { "Source" },
          attribute rank { "0" },
@@ -289,6 +289,20 @@ prognostic_scalar_field =
                   internal_algorithm
                ),
                diagnostic_scalar_field_no_adapt
+            }
+         )
+      }?,
+      ## Absorption term
+      element tensor_field {
+         attribute name { "Absorption" },
+         attribute rank { "0" },
+         element nphase { integer }?,
+         (
+            element diagnostic {
+               (
+                  tensor_python_diagnostic_algorithm
+               ),
+               diagnostic_tensor_field_no_adapt
             }
          )
       }?,
