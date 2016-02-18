@@ -62,7 +62,7 @@ module Copy_Outof_State
 
     private
 
-    public :: Get_Primary_Scalars, Compute_Node_Global_Numbers, Extracting_MeshDependentFields_From_State, &
+    public :: Get_Primary_Scalars, Get_Primary_Scalars_new, Compute_Node_Global_Numbers, Extracting_MeshDependentFields_From_State, &
         Extract_TensorFields_Outof_State, Get_Ele_Type, Get_Discretisation_Options, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
@@ -202,6 +202,118 @@ contains
 
         return
     end subroutine Get_Primary_Scalars
+
+
+   subroutine Get_Primary_Scalars_new( state, Mdims, get_Ph )
+        !!$ This subroutine extracts all primary variables associated with the mesh from state,
+        !!$ and associated them with the variables used in the MultiFluids model.
+        implicit none
+        type( state_type ), dimension( : ), intent( in ) :: state
+        type (multi_dimensions) :: Mdims
+        logical :: get_Ph
+
+        !!$ Local variables
+        type( vector_field ), pointer :: positions, velocity
+        type( scalar_field ), pointer :: pressure
+        type( mesh_type ), pointer :: velocity_cg_mesh, pressure_cg_mesh, ph_mesh
+        integer :: i, stat
+
+        ewrite(3,*)' In Get_Primary_Scalars'
+
+        ! Read in the surface IDs of the boundaries (if any) that you wish to integrate over into the (integer vector) variable outlet_id.
+        ! No need to explicitly allocate outlet_id (done here internally)
+
+        if (have_option( "/io/dump_boundaryflux/surface_ids") .and..not.(allocated(outlet_id))) then
+            shape = option_shape("/io/dump_boundaryflux/surface_ids")
+            assert(shape(1) >= 0)
+            allocate(outlet_id(shape(1)))
+            !allocate(outlet_id(1))
+            call get_option( "/io/dump_boundaryflux/surface_ids", outlet_id)
+
+        endif
+
+        !!$ Defining dimension and nstate
+        call get_option( '/geometry/dimension', Mdims%ndim )
+        Mdims%nstate = option_count( '/material_phase' )
+
+        !!$ Assume there are the same number of components in each phase (will need to check this eventually)
+        Mdims%ncomp = 0
+        do i = 1, Mdims%nstate
+            if( have_option( '/material_phase[' // int2str(i-1) // &
+                ']/is_multiphase_component' ) ) then
+                Mdims%ncomp = Mdims%ncomp + 1
+            end if
+        end do
+        Mdims%nphase = Mdims%nstate - Mdims%ncomp
+        assert( Mdims%nphase > 0 ) ! Check if there is more than 0 phases
+
+        !!$ Get the vel element type.
+        is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
+        if (is_porous_media) then!Check that the FPI method is on
+            if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
+                ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow"
+            end if
+        end if
+        is_multifracture = have_option( '/femdem_fracture' )
+
+        positions => extract_vector_field( state, 'Coordinate' )
+        pressure_cg_mesh => extract_mesh( state, 'PressureMesh_Continuous' )
+
+        !!$ Defining number of elements and surface elements, coordinates, locs and snlocs
+        Mdims%totele = ele_count( positions )
+        Mdims%stotel = surface_element_count( positions )
+
+        !!$ Coordinates
+        Mdims%x_nloc_p1 = ele_loc( positions, 1 )
+        Mdims%x_nloc = ele_loc( pressure_cg_mesh, 1 )
+        Mdims%x_snloc = face_loc( pressure_cg_mesh, 1 )
+        Mdims%x_nonods_p1 = node_count( positions )
+        Mdims%x_nonods = node_count( pressure_cg_mesh )
+
+        !!$ Pressure, Control Volumes and Materials
+        pressure => extract_scalar_field( state, 'Pressure' )
+        Mdims%p_nloc = ele_loc( pressure, 1 )
+        Mdims%p_snloc = face_loc( pressure, 1 )
+        Mdims%p_nonods = node_count( pressure )
+        Mdims%cv_nloc = Mdims%p_nloc
+        Mdims%cv_snloc = Mdims%p_snloc
+        Mdims%cv_nonods = node_count( pressure )
+        Mdims%mat_nloc = Mdims%cv_nloc
+        Mdims%mat_nonods = Mdims%mat_nloc * Mdims%totele
+
+        !!$ Velocities and velocities (DG) associated with the continuous space (CG)
+        velocity => extract_vector_field( state, 'Velocity' )
+        Mdims%u_nloc = ele_loc( velocity, 1 )
+        Mdims%u_snloc = face_loc( velocity, 1 )
+        Mdims%u_nonods = node_count( velocity )
+
+        !!$ Get the continuous space of the velocity field
+        velocity_cg_mesh => extract_mesh( state, 'VelocityMesh_Continuous' )
+        Mdims%xu_nloc = ele_loc( velocity_cg_mesh, 1 )
+        Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
+
+        if( get_Ph ) then
+            ph_mesh => extract_mesh( state( 1 ), 'ph', stat )
+            if ( stat == 0 ) then
+                Mdims%ph_nloc = ele_loc( ph_mesh, 1 )
+                Mdims%ph_nonods = node_count( ph_mesh )
+            else
+                Mdims%ph_nloc = 0
+                Mdims%ph_nonods = 0
+            end if
+        else
+            Mdims%ph_nloc = 0
+            Mdims%ph_nonods = 0
+        end if
+
+        ! Number of pressures to solve for
+        Mdims%npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
+        Mdims%n_in_pres = Mdims%nphase / Mdims%npres
+        return
+    end subroutine Get_Primary_Scalars_new
+
+
+
 
     !sprint_to_do!move to a library pointer something?
     function get_ndglno(mesh) result(ndglno)

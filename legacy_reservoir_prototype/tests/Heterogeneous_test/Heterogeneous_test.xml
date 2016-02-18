@@ -9,15 +9,14 @@
   <variables/>
   <pass_tests>
     <test name="Heterogeneous_test" language="python">Heterogeneous_test = False
-Log=file('log','r')
-while True:
-    cadena=Log.readline()
-    if len(cadena) ==0:
-        break # EOF
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
 
-if 'OK' in cadena: Heterogeneous_test = True
+if 'OK' in last: Heterogeneous_test = True
 
-Log.close</test>
+assert(Heterogeneous_test)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

@@ -9,15 +9,14 @@
   <variables/>
   <pass_tests>
     <test name="Grav_cap_competing_fast" language="python">Grav_cap_competing_fast = False
-Log=file('log','r')
-while True:
-    cadena=Log.readline()
-    if len(cadena) ==0:
-        break # EOF
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
 
-if 'OK' in cadena: Grav_cap_competing_fast = True
+if 'OK' in last: Grav_cap_competing_fast = True
 
-Log.close</test>
+assert(Grav_cap_competing_fast)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
