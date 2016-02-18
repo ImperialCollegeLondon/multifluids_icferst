@@ -162,11 +162,7 @@
     </nonlinear_iterations>
   </timestepping>
   <caching/>
-  <physical_parameters>
-    <mobility>
-      <real_value rank="0">10.0</real_value>
-    </mobility>
-  </physical_parameters>
+  <physical_parameters/>
   <material_phase name="phase1">
     <scalar_field name="Pressure" rank="0">
       <prognostic>
@@ -693,7 +689,7 @@ for i in range( field.node_count ):
             <value name="WholeMesh">
               <isotropic>
                 <constant>
-                  <real_value rank="0">1.0</real_value>
+                  <real_value rank="0">10.0</real_value>
                 </constant>
               </isotropic>
             </value>

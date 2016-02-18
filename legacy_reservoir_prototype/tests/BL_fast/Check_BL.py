@@ -28,8 +28,8 @@ os.system(binpath + ' ' + path + '/BL_fast.mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.0183
-Tolerance_L2_NORM = 0.001125
+Tolerance_L1_NORM = 0.02
+Tolerance_L2_NORM = 0.0015
 
 AutomaticLine = 0
 
