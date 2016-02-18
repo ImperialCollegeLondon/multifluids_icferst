@@ -552,13 +552,16 @@ contains
         REAL, DIMENSION(:,:,: ), pointer :: SUF_U_BC_ALL
         REAL, DIMENSION( :,:,: ), allocatable, target :: SUF_T_BC,&
             SUF_T_BC_ROB1, SUF_T_BC_ROB2
+
         !Working variables for subroutines that are called several times
-        real, dimension(NDIM,NPHASE) :: rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4
-        real, dimension(NPHASE) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6,&
+        real, dimension( NDIM,NPHASE ) :: rdum_ndim_nphase_1, rdum_ndim_nphase_2, rdum_ndim_nphase_3, rdum_ndim_nphase_4
+        real, dimension( NPHASE ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_nphase_6, &
             rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, rdum_nphase_13
-        real :: rdum_ndim_1(NDIM), rdum_ndim_2(NDIM), rdum_ndim_3(NDIM)
-        real :: LOC_CV_RHS_I(NPHASE),LOC_CV_RHS_J(NPHASE)
-        real :: THETA_VEL(NPHASE)
+        REAL, DIMENSION( NPHASE ) :: ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA, &
+                wrelax, XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
+        REAL, DIMENSION ( NDIM,NPHASE ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
+        real, dimension( NDIM ) :: rdum_ndim_1, rdum_ndim_2, rdum_ndim_3
+        real, dimension( NPHASE ) :: LOC_CV_RHS_I, LOC_CV_RHS_J, THETA_VEL
 
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
@@ -678,6 +681,9 @@ contains
         else
             THETA_VEL_HAT = 1.0
         end if
+
+
+
 
         !Check capillary pressure options
         capillary_pressure_activated = .false.
@@ -2172,10 +2178,6 @@ contains
                                         INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                                         NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                         T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                        !Working variables, to avoid having to allocate them every time we call this subroutine
-                                        rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6, &
-                                        rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, &
-                                        rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4, &
                                         .false., anisotropic_and_frontier)
 
                                     CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
@@ -2187,10 +2189,6 @@ contains
                                         INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                                         NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                         T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
-                                        !Working variables, to avoid having to allocate them every time we call this subroutine
-                                        rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6, &
-                                        rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, &
-                                        rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4, &
                                         .true., anisotropic_and_frontier)
 
                                 else
@@ -2198,18 +2196,12 @@ contains
                                     call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                                         T2OLD_ALL(:, CV_NODI), T2OLD_ALL(:, CV_NODJ), DENOLD_ALL(:, CV_NODI), DENOLD_ALL(:, CV_NODJ), &
                                         LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,&
-                                        !Working variables, to avoid having to allocate them every time we call this subroutine
-                                        rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
-                                        rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .false. )
+                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .false. )
 
                                     call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
                                         T2_ALL(:, CV_NODI), T2_ALL(:, CV_NODJ), DEN_ALL(:, CV_NODI), DEN_ALL(:, CV_NODJ), &
                                         LOC_NU, LOC2_NU, NUGI_ALL, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,&
-                                        !Working variables, to avoid having to allocate them every time we call this subroutine
-                                        rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
-                                        rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .true. )
+                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
 
                                 end if
 
@@ -2225,10 +2217,6 @@ contains
                                         INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                                         NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                         TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                        !Working variables, to avoid having to allocate them every time we call this subroutine
-                                        rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6, &
-                                        rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, &
-                                        rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4, &
                                         .false., anisotropic_and_frontier)
 
                                     CALL GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
@@ -2240,10 +2228,6 @@ contains
                                         INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODI), INV_V_OPT_VEL_UPWIND_COEFS(:,:,:,MAT_NODJ), &
                                         NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                         TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
-                                        !Working variables, to avoid having to allocate them every time we call this subroutine
-                                        rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,rdum_nphase_6, &
-                                        rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, &
-                                        rdum_nphase_13, rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3,rdum_ndim_nphase_4, &
                                         .true., anisotropic_and_frontier)
 
                                 else
@@ -2251,18 +2235,11 @@ contains
                                     call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQOLD, INCOMEOLD, &
                                         T2OLD_ALL(:, CV_NODI), T2OLD_ALL(:, CV_NODJ), DENOLD_ALL(:, CV_NODI), DENOLD_ALL(:, CV_NODJ), &
                                         LOC_NUOLD, LOC2_NUOLD, NUOLDGI_ALL, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,&
-                                        !Working variables, to avoid having to allocate them every time we call this subroutine
-                                        rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
-                                        rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .false. )
+                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .false. )
 
                                     call GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
                                         T2_ALL(:, CV_NODI), T2_ALL(:, CV_NODJ), DEN_ALL(:, CV_NODI), DEN_ALL(:, CV_NODJ), &
-                                        LOC_NU, LOC2_NU, NUGI_ALL, &
-                                        UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,&
-                                        !Working variables, to avoid having to allocate them every time we call this subroutine
-                                        rdum_nphase_1,rdum_nphase_2,rdum_nphase_3,&
-                                        rdum_ndim_nphase_1,rdum_ndim_nphase_2,rdum_ndim_nphase_3, .true. )
+                                        LOC_NU, LOC2_NU, NUGI_ALL, UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, .true. )
 
                                 end if
                             ENDIF
@@ -2521,7 +2498,7 @@ contains
                                     FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                                     RETRIEVE_SOLID_CTY,theta_cty_solid, &
                                     loc_u, loc2_u, THETA_VEL, &
-                                    rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5,    rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
+                                    rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
                                     SUF_INT_MASS_MATRIX2, MASS_P_CV, recal_c_cv_rhs, U_RHS=U_RHS )
 
 
@@ -3698,12 +3675,10 @@ contains
 
         END SUBROUTINE GET_INT_T_DEN_NEW
 
-
-        PURE SUBROUTINE GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
+        SUBROUTINE GET_INT_VEL_ORIG_NEW( NDOTQNEW, NDOTQ, INCOME, &
             LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J, &
             LOC_NU, LOC2_NU, NUGI_ALL, &
-            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,&
-            DT_I,DT_J,NDOTQ_INT,UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, not_OLD_VEL)
+            UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,not_OLD_VEL)
 
             ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
             IMPLICIT NONE
@@ -3711,11 +3686,7 @@ contains
             REAL, DIMENSION( :, : ), intent( inout ) :: NUGI_ALL
             REAL, DIMENSION( : ), intent( in ) :: LOC_T_I, LOC_T_J, LOC_DEN_I, LOC_DEN_J
             REAL, DIMENSION( :, :, : ), intent( in ) :: LOC_NU, LOC2_NU
-            REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, &
-                UGI_COEF_ELE2_ALL
-            !Working variables, to avoid having to allocate them every time we call this subroutine
-            REAL, DIMENSION(:), intent( inout ) :: DT_I,DT_J,NDOTQ_INT!NPHASE
-            REAL, DIMENSION (:, :), intent( inout ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL!NDIM, NPHASEL
+            REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
             logical, intent(in) :: not_OLD_VEL
             ! Local variables
             INTEGER :: U_KLOC,U_KLOC2,U_SKLOC
@@ -3861,7 +3832,7 @@ contains
         END SUBROUTINE GET_INT_VEL_ORIG_NEW
 
 
-        SUBROUTINE GET_INT_VEL_POROUS_VEL( NDOTQNEW, NDOTQ, INCOME, &
+        SUBROUTINE GET_INT_VEL_POROUS_VEL(NDOTQNEW, NDOTQ, INCOME, &
             LOC_T_I, LOC_T_J, LOC_FEMT, &
             LOC_NU, LOC2_NU, SLOC_NU, &
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
@@ -3870,10 +3841,6 @@ contains
             INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
             UDGI_ALL,MASS_CV_I, MASS_CV_J, &
             TUPWIND_IN, TUPWIND_OUT, &
-            !Working variables, to avoid having to allocate them every time we call this subroutine
-            ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA, &
-            wrelax,XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE,DT_J, abs_tilde,NDOTQ2, DT_I, LIMT3, &
-            UDGI2_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV, &
             not_OLD_VEL, anisotropic_and_frontier)
             !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===
             ! Calculate NDOTQ and INCOME on the CV boundary at quadrature pt GI.
@@ -3890,12 +3857,7 @@ contains
             REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
             REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
             REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(NPHASE)
-            !Working variables, to avoid having to allocate them every time we call this subroutine
-            REAL, DIMENSION(:), intent(inout)::ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA,&!(NPHASE)
-                wrelax,XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
-            REAL, DIMENSION ( :, : ), intent(inout):: UDGI2_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV!(NDIM, NPHASE)
             logical, intent(in) :: not_OLD_VEL, anisotropic_and_frontier
-
             ! Local variables
             logical :: Incomming_flow
             REAL, DIMENSION(:), allocatable :: SUF_SIG_DIAGTEN_BC_GI
@@ -9337,7 +9299,7 @@ contains
         RETRIEVE_SOLID_CTY,theta_cty_solid, &
         loc_u, loc2_u, THETA_VEL, &
         ! local memory sent down for speed...
-        UDGI_IMP_ALL,     RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, &
+        UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, &
         CAP_DIFF_COEF_DIVDX, SUF_INT_MASS_MATRIX, MASS_P_CV, RECAL_C_CV_RHS, U_RHS)
         ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
         IMPLICIT NONE
