@@ -204,13 +204,12 @@ contains
     end subroutine Get_Primary_Scalars
 
 
-   subroutine Get_Primary_Scalars_new( state, Mdims, get_Ph )
+   subroutine Get_Primary_Scalars_new( state, Mdims )
         !!$ This subroutine extracts all primary variables associated with the mesh from state,
         !!$ and associated them with the variables used in the MultiFluids model.
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
         type (multi_dimensions) :: Mdims
-        logical :: get_Ph
 
         !!$ Local variables
         type( vector_field ), pointer :: positions, velocity
@@ -292,7 +291,7 @@ contains
         Mdims%xu_nloc = ele_loc( velocity_cg_mesh, 1 )
         Mdims%xu_nonods = max(( Mdims%xu_nloc - 1 ) * Mdims%totele + 1, Mdims%totele )
 
-        if( get_Ph ) then
+        if( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) then
             ph_mesh => extract_mesh( state( 1 ), 'ph', stat )
             if ( stat == 0 ) then
                 Mdims%ph_nloc = ele_loc( ph_mesh, 1 )

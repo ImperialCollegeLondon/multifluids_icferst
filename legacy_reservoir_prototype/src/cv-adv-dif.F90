@@ -468,11 +468,10 @@ contains
             XNOD, NSMALL_COLM, COUNT2, NOD, N_IN_PRES
         !        ===>  REALS  <===
         REAL :: HDC, &
-            VTHETA, &
             TMID, TOLDMID, TMID_J, TOLDMID_J, &
             RSUM, &
             THERM_FTHETA, &
-            W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc
+            W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta
         REAL :: FTHETA(NPHASE), FTHETA_T2(NPHASE), ONE_M_FTHETA_T2OLD(NPHASE), FTHETA_T2_J(NPHASE), ONE_M_FTHETA_T2OLD_J(NPHASE)
         REAL :: ROBIN1(NPHASE), ROBIN2(NPHASE)
 
@@ -482,8 +481,9 @@ contains
         !REAL :: R2NORM, FACE_THETA
         !        ===>  LOGICALS  <===
         LOGICAL :: GETMAT, &
-            D1, D3, DCYL, GOT_DIFFUS, INTEGRAT_AT_GI, &
+            D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, &
             NORMALISE, SUM2ONE, GET_GTHETA, QUAD_OVER_WHOLE_ELE
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
 
         character( len = option_path_len ) :: option_path, option_path2, path_temp, path_volf, &
             path_comp, path_spatial_discretisation
@@ -837,6 +837,7 @@ contains
             CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS
         ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
 
+        one_m_cv_beta = 1.0 - cv_beta
 
         QUAD_OVER_WHOLE_ELE=.FALSE.
         ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
@@ -905,7 +906,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = ( NDIM == -2 )
+        !DCYL = ( NDIM == -2 )
 
         GETMAT = .TRUE.
 
@@ -1406,7 +1407,6 @@ contains
         ! Timopt is 1 if CV_DISOPT is odd (non-linear theta scheme)
         TIMOPT = MOD( CV_DISOPT, 2 )
 
-        VTHETA = 1.0
         FTHETA(:) = CV_THETA
 
         IF ( GETCT ) THEN ! Obtain the CV discretised CT eqns plus RHS
@@ -2601,7 +2601,7 @@ contains
                                             !
                                             ! CV_BETA=0 for Non-conservative discretisation (CV_BETA=1 for conservative disc)
                                             !                           CSR_ACV( IMID_IPHA ) = CSR_ACV( IMID_IPHA )  &
-                                            - SECOND_THETA * FTHETA_T2(iphase) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
+                                            - SECOND_THETA * FTHETA_T2(iphase) * ( ONE_M_CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
                                     end do
                                     if(integrate_other_side_and_not_boundary) then
                                         do iphase=1,nphase
@@ -2613,7 +2613,7 @@ contains
                                                 +  SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase)   &  ! Stabilization of capilary diffusion
                                                 !
                                                 ! CV_BETA=0 for Non-conservative discretisation (CV_BETA=1 for conservative disc)
-                                                + SECOND_THETA * FTHETA_T2_J(iphase) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
+                                                + SECOND_THETA * FTHETA_T2_J(iphase) * ( ONE_M_CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
                                         end do
                                     endif
 
@@ -2639,10 +2639,10 @@ contains
                                     + ONE_M_FTHETA_T2OLD(:)* NDOTQOLD(:) * LIMDTOLD(:) ) ! hi order adv
                                 ! Subtract out 1st order term non-conservative adv.
                                 LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
-                                    - FTHETA_T2(:) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODI) &
+                                    - FTHETA_T2(:) * ( ONE_M_CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODI) &
                                     !
                                     ! High-order non-conservative advection contribution
-                                    + ( 1. - CV_BETA) * SCVDETWEI( GI ) &
+                                    + ( ONE_M_CV_BETA) * SCVDETWEI( GI ) &
                                     * ( FTHETA_T2(:) * NDOTQNEW(:) * T_ALL(:, CV_NODI) * LIMD(:)  &
                                     + ONE_M_FTHETA_T2OLD(:) * NDOTQOLD(:) * LIMDOLD(:) * TOLD_ALL(:, CV_NODI) )  &
                                     !
@@ -2662,10 +2662,10 @@ contains
                                         + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDTOLD(:) )  & ! hi order adv
                                         !
                                         ! Subtract out 1st order term non-conservative adv.
-                                        + FTHETA_T2_J(:) * ( 1. - CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODJ) &
+                                        + FTHETA_T2_J(:) * ( ONE_M_CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODJ) &
                                         !
                                         ! High-order non-conservative advection contribution
-                                        - ( 1. - CV_BETA) * SCVDETWEI( GI ) &
+                                        - ( ONE_M_CV_BETA) * SCVDETWEI( GI ) &
                                         * ( FTHETA_T2_J(:) * NDOTQNEW(:) * T_ALL(:, CV_NODJ) * LIMD(:)  &
                                         + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDOLD(:) * TOLD_ALL(:, CV_NODJ) )  &
                                         !
@@ -3064,24 +3064,18 @@ contains
 
         Conditional_GETCV_DISC2: IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
 
-            !ewrite(3,*)'before adding extra bits*****DEN:',DEN
-            !ewrite(3,*)'before adding extra bits*****DENOLD:',DENOLD
-            !ewrite(3,*)'before adding extra bits*****TOLD:',TOLD
-            !ewrite(3,*)'before adding extra bits*****MEAN_PORE_CV:',MEAN_PORE_CV
-            !ewrite(3,*)'before adding extra bits*****SOURCT:',SOURCT
-
 
             Loop_CVNODI2: DO CV_NODI = 1, CV_NONODS ! Put onto the diagonal of the matrix
 
                 LOC_CV_RHS_I=0.0
 
-                DO IPRES=1,NPRES
+                DO IPRES = 1, NPRES
                     R_PHASE(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = MEAN_PORE_CV( IPRES, CV_NODI ) * MASS_CV_PLUS( IPRES, CV_NODI ) / DT
                     CV_P_PHASE_NODI(1+(ipres-1)*n_in_pres:ipres*n_in_pres) = CV_P( 1, IPRES, CV_NODI ) + reservoir_P( IPRES )
                 END DO
 
-                IF(THERMAL) THEN
-                    IF(GOT_VIS) THEN
+                IF ( THERMAL ) THEN
+                    IF ( GOT_VIS ) THEN
                         IF( RETRIEVE_SOLID_CTY ) THEN
                             DO IPHASE = 1, NPHASE
                                 LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
@@ -3092,13 +3086,13 @@ contains
                                 LOC_CV_RHS_I(IPHASE)=LOC_CV_RHS_I(IPHASE)  &
                                     + SUM( VECS_STRESS(:,:,IPHASE,CV_NODI)*VECS_GRAD_U(:,:,IPHASE,CV_NODI)  )/MASS_CV(CV_NODI)
                             END DO
-                        endif
-                    ENDIF
+                        end if
+                    END IF
 
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:) &
                         - CV_P_PHASE_NODI(:) * ( MASS_CV( CV_NODI ) / DT ) * ( T2_ALL( :, CV_NODI ) - T2OLD_ALL( :, CV_NODI ) )
-                ENDIF
-                !
+                END IF
+
                 IF ( GOT_T2 ) THEN
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                         + MASS_CV(CV_NODI) * SOURCT_ALL( :, CV_NODI )
@@ -3112,7 +3106,7 @@ contains
 
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                         + (CV_BETA * DENOLD_ALL( :, CV_NODI ) * T2OLD_ALL( :, CV_NODI ) &
-                        + (1.-CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) ) &
+                        + (ONE_M_CV_BETA) * DEN_ALL( :, CV_NODI ) * T2_ALL( :, CV_NODI ) ) &
                         * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
                 ELSE
 
@@ -3128,7 +3122,7 @@ contains
 
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                         + ( CV_BETA * DENOLD_ALL( :, CV_NODI ) &
-                        + (1.-CV_BETA) * DEN_ALL( :, CV_NODI ) ) &
+                        + (ONE_M_CV_BETA) * DEN_ALL( :, CV_NODI ) ) &
                         * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
                 END IF
 
@@ -3141,7 +3135,7 @@ contains
 
                 Conditional_GETMAT2: IF ( GETMAT ) THEN
 
-                    do jphase=1,nphase
+                    do jphase = 1, nphase
                         do iphase=1,nphase
                             IF ( NPRES > 1 .AND. .NOT.EXPLICIT_PIPES ) THEN
                                 call addto(petsc_acv,iphase,jphase, &
@@ -5234,7 +5228,8 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
         INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
         ! Local variables
-        LOGICAL :: D1, D3, DCYL
+        LOGICAL :: D1, D3
+        LOGICAL, PARAMETER ::DCYL = .FALSE.
         REAL, DIMENSION( : ), allocatable :: MASS_CV, FEMPSI_RHS, &
             PSI_AVE2, PSI_INT2, MAT, DETWEI, RA
         REAL, DIMENSION( :, : ), allocatable :: NX, NY, NZ
@@ -5268,7 +5263,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = .FALSE.
+        !DCYL = .FALSE.
 
         Loop_Elements: DO ELE = 1, TOTELE
 
@@ -5398,7 +5393,9 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
         INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
         ! Local variables
-        LOGICAL :: D1, D3, DCYL
+        LOGICAL :: D1, D3
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
+
         REAL, DIMENSION( : ), allocatable, target :: DETWEI2, RA2
         REAL, DIMENSION( :, : , :), allocatable, target :: NX_ALL2
         real, target :: VOLUME2
@@ -5479,7 +5476,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = .FALSE.
+        !DCYL = .FALSE.
 
         Loop_Elements: DO ELE = 1, TOTELE
             if (isParallel()) then
@@ -5753,7 +5750,8 @@ contains
         character(len=*), intent(in) :: StorName
         integer, intent(inout) :: indx
         ! Local variables
-        LOGICAL :: D1, D3, DCYL, APPLYBC
+        LOGICAL :: D1, D3, APPLYBC
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
         REAL, pointer, DIMENSION( : ) :: DETWEI, RA
         REAL, pointer, DIMENSION( :, :,: ) :: NX_ALL, X_NX_ALL
         real, pointer :: VOLUME
@@ -5813,7 +5811,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = .FALSE.
+        !DCYL = .FALSE.
         ! ewrite(3,*)'****X_NLX:',X_NLX
         ! ewrite(3,*)'****X_NLY:',X_NLY
 
@@ -6187,7 +6185,8 @@ contains
         ! Local variables
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
-        LOGICAL :: D1, D3, DCYL, APPLYBC( NCOMP, NPHASE )
+        LOGICAL :: D1, D3, APPLYBC( NCOMP, NPHASE )
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
         REAL, pointer, dimension( : ) :: DETWEI, RA
         REAL, pointer, DIMENSION( :,:,:):: NX_ALL
         REAL, pointer, DIMENSION( :, :, : ) :: X_NX_ALL
@@ -6217,7 +6216,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = .FALSE.
+        !DCYL = .FALSE.
 
         Loop_Elements1: DO ELE = 1, TOTELE
 
@@ -6441,7 +6440,8 @@ contains
         ! Local variables
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
-        LOGICAL :: D1, D3, DCYL, APPLYBC( NPHASE )
+        LOGICAL :: D1, D3, APPLYBC( NPHASE )
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
         REAL, pointer, dimension( : ) :: DETWEI, RA
         REAL, pointer, DIMENSION( :,:,:):: NX_ALL
         REAL, pointer, DIMENSION( :, :, : ) :: X_NX_ALL
@@ -6467,7 +6467,7 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        DCYL = .FALSE.
+        !DCYL = .FALSE.
 
         Loop_Elements1: DO ELE = 1, TOTELE
 
@@ -9883,7 +9883,6 @@ contains
         REAL, DIMENSION( :  ), ALLOCATABLE, SAVE :: ELEMATWEI
         LOGICAL, SAVE :: STORE_ELE=.TRUE., RET_STORE_ELE=.FALSE.
         LOGICAL, SAVE :: adapt_in_FPI = .false.
-        LOGICAL :: D3,DCYL
         ! Allocate memory for the interpolated upwind values
         LOGICAL, PARAMETER :: BOUND  = .TRUE., REFLECT = .FALSE. ! limiting options
         INTEGER, DIMENSION( : ), allocatable :: NOD_FINDELE,NOD_COLELE, NLIST, INLIST, DUMMYINT

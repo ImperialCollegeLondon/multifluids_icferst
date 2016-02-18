@@ -1963,6 +1963,14 @@ contains
 
         ! Momentum absorption
 
+        ! open the boiling test for two phases-gas and liquid
+        if (have_option("\boiling")) then
+            S_ls_l=0.0
+            S_gs_g=0.0            
+        end if
+
+         
+
         iphase=1 ; jphase=1
         do idim = 1, ndim
             velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = S_lg_l + S_ls_l
@@ -2008,6 +2016,13 @@ contains
 
 
         ! Temperature absorption
+
+        ! open the boiling test for two phases-gas and liquid
+        if (have_option("\boiling")) then
+            St_sl=0.0
+            St_sg=0.0            
+        end if
+        
 
         iphase=1 ; jphase=1
         temperature_absorption( iphase, jphase, : ) =  St_gl + St_sl + Svap_l + Cp_l*Gamma_l
@@ -2072,7 +2087,7 @@ contains
         real, dimension( : ), intent( inout ) :: S_lg_l, S_lg_g, S_ls_l, S_gs_g
         real, dimension( :, : ), intent( inout ) :: A
 
-        type( scalar_field ), pointer :: pressure
+        type( tensor_field ), pointer :: pressure
         type( tensor_field ), pointer :: density, velocity, volume_fraction
 
         integer, dimension( : ), pointer :: mat_ndgln, cv_ndgln, u_ndgln
@@ -2089,7 +2104,7 @@ contains
             mu_l = 3.0e-4, mu_g = 1.0e-5, &
             d_p = 0.005
 
-        pressure => extract_scalar_field( packed_state, "CVPressure" )
+        pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
         density => extract_tensor_field( packed_state, "PackedDensity" )
         velocity => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
 
@@ -2168,7 +2183,7 @@ contains
                 u_g = sqrt( sum( ug**2 ) )
                 u_s = sqrt( sum( us**2 ) )
 
-                u_gs=abs(u_g-u_s) ; u_ls=abs(u_l-u_s) ; u_gl=abs(u_g-u_l)
+                u_gs=abs(u_g-u_s) ; u_ls=abs(u_l-u_s) ; u_gl=max(1e-5, abs(u_g-u_l))
 
                 a_l = volume_fraction%val(1,1,cv_inod)
                 a_g = volume_fraction%val(1,2,cv_inod)
@@ -2190,9 +2205,14 @@ contains
                     CD=0.44
                 end if
 
-                S_gs_g(mat_inod) = 150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
-                S_ls_l(mat_inod) = 150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))
+                !S_gs_g(mat_inod) = 150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
+                !S_ls_l(mat_inod) = 150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))
 
+                ! for boiling test: two phases-gas and liquid
+                S_gs_g(mat_inod) = 0.0 !150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
+                S_ls_l(mat_inod) = 0.0 !150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))
+
+            
                 S_lg_l(mat_inod) = 0.75 * CD * ( (a_gl*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) * max(a_lg,1.0e-5)**(-2.65)
                 S_lg_g(mat_inod) = 0.75 * CD * ( (a_lg*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) * max(a_lg,1.0e-5)**(-2.65)
 
@@ -2232,7 +2252,8 @@ contains
         integer, intent( in ) :: ndim, nphase
         real, dimension( : ), intent( inout ) :: T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, St_gl, St_sl, St_sg
 
-        type( scalar_field ), pointer :: pressure, dummy
+        type( scalar_field ), pointer :: dummy
+        type( tensor_field ), pointer :: pressure
         type( tensor_field ), pointer :: density, velocity, temperature, volume_fraction
 
         integer, dimension( : ), pointer :: cv_ndgln, u_ndgln, xu_ndgln
@@ -2256,7 +2277,7 @@ contains
             d_p = 0.005, &
             Le0 = 2375.7e3, Csf = 0.006, g = 9.81
 
-        pressure => extract_scalar_field( packed_state, "CVPressure" )
+        pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
         density => extract_tensor_field( packed_state, "PackedDensity" )
         velocity => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
         temperature => extract_tensor_field( packed_state, "PackedTemperature" )
@@ -2302,7 +2323,7 @@ contains
                 h_l(cv_inod)=0.0 ; h_g(cv_inod)=0.0
                 St_gl(cv_inod)=0.0 ; St_sl(cv_inod)=0.0 ; St_sg(cv_inod)=0.0
 
-                p = pressure%val(cv_inod)
+                p = pressure%val(1,1,cv_inod)
 
                 rho_l = density%val(1,1,cv_inod) ; rho_g = density%val(1,2,cv_inod)
 

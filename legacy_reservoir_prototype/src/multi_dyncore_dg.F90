@@ -163,7 +163,7 @@ contains
            type( tensor_field ), pointer :: P
            type( tensor_field ), pointer :: Q
            INTEGER :: IPHASE
-           REAL :: SECOND_THETA
+           REAL, PARAMETER :: SECOND_THETA = 1.0
            LOGICAL :: RETRIEVE_SOLID_CTY
            character( len = option_path_len ) :: path
            type(vector_field) :: cv_rhs_field
@@ -235,10 +235,6 @@ contains
                        'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
                end if
 
-               path='/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation' // &
-                   '/control_volumes/second_theta'
-               call get_option( path, second_theta, default=1. )
-
                Field_selector = 1
 
                Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
@@ -248,11 +244,6 @@ contains
 
                call get_option( '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
                    'prognostic/temporal_discretisation/control_volumes/number_advection_iterations', nits_flux_lim, default = 1 )
-
-               path= '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
-                   'prognostic/temporal_discretisation/control_volumes/second_theta'
-
-               call get_option( path, second_theta, default=1. )
 
                Field_selector = 2
 
@@ -437,7 +428,7 @@ contains
              REAL, DIMENSION( :, :, :, : ), allocatable :: THERM_U_DIFFUSION
              REAL, DIMENSION( :, : ), allocatable :: THERM_U_DIFFUSION_VOL
              LOGICAL :: GET_THETA_FLUX
-             REAL :: SECOND_THETA
+             REAL, PARAMETER :: SECOND_THETA = 1.0
              INTEGER :: STAT, IGOT_THERM_VIS, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
              character( len = option_path_len ) :: path
              LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
@@ -539,10 +530,6 @@ contains
 
              TDIFFUSION = 0.0
              V_BETA = 1.0
-
-             path = '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/temporal_discretisation/' // &
-                 'control_volumes/'
-             call get_option( trim( path ) // 'second_theta', second_theta, stat , default = 1.0)
 
              IGOT_THERM_VIS=0
              ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
@@ -1751,8 +1738,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         logical, intent(in) :: RECALC_C_CV
         ! Local variables
         REAL, PARAMETER :: V_BETA = 1.0
-! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
-        REAL :: SECOND_THETA
+        REAL, PARAMETER :: SECOND_THETA = 0.0 ! Not used at this stage
         LOGICAL, PARAMETER :: GETCV_DISC = .FALSE., GETCT= .TRUE., THERMAL= .FALSE.
         type( petsc_csr_matrix ) :: acv
         REAL, DIMENSION( : ), allocatable ::  dummy_transp
@@ -1855,9 +1841,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
            DEN_OR_ONE = 1.0
            DENOLD_OR_ONE = 1.0
         end if
-
-        ! unused at this stage
-        second_theta = 0.0
 
         ! no q scheme
         IGOT_THERM_VIS = 0
