@@ -185,7 +185,10 @@ contains
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
-               if ( .false. ) then ! don't the divide int. energy equation by the volume fraction
+
+              
+               ! open the boiling test for two phases-gas and liquid
+               if (have_option("\boiling")) then ! don't the divide int. energy equation by the volume fraction
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
                    den_all = den_all * a%val(1,:,:)
                    aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
@@ -2093,7 +2096,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 ! PIVIT_ON_VISC is the only thing that could make highly viscouse flows stabe when using projection methods...
             LOGICAL :: PIVIT_ON_VISC !THE VALUE IS SET UP BEFORE THE get_option
 ! GOT_VIRTUAL_MASS ! do we have virtual mass terms for multi-phase flows...
-            LOGICAL, PARAMETER :: GOT_VIRTUAL_MASS = .false.
+            LOGICAL :: GOT_VIRTUAL_MASS = .false.
 ! If FEM_DEN then use an FEM representation of density - only used within an element (default is FEM for between elements and on boundary).
             LOGICAL, PARAMETER :: FEM_DEN = .false.
             real :: w
@@ -2288,6 +2291,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         real, dimension(ndim, U_NLOC, U_NLOC) :: K_mat_xall, n_mat_xall
 
 
+        ! open the boiling test for two phases-gas and liquid
+        if (have_option("\boiling")) then
+            GOT_VIRTUAL_MASS=.true.
+        end if
+
+        
+
+        
 
         N_IN_PRES = NPHASE / NPRES
 
