@@ -864,7 +864,7 @@ contains
     options_file_filename = trim(prefix)
     if(present(cp_no)) options_file_filename = trim(options_file_filename) // "_" // int2str(cp_no)
     if(present_and_nonempty(postfix)) options_file_filename = trim(options_file_filename) // "_" // trim(postfix)
-    options_file_filename = trim(options_file_filename) //  ".flml"
+    options_file_filename = trim(options_file_filename) //  lfile_type
 
     call write_options(options_file_filename)
 

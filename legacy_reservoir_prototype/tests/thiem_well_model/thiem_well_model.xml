@@ -26,13 +26,19 @@ phase2_pressure_max_ref = 923268.544617</variable>
     <variable name="phase2_pressure_min_ref" language="python">
 phase2_pressure_min_ref = 0.0</variable>
     <variable name="tolerance" language="python">
-tolerance = 1.0e-5</variable>
+tolerance = 0.05</variable>
+    <variable name="tolerance2" language="python">
+tolerance2 = 15.0</variable>
+    <variable name="tolerance3" language="python">
+tolerance3 = 10.0</variable>
+    <variable name="tolerance4" language="python">
+tolerance4 = 1.0e-5</variable>
   </variables>
   <pass_tests>
     <test name="phase 1 max pressure check" language="python">assert( abs(phase1_pressure_max-phase1_pressure_max_ref) &lt; tolerance )</test>
-    <test name="phase 1 min pressure check" language="python">assert( abs(phase1_pressure_min-phase1_pressure_min_ref) &lt; tolerance )</test>
-    <test name="phase 2 max pressure check" language="python">assert( abs(phase2_pressure_max-phase2_pressure_max_ref) &lt; tolerance )</test>
-    <test name="phase 2 min pressure check" language="python">assert( abs(phase2_pressure_min-phase2_pressure_min_ref) &lt; tolerance )</test>
+    <test name="phase 1 min pressure check" language="python">assert( abs(phase1_pressure_min-phase1_pressure_min_ref) &lt; tolerance2 )</test>
+    <test name="phase 2 max pressure check" language="python">assert( abs(phase2_pressure_max-phase2_pressure_max_ref) &lt; tolerance3 )</test>
+    <test name="phase 2 min pressure check" language="python">assert( abs(phase2_pressure_min-phase2_pressure_min_ref) &lt; tolerance4 )</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

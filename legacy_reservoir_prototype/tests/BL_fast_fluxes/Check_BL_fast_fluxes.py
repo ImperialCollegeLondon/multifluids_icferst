@@ -8,8 +8,8 @@ from scipy.interpolate import interp1d
 tC,f1C,f2C,t1C,t2C,ssum = [], [], [], [], [], []
 tCA,f1CA,f2CA,t1CA,t2CA,ssumA = [], [], [], [], [], []
 
-tolerance1 = 1e-10
-tolerance2 = 1e-8
+tolerance1 = 1e-4
+tolerance2 = 1e-4
 
 
 path = os.getcwd()
@@ -100,5 +100,5 @@ if(L1_sum1 < tolerance1 and L1_sum2 < tolerance1 and  L1_sum3 < tolerance1 and L
 
 else:
 
-    print "BL with fluxes failed" 
+    print "BL with fluxes does not work" 
 

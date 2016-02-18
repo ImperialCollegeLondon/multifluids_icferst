@@ -468,7 +468,6 @@ contains
             XNOD, NSMALL_COLM, COUNT2, NOD, N_IN_PRES
         !        ===>  REALS  <===
         REAL :: HDC, &
-            VTHETA, &
             TMID, TOLDMID, TMID_J, TOLDMID_J, &
             RSUM, &
             THERM_FTHETA, &
@@ -1408,7 +1407,6 @@ contains
         ! Timopt is 1 if CV_DISOPT is odd (non-linear theta scheme)
         TIMOPT = MOD( CV_DISOPT, 2 )
 
-        VTHETA = 1.0
         FTHETA(:) = CV_THETA
 
         IF ( GETCT ) THEN ! Obtain the CV discretised CT eqns plus RHS
