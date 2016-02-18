@@ -790,10 +790,13 @@ end if
                 !To force the recalculation of all the stored variables uncomment the following line:
                 !           call Clean_Storage(storage_state, StorageIndexes)
 
-                !call set_nu_to_u( packed_state )
-                !call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
-                !   ScalarField_Source, velocity_absorption, temperature_absorption )
-
+                ! open the boiling test for two phases-gas and liquid
+                if (have_option("\boiling")) then
+                   call set_nu_to_u( packed_state )
+                   call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
+                   ScalarField_Source, velocity_absorption, temperature_absorption )           
+                end if
+                
 
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
