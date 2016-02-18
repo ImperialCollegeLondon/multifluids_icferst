@@ -1697,7 +1697,6 @@ contains
                 call set_boundary_conditions_values(state, shift_time=.true.)
 
                 if (allocated(Quality_list) ) deallocate(Quality_list)
-
                 !!$ Deallocating array variables:
                 deallocate( &
                     !!$ Node glabal numbers
@@ -1736,6 +1735,8 @@ contains
                     u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
                     x_snloc, cv_snloc, u_snloc, p_snloc, &
                     cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
+                !!$ Compute primary scalars used in most of the code
+                call Get_Primary_Scalars_new( state, Mdims, get_Ph = .true. )
                 !!$ Calculating Global Node Numbers
                 allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
                     u_sndgln( stotel * u_snloc ) )
@@ -1775,7 +1776,9 @@ contains
                 !!$ Defining element-pair type
                 call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
                     mat_ele_type, u_sele_type, cv_sele_type )
-
+                !Create the rest of multi_integer
+                call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, .false.)
+                call retrieve_ngi_new(FE_GIdims, Mdims, cv_ele_type, .true.)
                 !!$ Sparsity Patterns Matrices
                 call Get_Sparsity_Patterns( state, &
                     !!$ CV multi-phase eqns (e.g. vol frac, temp)

@@ -528,7 +528,7 @@ contains
         real, dimension(:,:), allocatable, target :: T_TEMP, TOLD_TEMP
         real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL, FEMT_ALL, FEMTOLD_ALL
         real, dimension(:, :, :), pointer :: comp, comp_old, fecomp, fecomp_old, U_ALL, NU_ALL, NUOLD_ALL
-        real, dimension(:,:), allocatable :: T_ALL_KEEP
+        real, dimension(nphase, cv_nonods) :: T_ALL_KEEP
         real, dimension(:,:), allocatable :: MASS_CV_PLUS
         real, dimension( : ), allocatable :: ct_rhs_phase, DIAG_SCALE_PRES_phase
         real, dimension( : ), allocatable :: R_PRES,R_PHASE,CV_P_PHASE_NODI,CV_P_PHASE_NODJ,MEAN_PORE_CV_PHASE, MASS_PIPE_FOR_COUP
@@ -704,8 +704,6 @@ contains
             OldNonlinearVelocity = NUOLD_ALL, NonlinearVelocity = NU_ALL, FEPressure = FEM_P)
         !For every Field_selector value but 3 (saturation) we need U_ALL to be NU_ALL
         U_ALL => NU_ALL
-
-        allocate( t_all_keep( nphase, cv_nonods ) )
 
         old_tracer=>extract_tensor_field(packed_state,GetOldName(tracer))
         old_density=>extract_tensor_field(packed_state,GetOldName(density))
