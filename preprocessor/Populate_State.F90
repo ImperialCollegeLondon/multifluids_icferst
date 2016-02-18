@@ -2129,6 +2129,7 @@ contains
     character(len=OPTION_PATH_LEN) :: field_name, mesh_name
     type(tensor_field) :: field
     type(mesh_type), pointer:: mesh
+    integer :: ndim_tensor, ndim, stat
 
     is_aliased=have_option(trim(option_path)//"/aliased")
     if(is_aliased) return
@@ -2154,6 +2155,12 @@ contains
     ! modify constant fields. *Do not add to this list!* Construct an
     ! appropriate diagnostic algorithm instead (possibly an internal).
     backward_compatibility = any(field_name == (/"ElectricalPotentialDiffusivity      "/))
+
+    ! in case the tensor dimensions are not ndim x ndim
+    ! only available for pyhton diagnostic fields for now...
+    call get_option( '/geometry/dimension', ndim )
+    ndim_tensor = ndim
+    call get_option ( trim( path ) // '/nphase', ndim_tensor, stat )
 
     ! Find out what kind of field we have
     is_prescribed=have_option(trim(path)//"/prescribed")
@@ -2188,18 +2195,18 @@ contains
          
        ! If we want to defer allocation (for sam), don't allocate the value space yet
        call allocate(field, mesh, name=trim(field_name), &
-          field_type=FIELD_TYPE_DEFERRED)
+          field_type=FIELD_TYPE_DEFERRED,dim=[ndim_tensor,ndim_tensor])
        
     else if(is_constant .and. .not. backward_compatibility) then
          
        ! Allocate as constant field if possible (and we don't need backward compatibility)
        call allocate(field, mesh, name=trim(field_name), &
-          field_type=FIELD_TYPE_CONSTANT)
+          field_type=FIELD_TYPE_CONSTANT,dim=[ndim_tensor,ndim_tensor])
        call zero(field)
     else
 
        ! Allocate field
-       call allocate(field, mesh, trim(field_name))
+       call allocate(field, mesh, trim(field_name),dim=[ndim_tensor,ndim_tensor])
        call zero(field)
     end if
 
