@@ -9,15 +9,14 @@
   <variables/>
   <pass_tests>
     <test name="BL_fast" language="python">BL_fast = False
-Log=file('log','r')
-while True:
-    cadena=Log.readline()
-    if len(cadena) ==0:
-        break # EOF
+with open("log", "rb") as f:
+    linelist = f.readlines()      # Read the first line.
+    last = linelist[len(linelist)-1] # The last line
+f.close 
 
-if 'OK' in cadena: BL_fast = True
+if 'OK' in last: BL_fast = True
 
-Log.close</test>
+assert(BL_fast)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>

@@ -9,15 +9,14 @@
   <variables/>
   <pass_tests>
     <test name="BL_CVgalerkin" language="python">BL_CVgalerkin = False
-Log=file('log','r')
-while True:
-    cadena=Log.readline()
-    if len(cadena) ==0:
-        break # EOF
+with open("log", "rb") as f:
+    linelist = f.readlines()           # Read the first line.
+    last = linelist[len(linelist)-1]   # The last line
+f.close 
 
-if 'OK' in cadena: BL_CVgalerkin = True
+if 'OK' in last: BL_CVgalerkin = True
 
-Log.close</test>
+assert(BL_CVgalerkin)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
