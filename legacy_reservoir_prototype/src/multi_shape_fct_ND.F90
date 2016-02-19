@@ -40,7 +40,6 @@ module shape_functions_Linear_Quadratic
   use fldebug
   use state_module
   use spud
-  use global_parameters, only: option_path_len
   use Fields_Allocates, only : allocate, make_mesh
   use fields_data_types, only: mesh_type, scalar_field
   use multiphase_caching, only: cache_level, reshape_vector2pointer
@@ -818,17 +817,17 @@ contains
   end subroutine re3d27
 
 
-  subroutine retrieve_ngi_new(GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE)
+  subroutine retrieve_ngi_new(GIdims, Mdims, ele_type, QUAD_OVER_WHOLE_ELE)
       implicit none
       type (multi_GI_dimensions), intent(inout) :: GIdims
       type (multi_dimensions), intent(inout) :: Mdims
-      integer, intent(in) :: cv_ele_type
+      integer, intent(in) :: ele_type
       ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
       logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
       !local variable
       integer :: cv_ngi_short
 
-      call retrieve_ngi( Mdims%ndim, cv_ele_type, Mdims%cv_nloc, Mdims%u_nloc, &
+      call retrieve_ngi( Mdims%ndim, ele_type, Mdims%cv_nloc, Mdims%u_nloc, &
        GIdims%cv_ngi, cv_ngi_short, GIdims%scvngi, GIdims%sbcvngi, GIdims%nface, QUAD_OVER_WHOLE_ELE)
   end subroutine retrieve_ngi_new
 

@@ -6172,7 +6172,7 @@ contains
         INTEGER, DIMENSION( :, : ), intent( in ) ::  CV_SLOCLIST
         INTEGER, DIMENSION( :, : ), intent( in ) ::  X_SLOCLIST
         INTEGER, DIMENSION( :, : ), intent( in ) ::  FACE_ELE
-        REAL, DIMENSION( : ), intent( inout ) :: CVWEIGHT
+        REAL, DIMENSION( : ), intent( in ) :: CVWEIGHT
         REAL, DIMENSION( :, : ), intent( in ) :: N, NLX, NLY, NLZ
         REAL, DIMENSION( :, : ), intent( in ) :: X_N, X_NLX, X_NLY, X_NLZ
         REAL, DIMENSION( : ), intent( in ) :: X, Y, Z

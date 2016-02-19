@@ -511,14 +511,14 @@ contains
 
         call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
             cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
-        !Create the rest of multi_integer
-        call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, .false.)
-        call retrieve_ngi_new(FE_GIdims, Mdims, cv_ele_type, .true.)
+        !Calculate the gauss integer numbers
+        call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, quad_over_whole_ele =.false.)
+        call retrieve_ngi_new(FE_GIdims, Mdims, u_ele_type, quad_over_whole_ele =.true.)
         !! Compute reference shape functions
         call allocate_multi_shape_funs(CV_funs, Mdims, CV_GIdims)
         call allocate_multi_shape_funs(FE_funs, Mdims, FE_GIdims)
-        call cv_fem_shape_funs_new(CV_funs, Mdims, CV_GIdims, cv_ele_type, .false.)
-        call cv_fem_shape_funs_new(FE_funs, Mdims, FE_GIdims, cv_ele_type, .true.)
+        call cv_fem_shape_funs_new(CV_funs, Mdims, CV_GIdims, cv_ele_type, quad_over_whole_ele = .false.)
+        call cv_fem_shape_funs_new(FE_funs, Mdims, FE_GIdims, u_ele_type, quad_over_whole_ele = .true.)
 
         allocate( theta_flux( nphase, ncv_faces * igot_theta_flux ), &
             one_m_theta_flux( nphase, ncv_faces * igot_theta_flux ), &
@@ -909,7 +909,7 @@ end if
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
-                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, Mdims, CV_GIdims, CV_funs, FE_funs, storage_state,&
+                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
                         velocity_field, pressure_field, &
                         U_ELE_TYPE, P_ELE_TYPE, &
                         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN,&
@@ -1816,9 +1816,6 @@ end if
                 !!$ Defining element-pair type
                 call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
                     mat_ele_type, u_sele_type, cv_sele_type )
-                !Create the rest of multi_integer
-                call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, .false.)
-                call retrieve_ngi_new(FE_GIdims, Mdims, cv_ele_type, .true.)
                 !!$ Sparsity Patterns Matrices
                 call Get_Sparsity_Patterns( state, &
                     !!$ CV multi-phase eqns (e.g. vol frac, temp)
