@@ -239,8 +239,8 @@ contains
             p_r=0.0 ; uf_r=0.0 ; muf_r=1.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0;
 
             !interpolate presure, velocity and visc from fluid to solid through ring
-            call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r ) !!-ao is this causing the problem with large negative pressure
-            !            call interpolate_fields_out_r_p( packed_state, nphase, p_r) !-ao!use for Darcy flow two-way coupling if problems arise in Y_Drag (solid)
+            !call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r ) !!-ao is this causing the problem with large negative pressure
+            call interpolate_fields_out_r_p( packed_state, nphase, p_r) !-ao!use for Darcy flow two-way coupling if problems arise in Y_Drag (solid)
 
             call get_option( "/timestepping/timestep", dt )
             print *, "pressure:", maxval(p_r), minval(p_r) !!-ao
