@@ -1496,9 +1496,6 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
 
 
         return
-
-        contains
-
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
 
 

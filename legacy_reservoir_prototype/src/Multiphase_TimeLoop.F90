@@ -840,10 +840,10 @@ end if
                         small_FINACV, small_COLACV, small_MIDACV, &
                         NCOLCT, FINDCT, COLCT, &
                         CV_ELE_TYPE,&
-                        CV_NDGLN, X_NDGLN, U_NDGLN, &
+                        CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN, &
                         CV_SNDGLN, U_SNDGLN, &
                         !!$
-                        MAT_NDGLN, ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+                        ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc,&
                         DRhoDPressure, &
@@ -1053,10 +1053,10 @@ end if
                                 SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
                                 NCOLCT, FINDCT, COLCT, &
                                 CV_ELE_TYPE, &
-                                CV_NDGLN, X_NDGLN, U_NDGLN, &
+                                CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN,&
                                 CV_SNDGLN, U_SNDGLN, &
                                 !!$
-                                MAT_NDGLN, Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+                                Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
                                 DRhoDPressure, &
