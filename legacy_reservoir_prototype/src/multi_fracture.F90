@@ -239,9 +239,7 @@ contains
             p_r=0.0 ; uf_r=0.0 ; muf_r=1.0 ; f=0.0 ; a=0.0 ; uf_v=0.0 ; du_s=0.0 ; u_s=0.0;
 
             !interpolate presure, velocity and visc from fluid to solid through ring
-            !call interpolate_fields_out_r( packed_state, nphase, p_r, uf_r, muf_r ) !!-ao is this causing the problem with large negative pressure
-            call interpolate_fields_out_r_p( packed_state, nphase, p_r) !-ao!use for Darcy flow two-way coupling if problems arise in Y_Drag (solid)
-
+            call interpolate_fields_out_r_p( packed_state, nphase, p_r) 
             call get_option( "/timestepping/timestep", dt )
             print *, "pressure:", maxval(p_r), minval(p_r) !!-ao
 
@@ -554,24 +552,13 @@ print *, "passed populate here" !!-ao
         ewrite(3,*) "inside calculate_phi_and_perm"
 
         call insert( alg_ext, positions_r%mesh, "Mesh" )
-        call insert( alg_ext, positions_r, "Coordinate" ) !!-ao 140116 Memory leak is here
+        call insert( alg_ext, positions_r, "Coordinate" ) 
 
         fl_mesh => extract_mesh( packed_state, "CoordinateMesh" )
         fl_positions => extract_vector_field( packed_state, "Coordinate" )
 
         call insert( alg_fl, fl_mesh, "Mesh" )
-        call insert( alg_fl, fl_positions, "Coordinate" )  !!-ao 140116 Memory leak is here
-
-!        call set_solver_options( path, &
-!        ksptype = "gmres", &
-!        pctype = "hypre", &
-!        rtol = 1.0e-10, &
-!        atol = 1.0e-15, &
-!        max_its = 10000 )
-!        call add_option( &
-!        trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", stat)
-!        call set_option( &
-!        trim(path)//"/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg")
+        call insert( alg_fl, fl_positions, "Coordinate" )  
 
         path = "/tmp"
 
@@ -671,13 +658,9 @@ print *, "passed populate here" !!-ao
         vf => extract_scalar_field( packed_state, "SolidConcentration" )
 
 
-!!-ao comment - porosity is not scaled due to problems arising in the wall
-!               where porosities (rvf) can arise lower than background porosity
         allocate( scale( totele ) ) ; scale = 1.0
         do ele = 1, totele
-!            if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0
             if (rvf % val (ele) > 0.0) porosity % val (ele) = 1 ! rvf % val(ele) * scale(ele)
-!            if ( maxval( permeability % val( :, :, ele ) ) > 0.0 ) scale( ele ) = 1.0
             if ( maxval( permeability % val( :, :, ele ) ) <= bg_perm ) porosity % val (ele) = bg_poro !!-ao making the ring mesh porosity normalised
             if ( porosity%val(ele) <= bg_poro ) then
                 permeability % val( 1, 1, ele ) = bg_perm
