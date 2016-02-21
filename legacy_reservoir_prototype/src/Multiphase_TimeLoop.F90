@@ -122,7 +122,7 @@ contains
 
         !!$ Primary scalars
         type(multi_dimensions) :: Mdims
-        type(multi_gi_dimensions) :: CV_GIdims, FE_GIdims
+        type(multi_gi_dimensions) :: CV_GIdims, FE_GIdims, GIdims
         !sprint_to_do !substitute all these instances by the structure Mdims
         integer :: nphase, npres, nstate, ncomp, totele, ndim, stotel, &
             u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
@@ -397,7 +397,7 @@ contains
             mat_ele_type, u_sele_type, cv_sele_type )
 
         !!$ Sparsity Patterns Matrices
-        call Get_Sparsity_Patterns( state, &
+        call Get_Sparsity_Patterns( state, Mdims, &
             !!$ CV multi-phase eqns (e.g. vol frac, temp)
             mx_ncolacv, ncolacv, finacv, colacv, midacv, &
             small_finacv, small_colacv, small_midacv, &
@@ -453,7 +453,7 @@ contains
             plike_grad_sou_coef( cv_nonods * nphase ), &
             THERM_U_DIFFUSION(NDIM,NDIM,NPHASE,MAT_NONODS*IGOT_THERM_VIS ), THERM_U_DIFFUSION_VOL(NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
 
-        ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln)
+        ncv_faces=CV_count_faces( packed_state, Mdims, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln)
 
         !!$
         DRhoDPressure=0.
@@ -509,11 +509,17 @@ contains
             igot_t2 = 1 ; igot_theta_flux = 1
         end if
 
-        call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-            cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
+!!$        call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
+!!$            cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
+
         !Create the rest of multi_integer
-        call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, .false.)
-        call retrieve_ngi_new(FE_GIdims, Mdims, cv_ele_type, .true.)
+        call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, .false. )
+        call retrieve_ngi( FE_GIdims, Mdims, cv_ele_type, .true. )
+!!$        call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, .false.)
+!!$        call retrieve_ngi_new(FE_GIdims, Mdims, cv_ele_type, .true.)
+
+
+
         !! Compute reference shape functions
         call allocate_multi_shape_funs(CV_funs, Mdims, CV_GIdims)
         call allocate_multi_shape_funs(FE_funs, Mdims, FE_GIdims)
@@ -796,7 +802,6 @@ end if
                    call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
                    ScalarField_Source, velocity_absorption, temperature_absorption )           
                 end if
-                
 
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
@@ -814,7 +819,8 @@ end if
                     ! is diagonal
                     if( is_porous_media ) then
                         call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                            cv_snloc, n_in_pres, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+!!$                            cv_snloc, n_in_pres, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
+                            cv_snloc, n_in_pres, nphase, ndim, CV_GIdims%nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                             finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
                             state, x_nonods, ids_ndgln )
                     end if
@@ -885,7 +891,7 @@ end if
                     plike_grad_sou_grad = 0
 
 
-                    CALL CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, nphase, ncomp, &
+                    CALL CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims, nphase, ncomp, &
                         PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
                         Velocity_U_Source_CV, Velocity_U_Source, &
                         NCOLACV, FINACV, COLACV, MIDACV, &
@@ -1037,7 +1043,7 @@ end if
                         end if Conditional_SmoothAbsorption
 
                         !!$ Computing diffusion term for the component conservative equation:
-                        call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state,&
+                        call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, Mdims, &
                             mat_ndgln, u_ndgln, x_ndgln, &
                             u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt, &
                             Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
@@ -1312,7 +1318,7 @@ end if
 
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
 
-                    call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
+                    call M2MInterpolation(state, packed_state, storage_state, Mdims, StorageIndexes, small_finacv, small_colacv ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
                 else
                     ! In this case, we don't adapt the mesh so we just call both routines straight away which gives back the original field
                     ! Alternatively could just do nothing here
@@ -1817,10 +1823,12 @@ end if
                 call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
                     mat_ele_type, u_sele_type, cv_sele_type )
                 !Create the rest of multi_integer
-                call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, .false.)
-                call retrieve_ngi_new(FE_GIdims, Mdims, cv_ele_type, .true.)
+                call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, .false. )
+                call retrieve_ngi( FE_GIdims, Mdims, cv_ele_type, .true. )
+!!$                call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, .false.)
+!!$                call retrieve_ngi_new(FE_GIdims, Mdims, cv_ele_type, .true.)
                 !!$ Sparsity Patterns Matrices
-                call Get_Sparsity_Patterns( state, &
+                call Get_Sparsity_Patterns( state, Mdims, &
                     !!$ CV multi-phase eqns (e.g. vol frac, temp)
                     mx_ncolacv, ncolacv, finacv, colacv, midacv, &
                     small_finacv, small_colacv, small_midacv, &
@@ -1866,7 +1874,7 @@ end if
                 if (numberfields > 0) then
 
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
-                        call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
+                        call M2MInterpolation(state, packed_state, storage_state, Mdims, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
                         call MemoryCleanupInterpolation2()
                     endif
 
@@ -1924,7 +1932,7 @@ end if
                 call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
                     Velocity_U_Source, Velocity_Absorption )
 
-                ncv_faces=CV_count_faces( packed_state, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
+                ncv_faces=CV_count_faces( packed_state, Mdims, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
 
 
                 !!$
@@ -1939,8 +1947,11 @@ end if
                     igot_t2 = 1 ; igot_theta_flux = 1
                 end if
 
-                call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-                    cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
+!!$                call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
+!!$                    cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
+
+                call retrieve_ngi( GIdims, Mdims, cv_ele_type, .false. )
+                scvngi_theta = GIdims%scvngi
 
                 allocate( theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                     one_m_theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &

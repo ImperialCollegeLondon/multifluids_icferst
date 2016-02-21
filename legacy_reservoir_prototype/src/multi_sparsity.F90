@@ -269,6 +269,7 @@ module sparsity_ND
     use shape_functions_prototype
     use shape_functions_Linear_Quadratic
     use cv_advection
+    use multi_data_types
 
 contains
 
@@ -1204,275 +1205,280 @@ contains
         return
     end subroutine poscmc
 
-    subroutine CV_Neighboor_Sparsity( ndim, nphase, cv_ele_type, &
-        totele, cv_nloc, u_nloc, x_nloc, xu_nloc, mat_nloc, &
-        cv_snloc, u_snloc, cv_nonods, x_nonods, &
-        cv_ndgln, x_ndgln, xu_ndgln, &
-        ncolele, finele, colele, &
-        ncolm, mxnacv_loc, findm, colm, &
-        ncolacv_loc, finacv_loc, colacv_loc, midacv_loc )
-        implicit none
-        integer, intent( in ) :: ndim, nphase, cv_ele_type, totele, cv_nloc, &
-            u_nloc, x_nloc, xu_nloc, mat_nloc, cv_snloc, u_snloc, cv_nonods, &
-            x_nonods
-        integer, dimension( totele * cv_nloc ), intent( in ) :: cv_ndgln
-        integer, dimension( totele * x_nloc ), intent( in ) :: x_ndgln
-        integer, dimension( totele * xu_nloc ), intent( in ) :: xu_ndgln
-        integer, intent( in ) :: ncolele
-        integer, dimension( totele + 1 ), intent( in ) :: finele
-        integer, dimension( ncolele ), intent( in ) :: colele
-        integer, intent( in ) :: ncolm, mxnacv_loc
-        integer, dimension( cv_nonods + 1 ), intent( in ) :: findm
-        integer, dimension( ncolm ), intent( in ) :: colm
-        integer, intent( inout ) :: ncolacv_loc
-        integer, dimension( cv_nonods + 1 ), intent( inout ) :: finacv_loc
-        !  integer, dimension( mxnacv_loc ), intent( inout ) :: colacv_loc
-        integer, dimension( mxnacv_loc ), intent( inout ) :: colacv_loc
-        integer, dimension( cv_nonods ), intent( inout ) :: midacv_loc
-        ! Local variables
-        logical, dimension( : ), allocatable :: found, x_share
-        logical, dimension( :, : ), allocatable :: cv_on_face, u_on_face, &
-            cvfem_on_face, ufem_on_face
-        integer, dimension( : ), allocatable :: findgpts, colgpts, cv_other_loc, &
-            u_other_loc, mat_other_loc
-        integer, dimension( :, : ), allocatable :: cv_neiloc, cvfem_neiloc, cv_sloclist, u_sloclist
-        real, dimension( : ), allocatable :: cvweight, cvweight_short, scvfeweight, &
-            sbcvfeweigh, sele_overlap_scale
-        real, dimension( :, : ),allocatable :: cvn, cvn_short, cvfen, cvfenlx, cvfenly, &
-            cvfenlz, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
-            scvfen, scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz, &
-            ufen, ufenlx, ufenly, ufenlz, &
-            sufen, sufenslx, sufensly, sufenlx, sufenly, sufenlz, &
-            sbcvn, sbcvfen, sbcvfenslx, sbcvfensly,sbcvfenlx, sbcvfenly, sbcvfenlz, &
-            sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz
-        logical :: integrat_at_gi
-        integer :: scvngi, cv_ngi, cv_ngi_short, sbcvngi, nface, &
-            ncolgpts, i_dummy, ele, ele2, ele3, cv_iloc, cv_jloc, cv_nodi, cv_nodj, &
-            cv_nodj2, gcount, gcount2, gcount3, gi, cv_nod, count2, count, iface, &
-            x_nodi, x_nodi2, mxnele, jcount, cv_nodi2, cv_iloc2
+    subroutine CV_Neighboor_Sparsity( Mdims, ndim, nphase, cv_ele_type, &
+         totele, cv_nloc, u_nloc, x_nloc, xu_nloc, mat_nloc, &
+         cv_snloc, u_snloc, cv_nonods, x_nonods, &
+         cv_ndgln, x_ndgln, xu_ndgln, &
+         ncolele, finele, colele, &
+         ncolm, mxnacv_loc, findm, colm, &
+         ncolacv_loc, finacv_loc, colacv_loc, midacv_loc )
+      implicit none
+      type(multi_dimensions), intent(in) :: Mdims
+      integer, intent( in ) :: ndim, nphase, cv_ele_type, totele, cv_nloc, &
+           u_nloc, x_nloc, xu_nloc, mat_nloc, cv_snloc, u_snloc, cv_nonods, &
+           x_nonods
+      integer, dimension( totele * cv_nloc ), intent( in ) :: cv_ndgln
+      integer, dimension( totele * x_nloc ), intent( in ) :: x_ndgln
+      integer, dimension( totele * xu_nloc ), intent( in ) :: xu_ndgln
+      integer, intent( in ) :: ncolele
+      integer, dimension( totele + 1 ), intent( in ) :: finele
+      integer, dimension( ncolele ), intent( in ) :: colele
+      integer, intent( in ) :: ncolm, mxnacv_loc
+      integer, dimension( cv_nonods + 1 ), intent( in ) :: findm
+      integer, dimension( ncolm ), intent( in ) :: colm
+      integer, intent( inout ) :: ncolacv_loc
+      integer, dimension( cv_nonods + 1 ), intent( inout ) :: finacv_loc
+      !  integer, dimension( mxnacv_loc ), intent( inout ) :: colacv_loc
+      integer, dimension( mxnacv_loc ), intent( inout ) :: colacv_loc
+      integer, dimension( cv_nonods ), intent( inout ) :: midacv_loc
+      ! Local variables
+      type( multi_GI_dimensions ) :: GIdims
+      logical, dimension( : ), allocatable :: found, x_share
+      logical, dimension( :, : ), allocatable :: cv_on_face, u_on_face, &
+           cvfem_on_face, ufem_on_face
+      integer, dimension( : ), allocatable :: findgpts, colgpts, cv_other_loc, &
+           u_other_loc, mat_other_loc
+      integer, dimension( :, : ), allocatable :: cv_neiloc, cvfem_neiloc, cv_sloclist, u_sloclist
+      real, dimension( : ), allocatable :: cvweight, cvweight_short, scvfeweight, &
+           sbcvfeweigh, sele_overlap_scale
+      real, dimension( :, : ),allocatable :: cvn, cvn_short, cvfen, cvfenlx, cvfenly, &
+           cvfenlz, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
+           scvfen, scvfenslx, scvfensly, scvfenlx, scvfenly, scvfenlz, &
+           ufen, ufenlx, ufenly, ufenlz, &
+           sufen, sufenslx, sufensly, sufenlx, sufenly, sufenlz, &
+           sbcvn, sbcvfen, sbcvfenslx, sbcvfensly,sbcvfenlx, sbcvfenly, sbcvfenlz, &
+           sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz
+      logical :: integrat_at_gi
+!!$        integer :: scvngi, cv_ngi, cv_ngi_short, sbcvngi, nface, &
+      integer ::  &
+           ncolgpts, i_dummy, ele, ele2, ele3, cv_iloc, cv_jloc, cv_nodi, cv_nodj, &
+           cv_nodj2, gcount, gcount2, gcount3, gi, cv_nod, count2, count, iface, &
+           x_nodi, x_nodi2, mxnele, jcount, cv_nodi2, cv_iloc2
 
-        ! Computing Gauss points and array containing node points on neighboors elements
-        call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, .false. )
-        allocate( cv_neiloc( cv_nloc, scvngi ) )
-        allocate( cvfem_neiloc( cv_nloc, scvngi ) )
+      ! Computing Gauss points and array containing node points on neighboors elements
+!!$      call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
+!!$           cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, .false. )
+      call retrieve_ngi( GIdims, Mdims, cv_ele_type, .false. )
 
-        ! Allocating space
-        allocate( found( ncolm ) )
-        allocate( cvweight( cv_ngi ) )
-        allocate( cvn( cv_nloc, cv_ngi ) )
-        allocate( cvn_short( cv_nloc, cv_ngi_short ) )
-        allocate( cvfen( cv_nloc, cv_ngi ) )
-        allocate( cvfenlx( cv_nloc, cv_ngi ) )
-        allocate( cvfenly( cv_nloc, cv_ngi ) )
-        allocate( cvfenlz( cv_nloc, cv_ngi ) )
-        allocate( cvweight_short( cv_ngi_short ) )
-        allocate( cvfen_short( cv_nloc, cv_ngi_short ) )
-        allocate( cvfenlx_short( cv_nloc, cv_ngi_short ) )
-        allocate( cvfenly_short( cv_nloc, cv_ngi_short ) )
-        allocate( cvfenlz_short( cv_nloc, cv_ngi_short ) )
-        allocate( ufen( u_nloc, cv_ngi ) )
-        allocate( ufenlx( u_nloc, cv_ngi ) )
-        allocate( ufenly( u_nloc, cv_ngi ) )
-        allocate( ufenlz( u_nloc, cv_ngi ) )
-        allocate( cv_on_face( cv_nloc, scvngi ) )
-        allocate( cvfem_on_face( cv_nloc, scvngi ) )
-        allocate( scvfen( cv_nloc, scvngi ) )
-        allocate( scvfenslx( cv_nloc, scvngi ) )
-        allocate( scvfensly( cv_nloc, scvngi ) )
-        allocate( scvfeweight( scvngi ) )
-        allocate( scvfenlx( cv_nloc, scvngi ) )
-        allocate( scvfenly( cv_nloc, scvngi ) )
-        allocate( scvfenlz( cv_nloc, scvngi ) )
-        allocate( sufen( u_nloc, scvngi ) )
-        allocate( sufenslx( u_nloc, scvngi ) )
-        allocate( sufensly( u_nloc, scvngi ) )
-        allocate( sufenlx( u_nloc, scvngi ) )
-        allocate( sufenly( u_nloc, scvngi ) )
-        allocate( sufenlz( u_nloc, scvngi ) )
-        allocate( u_on_face( u_nloc, scvngi ) )
-        allocate( ufem_on_face( u_nloc, scvngi ) )
+      allocate( cv_neiloc( cv_nloc, GIdims%scvngi ) )
+      allocate( cvfem_neiloc( cv_nloc, GIdims%scvngi ) )
 
-        allocate( sbcvn( cv_snloc, sbcvngi ) )
-        allocate( sbcvfen( cv_snloc, sbcvngi ) )
-        allocate( sbcvfenslx( cv_snloc, sbcvngi ) )
-        allocate( sbcvfensly( cv_snloc, sbcvngi ) )
-        allocate( sbcvfeweigh( sbcvngi ) )
-        allocate( sbcvfenlx( cv_snloc, sbcvngi ) )
-        allocate( sbcvfenly( cv_snloc, sbcvngi ) )
-        allocate( sbcvfenlz( cv_snloc, sbcvngi ) )
-        allocate( sbufen( u_snloc, sbcvngi ) )
-        allocate( sbufenslx( u_snloc, sbcvngi ) )
-        allocate( sbufensly( u_snloc, sbcvngi ) )
-        allocate( sbufenlx( u_snloc, sbcvngi ) )
-        allocate( sbufenly( u_snloc, sbcvngi ) )
-        allocate( sbufenlz( u_snloc, sbcvngi ) )
-        allocate( cv_sloclist( nface, cv_snloc ) )
-        allocate( u_sloclist( nface, u_snloc ) )
-        allocate( findgpts( cv_nloc + 1 ) )
-        allocate( colgpts( cv_nloc * scvngi ) )
-        allocate( cv_other_loc( cv_nloc ) )
-        allocate( u_other_loc( u_nloc ) )
-        allocate( mat_other_loc( mat_nloc ) )
-        allocate( x_share( x_nonods ) )
-        allocate( sele_overlap_scale( cv_nloc ) )
+      ! Allocating space
+      allocate( found( ncolm ) )
+      allocate( cvweight( GIdims%cv_ngi ) )
+      allocate( cvn( cv_nloc, GIdims%cv_ngi ) )
+      allocate( cvn_short( cv_nloc, GIdims%cv_ngi_short ) )
+      allocate( cvfen( cv_nloc, GIdims%cv_ngi ) )
+      allocate( cvfenlx( cv_nloc, GIdims%cv_ngi ) )
+      allocate( cvfenly( cv_nloc, GIdims%cv_ngi ) )
+      allocate( cvfenlz( cv_nloc, GIdims%cv_ngi ) )
+      allocate( cvweight_short( GIdims%cv_ngi_short ) )
+      allocate( cvfen_short( cv_nloc, GIdims%cv_ngi_short ) )
+      allocate( cvfenlx_short( cv_nloc, GIdims%cv_ngi_short ) )
+      allocate( cvfenly_short( cv_nloc, GIdims%cv_ngi_short ) )
+      allocate( cvfenlz_short( cv_nloc, GIdims%cv_ngi_short ) )
+      allocate( ufen( u_nloc, GIdims%cv_ngi ) )
+      allocate( ufenlx( u_nloc, GIdims%cv_ngi ) )
+      allocate( ufenly( u_nloc, GIdims%cv_ngi ) )
+      allocate( ufenlz( u_nloc, GIdims%cv_ngi ) )
+      allocate( cv_on_face( cv_nloc, GIdims%scvngi ) )
+      allocate( cvfem_on_face( cv_nloc, GIdims%scvngi ) )
+      allocate( scvfen( cv_nloc, GIdims%scvngi ) )
+      allocate( scvfenslx( cv_nloc, GIdims%scvngi ) )
+      allocate( scvfensly( cv_nloc, GIdims%scvngi ) )
+      allocate( scvfeweight( GIdims%scvngi ) )
+      allocate( scvfenlx( cv_nloc, GIdims%scvngi ) )
+      allocate( scvfenly( cv_nloc, GIdims%scvngi ) )
+      allocate( scvfenlz( cv_nloc, GIdims%scvngi ) )
+      allocate( sufen( u_nloc, GIdims%scvngi ) )
+      allocate( sufenslx( u_nloc, GIdims%scvngi ) )
+      allocate( sufensly( u_nloc, GIdims%scvngi ) )
+      allocate( sufenlx( u_nloc, GIdims%scvngi ) )
+      allocate( sufenly( u_nloc, GIdims%scvngi ) )
+      allocate( sufenlz( u_nloc, GIdims%scvngi ) )
+      allocate( u_on_face( u_nloc, GIdims%scvngi ) )
+      allocate( ufem_on_face( u_nloc, GIdims%scvngi ) )
 
-        ncolgpts = 0 ; colgpts = 0 ; findgpts = 0
-        call cv_fem_shape_funs( &
-            ndim, cv_ele_type, &
-            cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
-                                 ! Volume shape functions
-            cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
-            cvweight_short, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
-            ufen, ufenlx, ufenly, ufenlz, &
-                                 ! Surface of each CV shape functions
-            scvngi, cv_neiloc, cv_on_face, cvfem_on_face,&
-            scvfen, scvfenslx, scvfensly, scvfeweight, &
-            scvfenlx, scvfenly, scvfenlz, &
-            sufen, sufenslx, sufensly, &
-            sufenlx, sufenly, sufenlz, &
-                                 ! Surface element shape funcs
-            u_on_face,ufem_on_face, nface, &
-            sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx, sbcvfenly, sbcvfenlz, &
-            sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz, &
-            cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-                                 ! Define the gauss points that lie on the surface of the CV
-            findgpts, colgpts, ncolgpts, &
-            sele_overlap_scale, .false. )
-        !ewrite(3,*)'findgpts:', size( findgpts ), '==>', findgpts( 1: cv_nloc + 1 )
-        !ewrite(3,*)'colgpts:', size( colgpts ), ncolgpts, '==>', colgpts( 1 : ncolgpts )
+      allocate( sbcvn( cv_snloc, GIdims%sbcvngi ) )
+      allocate( sbcvfen( cv_snloc, GIdims%sbcvngi ) )
+      allocate( sbcvfenslx( cv_snloc, GIdims%sbcvngi ) )
+      allocate( sbcvfensly( cv_snloc, GIdims%sbcvngi ) )
+      allocate( sbcvfeweigh( GIdims%sbcvngi ) )
+      allocate( sbcvfenlx( cv_snloc, GIdims%sbcvngi ) )
+      allocate( sbcvfenly( cv_snloc, GIdims%sbcvngi ) )
+      allocate( sbcvfenlz( cv_snloc, GIdims%sbcvngi ) )
+      allocate( sbufen( u_snloc, GIdims%sbcvngi ) )
+      allocate( sbufenslx( u_snloc, GIdims%sbcvngi ) )
+      allocate( sbufensly( u_snloc, GIdims%sbcvngi ) )
+      allocate( sbufenlx( u_snloc, GIdims%sbcvngi ) )
+      allocate( sbufenly( u_snloc, GIdims%sbcvngi ) )
+      allocate( sbufenlz( u_snloc, GIdims%sbcvngi ) )
+      allocate( cv_sloclist( GIdims%nface, cv_snloc ) )
+      allocate( u_sloclist( GIdims%nface, u_snloc ) )
+      allocate( findgpts( cv_nloc + 1 ) )
+      allocate( colgpts( cv_nloc * GIdims%scvngi ) )
+      allocate( cv_other_loc( cv_nloc ) )
+      allocate( u_other_loc( u_nloc ) )
+      allocate( mat_other_loc( mat_nloc ) )
+      allocate( x_share( x_nonods ) )
+      allocate( sele_overlap_scale( cv_nloc ) )
 
-        found = .false.
-        ! set the diagonal to true...
-        do cv_nodi = 1, cv_nonods
-            do gcount = findm( cv_nodi ), findm( cv_nodi + 1 ) - 1
-                if( colm(gcount) == cv_nodi ) found( gcount ) = .true.
-            end do
-        end do
-        ! now the off diagonal terms...
-        Loop_Elements_1: do ele = 1, totele
-            Loop_CVILOC_1: do cv_iloc = 1, cv_nloc
-                cv_nodi = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
-                Loop_GI_1: do gi = 1, scvngi
-                    cv_jloc = cv_neiloc( cv_iloc, gi )
-                    if ( cv_jloc  > 0 ) then
-                        cv_nodj = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_jloc )
-                        Loop_GCOUNT_1: do gcount = findm( cv_nodi ), findm( cv_nodi + 1 ) - 1
-                            cv_nodj2 = colm( gcount )
-                            if ( cv_nodj == cv_nodj2 ) found( gcount ) = .true.
-                        end do Loop_GCOUNT_1
-                    endif
-                end do Loop_GI_1
-            end do Loop_CVILOC_1
-        end do Loop_Elements_1
+      ncolgpts = 0 ; colgpts = 0 ; findgpts = 0
+      call cv_fem_shape_funs( &
+           ndim, cv_ele_type, &
+           GIdims%cv_ngi, GIdims%cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
+                                ! Volume shape functions
+           cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
+           cvweight_short, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
+           ufen, ufenlx, ufenly, ufenlz, &
+                                ! Surface of each CV shape functions
+           GIdims%scvngi, cv_neiloc, cv_on_face, cvfem_on_face,&
+           scvfen, scvfenslx, scvfensly, scvfeweight, &
+           scvfenlx, scvfenly, scvfenlz, &
+           sufen, sufenslx, sufensly, &
+           sufenlx, sufenly, sufenlz, &
+                                ! Surface element shape funcs
+           u_on_face,ufem_on_face, GIdims%nface, &
+           GIdims%sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx, sbcvfenly, sbcvfenlz, &
+           sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz, &
+           cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
+                                ! Define the gauss points that lie on the surface of the CV
+           findgpts, colgpts, ncolgpts, &
+           sele_overlap_scale, .false. )
+      !ewrite(3,*)'findgpts:', size( findgpts ), '==>', findgpts( 1: cv_nloc + 1 )
+      !ewrite(3,*)'colgpts:', size( colgpts ), ncolgpts, '==>', colgpts( 1 : ncolgpts )
 
-        ! for discontinuous elements...
-        if( totele * cv_nloc == cv_nonods ) then
+      found = .false.
+      ! set the diagonal to true...
+      do cv_nodi = 1, cv_nonods
+         do gcount = findm( cv_nodi ), findm( cv_nodi + 1 ) - 1
+            if( colm(gcount) == cv_nodi ) found( gcount ) = .true.
+         end do
+      end do
+      ! now the off diagonal terms...
+      Loop_Elements_1: do ele = 1, totele
+         Loop_CVILOC_1: do cv_iloc = 1, cv_nloc
+            cv_nodi = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+            Loop_GI_1: do gi = 1, GIdims%scvngi
+               cv_jloc = cv_neiloc( cv_iloc, gi )
+               if ( cv_jloc  > 0 ) then
+                  cv_nodj = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_jloc )
+                  Loop_GCOUNT_1: do gcount = findm( cv_nodi ), findm( cv_nodi + 1 ) - 1
+                     cv_nodj2 = colm( gcount )
+                     if ( cv_nodj == cv_nodj2 ) found( gcount ) = .true.
+                  end do Loop_GCOUNT_1
+               endif
+            end do Loop_GI_1
+         end do Loop_CVILOC_1
+      end do Loop_Elements_1
 
-            Loop_Elements_4: do ele = 1, totele
-                Loop_FaceCount: do jcount = finele( ele ), finele( ele + 1 ) - 1
-                    ele2 = colele( jcount )
-                    if( ( ele2 > 0 ) .and. ( ele2 /= ele ) ) then
-                        Loop_CVILOC_5: do cv_iloc = 1, cv_nloc ! Loop over nodes of the elements
-                            cv_nodi = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
-                            x_nodi = x_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
-                            Loop_CVILOC_6: do cv_iloc2 = 1, cv_nloc ! Loop over nodes of the elements
-                                cv_nodi2 = cv_ndgln( ( ele2 - 1 ) * cv_nloc + cv_iloc2 )
-                                x_nodi2 = x_ndgln( ( ele2 - 1 ) * cv_nloc + cv_iloc2 )
-                                if(x_nodi==x_nodi2) then
-                                    do gcount = findm( cv_nodi ), findm( cv_nodi + 1 ) - 1
-                                        cv_nodj2 = colm( gcount )
-                                        if ( cv_nodi2 == cv_nodj2 ) found( gcount ) = .true.
-                                    end do
-                                endif
-                            end do Loop_CVILOC_6
-                        end do Loop_CVILOC_5
-                    endif
-                end do Loop_FaceCount
-            end do Loop_Elements_4
-        endif
+      ! for discontinuous elements...
+      if( totele * cv_nloc == cv_nonods ) then
 
-        gcount2 = 0 ! Now reducing the size of the stencil
-        do cv_nodi = 1, cv_nonods
-            finacv_loc( cv_nodi ) = gcount2 + 1
-            do gcount = findm( cv_nodi ), findm( cv_nodi + 1 ) - 1
-                if( found( gcount ) ) then
-                    gcount2 = gcount2 + 1
-                    colacv_loc( gcount2 ) = colm( gcount )
-                    if( colacv_loc( gcount2 ) == cv_nodi ) midacv_loc( cv_nodi ) = gcount2
-                end if
-            end do
-        end do
-        ncolacv_loc = gcount2
-        finacv_loc( cv_nonods + 1 ) = gcount2 + 1
+         Loop_Elements_4: do ele = 1, totele
+            Loop_FaceCount: do jcount = finele( ele ), finele( ele + 1 ) - 1
+               ele2 = colele( jcount )
+               if( ( ele2 > 0 ) .and. ( ele2 /= ele ) ) then
+                  Loop_CVILOC_5: do cv_iloc = 1, cv_nloc ! Loop over nodes of the elements
+                     cv_nodi = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+                     x_nodi = x_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+                     Loop_CVILOC_6: do cv_iloc2 = 1, cv_nloc ! Loop over nodes of the elements
+                        cv_nodi2 = cv_ndgln( ( ele2 - 1 ) * cv_nloc + cv_iloc2 )
+                        x_nodi2 = x_ndgln( ( ele2 - 1 ) * cv_nloc + cv_iloc2 )
+                        if(x_nodi==x_nodi2) then
+                           do gcount = findm( cv_nodi ), findm( cv_nodi + 1 ) - 1
+                              cv_nodj2 = colm( gcount )
+                              if ( cv_nodi2 == cv_nodj2 ) found( gcount ) = .true.
+                           end do
+                        endif
+                     end do Loop_CVILOC_6
+                  end do Loop_CVILOC_5
+               endif
+            end do Loop_FaceCount
+         end do Loop_Elements_4
+      endif
+
+      gcount2 = 0 ! Now reducing the size of the stencil
+      do cv_nodi = 1, cv_nonods
+         finacv_loc( cv_nodi ) = gcount2 + 1
+         do gcount = findm( cv_nodi ), findm( cv_nodi + 1 ) - 1
+            if( found( gcount ) ) then
+               gcount2 = gcount2 + 1
+               colacv_loc( gcount2 ) = colm( gcount )
+               if( colacv_loc( gcount2 ) == cv_nodi ) midacv_loc( cv_nodi ) = gcount2
+            end if
+         end do
+      end do
+      ncolacv_loc = gcount2
+      finacv_loc( cv_nonods + 1 ) = gcount2 + 1
 
 
-        !ewrite(3,*) 'acv:'
-        !do cv_nodi=1,cv_nonods
-        !  ewrite(3,*) 'for row:',cv_nodi,' the colns are:'
-        !  ewrite(3,*) (colacv_loc(count),count=finacv_loc(cv_nodi),finacv_loc(cv_nodi+1)-1)
-        !end do
+      !ewrite(3,*) 'acv:'
+      !do cv_nodi=1,cv_nonods
+      !  ewrite(3,*) 'for row:',cv_nodi,' the colns are:'
+      !  ewrite(3,*) (colacv_loc(count),count=finacv_loc(cv_nodi),finacv_loc(cv_nodi+1)-1)
+      !end do
 
-        RETURN
+      RETURN
 
-        !stop 1824
+      !stop 1824
 
-        deallocate( cv_neiloc )
-        deallocate( cvfem_neiloc )
-        deallocate( found )
-        deallocate( findgpts )
-        deallocate( colgpts )
-        deallocate( cv_other_loc )
-        deallocate( u_other_loc )
-        deallocate( mat_other_loc )
-        deallocate( cv_on_face )
-        deallocate( x_share )
-        deallocate( cvweight )
-        deallocate( cvn )
-        deallocate( cvn_short )
-        deallocate( cvfen )
-        deallocate( cvfenlx )
-        deallocate( cvfenly )
-        deallocate( cvfenlz )
-        deallocate( cvweight_short )
-        deallocate( cvfen_short )
-        deallocate( cvfenlx_short )
-        deallocate( cvfenly_short )
-        deallocate( cvfenlz_short )
-        deallocate( ufen )
-        deallocate( ufenlx )
-        deallocate( ufenly )
-        deallocate( ufenlz )
-        deallocate( scvfen )
-        deallocate( scvfenslx )
-        deallocate( scvfensly )
-        deallocate( scvfeweight )
-        deallocate( scvfenlx )
-        deallocate( scvfenly )
-        deallocate( scvfenlz )
-        deallocate( sufen )
-        deallocate( sufenslx )
-        deallocate( sufensly )
-        deallocate( sufenlx )
-        deallocate( sufenly )
-        deallocate( sufenlz )
-        deallocate( sbufen )
-        deallocate( sbufenslx )
-        deallocate( sbufensly )
-        deallocate( sbufenlx )
-        deallocate( sbufenly )
-        deallocate( sbufenlz )
-        deallocate( u_on_face )
-        deallocate( sbcvfen )
-        deallocate( sbcvfenslx )
-        deallocate( sbcvfensly )
-        deallocate( sbcvfeweigh )
-        deallocate( sbcvfenlx )
-        deallocate( sbcvfenly )
-        deallocate( sbcvfenlz )
-        deallocate( sele_overlap_scale )
+      deallocate( cv_neiloc )
+      deallocate( cvfem_neiloc )
+      deallocate( found )
+      deallocate( findgpts )
+      deallocate( colgpts )
+      deallocate( cv_other_loc )
+      deallocate( u_other_loc )
+      deallocate( mat_other_loc )
+      deallocate( cv_on_face )
+      deallocate( x_share )
+      deallocate( cvweight )
+      deallocate( cvn )
+      deallocate( cvn_short )
+      deallocate( cvfen )
+      deallocate( cvfenlx )
+      deallocate( cvfenly )
+      deallocate( cvfenlz )
+      deallocate( cvweight_short )
+      deallocate( cvfen_short )
+      deallocate( cvfenlx_short )
+      deallocate( cvfenly_short )
+      deallocate( cvfenlz_short )
+      deallocate( ufen )
+      deallocate( ufenlx )
+      deallocate( ufenly )
+      deallocate( ufenlz )
+      deallocate( scvfen )
+      deallocate( scvfenslx )
+      deallocate( scvfensly )
+      deallocate( scvfeweight )
+      deallocate( scvfenlx )
+      deallocate( scvfenly )
+      deallocate( scvfenlz )
+      deallocate( sufen )
+      deallocate( sufenslx )
+      deallocate( sufensly )
+      deallocate( sufenlx )
+      deallocate( sufenly )
+      deallocate( sufenlz )
+      deallocate( sbufen )
+      deallocate( sbufenslx )
+      deallocate( sbufensly )
+      deallocate( sbufenlx )
+      deallocate( sbufenly )
+      deallocate( sbufenlz )
+      deallocate( u_on_face )
+      deallocate( sbcvfen )
+      deallocate( sbcvfenslx )
+      deallocate( sbcvfensly )
+      deallocate( sbcvfeweigh )
+      deallocate( sbcvfenlx )
+      deallocate( sbcvfenly )
+      deallocate( sbcvfenlz )
+      deallocate( sele_overlap_scale )
 
-        return
+      return
     end subroutine CV_Neighboor_Sparsity
 
 
@@ -1491,6 +1497,7 @@ module spact
     use sparsity_ND
     use shape_functions_prototype
     use Copy_Outof_State
+    use multi_data_types
 
 contains
 
@@ -1544,7 +1551,7 @@ contains
     end subroutine Defining_MaxLengths_for_Sparsity_Matrices
 
 
-    subroutine Get_Sparsity_Patterns( state, &
+    subroutine Get_Sparsity_Patterns( state, Mdims, &
         !!$ CV multi-phase eqns (e.g. vol frac, temp)
         mx_ncolacv, ncolacv, finacv, colacv, midacv, &
         finacv_loc, colacv_loc, midacv_loc, &
@@ -1570,6 +1577,7 @@ contains
         !!$ (momentum + cty) and for energy
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
+        type(multi_dimensions), intent(in) :: Mdims
         integer, intent( in ) :: mx_ncolacv, nlenmcy, mx_ncolmcy, mxnele, mx_ncoldgm_pha, &
             mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1
         integer, intent( inout ) :: ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, &
@@ -1806,7 +1814,7 @@ contains
             call def_spar( 1, cv_nonods, 3 * cv_nonods, nacv_loc, &
                 midacv_loc, finacv_loc, colacv_loc )
         else
-            call CV_Neighboor_Sparsity( ndim, nphase, cv_ele_type, &
+            call CV_Neighboor_Sparsity( Mdims, ndim, nphase, cv_ele_type, &
                 totele, cv_nloc, u_nloc, x_nloc, xu_nloc, mat_nloc, &
                 cv_snloc, u_snloc, cv_nonods, x_nonods, &
                 cv_ndgln, x_ndgln, xu_ndgln, &
