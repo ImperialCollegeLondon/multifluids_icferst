@@ -39,15 +39,18 @@ module NGauss
 
 contains
 
-  subroutine retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE )
+
+  subroutine retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE, &
+       scalar_nloc, vector_nloc )
     implicit none
     type( multi_GI_dimensions ), intent( inout ) :: GIdims
-    type( multi_dimensions ), intent( inout ) :: Mdims
+    type( multi_dimensions ), intent( in ) :: Mdims
     integer, intent( in ) :: cv_ele_type
 !!$ If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
     logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
+    integer, intent( in ), optional :: scalar_nloc, vector_nloc
 !!$Local variable
-    integer :: cv_ngi_short
+    integer :: cv_nloc, u_nloc
 !!$   Volume_order & Surface_order are the volume and surface order of the integration 
 !!$       used within each sub-quad/hex for CV approach. Default value -ve or 0 value is 
 !!$       always 1pt quadrature (=1).
@@ -61,31 +64,42 @@ contains
 !!$    integer, PARAMETER :: whole_ele_volume_order = 1, whole_ele_surface_order = 1
 !!$    integer, PARAMETER :: whole_ele_volume_order = 2, whole_ele_surface_order = 2
 
+    if( present( scalar_nloc ) ) then
+       cv_nloc = scalar_nloc
+    else
+       cv_nloc = Mdims%cv_nloc
+    endif
+
+    if( present( vector_nloc ) ) then
+       u_nloc = vector_nloc
+    else
+       u_nloc = Mdims%u_nloc
+    endif
 
     Conditional_EleType: Select Case( cv_ele_type )
 
     case( 1, 2 ) ! 1D
-       Conditional_CV_NLOC_1D: Select Case( Mdims%cv_nloc )
+       Conditional_CV_NLOC_1D: Select Case( cv_nloc )
        case( 1 )
           GIdims%cv_ngi = 1  ; GIdims%scvngi = 2
        case( 2 )
           GIdims%cv_ngi = 12 ; GIdims%scvngi = 3
        case( 3 )
           GIdims%cv_ngi = 12 ; GIdims%scvngi = 4
-          if( ( Mdims%u_nloc == 4 ) .or. ( Mdims%u_nloc == 5 ) ) &
+          if( ( u_nloc == 4 ) .or. ( u_nloc == 5 ) ) &
                GIdims%cv_ngi = 18
        case default; FLExit(" Invalid integer for cv_nloc ")
        end Select Conditional_CV_NLOC_1D
        GIdims%sbcvngi = 1 ; GIdims%nface = 2
 !!$
     case( 3, 4 ) ! Triangles
-       Conditional_CV_NLOC_2D_Tri: Select Case( Mdims%cv_nloc )
+       Conditional_CV_NLOC_2D_Tri: Select Case( cv_nloc )
        case( 3 ) ! Linear triangle
           Conditional_LinTriangle: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 3 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
-             if( Mdims%u_nloc == 6 ) then
+             if( u_nloc == 6 ) then
                 GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             elseif( Mdims%u_nloc == 10 ) then
+             elseif( u_nloc == 10 ) then
                 GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
              end if
 !!$
@@ -123,7 +137,7 @@ contains
        case( 6 ) ! Quadratic triangle
           Conditional_QuadTriangle: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             if( Mdims%u_nloc == 10 ) & ! Use a quadratic interpolation pt set
+             if( u_nloc == 10 ) & ! Use a quadratic interpolation pt set
                   GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
 !!$
              Select Case( whole_ele_volume_order )
@@ -165,7 +179,7 @@ contains
        GIdims%nface = 3
 !!$
     case( 5, 6 ) ! Quads       
-       Conditional_CV_NLOC_2D_Quad: Select Case( Mdims%cv_nloc )
+       Conditional_CV_NLOC_2D_Quad: Select Case( cv_nloc )
        case( 4 ) ! Bi-linear Quad
           Conditional_BiLinQuad: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 4 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
@@ -253,11 +267,11 @@ contains
 !!$
 
     case( 7, 8 ) ! Tetrahedra       
-       Conditional_CV_NLOC_3D_Tets: Select Case( Mdims%cv_nloc )
+       Conditional_CV_NLOC_3D_Tets: Select Case( cv_nloc )
        case( 4 ) ! Linear
           Conditional_LinTets: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 4 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
-             if( Mdims%u_nloc == 10 ) & ! Use a quadratic interpolation pt set
+             if( u_nloc == 10 ) & ! Use a quadratic interpolation pt set
                   GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
 !!$
              Select Case( whole_ele_volume_order )
@@ -352,7 +366,7 @@ contains
 !!$ 
 
     case( 9, 10 ) ! Hexahedra      
-       Conditional_CV_NLOC_3D_Hexs: Select Case( Mdims%cv_nloc )
+       Conditional_CV_NLOC_3D_Hexs: Select Case( cv_nloc )
        case( 8 ) ! Tri-linear Hex
           Conditional_TriLinHex: if( QUAD_OVER_WHOLE_ELE ) then
              GIdims%cv_ngi = 8 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
@@ -451,6 +465,5 @@ contains
 
     return
   end subroutine retrieve_ngi
-
 
 end module NGauss
