@@ -824,7 +824,8 @@ end if
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, Mdims, CV_funs, storage_state, &
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
                         tracer_field,velocity_field,density_field,&
                         small_FINACV, small_COLACV, small_MIDACV, &
                         NCOLCT, FINDCT, COLCT, &
@@ -943,7 +944,8 @@ end if
                 end if Conditional_ForceBalanceEquation
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
-                    call VolumeFraction_Assemble_Solve( state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state,&
+                    call VolumeFraction_Assemble_Solve( state, packed_state, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
                         small_FINACV, small_COLACV, small_MIDACV, &
                         NCOLCT, FINDCT, COLCT, &
                         CV_ELE_TYPE, &
@@ -1032,7 +1034,8 @@ end if
                         Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
                             comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
 
-                            call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), Mdims, CV_funs, storage_state,&
+                            call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
+                                Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
                                 tracer_field,velocity_field,density_field,&
                                 SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
                                 NCOLCT, FINDCT, COLCT, &
