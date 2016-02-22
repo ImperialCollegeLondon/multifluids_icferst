@@ -86,20 +86,20 @@ contains
         allocate( eos_option_path( nphase * ncomp ) )
 
         if( ncomp > 1 ) then
-            do icomp =1, ncomp
-                do iphase =1, nphase
-                    eos_option_path( ( icomp - 1 ) * nphase + iphase ) = &
-                        trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
-                        ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                        '/prognostic/equation_of_state' )
-                    call Assign_Equation_of_State( eos_option_path( ( icomp - 1 ) * nphase + iphase ) )
-                end do
-            end do
+           do icomp =1, ncomp
+              do iphase =1, nphase
+                 eos_option_path( ( icomp - 1 ) * nphase + iphase ) = &
+                      trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
+                      ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
+                      '/prognostic/equation_of_state' )
+                 call Assign_Equation_of_State( eos_option_path( ( icomp - 1 ) * nphase + iphase ) )
+              end do
+           end do
         else
-            do iphase = 1, nphase
-                eos_option_path( iphase ) = trim( '/material_phase[' // int2str( iphase - 1 ) // ']/equation_of_state' )
-                call Assign_Equation_of_State( eos_option_path( iphase ) )
-            end do
+           do iphase = 1, nphase
+              eos_option_path( iphase ) = trim( '/material_phase[' // int2str( iphase - 1 ) // ']/equation_of_state' )
+              call Assign_Equation_of_State( eos_option_path( iphase ) )
+           end do
         end if
 
         allocate( Rho( cv_nonods ), dRhodP( cv_nonods ) )
@@ -111,75 +111,75 @@ contains
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
 
         do icomp = 1, ncomp
-            do iphase = 1, nphase
-                sc = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
-                ec = ( icomp - 1 ) * nphase * cv_nonods + iphase * cv_nonods
+           do iphase = 1, nphase
+              sc = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
+              ec = ( icomp - 1 ) * nphase * cv_nonods + iphase * cv_nonods
 
-                sp = ( iphase - 1 ) * cv_nonods + 1
-                ep = iphase * cv_nonods
+              sp = ( iphase - 1 ) * cv_nonods + 1
+              ep = iphase * cv_nonods
 
-                Rho=0. ; dRhodP=0. ; Cp=1.
-                call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
-                    nphase, ncomp_in, eos_option_path( (icomp - 1 ) * nphase + iphase ), Rho, dRhodP )
+              Rho=0. ; dRhodP=0. ; Cp=1.
+              call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
+                   nphase, ncomp_in, eos_option_path( (icomp - 1 ) * nphase + iphase ), Rho, dRhodP )
 
-                if( ncomp > 1 ) then
-                    field4 => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
-                    Component_l = field4 % val ( icomp, iphase, :)
+              if ( ncomp > 1 ) then
+                 field4 => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
+                 Component_l = field4 % val ( icomp, iphase, :)
 
-                    if ( have_option( '/material_phase[0]/linearise_component' ) ) then
-                        ! linearise component
-                        if ( cv_nloc==6 .or. (cv_nloc==10 .and. ndim==3) ) then ! P2 triangle or tet
-                            allocate( c_cv_nod( cv_nloc ) )
-                            do ele = 1, totele
-                                do cv_iloc = 1, cv_nloc
-                                    cv_nod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
-                                    c_cv_nod( cv_iloc ) = Component_l( cv_nod )
-                                end do
+                 if ( have_option( '/material_phase[0]/linearise_component' ) ) then
+                    ! linearise component
+                    if ( cv_nloc==6 .or. (cv_nloc==10 .and. ndim==3) ) then ! P2 triangle or tet
+                       allocate( c_cv_nod( cv_nloc ) )
+                       do ele = 1, totele
+                          do cv_iloc = 1, cv_nloc
+                             cv_nod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+                             c_cv_nod( cv_iloc ) = Component_l( cv_nod )
+                          end do
 
-                                c_cv_nod( 2 ) = 0.5 * ( c_cv_nod ( 1 ) + c_cv_nod( 3 ) )
-                                c_cv_nod( 4 ) = 0.5 * ( c_cv_nod ( 1 ) + c_cv_nod( 6 ) )
-                                c_cv_nod( 5 ) = 0.5 * ( c_cv_nod ( 3 ) + c_cv_nod( 6 ) )
+                          c_cv_nod( 2 ) = 0.5 * ( c_cv_nod ( 1 ) + c_cv_nod( 3 ) )
+                          c_cv_nod( 4 ) = 0.5 * ( c_cv_nod ( 1 ) + c_cv_nod( 6 ) )
+                          c_cv_nod( 5 ) = 0.5 * ( c_cv_nod ( 3 ) + c_cv_nod( 6 ) )
 
-                                if ( cv_nloc==10 ) then
-                                    c_cv_nod ( 7 ) = 0.5 * ( c_cv_nod ( 1 ) + c_cv_nod( 10 ) )
-                                    c_cv_nod ( 8 ) = 0.5 * ( c_cv_nod ( 3 ) + c_cv_nod( 10 ) )
-                                    c_cv_nod ( 9 ) = 0.5 * ( c_cv_nod ( 6 ) + c_cv_nod( 10 ) )
-                                end if
+                          if ( cv_nloc==10 ) then
+                             c_cv_nod ( 7 ) = 0.5 * ( c_cv_nod ( 1 ) + c_cv_nod( 10 ) )
+                             c_cv_nod ( 8 ) = 0.5 * ( c_cv_nod ( 3 ) + c_cv_nod( 10 ) )
+                             c_cv_nod ( 9 ) = 0.5 * ( c_cv_nod ( 6 ) + c_cv_nod( 10 ) )
+                          end if
 
-                                do cv_iloc = 1, cv_nloc
-                                    cv_nod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
-                                    Component_l( cv_nod ) = c_cv_nod( cv_iloc )
-                                end do
-                            end do
-                            deallocate( c_cv_nod )
-                        end if
+                          do cv_iloc = 1, cv_nloc
+                             cv_nod = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+                             Component_l( cv_nod ) = c_cv_nod( cv_iloc )
+                          end do
+                       end do
+                       deallocate( c_cv_nod )
                     end if
+                 end if
 
-                    Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
-                    DRhoDPressure( iphase, : ) = DRhoDPressure( iphase, : ) + dRhodP * Component_l / Rho
-                    Density_Component( sc : ec ) = Rho
+                 Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
+                 DRhoDPressure( iphase, : ) = DRhoDPressure( iphase, : ) + dRhodP * Component_l / Rho
+                 Density_Component( sc : ec ) = Rho
 
-                    Cp_s => extract_scalar_field( state( nphase + icomp ), &
-                        'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                    if( stat == 0 ) Cp = Cp_s % val
-                    DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + Rho * Cp * Component_l
+                 Cp_s => extract_scalar_field( state( nphase + icomp ), &
+                      'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
+                 if ( stat == 0 ) Cp = Cp_s % val
+                 DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + Rho * Cp * Component_l
 
-                else
+              else
 
-                    Density_Bulk( sp : ep ) = Rho
-                    DRhoDPressure( iphase, : ) = dRhodP
+                 Density_Bulk( sp : ep ) = Rho
+                 DRhoDPressure( iphase, : ) = dRhodP
 
-                    Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
-                    if( stat == 0 ) Cp = Cp_s % val
-                    DensityCp_Bulk( sp : ep ) = Rho * Cp
+                 Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
+                 if ( stat == 0 ) Cp = Cp_s % val
+                 DensityCp_Bulk( sp : ep ) = Rho * Cp
 
-                end if
+              end if
 
-            end do ! iphase
+           end do ! iphase
         end do ! icomp
 
-        if( ncomp > 1 ) then
-            call Cap_Bulk_Rho( state, ncomp, nphase, &
+        if ( ncomp > 1 ) then
+           call Cap_Bulk_Rho( state, ncomp, nphase, &
                 cv_nonods, Density_Component, Density_Bulk, DensityCp_Bulk )
         end if
 
@@ -190,19 +190,19 @@ contains
         !sf => extract_scalar_field( packed_state, "SolidConcentration" )
 
         do iphase = 1, nphase
-            sp = ( iphase - 1 ) * cv_nonods + 1
-            ep = iphase * cv_nonods
+           sp = ( iphase - 1 ) * cv_nonods + 1
+           ep = iphase * cv_nonods
 
-            field1 % val ( 1, iphase, :) = Density_Bulk( sp : ep )         !* ( 1. - sf%val)     +   1000. *  sf%val
-            field2 % val ( 1, iphase, :) = DensityCp_Bulk( sp : ep )       !* ( 1. - sf%val)     +   1000. *  sf%val
+           field1 % val ( 1, iphase, : ) = Density_Bulk( sp : ep )         !* ( 1. - sf%val)     +   1000. *  sf%val
+           field2 % val ( 1, iphase, : ) = DensityCp_Bulk( sp : ep )       !* ( 1. - sf%val)     +   1000. *  sf%val
 
-            if( ncomp > 1 ) then
-                do icomp = 1, ncomp
-                    sc = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
-                    ec = ( icomp - 1 ) * nphase * cv_nonods + iphase * cv_nonods
-                    field3 % val ( icomp, iphase, :) = Density_Component( sc : ec )
-                end do ! icomp
-            end if
+           if ( ncomp > 1 ) then
+              do icomp = 1, ncomp
+                 sc = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
+                 ec = ( icomp - 1 ) * nphase * cv_nonods + iphase * cv_nonods
+                 field3 % val ( icomp, iphase, : ) = Density_Component( sc : ec )
+              end do ! icomp
+           end if
         end do ! iphase
 
         boussinesq = have_option( "/material_phase[0]/vector_field::Velocity/prognostic/equation::Boussinesq" )
