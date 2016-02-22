@@ -55,25 +55,28 @@ module multiphase_EOS
 
 contains
 
-    subroutine Calculate_All_Rhos( state, packed_state, ncomp_in, nphase, ndim, cv_nonods, cv_nloc, totele, &
-        cv_ndgln, DRhoDPressure )
+    subroutine Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
 
         implicit none
 
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
-        integer, intent( in ) :: ncomp_in, nphase, ndim, cv_nonods, cv_nloc, totele
-        integer, dimension( : ), intent( in ) :: cv_ndgln
+        type(multi_dimensions), intent( in ) :: Mdims
+        real, dimension( :, : ), intent( inout ), optional :: DRhoDPressure ! (nphase, cv_nonods)
 
-        real, dimension( nphase, cv_nonods ), intent( inout ), optional :: DRhoDPressure
-
+        integer, dimension( : ), pointer :: cv_ndgln
+        integer :: ncomp_in, nphase, ndim, cv_nonods, cv_nloc, totele
         real, dimension( : ), allocatable :: Rho, dRhodP, Density_Bulk, DensityCp_Bulk, &
-            Density_Component, Cp, Component_l, c_cv_nod
+             Density_Component, Cp, Component_l, c_cv_nod
         character( len = option_path_len ), dimension( : ), allocatable :: eos_option_path
         type( tensor_field ), pointer :: field1, field2, field3, field4
         type( scalar_field ), pointer :: Cp_s
         integer :: icomp, iphase, ncomp, sc, ec, sp, ep, stat, cv_iloc, cv_nod, ele
         logical :: boussinesq
+
+        ncomp_in = Mdims%ncomp ; nphase = Mdims%nphase ; ndim = Mdims%ndim
+        cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
+        cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
 
         DRhoDPressure = 0.
 
