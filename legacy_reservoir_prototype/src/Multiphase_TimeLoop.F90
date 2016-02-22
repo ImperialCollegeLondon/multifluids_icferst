@@ -998,7 +998,7 @@ end if
 
                         !!$ Computing the absorption term for the multi-components equation
                         call Calculate_ComponentAbsorptionTerm( state, packed_state, &
-                            icomp, cv_ndgln, &
+                            icomp, cv_ndgln, Mdims, &
                             D_s%val, Porosity_field%val, mass_ele, &
                             Component_Absorption, IDs_ndgln )
 
@@ -1069,37 +1069,32 @@ end if
 
 
                         ! We have divided through by density
-                        !do cv_inod=1,cv_nonods
-                        !   do iphase=1,nphase
-                        !      ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) = &
-                        !               ScalarField_Source_Component((iphase-1)*cv_nonods+cv_inod) + THETA_GDIFF(iphase,cv_inod)
-                        !   end do
-                        !end do
                         tracer_source%val(1,:,:) = tracer_source%val(1,:,:) + THETA_GDIFF
 
                     end do Loop_Components
 
-                    if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
-                        ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
-                        ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
-                        MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
+                    if ( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
+                         ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
 
-                        ALLOCATE( RSUM( NPHASE ) )
-                        DO CV_INOD = 1, CV_NONODS
-                            DO IPHASE = 1, NPHASE
-                                RSUM( IPHASE ) = SUM (MFC_s % val (:, IPHASE, CV_INOD) )
-                            END DO
-                            DO IPHASE = 1, NPHASE
-                                MFC_s % val (:, IPHASE, CV_INOD) = MFC_s % val (:, IPHASE, CV_INOD) / RSUM( IPHASE )
-                            END DO
-                        END DO
-                        DEALLOCATE( RSUM )
+                       ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
+                       MFC_s % val = min ( max ( MFC_s % val, 0.0), 1.0)
+
+                       ALLOCATE( RSUM( NPHASE ) )
+                       DO CV_INOD = 1, CV_NONODS
+                          DO IPHASE = 1, NPHASE
+                             RSUM( IPHASE ) = SUM (MFC_s % val (:, IPHASE, CV_INOD) )
+                          END DO
+                          DO IPHASE = 1, NPHASE
+                             MFC_s % val (:, IPHASE, CV_INOD) = MFC_s % val (:, IPHASE, CV_INOD) / RSUM( IPHASE )
+                          END DO
+                       END DO
+                       DEALLOCATE( RSUM )
                     end if
 
                     DO ICOMP = 1, NCOMP
 
                         call Calculate_ComponentAbsorptionTerm( state, packed_state,&
-                            icomp, cv_ndgln, &
+                            icomp, cv_ndgln, Mdims, &
                             D_s%val, Porosity_field%val, mass_ele, &
                             Component_Absorption,IDs_ndgln )
 
