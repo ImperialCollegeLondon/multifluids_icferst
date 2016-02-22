@@ -11197,7 +11197,7 @@ contains
     SUBROUTINE MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, NPHASE, N_IN_PRES, GET_PIVIT_MAT, &
         &                         C, NDIM, CV_NLOC, U_NLOC, TOTELE, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
         &                         CV_NONODS, U_NONODS, NPRES, CV_SNLOC,STOTEL,P_SNDGLN, WIC_P_BC_ALL,SUF_P_BC_ALL, SIGMA, NU_ALL, &
-        &                         U_SOURCE, U_SOURCE_CV, FEM_VOL_FRAC )
+        &                         U_SOURCE, U_SOURCE_CV )
         ! This sub modifies either CT or the advection-diffusion equation for 1D pipe modelling
 
         IMPLICIT NONE
@@ -11210,7 +11210,6 @@ contains
         REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL, U_SOURCE, U_SOURCE_CV
         REAL, DIMENSION( :, : ), INTENT( IN ) :: SIGMA
         REAL, DIMENSION( :, :, : ), INTENT( IN ) :: NU_ALL
-        REAL, DIMENSION( :, : ), intent( in ) :: FEM_VOL_FRAC
 
         INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, P_SNDGLN
         INTEGER, DIMENSION( :,:,: ), INTENT( IN ) :: WIC_P_BC_ALL

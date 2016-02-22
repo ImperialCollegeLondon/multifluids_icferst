@@ -150,7 +150,7 @@ contains
         integer :: cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type, &
             t_disopt, v_disopt, t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
             comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
-            nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp,  IDIVID_BY_VOL_FRAC
+            nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp
         logical :: volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, comp_get_theta_flux, &
             t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction, q_scheme
         real :: t_beta, v_beta, t_theta, v_theta, u_theta
@@ -169,7 +169,7 @@ contains
         integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
 
         !!$ Shape function related fields:
-        integer :: cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, igot_t2, igot_theta_flux, IGOT_THERM_VIS
+        integer :: scvngi_theta, igot_t2, igot_theta_flux, IGOT_THERM_VIS
 
         !!$ CV-wise porosity
         real, dimension( :, : ), allocatable :: Mean_Pore_CV
@@ -192,7 +192,6 @@ contains
 
         real, dimension( :, : ), pointer :: THETA_GDIFF
 
-        real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
         !!$
         real, dimension( :, : ), pointer :: &
             ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component
@@ -201,9 +200,8 @@ contains
             Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
             !!$
             Component_Diffusion_Operator_Coefficient
-        real, dimension( :, :, :, : ), allocatable :: Momentum_Diffusion, ScalarAdvectionField_Diffusion, &
+        real, dimension( :, :, :, : ), allocatable :: ScalarAdvectionField_Diffusion, &
             Component_Diffusion
-        real, dimension( :, : ), allocatable :: Momentum_Diffusion_Vol
 
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
@@ -323,16 +321,13 @@ contains
         end if
 
         !! JRP changes to make a multiphasic state
-        call pack_multistate(npres,state,packed_state,multiphase_state,&
-            multicomponent_state)
+        call pack_multistate( npres, state, packed_state, multiphase_state, &
+            multicomponent_state )
         call set_boundary_conditions_values(state, shift_time=.true.)
         !Prepare the caching
         call set_caching_level()
-        call initialize_storage(packed_state, storage_state)
+        call initialize_storage( packed_state, storage_state )
 
-        !call initialize_rheologies(state,rheology)
-
-        IDIVID_BY_VOL_FRAC=0
         !call print_state( packed_state )
         !stop 78
 
@@ -430,8 +425,6 @@ contains
         !!$ Allocating space for various arrays:
         allocate( &
             !!$
-            DRhoDPressure( nphase, cv_nonods ), FEM_VOL_FRAC( nphase, cv_nonods ),&
-            !!$
             suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
             Mean_Pore_CV( npres, cv_nonods ), &
             mass_ele( totele ), &
@@ -444,8 +437,6 @@ contains
             Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), &
             ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
             Temperature_Absorption( nphase, nphase, cv_nonods ), &
-            Momentum_Diffusion( mat_nonods, ndim, ndim, nphase ), &
-            Momentum_Diffusion_Vol( mat_nonods, nphase ), &
             ScalarAdvectionField_Diffusion( mat_nonods, ndim, ndim, nphase ), &
             Component_Diffusion( mat_nonods, ndim, ndim, nphase ), &
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
@@ -455,8 +446,6 @@ contains
 
         ncv_faces=CV_count_faces( packed_state, Mdims, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln)
 
-        !!$
-        DRhoDPressure=0.
         !!$
         suf_sig_diagten_bc=0.
         !!$
@@ -471,8 +460,6 @@ contains
         Material_Absorption_Stab=0.
         ScalarField_Absorption=0. ; Component_Absorption=0.
         Temperature_Absorption=0.
-        Momentum_Diffusion=0.
-        Momentum_Diffusion_Vol=0.
         ScalarAdvectionField_Diffusion=0.
         Component_Diffusion=0.
         THERM_U_DIFFUSION=0.
@@ -581,7 +568,7 @@ contains
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
                 have_component_field = .true.
             !!$
-            call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+            call Calculate_All_Rhos( state, packed_state, Mdims )
 
             if( have_component_field ) then
                 call get_option( '/material_phase[' // int2str( istate - 1 ) // 'scalar_field::' // &
@@ -775,12 +762,12 @@ end if
 
             !!$ FEMDEM...
 #ifdef USING_FEMDEM
-        if ( (is_multifracture ) ) then
-            call fracking(packed_state, state,nphase)
-        elseif ( have_option( '/blasting') ) then
-            call blasting( packed_state, nphase )
-            call update_blasting_memory( packed_state, state, timestep )
-        end if
+            if ( is_multifracture ) then
+               call fracking(packed_state, state,nphase)
+            elseif ( have_option( '/blasting') ) then
+               call blasting( packed_state, nphase )
+               call update_blasting_memory( packed_state, state, timestep )
+            end if
 #endif
 
             !!$ Start non-linear loop
@@ -803,7 +790,7 @@ end if
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
 
-                call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+                call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 if( solve_force_balance .and. is_porous_media ) then
                     call Calculate_AbsorptionTerm( state, packed_state, npres, &
@@ -848,8 +835,7 @@ end if
                         !!$
                         ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
-                        suf_sig_diagten_bc,&
-                        DRhoDPressure, &
+                        suf_sig_diagten_bc, &
                         Temperature_Absorption, Porosity_field%val, &
                         !!$
                         NCOLM, FINDM, COLM, MIDM, &
@@ -866,7 +852,7 @@ end if
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
 
-                    call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 end if Conditional_ScalarAdvectionField
 
@@ -918,7 +904,6 @@ end if
                         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
                         !!$
                         Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, Velocity_U_Source, Velocity_U_Source_CV, &
-                        DRhoDPressure, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
                         dt, &
                         !!$
                         NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -937,7 +922,7 @@ end if
                         NCOLM, FINDM, COLM, MIDM, & ! Sparsity for the CV-FEM
                         XU_NDGLN, &
                         !!$
-                        Momentum_Diffusion, Momentum_Diffusion_Vol, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+                        THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         igot_theta_flux, scvngi_theta, volfra_use_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
@@ -954,9 +939,8 @@ end if
                     !                            CV_NDGLN, state, packed_state, Material_Absorption)
 
                     !!$ Calculate Density_Component for compositional
-                    if( have_component_field ) &
-                        call Calculate_Component_Rho( state, packed_state, &
-                        ncomp, nphase, cv_nonods )
+                    if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
+
                 end if Conditional_ForceBalanceEquation
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
@@ -972,7 +956,6 @@ end if
                         !!$
                         v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                         SUF_SIG_DIAGTEN_BC, &
-                        DRhoDPressure, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         !!$
                         NCOLM, FINDM, COLM, MIDM, &
@@ -1063,7 +1046,6 @@ end if
                                 Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
-                                DRhoDPressure, &
                                 Component_Absorption, Porosity_field%val, &
                                 !!$
                                 NCOLM, FINDM, COLM, MIDM, &
@@ -1267,7 +1249,7 @@ end if
             current_time = acctim
 
 
-            call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+            call Calculate_All_Rhos( state, packed_state, Mdims )
 
             do iphase = 1, nphase
                 f1 => extract_scalar_field( state(iphase), "Temperature", stat )
@@ -1413,14 +1395,13 @@ end if
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
             plike_grad_sou_grad, plike_grad_sou_coef, &
             !!$ Working arrays
-            DRhoDPressure, FEM_VOL_FRAC, &
             Velocity_U_Source, Velocity_U_Source_CV, &
             theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
             mass_ele,&
             Material_Absorption, Material_Absorption_Stab, &
             Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
             Component_Diffusion_Operator_Coefficient, &
-            Momentum_Diffusion, Momentum_Diffusion_Vol, ScalarAdvectionField_Diffusion, &
+            ScalarAdvectionField_Diffusion, &
             Component_Diffusion, &
             theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
@@ -1758,7 +1739,6 @@ end if
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                     plike_grad_sou_grad, plike_grad_sou_coef, &
                     !!$ Working arrays
-                    DRhoDPressure, &
                     Velocity_U_Source, Velocity_U_Source_CV, &
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
@@ -1766,7 +1746,7 @@ end if
                     Material_Absorption, Material_Absorption_Stab, &
                     Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
                     Component_Diffusion_Operator_Coefficient, &
-                    Momentum_Diffusion, Momentum_Diffusion_Vol, ScalarAdvectionField_Diffusion, &
+                    ScalarAdvectionField_Diffusion, &
                     Component_Diffusion, &
                     theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, sum_theta_flux, &
                     sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
@@ -1877,8 +1857,6 @@ end if
                 !!$ Allocating space for various arrays:
                 allocate( &
                     !!$
-                    DRhoDPressure( nphase, cv_nonods ), &
-                    !!$
                     suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
                     Mean_Pore_CV( npres, cv_nonods ), &
                     mass_ele( totele ), &
@@ -1891,8 +1869,6 @@ end if
                     Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), &
                     ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
                     Temperature_Absorption( nphase, nphase, cv_nonods ), &
-                    Momentum_Diffusion( mat_nonods, ndim, ndim, nphase ), &
-                    Momentum_Diffusion_Vol( mat_nonods, nphase ), &
                     ScalarAdvectionField_Diffusion( mat_nonods, ndim, ndim, nphase ), &
                     Component_Diffusion( mat_nonods, ndim, ndim, nphase ), &
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
@@ -1900,8 +1876,6 @@ end if
                     plike_grad_sou_coef( cv_nonods * nphase ) )
                 !!$
                 Velocity_U_Source = 0. ; Velocity_Absorption = 0. ; Velocity_U_Source_CV = 0.
-                Momentum_Diffusion=0.
-                Momentum_Diffusion_Vol=0.
                 !!$
                 Temperature_Absorption=0.
                 !!$
@@ -1983,7 +1957,7 @@ end if
                     DEALLOCATE( RSUM )
                 end if
 
-                call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+                call Calculate_All_Rhos( state, packed_state, Mdims )
 
             end if Conditional_ReallocatingFields
 

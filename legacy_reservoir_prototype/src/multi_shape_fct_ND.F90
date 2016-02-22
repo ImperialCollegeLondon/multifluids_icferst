@@ -7735,89 +7735,29 @@ contains
     ewrite(3,*)'just inside SHAPE_one_ele'
     !      stop 7299
 
-    LOWQUA=.false.
-    MLOC=1
-    SMLOC=1
-    ALLOCATE(M(MLOC,CV_NGI))
-    ALLOCATE(MLX(MLOC,CV_NGI))
-    ALLOCATE(MLY(MLOC,CV_NGI))
-    ALLOCATE(MLZ(MLOC,CV_NGI))
-    ALLOCATE(SM(SMLOC,sbcvngi))
-    ALLOCATE(SMLX(SMLOC,sbcvngi))
-    ALLOCATE(SMLY(SMLOC,sbcvngi))
-    d3=(ndim==3)
+    LOWQUA = .false. ; MLOC = 1 ; SMLOC = 1
+    ALLOCATE( M( MLOC, CV_NGI ) )
+    ALLOCATE( MLX( MLOC, CV_NGI ) )
+    ALLOCATE( MLY( MLOC, CV_NGI ) )
+    ALLOCATE( MLZ( MLOC, CV_NGI ) )
+    ALLOCATE( SM( SMLOC, sbcvngi ) )
+    ALLOCATE( SMLX( SMLOC, sbcvngi ) )
+    ALLOCATE( SMLY( SMLOC, sbcvngi ) )
 
-    ! for pressure...
-    Conditional_Dimensionality1: if( d3 ) then
-       nwicel = 2
-       if( cv_nloc == 8 ) then ! Linear hex
-          nwicel = 1
-       else if( cv_nloc == 27 ) then ! Quadratic hex
-          nwicel = 3
-       else if( cv_nloc == 4 ) then ! Linear tets
-          nwicel = 4
-       else if( cv_nloc == 10 ) then ! Quadratic tets
-          nwicel = 5
-       else if( cv_nloc == 20 ) then ! Cubic tets
-          nwicel = 6
-       end if
-    else
-       nwicel = 2
-       if( cv_nloc == 4 ) then ! Linear hex
-          nwicel = 1
-       else if( cv_nloc == 9 ) then ! Quadratic hex
-          nwicel = 3
-       else if ( cv_nloc == 3 ) then ! Linear triangle
-          nwicel = 4
-       else if ( cv_nloc == 6 ) then ! Quadratic triangle
-          nwicel = 5
-       else if ( cv_nloc == 10 ) then ! Cubic triangle
-          nwicel = 6
-       else
-          stop 2929
-       end if
-    end if Conditional_Dimensionality1
+!!$ For pressure:
+    nwicel = Get_NwiCel( ndim == 3, cv_nloc )
+    CALL SHAPE( LOWQUA, cv_NGI, cv_NLOC, MLOC, sbcvngi, cv_SNLOC, SMLOC,  &
+         M, MLX, MLY, MLZ, cvWEIGHT, cvfen, cvfenlx, cvfenly, cvfenlz ,   &
+         sbcvfeweigh, sbcvfen, sbcvfenslx, sbcvfensly, SM, SMLX, SMLY,    &
+         NWICEL, ndim == 3 )
 
-    ! for pressure...
-    CALL SHAPE(LOWQUA,cv_NGI,cv_NLOC,MLOC, sbcvngi,cv_SNLOC,SMLOC,  &
-         M,MLX,MLY,MLZ,cvWEIGHT,cvfen, cvfenlx, cvfenly, cvfenlz ,         &
-         sbcvfeweigh,sbcvfen, sbcvfenslx, sbcvfensly, SM,SMLX,SMLY,            &
-         NWICEL,ndim==3)
+!!$ For velocity:
+    nwicel = Get_NwiCel( ndim == 3, u_nloc )
+    CALL SHAPE( LOWQUA, cv_NGI, u_NLOC,MLOC, sbcvngi, u_SNLOC, SMLOC,     &
+         M, MLX, MLY, MLZ, RUB, ufen, ufenlx, ufenly, ufenlz,             &
+         RUB, sbufen, sbufenslx, sbufensly, SM, SMLX, SMLY,               &
+         NWICEL, ndim == 3 )
 
-
-    ! for velocity...
-    Conditional_Dimensionality2: if( d3 ) then
-       nwicel = 2
-       if( u_nloc == 8 ) then ! Linear hex
-          nwicel = 1
-       else if( u_nloc == 27 ) then ! Quadratic hex
-          nwicel = 3
-       else if( u_nloc == 4 ) then ! Linear tets
-          nwicel = 4
-       else if( u_nloc == 10 ) then ! Quadratic tets
-          nwicel = 5
-       else if( u_nloc == 20 ) then ! Cubic tets
-          nwicel = 6
-       end if
-    else
-       nwicel = 2
-       if( u_nloc == 4 ) then ! Linear hex
-          nwicel = 1
-       else if( u_nloc == 9 ) then ! Quadratic hex
-          nwicel = 3
-       else if ( u_nloc == 3 ) then ! Linear tets
-          nwicel = 4
-       else if ( u_nloc == 6 ) then ! Quadratic tets
-          nwicel = 5
-       else if ( u_nloc == 10 ) then ! Quadratic tets
-          nwicel = 6
-       end if
-    end if Conditional_Dimensionality2
-    ! for velocity...
-    CALL SHAPE(LOWQUA,cv_NGI,u_NLOC,MLOC, sbcvngi,u_SNLOC,SMLOC,    &
-         M,MLX,MLY,MLZ,RUB,ufen, ufenlx, ufenly, ufenlz,              &
-         RUB,sbufen, sbufenslx, sbufensly, SM,SMLX,SMLY,               &
-         NWICEL,ndim==3)
     ! Determine CV_SLOCLIST & U_SLOCLIST
     CALL DETERMIN_SLOCLIST( CV_SLOCLIST, CV_NLOC, CV_SNLOC, NFACE, &
          NDIM, CV_ELE_TYPE )
@@ -7829,46 +7769,14 @@ contains
             NDIM, CV_ELE_TYPE )
     ENDIF
 
-    IF(NDIM.LT.3) THEN
-       CVfenlz=0.0
-       ufenlz=0.0
-       sbcvfensly=0.0
-       sbufensly=0.0
+    IF(NDIM < 3) THEN
+       CVfenlz = 0.0 ; ufenlz = 0.0 ; sbcvfensly = 0.0 ; sbufensly = 0.0 
     ENDIF
-    IF(NDIM.LT.2) THEN
-       CVfenly=0.0
-       ufenly=0.0
-       sbcvfenslx=0.0
-       sbufenslx=0.0
+    IF(NDIM < 2) THEN
+       CVfenly = 0.0 ; ufenly = 0.0 ; sbcvfenslx = 0.0 ; sbufenslx = 0.0
     ENDIF
 
-    !ewrite(3,*)'ndim, cv_ele_type,cv_ngi, cv_nloc, u_nloc:', &
-    !         ndim, cv_ele_type,cv_ngi, cv_nloc, u_nloc
-    !ewrite(3,*)'cvweight:',cvweight
-    !ewrite(3,*)'cvfen:',cvfen
-    !ewrite(3,*)'cvfenlx:',cvfenlx
-    !ewrite(3,*)'cvfenly:',cvfenly
-    !ewrite(3,*)'cvfenlz:',cvfenlz
-    !ewrite(3,*)'ufen:',ufen
-    !ewrite(3,*)'ufenlx:',ufenlx
-    !ewrite(3,*)'ufenly:',ufenly
-    !ewrite(3,*)'ufenlz:',ufenlz
-    !ewrite(3,*)'sbcvngi=',sbcvngi
-    !ewrite(3,*)'sbcvfen:',sbcvfen
-    !ewrite(3,*)'sbcvfenslx:',sbcvfenslx
-    !ewrite(3,*)'sbcvfensly:',sbcvfensly
-    !ewrite(3,*)'sbcvfeweigh:',sbcvfeweigh
-
-    !ewrite(3,*)'sbufen:',sbufen
-    !ewrite(3,*)'sbufenslx:',sbufenslx
-    !ewrite(3,*)'sbufensly:',sbufensly
-
-    !ewrite(3,*)'nface:',nface
-    !ewrite(3,*)'cv_sloclist:', cv_sloclist
-    !ewrite(3,*)'u_sloclist:',u_sloclist
-    !ewrite(3,*)'cv_snloc, u_snloc:',cv_snloc, u_snloc
-    !stop 145
-
+    return
   END SUBROUTINE SHAPE_one_ele2
 
 
@@ -7878,56 +7786,43 @@ contains
        M,MLX,MLY,MLZ,WEIGHT,N,NLX,NLY,NLZ,                    & 
        SWEIGH,SN,SNLX,SNLY, SM,SMLX,SMLY,                     &
        NWICEL,D3)
-    LOGICAL, INTENT(IN)::LOWQUA
-    INTEGER, INTENT(IN)::NGI,NLOC,MLOC,SNGI,SNLOC,SMLOC
-    REAL, dimension(:,:), INTENT(OUT)::M,MLX,MLY,MLZ
-    REAL, dimension(:),INTENT(OUT)::WEIGHT
-    REAL,dimension(:,:), INTENT(OUT)::N,NLX,NLY,NLZ
-    REAL, dimension(:),INTENT(OUT)::SWEIGH
-    REAL, dimension(:,:),INTENT(OUT)::SN,SNLX,SNLY
-    REAL,dimension(:,:), INTENT(OUT)::SM,SMLX,SMLY
-    INTEGER, INTENT(IN)::NWICEL
-    LOGICAL, INTENT(IN)::D3
+    LOGICAL, INTENT(IN):: LOWQUA
+    INTEGER, INTENT(IN):: NGI,NLOC,MLOC,SNGI,SNLOC,SMLOC
+    REAL, dimension(:,:), INTENT(OUT):: M,MLX,MLY,MLZ
+    REAL, dimension(:), INTENT(OUT):: WEIGHT
+    REAL, dimension(:,:), INTENT(OUT):: N,NLX,NLY,NLZ
+    REAL, dimension(:), INTENT(OUT):: SWEIGH
+    REAL, dimension(:,:), INTENT(OUT):: SN,SNLX,SNLY
+    REAL, dimension(:,:), INTENT(OUT):: SM,SMLX,SMLY
+    INTEGER, INTENT(IN):: NWICEL
+    LOGICAL, INTENT(IN):: D3
 
-    INTEGER IPOLY,IQADRA,gi,gj,ggi,i,j,ii
-    !ewrite(3,*)'inside shape LOWQUA,NGI,NLOC,MLOC, SNGI,SNLOC,SMLOC:', &
-    !                      LOWQUA,NGI,NLOC,MLOC, SNGI,SNLOC,SMLOC
-    !ewrite(3,*)'NWICEL,d3:',NWICEL,d3
-    IF(NWICEL.EQ.1) THEN
+    ! Local variable
+    INTEGER :: IPOLY, IQADRA, gi, gj, ggi, i, j, ii
+
+    Conditional_NWICEL: Select Case( NWICEL )
+    case( 1 )
        IF(.NOT.D3) THEN
           CALL RE2DN4(LOWQUA,NGI,0,NLOC,MLOC, &
-               M,WEIGHT,N,NLX,NLY,          &
-               SNGI,SNLOC,SWEIGH,SN,SNLX, &
+               M,WEIGHT,N,NLX,NLY,            &
+               SNGI,SNLOC,SWEIGH,SN,SNLX,     &
                m(:,1),m(:,1))
        ELSE
-          CALL RE3DN8(LOWQUA,NGI,0,NLOC,MLOC, &
-               M,WEIGHT,N,NLX,NLY,NLZ,      &
+          CALL RE3DN8(LOWQUA,NGI,0,NLOC,MLOC,  &
+               M,WEIGHT,N,NLX,NLY,NLZ,         &
                SNGI,SNLOC,SWEIGH,SN,SNLX,SNLY, &
                m(:,1),m(:,1),m(:,1))
        ENDIF
-    ENDIF
-
-    IF(NWICEL.EQ.2) THEN
-       ewrite(3,*)'option not avaialble'
-       stop 3832
-       !        IF(.NOT.D3) THEN
-       !           CALL RE2DN8(LOWQUA,NGI,NLOC,MLOC, &
-       !                M,WEIGHT,N,NLX,NLY )
-       !        ELSE
-       !           ! SERENDIPITY 20 NODE 3-D ELEMENT -BILINEAR PRESSURE
-       !           CALL RE3D20(LOWQUA,NGI,NLOC,MLOC, &
-       !                M,WEIGHT,N,NLX,NLY,NLZ )
-       !        ENDIF
-    ENDIF
-
-    IF(NWICEL.EQ.3) THEN
+!!$
+    case( 2 )
+       FLAbort("Option not available yet")
+!!$
+    case( 3 )
        IF(.NOT.D3) THEN
           CALL RE2DN9(LOWQUA,NGI,0,NLOC,MLOC, &
-               M,WEIGHT,N,NLX,NLY, &
+               M,WEIGHT,N,NLX,NLY,            &
                m(:,1),m(:,1))
-          sweigh=0.0
-          sn=0.0
-          snlx=0.0
+          sweigh = 0.0 ; sn = 0.0 ; snlx = 0.0
           do gi=1,3
              do gj=1,3
                 ggi=(gj-1)*3+gi
@@ -7941,35 +7836,33 @@ contains
                 end do
              end do
           end do
-       ELSE
-          ! LAGRANGE 27 NODE 3-D ELEMENT -BILINEAR PRESSURE
+       ELSE ! LAGRANGE 27 NODE 3-D ELEMENT -BILINEAR PRESSURE
           CALL RE3D27(LOWQUA,NGI,0,NLOC,MLOC, &
-               M,WEIGHT,N,NLX,NLY,NLZ, &
+               M,WEIGHT,N,NLX,NLY,NLZ,        &
                m(:,1),m(:,1),m(:,1))
           CALL RE2DN9(LOWQUA,SNGI,0,SNLOC,MLOC, &
-               M,SWEIGH,SN,SNLX,SNLY, &
+               M,SWEIGH,SN,SNLX,SNLY,           &
                m(:,1),m(:,1))
        ENDIF
-    ENDIF
-
-    IF((NWICEL.EQ.4).or.(NWICEL.EQ.5).or.(NWICEL.EQ.6)) THEN
-       ! works for linear or quadratic triangles or tets (also cubic triangles)...
+!!$
+    case( 4:6 ) ! works for linear or quadratic triangles or tets (also cubic triangles)...
        CALL TR2or3DQU(NGI,NLOC,MLOC,        &
             M,MLX,MLY,MLZ,                  &
             WEIGHT,N,NLX,NLY,NLZ,           &
             SNGI,SNLOC,SWEIGH,SN,SNLX,SNLY, &
             SMLOC,                          &
             SM,SMLX,SMLY,D3)
-       !       ewrite(3,*)'weight:',weight
-       !      STOP 3321
-    ENDIF
-
-    IF(NWICEL.GE.100) THEN
-       ! A Spectal element using Legendra, Lagrange or Chebichef polynomials.
+!!$
+    case( 100: )! A Spectal element using Legendra, Lagrange or Chebichef polynomials.
        CALL SPECTR(NGI,NLOC,MLOC, &
             M,WEIGHT,N,NLX,NLY,NLZ,D3,.NOT.D3, IPOLY,IQADRA)
-    ENDIF
+!!$
+    case default
+       FLAbort("Option not found")
+!!$
+    end Select Conditional_NWICEL
 
+    return
   END SUBROUTINE SHAPE
 
 
@@ -9846,6 +9739,51 @@ contains
 
     return
   end subroutine get_CVN_compact_overlapping
+
+  integer function Get_NwiCel( d3, nloc )
+    implicit none
+    logical :: d3
+    integer :: nloc, nwicel
+
+    Conditional_Dimensionality: if( d3 ) then
+       Select Case ( nloc )
+       case( 4 ) ! Linear tets
+          nwicel = 4
+       case( 8 ) ! Linear hex
+          nwicel = 1
+       case( 10 ) ! Quadratic tets
+          nwicel = 5
+       case( 20 ) ! Cubic tets
+          nwicel = 6 
+       case( 27 ) ! Quadratic hex
+          nwicel = 3
+       case default
+          nwicel = 2
+       end Select
+!!$
+    else
+       Select Case ( nloc )
+       case( 3 ) ! Linear triangle
+          nwicel = 4
+       case( 4 ) ! Linear quad
+          nwicel = 1
+       case( 6 ) ! Quadratic triangle
+          nwicel = 5
+       case( 9 ) ! Quadratic quad
+          nwicel = 3
+       case( 10 ) ! Cubic triangle
+          nwicel = 6
+       case default
+          nwicel = 2
+       end Select
+!!$
+    end if Conditional_Dimensionality
+
+    Get_NwiCel = nwicel
+
+    return
+  end function Get_NwiCel
+
  
 end module shape_functions_NDim
 
