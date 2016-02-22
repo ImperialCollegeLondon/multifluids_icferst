@@ -1884,9 +1884,6 @@ contains
 
         call insert_sfield( packed_state,"CVPressure",1,npres )
 
-
-
-
         ! dummy field on the pressure mesh, used for evaluating python eos's.
         ! this could be cleaned up in the future.
         call add_new_memory(packed_state,pressure,"Dummy")
@@ -1895,7 +1892,6 @@ contains
         if ( stat==0 ) call insert( packed_state, tfield, "Dummy" )
 
         p2=>extract_tensor_field(packed_state,"PackedFEPressure")
-        !call set( p2, pressure )
         do ipres = 1, npres
             p2%val(1,ipres,:)=pressure%val
         end do
@@ -1904,7 +1900,6 @@ contains
         end do
 
         p2=>extract_tensor_field(packed_state,"PackedCVPressure")
-        !call set( p2, pressure )
         do ipres = 1, npres
             p2%val(1,ipres,:)=pressure%val
         end do
@@ -1913,6 +1908,8 @@ contains
 
         call insert_sfield(packed_state,"Density",1,nphase)
         call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
+
+        call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
 
         d2=>extract_tensor_field(packed_state,"PackedFEDensity")
 

@@ -79,7 +79,6 @@ contains
        TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
        T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
        SUF_SIG_DIAGTEN_BC, &
-       DERIV, &
        T_ABSORB, VOLFRA_PORE, &
        NCOLM, FINDM, COLM, MIDM, &
        XU_NDGLN, FINELE, COLELE, NCOLELE, &
@@ -125,7 +124,6 @@ contains
            REAL, intent( in ) :: DT, T_THETA
            REAL, intent( in ) :: T_BETA
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-           REAL, DIMENSION( :, : ), intent( in ) :: DERIV
            REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
            INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -159,7 +157,7 @@ contains
            character( len = option_path_len ) :: path
            type(vector_field) :: cv_rhs_field
            type(vector_field) :: ct_rhs
-           type( tensor_field ), pointer :: den_all2, denold_all2, a, aold
+           type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv
            integer :: lcomp, Field_selector, IGOT_T2_loc
            type(petsc_csr_matrix) :: petsc_acv
            type(vector_field)  :: vtracer
@@ -228,6 +226,10 @@ contains
            else
                RETRIEVE_SOLID_CTY = .false.
            end if
+
+           deriv => extract_tensor_field( packed_state, "DRhoDPressure" )
+
+
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                call CV_ASSEMB( state, packed_state, storage_state, Mdims, &
                    tracer, velocity, density, &
@@ -246,7 +248,7 @@ contains
                    Mdims%mat_nloc, MAT_NDGLN, Mdims%mat_nonods, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                    T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, SECOND_THETA, T_BETA, &
                    SUF_SIG_DIAGTEN_BC, &
-                   DERIV, P%val, &
+                   DERIV%val(1,:,:), P%val, &
                    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
                    Mdims%ndim, GETCV_DISC, GETCT, &
                    NCOLM, FINDM, COLM, MIDM, &
@@ -316,7 +318,6 @@ contains
          MAT_NDGLN, &
          V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, V_BETA, &
          SUF_SIG_DIAGTEN_BC, &
-         DERIV, &
          V_SOURCE, V_ABSORB, VOLFRA_PORE, &
          NCOLM, FINDM, COLM, MIDM, &
          XU_NDGLN ,FINELE, COLELE, NCOLELE, &
@@ -340,13 +341,11 @@ contains
              INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, MAT_NDGLN, X_NDGLN, U_NDGLN, XU_NDGLN, CV_SNDGLN, U_SNDGLN, IDs_ndgln
              integer, dimension(:), intent(in)  :: small_finacv,small_colacv,small_midacv, IDs2CV_ndgln
              INTEGER, DIMENSION( : ), intent( in ) :: FINDCT, COLCT
-             !REAL, DIMENSION( : ), intent( inout ) :: DEN_FEMT
              REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
              INTEGER, intent( in ) :: V_DISOPT, V_DG_VEL_INT_OPT
              REAL, intent( in ) :: DT, V_THETA
              REAL, intent( inout ) :: V_BETA
              REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
-             REAL, DIMENSION( :, : ), intent( in ) :: DERIV
              REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
              REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
@@ -386,7 +385,7 @@ contains
              !Working pointers
              real, dimension(:,:,:), pointer :: p
              real, dimension(:, :), pointer :: satura
-             type(tensor_field), pointer :: tracer, velocity, density
+             type(tensor_field), pointer :: tracer, velocity, density, deriv
              type(scalar_field), pointer :: gamma
              !Variables for global convergence method
              real :: Dumping_factor
@@ -428,6 +427,8 @@ contains
              end if
              GET_THETA_FLUX = .FALSE.
              IGOT_T2 = 0
+
+             deriv => extract_tensor_field( packed_state, "DRhoDPressure" )
 
              !ALLOCATE( T2( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 ))
              !ALLOCATE( T2OLD( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 ))
@@ -527,7 +528,7 @@ contains
                      Mdims%mat_nloc, MAT_NDGLN, Mdims%mat_nonods, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                      V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, SECOND_THETA, V_BETA, &
                      SUF_SIG_DIAGTEN_BC, &
-                     DERIV, P, &
+                     DERIV%val(1,:,:), P, &
                      V_SOURCE, V_ABSORB, VOLFRA_PORE, &
                      Mdims%ndim, GETCV_DISC, GETCT, &
                      NCOLM, FINDM, COLM, MIDM, &
@@ -659,7 +660,7 @@ contains
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
     CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
     U_ABS_STAB, MAT_ABSORB, U_ABSORBIN, U_SOURCE, U_SOURCE_CV, &
-    DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
+    IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
     NCOLDGM_PHA, &! Force balance
@@ -711,9 +712,6 @@ contains
         REAL, DIMENSION(  :, :, :  ), intent( in ) :: U_SOURCE
         REAL, DIMENSION(  :, :, :  ), intent( inout ) :: U_SOURCE_CV
 
-!        REAL, DIMENSION(  :  ), intent( in ) :: SATURAOLD
-!        REAL, DIMENSION(  :  ), intent( inout ) :: SATURA
-        REAL, DIMENSION( : , : ), intent( in ) :: DERIV
         REAL, DIMENSION( : , : ), intent( in ) :: FEM_VOL_FRAC
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
@@ -796,7 +794,7 @@ contains
         REAL, DIMENSION( :, : ), allocatable :: UDIFFUSION_VOL_ALL, rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
-        type( tensor_field ), pointer :: p_all, pold_all, cvp_all
+        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv
         type( vector_field ), pointer :: x_all2
         type( scalar_field ), pointer ::  pressure_state, sf, soldf, gamma
 
@@ -817,6 +815,8 @@ contains
 
 
         EXPLICIT_PIPES2 = .true.
+
+        deriv => extract_tensor_field( packed_state, "DRhoDPressure" )
 
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
         symmetric_P = have_option( "/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P" )
@@ -1067,7 +1067,7 @@ contains
         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
         X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
-        P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
+        P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
         DT, &
         NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
         MAT, NO_MATRIX_STORE, &! Force balance
@@ -1564,8 +1564,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P, P
-!        REAL, DIMENSION(  :  ), intent( in ) :: SATURA, SATURAOLD
-        REAL, DIMENSION(  :, :  ), intent( in ) :: FEM_VOL_FRAC!, DEN_ALL, DENOLD_ALL
+        REAL, DIMENSION(  :, :  ), intent( in ) :: FEM_VOL_FRAC
         REAL, DIMENSION(  :, :  ), intent( in ), pointer :: DEN_ALL, DENOLD_ALL
         REAL, DIMENSION(  : , :  ), intent( in ) :: DERIV
         REAL, DIMENSION(  : ,  :   ), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -1946,7 +1945,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV
         REAL, DIMENSION ( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL, NU_ALL, NUOLD_ALL
-        REAL, DIMENSION( :, : ), intent( in ) :: UDEN, UDENOLD,DERIV
+        REAL, DIMENSION( :, : ), intent( in ) :: UDEN, UDENOLD, DERIV
         REAL, DIMENSION( :, : ), intent( in ) :: FEM_VOL_FRAC
         REAL, intent( in ) :: DT
         REAL, DIMENSION( :, :, : ), intent( inout ) :: U_RHS

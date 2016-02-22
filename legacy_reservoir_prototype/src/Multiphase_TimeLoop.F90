@@ -192,7 +192,7 @@ contains
 
         real, dimension( :, : ), pointer :: THETA_GDIFF
 
-        real, dimension( :, : ), pointer ::  DRhoDPressure, FEM_VOL_FRAC
+        real, dimension( :, : ), pointer :: FEM_VOL_FRAC
         !!$
         real, dimension( :, : ), pointer :: &
             ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component
@@ -430,7 +430,7 @@ contains
         !!$ Allocating space for various arrays:
         allocate( &
             !!$
-            DRhoDPressure( nphase, cv_nonods ), FEM_VOL_FRAC( nphase, cv_nonods ),&
+            FEM_VOL_FRAC( nphase, cv_nonods ), &
             !!$
             suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
             Mean_Pore_CV( npres, cv_nonods ), &
@@ -455,8 +455,6 @@ contains
 
         ncv_faces=CV_count_faces( packed_state, Mdims, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln)
 
-        !!$
-        DRhoDPressure=0.
         !!$
         suf_sig_diagten_bc=0.
         !!$
@@ -581,7 +579,7 @@ contains
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
                 have_component_field = .true.
             !!$
-            call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+            call Calculate_All_Rhos( state, packed_state, Mdims )
 
             if( have_component_field ) then
                 call get_option( '/material_phase[' // int2str( istate - 1 ) // 'scalar_field::' // &
@@ -803,7 +801,7 @@ end if
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
 
-                call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+                call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 if( solve_force_balance .and. is_porous_media ) then
                     call Calculate_AbsorptionTerm( state, packed_state, npres, &
@@ -847,8 +845,7 @@ end if
                         !!$
                         ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
-                        suf_sig_diagten_bc,&
-                        DRhoDPressure, &
+                        suf_sig_diagten_bc, &
                         Temperature_Absorption, Porosity_field%val, &
                         !!$
                         NCOLM, FINDM, COLM, MIDM, &
@@ -865,7 +862,7 @@ end if
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
 
-                    call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 end if Conditional_ScalarAdvectionField
 
@@ -917,7 +914,7 @@ end if
                         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
                         !!$
                         Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, Velocity_U_Source, Velocity_U_Source_CV, &
-                        DRhoDPressure, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
+                        IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
                         dt, &
                         !!$
                         NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -970,7 +967,6 @@ end if
                         !!$
                         v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                         SUF_SIG_DIAGTEN_BC, &
-                        DRhoDPressure, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         !!$
                         NCOLM, FINDM, COLM, MIDM, &
@@ -1060,7 +1056,6 @@ end if
                                 Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
-                                DRhoDPressure, &
                                 Component_Absorption, Porosity_field%val, &
                                 !!$
                                 NCOLM, FINDM, COLM, MIDM, &
@@ -1264,7 +1259,7 @@ end if
             current_time = acctim
 
 
-            call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+            call Calculate_All_Rhos( state, packed_state, Mdims )
 
             do iphase = 1, nphase
                 f1 => extract_scalar_field( state(iphase), "Temperature", stat )
@@ -1410,7 +1405,7 @@ end if
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
             plike_grad_sou_grad, plike_grad_sou_coef, &
             !!$ Working arrays
-            DRhoDPressure, FEM_VOL_FRAC, &
+            FEM_VOL_FRAC, &
             Velocity_U_Source, Velocity_U_Source_CV, &
             theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
             mass_ele,&
@@ -1755,7 +1750,6 @@ end if
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                     plike_grad_sou_grad, plike_grad_sou_coef, &
                     !!$ Working arrays
-                    DRhoDPressure, &
                     Velocity_U_Source, Velocity_U_Source_CV, &
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
@@ -1874,8 +1868,6 @@ end if
                 !!$ Allocating space for various arrays:
                 allocate( &
                     !!$
-                    DRhoDPressure( nphase, cv_nonods ), &
-                    !!$
                     suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
                     Mean_Pore_CV( npres, cv_nonods ), &
                     mass_ele( totele ), &
@@ -1980,7 +1972,7 @@ end if
                     DEALLOCATE( RSUM )
                 end if
 
-                call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+                call Calculate_All_Rhos( state, packed_state, Mdims )
 
             end if Conditional_ReallocatingFields
 

@@ -55,20 +55,20 @@ module multiphase_EOS
 
 contains
 
-    subroutine Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
+    subroutine Calculate_All_Rhos( state, packed_state, Mdims )
 
         implicit none
 
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
-        real, dimension( :, : ), intent( inout ), optional :: DRhoDPressure ! (nphase, cv_nonods)
 
         integer, dimension( : ), pointer :: cv_ndgln
         integer :: ncomp_in, nphase, ndim, cv_nonods, cv_nloc, totele
         real, dimension( : ), allocatable :: Rho, dRhodP, Density_Bulk, DensityCp_Bulk, &
              Density_Component, Cp, Component_l, c_cv_nod
         character( len = option_path_len ), dimension( : ), allocatable :: eos_option_path
+        type( tensor_field ), pointer :: DRhoDPressure ! (nphase, cv_nonods)
         type( tensor_field ), pointer :: field1, field2, field3, field4
         type( scalar_field ), pointer :: Cp_s
         integer :: icomp, iphase, ncomp, sc, ec, sp, ep, stat, cv_iloc, cv_nod, ele
@@ -78,7 +78,8 @@ contains
         cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
 
-        DRhoDPressure = 0.
+        DRhoDPressure => extract_tensor_field( packed_state, "DRhoDPressure" )
+        DRhoDPressure%val = 0.
 
         ncomp = ncomp_in
         if( ncomp_in == 0 ) ncomp = 1
@@ -156,7 +157,7 @@ contains
                  end if
 
                  Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
-                 DRhoDPressure( iphase, : ) = DRhoDPressure( iphase, : ) + dRhodP * Component_l / Rho
+                 DRhoDPressure%val( 1, iphase, : ) = DRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
                  Density_Component( sc : ec ) = Rho
 
                  Cp_s => extract_scalar_field( state( nphase + icomp ), &
@@ -167,7 +168,7 @@ contains
               else
 
                  Density_Bulk( sp : ep ) = Rho
-                 DRhoDPressure( iphase, : ) = dRhodP
+                 DRhoDPressure%val( 1, iphase, : ) = dRhodP
 
                  Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
                  if ( stat == 0 ) Cp = Cp_s % val
