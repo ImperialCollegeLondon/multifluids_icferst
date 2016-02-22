@@ -660,7 +660,6 @@ contains
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
     CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
     U_ABS_STAB, MAT_ABSORB, U_ABSORBIN, U_SOURCE, U_SOURCE_CV, &
-    IDIVID_BY_VOL_FRAC, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
     NCOLDGM_PHA, &! Force balance
@@ -696,7 +695,7 @@ contains
         NCOLC, NCOLDGM_PHA, NCOLELE, NCOLCMC, ncolsmall, NLENMCY, NCOLMCY, NCOLCT, &
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM,&
         IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
-        IPLIKE_GRAD_SOU, IDIVID_BY_VOL_FRAC
+        IPLIKE_GRAD_SOU
         LOGICAL, intent( in ) :: USE_THETA_FLUX, scale_momentum_by_volume_fraction
         INTEGER, DIMENSION(  :  ), intent( in ) :: U_NDGLN, IDs_ndgln
         INTEGER, DIMENSION(  :  ), intent( in ) :: P_NDGLN
@@ -1066,7 +1065,7 @@ contains
         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
         X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
-        P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), IDIVID_BY_VOL_FRAC, &
+        P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
         DT, &
         NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
         MAT, NO_MATRIX_STORE, &! Force balance
@@ -1505,7 +1504,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
     X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
     U_ALL, UOLD_ALL, &
-    P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, &
+    P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
     DGM_PETSC, NO_MATRIX_STORE, &! Force balance
@@ -1545,7 +1544,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         NCOLC, NCOLELE, NCOLCMC, NCOLCT, &
         CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, NCOLM, &
         NLENMCY, NCOLMCY, IGOT_THETA_FLUX, SCVNGI_THETA, &
-        IN_ELE_UPWIND, DG_ELE_UPWIND, IPLIKE_GRAD_SOU,  IDIVID_BY_VOL_FRAC
+        IN_ELE_UPWIND, DG_ELE_UPWIND, IPLIKE_GRAD_SOU
         LOGICAL, intent( in ) :: USE_THETA_FLUX,scale_momentum_by_volume_fraction, RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN, IDs_ndgln
         INTEGER, DIMENSION( :  ), intent( in ) :: P_NDGLN
@@ -1655,7 +1654,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         U_ALL, UOLD_ALL, &    ! This is nu...
-        UDEN_ALL, UDENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, &
+        UDEN_ALL, UDENOLD_ALL, DERIV, &
         DT, &
         U_RHS, &
         C, NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -1900,7 +1899,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
     X_ALL, U_ABS_STAB, U_ABSORB, U_SOURCE, U_SOURCE_CV, &
     U_ALL, UOLD_ALL, &
     NU_ALL, NUOLD_ALL, &
-    UDEN, UDENOLD, DERIV, IDIVID_BY_VOL_FRAC, &
+    UDEN, UDENOLD, DERIV, &
     DT, &
     U_RHS, &
     C, NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -1925,9 +1924,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 ! If IGOT_VOL_X_PRESSURE=1 then have a voln fraction in the pressure term and multiply density by volume fraction...
         INTEGER, PARAMETER :: IGOT_VOL_X_PRESSURE = 0
         INTEGER, intent( in ) :: U_ELE_TYPE, P_ELE_TYPE, NCOLC,  NCOLELE, IPLIKE_GRAD_SOU,&
-        NDIM_VEL, IDIVID_BY_VOL_FRAC, NCOLM
-! If IDIVID_BY_VOL_FRAC==1 then modify the stress term to take into account dividing through by volume fraction.
-        ! NDIM_VEL
+        NDIM_VEL, NCOLM
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
         INTEGER, DIMENSION( : ), intent( in )  :: P_NDGLN
         INTEGER, DIMENSION( : ), intent( in )  :: CV_NDGLN
@@ -2214,6 +2211,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         real, dimension(Mdims%ndim, Mdims%u_nloc, Mdims%u_nloc) :: K_mat_xall, n_mat_xall
         type(tensor_field), pointer :: fem_vol_frac_f
         real, dimension( :, : ), pointer :: fem_vol_frac
+
+        ! If =0 then false, if =1 then true.
+        ! If =1 then modify the stress term to take into 
+        ! account dividing through by volume fraction.
+        integer, parameter :: IDIVID_BY_VOL_FRAC = 0
 
         fem_vol_frac_f => extract_tensor_field( packed_state, "FEPhaseVolumeFraction" )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )

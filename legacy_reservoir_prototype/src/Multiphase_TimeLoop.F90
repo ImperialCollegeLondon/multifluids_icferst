@@ -150,7 +150,7 @@ contains
         integer :: cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type, &
             t_disopt, v_disopt, t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
             comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
-            nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp,  IDIVID_BY_VOL_FRAC
+            nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp
         logical :: volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, comp_get_theta_flux, &
             t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction, q_scheme
         real :: t_beta, v_beta, t_theta, v_theta, u_theta
@@ -322,16 +322,13 @@ contains
         end if
 
         !! JRP changes to make a multiphasic state
-        call pack_multistate(npres,state,packed_state,multiphase_state,&
-            multicomponent_state)
+        call pack_multistate( npres, state, packed_state, multiphase_state, &
+            multicomponent_state )
         call set_boundary_conditions_values(state, shift_time=.true.)
         !Prepare the caching
         call set_caching_level()
-        call initialize_storage(packed_state, storage_state)
+        call initialize_storage( packed_state, storage_state )
 
-        !call initialize_rheologies(state,rheology)
-
-        IDIVID_BY_VOL_FRAC=0
         !call print_state( packed_state )
         !stop 78
 
@@ -770,12 +767,12 @@ end if
 
             !!$ FEMDEM...
 #ifdef USING_FEMDEM
-        if ( (is_multifracture ) ) then
-            call fracking(packed_state, state,nphase)
-        elseif ( have_option( '/blasting') ) then
-            call blasting( packed_state, nphase )
-            call update_blasting_memory( packed_state, state, timestep )
-        end if
+            if ( is_multifracture ) then
+               call fracking(packed_state, state,nphase)
+            elseif ( have_option( '/blasting') ) then
+               call blasting( packed_state, nphase )
+               call update_blasting_memory( packed_state, state, timestep )
+            end if
 #endif
 
             !!$ Start non-linear loop
@@ -911,7 +908,6 @@ end if
                         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
                         !!$
                         Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, Velocity_U_Source, Velocity_U_Source_CV, &
-                        IDIVID_BY_VOL_FRAC, &
                         dt, &
                         !!$
                         NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
