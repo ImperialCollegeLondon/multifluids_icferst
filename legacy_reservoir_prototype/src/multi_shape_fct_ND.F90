@@ -9846,6 +9846,6 @@ contains
 
     return
   end subroutine get_CVN_compact_overlapping
-
+ 
 end module shape_functions_NDim
 
