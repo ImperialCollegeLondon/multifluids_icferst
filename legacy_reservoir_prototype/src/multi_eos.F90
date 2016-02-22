@@ -274,44 +274,47 @@ contains
     end subroutine Cap_Bulk_Rho
 
 
-    subroutine Calculate_Component_Rho( state, packed_state, &
-        ncomp, nphase, cv_nonods )
+    subroutine Calculate_Component_Rho( state, packed_state, Mdims )
 
-        implicit none
+      implicit none
 
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
-        integer, intent( in ) :: ncomp, nphase, cv_nonods
+      type( state_type ), dimension( : ), intent( inout ) :: state
+      type( state_type ), intent( inout ) :: packed_state
+      type( multi_dimensions ), intent( in ) :: Mdims
 
-        real, dimension( : ), allocatable :: Rho, dRhodP
-        type( tensor_field ), pointer :: field
-        character( len = option_path_len ) :: eos_option_path
-        integer :: icomp, iphase, s, e
+      integer :: ncomp, nphase, cv_nonods
+      real, dimension( : ), allocatable :: Rho, dRhodP
+      type( tensor_field ), pointer :: field
+      character( len = option_path_len ) :: eos_option_path
+      integer :: icomp, iphase, s, e
 
-        allocate( Rho( cv_nonods ), dRhodP( cv_nonods ) )
+      ncomp = Mdims%ncomp ; nphase = Mdims%nphase
+      cv_nonods =  Mdims%cv_nonods
 
-        field => extract_tensor_field( packed_state, "PackedComponentDensity" )
+      allocate( Rho( cv_nonods ), dRhodP( cv_nonods ) )
 
-        do icomp = 1, ncomp
+      field => extract_tensor_field( packed_state, "PackedComponentDensity" )
 
-            do iphase = 1, nphase
-                s = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
-                e = ( icomp - 1 ) * nphase * cv_nonods + iphase * cv_nonods
+      do icomp = 1, ncomp
 
-                eos_option_path = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
-                    ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                    '/prognostic/equation_of_state' )
+         do iphase = 1, nphase
+            s = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
+            e = ( icomp - 1 ) * nphase * cv_nonods + iphase * cv_nonods
 
-                call Assign_Equation_of_State( eos_option_path )
-                Rho=0. ; dRhodP=0.
-                call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
-                    nphase, ncomp, eos_option_path, Rho, dRhodP )
+            eos_option_path = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
+                 ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
+                 '/prognostic/equation_of_state' )
 
-                field % val( icomp, iphase, : ) = Rho
+            call Assign_Equation_of_State( eos_option_path )
+            Rho=0. ; dRhodP=0.
+            call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
+                 nphase, ncomp, eos_option_path, Rho, dRhodP )
 
-            end do ! iphase
-        end do ! icomp
-        deallocate( Rho, dRhodP )
+            field % val( icomp, iphase, : ) = Rho
+
+         end do ! iphase
+      end do ! icomp
+      deallocate( Rho, dRhodP )
 
     end subroutine Calculate_Component_Rho
 

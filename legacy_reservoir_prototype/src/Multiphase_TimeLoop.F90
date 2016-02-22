@@ -950,9 +950,8 @@ end if
                     !                            CV_NDGLN, state, packed_state, Material_Absorption)
 
                     !!$ Calculate Density_Component for compositional
-                    if( have_component_field ) &
-                        call Calculate_Component_Rho( state, packed_state, &
-                        ncomp, nphase, cv_nonods )
+                    if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
+
                 end if Conditional_ForceBalanceEquation
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
