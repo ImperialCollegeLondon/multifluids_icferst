@@ -7786,56 +7786,43 @@ contains
        M,MLX,MLY,MLZ,WEIGHT,N,NLX,NLY,NLZ,                    & 
        SWEIGH,SN,SNLX,SNLY, SM,SMLX,SMLY,                     &
        NWICEL,D3)
-    LOGICAL, INTENT(IN)::LOWQUA
-    INTEGER, INTENT(IN)::NGI,NLOC,MLOC,SNGI,SNLOC,SMLOC
-    REAL, dimension(:,:), INTENT(OUT)::M,MLX,MLY,MLZ
-    REAL, dimension(:),INTENT(OUT)::WEIGHT
-    REAL,dimension(:,:), INTENT(OUT)::N,NLX,NLY,NLZ
-    REAL, dimension(:),INTENT(OUT)::SWEIGH
-    REAL, dimension(:,:),INTENT(OUT)::SN,SNLX,SNLY
-    REAL,dimension(:,:), INTENT(OUT)::SM,SMLX,SMLY
-    INTEGER, INTENT(IN)::NWICEL
-    LOGICAL, INTENT(IN)::D3
+    LOGICAL, INTENT(IN):: LOWQUA
+    INTEGER, INTENT(IN):: NGI,NLOC,MLOC,SNGI,SNLOC,SMLOC
+    REAL, dimension(:,:), INTENT(OUT):: M,MLX,MLY,MLZ
+    REAL, dimension(:), INTENT(OUT):: WEIGHT
+    REAL, dimension(:,:), INTENT(OUT):: N,NLX,NLY,NLZ
+    REAL, dimension(:), INTENT(OUT):: SWEIGH
+    REAL, dimension(:,:), INTENT(OUT):: SN,SNLX,SNLY
+    REAL, dimension(:,:), INTENT(OUT):: SM,SMLX,SMLY
+    INTEGER, INTENT(IN):: NWICEL
+    LOGICAL, INTENT(IN):: D3
 
-    INTEGER IPOLY,IQADRA,gi,gj,ggi,i,j,ii
-    !ewrite(3,*)'inside shape LOWQUA,NGI,NLOC,MLOC, SNGI,SNLOC,SMLOC:', &
-    !                      LOWQUA,NGI,NLOC,MLOC, SNGI,SNLOC,SMLOC
-    !ewrite(3,*)'NWICEL,d3:',NWICEL,d3
-    IF(NWICEL.EQ.1) THEN
+    ! Local variable
+    INTEGER :: IPOLY, IQADRA, gi, gj, ggi, i, j, ii
+
+    Conditional_NWICEL: Select Case( NWICEL )
+    case( 1 )
        IF(.NOT.D3) THEN
           CALL RE2DN4(LOWQUA,NGI,0,NLOC,MLOC, &
-               M,WEIGHT,N,NLX,NLY,          &
-               SNGI,SNLOC,SWEIGH,SN,SNLX, &
+               M,WEIGHT,N,NLX,NLY,            &
+               SNGI,SNLOC,SWEIGH,SN,SNLX,     &
                m(:,1),m(:,1))
        ELSE
-          CALL RE3DN8(LOWQUA,NGI,0,NLOC,MLOC, &
-               M,WEIGHT,N,NLX,NLY,NLZ,      &
+          CALL RE3DN8(LOWQUA,NGI,0,NLOC,MLOC,  &
+               M,WEIGHT,N,NLX,NLY,NLZ,         &
                SNGI,SNLOC,SWEIGH,SN,SNLX,SNLY, &
                m(:,1),m(:,1),m(:,1))
        ENDIF
-    ENDIF
-
-    IF(NWICEL.EQ.2) THEN
-       ewrite(3,*)'option not avaialble'
-       stop 3832
-       !        IF(.NOT.D3) THEN
-       !           CALL RE2DN8(LOWQUA,NGI,NLOC,MLOC, &
-       !                M,WEIGHT,N,NLX,NLY )
-       !        ELSE
-       !           ! SERENDIPITY 20 NODE 3-D ELEMENT -BILINEAR PRESSURE
-       !           CALL RE3D20(LOWQUA,NGI,NLOC,MLOC, &
-       !                M,WEIGHT,N,NLX,NLY,NLZ )
-       !        ENDIF
-    ENDIF
-
-    IF(NWICEL.EQ.3) THEN
+!!$
+    case( 2 )
+       FLAbort("Option not available yet")
+!!$
+    case( 3 )
        IF(.NOT.D3) THEN
           CALL RE2DN9(LOWQUA,NGI,0,NLOC,MLOC, &
-               M,WEIGHT,N,NLX,NLY, &
+               M,WEIGHT,N,NLX,NLY,            &
                m(:,1),m(:,1))
-          sweigh=0.0
-          sn=0.0
-          snlx=0.0
+          sweigh = 0.0 ; sn = 0.0 ; snlx = 0.0
           do gi=1,3
              do gj=1,3
                 ggi=(gj-1)*3+gi
@@ -7849,35 +7836,33 @@ contains
                 end do
              end do
           end do
-       ELSE
-          ! LAGRANGE 27 NODE 3-D ELEMENT -BILINEAR PRESSURE
+       ELSE ! LAGRANGE 27 NODE 3-D ELEMENT -BILINEAR PRESSURE
           CALL RE3D27(LOWQUA,NGI,0,NLOC,MLOC, &
-               M,WEIGHT,N,NLX,NLY,NLZ, &
+               M,WEIGHT,N,NLX,NLY,NLZ,        &
                m(:,1),m(:,1),m(:,1))
           CALL RE2DN9(LOWQUA,SNGI,0,SNLOC,MLOC, &
-               M,SWEIGH,SN,SNLX,SNLY, &
+               M,SWEIGH,SN,SNLX,SNLY,           &
                m(:,1),m(:,1))
        ENDIF
-    ENDIF
-
-    IF((NWICEL.EQ.4).or.(NWICEL.EQ.5).or.(NWICEL.EQ.6)) THEN
-       ! works for linear or quadratic triangles or tets (also cubic triangles)...
+!!$
+    case( 4:6 ) ! works for linear or quadratic triangles or tets (also cubic triangles)...
        CALL TR2or3DQU(NGI,NLOC,MLOC,        &
             M,MLX,MLY,MLZ,                  &
             WEIGHT,N,NLX,NLY,NLZ,           &
             SNGI,SNLOC,SWEIGH,SN,SNLX,SNLY, &
             SMLOC,                          &
             SM,SMLX,SMLY,D3)
-       !       ewrite(3,*)'weight:',weight
-       !      STOP 3321
-    ENDIF
-
-    IF(NWICEL.GE.100) THEN
-       ! A Spectal element using Legendra, Lagrange or Chebichef polynomials.
+!!$
+    case( 100: )! A Spectal element using Legendra, Lagrange or Chebichef polynomials.
        CALL SPECTR(NGI,NLOC,MLOC, &
             M,WEIGHT,N,NLX,NLY,NLZ,D3,.NOT.D3, IPOLY,IQADRA)
-    ENDIF
+!!$
+    case default
+       FLAbort("Option not found")
+!!$
+    end Select Conditional_NWICEL
 
+    return
   END SUBROUTINE SHAPE
 
 
