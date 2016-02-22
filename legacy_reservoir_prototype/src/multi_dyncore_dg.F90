@@ -69,7 +69,7 @@ module multiphase_1D_engine
 
 contains
 
-  SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, Mdims, CV_funs, storage_state, &
+  SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state, &
        tracer, velocity, density, &
        SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
        NCOLCT, FINDCT, COLCT, &
@@ -97,7 +97,8 @@ contains
            type( state_type ), dimension( : ), intent( inout ) :: state
            type( state_type ), intent( inout ) :: packed_state, storage_state
            type(multi_dimensions), intent(in) :: Mdims
-           type(multi_shape_funs), intent(in) :: CV_funs
+           type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
+           type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
            type(tensor_field), intent(inout) :: tracer
            type(tensor_field), intent(in) :: velocity, density
            INTEGER, intent( in ) :: NCOLCT, CV_ELE_TYPE, &
@@ -229,28 +230,25 @@ contains
                RETRIEVE_SOLID_CTY = .false.
            end if
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
-               call CV_ASSEMB( state, packed_state, storage_state, Mdims, &
+               call CV_ASSEMB( state, packed_state, &
+                   Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
                    tracer, velocity, density, &
                    CV_RHS_field, &
                    petsc_acv, &
                    SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
                    NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
                    CT, FINDCT, COLCT, &
-                   Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, &
                    CV_ELE_TYPE, &
-                   Mdims%nphase, Mdims%npres, &
-                   Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, &
-                   CV_NDGLN, X_NDGLN, U_NDGLN, &
-                   Mdims%cv_snloc, Mdims%u_snloc, Mdims%stotel, CV_SNDGLN, U_SNDGLN, &
+                   CV_NDGLN, X_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN, &
                    DEN_ALL, DENOLD_ALL, &
-                   Mdims%mat_nloc, MAT_NDGLN, Mdims%mat_nonods, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+                   MAT_NDGLN, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                    T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, SECOND_THETA, T_BETA, &
                    SUF_SIG_DIAGTEN_BC, &
                    DERIV, P%val, &
                    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
-                   Mdims%ndim, GETCV_DISC, GETCT, &
+                   GETCV_DISC, GETCT, &
                    NCOLM, FINDM, COLM, MIDM, &
-                   Mdims%xu_nloc, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                   XU_NDGLN, FINELE, COLELE, NCOLELE, &
                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                    IGOT_T2_loc,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -307,7 +305,8 @@ contains
 
 
 
-    subroutine VolumeFraction_Assemble_Solve( state,packed_state, Mdims, CV_GIdims, CV_funs, storage_state, &
+    subroutine VolumeFraction_Assemble_Solve( state,packed_state, Mdims, &
+         CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state, &
          SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
          NCOLCT, FINDCT, COLCT, &
          CV_ELE_TYPE, &
@@ -333,8 +332,8 @@ contains
              type( state_type ), dimension( : ), intent( inout ) :: state
              type( state_type ) :: packed_state, storage_state
              type(multi_dimensions), intent(in) :: Mdims
-             type(multi_GI_dimensions), intent(in) :: CV_GIdims
-             type(multi_shape_funs), intent(in) :: CV_funs
+             type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
+             type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
              INTEGER, intent( in ) :: NCOLM, NCOLCT, NCOLELE, CV_ELE_TYPE, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND,igot_theta_flux
              LOGICAL, intent( in ) :: USE_THETA_FLUX
              INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, MAT_NDGLN, X_NDGLN, U_NDGLN, XU_NDGLN, CV_SNDGLN, U_SNDGLN, IDs_ndgln
@@ -510,28 +509,24 @@ contains
                  call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
 
                  !Assemble the matrix and the RHS
-                 call CV_ASSEMB( state, packed_state, storage_state, Mdims,&
+                 call CV_ASSEMB( state, packed_state, Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
                      tracer, velocity, density, &
                      CV_RHS_field, &
                      petsc_acv, &
                      SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
                      NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
                      CT, FINDCT, COLCT, &
-                     Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, &
                      CV_ELE_TYPE,  &
-                     Mdims%nphase, Mdims%npres, &
-                     Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, &
-                     CV_NDGLN, X_NDGLN, U_NDGLN, &
-                     Mdims%cv_snloc, Mdims%u_snloc, Mdims%stotel, CV_SNDGLN, U_SNDGLN, &
+                     CV_NDGLN, X_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN, &
                      DEN_ALL, DENOLD_ALL, &
-                     Mdims%mat_nloc, MAT_NDGLN, Mdims%mat_nonods, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+                     MAT_NDGLN, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                      V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, SECOND_THETA, V_BETA, &
                      SUF_SIG_DIAGTEN_BC, &
                      DERIV, P, &
                      V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-                     Mdims%ndim, GETCV_DISC, GETCT, &
+                     GETCV_DISC, GETCT, &
                      NCOLM, FINDM, COLM, MIDM, &
-                     Mdims%XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                     XU_NDGLN, FINELE, COLELE, NCOLELE, &
                      opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                      IGOT_T2, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
                      THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -1717,28 +1712,24 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         density=>extract_tensor_field(packed_state,"PackedDensity")
         call halo_update(density)
 
-        call CV_ASSEMB( state, packed_state, storage_state, Mdims, &
+        call CV_ASSEMB( state, packed_state, Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state, &
              tracer, velocity, density, &
         CV_RHS, &
         ACV, &
         SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
         NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
         C_CV, FINDC, COLC, & ! C sparsity - global cty eqn
-        Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, &
         CV_ELE_TYPE, &
-        Mdims%nphase, Mdims%npres, &
-        Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, &
-        CV_NDGLN, X_NDGLN, U_NDGLN, &
-        Mdims%cv_snloc, Mdims%u_snloc, Mdims%stotel, CV_SNDGLN, U_SNDGLN, &
+        CV_NDGLN, X_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN, &
         DEN_OR_ONE, DENOLD_OR_ONE, &
-        Mdims%mat_nloc, MAT_NDGLN, Mdims%mat_nonods, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+        MAT_NDGLN, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, SECOND_THETA, V_BETA, &
         SUF_SIG_DIAGTEN_BC, &
         DERIV, CV_P, &
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
-        Mdims%ndim, GETCV_DISC, GETCT, &
+        GETCV_DISC, GETCT, &
         NCOLM, FINDM, COLM, MIDM, &
-        Mdims%xu_nloc, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+        XU_NDGLN, FINELE, COLELE, NCOLELE, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
