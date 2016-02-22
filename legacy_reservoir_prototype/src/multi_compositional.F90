@@ -43,7 +43,7 @@ module Compositional_Terms
 contains
 
     subroutine Calculate_ComponentAbsorptionTerm( state, packed_state, &
-        icomp, cv_ndgln, &
+        icomp, cv_ndgln, Mdims, &
         denold, volfra_pore, mass_ele, &
         comp_absorb, IDs_ndgln )
 
@@ -54,6 +54,7 @@ contains
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
         type( state_type ), intent( inout ) :: packed_state
+        type(multi_dimensions), intent( in ) :: Mdims
         integer, intent( in ) :: icomp
         integer, dimension( : ), intent( in ) :: cv_ndgln, IDs_ndgln
         real, dimension( : ), intent( in ) :: mass_ele
@@ -76,6 +77,11 @@ contains
         !working pointers
         type(tensor_field), pointer :: tfield
         real, dimension(:,:), pointer :: satura
+
+        if ( Mdims%nphase < 2 ) then
+           comp_absorb = 0.0
+           return
+        end if
 
         tfield=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         satura => tfield%val(1,:,:)
@@ -109,7 +115,7 @@ contains
         DO ELE = 1, TOTELE
             DO CV_ILOC = 1, CV_NLOC
                 CV_NOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
-                SUM_NOD( CV_NOD ) = SUM_NOD( CV_NOD ) + mass_ele( ele ) !1.0
+                SUM_NOD( CV_NOD ) = SUM_NOD( CV_NOD ) + mass_ele( ele )
                 VOLFRA_PORE_NOD( CV_NOD ) = VOLFRA_PORE_NOD( CV_NOD ) + &
                     VOLFRA_PORE( 1, ELE ) * mass_ele( ele )
             END DO
@@ -122,8 +128,6 @@ contains
         CALL Calc_KComp2( cv_nonods, nphase, ncomp, icomp, KComp_Sigmoid, &
             min( 1., max( 0., satura )), K_Comp, max_k, min_k, &
             K_Comp2 )
-
-        !ewrite(3,*)'icomp, min,max K:', ICOMP, MIN_K, MAX_K
 
         DO CV_NOD = 1, CV_NONODS
             DO IPHASE = 1, NPHASE
@@ -169,14 +173,7 @@ contains
                 END DO
             END DO
 
-           !ewrite(3,*)'cv_nod, alpha:', cv_nod, alpha( cv_nod )
         END DO
-
-        !do cv_nod = 1, cv_nonods
-        !   ewrite(3,*)'comp_ABSORB:',&
-        !        ( ( comp_ABSORB( cv_nod, iphase, jphase ), iphase = 1, nphase ), &
-        !        jphase = 1, nphase )
-        !end do
 
         deallocate( alpha, sum_nod, volfra_pore_nod, k_comp, k_comp2 )
 
