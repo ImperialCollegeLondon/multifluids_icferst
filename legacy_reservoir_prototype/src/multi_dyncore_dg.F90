@@ -228,7 +228,7 @@ contains
                RETRIEVE_SOLID_CTY = .false.
            end if
 
-           deriv => extract_tensor_field( packed_state, "DRhoDPressure" )
+           deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
 
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
@@ -427,7 +427,7 @@ contains
              GET_THETA_FLUX = .FALSE.
              IGOT_T2 = 0
 
-             deriv => extract_tensor_field( packed_state, "DRhoDPressure" )
+             deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
 
              !ALLOCATE( T2( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 ))
              !ALLOCATE( T2OLD( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 ))
@@ -809,7 +809,7 @@ contains
 
         EXPLICIT_PIPES2 = .true.
 
-        deriv => extract_tensor_field( packed_state, "DRhoDPressure" )
+        deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
 
         high_order_Ph = have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" )
         symmetric_P = have_option( "/material_phase[0]/scalar_field::Pressure/prognostic/symmetric_P" )
@@ -2211,7 +2211,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! account dividing through by volume fraction.
         integer, parameter :: IDIVID_BY_VOL_FRAC = 0
 
-        fem_vol_frac_f => extract_tensor_field( packed_state, "FEPhaseVolumeFraction" )
+        fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
 
         ! open the boiling test for two phases-gas and liquid
