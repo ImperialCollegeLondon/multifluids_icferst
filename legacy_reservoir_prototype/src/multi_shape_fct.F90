@@ -40,7 +40,7 @@ module shape_functions_prototype
   use shape_functions
   use state_module
   use spud
-  use global_parameters, only: option_path_len, is_porous_media
+  use global_parameters, only: is_porous_media
   use shape_functions_Linear_Quadratic
   use shape_functions_NDim
   use Fields_Allocates, only : allocate, make_mesh
@@ -701,99 +701,99 @@ contains
 
 
     ! Local variables
-    character( len = option_path_len ) :: dummy_path, dummypath2
-    integer :: u_ele_type2, gi, MLOC, SMLOC
-    integer :: sgi, cv_siloc, cv_skloc
-    real :: rmax
+    real, dimension( : , : ), allocatable :: cvn2 ! dimension( cv_nloc, cv_ngi )
+    real, dimension(  : , : ), allocatable :: cvn_short2!dimension( cv_nloc, cv_ngi_short )
+    real, dimension( : ), allocatable :: cvweight2!dimension( cv_ngi )
+    real, dimension(  : , : ), allocatable :: cvfen2!dimension( cv_nloc, cv_ngi )
+    real, dimension( : ), allocatable :: cvweight_short2!dimension( cv_ngi_short )
+    real, dimension(  : , : ), allocatable :: cvfen_short2
+    real, dimension(:,:,:), allocatable :: cvfenlx_all2, cvfenlx_short_all2, ufenlx_all2, scvfenlx_all2,&
+         sufenlx_all2, sbcvfenlx_all2, sbufenlx_all2
+    real, dimension(  : , : ), allocatable :: ufen2!dimension( u_nloc, cv_ngi )
+    integer, dimension(  : , : ), allocatable :: cv_neiloc2!dimension( cv_nloc, scvngi )
+    real, dimension(  : , : ), allocatable :: scvfen2, scvfenslx2, scvfensly2!dimension( cv_nloc, scvngi )
+    real, dimension( : ), allocatable :: scvfeweigh2!dimension( scvngi )
+    real, dimension(  : , : ), allocatable :: sufen2, sufenslx2, sufensly2
+    real, dimension(  : , : ), allocatable :: sbcvn2!dimension( cv_snloc, sbcvngi )
+    real, dimension(  : , : ), allocatable :: sbcvfen2, sbcvfenslx2, sbcvfensly2! dimension( cv_snloc, sbcvngi )
+    real, dimension( : ), allocatable :: sbcvfeweigh2!dimension( sbcvngi )
+    real, dimension(  : , : ), allocatable :: sbufen2, sbufenslx2, sbufensly2!dimension( u_snloc, sbcvngi )
+    integer, dimension(  : , : ), allocatable :: cv_sloclist2!dimension( nface, cv_snloc )
+    integer, dimension(  : , : ), allocatable :: u_sloclist2!dimension( nface, u_snloc )
+    integer, dimension( : ), allocatable :: findgpts2!dimension( cv_nloc + 1 )
+    integer, dimension( : ), allocatable :: colgpts2!dimension( cv_nloc * scvngi )
+    integer :: ncolgpts2
+    real, dimension( : ), allocatable :: sele_overlap_scale2!dimension( cv_nloc )
 
-    ewrite(3,*) 'in  cv_fem_shape_funs subrt'
+
+    !Allocate local variables
+    allocate(cvn2( Mdims%cv_nloc, GIdims%cv_ngi ), cvn_short2( Mdims%cv_nloc, GIdims%cv_ngi ), cvweight2( GIdims%cv_ngi ), cvfen2( Mdims%cv_nloc, GIdims%cv_ngi ),&
+        cvfenlx_all2( 3, Mdims%cv_nloc, GIdims%cv_ngi ), cvweight_short2( GIdims%cv_ngi ),&
+        cvfen_short2( Mdims%cv_nloc, GIdims%cv_ngi ), cvfenlx_short_all2( 3, Mdims%cv_nloc, GIdims%cv_ngi ), ufen2( Mdims%u_nloc, GIdims%cv_ngi ),&
+        ufenlx_all2( 3, Mdims%u_nloc, GIdims%cv_ngi ), cv_neiloc2( Mdims%cv_nloc, GIdims%scvngi ),scvfen2( Mdims%cv_nloc, GIdims%scvngi ), scvfenslx2( Mdims%cv_nloc, GIdims%scvngi ), &
+        scvfensly2( Mdims%cv_nloc, GIdims%scvngi ), scvfeweigh2( GIdims%scvngi ),scvfenlx_all2( 3, Mdims%cv_nloc, GIdims%scvngi ),  sufen2( Mdims%u_nloc, GIdims%scvngi ),&
+        sufenslx2( Mdims%u_nloc, GIdims%scvngi ), sufensly2( Mdims%u_nloc, GIdims%scvngi ),&
+        sufenlx_all2( 3, Mdims%u_nloc, GIdims%scvngi ), sbcvn2( Mdims%cv_snloc, GIdims%sbcvngi ),&
+        sbcvfen2( Mdims%cv_snloc, GIdims%sbcvngi ), sbcvfenslx2( Mdims%cv_snloc, GIdims%sbcvngi ), sbcvfensly2( Mdims%cv_snloc, GIdims%sbcvngi ),  sbcvfeweigh2( GIdims%sbcvngi ),&
+        sbcvfenlx_all2( 3, Mdims%cv_snloc, GIdims%sbcvngi ), sbufen2( Mdims%u_snloc, GIdims%sbcvngi ),&
+        sbufenslx2( Mdims%u_snloc, GIdims%sbcvngi ), sbufensly2( Mdims%u_snloc, GIdims%sbcvngi ), sbufenlx_all2(3, Mdims%u_snloc, GIdims%sbcvngi ),&
+        cv_sloclist2( GIdims%nface, Mdims%cv_snloc ),  u_sloclist2( GIdims%nface, Mdims%u_snloc ), findgpts2( Mdims%cv_nloc + 1 ),&
+        colgpts2( Mdims%cv_nloc * GIdims%scvngi ), sele_overlap_scale2( Mdims%cv_nloc ))
+
+    findgpts2 = 0; colgpts2= 0; ncolgpts2 = 0
+
+    call cv_fem_shape_funs( &
+        Mdims%ndim, cv_ele_type, &
+        GIdims%cv_ngi, GIdims%cv_ngi, Mdims%cv_nloc, Mdims%u_nloc, cvn2, cvn_short2, &
+                            ! Volume shape functions
+        cvweight2, cvfen2, cvfenlx_all2(1,:,:), cvfenlx_all2(2,:,:), cvfenlx_all2(3,:,:), &
+        cvweight_short2, cvfen_short2, cvfenlx_short_all2(1,:,:), cvfenlx_short_all2(2,:,:), cvfenlx_short_all2(3,:,:), &
+        ufen2, ufenlx_all2(1,:,:), ufenlx_all2(2,:,:), ufenlx_all2(3,:,:), &
+                            ! Surface of each CV shape functions
+        GIdims%scvngi, cv_neiloc2, shape_fun%cv_on_face, shape_fun%cvfem_on_face, &
+        scvfen2, scvfenslx2, scvfensly2, scvfeweigh2, &
+        scvfenlx_all2(1,:,:), scvfenlx_all2(2,:,:), scvfenlx_all2(3,:,:), &
+        sufen2, sufenslx2, sufensly2, &
+        sufenlx_all2(1,:,:), sufenlx_all2(2,:,:), sufenlx_all2(3,:,:), &
+                            ! Surface element shape funcs
+        shape_fun%u_on_face, shape_fun%ufem_on_face, GIdims%nface, &
+        GIdims%sbcvngi, sbcvn2, sbcvfen2, sbcvfenslx2, sbcvfensly2, sbcvfeweigh2, sbcvfenlx_all2(1,:,:),&
+        sbcvfenlx_all2(2,:,:), sbcvfenlx_all2(3,:,:), &
+        sbufen2, sbufenslx2, sbufensly2, sbufenlx_all2(1,:,:), sbufenlx_all2(2,:,:), sbufenlx_all2(3,:,:), &
+        cv_sloclist2, u_sloclist2, Mdims%cv_snloc, Mdims%u_snloc, &
+                            ! Define the gauss points that lie on the surface of the CV
+        findgpts2, colgpts2, shape_fun%ncolgpts, &
+        sele_overlap_scale2, QUAD_OVER_WHOLE_ELE)
 
 
-    if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
-       ewrite(3,*)'2 going into SHAPE_one_ele'
-       call SHAPE_one_ele2(&
-            Mdims%ndim, cv_ele_type, &
-            GIdims%cv_ngi, Mdims%cv_nloc, Mdims%u_nloc,  &
-                                ! Volume shape functions
-            shape_fun%cvweight, shape_fun%cvfen, shape_fun%cvfenlx_all(1,:,:), &
-            shape_fun%cvfenlx_all(2,:,:), shape_fun%cvfenlx_all(3,:,:), &
-            shape_fun%ufen, shape_fun%ufenlx_all(1,:,:), shape_fun%ufenlx_all(2,:,:),&
-            shape_fun%ufenlx_all(3,:,:), &
-                                ! Surface of each CV shape functions
-            GIdims%sbcvngi,  &
-            shape_fun%sbcvfen, shape_fun%sbcvfenslx, shape_fun%sbcvfensly, shape_fun%sbcvfeweigh, &
-            shape_fun%sbufen, shape_fun%sbufenslx, shape_fun%sbufensly, &
-                                ! Surface element shape funcs
-            GIdims%nface, &
-            shape_fun%cv_sloclist, shape_fun%u_sloclist, Mdims%cv_snloc, Mdims%u_snloc )
+    !Copy values into new format
 
-       if(GIdims%scvngi/=GIdims%sbcvngi) FLAbort("scvngi/=sbcvngi")
+    shape_fun%cvn = cvn2; shape_fun%cvweight =  cvweight2
+    shape_fun%cvfen = cvfen2; shape_fun%cvfenlx_all(1:Mdims%Ndim, :, :) = cvfenlx_all2(1:Mdims%Ndim, :, :)
+    shape_fun%ufen = ufen2; shape_fun%ufenlx_all(1:Mdims%Ndim, :, :) = ufenlx_all2(1:Mdims%Ndim, :, :)
+    shape_fun%cv_neiloc = cv_neiloc2; shape_fun%scvfen = scvfen2
+    shape_fun%scvfenslx = scvfenslx2; shape_fun%scvfensly = scvfensly2
+    shape_fun%scvfeweigh = scvfeweigh2; shape_fun%scvfenlx_all(1:Mdims%Ndim, :, :) = scvfenlx_all2(1:Mdims%Ndim, :, :)
+    shape_fun%sufen = sufen2; shape_fun%sufenslx = sufenslx2
+    shape_fun%sufensly = sufensly2; shape_fun%sufenlx_all(1:Mdims%Ndim, :, :) = sufenlx_all2(1:Mdims%Ndim, :, :)
+    shape_fun%sbcvn = sbcvn2; shape_fun%sbcvfen = sbcvfen2
+    shape_fun%sbcvfenslx = sbcvfenslx2; shape_fun%sbcvfensly = sbcvfensly2
+    shape_fun%sbcvfeweigh = sbcvfeweigh2; shape_fun%sbcvfenlx_all(1:Mdims%Ndim, :, :) = sbcvfenlx_all2(1:Mdims%Ndim, :, :)
+    shape_fun%sbufen = sbufen2; shape_fun%sbufenslx = sbufenslx2
+    shape_fun%sbufensly = sbufensly2; shape_fun%sbufenlx_all(1:Mdims%Ndim, :, :) = sbufenlx_all2(1:Mdims%Ndim, :, :)
+    shape_fun%cv_sloclist = cv_sloclist2; shape_fun%u_sloclist = u_sloclist2
+    shape_fun%findgpts = findgpts2; shape_fun%colgpts =   colgpts2
 
-    else
-       call shape_cv_n( Mdims%ndim, cv_ele_type, &
-            GIdims%cv_ngi, Mdims%cv_nloc, Mdims%u_nloc, shape_fun%cvn, shape_fun%cvweight, &
-            shape_fun%cvfen, shape_fun%scvfenlx_all(1,:,:), shape_fun%scvfenlx_all(2,:,:), shape_fun%scvfenlx_all(3,:,:), &
-            shape_fun%ufen, shape_fun%ufenlx_all(1,:,:), shape_fun%ufenlx_all(2,:,:), shape_fun%ufenlx_all(3,:,:) )
-    endif
-    !
-    !(a) scvfen( Mdims%cv_nloc, GIdims%scvngi ): the shape function evaluated for each node
-    !          at each surface gauss point
-    !(b) scvfenslx[y/z]( Mdims%cv_nloc, GIdims%scvngi ): the surface derivatives of the shape
-    !          function for each node at those same points, and the derivatives
-    !          of the shape
-    !(c) scvfeweigh( GIdims%scvngi ): the Gauss weights to use when integrating around
-    !          the control volume surface
-    !(d) cv_neiloc( Mdims%cv_nloc, GIdims%scvngi ): neighbour node for a given node/gauss-point
-    !          pair. This also include quadature points around the element.
-    !
 
-    if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element
-       call shapesv_fem_plus( GIdims%scvngi, shape_fun%cv_neiloc, shape_fun%cv_on_face, shape_fun%cvfem_on_face, &
-            shape_fun%ufem_on_face, &
-            cv_ele_type, Mdims%cv_nloc, shape_fun%scvfen, shape_fun%scvfenslx, shape_fun%scvfensly, shape_fun%scvfeweigh, &
-            shape_fun%scvfenlx_all(1,:,:), shape_fun%scvfenlx_all(2,:,:), shape_fun%scvfenlx_all(3,:,:), &
-            Mdims%u_nloc, shape_fun%sufen, shape_fun%sufenslx, shape_fun%sufensly, &
-            shape_fun%sufenlx_all(1,:,:), shape_fun%sufenlx_all(2,:,:), shape_fun%sufenlx_all(3,:,:), &
-            Mdims%ndim )
+    !Deallocate
+    deallocate(cvn2, cvn_short2, cvweight2, cvfen2,cvfenlx_all2, cvweight_short2,&
+        cvfen_short2, cvfenlx_short_all2, ufen2,ufenlx_all2, cv_neiloc2,scvfen2, scvfenslx2, &
+        scvfensly2, scvfeweigh2,scvfenlx_all2,  sufen2,sufenslx2, sufensly2,&
+        sufenlx_all2, sbcvn2,sbcvfen2, sbcvfenslx2, sbcvfensly2,  sbcvfeweigh2,&
+        sbcvfenlx_all2, sbufen2,sbufenslx2, sbufensly2, sbufenlx_all2,&
+        cv_sloclist2,  u_sloclist2, findgpts2, colgpts2, sele_overlap_scale2)
 
-       ! Determine the surface element shape functions from those
-       ! calculated in SHAPESV_FEM_PLUS and also CV_SLOCLIST( GIdims%nface,Mdims%cv_snloc )
-       call det_suf_ele_shape( GIdims%scvngi, GIdims%nface, &
-            shape_fun%cvfem_on_face, &
-            Mdims%cv_nloc, shape_fun%scvfen, shape_fun%scvfenslx, shape_fun%scvfensly, shape_fun%scvfeweigh, &
-            shape_fun%scvfenlx_all(1,:,:), shape_fun%scvfenlx_all(2,:,:), shape_fun%scvfenlx_all(3,:,:), &
-            Mdims%u_nloc, shape_fun%sufen, shape_fun%sufenslx, shape_fun%sufensly, &
-            shape_fun%sufenlx_all(1,:,:), shape_fun%sufenlx_all(2,:,:), shape_fun%sufenlx_all(3,:,:), &
-            GIdims%sbcvngi, shape_fun%sbcvfen, shape_fun%sbcvfenslx, shape_fun%sbcvfensly, shape_fun%sbcvfeweigh, &
-            shape_fun%sbcvfenlx_all(1,:,:), shape_fun%sbcvfenlx_all(2,:,:), shape_fun%sbcvfenlx_all(3,:,:),  &
-            shape_fun%sbufen, shape_fun%sbufenslx, shape_fun%sbufensly, &
-            shape_fun%sbufenlx_all(1,:,:), shape_fun%sbufenlx_all(2,:,:), shape_fun%sbufenlx_all(3,:,:), &
-            shape_fun%cv_sloclist, shape_fun%u_sloclist, Mdims%cv_snloc, Mdims%u_snloc, &
-            Mdims%ndim, cv_ele_type )
-       ! Define the gauss points that lie on the surface of the
-       ! control volume surrounding a given local node (iloc)
-       ! that is FINDGPTS, COLGPTS, NCOLGPTS
-       call gaussiloc( shape_fun%findgpts, shape_fun%colgpts, shape_fun%ncolgpts, &
-            shape_fun%cv_neiloc, Mdims%cv_nloc, GIdims%scvngi )
-    endif
 
-    ! calculate sbcvn from sbcvfen - Use the max scvfen at a quadrature pt and set to 1:
-    shape_fun%SBCVN=0.0
-    DO SGI=1,GIdims%sbcvngi
-       RMAX=-100.0 ! Find max value of sbcvfen...
-       DO CV_SILOC=1,Mdims%cv_snloc
-          IF(shape_fun%sbcvfen(CV_SILOC,SGI).GT.RMAX) THEN
-             RMAX=shape_fun%sbcvfen(CV_SILOC,SGI)
-             CV_SKLOC=CV_SILOC
-          ENDIF
-       END DO
-       shape_fun%SBCVN(CV_SKLOC,SGI)=1.0
-    END DO
-    !Ensure that we retrieve CVN for porous media under all circumstances
-    if (is_porous_media)  call get_CVN_compact_overlapping( CV_ELE_TYPE, Mdims%NDIM, &
-                                GIdims%cv_ngi, Mdims%CV_NLOC, shape_fun%cvn, shape_fun%cvweight)
-
-    return
   end subroutine cv_fem_shape_funs_new
 
   subroutine cv_fem_shape_funs( &
@@ -863,7 +863,6 @@ contains
          sufen2, sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2, &
          sbufen2, sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, sbufenlz2
     real, dimension( :, : ), allocatable :: M,MLX,MLY,MLZ, sm,SMLX,SMLY
-    character( len = option_path_len ) :: dummy_path, dummypath2
     integer :: u_ele_type2, gi, MLOC, SMLOC
     integer :: sgi, cv_siloc, cv_skloc
     real :: rmax

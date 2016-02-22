@@ -511,20 +511,16 @@ contains
 
 !!$        call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
 !!$            cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
-
-        !Create the rest of multi_integer
+        !Calculate the gauss integer numbers
         call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, .false. )
         call retrieve_ngi( FE_GIdims, Mdims, cv_ele_type, .true. )
-!!$        call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, .false.)
-!!$        call retrieve_ngi_new(FE_GIdims, Mdims, cv_ele_type, .true.)
-
-
-
+!!$        call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, quad_over_whole_ele =.false.)
+!!$        call retrieve_ngi_new(FE_GIdims, Mdims, u_ele_type, quad_over_whole_ele =.true.)
         !! Compute reference shape functions
         call allocate_multi_shape_funs(CV_funs, Mdims, CV_GIdims)
         call allocate_multi_shape_funs(FE_funs, Mdims, FE_GIdims)
-        call cv_fem_shape_funs_new(CV_funs, Mdims, CV_GIdims, cv_ele_type, .false.)
-        call cv_fem_shape_funs_new(FE_funs, Mdims, FE_GIdims, cv_ele_type, .true.)
+        call cv_fem_shape_funs_new(CV_funs, Mdims, CV_GIdims, cv_ele_type, quad_over_whole_ele = .false.)
+        call cv_fem_shape_funs_new(FE_funs, Mdims, FE_GIdims, u_ele_type, quad_over_whole_ele = .true.)
 
         allocate( theta_flux( nphase, ncv_faces * igot_theta_flux ), &
             one_m_theta_flux( nphase, ncv_faces * igot_theta_flux ), &
@@ -802,6 +798,7 @@ end if
                    call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
                    ScalarField_Source, velocity_absorption, temperature_absorption )           
                 end if
+                
 
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
@@ -817,14 +814,15 @@ end if
                     ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
                     ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
                     ! is diagonal
+
                     if( is_porous_media ) then
                         call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-!!$                            cv_snloc, n_in_pres, nphase, ndim, nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                             cv_snloc, n_in_pres, nphase, ndim, CV_GIdims%nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
                             finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
                             state, x_nonods, ids_ndgln )
                     end if
                 end if
+
                 !!$ Solve advection of the scalar 'Temperature':
 
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
@@ -846,10 +844,10 @@ end if
                         small_FINACV, small_COLACV, small_MIDACV, &
                         NCOLCT, FINDCT, COLCT, &
                         CV_ELE_TYPE,&
-                        CV_NDGLN, X_NDGLN, U_NDGLN, &
+                        CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN, &
                         CV_SNDGLN, U_SNDGLN, &
                         !!$
-                        MAT_NDGLN, ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+                        ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc,&
                         DRhoDPressure, &
@@ -915,7 +913,7 @@ end if
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
-                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, Mdims, CV_GIdims, CV_funs, FE_funs, storage_state,&
+                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
                         velocity_field, pressure_field, &
                         U_ELE_TYPE, P_ELE_TYPE, &
                         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN,&
@@ -1043,7 +1041,7 @@ end if
                         end if Conditional_SmoothAbsorption
 
                         !!$ Computing diffusion term for the component conservative equation:
-                        call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, Mdims, &
+                        call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, Mdims,&
                             mat_ndgln, u_ndgln, x_ndgln, &
                             u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt, &
                             Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
@@ -1059,10 +1057,10 @@ end if
                                 SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
                                 NCOLCT, FINDCT, COLCT, &
                                 CV_ELE_TYPE, &
-                                CV_NDGLN, X_NDGLN, U_NDGLN, &
+                                CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN,&
                                 CV_SNDGLN, U_SNDGLN, &
                                 !!$
-                                MAT_NDGLN, Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+                                Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
                                 DRhoDPressure, &
@@ -1822,11 +1820,6 @@ end if
                 !!$ Defining element-pair type
                 call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
                     mat_ele_type, u_sele_type, cv_sele_type )
-                !Create the rest of multi_integer
-                call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, .false. )
-                call retrieve_ngi( FE_GIdims, Mdims, cv_ele_type, .true. )
-!!$                call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, .false.)
-!!$                call retrieve_ngi_new(FE_GIdims, Mdims, cv_ele_type, .true.)
                 !!$ Sparsity Patterns Matrices
                 call Get_Sparsity_Patterns( state, Mdims, &
                     !!$ CV multi-phase eqns (e.g. vol frac, temp)

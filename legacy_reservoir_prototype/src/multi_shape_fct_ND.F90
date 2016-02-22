@@ -40,7 +40,6 @@ module shape_functions_Linear_Quadratic
   use fldebug
   use state_module
   use spud
-  use global_parameters, only: option_path_len
   use Fields_Allocates, only : allocate, make_mesh
   use fields_data_types, only: mesh_type, scalar_field
   use multiphase_caching, only: cache_level, reshape_vector2pointer
@@ -817,6 +816,7 @@ contains
     return
   end subroutine re3d27
 
+
 !!$==========================  
 
   subroutine retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE, &
@@ -1247,6 +1247,8 @@ contains
 
 
 !!$======================
+
+
 
 
   subroutine lagrot( weit, quadpos, ndgi, getndp )
@@ -9307,7 +9309,7 @@ contains
        ! linear triangle:
        IF(CV_NLOC==3) THEN
           IF(NFACE/=3) THEN
-             EWRITE(3,*) 'NFACE not correct NFACE=',NFACE, cv_nloc, cv_ele_type
+             EWRITE(3,*) 'NFACE not correct NFACE=',NFACE
              STOP 4333
           END IF
           if (AlternativeOrdering) then
