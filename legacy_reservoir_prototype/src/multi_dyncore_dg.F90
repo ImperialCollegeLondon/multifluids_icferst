@@ -4021,9 +4021,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ENDIF
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                 if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
-                    state, packed_state,storage_state, Mdims, X_ALL, LOC_U_RHS, ele, Mdims%x_nloc,FACE_ELE,cv_ndgln, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%u_snloc, &
-                    Mdims%totele, Mdims%x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes, QUAD_OVER_WHOLE_ELE, ncolm, findm,&
-                    colm, midm, mass_ele, ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
+                    packed_state,storage_state, Mdims, FE_GIdims, FE_funs, X_ALL, LOC_U_RHS, ele, &
+                    cv_ndgln, x_ndgln, StorageIndexes, ele2, iface,&
+                    sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC )
                 ! ********Mapping to local variables****************
                 ! CV variables...
                 DO CV_SILOC = 1, Mdims%cv_snloc
@@ -7584,27 +7584,20 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
  end subroutine linearise_field
 
 
- subroutine Introduce_Cap_press_term(state, packed_state, storage_state, Mdims, X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,&
-     cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes,&
-     QUAD_OVER_WHOLE_ELE, ncolm, findm, colm, midm, mass_ele, ele2, iface, sdetwe, SNORMXN_ALL, &
-     U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
+ subroutine Introduce_Cap_press_term(packed_state, storage_state, Mdims, FE_GIdims, FE_funs, &
+     X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln, StorageIndexes,&
+     ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
      !This subroutine introduces the capillary pressure term in the RHS
      Implicit none
-     type( state_type ), dimension( : ), intent( inout ) :: state
      type( state_type ), intent( inout ) :: packed_state, storage_state
      type(multi_dimensions), intent(in) :: Mdims
-     integer, intent(in) :: ele, x_nloc, cv_nloc, x_nonods, P_ELE_TYPE, &
-         cv_snloc, totele, u_snloc, ncolm, iface, ele2
-     INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-     INTEGER, DIMENSION( : ), intent( in ) :: COLM
-     INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-     real, dimension(:), intent(inout) :: mass_ele
+     type(multi_GI_dimensions), intent(in) :: FE_GIdims
+     type(multi_shape_funs), intent(in) :: FE_funs
+     integer, intent(in) :: ele, iface, ele2
      integer, dimension(:), intent(in) :: cv_ndgln, x_ndgln
-     integer, dimension(:,:), intent(in) :: FACE_ELE
      integer, dimension(:), intent(inout) :: StorageIndexes
      REAL, DIMENSION ( :, :, : ), intent(inout) :: LOC_U_RHS
      real, dimension(:,:) :: X_ALL
-     logical, intent(in) :: QUAD_OVER_WHOLE_ELE
      real, dimension(:,:), intent(in) :: SNORMXN_ALL
      integer, dimension(:), intent(in) :: U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC
      real, dimension(:), intent(in) :: sdetwe
@@ -7614,104 +7607,51 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      !Use integration by parts to introduce the CapPressure, otherwise it uses the integration by parts twice approach
      logical, parameter :: Int_by_part_CapPress = .false.
      !Local variables
-     type( multi_GI_dimensions ) :: GIdims
-!!$     integer :: ndim, cv_ngi, cv_ngi_short,scvngi, nface, sbcvngi, nphase, u_nloc,&
-     integer :: ndim, nphase, u_nloc,&
-         cv_nonods, iphase, cv_inod, u_siloc, cv_jloc,&
+     integer :: iphase, cv_inod, u_siloc, cv_jloc,&
          CV_SJLOC, u_iloc, cv_Xnod
      logical :: d1, d3
-     logical, dimension(  : , : ), allocatable :: cv_on_face, cvfem_on_face, u_on_face, ufem_on_face
-     real, dimension(:,:), pointer :: CapPressure, CV_Bound_Shape_Func, CV_Shape_Func
-     real, dimension(:), allocatable :: NMX_ALL
+     real, dimension(:,:), pointer :: CapPressure
+     real, dimension(Mdims%cv_snloc, FE_GIdims%sbcvngi) :: CV_Bound_Shape_Func
+     real, dimension(Mdims%cv_nloc, FE_GIdims%cv_ngi) :: CV_Shape_Func
+     real, dimension(Mdims%NDIM) :: NMX_ALL
      !Pointers for detwei
      real, pointer, dimension(:) :: DETWEI, RA
      real, pointer:: volume
      REAL, pointer, DIMENSION(:,:,:):: CVFENX_ALL, UFENX_ALL
-     !Pointers for cv_fem_shape_funs_plus_storage
-     integer, pointer :: ncolgpts
-     integer, dimension(:), pointer ::findgpts,colgpts
-     integer, dimension(:,:), pointer :: cv_neiloc, cv_sloclist, u_sloclist
-     real, dimension( : ), pointer :: cvweight,cvweight_short, scvfeweigh,sbcvfeweigh,&
-         SELE_OVERLAP_SCALE
-     real, dimension( : , : ), pointer:: cvn,cvn_short, cvfen, cvfen_short,ufen,&
-         scvfen, scvfenslx, scvfensly, sufen, sufenslx, sufensly,&
-         sbcvn,sbcvfen, sbcvfenslx, sbcvfensly, sbufen, sbufenslx, sbufensly
-     real, dimension(  : , : , :), pointer ::  cvfenlx_all, cvfenlx_short_all, ufenlx_all,&
-         scvfenlx_all, sufenlx_all, sbcvfenlx_all, sbufenlx_all
 
-     !Prepare local variables
-     ndim = size(LOC_U_RHS,1); nphase = size(LOC_U_RHS,2)
-!!$     nface = size(FACE_ELE,1)
      call get_var_from_packed_state(packed_state, CapPressure = CapPressure)
-     cv_nonods = size(CapPressure,2)
-     u_nloc = size(LOC_U_RHS,3)
-     d1 = (ndim ==1); d3 = (ndim ==3)
+
+     d1 = (Mdims%ndim ==1); d3 = (Mdims%ndim ==3)
 
      !#####Area to retrieve the shape functions#####
-     !Only if we need to calculate the shape functions we retrieve the ngi data
-!!$     call retrieve_ngi( ndim, P_ELE_TYPE, cv_nloc, u_nloc, &
-!!$         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
-   call retrieve_ngi( GIdims, Mdims, p_ele_type, QUAD_OVER_WHOLE_ELE, cv_nloc, u_nloc )
-
-     ALLOCATE( CV_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ), CVFEM_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ))
-     ALLOCATE( U_ON_FACE( U_NLOC, GIDIMS%SCVNGI ), UFEM_ON_FACE( U_NLOC, GIDIMS%SCVNGI ))
-     allocate(NMX_ALL(ndim))
-
-     CALL cv_fem_shape_funs_plus_storage( &
-                              ! Volume shape functions...
-         NDIM, P_ELE_TYPE,  &
-         GIDIMS%CV_NGI, GIDIMS%CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
-         CVWEIGHT, CVFEN, CVFENLX_ALL, &
-         CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT_ALL, &
-         UFEN, UFENLX_ALL, &
-                              ! Surface of each CV shape functions...
-         GIDIMS%SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
-         SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
-         SCVFENLX_ALL,  &
-         SUFEN, SUFENSLX, SUFENSLY,  &
-         SUFENLX_ALL,  &
-                              ! Surface element shape funcs...
-         U_ON_FACE, UFEM_ON_FACE, GIDIMS%NFACE, &
-         GIDIMS%SBCVNGI, SBCVN, SBCVFEN,SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX_ALL, &
-         SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX_ALL, &
-         CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
-                              ! Define the gauss points that lie on the surface of the CV...
-         FINDGPTS, COLGPTS, NCOLGPTS, &
-         SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE,&
-         storage_state, 'Vel_mesh', StorageIndexes(13))
-
-      !Retrieve detwei and ufenx_all
-     CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, TOTELE, X_NONODS, &
-         X_NLOC, CV_NLOC, GIDIMS%CV_NGI, &
-         CVFEN, CVFENLX_ALL(1,:,:), CVFENLX_ALL(2,:,:), CVFENLX_ALL(3,:,:), CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, .false., &
+     CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, Mdims%totele, Mdims%x_nonods, &
+         Mdims%x_nloc, Mdims%cv_nloc, FE_GIdims%cv_ngi, FE_funs%cvfen, FE_funs%cvfenlx_all(1,:,:), &
+         FE_funs%cvfenlx_all(2,:,:), FE_funs%cvfenlx_all(3,:,:), FE_funs%cvweight, DETWEI, RA, VOLUME, D1, D3, .false., &
          CVFENX_ALL, &
-         U_NLOC, UFENLX_ALL(1,:,:), UFENLX_ALL(2,:,:), UFENLX_ALL(3,:,:), UFENX_ALL,&
+         Mdims%u_nloc, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), UFENX_ALL,&
          storage_state ,"C_1", StorageIndexes(14))
-
      !##### End of area to obtain shape functions#####
-
      !Project to FEM
      if (CAP_to_FEM) then
          !Point my pointers to the FEM shape functions
-         CV_Bound_Shape_Func => SBCVFEN
-         CV_Shape_Func => CVFEN
+         CV_Bound_Shape_Func = FE_funs%sbcvfen
+         CV_Shape_Func = FE_funs%cvfen
      else
          !Point my shape functions to the Control volume ones
-         CV_Bound_Shape_Func => SBCVN
-         CV_Shape_Func => CVN
+         CV_Bound_Shape_Func = FE_funs%sbcvn
+         CV_Shape_Func = FE_funs%cvn
      end if
-
      !Integration by parts
      if (Int_by_part_CapPress .or. .not. CAP_to_FEM) then
          if (iface == 1) then!The volumetric term is added just one time
              !Firstly we add the volumetric integral
-             DO U_ILOC = 1, U_NLOC
-                 DO CV_JLOC = 1, CV_NLOC
-                     ! -Integral(CVN CapPressure ᐁUFEN dV)
-                     CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
-                     DO IPHASE = 1, NPHASE
+             DO U_ILOC = 1, Mdims%u_nloc
+                 DO CV_JLOC = 1, Mdims%cv_nloc
+                     ! -Integral(FE_funs%cvn CapPressure ᐁFE_funs%ufen dV)
+                     CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                     DO IPHASE = 1, Mdims%nphase
                          LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
-                             !(CVN ᐁUFEN)
+                             !(FE_funs%cvn ᐁFE_funs%ufen)
                              + matmul(UFENX_ALL(:,U_ILOC,:),CV_Shape_Func( CV_JLOC, : ) *DETWEI( : ))&
                              !CapPressure
                              * CapPressure(IPHASE, CV_INOD)
@@ -7719,20 +7659,20 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                  end do
              end do
          end if
-         !Performing the surface integral, -Integral(CVN CapPressure ᐁUFEN dV)
-         DO U_SILOC = 1, U_SNLOC
+         !Performing the surface integral, -Integral(FE_funs%cvn CapPressure ᐁFE_funs%ufen dV)
+         DO U_SILOC = 1, Mdims%u_snloc
              U_ILOC = U_SLOC2LOC( U_SILOC )
-             DO CV_SJLOC = 1, CV_SNLOC
+             DO CV_SJLOC = 1, Mdims%cv_snloc
                  CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
-                 CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
-                 NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN( U_SILOC, : ) &
+                 CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                 NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) &
                      * CV_Bound_Shape_Func( CV_SJLOC, : ) * SDETWE( : ))
                  if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
-                     cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * CV_NLOC + MAT_OTHER_LOC(CV_JLOC) )
+                     cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
                  else!If no neighbour then we use the same value.
                      cv_Xnod = CV_INOD
                  end if
-                 do iphase = 1, nphase
+                 do iphase = 1, Mdims%nphase
                      LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
                          - NMX_ALL(:) * 0.5*(CapPressure(iphase, CV_INOD)+CapPressure(iphase, cv_Xnod))
                  end do
@@ -7740,14 +7680,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          end do
      else!Volumetric integration only (requires the CapPressure to be in FEM)
          if (iface ==1) then!The volumetric term is added just one time
-             DO U_ILOC = 1, U_NLOC
-                 DO CV_JLOC = 1, CV_NLOC
-                     ! Integral(ᐁCVN CapPressure UFEN dV)
-                     CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
-                     DO IPHASE = 1, NPHASE
+             DO U_ILOC = 1, Mdims%u_nloc
+                 DO CV_JLOC = 1, Mdims%cv_nloc
+                     ! Integral(ᐁFE_funs%cvn CapPressure FE_funs%ufen dV)
+                     CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                     DO IPHASE = 1, Mdims%nphase
                          LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
-                             !(ᐁCVN UFEN)
-                             - matmul(CVFENX_ALL(:,CV_JLOC,:),UFEN( U_ILOC, : ) *DETWEI( : ))&
+                             !(ᐁFE_funs%cvn FE_funs%ufen)
+                             - matmul(CVFENX_ALL(:,CV_JLOC,:),FE_funs%ufen( U_ILOC, : ) *DETWEI( : ))&
                              !CapPressure
                              * CapPressure(IPHASE, CV_INOD)
                      END DO
@@ -7755,19 +7695,19 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
              end do
          end if
          !Get neighbouring nodes
-         !Performing the surface integral, Integral(CVN (Average CapPressure) ᐁUFEN dV)
-         DO U_SILOC = 1, U_SNLOC
+         !Performing the surface integral, Integral(FE_funs%cvn (Average CapPressure) ᐁFE_funs%ufen dV)
+         DO U_SILOC = 1, Mdims%u_snloc
              U_ILOC = U_SLOC2LOC( U_SILOC )
-             DO CV_SJLOC = 1, CV_SNLOC
+             DO CV_SJLOC = 1, Mdims%cv_snloc
                  CV_JLOC = CV_SLOC2LOC( CV_SJLOC )
-                 CV_INOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
-                 NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN( U_SILOC, : ) * SBCVFEN( CV_SJLOC, : ) * SDETWE( : ))
+                 CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                 NMX_ALL = matmul(SNORMXN_ALL( :, : ), FE_funs%sbufen( U_SILOC, : ) * FE_funs%sbcvfen( CV_SJLOC, : ) * SDETWE( : ))
                  if (ELE2 > 0) then!If neighbour then we get its value to calculate the average
-                     cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * CV_NLOC + MAT_OTHER_LOC(CV_JLOC) )
+                     cv_Xnod = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + MAT_OTHER_LOC(CV_JLOC) )
                  else!If no neighbour then we use the same value.
                      cv_Xnod = CV_INOD
                  end if
-                 do iphase = 1, nphase
+                 do iphase = 1, Mdims%nphase
                      LOC_U_RHS( :, IPHASE, U_ILOC) =  LOC_U_RHS( :, IPHASE, U_ILOC ) &
                          + NMX_ALL(:) * 0.5* (CapPressure(iphase, CV_INOD) - CapPressure(iphase, cv_Xnod))
                  end do
@@ -7775,8 +7715,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          end do
      end if
 
-     !Deallocate auxiliar variables
-     deallocate(cv_on_face, cvfem_on_face, u_on_face, ufem_on_face, NMX_ALL)
  end subroutine Introduce_Cap_press_term
 
 
