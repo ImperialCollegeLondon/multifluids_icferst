@@ -581,8 +581,7 @@ contains
             if( have_option( '/material_phase[' // int2str( istate - 1 ) // ']/is_multiphase_component' ) ) &
                 have_component_field = .true.
             !!$
-            call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
-                cv_ndgln, DRhoDPressure )
+            call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
 
             if( have_component_field ) then
                 call get_option( '/material_phase[' // int2str( istate - 1 ) // 'scalar_field::' // &
@@ -804,8 +803,7 @@ end if
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
 
-                call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
-                    cv_ndgln, DRhoDPressure )
+                call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
 
                 if( solve_force_balance .and. is_porous_media ) then
                     call Calculate_AbsorptionTerm( state, packed_state, npres, &
@@ -867,8 +865,7 @@ end if
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
 
-                    call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
-                        cv_ndgln, DRhoDPressure )
+                    call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
 
                 end if Conditional_ScalarAdvectionField
 
@@ -1267,8 +1264,7 @@ end if
             current_time = acctim
 
 
-            call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
-                cv_ndgln, DRhoDPressure )
+            call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
 
             do iphase = 1, nphase
                 f1 => extract_scalar_field( state(iphase), "Temperature", stat )
@@ -1984,8 +1980,7 @@ end if
                     DEALLOCATE( RSUM )
                 end if
 
-                call Calculate_All_Rhos( state, packed_state, ncomp, nphase, ndim, cv_nonods, cv_nloc, totele, &
-                    cv_ndgln, DRhoDPressure )
+                call Calculate_All_Rhos( state, packed_state, Mdims, DRhoDPressure )
 
             end if Conditional_ReallocatingFields
 
