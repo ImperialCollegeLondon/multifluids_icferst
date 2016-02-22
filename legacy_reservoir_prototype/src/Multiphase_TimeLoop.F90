@@ -496,13 +496,9 @@ contains
             igot_t2 = 1 ; igot_theta_flux = 1
         end if
 
-!!$        call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-!!$            cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
         !Calculate the gauss integer numbers
         call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, .false. )
         call retrieve_ngi( FE_GIdims, Mdims, cv_ele_type, .true. )
-!!$        call retrieve_ngi_new(CV_GIdims, Mdims, cv_ele_type, quad_over_whole_ele =.false.)
-!!$        call retrieve_ngi_new(FE_GIdims, Mdims, u_ele_type, quad_over_whole_ele =.true.)
         !! Compute reference shape functions
         call allocate_multi_shape_funs(CV_funs, Mdims, CV_GIdims)
         call allocate_multi_shape_funs(FE_funs, Mdims, FE_GIdims)
@@ -1297,7 +1293,7 @@ end if
 
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
 
-                    call M2MInterpolation(state, packed_state, storage_state, Mdims, StorageIndexes, small_finacv, small_colacv ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
+                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type, 0)
                 else
                     ! In this case, we don't adapt the mesh so we just call both routines straight away which gives back the original field
                     ! Alternatively could just do nothing here
@@ -1846,7 +1842,7 @@ end if
                 if (numberfields > 0) then
 
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
-                        call M2MInterpolation(state, packed_state, storage_state, Mdims, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
+                        call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , 1)
                         call MemoryCleanupInterpolation2()
                     endif
 
