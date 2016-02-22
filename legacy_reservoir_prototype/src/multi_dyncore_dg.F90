@@ -660,7 +660,7 @@ contains
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
     CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
     U_ABS_STAB, MAT_ABSORB, U_ABSORBIN, U_SOURCE, U_SOURCE_CV, &
-    IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
+    IDIVID_BY_VOL_FRAC, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
     NCOLDGM_PHA, &! Force balance
@@ -712,7 +712,6 @@ contains
         REAL, DIMENSION(  :, :, :  ), intent( in ) :: U_SOURCE
         REAL, DIMENSION(  :, :, :  ), intent( inout ) :: U_SOURCE_CV
 
-        REAL, DIMENSION( : , : ), intent( in ) :: FEM_VOL_FRAC
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDC
@@ -1067,7 +1066,7 @@ contains
         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
         X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
-        P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
+        P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), IDIVID_BY_VOL_FRAC, &
         DT, &
         NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
         MAT, NO_MATRIX_STORE, &! Force balance
@@ -1108,7 +1107,7 @@ contains
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, U_RHS, Mdims%nphase, Mdims%n_in_pres, associated(pivit_mat), &
                 &                   C, Mdims%ndim, Mdims%cv_nloc, Mdims%u_nloc, Mdims%totele, CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, FINDC, COLC, pivit_mat, &
                 &                   Mdims%cv_nonods, Mdims%u_nonods, Mdims%npres, Mdims%cv_snloc, Mdims%stotel, P_SNDGLN, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, U_ALL, &
-                &                   U_SOURCE*0.0, U_SOURCE_CV*0.0, FEM_VOL_FRAC ) ! No sources in the wells for now...
+                &                   U_SOURCE*0.0, U_SOURCE_CV*0.0 ) ! No sources in the wells for now...
 
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
@@ -1506,7 +1505,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
     CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
     X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
     U_ALL, UOLD_ALL, &
-    P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
+    P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
     DGM_PETSC, NO_MATRIX_STORE, &! Force balance
@@ -1564,7 +1563,6 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P, P
-        REAL, DIMENSION(  :, :  ), intent( in ) :: FEM_VOL_FRAC
         REAL, DIMENSION(  :, :  ), intent( in ), pointer :: DEN_ALL, DENOLD_ALL
         REAL, DIMENSION(  : , :  ), intent( in ) :: DERIV
         REAL, DIMENSION(  : ,  :   ), intent( inout ) :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -1657,7 +1655,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         U_ALL, UOLD_ALL, &    ! This is nu...
-        UDEN_ALL, UDENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
+        UDEN_ALL, UDENOLD_ALL, DERIV, IDIVID_BY_VOL_FRAC, &
         DT, &
         U_RHS, &
         C, NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -1894,7 +1892,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
-    SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state,Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state, &
+    SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state, Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state, &
          velocity, pressure, &
     U_ELE_TYPE, P_ELE_TYPE, &
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
@@ -1902,7 +1900,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
     X_ALL, U_ABS_STAB, U_ABSORB, U_SOURCE, U_SOURCE_CV, &
     U_ALL, UOLD_ALL, &
     NU_ALL, NUOLD_ALL, &
-    UDEN, UDENOLD, DERIV, IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
+    UDEN, UDENOLD, DERIV, IDIVID_BY_VOL_FRAC, &
     DT, &
     U_RHS, &
     C, NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -1946,7 +1944,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV
         REAL, DIMENSION ( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL, NU_ALL, NUOLD_ALL
         REAL, DIMENSION( :, : ), intent( in ) :: UDEN, UDENOLD, DERIV
-        REAL, DIMENSION( :, : ), intent( in ) :: FEM_VOL_FRAC
         REAL, intent( in ) :: DT
         REAL, DIMENSION( :, :, : ), intent( inout ) :: U_RHS
         REAL, DIMENSION( :, :, : ), pointer, intent( inout ) :: C
@@ -2215,6 +2212,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !variables for linear velocity relaxation
         real, dimension(Mdims%u_nloc, Mdims%u_nloc) :: M_inv, K_mat, kmk_mat, N_mat, K_mat_sym
         real, dimension(Mdims%ndim, Mdims%u_nloc, Mdims%u_nloc) :: K_mat_xall, n_mat_xall
+        type(tensor_field), pointer :: fem_vol_frac_f
+        real, dimension( :, : ), pointer :: fem_vol_frac
+
+        fem_vol_frac_f => extract_tensor_field( packed_state, "FEPhaseVolumeFraction" )
+        fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
+
         ! open the boiling test for two phases-gas and liquid
         if (have_option("\boiling")) then
             GOT_VIRTUAL_MASS=.true.

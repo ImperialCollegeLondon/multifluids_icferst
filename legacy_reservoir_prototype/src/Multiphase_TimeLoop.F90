@@ -169,7 +169,7 @@ contains
         integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
 
         !!$ Shape function related fields:
-        integer :: cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, igot_t2, igot_theta_flux, IGOT_THERM_VIS
+        integer :: scvngi_theta, igot_t2, igot_theta_flux, IGOT_THERM_VIS
 
         !!$ CV-wise porosity
         real, dimension( :, : ), allocatable :: Mean_Pore_CV
@@ -192,7 +192,6 @@ contains
 
         real, dimension( :, : ), pointer :: THETA_GDIFF
 
-        real, dimension( :, : ), pointer :: FEM_VOL_FRAC
         !!$
         real, dimension( :, : ), pointer :: &
             ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component
@@ -429,8 +428,6 @@ contains
 
         !!$ Allocating space for various arrays:
         allocate( &
-            !!$
-            FEM_VOL_FRAC( nphase, cv_nonods ), &
             !!$
             suf_sig_diagten_bc( stotel * cv_snloc * nphase, ndim ), &
             Mean_Pore_CV( npres, cv_nonods ), &
@@ -914,7 +911,7 @@ end if
                         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
                         !!$
                         Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, Velocity_U_Source, Velocity_U_Source_CV, &
-                        IDIVID_BY_VOL_FRAC, FEM_VOL_FRAC, &
+                        IDIVID_BY_VOL_FRAC, &
                         dt, &
                         !!$
                         NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -1404,7 +1401,6 @@ end if
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
             plike_grad_sou_grad, plike_grad_sou_coef, &
             !!$ Working arrays
-            FEM_VOL_FRAC, &
             Velocity_U_Source, Velocity_U_Source_CV, &
             theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
             mass_ele,&
