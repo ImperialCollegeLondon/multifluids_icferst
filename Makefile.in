@@ -468,7 +468,7 @@ mediumtest: fltools bin/$(FLUIDITY) manual spudtools
 test-mp: fltools bin/multiphase_prototype serialtest-mp
 
 serialtest-mp:
-	@cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -l short $(EXCLUDE_TAGS) -n $(THREADS)
+	@cd legacy_reservoir_prototype/tests; ../tools/testharness_MultiphasePrototype.py -x multiphase_test_results.xml -l short $(EXCLUDE_TAGS) -n $(THREADS)
 
 spudtools:
 	@cd libspud ; $(MAKE) install-spudtools
