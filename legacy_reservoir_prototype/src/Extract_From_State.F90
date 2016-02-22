@@ -654,10 +654,9 @@ contains
 
 
 
-    !sprint_to_do!optimize
+    !sprint_to_do! delete u_source and u_abs from state
     subroutine Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-        Velocity_U_Source, Velocity_Absorption, &
-        Permeability )
+        Velocity_U_Source, Velocity_Absorption )
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -665,7 +664,6 @@ contains
         logical, intent( in ) :: initialised
         real, dimension( :, :, : ), intent( inout ) :: Velocity_U_Source
         real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption
-        real, dimension( :, :, : ), optional, intent( inout ) :: Permeability
 
         !!$ Local variables
         type( scalar_field ), pointer :: scalarfield
@@ -682,7 +680,7 @@ contains
         integer, dimension( : ), pointer :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, &
             xu_ndgln, mat_ndgln, cv_sndgln, p_sndgln, u_sndgln
         logical :: is_symmetric
-        real, dimension( : ), allocatable :: dummy!, x, y, z
+        real, dimension( : ), allocatable :: dummy
 
         !!$ Extracting spatial resolution
         call Get_Primary_Scalars( state, &
@@ -695,8 +693,6 @@ contains
         allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
             u_sndgln( stotel * u_snloc ), dummy( cv_nonods ) )
 
-        !      x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0
-        !     u_ndgln = 0 ;  xu_ndgln = 0 ;
         cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
 
         call Compute_Node_Global_Numbers( state, &
@@ -707,19 +703,6 @@ contains
 
         call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type )
 
-
-        !      allocate( x( x_nonods ) , y( x_nonods ), z( x_nonods ) )
-        !
-        !      x = 0. ; y = 0. ; z = 0.
-        !      call xp1_2_xp2( state, &
-        !           x_nloc, x_nloc_p1, x_nonods_p1, x_nonods, &
-        !           x_ndgln_p1, x_ndgln, &
-        !           x, y, z )
-        !      do idim = 1, ndim
-        !         if( idim ==1 ) x_all % val( idim, : ) = x
-        !         if( idim ==2 ) x_all % val( idim, : ) = y
-        !         if( idim ==3 ) x_all % val( idim, : ) = z
-        !      end do
 
         !Get the coordinates of the nodes from the mesh
         x_all => extract_vector_field( packed_state, "PressureCoordinate" )
@@ -742,26 +725,6 @@ contains
         end do Loop_Density
 
         !!$
-        !!$ Extracting Components Field:
-        !!$
-        !      Loop_Components: do icomp = nphase + 1, nphase + ncomp ! Component loop
-        !         Loop_Phases_Components: do iphase = 1, nphase ! Phase loop
-        !
-        !            scalarfield => extract_scalar_field( state( icomp ), 'ComponentMassFractionPhase' // int2str( iphase ) )
-        !
-        !            knod = ( icomp - ( nphase + 1 ) ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods
-        !            knod2 = ( icomp - ( nphase + 1 ) ) * nphase * stotel * cv_snloc + &
-        !                 ( iphase - 1 ) * stotel * cv_snloc
-        !
-        !            call Get_CompositionFields_Outof_State( state, initialised, nphase, icomp, iphase, scalarfield, &
-        !                 Component( knod + 1 : knod + cv_nonods ), &
-        !                 field_prot_source = Component_Source( ( iphase - 1 ) * cv_nonods + 1 : &
-        !                 ( iphase - 1 ) * cv_nonods + cv_nonods ) )
-        !
-        !         end do Loop_Phases_Components
-        !      end do Loop_Components
-
-        !!$
         !!$ Extracting Velocity Field:
         !!$
         Loop_Velocity: do iphase = 1, nphase
@@ -770,49 +733,7 @@ contains
                 field_prot_source=Velocity_U_Source, field_prot_absorption=Velocity_Absorption )
         end do Loop_Velocity
 
-        !!$
-        !!$ Extracting Temperature Field:
-        !!$
-        !      do iphase = 1, nphase
-        !         Conditional_Temperature: if( have_option( '/material_phase[' // int2str( iphase - 1 ) // &
-        !              ']/scalar_field::Temperature' ) ) then
-        !            scalarfield => extract_scalar_field( state( iphase ), 'Temperature' )
-        !            knod = ( iphase - 1 ) * node_count( scalarfield )
-        !            !call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
-        !            !     Temperature( knod + 1 : knod + node_count( scalarfield ) ), &
-        !            !     field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) )
-        !            call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
-        !                 Temperature( iphase, : ), &
-        !                 field_prot_source = Temperature_Source( knod + 1 : knod + node_count( scalarfield ) ) )
-        !         end if Conditional_Temperature
-        !      end do
 
-        !!$
-        !!$ Extracting Permeability Field:
-        !!$
-        if (present(Permeability)) then
-            Permeability = 0.
-            Conditional_PermeabilityField: if( have_option( '/porous_media/scalar_field::Permeability' ) ) then
-
-                scalarfield => extract_scalar_field( state( 1 ), 'Permeability' )
-                do ele = 1, element_count( scalarfield )
-                    element_nodes => ele_nodes( scalarfield, ele )
-                    forall( idim = 1 : ndim ) Permeability( ele, idim, idim ) = scalarfield % val( element_nodes( 1 ) )
-                end do
-
-            elseif( have_option( '/porous_media/tensor_field::Permeability' ) ) then
-
-                tensorfield => extract_tensor_field( state( 1 ), 'Permeability' )
-                option_path =  '/porous_media/tensor_field::Permeability'
-                call Extract_TensorFields_Outof_State( state, 1, &
-                    tensorfield, option_path, &
-                    Permeability )
-
-            elseif( have_option( '/porous_media/vector_field::Permeability' ) ) then
-                FLAbort( 'Permeability Vector Field is not defined yet.' )
-
-            end if Conditional_PermeabilityField
-        end if
         deallocate( cv_sndgln, p_sndgln, u_sndgln, dummy )
 
         return
