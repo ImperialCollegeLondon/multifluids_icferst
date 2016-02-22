@@ -229,7 +229,7 @@ contains
                RETRIEVE_SOLID_CTY = .false.
            end if
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
-               call CV_ASSEMB( state, packed_state, storage_state, &
+               call CV_ASSEMB( state, packed_state, storage_state, Mdims, &
                    tracer, velocity, density, &
                    CV_RHS_field, &
                    petsc_acv, &
@@ -510,7 +510,7 @@ contains
                  call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
 
                  !Assemble the matrix and the RHS
-                 call CV_ASSEMB( state, packed_state, storage_state,&
+                 call CV_ASSEMB( state, packed_state, storage_state, Mdims,&
                      tracer, velocity, density, &
                      CV_RHS_field, &
                      petsc_acv, &
@@ -1191,7 +1191,7 @@ contains
 
             if ( high_order_Ph ) then
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
-                  call high_order_pressure_solve( u_rhs, state, packed_state, storage_state, StorageIndexes, cv_ele_type, Mdims%nphase, U_absorbin )
+                  call high_order_pressure_solve( u_rhs, state, packed_state, storage_state, StorageIndexes, Mdims, cv_ele_type, U_absorbin )
                end if
             end if
 
@@ -1717,7 +1717,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         density=>extract_tensor_field(packed_state,"PackedDensity")
         call halo_update(density)
 
-        call CV_ASSEMB( state, packed_state, storage_state, &
+        call CV_ASSEMB( state, packed_state, storage_state, Mdims, &
              tracer, velocity, density, &
         CV_RHS, &
         ACV, &
@@ -4023,7 +4023,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ENDIF
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                 if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
-                    state, packed_state,storage_state, X_ALL, LOC_U_RHS, ele, Mdims%x_nloc,FACE_ELE,cv_ndgln, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%u_snloc, &
+                    state, packed_state,storage_state, Mdims, X_ALL, LOC_U_RHS, ele, Mdims%x_nloc,FACE_ELE,cv_ndgln, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%u_snloc, &
                     Mdims%totele, Mdims%x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes, QUAD_OVER_WHOLE_ELE, ncolm, findm,&
                     colm, midm, mass_ele, ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
                 ! ********Mapping to local variables****************
@@ -6043,7 +6043,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
- SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, nphase, ncomp, &
+ SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims, nphase, ncomp, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
      U_SOURCE_CV, U_SOURCE, &
      NCOLACV, FINACV, COLACV, MIDACV, &
@@ -6068,6 +6068,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
      type(state_type), dimension( : ), intent( inout ) :: state
      type(state_type), intent( inout ) :: packed_state, storage_state
+     type(multi_dimensions), intent(in) :: Mdims
      integer, intent( in ) :: nphase, ncomp, cv_nonods, U_NONODS, X_NONODS, MAT_NONODS, &
          NCOLACV, NCOLCT, TOTELE, CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
          CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, CV_SNLOC, U_SNLOC, NDIM, &
@@ -6167,7 +6168,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
              do iphase = 1, nphase
 
-                 CALL SURFACE_TENSION_WRAPPER( state, packed_state, storage_state, &
+                 CALL SURFACE_TENSION_WRAPPER( state, packed_state, storage_state, Mdims, &
                      U_FORCE_X_SUF_TEN, U_FORCE_Y_SUF_TEN, U_FORCE_Z_SUF_TEN, &
                      CV_U_FORCE_X_SUF_TEN, CV_U_FORCE_Y_SUF_TEN, CV_U_FORCE_Z_SUF_TEN, &
                      PLIKE_GRAD_SOU_COEF( 1+CV_NONODS*(IPHASE-1) : CV_NONODS*IPHASE ), &
@@ -6220,7 +6221,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
- SUBROUTINE SURFACE_TENSION_WRAPPER( state, packed_state, storage_state,&
+ SUBROUTINE SURFACE_TENSION_WRAPPER( state, packed_state, storage_state, Mdims,&
      U_FORCE_X_SUF_TEN, U_FORCE_Y_SUF_TEN, U_FORCE_Z_SUF_TEN, &
      CV_U_FORCE_X_SUF_TEN, CV_U_FORCE_Y_SUF_TEN, CV_U_FORCE_Z_SUF_TEN, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
@@ -6366,6 +6367,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      IMPLICIT NONE
      type(state_type), dimension( : ), intent( inout ) :: state
      type(state_type), intent( inout ) :: packed_state, storage_state
+     type(multi_dimensions), intent(in) :: Mdims
 
      INTEGER, PARAMETER :: NPHASE = 1
      INTEGER, PARAMETER :: SMOOTH_NITS = 0 ! smoothing iterations, 10 seems good.
@@ -6406,6 +6408,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      LOGICAL, intent( in ) :: USE_PRESSURE_FORCE, USE_SMOOTHING
      integer, dimension(:), intent(inout) ::  StorageIndexes
      ! Local variables
+     type( multi_GI_dimensions ) :: GIdims
      LOGICAL, DIMENSION( : ), allocatable :: X_SHARE,LOG_ON_BOUND
      LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
          CVFEM_ON_FACE, UFEM_ON_FACE
@@ -6457,12 +6460,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      REAL, DIMENSION( :,: ), allocatable :: THERM_U_DIFFUSION_VOL
 
      !        ===> INTEGERS <===
-     INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, &
+!!$     INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, &
+     INTEGER :: COUNT, &
          ELE, GI, &
          NCOLGPTS, &
          U_ILOC, U_JLOC, &
          CV_ILOC, CV_JLOC,  &
-         NFACE, U_INOD, U_NOD, &
+!!$         NFACE, U_INOD, U_NOD, &
+         U_INOD, U_NOD, &
          CV_JNOD, &
          CV_NOD, DG_CV_NOD, IDIM, IGOT_T2, &
          DG_CV_NONODS, IGOT_THERM_VIS
@@ -6524,8 +6529,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
      QUAD_OVER_WHOLE_ELE=.FALSE.
      ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-     call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+!!$     call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
+!!$         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+
+     call retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE )
 
      GOT_DIFFUS = .true.
      ALLOCATE(CV_FORCE_X_SUF_TEN(CV_NONODS))
@@ -6536,89 +6543,89 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      ALLOCATE( JCOUNT_KLOC(  U_NLOC )) ; jcount_kloc = 0
      ALLOCATE( JCOUNT_KLOC2(  U_NLOC )) ; jcount_kloc2 = 0
 
-     ALLOCATE( CVFENX_ALL( NDIM,CV_NLOC,CV_NGI ))
-     ALLOCATE( UFENX_ALL( NDIM,U_NLOC,CV_NGI ))
-     ALLOCATE( DETWEI( CV_NGI ))
-     ALLOCATE( RA( CV_NGI ))
+     ALLOCATE( CVFENX_ALL( NDIM, CV_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( UFENX_ALL( NDIM, U_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( DETWEI( GIDIMS%CV_NGI ))
+     ALLOCATE( RA( GIDIMS%CV_NGI ))
 
 
-     ALLOCATE( CVNORMX( SCVNGI ))
-     ALLOCATE( CVNORMY( SCVNGI ))
-     ALLOCATE( CVNORMZ( SCVNGI ))
-     ALLOCATE( COLGPTS( CV_NLOC * SCVNGI )) !The size of this vector is over-estimated
+     ALLOCATE( CVNORMX( GIDIMS%SCVNGI ))
+     ALLOCATE( CVNORMY( GIDIMS%SCVNGI ))
+     ALLOCATE( CVNORMZ( GIDIMS%SCVNGI ))
+     ALLOCATE( COLGPTS( CV_NLOC * GIDIMS%SCVNGI )) !The size of this vector is over-estimated
      ALLOCATE( FINDGPTS( CV_NLOC + 1 ))
-     ALLOCATE( SNDOTQ( SCVNGI ))
-     ALLOCATE( SNDOTQOLD( SCVNGI ))
-     ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ))
-     ALLOCATE( CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
-     ALLOCATE( U_ON_FACE( U_NLOC, SCVNGI ))
-     ALLOCATE( UFEM_ON_FACE( U_NLOC, SCVNGI ))
+     ALLOCATE( SNDOTQ( GIDIMS%SCVNGI ))
+     ALLOCATE( SNDOTQOLD( GIDIMS%SCVNGI ))
+     ALLOCATE( CV_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( CVFEM_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( U_ON_FACE( U_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( UFEM_ON_FACE( U_NLOC, GIDIMS%SCVNGI ))
      ALLOCATE( CV_OTHER_LOC( CV_NLOC ))
      ALLOCATE( U_OTHER_LOC( U_NLOC ))
      ALLOCATE( MAT_OTHER_LOC( MAT_NLOC ))
      ALLOCATE( X_SHARE( X_NONODS ))
-     ALLOCATE( CVWEIGHT( CV_NGI ))
-     ALLOCATE( CVN( CV_NLOC, CV_NGI ))
-     ALLOCATE( CVFEN( CV_NLOC, CV_NGI ))
-     ALLOCATE( CVFENLX( CV_NLOC, CV_NGI ))
-     ALLOCATE( CVFENLY( CV_NLOC, CV_NGI ))
-     ALLOCATE( CVFENLZ( CV_NLOC, CV_NGI ))
+     ALLOCATE( CVWEIGHT( GIDIMS%CV_NGI ))
+     ALLOCATE( CVN( CV_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( CVFEN( CV_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( CVFENLX( CV_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( CVFENLY( CV_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( CVFENLZ( CV_NLOC, GIDIMS%CV_NGI ))
 
 
-     ALLOCATE( CVWEIGHT_SHORT( CV_NGI_SHORT ))
-     ALLOCATE( CVN_SHORT( CV_NLOC, CV_NGI_SHORT ))
-     ALLOCATE( CVFEN_SHORT( CV_NLOC, CV_NGI_SHORT))
-     ALLOCATE( CVFENLX_SHORT( CV_NLOC, CV_NGI_SHORT ))
-     ALLOCATE( CVFENLY_SHORT( CV_NLOC, CV_NGI_SHORT ))
-     ALLOCATE( CVFENLZ_SHORT( CV_NLOC, CV_NGI_SHORT ))
+     ALLOCATE( CVWEIGHT_SHORT( GIDIMS%CV_NGI_SHORT ))
+     ALLOCATE( CVN_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
+     ALLOCATE( CVFEN_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT))
+     ALLOCATE( CVFENLX_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
+     ALLOCATE( CVFENLY_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
+     ALLOCATE( CVFENLZ_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
 
-     ALLOCATE( UFEN( U_NLOC, CV_NGI))
-     ALLOCATE( UFENLX( U_NLOC, CV_NGI ))
-     ALLOCATE( UFENLY( U_NLOC, CV_NGI ))
-     ALLOCATE( UFENLZ( U_NLOC, CV_NGI ))
+     ALLOCATE( UFEN( U_NLOC, GIDIMS%CV_NGI))
+     ALLOCATE( UFENLX( U_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( UFENLY( U_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( UFENLZ( U_NLOC, GIDIMS%CV_NGI ))
 
 
-     ALLOCATE( SCVFEN( CV_NLOC, SCVNGI ))
-     ALLOCATE( SCVFENSLX( CV_NLOC, SCVNGI ))
-     ALLOCATE( SCVFENSLY( CV_NLOC, SCVNGI ))
-     ALLOCATE( SCVFENLX( CV_NLOC, SCVNGI ))
-     ALLOCATE( SCVFENLY( CV_NLOC, SCVNGI ))
-     ALLOCATE( SCVFENLZ( CV_NLOC, SCVNGI ))
-     ALLOCATE( SCVFEWEIGH( SCVNGI ))
+     ALLOCATE( SCVFEN( CV_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SCVFENSLX( CV_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SCVFENSLY( CV_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SCVFENLX( CV_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SCVFENLY( CV_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SCVFENLZ( CV_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SCVFEWEIGH( GIDIMS%SCVNGI ))
 
-     ALLOCATE( SUFEN( U_NLOC, SCVNGI ))
-     ALLOCATE( SUFENSLX( U_NLOC, SCVNGI ))
-     ALLOCATE( SUFENSLY( U_NLOC, SCVNGI ))
-     ALLOCATE( SUFENLX( U_NLOC, SCVNGI ))
-     ALLOCATE( SUFENLY( U_NLOC, SCVNGI ))
-     ALLOCATE( SUFENLZ( U_NLOC, SCVNGI ))
+     ALLOCATE( SUFEN( U_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SUFENSLX( U_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SUFENSLY( U_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SUFENLX( U_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SUFENLY( U_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( SUFENLZ( U_NLOC, GIDIMS%SCVNGI ))
 
-     ALLOCATE( SCVDETWEI( SCVNGI )) ; SCVDETWEI = 0.
-     ALLOCATE( SRA( SCVNGI ))
+     ALLOCATE( SCVDETWEI( GIDIMS%SCVNGI )) ; SCVDETWEI = 0.
+     ALLOCATE( SRA( GIDIMS%SCVNGI ))
      ALLOCATE( LOG_ON_BOUND(CV_NONODS))
 
-     ALLOCATE( SBCVN( CV_SNLOC, SBCVNGI ))
-     ALLOCATE( SBCVFEN( CV_SNLOC, SBCVNGI ))
-     ALLOCATE( SBCVFENSLX( CV_SNLOC, SBCVNGI ))
-     ALLOCATE( SBCVFENSLY( CV_SNLOC, SBCVNGI ))
-     ALLOCATE( SBCVFEWEIGH( SBCVNGI ))
-     ALLOCATE( SBCVFENLX( CV_SNLOC, SBCVNGI ))
-     ALLOCATE( SBCVFENLY( CV_SNLOC, SBCVNGI ))
-     ALLOCATE( SBCVFENLZ( CV_SNLOC, SBCVNGI ))
-     ALLOCATE( SBUFEN( U_SNLOC, SBCVNGI ))
-     ALLOCATE( SBUFENSLX( U_SNLOC, SBCVNGI ))
-     ALLOCATE( SBUFENSLY( U_SNLOC, SBCVNGI ))
-     ALLOCATE( SBUFENLX( U_SNLOC, SBCVNGI ))
-     ALLOCATE( SBUFENLY( U_SNLOC, SBCVNGI ))
-     ALLOCATE( SBUFENLZ( U_SNLOC, SBCVNGI ))
+     ALLOCATE( SBCVN( CV_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBCVFEN( CV_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBCVFENSLX( CV_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBCVFENSLY( CV_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBCVFEWEIGH( GIDIMS%SBCVNGI ))
+     ALLOCATE( SBCVFENLX( CV_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBCVFENLY( CV_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBCVFENLZ( CV_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBUFEN( U_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBUFENSLX( U_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBUFENSLY( U_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBUFENLX( U_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBUFENLY( U_SNLOC, GIDIMS%SBCVNGI ))
+     ALLOCATE( SBUFENLZ( U_SNLOC, GIDIMS%SBCVNGI ))
      ALLOCATE( DUMMY_ZERO_NDIM_NDIM(NDIM,NDIM))
      DUMMY_ZERO_NDIM_NDIM=0.0
 
      ALLOCATE( CV_SLOC2LOC( CV_SNLOC ))
      ALLOCATE( U_SLOC2LOC( U_SNLOC ))
-     ALLOCATE( CV_SLOCLIST( NFACE, CV_SNLOC ))
-     ALLOCATE( U_SLOCLIST( NFACE, U_SNLOC ))
-     ALLOCATE( CV_NEILOC( CV_NLOC, SCVNGI ))
+     ALLOCATE( CV_SLOCLIST( GIDIMS%NFACE, CV_SNLOC ))
+     ALLOCATE( U_SLOCLIST( GIDIMS%NFACE, U_SNLOC ))
+     ALLOCATE( CV_NEILOC( CV_NLOC, GIDIMS%SCVNGI ))
 
      ALLOCATE( SELE_OVERLAP_SCALE(CV_NLOC) )
 
@@ -6646,19 +6653,19 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      CALL CV_FEM_SHAPE_FUNS( &
                               ! Volume shape functions...
          NDIM, CV_ELE_TYPE,  &
-         CV_NGI, CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
+         GIDIMS%CV_NGI, GIDIMS%CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
          CVWEIGHT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
          CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          UFEN, UFENLX, UFENLY, UFENLZ, &
                               ! Surface of each CV shape functions...
-         SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
+         GIDIMS%SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
          SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
          SCVFENLX, SCVFENLY, SCVFENLZ,  &
          SUFEN, SUFENSLX, SUFENSLY,  &
          SUFENLX, SUFENLY, SUFENLZ,  &
                               ! Surface element shape funcs...
-         U_ON_FACE, UFEM_ON_FACE, NFACE, &
-         SBCVNGI, SBCVN, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX, SBCVFENLY, SBCVFENLZ, &
+         U_ON_FACE, UFEM_ON_FACE, GIDIMS%NFACE, &
+         GIDIMS%SBCVNGI, SBCVN, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX, SBCVFENLY, SBCVFENLZ, &
          SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX, SBUFENLY, SBUFENLZ, &
          CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
                               ! Define the gauss points that lie on the surface of the CV...
@@ -6695,7 +6702,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      CALL PROJ_CV_TO_FEM( FEMT, VOLUME_FRAC, 1, NDIM, &
          unnecessary_zero_length_array,0,unnecessary_zero_length_array,0, MASS_ELE, &
          CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-         CV_NGI_SHORT, CV_NLOC, CVN_SHORT, CVWEIGHT_SHORT, &
+         GIDIMS%CV_NGI_SHORT, CV_NLOC, CVN_SHORT, CVWEIGHT_SHORT, &
          CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          X_NONODS, X, Y, Z, NCOLM, FINDM, COLM, MIDM, &
          IGETCT, RDUM, IDUM, IDUM, 0, OPTION_PATH )
@@ -6747,9 +6754,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          END DO
      endif
 
-     ALLOCATE( FACE_ELE( NFACE, TOTELE ) ) ; FACE_ELE = 0
+     ALLOCATE( FACE_ELE( GIDIMS%NFACE, TOTELE ) ) ; FACE_ELE = 0
      ! Calculate FACE_ELE
-     CALL CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, NFACE, &
+     CALL CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, GIDIMS%NFACE, &
          NCOLELE, FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN, CV_SNDGLN, &
          CV_SLOCLIST, X_NLOC, X_NDGLN )
 
@@ -6757,13 +6764,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          DTX_ELE, DTY_ELE, DTZ_ELE, DTOLDX_ELE, DTOLDY_ELE, DTOLDZ_ELE, &
          NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
          X_NDGLN, X_NLOC, X_NDGLN, &
-         CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
+         GIDIMS%CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
          CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          X_NONODS, X, Y, Z,  &
-         NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
+         GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
          RZERO, &
-         1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
+         1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
          SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
          storage_state, "wrap1", StorageIndexes(15) )
 
@@ -6772,13 +6779,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          SHARP_DTX_ELE, SHARP_DTY_ELE, SHARP_DTZ_ELE, DTOLDX_ELE, DTOLDY_ELE, DTOLDZ_ELE, &
          NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
          X_NDGLN, X_NLOC, X_NDGLN, &
-         CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
+         GIDIMS%CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
          CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          X_NONODS, X, Y, Z,  &
-         NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
+         GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
          RZERO, &
-         1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
+         1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
          SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
          storage_state, "Surf_ten_wrap2", StorageIndexes(16))
 
@@ -6966,13 +6973,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                  rzero3, Rzero3, DZ_TAU_XZ, rzero3, rzero3, rzero3, &
                  NDIM, NDIM, NPHASE, DG_CV_NONODS, TOTELE, DG_CV_NDGLN, &
                  X_NDGLN, X_NLOC, X_NDGLN, &
-                 CV_NGI, CV_NLOC, CVWEIGHT, &
+                 GIDIMS%CV_NGI, CV_NLOC, CVWEIGHT, &
                  CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
                  CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
                  X_NONODS, X, Y, Z, &
-                 NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
+                 GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
                  RZERO,RZERO,RZERO, &
-                 1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
+                 1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                  SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
                  storage_state, "wrapp1", StorageIndexes(17:19))
 
@@ -7002,13 +7009,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      rzero3, Rzero3, DZ_TAU_YZ, rzero3, rzero3, rzero3,&
                      NDIM, NDIM, NPHASE, DG_CV_NONODS, TOTELE, DG_CV_NDGLN, &
                      X_NDGLN, X_NLOC, X_NDGLN, &
-                     CV_NGI, CV_NLOC, CVWEIGHT, &
+                     GIDIMS%CV_NGI, CV_NLOC, CVWEIGHT, &
                      CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
                      CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
                      X_NONODS, X, Y, Z, &
-                     NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
+                     GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
                      RZERO,RZERO,RZERO, &
-                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
+                     1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                      SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
                      storage_state, "wrapp2", StorageIndexes(20:22))
 
@@ -7042,13 +7049,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      rzero3, Rzero3, DZ_TAU_ZZ, rzero3, rzero3, rzero3, &
                      NDIM, NDIM, NPHASE, DG_CV_NONODS, TOTELE, DG_CV_NDGLN, &
                      X_NDGLN, X_NLOC, X_NDGLN, &
-                     CV_NGI, CV_NLOC, CVWEIGHT, &
+                     GIDIMS%CV_NGI, CV_NLOC, CVWEIGHT, &
                      CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
                      CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
                      X_NONODS, X, Y, Z, &
-                     NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
+                     GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
                      RZERO,RZERO,RZERO, &
-                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
+                     1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                      SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
                      storage_state, "wrapp3", StorageIndexes(23:25))
 
@@ -7101,13 +7108,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      DX_DIFF_Z, DY_DIFF_Z, DZ_DIFF_Z, rzero3, rzero3, rzero3, &
                      NDIM, NDIM, NPHASE, DG_CV_NONODS, TOTELE, DG_CV_NDGLN, &
                      X_NDGLN, X_NLOC, X_NDGLN, &
-                     CV_NGI, CV_NLOC, CVWEIGHT, &
+                     GIDIMS%CV_NGI, CV_NLOC, CVWEIGHT, &
                      CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
                      CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
                      X_NONODS, X, Y, Z, &
-                     NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
+                     GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
                      RZERO,RZERO,RZERO, &
-                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
+                     1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                      SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
                      storage_state, "wrapp4", StorageIndexes(26:28))
 
@@ -7126,13 +7133,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      DToldX_ELE, rzero3, rzero3,   rzero3, rzero3, rzero3, &
                      NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
                      X_NDGLN, X_NLOC, X_NDGLN, &
-                     CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
+                     GIDIMS%CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
                      CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
                      CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
                      X_NONODS, X, Y, Z,  &
-                     NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
+                     GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
                      RZERO, &
-                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
+                     1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                      SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
                      storage_state, "wrap4", StorageIndexes(29))
 
@@ -7157,13 +7164,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      rzero3, DToldY_ELE, rzero3,   rzero3, rzero3, rzero3, &
                      NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
                      X_NDGLN, X_NLOC, X_NDGLN, &
-                     CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
+                     GIDIMS%CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
                      CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
                      CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
                      X_NONODS, X, Y, Z,  &
-                     NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
+                     GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
                      RZERO, &
-                     1, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
+                     1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                      SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
                      storage_state, "wrap5", StorageIndexes(30))
 
@@ -7411,7 +7418,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
              DO ELE=1,TOTELE
                  ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
                  CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
-                     X_NLOC, CV_NLOC, CV_NGI, &
+                     X_NLOC, CV_NLOC, GIDIMS%CV_NGI, &
                      CVFEN, CVFENLX, CVFENLY, CVFENLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
                      CVFENX_ALL, &
                      U_NLOC, UFENLX, UFENLY, UFENLZ, UFENX_ALL)
@@ -7420,7 +7427,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                  DO U_ILOC=1,U_NLOC
                      DO U_JLOC=1,U_NLOC
                          NN=0.0
-                         DO GI=1,CV_NGI
+                         DO GI=1,GIDIMS%CV_NGI
                              NN = NN + UFEN( U_ILOC, GI ) * UFEN( U_JLOC, GI ) * DETWEI(GI)
                          END DO
                          MASS(U_ILOC,U_JLOC)=MASS(U_ILOC,U_JLOC)+NN
@@ -7440,7 +7447,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                  DO U_ILOC=1,U_NLOC
                      DO CV_JLOC=1,CV_NLOC
                          NM=0.0
-                         DO GI=1,CV_NGI
+                         DO GI=1,GIDIMS%CV_NGI
                              NM=NM+UFEN( U_ILOC, GI ) * CVFEN( CV_JLOC, GI ) *DETWEI(GI)
                          END DO
                          RHS_U_SHORT_X(U_ILOC)=RHS_U_SHORT_X(U_ILOC)+NM*B_CV_X(CV_JLOC)
@@ -7579,7 +7586,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
  end subroutine linearise_field
 
 
- subroutine Introduce_Cap_press_term(state, packed_state, storage_state, X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,&
+ subroutine Introduce_Cap_press_term(state, packed_state, storage_state, Mdims, X_ALL, LOC_U_RHS, ele, x_nloc,FACE_ELE,&
      cv_ndgln, cv_nloc, cv_snloc, u_snloc, totele, x_nonods, x_ndgln, P_ELE_TYPE, StorageIndexes,&
      QUAD_OVER_WHOLE_ELE, ncolm, findm, colm, midm, mass_ele, ele2, iface, sdetwe, SNORMXN_ALL, &
      U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
@@ -7587,6 +7594,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      Implicit none
      type( state_type ), dimension( : ), intent( inout ) :: state
      type( state_type ), intent( inout ) :: packed_state, storage_state
+     type(multi_dimensions), intent(in) :: Mdims
      integer, intent(in) :: ele, x_nloc, cv_nloc, x_nonods, P_ELE_TYPE, &
          cv_snloc, totele, u_snloc, ncolm, iface, ele2
      INTEGER, DIMENSION( : ), intent( in ) :: FINDM
@@ -7608,7 +7616,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      !Use integration by parts to introduce the CapPressure, otherwise it uses the integration by parts twice approach
      logical, parameter :: Int_by_part_CapPress = .false.
      !Local variables
-     integer :: ndim, cv_ngi, cv_ngi_short,scvngi, nface, sbcvngi, nphase, u_nloc,&
+     type( multi_GI_dimensions ) :: GIdims
+!!$     integer :: ndim, cv_ngi, cv_ngi_short,scvngi, nface, sbcvngi, nphase, u_nloc,&
+     integer :: ndim, nphase, u_nloc,&
          cv_nonods, iphase, cv_inod, u_siloc, cv_jloc,&
          CV_SJLOC, u_iloc, cv_Xnod
      logical :: d1, d3
@@ -7633,7 +7643,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
      !Prepare local variables
      ndim = size(LOC_U_RHS,1); nphase = size(LOC_U_RHS,2)
-     nface = size(FACE_ELE,1)
+!!$     nface = size(FACE_ELE,1)
      call get_var_from_packed_state(packed_state, CapPressure = CapPressure)
      cv_nonods = size(CapPressure,2)
      u_nloc = size(LOC_U_RHS,3)
@@ -7641,29 +7651,30 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
      !#####Area to retrieve the shape functions#####
      !Only if we need to calculate the shape functions we retrieve the ngi data
-     call retrieve_ngi( ndim, P_ELE_TYPE, cv_nloc, u_nloc, &
-         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+!!$     call retrieve_ngi( ndim, P_ELE_TYPE, cv_nloc, u_nloc, &
+!!$         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+   call retrieve_ngi( GIdims, Mdims, p_ele_type, QUAD_OVER_WHOLE_ELE, cv_nloc, u_nloc )
 
-     ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ), CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
-     ALLOCATE( U_ON_FACE( U_NLOC, SCVNGI ), UFEM_ON_FACE( U_NLOC, SCVNGI ))
+     ALLOCATE( CV_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ), CVFEM_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ))
+     ALLOCATE( U_ON_FACE( U_NLOC, GIDIMS%SCVNGI ), UFEM_ON_FACE( U_NLOC, GIDIMS%SCVNGI ))
      allocate(NMX_ALL(ndim))
 
      CALL cv_fem_shape_funs_plus_storage( &
                               ! Volume shape functions...
          NDIM, P_ELE_TYPE,  &
-         CV_NGI, CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
+         GIDIMS%CV_NGI, GIDIMS%CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
          CVWEIGHT, CVFEN, CVFENLX_ALL, &
          CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT_ALL, &
          UFEN, UFENLX_ALL, &
                               ! Surface of each CV shape functions...
-         SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
+         GIDIMS%SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
          SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
          SCVFENLX_ALL,  &
          SUFEN, SUFENSLX, SUFENSLY,  &
          SUFENLX_ALL,  &
                               ! Surface element shape funcs...
-         U_ON_FACE, UFEM_ON_FACE, NFACE, &
-         SBCVNGI, SBCVN, SBCVFEN,SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX_ALL, &
+         U_ON_FACE, UFEM_ON_FACE, GIDIMS%NFACE, &
+         GIDIMS%SBCVNGI, SBCVN, SBCVFEN,SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX_ALL, &
          SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX_ALL, &
          CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
                               ! Define the gauss points that lie on the surface of the CV...
@@ -7673,7 +7684,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
       !Retrieve detwei and ufenx_all
      CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, TOTELE, X_NONODS, &
-         X_NLOC, CV_NLOC, CV_NGI, &
+         X_NLOC, CV_NLOC, GIDIMS%CV_NGI, &
          CVFEN, CVFENLX_ALL(1,:,:), CVFENLX_ALL(2,:,:), CVFENLX_ALL(3,:,:), CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, .false., &
          CVFENX_ALL, &
          U_NLOC, UFENLX_ALL(1,:,:), UFENLX_ALL(2,:,:), UFENLX_ALL(3,:,:), UFENX_ALL,&
@@ -7903,27 +7914,31 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
- subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state, StorageIndexes, cv_ele_type, nphase, u_absorbin )
+ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state, StorageIndexes, Mdims, &
+          cv_ele_type, u_absorbin )
 
      implicit none
 
      real, dimension( :, :, : ), intent( inout ) :: u_rhs
      type( state_type ), dimension( : ), intent( inout ) :: state
      type( state_type ), intent( inout ) :: packed_state, storage_state
-     integer, intent( in ) :: cv_ele_type, nphase
+     type(multi_dimensions), intent(in) :: Mdims
+     integer, intent( in ) :: cv_ele_type
      integer, dimension( : ), intent( inout ) :: StorageIndexes
 
      real, dimension( :, :, : ), intent( in ) :: u_absorbin
 
      ! local variables...
      type ( tensor_field ), pointer :: ufield
-     integer :: ndim, ph_ngi, ph_ngi_short, ph_nloc, ph_snloc, &
-         &     u_nloc, u_snloc, sphngi, sbphngi, nface, stat, &
+     type( multi_GI_dimensions ) :: GIdims
+     integer :: ndim, nphase, ph_ngi, ph_ngi_short, ph_nloc, ph_snloc, &
+!!$         &     u_nloc, u_snloc, sphngi, sbphngi, nface, stat, &
+         &     u_nloc, u_snloc, sphngi, sbphngi, stat, &
          &     totele, x_nonods, ele, x_nloc, &
          &     ph_ele_type, iloop, u_nonods, cv_nonods, &
          &     cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, cv_nloc, &
          &     ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
-     real, dimension( nphase ) :: min_den
+     real, dimension( Mdims%nphase ) :: min_den
      real, dimension( : ), pointer :: phweight, phweight_short, sphfeweigh, sbphfeweigh, &
          &                           sele_overlap_scale
      real, dimension( :, : ), pointer :: phn, phn_short, phfen, phfen_short, ufen, &
@@ -8000,6 +8015,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      u_nonods = node_count( ufield )
 
      quad_over_whole_ele = .true.
+     nphase = Mdims%nphase
 
      ! ph elements
      if ( ndim == 2 ) then
@@ -8012,11 +8028,19 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          stop 567
      end if
 
-     call retrieve_ngi( ndim, ph_ele_type, ph_nloc, u_nloc, &
-         ph_ngi, ph_ngi_short, sphngi, sbphngi, nface, quad_over_whole_ele )
+!!$     call retrieve_ngi( ndim, ph_ele_type, ph_nloc, u_nloc, &
+!!$         ph_ngi, ph_ngi_short, sphngi, sbphngi, nface, quad_over_whole_ele )
 
      allocate( ph_on_face( ph_nloc, sphngi ), phfem_on_face( ph_nloc, sphngi ) )
      allocate( u_on_face( u_nloc, sphngi ), ufem_on_face( u_nloc, sphngi ) )
+
+     call retrieve_ngi( GIdims, Mdims, ph_ele_type, QUAD_OVER_WHOLE_ELE, &
+         ph_nloc, u_nloc )
+
+     ph_ngi = GIdims%cv_ngi ; ph_ngi_short = GIdims%cv_ngi_short ; &
+        sphngi = GIdims%scvngi ; sbphngi = GIdims%sbcvngi
+
+!!$== Maybe the above needs to be generalised 
 
      call cv_fem_shape_funs_plus_storage( &
                               ! volume shape functions...
@@ -8032,7 +8056,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          sufen, sufenslx, sufensly, &
          sufenlx_all, &
                               ! surface element shape funcs...
-         u_on_face, ufem_on_face, nface, &
+         u_on_face, ufem_on_face, GIdims%nface, &
          sbphngi, sbphn, sbphfen, sbphfenslx, sbphfensly, sbphfeweigh, sbphfenlx_all, &
          sbufen, sbufenslx, sbufensly, sbufenlx_all, &
          ph_sloclist, u_sloclist, ph_snloc, u_snloc, &

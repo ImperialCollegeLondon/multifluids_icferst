@@ -57,6 +57,7 @@ module cv_advection
 
     use multi_interpolation
     use multi_tools
+    use multi_data_types
 
 #ifdef HAVE_PETSC_MODULES
   use petsc
@@ -115,7 +116,7 @@ contains
         end if
     end function my_size_real
 
-    SUBROUTINE CV_ASSEMB( state, packed_state, storage_state, &
+    SUBROUTINE CV_ASSEMB( state, packed_state, storage_state, Mdims, &
         tracer, velocity, density, &
         CV_RHS_field, PETSC_ACV,&
         SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
@@ -271,6 +272,7 @@ contains
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state, storage_state
+        type(multi_dimensions), intent(in) :: Mdims
         type(tensor_field), intent(inout), target :: tracer
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
@@ -353,6 +355,7 @@ contains
         !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
         ! Local variables
+        type( multi_GI_dimensions ) :: GIdims
         REAL :: ZERO_OR_TWO_THIRDS
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
         logical, PARAMETER :: integrate_other_side= .true.
@@ -457,13 +460,15 @@ contains
 
 
         !        ===> INTEGERS <===
-        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, ICOUNT, JCOUNT, &
+!!$        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, ICOUNT, JCOUNT, &
+        INTEGER :: COUNT, ICOUNT, JCOUNT, &
             ELE, ELE2, GI, GCOUNT, SELE,   &
             U_SILOC, CV_SILOC, U_KLOC, &
             CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
             CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
             CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
-            NFACE, X_NODI,  X_NODJ, &
+!!$            NFACE, X_NODI,  X_NODJ, &
+            X_NODI,  X_NODJ, &
             CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, &
             XNOD, NSMALL_COLM, COUNT2, NOD, N_IN_PRES
         !        ===>  REALS  <===
@@ -841,8 +846,9 @@ contains
 
         QUAD_OVER_WHOLE_ELE=.FALSE.
         ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-        call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+!!$        call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
+!!$            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+        call retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE )
 
         ! Allocate memory for the control volume surface shape functions, etc.
 
@@ -879,11 +885,11 @@ contains
 
 
 
-        ALLOCATE( CVNORMX_ALL( NDIM, SCVNGI )) ; CVNORMX_ALL=0.0
-        ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ))
-        ALLOCATE( CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
-        ALLOCATE( U_ON_FACE( U_NLOC, SCVNGI ))
-        ALLOCATE( UFEM_ON_FACE( U_NLOC, SCVNGI ))
+        ALLOCATE( CVNORMX_ALL( NDIM, GIDIMS%SCVNGI )) ; CVNORMX_ALL=0.0
+        ALLOCATE( CV_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( CVFEM_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( U_ON_FACE( U_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( UFEM_ON_FACE( U_NLOC, GIDIMS%SCVNGI ))
         ALLOCATE( CV_OTHER_LOC( CV_NLOC ))
         ALLOCATE( U_OTHER_LOC( U_NLOC ))
         ALLOCATE( MAT_OTHER_LOC( MAT_NLOC ))
@@ -920,19 +926,19 @@ contains
         CALL cv_fem_shape_funs_plus_storage( &
                                  ! Volume shape functions...
             NDIM, CV_ELE_TYPE,  &
-            CV_NGI, CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
+            GIDIMS%CV_NGI, GIDIMS%CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
             CVWEIGHT, CVFEN, CVFENLX_ALL, &
             CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT_ALL, &
             UFEN, UFENLX_ALL, &
                                  ! Surface of each CV shape functions...
-            SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
+            GIDIMS%SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
             SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
             SCVFENLX_ALL,  &
             SUFEN, SUFENSLX, SUFENSLY,  &
             SUFENLX_ALL,  &
                                  ! Surface element shape funcs...
-            U_ON_FACE, UFEM_ON_FACE, NFACE, &
-            SBCVNGI, SBCVN, SBCVFEN,SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX_ALL, &
+            U_ON_FACE, UFEM_ON_FACE, GIDIMS%NFACE, &
+            GIDIMS%SBCVNGI, SBCVN, SBCVFEN,SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX_ALL, &
             SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX_ALL, &
             CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
                                  ! Define the gauss points that lie on the surface of the CV...
@@ -1248,7 +1254,7 @@ contains
             PSI(1:FEM_IT), NDIM, &
             PSI_AVE, PSI_INT, MASS_ELE, &
             CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-            CV_NGI_short, CV_NLOC, CVN_short, CVWEIGHT_short,&
+            GIDIMS%CV_NGI_short, CV_NLOC, CVN_short, CVWEIGHT_short,&
             CVFEN_SHORT, CVFENLX_SHORT_ALL, &
             X_NONODS, X_ALL, NCOLM, FINDM, COLM, MIDM, &
             IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC)
@@ -1378,8 +1384,8 @@ contains
 
         END IF ! endof IF ( IANISOLIM == 0 ) THEN ELSE
 
-        ALLOCATE( FACE_ELE( NFACE, TOTELE ) ) ; FACE_ELE = 0
-        CALL CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, NFACE, &
+        ALLOCATE( FACE_ELE( GIDIMS%NFACE, TOTELE ) ) ; FACE_ELE = 0
+        CALL CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, GIDIMS%NFACE, &
             NCOLELE, FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN, CV_SNDGLN, &
             CV_SLOCLIST, X_NLOC, X_NDGLN )
 
@@ -1388,12 +1394,12 @@ contains
                 DTX_ELE_ALL, DTOLDX_ELE_ALL, &
                 NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
                 X_NDGLN, X_NLOC, X_NDGLN,&
-                CV_NGI, CV_NLOC, CVWEIGHT_SHORT, &
+                GIDIMS%CV_NGI, CV_NLOC, CVWEIGHT_SHORT, &
                 CVFEN_SHORT, CVFENLX_SHORT_ALL(1,:,:), CVFENLX_SHORT_ALL(2,:,:), CVFENLX_SHORT_ALL(3,:,:), &
                 CVFEN_SHORT, CVFENLX_SHORT_ALL(1,:,:), CVFENLX_SHORT_ALL(2,:,:), CVFENLX_SHORT_ALL(3,:,:), &
                 X_NONODS, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
-                NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, WIC_T_BC_ALL, SUF_T_BC_ALL, &
-                SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
+                GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, WIC_T_BC_ALL, SUF_T_BC_ALL, &
+                GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                 SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
                 storage_state, "DGDEVAL2", StorageIndexes( 3 ) )
 
@@ -1500,7 +1506,7 @@ contains
 
             ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
             CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, X_NDGLN, TOTELE, X_NONODS, &
-                CV_NLOC, SCVNGI, &
+                CV_NLOC, GIDIMS%SCVNGI, &
                 SCVFEN, SCVFENLX_ALL, SCVFEWEIGH, SCVDETWEI, SCVRA, VOLUME, DCYL, &
                 SCVFENX_ALL, &
                 NDIM, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
@@ -1741,7 +1747,7 @@ contains
                                 CV_JLOC = CV_ILOC
                                 ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
                                 CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
-                                    FACE_ELE, NFACE, CVFEM_ON_FACE( :, GI ), &
+                                    FACE_ELE, GIDIMS%NFACE, CVFEM_ON_FACE( :, GI ), &
                                     CV_NONODS, CV_NLOC, U_NLOC, CV_SNLOC, U_SNLOC, &
                                     CV_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN )
                             END IF
@@ -1812,7 +1818,7 @@ contains
 
 
                             ! Calculate the control volume normals at the Gauss pts.
-                            CALL SCVDETNX_new( ELE, GI, X_NLOC, SCVNGI, TOTELE, NDIM, &
+                            CALL SCVDETNX_new( ELE, GI, X_NLOC, GIDIMS%SCVNGI, TOTELE, NDIM, &
                                 X_NDGLN, X_NONODS, SCVDETWEI, CVNORMX_ALL,  &
                                 SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, XC_CV_ALL( 1:NDIM, CV_NODI ), &
                                 X_ALL(1:NDIM,:),  D1, D3, DCYL )
@@ -2142,7 +2148,7 @@ contains
                                 ENDIF
                                 CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
                                     CV_NLOC, MAT_NLOC, CV_NONODS, NPHASE, TOTELE, MAT_NONODS, MAT_NDGLN, &
-                                    SCVFEN, SCVFEN, SCVNGI, GI, NDIM, TDIFFUSION, DUMMY_ZERO_NDIM_NDIM_NPHASE, &
+                                    SCVFEN, SCVFEN, GIDIMS%SCVNGI, GI, NDIM, TDIFFUSION, DUMMY_ZERO_NDIM_NDIM_NPHASE, &
                                     HDC, &
                                     T_ALL_J( : ), T_ALL(:, CV_NODI), &
                                     TOLD_ALL_J( : ), TOLD_ALL(:, CV_NODI), &
@@ -2319,7 +2325,7 @@ contains
                                     CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
                                     ELE, CV_NONODS, X_NONODS, NDIM, NPHASE,  &
                                     CV_NLOC,TOTELE, X_NDGLN, CV_NDGLN,  &
-                                    X_ALL,XC_CV_ALL,FACE_ELE,NFACE,BETWEEN_ELEMENTS, integrate_other_side, SCVFEN, SCVFENX_ALL, GI, INV_JAC, NUGI_ALL, on_domain_boundary )
+                                    X_ALL,XC_CV_ALL,FACE_ELE,GIDIMS%NFACE,BETWEEN_ELEMENTS, integrate_other_side, SCVFEN, SCVFENX_ALL, GI, INV_JAC, NUGI_ALL, on_domain_boundary )
                             ENDIF
                             ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
                             FVT(:)=T_ALL(:,CV_NODI)*(1.0-INCOME(:)) + T_ALL(:,CV_NODJ)*INCOME(:)
@@ -2335,18 +2341,18 @@ contains
                             !###############################################################
                             IPT=1
                             CALL UNPACK_LOC( LIMF(:), LIMT( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,1), GLOBAL_FACE, IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1),&
-                                SCVNGI*TOTELE,storage_state, 'limf1', StorageIndexes(5) )
+                                GIDIMS%SCVNGI*TOTELE,storage_state, 'limf1', StorageIndexes(5) )
                             CALL UNPACK_LOC( LIMF(:), LIMTOLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,2), GLOBAL_FACE, IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2),&
-                                SCVNGI*TOTELE,storage_state, 'limf2', StorageIndexes(6) )
+                                GIDIMS%SCVNGI*TOTELE,storage_state, 'limf2', StorageIndexes(6) )
                             CALL UNPACK_LOC( LIMF(:), LIMD( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,3), GLOBAL_FACE, IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3),&
-                                SCVNGI*TOTELE,storage_state, 'limf3', StorageIndexes(7) )
+                                GIDIMS%SCVNGI*TOTELE,storage_state, 'limf3', StorageIndexes(7) )
                             CALL UNPACK_LOC( LIMF(:), LIMDOLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,4), GLOBAL_FACE, IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4),&
-                                SCVNGI*TOTELE,storage_state, 'limf4', StorageIndexes(8) )
+                                GIDIMS%SCVNGI*TOTELE,storage_state, 'limf4', StorageIndexes(8) )
                             IF ( use_volume_frac_T2 ) THEN
                                 CALL UNPACK_LOC( LIMF(:), LIMT2( : ),    NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,5), GLOBAL_FACE, IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5),&
-                                    SCVNGI*TOTELE,storage_state, 'limf5', StorageIndexes(9) )
+                                    GIDIMS%SCVNGI*TOTELE,storage_state, 'limf5', StorageIndexes(9) )
                                 CALL UNPACK_LOC( LIMF(:), LIMT2OLD( : ), NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK(:,6), GLOBAL_FACE, IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6),&
-                                    SCVNGI*TOTELE,storage_state, 'limf6', StorageIndexes(10) )
+                                    GIDIMS%SCVNGI*TOTELE,storage_state, 'limf6', StorageIndexes(10) )
                             else
                                 LIMT2( : )=1.0; LIMT2OLD( : )=1.0
                             ENDIF
@@ -2484,7 +2490,7 @@ contains
 
 
                                 ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
-                                CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
+                                CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, GIDIMS%SCVNGI, GI, NCOLCT, NDIM, &
                                     CV_NONODS, U_NONODS, NPHASE, NPRES, n_in_pres, CV_SNLOC, between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
                                     JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
                                     SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -2788,7 +2794,7 @@ contains
             do ele =1, totele
                 ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
                 CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, X_NDGLN, TOTELE, X_NONODS, &
-                    CV_NLOC, SCVNGI, &
+                    CV_NLOC, GIDIMS%SCVNGI, &
                     SCVFEN, SCVFENLX_ALL, SCVFEWEIGH, SCVDETWEI, SCVRA, VOLUME, DCYL, &
                     SCVFENX_ALL, &
                     NDIM, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
@@ -4938,129 +4944,130 @@ contains
 
 
 
-    function CV_count_faces( packed_state,&
-        CV_ELE_TYPE,  &
-        STOTEL, CV_SNDGLN, U_SNDGLN, &
-        face_sparsity) result(global_face)
+    function CV_count_faces( packed_state, Mdims, &
+         CV_ELE_TYPE,  &
+         STOTEL, CV_SNDGLN, U_SNDGLN, &
+         face_sparsity) result(global_face)
 
-        !  =====================================================================
-        !     This subroutine counts then number of faces in the control volume space
-        !
+      !  =====================================================================
+      !     This subroutine counts then number of faces in the control volume space
+      !
 
-        ! Inputs/Outputs
-        IMPLICIT NONE
-        type(state_type), intent(inout) :: packed_state
-        INTEGER, intent( in ) :: CV_ELE_TYPE, STOTEL
-        INTEGER, DIMENSION( : ), pointer :: CV_NDGLN
-        INTEGER, DIMENSION( : ), pointer ::  X_NDGLN
-        INTEGER, DIMENSION( : ), pointer :: U_NDGLN
-        INTEGER, DIMENSION( : ), pointer :: XU_NDGLN
-        INTEGER, DIMENSION( : ), pointer :: MAT_NDGLN
-        INTEGER, DIMENSION( : ) :: CV_SNDGLN
-        INTEGER, DIMENSION(: )  :: U_SNDGLN
-        ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
-        INTEGER, DIMENSION( : ), pointer :: FINDCMC, COLCMC
+      ! Inputs/Outputs
+      IMPLICIT NONE
+      type(state_type), intent(inout) :: packed_state
+      type(multi_dimensions), intent(in) :: Mdims
+      INTEGER, intent( in ) :: CV_ELE_TYPE, STOTEL
+      INTEGER, DIMENSION( : ), pointer :: CV_NDGLN
+      INTEGER, DIMENSION( : ), pointer ::  X_NDGLN
+      INTEGER, DIMENSION( : ), pointer :: U_NDGLN
+      INTEGER, DIMENSION( : ), pointer :: XU_NDGLN
+      INTEGER, DIMENSION( : ), pointer :: MAT_NDGLN
+      INTEGER, DIMENSION( : ) :: CV_SNDGLN
+      INTEGER, DIMENSION(: )  :: U_SNDGLN
+      ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
+      INTEGER, DIMENSION( : ), pointer :: FINDCMC, COLCMC
 
-        INTEGER, DIMENSION( : ), pointer :: FINDM, COLM, MIDM
-        INTEGER, DIMENSION( : ), pointer :: FINELE, COLELE
-        integer, dimension(:), pointer :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
-        !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
-
-
-        ! Local variables
-        integer :: CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-            CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, &
-            NDIM, XU_NLOC, cv_snloc, u_snloc
-        LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
-        LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
-            CVFEM_ON_FACE, UFEM_ON_FACE
-        INTEGER, DIMENSION( : ), allocatable :: FINDGPTS, &
-            CV_OTHER_LOC, U_OTHER_LOC, MAT_OTHER_LOC, &
-            COLGPTS, CV_SLOC2LOC, U_SLOC2LOC, &
-            TMAX_NOD, TMIN_NOD, &
-            DENMAX_NOD, DENMIN_NOD, &
-            T2MAX_NOD, T2MIN_NOD
-        INTEGER, DIMENSION( : , : ), allocatable :: CV_SLOCLIST, U_SLOCLIST, &
-            FACE_ELE, CV_NEILOC
-        REAL, DIMENSION( : ), allocatable :: CVWEIGHT, CVWEIGHT_SHORT, SCVFEWEIGH, SBCVFEWEIGH, &
-            CVNORMX, &
-            CVNORMY, CVNORMZ, SCVRA, SCVDETWEI, &
-            SUM_CV, SELE_OVERLAP_SCALE, &
-            UP_WIND_NOD, DU, DV, DW, PERM_ELE
-        REAL, DIMENSION( : , : ), allocatable :: CVN, CVN_SHORT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
-            CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT,  &
-            UFEN, UFENLX, UFENLY, UFENLZ, SCVFEN, SCVFENSLX, SCVFENSLY, &
-            SCVFENLX, SCVFENLY, SCVFENLZ, &
-            SCVFENX, SCVFENY, SCVFENZ, &
-            SUFEN, SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ, &
-            SBCVN,SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-            SBCVFENLX, SBCVFENLY, SBCVFENLZ, SBUFEN, SBUFENSLX, SBUFENSLY, &
-            SBUFENLX, SBUFENLY, SBUFENLZ
-
-        !        ===> INTEGERS <===
-        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, JCOUNT, &
-            ELE, ELE2, GI, GCOUNT, SELE,   &
-            NCOLGPTS, &
-            CV_SILOC, U_KLOC, &
-            CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
-            CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
-            CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
-            JCOUNT_IPHA, IMID_IPHA, &
-            NFACE, X_NODI,  &
-            CV_INOD, MAT_NODI, FACE_ITS, NFACE_ITS, &
-            CVNOD, XNOD, NSMALL_COLM, COUNT2, NOD
-
-        !        ===>  LOGICALS  <===
-        LOGICAL :: QUAD_OVER_WHOLE_ELE,integrat_at_gi
-
-        INTEGER :: GLOBAL_FACE
-        type(csr_sparsity), pointer :: connectivity
-        type(mesh_type), pointer :: cv_mesh, x_mesh, xu_mesh, u_mesh, mat_mesh
-
-        type(csr_sparsity), intent(out), optional :: face_sparsity
-        type(ilist), dimension(:), allocatable :: face_list
-
-        GLOBAL_FACE=0
-
-        connectivity=>extract_csr_sparsity(packed_state,"ElementConnectivity")
-        cv_mesh=>extract_mesh(packed_state,"PressureMesh")
-        cv_ndgln=>cv_mesh%ndglno
-        totele=element_count(cv_mesh)
-        ndim=mesh_dim(cv_mesh)
-        cv_nonods=node_count(cv_mesh)
-        cv_nloc=ele_loc(cv_mesh,1)
-        cv_snloc=face_loc(cv_mesh,1)
-        x_mesh=>extract_mesh(packed_state,"PressureMesh_Continuous")
-        x_ndgln=>x_mesh%ndglno
-        X_nonods=node_count(x_mesh)
-        X_nloc=ele_loc(x_mesh,1)
-        xu_mesh=>extract_mesh(packed_state,"VelocityMesh_Continuous")
-        xu_ndgln=>xu_mesh%ndglno
-        xu_nloc=ele_loc(xu_mesh,1)
-        u_mesh=>extract_mesh(packed_state,"InternalVelocityMesh")
-        u_ndgln=>u_mesh%ndglno
-        u_nonods=node_count(u_mesh)
-        u_nloc=ele_loc(u_mesh,1)
-        u_snloc=face_loc(u_mesh,1)
-
-        mat_mesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
-        mat_nloc=ele_loc(mat_mesh,1)
-
-        allocate( face_list( totele ) )
-
-        ewrite(3,*) 'In CV_FACE_COUNT'
-
-        QUAD_OVER_WHOLE_ELE=.FALSE.
-        ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-        call retrieve_ngi( TOTELE, cv_ele_type, CV_NLOC,U_NLOC, &
-            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
-
-        global_face=totele * SCVNGI * 2
-        return
+      INTEGER, DIMENSION( : ), pointer :: FINDM, COLM, MIDM
+      INTEGER, DIMENSION( : ), pointer :: FINELE, COLELE
+      integer, dimension(:), pointer :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
+      !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
 
+      ! Local variables
+      type( multi_GI_dimensions ) :: GIdims
+      integer :: CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
+           CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, &
+           NDIM, XU_NLOC, cv_snloc, u_snloc
+      LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
+      LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
+           CVFEM_ON_FACE, UFEM_ON_FACE
+      INTEGER, DIMENSION( : ), allocatable :: FINDGPTS, &
+           CV_OTHER_LOC, U_OTHER_LOC, MAT_OTHER_LOC, &
+           COLGPTS, CV_SLOC2LOC, U_SLOC2LOC, &
+           TMAX_NOD, TMIN_NOD, &
+           DENMAX_NOD, DENMIN_NOD, &
+           T2MAX_NOD, T2MIN_NOD
+      INTEGER, DIMENSION( : , : ), allocatable :: CV_SLOCLIST, U_SLOCLIST, &
+           FACE_ELE, CV_NEILOC
+      REAL, DIMENSION( : ), allocatable :: CVWEIGHT, CVWEIGHT_SHORT, SCVFEWEIGH, SBCVFEWEIGH, &
+           CVNORMX, &
+           CVNORMY, CVNORMZ, SCVRA, SCVDETWEI, &
+           SUM_CV, SELE_OVERLAP_SCALE, &
+           UP_WIND_NOD, DU, DV, DW, PERM_ELE
+      REAL, DIMENSION( : , : ), allocatable :: CVN, CVN_SHORT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
+           CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT,  &
+           UFEN, UFENLX, UFENLY, UFENLZ, SCVFEN, SCVFENSLX, SCVFENSLY, &
+           SCVFENLX, SCVFENLY, SCVFENLZ, &
+           SCVFENX, SCVFENY, SCVFENZ, &
+           SUFEN, SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ, &
+           SBCVN,SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
+           SBCVFENLX, SBCVFENLY, SBCVFENLZ, SBUFEN, SBUFENSLX, SBUFENSLY, &
+           SBUFENLX, SBUFENLY, SBUFENLZ
 
-        return
+      !        ===> INTEGERS <===
+!!$        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, JCOUNT, &
+      INTEGER :: COUNT, JCOUNT, &
+           ELE, ELE2, GI, GCOUNT, SELE,   &
+           NCOLGPTS, &
+           CV_SILOC, U_KLOC, &
+           CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
+           CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
+           CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
+           JCOUNT_IPHA, IMID_IPHA, &
+           NFACE, X_NODI,  &
+           CV_INOD, MAT_NODI, FACE_ITS, NFACE_ITS, &
+           CVNOD, XNOD, NSMALL_COLM, COUNT2, NOD
+
+      !        ===>  LOGICALS  <===
+      LOGICAL :: QUAD_OVER_WHOLE_ELE, integrat_at_gi
+
+      INTEGER :: GLOBAL_FACE
+      type(csr_sparsity), pointer :: connectivity
+      type(mesh_type), pointer :: cv_mesh, x_mesh, xu_mesh, u_mesh, mat_mesh
+
+      type(csr_sparsity), intent(out), optional :: face_sparsity
+      type(ilist), dimension(:), allocatable :: face_list
+
+      GLOBAL_FACE=0
+
+      connectivity=>extract_csr_sparsity(packed_state,"ElementConnectivity")
+      cv_mesh=>extract_mesh(packed_state,"PressureMesh")
+      cv_ndgln=>cv_mesh%ndglno
+      totele=element_count(cv_mesh)
+      ndim=mesh_dim(cv_mesh)
+      cv_nonods=node_count(cv_mesh)
+      cv_nloc=ele_loc(cv_mesh,1)
+      cv_snloc=face_loc(cv_mesh,1)
+      x_mesh=>extract_mesh(packed_state,"PressureMesh_Continuous")
+      x_ndgln=>x_mesh%ndglno
+      X_nonods=node_count(x_mesh)
+      X_nloc=ele_loc(x_mesh,1)
+      xu_mesh=>extract_mesh(packed_state,"VelocityMesh_Continuous")
+      xu_ndgln=>xu_mesh%ndglno
+      xu_nloc=ele_loc(xu_mesh,1)
+      u_mesh=>extract_mesh(packed_state,"InternalVelocityMesh")
+      u_ndgln=>u_mesh%ndglno
+      u_nonods=node_count(u_mesh)
+      u_nloc=ele_loc(u_mesh,1)
+      u_snloc=face_loc(u_mesh,1)
+
+      mat_mesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
+      mat_nloc=ele_loc(mat_mesh,1)
+
+      allocate( face_list( totele ) )
+
+      ewrite(3,*) 'In CV_FACE_COUNT'
+
+      QUAD_OVER_WHOLE_ELE=.FALSE.
+      ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
+!!$        call retrieve_ngi( TOTELE, cv_ele_type, CV_NLOC,U_NLOC, &
+!!$            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+      call retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE )
+
+      global_face=totele * GIdims%scvngi * 2
+
+      return
     end function CV_COUNT_FACES
 
 

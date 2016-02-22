@@ -51,6 +51,7 @@ module solvers_module
     use Copy_Outof_State
     use shape_functions_Linear_Quadratic
     use shape_functions_prototype
+    use multi_data_types
 
     implicit none
 
@@ -978,7 +979,7 @@ contains
     end subroutine ibubble2
 
 
-    subroutine BoundedSolutionCorrections( state, packed_state, storage_state, small_findrm, small_colm, StorageIndexes, cv_ele_type, &
+    subroutine BoundedSolutionCorrections( state, packed_state, storage_state, Mdims, small_findrm, small_colm, StorageIndexes, cv_ele_type, &
         for_sat, IDs2CV_ndgln)
 
         implicit none
@@ -997,6 +998,7 @@ contains
 
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state, storage_state
+        type(multi_dimensions), intent(in) :: Mdims
         integer, dimension( : ), intent( in ) :: small_findrm, small_colm
         integer, intent( in ) :: cv_ele_type
         integer, dimension( : ), intent( inout ) :: StorageIndexes
@@ -1004,6 +1006,7 @@ contains
         integer, optional, dimension(:) :: IDs2CV_ndgln
         ! local variables...
         type ( tensor_field ), pointer :: field, ufield
+        type( multi_GI_dimensions ) :: GIdims
         ! ( ndim1, ndim2, cv_nonods )
         real, dimension( :, :, : ), allocatable :: field_dev_val, field_alt_val, field_min, field_max
         real, dimension( :, : ), allocatable :: scalar_field_dev_max, scalar_field_dev_min
@@ -1016,8 +1019,10 @@ contains
 
 
         ! variables for cv_fem_shape_funs_plus_storage
-        integer :: ndim, cv_ngi, cv_ngi_short, cv_nloc, cv_snloc, &
-            &     u_nloc, u_snloc, scvngi, sbcvngi, nface, &
+!!$        integer :: ndim, cv_ngi, cv_ngi_short, cv_nloc, cv_snloc, &
+!!$            &     u_nloc, u_snloc, scvngi, sbcvngi, nface, &
+        integer :: ndim, cv_nloc, cv_snloc, &
+            &     u_nloc, u_snloc, &
             &     totele, x_nonods, ele, iloc, jloc
         real :: mm
         real, dimension( : ), pointer :: cvweight, cvweight_short, scvfeweigh, sbcvfeweigh, &
@@ -1077,28 +1082,30 @@ contains
 
         quad_over_whole_ele = .false.
 
-        call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, quad_over_whole_ele )
+!!$        call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
+!!$            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, quad_over_whole_ele )
 
-        allocate( cv_on_face( cv_nloc, scvngi ),  cvfem_on_face( cv_nloc, scvngi ) )
-        allocate( u_on_face( u_nloc, scvngi ), ufem_on_face( u_nloc, scvngi ) )
+        call retrieve_ngi( GIdims, Mdims, cv_ele_type, quad_over_whole_ele )
+
+        allocate( cv_on_face( cv_nloc, GIdims%scvngi ),  cvfem_on_face( cv_nloc, GIdims%scvngi ) )
+        allocate( u_on_face( u_nloc, GIdims%scvngi ), ufem_on_face( u_nloc, GIdims%scvngi ) )
 
         call cv_fem_shape_funs_plus_storage( &
                                  ! volume shape functions...
             ndim, cv_ele_type,  &
-            cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
+            GIdims%cv_ngi, GIdims%cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
             cvweight, cvfen, cvfenlx_all, &
             cvweight_short, cvfen_short, cvfenlx_short_all, &
             ufen, ufenlx_all, &
                                  ! surface of each cv shape functions...
-            scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
+            GIdims%scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
             scvfen, scvfenslx, scvfensly, scvfeweigh, &
             scvfenlx_all,  &
             sufen, sufenslx, sufensly,  &
             sufenlx_all,  &
                                  ! surface element shape funcs...
-            u_on_face, ufem_on_face, nface, &
-            sbcvngi, sbcvn, sbcvfen,sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx_all, &
+            u_on_face, ufem_on_face, GIdims%nface, &
+            GIdims%sbcvngi, sbcvn, sbcvfen,sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx_all, &
             sbufen, sbufenslx, sbufensly, sbufenlx_all, &
             cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
                                  ! define the gauss points that lie on the surface of the cv...
@@ -1115,13 +1122,13 @@ contains
 
         d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
 
-        allocate( detwei2( cv_ngi_short ), ra2( cv_ngi_short ), nx_all2( ndim, cv_nloc, cv_ngi ) )
+        allocate( detwei2( GIdims%cv_ngi_short ), ra2( GIdims%cv_ngi_short ), nx_all2( ndim, cv_nloc, GIdims%cv_ngi ) )
 
         mass_cv = 0.0
         do  ele = 1, totele
 
             call detnlxr( ele, x%val( 1, : ), x%val( 2, : ), x%val( 3, : ), &
-                &        x_ndgln, totele, x_nonods, cv_nloc, cv_ngi_short, cvfen_short, &
+                &        x_ndgln, totele, x_nonods, cv_nloc, GIdims%cv_ngi_short, cvfen_short, &
                 &        cvfenlx_short_all( 1, :, : ), cvfenlx_short_all( 2, :, : ), &
                 &        cvfenlx_short_all( 3, :, : ), &
                 &        cvweight_short, detwei2, ra2, volume2, d1, d3, dcyl, &

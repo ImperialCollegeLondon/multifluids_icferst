@@ -817,332 +817,438 @@ contains
   end subroutine re3d27
 
 
-  subroutine retrieve_ngi_new(GIdims, Mdims, ele_type, QUAD_OVER_WHOLE_ELE)
-      implicit none
-      type (multi_GI_dimensions), intent(inout) :: GIdims
-      type (multi_dimensions), intent(inout) :: Mdims
-      integer, intent(in) :: ele_type
-      ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-      logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
-      !local variable
-      integer :: cv_ngi_short
+!!$==========================  
 
-      call retrieve_ngi( Mdims%ndim, ele_type, Mdims%cv_nloc, Mdims%u_nloc, &
-       GIdims%cv_ngi, cv_ngi_short, GIdims%scvngi, GIdims%sbcvngi, GIdims%nface, QUAD_OVER_WHOLE_ELE)
-  end subroutine retrieve_ngi_new
-
-  subroutine retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-       cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE)
+  subroutine retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE, &
+       scalar_nloc, vector_nloc )
     implicit none
-    integer, intent( in ) :: ndim, cv_ele_type, cv_nloc, u_nloc
-    ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
+    type( multi_GI_dimensions ), intent( inout ) :: GIdims
+    type( multi_dimensions ), intent( in ) :: Mdims
+    integer, intent( in ) :: cv_ele_type
+!!$ If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
     logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
-    integer, intent( inout ) :: cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface
-    ! Local variables
-    ! volume_order & surface_order are the volume and surface
-    ! order of the integration used within each sub-quad/hex for CV approach.
-    ! Default value -ve or 0 value is always 1pt quadrature (=1).
-    integer, PARAMETER :: volume_order=1
-    !      integer, PARAMETER :: volume_order=2
-    integer, PARAMETER :: surface_order=1
-    !      integer, PARAMETER :: surface_order=2
-    ! whole_ele_volume_order & whole_ele_surface_order are the volume and surface
-    ! order of the integration used within each sub-quad/hex for QUAD_OVER_WHOLE_ELE=.true.
-    ! -ve or 0 and take on the default value.
-    integer, PARAMETER :: whole_ele_volume_order=0
-    !      integer, PARAMETER :: whole_ele_volume_order=1
-    !      integer, PARAMETER :: whole_ele_volume_order=2
-    integer, PARAMETER :: whole_ele_surface_order=0
-    !      integer, PARAMETER :: whole_ele_surface_order=1
-    !      integer, PARAMETER :: whole_ele_surface_order=2
+    integer, intent( in ), optional :: scalar_nloc, vector_nloc
+!!$Local variable
+    integer :: cv_nloc, u_nloc
+!!$   Volume_order & Surface_order are the volume and surface order of the integration 
+!!$       used within each sub-quad/hex for CV approach. Default value -ve or 0 value is 
+!!$       always 1pt quadrature (=1).
+    integer, PARAMETER :: volume_order = 1, surface_order = 1
+!!$    integer, PARAMETER :: volume_order = 2, surface_order = 2
+!!$
+!!$    Whole_ele_volume_order & Whole_ele_surface_order are the volume and surface
+!!$        order of the integration used within each sub-quad/hex for 
+!!$        QUAD_OVER_WHOLE_ELE=.true. -ve or 0 and take on the default value.
+    integer, PARAMETER :: whole_ele_volume_order = 0, whole_ele_surface_order = 0
+!!$    integer, PARAMETER :: whole_ele_volume_order = 1, whole_ele_surface_order = 1
+!!$    integer, PARAMETER :: whole_ele_volume_order = 2, whole_ele_surface_order = 2
 
-    ! new quadratic element quadrature by James and Zhi and Chris:
+    if( present( scalar_nloc ) ) then
+       cv_nloc = scalar_nloc
+    else
+       cv_nloc = Mdims%cv_nloc
+    endif
 
-
-    !  print *,'1=cv_ele_type, cv_ngi, :',cv_ele_type, cv_ngi
+    if( present( vector_nloc ) ) then
+       u_nloc = vector_nloc
+    else
+       u_nloc = Mdims%u_nloc
+    endif
 
     Conditional_EleType: Select Case( cv_ele_type )
 
     case( 1, 2 ) ! 1D
-       Conditional_CV_NLOC1D: Select Case( cv_nloc )
+       Conditional_CV_NLOC_1D: Select Case( cv_nloc )
        case( 1 )
-          cv_ngi = 1
-          scvngi = 2
+          GIdims%cv_ngi = 1  ; GIdims%scvngi = 2
        case( 2 )
-          cv_ngi = 12
-          scvngi = 3
+          GIdims%cv_ngi = 12 ; GIdims%scvngi = 3
        case( 3 )
-          cv_ngi = 12
-          scvngi = 4
-          if( ( u_nloc == 4 ) .or. ( u_nloc == 5 )) cv_ngi = 18
+          GIdims%cv_ngi = 12 ; GIdims%scvngi = 4
+          if( ( u_nloc == 4 ) .or. ( u_nloc == 5 ) ) &
+               GIdims%cv_ngi = 18
        case default; FLExit(" Invalid integer for cv_nloc ")
-       end Select Conditional_CV_NLOC1D
-       sbcvngi = 1
-       nface = 2
-
+       end Select Conditional_CV_NLOC_1D
+       GIdims%sbcvngi = 1 ; GIdims%nface = 2
+!!$
     case( 3, 4 ) ! Triangles
-       Conditional_CV_NLOC2D_Tri: Select Case( cv_nloc )
-       case( 3 ) ! Linear Triangle
-          !   print *,'QUAD_OVER_WHOLE_ELE,volume_order:',QUAD_OVER_WHOLE_ELE,volume_order
-          !   print *,'1=cv_ngi, :',cv_ngi
-          if(QUAD_OVER_WHOLE_ELE) then
-             cv_ngi = 3
-             sbcvngi = 2
-             scvngi = 2
-             if(u_nloc==6) then ! use a quadratic interpolation pt set...
-                cv_ngi = 7
-                sbcvngi = 3
-                scvngi = 3
-             endif
-             if(u_nloc==10) then ! use a quadratic interpolation pt set...
-                cv_ngi = 14
-                sbcvngi = 4
-                scvngi = 4
-             endif
-             if (whole_ele_volume_order==1) cv_ngi = 1
-             if (whole_ele_surface_order==1) sbcvngi = 1
-             if (whole_ele_surface_order==1) scvngi = 1
-             if (whole_ele_volume_order==2) cv_ngi = 3
-             if (whole_ele_surface_order==2) sbcvngi = 2
-             if (whole_ele_surface_order==2) scvngi = 2
+       Conditional_CV_NLOC_2D_Tri: Select Case( cv_nloc )
+       case( 3 ) ! Linear triangle
+          Conditional_LinTriangle: if( QUAD_OVER_WHOLE_ELE ) then
+             GIdims%cv_ngi = 3 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
+             if( u_nloc == 6 ) then
+                GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+             elseif( u_nloc == 10 ) then
+                GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
+             end if
+!!$
+             Select Case( whole_ele_volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 1
+             case( 2 )
+                GIdims%cv_ngi = 3
+             end Select
+!!$
+             Select Case( whole_ele_surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+             case( 2 )
+                GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
+             end Select
+!!$                
           else
-             if (volume_order==1) cv_ngi = 3
-             if (surface_order==1) sbcvngi = 2
-             if (surface_order==1) scvngi = 3
-             if (volume_order==2) cv_ngi = 3*4
-             if (surface_order==2) sbcvngi = 2*2
-             if (surface_order==2) scvngi = 3*2
-          endif
-          ! print *,'2=cv_ngi, :',cv_ngi
-       case( 6 ) ! Quadratic Triangle
-          if(QUAD_OVER_WHOLE_ELE) then
-             cv_ngi = 7
-             sbcvngi = 3
-             scvngi = 3
-             if(u_nloc==10) then ! use a quadratic interpolation pt set...
-                cv_ngi = 14
-                sbcvngi = 4
-                scvngi = 4
-             endif
-             if (whole_ele_volume_order==1) cv_ngi = 1
-             if (whole_ele_surface_order==1) sbcvngi = 1
-             if (whole_ele_surface_order==1) scvngi = 1
-             if (whole_ele_volume_order==2) cv_ngi = 3
-             if (whole_ele_surface_order==2) sbcvngi = 2
-             if (whole_ele_surface_order==2) scvngi = 2
-             if (whole_ele_volume_order==3) cv_ngi = 7
-             if (whole_ele_surface_order==3) sbcvngi = 3
-             if (whole_ele_surface_order==3) scvngi = 3
+             Select Case( volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 3
+             case( 2 )
+                GIdims%cv_ngi = 3*4
+             end Select
+!!$
+             Select Case( surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 2 ; GIdims%scvngi = 3
+             case( 2 )
+                GIdims%sbcvngi = 2*2 ; GIdims%scvngi = 3*2
+             end Select
+!!$             
+          end if Conditional_LinTriangle
+!!$ ===
+       case( 6 ) ! Quadratic triangle
+          Conditional_QuadTriangle: if( QUAD_OVER_WHOLE_ELE ) then
+             GIdims%cv_ngi = 7 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+             if( u_nloc == 10 ) & ! Use a quadratic interpolation pt set
+                  GIdims%cv_ngi = 14 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
+!!$
+             Select Case( whole_ele_volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 1
+             case( 2 )
+                GIdims%cv_ngi = 3
+             case( 3 )
+                GIdims%cv_ngi = 7
+             end Select
+!!$
+             Select Case( whole_ele_surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+             case( 2 )
+                GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
+             case( 3 )
+                GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+             end Select
+!!$                
           else
-             if (volume_order==1) cv_ngi = 12
-             if (volume_order==2) cv_ngi = 12*4
-
-             if (surface_order==1) scvngi = 12
-             if (surface_order==1) sbcvngi = 4
-             if (surface_order==2) scvngi = 12*2
-             if (surface_order==2) sbcvngi = 4*2
-
-          endif
+             Select Case( volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 12
+             case( 2 )
+                GIdims%cv_ngi = 12*4
+             end Select
+!!$
+             Select Case( surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 4 ; GIdims%scvngi = 12
+             case( 2 )
+                GIdims%sbcvngi = 4*2 ; GIdims%scvngi = 12*2
+             end Select
+!!$             
+          end if Conditional_QuadTriangle
        case default; FLExit(" Invalid integer for cv_nloc ")
-       end Select Conditional_CV_NLOC2D_Tri
-       nface = 3
-
-    case( 5, 6 ) ! Quads
-       Conditional_CV_NLOC2D_Quad: Select Case( cv_nloc )
+       end Select Conditional_CV_NLOC_2D_Tri
+       GIdims%nface = 3
+!!$
+    case( 5, 6 ) ! Quads       
+       Conditional_CV_NLOC_2D_Quad: Select Case( cv_nloc )
        case( 4 ) ! Bi-linear Quad
-          if(QUAD_OVER_WHOLE_ELE) then
-             cv_ngi = 4
-             scvngi = 2
-             sbcvngi = 2
-             if (whole_ele_volume_order==1) cv_ngi = 1
-             if (whole_ele_surface_order==1) sbcvngi = 1
-             if (whole_ele_surface_order==1) scvngi = 1
-             if (whole_ele_volume_order==2) cv_ngi = 4
-             if (whole_ele_surface_order==2) sbcvngi = 2
-             if (whole_ele_surface_order==2) scvngi = 2
-             if (whole_ele_volume_order==3) cv_ngi = 9
-             if (whole_ele_surface_order==3) sbcvngi = 3
-             if (whole_ele_surface_order==3) scvngi = 3
+          Conditional_BiLinQuad: if( QUAD_OVER_WHOLE_ELE ) then
+             GIdims%cv_ngi = 4 ; GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
+!!$
+             Select Case( whole_ele_volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 1
+             case( 2 )
+                GIdims%cv_ngi = 4
+             case( 3 )
+                GIdims%cv_ngi = 9
+             end Select
+!!$
+             Select Case( whole_ele_surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+             case( 2 )
+                GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
+             case( 3 )
+                GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+             end Select
+!!$                
           else
-             if (volume_order==1) cv_ngi = 4
-             if (volume_order==2) cv_ngi = 16
-
-             if (surface_order==1) scvngi = 4
-             if (surface_order==2) scvngi = 4*2
-             if (surface_order==1) sbcvngi = 2
-             if (surface_order==2) sbcvngi = 4
-          endif
-       case( 9 ) ! Bi-quad Quad
-          if(QUAD_OVER_WHOLE_ELE) then
-             cv_ngi = 9
-             sbcvngi = 3
-             scvngi = 3
-             if (whole_ele_volume_order==1) cv_ngi = 1
-             if (whole_ele_surface_order==1) sbcvngi = 1
-             if (whole_ele_surface_order==1) scvngi = 1
-             if (whole_ele_volume_order==2) cv_ngi = 4
-             if (whole_ele_surface_order==2) sbcvngi = 2
-             if (whole_ele_surface_order==2) scvngi = 2
-             if (whole_ele_volume_order==3) cv_ngi = 9
-             if (whole_ele_surface_order==3) sbcvngi = 3
-             if (whole_ele_surface_order==3) scvngi = 3
+             Select Case( volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 4
+             case( 2 )
+                GIdims%cv_ngi = 4*4
+             end Select
+!!$
+             Select Case( surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 2 ; GIdims%scvngi = 4
+             case( 2 )
+                GIdims%sbcvngi = 4 ; GIdims%scvngi = 4*2
+             end Select
+!!$             
+          end if Conditional_BiLinQuad
+!!$ ===
+       case( 9 ) ! Bi-Quadratic Quad
+          Conditional_BiQuadQuad: if( QUAD_OVER_WHOLE_ELE ) then
+             GIdims%cv_ngi = 9 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+!!$
+             Select Case( whole_ele_volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 1
+             case( 2 )
+                GIdims%cv_ngi = 4
+             case( 3 )
+                GIdims%cv_ngi = 9
+             end Select
+!!$
+             Select Case( whole_ele_surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+             case( 2 )
+                GIdims%sbcvngi = 2 ; GIdims%scvngi = 2
+             case( 3 )
+                GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+             end Select
+!!$                
           else
-             if (volume_order==1) cv_ngi = 16
-             if (volume_order==2) cv_ngi = 16*4
-             if (volume_order==3) cv_ngi = 16*9
-
-             if (surface_order==1) scvngi = 16
-             if (surface_order==1) sbcvngi = 4
-             if (surface_order==2) scvngi = 16*2
-             if (surface_order==2) sbcvngi = 4*2
-             if (surface_order==3) scvngi = 16*3
-             if (surface_order==3) sbcvngi = 4*3
-          endif
+             Select Case( volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 16
+             case( 2 )
+                GIdims%cv_ngi = 16*4
+             case( 3 )
+                GIdims%cv_ngi = 16*9
+             end Select
+!!$
+             Select Case( surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 4 ; GIdims%scvngi = 16
+             case( 2 )
+                GIdims%sbcvngi = 4*2 ; GIdims%scvngi = 16*2
+             case( 3 )
+                GIdims%sbcvngi = 4*3 ; GIdims%scvngi = 16*3
+             end Select
+!!$             
+          end if Conditional_BiQuadQuad
        case default; FLExit(" Invalid integer for cv_nloc ")
-       end Select Conditional_CV_NLOC2D_Quad
-       nface = 4
+       end Select Conditional_CV_NLOC_2D_Quad
+       GIdims%nface = 4
+!!$
 
-    case( 7, 8 ) ! Tetrahedra
-       Conditional_CV_NLOC3D_Tet: Select Case( cv_nloc )
+    case( 7, 8 ) ! Tetrahedra       
+       Conditional_CV_NLOC_3D_Tets: Select Case( cv_nloc )
        case( 4 ) ! Linear
-          if(QUAD_OVER_WHOLE_ELE) then
-             cv_ngi = 4
-             sbcvngi = 3
-             scvngi = 3
-             if(u_nloc==10) then ! use a quadratic interpolation pt set...
-                cv_ngi = 11
-                sbcvngi = 7
-                scvngi = 7
-             endif
-             if (whole_ele_volume_order==1) cv_ngi = 1
-             if (whole_ele_surface_order==1) sbcvngi = 1
-             if (whole_ele_surface_order==1) scvngi = 1
-             if (whole_ele_volume_order==2) cv_ngi = 4
-             if (whole_ele_surface_order==2) sbcvngi = 3
-             if (whole_ele_surface_order==2) scvngi = 3
-             if (whole_ele_volume_order==3) cv_ngi = 11
-             if (whole_ele_surface_order==3) sbcvngi = 7
-             if (whole_ele_surface_order==3) scvngi = 7
+          Conditional_LinTets: if( QUAD_OVER_WHOLE_ELE ) then
+             GIdims%cv_ngi = 4 ; GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+             if( u_nloc == 10 ) & ! Use a quadratic interpolation pt set
+                  GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
+!!$
+             Select Case( whole_ele_volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 1
+             case( 2 )
+                GIdims%cv_ngi = 4
+             case( 3 )
+                GIdims%cv_ngi = 11
+             end Select
+!!$
+             Select Case( whole_ele_surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+             case( 2 )
+                GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+             case( 3 )
+                GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
+             end Select
+!!$                
           else
-             if (volume_order==1) cv_ngi = 4
-             if (volume_order==2) cv_ngi = 4*8
-
-             if (surface_order==1) scvngi = 6
-             if (surface_order==1) sbcvngi = 3
-             if (surface_order==2) scvngi = 6*4
-             if (surface_order==2) sbcvngi = 3*4
-
-          endif
+             Select Case( volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 4
+             case( 2 )
+                GIdims%cv_ngi = 4*8
+             end Select
+!!$
+             Select Case( surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 3 ; GIdims%scvngi = 6
+             case( 2 )
+                GIdims%sbcvngi = 3*4 ; GIdims%scvngi = 6*4
+             end Select
+!!$             
+          end if Conditional_LinTets
+!!$ ===
        case( 10 ) ! Quadratic
-          if(QUAD_OVER_WHOLE_ELE) then
-             cv_ngi = 11
-             sbcvngi = 7
-             scvngi = 7
-             if (whole_ele_volume_order==1) cv_ngi = 1
-             if (whole_ele_surface_order==1) sbcvngi = 1
-             if (whole_ele_surface_order==1) scvngi = 1
-             if (whole_ele_volume_order==2) cv_ngi = 4
-             if (whole_ele_surface_order==2) sbcvngi = 3
-             if (whole_ele_surface_order==2) scvngi = 3
-             if (whole_ele_volume_order==3) cv_ngi = 11
-             if (whole_ele_surface_order==3) sbcvngi = 7
-             if (whole_ele_surface_order==3) scvngi = 7
+          Conditional_QuadTets: if( QUAD_OVER_WHOLE_ELE ) then
+             GIdims%cv_ngi = 11 ; GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
+!!$
+             Select Case( whole_ele_volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 1
+             case( 2 )
+                GIdims%cv_ngi = 4
+             case( 3 )
+                GIdims%cv_ngi = 11
+             end Select
+!!$
+             Select Case( whole_ele_surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+             case( 2 )
+                GIdims%sbcvngi = 3 ; GIdims%scvngi = 3
+             case( 3 )
+                GIdims%sbcvngi = 7 ; GIdims%scvngi = 7
+             end Select
+!!$                
           else
-
-             if (volume_order==1) cv_ngi=8*4*1 ! (1x1x1)
-             if (volume_order==2) cv_ngi=8*4*8 ! (2x2x2)
-             if (volume_order==3) cv_ngi=8*4*27 ! (3x3x3)
-
-             if (surface_order==1) scvngi = 48 ! 6x8x1 (cv_faces x tets x sngi)
-             if (surface_order==1) sbcvngi = 12 ! 1x12 (sngi x cv_faces)
-             if (surface_order==2) scvngi = 48*4 ! 6x8x4 (cv_faces x hexs x sngi)
-             if (surface_order==2) sbcvngi = 12*4 ! 4x12 (sngi x cv_faces)
-
-             if( NEW_QUADRATIC_ELE_QUADRATURE ) then
-                ! new 1 pt quadrature...
+             Select Case( volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 8*4*1  ! (1x1x1)
+             case( 2 )
+                GIdims%cv_ngi = 8*4*8  ! (2x2x2)
+             case( 3 )
+                GIdims%cv_ngi = 8*4*27 ! (3x3x3)
+             end Select
+!!$
+             Select Case( surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 12 ! 1x12 (sngi x cv_faces)
+                GIdims%scvngi = 48  ! 6x8x1 (cv_faces x tets x sngi)
+             case( 2 )
+                GIdims%sbcvngi = 12*4  ! 4x12 (sngi x cv_faces)
+                GIdims%scvngi = 48*4   ! 6x8x4 (cv_faces x hexs x sngi)
+             end Select
+!!$
+             if( NEW_QUADRATIC_ELE_QUADRATURE ) then ! new 1 pt quadrature
+                GIdims%sbcvngi = 6 ; GIdims%scvngi = 60-24 
                 if( NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE ) then
-                   cv_ngi=10*4 ! 1 pt quadrature put CV in an element
+                   GIdims%cv_ngi = 10*4 ! 1 pt quadrature put CV in an element
                 else
-                   cv_ngi=10 ! 1 pt quadrature put CV in an element
+                   GIdims%cv_ngi = 10 ! 1 pt quadrature put CV in an element
                 endif
-                scvngi = 60 - 24
-                !                  scvngi = 60
-                !                  if (surface_order==1) sbcvngi = 12
-                sbcvngi = 6
              endif
-
-          endif
+!!$
+          endif Conditional_QuadTets
        case default; FLExit(" Invalid integer for cv_nloc ")
-       end Select Conditional_CV_NLOC3D_Tet
-       nface = 4
+       end Select Conditional_CV_NLOC_3D_Tets
+       GIdims%nface = 4
+!!$ 
 
-    case( 9, 10 )
-       Conditional_CV_NLOC3D_Hex: Select Case( cv_nloc )
+    case( 9, 10 ) ! Hexahedra      
+       Conditional_CV_NLOC_3D_Hexs: Select Case( cv_nloc )
        case( 8 ) ! Tri-linear Hex
-          if(QUAD_OVER_WHOLE_ELE) then
-             cv_ngi = 8
-             sbcvngi = 4
-             scvngi = 4
-             if (whole_ele_volume_order==1) cv_ngi = 1
-             if (whole_ele_surface_order==1) sbcvngi = 1
-             if (whole_ele_surface_order==1) scvngi = 1
-             if (whole_ele_volume_order==2) cv_ngi = 8
-             if (whole_ele_surface_order==2) sbcvngi = 4
-             if (whole_ele_surface_order==2) scvngi = 4
-             if (whole_ele_volume_order==3) cv_ngi = 27
-             if (whole_ele_surface_order==3) sbcvngi = 9
-             if (whole_ele_surface_order==3) scvngi = 9
+          Conditional_TriLinHex: if( QUAD_OVER_WHOLE_ELE ) then
+             GIdims%cv_ngi = 8 ; GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
+!!$
+             Select Case( whole_ele_volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 1
+             case( 2 )
+                GIdims%cv_ngi = 8
+             case( 3 )
+                GIdims%cv_ngi = 27
+             end Select
+!!$
+             Select Case( whole_ele_surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+             case( 2 )
+                GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
+             case( 3 )
+                GIdims%sbcvngi = 9 ; GIdims%scvngi = 9
+             end Select
+!!$                
           else
-             if (volume_order==1) cv_ngi = 8
-             if (volume_order==2) cv_ngi = 8*8
-
-             if (surface_order==1) scvngi = 12
-             if (surface_order==1) sbcvngi = 4
-             if (surface_order==2) scvngi = 12*4
-             if (surface_order==2) sbcvngi = 4*4
-          endif
-       case( 27 ) ! Tri-quad Hex
-          if(QUAD_OVER_WHOLE_ELE) then
-             cv_ngi = 27
-             sbcvngi = 9
-             scvngi = 9
-             if (whole_ele_volume_order==1) cv_ngi = 1
-             if (whole_ele_surface_order==1) sbcvngi = 1
-             if (whole_ele_surface_order==1) scvngi = 1
-             if (whole_ele_volume_order==2) cv_ngi = 8
-             if (whole_ele_surface_order==2) sbcvngi = 4
-             if (whole_ele_surface_order==2) scvngi = 4
-             if (whole_ele_volume_order==3) cv_ngi = 27
-             if (whole_ele_surface_order==3) sbcvngi = 9
-             if (whole_ele_surface_order==3) scvngi = 9
+             Select Case( volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 8
+             case( 2 )
+                GIdims%cv_ngi = 8*8
+             end Select
+!!$
+             Select Case( surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 4 ; GIdims%scvngi = 12
+             case( 2 )
+                GIdims%sbcvngi = 4*4 ; GIdims%scvngi = 12*4
+             end Select
+!!$             
+          end if Conditional_TriLinHex
+!!$ ===
+       case( 27 ) ! Tri-Quad Hex
+          Conditional_TriQuadHex: if( QUAD_OVER_WHOLE_ELE ) then
+             GIdims%cv_ngi = 27 ; GIdims%sbcvngi = 9 ; GIdims%scvngi = 9
+!!$
+             Select Case( whole_ele_volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 1
+             case( 2 )
+                GIdims%cv_ngi = 8
+             case( 3 )
+                GIdims%cv_ngi = 27
+             end Select
+!!$
+             Select Case( whole_ele_surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 1 ; GIdims%scvngi = 1
+             case( 2 )
+                GIdims%sbcvngi = 4 ; GIdims%scvngi = 4
+             case( 3 )
+                GIdims%sbcvngi = 9 ; GIdims%scvngi = 9
+             end Select
+!!$                
           else
-             if (volume_order==1) cv_ngi = 64
-             if (volume_order==2) cv_ngi = 64*8
-             if (volume_order==3) cv_ngi = 64*27
+             Select Case( volume_order )
+             case( 1 )
+                GIdims%cv_ngi = 64 
+             case( 2 )
+                GIdims%cv_ngi = 64*8 
+             case( 3 )
+                GIdims%cv_ngi = 64*27
+             end Select
+!!$
+             Select Case( surface_order )
+             case( 1 )
+                GIdims%sbcvngi = 16 ; GIdims%scvngi = 12*8  
+             case( 2 )
+                GIdims%sbcvngi = 16*4 ; GIdims%scvngi = 12*8*4  
+             case( 3 )
+                GIdims%sbcvngi = 16*9 ; GIdims%scvngi = 12*8*9
+             end Select
+!!$
+          endif Conditional_TriQuadHex
+!!$             
+       end Select Conditional_CV_NLOC_3D_Hexs
+       GIdims%nface = 6
 
-             if (surface_order==1) scvngi = 12*8
-             if (surface_order==1) sbcvngi = 16
-             if (surface_order==2) scvngi = 12*8*4
-             if (surface_order==2) sbcvngi = 16*4
-             if (surface_order==3) scvngi = 12*8*9
-             if (surface_order==3) sbcvngi = 16*9
-          endif
-       case default; FLExit(" Invalid integer for cv_nloc ")
-       end Select Conditional_CV_NLOC3D_Hex
-       nface = 6
-
-    case default; FLExit( " Invalid integer for cv_ele_type " )
+    case default; FLExit( "Invalid integer for cv_ele_type" )
 
     end Select Conditional_EleType
 
-
-    if(.not.QUAD_OVER_WHOLE_ELE) then
-       if( cv_ele_type > 2 ) scvngi = scvngi + nface * sbcvngi
+    if( .not. QUAD_OVER_WHOLE_ELE) then
+       if( cv_ele_type > 2 ) &
+            GIdims%scvngi = GIdims%scvngi + GIdims%nface * GIdims%sbcvngi 
     endif
-    cv_ngi_short = cv_ngi
+    GIdims%cv_ngi_short = GIdims%cv_ngi
+
 
     return
   end subroutine retrieve_ngi
+
+
+!!$======================
+
+
 
 
   subroutine lagrot( weit, quadpos, ndgi, getndp )

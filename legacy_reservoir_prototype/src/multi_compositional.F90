@@ -35,6 +35,7 @@ module Compositional_Terms
     use shape_functions_linear_quadratic
     use matrix_operations
     use Copy_Outof_State
+    use multi_data_types
     use futils, only: int2str
 
     implicit none
@@ -184,7 +185,7 @@ contains
     end subroutine Calculate_ComponentAbsorptionTerm
 
 
-    subroutine Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, &
+    subroutine Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, Mdims, &
         mat_ndgln, u_ndgln, x_ndgln, &
         u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt, &
         comp_diff_coef, &
@@ -198,6 +199,7 @@ contains
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state, storage_state
+        type(multi_dimensions), intent(in) :: Mdims
 
         integer, dimension( : ), intent( in ) :: mat_ndgln, u_ndgln, x_ndgln
         integer, intent( in ) :: u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt
@@ -267,7 +269,7 @@ contains
 
         ALLOCATE( MAT_U( NDIM * NPHASE * CV_NONODS ), UD( NDIM ) ) ; mat_u = 0. ; ud = 0.
 
-        CALL PROJ_U2MAT( NDIM, NPHASE, COMP_DIFFUSION_OPT, MAT_NONODS, &
+        CALL PROJ_U2MAT( Mdims, NDIM, NPHASE, COMP_DIFFUSION_OPT, MAT_NONODS, &
             TOTELE, CV_NONODS, MAT_NLOC, CV_NLOC, U_NLOC, X_NLOC, CV_SNLOC, U_SNLOC, &
             COMP_DIFFUSION, NCOMP_DIFF_COEF, COMP_DIFF_COEF, &
             X_NONODS, X, Y, Z, NU, NV, NW, U_NONODS, MAT_NDGLN, U_NDGLN, X_NDGLN, &
@@ -303,7 +305,7 @@ contains
 
 
 
-    SUBROUTINE PROJ_U2MAT( NDIM, NPHASE, COMP_DIFFUSION_OPT, MAT_NONODS, &
+    SUBROUTINE PROJ_U2MAT( Mdims, NDIM, NPHASE, COMP_DIFFUSION_OPT, MAT_NONODS, &
         TOTELE, CV_NONODS, MAT_NLOC, CV_NLOC, U_NLOC, X_NLOC, CV_SNLOC, U_SNLOC, &
         COMP_DIFFUSION, NCOMP_DIFF_COEF, COMP_DIFF_COEF, &
         X_NONODS, X, Y, Z, NU, NV, NW, U_NONODS, MAT_NDGLN, U_NDGLN, X_NDGLN, &
@@ -313,6 +315,7 @@ contains
  
 
         implicit none
+        type(multi_dimensions), intent(in) :: Mdims
         INTEGER, intent( in ) :: NDIM, NPHASE, NCOMP_DIFF_COEF, &
             COMP_DIFFUSION_OPT, MAT_NONODS, TOTELE, MAT_NLOC, CV_NLOC, U_NLOC, X_NLOC, &
             CV_SNLOC, U_SNLOC, X_NONODS, U_NONODS, CV_NONODS, U_ELE_TYPE, P_ELE_TYPE
@@ -329,6 +332,7 @@ contains
         ! Determine MAT_U from NU,NV,NW which are these variables mapped to material mesh.
 
         ! Local variables
+        type( multi_GI_dimensions ) :: GIdims
         INTEGER, DIMENSION( :, : ), allocatable :: CV_SLOCLIST, U_SLOCLIST, CV_NEILOC, FACE_ELE
         INTEGER, DIMENSION( : ), allocatable :: FINDGPTS, COLGPTS
         REAL, DIMENSION( : ),    ALLOCATABLE :: CVWEIGHT, CVWEIGHT_SHORT,  &
@@ -344,7 +348,8 @@ contains
             MASS, INV_MASS, MASS2U, INV_MASS_NM
         LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE,U_ON_FACE,  &
             CVFEM_ON_FACE,UFEM_ON_FACE
-        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, NFACE, &
+!!$        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, NFACE, 
+        INTEGER :: &
             ELE, MAT_ILOC, MAT_JLOC, CV_GI, U_JLOC, MAT_KLOC, MAT_NODI, MAT_NOD, &
             U_NODJ, IPHASE, U_NODJ_IP, IDIM, JDIM, MAT_NOD_ID_IP, CV_GI_SHORT, NCOLGPTS
         REAL :: NN, NFEMU, MASELE
@@ -355,96 +360,98 @@ contains
 
         QUAD_OVER_WHOLE_ELE=.FALSE.
         ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-        call  retrieve_ngi( ndim, u_ele_type, cv_nloc, u_nloc, &
-            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+!!$        call  retrieve_ngi( ndim, u_ele_type, cv_nloc, u_nloc, &
+!!$            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
 
-        ALLOCATE(UFENX_ALL(NDIM,U_NLOC,CV_NGI))
-        ALLOCATE(CVFENX_ALL(NDIM,CV_NLOC,CV_NGI))
-        ALLOCATE(DETWEI(CV_NGI))
-        ALLOCATE(RA(CV_NGI))
+        call retrieve_ngi( GIdims, Mdims, u_ele_type, QUAD_OVER_WHOLE_ELE )
 
-        ALLOCATE( CVWEIGHT( CV_NGI ))
-        ALLOCATE( CVN( CV_NLOC, CV_NGI ))
-        ALLOCATE( CVFEN( CV_NLOC, CV_NGI ))
-        ALLOCATE( CVFENLX( CV_NLOC, CV_NGI ))
-        ALLOCATE( CVFENLY( CV_NLOC, CV_NGI ))
-        ALLOCATE( CVFENLZ( CV_NLOC, CV_NGI ))
+        ALLOCATE(UFENX_ALL(NDIM,U_NLOC,GIDIMS%CV_NGI))
+        ALLOCATE(CVFENX_ALL(NDIM,CV_NLOC,GIDIMS%CV_NGI))
+        ALLOCATE(DETWEI(GIDIMS%CV_NGI))
+        ALLOCATE(RA(GIDIMS%CV_NGI))
 
-        ALLOCATE( CVWEIGHT_SHORT( CV_NGI_SHORT ))
-        ALLOCATE( CVN_SHORT( CV_NLOC, CV_NGI_SHORT ))
-        ALLOCATE( CVFEN_SHORT( CV_NLOC, CV_NGI_SHORT))
-        ALLOCATE( CVFENLX_SHORT( CV_NLOC, CV_NGI_SHORT ))
-        ALLOCATE( CVFENLY_SHORT( CV_NLOC, CV_NGI_SHORT ))
-        ALLOCATE( CVFENLZ_SHORT( CV_NLOC, CV_NGI_SHORT ))
-        ALLOCATE( CVFENX_SHORT( CV_NLOC, CV_NGI_SHORT ))
-        ALLOCATE( CVFENY_SHORT( CV_NLOC, CV_NGI_SHORT ))
-        ALLOCATE( CVFENZ_SHORT( CV_NLOC, CV_NGI_SHORT ))
+        ALLOCATE( CVWEIGHT( GIDIMS%CV_NGI ))
+        ALLOCATE( CVN( CV_NLOC, GIDIMS%CV_NGI ))
+        ALLOCATE( CVFEN( CV_NLOC, GIDIMS%CV_NGI ))
+        ALLOCATE( CVFENLX( CV_NLOC, GIDIMS%CV_NGI ))
+        ALLOCATE( CVFENLY( CV_NLOC, GIDIMS%CV_NGI ))
+        ALLOCATE( CVFENLZ( CV_NLOC, GIDIMS%CV_NGI ))
 
-        ALLOCATE( UFEN( U_NLOC, CV_NGI ))
-        ALLOCATE( UFENLX( U_NLOC, CV_NGI ))
-        ALLOCATE( UFENLY( U_NLOC, CV_NGI ))
-        ALLOCATE( UFENLZ( U_NLOC, CV_NGI ))
+        ALLOCATE( CVWEIGHT_SHORT( GIDIMS%CV_NGI_SHORT ))
+        ALLOCATE( CVN_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
+        ALLOCATE( CVFEN_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT))
+        ALLOCATE( CVFENLX_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
+        ALLOCATE( CVFENLY_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
+        ALLOCATE( CVFENLZ_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
+        ALLOCATE( CVFENX_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
+        ALLOCATE( CVFENY_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
+        ALLOCATE( CVFENZ_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
 
-        ALLOCATE( SCVFEN( CV_NLOC, SCVNGI ))
-        ALLOCATE( SCVFENSLX( CV_NLOC, SCVNGI ))
-        ALLOCATE( SCVFENSLY( CV_NLOC, SCVNGI ))
-        ALLOCATE( SCVFENLX( CV_NLOC, SCVNGI ))
-        ALLOCATE( SCVFENLY( CV_NLOC, SCVNGI ))
-        ALLOCATE( SCVFENLZ( CV_NLOC, SCVNGI ))
-        ALLOCATE( SCVFEWEIGH( SCVNGI ))
+        ALLOCATE( UFEN( U_NLOC, GIDIMS%CV_NGI ))
+        ALLOCATE( UFENLX( U_NLOC, GIDIMS%CV_NGI ))
+        ALLOCATE( UFENLY( U_NLOC, GIDIMS%CV_NGI ))
+        ALLOCATE( UFENLZ( U_NLOC, GIDIMS%CV_NGI ))
 
-        ALLOCATE( SUFEN( U_NLOC, SCVNGI ))
-        ALLOCATE( SUFENSLX( U_NLOC, SCVNGI ))
-        ALLOCATE( SUFENSLY( U_NLOC, SCVNGI ))
-        ALLOCATE( SUFENLX( U_NLOC, SCVNGI ))
-        ALLOCATE( SUFENLY( U_NLOC, SCVNGI ))
-        ALLOCATE( SUFENLZ( U_NLOC, SCVNGI ))
+        ALLOCATE( SCVFEN( CV_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SCVFENSLX( CV_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SCVFENSLY( CV_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SCVFENLX( CV_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SCVFENLY( CV_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SCVFENLZ( CV_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SCVFEWEIGH( GIDIMS%SCVNGI ))
 
-        ALLOCATE( SBCVN( CV_SNLOC, SBCVNGI ))
-        ALLOCATE( SBCVFEN( CV_SNLOC, SBCVNGI ))
-        ALLOCATE( SBCVFENSLX( CV_SNLOC, SBCVNGI ))
-        ALLOCATE( SBCVFENSLY( CV_SNLOC, SBCVNGI ))
-        ALLOCATE( SBCVFEWEIGH( SBCVNGI ))
-        ALLOCATE( SBCVFENLX( CV_SNLOC, SBCVNGI ))
-        ALLOCATE( SBCVFENLY( CV_SNLOC, SBCVNGI ))
-        ALLOCATE( SBCVFENLZ( CV_SNLOC, SBCVNGI ))
-        ALLOCATE( SBUFEN( U_SNLOC, SBCVNGI ))
-        ALLOCATE( SBUFENSLX( U_SNLOC, SBCVNGI ))
-        ALLOCATE( SBUFENSLY( U_SNLOC, SBCVNGI ))
-        ALLOCATE( SBUFENLX( U_SNLOC, SBCVNGI ))
-        ALLOCATE( SBUFENLY( U_SNLOC, SBCVNGI ))
-        ALLOCATE( SBUFENLZ( U_SNLOC, SBCVNGI ))
+        ALLOCATE( SUFEN( U_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SUFENSLX( U_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SUFENSLY( U_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SUFENLX( U_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SUFENLY( U_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( SUFENLZ( U_NLOC, GIDIMS%SCVNGI ))
 
-        ALLOCATE( CV_SLOCLIST( NFACE, CV_SNLOC ))
-        ALLOCATE( U_SLOCLIST( NFACE, U_SNLOC ))
-        ALLOCATE( CV_NEILOC( CV_NLOC, SCVNGI ))
+        ALLOCATE( SBCVN( CV_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBCVFEN( CV_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBCVFENSLX( CV_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBCVFENSLY( CV_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBCVFEWEIGH( GIDIMS%SBCVNGI ))
+        ALLOCATE( SBCVFENLX( CV_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBCVFENLY( CV_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBCVFENLZ( CV_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBUFEN( U_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBUFENSLX( U_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBUFENSLY( U_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBUFENLX( U_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBUFENLY( U_SNLOC, GIDIMS%SBCVNGI ))
+        ALLOCATE( SBUFENLZ( U_SNLOC, GIDIMS%SBCVNGI ))
 
-        ALLOCATE( COLGPTS( CV_NLOC * SCVNGI )) !The size of this vector is over-estimated
+        ALLOCATE( CV_SLOCLIST( GIDIMS%NFACE, CV_SNLOC ))
+        ALLOCATE( U_SLOCLIST( GIDIMS%NFACE, U_SNLOC ))
+        ALLOCATE( CV_NEILOC( CV_NLOC, GIDIMS%SCVNGI ))
+
+        ALLOCATE( COLGPTS( CV_NLOC * GIDIMS%SCVNGI )) !The size of this vector is over-estimated
         ALLOCATE( FINDGPTS( CV_NLOC + 1 ))
         NCOLGPTS = 0
 
-        ALLOCATE( CV_ON_FACE( CV_NLOC, SCVNGI ))
-        ALLOCATE( CVFEM_ON_FACE( CV_NLOC, SCVNGI ))
-        ALLOCATE( U_ON_FACE( U_NLOC, SCVNGI ))
-        ALLOCATE( UFEM_ON_FACE( U_NLOC, SCVNGI ))
+        ALLOCATE( CV_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( CVFEM_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( U_ON_FACE( U_NLOC, GIDIMS%SCVNGI ))
+        ALLOCATE( UFEM_ON_FACE( U_NLOC, GIDIMS%SCVNGI ))
 
         ALLOCATE( SELE_OVERLAP_SCALE( CV_NLOC ))
         CALL CV_FEM_SHAPE_FUNS( &
                                  ! Volume shape functions...
             NDIM, P_ELE_TYPE,  &
-            CV_NGI, CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
+            GIDIMS%CV_NGI, GIDIMS%CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
             CVWEIGHT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
             CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
             UFEN, UFENLX, UFENLY, UFENLZ, &
                                  ! Surface of each CV shape functions...
-            SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
+            GIDIMS%SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
             SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
             SCVFENLX, SCVFENLY, SCVFENLZ,  &
             SUFEN, SUFENSLX, SUFENSLY,  &
             SUFENLX, SUFENLY, SUFENLZ,  &
                                  ! Surface element shape funcs...
-            U_ON_FACE, UFEM_ON_FACE, NFACE, &
-            SBCVNGI, SBCVN, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX, SBCVFENLY, SBCVFENLZ, &
+            U_ON_FACE, UFEM_ON_FACE, GIDIMS%NFACE, &
+            GIDIMS%SBCVNGI, SBCVN, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX, SBCVFENLY, SBCVFENLZ, &
             SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX, SBUFENLY, SBUFENLZ, &
             CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
                                  ! Define the gauss points that lie on the surface of the CV...
@@ -463,7 +470,7 @@ contains
         Loop_Elements1: DO ELE = 1, TOTELE
 
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, X_NLOC, CV_NLOC, CV_NGI, &
+            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, X_NLOC, CV_NLOC, GIDIMS%CV_NGI, &
                 CVFEN, CVFENLX, CVFENLY, CVFENLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
                 CVFENX_ALL, &
                 U_NLOC, UFENLX, UFENLY, UFENLZ, UFENX_ALL)
@@ -473,7 +480,7 @@ contains
                 Loop_MAT_JLOC: DO MAT_JLOC = 1, MAT_NLOC
 
                     NN = 0.0
-                    DO CV_GI_SHORT = 1, CV_NGI_SHORT
+                    DO CV_GI_SHORT = 1, GIDIMS%CV_NGI_SHORT
                         NN = NN +  CVFEN_SHORT( MAT_ILOC, CV_GI_SHORT )  * CVFEN_SHORT(  MAT_JLOC, CV_GI_SHORT ) &
                             * DETWEI( CV_GI_SHORT )
                     END DO
@@ -492,7 +499,7 @@ contains
                 Loop_U_JLOC: DO U_JLOC = 1, U_NLOC
 
                     NFEMU = 0.0
-                    DO CV_GI = 1, CV_NGI
+                    DO CV_GI = 1, GIDIMS%CV_NGI
                         NFEMU = NFEMU +  CVFEN( MAT_ILOC, CV_GI ) * UFEN(  U_JLOC, CV_GI ) * DETWEI( CV_GI )
                     END DO
 
