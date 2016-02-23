@@ -195,7 +195,7 @@ contains
         !!$
         real, dimension( :, : ), pointer :: &
             ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component
-        real, dimension( :, :, : ), pointer :: Velocity_U_Source, Velocity_U_Source_CV
+        real, dimension( :, :, : ), pointer :: Velocity_U_Source
         real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
             Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
             !!$
@@ -430,7 +430,6 @@ contains
             mass_ele( totele ), &
             !!$
             Velocity_U_Source( ndim, nphase, u_nonods ), &
-            Velocity_U_Source_CV( ndim, nphase, cv_nonods ), &
             !!$
             Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
             Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -453,7 +452,6 @@ contains
         mass_ele=0.
         !!$
         Velocity_U_Source=0.
-        Velocity_U_Source_CV=0.
         !!$
         Material_Absorption=0.
         Velocity_Absorption=0.
@@ -867,7 +865,7 @@ end if
 
                     CALL CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims, nphase, ncomp, &
                         PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-                        Velocity_U_Source_CV, Velocity_U_Source, &
+                        Velocity_U_Source, &
                         NCOLACV, FINACV, COLACV, MIDACV, &
                         small_FINACV, small_COLACV, small_MIDACV, &
                         NCOLCT, FINDCT, COLCT, &
@@ -895,7 +893,7 @@ end if
                         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN,&
                         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
                         !!$
-                        Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, Velocity_U_Source, Velocity_U_Source_CV, &
+                        Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, Velocity_U_Source, &
                         dt, &
                         !!$
                         NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -1384,7 +1382,7 @@ end if
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
             plike_grad_sou_grad, plike_grad_sou_coef, &
             !!$ Working arrays
-            Velocity_U_Source, Velocity_U_Source_CV, &
+            Velocity_U_Source, &
             theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
             mass_ele,&
             Material_Absorption, Material_Absorption_Stab, &
@@ -1728,7 +1726,7 @@ end if
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                     plike_grad_sou_grad, plike_grad_sou_coef, &
                     !!$ Working arrays
-                    Velocity_U_Source, Velocity_U_Source_CV, &
+                    Velocity_U_Source, &
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
                     mass_ele, &
@@ -1852,7 +1850,6 @@ end if
                     !!$
                     !!$
                     Velocity_U_Source( ndim, nphase, u_nonods ), &
-                    Velocity_U_Source_CV( ndim, nphase, cv_nonods ), &
                     Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                     Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                     Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -1864,7 +1861,7 @@ end if
                     plike_grad_sou_grad( cv_nonods * nphase ), &
                     plike_grad_sou_coef( cv_nonods * nphase ) )
                 !!$
-                Velocity_U_Source = 0. ; Velocity_Absorption = 0. ; Velocity_U_Source_CV = 0.
+                Velocity_U_Source = 0. ; Velocity_Absorption = 0.
                 !!$
                 Temperature_Absorption=0.
                 !!$

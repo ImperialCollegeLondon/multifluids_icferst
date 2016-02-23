@@ -654,7 +654,7 @@ contains
     U_ELE_TYPE, P_ELE_TYPE, &
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
     CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
-    U_ABS_STAB, MAT_ABSORB, U_ABSORBIN, U_SOURCE, U_SOURCE_CV, &
+    U_ABS_STAB, MAT_ABSORB, U_ABSORBIN, U_SOURCE, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
     NCOLDGM_PHA, &! Force balance
@@ -704,7 +704,6 @@ contains
         INTEGER, DIMENSION(  : ), intent( in ) :: XU_NDGLN
         REAL, DIMENSION(  :, :, :  ), intent( inout ) :: U_ABS_STAB, U_ABSORBIN, MAT_ABSORB
         REAL, DIMENSION(  :, :, :  ), intent( in ) :: U_SOURCE
-        REAL, DIMENSION(  :, :, :  ), intent( inout ) :: U_SOURCE_CV
 
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
@@ -764,6 +763,7 @@ contains
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
         REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
+        REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE_CV
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
@@ -919,6 +919,7 @@ contains
         end IF
 
         !Calculate gravity source terms
+        allocate( u_source_cv( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) ) ; u_source_cv=0.0
         if ( is_porous_media )then
            UDEN_ALL=0.0; UDENOLD_ALL=0.0
            call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, DEN_ALL, U_Source_CV )
@@ -962,8 +963,8 @@ contains
 
            IF(SOLID_FLUID_MODEL_B) THEN ! Gidaspow model B - can use conservative from of momentum
               DO IPHASE=1,Mdims%nphase
-                 UDEN_ALL(IPHASE,:) = UDEN_ALL(IPHASE,:) * ( 1. - sf%val)
-                 UDENOLD_ALL(IPHASE,:) = UDENOLD_ALL(IPHASE,:) * ( 1. - soldf%val)
+                 UDEN_ALL(IPHASE,:) = UDEN_ALL(IPHASE,:) * ( 1. - sf%val )
+                 UDENOLD_ALL(IPHASE,:) = UDENOLD_ALL(IPHASE,:) * ( 1. - soldf%val )
               END DO
            ENDIF
         ENDIF
@@ -984,22 +985,19 @@ contains
         ! vertical stab for buoyant gyre
         !u_abs_stab=0.0
         !u_abs_stab(:,3,3)= dt*0.2/500.0
+
         allocate( U_ABSORB( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
         U_ABSORB = U_ABSORBIN + MAT_ABSORB
+
         ALLOCATE( U_SOURCE_ALL( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
         ALLOCATE( U_SOURCE_CV_ALL( Mdims%ndim, Mdims%nphase, Mdims%cv_nonods ) )
         DO IPHASE = 1, Mdims%nphase
             DO IDIM = 1, Mdims%ndim
-                !S = 1 + (IDIM-1)*Mdims%u_nonods + (IPHASE-1)*Mdims%ndim*Mdims%u_nonods
-                !E = IDIM*Mdims%u_nonods + (IPHASE-1)*Mdims%ndim*Mdims%u_nonods
-                !U_SOURCE_ALL( IDIM, IPHASE, : ) = U_SOURCE( S:E )
                 U_SOURCE_ALL( IDIM, IPHASE, : ) = U_SOURCE( IDIM, IPHASE, : )
-                !S = 1 + (IDIM-1)*Mdims%cv_nonods + (IPHASE-1)*Mdims%ndim*Mdims%cv_nonods
-                !E = IDIM*Mdims%cv_nonods + (IPHASE-1)*Mdims%ndim*Mdims%cv_nonods
-                !U_SOURCE_CV_ALL( IDIM, IPHASE, : ) = U_SOURCE_CV( S:E )
                 U_SOURCE_CV_ALL( IDIM, IPHASE, : ) = U_SOURCE_CV( IDIM, IPHASE, : )
             END DO
         END DO
+
         ALLOCATE( U_ABSORB_ALL( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
         ALLOCATE( U_ABS_STAB_ALL( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
         ALLOCATE( UDIFFUSION_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods ) )
@@ -1010,6 +1008,7 @@ contains
             UDIFFUSION_ALL( :, :, :, MAT_INOD ) = UDIFFUSION( MAT_INOD, :, :, : )
             UDIFFUSION_VOL_ALL( :, MAT_INOD ) = UDIFFUSION_VOL( MAT_INOD, : )
         END DO
+
         ALLOCATE( PLIKE_GRAD_SOU_COEF_ALL( Mdims%nphase, Mdims%cv_nonods ) )
         ALLOCATE( PLIKE_GRAD_SOU_GRAD_ALL( Mdims%nphase, Mdims%cv_nonods ) )
         DO IPHASE = 1, Mdims%nphase
@@ -6043,7 +6042,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
  SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims, nphase, ncomp, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-     U_SOURCE_CV, U_SOURCE, &
+     U_SOURCE, &
+     !U_SOURCE_CV, U_SOURCE, &
      NCOLACV, FINACV, COLACV, MIDACV, &
      SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
      NCOLCT, FINDCT, COLCT, &
@@ -6061,7 +6061,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
      real, dimension( cv_nonods * nphase ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
      integer, intent( inout ) :: IPLIKE_GRAD_SOU
-     real, dimension( cv_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE_CV
+     !real, dimension( cv_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE_CV
      real, dimension( u_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE
 
      type(state_type), dimension( : ), intent( inout ) :: state
@@ -6128,7 +6128,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      if( .not. have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) )  then
          PLIKE_GRAD_SOU_GRAD = 0.0
      end if
-     U_SOURCE_CV = 0.0
+     !U_SOURCE_CV = 0.0
 
      DUMMY_SUF_COMP_BC = 0.0
      DUMMY_WIC_COMP_BC = 0
