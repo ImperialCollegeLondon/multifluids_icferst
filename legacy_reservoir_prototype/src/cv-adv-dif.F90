@@ -116,7 +116,8 @@ contains
         end if
     end function my_size_real
 
-    SUBROUTINE CV_ASSEMB( state, packed_state, Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state, &
+    SUBROUTINE CV_ASSEMB( state, packed_state, &
+        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state, &
         tracer, velocity, density, &
         CV_RHS_field, PETSC_ACV,&
         SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
@@ -1436,8 +1437,7 @@ contains
                                 CV_JLOC = CV_ILOC
                                 ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
                                 CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
-                                    FACE_ELE, CV_GIdims%nface, CV_funs%cvfem_on_face( :, GI ), &
-                                    Mdims%cv_nonods, Mdims%cv_nloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%u_snloc, &
+                                    FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
                                     CV_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN )
                             END IF
                             INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
@@ -2062,10 +2062,12 @@ contains
                                     END IF
                                 END IF
                                 ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
-                                CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, Mdims%u_nloc, Mdims%u_snloc, CV_GIdims%scvngi, GI, NCOLCT, Mdims%ndim, &
-                                    Mdims%cv_nonods, Mdims%u_nonods, Mdims%nphase, Mdims%npres, Mdims%n_in_pres, Mdims%cv_snloc, between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
+                                CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
+                                    Mdims, CV_funs,&
+                                    GI, NCOLCT, &
+                                    between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
                                     JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
-                                    CV_funs%sufen, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
+                                    SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
                                     WIC_U_BC_ALL, WIC_P_BC_ALL, u_ndgln, pressure_BCs%val, &
                                     UGI_COEF_ELE_ALL,  &
                                     UGI_COEF_ELE2_ALL,  &
@@ -8437,20 +8439,20 @@ contains
 
 
     SUBROUTINE CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
-        FACE_ELE, NFACE, CVFEM_ON_FACE, &
-        CV_NONODS, CV_NLOC, U_NLOC, CV_SNLOC, U_SNLOC, &
+        FACE_ELE, gi, CV_funs, Mdims, CV_GIdims, &
         CV_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN )
         ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC for a face on the
         ! boundary of the domain
         IMPLICIT NONE
-        INTEGER, intent( in ) :: ELE, CV_NONODS, CV_NLOC, U_NLOC, &
-            CV_SNLOC, U_SNLOC, NFACE, CV_ILOC
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN ! (CV_NLOC*TOTELE)
-        INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN  ! (U_NLOC*TOTELE)
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN ! (CV_SNLOC*TOTELE)
-        INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN  ! (U_SNLOC*TOTELE)
-        INTEGER, DIMENSION( :, : ), intent( in ) :: FACE_ELE !(TOTELE*IFACE)
-        LOGICAL, DIMENSION( : ), intent( in )  :: CVFEM_ON_FACE !(CV_JLOC)
+        INTEGER, intent( in ) :: ELE, CV_ILOC, gi
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_shape_funs), intent(in) :: CV_funs
+        type(multi_GI_dimensions), intent(in) :: CV_GIdims
+        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN ! (Mdims%cv_nloc*Mdims%totele)
+        INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN  ! (Mdims%u_nloc*Mdims%totele)
+        INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN ! (Mdims%cv_snloc*Mdims%totele)
+        INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN  ! (Mdims%u_snloc*Mdims%totele)
+        INTEGER, DIMENSION( :, : ), intent( in ) :: FACE_ELE !(Mdims%totele*IFACE)
         INTEGER, intent( inout ) :: SELE, ELE3, CV_SILOC
         INTEGER, DIMENSION( : ), intent( inout ) :: U_SLOC2LOC !(CV_SKLOC)
         INTEGER, DIMENSION( : ), intent( inout ) :: CV_SLOC2LOC
@@ -8459,31 +8461,29 @@ contains
             U_JLOC, U_JNOD, CV_KLOC, CV_SKNOD, &
             U_KLOC, U_SKLOC, U_SKNOD, CV_SKLOC, CV_SKLOC2, I
         LOGICAL :: FOUND
-        INTEGER, DIMENSION( CV_SNLOC ) :: LOG_ON_BOUND
-
+        INTEGER, DIMENSION( Mdims%cv_snloc ) :: LOG_ON_BOUND
         log_on_bound= -66666
         !ewrite(3,*)'In Calc_Sele'
         I = 1
-        DO CV_JLOC = 1, CV_NLOC
-            CV_JNOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
-            IF ( .NOT.CVFEM_ON_FACE( CV_JLOC ) ) THEN
+        DO CV_JLOC = 1, Mdims%cv_nloc
+            CV_JNOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+            IF ( .NOT. cv_funs%cvfem_on_face( CV_JLOC, gi ) ) THEN
                 LOG_ON_BOUND( I ) = CV_JNOD
                 I = I + 1
             END IF
         END DO
-
         SELE = 0
         ELE3 = 0
         ! What face are we on
-        DO IFACE = 1, NFACE
+        DO IFACE = 1, CV_GIdims%nface
             ELE2 = FACE_ELE( IFACE, ELE )
             SELE2 = MAX( 0, - ELE2 )
             ELE2 = MAX( 0, + ELE2 )
             IF ( SELE2 /= 0 ) THEN
                 FOUND = .TRUE.
-                DO CV_SKLOC = 1, CV_SNLOC
-                    CV_SKNOD = CV_SNDGLN( ( SELE2 - 1 ) * CV_SNLOC + CV_SKLOC )
-                    DO CV_SKLOC2 = 1, CV_SNLOC
+                DO CV_SKLOC = 1, Mdims%cv_snloc
+                    CV_SKNOD = CV_SNDGLN( ( SELE2 - 1 ) * Mdims%cv_snloc + CV_SKLOC )
+                    DO CV_SKLOC2 = 1, Mdims%cv_snloc
                         IF ( CV_SKNOD == LOG_ON_BOUND( CV_SKLOC2 ) ) THEN
                             FOUND = .FALSE.
                             EXIT
@@ -8494,24 +8494,16 @@ contains
                 IF( FOUND ) THEN
                     SELE = SELE2
                     ELE3 = ELE2
+                    exit
                 ENDIF
             END IF
         END DO
 
-        !    IF(SELE==0) THEN
-        !       IF(ELE3==0) THEN
-        ! dont integrate here as we are not between elements and or on the boundary of the domain - we are on the
-        ! boundary of a subdomain partition between subdomains.
-        !
-        !       ENDIF
-        !    ENDIF
-
-        ! Calculate CV_SLOC2LOC
         Conditional_Sele: IF ( SELE /= 0 ) THEN
-            DO CV_SKLOC = 1, CV_SNLOC
-                CV_SKNOD = CV_SNDGLN( ( SELE - 1 ) * CV_SNLOC + CV_SKLOC )
-                DO CV_JLOC = 1, CV_NLOC
-                    CV_JNOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
+            DO CV_SKLOC = 1, Mdims%cv_snloc
+                CV_SKNOD = CV_SNDGLN( ( SELE - 1 ) * Mdims%cv_snloc + CV_SKLOC )
+                DO CV_JLOC = 1, Mdims%cv_nloc
+                    CV_JNOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
                     IF( CV_SKNOD == CV_JNOD ) EXIT
                 END DO
                 CV_SLOC2LOC( CV_SKLOC ) = CV_JLOC
@@ -8519,27 +8511,26 @@ contains
             END DO
 
             ! Calculate U_SLOC2LOC
-            DO U_SKLOC = 1, U_SNLOC
-                U_SKNOD = U_SNDGLN( ( SELE - 1 ) * U_SNLOC + U_SKLOC )
-                DO U_JLOC = 1, U_NLOC
-                    U_JNOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_JLOC )
+            DO U_SKLOC = 1, Mdims%u_snloc
+                U_SKNOD = U_SNDGLN( ( SELE - 1 ) * Mdims%u_snloc + U_SKLOC )
+                DO U_JLOC = 1, Mdims%u_nloc
+                    U_JNOD = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
                     IF( U_SKNOD == U_JNOD ) EXIT
                 END DO
                 U_SLOC2LOC( U_SKLOC ) = U_JLOC
             END DO
         END IF Conditional_Sele
-
         RETURN
     END SUBROUTINE CALC_SELE
 
 
 
 
-    SUBROUTINE PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
-        CV_NONODS, U_NONODS, NPHASE, NPRES, n_in_pres, CV_SNLOC,  between_elements, on_domain_boundary, &
+    SUBROUTINE PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
+        Mdims, CV_funs,GI, NCOLCT, between_elements, on_domain_boundary, &
         ELE, ELE2, SELE, HDC, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, &
         U_SLOC2LOC, CV_SLOC2LOC,  &
-        SUFEN, SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
+        SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
         WIC_U_BC_ALL, WIC_P_BC_ALL, u_ndgln,SUF_P_BC_ALL,&
         UGI_COEF_ELE_ALL,  &
         UGI_COEF_ELE2_ALL,  &
@@ -8555,9 +8546,11 @@ contains
         IMPLICIT NONE
         ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO CT MATRIX
         !    LOGICAL, PARAMETER :: more_in_ct=.false.
-        INTEGER, intent( in ) :: U_NLOC, U_SNLOC, SCVNGI, GI, NCOLCT, NDIM, &
-            CV_NONODS, U_NONODS, NPHASE, CV_NODI, CV_NODJ, ELE, ELE2, SELE, NPRES, n_in_pres, CV_SNLOC
-        REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: loc_u, loc2_u
+        INTEGER, intent( in ) :: GI, NCOLCT, &
+            CV_NODI, CV_NODJ, ELE, ELE2, SELE
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_shape_funs), intent(in) :: CV_funs
+        REAL, DIMENSION( :, :, : ), intent( in ) :: loc_u, loc2_u
         LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary,&
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS
         INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
@@ -8566,46 +8559,39 @@ contains
         REAL, DIMENSION( :, :, : ), intent( inout ) :: CT, MASS_P_CV
         REAL, DIMENSION( :, :, : ), intent( inout ) :: C, SUF_P_BC_ALL
         REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
-        REAL, DIMENSION( NDIM, NPHASE, U_NLOC ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
-        REAL, DIMENSION( :, : ), intent( in ) :: SUFEN
+        REAL, DIMENSION( Mdims%ndim, Mdims%nphase, Mdims%u_nloc ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
         REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI
-        REAL, DIMENSION( NDIM, SCVNGI ), intent( in ) :: CVNORMX_ALL
-        REAL, DIMENSION( NPHASE, CV_NONODS ), intent( in ) :: DEN_ALL
-        REAL, DIMENSION( NPHASE ), intent( in ) :: NDOTQ, NDOTQOLD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, LIMD
+        REAL, DIMENSION( :, : ), intent( in ) :: CVNORMX_ALL
+        REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL
+        REAL, DIMENSION( : ), intent( in ) :: NDOTQ, NDOTQOLD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, LIMD
         REAL, intent( in ) :: NDOTQ_HAT
-        REAL, DIMENSION( NPHASE ), intent( in ) :: THETA_VEL
+        REAL, DIMENSION( : ), intent( in ) :: THETA_VEL
         integer, dimension(:,:,:) :: WIC_U_BC_ALL, WIC_P_BC_ALL
         REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: U_RHS
         ! LIMT_HAT is the normalised voln fraction
         REAL, intent( in ) :: theta_cty_solid, HDC
-        REAL,  DIMENSION( NPHASE ), intent( in ) :: FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J
+        REAL,  DIMENSION( Mdims%nphase ), intent( in ) :: FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J
         ! local memory sent down for speed...
-        REAL,  DIMENSION( NDIM, NPHASE ), intent( inout ) :: UDGI_IMP_ALL
-        REAL,  DIMENSION( NPHASE ), intent( inout ) :: RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct
-        REAL,  DIMENSION( NDIM ), intent( inout ) :: UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL
-
+        REAL,  DIMENSION( Mdims%ndim, Mdims%nphase ), intent( inout ) :: UDGI_IMP_ALL
+        REAL,  DIMENSION( Mdims%nphase ), intent( inout ) :: RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct
+        REAL,  DIMENSION( Mdims%ndim ), intent( inout ) :: UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL
         ! Need to pass down cap_diff_coef_divdx to this routine
-        REAL, DIMENSION( nphase ) :: CAP_DIFF_COEF_DIVDX
+        REAL, DIMENSION( Mdims%nphase ) :: CAP_DIFF_COEF_DIVDX
         !Variable to account for boundary conditions if using GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
-        real, dimension (NDIM, NPHASE, U_NLOC ) :: Bound_ele_correct
-
+        real, dimension (Mdims%ndim, Mdims%nphase, Mdims%u_nloc ) :: Bound_ele_correct
         ! Local variables...
         INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
             U_KLOC_LEV, U_NLOC_LEV, IPHASE, U_SKLOC, I, J, U_KKLOC, IPRES, p_jloc, p_sjloc,&
             u_iloc, u_inod, u_siloc
 
-
         !If using C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
         if (present(U_RHS) .and. RECAL_C_CV_RHS) call introduce_C_CV_boundary_conditions(U_RHS, Bound_ele_correct)
-
                ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
-
                  ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
         IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
             ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the CT matrix and add what we really want)
-
             ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
-                +   THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT(:)*NDOTQ(:) - NDOTQ_HAT/REAL(NPHASE) )
+                +   THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT(:)*NDOTQ(:) - NDOTQ_HAT/REAL(Mdims%nphase) )
             ! assume cty is satified for solids...
             ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
                 +      (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * (  LIMT_HAT(:) - LIMT(:) )*NDOTQ(:)
@@ -8613,30 +8599,26 @@ contains
             if ( integrate_other_side_and_not_boundary ) then
                 ! assume cty is satified for solids...
                 ct_rhs_phase_cv_nodj(:)=ct_rhs_phase_cv_nodj(:) &
-                    - THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT(:)*NDOTQ(:)  - NDOTQ_HAT/REAL(NPHASE)  )
+                    - THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT(:)*NDOTQ(:)  - NDOTQ_HAT/REAL(Mdims%nphase)  )
                 ! assume cty is satified for solids...
                 ct_rhs_phase_cv_nodj(:)=ct_rhs_phase_cv_nodj(:) &
                     - (1.0-THETA_CTY_SOLID) * SCVDETWEI( GI ) * ( LIMT_HAT(:) - LIMT(:) )*NDOTQ(:)
             end if
         END IF ! For solid modelling...
-
-        DO U_KLOC = 1, U_NLOC
-
+        DO U_KLOC = 1, Mdims%u_nloc
             RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
-                * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
-
+                * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
             IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
                 RCON(:) = RCON(:) + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
-                    * SUFEN( U_KLOC, GI )
+                    * CV_funs%sufen( U_KLOC, GI )
             END IF ! For solid modelling...
-
-            DO IPHASE = 1, NPHASE
+            DO IPHASE = 1, Mdims%nphase
                 CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) = CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) &
                     + rcon(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
             END DO
             IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
-                rcon(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
-                DO IPHASE=1,NPHASE
+                rcon(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
+                DO IPHASE=1,Mdims%nphase
                     IF ( between_elements) THEN
                         C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
@@ -8647,12 +8629,12 @@ contains
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Bound_ele_correct(:, IPHASE, U_KLOC)
                         !Calculate mass matrix
                         if (SUF_INT_MASS_MATRIX) then
-                            do IDIM = 1, NDIM
-                                do u_kkloc=1,u_nloc
-                                    I = IDIM+(IPHASE-1)*NDIM+(U_KLOC-1) * NDIM * NPHASE
-                                    J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+                            do IDIM = 1, Mdims%ndim
+                                do u_kkloc=1,Mdims%u_nloc
+                                    I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC-1) * Mdims%ndim * Mdims%nphase
+                                    J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
                                     MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &
-                                        + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*Bound_ele_correct(IDIM, IPHASE, U_KLOC)&
+                                        + CV_funs%sufen( U_KLOC, GI )*CV_funs%sufen( U_KKLOC, GI )*Bound_ele_correct(IDIM, IPHASE, U_KLOC)&
                                         * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                                 end do
                             end do
@@ -8660,25 +8642,21 @@ contains
                     endif
                 END DO
             ENDIF
-
             ! flux from the other side (change of sign because normal is -ve)...
             if ( integrate_other_side_and_not_boundary ) then
-
                 RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:))  &
-                    * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
-
+                    * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
                 IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
                     RCON_J(:) = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
-                        * SUFEN( U_KLOC, GI )
+                        * CV_funs%sufen( U_KLOC, GI )
                 END IF ! For solid modelling...
-
-                DO IPHASE = 1, NPHASE
+                DO IPHASE = 1, Mdims%nphase
                     CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) = CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) &
                         - RCON_J(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
                 END DO
                 IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
-                    RCON_J(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
-                    DO IPHASE=1,NPHASE
+                    RCON_J(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
+                    DO IPHASE=1,Mdims%nphase
                         IF ( between_elements ) THEN
                             C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
@@ -8689,12 +8667,12 @@ contains
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Bound_ele_correct(:, IPHASE, U_KLOC)
                             !Calculate mass matrix
                             if (SUF_INT_MASS_MATRIX) then
-                                do IDIM = 1, NDIM
-                                    do u_kkloc=1,u_nloc
-                                        I = IDIM+(IPHASE-1)*NDIM+(U_KLOC-1) * NDIM * NPHASE
-                                        J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+                                do IDIM = 1, Mdims%ndim
+                                    do u_kkloc=1,Mdims%u_nloc
+                                        I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC-1) * Mdims%ndim * Mdims%nphase
+                                        J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
                                         MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &
-                                            + SUFEN( U_KLOC, GI )*SUFEN( U_KKLOC, GI )*Bound_ele_correct(idim, IPHASE, U_KLOC)&
+                                            + CV_funs%sufen( U_KLOC, GI )*CV_funs%sufen( U_KKLOC, GI )*Bound_ele_correct(idim, IPHASE, U_KLOC)&
                                             * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                                     end do
                                 end do
@@ -8703,21 +8681,18 @@ contains
                     END DO
                 ENDIF
             end if  ! endof if ( integrate_other_side_and_not_boundary ) then
-
         END DO
         IF ( on_domain_boundary ) THEN
             UDGI_IMP_ALL=0.0
-            DO U_KLOC = 1, U_NLOC
-                DO IPHASE = 1, NPHASE
-                    UDGI_IMP_ALL(:,IPHASE) = UDGI_IMP_ALL(:,IPHASE) + SUFEN( U_KLOC, GI ) * &
+            DO U_KLOC = 1, Mdims%u_nloc
+                DO IPHASE = 1, Mdims%nphase
+                    UDGI_IMP_ALL(:,IPHASE) = UDGI_IMP_ALL(:,IPHASE) + CV_funs%sufen( U_KLOC, GI ) * &
                         UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * LOC_U( :, IPHASE, U_KLOC )
                 END DO
             END DO
-
-            DO IPHASE = 1, NPHASE
+            DO IPHASE = 1, Mdims%nphase
                 NDOTQ_IMP(IPHASE)= SUM( CVNORMX_ALL( :,GI ) * UDGI_IMP_ALL(:,IPHASE) )
             END DO
-
             ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
                 - SCVDETWEI( GI ) * (  ( &
                 ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
@@ -8728,7 +8703,6 @@ contains
                 - SCVDETWEI( GI ) * (  ( &
                 ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * NDOTQOLD(:) * (1.-THETA_VEL(:)) &
                 ) / DEN_ALL( :, CV_NODI )   )
-
             ! flux from the other side (change of sign because normal is -ve)...
             if ( integrate_other_side_and_not_boundary ) then
                 ct_rhs_phase_cv_nodj(:)=ct_rhs_phase_cv_nodj(:) &
@@ -8737,93 +8711,80 @@ contains
                     ) / DEN_ALL( :, CV_NODJ ) )
             end if
         END IF
-
         IF ( between_elements ) THEN
             ! We have a discontinuity between elements so integrate along the face...
-            DO U_SKLOC = 1, U_SNLOC
+            DO U_SKLOC = 1, Mdims%u_snloc
                 U_KLOC = U_SLOC2LOC(U_SKLOC)
                 U_KLOC2 = U_OTHER_LOC( U_KLOC )
-
                 RCON(:) = SCVDETWEI( GI ) * (  FTHETA_T2(:) * LIMDT(:) + ONE_M_FTHETA_T2OLD(:) * LIMDTOLD(:) * THETA_VEL(:)) &
-                    * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
+                    * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODI )
                 IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling use backward Euler for this part...
                     RCON(:)    = RCON(:)    + SCVDETWEI( GI )  * (LIMT_HAT(:) - LIMT(:))  &
-                        * SUFEN( U_KLOC, GI )
+                        * CV_funs%sufen( U_KLOC, GI )
                 END IF ! For solid modelling...
-
-                DO IPHASE = 1, NPHASE
+                DO IPHASE = 1, Mdims%nphase
                     CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
                         = CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
                         + rcon(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
                 END DO
                 IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
-                    RCON(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
-                    DO IPHASE=1,NPHASE
+                    RCON(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
+                    DO IPHASE=1,Mdims%nphase
                         C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             = C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             + RCON(IPHASE) * CVNORMX_ALL( :, GI )* 0.5
-
                         !Calculate mass matrix
                         if (SUF_INT_MASS_MATRIX) then
-                            do IDIM = 1, NDIM
-                                do u_kkloc=1,u_nloc
-                                    I = IDIM+(IPHASE-1)*NDIM+(U_KLOC2-1) * NDIM * NPHASE
-                                    J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+                            do IDIM = 1, Mdims%ndim
+                                do u_kkloc=1,Mdims%u_nloc
+                                    I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC2-1) * Mdims%ndim * Mdims%nphase
+                                    J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
                                     MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &
-                                        + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )&
+                                        + CV_funs%sufen( U_KLOC2, GI )*CV_funs%sufen( U_KKLOC, GI )&
                                         * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
-
                                 end do
                             end do
                         end if
-
                     END DO
                 ENDIF
                 ! flux from the other side (change of sign because normal is -ve)...
                 if ( integrate_other_side_and_not_boundary ) then
                     RCON_J(:) = SCVDETWEI( GI ) * ( FTHETA_T2_J(:)* LIMDT(:) + ONE_M_FTHETA_T2OLD_J(:) * LIMDTOLD(:) * THETA_VEL(:)) &
-                        * SUFEN( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
+                        * CV_funs%sufen( U_KLOC, GI ) / DEN_ALL( :, CV_NODJ )
                     IF(RETRIEVE_SOLID_CTY) THEN ! For solid modelling...
                         RCON_J(:)    = RCON_J(:)  + SCVDETWEI( GI ) * (LIMT_HAT(:) - LIMT(:)) &
-                            * SUFEN( U_KLOC, GI )
+                            * CV_funs%sufen( U_KLOC, GI )
                     END IF ! For solid modelling...
-
-                    DO IPHASE=1,NPHASE
+                    DO IPHASE=1,Mdims%nphase
                         CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
                             = CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
                             - RCON_J(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
                     END DO
-
                     IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
-                        RCON_J(:) = SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )
-                        DO IPHASE=1,NPHASE
+                        RCON_J(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
+                        DO IPHASE=1,Mdims%nphase
                             C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 = C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* 0.5
-
                             !Calculate mass matrix
                             if (SUF_INT_MASS_MATRIX) then
-                                do IDIM = 1, NDIM
-                                    do u_kkloc=1,u_nloc
-                                        I = IDIM+(IPHASE-1)*NDIM+(U_KLOC2-1) * NDIM * NPHASE
-                                        J = IDIM+(IPHASE-1)*NDIM+(U_KKLOC-1) * NDIM * NPHASE
+                                do IDIM = 1, Mdims%ndim
+                                    do u_kkloc=1,Mdims%u_nloc
+                                        I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC2-1) * Mdims%ndim * Mdims%nphase
+                                        J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
                                         MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &
-                                            + SUFEN( U_KLOC2, GI )*SUFEN( U_KKLOC, GI )&
+                                            + CV_funs%sufen( U_KLOC2, GI )*CV_funs%sufen( U_KKLOC, GI )&
                                             * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                                     end do
                                 end do
                             end if
-
                         END DO
                     ENDIF
                 end if  ! endof if ( integrate_other_side_and_not_boundary ) then
             END DO
         END IF ! endof IF ( between_elements ) THEN
-
         RETURN
-
     contains
-
         subroutine introduce_C_CV_boundary_conditions(U_RHS, Bound_ele_correct)
             !This subroutine populates Bound_ele_correct and Bound_ele2_correct to properly apply the BCs when creating the
             !C_CV matrix
@@ -8831,42 +8792,42 @@ contains
             REAL, DIMENSION( :, :, : ), intent( inout ) :: U_RHS
             real, dimension(:,:,:), intent(out) :: Bound_ele_correct
             !Local variables
-            integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres
+            integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC
+            real :: corrector
             !By default no modification is required
             Bound_ele_correct = 1.0
             IF ( on_domain_boundary ) THEN
                 !Prepare to apply the boundary conditions
                 DO IPHASE=1,size(Bound_ele_correct,2)
                     if (WIC_U_BC_ALL( 1, IPHASE, SELE ) == WIC_U_BC_DIRICHLET ) then
-                        DO U_SKLOC = 1, size(U_SLOC2LOC)
+                        DO U_SKLOC = 1, Mdims%u_snloc
                             U_KLOC = U_SLOC2LOC( U_SKLOC )
                             Bound_ele_correct( :, IPHASE, U_KLOC ) = 0.
                         end do
                     end if
                 end do
                 !If C_CV formulation, apply weak pressure boundary conditions if any
-                DO IPRES = 1, NPRES
+                DO IPRES = 1, Mdims%npres
                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
-                        Bound_ele_correct = 0
-                        DO U_SILOC = 1, U_SNLOC!size(U_SLOC2LOC)
+                        corrector = dble(Mdims%cv_snloc)/dble(Mdims%u_snloc)
+                        DO U_SILOC = 1, Mdims%u_snloc
                             U_ILOC = U_SLOC2LOC( U_SILOC )
-                            U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                            DO P_SJLOC = 1, CV_SNLOC!size(CV_SLOC2LOC)
-                                U_KLOC = U_SLOC2LOC( P_SJLOC )
-                                DO IPHASE =  1+(IPRES-1)*N_IN_PRES, IPRES*N_IN_PRES
-                                    Bound_ele_correct( :, IPHASE, U_KLOC ) = Bound_ele_correct( :, IPHASE, U_KLOC ) + 1
+                            Bound_ele_correct( :, :, U_ILOC ) = 0.
+                            U_INOD = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+                            DO P_SJLOC = 1, Mdims%cv_snloc
+                                CV_KLOC = CV_SLOC2LOC( P_SJLOC )
+                                DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
+                                    Bound_ele_correct( :, IPHASE, U_ILOC ) = Bound_ele_correct( :, IPHASE, U_ILOC ) + corrector
                                     U_RHS( :, IPHASE, U_INOD ) = U_RHS( :, IPHASE, U_INOD ) &
-                                        - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * SUFEN( U_KLOC, GI )&
-                                        * SUF_P_BC_ALL( 1,1,P_SJLOC + size(CV_SLOC2LOC)* ( SELE - 1 ) )
+                                        - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI )&
+                                        * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )*corrector
                                 end do
                             end do
                         end do
                     end if
                 end do
             end if
-
         end subroutine introduce_C_CV_boundary_conditions
-
     END SUBROUTINE PUT_IN_CT_RHS
 
 
