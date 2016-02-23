@@ -182,7 +182,7 @@ contains
         type( tensor_field ) :: metric_tensor
         type( state_type ), dimension( : ), pointer :: sub_state => null()
         integer :: nonlinear_iterations_adapt
-        logical :: do_reallocate_fields = .false., not_to_move_det_yet = .false., initialised
+        logical :: do_reallocate_fields = .false., not_to_move_det_yet = .false.
 
         !!$ Working arrays:
         real, dimension(:), pointer :: mass_ele
@@ -477,10 +477,6 @@ contains
             end if
         end do
 
-        !!$ Extracting Mesh Dependent Fields
-        initialised = .false.
-        call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-            Velocity_U_Source, Velocity_Absorption )
         !!$ Calculate diagnostic fields
         call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
         call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
@@ -1885,13 +1881,7 @@ end if
                 suf_sig_diagten_bc=0.
                 !!$
 
-
-                !!$ Extracting Mesh Dependent Fields
-                initialised = .true.
-                call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-                    Velocity_U_Source, Velocity_Absorption )
-
-                ncv_faces=CV_count_faces( packed_state, Mdims, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
+                ncv_faces = CV_count_faces( packed_state, Mdims, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
 
 
                 !!$
