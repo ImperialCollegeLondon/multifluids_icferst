@@ -1019,12 +1019,12 @@ end if
                         end if Conditional_SmoothAbsorption
 
                         !!$ Computing diffusion term for the component conservative equation:
-                        call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, Mdims,&
+                        call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, &
+                            Mdims, CV_GIdims, CV_funs, &
                             mat_ndgln, u_ndgln, x_ndgln, &
                             u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt, &
                             Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
-                            Component_Diffusion ,&
-                            StorageIndexes=StorageIndexes )
+                            Component_Diffusion )
 
                         !!$ NonLinear iteration for the components advection:
                         Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
