@@ -1970,7 +1970,7 @@ contains
         ! Momentum absorption
 
         ! open the boiling test for two phases-gas and liquid
-        if (have_option("\boiling")) then
+        if (have_option('/boiling')) then
             S_ls_l=0.0
             S_gs_g=0.0            
         end if
@@ -2024,7 +2024,7 @@ contains
         ! Temperature absorption
 
         ! open the boiling test for two phases-gas and liquid
-        if (have_option("\boiling")) then
+        if (have_option('/boiling')) then
             St_sl=0.0
             St_sg=0.0            
         end if

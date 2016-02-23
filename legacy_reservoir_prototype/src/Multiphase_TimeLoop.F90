@@ -717,7 +717,7 @@ contains
                 !           call Clean_Storage(storage_state, StorageIndexes)
 
                 ! open the boiling test for two phases-gas and liquid
-                if (have_option("\boiling")) then
+                if (have_option('/boiling')) then
                    call set_nu_to_u( packed_state )
                    call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
                    ScalarField_Source, velocity_absorption, temperature_absorption )

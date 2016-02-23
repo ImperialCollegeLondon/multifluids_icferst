@@ -187,7 +187,7 @@ contains
 
               
                ! open the boiling test for two phases-gas and liquid
-               if (have_option("\boiling")) then ! don't the divide int. energy equation by the volume fraction
+               if (have_option('/boiling')) then ! don't the divide int. energy equation by the volume fraction
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
                    den_all = den_all * a%val(1,:,:)
                    aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
@@ -2217,7 +2217,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
 
         ! open the boiling test for two phases-gas and liquid
-        if (have_option("\boiling")) then
+        if (have_option('/boiling')) then
             GOT_VIRTUAL_MASS=.true.
         end if
         
