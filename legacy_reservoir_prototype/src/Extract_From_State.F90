@@ -200,6 +200,8 @@ contains
             end if
         end if
 
+        ewrite(3,*)' Leaving Get_Primary_Scalars'
+
         return
     end subroutine Get_Primary_Scalars
 
@@ -1752,7 +1754,7 @@ contains
 
         type(scalar_field), pointer :: pressure, sfield
         type(vector_field), pointer :: velocity, position, vfield
-        type(tensor_field), pointer :: tfield, p2, d2
+        type(tensor_field), pointer :: tfield, p2, d2, drhodp
 
         type(vector_field) :: porosity, vec_field
         type(vector_field) :: p_position, u_position, m_position
@@ -1910,6 +1912,10 @@ contains
         call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
 
         call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
+        drhodp => extract_tensor_field(packed_state,"PackedDRhoDPressure")
+        do icomp=1,ncomp
+           call insert(multicomponent_state(icomp),drhodp,"PackedDRhoDPressure")
+        end do
 
         d2=>extract_tensor_field(packed_state,"PackedFEDensity")
 

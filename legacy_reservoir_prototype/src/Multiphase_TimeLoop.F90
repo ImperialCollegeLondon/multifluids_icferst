@@ -498,12 +498,12 @@ contains
 
         !Calculate the gauss integer numbers
         call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, .false. )
-        call retrieve_ngi( FE_GIdims, Mdims, cv_ele_type, .true. )
+        call retrieve_ngi( FE_GIdims, Mdims, u_ele_type, .true. )
         !! Compute reference shape functions
-        call allocate_multi_shape_funs(CV_funs, Mdims, CV_GIdims)
-        call allocate_multi_shape_funs(FE_funs, Mdims, FE_GIdims)
-        call cv_fem_shape_funs_new(CV_funs, Mdims, CV_GIdims, cv_ele_type, quad_over_whole_ele = .false.)
-        call cv_fem_shape_funs_new(FE_funs, Mdims, FE_GIdims, u_ele_type, quad_over_whole_ele = .true.)
+        call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
+        call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
+        call cv_fem_shape_funs_new( CV_funs, Mdims, CV_GIdims, cv_ele_type, quad_over_whole_ele = .false. )
+        call cv_fem_shape_funs_new( FE_funs, Mdims, FE_GIdims, u_ele_type, quad_over_whole_ele = .true. )
 
         allocate( theta_flux( nphase, ncv_faces * igot_theta_flux ), &
             one_m_theta_flux( nphase, ncv_faces * igot_theta_flux ), &
@@ -1098,7 +1098,7 @@ end if
                             D_s%val, Porosity_field%val, mass_ele, &
                             Component_Absorption,IDs_ndgln )
 
-                        if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
+                        if ( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                             ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                             do cv_nodi = 1, cv_nonods
                                 if( saturation_field%val( 1, 1, cv_nodi ) > 0.95 ) then
@@ -1111,18 +1111,20 @@ end if
                                     end do
                                 end if
                             end do
-                        end if
 
-                        DO CV_NODI = 1, CV_NONODS
-                            Loop_Phase_SourceTerm1: do iphase = 1, nphase
-                                Loop_Phase_SourceTerm2: do jphase = 1, nphase
-                                    tracer_source%val(1,iphase,cv_nodi)=tracer_source%val(1,iphase,cv_nodi)- &
-                                        Component_Absorption( IPHASE, JPHASE, CV_NODI ) * &
-                                        MFC_s%val(ICOMP, JPHASE, CV_NODI) / &
-                                        DC_s%val( icomp, iphase, cv_nodi  )
-                                end do Loop_Phase_SourceTerm2
-                            end do Loop_Phase_SourceTerm1
-                        END DO
+                            DO CV_NODI = 1, CV_NONODS
+                               Loop_Phase_SourceTerm1: do iphase = 1, nphase
+                                  Loop_Phase_SourceTerm2: do jphase = 1, nphase
+                                     tracer_source%val(1,iphase,cv_nodi)=tracer_source%val(1,iphase,cv_nodi)- &
+                                          Component_Absorption( IPHASE, JPHASE, CV_NODI ) * &
+                                          MFC_s%val(ICOMP, JPHASE, CV_NODI) / &
+                                          DC_s%val( icomp, iphase, cv_nodi  )
+                                  end do Loop_Phase_SourceTerm2
+                               end do Loop_Phase_SourceTerm1
+                            END DO
+
+                         end if
+
 
                         ! For compressibility
                         DO IPHASE = 1, NPHASE
