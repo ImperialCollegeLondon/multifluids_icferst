@@ -7930,6 +7930,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      integer :: inod, ph_jnod2, ierr, count, count2, i, j, mat_inod
      integer, dimension(:), pointer :: findph, colph
 
+     integer :: nface
 
      ewrite(3,*) "inside high_order_pressure_solve"
 
@@ -7964,17 +7965,16 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          stop 567
      end if
 
-!!$     call retrieve_ngi( ndim, ph_ele_type, ph_nloc, u_nloc, &
-!!$         ph_ngi, ph_ngi_short, sphngi, sbphngi, nface, quad_over_whole_ele )
-
+     !Get local Gauss integer numbers
+     call retrieve_ngi( GIdims, Mdims, ph_ele_type, QUAD_OVER_WHOLE_ELE, &
+         ph_nloc, u_nloc )
+     ph_ngi = GIdims%cv_ngi ; ph_ngi_short = GIdims%cv_ngi_short ; &
+        sphngi = GIdims%scvngi ; sbphngi = GIdims%sbcvngi
      allocate( ph_on_face( ph_nloc, sphngi ), phfem_on_face( ph_nloc, sphngi ) )
      allocate( u_on_face( u_nloc, sphngi ), ufem_on_face( u_nloc, sphngi ) )
 
-     call retrieve_ngi( GIdims, Mdims, ph_ele_type, QUAD_OVER_WHOLE_ELE, &
-         ph_nloc, u_nloc )
 
-     ph_ngi = GIdims%cv_ngi ; ph_ngi_short = GIdims%cv_ngi_short ; &
-        sphngi = GIdims%scvngi ; sbphngi = GIdims%sbcvngi
+    call cv_fem_shape_funs_new( ph_funs, Mdims, GIdims, ph_ele_type, quad_over_whole_ele = .true. )
 
 !!$== Maybe the above needs to be generalised 
 
