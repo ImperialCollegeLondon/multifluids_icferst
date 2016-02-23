@@ -62,7 +62,7 @@ module Copy_Outof_State
 
     private
 
-    public :: Get_Primary_Scalars, Get_Primary_Scalars_new, Compute_Node_Global_Numbers, Extracting_MeshDependentFields_From_State, &
+    public :: Get_Primary_Scalars, Get_Primary_Scalars_new, Compute_Node_Global_Numbers, &
         Extract_TensorFields_Outof_State, Get_Ele_Type, Get_Discretisation_Options, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
@@ -199,6 +199,8 @@ contains
                 ph_nonods = 0
             end if
         end if
+
+        ewrite(3,*)' Leaving Get_Primary_Scalars'
 
         return
     end subroutine Get_Primary_Scalars
@@ -651,95 +653,6 @@ contains
 
         return
     end subroutine Get_Discretisation_Options
-
-
-
-    !sprint_to_do! delete u_source and u_abs from state
-    subroutine Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-        Velocity_U_Source, Velocity_Absorption )
-        implicit none
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
-
-        logical, intent( in ) :: initialised
-        real, dimension( :, :, : ), intent( inout ) :: Velocity_U_Source
-        real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption
-
-        !!$ Local variables
-        type( scalar_field ), pointer :: scalarfield
-        type( vector_field ), pointer :: vectorfield, x_all
-        type( tensor_field ), pointer :: tensorfield
-        integer, dimension( : ), pointer :: element_nodes
-        character( len = option_path_len ) :: option_path
-        integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
-            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-            x_snloc, cv_snloc, u_snloc, p_snloc, &
-            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-            cv_ele_type, p_ele_type, u_ele_type, &
-            iphase, ele, idim
-        integer, dimension( : ), pointer :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, &
-            xu_ndgln, mat_ndgln, cv_sndgln, p_sndgln, u_sndgln
-        logical :: is_symmetric
-        real, dimension( : ), allocatable :: dummy
-
-        !!$ Extracting spatial resolution
-        call Get_Primary_Scalars( state, &
-            nphase, nstate, ncomp, totele, ndim, stotel, &
-            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-            x_snloc, cv_snloc, u_snloc, p_snloc, &
-            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods )
-
-        !!$ Calculating Global Node Numbers
-        allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
-            u_sndgln( stotel * u_snloc ), dummy( cv_nonods ) )
-
-        cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
-
-        call Compute_Node_Global_Numbers( state, &
-            totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
-            cv_snloc, p_snloc, u_snloc, &
-            cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
-            cv_sndgln, p_sndgln, u_sndgln )
-
-        call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type )
-
-
-        !Get the coordinates of the nodes from the mesh
-        x_all => extract_vector_field( packed_state, "PressureCoordinate" )
-
-        !!$
-        !!$ Extracting Pressure Field:
-        !!$
-        scalarfield => extract_scalar_field( state( 1 ), 'Pressure' )
-        call Get_ScalarFields_Outof_State( state, initialised, 1, scalarfield, &
-            dummy )
-
-        !!$
-        !!$ Extracting Density Field:
-        !!$
-        Loop_Density: do iphase = 1, nphase
-            scalarfield => extract_scalar_field( state( iphase ), 'Density' )
-            !knod = ( iphase - 1 ) * node_count( scalarfield )
-            call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
-                dummy)
-        end do Loop_Density
-
-        !!$
-        !!$ Extracting Velocity Field:
-        !!$
-        Loop_Velocity: do iphase = 1, nphase
-            vectorfield => extract_vector_field( state( iphase ), 'Velocity' )
-            call Get_VectorFields_Outof_State( state, initialised, iphase, vectorfield, &
-                field_prot_source=Velocity_U_Source, field_prot_absorption=Velocity_Absorption )
-        end do Loop_Velocity
-
-
-        deallocate( cv_sndgln, p_sndgln, u_sndgln, dummy )
-
-        return
-    end subroutine Extracting_MeshDependentFields_From_State
-
-
 
 
     subroutine Get_ScalarFields_Outof_State( state, initialised, iphase, field, &
@@ -1752,7 +1665,7 @@ contains
 
         type(scalar_field), pointer :: pressure, sfield
         type(vector_field), pointer :: velocity, position, vfield
-        type(tensor_field), pointer :: tfield, p2, d2
+        type(tensor_field), pointer :: tfield, p2, d2, drhodp
 
         type(vector_field) :: porosity, vec_field
         type(vector_field) :: p_position, u_position, m_position
@@ -1910,6 +1823,10 @@ contains
         call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
 
         call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
+        drhodp => extract_tensor_field(packed_state,"PackedDRhoDPressure")
+        do icomp=1,ncomp
+           call insert(multicomponent_state(icomp),drhodp,"PackedDRhoDPressure")
+        end do
 
         d2=>extract_tensor_field(packed_state,"PackedFEDensity")
 

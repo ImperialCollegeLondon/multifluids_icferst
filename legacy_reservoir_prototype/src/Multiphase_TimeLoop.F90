@@ -182,7 +182,7 @@ contains
         type( tensor_field ) :: metric_tensor
         type( state_type ), dimension( : ), pointer :: sub_state => null()
         integer :: nonlinear_iterations_adapt
-        logical :: do_reallocate_fields = .false., not_to_move_det_yet = .false., initialised
+        logical :: do_reallocate_fields = .false., not_to_move_det_yet = .false.
 
         !!$ Working arrays:
         real, dimension(:), pointer :: mass_ele
@@ -195,7 +195,7 @@ contains
         !!$
         real, dimension( :, : ), pointer :: &
             ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component
-        real, dimension( :, :, : ), pointer :: Velocity_U_Source, Velocity_U_Source_CV
+        real, dimension( :, :, : ), pointer :: Velocity_U_Source
         real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
             Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
             !!$
@@ -430,7 +430,6 @@ contains
             mass_ele( totele ), &
             !!$
             Velocity_U_Source( ndim, nphase, u_nonods ), &
-            Velocity_U_Source_CV( ndim, nphase, cv_nonods ), &
             !!$
             Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
             Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -453,7 +452,6 @@ contains
         mass_ele=0.
         !!$
         Velocity_U_Source=0.
-        Velocity_U_Source_CV=0.
         !!$
         Material_Absorption=0.
         Velocity_Absorption=0.
@@ -477,10 +475,6 @@ contains
             end if
         end do
 
-        !!$ Extracting Mesh Dependent Fields
-        initialised = .false.
-        call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-            Velocity_U_Source, Velocity_Absorption )
         !!$ Calculate diagnostic fields
         call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
         call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
@@ -498,12 +492,12 @@ contains
 
         !Calculate the gauss integer numbers
         call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, .false. )
-        call retrieve_ngi( FE_GIdims, Mdims, cv_ele_type, .true. )
+        call retrieve_ngi( FE_GIdims, Mdims, u_ele_type, .true. )
         !! Compute reference shape functions
-        call allocate_multi_shape_funs(CV_funs, Mdims, CV_GIdims)
-        call allocate_multi_shape_funs(FE_funs, Mdims, FE_GIdims)
-        call cv_fem_shape_funs_new(CV_funs, Mdims, CV_GIdims, cv_ele_type, quad_over_whole_ele = .false.)
-        call cv_fem_shape_funs_new(FE_funs, Mdims, FE_GIdims, u_ele_type, quad_over_whole_ele = .true.)
+        call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
+        call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
+        call cv_fem_shape_funs_new( CV_funs, Mdims, CV_GIdims, cv_ele_type, quad_over_whole_ele = .false. )
+        call cv_fem_shape_funs_new( FE_funs, Mdims, FE_GIdims, u_ele_type, quad_over_whole_ele = .true. )
 
         allocate( theta_flux( nphase, ncv_faces * igot_theta_flux ), &
             one_m_theta_flux( nphase, ncv_faces * igot_theta_flux ), &
@@ -920,7 +914,7 @@ end if
 
                     CALL CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims, nphase, ncomp, &
                         PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-                        Velocity_U_Source_CV, Velocity_U_Source, &
+                        Velocity_U_Source, &
                         NCOLACV, FINACV, COLACV, MIDACV, &
                         small_FINACV, small_COLACV, small_MIDACV, &
                         NCOLCT, FINDCT, COLCT, &
@@ -948,7 +942,7 @@ end if
                         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN,&
                         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
                         !!$
-                        Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, Velocity_U_Source, Velocity_U_Source_CV, &
+                        Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, Velocity_U_Source, &
                         dt, &
                         !!$
                         NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -1068,12 +1062,12 @@ end if
                         end if Conditional_SmoothAbsorption
 
                         !!$ Computing diffusion term for the component conservative equation:
-                        call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, Mdims,&
+                        call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, &
+                            Mdims, CV_GIdims, CV_funs, &
                             mat_ndgln, u_ndgln, x_ndgln, &
                             u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt, &
                             Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
-                            Component_Diffusion ,&
-                            StorageIndexes=StorageIndexes )
+                            Component_Diffusion )
 
                         !!$ NonLinear iteration for the components advection:
                         Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
@@ -1147,7 +1141,7 @@ end if
                             D_s%val, Porosity_field%val, mass_ele, &
                             Component_Absorption,IDs_ndgln )
 
-                        if( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
+                        if ( have_option( '/material_phase[' // int2str( nstate - ncomp ) // &
                             ']/is_multiphase_component/KComp_Sigmoid' ) .and. nphase > 1 ) then
                             do cv_nodi = 1, cv_nonods
                                 if( saturation_field%val( 1, 1, cv_nodi ) > 0.95 ) then
@@ -1160,18 +1154,20 @@ end if
                                     end do
                                 end if
                             end do
-                        end if
 
-                        DO CV_NODI = 1, CV_NONODS
-                            Loop_Phase_SourceTerm1: do iphase = 1, nphase
-                                Loop_Phase_SourceTerm2: do jphase = 1, nphase
-                                    tracer_source%val(1,iphase,cv_nodi)=tracer_source%val(1,iphase,cv_nodi)- &
-                                        Component_Absorption( IPHASE, JPHASE, CV_NODI ) * &
-                                        MFC_s%val(ICOMP, JPHASE, CV_NODI) / &
-                                        DC_s%val( icomp, iphase, cv_nodi  )
-                                end do Loop_Phase_SourceTerm2
-                            end do Loop_Phase_SourceTerm1
-                        END DO
+                            DO CV_NODI = 1, CV_NONODS
+                               Loop_Phase_SourceTerm1: do iphase = 1, nphase
+                                  Loop_Phase_SourceTerm2: do jphase = 1, nphase
+                                     tracer_source%val(1,iphase,cv_nodi)=tracer_source%val(1,iphase,cv_nodi)- &
+                                          Component_Absorption( IPHASE, JPHASE, CV_NODI ) * &
+                                          MFC_s%val(ICOMP, JPHASE, CV_NODI) / &
+                                          DC_s%val( icomp, iphase, cv_nodi  )
+                                  end do Loop_Phase_SourceTerm2
+                               end do Loop_Phase_SourceTerm1
+                            END DO
+
+                         end if
+
 
                         ! For compressibility
                         DO IPHASE = 1, NPHASE
@@ -1435,7 +1431,7 @@ end if
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
             plike_grad_sou_grad, plike_grad_sou_coef, &
             !!$ Working arrays
-            Velocity_U_Source, Velocity_U_Source_CV, &
+            Velocity_U_Source, &
             theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
             mass_ele,&
             Material_Absorption, Material_Absorption_Stab, &
@@ -1779,7 +1775,7 @@ end if
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                     plike_grad_sou_grad, plike_grad_sou_coef, &
                     !!$ Working arrays
-                    Velocity_U_Source, Velocity_U_Source_CV, &
+                    Velocity_U_Source, &
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
                     mass_ele, &
@@ -1903,7 +1899,6 @@ end if
                     !!$
                     !!$
                     Velocity_U_Source( ndim, nphase, u_nonods ), &
-                    Velocity_U_Source_CV( ndim, nphase, cv_nonods ), &
                     Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                     Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                     Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -1915,7 +1910,7 @@ end if
                     plike_grad_sou_grad( cv_nonods * nphase ), &
                     plike_grad_sou_coef( cv_nonods * nphase ) )
                 !!$
-                Velocity_U_Source = 0. ; Velocity_Absorption = 0. ; Velocity_U_Source_CV = 0.
+                Velocity_U_Source = 0. ; Velocity_Absorption = 0.
                 !!$
                 Temperature_Absorption=0.
                 !!$
@@ -1932,13 +1927,7 @@ end if
                 suf_sig_diagten_bc=0.
                 !!$
 
-
-                !!$ Extracting Mesh Dependent Fields
-                initialised = .true.
-                call Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-                    Velocity_U_Source, Velocity_Absorption )
-
-                ncv_faces=CV_count_faces( packed_state, Mdims, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
+                ncv_faces = CV_count_faces( packed_state, Mdims, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
 
 
                 !!$
