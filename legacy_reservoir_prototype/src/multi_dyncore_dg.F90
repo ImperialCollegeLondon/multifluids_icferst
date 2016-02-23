@@ -654,7 +654,7 @@ contains
     U_ELE_TYPE, P_ELE_TYPE, &
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
     CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
-    U_ABS_STAB, MAT_ABSORB, U_ABSORBIN, U_SOURCE, &
+    U_ABS_STAB, MAT_ABSORB, U_ABSORBIN, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
     NCOLDGM_PHA, &! Force balance
@@ -703,7 +703,6 @@ contains
         INTEGER, DIMENSION(  : ), intent( in ) :: CV_SNDGLN
         INTEGER, DIMENSION(  : ), intent( in ) :: XU_NDGLN
         REAL, DIMENSION(  :, :, :  ), intent( inout ) :: U_ABS_STAB, U_ABSORBIN, MAT_ABSORB
-        REAL, DIMENSION(  :, :, :  ), intent( in ) :: U_SOURCE
 
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
@@ -763,7 +762,7 @@ contains
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
         REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-        REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE_CV
+        REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE, U_SOURCE_CV
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
@@ -988,6 +987,10 @@ contains
 
         allocate( U_ABSORB( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
         U_ABSORB = U_ABSORBIN + MAT_ABSORB
+
+        ALLOCATE( U_SOURCE( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) ) ; u_source=0.0
+        ! update velocity source
+        call update_velocity_source( state, Mdims%ndim, Mdims%nphase, Mdims%u_nonods, u_source )
 
         ALLOCATE( U_SOURCE_ALL( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
         ALLOCATE( U_SOURCE_CV_ALL( Mdims%ndim, Mdims%nphase, Mdims%cv_nonods ) )
@@ -6042,7 +6045,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
  SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims, nphase, ncomp, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-     U_SOURCE, &
      !U_SOURCE_CV, U_SOURCE, &
      NCOLACV, FINACV, COLACV, MIDACV, &
      SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
@@ -6062,7 +6064,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      real, dimension( cv_nonods * nphase ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
      integer, intent( inout ) :: IPLIKE_GRAD_SOU
      !real, dimension( cv_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE_CV
-     real, dimension( u_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE
+     !real, dimension( u_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE
 
      type(state_type), dimension( : ), intent( inout ) :: state
      type(state_type), intent( inout ) :: packed_state, storage_state
@@ -6193,11 +6195,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
              if ( .not.USE_PRESSURE_FORCE ) then
 
+                 ! Use new memory
+
                  !U_SOURCE_CV(1:cv_nonods) = CV_U_FORCE_X_SUF_TEN
                  !U_SOURCE_CV(1+cv_nonods:2*cv_nonods) = CV_U_FORCE_Y_SUF_TEN
 
-                 U_SOURCE(1:U_nonods) = U_FORCE_X_SUF_TEN
-                 U_SOURCE(1+U_nonods:2*U_nonods) = U_FORCE_Y_SUF_TEN
+                 !U_SOURCE(1:U_nonods) = U_FORCE_X_SUF_TEN
+                 !U_SOURCE(1+U_nonods:2*U_nonods) = U_FORCE_Y_SUF_TEN
 
              end if
 

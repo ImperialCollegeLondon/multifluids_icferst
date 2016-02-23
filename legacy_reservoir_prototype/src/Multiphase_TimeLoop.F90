@@ -195,7 +195,6 @@ contains
         !!$
         real, dimension( :, : ), pointer :: &
             ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component
-        real, dimension( :, :, : ), pointer :: Velocity_U_Source
         real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
             Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
             !!$
@@ -429,8 +428,6 @@ contains
             Mean_Pore_CV( npres, cv_nonods ), &
             mass_ele( totele ), &
             !!$
-            Velocity_U_Source( ndim, nphase, u_nonods ), &
-            !!$
             Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
             Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
             Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -450,8 +447,6 @@ contains
         !!$
         Mean_Pore_CV=0.
         mass_ele=0.
-        !!$
-        Velocity_U_Source=0.
         !!$
         Material_Absorption=0.
         Velocity_Absorption=0.
@@ -747,8 +742,6 @@ end if
             call update_velocity_absorption( state, ndim, nphase, mat_nonods, velocity_absorption )
             call update_velocity_absorption_coriolis( state, ndim, nphase, velocity_absorption )
 
-            ! update velocity source
-            call update_velocity_source( state, ndim, nphase, u_nonods, velocity_u_source )
 
             !!$ FEMDEM...
 #ifdef USING_FEMDEM
@@ -862,10 +855,8 @@ end if
                     iplike_grad_sou = 0
                     plike_grad_sou_grad = 0
 
-
                     CALL CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims, nphase, ncomp, &
                         PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-                        Velocity_U_Source, &
                         NCOLACV, FINACV, COLACV, MIDACV, &
                         small_FINACV, small_COLACV, small_MIDACV, &
                         NCOLCT, FINDCT, COLCT, &
@@ -893,7 +884,7 @@ end if
                         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN,&
                         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
                         !!$
-                        Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, Velocity_U_Source, &
+                        Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, &
                         dt, &
                         !!$
                         NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -1382,7 +1373,6 @@ end if
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
             plike_grad_sou_grad, plike_grad_sou_coef, &
             !!$ Working arrays
-            Velocity_U_Source, &
             theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
             mass_ele,&
             Material_Absorption, Material_Absorption_Stab, &
@@ -1726,7 +1716,6 @@ end if
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                     plike_grad_sou_grad, plike_grad_sou_coef, &
                     !!$ Working arrays
-                    Velocity_U_Source, &
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
                     mass_ele, &
@@ -1848,8 +1837,6 @@ end if
                     Mean_Pore_CV( npres, cv_nonods ), &
                     mass_ele( totele ), &
                     !!$
-                    !!$
-                    Velocity_U_Source( ndim, nphase, u_nonods ), &
                     Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                     Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                     Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), &
@@ -1861,13 +1848,11 @@ end if
                     plike_grad_sou_grad( cv_nonods * nphase ), &
                     plike_grad_sou_coef( cv_nonods * nphase ) )
                 !!$
-                Velocity_U_Source = 0. ; Velocity_Absorption = 0.
+                Velocity_Absorption = 0.
                 !!$
                 Temperature_Absorption=0.
                 !!$
                 Component_Diffusion=0. ; Component_Absorption=0.
-                !!$
-
                 !!$
                 ScalarAdvectionField_Diffusion=0. ; ScalarField_Absorption=0.
                 !!$
