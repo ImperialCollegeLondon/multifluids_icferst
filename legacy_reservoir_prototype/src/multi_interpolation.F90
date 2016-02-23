@@ -94,9 +94,9 @@ contains
     type( vector_field ), pointer :: x
     real, dimension( : ), pointer :: detwei, ra
     real, pointer :: volume
-    real, dimension( :, : ), allocatable :: tmp_cvfen
-    real, dimension( :, :, : ), allocatable :: tmp_cvfenlx_all
-    real, dimension( :, :, : ), allocatable :: other_fenlx_all
+    real, dimension( :, : ), pointer :: tmp_cvfen
+    real, dimension( :, :, : ), pointer :: tmp_cvfenlx_all
+    real, dimension( :, :, : ), pointer :: other_fenlx_all
     real, dimension( :, :, : ), pointer :: tmp_cvfenx_all
     real, dimension( :, :, : ), pointer :: other_fenx_all
     type( mesh_type ), pointer :: mesh_pres, mesh_pres_disc
@@ -192,23 +192,17 @@ contains
     endif ! end of if(flag == 1)
     ! SETTINGS NEEDED TO CALCULATE detwei()
     if ( Mdims%cv_nloc == Mdims%u_nloc ) then
-       allocate(tmp_cvfen(Mdims%u_nloc, CV_GIdims%cv_ngi  ))
-       allocate(tmp_cvfenlx_all(Mdims%Ndim, Mdims%u_nloc, CV_GIdims%cv_ngi))
-       allocate(other_fenlx_all(Mdims%Ndim, Mdims%cv_nloc, CV_GIdims%cv_ngi))
        tmp_cv_nloc = Mdims%u_nloc
-       tmp_cvfen = CV_funs%ufen
-       tmp_cvfenlx_all = CV_funs%ufenlx_all
+       tmp_cvfen => CV_funs%ufen
+       tmp_cvfenlx_all => CV_funs%ufenlx_all
        other_nloc = Mdims%cv_nloc
-       other_fenlx_all = CV_funs%cvfenlx_all
+       other_fenlx_all => CV_funs%cvfenlx_all
     else
-       allocate(tmp_cvfen(Mdims%cv_nloc, CV_GIdims%cv_ngi  ))
-       allocate(tmp_cvfenlx_all(Mdims%Ndim, Mdims%cv_nloc, CV_GIdims%cv_ngi))
-       allocate(other_fenlx_all(Mdims%Ndim, Mdims%u_nloc, CV_GIdims%cv_ngi))
        tmp_cv_nloc = Mdims%cv_nloc
-       tmp_cvfen = CV_funs%cvfen
-       tmp_cvfenlx_all = CV_funs%cvfenlx_all
+       tmp_cvfen => CV_funs%cvfen
+       tmp_cvfenlx_all => CV_funs%cvfenlx_all
        other_nloc = Mdims%u_nloc
-       other_fenlx_all = CV_funs%ufenlx_all
+       other_fenlx_all => CV_funs%ufenlx_all
     end if
     ! INITIALISATIONS for the element loop
     EleLHS = 0
@@ -296,7 +290,6 @@ contains
     deallocate(EleLHS, EleRHS, MMatrix, MNatrix, ipiv)
     deallocate(Long_EleRHS, mass_diag)
     deallocate(scalar_field_list)
-    deallocate(tmp_cvfen, tmp_cvfenlx_all, other_fenlx_all)
 
     if(flag == 0) then
        do ifields = 1, nfields
