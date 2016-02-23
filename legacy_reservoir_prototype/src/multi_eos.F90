@@ -1824,27 +1824,26 @@ contains
 
     subroutine update_velocity_absorption_coriolis( states, ndim, nphase, sigma )
 
-        implicit none
+      implicit none
 
-        integer, intent( in ) :: ndim, nphase
-        type( state_type ), dimension( : ), intent( in ) :: states
-        real, dimension( :, :, : ), intent( inout ) :: sigma
+      integer, intent( in ) :: ndim, nphase
+      type( state_type ), dimension( : ), intent( in ) :: states
+      real, dimension( :, :, : ), intent( inout ) :: sigma
 
-        type( scalar_field ), pointer :: f
-        integer :: iphase, stat, idx1, idx2
+      type( scalar_field ), pointer :: f
+      integer :: iphase, stat, idx1, idx2
 
-        do iphase = 1, nphase
-            f => extract_scalar_field( states( iphase ), 'f', stat )
-            if ( stat == 0 ) then
-                idx1 = 1 + (iphase-1)*ndim ;  idx2 = 2 + (iphase-1)*ndim
-                sigma( :, idx1, idx2 ) = sigma( :, idx1, idx2 ) - f % val
-                sigma( :, idx2, idx1 ) = sigma( :, idx2, idx1 ) + f % val
-            end if
-        end do
+      do iphase = 1, nphase
+         f => extract_scalar_field( states( iphase ), 'f', stat )
+         if ( stat == 0 ) then
+            idx1 = 1 + (iphase-1)*ndim ;  idx2 = 2 + (iphase-1)*ndim
+            sigma( :, idx1, idx2 ) = sigma( :, idx1, idx2 ) - f % val
+            sigma( :, idx2, idx1 ) = sigma( :, idx2, idx1 ) + f % val
+         end if
+      end do
 
-        return
+      return
     end subroutine update_velocity_absorption_coriolis
-
 
 
 
