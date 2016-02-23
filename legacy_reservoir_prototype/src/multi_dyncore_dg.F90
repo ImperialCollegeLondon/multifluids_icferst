@@ -919,7 +919,7 @@ contains
         end IF
 
         !Calculate gravity source terms
-        allocate( u_source_cv( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) ) ; u_source_cv=0.0
+        allocate( u_source_cv( Mdims%ndim, Mdims%nphase, Mdims%cv_nonods ) ) ; u_source_cv=0.0
         if ( is_porous_media )then
            UDEN_ALL=0.0; UDENOLD_ALL=0.0
            call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, DEN_ALL, U_Source_CV )
