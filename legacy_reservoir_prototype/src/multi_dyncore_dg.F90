@@ -7974,7 +7974,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      allocate( u_on_face( u_nloc, sphngi ), ufem_on_face( u_nloc, sphngi ) )
 
 
-    call cv_fem_shape_funs_new( ph_funs, Mdims, GIdims, ph_ele_type, quad_over_whole_ele = .true. )
+!    call cv_fem_shape_funs_new( ph_funs, Mdims, GIdims, ph_ele_type, quad_over_whole_ele = .true. )
 
 !!$== Maybe the above needs to be generalised 
 
