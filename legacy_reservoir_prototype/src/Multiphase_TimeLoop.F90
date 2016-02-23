@@ -498,12 +498,12 @@ contains
 
         !Calculate the gauss integer numbers
         call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, .false. )
-        call retrieve_ngi( FE_GIdims, Mdims, cv_ele_type, .true. )
+        call retrieve_ngi( FE_GIdims, Mdims, u_ele_type, .true. )
         !! Compute reference shape functions
-        call allocate_multi_shape_funs(CV_funs, Mdims, CV_GIdims)
-        call allocate_multi_shape_funs(FE_funs, Mdims, FE_GIdims)
-        call cv_fem_shape_funs_new(CV_funs, Mdims, CV_GIdims, cv_ele_type, quad_over_whole_ele = .false.)
-        call cv_fem_shape_funs_new(FE_funs, Mdims, FE_GIdims, u_ele_type, quad_over_whole_ele = .true.)
+        call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
+        call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
+        call cv_fem_shape_funs_new( CV_funs, Mdims, CV_GIdims, cv_ele_type, quad_over_whole_ele = .false. )
+        call cv_fem_shape_funs_new( FE_funs, Mdims, FE_GIdims, u_ele_type, quad_over_whole_ele = .true. )
 
         allocate( theta_flux( nphase, ncv_faces * igot_theta_flux ), &
             one_m_theta_flux( nphase, ncv_faces * igot_theta_flux ), &
