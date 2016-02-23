@@ -265,7 +265,7 @@ contains
         type(scalar_field), pointer :: f1, f2
         type(vector_field), pointer :: positions, porosity_field
 
-        logical :: write_all_stats=.true.
+        logical, parameter :: write_all_stats=.true.
 
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
@@ -720,9 +720,9 @@ contains
                 if (have_option("\boiling")) then
                    call set_nu_to_u( packed_state )
                    call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
-                   ScalarField_Source, velocity_absorption, temperature_absorption )           
+                   ScalarField_Source, velocity_absorption, temperature_absorption )
                 end if
-                
+
 
                 !Store the field we want to compare with to check how are the computations going
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
