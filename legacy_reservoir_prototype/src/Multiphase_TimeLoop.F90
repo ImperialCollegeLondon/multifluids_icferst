@@ -632,51 +632,6 @@ contains
         checkpoint_number=1
 
 
-!!$ Fields...
-
-        new_ntsol_loop = .false.
-
-if ( new_ntsol_loop  ) then
-
-        call get_ntsol( ntsol )
-        call initialise_field_lists_from_options( state, ntsol )
-
-        do it = 1, ntsol
-
-           call get_option( trim( field_optionpath_list( it ) ) // &
-                '/prognostic/equation[0]/name', &
-                option_buffer, default = "UnknownEquationType" )
-           select case( trim( option_buffer ) )
-           case ( "AdvectionDiffusion", "InternalEnergy" )
-              use_advdif = .true.
-           case default
-              use_advdif = .false.
-           end select
-
-           if ( use_advdif ) then
-
-              ! figure out if scalar field is mutli-phase
-              multiphase_scalar = .false.
-              do it2 = it+1, ntsol
-                 if ( field_name_list( it ) == field_name_list( it2 ) ) then
-                    multiphase_scalar = .true.
-                 end if
-              end do
-
-              tmp_name = field_name_list( it )
-              nphase_scalar = 1
-              if ( multiphase_scalar ) then
-                 nphase_scalar = nphase
-                 tmp_name = "Packed" // field_name_list( it )
-              end if
-
-              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
-
-           end if
-
-        end do
-
-end if
 
 !!$ Time loop
 
@@ -838,6 +793,100 @@ end if
                     call Calculate_All_Rhos( state, packed_state, Mdims )
 
                 end if Conditional_ScalarAdvectionField
+
+
+
+
+
+!!$ Fields...
+!!-
+        new_ntsol_loop = .false.
+
+if ( new_ntsol_loop  ) then
+
+        call get_ntsol( ntsol )
+        call initialise_field_lists_from_options( state, ntsol )
+
+        do it = 1, ntsol
+
+           call get_option( trim( field_optionpath_list( it ) ) // &
+                '/prognostic/equation[0]/name', &
+                option_buffer, default = "UnknownEquationType" )
+           select case( trim( option_buffer ) )
+           case ( "AdvectionDiffusion", "InternalEnergy" )
+              use_advdif = .true.
+           case default
+              use_advdif = .false.
+           end select
+
+           if ( use_advdif ) then
+
+              ! figure out if scalar field is mutli-phase
+              multiphase_scalar = .false.
+              do it2 = it+1, ntsol
+                 if ( field_name_list( it ) == field_name_list( it2 ) ) then
+                    multiphase_scalar = .true.
+                 end if
+              end do
+
+              tmp_name = field_name_list( it )
+              nphase_scalar = 1
+              if ( multiphase_scalar ) then
+                 nphase_scalar = nphase
+                 tmp_name = "Packed" // field_name_list( it )
+              end if
+
+              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
+
+
+             call set_nu_to_u( packed_state )
+
+                    call calculate_diffusivity( state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
+                        mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
+
+                    !!tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
+                        tracer_field,velocity_field,density_field,&
+                        small_FINACV, small_COLACV, small_MIDACV, &
+                        NCOLCT, FINDCT, COLCT, &
+                        CV_ELE_TYPE,&
+                        CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN, &
+                        CV_SNDGLN, U_SNDGLN, &
+                        !!$
+                        ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+                        t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
+                        suf_sig_diagten_bc, &
+                        Temperature_Absorption, Porosity_field%val, &
+                        !!$
+                        NCOLM, FINDM, COLM, MIDM, &
+                        !!$
+                        XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                        !!$
+                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                        0, igot_theta_flux, scvngi_theta, &
+                        t_get_theta_flux, t_use_theta_flux, &
+                        THETA_GDIFF, &
+                        in_ele_upwind, dg_ele_upwind, &
+                        Mean_Pore_CV, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+
+           end if
+
+        end do
+
+end if
+
+
+
 
                 ScalarField_Source_Store = ScalarField_Source + ScalarField_Source_Component
                 tracer_source => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource")
