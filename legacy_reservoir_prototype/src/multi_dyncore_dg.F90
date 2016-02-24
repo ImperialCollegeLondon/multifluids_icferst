@@ -76,7 +76,7 @@ contains
        CV_ELE_TYPE,&
        CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN,&
        CV_SNDGLN, U_SNDGLN, &
-       TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+       IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
        T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
        SUF_SIG_DIAGTEN_BC, &
        T_ABSORB, VOLFRA_PORE, &
@@ -117,7 +117,7 @@ contains
            INTEGER, DIMENSION( : ), intent( in ) :: COLCT
            REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
            REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-           REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
+           !REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
            INTEGER, intent( in ) :: IGOT_THERM_VIS
            REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
            REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
@@ -145,6 +145,7 @@ contains
            logical :: lump_eqns
            REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
+           REAL, DIMENSION( :,:,:, : ), allocatable :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
            real, dimension( my_size(small_COLACV )) ::  mass_mn_pres!sprint_to_do!just use size!! and the remove my_size functions
            REAL, DIMENSION( : , : , : ), allocatable :: CT
@@ -229,6 +230,12 @@ contains
            end if
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
+
+           allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
+           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
+              call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
+                 Mdims%mat_nloc, Mdims%totele, mat_ndgln, TDIFFUSION )
+           end if
 
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
