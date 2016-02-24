@@ -30,8 +30,8 @@ os.system(binpath + ' ' + path + '/BLCVgalerkin.mpml')
 #The present values are just above the values I got when writing the script.
 # The purpose of this test case in any event is not to serve as a BL precision test
 # but to make sure that CVgalerkin_interpolation is not crashing.
-Tolerance_L1_NORM = 0.03
-Tolerance_L2_NORM = 0.002
+Tolerance_L1_NORM = 0.05
+Tolerance_L2_NORM = 0.005
 
 AutomaticLine = 0
 

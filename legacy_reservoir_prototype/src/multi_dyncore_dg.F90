@@ -578,7 +578,7 @@ contains
                      !If convergence is not good, then we calculate a new saturation using backtracking
                      if (.not. satisfactory_convergence) then
                          !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
-                         call FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_factor,CV_NDGLN, IDs2CV_ndgln,&
+                         call FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_factor, IDs2CV_ndgln,&
                              Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration,&
                              useful_sats,res, res/resold, first_res, Mdims%npres)
                          !Store the accumulated updated done
@@ -676,7 +676,7 @@ contains
     IN_ELE_UPWIND, DG_ELE_UPWIND, &
     IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
     scale_momentum_by_volume_fraction, &
-    StorageIndexes, Quality_list, nonlinear_iteration, IDs_ndgln )
+    StorageIndexes, nonlinear_iteration, IDs_ndgln )
 
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -737,7 +737,6 @@ contains
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, DIMENSION( :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         integer, dimension(:), intent(inout) :: StorageIndexes
-        type(bad_elements), optional, dimension(:), intent(in) :: Quality_list
         integer, intent(in) :: nonlinear_iteration
         ! Local Variables
         LOGICAL, PARAMETER :: use_continuous_pressure_solver = .false.!For DG pressure,the first non linear iteration we
@@ -978,7 +977,7 @@ contains
         call calculate_viscosity( state, packed_state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%mat_nonods, mat_ndgln, uDiffusion )
         ! stabilisation for high aspect ratio problems - switched off
         if (is_porous_media) then
-!            call calculate_u_abs_stab_porous_media( packed_state, U_ABS_STAB, &
+!            call calculate_u_abs_stab_porous_media( packed_state, U_ABS_STAB, &   !quality_list and calculate_u_abs_stab_porous_media removed in february 24 2016
 !                     Mdims%nphase, Mdims%ndim, Mdims%x_nloc, x_ndgln, MAT_NDGLN, Mdims%mat_nloc, Mdims%cv_nloc, quality_list)
         else
             call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
@@ -1388,11 +1387,7 @@ END IF
                 rhs_p%val = rhs_p%val / rescaleVal
                 !End of re-scaling
             end if
-            !We add a term in the CMC matrix to diffuse from bad nodes to the other nodes
-            !inside the same element to reduce the ill conditioning of the matrix
-!            if (is_porous_media .and. present(Quality_list)) then
-!                call Fix_to_bad_elements(cmc_petsc, NCOLCMC, FINDCMC,COLCMC, MIDCMC, Mdims%totele, Mdims%p_nloc, p_ndgln, Quality_list)
-!            end if
+
             call zero(deltaP)
             if ( (Mdims%x_nonods /= Mdims%cv_nonods) .and. use_continuous_pressure_solver &
                  .and. nonlinear_iteration == 1 ) then !For discontinuous mesh

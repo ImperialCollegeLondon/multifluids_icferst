@@ -216,12 +216,6 @@ contains
         logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
         real, dimension(:,:,:), allocatable  :: reference_field
 
-        !Variables related to the deteccion and correction of bad elements
-        real, parameter :: Max_bad_angle = 105.0
-        real, parameter :: Min_bad_angle = 0.
-        type(bad_elements), allocatable, dimension(:) :: Quality_list
-
-
         type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
         type( tensor_field ), pointer :: MFC_s, MFCOLD_s
         !! face value storage
@@ -367,8 +361,8 @@ contains
         !!$ Computing Sparsity Patterns Matrices
         !!$
         !!$ Defining lengths and allocating space for the matrices
-        call Defining_MaxLengths_for_Sparsity_Matrices( state, ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
-            ph_nonods, mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
+        call Defining_MaxLengths_for_Sparsity_Matrices( ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
+            mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
             mx_ncolacv, mx_ncolm, mx_ncolph )
         nlenmcy = u_nonods * nphase * ndim + cv_nonods
         allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
@@ -398,7 +392,7 @@ contains
             !!$ Force balance plus cty multi-phase eqns
             nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
             !!$ Element connectivity
-            mxnele, ncolele, midele, finele, colele, &
+            ncolele, midele, finele, colele, &
             !!$ Force balance sparsity
             mx_ncoldgm_pha, ncoldgm_pha, coldgm_pha, findgm_pha, middgm_pha, &
             !!$ CT sparsity - global continuity eqn
@@ -482,8 +476,8 @@ contains
         end if
 
         !Calculate the gauss integer numbers
-        call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, .false. )
-        call retrieve_ngi( FE_GIdims, Mdims, u_ele_type, .true. )
+        call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, quad_over_whole_ele = .false. )
+        call retrieve_ngi( FE_GIdims, Mdims,  u_ele_type, quad_over_whole_ele = .true. )
         !! Compute reference shape functions
         call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
         call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
@@ -576,11 +570,6 @@ contains
 
         !Look for bad elements to apply a correction on them
         if (is_porous_media) then
-            pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
-            allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
-            call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc,Max_bad_angle, Min_bad_angle, Quality_list&
-                ,pressure_field%mesh%shape%degree)
-
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state)
             !Convert material properties to be stored using region ids, only if porous media
@@ -952,7 +941,7 @@ end if
                         in_ele_upwind, dg_ele_upwind, &
                         iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
                         scale_momentum_by_volume_fraction,&
-                        StorageIndexes=StorageIndexes, Quality_list = Quality_list,&
+                        StorageIndexes=StorageIndexes, &
                         nonlinear_iteration = its, IDs_ndgln=IDs_ndgln )
 
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -1433,10 +1422,14 @@ end if
         call tag_references()
 
         call deallocate(packed_state)
+
         call deallocate(multiphase_state)
-        call deallocate(multicomponent_state)
+        deallocate(multiphase_state)
+        
+	call deallocate(multicomponent_state)
+        deallocate(multicomponent_state)        
+
         call deallocate(storage_state)
-        if (allocated(Quality_list)) deallocate(Quality_list)
         call deallocate_multi_shape_funs(CV_funs)
         call deallocate_multi_shape_funs(FE_funs)
         !***************************************
@@ -1693,7 +1686,7 @@ end if
 
                         call run_diagnostics( state )
 
-                        call adapt_state( state, metric_tensor)
+                        call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
 
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
@@ -1735,11 +1728,15 @@ end if
                 call deallocate(multiphase_state)
                 call deallocate(multicomponent_state )
                 !call unlinearise_components()
+                
+                deallocate(multiphase_state)
+                deallocate(multicomponent_state)
+
                 call pack_multistate(npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
+
                 call set_boundary_conditions_values(state, shift_time=.true.)
 
-                if (allocated(Quality_list) ) deallocate(Quality_list)
                 !!$ Deallocating array variables:
                 deallocate( &
                     !!$ Node glabal numbers
@@ -1795,8 +1792,8 @@ end if
                 !!$
 
                 !!$ Defining lengths and allocating space for the matrices
-                call Defining_MaxLengths_for_Sparsity_Matrices( state, ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
-                    ph_nonods, mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
+                call Defining_MaxLengths_for_Sparsity_Matrices( ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
+                    mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
                     mx_ncolacv, mx_ncolm, mx_ncolph )
                 nlenmcy = u_nonods * nphase * ndim + cv_nonods
                 allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
@@ -1825,7 +1822,7 @@ end if
                     !!$ Force balance plus cty multi-phase eqns
                     nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
                     !!$ Element connectivity
-                    mxnele, ncolele, midele, finele, colele, &
+                    ncolele, midele, finele, colele, &
                     !!$ Force balance sparsity
                     mx_ncoldgm_pha, ncoldgm_pha, coldgm_pha, findgm_pha, middgm_pha, &
                     !!$ CT sparsity - global continuity eqn
@@ -1849,13 +1846,6 @@ end if
                     call get_regionIDs2nodes(state, packed_state, cv_ndgln, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
                 end if
 
-                !Look again for bad elements
-                if (is_porous_media) then
-                    pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
-                    allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
-                    call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list,&
-                        pressure_field%mesh%shape%degree)
-                end if
                 call temp_mem_hacks()
 
 
@@ -1864,7 +1854,8 @@ end if
                 if (numberfields > 0) then
 
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
-                        call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , 1)
+                        call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, &
+                                small_finacv, small_colacv, cv_ele_type , 1, IDs2CV_ndgln = IDs2CV_ndgln)
                         call MemoryCleanupInterpolation2()
                     endif
 

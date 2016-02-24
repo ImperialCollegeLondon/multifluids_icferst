@@ -73,7 +73,8 @@ module multi_interpolation
 
 contains
 
-  subroutine M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, small_finacv, small_colacv, cv_ele_type, flag)
+  subroutine M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, small_finacv, &
+            small_colacv, cv_ele_type, flag, IDs2CV_ndgln)
     implicit none
     ! IMPORTANT: flag is a switch before and after the adapt and tells us which interpolation step (1) or (3) to implement
     type( state_type ), dimension( : ), intent( inout ) :: state
@@ -85,6 +86,7 @@ contains
     integer, dimension( : ), intent( inout ) :: StorageIndexes
     integer, intent(in) :: flag
     integer, dimension(:), pointer, intent(inout) :: small_finacv, small_colacv
+    integer, optional, dimension(:) :: IDs2CV_ndgln
     !          ! local variables...checking
     type ( tensor_field ), pointer :: ufield
     integer :: ele, cv_iloc, cv_jloc, iphase, &            ! Leave iphase where it is for now (will probably need it for multiphase flow)
@@ -282,9 +284,10 @@ contains
     ! This section needs to be generalised to work for multi-fields (I think the boundedness subroutine may need generalisation)
     !print *, nfields
     if (have_option('/material_phase::phase1/scalar_field::Temperature/prognostic/CVgalerkin_interpolation')) then
-       if(flag == 1) call BoundedSolutionCorrections(state, packed_state,storage_state, Mdims, small_finacv, small_colacv, StorageIndexes, cv_ele_type)
+       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, small_colacv)
     else if(have_option('/material_phase::phase1/scalar_field::PhaseVolumeFraction/prognostic/CVgalerkin_interpolation')) then
-       if(flag == 1)  call BoundedSolutionCorrections(state, packed_state,storage_state, Mdims, small_finacv, small_colacv, StorageIndexes, cv_ele_type,.true.)
+       if(flag == 1)  call BoundedSolutionCorrections(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, small_colacv,&
+                                                        .true., IDs2CV_ndgln)
     endif
     ! DEALLOCATIONS
     deallocate(EleLHS, EleRHS, MMatrix, MNatrix, ipiv)

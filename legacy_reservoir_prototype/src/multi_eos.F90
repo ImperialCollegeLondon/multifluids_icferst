@@ -1109,54 +1109,6 @@ contains
 
     end function Get_DevCapPressure
 
-    subroutine calculate_u_source(state, Density_FEMT, u_source)
-        !u_source has to be initialized before calling this subroutine
-        type(state_type), dimension(:), intent(in) :: state
-        real, dimension(:,:), intent(inout) :: Density_FEMT
-        real, dimension(:,:,:), intent(inout) :: u_source
-
-        type(vector_field), pointer :: gravity_direction
-        real, dimension(:), allocatable :: g
-        real, dimension(:,:), allocatable :: aux_FEM_den
-        logical :: have_gravity
-        real :: gravity_magnitude, aux
-        integer :: idim, iphase, nod, stat
-
-        allocate(g(size(Density_FEMT,1)))
-
-        call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
-        have_gravity = ( stat == 0 )
-
-
-        if( have_gravity ) then
-            !####################TEMPORARY####################
-            allocate(aux_FEM_den(size(u_source,2),size(u_source,3)))
-            do iphase = 1, size(u_source,2)
-                call get_option(trim( '/material_phase[' // int2str( iphase - 1 ) // &
-                    ']/equation_of_state/incompressible/linear/all_equal'), aux)
-                aux_FEM_den( iphase, : ) = aux
-            end do
-             !#################################################
-
-
-            gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
-            g = node_val(gravity_direction, 1) * gravity_magnitude
-
-            do nod = 1, size(u_source,3)
-                do iphase = 1, size(u_source,2)
-                    do idim = 1, size(u_source,1)
-                        u_source( idim, iphase, nod) = u_source( idim, iphase, nod) + &
-                            aux_FEM_den( iphase, nod ) * g( idim )!aux_FEM_den is TEMPORARY
-                    end do
-                end do
-            end do
-            deallocate(aux_FEM_den)
-        end if
-
-        deallocate(g)
-    end subroutine calculate_u_source
-
-
     subroutine calculate_u_source_cv(state, cv_nonods, ndim, nphase, den, u_source_cv)
         type(state_type), dimension(:), intent(in) :: state
         integer, intent(in) :: cv_nonods, ndim, nphase
@@ -1708,82 +1660,6 @@ contains
 
         return
     end subroutine calculate_u_abs_stab
-
-    subroutine calculate_u_abs_stab_porous_media( packed_state, Material_Absorption_Stab, &
-        nphase, ndim, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
-
-        implicit none
-        type(state_type), intent( inout ) :: packed_state
-        real, dimension( :, :, : ), intent( inout ) :: Material_Absorption_Stab
-        integer, intent( in ) :: nphase, ndim, x_nloc, cv_nloc, mat_nloc
-        integer, dimension( : ), intent( in ) :: X_ndgln, MAT_NDGLN
-        type(bad_elements), dimension(:), intent(in) :: Quality_list
-
-        !Local variables
-        integer :: i, ipha_idim, iphase, ele, cv_iloc, ipha_ndim, node1, node2, node3, mat_nod
-        real :: factor, delta_ratio, weight_max, aux
-        real, parameter :: pi = acos(0.d0) * 2d0
-        real, dimension(3,3) :: A, R
-        real, dimension(:,:), pointer:: X_ALL
-        !Initialize variable
-        Material_Absorption_Stab = 0.
-        call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)
-        !Factor is the desired aspect ratio, maybe modifiable from diamond
-        factor = 1.
-        i = 1
-
-        do while (quality_list(i)%ele > 0)
-
-            ele = quality_list(i)%ele
-            !Get normal, towards the bad angle
-            node1 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(1))
-            node2 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(2))
-            node3 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(3))
-
-            !We consider the closest weigth
-            weight_max = max(quality_list(i)%weights(1), (1.-quality_list(i)%weights(1)))
-            !Initiliaze
-            A = 0. ; R = 0.
-
-            !For acute angles:
-            if (quality_list(i)%angle < 90) then
-                !Aspect ratio based on angles
-                delta_ratio = abs(weight_max* tan(quality_list(i)%angle * pi/180))
-                !Vector of the base of the triangle, since the subroutine returns the perpendicular
-                R(1:ndim, 1) = abs(X_ALL(:,node1) - X_ALL(:,node2))
-
-            else!for obtuse triangles
-                !Lenght of the side opposite to the bad angle
-                aux = sqrt(dot_product(X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3), X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3)))
-                !Obtain aspect ratio of the bad angle by using trigonometrics
-                delta_ratio = abs(1./tan(quality_list(i)%angle * pi/180) + aux * weight_max * (1. + weight_max))
-                !Get normal perpendicular to the bad angle
-                R(1:ndim, 1) = abs(X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3))
-            end if
-            !This is the parameter we want to introduce in stab (delta_X^2/(desired_aspect_ratio^2 * delta_Z^2))
-            A(ndim,ndim) = (delta_ratio/factor)**(-2)
-
-            !normalize
-            R(1:ndim, 1) = R(1:ndim, 1) / sqrt(dot_product(R(1:ndim, 1),R(1:ndim, 1)))
-            !Obtain rotational matrix
-            call GET_TANG_BINORM(R(1, 1),R(2, 1),R(3, 1), R(1, 2),R(2, 2),R(3, 2), R(1, 3),R(2, 3),R(3, 3), 1)
-            !Rotate matrix
-            A = matmul(transpose(R), matmul(A,R))
-            !Add matrix into Stab
-            do cv_iloc = 1, cv_nloc
-                mat_nod = mat_ndgln(( ele - 1 ) * mat_nloc + cv_iloc)
-                do iphase = 1, nphase
-                    ipha_idim = ( iphase - 1 ) * ndim + 1
-                    ipha_ndim = ( iphase - 1 ) * ndim + ndim
-                    Material_Absorption_Stab( mat_nod, ipha_idim:ipha_ndim, ipha_idim:ipha_ndim ) = A(1:ndim, 1:ndim)
-                end do
-            end do
-            i = i + 1
-        end do
-
-        return
-    end subroutine calculate_u_abs_stab_porous_media
-
 
     subroutine update_velocity_absorption( states, ndim, nphase, mat_nonods,velocity_absorption )
 
