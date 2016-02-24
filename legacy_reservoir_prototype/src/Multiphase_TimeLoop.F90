@@ -1430,8 +1430,13 @@ end if
         call tag_references()
 
         call deallocate(packed_state)
+
         call deallocate(multiphase_state)
-        call deallocate(multicomponent_state)
+        deallocate(multiphase_state)
+        
+	call deallocate(multicomponent_state)
+        deallocate(multicomponent_state)        
+
         call deallocate(storage_state)
         if (allocated(Quality_list)) deallocate(Quality_list)
         call deallocate_multi_shape_funs(CV_funs)
@@ -1690,7 +1695,7 @@ end if
 
                         call run_diagnostics( state )
 
-                        call adapt_state( state, metric_tensor)
+                        call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
 
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
@@ -1732,8 +1737,13 @@ end if
                 call deallocate(multiphase_state)
                 call deallocate(multicomponent_state )
                 !call unlinearise_components()
+                
+                deallocate(multiphase_state)
+                deallocate(multicomponent_state)
+
                 call pack_multistate(npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
+
                 call set_boundary_conditions_values(state, shift_time=.true.)
 
                 if (allocated(Quality_list) ) deallocate(Quality_list)
