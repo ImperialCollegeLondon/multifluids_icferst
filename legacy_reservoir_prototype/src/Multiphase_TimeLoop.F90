@@ -216,12 +216,6 @@ contains
         logical :: nonLinearAdaptTs, Repeat_time_step, ExitNonLinearLoop
         real, dimension(:,:,:), allocatable  :: reference_field
 
-        !Variables related to the deteccion and correction of bad elements
-        real, parameter :: Max_bad_angle = 105.0
-        real, parameter :: Min_bad_angle = 0.
-        type(bad_elements), allocatable, dimension(:) :: Quality_list
-
-
         type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
         type( tensor_field ), pointer :: MFC_s, MFCOLD_s
         !! face value storage
@@ -580,11 +574,6 @@ contains
 
         !Look for bad elements to apply a correction on them
         if (is_porous_media) then
-            pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
-            allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
-            call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc,Max_bad_angle, Min_bad_angle, Quality_list&
-                ,pressure_field%mesh%shape%degree)
-
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state)
             !Convert material properties to be stored using region ids, only if porous media
@@ -959,7 +948,7 @@ end if
                         in_ele_upwind, dg_ele_upwind, &
                         iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
                         scale_momentum_by_volume_fraction,&
-                        StorageIndexes=StorageIndexes, Quality_list = Quality_list,&
+                        StorageIndexes=StorageIndexes, &
                         nonlinear_iteration = its, IDs_ndgln=IDs_ndgln )
 
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -1443,7 +1432,6 @@ end if
         call deallocate(multiphase_state)
         call deallocate(multicomponent_state)
         call deallocate(storage_state)
-        if (allocated(Quality_list)) deallocate(Quality_list)
         call deallocate_multi_shape_funs(CV_funs)
         call deallocate_multi_shape_funs(FE_funs)
         !***************************************
@@ -1746,7 +1734,6 @@ end if
                     multiphase_state,multicomponent_state)
                 call set_boundary_conditions_values(state, shift_time=.true.)
 
-                if (allocated(Quality_list) ) deallocate(Quality_list)
                 !!$ Deallocating array variables:
                 deallocate( &
                     !!$ Node glabal numbers
@@ -1856,13 +1843,6 @@ end if
                     call get_regionIDs2nodes(state, packed_state, cv_ndgln, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
                 end if
 
-                !Look again for bad elements
-                if (is_porous_media) then
-                    pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
-                    allocate(Quality_list(cv_nonods*pressure_field%mesh%shape%degree*(ndim-1)))
-                    call CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, Max_bad_angle, Min_bad_angle, Quality_list,&
-                        pressure_field%mesh%shape%degree)
-                end if
                 call temp_mem_hacks()
 
 
