@@ -862,24 +862,12 @@ contains
     real, dimension( :, : ), allocatable :: ufen2, ufenlx2, ufenly2, ufenlz2, &
          sufen2, sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2, &
          sbufen2, sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, sbufenlz2
-    real, dimension( :, : ), allocatable :: M,MLX,MLY,MLZ, sm,SMLX,SMLY
-    integer :: u_ele_type2, gi, MLOC, SMLOC
-    integer :: sgi, cv_siloc, cv_skloc
+    integer :: u_ele_type2, gi
+    integer :: sgi, cv_siloc
+    integer, dimension(1):: cv_skloc
     real :: rmax
 
     ewrite(3,*) 'in  cv_fem_shape_funs subrt'
-
-    MLOC = 1
-    SMLOC = 1
-    ALLOCATE( M( MLOC, CV_NGI ) )
-    ALLOCATE( MLX( MLOC, CV_NGI ) )
-    ALLOCATE( MLY( MLOC, CV_NGI ) )
-    ALLOCATE( MLZ( MLOC, CV_NGI ) )
-    ALLOCATE( SM( SMLOC, scvngi ) )
-    ALLOCATE( SMLX( SMLOC, scvngi ) )
-    ALLOCATE( SMLY( SMLOC, scvngi ) )
-
-
     sele_overlap_scale = 1.
 
     if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
@@ -970,19 +958,12 @@ contains
     end if
 
     ! calculate sbcvn from sbcvfen - Use the max scvfen at a quadrature pt and set to 1:
-    SBCVN=0.0
-    DO SGI=1,SBCVNGI
-       RMAX=-100.0 ! Find max value of sbcvfen...
-       DO CV_SILOC=1,CV_SNLOC
-          IF(sbcvfen(CV_SILOC,SGI).GT.RMAX) THEN
-             RMAX=sbcvfen(CV_SILOC,SGI)
-             CV_SKLOC=CV_SILOC
-          ENDIF
-       END DO
-       SBCVN(CV_SKLOC,SGI)=1.0
-    END DO
-
-    deallocate( m, mlx, mly, mlz, sm, smlx, smly )
+    SBCVN = 0.0
+    do sgi = 1, sbcvngi
+       cv_skloc = maxloc( sbcvfen( :, sgi) )
+       sbcvn( cv_skloc(1), sgi ) = 1.
+    end do
+    
 
     return
   end subroutine cv_fem_shape_funs

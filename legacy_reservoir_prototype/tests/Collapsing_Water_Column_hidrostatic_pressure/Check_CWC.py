@@ -45,8 +45,8 @@ os.system(binpath + ' ' + path + '/*mpml')
 #The present values are just above the values I got when writing the script
 #The errors seem big but that is 
 #because the MAXIMUM pressure is about 10^6
-Tolerance_L1_NORM = 175
-Tolerance_L2_NORM = 12
+Tolerance_L1_NORM = 202
+Tolerance_L2_NORM = 13
 
 AutomaticLine = 0
 
@@ -59,7 +59,7 @@ AutomaticVTU_Number = 40
 showPlot = False
 
 #NAME OF THE VARIABLE YOU WANT TO EXTRACT DATA FROM
-data_name = 'phase1::Pressure'
+data_name = 'phase1::totalpressure'
 
 #Initial and last coordinate of the probe
 x0 = 0.0
