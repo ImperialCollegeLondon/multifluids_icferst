@@ -486,8 +486,8 @@ contains
         end if
 
         !Calculate the gauss integer numbers
-        call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, .false. )
-        call retrieve_ngi( FE_GIdims, Mdims, u_ele_type, .true. )
+        call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, quad_over_whole_ele = .false. )
+        call retrieve_ngi( FE_GIdims, Mdims,  u_ele_type, quad_over_whole_ele = .true. )
         !! Compute reference shape functions
         call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
         call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
