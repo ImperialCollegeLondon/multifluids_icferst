@@ -185,7 +185,7 @@ contains
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
 
-              
+
                ! open the boiling test for two phases-gas and liquid
                if (have_option('/boiling')) then ! don't the divide int. energy equation by the volume fraction
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -654,7 +654,7 @@ contains
     U_ELE_TYPE, P_ELE_TYPE, &
     U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
     CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
-    U_ABS_STAB, MAT_ABSORB, U_ABSORBIN, &
+    MAT_ABSORB, &
     DT, &
     NCOLC, FINDC, COLC, & ! C sparcity - global cty eqn
     NCOLDGM_PHA, &! Force balance
@@ -702,7 +702,8 @@ contains
 
         INTEGER, DIMENSION(  : ), intent( in ) :: CV_SNDGLN
         INTEGER, DIMENSION(  : ), intent( in ) :: XU_NDGLN
-        REAL, DIMENSION(  :, :, :  ), intent( inout ) :: U_ABS_STAB, U_ABSORBIN, MAT_ABSORB
+        !REAL, DIMENSION(  :, :, :  ), intent( inout ) :: U_ABS_STAB, U_ABSORBIN, MAT_ABSORB
+        REAL, DIMENSION(  :, :, :  ), intent( inout ) :: MAT_ABSORB
 
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
@@ -761,8 +762,8 @@ contains
         MCY_RHS, MCY, &
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
-        REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-        REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE, U_SOURCE_CV
+        REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES, ScalarField_Source
+        REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE, U_SOURCE_CV, U_ABSORBIN, temperature_absorption, u_abs_stab
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
@@ -969,6 +970,9 @@ contains
         ENDIF
 
 
+        allocate( U_Abs_Stab( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
+        u_abs_stab=0.0
+
         ! calculate the viscosity for the momentum equation...
         uDiffusion_VOL = 0.0
         call calculate_viscosity( state, packed_state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%mat_nonods, mat_ndgln, uDiffusion )
@@ -984,6 +988,29 @@ contains
         ! vertical stab for buoyant gyre
         !u_abs_stab=0.0
         !u_abs_stab(:,3,3)= dt*0.2/500.0
+
+
+
+        ! allocate and define U_ABSORBIN here...
+        allocate( U_ABSORBIN( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
+        U_ABSORBIN=0.0
+
+        ! update velocity absorption
+        call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods, U_ABSORBIN )
+        call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
+
+        ! open the boiling test for two phases-gas and liquid
+        if (have_option('/boiling')) then
+           allocate( temperature_absorption( Mdims%mat_nonods, Mdims%nphase, Mdims%nphase ) )
+           allocate( ScalarField_Source( Mdims%nphase, Mdims%cv_nonods ) )
+           call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
+              ScalarField_Source, U_ABSORBIN, temperature_absorption )
+           deallocate( temperature_absorption, ScalarField_Source )
+        end if
+
+
+
+
 
         allocate( U_ABSORB( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
         U_ABSORB = U_ABSORBIN + MAT_ABSORB
@@ -2209,7 +2236,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         real, dimension( :, : ), pointer :: fem_vol_frac
 
         ! If =0 then false, if =1 then true.
-        ! If =1 then modify the stress term to take into 
+        ! If =1 then modify the stress term to take into
         ! account dividing through by volume fraction.
         integer, parameter :: IDIVID_BY_VOL_FRAC = 0
 
@@ -2220,8 +2247,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         if (have_option('/boiling')) then
             GOT_VIRTUAL_MASS=.true.
         end if
-        
-        
+
+
         call get_option( "/physical_parameters/gravity/magnitude", gravty, stat )
         position=>extract_vector_field(packed_state,"PressureCoordinate")
         !Check capillary options
