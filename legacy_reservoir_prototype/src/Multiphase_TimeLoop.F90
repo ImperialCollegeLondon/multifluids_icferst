@@ -367,8 +367,8 @@ contains
         !!$ Computing Sparsity Patterns Matrices
         !!$
         !!$ Defining lengths and allocating space for the matrices
-        call Defining_MaxLengths_for_Sparsity_Matrices( state, ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
-            ph_nonods, mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
+        call Defining_MaxLengths_for_Sparsity_Matrices( ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
+            mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
             mx_ncolacv, mx_ncolm, mx_ncolph )
         nlenmcy = u_nonods * nphase * ndim + cv_nonods
         allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
@@ -398,7 +398,7 @@ contains
             !!$ Force balance plus cty multi-phase eqns
             nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
             !!$ Element connectivity
-            mxnele, ncolele, midele, finele, colele, &
+            ncolele, midele, finele, colele, &
             !!$ Force balance sparsity
             mx_ncoldgm_pha, ncoldgm_pha, coldgm_pha, findgm_pha, middgm_pha, &
             !!$ CT sparsity - global continuity eqn
@@ -1802,8 +1802,8 @@ end if
                 !!$
 
                 !!$ Defining lengths and allocating space for the matrices
-                call Defining_MaxLengths_for_Sparsity_Matrices( state, ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
-                    ph_nonods, mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
+                call Defining_MaxLengths_for_Sparsity_Matrices( ndim, nphase, totele, u_nloc, cv_nloc, ph_nloc, cv_nonods, &
+                    mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
                     mx_ncolacv, mx_ncolm, mx_ncolph )
                 nlenmcy = u_nonods * nphase * ndim + cv_nonods
                 allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
@@ -1832,7 +1832,7 @@ end if
                     !!$ Force balance plus cty multi-phase eqns
                     nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
                     !!$ Element connectivity
-                    mxnele, ncolele, midele, finele, colele, &
+                    ncolele, midele, finele, colele, &
                     !!$ Force balance sparsity
                     mx_ncoldgm_pha, ncoldgm_pha, coldgm_pha, findgm_pha, middgm_pha, &
                     !!$ CT sparsity - global continuity eqn
