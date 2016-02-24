@@ -1030,6 +1030,7 @@ contains
             Mdims%x_nonods, X_ALL, NCOLM, FINDM, COLM, MIDM, &
             IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC)
         XC_CV_ALL=0.0
+        !sprint_to_do!use a pointer?
         XC_CV_ALL(1:Mdims%ndim,:)=psi_ave(1)%ptr%val
         MASS_CV=psi_int(1)%ptr%val(1,:)
         FEMT_ALL(:,:)=FEMPSI(1)%ptr%val(1,:,:)

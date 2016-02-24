@@ -215,7 +215,7 @@ contains
         type(multi_shape_funs), intent(inout) :: shape_fun
 
         !Proceed to deallocate the variables
-        deallocate( shape_fun%cvn)
+        deallocate(shape_fun%cvn)
         deallocate(shape_fun%cvweight)
         deallocate(shape_fun%cvfen)
         deallocate(shape_fun%cvfenlx_all)
@@ -251,6 +251,52 @@ contains
         deallocate(shape_fun%colgpts)
 
     end subroutine deallocate_multi_shape_funs
+
+
+    !This subroutine, despite it can be called by itself it is highly recommended to be called through multi_sparsity/Get_Sparsity_Patterns
+    subroutine allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
+        !This subroutine allocates part of the memory inside Mspars
+        implicit none
+        type (multi_sparsities), intent(inout) :: Mspars
+        type(multi_dimensions), intent(in) :: Mdims
+        integer :: mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph
+
+        allocate( Mspars%ACV%fin( Mdims%cv_nonods * Mdims%nphase + 1 ), Mspars%ACV%col( mx_ncolacv ), Mspars%ACV%mid( Mdims%cv_nonods * Mdims%nphase ), &
+            Mspars%MCY%fin( nlenmcy + 1 ), Mspars%MCY%col( mx_ncolmcy ), Mspars%MCY%mid( nlenmcy ), &
+            Mspars%DGM_PHA%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + 1 ), Mspars%DGM_PHA%col( mx_ncoldgm_pha ), &
+            Mspars%DGM_PHA%mid( Mdims%u_nonods * Mdims%nphase * Mdims%ndim ), &
+            Mspars%CT%fin( Mdims%cv_nonods + 1 ), Mspars%CT%col( mx_nct ), &
+            Mspars%C%fin( Mdims%u_nonods + 1 ), Mspars%C%col( mx_nc ), &
+            Mspars%CMC%fin( Mdims%cv_nonods + 1 ), Mspars%CMC%col( 0 ), Mspars%CMC%mid( Mdims%cv_nonods ), &
+            Mspars%M%fin( Mdims%cv_nonods + 1 ), Mspars%M%col( mx_ncolm ), Mspars%M%mid( Mdims%cv_nonods ), &
+            Mspars%ph%fin( Mdims%ph_nonods + 1 ), Mspars%ph%col( mx_ncolph ) )
+
+        Mspars%CT%col = 0 ; Mspars%C%fin = 0 ; Mspars%C%col = 0 ; Mspars%CMC%fin = 0
+        Mspars%CMC%col = 0 ; Mspars%CMC%mid = 0 ; Mspars%M%fin = 0
+        Mspars%M%col = 0 ; Mspars%M%mid = 0 ; Mspars%ph%fin = 0 ; Mspars%ph%col = 0
+
+
+    end subroutine allocate_multi_sparsities
+
+    subroutine deallocate_multi_sparsities(Mspars)
+        !This subroutine deallocates all the memory inside Mspars
+        implicit none
+        type (multi_sparsities), intent(inout) :: Mspars
+
+        !Proceed to deallocate sparsities
+        deallocate(Mspars%acv%fin, Mspars%acv%col, Mspars%acv%mid)
+        deallocate(Mspars%acv_loc%fin, Mspars%acv_loc%col, Mspars%acv_loc%mid)
+        deallocate(Mspars%mcy%fin, Mspars%mcy%col, Mspars%mcy%mid)
+!        deallocate(Mspars%ele%fin, Mspars%ele%col, Mspars%ele%mid)!Not deallocate this one since it points to state
+        deallocate(Mspars%dgm_pha%fin, Mspars%dgm_pha%col, Mspars%dgm_pha%mid)
+        deallocate(Mspars%ct%fin, Mspars%ct%col, Mspars%ct%mid)
+        deallocate(Mspars%C%fin, Mspars%C%col, Mspars%C%mid)
+        deallocate(Mspars%CMC%fin, Mspars%CMC%col, Mspars%CMC%mid)
+        deallocate(Mspars%M%fin, Mspars%M%col, Mspars%M%mid)
+        deallocate(Mspars%ph%fin, Mspars%ph%col, Mspars%ph%mid)
+    end subroutine deallocate_multi_sparsities
+
+
 end module multi_data_types
 
 
