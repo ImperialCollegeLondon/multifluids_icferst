@@ -135,6 +135,8 @@ contains
             mat_ndgln, u_ndgln, xu_ndgln, cv_sndgln, p_sndgln, u_sndgln
 
         !!$ Sparsity patterns
+        type (multi_sparsities) :: Mspars
+        !sprint_to_do!remove all the is store inside Mspars when Mspars is fully implemented
         integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, &
             ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, ncolcmc, ncolm, ncolph
@@ -383,6 +385,10 @@ contains
         !!$ Defining element-pair type
         call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
             mat_ele_type, u_sele_type, cv_sele_type )
+
+        !Allocate and calculate the sparsity patterns
+        call Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+                mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
 
         !!$ Sparsity Patterns Matrices
         call Get_Sparsity_Patterns( state, Mdims, &
@@ -1766,6 +1772,8 @@ end if
                     theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, sum_theta_flux, &
                     sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
 
+                !Deallocate sparsities
+                call deallocate_multi_sparsities(Mspars)
 
                 !!$  Compute primary scalars used in most of the code
                 call Get_Primary_Scalars( state, &
@@ -1814,6 +1822,11 @@ end if
                 !!$ Defining element-pair type
                 call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
                     mat_ele_type, u_sele_type, cv_sele_type )
+
+                !Allocate and calculate the sparsity patterns
+                call Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+                    mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
+
                 !!$ Sparsity Patterns Matrices
                 call Get_Sparsity_Patterns( state, Mdims, &
                     !!$ CV multi-phase eqns (e.g. vol frac, temp)

@@ -50,8 +50,6 @@ contains
             lcopy=.true.
         end if
       
-
-
         allocate(temp(n))
         if (lcopy) temp=A(1:n)
         deallocate(a)
@@ -1626,7 +1624,7 @@ contains
 
     subroutine Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
-        !!$ Obtain the sparsity patterns of the two types of matricies for
+        !!$ Allocate and obtain the sparsity patterns of the two types of matricies for
         !!$ (momentum + cty) and for energy
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1638,7 +1636,7 @@ contains
         integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, mat_ndgln, u_ndgln, &
             xu_ndgln, ph_ndgln, cv_sndgln, p_sndgln, u_sndgln, &
             colele_pha, finele_pha, midele_pha, centct, dummyvec
-        integer :: mx_ncolacv_loc, count, cv_inod, mx_ncolele_pha, nacv_loc, nacv_loc2, &
+        integer :: mx_ncolsmall_acv, count, cv_inod, mx_ncolele_pha, nsmall_acv, nsmall_acv2, &
             cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, &
             cv_sele_type, stat
         logical :: presym
@@ -1648,7 +1646,6 @@ contains
         !!$ Calculating Global Node Numbers
         allocate(  cv_sndgln( Mdims%stotel * Mdims%cv_snloc ), p_sndgln( Mdims%stotel * Mdims%p_snloc ), &
             u_sndgln( Mdims%stotel * Mdims%u_snloc ) )
-        !      x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
         cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
         call Compute_Node_Global_Numbers( state, &
             Mdims%totele, Mdims%stotel, Mdims%x_nloc, Mdims%x_nloc_p1, Mdims%cv_nloc, Mdims%p_nloc, Mdims%u_nloc, Mdims%xu_nloc, &
@@ -1658,6 +1655,12 @@ contains
         !sprint_to_do (this should be passed down)
         call Get_Ele_Type( Mdims%x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
             mat_ele_type, u_sele_type, cv_sele_type )
+        !Check if sparsities have been associated (allocated), if not, allocate
+        if (.not.associated(Mspars%ACV%fin)) then
+            call allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, &
+                    mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
+        end if
+
         !-
         !- Computing sparsity for element connectivity
         !-
@@ -1795,27 +1798,28 @@ contains
         !-
         !- Computing sparsity for CV multiphase eqns (e.g. vol frac, temp)
         !-
-        mx_ncolacv_loc=mx_ncolacv/Mdims%nphase
-        allocate( Mspars%ACV_LOC%mid( Mdims%cv_nonods ) )
-        allocate( Mspars%ACV_LOC%fin( Mdims%cv_nonods + 1 ) )
-        allocate( Mspars%ACV_LOC%col( mx_ncolacv_loc ) )
-        Mspars%ACV_LOC%mid = 0 ; Mspars%ACV_LOC%fin = 0 ; Mspars%ACV_LOC%col = 0
+        mx_ncolsmall_acv=mx_ncolacv/Mdims%nphase
+        allocate( Mspars%small_acv%mid( Mdims%cv_nonods ) )
+        allocate( Mspars%small_acv%fin( Mdims%cv_nonods + 1 ) )
+        allocate( Mspars%small_acv%col( mx_ncolsmall_acv ) )
+        Mspars%small_acv%mid = 0 ; Mspars%small_acv%fin = 0 ; Mspars%small_acv%col = 0
         Conditional_Dimensional_5: if ( ( Mdims%ndim == 1 ) .and. .false. ) then
-            call def_spar( 1, Mdims%cv_nonods, 3 * Mdims%cv_nonods, nacv_loc, &
-                Mspars%ACV_LOC%mid, Mspars%ACV_LOC%fin, Mspars%ACV_LOC%col )
+            call def_spar( 1, Mdims%cv_nonods, 3 * Mdims%cv_nonods, nsmall_acv, &
+                Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col )
         else
             call CV_Neighboor_Sparsity( Mdims, cv_ele_type, &
                 cv_ndgln, x_ndgln, &
                 Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
-                Mspars%M%ncol, mx_ncolacv_loc, Mspars%M%fin, Mspars%M%col, &
-                nacv_loc, Mspars%ACV_LOC%fin, Mspars%ACV_LOC%col, Mspars%ACV_LOC%mid )
+                Mspars%M%ncol, mx_ncolsmall_acv, Mspars%M%fin, Mspars%M%col, &
+                nsmall_acv, Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid )
         end if Conditional_Dimensional_5
-        nacv_loc2 = nacv_loc
-        call resize(Mspars%ACV_LOC%col,nacv_loc)
-        Mspars%ACV%ncol =  Mdims%nphase * nacv_loc + ( Mdims%nphase - 1 ) * Mdims%nphase * Mdims%cv_nonods
-        nacv_loc = Mspars%ACV%ncol
+        nsmall_acv2 = nsmall_acv
+        call resize(Mspars%small_acv%col,nsmall_acv)
+        Mspars%ACV%ncol =  Mdims%nphase * nsmall_acv + ( Mdims%nphase - 1 ) * Mdims%nphase * Mdims%cv_nonods
+        nsmall_acv = Mspars%ACV%ncol
+        Mspars%small_acv%ncol = Mspars%ACV%ncol!<== Not sure about this (sprint_to_do)
         Mspars%ACV%fin = 0 ; Mspars%ACV%col = 0 ; Mspars%ACV%mid = 0
-        call exten_sparse_multi_phase( Mdims%cv_nonods, nacv_loc2, Mspars%ACV_LOC%fin, Mspars%ACV_LOC%col, &
+        call exten_sparse_multi_phase( Mdims%cv_nonods, nsmall_acv2, Mspars%small_acv%fin, Mspars%small_acv%col, &
             Mdims%nphase, Mdims%nphase * Mdims%cv_nonods, Mspars%ACV%ncol, &
             Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid)
         call resize(Mspars%ACV%col,Mspars%ACV%ncol)

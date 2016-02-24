@@ -76,45 +76,45 @@ module multi_data_types
 
     !Data structure to store all the shape functions to facilitate its movement throughtout the code
     type multi_shape_funs
-        real, pointer, dimension( : , : ) :: cvn ! Control volume shape function; dimension( cv_nloc, cv_ngi )
-        real, pointer, dimension( : ) :: cvweight!Weigth of the control volume; dimension( cv_ngi )
-        real, pointer, dimension(  : , : ) :: cvfen!Finite element of the control volume; dimension( cv_nloc, cv_ngi )
-        real, pointer, dimension( : , : , :)  ::  cvfenlx_all!dimension( ndim, cv_nloc, cv_ngi )
-        real, pointer, dimension(  : , : )  :: ufen!Finite element of the element; dimension( u_nloc, cv_ngi )
-        real, pointer, dimension(  : , :,: )  :: ufenlx_all!dimension( ndim, u_nloc, cv_ngi )
-        integer, pointer, dimension(  : , : )  :: cv_neiloc!dimension( cv_nloc, scvngi )
-        logical, pointer, dimension(  : , : ) :: cv_on_face, cvfem_on_face!dimension( cv_nloc, scvngi )
-        real, pointer, dimension(  : , : )  :: scvfen, scvfenslx, scvfensly!dimension( cv_nloc, scvngi )
-        real, pointer, dimension( : )  :: scvfeweigh!dimension( scvngi )
-        real, pointer, dimension(  : , : ,: )  :: scvfenlx_all!dimension( ndim, cv_nloc, scvngi )
-        real, pointer, dimension(  : , : )  :: sufen, sufenslx, sufensly!dimension( u_nloc, scvngi )
-        real, pointer, dimension(  : , :, : )  :: sufenlx_all !dimension( ndim, u_nloc, scvngi )
-        logical, pointer, dimension(  : , : )  :: u_on_face, ufem_on_face!dimension( u_nloc, scvngi )
-        real, pointer, dimension(  : , : )  :: sbcvn!dimension( cv_snloc, sbcvngi )
-        real, pointer, dimension(  : , : )  :: sbcvfen, sbcvfenslx, sbcvfensly! dimension( cv_snloc, sbcvngi )
-        real, pointer, dimension( : )  :: sbcvfeweigh!dimension( sbcvngi )
-        real, pointer, dimension(  : , :, : )  :: sbcvfenlx_all!dimension( ndim, cv_snloc, sbcvngi )
-        real, pointer, dimension(  : , : )  :: sbufen, sbufenslx, sbufensly!dimension( u_snloc, sbcvngi )
-        real, pointer, dimension(  : , :,: )  :: sbufenlx_all !dimension( ndim, u_snloc, sbcvngi )
-        integer, pointer, dimension(  : , : )  :: cv_sloclist!dimension( nface, cv_snloc )
-        integer, pointer, dimension(  : , : )  :: u_sloclist!dimension( nface, u_snloc )
-        integer, pointer, dimension( : )  :: findgpts!dimension( cv_nloc + 1 )
-        integer, pointer, dimension( : )  :: colgpts!dimension( cv_nloc * scvngi )
+        real, pointer, dimension( : , : ) :: cvn => null()! Control volume shape function; dimension( cv_nloc, cv_ngi )
+        real, pointer, dimension( : ) :: cvweight=> null()!Weigth of the control volume; dimension( cv_ngi )
+        real, pointer, dimension(  : , : ) :: cvfen=> null()!Finite element of the control volume; dimension( cv_nloc, cv_ngi )
+        real, pointer, dimension( : , : , :)  ::  cvfenlx_all=> null()!dimension( ndim, cv_nloc, cv_ngi )
+        real, pointer, dimension(  : , : )  :: ufen=> null()!Finite element of the element; dimension( u_nloc, cv_ngi )
+        real, pointer, dimension(  : , :,: )  :: ufenlx_all=> null()!dimension( ndim, u_nloc, cv_ngi )
+        integer, pointer, dimension(  : , : )  :: cv_neiloc=> null()!dimension( cv_nloc, scvngi )
+        logical, pointer, dimension(  : , : ) :: cv_on_face=> null(), cvfem_on_face=> null()!dimension( cv_nloc, scvngi )
+        real, pointer, dimension(  : , : )  :: scvfen=> null(), scvfenslx=> null(), scvfensly=> null()!dimension( cv_nloc, scvngi )
+        real, pointer, dimension( : )  :: scvfeweigh=> null()!dimension( scvngi )
+        real, pointer, dimension(  : , : ,: )  :: scvfenlx_all=> null()!dimension( ndim, cv_nloc, scvngi )
+        real, pointer, dimension(  : , : )  :: sufen=> null(), sufenslx=> null(), sufensly=> null()!dimension( u_nloc, scvngi )
+        real, pointer, dimension(  : , :, : )  :: sufenlx_all=> null() !dimension( ndim, u_nloc, scvngi )
+        logical, pointer, dimension(  : , : )  :: u_on_face=> null(), ufem_on_face=> null()!dimension( u_nloc, scvngi )
+        real, pointer, dimension(  : , : )  :: sbcvn=> null()!dimension( cv_snloc, sbcvngi )
+        real, pointer, dimension(  : , : )  :: sbcvfen=> null(), sbcvfenslx=> null(), sbcvfensly=> null()! dimension( cv_snloc, sbcvngi )
+        real, pointer, dimension( : )  :: sbcvfeweigh=> null()!dimension( sbcvngi )
+        real, pointer, dimension(  : , :, : )  :: sbcvfenlx_all=> null()!dimension( ndim, cv_snloc, sbcvngi )
+        real, pointer, dimension(  : , : )  :: sbufen=> null(), sbufenslx=> null(), sbufensly=> null()!dimension( u_snloc, sbcvngi )
+        real, pointer, dimension(  : , :,: )  :: sbufenlx_all=> null() !dimension( ndim, u_snloc, sbcvngi )
+        integer, pointer, dimension(  : , : )  :: cv_sloclist=> null()!dimension( nface, cv_snloc )
+        integer, pointer, dimension(  : , : )  :: u_sloclist=> null()!dimension( nface, u_snloc )
+        integer, pointer, dimension( : )  :: findgpts=> null()!dimension( cv_nloc + 1 )
+        integer, pointer, dimension( : )  :: colgpts=> null()!dimension( cv_nloc * scvngi )
         integer :: ncolgpts
     end type multi_shape_funs
 
     !This type comprises the four necessary variables to represent matrices using a CSR structure
     type multi_sparsity
         integer :: ncol
-        integer, pointer, dimension(:) :: fin
-        integer, pointer, dimension(:) :: col
-        integer, pointer, dimension(:) :: mid
+        integer, pointer, dimension(:) :: fin=> null()
+        integer, pointer, dimension(:) :: col=> null()
+        integer, pointer, dimension(:) :: mid=> null()
     end type multi_sparsity
 
     !This data type contains all the sparcities necessary in the multiphase prototype code
     type multi_sparsities
         type (multi_sparsity) :: acv     !CV multi-phase eqns (e.g. vol frac, temp)
-        type (multi_sparsity) :: acv_loc !Local CV multi-phase eqns (e.g. vol frac, temp)
+        type (multi_sparsity) :: small_acv !Local CV multi-phase eqns (e.g. vol frac, temp)
         type (multi_sparsity) :: mcy     !Force balance plus cty multi-phase eqns
         type (multi_sparsity) :: ele     !Element connectivity
         type (multi_sparsity) :: dgm_pha !Force balance sparsity
@@ -250,6 +250,41 @@ contains
         deallocate(shape_fun%findgpts)
         deallocate(shape_fun%colgpts)
 
+        !Nullify pointers
+        nullify(shape_fun%cvn)
+        nullify(shape_fun%cvweight)
+        nullify(shape_fun%cvfen)
+        nullify(shape_fun%cvfenlx_all)
+        nullify(shape_fun%ufen)
+        nullify(shape_fun%ufenlx_all)
+        nullify(shape_fun%cv_neiloc)
+        nullify(shape_fun%cv_on_face)
+        nullify(shape_fun%cvfem_on_face)
+        nullify(shape_fun%scvfen)
+        nullify(shape_fun%scvfenslx)
+        nullify(shape_fun%scvfensly)
+        nullify(shape_fun%scvfeweigh)
+        nullify(shape_fun%scvfenlx_all)
+        nullify(shape_fun%sufen)
+        nullify(shape_fun%sufenslx)
+        nullify(shape_fun%sufensly)
+        nullify(shape_fun%sufenlx_all)
+        nullify(shape_fun%u_on_face)
+        nullify(shape_fun%ufem_on_face)
+        nullify(shape_fun%sbcvn)
+        nullify(shape_fun%sbcvfen)
+        nullify(shape_fun%sbcvfenslx)
+        nullify(shape_fun%sbcvfensly)
+        nullify(shape_fun%sbcvfeweigh)
+        nullify(shape_fun%sbcvfenlx_all)
+        nullify(shape_fun%sbufen)
+        nullify(shape_fun%sbufenslx)
+        nullify(shape_fun%sbufensly)
+        nullify(shape_fun%sbufenlx_all)
+        nullify(shape_fun%cv_sloclist)
+        nullify(shape_fun%u_sloclist)
+        nullify(shape_fun%findgpts)
+        nullify(shape_fun%colgpts)
     end subroutine deallocate_multi_shape_funs
 
 
@@ -284,16 +319,56 @@ contains
         type (multi_sparsities), intent(inout) :: Mspars
 
         !Proceed to deallocate sparsities
-        deallocate(Mspars%acv%fin, Mspars%acv%col, Mspars%acv%mid)
-        deallocate(Mspars%acv_loc%fin, Mspars%acv_loc%col, Mspars%acv_loc%mid)
-        deallocate(Mspars%mcy%fin, Mspars%mcy%col, Mspars%mcy%mid)
+        if (associated(Mspars%acv%fin))       deallocate(Mspars%acv%fin)
+        if (associated(Mspars%acv%col))       deallocate(Mspars%acv%col)
+        if (associated(Mspars%acv%mid))       deallocate(Mspars%acv%mid)
+
+        if (associated(Mspars%small_acv%fin)) deallocate(Mspars%small_acv%fin)
+        if (associated(Mspars%small_acv%col)) deallocate(Mspars%small_acv%col)
+        if (associated(Mspars%small_acv%mid)) deallocate(Mspars%small_acv%mid)
+
+        if (associated(Mspars%mcy%fin))       deallocate(Mspars%mcy%fin)
+        if (associated(Mspars%mcy%col))       deallocate(Mspars%mcy%col)
+        if (associated(Mspars%mcy%mid))       deallocate(Mspars%mcy%mid)
+
+        if (associated(Mspars%dgm_pha%fin))   deallocate(Mspars%dgm_pha%fin)
+        if (associated(Mspars%dgm_pha%col))   deallocate(Mspars%dgm_pha%col)
+        if (associated(Mspars%dgm_pha%mid))   deallocate(Mspars%dgm_pha%mid)
+
+        if (associated(Mspars%ct%fin))        deallocate(Mspars%ct%fin)
+        if (associated(Mspars%ct%col))        deallocate(Mspars%ct%col)
+        if (associated(Mspars%ct%mid))        deallocate(Mspars%ct%mid)
+
+        if (associated(Mspars%C%fin))         deallocate(Mspars%C%fin)
+        if (associated(Mspars%C%col))         deallocate(Mspars%C%col)
+        if (associated(Mspars%C%mid))         deallocate(Mspars%C%mid)
+
+        if (associated(Mspars%CMC%fin))       deallocate(Mspars%CMC%fin)
+        if (associated(Mspars%CMC%col))       deallocate(Mspars%CMC%col)
+        if (associated(Mspars%CMC%mid))       deallocate(Mspars%CMC%mid)
+
+        if (associated(Mspars%M%fin))         deallocate(Mspars%M%fin)
+        if (associated(Mspars%M%col))         deallocate(Mspars%M%col)
+        if (associated(Mspars%M%mid))         deallocate(Mspars%M%mid)
+
+        if (associated(Mspars%ph%fin))        deallocate(Mspars%ph%fin)
+        if (associated(Mspars%ph%col))        deallocate(Mspars%ph%col)
+        if (associated(Mspars%ph%mid))        deallocate(Mspars%ph%mid)
+
 !        deallocate(Mspars%ele%fin, Mspars%ele%col, Mspars%ele%mid)!Not deallocate this one since it points to state
-        deallocate(Mspars%dgm_pha%fin, Mspars%dgm_pha%col, Mspars%dgm_pha%mid)
-        deallocate(Mspars%ct%fin, Mspars%ct%col, Mspars%ct%mid)
-        deallocate(Mspars%C%fin, Mspars%C%col, Mspars%C%mid)
-        deallocate(Mspars%CMC%fin, Mspars%CMC%col, Mspars%CMC%mid)
-        deallocate(Mspars%M%fin, Mspars%M%col, Mspars%M%mid)
-        deallocate(Mspars%ph%fin, Mspars%ph%col, Mspars%ph%mid)
+        !Proceed to nullify
+        nullify(Mspars%acv%fin, Mspars%acv%col, Mspars%acv%mid)
+        nullify(Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid)
+        nullify(Mspars%mcy%fin, Mspars%mcy%col, Mspars%mcy%mid)
+        nullify(Mspars%ele%fin, Mspars%ele%col, Mspars%ele%mid)
+        nullify(Mspars%dgm_pha%fin, Mspars%dgm_pha%col, Mspars%dgm_pha%mid)
+        nullify(Mspars%ct%fin, Mspars%ct%col, Mspars%ct%mid)
+        nullify(Mspars%C%fin, Mspars%C%col, Mspars%C%mid)
+        nullify(Mspars%CMC%fin, Mspars%CMC%col, Mspars%CMC%mid)
+        nullify(Mspars%M%fin, Mspars%M%col, Mspars%M%mid)
+        nullify(Mspars%ph%fin, Mspars%ph%col, Mspars%ph%mid)
+
+
     end subroutine deallocate_multi_sparsities
 
 
