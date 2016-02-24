@@ -1109,54 +1109,6 @@ contains
 
     end function Get_DevCapPressure
 
-    subroutine calculate_u_source(state, Density_FEMT, u_source)
-        !u_source has to be initialized before calling this subroutine
-        type(state_type), dimension(:), intent(in) :: state
-        real, dimension(:,:), intent(inout) :: Density_FEMT
-        real, dimension(:,:,:), intent(inout) :: u_source
-
-        type(vector_field), pointer :: gravity_direction
-        real, dimension(:), allocatable :: g
-        real, dimension(:,:), allocatable :: aux_FEM_den
-        logical :: have_gravity
-        real :: gravity_magnitude, aux
-        integer :: idim, iphase, nod, stat
-
-        allocate(g(size(Density_FEMT,1)))
-
-        call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
-        have_gravity = ( stat == 0 )
-
-
-        if( have_gravity ) then
-            !####################TEMPORARY####################
-            allocate(aux_FEM_den(size(u_source,2),size(u_source,3)))
-            do iphase = 1, size(u_source,2)
-                call get_option(trim( '/material_phase[' // int2str( iphase - 1 ) // &
-                    ']/equation_of_state/incompressible/linear/all_equal'), aux)
-                aux_FEM_den( iphase, : ) = aux
-            end do
-             !#################################################
-
-
-            gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
-            g = node_val(gravity_direction, 1) * gravity_magnitude
-
-            do nod = 1, size(u_source,3)
-                do iphase = 1, size(u_source,2)
-                    do idim = 1, size(u_source,1)
-                        u_source( idim, iphase, nod) = u_source( idim, iphase, nod) + &
-                            aux_FEM_den( iphase, nod ) * g( idim )!aux_FEM_den is TEMPORARY
-                    end do
-                end do
-            end do
-            deallocate(aux_FEM_den)
-        end if
-
-        deallocate(g)
-    end subroutine calculate_u_source
-
-
     subroutine calculate_u_source_cv(state, cv_nonods, ndim, nphase, den, u_source_cv)
         type(state_type), dimension(:), intent(in) :: state
         integer, intent(in) :: cv_nonods, ndim, nphase

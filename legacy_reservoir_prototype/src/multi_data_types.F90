@@ -76,11 +76,11 @@ module multi_data_types
 
     !Data structure to store all the shape functions to facilitate its movement throughtout the code
     type multi_shape_funs
-        real, pointer, dimension( : , : ) :: cvn ! dimension( cv_nloc, cv_ngi )
-        real, pointer, dimension( : ) :: cvweight!dimension( cv_ngi )
-        real, pointer, dimension(  : , : ) :: cvfen!dimension( cv_nloc, cv_ngi )
+        real, pointer, dimension( : , : ) :: cvn ! Control volume shape function; dimension( cv_nloc, cv_ngi )
+        real, pointer, dimension( : ) :: cvweight!Weigth of the control volume; dimension( cv_ngi )
+        real, pointer, dimension(  : , : ) :: cvfen!Finite element of the control volume; dimension( cv_nloc, cv_ngi )
         real, pointer, dimension( : , : , :)  ::  cvfenlx_all!dimension( ndim, cv_nloc, cv_ngi )
-        real, pointer, dimension(  : , : )  :: ufen!dimension( u_nloc, cv_ngi )
+        real, pointer, dimension(  : , : )  :: ufen!Finite element of the element; dimension( u_nloc, cv_ngi )
         real, pointer, dimension(  : , :,: )  :: ufenlx_all!dimension( ndim, u_nloc, cv_ngi )
         integer, pointer, dimension(  : , : )  :: cv_neiloc!dimension( cv_nloc, scvngi )
         logical, pointer, dimension(  : , : ) :: cv_on_face, cvfem_on_face!dimension( cv_nloc, scvngi )
@@ -102,6 +102,28 @@ module multi_data_types
         integer, pointer, dimension( : )  :: colgpts!dimension( cv_nloc * scvngi )
         integer :: ncolgpts
     end type multi_shape_funs
+
+    !This type comprises the four necessary variables to represent matrices using a CSR structure
+    type multi_sparsity
+        integer :: ncol
+        integer, pointer, dimension(:) :: fin
+        integer, pointer, dimension(:) :: col
+        integer, pointer, dimension(:) :: mid
+    end type multi_sparsity
+
+    !This data type contains all the sparcities necessary in the multiphase prototype code
+    type multi_sparsities
+        type (multi_sparsity) :: acv     !CV multi-phase eqns (e.g. vol frac, temp)
+        type (multi_sparsity) :: acv_loc !Local CV multi-phase eqns (e.g. vol frac, temp)
+        type (multi_sparsity) :: mcy     !Force balance plus cty multi-phase eqns
+        type (multi_sparsity) :: ele     !Element connectivity
+        type (multi_sparsity) :: dgm_pha !Force balance sparsity
+        type (multi_sparsity) :: ct      !CT sparsity - global continuity eqn
+        type (multi_sparsity) :: C       !C sparsity operating on pressure in force balance
+        type (multi_sparsity) :: cmc     !pressure matrix for projection method
+        type (multi_sparsity) :: m       !CV-FEM matrix
+        type (multi_sparsity) :: ph      !ph matrix
+    end type multi_sparsities
 
 
 contains
