@@ -241,7 +241,7 @@ contains
             Mdims, CV_GIdims, CV_funs,&
             COMP_DIFFUSION, NCOMP_DIFF_COEF, COMP_DIFF_COEF, &
             X_ALL%val, NU, NV, NW, MAT_NDGLN, U_NDGLN, X_NDGLN, &
-            MAT_U ,  storage_state)
+            MAT_U,  storage_state)
         ! Determine the diffusion coeff tensor COMP_DIFFUSION from MAT_U and COMP_DIFF_COEF
         DO MAT_NOD = 1, Mdims%mat_nonods
             DO IPHASE = 1, Mdims%nphase

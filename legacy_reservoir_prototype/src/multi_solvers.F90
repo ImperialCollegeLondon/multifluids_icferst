@@ -979,9 +979,9 @@ contains
     end subroutine ibubble2
 
 
-    subroutine BoundedSolutionCorrections( state, packed_state, storage_state, Mdims, small_findrm, small_colm, StorageIndexes, cv_ele_type, &
+    subroutine BoundedSolutionCorrections( state, packed_state, storage_state, &
+        Mdims, CV_GIdims, CV_funs, small_findrm, small_colm, StorageIndexes, cv_ele_type, &
         for_sat, IDs2CV_ndgln)
-
         implicit none
         ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
         ! The sparcity of the local CV connectivity is in: small_findrm, small_colm.
@@ -995,10 +995,11 @@ contains
         ! however it can stagnate.
         integer, parameter :: nloc_its = 5, nloc_its2 = 1, nits_nod = 100, ngl_its = 500
         real, parameter :: w_relax = 0.5, error_tol = 1.0e-5
-
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state, storage_state
         type(multi_dimensions), intent(in) :: Mdims
+        type(multi_GI_dimensions), intent(in) :: CV_GIdims
+        type(multi_shape_funs), intent(in) :: CV_funs
         integer, dimension( : ), intent( in ) :: small_findrm, small_colm
         integer, intent( in ) :: cv_ele_type
         integer, dimension( : ), intent( inout ) :: StorageIndexes
@@ -1006,148 +1007,70 @@ contains
         integer, optional, dimension(:) :: IDs2CV_ndgln
         ! local variables...
         type ( tensor_field ), pointer :: field, ufield
-        type( multi_GI_dimensions ) :: GIdims
-        ! ( ndim1, ndim2, cv_nonods )
         real, dimension( :, :, : ), allocatable :: field_dev_val, field_alt_val, field_min, field_max
         real, dimension( :, : ), allocatable :: scalar_field_dev_max, scalar_field_dev_min
         real, dimension( :, : ), allocatable :: r_min, r_max
         integer, dimension( :, : ), allocatable :: ii_min, ii_max
         real, dimension( : ), allocatable :: mass_cv, mass_cv_sur
-        integer :: ndim1, ndim2, cv_nonods, i, j, knod, inod, jnod, count, ii, jj, loc_its, loc_its2, its, gl_its
+        integer :: ndim1, ndim2,  i, j, knod, inod, jnod, count, ii, jj, loc_its, loc_its2, its, gl_its
         logical :: changed, changed_something
         real :: max_change, error_changed, max_max_error, scalar_field_dev, mass_off, alt_max, alt_min
-
-
-        ! variables for cv_fem_shape_funs_plus_storage
-!!$        integer :: ndim, cv_ngi, cv_ngi_short, cv_nloc, cv_snloc, &
-!!$            &     u_nloc, u_snloc, scvngi, sbcvngi, nface, &
-        integer :: ndim, cv_nloc, cv_snloc, &
-            &     u_nloc, u_snloc, &
-            &     totele, x_nonods, ele, iloc, jloc
+        integer :: ele, iloc, jloc
         real :: mm
-        real, dimension( : ), pointer :: cvweight, cvweight_short, scvfeweigh, sbcvfeweigh, &
-            &                           sele_overlap_scale, detwei
-        real, dimension( :, : ), pointer :: cvn, cvn_short, cvfen, cvfen_short, ufen, &
-            &                              scvfen, scvfenslx, scvfensly, sufen, sufenslx, sufensly, &
-            &                              sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbufen, sbufenslx, sbufensly
-        real, dimension( :, :, : ), pointer :: cvfenlx_all, cvfenlx_short_all, ufenlx_all, &
-            &                                 scvfenlx_all, sufenlx_all, sbcvfenlx_all, sbufenlx_all
-        logical, dimension( :, : ), allocatable :: u_on_face, ufem_on_face, &
-            &                                     cv_on_face, cvfem_on_face
-        integer, pointer :: ncolgpts
-        integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln
-        integer, dimension( :, : ), pointer :: cv_neiloc, cv_sloclist, u_sloclist
-        logical :: quad_over_whole_ele, d1, d3, dcyl
-
+        real, dimension( : ), pointer :: detwei
+        integer, dimension( : ), pointer ::  x_ndgln, cv_ndgln
+        logical :: d1, d3, dcyl
         type(scalar_field) :: mass_cv_sur_halo
         type( vector_field ), pointer :: x
         real, dimension( : ), allocatable, target :: detwei2, ra2
         real, dimension( :, : , :), allocatable, target :: nx_all2
         real, target :: volume2
         real, dimension(:,:), pointer :: Immobile_fraction
-
-        !field => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
-
-
         if (present_and_true(for_sat)) then
             field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         else
             field => extract_tensor_field( packed_state, "PackedTemperature" )
         end if
-
-        ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ; cv_nonods = size( field%val, 3 )
-
+        ndim1 = size( field%val, 1 ) ; ndim2 = size( field%val, 2 ) ;
         ewrite(3,*) 'Bounding correction input: iphase, icomp, min, max:'
         do j = 1, ndim2
             do i = 1, ndim1
                 ewrite(3,*) i, j, minval( field%val( i, j, : ) ), maxval( field%val( i, j, : ) )
             end do
         end do
-
-        allocate( field_dev_val( ndim1, ndim2, cv_nonods ), field_alt_val( ndim1, ndim2, cv_nonods ) )
-        allocate( field_min( ndim1, ndim2, cv_nonods ), field_max( ndim1, ndim2, cv_nonods ) )
+        allocate( field_dev_val( ndim1, ndim2, Mdims%cv_nonods ), field_alt_val( ndim1, ndim2, Mdims%cv_nonods ) )
+        allocate( field_min( ndim1, ndim2, Mdims%cv_nonods ), field_max( ndim1, ndim2, Mdims%cv_nonods ) )
         allocate( scalar_field_dev_max( ndim1, ndim2 ), scalar_field_dev_min( ndim1, ndim2 ) )
         allocate( r_min( ndim1, ndim2 ), r_max( ndim1, ndim2 ) )
         allocate( ii_min( ndim1, ndim2 ), ii_max( ndim1, ndim2 ) )
-        allocate( mass_cv( cv_nonods ), mass_cv_sur( cv_nonods ) )
-
+        allocate( mass_cv( Mdims%cv_nonods ), mass_cv_sur( Mdims%cv_nonods ) )
         call allocate(mass_cv_sur_halo,field%mesh,'mass_cv_sur_halo')
-
-        call get_option( '/geometry/dimension', ndim )
-
         ufield => extract_tensor_field( packed_state, "PackedVelocity" )
 
-        cv_nloc = ele_loc( field, 1 ) ; cv_snloc = face_loc( field, 1 )
-        u_nloc = ele_loc( ufield, 1 ) ; u_snloc = face_loc( ufield, 1 )
-
-        quad_over_whole_ele = .false.
-
-!!$        call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-!!$            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, quad_over_whole_ele )
-
-        call retrieve_ngi( GIdims, Mdims, cv_ele_type, quad_over_whole_ele )
-
-        allocate( cv_on_face( cv_nloc, GIdims%scvngi ),  cvfem_on_face( cv_nloc, GIdims%scvngi ) )
-        allocate( u_on_face( u_nloc, GIdims%scvngi ), ufem_on_face( u_nloc, GIdims%scvngi ) )
-
-        call cv_fem_shape_funs_plus_storage( &
-                                 ! volume shape functions...
-            ndim, cv_ele_type,  &
-            GIdims%cv_ngi, GIdims%cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
-            cvweight, cvfen, cvfenlx_all, &
-            cvweight_short, cvfen_short, cvfenlx_short_all, &
-            ufen, ufenlx_all, &
-                                 ! surface of each cv shape functions...
-            GIdims%scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-            scvfen, scvfenslx, scvfensly, scvfeweigh, &
-            scvfenlx_all,  &
-            sufen, sufenslx, sufensly,  &
-            sufenlx_all,  &
-                                 ! surface element shape funcs...
-            u_on_face, ufem_on_face, GIdims%nface, &
-            GIdims%sbcvngi, sbcvn, sbcvfen,sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx_all, &
-            sbufen, sbufenslx, sbufensly, sbufenlx_all, &
-            cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-                                 ! define the gauss points that lie on the surface of the cv...
-            findgpts, colgpts, ncolgpts, &
-            sele_overlap_scale, quad_over_whole_ele,&
-            storage_state, "Press_mesh" , storageindexes(1))
-             !storage_state, "bound", storageindexes( 35 ) )
-
-        totele = ele_count( field )
         x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
-        x_nonods = node_count( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
         x => extract_vector_field( packed_state, "PressureCoordinate" )
-
-        d1 = ( ndim == 1 ) ; d3 = ( ndim == 3 ) ; dcyl = .false.
-
-        allocate( detwei2( GIdims%cv_ngi_short ), ra2( GIdims%cv_ngi_short ), nx_all2( ndim, cv_nloc, GIdims%cv_ngi ) )
-
+        d1 = ( Mdims%ndim == 1 ) ; d3 = ( Mdims%ndim == 3 ) ; dcyl = .false.
+        allocate( detwei2( CV_GIdims%cv_ngi ), ra2( CV_GIdims%cv_ngi ), nx_all2( Mdims%ndim, Mdims%cv_nloc, CV_GIdims%cv_ngi ) )
         mass_cv = 0.0
-        do  ele = 1, totele
-
+        do  ele = 1, Mdims%totele
             call detnlxr( ele, x%val( 1, : ), x%val( 2, : ), x%val( 3, : ), &
-                &        x_ndgln, totele, x_nonods, cv_nloc, GIdims%cv_ngi_short, cvfen_short, &
-                &        cvfenlx_short_all( 1, :, : ), cvfenlx_short_all( 2, :, : ), &
-                &        cvfenlx_short_all( 3, :, : ), &
-                &        cvweight_short, detwei2, ra2, volume2, d1, d3, dcyl, &
+                &        x_ndgln, Mdims%totele, Mdims%x_nonods, Mdims%cv_nloc, CV_GIdims%cv_ngi, CV_funs%cvfen, &
+                &        CV_funs%cvfenlx_all( 1, :, : ), CV_funs%cvfenlx_all( 2, :, : ), &
+                &        CV_funs%cvfenlx_all( 3, :, : ), &
+                &        CV_funs%cvweight, detwei2, ra2, volume2, d1, d3, dcyl, &
                 &        nx_all2( 1, :, : ), nx_all2( 2, :, : ), nx_all2( 3, :, : ) )
-
             detwei => detwei2
-
-            do iloc = 1, cv_nloc
-                inod = cv_ndgln( ( ele - 1 ) * cv_nloc + iloc )
-                do jloc = 1, cv_nloc
-                    mm = sum( cvn( iloc, : ) * cvn( jloc, : ) * detwei( : ) )
+            do iloc = 1, Mdims%cv_nloc
+                inod = cv_ndgln( ( ele - 1 ) * Mdims%cv_nloc + iloc )
+                do jloc = 1, Mdims%cv_nloc
+                    mm = sum( CV_funs%cvn( iloc, : ) * CV_funs%cvn( jloc, : ) * detwei( : ) )
                     mass_cv( inod ) = mass_cv( inod ) + mm
                 end do
             end do
-
         end do
-
         mass_cv_sur = 0.0
-        do inod = 1, cv_nonods
+        do inod = 1, Mdims%cv_nonods
             if ( .not. node_owned( field, inod ) ) cycle
             do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
                 jnod = small_colm( count )
@@ -1158,50 +1081,42 @@ contains
         mass_cv_sur_halo%val(:)=mass_cv_sur(:)
         call halo_update(mass_cv_sur_halo)
         mass_cv_sur(:)=mass_cv_sur_halo%val(:)
-
         !Establish bounds
         if (present_and_true(for_sat)) then
-            if (present(IDs2CV_ndgln)) then
+            if (present(IDs2CV_ndgln)) then!if this is present then the bounds are applied using immobile fractions
                 !Define the immobile fractions for each phase
                 call get_var_from_packed_state(packed_state, immobile_fraction = immobile_fraction)
-                do inod = 1, cv_nonods
+                do inod = 1, Mdims%cv_nonods
                     do ii = 1, ndim2!phases
                         field_min(:, ii, inod) = immobile_fraction(ii,IDs2CV_ndgln(inod))
                         field_max(:, ii, inod) = 1.0 - sum(immobile_fraction(:,IDs2CV_ndgln(inod)))&
                             + immobile_fraction(ii,IDs2CV_ndgln(inod))
                     end do
                 end do
-            else
+            else!Otherwise, the bounds are between o and 1, which is not the usual case
                 ewrite(3,*) 'IDs2CV_ndgln not passed into BoundedSolutionCorrections for SAT, default bounds set'
                 field_min = 0.0 ; field_max = 1.0
             end if
         else
             field_min = 0.0 ; field_max = 1.0
         end if
-
         do gl_its = 1, ngl_its
-
             ! This iteration is very good at avoiding spreading the modifications too far - however it can stagnate.
             max_change = 0.0
             do loc_its = 1, nloc_its
                 changed_something = .false.
-                do knod = 1, cv_nonods ! exclude the halo values of knod for parallel
+                do knod = 1, Mdims%cv_nonods ! exclude the halo values of knod for parallel
                     if ( .not. node_owned( field, knod ) ) cycle
-
                     do its = 1, nits_nod
-
                         r_min = 0.0 ; r_max = 0.0
                         ii_min = 0 ; ii_max = 0
                         scalar_field_dev_max = 0.0 ; scalar_field_dev_min = 0.0
-
                         ! Find the max and min deviation from the limited values....
                         do count = small_findrm( knod ), small_findrm( knod + 1 ) - 1
                             jnod = small_colm( count )
                             if ( .not. node_owned( field, jnod ) ) cycle
-
                             do j = 1, ndim2
                                 do i = 1, ndim1
-
                                     if ( field%val( i, j, jnod ) > field_max( i, j, jnod ) ) then
                                         scalar_field_dev = field%val( i, j, jnod ) - field_max( i, j, jnod )
                                     else if ( field%val( i, j, jnod ) < field_min( i, j, jnod ) ) then
@@ -1209,33 +1124,25 @@ contains
                                     else
                                         scalar_field_dev = 0.0
                                     end if
-
                                     if ( scalar_field_dev * mass_cv ( jnod ) > r_max( i, j ) ) then
                                         scalar_field_dev_max( i, j ) = scalar_field_dev
                                         r_max( i, j ) = scalar_field_dev * mass_cv( jnod )
                                         ii_max( i, j ) = jnod
                                     end if
-
                                     if ( scalar_field_dev * mass_cv ( jnod ) < r_min( i, j ) ) then
                                         scalar_field_dev_min( i, j ) = scalar_field_dev
                                         r_min( i, j ) = scalar_field_dev * mass_cv( jnod )
                                         ii_min( i, j ) = jnod
                                     end if
-
                                 end do
                             end do
-
                         end do ! do count = small_findrm( knod ), small_findrm( knod + 1 ) - 1
-
-
                         changed=.false.
                         ! Change the max and min limited deviation by sharing the deviation between them...
                         do j = 1, ndim2
                             do i = 1, ndim1
-
                                 ii = ii_max( i, j )
                                 jj = ii_min( i, j )
-
                                 if ( ii /= 0 .and. jj /= 0 ) then
                                     if ( abs( r_max( i, j ) ) > abs( r_min( i, j ) ) ) then
                                         alt_max = ( r_max( i, j ) + r_min( i, j ) ) / mass_cv( ii )
@@ -1246,31 +1153,23 @@ contains
                                     end if
                                     max_change = max( max_change, abs( -scalar_field_dev_max( i, j ) + alt_max ) )
                                     max_change = max( max_change, abs( -scalar_field_dev_min( i, j ) + alt_min ) )
-
                                     field%val( i, j, ii ) = field%val( i, j, ii ) - scalar_field_dev_max( i, j ) + alt_max
                                     field%val( i, j, jj ) = field%val( i, j, jj ) - scalar_field_dev_min( i, j ) + alt_min
-
                                     changed = .true.
                                     changed_something = .true.
                                 end if
-
                             end do
                         end do
-
                         if ( .not. changed ) exit ! stop iterating and move onto next node/CV...
                     end do ! do its=1,nits_nod
-
-                end do ! do knod = 1, cv_nonods
+                end do ! do knod = 1, Mdims%cv_nonods
                 if ( .not. changed_something ) exit ! stop iterating and move onto next stage of iteration...
             end do ! do loc_its=1,nloc_its
-
             call halo_update( field )
-
-
             ! This iteration is very good at avoiding stagnating but does spread the modifcations far.
             ! use a single iteration because of this as default...
             do loc_its2 = 1, nloc_its2
-                do knod = 1, cv_nonods
+                do knod = 1, Mdims%cv_nonods
                     !               if ( .not. node_owned( field, knod ) ) cycle
                     do j = 1, ndim2
                         do i = 1, ndim1
@@ -1284,63 +1183,51 @@ contains
                         end do
                     end do
                 end do
-
                 ! matrix vector...
                 field_alt_val = 0.0
-                do inod = 1, cv_nonods ! exclude the halo values of knod for parallel
+                do inod = 1, Mdims%cv_nonods ! exclude the halo values of knod for parallel
                     if ( .not. node_owned( field, inod ) ) cycle
                     do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
                         jnod = small_colm( count )
                         mass_off = mass_cv( jnod ) / mass_cv_sur( jnod )
                         field_alt_val( :, :, inod ) = field_alt_val( :, :, inod ) + mass_off * field_dev_val( :, :, jnod )
                     end do ! do count = small_findrm( inod ), small_findrm( inod + 1 ) - 1
-                end do ! do inod = 1, cv_nonods
-
+                end do ! do inod = 1, Mdims%cv_nonods
                 ! w_relax\in[0,1]: - This relaxation is used because we
                 ! have used a mass matrix which is not diagonally dominant
                 ! =0.5 is suggested.
                 ! =1.0 is no relaxation.
                 field_alt_val = w_relax * field_alt_val + ( 1.0 - w_relax ) * field_dev_val
-
                 ! adjust the values...
                 error_changed = maxval( abs( -field_dev_val + field_alt_val ) )
                 field%val( :, :, : ) = field%val( :, :, : ) - field_dev_val( :, :, : ) + field_alt_val( :, :, : )
                 call halo_update( field )
-
             end do ! loc_its2
-
             ! communicate the errors ( max_change, error_changed ) ...
             ! this could be more efficient sending a vector...
             max_max_error= max( max_change, error_changed )
             call allmax( max_max_error )
-
             if ( max_max_error < error_tol ) exit
-
         end do ! gl_its
-
         ewrite(3,*) 'Bounding correction output: iphase, icomp, min, max:'
         do j = 1, ndim2
             do i = 1, ndim1
                 ewrite(3,*) i, j, minval( field%val( i, j, : ) ), maxval( field%val( i, j, : ) )
             end do
         end do
-
         deallocate( field_dev_val, field_alt_val )
         deallocate( field_min, field_max )
         deallocate( scalar_field_dev_max, scalar_field_dev_min )
         deallocate( r_min, r_max )
         deallocate( ii_min, ii_max )
         deallocate( mass_cv, mass_cv_sur )
-
-        deallocate( cv_on_face, cvfem_on_face, u_on_face, ufem_on_face )
         deallocate( detwei2, ra2, nx_all2 )
-
         call deallocate(mass_cv_sur_halo)
         return
     end subroutine BoundedSolutionCorrections
 
     !sprint_to_do!not use one global variable
-    subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_from_schema, CV_NDGLN, IDs2CV_ndgln,&
+    subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_from_schema, IDs2CV_ndgln,&
         Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration, useful_sats, res, &
         res_ratio, first_res, npres)
         !In this subroutine we applied some corrections and dumping on the saturations obtained from the saturation equation
