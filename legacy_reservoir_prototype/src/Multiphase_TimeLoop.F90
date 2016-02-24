@@ -201,7 +201,7 @@ contains
             Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
             !!$
             Component_Diffusion_Operator_Coefficient
-        real, dimension( :, :, :, : ), allocatable :: ScalarAdvectionField_Diffusion, &
+        real, dimension( :, :, :, : ), allocatable :: &
             Component_Diffusion
 
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
@@ -431,8 +431,7 @@ contains
             Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
             ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
             Temperature_Absorption( nphase, nphase, cv_nonods ), &
-            ScalarAdvectionField_Diffusion( mat_nonods, ndim, ndim, nphase ), &
-            Component_Diffusion( mat_nonods, ndim, ndim, nphase ), &
+            Component_Diffusion( mat_nonods, ndim, ndim, nphase ), &                               ! FIX ME...
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
             plike_grad_sou_grad( cv_nonods * nphase ), &
             plike_grad_sou_coef( cv_nonods * nphase ), &
@@ -449,7 +448,6 @@ contains
         Material_Absorption=0.
         ScalarField_Absorption=0. ; Component_Absorption=0.
         Temperature_Absorption=0.
-        ScalarAdvectionField_Diffusion=0.
         Component_Diffusion=0.
         THERM_U_DIFFUSION=0.
         THERM_U_DIFFUSION_VOL=0.
@@ -742,8 +740,8 @@ contains
 
                     call set_nu_to_u( packed_state )
 
-                    call calculate_diffusivity( state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
-                        mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
+                    !call calculate_diffusivity( state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
+                    !    mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
 
                     tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -759,7 +757,7 @@ contains
                         CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN, &
                         CV_SNDGLN, U_SNDGLN, &
                         !!$
-                        ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+                        IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc, &
                         Temperature_Absorption, Porosity_field%val, &
@@ -827,10 +825,10 @@ if ( new_ntsol_loop  ) then
               tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
 
 
-             call set_nu_to_u( packed_state )
+              call set_nu_to_u( packed_state )
 
-                    call calculate_diffusivity( state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
-                        mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
+                    !call calculate_diffusivity( state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
+                    !    mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
 
                     !!tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
@@ -846,7 +844,7 @@ if ( new_ntsol_loop  ) then
                         CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN, &
                         CV_SNDGLN, U_SNDGLN, &
                         !!$
-                        ScalarAdvectionField_Diffusion, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+                        IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc, &
                         Temperature_Absorption, Porosity_field%val, &
@@ -1061,7 +1059,8 @@ end if
                                 CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN,&
                                 CV_SNDGLN, U_SNDGLN, &
                                 !!$
-                                Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+                                0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+                                !Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
                                 Component_Absorption, Porosity_field%val, &
@@ -1415,7 +1414,6 @@ end if
             Material_Absorption, &
             ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
             Component_Diffusion_Operator_Coefficient, &
-            ScalarAdvectionField_Diffusion, &
             Component_Diffusion, &
             theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
@@ -1431,9 +1429,9 @@ end if
 
         call deallocate(multiphase_state)
         deallocate(multiphase_state)
-        
-	call deallocate(multicomponent_state)
-        deallocate(multicomponent_state)        
+
+    call deallocate(multicomponent_state)
+        deallocate(multicomponent_state)
 
         call deallocate(storage_state)
         call deallocate_multi_shape_funs(CV_funs)
@@ -1734,7 +1732,7 @@ end if
                 call deallocate(multiphase_state)
                 call deallocate(multicomponent_state )
                 !call unlinearise_components()
-                
+
                 deallocate(multiphase_state)
                 deallocate(multicomponent_state)
 
@@ -1767,7 +1765,6 @@ end if
                     Material_Absorption, &
                     ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
                     Component_Diffusion_Operator_Coefficient, &
-                    ScalarAdvectionField_Diffusion, &
                     Component_Diffusion, &
                     theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, sum_theta_flux, &
                     sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
@@ -1886,7 +1883,6 @@ end if
                     Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                     ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
                     Temperature_Absorption( nphase, nphase, cv_nonods ), &
-                    ScalarAdvectionField_Diffusion( mat_nonods, ndim, ndim, nphase ), &
                     Component_Diffusion( mat_nonods, ndim, ndim, nphase ), &
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                     plike_grad_sou_grad( cv_nonods * nphase ), &
@@ -1896,7 +1892,7 @@ end if
                 !!$
                 Component_Diffusion=0. ; Component_Absorption=0.
                 !!$
-                ScalarAdvectionField_Diffusion=0. ; ScalarField_Absorption=0.
+                ScalarField_Absorption=0.
                 !!$
                 Material_Absorption=0.
                 !!$
