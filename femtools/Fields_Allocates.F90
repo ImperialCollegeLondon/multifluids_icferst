@@ -428,6 +428,9 @@ contains
     field%aliased=.false.
     nullify(field%refcount) ! Hack for gfortran component initialisation
     !                         bug.
+    allocate(field%bc)
+    nullify(field%bc%boundary_condition)
+
     call addref(field)
 
     call zero(field)

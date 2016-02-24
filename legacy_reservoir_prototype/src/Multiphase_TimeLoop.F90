@@ -195,7 +195,7 @@ contains
         !!$
         real, dimension( :, : ), pointer :: &
             ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component
-        real, dimension( :, :, : ), allocatable :: Material_Absorption, Material_Absorption_Stab, &
+        real, dimension( :, :, : ), allocatable :: Material_Absorption, &
             Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
             !!$
             Component_Diffusion_Operator_Coefficient
@@ -423,8 +423,6 @@ contains
             mass_ele( totele ), &
             !!$
             Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
-            Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
-            Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), &
             ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
             Temperature_Absorption( nphase, nphase, cv_nonods ), &
             ScalarAdvectionField_Diffusion( mat_nonods, ndim, ndim, nphase ), &
@@ -443,8 +441,6 @@ contains
         mass_ele=0.
         !!$
         Material_Absorption=0.
-        Velocity_Absorption=0.
-        Material_Absorption_Stab=0.
         ScalarField_Absorption=0. ; Component_Absorption=0.
         Temperature_Absorption=0.
         ScalarAdvectionField_Diffusion=0.
@@ -682,11 +678,6 @@ contains
             !! Update all fields from time-step 'N - 1'
             call copy_packed_new_to_old( packed_state )
 
-            ! update velocity absorption
-            call update_velocity_absorption( state, ndim, nphase, mat_nonods, velocity_absorption )
-            call update_velocity_absorption_coriolis( state, ndim, nphase, velocity_absorption )
-
-
             !!$ FEMDEM...
 #ifdef USING_FEMDEM
             if ( is_multifracture ) then
@@ -706,10 +697,12 @@ contains
                 !           call Clean_Storage(storage_state, StorageIndexes)
 
                 ! open the boiling test for two phases-gas and liquid
-                if (have_option('/boiling')) then
+                if (have_option('/boiling') ) then
                    call set_nu_to_u( packed_state )
+                   allocate ( Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ) )
                    call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
-                   ScalarField_Source, velocity_absorption, temperature_absorption )
+                      ScalarField_Source, velocity_absorption, temperature_absorption )
+                   deallocate ( Velocity_Absorption )
                 end if
 
 
@@ -922,7 +915,7 @@ end if
                         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN,&
                         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
                         !!$
-                        Material_Absorption_Stab, Material_Absorption, Velocity_Absorption, &
+                        Material_Absorption, &
                         dt, &
                         !!$
                         NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
@@ -1413,8 +1406,8 @@ end if
             !!$ Working arrays
             theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
             mass_ele,&
-            Material_Absorption, Material_Absorption_Stab, &
-            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
+            Material_Absorption, &
+            ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
             Component_Diffusion_Operator_Coefficient, &
             ScalarAdvectionField_Diffusion, &
             Component_Diffusion, &
@@ -1429,8 +1422,13 @@ end if
         call tag_references()
 
         call deallocate(packed_state)
+
         call deallocate(multiphase_state)
-        call deallocate(multicomponent_state)
+        deallocate(multiphase_state)
+        
+	call deallocate(multicomponent_state)
+        deallocate(multicomponent_state)        
+
         call deallocate(storage_state)
         call deallocate_multi_shape_funs(CV_funs)
         call deallocate_multi_shape_funs(FE_funs)
@@ -1688,7 +1686,7 @@ end if
 
                         call run_diagnostics( state )
 
-                        call adapt_state( state, metric_tensor)
+                        call adapt_state( state, metric_tensor, suppress_reference_warnings = .true.)
 
                         call update_state_post_adapt( state, metric_tensor, dt, sub_state, nonlinear_iterations, &
                             nonlinear_iterations_adapt )
@@ -1730,8 +1728,13 @@ end if
                 call deallocate(multiphase_state)
                 call deallocate(multicomponent_state )
                 !call unlinearise_components()
+                
+                deallocate(multiphase_state)
+                deallocate(multicomponent_state)
+
                 call pack_multistate(npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
+
                 call set_boundary_conditions_values(state, shift_time=.true.)
 
                 !!$ Deallocating array variables:
@@ -1755,8 +1758,8 @@ end if
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
                     mass_ele, &
-                    Material_Absorption, Material_Absorption_Stab, &
-                    Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
+                    Material_Absorption, &
+                    ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
                     Component_Diffusion_Operator_Coefficient, &
                     ScalarAdvectionField_Diffusion, &
                     Component_Diffusion, &
@@ -1868,8 +1871,6 @@ end if
                     mass_ele( totele ), &
                     !!$
                     Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
-                    Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
-                    Material_Absorption_Stab( mat_nonods, ndim * nphase, ndim * nphase ), &
                     ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
                     Temperature_Absorption( nphase, nphase, cv_nonods ), &
                     ScalarAdvectionField_Diffusion( mat_nonods, ndim, ndim, nphase ), &
@@ -1878,15 +1879,13 @@ end if
                     plike_grad_sou_grad( cv_nonods * nphase ), &
                     plike_grad_sou_coef( cv_nonods * nphase ) )
                 !!$
-                Velocity_Absorption = 0.
-                !!$
                 Temperature_Absorption=0.
                 !!$
                 Component_Diffusion=0. ; Component_Absorption=0.
                 !!$
                 ScalarAdvectionField_Diffusion=0. ; ScalarField_Absorption=0.
                 !!$
-                Material_Absorption=0. ; Material_Absorption_Stab=0.
+                Material_Absorption=0.
                 !!$
                 plike_grad_sou_grad=0. ; plike_grad_sou_coef=0.
                 !!$

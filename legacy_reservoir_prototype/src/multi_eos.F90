@@ -1848,10 +1848,10 @@ contains
         ! open the boiling test for two phases-gas and liquid
         if (have_option('/boiling')) then
             S_ls_l=0.0
-            S_gs_g=0.0            
+            S_gs_g=0.0
         end if
 
-         
+
 
         iphase=1 ; jphase=1
         do idim = 1, ndim
@@ -1902,9 +1902,9 @@ contains
         ! open the boiling test for two phases-gas and liquid
         if (have_option('/boiling')) then
             St_sl=0.0
-            St_sg=0.0            
+            St_sg=0.0
         end if
-        
+
 
         iphase=1 ; jphase=1
         temperature_absorption( iphase, jphase, : ) =  St_gl + St_sl + Svap_l + Cp_l*Gamma_l
@@ -2094,7 +2094,7 @@ contains
                 S_gs_g(mat_inod) = 0.0 !150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
                 S_ls_l(mat_inod) = 0.0 !150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))
 
-            
+
                 S_lg_l(mat_inod) = 0.75 * CD * ( (a_gl*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) * max(a_lg,1.0e-5)**(-2.65)
                 S_lg_g(mat_inod) = 0.75 * CD * ( (a_lg*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) * max(a_lg,1.0e-5)**(-2.65)
 
