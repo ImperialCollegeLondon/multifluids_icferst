@@ -177,158 +177,32 @@ contains
             x, ierr )
 
         ! destroy all PETSc objects and the petsc_numbering
-        call petsc_solve_destroy_petsc_csr( y, b, ksp, solver_option_path )
+        call multi_petsc_solve_destroy_petsc_csr( y, b, ksp )
 
-    
 
         return
+        contains
+        !Clone of the same subroutine in femtools/Solvers.F90
+        subroutine multi_petsc_solve_destroy_petsc_csr( y, b, ksp )
+
+            type(Vec), intent(inout):: y
+            type(Vec), intent(inout):: b
+            type(KSP), intent(inout):: ksp
+
+            type(PC) :: pc
+            integer ierr
+
+            call VecDestroy(y, ierr)
+            call VecDestroy(b, ierr)
+            call KSPGetPC(ksp, pc, ierr)
+            call KSPDestroy(ksp, ierr)
+
+        end subroutine multi_petsc_solve_destroy_petsc_csr
     end subroutine petsc_solve_scalar_petsc_csr_mp
 
-      !Clone of the same subroutine in femtools/Solvers.F90
-      !sprint_to_do!think about this, maybe make it internal of the one on top (petsc_solve_scalar_petsc_csr_mp)
-    subroutine petsc_solve_destroy_petsc_csr( y, b, ksp, solver_option_path )
 
-        type(Vec), intent(inout):: y
-        type(Vec), intent(inout):: b
-        type(KSP), intent(inout):: ksp
-        character(len=*), intent(in):: solver_option_path
-
-        type(PC) :: pc
-        integer ierr
-
-        call VecDestroy(y, ierr)
-        call VecDestroy(b, ierr)
-        call KSPGetPC(ksp, pc, ierr)
-        call KSPDestroy(ksp, ierr)
-
-    end subroutine petsc_solve_destroy_petsc_csr
-
-    SUBROUTINE GET_SPAR_CMC_SMALL(FINDCMC_SMALL,COLCMC_SMALL,MIDCMC_SMALL, &
-        MX_NCMC_SMALL,NCMC_SMALL, CV_NONODS,X_NONODS, MAP_DG2CTY, &
-        FINDCMC,COLCMC,NCOLCMC)
-        ! Form sparcity COLCMC_SMALL, FINDCMC_SMALL
-        ! from FINDCMC,COLCMC...
-        ! It lumps the DG pressure matrix to a continuous pressure matrix...
-        INTEGER, intent( in ) ::  MX_NCMC_SMALL,NCOLCMC, CV_NONODS,X_NONODS
-        INTEGER, intent( inout ) ::  NCMC_SMALL
-        INTEGER, DIMENSION(: ), intent( inout ) :: FINDCMC_SMALL
-        INTEGER, DIMENSION( : ), intent( inout ) :: COLCMC_SMALL
-        INTEGER, DIMENSION( : ), intent( inout ) :: MIDCMC_SMALL
-
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
-
-        INTEGER, DIMENSION( : ), intent( in ) :: MAP_DG2CTY
-        ! Local variables
-        integer, dimension( : ), allocatable :: MX_NODS_ROW_SMALL, NODS_ROW_SMALL, &
-            FINDCMC_SMALL_mx
-        INTEGER :: dg_nod,cty_nod,count,jcolcmc,jcolcmc_small,count2,count3
-
-        allocate(MX_NODS_ROW_SMALL(x_nonods))
-        allocate(NODS_ROW_SMALL(x_nonods))
-        allocate(FINDCMC_SMALL_mx(x_nonods+1))
-
-        MX_NODS_ROW_SMALL=0
-        DO dg_nod=1,CV_NONODS
-            cty_nod=MAP_DG2CTY(dg_nod)
-            MX_NODS_ROW_SMALL(cty_nod)=min( MX_NODS_ROW_SMALL(cty_nod)  &
-                +FINDCMC(DG_NOD+1)-FINDCMC(DG_NOD),   x_nonods)
-        END DO
-        FINDCMC_small_MX(1)=1
-        do cty_nod=2,x_nonods+1
-            FINDCMC_small_MX(cty_nod)=FINDCMC_small_MX(cty_nod-1)+mx_NODS_ROW_SMALL(cty_nod-1)
-        end do
-        ewrite(3,*)'MAP_DG2CTY:',MAP_DG2CTY
-        ewrite(3,*)'mx_NODS_ROW_SMALL:',mx_NODS_ROW_SMALL
-        ewrite(3,*)'FINDCMC_small_MX:',FINDCMC_small_MX
-
-        NODS_ROW_SMALL=0
-        COLCMC_SMALL=0
-        DO dg_nod=1,CV_NONODS
-            cty_nod=MAP_DG2CTY(dg_nod)
-            ! add row dg_nod to row cty_nod of cty mesh
-            DO COUNT=FINDCMC(DG_NOD),FINDCMC(DG_NOD+1)-1
-                jcolcmc=COLCMC(COUNT)
-                jcolcmc_small=MAP_DG2CTY(jcolcmc)
-
-                count2=0
-                DO COUNT3=FINDCMC_small_mx(CTY_NOD),FINDCMC_SMALL_mx(CTY_NOD)+NODS_ROW_SMALL(cty_nod)-1
-                    if(colcmc_small(count3)==jcolcmc_small) count2=count3
-                end do
-                if(count2==0) then ! then put coln in as we have not found it in row
-                    NODS_ROW_SMALL(cty_nod)=NODS_ROW_SMALL(cty_nod)+1
-                    COLCMC_SMALL(FINDCMC_small_mx(CTY_NOD)+NODS_ROW_SMALL(cty_nod)-1)=jcolcmc_small
-                    if(cty_nod==1) then
-                        ewrite(3,*)'dg_nod,cty_nod,jcolcmc_small:',dg_nod,cty_nod,jcolcmc_small
-                    endif
-                endif
-            END DO
-        END DO
-        ewrite(3,*)'NODS_ROW_SMALL:',NODS_ROW_SMALL
-
-        FINDCMC_small(1)=1
-        do cty_nod=2,x_nonods+1
-            FINDCMC_small(cty_nod)=FINDCMC_small(cty_nod-1)+NODS_ROW_SMALL(cty_nod-1)
-        end do
-        NCMC_SMALL=FINDCMC_small(x_nonods+1)-1
-
-        ! Shrink up the pointer list COLCMC_SMALL:
-        COUNT=0
-        do cty_nod=1,x_nonods
-            DO COUNT2=FINDCMC_small_MX(cty_nod),FINDCMC_small_MX(cty_nod+1)-1
-                IF(COLCMC_SMALL(COUNT2).NE.0) THEN
-                    COUNT=COUNT+1
-                    COLCMC_SMALL(COUNT)=COLCMC_SMALL(COUNT2)
-                ENDIF
-            END DO
-        END DO
-        ! Put in assending coln order in each row...
-        do cty_nod=1,x_nonods
-            ewrite(3,*)'cty_nod,FINDCMC_small(cty_nod),FINDCMC_small(cty_nod+1)-1:', &
-                cty_nod,FINDCMC_small(cty_nod),FINDCMC_small(cty_nod+1)-1
-            call ibubble2(COLCMC_SMALL(FINDCMC_small(cty_nod):FINDCMC_small(cty_nod+1)-1))
-            ewrite(3,*)'COLCMC_SMALL(FINDCMC_small(cty_nod):FINDCMC_small(cty_nod+1)-1):', &
-                COLCMC_SMALL(FINDCMC_small(cty_nod):FINDCMC_small(cty_nod+1)-1)
-        end do
-        ! Calculate MIDCMC_SMALL...
-        do cty_nod=1,x_nonods
-            DO COUNT=FINDCMC_small(cty_nod),FINDCMC_small(cty_nod+1)-1
-                IF(COLCMC_SMALL(COUNT)==cty_nod) MIDCMC_SMALL(CTY_NOD)=COUNT
-            END DO
-        END DO
-
-        RETURN
-    END SUBROUTINE GET_SPAR_CMC_SMALL
-         
-
-    !sprint_to_do! where this is called, use instead quicksort
-    subroutine ibubble2(ivec)
-        ! sort ivec in increasing order
-        implicit none
-        integer, dimension( : ), intent( inout ) :: ivec
-        ! Local variables
-        integer :: nvec, i, j, itemp
-
-        nvec = size(ivec)
-
-        !        ewrite(3,*)'before ivec:',ivec
-
-        do j = 1, nvec
-            do i = 1, nvec - 1
-                if ( ivec( i ) > ivec( i + 1 ) ) then
-                    itemp = ivec( i + 1 )
-                    ivec( i + 1 ) = ivec( i )
-                    ivec( i ) = itemp
-                end if
-            end do
-        end do
-        !        ewrite(3,*)'after ivec:',ivec
-        return
-    end subroutine ibubble2
-
-
-    subroutine BoundedSolutionCorrections( state, packed_state, storage_state, &
-        Mdims, CV_GIdims, CV_funs, small_findrm, small_colm, StorageIndexes, cv_ele_type, &
+    subroutine BoundedSolutionCorrections( state, packed_state, &
+        Mdims, CV_GIdims, CV_funs, small_findrm, small_colm, &
         for_sat, IDs2CV_ndgln)
         implicit none
         ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
@@ -344,13 +218,11 @@ contains
         integer, parameter :: nloc_its = 5, nloc_its2 = 1, nits_nod = 100, ngl_its = 500
         real, parameter :: w_relax = 0.5, error_tol = 1.0e-5
         type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state, storage_state
+        type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims
         type(multi_shape_funs), intent(in) :: CV_funs
         integer, dimension( : ), intent( in ) :: small_findrm, small_colm
-        integer, intent( in ) :: cv_ele_type
-        integer, dimension( : ), intent( inout ) :: StorageIndexes
         logical, optional, intent(in) :: for_sat
         integer, optional, dimension(:) :: IDs2CV_ndgln
         ! local variables...

@@ -284,11 +284,10 @@ contains
     ! This section needs to be generalised to work for multi-fields (I think the boundedness subroutine may need generalisation)
     !print *, nfields
     if (have_option('/material_phase::phase1/scalar_field::Temperature/prognostic/CVgalerkin_interpolation')) then
-       if(flag == 1) call BoundedSolutionCorrections(state, packed_state,storage_state, &
-                        Mdims, CV_GIdims, CV_funs, small_finacv, small_colacv, StorageIndexes, cv_ele_type)
+       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, small_colacv)
     else if(have_option('/material_phase::phase1/scalar_field::PhaseVolumeFraction/prognostic/CVgalerkin_interpolation')) then
-       if(flag == 1)  call BoundedSolutionCorrections(state, packed_state,storage_state, &
-                        Mdims, CV_GIdims, CV_funs, small_finacv, small_colacv, StorageIndexes, cv_ele_type, .true., IDs2CV_ndgln)
+       if(flag == 1)  call BoundedSolutionCorrections(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, small_colacv,&
+                                                        .true., IDs2CV_ndgln)
     endif
     ! DEALLOCATIONS
     deallocate(EleLHS, EleRHS, MMatrix, MNatrix, ipiv)
