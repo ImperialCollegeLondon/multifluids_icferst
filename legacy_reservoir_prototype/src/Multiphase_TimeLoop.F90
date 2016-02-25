@@ -698,10 +698,8 @@ contains
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
                         tracer_field,velocity_field,density_field,&
-                        Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
-                        Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
                         CV_ELE_TYPE,&
                         CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN, &
                         CV_SNDGLN, U_SNDGLN, &
@@ -710,11 +708,7 @@ contains
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
-                        !Temperature_Absorption, Porosity_field%val, &
-                        !!$
-                        Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
-                        !!$
-                        XU_NDGLN, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, &
+                        XU_NDGLN,&
                         !!$
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         0, igot_theta_flux, scvngi_theta, &
@@ -786,10 +780,8 @@ if ( new_ntsol_loop  ) then
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
                         tracer_field,velocity_field,density_field,&
-                        Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
-                        Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
                         CV_ELE_TYPE,&
                         CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN, &
                         CV_SNDGLN, U_SNDGLN, &
@@ -798,11 +790,7 @@ if ( new_ntsol_loop  ) then
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
-                        !Temperature_Absorption, Porosity_field%val, &
-                        !!$
-                        Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
-                        !!$
-                        XU_NDGLN, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, &
+                        XU_NDGLN, &
                         !!$
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         0, igot_theta_flux, scvngi_theta, &
@@ -1002,23 +990,17 @@ end if
                             comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
 
                             call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
-                                Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
+                                Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
                                 tracer_field,velocity_field,density_field,&
-                                Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid,&
-                                Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
                                 CV_ELE_TYPE, &
                                 CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN,&
                                 CV_SNDGLN, U_SNDGLN, &
                                 !!$
                                 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-                                !Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
                                  Porosity_field%val, &
-                                !Component_Absorption, Porosity_field%val, &
-                                !!$
-                                Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
-                                XU_NDGLN, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, &
+                                XU_NDGLN,&
                                 !!$
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                                 igot_t2, igot_theta_flux, scvngi_theta, &

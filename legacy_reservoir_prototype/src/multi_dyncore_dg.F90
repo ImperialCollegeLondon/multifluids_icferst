@@ -69,10 +69,9 @@ module multiphase_1D_engine
 
 contains
 
-  SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state, &
+  SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
+       Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state, &
        tracer, velocity, density, &
-       SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-       NCOLCT, FINDCT, COLCT, &
        CV_ELE_TYPE,&
        CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN,&
        CV_SNDGLN, U_SNDGLN, &
@@ -80,9 +79,7 @@ contains
        T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
        SUF_SIG_DIAGTEN_BC, &
        VOLFRA_PORE, &
-       !T_ABSORB, VOLFRA_PORE, &
-       NCOLM, FINDM, COLM, MIDM, &
-       XU_NDGLN, FINELE, COLELE, NCOLELE, &
+       XU_NDGLN, &
        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
        IGOT_T2, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
        THETA_GDIFF, &
@@ -99,11 +96,10 @@ contains
            type(multi_dimensions), intent(in) :: Mdims
            type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
            type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
+           type (multi_sparsities), intent(in) :: Mspars
            type(tensor_field), intent(inout) :: tracer
            type(tensor_field), intent(in) :: velocity, density
-           INTEGER, intent( in ) :: NCOLCT, CV_ELE_TYPE, &
-               NCOLM, NCOLELE, &
-               IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux
+           INTEGER, intent( in ) :: CV_ELE_TYPE, IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux
            LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
            LOGICAL, intent( in ), optional ::THERMAL
            INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
@@ -113,12 +109,8 @@ contains
            INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
            INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
            INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
-           INTEGER, DIMENSION( : ), intent( in ) :: SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV
-           INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-           INTEGER, DIMENSION( : ), intent( in ) :: COLCT
            REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
            REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-           !REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
            INTEGER, intent( in ) :: IGOT_THERM_VIS
            REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
            REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
@@ -126,13 +118,7 @@ contains
            REAL, intent( in ) :: DT, T_THETA
            REAL, intent( in ) :: T_BETA
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-           !REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
-           INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-           INTEGER, DIMENSION( : ), intent( in ) :: COLM
-           INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-           INTEGER, DIMENSION( : ), intent( in ) :: FINELE
-           INTEGER, DIMENSION( : ), intent( in ) :: COLELE
            REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
            REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
            character( len = * ), intent( in ), optional :: option_path
@@ -148,7 +134,7 @@ contains
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
            REAL, DIMENSION( :,:,:, : ), allocatable :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
-           real, dimension( my_size(small_COLACV )) ::  mass_mn_pres!sprint_to_do!just use size!! and the remove my_size functions
+           real, dimension( my_size(Mspars%small_acv%col )) ::  mass_mn_pres!sprint_to_do!just use size!! and the remove my_size functions
            REAL, DIMENSION( : , : , : ), allocatable :: CT
            REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
@@ -165,13 +151,8 @@ contains
            type(petsc_csr_matrix) :: petsc_acv
            type(vector_field)  :: vtracer
            type(csr_sparsity), pointer :: sparsity
-
            real, dimension(:,:), allocatable :: ScalarField_Source
            real, dimension(:,:,:), allocatable :: Velocity_Absorption, T_AbsorB
-
-
-
-
            if (present(icomp)) then
                lcomp=icomp
            else
@@ -193,8 +174,6 @@ contains
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
                den_all    = den_all2 % val ( 1, :, : )
                denold_all = denold_all2 % val ( 1, :, : )
-
-
                ! open the boiling test for two phases-gas and liquid
                if (have_option('/boiling')) then ! don't the divide int. energy equation by the volume fraction
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -236,15 +215,12 @@ contains
            else
                RETRIEVE_SOLID_CTY = .false.
            end if
-
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
               call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
                  Mdims%mat_nloc, Mdims%totele, mat_ndgln, TDIFFUSION )
            end if
-
            ! calculate T_ABSORB
            allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
            if (have_option('/boiling')) then
@@ -254,20 +230,15 @@ contains
                       ScalarField_Source, velocity_absorption, T_AbsorB )
                    deallocate ( Velocity_Absorption, ScalarField_Source )
            end if
-
-
-
-
-
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
                    tracer, velocity, density, &
                    CV_RHS_field, &
                    petsc_acv, &
-                   SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV,&
-                   NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
-                   CT, FINDCT, COLCT, &
+                   Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid,&
+                   Mspars%CT%ncol, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, Mspars%CT%fin, Mspars%CT%col, &
+                   CT, Mspars%CT%fin, Mspars%CT%col, &
                    CV_ELE_TYPE, &
                    CV_NDGLN, X_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN, &
                    DEN_ALL, DENOLD_ALL, &
@@ -277,14 +248,14 @@ contains
                    DERIV%val(1,:,:), P%val, &
                    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
                    GETCV_DISC, GETCT, &
-                   NCOLM, FINDM, COLM, MIDM, &
-                   XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                   Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
+                   XU_NDGLN, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, &
                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                    IGOT_T2_loc,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
                    IN_ELE_UPWIND, DG_ELE_UPWIND, &
                    MEAN_PORE_CV, &
-                   SMALL_FINACV, SMALL_COLACV, size(small_colacv), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
+                   Mspars%small_acv%fin, Mspars%small_acv%col, size(Mspars%small_acv%col), mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &
                    StorageIndexes, Field_selector,icomp, &
@@ -297,18 +268,6 @@ contains
                        CV_RHS_SUB( : ) = CV_RHS_SUB( : )&
                            + CV_RHS_field%val(iphase,:)
                    END DO
-               !!$                NCOLACV_SUB = FINACV( Mdims%cv_nonods + 1) - 1 - Mdims%cv_nonods *( Mdims%nphase - 1 )
-               !!$
-               !!$                ALLOCATE( ACV_SUB( NCOLACV_SUB ))
-               !!$                ALLOCATE( COLACV_SUB( NCOLACV_SUB ))
-               !!$                ALLOCATE( FINACV_SUB( Mdims%cv_nonods + 1 ))
-               !!$                ALLOCATE( MIDACV_SUB( Mdims%cv_nonods ))
-                        !CALL LUMP_ENERGY_EQNS( Mdims%cv_nonods, Mdims%nphase, &
-                        !NCOLACV, NCOLACV_SUB, &
-                        !FINACV, COLACV, COLACV_SUB, FINACV_SUB, ACV_SUB )
-                        !CALL SOLVER( ACV_SUB, T, CV_RHS_SUB, &
-                        !FINACV_SUB, COLACV_SUB, &
-                        !trim(option_path))
                ELSE
                    IF ( IGOT_T2 == 1) THEN
                        vtracer=as_vector(tracer,dim=2)
