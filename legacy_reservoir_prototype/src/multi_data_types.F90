@@ -288,7 +288,7 @@ contains
     end subroutine deallocate_multi_shape_funs
 
 
-    !This subroutine, despite it can be called by itself it is highly recommended to be called through multi_sparsity/Get_Sparsity_Patterns
+    !This subroutine, despite it can be called by itself it is highly recommended to be called ONLY through multi_sparsity/Get_Sparsity_Patterns
     subroutine allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
         !This subroutine allocates part of the memory inside Mspars
         implicit none
