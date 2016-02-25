@@ -379,7 +379,7 @@ contains
             plike_grad_sou_coef( cv_nonods * nphase ), &
             )
 
-        ncv_faces=CV_count_faces( packed_state, Mdims, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln)
+        ncv_faces=CV_count_faces( Mdims, CV_ELE_TYPE, CV_GIDIMS = CV_GIdims)
 
         !!$
         suf_sig_diagten_bc=0.
@@ -1759,7 +1759,7 @@ end if
                 suf_sig_diagten_bc=0.
                 !!$
 
-                ncv_faces = CV_count_faces( packed_state, Mdims, CV_ELE_TYPE, stotel, cv_sndgln, u_sndgln )
+                ncv_faces = CV_count_faces( Mdims, CV_ELE_TYPE, CV_GIdims)
 
 
                 !!$
