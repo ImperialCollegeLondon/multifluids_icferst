@@ -122,7 +122,6 @@ contains
         CV_RHS_field, PETSC_ACV,&
         CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
         C,&
-        CV_ELE_TYPE,  &
         CV_NDGLN, X_NDGLN, U_NDGLN, &
         CV_SNDGLN, U_SNDGLN, &
         DEN_ALL, DENOLD_ALL, &
@@ -273,7 +272,7 @@ contains
         type(tensor_field), intent(inout), target :: tracer
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
-        INTEGER, intent( in ) :: CV_ELE_TYPE, CV_DISOPT, CV_DG_VEL_INT_OPT, &
+        INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
             IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
             Field_selector
         INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, IDs_ndgln
@@ -332,7 +331,6 @@ contains
         REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: U_RHS
         !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
         ! Local variables
-        type( multi_GI_dimensions ) :: GIdims
         REAL :: ZERO_OR_TWO_THIRDS
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
         logical, PARAMETER :: integrate_other_side= .true.
@@ -376,7 +374,7 @@ contains
         INTEGER, DIMENSION( : , : ), allocatable :: FACE_ELE
         REAL, DIMENSION( : ), allocatable ::  &
             MASS_CV, MASS_ELE,  &
-            SUM_CV, PERM_ELE, N, RSUM_VEC
+            SUM_CV, N, RSUM_VEC
         REAL, DIMENSION( :, : ), allocatable :: CVNORMX_ALL, XC_CV_ALL
         REAL, DIMENSION( :, :, : ), allocatable :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
         REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
@@ -398,7 +396,7 @@ contains
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U, LOC2_U
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_NU, LOC2_NU, SLOC_NU, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD
         REAL, DIMENSION ( :, : ), allocatable :: LOC_U_HAT, LOC2_U_HAT
-        INTEGER :: CV_KNOD, CV_KNOD2, U_SNODK
+        INTEGER :: CV_KNOD2, U_SNODK
         REAL, DIMENSION ( :, : ), allocatable :: LOC_FEMT, LOC2_FEMT, LOC_FEMTOLD, LOC2_FEMTOLD
         REAL, DIMENSION ( :, : ), allocatable :: LOC_FEMT2, LOC2_FEMT2, LOC_FEMT2OLD, LOC2_FEMT2OLD
         ! Mdims%nphase Variables:
@@ -414,47 +412,42 @@ contains
 !!$        INTEGER :: CV_GIdims%cv_ngi, CV_NGI_SHORT, CV_GIdims%scvngi, CV_GIdims%sbcvngi, COUNT, ICOUNT, JCOUNT, &
         INTEGER :: COUNT, ICOUNT, JCOUNT, &
             ELE, ELE2, GI, GCOUNT, SELE,   &
-            U_SILOC, CV_SILOC, U_KLOC, &
+            CV_SILOC, U_KLOC, &
             CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
-            CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
-            CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
+            CV_NODJ, &
+            CV_NODI, U_NODK, TIMOPT, &
 !!$            CV_GIdims%nface, X_NODI,  X_NODJ, &
             X_NODI,  X_NODJ, &
-            CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, &
-            XNOD, COUNT2, NOD
+            CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS
         !        ===>  REALS  <===
         REAL :: HDC, &
-            TMID, TOLDMID, TMID_J, TOLDMID_J, &
             RSUM, &
             THERM_FTHETA, &
             W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta
         REAL :: FTHETA(Mdims%nphase), FTHETA_T2(Mdims%nphase), ONE_M_FTHETA_T2OLD(Mdims%nphase), FTHETA_T2_J(Mdims%nphase), ONE_M_FTHETA_T2OLD_J(Mdims%nphase)
         REAL :: ROBIN1(Mdims%nphase), ROBIN2(Mdims%nphase)
         real, pointer :: VOLUME
-        integer :: cv_inod_ipha, IGETCT, U_NODK_IPHA, IANISOLIM, global_face,J
+        integer :: IGETCT, IANISOLIM, global_face,J
         ! Functions...
         !REAL :: R2NORM, FACE_THETA
         !        ===>  LOGICALS  <===
         LOGICAL :: GETMAT, &
             D1, D3, GOT_DIFFUS, INTEGRAT_AT_GI, &
-            NORMALISE, SUM2ONE, GET_GTHETA, QUAD_OVER_WHOLE_ELE
+            NORMALISE, GET_GTHETA, QUAD_OVER_WHOLE_ELE
         LOGICAL, PARAMETER :: DCYL = .FALSE.
-        character( len = option_path_len ) :: option_path, option_path2, path_temp, path_volf, &
-            path_comp, path_spatial_discretisation
+        character( len = option_path_len ) :: option_path2
         real, dimension(:,:), allocatable :: TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, &
             DENOLDUPWIND_MAT_ALL, T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL
         INTEGER :: IDUM(1)
-        REAL :: RDUM(1),n1,n2,n3
-        INTEGER :: I, IDIM, U_ILOC, U_INOD, ELE3
+        INTEGER :: I, IDIM, U_ILOC, ELE3
         INTEGER :: NFIELD, CV_KLOC, CV_NODK
-        INTEGER :: IT, ITOLD, IT2, IT2OLD, IFI
-        INTEGER :: COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_NODK2_IPHA,CV_SKLOC
+        INTEGER :: IFI
+        INTEGER :: COUNT_IN, COUNT_OUT,CV_KLOC2,CV_NODK2,CV_SKLOC
         INTEGER :: IPT_IN, IPT_OUT
-        INTEGER :: U_KLOC2,U_NODK2,U_NODK2_IPHA,U_SKLOC
+        INTEGER :: U_KLOC2,U_NODK2,U_SKLOC
         INTEGER :: IPT,ILOOP,IMID,JMID,JDIM
-        LOGICAL :: STORE, integrate_other_side_and_not_boundary, prep_stop, GOT_VIS
+        LOGICAL :: STORE, integrate_other_side_and_not_boundary, GOT_VIS
         REAL :: R, NDOTQ_HAT, DeltaP
-        REAL :: LIMT_keep(Mdims%nphase ),  LIMTOLD_keep( Mdims%nphase ), LIMD_keep( Mdims%nphase ),   LIMDOLD_keep( Mdims%nphase ), LIMT2_keep( Mdims%nphase ),   LIMT2OLD_keep(Mdims%nphase)
         REAL , DIMENSION( : ), ALLOCATABLE :: F_CV_NODI, F_CV_NODJ
         REAL , DIMENSION( :, : ), ALLOCATABLE :: NUGI_ALL, NU_LEV_GI, SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, opt_vel_upwind_coefs_new_cv
         REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
@@ -475,7 +468,7 @@ contains
         real, dimension(:, :), allocatable :: U_HAT_ALL ! for solid coupling
         real, dimension(:,:), allocatable, target :: T_TEMP, TOLD_TEMP
         real, dimension(:,:), pointer :: T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, X_ALL, FEMT_ALL, FEMTOLD_ALL
-        real, dimension(:, :, :), pointer :: comp, comp_old, fecomp, fecomp_old, U_ALL, NU_ALL, NUOLD_ALL
+        real, dimension(:, :, :), pointer :: U_ALL, NU_ALL, NUOLD_ALL
         real, dimension(Mdims%nphase, Mdims%cv_nonods) :: T_ALL_KEEP
         real, dimension(:,:), allocatable :: MASS_CV_PLUS
         real, dimension( : ), allocatable :: ct_rhs_phase, DIAG_SCALE_PRES_phase
@@ -497,9 +490,8 @@ contains
         REAL, DIMENSION( :,:,: ), allocatable, target :: SUF_T_BC,&
             SUF_T_BC_ROB1, SUF_T_BC_ROB2
         !Working variables for subroutines that are called several times
-        real, dimension( Mdims%ndim,Mdims%nphase ) :: rdum_ndim_nphase_1, rdum_ndim_nphase_2, rdum_ndim_nphase_3, rdum_ndim_nphase_4
-        real, dimension( Mdims%nphase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_nphase_6, &
-            rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, rdum_nphase_13
+        real, dimension( Mdims%ndim,Mdims%nphase ) :: rdum_ndim_nphase_1
+        real, dimension( Mdims%nphase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5
         REAL, DIMENSION( Mdims%nphase ) :: ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA, &
                 wrelax, XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
         REAL, DIMENSION ( Mdims%ndim,Mdims%nphase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
@@ -512,7 +504,7 @@ contains
         type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
         type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
         type( vector_field ), pointer :: coord
-        type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tracer_source, tfield
+        type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield
         integer :: FEM_IT
         integer, dimension(:), pointer :: neighbours
         integer :: nb, i_use_volume_frac_t2
@@ -520,7 +512,7 @@ contains
         logical :: GOT_T2, use_volume_frac_T2
         logical :: symmetric_P
         ! pipe diamter for reservior modelling
-        type( scalar_field ), pointer :: sfield, pipe_Diameter, pipe_Diameter_nano, pipe_Length_nano
+        type( scalar_field ), pointer :: pipe_Diameter, pipe_Diameter_nano, pipe_Length_nano
         !Permeability
         type( tensor_field ), pointer :: perm
         !Variables for Capillary pressure
@@ -531,14 +523,14 @@ contains
         !Logical to do a surface integral for the Mass matrix
         logical :: SUF_INT_MASS_MATRIX2
         real, dimension(Mdims%nphase):: rsum_nodi, rsum_nodj
-        integer :: x_nod, COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
+        integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
         REAL :: MM_GRAVTY
         !Variables to calculate flux across boundaries
         logical :: calculate_flux
         real :: reservoir_P( Mdims%npres ) ! this is the background reservoir pressure
         real, dimension( :, :, : ), pointer :: fem_p
-        integer :: cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr, U_JLOC, CV_JLOC2, CV_NODJ2
-        real :: rconst, h_nano, RP_NANO, dt_pipe_factor, xc_ele(Mdims%ndim), xs_pt(Mdims%ndim)
+        integer :: U_JLOC
+        real :: h_nano, RP_NANO, dt_pipe_factor
         logical :: got_nano
         !#########################################
         ! 27/01/2016 Variables needed when doing calculate_outflux(). For each phase, totoutflux will be sum up over elements
@@ -704,7 +696,6 @@ contains
             SUF_T_BC_ROB2_ALL=>suf_t_bc_rob2
         end if
         IDUM = 0
-        RDUM = 0.
         ewrite(3,*) 'In CV_ASSEMB'
         GOT_VIS = .FALSE.
         IF(IGOT_THERM_VIS==1) GOT_VIS = ( R2NORM( THERM_U_DIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0 ) &
@@ -2703,18 +2694,10 @@ contains
             !      INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 5
             INTEGER, PARAMETER :: NON_LIN_PETROV_INTERFACE = 3
             real, parameter :: tolerance = 1.e-10
-            LOGICAL :: NOLIMI, RESET_STORE, LIM_VOL_ADJUST
-            REAL :: RELAX, TMIN_STORE, TMAX_STORE, TOLDMIN_STORE, &
-                T2MIN_STORE, T2MAX_STORE, &
-                DENMIN_STORE, DENMAX_STORE
-            INTEGER :: CV_KLOC, CV_NODK, CV_NODK_IPHA, CV_KLOC2, CV_NODK2, CV_NODK2_IPHA, CV_STAR_IPHA, &
-                CV_SKLOC, CV_SNODK, CV_SNODK_IPHA, U_KLOC,U_NODK,U_NODK_IPHA, IDIM, ELE_DOWN
-            REAL :: T_BETWEEN_MIN, T_BETWEEN_MAX
-            REAL :: T_AVE_EDGE, T_AVE_ELE
-            REAL :: T_MIDVAL
-            INTEGER :: U_KLOC2, U_NODK2, U_NODK2_IPHA
-            INTEGER :: U_SKLOC, COUNT, COUNT_IN, COUNT_OUT, COUNT_IN_PHA, COUNT_OUT_PHA
-            INTEGER :: IFIELD,IFI
+            LOGICAL :: NOLIMI
+            INTEGER :: CV_KLOC, &
+                CV_SKLOC, IDIM
+            INTEGER :: IFIELD
             REAL, dimension(Mdims%ndim,NFIELD) :: FXGI_ALL, UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
             REAL, dimension(NFIELD) :: courant_or_minus_one_new, XI_LIMIT,&
                 P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
@@ -4066,134 +4049,26 @@ contains
         RETURN
     END SUBROUTINE PACK_OR_UNPACK_LOC
 
-
-
-
-
-
-
-    !Sprint_to_do!substitute GIdims for the corresponding cv_gi_dims
-    function CV_count_faces( packed_state, Mdims, &
-         CV_ELE_TYPE,  &
-         STOTEL, CV_SNDGLN, U_SNDGLN, &
-         face_sparsity) result(global_face)
-
+    function CV_count_faces( Mdims, CV_ELE_TYPE, CV_GIdims) result(global_face)
       !  =====================================================================
       !     This subroutine counts then number of faces in the control volume space
       !
-
       ! Inputs/Outputs
       IMPLICIT NONE
-      type(state_type), intent(inout) :: packed_state
       type(multi_dimensions), intent(in) :: Mdims
-      INTEGER, intent( in ) :: CV_ELE_TYPE, STOTEL
-      INTEGER, DIMENSION( : ), pointer :: CV_NDGLN
-      INTEGER, DIMENSION( : ), pointer ::  X_NDGLN
-      INTEGER, DIMENSION( : ), pointer :: U_NDGLN
-      INTEGER, DIMENSION( : ), pointer :: XU_NDGLN
-      INTEGER, DIMENSION( : ), pointer :: MAT_NDGLN
-      INTEGER, DIMENSION( : ) :: CV_SNDGLN
-      INTEGER, DIMENSION(: )  :: U_SNDGLN
-      ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
-      INTEGER, DIMENSION( : ), pointer :: FINDCMC, COLCMC
-
-      INTEGER, DIMENSION( : ), pointer :: FINDM, COLM, MIDM
-      INTEGER, DIMENSION( : ), pointer :: FINELE, COLELE
-      !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
-
+      INTEGER, intent( in ) :: CV_ELE_TYPE
+      type( multi_GI_dimensions ), optional, intent(in) :: CV_GIdims
 
       ! Local variables
       type( multi_GI_dimensions ) :: GIdims
-      integer :: CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-           CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, &
-           NDIM, XU_NLOC, cv_snloc, u_snloc
-      LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
-      LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
-           CVFEM_ON_FACE, UFEM_ON_FACE
-      INTEGER, DIMENSION( : ), allocatable :: FINDGPTS, &
-           CV_OTHER_LOC, U_OTHER_LOC, MAT_OTHER_LOC, &
-           COLGPTS, CV_SLOC2LOC, U_SLOC2LOC, &
-           TMAX_NOD, TMIN_NOD, &
-           DENMAX_NOD, DENMIN_NOD, &
-           T2MAX_NOD, T2MIN_NOD
-      INTEGER, DIMENSION( : , : ), allocatable :: CV_SLOCLIST, U_SLOCLIST, &
-           FACE_ELE, CV_NEILOC
-      REAL, DIMENSION( : ), allocatable :: CVWEIGHT, CVWEIGHT_SHORT, SCVFEWEIGH, SBCVFEWEIGH, &
-           CVNORMX, &
-           CVNORMY, CVNORMZ, SCVRA, SCVDETWEI, &
-           SUM_CV, &
-           UP_WIND_NOD, DU, DV, DW, PERM_ELE
-      REAL, DIMENSION( : , : ), allocatable :: CVN, CVN_SHORT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
-           CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT,  &
-           UFEN, UFENLX, UFENLY, UFENLZ, SCVFEN, SCVFENSLX, SCVFENSLY, &
-           SCVFENLX, SCVFENLY, SCVFENLZ, &
-           SCVFENX, SCVFENY, SCVFENZ, &
-           SUFEN, SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ, &
-           SBCVN,SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-           SBCVFENLX, SBCVFENLY, SBCVFENLZ, SBUFEN, SBUFENSLX, SBUFENSLY, &
-           SBUFENLX, SBUFENLY, SBUFENLZ
-
-      !        ===> INTEGERS <===
-!!$        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, JCOUNT, &
-      INTEGER :: COUNT, JCOUNT, &
-           ELE, ELE2, GI, GCOUNT, SELE,   &
-           NCOLGPTS, &
-           CV_SILOC, U_KLOC, &
-           CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
-           CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
-           CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
-           JCOUNT_IPHA, IMID_IPHA, &
-           NFACE, X_NODI,  &
-           CV_INOD, MAT_NODI, FACE_ITS, NFACE_ITS, &
-           CVNOD, XNOD, NSMALL_COLM, COUNT2, NOD
-
-      !        ===>  LOGICALS  <===
-      LOGICAL :: QUAD_OVER_WHOLE_ELE, integrat_at_gi
-
       INTEGER :: GLOBAL_FACE
-      type(csr_sparsity), pointer :: connectivity
-      type(mesh_type), pointer :: cv_mesh, x_mesh, xu_mesh, u_mesh, mat_mesh
 
-      type(csr_sparsity), intent(out), optional :: face_sparsity
-      type(ilist), dimension(:), allocatable :: face_list
-
-      GLOBAL_FACE=0
-
-      connectivity=>extract_csr_sparsity(packed_state,"ElementConnectivity")
-      cv_mesh=>extract_mesh(packed_state,"PressureMesh")
-      cv_ndgln=>cv_mesh%ndglno
-      totele=element_count(cv_mesh)
-      ndim=mesh_dim(cv_mesh)
-      cv_nonods=node_count(cv_mesh)
-      cv_nloc=ele_loc(cv_mesh,1)
-      cv_snloc=face_loc(cv_mesh,1)
-      x_mesh=>extract_mesh(packed_state,"PressureMesh_Continuous")
-      x_ndgln=>x_mesh%ndglno
-      X_nonods=node_count(x_mesh)
-      X_nloc=ele_loc(x_mesh,1)
-      xu_mesh=>extract_mesh(packed_state,"VelocityMesh_Continuous")
-      xu_ndgln=>xu_mesh%ndglno
-      xu_nloc=ele_loc(xu_mesh,1)
-      u_mesh=>extract_mesh(packed_state,"InternalVelocityMesh")
-      u_ndgln=>u_mesh%ndglno
-      u_nonods=node_count(u_mesh)
-      u_nloc=ele_loc(u_mesh,1)
-      u_snloc=face_loc(u_mesh,1)
-
-      mat_mesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
-      mat_nloc=ele_loc(mat_mesh,1)
-
-      allocate( face_list( totele ) )
-
-      ewrite(3,*) 'In CV_FACE_COUNT'
-
-      QUAD_OVER_WHOLE_ELE=.FALSE.
-      ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-!!$        call retrieve_ngi( TOTELE, cv_ele_type, CV_NLOC,U_NLOC, &
-!!$            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
-      call retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE )
-
-      global_face=totele * GIdims%scvngi * 2
+        if (present(CV_GIdims)) then
+            global_face=Mdims%totele * CV_GIdims%scvngi * 2
+        else
+            call retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE = .false. )
+            global_face=Mdims%totele * GIdims%scvngi * 2
+        end if
 
       return
     end function CV_COUNT_FACES
@@ -4228,8 +4103,7 @@ contains
         LOGICAL, intent( in ) :: DISTCONTINUOUS_METHOD
         ! Local variables
         INTEGER :: X_KLOC, X_NODK, X_NODK2, COUNT, ELE3, SUF_COUNT, CV_KLOC, CV_KLOC2, &
-            &     U_KLOC, U_KLOC2, CV_NODK, XU_NODK, XU_NODK2
-        LOGICAL :: INTEGRAT_AT_GI2
+            &     U_KLOC, U_KLOC2,  XU_NODK, XU_NODK2
 
         !ewrite(3,*) 'In FIND_OTHER_SIDE'
 
@@ -4369,7 +4243,7 @@ contains
             PSI_AVE2, PSI_INT2, MAT, DETWEI, RA
         REAL, DIMENSION( :, : ), allocatable :: NX, NY, NZ
         REAL :: VOLUME, NN, NM, MN, MM
-        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_GI, COUNT, IT
+        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, COUNT, IT
 
         ewrite(3,*) 'In PROJ_CV_TO_FEM'
 
@@ -4535,7 +4409,7 @@ contains
         REAL, DIMENSION( :, : , :), allocatable, target :: NX_ALL2
         real, target :: VOLUME2
         REAL :: NN, NM, MN, MM
-        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_GI, COUNT, IT, idim,&
+        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_GI, COUNT, IT, &
             max_iterations
         !Pointers to use if storage is used.
         REAL, DIMENSION( : ), pointer :: DETWEI, RA
@@ -5329,11 +5203,11 @@ contains
         REAL, DIMENSION( CV_NLOC, CV_NLOC )  :: MASS, INV_MASS
         REAL, DIMENSION( NDIM, X_SNLOC ) :: XSL( 3, X_SNLOC ), SNORMXN( 3, SBCVNGI ), SDETWE( SBCVNGI )
         INTEGER  :: SLOC2LOC( CV_SNLOC ), X_SLOC2LOC( X_SNLOC ), ILOC_OTHER_SIDE( CV_SNLOC )
-        REAL :: NN, NNX( NDIM ), NORMX( 3 ), SAREA, NRBC, RNN, RTBC, VLM_NORX( NDIM )
-        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_GI, CV_ILOC2, &
-            CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, CV_NODJ2_IPHA, CV_NODJ_IPHA, &
-            CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, SUF_CV_SJ2_IPHA, &
-            X_INOD, SGI, X_SILOC, X_ILOC, ICOMP, IDIM
+        REAL :: NN, NNX( NDIM ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( NDIM )
+        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
+            CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, CV_NODJ_IPHA, &
+            CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
+            X_INOD, X_SILOC, X_ILOC, ICOMP, IDIM
         INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1
 
         ewrite(3,*)'in DG_DERIVS'
@@ -5584,11 +5458,11 @@ contains
         REAL, DIMENSION( CV_NLOC, CV_NLOC )  :: MASS, INV_MASS
         REAL, DIMENSION( NDIM, X_SNLOC ) :: XSL( 3, X_SNLOC ), SNORMXN( NDIM, SBCVNGI ), SDETWE( SBCVNGI )
         INTEGER  :: SLOC2LOC( CV_SNLOC ), X_SLOC2LOC( X_SNLOC ), ILOC_OTHER_SIDE( CV_SNLOC )
-        REAL :: NN, NNX( NDIM ), NORMX( 3 ), SAREA, NRBC, RNN, RTBC, VLM_NORX( NDIM )
-        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_GI, CV_ILOC2, &
-            CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, CV_NODJ2_IPHA, CV_NODJ_IPHA, &
-            CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, SUF_CV_SJ2_IPHA, &
-            X_INOD, SGI, X_SILOC, X_ILOC, IDIM
+        REAL :: NN, NNX( NDIM ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( NDIM )
+        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
+            CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, &
+            CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
+            X_INOD, X_SILOC, X_ILOC, IDIM
 
         ewrite(3,*)'in DG_DERIVS'
 
@@ -6164,7 +6038,7 @@ contains
         INTEGER, DIMENSION( U_NLOC ) :: OTHER_SI2
         INTEGER, DIMENSION( 2*U_NLOC ) :: GLOB_NO
         REAL, DIMENSION( U_SNLOC ) :: DIFF_SUF
-        INTEGER :: U_SILOC,U_ILOC,U_ILOC2,U_JLOC2,IGL,JGL,SGI,IPHASE,NLEN,IDIM
+        INTEGER :: U_SILOC,U_ILOC,U_ILOC2,U_JLOC2,IGL,JGL,IPHASE,NLEN,IDIM
         INTEGER, DIMENSION(:), ALLOCATABLE :: IPIV
         LOGICAL :: GOTDEC
 
@@ -6347,7 +6221,7 @@ contains
         REAL, PARAMETER :: DIFF_MIN_FRAC = 0.05, DIFF_MAX_FRAC = 20.0
 
         REAL :: COEF
-        INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, CV_ILOC, IPHASE, CV_SKLOC
+        INTEGER :: CV_KLOC, CV_KLOC2, MAT_KLOC, MAT_KLOC2, MAT_NODK, MAT_NODK2, IPHASE, CV_SKLOC
         LOGICAL :: ZER_DIFF
 
         REAL, DIMENSION ( :, : ), allocatable :: DTDX_GI_ALL, DTOLDDX_GI_ALL, DTDX_GI2_ALL, DTOLDDX_GI2_ALL
@@ -6539,7 +6413,7 @@ contains
             DIFF_COEF_DIVDX_U, DIFF_COEFOLD_DIVDX_U
         REAL, DIMENSION( :, : ), allocatable :: IDENT, RZER_DIFF_ALL
         REAL :: COEF
-        INTEGER :: CV_KLOC,CV_KLOC2,MAT_KLOC,MAT_KLOC2,MAT_NODK,MAT_NODK2,IDIM,JDIM,CV_SKLOC
+        INTEGER :: MAT_NODK2,IDIM,JDIM,CV_SKLOC
         INTEGER :: SGI,IPHASE
         LOGICAL :: ZER_DIFF
 
@@ -11060,9 +10934,9 @@ contains
 
         LOGICAL :: CV_QUADRATIC, U_QUADRATIC, ELE_HAS_PIPE, PIPE_MIN_DIAM, IGNORE_DIAGONAL_PIPES, SOLVE_ACTUAL_VEL
         LOGICAL :: CALC_SIGMA_PIPE, DEFAULT_SIGMA_PIPE_OPTIONS, SWITCH_PIPES_ON_AND_OFF
-        INTEGER :: CV_NCORNER, ELE, PIPE_NOD_COUNT, ICORNER, &
+        INTEGER :: ELE, PIPE_NOD_COUNT, ICORNER, &
             &     CV_ILOC, U_ILOC, CV_NODI, IPIPE, CV_LILOC, U_LILOC, CV_LNLOC, U_LNLOC, CV_KNOD, MAT_KNOD, IDIM, &
-            &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc, MAT_NODI
+            &     IU_NOD, P_LJLOC, JCV_NOD, COUNT, COUNT2, IPHASE, X_nloc
         INTEGER, DIMENSION(:), ALLOCATABLE :: CV_LOC_CORNER, U_LOC_CORNER, CV_GL_LOC, CV_GL_GL, X_GL_GL, MAT_GL_GL, U_GL_LOC, U_GL_GL
         INTEGER, DIMENSION(:,:), ALLOCATABLE :: CV_MID_SIDE, U_MID_SIDE, WIC_P_BC_ALL_NODS
         TYPE(SCALAR_FIELD), POINTER :: PIPE_DIAMETER, WD
@@ -11088,8 +10962,8 @@ contains
         REAL :: DX, ELE_ANGLE, NN, NM, suf_area, PIPE_DIAM_END, MIN_DIAM, U_GI, E_ROUGHNESS
         REAL :: S_WATER, S_WATER_MIN, S_WATER_MAX, SIGMA_SWITCH_ON_OFF_PIPE_GI, PIPE_SWITCH
         INTEGER :: pipe_corner_nds1( NDIM ), pipe_corner_nds2( NDIM ), NPIPES, ncorner, scvngi, &
-            &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4, JCORNER
-        INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2, IPHASE_IN_PIPE, GI, IWATER, CV_JLOC, CV_NODJ
+            &     i_indx, j_indx, jdim, jphase, u_ljloc, u_jloc, ICORNER1, ICORNER2, ICORNER3, ICORNER4
+        INTEGER :: SELE, CV_SILOC, JCV_NOD1, JCV_NOD2, IPRES, JU_NOD, CV_NOD, CV_LOC1, CV_LOC2, IPHASE_IN_PIPE, GI, IWATER
 
         X_NLOC = CV_NLOC
         ncorner = ndim + 1

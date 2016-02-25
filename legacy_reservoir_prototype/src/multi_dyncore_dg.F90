@@ -144,7 +144,6 @@ contains
            INTEGER :: IPHASE
            REAL, PARAMETER :: SECOND_THETA = 1.0
            LOGICAL :: RETRIEVE_SOLID_CTY
-           character( len = option_path_len ) :: path
            type(vector_field) :: cv_rhs_field
            type(vector_field) :: ct_rhs
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv
@@ -251,7 +250,6 @@ contains
                    CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
                    INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
                    CT, &
-                   CV_ELE_TYPE, &
                    CV_NDGLN, X_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN, &
                    DEN_ALL, DENOLD_ALL, &
                    MAT_NDGLN, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
@@ -367,7 +365,6 @@ contains
              LOGICAL :: GET_THETA_FLUX
              REAL , PARAMETER :: SECOND_THETA = 1.0
              INTEGER :: STAT, IGOT_THERM_VIS, IPHASE, JPHASE, IPHASE_REAL, JPHASE_REAL, IPRES, JPRES
-             character( len = option_path_len ) :: path
              LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
              type( tensor_field ), pointer :: den_all2, denold_all2
              !Working pointers
@@ -391,8 +388,6 @@ contains
              real, save :: res = -1
              logical :: satisfactory_convergence
              integer :: its, useful_sats
-             integer :: count, count2, cv_jnod, cv_jnod2, cv_nod, i_indx, j_indx, ierr
-             real :: rconst
              !Extract variables from packed_state
              !call get_var_from_packed_state(packed_state,FEPressure = P)
              call get_var_from_packed_state(packed_state,CVPressure = P)
@@ -485,7 +480,6 @@ contains
                      CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
                      INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
                      CT, &
-                     CV_ELE_TYPE,  &
                      CV_NDGLN, X_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN, &
                      DEN_ALL, DENOLD_ALL, &
                      MAT_NDGLN, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
@@ -671,7 +665,6 @@ contains
                                                                       !use a continuous pressure
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
-        INTEGER :: N_IN_PRES
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
         INTEGER :: IGOT_CMC_PRECON
 ! Gidaspow model B - can use conservative from of
@@ -716,10 +709,10 @@ contains
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
         type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv
         type( vector_field ), pointer :: x_all2
-        type( scalar_field ), pointer ::  pressure_state, sf, soldf, gamma
+        type( scalar_field ), pointer ::  sf, soldf, gamma
 
         type( vector_field ) :: packed_vel, rhs
-        type( vector_field ) :: deltap, rhs_p, P_correction
+        type( vector_field ) :: deltap, rhs_p
         type( petsc_csr_matrix ) :: mat
         type(tensor_field) :: cdp_tensor
         type( csr_sparsity ), pointer :: sparsity
@@ -1283,16 +1276,8 @@ END IF
             end if
 
             call zero(deltaP)
-            if ( (Mdims%x_nonods /= Mdims%cv_nonods) .and. use_continuous_pressure_solver &
-                 .and. nonlinear_iteration == 1 ) then !For discontinuous mesh
-               ! We want to use the continious solver the first non-linear iteration only, to speed up without affecting the results
-               ! Solver that agglomerates all the DG informaton into a CG mesh
-               call CMC_Agglomerator_solver(state, cmc_petsc, deltap, RHS_p, &
-                    Mspars%CMC%ncol, Mdims%cv_nonods, Mspars%CMC%fin, Mspars%CMC%col, Mspars%CMC%mid, &
-                    Mdims%totele, Mdims%cv_nloc, Mdims%x_nonods, x_ndgln, trim(pressure%option_path))
-            else
-               call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
-            end if
+            !Solve the system to obtain dP (difference of pressure)
+            call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
 
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
 
@@ -1618,7 +1603,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
             INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
             CT, & ! C sparsity - global cty eqn
-            CV_ELE_TYPE, &
             CV_NDGLN, X_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN, &
             DEN_OR_ONE, DENOLD_OR_ONE, &
             MAT_NDGLN, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -1998,8 +1982,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, :, : ), allocatable ::  CVFENX_ALL_REVERSED, UFENX_ALL_REVERSED
         REAL, DIMENSION ( :, : ), allocatable ::  UFEN_REVERSED, CVFEN_SHORT_REVERSED, CVN_SHORT_REVERSED, CVN_REVERSED, CVFEN_REVERSED
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
-        REAL, DIMENSION( : ), allocatable :: sf_val_min
-        REAL, DIMENSION( :,: ), allocatable :: SIGMA
         !Variables to store things in state
         type(mesh_type), pointer :: fl_mesh
         type(mesh_type) :: Auxmesh
@@ -2011,7 +1993,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: sf
-        integer :: cv_nodip
         real, dimension( : ), allocatable :: vol_s_gi, vol_s_min_gi
         !! Boundary_conditions
         INTEGER, DIMENSION ( Mdims%ndim , Mdims%nphase , surface_element_count(velocity) )  :: WIC_U_BC_ALL, WIC_U_BC_ALL_VISC, &
@@ -7535,8 +7516,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      integer, intent(inout) :: Phase_with_Pc
      integer, dimension(:), intent(in) :: cv_ndgln, IDs2CV_ndgln
      !Local variables
-     integer :: iphase, nphase, cv_nodi, cv_nonods, ele, cv_nodj
-     real :: Pe_aux, aux, aux2
+     integer :: iphase, nphase, cv_nodi, cv_nonods
+     real :: Pe_aux, aux2
      real, dimension(:), pointer ::Pe, Cap_exp
      logical :: Artificial_Pe, Diffusive_cap_only
      real, dimension(:,:,:), pointer :: p
@@ -7673,15 +7654,15 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      real, dimension( :, : ), pointer :: other_fen
      real, dimension( :, :, : ), pointer :: other_fenlx_all
      real, dimension( :, :, : ), pointer :: other_fenx_all
-     real :: nxnx, nm, gravity_magnitude, dt
+     real :: nxnx, gravity_magnitude, dt
      type( scalar_field ) :: rhs, ph_sol
      type( petsc_csr_matrix ) :: matrix
      type( csr_sparsity ), pointer :: sparsity
      character( len = OPTION_PATH_LEN ) :: path = "/tmp", bc_type
      type( tensor_field ), pointer :: rho, pfield
      type( scalar_field ), pointer :: printf
-     type( vector_field ), pointer :: printu, x_p2, gravity_direction
-     logical :: on_boundary, boussinesq, got_free_surf
+     type( vector_field ), pointer :: printu, gravity_direction
+     logical :: boussinesq, got_free_surf
      integer :: inod, ph_jnod2, ierr, count, count2, i, j, mat_inod
      integer, dimension(:), pointer :: findph, colph
      ewrite(3,*) "inside high_order_pressure_solve"
