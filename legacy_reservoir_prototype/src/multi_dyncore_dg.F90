@@ -79,7 +79,8 @@ contains
        IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
        T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
        SUF_SIG_DIAGTEN_BC, &
-       T_ABSORB, VOLFRA_PORE, &
+       VOLFRA_PORE, &
+       !T_ABSORB, VOLFRA_PORE, &
        NCOLM, FINDM, COLM, MIDM, &
        XU_NDGLN, FINELE, COLELE, NCOLELE, &
        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -125,7 +126,7 @@ contains
            REAL, intent( in ) :: DT, T_THETA
            REAL, intent( in ) :: T_BETA
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
-           REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
+           !REAL, DIMENSION( : , : , : ), intent( in ) :: T_ABSORB
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
            INTEGER, DIMENSION( : ), intent( in ) :: FINDM
            INTEGER, DIMENSION( : ), intent( in ) :: COLM
@@ -164,6 +165,13 @@ contains
            type(petsc_csr_matrix) :: petsc_acv
            type(vector_field)  :: vtracer
            type(csr_sparsity), pointer :: sparsity
+
+           real, dimension(:,:), allocatable :: ScalarField_Source
+           real, dimension(:,:,:), allocatable :: Velocity_Absorption, T_AbsorB
+
+
+
+
            if (present(icomp)) then
                lcomp=icomp
            else
@@ -236,6 +244,19 @@ contains
               call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
                  Mdims%mat_nloc, Mdims%totele, mat_ndgln, TDIFFUSION )
            end if
+
+           ! calculate T_ABSORB
+           allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
+           if (have_option('/boiling')) then
+                   allocate ( Velocity_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
+                              ScalarField_Source( Mdims%nphase, Mdims%cv_nonods ) )
+                   call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
+                      ScalarField_Source, velocity_absorption, T_AbsorB )
+                   deallocate ( Velocity_Absorption, ScalarField_Source )
+           end if
+
+
+
 
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM

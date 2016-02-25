@@ -429,8 +429,7 @@ contains
             mass_ele( totele ), &
             !!$
             Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
-            ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
-            Temperature_Absorption( nphase, nphase, cv_nonods ), &
+            ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), & ! fix me..move in intenerg
             Component_Diffusion( mat_nonods, ndim, ndim, nphase ), &                               ! FIX ME...
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
             plike_grad_sou_grad( cv_nonods * nphase ), &
@@ -447,7 +446,6 @@ contains
         !!$
         Material_Absorption=0.
         ScalarField_Absorption=0. ; Component_Absorption=0.
-        Temperature_Absorption=0.
         Component_Diffusion=0.
         THERM_U_DIFFUSION=0.
         THERM_U_DIFFUSION_VOL=0.
@@ -471,7 +469,7 @@ contains
         !!$
         !!$ Initialising Absorption terms that do not appear in the schema
         !!$
-        ScalarField_Absorption = 0. ; Component_Absorption = 0. ; Temperature_Absorption = 0.
+        ScalarField_Absorption = 0. ; Component_Absorption = 0.
 
         !!$ Computing shape function scalars
         igot_t2 = 0 ; igot_theta_flux = 0
@@ -703,10 +701,11 @@ contains
                 ! open the boiling test for two phases-gas and liquid
                 if (have_option('/boiling') ) then
                    call set_nu_to_u( packed_state )
-                   allocate ( Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ) )
+                   allocate ( Velocity_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
+                              Temperature_Absorption( nphase, nphase, cv_nonods ) )
                    call boiling( state, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
                       ScalarField_Source, velocity_absorption, temperature_absorption )
-                   deallocate ( Velocity_Absorption )
+                   deallocate ( Velocity_Absorption, temperature_absorption )
                 end if
 
 
@@ -760,7 +759,8 @@ contains
                         IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc, &
-                        Temperature_Absorption, Porosity_field%val, &
+                        Porosity_field%val, &
+                        !Temperature_Absorption, Porosity_field%val, &
                         !!$
                         NCOLM, FINDM, COLM, MIDM, &
                         !!$
@@ -847,7 +847,8 @@ if ( new_ntsol_loop  ) then
                         IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc, &
-                        Temperature_Absorption, Porosity_field%val, &
+                        Porosity_field%val, &
+                        !Temperature_Absorption, Porosity_field%val, &
                         !!$
                         NCOLM, FINDM, COLM, MIDM, &
                         !!$
@@ -1063,7 +1064,8 @@ end if
                                 !Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
-                                Component_Absorption, Porosity_field%val, &
+                                 Porosity_field%val, &
+                                !Component_Absorption, Porosity_field%val, &
                                 !!$
                                 NCOLM, FINDM, COLM, MIDM, &
                                 XU_NDGLN, FINELE, COLELE, NCOLELE, &
@@ -1412,7 +1414,7 @@ end if
             theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
             mass_ele,&
             Material_Absorption, &
-            ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
+            ScalarField_Absorption, Component_Absorption, &
             Component_Diffusion_Operator_Coefficient, &
             Component_Diffusion, &
             theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
@@ -1763,7 +1765,7 @@ end if
                     theta_gdiff, ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component, &
                     mass_ele, &
                     Material_Absorption, &
-                    ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
+                    ScalarField_Absorption, Component_Absorption, &
                     Component_Diffusion_Operator_Coefficient, &
                     Component_Diffusion, &
                     theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, sum_theta_flux, &
@@ -1882,13 +1884,10 @@ end if
                     !!$
                     Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                     ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
-                    Temperature_Absorption( nphase, nphase, cv_nonods ), &
                     Component_Diffusion( mat_nonods, ndim, ndim, nphase ), &
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                     plike_grad_sou_grad( cv_nonods * nphase ), &
                     plike_grad_sou_coef( cv_nonods * nphase ) )
-                !!$
-                Temperature_Absorption=0.
                 !!$
                 Component_Diffusion=0. ; Component_Absorption=0.
                 !!$
@@ -1907,7 +1906,7 @@ end if
                 !!$
                 !!$ Initialising Absorption terms that do not appear in the schema
                 !!$
-                ScalarField_Absorption = 0. ; Component_Absorption = 0. ; Temperature_Absorption = 0.
+                ScalarField_Absorption = 0. ; Component_Absorption = 0.
 
 
                 !!$ Computing shape function scalars
