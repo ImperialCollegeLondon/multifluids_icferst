@@ -36,7 +36,7 @@ module multi_tools
 
 contains
 
-    !sprint_to_do!move to library and update to use new memory
+    !sprint_to_do!update to use new memory
     SUBROUTINE SIMPNORM( NORMX, NORMY, NORMZ, D3, &
         SNDGLN, STOTEL, SNLOC, X_NONODS, NONODS, ELE, &
         X, Y, Z, &
@@ -130,7 +130,6 @@ contains
     END SUBROUTINE SIMPNORM
 
 
-    !sprint_to_do move to library section
     REAL FUNCTION R2NORM( VEC, NVEC )
         IMPLICIT NONE
         INTEGER :: NVEC
@@ -144,7 +143,6 @@ contains
         RETURN
     END FUNCTION R2NORM
 
-    !sprint_to_do!move to new library section
     real function ptolfun(value)
         ! This function is a tolerance function for strictly positive values used as a denominator.
         ! If the value of VALUE less than 1E-10, then it returns TOLERANCE otherwise VALUE.
@@ -160,7 +158,6 @@ contains
 
     end function ptolfun
 
-    !sprint_to_do!move to new library section
     PURE function tolfun(value) result(v_tolfun)
     !real function tolfun(value)
         ! This function is a tolerance function for a value which is used as a denominator.
@@ -175,19 +172,12 @@ contains
 
         v_tolfun = sign( 1.0, value ) * max( tolerance, abs(value) )
 
-        !    if( abs( value ) < tolerance ) then
-        !       tolfun = sign( tolerance, value )
-        !    else
-        !       tolfun = value
-        !    endif
-
         return
 
     end function tolfun
 
 
 
-    !sprint_to_do move to library
     PURE function tolfun_many(val) result(v_tolfun)
 
         implicit none
@@ -202,7 +192,6 @@ contains
 
     end function tolfun_many
 
-    !sprint_to_do!!move to library
     function tetvolume(x0, y0, z0, x1, y1, z1, x2, y2, z2, x3, y3, z3)
         IMPLICIT NONE
 
@@ -221,7 +210,6 @@ contains
 
     end function tetvolume
 
-    !sprint_to_do move to library
     PURE function vtolfun(val) result(v_tolfun)
 
         implicit none
@@ -235,6 +223,28 @@ contains
         return
 
     end function vtolfun
+
+    subroutine nan_check(a,k)
+    !Checks if a number is a Nan
+        real :: a
+        integer :: k
+
+        if (a/=a) then
+            print*, 'nan found! loop:', k
+        end if
+
+    end subroutine nan_check
+
+    subroutine nan_check_arr(a,k)
+    !Checks if an array is a Nan
+        real, dimension(:,:) :: a
+        integer :: k
+
+        if (any(a/=a)) then
+            print*, 'nan found! loop:', k
+        end if
+
+    end subroutine nan_check_arr
 
 end module multi_tools
 
