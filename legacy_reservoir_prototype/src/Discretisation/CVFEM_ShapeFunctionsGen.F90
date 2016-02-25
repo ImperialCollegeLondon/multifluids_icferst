@@ -154,7 +154,7 @@
     end subroutine cv_fem_shape_funs_new
 
 
-    SUBROUTINE SHAPE_one_ele2( cv_ele_type, Mdims, GIdims, &
+    subroutine shape_one_ele2( cv_ele_type, Mdims, GIdims, &
          shape_fun, cv_sloclist, u_sloclist )
 !!$
 !!$ This subrt defines the sub-control volume and FEM shape functions.
@@ -225,10 +225,10 @@
       deallocate( M, MLX, MLY, MLZ, SM, SMLX, SMLY )
 
       return
-    END SUBROUTINE SHAPE_one_ele2
+    end subroutine shape_one_ele2
 
 
-  subroutine shape_cv_n( cv_ele_type, Mdims, GIdims, shape_fun )
+    subroutine shape_cv_n( cv_ele_type, Mdims, GIdims, shape_fun )
 !!$
 !!$ Shape functions associated with volume integration using both CV basis
 !!$    functions CVN as well as FEM basis functions N (and its derivatives NLX, NLY, NLZ)
@@ -247,48 +247,62 @@
 !!$       n, nlx, nly, nlz, &
 !!$       un, unlx, unly, unlz )
 
-    implicit none
-    integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc
-    real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: cvn
-    real, dimension( cv_ngi ), intent( inout ) :: cvweigh
-    real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: n, nlx, nly, nlz
-    real, dimension( u_nloc, cv_ngi ), intent( inout ) :: un, unlx, unly, unlz
+      implicit none
+      integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc
+      real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: cvn
+      real, dimension( cv_ngi ), intent( inout ) :: cvweigh
+      real, dimension( cv_nloc, cv_ngi ), intent( inout ) :: n, nlx, nly, nlz
+      real, dimension( u_nloc, cv_ngi ), intent( inout ) :: un, unlx, unly, unlz
 
-    ! new quadratic element quadrature by James and Zhi and Chris:
+!!$ New quadratic element quadrature by James and Zhi and Chris:
+      ewrite(3,*) 'In SHAPE_CV_N'
 
+      Select Case( cv_ele_type )
+      case( 1, 2 ) ! 1D
+!!$      call quad_1d_shape( cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, n, nlx, un, unlx )
+         call quad_1d_shape( GIdims%cv_ngi, Mdims%cv_nloc, Mdims%u_nloc, &
+              shape_fun%cvn, shape_fun%cvweigh,                          &
+              shape_fun%cvfen, shape_fun%cvfenlx_all(1, :, :),           &
+              shape_fun%ufen, shape_fun%ufenlx_all(1, :, :) )
 
-    ewrite(3,*) 'In SHAPE_CV_N'
+         shape_fun%cvfenlx_all(2, :, :) = 0. ; shape_fun%cvfenlx_all(3, :, :) = 0. ; &
+              shape_fun%ufenlx_all(2, :, :) = 0. ; shape_fun%ufenlx_all(3, :, :) = 0. 
 
-    Select Case( cv_ele_type )
-    case( 1, 2 ) ! 1D
-       call quad_1d_shape( cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, n, nlx, un, unlx )
-       nly = 0.
-       nlz = 0.
-       unly = 0.
-       unlz = 0.
+      case( 5, 6, 9, 10 ) ! Quadrilaterals and Hexahedra
+!!$         call quad_nd_shape( ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
+!!$              n, nlx, nly, nlz, &
+!!$              un, unlx, unly, unlz )
+         call quad_nd_shape( Mdims%ndim, cv_ele_type, GIdims%cv_ngi, Mdims%cv_nloc, Mdims%u_nloc, &
+              shape_fun%cvn, shape_fun%cvweight,                                                  &
+              shape_fun%cvfen, shape_fun%cvfenlx_all(1, :, :), shape_fun%cvfenlx_all(2, :, :),    &
+              shape_fun%cvfenlx_all(3, :, :),                                                     &
+              shape_fun%ufen, shape_fun%ufenlx_all(1, :, :), shape_fun%ufenlx_all(2, :, :),       &
+              shape_fun%ufenlx_all(3, :, :) )
 
-    case( 5, 6, 9, 10 ) ! Quadrilaterals and Hexahedra
-       call quad_nd_shape( ndim, cv_ele_type, cv_ngi, cv_nloc, u_nloc, cvn, cvweigh, &
-            n, nlx, nly, nlz, &
-            un, unlx, unly, unlz )
+      case( 3, 4, 7, 8 ) ! Triangles and Tetrahedra
+         if( new_quadratic_ele_quadrature .and. cv_ele_type==8) then
+            call new_pt_qua_vol_cv_tri_tet_shape( cv_ele_type, Mdims%ndim, GIdims%cv_ngi,           &
+                 Mdims%cv_nloc, Mdims%u_nloc, shape_fun%cvn,                                        &
+                 shape_fun%cvweight, shape_fun%cvfen, shape_fun%cvfenlx_all(1, :, :),               &
+                 shape_fun%cvfenlx_all(2, :, :), shape_fun%cvfenlx_all(3, :, :),                    &
+                 shape_fun%ufen, shape_fun%ufenlx_all(1, :, :), shape_fun%ufenlx_all(2, :, :),      &
+                 shape_fun%ufenlx_all(3, :, :) )
 
-    case( 3, 4, 7, 8 ) ! Triangles and Tetrahedra
-       if( new_quadratic_ele_quadrature .and. cv_ele_type==8) then
-          call new_pt_qua_vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, &
-               cvweigh, n, nlx, nly, nlz, &
-               un, unlx, unly, unlz )
-       else
-          call vol_cv_tri_tet_shape( cv_ele_type, ndim, cv_ngi, cv_nloc, u_nloc, cvn, &
-               cvweigh, n, nlx, nly, nlz, &
-               un, unlx, unly, unlz )
-       endif
-       !stop 12
-    case default; FLExit( "Wrong integer for CV_ELE_TYPE" )
-    end Select
+         else
+            call vol_cv_tri_tet_shape( cv_ele_type, Mdims%ndim, GIdims%cv_ngi, Mdims%cv_nloc,       &
+                 Mdims%u_nloc, shape_fun%cvn,                                                       &
+                 shape_fun%cvweight, shape_fun%cvfen, shape_fun%cvfenlx_all(1, :, :),               &
+                 shape_fun%cvfenlx_all(2, :, :), shape_fun%cvfenlx_all(3, :, :),                    &
+                 shape_fun%ufen, shape_fun%ufenlx_all(1, :, :), shape_fun%ufenlx_all(2, :, :),      &
+                 shape_fun%ufenlx_all(3, :, :) )     
 
-    !ewrite(3,*) 'Leaving SHAPE_CV_N'
-return
-  end subroutine shape_cv_n
+         endif
+         !stop 12
+      case default; FLExit( "Wrong integer for CV_ELE_TYPE" )
+      end Select
+
+      return
+    end subroutine shape_cv_n
 
 
 
