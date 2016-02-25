@@ -117,7 +117,7 @@ contains
     end function my_size_real
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state, &
+        Mdims, CV_GIdims, CV_funs, Mspars, storage_state, &
         tracer, velocity, density, &
         CV_RHS_field, PETSC_ACV,&
         CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
@@ -133,16 +133,15 @@ contains
         GETCV_DISC, GETCT, &
         XU_NDGLN, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-        IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+        IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-        IN_ELE_UPWIND, DG_ELE_UPWIND, &
+        IN_ELE_UPWIND, &
         MEAN_PORE_CV, &
         MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, &
-        StorageIndexes, Field_selector, icomp,&
-        option_path_spatial_discretisation, &
-        saturation,OvRelax_param, Phase_with_Pc, indx, Storname, IDs_ndgln, Courant_number,&
+        StorageIndexes, &
+        saturation,OvRelax_param, Phase_with_Pc, IDs_ndgln, Courant_number,&
         RECALC_C_CV, SUF_INT_MASS_MATRIX, MASS_P_CV, U_RHS)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
@@ -266,15 +265,14 @@ contains
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state, storage_state
         type(multi_dimensions), intent(in) :: Mdims
-        type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
-        type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
+        type(multi_GI_dimensions), intent(in) :: CV_GIdims
+        type(multi_shape_funs), intent(in) :: CV_funs
         type (multi_sparsities), intent(in) :: Mspars
         type(tensor_field), intent(inout), target :: tracer
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
         INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
-            IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
-            Field_selector
+            IGOT_T2, IGOT_THETA_FLUX, IN_ELE_UPWIND
         INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, IDs_ndgln
         INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
@@ -299,8 +297,6 @@ contains
         REAL, DIMENSION( :, : ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: TDIFFUSION
         INTEGER, intent( in ) :: IGOT_THERM_VIS
-        !REAL, DIMENSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS), intent( in ) :: THERM_U_DIFFUSION
-        !REAL, DIMENSION(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS), intent( in ) :: THERM_U_DIFFUSION_VOL
         REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
         REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
         REAL, intent( in ) :: DT, CV_THETA, SECOND_THETA, CV_BETA
@@ -315,21 +311,16 @@ contains
         REAL, DIMENSION( :, :, :, : ), target, intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (Mdims%npres,Mdims%cv_nonods)
         REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
-        character( len = * ), intent( in ), optional :: option_path_spatial_discretisation
         integer, dimension(:), intent(inout) :: StorageIndexes
-        integer, optional, intent(in) :: icomp
         type(tensor_field), intent(in), optional, target :: saturation
         !Variables for Capillary pressure
         real, optional, dimension(:), intent(in) :: OvRelax_param
         integer, optional, intent(in) :: Phase_with_Pc
         !Variables to cache get_int_vel OLD
-        integer, optional ::indx
-        character(len=*), optional :: Storname
         real, optional, intent(inout) :: Courant_number
         logical, optional, intent(in) :: RECALC_C_CV, SUF_INT_MASS_MATRIX
         real, dimension(:,:,:), optional, intent(inout):: MASS_P_CV
         REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: U_RHS
-        !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
         ! Local variables
         REAL :: ZERO_OR_TWO_THIRDS
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
@@ -5205,7 +5196,7 @@ contains
         INTEGER  :: SLOC2LOC( CV_SNLOC ), X_SLOC2LOC( X_SNLOC ), ILOC_OTHER_SIDE( CV_SNLOC )
         REAL :: NN, NNX( NDIM ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( NDIM )
         INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
-            CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, CV_NODJ_IPHA, &
+            CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, &
             CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
             X_INOD, X_SILOC, X_ILOC, ICOMP, IDIM
         INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1

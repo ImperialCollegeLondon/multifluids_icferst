@@ -243,7 +243,7 @@ contains
            end if
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                call CV_ASSEMB( state, packed_state, &
-                   Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
+                   Mdims, CV_GIdims, CV_funs, Mspars, storage_state,&
                    tracer, velocity, density, &
                    CV_RHS_field, &
                    petsc_acv, &
@@ -260,14 +260,14 @@ contains
                    GETCV_DISC, GETCT, &
                    XU_NDGLN, &
                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                   IGOT_T2_loc,IGOT_THETA_FLUX ,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+                   IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                   IN_ELE_UPWIND, DG_ELE_UPWIND, &
+                   IN_ELE_UPWIND, &
                    MEAN_PORE_CV, &
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &
-                   StorageIndexes, Field_selector,icomp, &
+                   StorageIndexes, &
                    saturation=saturation, IDs_ndgln = IDs_ndgln )
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
@@ -473,7 +473,7 @@ contains
                  call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
                  !Assemble the matrix and the RHS
                  call CV_ASSEMB( state, packed_state, &
-                     Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
+                     Mdims, CV_GIdims, CV_funs, Mspars, storage_state,&
                      tracer, velocity, density, &
                      CV_RHS_field, &
                      petsc_acv, &
@@ -490,14 +490,14 @@ contains
                      GETCV_DISC, GETCT, &
                      XU_NDGLN, &
                      opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                     IGOT_T2, igot_theta_flux, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+                     IGOT_T2, igot_theta_flux, GET_THETA_FLUX, USE_THETA_FLUX, &
                      THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                     IN_ELE_UPWIND, DG_ELE_UPWIND, &
+                     IN_ELE_UPWIND, &
                      MEAN_PORE_CV, &
                      mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                      .false.,  mass_Mn_pres, &
                      mass_ele_transp,&
-                     StorageIndexes, 3 ,&            !Capillary variables
+                     StorageIndexes, &            !Capillary variables
                      OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      IDs_ndgln=IDs_ndgln, Courant_number = Courant_number)
                  !Solve the system
@@ -1596,7 +1596,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         call halo_update(density)
 
         call CV_ASSEMB( state, packed_state, &
-            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state, &
+            Mdims, CV_GIdims, CV_funs, Mspars, storage_state, &
             tracer, velocity, density, &
             CV_RHS, &
             ACV, &
@@ -1613,14 +1613,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             GETCV_DISC, GETCT, &
             XU_NDGLN, &
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-            IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
+            IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-            IN_ELE_UPWIND, DG_ELE_UPWIND, &
+            IN_ELE_UPWIND, &
             MEAN_PORE_CV, &
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, &
-            StorageIndexes, 3, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false., MASS_P_CV = PIVIT_MAT,&
+            StorageIndexes, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false., MASS_P_CV = PIVIT_MAT,&
             U_RHS = U_RHS)
 
         ewrite(3,*)'Back from cv_assemb'
