@@ -852,7 +852,8 @@ end if
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
-                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
+                    CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
                         velocity_field, pressure_field, &
                         U_ELE_TYPE, P_ELE_TYPE, &
                         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN,&
@@ -861,20 +862,12 @@ end if
                         Material_Absorption, &
                         dt, &
                         !!$
-                        Mspars%C%ncol, Mspars%C%fin, Mspars%C%col, & ! C sparsity - global cty eqn
-                        Mspars%DGM_PHA%ncol, &! Force balance
-                        Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, & ! Element connectivity.
-                        Mspars%CMC%ncol, Mspars%CMC%fin, Mspars%CMC%col, Mspars%CMC%mid, & ! pressure matrix for projection method
-                        Mspars%small_acv%ncol,Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
-                        NLENMCY, Mspars%MCY%ncol, Mspars%MCY%fin, Mspars%MCY%col, Mspars%MCY%mid, & ! Force balance plus cty multi-phase eqns
-                        Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, & ! CT sparsity - global cty eqn.
+                        NLENMCY, & ! Force balance plus cty multi-phase eqns
                         CV_ELE_TYPE, &
                         !!$
                         v_disopt, v_dg_vel_int_opt, v_theta, &
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
-                        !!$
-                        Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, & ! Sparsity for the CV-FEM
                         XU_NDGLN, &
                         !!$
                         THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
