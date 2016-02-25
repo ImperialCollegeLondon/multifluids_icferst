@@ -1,0 +1,22 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>boiling_test_2phases</name>
+  <owner userid="pan.yang"/>
+  <tags>mpml boiling</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/multiphase_prototype boil_h.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="final_dt" language="python">from fluidity_tools import stat_parser as stat
+vals = stat("mid_discontinuous.stat")["dt"]
+A = list(vals.values())
+final_dt = A[0][5]
+</variable>
+    <variable name="int_sat2" language="python">from fluidity_tools import stat_parser as stat
+int_sat2 = stat("mid_discontinuous.stat")["phase2"]["PhaseVolumeFraction"]["integral"][-1]</variable>
+    </variables>
+    <pass_tests>
+    <test name="Assert final max sat 2" language="python">assert(abs(int_sat2 - 0.000007946) &lt; 0.0000001)</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
