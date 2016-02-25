@@ -76,7 +76,7 @@ contains
        CV_ELE_TYPE,&
        CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN,&
        CV_SNDGLN, U_SNDGLN, &
-       IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+       !IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
        T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
        SUF_SIG_DIAGTEN_BC, &
        VOLFRA_PORE, &
@@ -119,9 +119,9 @@ contains
            REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
            REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
            !REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
-           INTEGER, intent( in ) :: IGOT_THERM_VIS
-           REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
-           REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
+           !INTEGER, intent( in ) :: IGOT_THERM_VIS
+           !REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
+           !REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
            INTEGER, intent( in ) :: T_DISOPT, T_DG_VEL_INT_OPT
            REAL, intent( in ) :: DT, T_THETA
            REAL, intent( in ) :: T_BETA
@@ -169,7 +169,14 @@ contains
            real, dimension(:,:), allocatable :: ScalarField_Source
            real, dimension(:,:,:), allocatable :: Velocity_Absorption, T_AbsorB
 
+           integer :: IGOT_THERM_VIS
+           real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
+           real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
 
+
+           IGOT_THERM_VIS=0
+           ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
+           ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
 
 
            if (present(icomp)) then
