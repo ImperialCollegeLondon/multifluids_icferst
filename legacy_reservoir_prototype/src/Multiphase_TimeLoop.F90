@@ -981,7 +981,8 @@ end if
                                 !Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
-                                 Porosity_field%val, &
+                                Porosity_field%val, &
+                                !Component_Absorption, Porosity_field%val, &
                                 XU_NDGLN,&
                                 !!$
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
