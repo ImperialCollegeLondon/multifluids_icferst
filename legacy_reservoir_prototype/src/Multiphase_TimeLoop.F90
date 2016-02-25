@@ -138,16 +138,7 @@ contains
         type (multi_sparsities) :: Mspars
         !sprint_to_do!remove all the is store inside Mspars when Mspars is fully implemented
         integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
-            mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, &
-            ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, ncolcmc, ncolm, ncolph
-        integer, dimension( : ), allocatable :: finacv, midacv, finmcy,  midmcy, &
-            findgm_pha, middgm_pha, findct, &
-            findc, findcmc, midcmc, findm, &
-            midm
-        integer, dimension(:), pointer :: colacv, colmcy, colct,colm,colc,colcmc,coldgm_pha
-        integer, dimension(:), pointer :: finele, colele, midele, findph, colph
-        integer, dimension(:), pointer :: small_finacv, small_colacv, small_midacv
-
+            mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining element-pair type and discretisation options and coefficients
         integer :: cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type, &
             t_disopt, v_disopt, t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
@@ -367,53 +358,12 @@ contains
             mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
             mx_ncolacv, mx_ncolm, mx_ncolph )
         nlenmcy = u_nonods * nphase * ndim + cv_nonods
-        allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
-            finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
-            findgm_pha( u_nonods * nphase * ndim + 1 ), coldgm_pha( mx_ncoldgm_pha ), &
-            middgm_pha( u_nonods * nphase * ndim ), &
-            findct( cv_nonods + 1 ), colct( mx_nct ), &
-            findc( u_nonods + 1 ), colc( mx_nc ), &
-            findcmc( cv_nonods + 1 ), colcmc( 0 ), midcmc( cv_nonods ), &
-            findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ), &
-            findph( ph_nonods + 1 ), colph( mx_ncolph ) )
-
-
-        colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0
-        colm = 0 ; midm = 0 ; findph = 0 ; colph = 0
-
-
         !!$ Defining element-pair type
         call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
             mat_ele_type, u_sele_type, cv_sele_type )
-
-        !Allocate and calculate the sparsity patterns
+        !Allocate and calculate the sparsity patterns matrices
         call Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
-
-        !!$ Sparsity Patterns Matrices
-        call Get_Sparsity_Patterns( state, Mdims, &
-            !!$ CV multi-phase eqns (e.g. vol frac, temp)
-            mx_ncolacv, ncolacv, finacv, colacv, midacv, &
-            small_finacv, small_colacv, small_midacv, &
-            !!$ Force balance plus cty multi-phase eqns
-            nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
-            !!$ Element connectivity
-            ncolele, midele, finele, colele, &
-            !!$ Force balance sparsity
-            mx_ncoldgm_pha, ncoldgm_pha, coldgm_pha, findgm_pha, middgm_pha, &
-            !!$ CT sparsity - global continuity eqn
-            mx_nct, ncolct, findct, colct, &
-            !!$ C sparsity operating on pressure in force balance
-            mx_nc, ncolc, findc, colc, &
-            !!$ pressure matrix for projection method
-            mx_ncolcmc, ncolcmc, findcmc, colcmc, midcmc, &
-            !!$ CV-FEM matrix
-            mx_ncolm, ncolm, findm, colm, midm, &
-            !!$ ph matrix
-            mx_ncolph, ncolph, findph, colph, &
-            !!$ misc
-            mx_nface_p1 )
-
 
         call temp_mem_hacks()
 
@@ -725,8 +675,8 @@ contains
 
                     if( is_porous_media ) then
                         call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                            cv_snloc, n_in_pres, nphase, ndim, CV_GIdims%nface, mat_nonods, cv_nonods, x_nloc, ncolele, cv_ele_type, &
-                            finele, colele, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
+                            cv_snloc, n_in_pres, nphase, ndim, CV_GIdims%nface, mat_nonods, cv_nonods, x_nloc, Mspars%ELE%ncol, cv_ele_type, &
+                            Mspars%ELE%fin, Mspars%ELE%col, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
                             state, x_nonods, ids_ndgln )
                     end if
                 end if
@@ -748,10 +698,8 @@ contains
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
                         tracer_field,velocity_field,density_field,&
-                        small_FINACV, small_COLACV, small_MIDACV, &
-                        NCOLCT, FINDCT, COLCT, &
                         CV_ELE_TYPE,&
                         CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN, &
                         CV_SNDGLN, U_SNDGLN, &
@@ -760,11 +708,7 @@ contains
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
-                        !Temperature_Absorption, Porosity_field%val, &
-                        !!$
-                        NCOLM, FINDM, COLM, MIDM, &
-                        !!$
-                        XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                        XU_NDGLN,&
                         !!$
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         0, igot_theta_flux, scvngi_theta, &
@@ -836,10 +780,8 @@ if ( new_ntsol_loop  ) then
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
 
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
                         tracer_field,velocity_field,density_field,&
-                        small_FINACV, small_COLACV, small_MIDACV, &
-                        NCOLCT, FINDCT, COLCT, &
                         CV_ELE_TYPE,&
                         CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN, &
                         CV_SNDGLN, U_SNDGLN, &
@@ -848,11 +790,7 @@ if ( new_ntsol_loop  ) then
                         t_disopt, t_dg_vel_int_opt, dt, t_theta, t_beta, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
-                        !Temperature_Absorption, Porosity_field%val, &
-                        !!$
-                        NCOLM, FINDM, COLM, MIDM, &
-                        !!$
-                        XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                        XU_NDGLN, &
                         !!$
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         0, igot_theta_flux, scvngi_theta, &
@@ -893,17 +831,17 @@ end if
 
                     CALL CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims, nphase, ncomp, &
                         PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-                        NCOLACV, FINACV, COLACV, MIDACV, &
-                        small_FINACV, small_COLACV, small_MIDACV, &
-                        NCOLCT, FINDCT, COLCT, &
+                        Mspars%ACV%ncol, Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid, &
+                        Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
+                        Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
                         CV_NONODS, U_NONODS, X_NONODS, TOTELE, STOTEL, &
                         CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
                         CV_NLOC, U_NLOC, X_NLOC, CV_SNLOC, U_SNLOC, &
                         CV_NDGLN, CV_SNDGLN, X_NDGLN, U_NDGLN, U_SNDGLN, &
                         MAT_NLOC, MAT_NDGLN, MAT_NONODS,  &
                         NDIM,  &
-                        NCOLM, FINDM, COLM, MIDM, &
-                        XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                        Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
+                        XU_NLOC, XU_NDGLN, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, &
                         StorageIndexes=StorageIndexes )
                     if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) )then
                                 !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
@@ -923,20 +861,20 @@ end if
                         Material_Absorption, &
                         dt, &
                         !!$
-                        NCOLC, FINDC, COLC, & ! C sparsity - global cty eqn
-                        NCOLDGM_PHA, &! Force balance
-                        NCOLELE, FINELE, COLELE, & ! Element connectivity.
-                        NCOLCMC, FINDCMC, COLCMC, MIDCMC, & ! pressure matrix for projection method
-                        size(small_colacv),small_FINACV, small_COLACV, small_MIDACV, &
-                        NLENMCY, NCOLMCY, FINMCY, COLMCY, MIDMCY, & ! Force balance plus cty multi-phase eqns
-                        NCOLCT, FINDCT, COLCT, & ! CT sparsity - global cty eqn.
+                        Mspars%C%ncol, Mspars%C%fin, Mspars%C%col, & ! C sparsity - global cty eqn
+                        Mspars%DGM_PHA%ncol, &! Force balance
+                        Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, & ! Element connectivity.
+                        Mspars%CMC%ncol, Mspars%CMC%fin, Mspars%CMC%col, Mspars%CMC%mid, & ! pressure matrix for projection method
+                        Mspars%small_acv%ncol,Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
+                        NLENMCY, Mspars%MCY%ncol, Mspars%MCY%fin, Mspars%MCY%col, Mspars%MCY%mid, & ! Force balance plus cty multi-phase eqns
+                        Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, & ! CT sparsity - global cty eqn.
                         CV_ELE_TYPE, &
                         !!$
                         v_disopt, v_dg_vel_int_opt, v_theta, &
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         !!$
-                        NCOLM, FINDM, COLM, MIDM, & ! Sparsity for the CV-FEM
+                        Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, & ! Sparsity for the CV-FEM
                         XU_NDGLN, &
                         !!$
                         THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -963,8 +901,8 @@ end if
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
-                        small_FINACV, small_COLACV, small_MIDACV, &
-                        NCOLCT, FINDCT, COLCT, &
+                        Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
+                        Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
                         CV_ELE_TYPE, &
                         CV_NDGLN, X_NDGLN, U_NDGLN, &
                         CV_SNDGLN, U_SNDGLN, &
@@ -975,8 +913,8 @@ end if
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         !!$
-                        NCOLM, FINDM, COLM, MIDM, &
-                        XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                        Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
+                        XU_NDGLN, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, &
                         !!$
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         igot_theta_flux,scvngi_theta, volfra_use_theta_flux, &
@@ -1052,10 +990,8 @@ end if
                             comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
 
                             call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
-                                Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
+                                Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
                                 tracer_field,velocity_field,density_field,&
-                                SMALL_FINACV, SMALL_COLACV, small_MIDACV,&
-                                NCOLCT, FINDCT, COLCT, &
                                 CV_ELE_TYPE, &
                                 CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN,&
                                 CV_SNDGLN, U_SNDGLN, &
@@ -1065,10 +1001,7 @@ end if
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
                                  Porosity_field%val, &
-                                !Component_Absorption, Porosity_field%val, &
-                                !!$
-                                NCOLM, FINDM, COLM, MIDM, &
-                                XU_NDGLN, FINELE, COLELE, NCOLELE, &
+                                XU_NDGLN,&
                                 !!$
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                                 igot_t2, igot_theta_flux, scvngi_theta, &
@@ -1313,12 +1246,12 @@ end if
 
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
 
-                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type, 0)
+                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, Mspars%small_acv%fin, Mspars%small_acv%col ,cv_ele_type, 0)
                 else
                     ! In this case, we don't adapt the mesh so we just call both routines straight away which gives back the original field
                     ! Alternatively could just do nothing here
-                    !call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
-                    !call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, small_finacv, small_colacv ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
+                    !call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, Mspars%small_acv%fin, Mspars%small_acv%col ,cv_ele_type ,nphase, 0, p_ele_type, cv_nloc, cv_snloc)
+                    !call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, Mspars%small_acv%fin, Mspars%small_acv%col ,cv_ele_type , nphase, 1, p_ele_type, cv_nloc, cv_snloc)
                     !call MemoryCleanupInterpolation2() ! Deallocate the memory used in the second call - the 1st call is deactivated right at the end
 
                 endif
@@ -1397,13 +1330,6 @@ end if
         deallocate( &
             !!$ Node glabal numbers
             cv_sndgln, p_sndgln, u_sndgln, &
-            !!$ Sparsity patterns
-            finacv, colacv, midacv,&
-            small_finacv, small_colacv, small_midacv, &
-            finmcy, colmcy, midmcy, &
-            findgm_pha, coldgm_pha, middgm_pha, findct, &
-            colct, findc, colc, findcmc, colcmc, midcmc, findm, &
-            colm, midm, &
             !!$ Defining element-pair type and discretisation options and coefficients
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
             !!$ For output:
@@ -1477,7 +1403,7 @@ end if
             ph_mesh => extract_mesh( state( 1 ), "ph", stat )
             if ( stat == 0 ) then
                 allocate( sparsity )
-                sparsity = wrap( findph, colm = colph, name = "phsparsity" )
+                sparsity = wrap( Mspars%ph%fin, colm = Mspars%ph%col, name = "phsparsity" )
                 call insert( packed_state, sparsity, "phsparsity" )
                 call deallocate( sparsity )
                 deallocate ( sparsity )
@@ -1486,39 +1412,37 @@ end if
 
 
             allocate(sparsity)
-
-            sparsity=wrap(finacv,midacv,colm=colacv,name='PackedAdvectionSparsity')
+            sparsity=wrap(Mspars%ACV%fin,Mspars%ACV%mid,colm=Mspars%ACV%col,name='PackedAdvectionSparsity')
             call insert(packed_state,sparsity,'PackedAdvectionSparsity')
             call deallocate(sparsity)
-            sparsity=wrap(findc,colm=colc,name='CMatrixSparsity')
+            sparsity=wrap(Mspars%C%fin,colm=Mspars%C%col,name='CMatrixSparsity')
             call insert(packed_state,sparsity,'CMatrixSparsity')
             call deallocate(sparsity)
-            sparsity=wrap(findct,colm=colct,name='CTMatrixSparsity')
+            sparsity=wrap(Mspars%CT%fin,colm=Mspars%CT%col,name='CTMatrixSparsity')
             call insert(packed_state,sparsity,'CTMatrixSparsity')
             call deallocate(sparsity)
-
-            sparsity=wrap(findm,midm,colm=colm,name='CVFEMSparsity')
+            sparsity=wrap(Mspars%M%fin,Mspars%M%mid,colm=Mspars%M%col,name='CVFEMSparsity')
             call insert(packed_state,sparsity,'CVFEMSparsity')
             call deallocate(sparsity)
 
             tfield=>extract_tensor_field(packed_state,"PackedFEPressure")
 
             if (associated( tfield%mesh%halos)) then
-                sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity',&
+                sparsity=wrap(Mspars%CMC%fin,colm=Mspars%CMC%col,name='CMCSparsity',&
                     row_halo=tfield%mesh%halos(2),&
                     column_halo=tfield%mesh%halos(2))
             else
-                sparsity=wrap(findcmc,colm=colcmc,name='CMCSparsity')
+                sparsity=wrap(Mspars%CMC%fin,colm=Mspars%CMC%col,name='CMCSparsity')
             end if
             call insert(packed_state,sparsity,'CMCSparsity')
             call deallocate(sparsity)
 
             if (associated( tfield%mesh%halos)) then
-                sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity",&
+                sparsity=wrap(Mspars%small_acv%fin,Mspars%small_acv%mid,colm=Mspars%small_acv%col,name="ACVSparsity",&
                     row_halo=tfield%mesh%halos(2),&
                     column_halo=tfield%mesh%halos(2))
             else
-                sparsity=wrap(small_finacv,small_midacv,colm=small_colacv,name="ACVSparsity")
+                sparsity=wrap(Mspars%small_acv%fin,Mspars%small_acv%mid,colm=Mspars%small_acv%col,name="ACVSparsity")
             end if
             call insert(packed_state,sparsity,"ACVSparsity")
             call deallocate(sparsity)
@@ -1531,10 +1455,10 @@ end if
                 nullify(halo)
             end if
             if (associated(halo)) then
-                sparsity=wrap(findgm_pha,colm=coldgm_pha,&
+                sparsity=wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,&
                     name='MomentumSparsity',row_halo=halo,column_halo=halo)
             else
-                sparsity=wrap(findgm_pha,colm=coldgm_pha,name="MomentumSparsity")
+                sparsity=wrap(Mspars%DGM_PHA%fin,colm=Mspars%DGM_PHA%col,name="MomentumSparsity")
             end if
             call insert(packed_state,sparsity,"MomentumSparsity")
             call deallocate(sparsity)
@@ -1747,13 +1671,6 @@ end if
                 deallocate( &
                     !!$ Node glabal numbers
                     cv_sndgln, p_sndgln, u_sndgln, &
-                    !!$ Sparsity patterns
-                    finacv, colacv, midacv,&
-                    small_finacv, small_colacv, small_midacv, &
-                    finmcy, colmcy, midmcy, &
-                    findgm_pha, coldgm_pha, middgm_pha, findct, &
-                    colct, findc, colc, findcmc, colcmc, midcmc, findm, &
-                    colm, midm, findph, colph, &
                     !!$ Defining element-pair type and discretisation options and coefficients
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                     !!$ For output:
@@ -1803,21 +1720,6 @@ end if
                     mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
                     mx_ncolacv, mx_ncolm, mx_ncolph )
                 nlenmcy = u_nonods * nphase * ndim + cv_nonods
-                allocate( finacv( cv_nonods * nphase + 1 ), colacv( mx_ncolacv ), midacv( cv_nonods * nphase ), &
-                    finmcy( nlenmcy + 1 ), colmcy( mx_ncolmcy ), midmcy( nlenmcy ), &
-                    findgm_pha( u_nonods * nphase * ndim + 1 ), coldgm_pha( mx_ncoldgm_pha ), &
-                    middgm_pha( u_nonods * nphase * ndim ), &
-                    findct( cv_nonods + 1 ), colct( mx_nct ), &
-                    findc( u_nonods + 1 ), colc( mx_nc ), &
-                    findcmc( cv_nonods + 1 ), colcmc( mx_ncolcmc ), midcmc( cv_nonods ), &
-                    findm( cv_nonods + 1 ), colm( mx_ncolm ), midm( cv_nonods ), &
-                    findph( ph_nonods + 1 ), colph( mx_ncolph ) )
-
-                finacv = 0 ; colacv = 0 ; midacv = 0 ; finmcy = 0 ; colmcy = 0 ; midmcy = 0 ; &
-                    findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0 ; findct = 0 ; &
-                    colct = 0 ; findc = 0 ; colc = 0 ; findcmc = 0 ; colcmc = 0 ; midcmc = 0 ; findm = 0 ; &
-                    colm = 0 ; midm = 0 ; findph = 0 ; colph = 0
-
                 !!$ Defining element-pair type
                 call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
                     mat_ele_type, u_sele_type, cv_sele_type )
@@ -1825,31 +1727,6 @@ end if
                 !Allocate and calculate the sparsity patterns
                 call Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                     mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
-
-                !!$ Sparsity Patterns Matrices
-                call Get_Sparsity_Patterns( state, Mdims, &
-                    !!$ CV multi-phase eqns (e.g. vol frac, temp)
-                    mx_ncolacv, ncolacv, finacv, colacv, midacv, &
-                    small_finacv, small_colacv, small_midacv, &
-                    !!$ Force balance plus cty multi-phase eqns
-                    nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
-                    !!$ Element connectivity
-                    ncolele, midele, finele, colele, &
-                    !!$ Force balance sparsity
-                    mx_ncoldgm_pha, ncoldgm_pha, coldgm_pha, findgm_pha, middgm_pha, &
-                    !!$ CT sparsity - global continuity eqn
-                    mx_nct, ncolct, findct, colct, &
-                    !!$ C sparsity operating on pressure in force balance
-                    mx_nc, ncolc, findc, colc, &
-                    !!$ pressure matrix for projection method
-                    mx_ncolcmc, ncolcmc, findcmc, colcmc, midcmc, &
-                    !!$ CV-FEM matrix
-                    mx_ncolm, ncolm, findm, colm, midm, &
-                    !!$ ph matrix
-                    mx_ncolph, ncolph, findph, colph, &
-                    !!$ misc
-                    mx_nface_p1 )
-
 
                 if (is_porous_media) then
                     !Re-calculate IDs_ndgln after adapting the mesh
@@ -1867,7 +1744,7 @@ end if
 
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
                         call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, &
-                                small_finacv, small_colacv, cv_ele_type , 1, IDs2CV_ndgln = IDs2CV_ndgln)
+                                Mspars%small_acv%fin, Mspars%small_acv%col, cv_ele_type , 1, IDs2CV_ndgln = IDs2CV_ndgln)
                         call MemoryCleanupInterpolation2()
                     endif
 

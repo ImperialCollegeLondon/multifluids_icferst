@@ -1284,6 +1284,7 @@ contains
          end do Loop_Elements_4
       endif
       gcount2 = 0 ! Now reducing the size of the stencil
+
       do cv_nodi = 1, Mdims%cv_nonods
          finacv_loc( cv_nodi ) = gcount2 + 1
          do gcount = findm( cv_nodi ), findm( cv_nodi + 1 ) - 1
@@ -1802,17 +1803,13 @@ contains
         allocate( Mspars%small_acv%mid( Mdims%cv_nonods ) )
         allocate( Mspars%small_acv%fin( Mdims%cv_nonods + 1 ) )
         allocate( Mspars%small_acv%col( mx_ncolsmall_acv ) )
+        Mspars%small_acv%ncol = mx_ncolsmall_acv
         Mspars%small_acv%mid = 0 ; Mspars%small_acv%fin = 0 ; Mspars%small_acv%col = 0
-        Conditional_Dimensional_5: if ( ( Mdims%ndim == 1 ) .and. .false. ) then
-            call def_spar( 1, Mdims%cv_nonods, 3 * Mdims%cv_nonods, nsmall_acv, &
-                Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col )
-        else
-            call CV_Neighboor_Sparsity( Mdims, cv_ele_type, &
-                cv_ndgln, x_ndgln, &
-                Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
-                Mspars%M%ncol, mx_ncolsmall_acv, Mspars%M%fin, Mspars%M%col, &
-                nsmall_acv, Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid )
-        end if Conditional_Dimensional_5
+        call CV_Neighboor_Sparsity( Mdims, cv_ele_type, &
+            cv_ndgln, x_ndgln, &
+            Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
+            Mspars%M%ncol, mx_ncolsmall_acv, Mspars%M%fin, Mspars%M%col, &
+            nsmall_acv, Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid )
         nsmall_acv2 = nsmall_acv
         call resize(Mspars%small_acv%col,nsmall_acv)
         Mspars%ACV%ncol =  Mdims%nphase * nsmall_acv + ( Mdims%nphase - 1 ) * Mdims%nphase * Mdims%cv_nonods
