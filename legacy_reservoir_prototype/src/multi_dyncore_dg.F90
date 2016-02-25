@@ -668,7 +668,7 @@ contains
     V_SOURCE, V_ABSORB, VOLFRA_PORE, &
     NCOLM, FINDM, COLM, MIDM, & ! Sparsity for the CV-FEM
     XU_NDGLN, &
-    THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+    !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
     IGOT_THETA_FLUX, SCVNGI_THETA, USE_THETA_FLUX, &
     THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -729,8 +729,8 @@ contains
         INTEGER, DIMENSION(  :  ), intent( in ) :: FINDM
         INTEGER, DIMENSION(  :  ), intent( in ) :: COLM
         INTEGER, DIMENSION(  :  ), intent( in ) :: MIDM
-        REAL, DIMENSION(  : ,  : ,  : ,  :  ), intent( inout ) :: THERM_U_DIFFUSION
-        REAL, DIMENSION(  : ,  :  ), intent( inout ) :: THERM_U_DIFFUSION_VOL
+        !REAL, DIMENSION(  : ,  : ,  : ,  :  ), intent( inout ) :: THERM_U_DIFFUSION
+        !REAL, DIMENSION(  : ,  :  ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         REAL, DIMENSION(  :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -803,6 +803,18 @@ contains
         REAL, DIMENSION ( :, :, : ), pointer :: SUF_P_BC_ALL
         INTEGER, DIMENSION ( 1, Mdims%npres, surface_element_count(pressure) ) :: WIC_P_BC_ALL
         type( tensor_field ) :: pressure_BCs
+
+
+           integer :: IGOT_THERM_VIS
+           real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
+           real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
+
+
+           ! if q scheme allocate a field in state and use pointers..
+           IGOT_THERM_VIS=0
+           ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
+           ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
+
 
 
         EXPLICIT_PIPES2 = .true.
