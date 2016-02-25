@@ -884,9 +884,7 @@ end if
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state,&
-                        Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
-                        Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
                         CV_ELE_TYPE, &
                         CV_NDGLN, X_NDGLN, U_NDGLN, &
                         CV_SNDGLN, U_SNDGLN, &
@@ -897,8 +895,7 @@ end if
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         !!$
-                        Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
-                        XU_NDGLN, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, &
+                        XU_NDGLN, &
                         !!$
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         igot_theta_flux,scvngi_theta, volfra_use_theta_flux, &

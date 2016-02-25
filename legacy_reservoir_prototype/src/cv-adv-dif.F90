@@ -117,12 +117,11 @@ contains
     end function my_size_real
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, storage_state, &
+        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state, &
         tracer, velocity, density, &
         CV_RHS_field, PETSC_ACV,&
-        SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM,&
-        NCOLCT, CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, FINDCT, COLCT, &
-        C, FINDC, COLC, &
+        CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
+        C,&
         CV_ELE_TYPE,  &
         CV_NDGLN, X_NDGLN, U_NDGLN, &
         CV_SNDGLN, U_SNDGLN, &
@@ -133,14 +132,13 @@ contains
         DERIV, CV_P, &
         SOURCT, ABSORBT_ALL, VOLFRA_PORE, &
         GETCV_DISC, GETCT, &
-        NCOLM, FINDM, COLM, MIDM, &
-        XU_NDGLN, FINELE, COLELE, NCOLELE, &
+        XU_NDGLN, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
         IN_ELE_UPWIND, DG_ELE_UPWIND, &
         MEAN_PORE_CV, &
-        FINDCMC, COLCMC, NCOLCMC, MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
+        MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, &
         StorageIndexes, Field_selector, icomp,&
@@ -271,13 +269,13 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
         type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
+        type (multi_sparsities), intent(in) :: Mspars
         type(tensor_field), intent(inout), target :: tracer
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
-        INTEGER, intent( in ) :: NCOLCT, CV_ELE_TYPE, CV_DISOPT, CV_DG_VEL_INT_OPT, &
-            NCOLM, NCOLELE, &
+        INTEGER, intent( in ) :: CV_ELE_TYPE, CV_DISOPT, CV_DG_VEL_INT_OPT, &
             IGOT_T2, IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
-            NCOLCMC, Field_selector
+            Field_selector
         INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, IDs_ndgln
         INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
@@ -295,12 +293,6 @@ contains
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B ! (Mdims%nphase, Mdims%nphase, Mdims%cv_nonods)
         REAL, DIMENSION( : ), intent( inout ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         type(vector_field), intent( inout ) :: CT_RHS
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCT
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLC
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL, DENOLD_ALL
@@ -321,16 +313,10 @@ contains
         REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE ! (Mdims%npres,Mdims%totele)
         LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
         ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-        INTEGER, DIMENSION( : ), intent( in ) :: COLM
-        INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-        INTEGER, DIMENSION( : ), intent( in ) :: FINELE
-        INTEGER, DIMENSION( : ), intent( in ) :: COLELE
         REAL, DIMENSION( :, :, :, : ), target, intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (Mdims%npres,Mdims%cv_nonods)
         REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
         character( len = * ), intent( in ), optional :: option_path_spatial_discretisation
-        integer, dimension(:), intent(in) :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
         integer, dimension(:), intent(inout) :: StorageIndexes
         integer, optional, intent(in) :: icomp
         type(tensor_field), intent(in), optional, target :: saturation
@@ -435,7 +421,7 @@ contains
 !!$            CV_GIdims%nface, X_NODI,  X_NODJ, &
             X_NODI,  X_NODJ, &
             CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, &
-            XNOD, NSMALL_COLM, COUNT2, NOD
+            XNOD, COUNT2, NOD
         !        ===>  REALS  <===
         REAL :: HDC, &
             TMID, TOLDMID, TMID_J, TOLDMID_J, &
@@ -729,7 +715,6 @@ contains
             CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, CV_BETA, SECOND_THETA, GOT_DIFFUS
         ewrite(3,*)'GETCV_DISC, GETCT', GETCV_DISC, GETCT
         one_m_cv_beta = 1.0 - cv_beta
-
         QUAD_OVER_WHOLE_ELE=.FALSE.
         ! Allocate memory for the control volume surface shape functions, etc.
         IF(GETCT) THEN
@@ -1027,8 +1012,8 @@ contains
             Mdims%cv_nonods, Mdims%totele, CV_NDGLN, Mdims%x_nloc, X_NDGLN, &
             CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVN, CV_funs%CVWEIGHT,&
             CV_funs%CVFEN, CV_funs%CVFENLX_ALL, &
-            Mdims%x_nonods, X_ALL, NCOLM, FINDM, COLM, MIDM, &
-            IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC)
+            Mdims%x_nonods, X_ALL, Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
+            IGETCT, MASS_MN_PRES, Mspars%CMC%fin, Mspars%CMC%col, Mspars%CMC%ncol)
         XC_CV_ALL=0.0
         !sprint_to_do!use a pointer?
         XC_CV_ALL(1:Mdims%ndim,:)=psi_ave(1)%ptr%val
@@ -1105,16 +1090,15 @@ contains
         ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
         IANISOLIM = 0
         IF ( CV_DISOPT >= 5 ) IANISOLIM = 1
-        NSMALL_COLM = SIZE( SMALL_COLM )
-        ALLOCATE( TUPWIND_MAT_ALL( Mdims%nphase, NSMALL_COLM ), TOLDUPWIND_MAT_ALL( Mdims%nphase, NSMALL_COLM ), &
-            DENUPWIND_MAT_ALL( Mdims%nphase, NSMALL_COLM ), DENOLDUPWIND_MAT_ALL( Mdims%nphase, NSMALL_COLM ) )
-        !      ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*IGOT_T2, NSMALL_COLM* IGOT_T2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*IGOT_T2, NSMALL_COLM*IGOT_T2 ) )
-        ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, NSMALL_COLM* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, NSMALL_COLM*i_use_volume_frac_t2 ) )
+        ALLOCATE( TUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), TOLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), &
+            DENUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), DENOLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ) )
+        !      ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*IGOT_T2, Mspars%small_acv%ncol* IGOT_T2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*IGOT_T2, Mspars%small_acv%ncol*IGOT_T2 ) )
+        ALLOCATE( T2UPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol* i_use_volume_frac_t2), T2OLDUPWIND_MAT_ALL( Mdims%nphase*i_use_volume_frac_t2, Mspars%small_acv%ncol*i_use_volume_frac_t2 ) )
         IF ( IANISOLIM == 0 ) THEN
             ! Isotropic limiting - calculate far field upwind maticies...
             CALL ISOTROPIC_LIMITER_ALL( &
                 ! FOR SUB SURRO_CV_MINMAX:
-                T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, Mdims%nphase, Mdims%cv_nonods, size(small_colm), SMALL_CENTRM, SMALL_FINDRM, SMALL_COLM, &
+                T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, Mdims%nphase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
                 Mdims%stotel, Mdims%cv_snloc, CV_SNDGLN, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
                 MASS_CV, &
                 ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
@@ -1130,14 +1114,14 @@ contains
                 ! Store the upwind element for interpolation and its weights for
                 ! faster results...
                 i_use_volume_frac_t2,Mdims%nphase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%x_nloc,Mdims%totele,CV_NDGLN, &
-                SMALL_FINDRM,SMALL_CENTRM,SMALL_COLM,NSMALL_COLM, &
+                Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
                 X_NDGLN,Mdims%x_nonods,Mdims%ndim, &
                 X_ALL, XC_CV_ALL, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE,&
                 storage_state, "anisotrop", storageindexes(2))
         END IF ! endof IF ( IANISOLIM == 0 ) THEN ELSE
         ALLOCATE( FACE_ELE( CV_GIdims%nface, Mdims%totele ) ) ; FACE_ELE = 0
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-            NCOLELE, FINELE, COLELE, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, CV_NDGLN, CV_SNDGLN, &
+            Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, CV_NDGLN, CV_SNDGLN, &
             CV_funs%cv_sloclist, Mdims%x_nloc, X_NDGLN )
         IF ( GOT_DIFFUS ) THEN
             CALL DG_DERIVS_ALL2( FEMT_ALL, FEMTOLD_ALL, &
@@ -1232,109 +1216,6 @@ contains
                 CV_funs%scvfen, CV_funs%scvfenlx_all, CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, &
                 SCVFENX_ALL, &
                 Mdims%ndim, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
-            !      IF(GETCT) THEN
-            !      IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV.AND. .false.) THEN
-            !         Loop_CV_ILOC2: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
-            !
-            !            ! Global node number of the local node
-            !            CV_NODI = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-            !
-            !    ! Generate some local F variables ***************
-            !
-            !            ! Loop over quadrature (gauss) points in ELE neighbouring ILOC
-            !            Loop_GCOUNT2: DO GCOUNT = CV_funs%findgpts( CV_ILOC ), CV_funs%findgpts( CV_ILOC + 1 ) - 1
-            !               ! CV_funs%colgpts stores the local Gauss-point number in the ELE
-            !               GI = CV_funs%colgpts( GCOUNT )
-            !               ! Get the neighbouring node for node ILOC and Gauss point GI
-            !               CV_JLOC = CV_funs%cv_neiloc( CV_ILOC, GI )
-            !               Conditional_CheckingNeighbourhood2: IF ( CV_JLOC == -1 ) THEN
-            !
-            !    ! On surface of element...
-            !                  ! Calculate the control volume normals at the Gauss pts.
-            !                  CALL SCVDETNX_new( ELE, GI, Mdims%x_nloc, CV_GIdims%scvngi, Mdims%totele, Mdims%ndim, &
-            !                       X_NDGLN, Mdims%x_nonods, SCVDETWEI, CVNORMX_ALL,  &
-            !                       CV_funs%scvfen, CV_funs%scvfenslx, CV_funs%scvfensly, CV_funs%scvfeweigh, XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), &
-            !                       X_ALL(1:Mdims%ndim,:),  D1, D3, DCYL )
-            !
-            !
-            !    ! centre of element...
-            !                xc_ele(:)=0.0
-            !                xs_pt(:)=0.0
-            !                DO CV_JLOC2 = 1, Mdims%cv_nloc
-            !                    X_NODI = X_NDGLN( (ELE-1)*Mdims%x_nloc + CV_JLOC2 )
-            !                    xc_ele(:)=xc_ele(:) + X_ALL( :, X_NODI )/real( Mdims%cv_nloc )
-            !                    xs_pt(:)=xs_pt(:) + X_ALL( :, X_NODI ) * CV_funs%scvfen(CV_JLOC2, GI)
-            !                END DO
-            !    ! make sure normal is pointing out of element...
-            !                CVNORMX_ALL(:,gi) = CVNORMX_ALL(:,gi) * SIGN( 1.0, sum(CVNORMX_ALL(:,gi)*(xs_pt(:)-xc_ele(:))  )  )
-            !
-            !
-            !
-            !    ! FOR CV PRESSURE PART *************
-            !    ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
-            !                     DO U_KLOC = 1, Mdims%u_nloc
-            !                        U_NODK = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-            !                        JCOUNT = 0
-            !    !                        DO COUNT = FINDC( CV_NODI ), FINDC( CV_NODI + 1 ) - 1
-            !    !                           IF ( COLC( COUNT ) == U_NODK ) THEN
-            !                        DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
-            !                           IF ( COLC( COUNT ) == CV_NODI ) THEN
-            !                              JCOUNT = COUNT
-            !                              EXIT
-            !                           END IF
-            !                        END DO
-            !                        C_ICOUNT_KLOC( U_KLOC ) = JCOUNT
-            !                     END DO
-            !
-            !                     DO U_KLOC = 1, Mdims%u_nloc
-            !                        DO IPHASE=1, Mdims%nphase
-            !                           C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-            !                            = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-            !                              + SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI ) * CVNORMX_ALL( :, GI )
-            !                        END DO
-            !                     END DO
-            !    ! FOR CV PRESSURE PART *************
-            !
-            !
-            !    ! FOR fem PRESSURE PART *************
-            !                  DO CV_JLOC2=1,Mdims%cv_nloc
-            !                     CV_NODJ2 = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC2 )
-            !    ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
-            !                     DO U_KLOC = 1, Mdims%u_nloc
-            !                        U_NODK = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
-            !                        JCOUNT = 0
-            !!                        DO COUNT = FINDC( CV_NODJ2 ), FINDC( CV_NODJ2 + 1 ) - 1
-            !!                           IF ( COLC( COUNT ) == U_NODK ) THEN
-            !                        DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
-            !                           IF ( COLC( COUNT ) == CV_NODJ2 ) THEN
-            !                              JCOUNT = COUNT
-            !                              EXIT
-            !                           END IF
-            !                        END DO
-            !                        C_ICOUNT_KLOC( U_KLOC ) = JCOUNT
-            !                     END DO
-            !
-            !                     DO U_KLOC = 1, Mdims%u_nloc
-            !                        DO IPHASE=1, Mdims%nphase
-            !                           C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-            !                            = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-            !                              - SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI ) * CVNORMX_ALL( :, GI ) * CV_funs%scvfen(CV_JLOC2, GI)
-            !                        END DO
-            !                     END DO
-            !                 END DO ! ENDOF DO CV_JLOC2=1,Mdims%cv_nloc
-            !    ! FOR fem PRESSURE PART *************
-            !
-            !
-            !
-            !
-            !               END IF Conditional_CheckingNeighbourhood2
-            !
-            !
-            !
-            !            END DO Loop_GCOUNT2
-            !         END DO Loop_CV_ILOC2
-            !      endif  ! IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
-            !      endif  ! IF(GETct) then
             ! Generate some local F variables ***************
             DO CV_KLOC = 1, Mdims%cv_nloc
                 CV_NODK = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
@@ -1405,7 +1286,7 @@ contains
                 CV_NODI = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                 X_NODI = X_NDGLN( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
                 MAT_NODI = MAT_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                IMID = SMALL_CENTRM(CV_NODI)
+                IMID = Mspars%small_acv%mid(CV_NODI)
                 ! Generate some local F variables ***************
                 F_CV_NODI(:)= LOC_F(:, CV_ILOC)
                 ! Generate some local F variables ***************
@@ -1429,7 +1310,7 @@ contains
                             MAT_OTHER_LOC, Mdims%mat_nloc, INTEGRAT_AT_GI, &
                             Mdims%x_nloc, Mdims%xu_nloc, X_NDGLN, CV_NDGLN, XU_NDGLN, &
                             Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, Mdims%x_nonods, ELE, ELE2,  &
-                            FINELE, COLELE, NCOLELE, DISTCONTINUOUS_METHOD )
+                            Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, DISTCONTINUOUS_METHOD )
                         IF ( INTEGRAT_AT_GI ) THEN
                             CV_JLOC = CV_OTHER_LOC( CV_ILOC )
                             SELE = 0
@@ -1488,7 +1369,7 @@ contains
                             ENDIF ! ENDOF IF( between_elements ) THEN
                             integrate_other_side_and_not_boundary = integrate_other_side.and.(SELE.LE.0)
                             GLOBAL_FACE = GLOBAL_FACE + 1
-                            JMID = SMALL_CENTRM(CV_NODJ)
+                            JMID = Mspars%small_acv%mid(CV_NODJ)
                             ! Calculate the control volume normals at the Gauss pts.
                             CALL SCVDETNX_new( ELE, GI, Mdims%x_nloc, CV_GIdims%scvngi, Mdims%totele, Mdims%ndim, &
                                 X_NDGLN, Mdims%x_nonods, SCVDETWEI, CVNORMX_ALL,  &
@@ -1500,8 +1381,8 @@ contains
                                 DO U_KLOC = 1, Mdims%u_nloc
                                     U_NODK = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
                                     JCOUNT = 0
-                                    DO COUNT = FINDCT( CV_NODI ), FINDCT( CV_NODI + 1 ) - 1
-                                        IF ( COLCT( COUNT ) == U_NODK ) THEN
+                                    DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
+                                        IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
                                             JCOUNT = COUNT
                                             EXIT
                                         END IF
@@ -1510,8 +1391,8 @@ contains
                                     if(integrate_other_side) then
                                         ! for integrating just on one side...
                                         ICOUNT = 0
-                                        DO COUNT = FINDCT( CV_NODJ ), FINDCT( CV_NODJ + 1 ) - 1
-                                            IF ( COLCT( COUNT ) == U_NODK ) THEN
+                                        DO COUNT = Mspars%CT%fin( CV_NODJ ), Mspars%CT%fin( CV_NODJ + 1 ) - 1
+                                            IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
                                                 ICOUNT = COUNT
                                                 EXIT
                                             END IF
@@ -1523,8 +1404,8 @@ contains
                                     DO U_KLOC =  1, Mdims%u_nloc
                                         U_NODK = U_NDGLN( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
                                         JCOUNT = 0
-                                        DO COUNT = FINDCT( CV_NODI ), FINDCT( CV_NODI + 1 ) - 1
-                                            IF ( COLCT( COUNT ) == U_NODK ) THEN
+                                        DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
+                                            IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
                                                 JCOUNT = COUNT
                                                 EXIT
                                             END IF
@@ -1533,8 +1414,8 @@ contains
                                         if(integrate_other_side) then
                                             ! for integrating just on one side...
                                             ICOUNT = 0
-                                            DO COUNT = FINDCT( CV_NODJ ), FINDCT( CV_NODJ + 1 ) - 1
-                                                IF ( COLCT( COUNT ) == U_NODK ) THEN
+                                            DO COUNT = Mspars%CT%fin( CV_NODJ ), Mspars%CT%fin( CV_NODJ + 1 ) - 1
+                                                IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
                                                     ICOUNT = COUNT
                                                     EXIT
                                                 END IF
@@ -1548,10 +1429,10 @@ contains
                                     DO U_KLOC = 1, Mdims%u_nloc
                                         U_NODK = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
                                         JCOUNT = 0
-                                        !                        DO COUNT = FINDC( CV_NODI ), FINDC( CV_NODI + 1 ) - 1
-                                        !                           IF ( COLC( COUNT ) == U_NODK ) THEN
-                                        DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
-                                            IF ( COLC( COUNT ) == CV_NODI ) THEN
+                                        !                        DO COUNT = Mspars%C%fin( CV_NODI ), Mspars%C%fin( CV_NODI + 1 ) - 1
+                                        !                           IF ( Mspars%C%col( COUNT ) == U_NODK ) THEN
+                                        DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
+                                            IF ( Mspars%C%col( COUNT ) == CV_NODI ) THEN
                                                 JCOUNT = COUNT
                                                 EXIT
                                             END IF
@@ -1560,10 +1441,10 @@ contains
                                         if(integrate_other_side) then
                                             ! for integrating just on one side...
                                             ICOUNT = 0
-                                            !                            DO COUNT = FINDC( CV_NODJ ), FINDC( CV_NODJ + 1 ) - 1
-                                            !                               IF ( COLC( COUNT ) == U_NODK ) THEN
-                                            DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
-                                                IF ( COLC( COUNT ) == CV_NODJ ) THEN
+                                            !                            DO COUNT = Mspars%C%fin( CV_NODJ ), Mspars%C%fin( CV_NODJ + 1 ) - 1
+                                            !                               IF ( Mspars%C%col( COUNT ) == U_NODK ) THEN
+                                            DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
+                                                IF ( Mspars%C%col( COUNT ) == CV_NODJ ) THEN
                                                     ICOUNT = COUNT
                                                     EXIT
                                                 END IF
@@ -1575,10 +1456,10 @@ contains
                                         DO U_KLOC =  1, Mdims%u_nloc
                                             U_NODK = U_NDGLN( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
                                             JCOUNT = 0
-                                            !                           DO COUNT = FINDC( CV_NODI ), FINDC( CV_NODI + 1 ) - 1
-                                            !                              IF ( COLC( COUNT ) == U_NODK ) THEN
-                                            DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
-                                                IF ( COLC( COUNT ) == CV_NODI ) THEN
+                                            !                           DO COUNT = Mspars%C%fin( CV_NODI ), Mspars%C%fin( CV_NODI + 1 ) - 1
+                                            !                              IF ( Mspars%C%col( COUNT ) == U_NODK ) THEN
+                                            DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
+                                                IF ( Mspars%C%col( COUNT ) == CV_NODI ) THEN
                                                     JCOUNT = COUNT
                                                     EXIT
                                                 END IF
@@ -1587,10 +1468,10 @@ contains
                                             if(integrate_other_side) then
                                                 ! for integrating just on one side...
                                                 ICOUNT = 0
-                                                !                               DO COUNT = FINDC( CV_NODJ ), FINDC( CV_NODJ + 1 ) - 1
-                                                !                                  IF ( COLC( COUNT ) == U_NODK ) THEN
-                                                DO COUNT = FINDC( U_NODK ), FINDC( U_NODK + 1 ) - 1
-                                                    IF ( COLC( COUNT ) == CV_NODJ ) THEN
+                                                !                               DO COUNT = Mspars%C%fin( CV_NODJ ), Mspars%C%fin( CV_NODJ + 1 ) - 1
+                                                !                                  IF ( Mspars%C%col( COUNT ) == U_NODK ) THEN
+                                                DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
+                                                    IF ( Mspars%C%col( COUNT ) == CV_NODJ ) THEN
                                                         ICOUNT = COUNT
                                                         EXIT
                                                     END IF
@@ -1608,14 +1489,14 @@ contains
                             ELSE
                                 HDC = SQRT( SUM( (XC_CV_ALL(1:Mdims%ndim,CV_NODI)-XC_CV_ALL(1:Mdims%ndim,CV_NODJ))**2) )
                             END IF
-                            DO COUNT = SMALL_FINDRM( CV_NODI ), SMALL_FINDRM( CV_NODI + 1 ) - 1
-                                IF ( SMALL_COLM( COUNT ) == CV_NODJ ) THEN
+                            DO COUNT = Mspars%small_acv%fin( CV_NODI ), Mspars%small_acv%fin( CV_NODI + 1 ) - 1
+                                IF ( Mspars%small_acv%col( COUNT ) == CV_NODJ ) THEN
                                     count_out = COUNT
                                     EXIT
                                 END IF
                             END DO
-                            DO COUNT = SMALL_FINDRM( CV_NODJ ), SMALL_FINDRM( CV_NODJ + 1 ) - 1
-                                IF ( SMALL_COLM( COUNT ) == CV_NODI ) THEN
+                            DO COUNT = Mspars%small_acv%fin( CV_NODJ ), Mspars%small_acv%fin( CV_NODJ + 1 ) - 1
+                                IF ( Mspars%small_acv%col( COUNT ) == CV_NODI ) THEN
                                     count_in = COUNT
                                     EXIT
                                 END IF
@@ -2049,8 +1930,8 @@ contains
                                                     P_JNOD = CV_NDGLN( (ELE-1)*Mdims%cv_nloc + P_JLOC )
                                                     ! Use the same sparcity as the MN matrix...
                                                     COUNT_SUF = 0
-                                                    DO COUNT = FINDCMC( CV_NODI ), FINDCMC( CV_NODI + 1 ) - 1
-                                                        IF ( COLCMC( COUNT ) == P_JNOD ) THEN
+                                                    DO COUNT = Mspars%CMC%fin( CV_NODI ), Mspars%CMC%fin( CV_NODI + 1 ) - 1
+                                                        IF ( Mspars%CMC%col( COUNT ) == P_JNOD ) THEN
                                                             COUNT_SUF = COUNT
                                                             EXIT
                                                         END IF
@@ -2065,7 +1946,7 @@ contains
                                 ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
                                 CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
                                     Mdims, CV_funs,&
-                                    GI, NCOLCT, &
+                                    GI, Mspars%CT%ncol, &
                                     between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
                                     JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
                                     SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -2375,10 +2256,10 @@ contains
             END DO
             IF ( PIPES_1D ) THEN
                 allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods))
-                CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims%nphase, Mdims%npres, Mdims%n_in_pres, Mdims%ndim, Mdims%u_nloc, Mdims%cv_nloc, Mdims%x_nloc, SMALL_FINDRM, SMALL_COLM, &
+                CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims%nphase, Mdims%npres, Mdims%n_in_pres, Mdims%ndim, Mdims%u_nloc, Mdims%cv_nloc, Mdims%x_nloc, Mspars%small_acv%fin, Mspars%small_acv%col, &
                     Mdims%u_nonods,Mdims%u_snloc,Mdims%cv_snloc,Mdims%stotel,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-                    Mdims%cv_nonods, getcv_disc, getct, petsc_acv, Mdims%totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, c, findct, colct, findc, colc, CV_RHS_field, CT_RHS, &
-                    findcmc, colcmc, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
+                    Mdims%cv_nonods, getcv_disc, getct, petsc_acv, Mdims%totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, c, Mspars%CT%fin, Mspars%CT%col, Mspars%C%fin, Mspars%C%col, CV_RHS_field, CT_RHS, &
+                    Mspars%CMC%fin, Mspars%CMC%col, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                     SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, OPT_VEL_UPWIND_COEFS_NEW )
                 ! Used for pipe modelling...
                 DO CV_NODI = 1, Mdims%cv_nonods
@@ -4218,7 +4099,6 @@ contains
 
       INTEGER, DIMENSION( : ), pointer :: FINDM, COLM, MIDM
       INTEGER, DIMENSION( : ), pointer :: FINELE, COLELE
-      integer, dimension(:), pointer :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
       !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
 
