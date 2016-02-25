@@ -1828,7 +1828,7 @@ contains
             T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, &
             St_gl, St_sl, St_sg
         integer :: iphase, jphase, idim
-        real, parameter :: Le0=2375.7e3, Cp_l = 4200.0, Cp_g = 1996.0
+        real, parameter :: Le0=2375.7e3, Cp_l = 4200.0, Cp_g = 1996.0, HeatSource=17.1e+3 / (0.082 * 0.095 * 0.25)
 
         ewrite(3,*) 'inside boiling routine'
 
@@ -1934,7 +1934,7 @@ contains
         temperature_source => extract_tensor_field( packed_state, "PackedTemperatureSource" )
 
         iphase=1
-        temperature_source%val( 1, iphase, : ) = Svap_l*T_sat + Gamma_l*h_l + Gamma_l*Le0
+        temperature_source%val( 1, iphase, : ) = Svap_l*T_sat + Gamma_l*h_l + Gamma_l*Le0 + HeatSource
 
         iphase=2
         temperature_source%val( 1, iphase, : ) = Svap_g*T_sat + Gamma_g*h_g + 1.0e+6 * temperature%val( 1, iphase, : )
@@ -2065,7 +2065,7 @@ contains
                 u_g = sqrt( sum( ug**2 ) )
                 u_s = sqrt( sum( us**2 ) )
 
-                u_gs=abs(u_g-u_s) ; u_ls=abs(u_l-u_s) ; u_gl=max(1e-5, abs(u_g-u_l))
+                u_gs=abs(u_g-u_s) ; u_ls=abs(u_l-u_s) ; u_gl=abs(u_g-u_l)
 
                 a_l = volume_fraction%val(1,1,cv_inod)
                 a_g = volume_fraction%val(1,2,cv_inod)

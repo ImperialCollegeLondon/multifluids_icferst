@@ -192,7 +192,7 @@ contains
                    a => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
                    den_all = den_all * a%val(1,:,:)
                    aold => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
-                   denold_all = denold_all * a%val(1,:,:)
+                   denold_all = denold_all * aold%val(1,:,:)
                end if
                IGOT_T2_loc = 1
            else if ( lcomp > 0 ) then
@@ -1007,7 +1007,7 @@ contains
 
         ! open the boiling test for two phases-gas and liquid
         if (have_option('/boiling')) then
-           allocate( temperature_absorption( Mdims%mat_nonods, Mdims%nphase, Mdims%nphase ) )
+           allocate( temperature_absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
            allocate( ScalarField_Source( Mdims%nphase, Mdims%cv_nonods ) )
            call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
               ScalarField_Source, U_ABSORBIN, temperature_absorption )
