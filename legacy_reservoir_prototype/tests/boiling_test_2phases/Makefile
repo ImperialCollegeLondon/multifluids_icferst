@@ -3,5 +3,4 @@ SHELL = sh
 input:  clean
 
 clean:
-	rm -f *.vtu
-	rm -f log
+	rm -f *.vtu *.stat
