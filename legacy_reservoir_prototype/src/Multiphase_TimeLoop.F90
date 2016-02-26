@@ -142,7 +142,7 @@ contains
         !!$ Defining element-pair type and discretisation options and coefficients
         integer :: cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type, &
             t_disopt, v_disopt, t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-            comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
+            in_ele_upwind, dg_ele_upwind, &
             nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp
         logical :: volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, comp_get_theta_flux, &
             t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction, q_scheme
@@ -186,11 +186,7 @@ contains
         real, dimension( :, : ), pointer :: &
             ScalarField_Source, ScalarField_Source_Store, ScalarField_Source_Component
         real, dimension( :, :, : ), allocatable :: Material_Absorption, &
-            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption, &
-            !!$
-            Component_Diffusion_Operator_Coefficient
-        real, dimension( :, :, :, : ), allocatable :: &
-            Component_Diffusion
+            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption
 
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
@@ -373,7 +369,6 @@ contains
             !!$
             Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
             ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), & ! fix me..move in intenerg
-            Component_Diffusion( mat_nonods, ndim, ndim, nphase ), &                               ! FIX ME...
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
             plike_grad_sou_grad( cv_nonods * nphase ), &
             plike_grad_sou_coef( cv_nonods * nphase ), &
@@ -388,7 +383,6 @@ contains
         !!$
         Material_Absorption=0.
         ScalarField_Absorption=0. ; Component_Absorption=0.
-        Component_Diffusion=0.
         !!$
         plike_grad_sou_grad=0.
         plike_grad_sou_coef=0.
@@ -419,7 +413,7 @@ contains
 
         !Calculate the gauss integer numbers
         call retrieve_ngi( CV_GIdims, Mdims, cv_ele_type, quad_over_whole_ele = .false. )
-        call retrieve_ngi( FE_GIdims, Mdims,  u_ele_type, quad_over_whole_ele = .true. )
+        call retrieve_ngi( FE_GIdims, Mdims, u_ele_type, quad_over_whole_ele = .true. )
         !! Compute reference shape functions
         call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
         call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
@@ -450,13 +444,10 @@ contains
         call Get_Discretisation_Options( state, &
             t_disopt, v_disopt, t_beta, v_beta, t_theta, v_theta, u_theta, &
             t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-            comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
+            in_ele_upwind, dg_ele_upwind, &
             nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp, &
             volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, comp_get_theta_flux, &
             t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction )
-
-        allocate( Component_Diffusion_Operator_Coefficient( ncomp, ncomp_diff_coef, nphase ) )
-        Component_Diffusion_Operator_Coefficient = 0.
 
         !!$ Option not currently set up in the schema and zeroed from the begining. It is used to control
         !!$ the upwinding rate (in the absorption term) during advection/assembling.
@@ -961,14 +952,6 @@ end if
                             end do
                         end if Conditional_SmoothAbsorption
 
-                        !!$ Computing diffusion term for the component conservative equation:
-                        call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, &
-                            Mdims, CV_GIdims, CV_funs, &
-                            mat_ndgln, u_ndgln, x_ndgln, &
-                            u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt, &
-                            Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
-                            Component_Diffusion )
-
                         !!$ NonLinear iteration for the components advection:
                         Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
                             comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
@@ -981,7 +964,6 @@ end if
                                 CV_SNDGLN, U_SNDGLN, &
                                 !!$
                                 !0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-                                !Component_Diffusion, 0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                                 v_disopt, v_dg_vel_int_opt, dt, v_theta, v_beta, &
                                 SUF_SIG_DIAGTEN_BC,&
                                 Porosity_field%val, &
@@ -1326,8 +1308,6 @@ end if
             mass_ele,&
             Material_Absorption, &
             ScalarField_Absorption, Component_Absorption, &
-            Component_Diffusion_Operator_Coefficient, &
-            Component_Diffusion, &
             theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
 
@@ -1668,8 +1648,6 @@ end if
                     mass_ele, &
                     Material_Absorption, &
                     ScalarField_Absorption, Component_Absorption, &
-                    Component_Diffusion_Operator_Coefficient, &
-                    Component_Diffusion, &
                     theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, sum_theta_flux, &
                     sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
 
@@ -1746,12 +1724,11 @@ end if
                     !!$
                     Material_Absorption( mat_nonods, ndim * nphase, ndim * nphase ), &
                     ScalarField_Absorption( nphase, nphase, cv_nonods ), Component_Absorption( nphase, nphase, cv_nonods ), &
-                    Component_Diffusion( mat_nonods, ndim, ndim, nphase ), &
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
                     plike_grad_sou_grad( cv_nonods * nphase ), &
                     plike_grad_sou_coef( cv_nonods * nphase ) )
                 !!$
-                Component_Diffusion=0. ; Component_Absorption=0.
+                Component_Absorption=0.
                 !!$
                 ScalarField_Absorption=0.
                 !!$
@@ -1800,7 +1777,6 @@ end if
                 sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
                 ScalarField_Source=0. ; ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
 
-                allocate( Component_Diffusion_Operator_Coefficient( ncomp, ncomp_diff_coef, nphase ) )
                 allocate(opt_vel_upwind_coefs_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_coefs_new =0.
                 allocate(opt_vel_upwind_grad_new(ndim, ndim, nphase, mat_nonods)); opt_vel_upwind_grad_new =0.
 
