@@ -246,6 +246,63 @@ contains
 
     end subroutine nan_check_arr
 
+
+    PURE FUNCTION NVDFUNNEW_MANY( UF, UC, XI_LIMIT ) result(nvd_limit)
+        implicit none
+        ! The function computes NVDFUNNEW, the normalised value of the
+        ! advected variable on the face of the control volume, based on
+        ! the normalised value of the advected variable in the donor CV,
+        ! UC, and the high-order estimate of the face value UF.
+        ! NVDFUNNEW is limited so that it is in the non-oscillatory
+        ! region of normalised variable diagram (NVD).
+        !
+        ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
+        ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
+        ! equal to 3 has been recommended elsewhere
+        !
+        REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
+        real, dimension(size(uc)) :: nvd_limit
+        logical, PARAMETER :: orig_limit=.false. ! original limiter is less invasive.
+
+        ! For the region 0 < UC < 1 on the NVD, define the limiter
+        if(orig_limit) then
+            where( ( UC > 0.0 ) .AND. ( UC < 1.0 ) )
+                nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( 0.0, UF ) )
+            !       nvd_limit = MIN( 1.0, XI_LIMIT * UC, MAX( UC, UF ) )
+            !      nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
+            ELSE where ! Outside the region 0<UC<1 on the NVD, use first-order upwinding
+                nvd_limit = UC
+            END where
+        else
+            nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
+        endif
+
+    end function nvdfunnew_many
+
+
+
+
+    FUNCTION NVDFUNNEW_MANY_sqrt( UF, UC, XI_LIMIT ) result(nvd_limit)
+        implicit none
+        ! The function computes NVDFUNNEW, the normalised value of the
+        ! advected variable on the face of the control volume, based on
+        ! the normalised value of the advected variable in the donor CV,
+        ! UC, and the high-order estimate of the face value UF.
+        ! NVDFUNNEW is limited so that it is in the non-oscillatory
+        ! region of normalised variable diagram (NVD).
+        !
+        ! XI is the parameter in equation 38 of the Riemann paper. If XI is equal
+        ! to 2 then this corresponds to a TVD condition in 1-D, a value of XI
+        ! equal to 3 has been recommended elsewhere
+        !
+        REAL, DIMENSION( : ), intent(in)  :: UC, UF, XI_LIMIT
+        real, dimension(size(uc)) :: nvd_limit
+
+
+        nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
+
+    end function nvdfunnew_many_sqrt
+
 end module multi_tools
 
 

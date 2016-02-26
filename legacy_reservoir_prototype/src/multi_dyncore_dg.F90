@@ -58,6 +58,7 @@ module multiphase_1D_engine
     use reference_counting
     use multi_data_types
     use Compositional_Terms
+    use multi_pipes
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, &
