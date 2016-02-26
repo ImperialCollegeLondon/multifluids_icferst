@@ -315,7 +315,7 @@ class TestHarness:
                         self.teststatus += ['F']
                         test.pass_status = ['F']
                       self.completed_tests += [test]
-                      self.xml_parser.test_cases+=test.xml_reports
+                      #self.xml_parser.test_cases+=test.xml_reports#xml files not yet ready for this? script does not finish correctly with this on
                       t = None
                       count -= 1
 
