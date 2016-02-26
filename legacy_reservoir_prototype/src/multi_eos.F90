@@ -1984,7 +1984,7 @@ contains
 
         real, parameter :: &
             mu_l = 3.0e-4, mu_g = 1.0e-5, &
-            d_p = 0.0013 ! 0.005
+            d_p = 0.001 ! 0.005
 
         pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
         density => extract_tensor_field( packed_state, "PackedDensity" )
@@ -2156,7 +2156,7 @@ contains
             k_l = 0.58, k_g = 0.016, k_s = 16.2, &
             Cp_l = 4200.0, Cp_g = 1996.0, Cp_s = 500.0, &
             mu_l = 3.0e-4, mu_g = 1.0e-5, &
-            d_p = 0.0013, & !0.005, &
+            d_p = 0.001, & !0.005, &
             Le0 = 2375.7e3, Csf = 0.006, g = 9.81
 
         pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
