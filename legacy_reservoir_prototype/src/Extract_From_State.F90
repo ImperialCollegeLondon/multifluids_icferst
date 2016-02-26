@@ -531,7 +531,7 @@ contains
     subroutine Get_Discretisation_Options( state, &
         t_disopt, v_disopt, t_beta, v_beta, t_theta, v_theta, u_theta, &
         t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-        comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
+        in_ele_upwind, dg_ele_upwind, &
         nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp, &
         volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, comp_get_theta_flux, &
         t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction )
@@ -541,7 +541,7 @@ contains
         integer, intent( inout ) :: t_disopt, v_disopt
         real, intent( inout ) :: t_beta, v_beta, t_theta, v_theta, u_theta
         integer, intent( inout ) :: t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-            comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
+            in_ele_upwind, dg_ele_upwind, &
             nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp
         logical, intent( inout ) :: volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, &
             comp_get_theta_flux, t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction
@@ -631,7 +631,6 @@ contains
         else
             v_dg_vel_int_opt = 1
         end if
-        comp_diffusion_opt = 0 ; ncomp_diff_coef = 0
         volfra_use_theta_flux = .false. ; volfra_get_theta_flux = .true.
         comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
         t_use_theta_flux = .false. ; t_get_theta_flux = .false.
@@ -3685,7 +3684,7 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
 
     ! Input/output variables
-       
+
     integer, intent(in) :: nphase
     type(tensor_field), intent(in), pointer :: CVPressure
     real, dimension( : , : ),  intent(in), allocatable :: phaseV
@@ -3771,7 +3770,7 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
         enddo
 
     endif
-     
+
     ! DEALLOCATIONS
     deallocate(phaseVG)
     deallocate(densVG)

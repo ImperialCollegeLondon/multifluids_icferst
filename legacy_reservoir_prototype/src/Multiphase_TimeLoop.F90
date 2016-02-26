@@ -142,7 +142,7 @@ contains
         !!$ Defining element-pair type and discretisation options and coefficients
         integer :: cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type, &
             t_disopt, v_disopt, t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-            comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
+            in_ele_upwind, dg_ele_upwind, &
             nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp
         logical :: volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, comp_get_theta_flux, &
             t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction, q_scheme
@@ -444,7 +444,7 @@ contains
         call Get_Discretisation_Options( state, &
             t_disopt, v_disopt, t_beta, v_beta, t_theta, v_theta, u_theta, &
             t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-            comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
+            in_ele_upwind, dg_ele_upwind, &
             nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp, &
             volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, comp_get_theta_flux, &
             t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction )
