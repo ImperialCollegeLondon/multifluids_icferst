@@ -1,6 +1,6 @@
 
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -185,7 +185,7 @@ contains
     subroutine Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, &
         Mdims, CV_GIdims, CV_funs,&
         mat_ndgln, u_ndgln, x_ndgln, &
-        u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt, &
+        ncomp_diff_coef, comp_diffusion_opt, &
         comp_diff_coef, &
         comp_diffusion)
         !!$ Calculate the diffusion coefficient COMP_DIFFUSION for current composition...
@@ -200,7 +200,7 @@ contains
         type(multi_GI_dimensions), intent(in) :: CV_GIdims
         type(multi_shape_funs), intent(in) :: CV_funs
         integer, dimension( : ), intent( in ) :: mat_ndgln, u_ndgln, x_ndgln
-        integer, intent( in ) :: u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt
+        integer, intent( in ) :: ncomp_diff_coef, comp_diffusion_opt
         real, dimension( :, : ), intent( in ) :: comp_diff_coef
         real, dimension( :, :, :, : ),intent( inout ) :: comp_diffusion
         !!$ Local variables:
@@ -266,7 +266,7 @@ contains
         X_ALL, NU, NV, NW, MAT_NDGLN, U_NDGLN, X_NDGLN, &
         MAT_U,  storage_state)
         ! Determine MAT_U from NU,NV,NW which are variables mapped to material mesh.
- 
+
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims

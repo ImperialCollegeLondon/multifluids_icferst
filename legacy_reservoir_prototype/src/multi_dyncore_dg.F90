@@ -57,6 +57,7 @@ module multiphase_1D_engine
     use memory_diagnostics
     use reference_counting
     use multi_data_types
+    use Compositional_Terms
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, &
@@ -158,6 +159,10 @@ contains
            real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
            real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
 
+           integer :: ncomp_diff_coef, comp_diffusion_opt
+           real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
+
+
 
            IGOT_THERM_VIS=0
            ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
@@ -218,20 +223,50 @@ contains
                Field_selector = 2
                IGOT_T2_loc = IGOT_T2
            end if
+
            lump_eqns = have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/' // &
                'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
            ! let the coupling work
+
            if ( have_option( '/blasting' ) ) then
                RETRIEVE_SOLID_CTY = .true.
            else
                RETRIEVE_SOLID_CTY = .false.
            end if
+
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
+
+
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
               call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
                  Mdims%mat_nloc, Mdims%totele, mat_ndgln, TDIFFUSION )
            end if
+
+
+           ! get diffusivity for compositional
+           if ( lcomp > 0 .and. is_porous_media ) then
+              ncomp_diff_coef = 0 ; comp_diffusion_opt = 0
+              allocate( Component_Diffusion_Operator_Coefficient( Mdims%ncomp, ncomp_diff_coef, Mdims%nphase ) )
+              Component_Diffusion_Operator_Coefficient = 0.0
+
+              call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, &
+                 Mdims, CV_GIdims, CV_funs, &
+                 mat_ndgln, u_ndgln, x_ndgln, &
+                 ncomp_diff_coef, comp_diffusion_opt, &
+                 Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
+                 TDiffusion )
+
+              deallocate( Component_Diffusion_Operator_Coefficient )
+           end if
+
+
+
+
+
+
+
+
            ! calculate T_ABSORB
            allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
            if (have_option('/boiling')) then
@@ -241,6 +276,13 @@ contains
                       ScalarField_Source, velocity_absorption, T_AbsorB )
                    deallocate ( Velocity_Absorption, ScalarField_Source )
            end if
+
+
+
+
+
+
+
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, storage_state,&
