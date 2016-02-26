@@ -242,6 +242,7 @@ contains
                    deallocate ( Velocity_Absorption, ScalarField_Source )
            end if
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
+                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, storage_state,&
                    tracer, velocity, density, &
@@ -472,6 +473,7 @@ contains
                  !it works, but it complains...
                  call allocate_global_multiphase_petsc_csr(petsc_acv,sparsity,tracer)
                  !Assemble the matrix and the RHS
+                 !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
                      Mdims, CV_GIdims, CV_funs, Mspars, storage_state,&
                      tracer, velocity, density, &
@@ -1603,7 +1605,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             ACV, &
             CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
             INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
-            CT, & ! C sparsity - global cty eqn
+            C_CV, & ! C sparsity - global cty eqn
             CV_NDGLN, X_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN, &
             DEN_OR_ONE, DENOLD_OR_ONE, &
             MAT_NDGLN, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &

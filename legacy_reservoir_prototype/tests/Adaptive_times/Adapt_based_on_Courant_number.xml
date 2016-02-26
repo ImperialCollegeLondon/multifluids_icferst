@@ -2,7 +2,7 @@
 <testproblem>
   <name>Adapt_based_on_Courant_number</name>
   <owner userid="pablo.salinas"/>
-  <tags>porous mpml adaptive_time</tags>
+  <tags>porous mpml adaptive_time tbc CV_pressure</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/multiphase_prototype Adapt_based_on_Courant_number.mpml</command_line>
   </problem_definition>
