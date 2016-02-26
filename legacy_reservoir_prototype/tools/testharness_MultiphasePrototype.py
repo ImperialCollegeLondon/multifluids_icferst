@@ -315,7 +315,11 @@ class TestHarness:
                         self.teststatus += ['F']
                         test.pass_status = ['F']
                       self.completed_tests += [test]
-                      #self.xml_parser.test_cases+=test.xml_reports#xml files not yet ready for this? script does not finish correctly with this on
+                      # This is now forced to fail silently when test is malformed.
+                      try:
+                        self.xml_parser.test_cases+=test.xml_reports
+                      except AttributeError:
+                        pass
                       t = None
                       count -= 1
 
