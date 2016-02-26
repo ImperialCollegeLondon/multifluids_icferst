@@ -4053,7 +4053,7 @@ contains
       ! Local variables
       type( multi_GI_dimensions ) :: GIdims
       INTEGER :: GLOBAL_FACE
-
+!MAYBE THIS BREAKS THE CODE?
         if (present(CV_GIdims)) then
             global_face=Mdims%totele * CV_GIdims%scvngi * 2
         else

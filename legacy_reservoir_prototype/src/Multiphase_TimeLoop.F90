@@ -379,7 +379,6 @@ contains
             plike_grad_sou_coef( cv_nonods * nphase ), &
             )
 
-        ncv_faces=CV_count_faces( Mdims, CV_ELE_TYPE, CV_GIDIMS = CV_GIdims)
 
         !!$
         suf_sig_diagten_bc=0.
@@ -426,6 +425,10 @@ contains
         call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
         call cv_fem_shape_funs_new( CV_funs, Mdims, CV_GIdims, cv_ele_type, quad_over_whole_ele = .false. )
         call cv_fem_shape_funs_new( FE_funs, Mdims, FE_GIdims, u_ele_type, quad_over_whole_ele = .true. )
+
+        !Obtain the number of faces in the control volume space
+        ncv_faces=CV_count_faces( Mdims, CV_ELE_TYPE, CV_GIDIMS = CV_GIdims)
+
 
         allocate( theta_flux( nphase, ncv_faces * igot_theta_flux ), &
             one_m_theta_flux( nphase, ncv_faces * igot_theta_flux ), &
@@ -1759,7 +1762,6 @@ end if
                 suf_sig_diagten_bc=0.
                 !!$
 
-                ncv_faces = CV_count_faces( Mdims, CV_ELE_TYPE, CV_GIdims)
 
 
                 !!$
@@ -1777,8 +1779,10 @@ end if
 !!$                call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
 !!$                    cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
 
-                call retrieve_ngi( GIdims, Mdims, cv_ele_type, .false. )
-                scvngi_theta = GIdims%scvngi
+!                call retrieve_ngi( GIdims, Mdims, cv_ele_type, .false. )
+
+                scvngi_theta = CV_GIdims%scvngi
+                ncv_faces = CV_count_faces( Mdims, CV_ELE_TYPE, CV_GIdims)
 
                 allocate( theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
                     one_m_theta_flux( nphase, scvngi_theta*cv_nloc*totele * igot_theta_flux ), &
