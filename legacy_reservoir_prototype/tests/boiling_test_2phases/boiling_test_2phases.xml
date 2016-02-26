@@ -2,31 +2,26 @@
 <testproblem>
   <name>boiling_test_2phases</name>
   <owner userid="pan.yang"/>
-  <tags>mpml boiling</tags>
+  <tags>mpml boiling tbc</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/multiphase_prototype boil_h.mpml</command_line>
   </problem_definition>
   <variables>
-    <variable name="final_dt" language="python">from fluidity_tools import stat_parser as stat
-vals = stat("mid_discontinuous.stat")["dt"]
-A = list(vals.values())
-final_dt = A[0][5]
-</variable>
     <variable name="int_sat1" language="python">from fluidity_tools import stat_parser as stat
-int_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["integral"][-1]</variable>
+int_sat1 = stat("boil_h.stat")["phase1"]["PhaseVolumeFraction"]["integral"][-1]</variable>
 
     <variable name="int_sat2" language="python">from fluidity_tools import stat_parser as stat
-int_sat2 = stat("mid_discontinuous.stat")["phase2"]["PhaseVolumeFraction"]["integral"][-1]</variable>
+int_sat2 = stat("boil_h.stat")["phase2"]["PhaseVolumeFraction"]["integral"][-1]</variable>
 
     <variable name="p1_max_T" language="python">from fluidity_tools import stat_parser as stat
-p1_max_T = stat("mid_discontinuous.stat")["phase1"]["Temperature"]["max"][-1]</variable>
+p1_max_T = stat("boil_h.stat")["phase1"]["Temperature"]["max"][-1]</variable>
     <variable name="p1_min_T" language="python">from fluidity_tools import stat_parser as stat
-p1_min_T = stat("mid_discontinuous.stat")["phase1"]["Temperature"]["min"][-1]</variable>
+p1_min_T = stat("boil_h.stat")["phase1"]["Temperature"]["min"][-1]</variable>
 
     <variable name="p2_max_T" language="python">from fluidity_tools import stat_parser as stat
-p2_max_T = stat("mid_discontinuous.stat")["phase2"]["Temperature"]["max"][-1]</variable>
+p2_max_T = stat("boil_h.stat")["phase2"]["Temperature"]["max"][-1]</variable>
     <variable name="p2_min_T" language="python">from fluidity_tools import stat_parser as stat
-p2_min_T = stat("mid_discontinuous.stat")["phase2"]["Temperature"]["min"][-1]</variable>
+p2_min_T = stat("boil_h.stat")["phase2"]["Temperature"]["min"][-1]</variable>
     
     </variables>
     <pass_tests>
