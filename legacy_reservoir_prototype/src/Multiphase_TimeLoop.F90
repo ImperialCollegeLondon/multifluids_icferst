@@ -654,16 +654,14 @@ contains
                     call Calculate_AbsorptionTerm( state, packed_state, npres, &
                         cv_ndgln, mat_ndgln, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption, ids_ndgln, IDs2CV_ndgln )
+
                     ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
                     ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
                     ! is diagonal
-
-                    if( is_porous_media ) then
-                        call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
-                            cv_snloc, n_in_pres, nphase, ndim, CV_GIdims%nface, mat_nonods, cv_nonods, x_nloc, Mspars%ELE%ncol, cv_ele_type, &
-                            Mspars%ELE%fin, Mspars%ELE%col, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
-                            state, x_nonods, ids_ndgln )
-                    end if
+                    call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &
+                       cv_snloc, n_in_pres, nphase, ndim, CV_GIdims%nface, mat_nonods, cv_nonods, x_nloc, Mspars%ELE%ncol, cv_ele_type, &
+                       Mspars%ELE%fin, Mspars%ELE%col, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
+                       state, x_nonods, ids_ndgln )
                 end if
 
                 !!$ Solve advection of the scalar 'Temperature':
