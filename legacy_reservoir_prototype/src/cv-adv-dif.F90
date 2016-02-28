@@ -38,7 +38,8 @@ module cv_advection
 
     use solvers_module
     use spud
-    use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media, pi, after_adapt
+    use global_parameters, only: option_path_len, field_name_len, timestep, &
+        is_porous_media, pi, after_adapt, is_first_time_step
     use futils, only: int2str
     use adapt_state_prescribed_module
     use sparse_tools
@@ -424,14 +425,14 @@ contains
             LIMDT, LIMDTT2, SUM_LIMT, SUM_LIMTOLD
         LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS
         !        ===> INTEGERS <===
-!!$        INTEGER :: CV_GIdims%cv_ngi, CV_NGI_SHORT, CV_GIdims%scvngi, CV_GIdims%sbcvngi, COUNT, ICOUNT, JCOUNT, &
+        !!$        INTEGER :: CV_GIdims%cv_ngi, CV_NGI_SHORT, CV_GIdims%scvngi, CV_GIdims%sbcvngi, COUNT, ICOUNT, JCOUNT, &
         INTEGER :: COUNT, ICOUNT, JCOUNT, &
             ELE, ELE2, GI, GCOUNT, SELE,   &
             U_SILOC, CV_SILOC, U_KLOC, &
             CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
             CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
             CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
-!!$            CV_GIdims%nface, X_NODI,  X_NODJ, &
+            !!$            CV_GIdims%nface, X_NODI,  X_NODJ, &
             X_NODI,  X_NODJ, &
             CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS, &
             XNOD, NSMALL_COLM, COUNT2, NOD
@@ -514,10 +515,11 @@ contains
         real, dimension( Mdims%nphase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_nphase_6, &
             rdum_nphase_7, rdum_nphase_8, rdum_nphase_9, rdum_nphase_10, rdum_nphase_11, rdum_nphase_12, rdum_nphase_13
         REAL, DIMENSION( Mdims%nphase ) :: ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA, &
-                wrelax, XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
+            wrelax, XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
         REAL, DIMENSION ( Mdims%ndim,Mdims%nphase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
         real, dimension( Mdims%ndim ) :: rdum_ndim_1, rdum_ndim_2, rdum_ndim_3
         real, dimension( Mdims%nphase ) :: LOC_CV_RHS_I, LOC_CV_RHS_J, THETA_VEL
+
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: solid_vol_fra
@@ -1009,25 +1011,25 @@ contains
                     dim=psi(i)%ptr%dim)
             end if
         end do
-        allocate(psi_int(1)%ptr)
-        call allocate(psi_int(1)%ptr,1,tracer%mesh,"CV_mass")
+
+        psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
+        psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
         call set(psi_int(1)%ptr,dim=1,val=1.0)
-        coord=>extract_vector_field(packed_state,"PressureCoordinate")
-        allocate(psi_ave(1)%ptr)
-        call allocate(psi_ave(1)%ptr,Mdims%ndim,tracer%mesh,"Barycentre")
         if (tracer%mesh%continuity<0) then
             psi_ave(1)%ptr%val=x_all(:,x_ndgln)
         else
             call set_all(psi_ave(1)%ptr,X_ALL)
         end if
+
         call PROJ_CV_TO_FEM_state( packed_state,FEMPSI(1:FEM_IT),&
             PSI(1:FEM_IT), Mdims%ndim, &
-            PSI_AVE, PSI_INT, MASS_ELE, &
-            Mdims%cv_nonods, Mdims%totele, CV_NDGLN, Mdims%x_nloc, X_NDGLN, &
+            MASS_ELE, &
+            Mdims%cv_nonods, Mdims%totele, CV_NDGLN, X_NDGLN, &
             CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVN, CV_funs%CVWEIGHT,&
             CV_funs%CVFEN, CV_funs%CVFENLX_ALL, &
-            Mdims%x_nonods, X_ALL, NCOLM, FINDM, COLM, MIDM, &
-            IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC)
+            Mdims%x_nonods, X_ALL, &
+            IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC, PSI_AVE, PSI_INT)
+
         XC_CV_ALL=0.0
         XC_CV_ALL(1:Mdims%ndim,:)=psi_ave(1)%ptr%val
         MASS_CV=psi_int(1)%ptr%val(1,:)
@@ -1068,10 +1070,10 @@ contains
                 deallocate(fempsi(i)%ptr)
             end if
         end do
-        call deallocate(psi_int(1)%ptr)
-        deallocate(psi_int(1)%ptr)
-        call deallocate(psi_ave(1)%ptr)
-        deallocate(psi_ave(1)%ptr)
+!        call deallocate(psi_int(1)%ptr)
+!        deallocate(psi_int(1)%ptr)
+!        call deallocate(psi_ave(1)%ptr)
+!        deallocate(psi_ave(1)%ptr)
         IF (PRESENT(MASS_ELE_TRANSP)) &
             MASS_ELE_TRANSP = MASS_ELE
         NORMALISE = .FALSE.
@@ -2795,6 +2797,7 @@ contains
             end do
             its=its+1
         end subroutine dump_multiphase
+
         SUBROUTINE GET_INT_T_DEN_new( LIMF )
             !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
             IMPLICIT NONE
@@ -2826,11 +2829,12 @@ contains
             INTEGER :: CV_KLOC, CV_NODK, CV_NODK_IPHA, CV_KLOC2, CV_NODK2, CV_NODK2_IPHA, CV_STAR_IPHA, &
                 CV_SKLOC, CV_SNODK, CV_SNODK_IPHA, U_KLOC,U_NODK,U_NODK_IPHA, IDIM, ELE_DOWN
             REAL :: T_BETWEEN_MIN, T_BETWEEN_MAX
-            REAL :: T_AVE_EDGE, T_AVE_ELE
             REAL :: T_MIDVAL
             INTEGER :: U_KLOC2, U_NODK2, U_NODK2_IPHA
             INTEGER :: U_SKLOC, COUNT, COUNT_IN, COUNT_OUT, COUNT_IN_PHA, COUNT_OUT_PHA
             INTEGER :: IFIELD,IFI
+
+            !passing from outside
             REAL, dimension(Mdims%ndim,NFIELD) :: FXGI_ALL, UDGI_ALL, A_STAR_X_ALL,VEC_VEL2
             REAL, dimension(NFIELD) :: courant_or_minus_one_new, XI_LIMIT,&
                 P_STAR, U_DOT_GRADF_GI, A_STAR_F, RESIDGI, ELE_LENGTH_SCALE,FEMFGI, RGRAY, DIFF_COEF, COEF,&
@@ -3127,6 +3131,9 @@ contains
             end if
             RETURN
         END SUBROUTINE GET_INT_VEL_ORIG_NEW
+
+
+
         SUBROUTINE GET_INT_VEL_POROUS_VEL(NDOTQNEW, NDOTQ, INCOME, &
             LOC_T_I, LOC_T_J, LOC_FEMT, &
             LOC_NU, LOC2_NU, SLOC_NU, &
@@ -4190,129 +4197,129 @@ contains
 
     !Sprint_to_do!substitute GIdims for the corresponding cv_gi_dims
     function CV_count_faces( packed_state, Mdims, &
-         CV_ELE_TYPE,  &
-         STOTEL, CV_SNDGLN, U_SNDGLN, &
-         face_sparsity) result(global_face)
+        CV_ELE_TYPE,  &
+        STOTEL, CV_SNDGLN, U_SNDGLN, &
+        face_sparsity) result(global_face)
 
-      !  =====================================================================
-      !     This subroutine counts then number of faces in the control volume space
-      !
+        !  =====================================================================
+        !     This subroutine counts then number of faces in the control volume space
+        !
 
-      ! Inputs/Outputs
-      IMPLICIT NONE
-      type(state_type), intent(inout) :: packed_state
-      type(multi_dimensions), intent(in) :: Mdims
-      INTEGER, intent( in ) :: CV_ELE_TYPE, STOTEL
-      INTEGER, DIMENSION( : ), pointer :: CV_NDGLN
-      INTEGER, DIMENSION( : ), pointer ::  X_NDGLN
-      INTEGER, DIMENSION( : ), pointer :: U_NDGLN
-      INTEGER, DIMENSION( : ), pointer :: XU_NDGLN
-      INTEGER, DIMENSION( : ), pointer :: MAT_NDGLN
-      INTEGER, DIMENSION( : ) :: CV_SNDGLN
-      INTEGER, DIMENSION(: )  :: U_SNDGLN
-      ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
-      INTEGER, DIMENSION( : ), pointer :: FINDCMC, COLCMC
+        ! Inputs/Outputs
+        IMPLICIT NONE
+        type(state_type), intent(inout) :: packed_state
+        type(multi_dimensions), intent(in) :: Mdims
+        INTEGER, intent( in ) :: CV_ELE_TYPE, STOTEL
+        INTEGER, DIMENSION( : ), pointer :: CV_NDGLN
+        INTEGER, DIMENSION( : ), pointer ::  X_NDGLN
+        INTEGER, DIMENSION( : ), pointer :: U_NDGLN
+        INTEGER, DIMENSION( : ), pointer :: XU_NDGLN
+        INTEGER, DIMENSION( : ), pointer :: MAT_NDGLN
+        INTEGER, DIMENSION( : ) :: CV_SNDGLN
+        INTEGER, DIMENSION(: )  :: U_SNDGLN
+        ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
+        INTEGER, DIMENSION( : ), pointer :: FINDCMC, COLCMC
 
-      INTEGER, DIMENSION( : ), pointer :: FINDM, COLM, MIDM
-      INTEGER, DIMENSION( : ), pointer :: FINELE, COLELE
-      integer, dimension(:), pointer :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
-      !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
+        INTEGER, DIMENSION( : ), pointer :: FINDM, COLM, MIDM
+        INTEGER, DIMENSION( : ), pointer :: FINELE, COLELE
+        integer, dimension(:), pointer :: SMALL_FINDRM, SMALL_COLM, SMALL_CENTRM
+        !character( len = option_path_len ), intent( in ), optional :: option_path_spatial_discretisation
 
 
-      ! Local variables
-      type( multi_GI_dimensions ) :: GIdims
-      integer :: CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-           CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, &
-           NDIM, XU_NLOC, cv_snloc, u_snloc
-      LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
-      LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
-           CVFEM_ON_FACE, UFEM_ON_FACE
-      INTEGER, DIMENSION( : ), allocatable :: FINDGPTS, &
-           CV_OTHER_LOC, U_OTHER_LOC, MAT_OTHER_LOC, &
-           COLGPTS, CV_SLOC2LOC, U_SLOC2LOC, &
-           TMAX_NOD, TMIN_NOD, &
-           DENMAX_NOD, DENMIN_NOD, &
-           T2MAX_NOD, T2MIN_NOD
-      INTEGER, DIMENSION( : , : ), allocatable :: CV_SLOCLIST, U_SLOCLIST, &
-           FACE_ELE, CV_NEILOC
-      REAL, DIMENSION( : ), allocatable :: CVWEIGHT, CVWEIGHT_SHORT, SCVFEWEIGH, SBCVFEWEIGH, &
-           CVNORMX, &
-           CVNORMY, CVNORMZ, SCVRA, SCVDETWEI, &
-           SUM_CV, &
-           UP_WIND_NOD, DU, DV, DW, PERM_ELE
-      REAL, DIMENSION( : , : ), allocatable :: CVN, CVN_SHORT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
-           CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT,  &
-           UFEN, UFENLX, UFENLY, UFENLZ, SCVFEN, SCVFENSLX, SCVFENSLY, &
-           SCVFENLX, SCVFENLY, SCVFENLZ, &
-           SCVFENX, SCVFENY, SCVFENZ, &
-           SUFEN, SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ, &
-           SBCVN,SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-           SBCVFENLX, SBCVFENLY, SBCVFENLZ, SBUFEN, SBUFENSLX, SBUFENSLY, &
-           SBUFENLX, SBUFENLY, SBUFENLZ
+        ! Local variables
+        type( multi_GI_dimensions ) :: GIdims
+        integer :: CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
+            CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, &
+            NDIM, XU_NLOC, cv_snloc, u_snloc
+        LOGICAL, DIMENSION( : ), allocatable :: X_SHARE
+        LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE, U_ON_FACE, &
+            CVFEM_ON_FACE, UFEM_ON_FACE
+        INTEGER, DIMENSION( : ), allocatable :: FINDGPTS, &
+            CV_OTHER_LOC, U_OTHER_LOC, MAT_OTHER_LOC, &
+            COLGPTS, CV_SLOC2LOC, U_SLOC2LOC, &
+            TMAX_NOD, TMIN_NOD, &
+            DENMAX_NOD, DENMIN_NOD, &
+            T2MAX_NOD, T2MIN_NOD
+        INTEGER, DIMENSION( : , : ), allocatable :: CV_SLOCLIST, U_SLOCLIST, &
+            FACE_ELE, CV_NEILOC
+        REAL, DIMENSION( : ), allocatable :: CVWEIGHT, CVWEIGHT_SHORT, SCVFEWEIGH, SBCVFEWEIGH, &
+            CVNORMX, &
+            CVNORMY, CVNORMZ, SCVRA, SCVDETWEI, &
+            SUM_CV, &
+            UP_WIND_NOD, DU, DV, DW, PERM_ELE
+        REAL, DIMENSION( : , : ), allocatable :: CVN, CVN_SHORT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
+            CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT,  &
+            UFEN, UFENLX, UFENLY, UFENLZ, SCVFEN, SCVFENSLX, SCVFENSLY, &
+            SCVFENLX, SCVFENLY, SCVFENLZ, &
+            SCVFENX, SCVFENY, SCVFENZ, &
+            SUFEN, SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ, &
+            SBCVN,SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
+            SBCVFENLX, SBCVFENLY, SBCVFENLZ, SBUFEN, SBUFENSLX, SBUFENSLY, &
+            SBUFENLX, SBUFENLY, SBUFENLZ
 
-      !        ===> INTEGERS <===
-!!$        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, JCOUNT, &
-      INTEGER :: COUNT, JCOUNT, &
-           ELE, ELE2, GI, GCOUNT, SELE,   &
-           NCOLGPTS, &
-           CV_SILOC, U_KLOC, &
-           CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
-           CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
-           CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
-           JCOUNT_IPHA, IMID_IPHA, &
-           NFACE, X_NODI,  &
-           CV_INOD, MAT_NODI, FACE_ITS, NFACE_ITS, &
-           CVNOD, XNOD, NSMALL_COLM, COUNT2, NOD
+        !        ===> INTEGERS <===
+        !!$        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, JCOUNT, &
+        INTEGER :: COUNT, JCOUNT, &
+            ELE, ELE2, GI, GCOUNT, SELE,   &
+            NCOLGPTS, &
+            CV_SILOC, U_KLOC, &
+            CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
+            CV_NODJ, CV_NODJ_IPHA, rhs_nodj_ipha,rhs_nodi_ipha,&
+            CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
+            JCOUNT_IPHA, IMID_IPHA, &
+            NFACE, X_NODI,  &
+            CV_INOD, MAT_NODI, FACE_ITS, NFACE_ITS, &
+            CVNOD, XNOD, NSMALL_COLM, COUNT2, NOD
 
-      !        ===>  LOGICALS  <===
-      LOGICAL :: QUAD_OVER_WHOLE_ELE, integrat_at_gi
+        !        ===>  LOGICALS  <===
+        LOGICAL :: QUAD_OVER_WHOLE_ELE, integrat_at_gi
 
-      INTEGER :: GLOBAL_FACE
-      type(csr_sparsity), pointer :: connectivity
-      type(mesh_type), pointer :: cv_mesh, x_mesh, xu_mesh, u_mesh, mat_mesh
+        INTEGER :: GLOBAL_FACE
+        type(csr_sparsity), pointer :: connectivity
+        type(mesh_type), pointer :: cv_mesh, x_mesh, xu_mesh, u_mesh, mat_mesh
 
-      type(csr_sparsity), intent(out), optional :: face_sparsity
-      type(ilist), dimension(:), allocatable :: face_list
+        type(csr_sparsity), intent(out), optional :: face_sparsity
+        type(ilist), dimension(:), allocatable :: face_list
 
-      GLOBAL_FACE=0
+        GLOBAL_FACE=0
 
-      connectivity=>extract_csr_sparsity(packed_state,"ElementConnectivity")
-      cv_mesh=>extract_mesh(packed_state,"PressureMesh")
-      cv_ndgln=>cv_mesh%ndglno
-      totele=element_count(cv_mesh)
-      ndim=mesh_dim(cv_mesh)
-      cv_nonods=node_count(cv_mesh)
-      cv_nloc=ele_loc(cv_mesh,1)
-      cv_snloc=face_loc(cv_mesh,1)
-      x_mesh=>extract_mesh(packed_state,"PressureMesh_Continuous")
-      x_ndgln=>x_mesh%ndglno
-      X_nonods=node_count(x_mesh)
-      X_nloc=ele_loc(x_mesh,1)
-      xu_mesh=>extract_mesh(packed_state,"VelocityMesh_Continuous")
-      xu_ndgln=>xu_mesh%ndglno
-      xu_nloc=ele_loc(xu_mesh,1)
-      u_mesh=>extract_mesh(packed_state,"InternalVelocityMesh")
-      u_ndgln=>u_mesh%ndglno
-      u_nonods=node_count(u_mesh)
-      u_nloc=ele_loc(u_mesh,1)
-      u_snloc=face_loc(u_mesh,1)
+        connectivity=>extract_csr_sparsity(packed_state,"ElementConnectivity")
+        cv_mesh=>extract_mesh(packed_state,"PressureMesh")
+        cv_ndgln=>cv_mesh%ndglno
+        totele=element_count(cv_mesh)
+        ndim=mesh_dim(cv_mesh)
+        cv_nonods=node_count(cv_mesh)
+        cv_nloc=ele_loc(cv_mesh,1)
+        cv_snloc=face_loc(cv_mesh,1)
+        x_mesh=>extract_mesh(packed_state,"PressureMesh_Continuous")
+        x_ndgln=>x_mesh%ndglno
+        X_nonods=node_count(x_mesh)
+        X_nloc=ele_loc(x_mesh,1)
+        xu_mesh=>extract_mesh(packed_state,"VelocityMesh_Continuous")
+        xu_ndgln=>xu_mesh%ndglno
+        xu_nloc=ele_loc(xu_mesh,1)
+        u_mesh=>extract_mesh(packed_state,"InternalVelocityMesh")
+        u_ndgln=>u_mesh%ndglno
+        u_nonods=node_count(u_mesh)
+        u_nloc=ele_loc(u_mesh,1)
+        u_snloc=face_loc(u_mesh,1)
 
-      mat_mesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
-      mat_nloc=ele_loc(mat_mesh,1)
+        mat_mesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
+        mat_nloc=ele_loc(mat_mesh,1)
 
-      allocate( face_list( totele ) )
+        allocate( face_list( totele ) )
 
-      ewrite(3,*) 'In CV_FACE_COUNT'
+        ewrite(3,*) 'In CV_FACE_COUNT'
 
-      QUAD_OVER_WHOLE_ELE=.FALSE.
-      ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-!!$        call retrieve_ngi( TOTELE, cv_ele_type, CV_NLOC,U_NLOC, &
-!!$            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
-      call retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE )
+        QUAD_OVER_WHOLE_ELE=.FALSE.
+        ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
+        !!$        call retrieve_ngi( TOTELE, cv_ele_type, CV_NLOC,U_NLOC, &
+        !!$            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
+        call retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE )
 
-      global_face=totele * GIdims%scvngi * 2
+        global_face=totele * GIdims%scvngi * 2
 
-      return
+        return
     end function CV_COUNT_FACES
 
 
@@ -4608,263 +4615,262 @@ contains
     END SUBROUTINE PROJ_CV_TO_FEM
 
 
-    SUBROUTINE PROJ_CV_TO_FEM_state( packed_state,FEMPSI, PSI, NDIM, &
-        PSI_AVE, PSI_INT, MASS_ELE, &
-        CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-        CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, NLX_ALL, &
-        X_NONODS, X, NCOLM, FINDM, COLM, MIDM, &
-        IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC)
+    SUBROUTINE Proj_CV_to_FEM_state(packed_state, &
+        fempsi, psi, ndim, mass_ele, &
+        cv_nonods, totele, cv_ndgln, x_ndgln, &
+        cv_ngi, cv_nloc, cvn, cvweight, N, NLX_ALL, &
+        x_nonods, X, igetct, mass_mn_pres, &
+        findcmc, colcmc, ncolcmc, psi_ave, psi_int)
 
-        ! Determine FEMT (finite element wise) etc from T (control volume wise)
-        ! Also integrate PSI_INT over each CV and average PSI_AVE over each CV.
+        !------------------------------------------------
+        ! Subroutine description:
+        ! (1) determine FEMT (finite element wise) etc
+        !     from T (control volume wise)
+        ! (2) (optional) calculate psi_int (area) and
+        !     psi_ave (barycentre) over each CV
+        !------------------------------------------------
+
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        !sprint_to_do!not use internal use in subroutines
         use shape_functions
         use shape_functions_Linear_Quadratic
         use solvers_module
         use matrix_operations
-        IMPLICIT NONE
+        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+        implicit none
+
+        !---------------------------------
+        ! I/O variables
+        !---------------------------------
         type(state_type) :: packed_state
-        type(tensor_field_pointer), dimension(:) :: fempsi,psi
-        type(vector_field_pointer), dimension(:) :: psi_int,  psi_ave
+        type(tensor_field_pointer), dimension(:), intent(in) :: fempsi  ! finite element field data
+        type(tensor_field_pointer), dimension(:), intent(in) :: psi     ! finite volume field data
+        type(vector_field_pointer), dimension(:), intent(in) :: psi_int ! control volume area
+        type(vector_field_pointer), dimension(:), intent(in) :: psi_ave ! control volume barycentre
+        integer, intent(in) :: ndim                     ! number of dimensions
+        integer, intent(in) :: cv_nonods                ! number of control volume barycentres
+        integer, intent(in) :: totele                   ! total number of finite elements
+        integer, intent(in) :: cv_ngi                   ! number of gauss integer points in a control volume
+        integer, intent(in) :: cv_nloc                  ! number of local control volumes
+        integer, intent(in) :: x_nonods                 ! number of control volume in continuous mesh
+        integer, intent(in) :: igetct                   ! whether to get CT matrix (i.e. I get CT)
+        integer, intent(in) :: ncolcmc                  ! number of columns in CMC matrix
+        integer, dimension(:), intent(in) :: cv_ndgln   ! global node ids of control volumes
+        integer, dimension(:), intent(in) :: x_ndgln    ! global node ids of continuous mesh
+        real, dimension(:), intent(in) :: cvweight      ! control volumes weight
+        real, dimension(:,:), intent(in) :: N           ! shape function of fintie elements
+        real, dimension(:,:), intent(in) :: X           ! shape function of continuous mesh
+        real, dimension(:,:), intent(in) :: CVN         ! shape function of control volumes
+        real, dimension(:,:,:), intent(in) :: NLX_ALL   ! derivative of N
+        real, dimension(:), intent(inout) :: mass_ele   ! finite element mass
+        integer, dimension(:), intent(in) :: findcmc    ! row position in the sparse matrix of CMC
+        integer, dimension(:), intent(in) :: colcmc     ! column position in the sparse matrix of CMC
+        real, dimension(:), intent( inout ) :: mass_mn_pres     ! ??
 
-        INTEGER, intent( in ) :: NDIM, CV_NONODS, TOTELE, &
-            X_NLOC, CV_NGI, CV_NLOC, X_NONODS, NCOLM, IGETCT, NCOLCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-        REAL, DIMENSION( :, : ), intent( in ) :: CVN
-        REAL, DIMENSION( : ), intent( in ) :: CVWEIGHT
-        REAL, DIMENSION( :, : ), intent( in ) :: N
-        REAL, DIMENSION(:, :, :), intent(in) :: NLX_ALL
-        REAL, DIMENSION( :,: ), intent( in ) :: X
-        REAL, DIMENSION( : ), intent( inout ) :: MASS_ELE
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-        INTEGER, DIMENSION( : ), intent( in ) :: COLM
-        INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-
-        REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
-        ! Local variables
-        LOGICAL :: D1, D3
-        LOGICAL, PARAMETER :: DCYL = .FALSE.
-
-        REAL, DIMENSION( : ), allocatable, target :: DETWEI2, RA2
-        REAL, DIMENSION( :, : , :), allocatable, target :: NX_ALL2
-        real, target :: VOLUME2
-        REAL :: NN, NM, MN, MM
-        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_GI, COUNT, IT, idim,&
-            max_iterations
-        !Pointers to use if storage is used.
-        REAL, DIMENSION( : ), pointer :: DETWEI, RA
-        REAL, DIMENSION( :, :, :), pointer :: NX_ALL
+        !---------------------------------
+        ! local variables
+        !---------------------------------
+        integer :: cv_nodi, cv_nodj, COUNT, max_iterations
+        integer :: iele, cv_iloc, cv_jloc, cv_gi, it                         ! loop variables
+        real :: nn, nm, mn, mm
+        real, dimension(:), allocatable, target :: detwei2, ra2
+        real, dimension(:), pointer :: detwei, ra
+        real, dimension(:,:,:), allocatable, target :: NX_ALL2
+        real, dimension(:,:,:), pointer :: NX_ALL
+        real, target :: volume2
         real, pointer :: volume
-
         type(scalar_field) :: cv_mass
         type(tensor_field), dimension(size(psi)) :: fempsi_rhs
         type(vector_field), dimension(size(psi_ave)) :: psi_ave_temp
         type(vector_field), dimension(size(psi_int)) :: psi_int_temp
+        type(csr_matrix) :: mat                     ! ???
+        type(petsc_csr_matrix) :: pmat              ! ???
         type(tensor_field), pointer :: tfield
-        type(csr_matrix) :: mat
-        type(petsc_csr_matrix) :: pmat
         type(csr_sparsity), pointer :: sparsity
-
-        logical :: do_not_project=.false., cv_test_space=.false.
-        character (len=*), parameter :: projection_options='/projections/control_volume_projections'
+        logical, parameter :: DCYL = .false.
+        logical :: do_not_project = .false., cv_test_space = .false.
+        logical :: cal_psi_ave_int = .false.
+        character (len=*), parameter :: projection_options = '/projections/control_volume_projections'
         character (len=option_path_len) :: option_path
 
-        ewrite(3,*) 'In PROJ_CV_TO_FEM_state'
-
-        if (have_option(projection_options//'/do_not_project')) then
-            do_not_project=.true.
+        !---------------------------------
+        ! initialisation and allocation
+        !---------------------------------
+        if(have_option(projection_options//'/do_not_project')) then
+            do_not_project = .true.
         end if
-        if (have_option(projection_options//'/test_function_space::ControlVolume')) then
-            cv_test_space=.true.
+        if(have_option(projection_options//'/test_function_space::ControlVolume')) then
+            cv_test_space = .true.
+        end if
+        if(is_first_time_step.or.after_adapt) then
+            cal_psi_ave_int = .true.
         end if
 
-        tfield=>psi(1)%ptr
-        call allocate(cv_mass,psi(1)%ptr%mesh,'CV_mass')
-        call zero(cv_mass)
-
-
-        ALLOCATE( DETWEI2( CV_NGI ))
-        ALLOCATE( RA2( CV_NGI ))
-        ALLOCATE( NX_ALL2( NDIM, CV_NLOC, CV_NGI ))
-        !Set the pointers
-        volume =>  VOLUME2; DETWEI => DETWEI2; RA => RA2
-        NX_ALL =>NX_ALL2
-
-
+        allocate(detwei2(cv_ngi))
+        allocate(ra2(cv_ngi))
+        allocate(NX_ALL2(ndim,cv_nloc,cv_ngi))
         do it=1,size(fempsi)
             call zero(fempsi(it)%ptr)
-            call allocate(fempsi_rhs(it),psi(it)%ptr%mesh,"RHS",&
-                dim=psi(it)%ptr%dim)
+            call allocate(fempsi_rhs(it),psi(it)%ptr%mesh,"RHS",dim=psi(it)%ptr%dim)
             call zero(fempsi_rhs(it))
-            call halo_update(PSI(IT)%ptr)
+            call halo_update(psi(it)%ptr)
         end do
+        volume=>volume2; detwei=>detwei2; ra=>ra2
+        tfield=>psi(1)%ptr; NX_ALL=>NX_ALL2
 
-        do it=1,size(psi_ave)
-            call allocate(psi_ave_temp(it),psi_ave(it)%ptr%dim,&
-                psi_ave(it)%ptr%mesh,&
-                "PsiAveTemp")
-            call set(psi_ave_temp(it),psi_ave(it)%ptr)
-            call zero(psi_ave(it)%ptr)
-        end do
-
-        do it=1,size(psi_int)
-            call allocate(psi_int_temp(it),psi_int(it)%ptr%dim,&
-                psi_int(it)%ptr%mesh,&
-                "PsiIntTemp")
-            call set(psi_int_temp(it),psi_int(it)%ptr)
-            call zero(psi_int(it)%ptr)
-        end do
+        if(cal_psi_ave_int) then
+            call allocate(cv_mass,psi(1)%ptr%mesh,'CV_mass')
+            call zero(cv_mass)
+            do it=1,size(psi_ave)
+                call allocate(psi_ave_temp(it),psi_ave(it)%ptr%dim,psi_ave(it)%ptr%mesh,"PsiAveTemp")
+                call set(psi_ave_temp(it),psi_ave(it)%ptr)
+                call zero(psi_ave(it)%ptr)
+            end do
+            do it=1,size(psi_int)
+                call allocate(psi_int_temp(it),psi_int(it)%ptr%dim,psi_int(it)%ptr%mesh,"PsiIntTemp")
+                call set(psi_int_temp(it),psi_int(it)%ptr)
+                call zero(psi_int(it)%ptr)
+            end do
+        end if
 
         sparsity=>extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
         call allocate(mat,sparsity,name="ProjectionMatrix")
         call allocate(pmat,sparsity,[1,1],name="ProjectionMatrix")
         call zero(mat)
+        if(igetct/=0) mass_mn_pres=0.0
 
+        !---------------------------------
+        ! projection
+        !---------------------------------
+        Loop_Elements: do iele = 1, totele
 
-        IF(IGETCT.NE.0) MASS_MN_PRES=0.0
-
-        D1 = ( NDIM == 1 )
-        D3 = ( NDIM == 3 )
-        !DCYL = .FALSE.
-
-        Loop_Elements: DO ELE = 1, TOTELE
-            if (isParallel()) then
-                if (.not. assemble_ele(psi_int(1)%ptr,ele)) cycle ! IS THIS A PROBLEM?
+            ! check parallelisation
+            if(isParallel()) then
+                if(.not.assemble_ele(psi_int(1)%ptr,iele)) cycle ! IS THIS A PROBLEM?
             end if
 
-            ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR( ELE, X(1,:), X(2,:), X(3,:), X_NDGLN, TOTELE, X_NONODS, CV_NLOC, CV_NGI, &
-                N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), CVWEIGHT, DETWEI2, RA2, VOLUME2, D1, D3, DCYL, &
-                NX_ALL2(1,:,:), NX_ALL2(2,:,:), NX_ALL2(3,:,:) )
-            MASS_ELE( ELE ) = VOLUME
-            Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
+            ! calculate detwei,RA,NX,NY,NZ for the ith element
+            call DETNLXR(iele,X(1,:),X(2,:),X(3,:),x_ndgln,totele,x_nonods, &
+                cv_nloc,cv_ngi,N,NLX_ALL(1,:,:),NLX_ALL(2,:,:),NLX_ALL(3,:,:), &
+                cvweight,detwei2,ra2,volume2,ndim==1,ndim==3,DCYL, &
+                NX_ALL2(1,:,:),NX_ALL2(2,:,:),NX_ALL2(3,:,:))
+            mass_ele(iele) = volume
 
+            Loop_CV_iLoc: do cv_iloc = 1, cv_nloc
 
-                CV_NODI = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
-                !ewrite(3,*)'ele,CV_NODI,CV_ILOC:',ele,CV_NODI,CV_ILOC, x(CV_NODI)
+                cv_nodi = cv_ndgln((iele-1)*cv_nloc+cv_iloc)
+                if(.not.node_owned(psi(1)%ptr,cv_nodi)) cycle
 
-                if (.not. node_owned(PSI(1)%ptr,cv_nodi)) cycle
+                Loop_CV_jLoc: do cv_jloc = 1, cv_nloc
 
-                Loop_CV_JLOC: DO CV_JLOC = 1, CV_NLOC
+                    cv_nodj = cv_ndgln((iele-1)*cv_nloc+cv_jloc)
 
-                    CV_NODJ = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_JLOC )
-                    NN = 0.0
-                    NM = 0.0
-                    MN = 0.0
-                    MM = 0.0
-                    DO CV_GI = 1, CV_NGI
-                        NN = NN + N( CV_ILOC, CV_GI )   * N(   CV_JLOC, CV_GI ) * DETWEI( CV_GI )
-                        NM = NM + N( CV_ILOC, CV_GI )   * CVN( CV_JLOC, CV_GI ) * DETWEI( CV_GI )
-                        MN = MN + CVN( CV_ILOC, CV_GI ) * N( CV_JLOC, CV_GI )   * DETWEI( CV_GI )
-                        MM = MM + CVN( CV_ILOC, CV_GI ) * CVN( CV_JLOC, CV_GI ) * DETWEI( CV_GI )
-                    END DO
+                    nn = 0.0; nm = 0.0; mn = 0.0; mm = 0.0
+                    do cv_gi = 1, cv_ngi
+                        mn = mn+CVN(cv_iloc,cv_gi)*N(cv_jloc,cv_gi)*detwei(cv_gi)
+                        mm = mm+CVN(cv_iloc,cv_gi)*CVN(cv_jloc,cv_gi)*detwei(cv_gi)
+                        if(.not.cv_test_space) then
+                            nn = nn+N(cv_iloc,cv_gi)*N(cv_jloc,cv_gi)*detwei(cv_gi)
+                            nm = nm+N(cv_iloc,cv_gi)*CVN(cv_jloc,cv_gi)*detwei(cv_gi)
+                        end if
+                    end do
 
-                    IF(IGETCT.NE.0) THEN
-                        CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, CV_NONODS, FINDCMC, COLCMC, NCOLCMC )
-
-                        MASS_MN_PRES( COUNT ) = MASS_MN_PRES( COUNT ) + MN
-                    ENDIF
-
-                    if (cv_test_space) then
-                        call addto(mat,cv_nodi,cv_nodj,MN)
+                    if(cv_test_space) then
+                        call addto(mat,cv_nodi,cv_nodj,mn)
+                        do it = 1, size(fempsi_rhs)
+                            fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
+                                +mm*psi(it)%ptr%val(:,:,cv_nodj)
+                        end do
                     else
-                        call addto(mat,cv_nodi,cv_nodj,NN)
+                        call addto(mat,cv_nodi,cv_nodj,nn)
+                        do it = 1, size(fempsi_rhs)
+                            fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
+                                +nm*psi(it)%ptr%val(:,:,cv_nodj)
+                        end do
                     end if
 
-                    call addto(CV_MASS, CV_NODI, MM )
-
-                    if (cv_test_space) then
-                        DO IT = 1, size(fempsi_rhs)
-                            FEMPSI_RHS(it)%val(:,:,CV_NODI) = FEMPSI_RHS(it)%val(:,:,CV_NODI) &
-                                + MM * PSI(IT)%ptr%val(:,:,CV_NODJ)
-                        END DO
-                    else
-                        DO IT = 1, size(fempsi_rhs)
-                            FEMPSI_RHS(it)%val(:,:,CV_NODI) = FEMPSI_RHS(it)%val(:,:,CV_NODI) &
-                                + NM * PSI(IT)%ptr%val(:,:,CV_NODJ)
-                        END DO
+                    if(igetct/=0) then
+                        call PosInMat(COUNT,cv_nodi,cv_nodj,cv_nonods,findcmc,colcmc,ncolcmc)
+                        mass_mn_pres(COUNT) = mass_mn_pres(COUNT)+mn
                     end if
 
-                    DO IT = 1, size(psi_ave)
-                        call addto( PSI_AVE(IT)%PTR, node_number=CV_NODI, val=MN * PSI_AVE_TEMP(IT)%val( : , CV_NODJ ) )
-                    END DO
-                    DO IT = 1, size(psi_int)
-                        call addto( PSI_INT(IT)%PTR, node_number=CV_NODI, val=MN * PSI_INT_TEMP(IT)%val( : , CV_NODJ ) )
-                    END DO
+                    ! mass, barycentre and area of CVs
+                    if(cal_psi_ave_int) then
+                        call addto(cv_mass,cv_nodi,mm)
+                        do it = 1, size(psi_ave)
+                            call addto(psi_ave(it)%ptr,node_number=cv_nodi,val=mn*psi_ave_temp(it)%val(:,cv_nodj))
+                        end do
+                        do it = 1, size(psi_int)
+                            call addto(psi_int(it)%ptr,node_number=cv_nodi,val=mn*psi_int_temp(it)%val(:,cv_nodj))
+                        end do
+                    end if
 
-                END DO Loop_CV_JLOC
+                end do Loop_CV_jLoc
 
-            END DO Loop_CV_ILOC
+            end do Loop_CV_iLoc
 
-        END DO Loop_Elements
-
-        call halo_update(cv_mass)
-        call invert(cv_mass)
+        end do Loop_Elements
 
         ! The below does not seem superefficient in terms of updating halo information.
         ! Form average...
-        DO IT = 1, size(psi_ave)
-            call halo_update(PSI_AVE(it)%PTR)
-            call scale(PSI_AVE(it)%PTR,cv_mass)
-        END DO
-
-        DO IT= 1, size(psi_int) ! this seems a really bad way to do halo updates.
-            call halo_update(PSI_int(it)%PTR)
-        end do
-
-        ! Solve...
-
-        if (do_not_project) then
-            DO IT = 1, size(fempsi)
-                call set(fempsi(it)%ptr,psi(it)%ptr)
-            end DO
-        else
-
-            if (have_option(projection_options//'/solver')) then
-                option_path=projection_options//'/solver'
-            else
-                call get_option( trim(PSI(1)%ptr%option_path)//"/prognostic/solver/max_iterations", &
-                    max_iterations,  default =  500 )
-                if (max_iterations == 0) then
-                    option_path="/material_phase[0]/scalar_field::Pressure/prognostic"
-                else
-                    option_path=trim(PSI(1)%ptr%option_path)//"/prognostic"
-                end if
-            end if
-            DO IT = 1, size(fempsi)
-                call zero_non_owned(fempsi_rhs(it))
-                CALL petsc_solve(  FEMPSI(IT)%ptr,  &
-                    MAT,  &
-                    FEMPSI_RHS(IT),  &
-                    option_path = option_path )
-            END DO
+        if(cal_psi_ave_int) then
+            call halo_update(cv_mass)
+            call invert(cv_mass)
+            do it = 1, size(psi_ave)
+                call halo_update(psi_ave(it)%ptr)
+                call scale(psi_ave(it)%ptr,cv_mass)
+            end do
+            do it = 1, size(psi_int) ! this seems a really bad way to do halo updates.
+                call halo_update(psi_int(it)%ptr)
+            end do
         end if
 
-        call DEALLOCATE( cv_MASS )
-        DO IT = 1, size(fempsi_RHS)
-            CALL DEALLOCATE( FEMPSI_RHS(it) )
-        END DO
-        do it=1, size(psi_ave_temp)
-            call DEALLOCATE( PSI_AVE_temp(it) )
-        end do
-        do it=1, size(psi_int_temp)
-            call DEALLOCATE( PSI_INT_temp(it) )
-        end do
-        call DEALLOCATE( MAT )
-        call DEALLOCATE( PMAT )
-        DEALLOCATE( DETWEI2 )
-        DEALLOCATE( RA2 )
-        DEALLOCATE( NX_ALL2 )
-        ewrite(3,*) 'Leaving PROJ_CV_TO_FEM_state'
+        ! Solve...
+        if(do_not_project) then
+            do it = 1, size(fempsi)
+                call set(fempsi(it)%ptr,psi(it)%ptr)
+            end do
+        else
+            if(have_option(projection_options//'/solver')) then
+                option_path=projection_options//'/solver'
+            else
+                call get_option(trim(psi(1)%ptr%option_path)//"/prognostic/solver/max_iterations", &
+                    max_iterations, default=500)
+                if(max_iterations==0) then
+                    option_path="/material_phase[0]/scalar_field::Pressure/prognostic"
+                else
+                    option_path=trim(psi(1)%ptr%option_path)//"/prognostic"
+                end if
+            end if
+            do it = 1, size(fempsi)
+                call zero_non_owned(fempsi_rhs(it))
+                call petsc_solve(fempsi(it)%ptr,mat,fempsi_rhs(it),option_path = option_path)
+            end do
+        end if
 
-        RETURN
+        !! deallocation
+        call deallocate(cv_mass)
+        do it = 1,size(fempsi_rhs)
+            call deallocate(fempsi_rhs(it))
+        end do
+        if(cal_psi_ave_int) then
+            do it = 1,size(psi_ave_temp)
+                call deallocate(psi_ave_temp(it))
+            end do
+            do it = 1,size(psi_int_temp)
+                call deallocate(psi_int_temp(it))
+            end do
+        end if
+        call deallocate(mat)
+        call deallocate(pmat)
+        deallocate(detwei2)
+        deallocate(ra2)
+        deallocate(nx_all2)
+
+        return
 
     END SUBROUTINE PROJ_CV_TO_FEM_state
-
-
 
 
     SUBROUTINE DG_DERIVS_UVW( U, UOLD, V, VOLD, W, WOLD, &

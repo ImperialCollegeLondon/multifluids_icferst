@@ -1743,25 +1743,18 @@ contains
             multiphase_state, multicomponent_state
         type(state_type) :: packed_state
         integer, intent(in) :: npres
-
         type(state_type), dimension(:,:), pointer, optional :: pmulti_state
-
         type(state_type), dimension(:,:), pointer :: multi_state
-
         integer :: i,nphase,ncomp,ndim,stat,iphase,icomp,idim,ele,ipres,n_in_pres
-
         type(scalar_field), pointer :: pressure, sfield
         type(vector_field), pointer :: velocity, position, vfield
         type(tensor_field), pointer :: tfield, p2, d2
-
         type(vector_field) :: porosity, vec_field
         type(vector_field) :: p_position, u_position, m_position
         type(tensor_field) :: permeability, ten_field
         type(mesh_type), pointer :: ovmesh, element_mesh
         type(element_type) :: element_shape
-
         integer, dimension( : ), pointer :: element_nodes
-
         logical :: has_density, has_phase_volume_fraction
 
         ncomp=option_count('/material_phase/is_multiphase_component')
@@ -1769,9 +1762,7 @@ contains
 
         position=>extract_vector_field(state(1),"Coordinate")
         ndim=mesh_dim(position)
-
         call insert(packed_state,position%mesh,"CoordinateMesh")
-
 
 #ifdef USING_FEMDEM
       if ( have_option( '/blasting' ) ) then
@@ -1828,6 +1819,7 @@ contains
 
          vfield => extract_vector_field( state(1), "Darcy_Velocity" )
          call insert( packed_state,vfield, "Darcy_Velocity" )
+
          vfield => extract_vector_field( state(1), "delta_U" )
          call insert( packed_state, vfield, "delta_U" )
 
@@ -1860,10 +1852,10 @@ contains
         else
             call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[3,nphase])
         end if
+
         !Introduce the rock-fluid properties (Immobile fraction, Krmax, relperm exponent -Capillary entry pressure, capillary exponent-)
         call insert(packed_state,ten_field,"PackedRockFluidProp")
         call deallocate(ten_field)
-
 
         allocate(multiphase_state(nphase))
         allocate(multicomponent_state(ncomp))
@@ -1871,6 +1863,18 @@ contains
 
         pressure=>extract_scalar_field(state(1),"Pressure")
         call insert(packed_state,pressure%mesh,"PressureMesh")
+
+        ! barycentre of control volumes
+        call allocate(vec_field,ndim,pressure%mesh,"CVBarycentre")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"CVBarycentre")
+        call deallocate(vec_field)
+
+        ! mass of control volumes
+        call allocate(vec_field,1,pressure%mesh,"CVIntegral")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"CVIntegral")
+        call deallocate(vec_field)
 
         !      call add_new_memory(packed_state,pressure,"FEPressure")
         !      call add_new_memory(packed_state,pressure,"OldFEPressure")
@@ -1887,7 +1891,6 @@ contains
         ! dummy field on the pressure mesh, used for evaluating python eos's.
         ! this could be cleaned up in the future.
         call add_new_memory(packed_state,pressure,"Dummy")
-
         tfield => extract_tensor_field( state(1), "Dummy", stat )
         if ( stat==0 ) call insert( packed_state, tfield, "Dummy" )
 
@@ -1905,14 +1908,11 @@ contains
         end do
 
         call insert_sfield(packed_state,"FEDensity",1,nphase)
-
         call insert_sfield(packed_state,"Density",1,nphase)
         call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
-
         call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
 
         d2=>extract_tensor_field(packed_state,"PackedFEDensity")
-
         do icomp=1,ncomp
             call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
         end do
@@ -1985,7 +1985,6 @@ contains
             call insert(packed_state,ovmesh,"PressureMesh_Discontinuous")
         end if
         call allocate(m_position,ndim,ovmesh,"MaterialCoordinate")
-
 
         call remap_field( position, u_position )
         call remap_field( position, p_position )
