@@ -949,7 +949,7 @@ contains
         uDiffusion_VOL = 0.0
         call calculate_viscosity( state, packed_state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%mat_nonods, mat_ndgln, uDiffusion )
         ! stabilisation for high aspect ratio problems - switched off
-        if ( .not. is_porous_media ) then
+        if ( is_porous_media ) then
            call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
               opt_vel_upwind_coefs_new, Mdims%nphase, Mdims%ndim, Mdims%totele, Mdims%cv_nloc, Mdims%mat_nloc, Mdims%mat_nonods, mat_ndgln )
         end if
