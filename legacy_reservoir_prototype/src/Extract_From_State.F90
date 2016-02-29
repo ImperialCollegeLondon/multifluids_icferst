@@ -1773,6 +1773,18 @@ contains
         pressure=>extract_scalar_field(state(1),"Pressure")
         call insert(packed_state,pressure%mesh,"PressureMesh")
 
+        ! barycentre of control volumes
+        call allocate(vec_field,ndim,pressure%mesh,"CVBarycentre")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"CVBarycentre")
+        call deallocate(vec_field)
+
+        ! mass of control volumes
+        call allocate(vec_field,1,pressure%mesh,"CVIntegral")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"CVIntegral")
+        call deallocate(vec_field)
+
         !      call add_new_memory(packed_state,pressure,"FEPressure")
         !      call add_new_memory(packed_state,pressure,"OldFEPressure")
         !      call add_new_memory(packed_state,pressure,"CVPressure")

@@ -38,7 +38,7 @@ module multiphase_time_loop
         check_diagnostic_dependencies
     use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
         simulation_start_wall_time, new_mesh, &
-        topology_mesh_name, current_time, is_porous_media, after_adapt, is_multifracture, &
+        topology_mesh_name, current_time, is_porous_media, after_adapt, is_multifracture, is_first_time_step, &
         OPTION_PATH_LEN, FIELD_NAME_LEN
     use fldebug
     use reference_counting
@@ -72,17 +72,13 @@ module multiphase_time_loop
     use multiphase_EOS
     use multiphase_fractures
     use multiphase_caching
-    use shape_functions_Linear_Quadratic
     use Compositional_Terms
     use Copy_Outof_State
     use cv_advection, only : cv_count_faces
     use multiphase_1D_engine
-
-    use multiphase_fractures
     use boundary_conditions_from_options
     use multi_data_types
     use vtk_interfaces
-
     use multi_interpolation
 
 #ifdef HAVE_ZOLTAN
@@ -97,8 +93,7 @@ module multiphase_time_loop
     !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
     public :: MultiFluids_SolveTimeLoop, dump_outflux
 
-
-  !type(rheology_type), dimension(:), allocatable :: rheology
+    !type(rheology_type), dimension(:), allocatable :: rheology
 
 contains
 
@@ -110,7 +105,6 @@ contains
         real, intent( inout ) :: dt
 
         !!$ additional state variables for multiphase & multicomponent
-
         type(state_type) :: packed_state
         type(state_type), dimension(:), pointer :: multiphase_state, multicomponent_state
 
@@ -1286,6 +1280,9 @@ end if
                 exit Loop_Time
             end if
 
+            if(itime==1) then
+                is_first_time_step = .false.
+            end if
 
         end do Loop_Time
 
