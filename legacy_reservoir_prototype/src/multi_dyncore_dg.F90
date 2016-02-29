@@ -949,12 +949,9 @@ contains
         uDiffusion_VOL = 0.0
         call calculate_viscosity( state, packed_state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%mat_nonods, mat_ndgln, uDiffusion )
         ! stabilisation for high aspect ratio problems - switched off
-        if (is_porous_media) then
-!            call calculate_u_abs_stab_porous_media( packed_state, U_ABS_STAB, &   !quality_list and calculate_u_abs_stab_porous_media removed in february 24 2016
-!                     Mdims%nphase, Mdims%ndim, Mdims%x_nloc, x_ndgln, MAT_NDGLN, Mdims%mat_nloc, Mdims%cv_nloc, quality_list)
-        else
-            call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
-               opt_vel_upwind_coefs_new, Mdims%nphase, Mdims%ndim, Mdims%totele, Mdims%cv_nloc, Mdims%mat_nloc, Mdims%mat_nonods, mat_ndgln )
+        if ( is_porous_media ) then
+           call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
+              opt_vel_upwind_coefs_new, Mdims%nphase, Mdims%ndim, Mdims%totele, Mdims%cv_nloc, Mdims%mat_nloc, Mdims%mat_nonods, mat_ndgln )
         end if
 
         ! vertical stab for buoyant gyre
