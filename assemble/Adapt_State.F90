@@ -919,12 +919,13 @@ contains
     end if
   end subroutine adapt_mesh
 
-  subroutine adapt_state_single(state, metric, initialise_fields)
+  subroutine adapt_state_single(state, metric, initialise_fields, suppress_reference_warnings)
 
     type(state_type), intent(inout) :: state
     type(tensor_field), intent(inout) :: metric
     !! If present and .true., initialise fields rather than interpolate them
     logical, optional, intent(in) :: initialise_fields
+    logical, optional, intent(in) :: suppress_reference_warnings
 
     type(state_type), dimension(1) :: states
 
@@ -934,12 +935,13 @@ contains
 
   end subroutine adapt_state_single
 
-  subroutine adapt_state_multiple(states, metric, initialise_fields)
+  subroutine adapt_state_multiple(states, metric, initialise_fields, suppress_reference_warnings)
 
     type(state_type), dimension(:), intent(inout) :: states
     type(tensor_field), intent(inout) :: metric
     !! If present and .true., initialise fields rather than interpolate them
     logical, optional, intent(in) :: initialise_fields
+    logical, optional, intent(in) :: suppress_reference_warnings
 
     call tictoc_clear(TICTOC_ID_SERIAL_ADAPT)
     call tictoc_clear(TICTOC_ID_DATA_MIGRATION)
@@ -948,7 +950,8 @@ contains
 
     call tic(TICTOC_ID_ADAPT)
 
-    call adapt_state_internal(states, metric, initialise_fields = initialise_fields)
+    call adapt_state_internal(states, metric, initialise_fields = initialise_fields,&
+         suppress_reference_warnings=suppress_reference_warnings)
 
     call toc(TICTOC_ID_ADAPT)
 
@@ -1021,7 +1024,7 @@ contains
 
   end subroutine adapt_state_first_timestep
 
-  subroutine adapt_state_internal(states, metric, initialise_fields)
+  subroutine adapt_state_internal(states, metric, initialise_fields, suppress_reference_warnings)
     !!< Adapt the supplied states according to the supplied metric. In parallel,
     !!< additionally re-load-balance with libsam. metric is deallocated by this
     !!< routine. Based on adapt_state_2d.
@@ -1033,6 +1036,11 @@ contains
     !! according to the specified initial condition in the options tree, except
     !! if these fields are initialised from_file (checkpointed).
     logical, optional, intent(in) :: initialise_fields
+    !! If present and .true., then suppress warnings for old references remaining following
+    !! mesh adaptivity. Use only if you expect references to remain external to state and are
+    !! willing and able to handle the deallocation yourself. The references will still be
+    !! tagged.
+    logical, optional, intent(in) :: suppress_reference_warnings
 
     character(len = FIELD_NAME_LEN) :: metric_name
     integer :: i, j, k, max_adapt_iteration
@@ -1048,6 +1056,7 @@ contains
     type(vector_field) :: extruded_positions
     type(tensor_field) :: full_metric
     logical :: vertically_structured_adaptivity
+    logical :: show_reference_warnings
 
     ! Zoltan with detectors stuff
     integer :: my_num_detectors, total_num_detectors_before_zoltan, total_num_detectors_after_zoltan
@@ -1058,6 +1067,10 @@ contains
     real :: global_min_quality, quality_tolerance
 
     ewrite(1, *) "In adapt_state_internal"
+
+    show_reference_warnings=.true.
+    if (present(suppress_reference_warnings)) &
+         show_reference_warnings = .not. suppress_reference_warnings
 
     nullify(node_ownership)
 
@@ -1364,13 +1377,15 @@ contains
         end if
       end if
 
-      if(vertical_only) then
-        ewrite(2,*) "Using vertical_only adaptivity, so skipping the printing of references"
-      else if (no_reserved_meshes()) then
-        ewrite(2, *) "Tagged references remaining:"
-        call print_tagged_references(0)
-      else
-        ewrite(2, *) "There are reserved meshes, so skipping printing of references."
+      if (show_reference_warnings) then
+         if(vertical_only) then
+            ewrite(2,*) "Using vertical_only adaptivity, so skipping the printing of references"
+         else if (no_reserved_meshes()) then
+            ewrite(2, *) "Tagged references remaining:"
+            call print_tagged_references(0)
+         else
+            ewrite(2, *) "There are reserved meshes, so skipping printing of references."
+         end if
       end if
 
       call write_adapt_state_debug_output(states, final_adapt_iteration, &

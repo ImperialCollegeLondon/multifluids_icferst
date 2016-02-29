@@ -62,11 +62,11 @@ module Copy_Outof_State
 
     private
 
-    public :: Get_Primary_Scalars, Get_Primary_Scalars_new, Compute_Node_Global_Numbers, Extracting_MeshDependentFields_From_State, &
+    public :: Get_Primary_Scalars, Get_Primary_Scalars_new, Compute_Node_Global_Numbers, &
         Extract_TensorFields_Outof_State, Get_Ele_Type, Get_Discretisation_Options, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
-        CheckElementAngles, bad_elements, calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,&
+        calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix
 
 
@@ -74,17 +74,6 @@ module Copy_Outof_State
        module procedure Get_Scalar_SNdgln, Get_Vector_SNdgln
     end interface Get_SNdgln
 
-    !This structure is to store data associated with a bad element
-    !We store the corresponding element, the node that is in the bad angle
-    !and the weights are the values to use to diffuse the bad node to the other nodes
-
-    !sprint_to_do!remove everything related with this.
-    type bad_elements
-        integer :: ele
-        integer, allocatable, dimension(:) :: nodes
-        real, allocatable, dimension(:) :: weights
-        real :: angle
-    end type bad_elements
 
     !sprint_to_do remove these global variables
     ! Used in calculations of the outflux - array of integers containing the gmesh IDs of each boundary that you wish to integrate over
@@ -199,6 +188,8 @@ contains
                 ph_nonods = 0
             end if
         end if
+
+        ewrite(3,*)' Leaving Get_Primary_Scalars'
 
         return
     end subroutine Get_Primary_Scalars
@@ -540,7 +531,7 @@ contains
     subroutine Get_Discretisation_Options( state, &
         t_disopt, v_disopt, t_beta, v_beta, t_theta, v_theta, u_theta, &
         t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-        comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
+        in_ele_upwind, dg_ele_upwind, &
         nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp, &
         volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, comp_get_theta_flux, &
         t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction )
@@ -550,7 +541,7 @@ contains
         integer, intent( inout ) :: t_disopt, v_disopt
         real, intent( inout ) :: t_beta, v_beta, t_theta, v_theta, u_theta
         integer, intent( inout ) :: t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-            comp_diffusion_opt, ncomp_diff_coef, in_ele_upwind, dg_ele_upwind, &
+            in_ele_upwind, dg_ele_upwind, &
             nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp
         logical, intent( inout ) :: volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, &
             comp_get_theta_flux, t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction
@@ -640,7 +631,6 @@ contains
         else
             v_dg_vel_int_opt = 1
         end if
-        comp_diffusion_opt = 0 ; ncomp_diff_coef = 0
         volfra_use_theta_flux = .false. ; volfra_get_theta_flux = .true.
         comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
         t_use_theta_flux = .false. ; t_get_theta_flux = .false.
@@ -651,95 +641,6 @@ contains
 
         return
     end subroutine Get_Discretisation_Options
-
-
-
-    !sprint_to_do! delete u_source and u_abs from state
-    subroutine Extracting_MeshDependentFields_From_State( state, packed_state, initialised, &
-        Velocity_U_Source, Velocity_Absorption )
-        implicit none
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state
-
-        logical, intent( in ) :: initialised
-        real, dimension( :, :, : ), intent( inout ) :: Velocity_U_Source
-        real, dimension( :, :, : ), intent( inout ) :: Velocity_Absorption
-
-        !!$ Local variables
-        type( scalar_field ), pointer :: scalarfield
-        type( vector_field ), pointer :: vectorfield, x_all
-        type( tensor_field ), pointer :: tensorfield
-        integer, dimension( : ), pointer :: element_nodes
-        character( len = option_path_len ) :: option_path
-        integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
-            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-            x_snloc, cv_snloc, u_snloc, p_snloc, &
-            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-            cv_ele_type, p_ele_type, u_ele_type, &
-            iphase, ele, idim
-        integer, dimension( : ), pointer :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, &
-            xu_ndgln, mat_ndgln, cv_sndgln, p_sndgln, u_sndgln
-        logical :: is_symmetric
-        real, dimension( : ), allocatable :: dummy
-
-        !!$ Extracting spatial resolution
-        call Get_Primary_Scalars( state, &
-            nphase, nstate, ncomp, totele, ndim, stotel, &
-            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-            x_snloc, cv_snloc, u_snloc, p_snloc, &
-            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods )
-
-        !!$ Calculating Global Node Numbers
-        allocate( cv_sndgln( stotel * cv_snloc ), p_sndgln( stotel * p_snloc ), &
-            u_sndgln( stotel * u_snloc ), dummy( cv_nonods ) )
-
-        cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
-
-        call Compute_Node_Global_Numbers( state, &
-            totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
-            cv_snloc, p_snloc, u_snloc, &
-            cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
-            cv_sndgln, p_sndgln, u_sndgln )
-
-        call Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type )
-
-
-        !Get the coordinates of the nodes from the mesh
-        x_all => extract_vector_field( packed_state, "PressureCoordinate" )
-
-        !!$
-        !!$ Extracting Pressure Field:
-        !!$
-        scalarfield => extract_scalar_field( state( 1 ), 'Pressure' )
-        call Get_ScalarFields_Outof_State( state, initialised, 1, scalarfield, &
-            dummy )
-
-        !!$
-        !!$ Extracting Density Field:
-        !!$
-        Loop_Density: do iphase = 1, nphase
-            scalarfield => extract_scalar_field( state( iphase ), 'Density' )
-            !knod = ( iphase - 1 ) * node_count( scalarfield )
-            call Get_ScalarFields_Outof_State( state, initialised, iphase, scalarfield, &
-                dummy)
-        end do Loop_Density
-
-        !!$
-        !!$ Extracting Velocity Field:
-        !!$
-        Loop_Velocity: do iphase = 1, nphase
-            vectorfield => extract_vector_field( state( iphase ), 'Velocity' )
-            call Get_VectorFields_Outof_State( state, initialised, iphase, vectorfield, &
-                field_prot_source=Velocity_U_Source, field_prot_absorption=Velocity_Absorption )
-        end do Loop_Velocity
-
-
-        deallocate( cv_sndgln, p_sndgln, u_sndgln, dummy )
-
-        return
-    end subroutine Extracting_MeshDependentFields_From_State
-
-
 
 
     subroutine Get_ScalarFields_Outof_State( state, initialised, iphase, field, &
@@ -1743,18 +1644,25 @@ contains
             multiphase_state, multicomponent_state
         type(state_type) :: packed_state
         integer, intent(in) :: npres
+
         type(state_type), dimension(:,:), pointer, optional :: pmulti_state
+
         type(state_type), dimension(:,:), pointer :: multi_state
+
         integer :: i,nphase,ncomp,ndim,stat,iphase,icomp,idim,ele,ipres,n_in_pres
+
         type(scalar_field), pointer :: pressure, sfield
         type(vector_field), pointer :: velocity, position, vfield
-        type(tensor_field), pointer :: tfield, p2, d2
+        type(tensor_field), pointer :: tfield, p2, d2, drhodp
+
         type(vector_field) :: porosity, vec_field
         type(vector_field) :: p_position, u_position, m_position
         type(tensor_field) :: permeability, ten_field
         type(mesh_type), pointer :: ovmesh, element_mesh
         type(element_type) :: element_shape
+
         integer, dimension( : ), pointer :: element_nodes
+
         logical :: has_density, has_phase_volume_fraction
 
         ncomp=option_count('/material_phase/is_multiphase_component')
@@ -1762,7 +1670,9 @@ contains
 
         position=>extract_vector_field(state(1),"Coordinate")
         ndim=mesh_dim(position)
+
         call insert(packed_state,position%mesh,"CoordinateMesh")
+
 
 #ifdef USING_FEMDEM
       if ( have_option( '/blasting' ) ) then
@@ -1819,7 +1729,6 @@ contains
 
          vfield => extract_vector_field( state(1), "Darcy_Velocity" )
          call insert( packed_state,vfield, "Darcy_Velocity" )
-
          vfield => extract_vector_field( state(1), "delta_U" )
          call insert( packed_state, vfield, "delta_U" )
 
@@ -1852,10 +1761,10 @@ contains
         else
             call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[3,nphase])
         end if
-
         !Introduce the rock-fluid properties (Immobile fraction, Krmax, relperm exponent -Capillary entry pressure, capillary exponent-)
         call insert(packed_state,ten_field,"PackedRockFluidProp")
         call deallocate(ten_field)
+
 
         allocate(multiphase_state(nphase))
         allocate(multicomponent_state(ncomp))
@@ -1891,6 +1800,7 @@ contains
         ! dummy field on the pressure mesh, used for evaluating python eos's.
         ! this could be cleaned up in the future.
         call add_new_memory(packed_state,pressure,"Dummy")
+
         tfield => extract_tensor_field( state(1), "Dummy", stat )
         if ( stat==0 ) call insert( packed_state, tfield, "Dummy" )
 
@@ -1908,11 +1818,18 @@ contains
         end do
 
         call insert_sfield(packed_state,"FEDensity",1,nphase)
+
         call insert_sfield(packed_state,"Density",1,nphase)
         call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
+
         call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
+        drhodp => extract_tensor_field(packed_state,"PackedDRhoDPressure")
+        do icomp=1,ncomp
+           call insert(multicomponent_state(icomp),drhodp,"PackedDRhoDPressure")
+        end do
 
         d2=>extract_tensor_field(packed_state,"PackedFEDensity")
+
         do icomp=1,ncomp
             call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
         end do
@@ -1985,6 +1902,7 @@ contains
             call insert(packed_state,ovmesh,"PressureMesh_Discontinuous")
         end if
         call allocate(m_position,ndim,ovmesh,"MaterialCoordinate")
+
 
         call remap_field( position, u_position )
         call remap_field( position, p_position )
@@ -3769,304 +3687,6 @@ subroutine Clean_Storage(storage_state, StorageIndexes)
     StorageIndexes = 0
 end subroutine Clean_Storage
 
-!sprint_to_do!remove
-subroutine CheckElementAngles(packed_state, totele, x_ndgln, X_nloc, MaxAngle, MinAngle, Quality_list, degree)
-    !This function checks the angles of an input element. If one angle is above
-    !the Maxangle or below the MinAngle it will be true in the list
-    Implicit none
-    !Global variables
-    type(state_type), intent(inout) :: packed_state
-    type(bad_elements), dimension(:), intent(inout) :: Quality_list
-    real, intent (in) :: MaxAngle, MinAngle
-    integer, dimension(:), intent(in) :: x_ndgln
-    integer, intent(in) :: x_nloc, totele, degree
-    !Local variables
-    integer :: ELE, i
-    logical :: Bad_founded
-    real :: MxAngl, MnAngl
-    !Definition of Pi
-    real, dimension(:,:), pointer:: X_ALL
-    real, parameter :: pi = acos(0.d0) * 2d0
-
-    !Prepare data
-    do i = 1, size(Quality_list)
-        Quality_list(i)%ele = -1!Initialize with negative values
-        allocate(Quality_list(i)%nodes(3))!Allocate, we always consider triangles
-        Quality_list(i)%nodes = -1!Initialize with negative values
-        allocate(Quality_list(i)%weights(x_nloc-1))!Allocate
-        Quality_list(i)%weights = 0.!Initialize with zeros
-    end do
-    call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)
-
-    !Convert input angles to radians
-    MxAngl = pi/180. * MaxAngle
-    MnAngl = pi/180. * MinAngle
-    i = 1
-    if (size(X_ALL,1)==2) then!2D triangles
-        do ELE = 1, totele
-            !bad_node enters as the first entry
-            if (degree == 1) then
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-            else if (degree == 2) then!quadratic
-                !Here we consider three subtriangles, the normal one, plus two formed by the midpoints plus an edge
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 5, 6, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 5, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-            end if
-        end do
-    else if(size(X_ALL,1)==3) then!3D tetrahedra
-        !adjust to match the 2D case once that one works properly
-        do ELE = 1, totele
-            if (degree == 1) then
-                !We check the 4 triangles that form a tet
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 3, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 4, 3, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 2, 3, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-            else if (degree == 2) then!quadratic
-                !We check the 4 triangles that form a tet, three times
-                !First face
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 5, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 4, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 5, 6, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                !Second face
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 2, 3, 8, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 2, 7, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 7, 8, 10, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                !Third face
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 1, 4, 7, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 4, 6, 9, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 7, 9, 10, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                !Forth face
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 10, 8, 9, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 8, 3, 5, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-                if (i > size(Quality_list)) exit!We cannot add more elements
-                Bad_founded = Check_element(X_ALL, x_ndgln, (ele-1)*X_nloc, 9, 5, 6, MxAngl, MnAngl, Quality_list(i))
-                if (Bad_founded) then
-                    if (size(Quality_list)>= i) Quality_list(i)%ele = ele
-                    i = i + 1
-                end if
-
-            end if
-        end do
-    end if
-
-
-    if (size(Quality_list) < i) then
-        ewrite(1,*) 'WARNING: The number of bad elements is bigger than expected not all of them will be compensated. Reduce them or increase the size of Quality_list'
-    end if
-
-contains
-
-    logical function Check_element(X_ALL, x_ndgln, ele_Pos, Pos1, Pos2, Pos3, MaxAngle, MinAngle, Quality_list)
-        !Checks if an angle is below a threshold and stores the information to
-        !modify the matrix later
-        implicit none
-        real, dimension(:,:), intent(in) :: X_ALL
-        integer, intent(in) :: ele_Pos, Pos1, Pos2, Pos3
-        real, intent(in) :: MaxAngle, MinAngle
-        integer, dimension(:), intent(in) :: x_ndgln
-        type(bad_elements), intent(inout) :: Quality_list
-        !Local variables
-        real, dimension(size(X_ALL,1)) :: X1, X2, X3
-        real, dimension(3) :: alpha, lenght
-        !For 3D to project values
-        !Definition of Pi
-        real, parameter :: pi = acos(0.0) * 2.0
-
-        Check_element = .false.
-        !Define the vertexes
-        X1 = X_ALL(:, x_ndgln(ele_Pos+Pos1))
-        X2 = X_ALL(:, x_ndgln(ele_Pos+Pos2))
-        X3 = X_ALL(:, x_ndgln(ele_Pos+Pos3))
-
-
-        !Calculate the lenght of the edges
-        lenght(1) = sqrt(dot_product(X1(:)-X3(:), X1(:)-X3(:)))
-        lenght(2) = sqrt(dot_product(X1(:)-X2(:), X1(:)-X2(:)))
-        lenght(3) = sqrt(dot_product(X2(:)-X3(:), X2(:)-X3(:)))
-
-        !Alphas
-        alpha(2) = acos((lenght(3)**2+lenght(2)**2-lenght(1)**2)/(2. *lenght(3)*lenght(2)))
-        alpha(1) = acos((lenght(1)**2+lenght(2)**2-lenght(3)**2)/(2. *lenght(1)*lenght(2)))
-        alpha(3) = pi - alpha(1)-alpha(2)
-
-        !Check angles and if necessary calculate weights and bad node, I don't know if this work for 3D...
-        !for the time being just 2D
-        if (alpha(1)>=MaxAngle) then
-            !We calculate weights considering a right triangle formed by the bad node, its projection and the other
-            !corner. So the cosine of the angles time their sides sum the side in which we are projecting the bad node
-            Quality_list%weights(1) = abs(cos(alpha(2)) * lenght(2) / lenght(3))
-            Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(1) / lenght(3))
-            !Store nodes, the first one is the bad node
-            Quality_list%nodes(1) = Pos1
-            Quality_list%nodes(2) = Pos2
-            Quality_list%nodes(3) = Pos3
-
-            !Store angle so later the over-relaxation can depend on this
-            Quality_list%angle = alpha(1) * 180 / pi
-
-            Check_element = .true.
-        else if (alpha(2)>= MaxAngle) then
-            Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(2) / lenght(1))
-            Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(3) / lenght(1))
-            !Store nodes, the first one is the bad node
-            Quality_list%nodes(1) = Pos2
-            Quality_list%nodes(2) = Pos1
-            Quality_list%nodes(3) = Pos3
-            !Store angle so later the over-relaxation can depend on this
-            Quality_list%angle = alpha(2) * 180 / pi
-            Check_element = .true.
-        else if (alpha(3) >= MaxAngle) then
-            Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(1) / lenght(2))
-            Quality_list%weights(2) = abs(cos(alpha(2)) * lenght(3) / lenght(2))
-            !Store nodes, the first one is the bad node
-            Quality_list%nodes(1) = Pos3
-            Quality_list%nodes(2) = Pos1
-            Quality_list%nodes(3) = Pos2
-            !Store angle so later the over-relaxation can depend on this
-            Quality_list%angle = alpha(3) * 180 / pi
-            Check_element = .true.
-        end if
-        !Make sure it is between bounds
-        Quality_list%weights = min(Quality_list%weights,1.0)
-
-        !If we have not added elements already in that element, check for small angles
-        if (.not.Check_element) then
-            if (alpha(1) < MinAngle ) then
-                Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(1) / lenght(2))
-                Quality_list%weights(2) = abs(cos(alpha(2)) * lenght(3) / lenght(2))
-                !Store nodes, the first one is the bad node
-                Quality_list%nodes(1) = Pos1
-                Quality_list%nodes(2) = Pos2
-                Quality_list%nodes(3) = Pos3
-                !We fake this parameter since it is preapred for obtuse angles
-                !we consider a medium angle
-                Quality_list%angle = alpha(1) * 180 / pi
-                Check_element = .true.
-            else if (alpha(2) < MinAngle) then
-                Quality_list%weights(1) = abs(cos(alpha(2)) * lenght(2) / lenght(3))
-                Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(1) / lenght(3))
-                !Store nodes, the first one is the bad node
-                Quality_list%nodes(1) = Pos2
-                Quality_list%nodes(2) = Pos3
-                Quality_list%nodes(3) = Pos1
-                !We fake this parameter since it is preapred for obtuse angles
-                !we consider a medium angle
-                Quality_list%angle = alpha(2) * 180 / pi
-                Check_element = .true.
-            else if (alpha(3) < MinAngle) then
-                Quality_list%weights(1) = abs(cos(alpha(1)) * lenght(2) / lenght(1))
-                Quality_list%weights(2) = abs(cos(alpha(3)) * lenght(3) / lenght(1))
-                !Store nodes, the first one is the bad node
-                Quality_list%nodes(1) = Pos3
-                Quality_list%nodes(2) = Pos1
-                Quality_list%nodes(3) = Pos2
-                !We fake this parameter since it is preapred for obtuse angles
-                !we consider a medium angle
-                Quality_list%angle = alpha(3) * 180 / pi
-                Check_element = .true.
-            end if
-        end if
-
-    end function Check_element
-
-end subroutine CheckElementAngles
 
 subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, surface_ids, totoutflux, ele , sele, &
     cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL)
@@ -4076,7 +3696,7 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     ! Subroutine to calculate the integrated flux across a boundary with the specified surface_ids.
 
     ! Input/output variables
-       
+
     integer, intent(in) :: nphase
     type(tensor_field), intent(in), pointer :: CVPressure
     real, dimension( : , : ),  intent(in), allocatable :: phaseV
@@ -4162,7 +3782,7 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
         enddo
 
     endif
-     
+
     ! DEALLOCATIONS
     deallocate(phaseVG)
     deallocate(densVG)

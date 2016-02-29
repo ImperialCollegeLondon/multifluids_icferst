@@ -1109,54 +1109,6 @@ contains
 
     end function Get_DevCapPressure
 
-    subroutine calculate_u_source(state, Density_FEMT, u_source)
-        !u_source has to be initialized before calling this subroutine
-        type(state_type), dimension(:), intent(in) :: state
-        real, dimension(:,:), intent(inout) :: Density_FEMT
-        real, dimension(:,:,:), intent(inout) :: u_source
-
-        type(vector_field), pointer :: gravity_direction
-        real, dimension(:), allocatable :: g
-        real, dimension(:,:), allocatable :: aux_FEM_den
-        logical :: have_gravity
-        real :: gravity_magnitude, aux
-        integer :: idim, iphase, nod, stat
-
-        allocate(g(size(Density_FEMT,1)))
-
-        call get_option( "/physical_parameters/gravity/magnitude", gravity_magnitude, stat )
-        have_gravity = ( stat == 0 )
-
-
-        if( have_gravity ) then
-            !####################TEMPORARY####################
-            allocate(aux_FEM_den(size(u_source,2),size(u_source,3)))
-            do iphase = 1, size(u_source,2)
-                call get_option(trim( '/material_phase[' // int2str( iphase - 1 ) // &
-                    ']/equation_of_state/incompressible/linear/all_equal'), aux)
-                aux_FEM_den( iphase, : ) = aux
-            end do
-             !#################################################
-
-
-            gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
-            g = node_val(gravity_direction, 1) * gravity_magnitude
-
-            do nod = 1, size(u_source,3)
-                do iphase = 1, size(u_source,2)
-                    do idim = 1, size(u_source,1)
-                        u_source( idim, iphase, nod) = u_source( idim, iphase, nod) + &
-                            aux_FEM_den( iphase, nod ) * g( idim )!aux_FEM_den is TEMPORARY
-                    end do
-                end do
-            end do
-            deallocate(aux_FEM_den)
-        end if
-
-        deallocate(g)
-    end subroutine calculate_u_source
-
-
     subroutine calculate_u_source_cv(state, cv_nonods, ndim, nphase, den, u_source_cv)
         type(state_type), dimension(:), intent(in) :: state
         integer, intent(in) :: cv_nonods, ndim, nphase
@@ -1709,82 +1661,6 @@ contains
         return
     end subroutine calculate_u_abs_stab
 
-    subroutine calculate_u_abs_stab_porous_media( packed_state, Material_Absorption_Stab, &
-        nphase, ndim, x_nloc, x_ndgln, MAT_NDGLN, mat_nloc, cv_nloc, quality_list)
-
-        implicit none
-        type(state_type), intent( inout ) :: packed_state
-        real, dimension( :, :, : ), intent( inout ) :: Material_Absorption_Stab
-        integer, intent( in ) :: nphase, ndim, x_nloc, cv_nloc, mat_nloc
-        integer, dimension( : ), intent( in ) :: X_ndgln, MAT_NDGLN
-        type(bad_elements), dimension(:), intent(in) :: Quality_list
-
-        !Local variables
-        integer :: i, ipha_idim, iphase, ele, cv_iloc, ipha_ndim, node1, node2, node3, mat_nod
-        real :: factor, delta_ratio, weight_max, aux
-        real, parameter :: pi = acos(0.d0) * 2d0
-        real, dimension(3,3) :: A, R
-        real, dimension(:,:), pointer:: X_ALL
-        !Initialize variable
-        Material_Absorption_Stab = 0.
-        call get_var_from_packed_state(packed_state, PressureCoordinate = X_ALL)
-        !Factor is the desired aspect ratio, maybe modifiable from diamond
-        factor = 1.
-        i = 1
-
-        do while (quality_list(i)%ele > 0)
-
-            ele = quality_list(i)%ele
-            !Get normal, towards the bad angle
-            node1 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(1))
-            node2 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(2))
-            node3 = X_ndgln((ele-1) * x_nloc + Quality_list(i)%nodes(3))
-
-            !We consider the closest weigth
-            weight_max = max(quality_list(i)%weights(1), (1.-quality_list(i)%weights(1)))
-            !Initiliaze
-            A = 0. ; R = 0.
-
-            !For acute angles:
-            if (quality_list(i)%angle < 90) then
-                !Aspect ratio based on angles
-                delta_ratio = abs(weight_max* tan(quality_list(i)%angle * pi/180))
-                !Vector of the base of the triangle, since the subroutine returns the perpendicular
-                R(1:ndim, 1) = abs(X_ALL(:,node1) - X_ALL(:,node2))
-
-            else!for obtuse triangles
-                !Lenght of the side opposite to the bad angle
-                aux = sqrt(dot_product(X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3), X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3)))
-                !Obtain aspect ratio of the bad angle by using trigonometrics
-                delta_ratio = abs(1./tan(quality_list(i)%angle * pi/180) + aux * weight_max * (1. + weight_max))
-                !Get normal perpendicular to the bad angle
-                R(1:ndim, 1) = abs(X_ALL(1:ndim,node2) - X_ALL(1:ndim,node3))
-            end if
-            !This is the parameter we want to introduce in stab (delta_X^2/(desired_aspect_ratio^2 * delta_Z^2))
-            A(ndim,ndim) = (delta_ratio/factor)**(-2)
-
-            !normalize
-            R(1:ndim, 1) = R(1:ndim, 1) / sqrt(dot_product(R(1:ndim, 1),R(1:ndim, 1)))
-            !Obtain rotational matrix
-            call GET_TANG_BINORM(R(1, 1),R(2, 1),R(3, 1), R(1, 2),R(2, 2),R(3, 2), R(1, 3),R(2, 3),R(3, 3), 1)
-            !Rotate matrix
-            A = matmul(transpose(R), matmul(A,R))
-            !Add matrix into Stab
-            do cv_iloc = 1, cv_nloc
-                mat_nod = mat_ndgln(( ele - 1 ) * mat_nloc + cv_iloc)
-                do iphase = 1, nphase
-                    ipha_idim = ( iphase - 1 ) * ndim + 1
-                    ipha_ndim = ( iphase - 1 ) * ndim + ndim
-                    Material_Absorption_Stab( mat_nod, ipha_idim:ipha_ndim, ipha_idim:ipha_ndim ) = A(1:ndim, 1:ndim)
-                end do
-            end do
-            i = i + 1
-        end do
-
-        return
-    end subroutine calculate_u_abs_stab_porous_media
-
-
     subroutine update_velocity_absorption( states, ndim, nphase, mat_nonods,velocity_absorption )
 
         implicit none
@@ -1824,27 +1700,26 @@ contains
 
     subroutine update_velocity_absorption_coriolis( states, ndim, nphase, sigma )
 
-        implicit none
+      implicit none
 
-        integer, intent( in ) :: ndim, nphase
-        type( state_type ), dimension( : ), intent( in ) :: states
-        real, dimension( :, :, : ), intent( inout ) :: sigma
+      integer, intent( in ) :: ndim, nphase
+      type( state_type ), dimension( : ), intent( in ) :: states
+      real, dimension( :, :, : ), intent( inout ) :: sigma
 
-        type( scalar_field ), pointer :: f
-        integer :: iphase, stat, idx1, idx2
+      type( scalar_field ), pointer :: f
+      integer :: iphase, stat, idx1, idx2
 
-        do iphase = 1, nphase
-            f => extract_scalar_field( states( iphase ), 'f', stat )
-            if ( stat == 0 ) then
-                idx1 = 1 + (iphase-1)*ndim ;  idx2 = 2 + (iphase-1)*ndim
-                sigma( :, idx1, idx2 ) = sigma( :, idx1, idx2 ) - f % val
-                sigma( :, idx2, idx1 ) = sigma( :, idx2, idx1 ) + f % val
-            end if
-        end do
+      do iphase = 1, nphase
+         f => extract_scalar_field( states( iphase ), 'f', stat )
+         if ( stat == 0 ) then
+            idx1 = 1 + (iphase-1)*ndim ;  idx2 = 2 + (iphase-1)*ndim
+            sigma( :, idx1, idx2 ) = sigma( :, idx1, idx2 ) - f % val
+            sigma( :, idx2, idx1 ) = sigma( :, idx2, idx1 ) + f % val
+         end if
+      end do
 
-        return
+      return
     end subroutine update_velocity_absorption_coriolis
-
 
 
 
@@ -1953,7 +1828,7 @@ contains
             T_sat, Svap_l, Svap_g, Gamma_l, Gamma_g, h_l, h_g, &
             St_gl, St_sl, St_sg
         integer :: iphase, jphase, idim
-        real, parameter :: Le0=2375.7e3, Cp_l = 4200.0, Cp_g = 1996.0
+        real, parameter :: Le0=2375.7e3, Cp_l = 4200.0, Cp_g = 1996.0, HeatSource = 17.1e+3 / (0.082 * 0.095 * 0.25)
 
         ewrite(3,*) 'inside boiling routine'
 
@@ -1971,12 +1846,12 @@ contains
         ! Momentum absorption
 
         ! open the boiling test for two phases-gas and liquid
-        if (have_option("\boiling")) then
+        if (have_option('/boiling')) then
             S_ls_l=0.0
-            S_gs_g=0.0            
+            S_gs_g=0.0
         end if
 
-         
+
 
         iphase=1 ; jphase=1
         do idim = 1, ndim
@@ -2025,11 +1900,11 @@ contains
         ! Temperature absorption
 
         ! open the boiling test for two phases-gas and liquid
-        if (have_option("\boiling")) then
+        if (have_option('/boiling')) then
             St_sl=0.0
-            St_sg=0.0            
+            St_sg=0.0
         end if
-        
+
 
         iphase=1 ; jphase=1
         temperature_absorption( iphase, jphase, : ) =  St_gl + St_sl + Svap_l + Cp_l*Gamma_l
@@ -2059,7 +1934,7 @@ contains
         temperature_source => extract_tensor_field( packed_state, "PackedTemperatureSource" )
 
         iphase=1
-        temperature_source%val( 1, iphase, : ) = Svap_l*T_sat + Gamma_l*h_l + Gamma_l*Le0
+        temperature_source%val( 1, iphase, : ) = Svap_l*T_sat + Gamma_l*h_l + Gamma_l*Le0 + HeatSource
 
         iphase=2
         temperature_source%val( 1, iphase, : ) = Svap_g*T_sat + Gamma_g*h_g + 1.0e+6 * temperature%val( 1, iphase, : )
@@ -2109,7 +1984,7 @@ contains
 
         real, parameter :: &
             mu_l = 3.0e-4, mu_g = 1.0e-5, &
-            d_p = 0.005
+            d_p = 0.001 ! 0.005
 
         pressure => extract_tensor_field( packed_state, "PackedCVPressure" )
         density => extract_tensor_field( packed_state, "PackedDensity" )
@@ -2190,7 +2065,7 @@ contains
                 u_g = sqrt( sum( ug**2 ) )
                 u_s = sqrt( sum( us**2 ) )
 
-                u_gs=abs(u_g-u_s) ; u_ls=abs(u_l-u_s) ; u_gl=max(1e-5, abs(u_g-u_l))
+                u_gs=abs(u_g-u_s) ; u_ls=abs(u_l-u_s) ; u_gl=abs(u_g-u_l)
 
                 a_l = volume_fraction%val(1,1,cv_inod)
                 a_g = volume_fraction%val(1,2,cv_inod)
@@ -2219,7 +2094,7 @@ contains
                 S_gs_g(mat_inod) = 0.0 !150.0 * (a_gs*mu_g) / (a_sg*d_p**2*(a_g+a_s)) + 1.75 * (rho_g*u_gs) / (d_p*(a_g+a_s))
                 S_ls_l(mat_inod) = 0.0 !150.0 * (a_ls*mu_l) / (a_sl*d_p**2*(a_l+a_s)) + 1.75 * (rho_l*u_ls) / (d_p*(a_l+a_s))
 
-            
+
                 S_lg_l(mat_inod) = 0.75 * CD * ( (a_gl*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) * max(a_lg,1.0e-5)**(-2.65)
                 S_lg_g(mat_inod) = 0.75 * CD * ( (a_lg*rho_l*u_gl) / ( d_b*(a_l+a_g) ) ) * max(a_lg,1.0e-5)**(-2.65)
 
@@ -2281,7 +2156,7 @@ contains
             k_l = 0.58, k_g = 0.016, k_s = 16.2, &
             Cp_l = 4200.0, Cp_g = 1996.0, Cp_s = 500.0, &
             mu_l = 3.0e-4, mu_g = 1.0e-5, &
-            d_p = 0.005, &
+            d_p = 0.001, & !0.005, &
             Le0 = 2375.7e3, Csf = 0.006, g = 9.81
 
         pressure => extract_tensor_field( packed_state, "PackedCVPressure" )

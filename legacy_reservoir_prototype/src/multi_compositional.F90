@@ -1,6 +1,6 @@
 
 !    Copyright (C) 2006 Imperial College London and others.
-!    
+!
 !    Please see the AUTHORS file in the main source directory for a full list
 !    of copyright holders.
 !
@@ -10,7 +10,7 @@
 !    Imperial College London
 !
 !    amcgsoftware@imperial.ac.uk
-!    
+!
 !    This library is free software; you can redistribute it and/or
 !    modify it under the terms of the GNU Lesser General Public
 !    License as published by the Free Software Foundation,
@@ -43,7 +43,7 @@ module Compositional_Terms
 contains
 
     subroutine Calculate_ComponentAbsorptionTerm( state, packed_state, &
-        icomp, cv_ndgln, &
+        icomp, cv_ndgln, Mdims, &
         denold, volfra_pore, mass_ele, &
         comp_absorb, IDs_ndgln )
 
@@ -54,6 +54,7 @@ contains
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
         type( state_type ), intent( inout ) :: packed_state
+        type(multi_dimensions), intent( in ) :: Mdims
         integer, intent( in ) :: icomp
         integer, dimension( : ), intent( in ) :: cv_ndgln, IDs_ndgln
         real, dimension( : ), intent( in ) :: mass_ele
@@ -76,6 +77,11 @@ contains
         !working pointers
         type(tensor_field), pointer :: tfield
         real, dimension(:,:), pointer :: satura
+
+        if ( Mdims%nphase < 2 ) then
+           comp_absorb = 0.0
+           return
+        end if
 
         tfield=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         satura => tfield%val(1,:,:)
@@ -109,7 +115,7 @@ contains
         DO ELE = 1, TOTELE
             DO CV_ILOC = 1, CV_NLOC
                 CV_NOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
-                SUM_NOD( CV_NOD ) = SUM_NOD( CV_NOD ) + mass_ele( ele ) !1.0
+                SUM_NOD( CV_NOD ) = SUM_NOD( CV_NOD ) + mass_ele( ele )
                 VOLFRA_PORE_NOD( CV_NOD ) = VOLFRA_PORE_NOD( CV_NOD ) + &
                     VOLFRA_PORE( 1, ELE ) * mass_ele( ele )
             END DO
@@ -122,8 +128,6 @@ contains
         CALL Calc_KComp2( cv_nonods, nphase, ncomp, icomp, KComp_Sigmoid, &
             min( 1., max( 0., satura )), K_Comp, max_k, min_k, &
             K_Comp2 )
-
-        !ewrite(3,*)'icomp, min,max K:', ICOMP, MIN_K, MAX_K
 
         DO CV_NOD = 1, CV_NONODS
             DO IPHASE = 1, NPHASE
@@ -169,14 +173,7 @@ contains
                 END DO
             END DO
 
-           !ewrite(3,*)'cv_nod, alpha:', cv_nod, alpha( cv_nod )
         END DO
-
-        !do cv_nod = 1, cv_nonods
-        !   ewrite(3,*)'comp_ABSORB:',&
-        !        ( ( comp_ABSORB( cv_nod, iphase, jphase ), iphase = 1, nphase ), &
-        !        jphase = 1, nphase )
-        !end do
 
         deallocate( alpha, sum_nod, volfra_pore_nod, k_comp, k_comp2 )
 
@@ -185,465 +182,209 @@ contains
     end subroutine Calculate_ComponentAbsorptionTerm
 
 
-    subroutine Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, Mdims, &
+    subroutine Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, &
+        Mdims, CV_GIdims, CV_funs,&
         mat_ndgln, u_ndgln, x_ndgln, &
-        u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt, &
+        ncomp_diff_coef, comp_diffusion_opt, &
         comp_diff_coef, &
-        comp_diffusion,&
-        StorageIndexes )
+        comp_diffusion)
         !!$ Calculate the diffusion coefficient COMP_DIFFUSION for current composition...
         !!$ based on page 136 in Reservoir-Simulation-Mathematical-Techniques-In-Oil-Recovery-(2007).pdf
         !!$ COMP_DIFFUSION_OPT, integer option defining diffusion coeff
         !!$ NCOMP_DIFF_COEF,  integer defining how many coeff's are needed to define the diffusion
-        !!$ COMP_DIFF_COEF( NCOMP,  NCOMP_DIFF_COEF, NPHASE  )
+        !!$ COMP_DIFF_COEF( Mdims%ncomp,  NCOMP_DIFF_COEF, Mdims%nphase  )
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state, storage_state
         type(multi_dimensions), intent(in) :: Mdims
-
+        type(multi_GI_dimensions), intent(in) :: CV_GIdims
+        type(multi_shape_funs), intent(in) :: CV_funs
         integer, dimension( : ), intent( in ) :: mat_ndgln, u_ndgln, x_ndgln
-        integer, intent( in ) :: u_ele_type, p_ele_type, ncomp_diff_coef, comp_diffusion_opt
+        integer, intent( in ) :: ncomp_diff_coef, comp_diffusion_opt
         real, dimension( :, : ), intent( in ) :: comp_diff_coef
         real, dimension( :, :, :, : ),intent( inout ) :: comp_diffusion
-        integer, dimension(:), intent(inout) :: StorageIndexes
         !!$ Local variables:
-        integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
-            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, x_snloc, cv_snloc, u_snloc, &
-            p_snloc, cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-            ele, cv_nod, mat_nod, iphase, idim, u_iloc, u_inod
+        integer :: ele, cv_nod, mat_nod, iphase, idim, u_iloc, u_inod
         real :: diff_molecular, diff_longitudinal, diff_transverse
-        real, dimension( : ), allocatable :: ud, mat_u, x, y, z, nu, nv, nw
+        real, dimension( : ), allocatable :: ud, mat_u, nu, nv, nw
         type( vector_field ), pointer :: x_all
         type( tensor_field ), pointer :: nu_all
-
-
-
-
-
-
-
-        !!$ Extracting the primary scalars from state:
-        call Get_Primary_Scalars( state, &
-            nphase, nstate, ncomp, totele, ndim, stotel, &
-            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-            x_snloc, cv_snloc, u_snloc, p_snloc, &
-            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods )
 
         if( comp_diffusion_opt == 0 ) then
             comp_diffusion = 0.0
             return
         endif
-
-        allocate( X(  X_NONODS ) ) ; X = 0.0
-        allocate( Y(  X_NONODS ) ) ; Y = 0.0
-        allocate( Z(  X_NONODS ) ) ; Z = 0.0
-
         x_all => extract_vector_field( packed_state, "PressureCoordinate" )
-        x = x_all % val( 1, : )
-        if (ndim >=2 ) y = x_all % val( 2, : )
-        if (ndim >=3 ) z = x_all % val( 3, : )
 
-        allocate( NU(  U_NONODS ) ) ; NU = 0.0
-        allocate( NV(  U_NONODS ) ) ; NV = 0.0
-        allocate( NW(  U_NONODS ) ) ; NW = 0.0
-
+        allocate( NU(  Mdims%u_nonods ) ) ; NU = 0.0
+        allocate( NV(  Mdims%u_nonods ) ) ; NV = 0.0
+        allocate( NW(  Mdims%u_nonods ) ) ; NW = 0.0
         nu_all => extract_tensor_field( packed_state, "PackedNonlinearVelocity" )
-
-        DO ELE = 1, TOTELE
-            DO U_ILOC = 1, U_NLOC
-                U_INOD = U_NDGLN( ( ELE - 1 ) * U_NLOC + U_ILOC )
-                DO IPHASE = 1, NPHASE
-                    DO IDIM = 1, NDIM
+        DO ELE = 1, Mdims%totele
+            DO U_ILOC = 1, Mdims%u_nloc
+                U_INOD = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+                DO IPHASE = 1, Mdims%nphase
+                    DO IDIM = 1, Mdims%ndim
                         IF ( IDIM==1 ) THEN
-                            NU( U_INOD + (IPHASE-1)*U_NONODS ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
+                            NU( U_INOD + (IPHASE-1)*Mdims%u_nonods ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
                         ELSE IF ( IDIM==2 ) THEN
-                            NV( U_INOD + (IPHASE-1)*U_NONODS ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
+                            NV( U_INOD + (IPHASE-1)*Mdims%u_nonods ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
                         ELSE
-                            NW( U_INOD + (IPHASE-1)*U_NONODS ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
+                            NW( U_INOD + (IPHASE-1)*Mdims%u_nonods ) = NU_ALL % VAL( IDIM, IPHASE, U_INOD )
                         END IF
                     END DO
                 END DO
             END DO
         END DO
-
-
-        ALLOCATE( MAT_U( NDIM * NPHASE * CV_NONODS ), UD( NDIM ) ) ; mat_u = 0. ; ud = 0.
-
-        CALL PROJ_U2MAT( Mdims, NDIM, NPHASE, COMP_DIFFUSION_OPT, MAT_NONODS, &
-            TOTELE, CV_NONODS, MAT_NLOC, CV_NLOC, U_NLOC, X_NLOC, CV_SNLOC, U_SNLOC, &
+        ALLOCATE( MAT_U( Mdims%ndim * Mdims%nphase * Mdims%cv_nonods ), UD( Mdims%ndim ) ) ; mat_u = 0. ; ud = 0.
+        CALL PROJ_U2MAT( COMP_DIFFUSION_OPT, &
+            Mdims, CV_GIdims, CV_funs,&
             COMP_DIFFUSION, NCOMP_DIFF_COEF, COMP_DIFF_COEF, &
-            X_NONODS, X, Y, Z, NU, NV, NW, U_NONODS, MAT_NDGLN, U_NDGLN, X_NDGLN, &
-            U_ELE_TYPE, P_ELE_TYPE, &
-            MAT_U ,  storage_state, StorageIndexes)
-
+            X_ALL%val, NU, NV, NW, MAT_NDGLN, U_NDGLN, X_NDGLN, &
+            MAT_U,  storage_state)
         ! Determine the diffusion coeff tensor COMP_DIFFUSION from MAT_U and COMP_DIFF_COEF
-
-        DO MAT_NOD = 1, MAT_NONODS
-            DO IPHASE = 1, NPHASE
-
-                DO IDIM = 1,NDIM
-                    UD( IDIM ) = MAT_U( MAT_NOD + ( IDIM - 1 ) * MAT_NONODS + &
-                        ( IPHASE - 1 ) * NDIM * MAT_NONODS )
+        DO MAT_NOD = 1, Mdims%mat_nonods
+            DO IPHASE = 1, Mdims%nphase
+                DO IDIM = 1,Mdims%ndim
+                    UD( IDIM ) = MAT_U( MAT_NOD + ( IDIM - 1 ) * Mdims%mat_nonods + &
+                        ( IPHASE - 1 ) * Mdims%ndim * Mdims%mat_nonods )
                 END DO
-
                 DIFF_molecular    = COMP_DIFF_COEF( 1, IPHASE )
                 DIFF_longitudinal = COMP_DIFF_COEF( 2, IPHASE )
                 DIFF_transverse   = COMP_DIFF_COEF( 3, IPHASE )
-
-                CALL CALC_COMP_DIF_TEN( NDIM, UD, DIFF_molecular, DIFF_longitudinal, DIFF_transverse, &
+                CALL CALC_COMP_DIF_TEN( Mdims%ndim, UD, DIFF_molecular, DIFF_longitudinal, DIFF_transverse, &
                     COMP_DIFFUSION( MAT_NOD, : , : , IPHASE ))
             END DO
         END DO
-
         DEALLOCATE( MAT_U, UD )
-
         return
     end subroutine Calculate_ComponentDiffusionTerm
 
-
-
-
-
-
-    SUBROUTINE PROJ_U2MAT( Mdims, NDIM, NPHASE, COMP_DIFFUSION_OPT, MAT_NONODS, &
-        TOTELE, CV_NONODS, MAT_NLOC, CV_NLOC, U_NLOC, X_NLOC, CV_SNLOC, U_SNLOC, &
+    SUBROUTINE PROJ_U2MAT( COMP_DIFFUSION_OPT, &
+        Mdims, CV_GIdims, CV_funs,&
         COMP_DIFFUSION, NCOMP_DIFF_COEF, COMP_DIFF_COEF, &
-        X_NONODS, X, Y, Z, NU, NV, NW, U_NONODS, MAT_NDGLN, U_NDGLN, X_NDGLN, &
-        U_ELE_TYPE, P_ELE_TYPE, &
-        MAT_U,  storage_state, StorageIndexes )
+        X_ALL, NU, NV, NW, MAT_NDGLN, U_NDGLN, X_NDGLN, &
+        MAT_U,  storage_state)
         ! Determine MAT_U from NU,NV,NW which are variables mapped to material mesh.
- 
 
         implicit none
         type(multi_dimensions), intent(in) :: Mdims
-        INTEGER, intent( in ) :: NDIM, NPHASE, NCOMP_DIFF_COEF, &
-            COMP_DIFFUSION_OPT, MAT_NONODS, TOTELE, MAT_NLOC, CV_NLOC, U_NLOC, X_NLOC, &
-            CV_SNLOC, U_SNLOC, X_NONODS, U_NONODS, CV_NONODS, U_ELE_TYPE, P_ELE_TYPE
+        type(multi_GI_dimensions), intent(in) :: CV_GIdims
+        type(multi_shape_funs), intent(in) :: CV_funs
+        INTEGER, intent( in ) :: NCOMP_DIFF_COEF, COMP_DIFFUSION_OPT
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: COMP_DIFFUSION
         REAL, DIMENSION( :, : ), intent( in ) :: COMP_DIFF_COEF
-        REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
+        REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
         REAL, DIMENSION( : ), intent( in ) :: NU, NV, NW
         INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
         INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN
         REAL, DIMENSION( :), intent( inout ) :: MAT_U
         type( state_type ), intent( inout ) :: storage_state
-        integer, dimension(:), intent(inout) :: StorageIndexes
         ! Determine MAT_U from NU,NV,NW which are these variables mapped to material mesh.
-
         ! Local variables
-        type( multi_GI_dimensions ) :: GIdims
-        INTEGER, DIMENSION( :, : ), allocatable :: CV_SLOCLIST, U_SLOCLIST, CV_NEILOC, FACE_ELE
-        INTEGER, DIMENSION( : ), allocatable :: FINDGPTS, COLGPTS
-        REAL, DIMENSION( : ),    ALLOCATABLE :: CVWEIGHT, CVWEIGHT_SHORT,  &
-            SCVFEWEIGH, SBCVFEWEIGH, SELE_OVERLAP_SCALE
-        REAL, DIMENSION( :, : ), ALLOCATABLE :: CVN, CVN_SHORT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
-            CVFENX, CVFENY, CVFENZ, CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
-            CVFENX_SHORT, CVFENY_SHORT, CVFENZ_SHORT, &
-            UFEN, UFENLX, UFENLY, UFENLZ, UFENX, UFENY, UFENZ, SCVFEN, SCVFENSLX, SCVFENSLY, &
-            SCVFENLX, SCVFENLY, SCVFENLZ, &
-            SUFEN, SUFENSLX, SUFENSLY, SUFENLX, SUFENLY, SUFENLZ, &
-            SBCVN, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFENLX, SBCVFENLY, SBCVFENLZ, &
-            SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX, SBUFENLY, SBUFENLZ, &
-            MASS, INV_MASS, MASS2U, INV_MASS_NM
-        LOGICAL, DIMENSION( :, : ), allocatable :: CV_ON_FACE,U_ON_FACE,  &
-            CVFEM_ON_FACE,UFEM_ON_FACE
-!!$        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, NFACE, 
+        REAL, DIMENSION( :, : ), ALLOCATABLE :: MASS, INV_MASS, MASS2U, INV_MASS_NM
         INTEGER :: &
             ELE, MAT_ILOC, MAT_JLOC, CV_GI, U_JLOC, MAT_KLOC, MAT_NODI, MAT_NOD, &
-            U_NODJ, IPHASE, U_NODJ_IP, IDIM, JDIM, MAT_NOD_ID_IP, CV_GI_SHORT, NCOLGPTS
+            U_NODJ, IPHASE, U_NODJ_IP, IDIM, JDIM, MAT_NOD_ID_IP, CV_GI_SHORT
         REAL :: NN, NFEMU, MASELE
         LOGICAL :: D1, D3, DCYL, QUAD_OVER_WHOLE_ELE
         real, allocatable, dimension(:,:,:) :: UFENX_ALL, CVFENX_ALL
         real, allocatable, dimension(:) :: DETWEI,RA
         real :: VOLUME
-
         QUAD_OVER_WHOLE_ELE=.FALSE.
-        ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-!!$        call  retrieve_ngi( ndim, u_ele_type, cv_nloc, u_nloc, &
-!!$            cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
 
-        call retrieve_ngi( GIdims, Mdims, u_ele_type, QUAD_OVER_WHOLE_ELE )
+        ALLOCATE(UFENX_ALL(Mdims%ndim,Mdims%u_nloc,CV_GIdims%cv_ngi))
+        ALLOCATE(CVFENX_ALL(Mdims%ndim,Mdims%cv_nloc,CV_GIdims%cv_ngi))
+        ALLOCATE(DETWEI(CV_GIdims%cv_ngi))
+        ALLOCATE(RA(CV_GIdims%cv_ngi))
 
-        ALLOCATE(UFENX_ALL(NDIM,U_NLOC,GIDIMS%CV_NGI))
-        ALLOCATE(CVFENX_ALL(NDIM,CV_NLOC,GIDIMS%CV_NGI))
-        ALLOCATE(DETWEI(GIDIMS%CV_NGI))
-        ALLOCATE(RA(GIDIMS%CV_NGI))
-
-        ALLOCATE( CVWEIGHT( GIDIMS%CV_NGI ))
-        ALLOCATE( CVN( CV_NLOC, GIDIMS%CV_NGI ))
-        ALLOCATE( CVFEN( CV_NLOC, GIDIMS%CV_NGI ))
-        ALLOCATE( CVFENLX( CV_NLOC, GIDIMS%CV_NGI ))
-        ALLOCATE( CVFENLY( CV_NLOC, GIDIMS%CV_NGI ))
-        ALLOCATE( CVFENLZ( CV_NLOC, GIDIMS%CV_NGI ))
-
-        ALLOCATE( CVWEIGHT_SHORT( GIDIMS%CV_NGI_SHORT ))
-        ALLOCATE( CVN_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
-        ALLOCATE( CVFEN_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT))
-        ALLOCATE( CVFENLX_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
-        ALLOCATE( CVFENLY_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
-        ALLOCATE( CVFENLZ_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
-        ALLOCATE( CVFENX_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
-        ALLOCATE( CVFENY_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
-        ALLOCATE( CVFENZ_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
-
-        ALLOCATE( UFEN( U_NLOC, GIDIMS%CV_NGI ))
-        ALLOCATE( UFENLX( U_NLOC, GIDIMS%CV_NGI ))
-        ALLOCATE( UFENLY( U_NLOC, GIDIMS%CV_NGI ))
-        ALLOCATE( UFENLZ( U_NLOC, GIDIMS%CV_NGI ))
-
-        ALLOCATE( SCVFEN( CV_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SCVFENSLX( CV_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SCVFENSLY( CV_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SCVFENLX( CV_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SCVFENLY( CV_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SCVFENLZ( CV_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SCVFEWEIGH( GIDIMS%SCVNGI ))
-
-        ALLOCATE( SUFEN( U_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SUFENSLX( U_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SUFENSLY( U_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SUFENLX( U_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SUFENLY( U_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( SUFENLZ( U_NLOC, GIDIMS%SCVNGI ))
-
-        ALLOCATE( SBCVN( CV_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBCVFEN( CV_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBCVFENSLX( CV_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBCVFENSLY( CV_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBCVFEWEIGH( GIDIMS%SBCVNGI ))
-        ALLOCATE( SBCVFENLX( CV_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBCVFENLY( CV_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBCVFENLZ( CV_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBUFEN( U_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBUFENSLX( U_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBUFENSLY( U_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBUFENLX( U_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBUFENLY( U_SNLOC, GIDIMS%SBCVNGI ))
-        ALLOCATE( SBUFENLZ( U_SNLOC, GIDIMS%SBCVNGI ))
-
-        ALLOCATE( CV_SLOCLIST( GIDIMS%NFACE, CV_SNLOC ))
-        ALLOCATE( U_SLOCLIST( GIDIMS%NFACE, U_SNLOC ))
-        ALLOCATE( CV_NEILOC( CV_NLOC, GIDIMS%SCVNGI ))
-
-        ALLOCATE( COLGPTS( CV_NLOC * GIDIMS%SCVNGI )) !The size of this vector is over-estimated
-        ALLOCATE( FINDGPTS( CV_NLOC + 1 ))
-        NCOLGPTS = 0
-
-        ALLOCATE( CV_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( CVFEM_ON_FACE( CV_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( U_ON_FACE( U_NLOC, GIDIMS%SCVNGI ))
-        ALLOCATE( UFEM_ON_FACE( U_NLOC, GIDIMS%SCVNGI ))
-
-        ALLOCATE( SELE_OVERLAP_SCALE( CV_NLOC ))
-        CALL CV_FEM_SHAPE_FUNS( &
-                                 ! Volume shape functions...
-            NDIM, P_ELE_TYPE,  &
-            GIDIMS%CV_NGI, GIDIMS%CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
-            CVWEIGHT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
-            CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
-            UFEN, UFENLX, UFENLY, UFENLZ, &
-                                 ! Surface of each CV shape functions...
-            GIDIMS%SCVNGI, CV_NEILOC, CV_ON_FACE, CVFEM_ON_FACE, &
-            SCVFEN, SCVFENSLX, SCVFENSLY, SCVFEWEIGH, &
-            SCVFENLX, SCVFENLY, SCVFENLZ,  &
-            SUFEN, SUFENSLX, SUFENSLY,  &
-            SUFENLX, SUFENLY, SUFENLZ,  &
-                                 ! Surface element shape funcs...
-            U_ON_FACE, UFEM_ON_FACE, GIDIMS%NFACE, &
-            GIDIMS%SBCVNGI, SBCVN, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, SBCVFENLX, SBCVFENLY, SBCVFENLZ, &
-            SBUFEN, SBUFENSLX, SBUFENSLY, SBUFENLX, SBUFENLY, SBUFENLZ, &
-            CV_SLOCLIST, U_SLOCLIST, CV_SNLOC, U_SNLOC, &
-                                 ! Define the gauss points that lie on the surface of the CV...
-            FINDGPTS, COLGPTS, NCOLGPTS, &
-            SELE_OVERLAP_SCALE, QUAD_OVER_WHOLE_ELE)
-
-        ALLOCATE( MASS( MAT_NLOC, MAT_NLOC ))
-        ALLOCATE( INV_MASS( MAT_NLOC, MAT_NLOC ))
-        ALLOCATE( MASS2U( MAT_NLOC, U_NLOC ))
-        ALLOCATE( INV_MASS_NM( MAT_NLOC, U_NLOC ))
-
-        D1 = ( NDIM == 1 )
-        D3 = ( NDIM == 3 )
+        ALLOCATE( MASS( Mdims%mat_nloc, Mdims%mat_nloc ))
+        ALLOCATE( INV_MASS( Mdims%mat_nloc, Mdims%mat_nloc ))
+        ALLOCATE( MASS2U( Mdims%mat_nloc, Mdims%u_nloc ))
+        ALLOCATE( INV_MASS_NM( Mdims%mat_nloc, Mdims%u_nloc ))
+        D1 = ( Mdims%ndim == 1 )
+        D3 = ( Mdims%ndim == 3 )
         DCYL = .FALSE.
 
-        Loop_Elements1: DO ELE = 1, TOTELE
-
+        Loop_Elements1: DO ELE = 1, Mdims%totele
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, X_NLOC, CV_NLOC, GIDIMS%CV_NGI, &
-                CVFEN, CVFENLX, CVFENLY, CVFENLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+            CALL DETNLXR_PLUS_U( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, Mdims%totele, Mdims%x_nonods, Mdims%x_nloc, Mdims%cv_nloc, CV_GIdims%cv_ngi, &
+                CV_funs%cvfen, CV_funs%CVFENLX_all(1,:,:), CV_funs%CVFENLX_all(2,:,:), CV_funs%CVFENLX_all(3,:,:), &
+                CV_funs%cvweight, DETWEI, RA, VOLUME, D1, D3, DCYL, &
                 CVFENX_ALL, &
-                U_NLOC, UFENLX, UFENLY, UFENLZ, UFENX_ALL)
+                Mdims%u_nloc, CV_funs%UFENLX_all(1,:,:), CV_funs%UFENLX_all(2,:,:), CV_funs%UFENLX_all(3,:,:), UFENX_ALL)
             MASELE = 0.0
-            Loop_MAT_ILOC: DO MAT_ILOC = 1, MAT_NLOC
-
-                Loop_MAT_JLOC: DO MAT_JLOC = 1, MAT_NLOC
-
+            Loop_MAT_ILOC: DO MAT_ILOC = 1, Mdims%mat_nloc
+                Loop_MAT_JLOC: DO MAT_JLOC = 1, Mdims%mat_nloc
                     NN = 0.0
-                    DO CV_GI_SHORT = 1, GIDIMS%CV_NGI_SHORT
-                        NN = NN +  CVFEN_SHORT( MAT_ILOC, CV_GI_SHORT )  * CVFEN_SHORT(  MAT_JLOC, CV_GI_SHORT ) &
+                    DO CV_GI_SHORT = 1, CV_GIdims%cv_ngi
+                        NN = NN +  CV_funs%cvfen( MAT_ILOC, CV_GI_SHORT )  * CV_funs%cvfen(  MAT_JLOC, CV_GI_SHORT ) &
                             * DETWEI( CV_GI_SHORT )
                     END DO
-
                     MASS( MAT_ILOC,MAT_JLOC)  = MASS( MAT_ILOC,MAT_JLOC) + NN
-
                 END DO Loop_MAT_JLOC
-
             END DO Loop_MAT_ILOC
-
-            CALL MATDMATINV( MASS, INV_MASS, MAT_NLOC)
-
+            CALL MATDMATINV( MASS, INV_MASS, Mdims%mat_nloc)
             MASS2U = 0.0
-            Loop_MAT_ILOC2: DO MAT_ILOC = 1, MAT_NLOC
-
-                Loop_U_JLOC: DO U_JLOC = 1, U_NLOC
-
+            Loop_MAT_ILOC2: DO MAT_ILOC = 1, Mdims%mat_nloc
+                Loop_U_JLOC: DO U_JLOC = 1, Mdims%u_nloc
                     NFEMU = 0.0
-                    DO CV_GI = 1, GIDIMS%CV_NGI
-                        NFEMU = NFEMU +  CVFEN( MAT_ILOC, CV_GI ) * UFEN(  U_JLOC, CV_GI ) * DETWEI( CV_GI )
+                    DO CV_GI = 1, CV_GIdims%cv_ngi
+                        NFEMU = NFEMU +  CV_funs%cvfen( MAT_ILOC, CV_GI ) * CV_funs%ufen(  U_JLOC, CV_GI ) * DETWEI( CV_GI )
                     END DO
-
                     MASS2U( MAT_ILOC,U_JLOC)  = MASS2U( MAT_ILOC,U_JLOC) + NFEMU
-
                 END DO Loop_U_JLOC
-
             END DO Loop_MAT_ILOC2
-
             INV_MASS_NM = 0.0
-
-            DO MAT_ILOC = 1, MAT_NLOC
-                DO U_JLOC = 1, U_NLOC
-                    DO MAT_KLOC = 1, MAT_NLOC
+            DO MAT_ILOC = 1, Mdims%mat_nloc
+                DO U_JLOC = 1, Mdims%u_nloc
+                    DO MAT_KLOC = 1, Mdims%mat_nloc
                         INV_MASS_NM( MAT_ILOC, U_JLOC ) = INV_MASS_NM( MAT_ILOC, U_JLOC ) &
                             + INV_MASS( MAT_ILOC, MAT_KLOC ) * MASS2U( MAT_KLOC, U_JLOC )
-
                     END DO
                 END DO
             END DO
-
-            Loop_MAT_ILOC3: DO MAT_ILOC = 1, MAT_NLOC
-
-                MAT_NOD = MAT_NDGLN(( ELE - 1 ) * MAT_NLOC + MAT_ILOC )
-
-                Loop_U_JLOC2: DO U_JLOC = 1, U_NLOC
-
-                    U_NODJ = U_NDGLN(( ELE - 1 ) * U_NLOC + U_JLOC )
-
-                    Loop_IPHASE: DO IPHASE = 1, NPHASE
-
-                        U_NODJ_IP = U_NODJ + ( IPHASE - 1 ) * U_NONODS
-
+            Loop_MAT_ILOC3: DO MAT_ILOC = 1, Mdims%mat_nloc
+                MAT_NOD = MAT_NDGLN(( ELE - 1 ) * Mdims%mat_nloc + MAT_ILOC )
+                Loop_U_JLOC2: DO U_JLOC = 1, Mdims%u_nloc
+                    U_NODJ = U_NDGLN(( ELE - 1 ) * Mdims%u_nloc + U_JLOC )
+                    Loop_IPHASE: DO IPHASE = 1, Mdims%nphase
+                        U_NODJ_IP = U_NODJ + ( IPHASE - 1 ) * Mdims%u_nonods
                         IDIM = 1
-
-                        MAT_NOD_ID_IP = MAT_NOD + ( IDIM - 1 ) * MAT_NONODS  + &
-                            ( IPHASE - 1 ) * NDIM * MAT_NONODS
-
+                        MAT_NOD_ID_IP = MAT_NOD + ( IDIM - 1 ) * Mdims%mat_nonods  + &
+                            ( IPHASE - 1 ) * Mdims%ndim * Mdims%mat_nonods
                         MAT_U( MAT_NOD_ID_IP ) = MAT_U( MAT_NOD_ID_IP ) + &
                             INV_MASS_NM( MAT_ILOC, U_JLOC ) * NU( U_NODJ_IP )
-
-                        IF( NDIM >= 2 ) THEN
+                        IF( Mdims%ndim >= 2 ) THEN
                             IDIM = 2
-                            MAT_NOD_ID_IP = MAT_NOD + ( IDIM - 1 ) * MAT_NONODS + &
-                                ( IPHASE- 1 ) * NDIM * MAT_NONODS
+                            MAT_NOD_ID_IP = MAT_NOD + ( IDIM - 1 ) * Mdims%mat_nonods + &
+                                ( IPHASE- 1 ) * Mdims%ndim * Mdims%mat_nonods
                             MAT_U( MAT_NOD_ID_IP ) = MAT_U( MAT_NOD_ID_IP ) + &
                                 INV_MASS_NM( MAT_ILOC, U_JLOC ) * NV( U_NODJ_IP )
                         ENDIF
-
-                        IF( NDIM >= 3 ) THEN
+                        IF( Mdims%ndim >= 3 ) THEN
                             IDIM = 3
-                            MAT_NOD_ID_IP = MAT_NOD + ( IDIM - 1 ) * MAT_NONODS + &
-                                ( IPHASE - 1 ) * NDIM * MAT_NONODS
+                            MAT_NOD_ID_IP = MAT_NOD + ( IDIM - 1 ) * Mdims%mat_nonods + &
+                                ( IPHASE - 1 ) * Mdims%ndim * Mdims%mat_nonods
                             MAT_U( MAT_NOD_ID_IP ) = MAT_U( MAT_NOD_ID_IP ) + &
                                 INV_MASS_NM( MAT_ILOC, U_JLOC ) * NW( U_NODJ_IP )
                         ENDIF
-
                     END DO Loop_IPHASE
-
                 END DO Loop_U_JLOC2
-
             END DO Loop_MAT_ILOC3
-
         END DO Loop_Elements1
-
-
         ! Deallocating temporary arrays
-
-        DEALLOCATE( CVWEIGHT )
-        DEALLOCATE( CVN )
-        DEALLOCATE( CVFEN )
-        DEALLOCATE( CVFENLX )
-        DEALLOCATE( CVFENLY )
-        DEALLOCATE( CVFENLZ )
-
-        DEALLOCATE( CVWEIGHT_SHORT )
-        DEALLOCATE( CVN_SHORT )
-        DEALLOCATE( CVFEN_SHORT )
-        DEALLOCATE( CVFENLX_SHORT )
-        DEALLOCATE( CVFENLY_SHORT )
-        DEALLOCATE( CVFENLZ_SHORT )
-        DEALLOCATE( CVFENX_SHORT )
-        DEALLOCATE( CVFENY_SHORT )
-        DEALLOCATE( CVFENZ_SHORT )
-
-        DEALLOCATE( UFEN )
-        DEALLOCATE( UFENLX )
-        DEALLOCATE( UFENLY )
-        DEALLOCATE( UFENLZ )
-
-        DEALLOCATE( SCVFEN )
-        DEALLOCATE( SCVFENSLX )
-        DEALLOCATE( SCVFENSLY )
-        DEALLOCATE( SCVFENLX )
-        DEALLOCATE( SCVFENLY )
-        DEALLOCATE( SCVFENLZ )
-        DEALLOCATE( SCVFEWEIGH )
-
-        DEALLOCATE( SUFEN )
-        DEALLOCATE( SUFENSLX )
-        DEALLOCATE( SUFENSLY )
-        DEALLOCATE( SUFENLX )
-        DEALLOCATE( SUFENLY )
-        DEALLOCATE( SUFENLZ )
-
-        DEALLOCATE( SBCVFEN )
-        DEALLOCATE( SBCVFENSLX )
-        DEALLOCATE( SBCVFENSLY )
-        DEALLOCATE( SBCVFEWEIGH )
-        DEALLOCATE( SBCVFENLX )
-        DEALLOCATE( SBCVFENLY )
-        DEALLOCATE( SBCVFENLZ )
-        DEALLOCATE( SBUFEN )
-        DEALLOCATE( SBUFENSLX )
-        DEALLOCATE( SBUFENSLY )
-        DEALLOCATE( SBUFENLX )
-        DEALLOCATE( SBUFENLY )
-        DEALLOCATE( SBUFENLZ )
-
-        DEALLOCATE( CV_SLOCLIST )
-        DEALLOCATE( U_SLOCLIST )
-        DEALLOCATE( CV_NEILOC )
-
-        DEALLOCATE( COLGPTS ) !The size of this vector is over-estimated
-        DEALLOCATE( FINDGPTS )
-
-        DEALLOCATE( CV_ON_FACE )
-        DEALLOCATE( U_ON_FACE )
-
-        DEALLOCATE( SELE_OVERLAP_SCALE )
-
         DEALLOCATE( MASS )
         DEALLOCATE( INV_MASS )
         DEALLOCATE( MASS2U )
         DEALLOCATE( INV_MASS_NM )
-
         DEALLOCATE(UFENX_ALL)
         DEALLOCATE(CVFENX_ALL)
         DEALLOCATE(DETWEI)
         DEALLOCATE(RA)
-
         RETURN
     end subroutine PROJ_U2MAT
-
 
 
     SUBROUTINE CALC_COMP_DIF_TEN( NDIM, UD, DIFF_molecular, DIFF_longitudinal, DIFF_transverse, &
