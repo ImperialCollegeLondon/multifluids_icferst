@@ -1599,68 +1599,6 @@ contains
     end subroutine calculate_SUF_SIG_DIAGTEN_BC
 
 
-    subroutine calculate_u_abs_stab( Material_Absorption_Stab, Material_Absorption, &
-        opt_vel_upwind_coefs_new, nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods, mat_ndgln )
-
-        implicit none
-
-        real, dimension( :, :, : ), intent( inout ) :: Material_Absorption_Stab
-        real, dimension( :, :, : ), intent( in ) :: Material_Absorption
-        real, dimension( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new
-        integer, intent( in ) :: nphase, ndim, totele, cv_nloc, mat_nloc, mat_nonods
-        integer, dimension( : ), intent( in ) :: mat_ndgln
-
-        logical :: use_mat_stab_stab
-        integer :: apply_dim, idim, jdim, ipha_idim, iphase, ele, cv_iloc, imat
-        real :: factor
-
-        Material_Absorption_Stab = 0.
-
-        use_mat_stab_stab = .false.
-
-        if ( use_mat_stab_stab ) then
-
-            apply_dim = 2
-
-            if ( .true. ) then
-
-                factor = 100.
-
-                do iphase = 1, nphase
-                    do idim = 1, ndim
-                        if ( idim == apply_dim ) then
-                            ipha_idim = ( iphase - 1 ) * ndim + idim
-                            Material_Absorption_Stab( :, ipha_idim, ipha_idim ) = &
-                                ( factor / 10. )**2 * Material_Absorption( :, ipha_idim, ipha_idim )
-                        end if
-                    end do
-                end do
-
-            else
-
-                do ele = 1, totele
-                    do cv_iloc = 1, cv_nloc
-                        imat = mat_ndgln( ( ele - 1 ) * mat_nloc + cv_iloc )
-                        do iphase = 1, nphase
-                            do idim = 1, ndim
-                                do jdim = 1, ndim
-                                    if ( idim == apply_dim .and. jdim == apply_dim ) then
-                                        ipha_idim = ( iphase - 1 ) * ndim + idim
-                                        Material_Absorption_Stab( imat, ipha_idim, ipha_idim ) = &
-                                            abs( opt_vel_upwind_coefs_new( idim, jdim, iphase, imat ) )
-                                    end if
-                                end do
-                            end do
-                        end do
-                    end do
-                end do
-
-            end if
-        end if ! use_mat_stab_stab
-
-        return
-    end subroutine calculate_u_abs_stab
-
     subroutine update_velocity_absorption( states, ndim, nphase, mat_nonods,velocity_absorption )
 
         implicit none

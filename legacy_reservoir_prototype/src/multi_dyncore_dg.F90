@@ -943,22 +943,11 @@ contains
 
 
         allocate( U_Abs_Stab( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
-        u_abs_stab=0.0
+        u_abs_stab=0.0!sprint_to_do!Remove u_abs_stab?
 
         ! calculate the viscosity for the momentum equation...
         uDiffusion_VOL = 0.0
         call calculate_viscosity( state, packed_state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%mat_nonods, mat_ndgln, uDiffusion )
-        ! stabilisation for high aspect ratio problems - switched off
-        if ( .not. is_porous_media ) then
-           call calculate_u_abs_stab( U_ABS_STAB, MAT_ABSORB, &
-              opt_vel_upwind_coefs_new, Mdims%nphase, Mdims%ndim, Mdims%totele, Mdims%cv_nloc, Mdims%mat_nloc, Mdims%mat_nonods, mat_ndgln )
-        end if
-
-        ! vertical stab for buoyant gyre
-        !u_abs_stab=0.0
-        !u_abs_stab(:,3,3)= dt*0.2/500.0
-
-
 
         ! allocate and define U_ABSORBIN here...
         allocate( U_ABSORBIN( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
