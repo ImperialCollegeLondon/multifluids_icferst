@@ -273,6 +273,7 @@ contains
 
         ! Number of pressures to solve for
         npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
+        Mdims%npres = npres ! clean this up...
 
         !Read info for adaptive timestep based on non_linear_iterations
         if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
@@ -323,6 +324,7 @@ contains
             x_snloc, cv_snloc, u_snloc, p_snloc, &
             cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
         n_in_pres = nphase / npres
+        Mdims%n_in_pres=n_in_pres
 
         !!$ Compute primary scalars used in most of the code
         call Get_Primary_Scalars_new( state, Mdims )

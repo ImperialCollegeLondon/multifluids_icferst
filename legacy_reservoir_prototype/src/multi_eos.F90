@@ -703,6 +703,41 @@ contains
 
 
 
+    subroutine Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_GIdims, Mspars, Material_Absorption, suf_sig_diagten_bc, &
+                                                      opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                                                      ids_ndgln, IDs2CV_ndgln, cv_ndgln, cv_sndgln, mat_ndgln, x_ndgln, cv_ele_type )
+
+       implicit none
+       type( state_type ), dimension( : ), intent( in ) :: state
+       type( state_type ), intent( inout ) :: packed_state
+       type( multi_dimensions ), intent( in ) :: Mdims
+       type( multi_gi_dimensions ), intent( in )  :: CV_GIdims
+       type (multi_sparsities), intent( in ) :: Mspars
+       integer, dimension( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
+       integer, dimension( : ), intent( in ) :: cv_ndgln, cv_sndgln, mat_ndgln, x_ndgln
+       integer, intent( in ) :: cv_ele_type
+
+       real, dimension( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
+       real, dimension( :, :, : ), intent( inout ) :: Material_Absorption
+       real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
+
+
+       call Calculate_AbsorptionTerm( state, packed_state, Mdims%npres, &
+          cv_ndgln, mat_ndgln, &
+          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption, ids_ndgln, IDs2CV_ndgln )
+
+       ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
+       ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
+       ! is diagonal
+       call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims%totele, Mdims%stotel, Mdims%cv_nloc, &
+          Mdims%cv_snloc, Mdims%n_in_pres, Mdims%nphase, Mdims%ndim, CV_GIdims%nface, Mdims%mat_nonods, Mdims%cv_nonods, Mdims%x_nloc, Mspars%ELE%ncol, cv_ele_type, &
+          Mspars%ELE%fin, Mspars%ELE%col, cv_ndgln, cv_sndgln, x_ndgln, mat_ndgln, material_absorption, &
+          state, Mdims%x_nonods, ids_ndgln )
+
+       return
+    end subroutine Calculate_PorousMedia_AbsorptionTerms
+
+
 
     subroutine Calculate_AbsorptionTerm( state, packed_state, &
         npres, cv_ndgln, mat_ndgln, &
