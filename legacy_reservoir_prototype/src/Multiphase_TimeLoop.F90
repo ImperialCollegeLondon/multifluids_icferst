@@ -125,6 +125,8 @@ contains
             ntsol
 
         !!$ Node global numbers
+        type(multi_ndgln) :: ndgln
+
         integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, &
             mat_ndgln, u_ndgln, xu_ndgln, cv_sndgln, p_sndgln, u_sndgln
 
@@ -336,6 +338,10 @@ contains
             cv_snloc, p_snloc, u_snloc, &
             cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
             cv_sndgln, p_sndgln, u_sndgln )
+
+        !!$ Calculating Global Node Numbers
+        call allocate_multi_ndgln(ndgln, Mdims)
+        call Compute_Node_Global_Numbers_new(state, ndgln)
 
         !!$
         !!$ Computing Sparsity Patterns Matrices
@@ -1648,9 +1654,11 @@ end if
 
                 !Deallocate sparsities
                 call deallocate_multi_sparsities(Mspars)
+                !Deallocate ndgln
+                call deallocate_multi_ndgln(ndgln)
 
                 !!$  Compute primary scalars used in most of the code
-                call Get_Primary_Scalars( state, &
+                call Get_Primary_Scalars( state, &!sprint_to_do; remove
                     nphase, nstate, ncomp, totele, ndim, stotel, &
                     u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
                     x_snloc, cv_snloc, u_snloc, p_snloc, &
@@ -1669,6 +1677,12 @@ end if
                     cv_snloc, p_snloc, u_snloc, &
                     cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
                     cv_sndgln, p_sndgln, u_sndgln )
+
+                !!$ Calculating Global Node Numbers
+                call allocate_multi_ndgln(ndgln, Mdims)
+                call Compute_Node_Global_Numbers_new(state, ndgln)
+
+
                 !!$
                 !!$ Computing Sparsity Patterns Matrices
                 !!$
