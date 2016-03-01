@@ -689,7 +689,6 @@ contains
 
         INTEGER, DIMENSION(  : ), intent( in ) :: CV_SNDGLN
         INTEGER, DIMENSION(  : ), intent( in ) :: XU_NDGLN
-        !REAL, DIMENSION(  :, :, :  ), intent( inout ) :: U_ABS_STAB, U_ABSORBIN, MAT_ABSORB
         REAL, DIMENSION(  :, :, :  ), intent( inout ) :: MAT_ABSORB
 
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
@@ -728,7 +727,7 @@ contains
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
         REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES, ScalarField_Source
-        REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE, U_SOURCE_CV, U_ABSORBIN, temperature_absorption, u_abs_stab
+        REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE, U_SOURCE_CV, U_ABSORBIN, temperature_absorption
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( :, :, : ), allocatable :: CT, U_RHS, DU_VEL, U_RHS_CDP2
@@ -746,7 +745,7 @@ contains
         type(scalar_field), target :: Targ_C_Mat
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: MAT_INOD, IPRES, JPRES, iphase_real, jphase_real
-        REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABS_STAB_ALL, U_ABSORB
+        REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABSORB
         REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, UDEN3
         REAL, DIMENSION( :, :, :, : ), allocatable :: uDIFFUSION, UDIFFUSION_ALL
         REAL, DIMENSION( :, : ), allocatable :: uDIFFUSION_VOL, UDIFFUSION_VOL_ALL, rhs_p2, sigma
@@ -942,9 +941,6 @@ contains
         ENDIF
 
 
-        allocate( U_Abs_Stab( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
-        u_abs_stab=0.0!sprint_to_do!Remove u_abs_stab?
-
         ! calculate the viscosity for the momentum equation...
         uDiffusion_VOL = 0.0
         call calculate_viscosity( state, packed_state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%mat_nonods, mat_ndgln, uDiffusion )
@@ -987,12 +983,10 @@ contains
         END DO
 
         ALLOCATE( U_ABSORB_ALL( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
-        ALLOCATE( U_ABS_STAB_ALL( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
         ALLOCATE( UDIFFUSION_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods ) )
         ALLOCATE( UDIFFUSION_VOL_ALL( Mdims%nphase, Mdims%mat_nonods ) )
         DO MAT_INOD = 1, Mdims%mat_nonods
             U_ABSORB_ALL( :, :, MAT_INOD ) = U_ABSORB( MAT_INOD, :, : )
-            U_ABS_STAB_ALL( :, :, MAT_INOD ) = U_ABS_STAB( MAT_INOD, :, : )
             UDIFFUSION_ALL( :, :, :, MAT_INOD ) = UDIFFUSION( MAT_INOD, :, :, : )
             UDIFFUSION_VOL_ALL( :, MAT_INOD ) = UDIFFUSION_VOL( MAT_INOD, : )
         END DO
@@ -1049,7 +1043,7 @@ contains
             U_ELE_TYPE, P_ELE_TYPE, &
             U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
             CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
-            X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
+            X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL, UOLD_ALL, &
             P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
             DT, &
@@ -1436,7 +1430,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         U_ELE_TYPE, P_ELE_TYPE, &
         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
         CV_SNDGLN, U_SNDGLN, P_SNDGLN, &
-        X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
+        X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
         DT, &
@@ -1485,7 +1479,6 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         INTEGER, DIMENSION(  :  ), intent( in ) :: P_SNDGLN
         INTEGER, DIMENSION(  :  ), intent( in ) :: XU_NDGLN
         real, dimension(:,:), intent(in) :: X_ALL
-        REAL, DIMENSION( :, :, : ), intent( in ) :: U_ABS_STAB_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ABSORB_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV_ALL
@@ -1547,8 +1540,6 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
 
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
-        !ALLOCATE( T2( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 )) ; T2 = 0.
-        !ALLOCATE( T2OLD( Mdims%cv_nonods * Mdims%nphase * IGOT_T2 )) ; T2OLD =0.
         IF ( IGOT_T2 == 1 ) THEN
            ALLOCATE( T2( Mdims%nphase, Mdims%cv_nonods )) ; T2 = 0.
            ALLOCATE( T2OLD( Mdims%nphase, Mdims%cv_nonods )) ; T2OLD =0.
@@ -1568,7 +1559,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
             U_ELE_TYPE, P_ELE_TYPE,&
             U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
             U_SNDGLN, P_SNDGLN, CV_SNDGLN,&
-            X_ALL, U_ABS_STAB_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
+            X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL, UOLD_ALL, &
             U_ALL, UOLD_ALL, &    ! This is nu...
             UDEN_ALL, UDENOLD_ALL, DERIV, &
@@ -1750,7 +1741,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         U_ELE_TYPE, P_ELE_TYPE, &
         U_NDGLN, P_NDGLN, CV_NDGLN, X_NDGLN, MAT_NDGLN, &
         U_SNDGLN, P_SNDGLN, CV_SNDGLN,&
-        X_ALL, U_ABS_STAB, U_ABSORB, U_SOURCE, U_SOURCE_CV, &
+        X_ALL, U_ABSORB, U_SOURCE, U_SOURCE_CV, &
         U_ALL, UOLD_ALL, &
         NU_ALL, NUOLD_ALL, &
         UDEN, UDENOLD, DERIV, &
@@ -1786,7 +1777,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         INTEGER, DIMENSION( : ), intent( in ) :: P_SNDGLN
         INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
         REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
-        REAL, DIMENSION( :, :, : ), intent( in ) :: U_ABS_STAB
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ABSORB
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV
@@ -2165,16 +2155,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         SUF_MOMU_BC_ALL=>momentum_BCs%val
         SUF_U_ROB1_BC_ALL=>velocity_BCs%val
         SUF_U_ROB2_BC_ALL=>velocity_BCs_robin2%val
-        !ewrite(3,*) 'Just double-checking sparsity patterns memory allocation:'
-        !ewrite(3,*) 'Mspars%C%fin with size,', size( Mspars%C%fin ), ':', Mspars%C%fin( 1 :  size( Mspars%C%fin ) )
-        !ewrite(3,*) 'Mspars%C%col with size,', size( Mspars%C%col ), ':', Mspars%C%col( 1 :  size( Mspars%C%col ) )
-        !ewrite(3,*) 'Mspars%ELE%fin with size,', size( Mspars%ELE%fin ), ':', Mspars%ELE%fin( 1 :  size( Mspars%ELE%fin ) )
-        !ewrite(3,*) 'Mspars%ELE%col with size,', size( Mspars%ELE%col ), ':', Mspars%ELE%col( 1 :  size( Mspars%ELE%col ) )
-        !ewrite(3,*)'UDEN=',uden
-        !ewrite(3,*)'UDENOLD=',udenold
-        !ewrite(3,*)'u_absorb=',u_absorb
-        !ewrite(3,*)'u_abs_stab=',u_abs_stab
-        !stop 2921
+
+
         mom_conserv=.false.
         call get_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/conservative_advection', &
@@ -2794,15 +2776,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                     END DO
                                     LOC_U_SOURCE_CV( IDIM, IPHASE, MAT_ILOC ) = LOC_U_SOURCE_CV( IDIM, IPHASE, MAT_ILOC ) &
                                         + FOURCE_SOLID_FLUID_COUP(IDIM, IPHASE, CV_INOD)* UDIFFUSION_ALL( 1, 1, IPHASE, MAT_INOD )
-                                !                               LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC )  &
-                                !                                  + FOURCE_SOLID_FLUID_COUP(IDIM, IPHASE, CV_INOD)* UDIFFUSION_ALL( 1, 1, IPHASE, MAT_INOD )
                                 END DO
                             END DO
                         ENDIF
                     ! ENDOF IF(RETRIEVE_SOLID_CTY) THEN...
                     ENDIF
                 END IF
-                LOC_U_ABS_STAB( :, :, MAT_ILOC ) = U_ABS_STAB( :, :, MAT_INOD )
+                LOC_U_ABS_STAB( :, :, MAT_ILOC ) = 0.
                 ! Switch on for solid fluid-coupling apply stabilization term...
                 IF(RETRIEVE_SOLID_CTY) THEN
                     CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%mat_nloc + MAT_ILOC )
@@ -2811,8 +2791,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             I=IDIM + (IPHASE-1)*Mdims%ndim
                             LOC_U_ABS_STAB( I, I, MAT_ILOC ) = LOC_U_ABS_STAB( I, I, MAT_ILOC ) + &
                                 COEFF_SOLID_FLUID_stab *( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
-                        !                            LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC )  &
-                        !                                  + COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt )
                         END DO
                     END DO
                 ENDIF
