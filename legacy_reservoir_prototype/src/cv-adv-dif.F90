@@ -1152,7 +1152,7 @@ contains
                 ! This was causing extreme slowdown in the code. Hence we now do all the necessary extractions from state relevant
                 ! to calculate_outflux() here. i.e. they happen every time-step still but OUTSIDE the element loop!
                 ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
-        
+
         if(is_porous_media .and. calculate_flux ) then
         
             allocate(phaseV(Mdims%nphase,Mdims%cv_nonods))
@@ -1942,7 +1942,7 @@ contains
                                     end if
                                 end do
                             ENDIF Conditional_GETCT2
-                    
+
                             !########################################################################################
                             ! 27/01/2016
                             if(sele > 0) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
@@ -2476,6 +2476,7 @@ contains
                 call addto(cv_rhs_field,CV_NODI,LOC_CV_RHS_I)
             END DO Loop_CVNODI2
         END IF Conditional_GETCV_DISC2
+
         IF ( GETCT ) THEN
             W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T
             W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD
@@ -4378,10 +4379,15 @@ contains
         ! I/O variables
         !---------------------------------
         type(state_type) :: packed_state
+<<<<<<< HEAD
+        type(tensor_field_pointer), dimension(:), intent(in) :: fempsi  ! finite element field data
+        type(tensor_field_pointer), dimension(:), intent(in) :: psi     ! finite volume field data
+=======
         type(tensor_field_pointer), dimension(:), intent(inout) :: fempsi  ! finite element field data
         type(tensor_field_pointer), dimension(:), intent(inout) :: psi     ! finite volume field data
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_int ! control volume area
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_ave ! control volume barycentre
+>>>>>>> 4928cbc58ef4296a2e35edd37d6a871922b6ec2d
         integer, intent(in) :: ndim                     ! number of dimensions
         integer, intent(in) :: cv_nonods                ! number of control volume barycentres
         integer, intent(in) :: totele                   ! total number of finite elements
@@ -4401,6 +4407,8 @@ contains
         integer, dimension(:), intent(in) :: findcmc    ! row position in the sparse matrix of CMC
         integer, dimension(:), intent(in) :: colcmc     ! column position in the sparse matrix of CMC
         real, dimension(:), intent( inout ) :: mass_mn_pres     ! ??
+        type(vector_field_pointer), dimension(:), intent(in) :: psi_int ! control volume area
+        type(vector_field_pointer), dimension(:), intent(in) :: psi_ave ! control volume barycentre
 
         !---------------------------------
         ! local variables

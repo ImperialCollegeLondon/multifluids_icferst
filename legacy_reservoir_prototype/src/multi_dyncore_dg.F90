@@ -1615,7 +1615,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         tracer=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         density=>extract_tensor_field(packed_state,"PackedDensity")
         call halo_update(density)
-
         call CV_ASSEMB( state, packed_state, &
             Mdims, CV_GIdims, CV_funs, Mspars, storage_state, &
             tracer, velocity, density, &
@@ -1643,7 +1642,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             dummy_transp, &
             StorageIndexes, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false., MASS_P_CV = PIVIT_MAT,&
             U_RHS = U_RHS)
-
         ewrite(3,*)'Back from cv_assemb'
 
 
