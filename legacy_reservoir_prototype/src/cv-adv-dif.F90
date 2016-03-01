@@ -4378,10 +4378,10 @@ contains
         ! I/O variables
         !---------------------------------
         type(state_type) :: packed_state
-        type(tensor_field_pointer), dimension(:), intent(in) :: fempsi  ! finite element field data
-        type(tensor_field_pointer), dimension(:), intent(in) :: psi     ! finite volume field data
-        type(vector_field_pointer), dimension(:), intent(in) :: psi_int ! control volume area
-        type(vector_field_pointer), dimension(:), intent(in) :: psi_ave ! control volume barycentre
+        type(tensor_field_pointer), dimension(:), intent(inout) :: fempsi  ! finite element field data
+        type(tensor_field_pointer), dimension(:), intent(inout) :: psi     ! finite volume field data
+        type(vector_field_pointer), dimension(:), intent(inout) :: psi_int ! control volume area
+        type(vector_field_pointer), dimension(:), intent(inout) :: psi_ave ! control volume barycentre
         integer, intent(in) :: ndim                     ! number of dimensions
         integer, intent(in) :: cv_nonods                ! number of control volume barycentres
         integer, intent(in) :: totele                   ! total number of finite elements
