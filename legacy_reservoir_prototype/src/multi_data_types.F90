@@ -70,7 +70,6 @@ module multi_data_types
         integer :: scvngi     !Number of gauss integer points in the surface of a control volume
         integer :: sbcvngi    !Number of gauss integer points in the surface boundary of a control volume
         integer :: nface      !Number of faces per element
-        integer :: cv_ngi_short !Number of gauss integer points
     end type multi_gi_dimensions
 
 

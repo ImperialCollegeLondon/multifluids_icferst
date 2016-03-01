@@ -1748,11 +1748,6 @@ end if
                     igot_t2 = 1 ; igot_theta_flux = 1
                 end if
 
-!!$                call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-!!$                    cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
-
-!                call retrieve_ngi( GIdims, Mdims, cv_ele_type, .false. )
-
                 scvngi_theta = CV_GIdims%scvngi
                 ncv_faces = CV_count_faces( Mdims, CV_ELE_TYPE, CV_GIdims)
 

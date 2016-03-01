@@ -2599,8 +2599,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                         DO IPHASE = 1, Mdims%nphase
                             UDIFFUSION_ALL( :, :, IPHASE, MAT_NOD ) = UDIFFUSION_ALL( :, :, IPHASE, MAT_NOD ) * ( 1. - sf%val( cv_nod ) )
                             UDIFFUSION_VOL_ALL( IPHASE, MAT_NOD ) = UDIFFUSION_VOL_ALL( IPHASE, MAT_NOD ) * ( 1. - sf%val( cv_nod ) )
-                        !                        UDIFFUSION( :, :, IPHASE, MAT_NOD ) = UDIFFUSION( :, :, IPHASE, MAT_NOD ) * ( 1. - sf%val( cv_nod ) )
-                        !                        UDIFFUSION_VOL( IPHASE, MAT_NOD ) = UDIFFUSION_VOL( IPHASE, MAT_NOD ) * ( 1. - sf%val( cv_nod ) )
                         END DO
                     END DO
                 END DO
@@ -2622,14 +2620,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             K_mat=0.0
             K_mat_sym=0.0
             K_mat_xall=0.0
-            do U_ILOC = 1, Mdims%u_nloc
+            do U_ILOC = 1, Mdims%u_nloc!sprint_to_do!What shall we do with this?
                 do u_jloc = 1, Mdims%u_nloc
                     m_inv(u_iloc,u_jloc) =sum(FE_funs%ufen(u_iloc,:) * FE_funs%ufen(u_jloc,:)*DETWEI)
                     do idim =1, Mdims%ndim
                         K_mat_sym(u_iloc,u_jloc) = K_mat_sym(u_iloc,u_jloc) + sum(UFENX_ALL(idim,u_iloc,:) * UFENX_ALL(idim,u_jloc,:)*DETWEI)
-                        !                        K_mat(u_iloc,u_jloc) = K_mat(u_iloc,u_jloc) + sum(FE_funs%ufenlx_all(idim,u_iloc,:) * FE_funs%ufenlx_all(idim,u_jloc,:)*DETWEI)
                         K_mat_xall(idim,u_iloc,u_jloc) = sum(FE_funs%ufen(u_iloc,:) * UFENX_ALL(idim,u_jloc,:)*DETWEI)
-                    !       K_mat_xall(idim,u_iloc,u_jloc) = sum(FE_funs%ufen(u_iloc,:) * FE_funs%ufenlx_all(idim,u_jloc,:)*DETWEI)
                     end do
                 end do
             end do
@@ -2638,7 +2634,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             n_mat =0.0
             n_mat_xall =0.0
             do idim=1,Mdims%ndim
-                !     n_mat = n_mat + matmul(transpose(K_mat_xall(idim,:,:)),matmul(m_inv,K_mat_xall(idim,:,:)))
                 n_mat = n_mat + matmul(K_mat_xall(idim,:,:),matmul(m_inv,K_mat_xall(idim,:,:)))
                 n_mat_xall(idim,:,:) =  matmul(K_mat_xall(idim,:,:),matmul(m_inv,K_mat_xall(idim,:,:)))
             end do
@@ -2646,17 +2641,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 kmk_mat = 0.0
                 do idim=1,Mdims%ndim
                     kmk_mat = kmk_mat +matmul(transpose(n_mat_xall(idim,:,:)),matmul(m_inv,n_mat_xall(idim,:,:)))
-                !    kmk_mat = kmk_mat +matmul(transpose(n_mat_xall(1,:,:)),matmul(m_inv,n_mat_xall(1,:,:)))
                 end do
             else
                 kmk_mat = 0.
-            !   kmk_mat = -n_mat
-            !    kmk_mat = -0.005*(n_mat + transpose(n_mat))
-            !               kmk_mat = 0.*( transpose(n_mat))
-            !        kmk_mat = matmul(transpose(n_mat(:,:)),matmul(m_inv,n_mat(:,:)))
-            !        kmk_mat = matmul(transpose(k_mat_sym(:,:)),matmul(m_inv,n_mat(:,:)))
-            !      kmk_mat = K_mat_sym - n_mat
-            !      kmk_mat = K_mat_sym
             end if
             DO GI = 1, FE_GIdims%CV_NGI
                 CVFENX_ALL_REVERSED(:,GI,:) = CVFENX_ALL(:,:,GI)
@@ -2754,11 +2741,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 DO IPHASE=1,Mdims%nphase
                                     I=IDIM + (IPHASE-1)*Mdims%ndim
                                     LOC_U_ABSORB( I, I, MAT_ILOC ) = LOC_U_ABSORB( I, I, MAT_ILOC ) + &
-                                        !COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt ) * sf%val( cv_inod )
                                         COEFF_SOLID_FLUID_stab * ( min ( 1.0, DEN_ALL( IPHASE, cv_inod )) / dt ) * sf%val( cv_inod )
                                     ! not used...
                                     LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) = LOC_U_ABS_STAB_SOLID_RHS( I, I, MAT_ILOC ) &
-                                        !+ COEFF_SOLID_FLUID * ( DEN_ALL( IPHASE, cv_inod ) / dt )
                                         + COEFF_SOLID_FLUID_stab * ( min ( 1.0, DEN_ALL( IPHASE, cv_inod ) ) / dt )
                                 END DO
                             END DO
@@ -2903,7 +2888,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !                END DO
 !
 !                DO U_ILOC = 1, Mdims%u_nloc
-!                    DO GI = 1, CV_NGI_SHORT
+!                    DO GI = 1, CV_NGI
 !                        DENGI( :, GI ) = DENGI( :, GI ) + FE_funs%ufen( U_ILOC, GI ) * UDEN_VFILT( :, U_ILOC )
 !                        DENGIOLD( :, GI ) = DENGIOLD( :, GI ) + FE_funs%ufen( U_ILOC, GI ) * UDENOLD_VFILT( :, U_ILOC )
 !                    END DO
@@ -2918,27 +2903,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
                     SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = 1.0
                 end do
-               !Add stabilization for bad elements
-            !               DO MAT_ILOC = 1, Mdims%mat_nloc
-            !                   DO GI = 1, FE_GIdims%cv_ngi
-            !                       DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
-            !                           DO JPHA_JDIM = 1, Mdims%ndim * Mdims%nphase
-            !                                SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI ) = SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI ) &
-            !                                + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
-            !                           end do
-            !                       end do
-            !                   end do
-            !               end do
             else
                 DO MAT_ILOC = 1, Mdims%mat_nloc
                     DO GI = 1, FE_GIdims%cv_ngi
                         DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
                             DO JPHA_JDIM = 1, Mdims%ndim * Mdims%nphase
                                 SIGMAGI( IPHA_IDIM, JPHA_JDIM, GI ) = SIGMAGI( IPHA_IDIM, JPHA_JDIM, GI ) &
-                                    !+ FE_funs%cvfen( MAT_ILOC, GI ) * LOC_U_ABSORB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
                                     + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABSORB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
                                 SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI ) = SIGMAGI_STAB( IPHA_IDIM, JPHA_JDIM, GI ) &
-                                    !+ FE_funs%cvfen( MAT_ILOC, GI ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
                                     + CVN_REVERSED( GI, MAT_ILOC ) * LOC_U_ABS_STAB( IPHA_IDIM, JPHA_JDIM, MAT_ILOC )
                             END DO
                         END DO
@@ -2962,19 +2934,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     do idim=1,Mdims%ndim
                         do iphase=1,Mdims%nphase
                             ipha_idim=idim + (iphase-1)*Mdims%ndim
-                            !                         SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID*max( dengi( iphase, : ), min_den_for_solid_fluid ) * vol_s_gi(:) / dt
-                            !                         SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID*max( dengi( iphase, : ), min_den_for_solid_fluid ) / dt
                             SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID_relax*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) * vol_s_gi(:) / dt
                             SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) + COEFF_SOLID_FLUID_relax*max( CV_dengi( iphase, : ), min_den_for_solid_fluid ) / dt
                         end do
                     end do
                 end if
-                !IF(RETRIEVE_SOLID_CTY) THEN
-                !   DO IPHA_IDIM = 1, Mdims%ndim * Mdims%nphase
-                !      SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) = max( 10.0/dt, SIGMAGI( IPHA_IDIM, IPHA_IDIM, : ) )
-                !      SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) = max( 10.0/dt, SIGMAGI_STAB_SOLID_RHS( IPHA_IDIM, IPHA_IDIM, : ) )
-                !   END DO
-                !END IF
             end if
             RHS_DIFF_U=0.0
             if (Porous_media_PIVIT_not_stored_yet) then
@@ -2987,7 +2951,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             VLK_ELE = 0.0
             STRESS_IJ_ELE = 0.0
             !Prepare data
-                !IF ( STAB_VISC_WITH_ABS ) THEN
             IF ( GOT_DIFFUS ) THEN
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
@@ -3012,7 +2975,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     END DO
                 END DO
             END IF
-            if (Porous_media_PIVIT_not_stored_yet) then
+            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO GI = 1, FE_GIdims%cv_ngi
@@ -3037,11 +3000,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                             + DENGI(JPHASE,GI) * RNN
                                         NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) = NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
                                             + DENGIOLD(JPHASE, GI) * RNN
-                                       ! this is for full lumping
-                                       !NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) = NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
-                                       !     + RNN * LOC_uden( 1, u_iloc)
-                                       !NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) = NN_MASSOLD_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_ILOC ) &
-                                       !     + RNN * LOC_uden( 1, u_iloc)
                                     else
                                         NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) = NN_MASS_ELE( JPHA_JDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                             + DENGI(JPHASE,GI) * RNN
@@ -3142,11 +3100,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     END DO
                 END DO
             end if ! endof if (Porous_media_PIVIT_not_stored_yet) then
-            if (.not.is_porous_media) then
+            if (.not.is_porous_media) then!sprint_to_do; internal subroutine for this?
                 !###LOOP Loop_DGNods1 IS NOT NECESSARY FOR POROUS MEDIA###
                 Loop_DGNods1: DO U_ILOC = 1, Mdims%u_nloc
-                    !GLOBI = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-                    !IF ( NLEV==1 .AND. LUMP_MASS ) GLOBI_CV = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + U_ILOC )
                     ! put CV source in...
                     IF ( LUMP_MASS .AND. ( Mdims%cv_nloc==6 .OR. (Mdims%cv_nloc==10 .AND. Mdims%ndim==3) ) ) THEN ! Quadratice
                         IF(Mdims%u_nloc.GE.Mdims%cv_nloc) STOP 28211 ! Code not ready yet for this.
@@ -3314,13 +3270,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                         IF ( NO_MATRIX_STORE ) THEN
                                             LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                 - VLK_ELE( IPHASE, U_ILOC, U_JLOC ) * LOC_U( IDIM, IPHASE, U_JLOC )
-                                        !                                            LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                        !                                            - VLK( IPHASE ) * LOC_U( IDIM, IPHASE, U_JLOC )
                                         ELSE
                                             DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
                                                 = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLK_ELE( IPHASE, U_ILOC, U_JLOC )
-                                        !                                            DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) &
-                                        !                                            = DIAG_BIGM_CON( IDIM, JDIM, IPHASE, JPHASE, U_ILOC, U_JLOC, ELE ) + VLK( IPHASE )
                                         END IF
                                         IF(PIVIT_ON_VISC) THEN
                                             I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
@@ -3332,8 +3284,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                         END IF
                                         RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
                                             VLK_ELE( IPHASE, U_ILOC, U_JLOC ) * LOC_U( IDIM, IPHASE, U_JLOC )
-                                    !                                        RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) = RHS_DIFF_U( IDIM, IPHASE, U_ILOC ) + &
-                                    !                                        VLK( IPHASE ) * LOC_U( IDIM, IPHASE, U_JLOC )
                                     END IF
                                 END DO
                             END DO
@@ -3367,12 +3317,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     END DO
                 END DO
             ENDIF
-            ! **********REVIEWER 2-START**********************
-            !ewrite(3,*)'just after Loop_DGNods1'
-            ! Add-in surface contributions.
-            ! Find diffusion contributions at the surface
-            !CALL DG_DIFFUSION( ELE, Mdims%u_nloc, Mdims%u_nonods, Mdims%totele, LMMAT1, LMMAT, LNXNMAT1, LNNXMAT, LINVMMAT1, &
-            !LINVMNXNMAT1, AMAT )
+
             ! Add in C matrix contribution: (DG velocities)
             Loop_U_ILOC1: DO U_ILOC = 1, Mdims%u_nloc
                 if(.not.got_c_matrix) IU_NOD = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
@@ -3426,10 +3371,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     END DO Loop_Phase1
                 END DO Loop_P_JLOC1
             END DO Loop_U_ILOC1
-            !ewrite(3,*)'just after Loop_U_ILOC1'
-            ! **********REVIEWER 2-END**********************
-            ! **********REVIEWER 2-START**********************
-            IF( (.NOT.FIRSTST) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN
+
+            IF( (.NOT.FIRSTST) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN!sprint_to_do; internal subroutine for this?
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 DO U_JLOC = 1, Mdims%u_nloc
@@ -6252,7 +6195,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      REAL, DIMENSION( :,: ), allocatable :: THERM_U_DIFFUSION_VOL
 
      !        ===> INTEGERS <===
-!!$     INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, &
+!!$     INTEGER :: CV_NGI, SCVNGI, SBCVNGI, COUNT, &
      INTEGER :: COUNT, &
          ELE, GI, &
          NCOLGPTS, &
@@ -6321,8 +6264,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
      QUAD_OVER_WHOLE_ELE=.FALSE.
      ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
-!!$     call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-!!$         cv_ngi, cv_ngi_short, scvngi, sbcvngi, nface, QUAD_OVER_WHOLE_ELE )
 
      call retrieve_ngi( GIdims, Mdims, cv_ele_type, QUAD_OVER_WHOLE_ELE )
 
@@ -6364,12 +6305,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      ALLOCATE( CVFENLZ( CV_NLOC, GIDIMS%CV_NGI ))
 
 
-     ALLOCATE( CVWEIGHT_SHORT( GIDIMS%CV_NGI_SHORT ))
-     ALLOCATE( CVN_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
-     ALLOCATE( CVFEN_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT))
-     ALLOCATE( CVFENLX_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
-     ALLOCATE( CVFENLY_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
-     ALLOCATE( CVFENLZ_SHORT( CV_NLOC, GIDIMS%CV_NGI_SHORT ))
+     ALLOCATE( CVWEIGHT_SHORT( GIDIMS%CV_NGI ))
+     ALLOCATE( CVN_SHORT( CV_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( CVFEN_SHORT( CV_NLOC, GIDIMS%CV_NGI))
+     ALLOCATE( CVFENLX_SHORT( CV_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( CVFENLY_SHORT( CV_NLOC, GIDIMS%CV_NGI ))
+     ALLOCATE( CVFENLZ_SHORT( CV_NLOC, GIDIMS%CV_NGI ))
 
      ALLOCATE( UFEN( U_NLOC, GIDIMS%CV_NGI))
      ALLOCATE( UFENLX( U_NLOC, GIDIMS%CV_NGI ))
@@ -6445,7 +6386,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      CALL CV_FEM_SHAPE_FUNS( &
                               ! Volume shape functions...
          NDIM, CV_ELE_TYPE,  &
-         GIDIMS%CV_NGI, GIDIMS%CV_NGI_SHORT, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
+         GIDIMS%CV_NGI, GIDIMS%CV_NGI, CV_NLOC, U_NLOC, CVN, CVN_SHORT, &
          CVWEIGHT, CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
          CVWEIGHT_SHORT, CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          UFEN, UFENLX, UFENLY, UFENLZ, &
@@ -6494,7 +6435,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      CALL PROJ_CV_TO_FEM( FEMT, VOLUME_FRAC, 1, NDIM, &
          unnecessary_zero_length_array,0,unnecessary_zero_length_array,0, MASS_ELE, &
          CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-         GIDIMS%CV_NGI_SHORT, CV_NLOC, CVN_SHORT, CVWEIGHT_SHORT, &
+         GIDIMS%CV_NGI, CV_NLOC, CVN_SHORT, CVWEIGHT_SHORT, &
          CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          X_NONODS, X, Y, Z, NCOLM, FINDM, COLM, MIDM, &
          IGETCT, RDUM, IDUM, IDUM, 0, OPTION_PATH )
@@ -6556,7 +6497,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          DTX_ELE, DTY_ELE, DTZ_ELE, DTOLDX_ELE, DTOLDY_ELE, DTOLDZ_ELE, &
          NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
          X_NDGLN, X_NLOC, X_NDGLN, &
-         GIDIMS%CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
+         GIDIMS%CV_NGI, CV_NLOC, CVWEIGHT_SHORT, &
          CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          X_NONODS, X, Y, Z,  &
@@ -6571,7 +6512,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          SHARP_DTX_ELE, SHARP_DTY_ELE, SHARP_DTZ_ELE, DTOLDX_ELE, DTOLDY_ELE, DTOLDZ_ELE, &
          NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
          X_NDGLN, X_NLOC, X_NDGLN, &
-         GIDIMS%CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
+         GIDIMS%CV_NGI, CV_NLOC, CVWEIGHT_SHORT, &
          CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
          X_NONODS, X, Y, Z,  &
@@ -6925,7 +6866,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      DToldX_ELE, rzero3, rzero3,   rzero3, rzero3, rzero3, &
                      NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
                      X_NDGLN, X_NLOC, X_NDGLN, &
-                     GIDIMS%CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
+                     GIDIMS%CV_NGI, CV_NLOC, CVWEIGHT_SHORT, &
                      CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
                      CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
                      X_NONODS, X, Y, Z,  &
@@ -6956,7 +6897,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      rzero3, DToldY_ELE, rzero3,   rzero3, rzero3, rzero3, &
                      NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
                      X_NDGLN, X_NLOC, X_NDGLN, &
-                     GIDIMS%CV_NGI_SHORT, CV_NLOC, CVWEIGHT_SHORT, &
+                     GIDIMS%CV_NGI, CV_NLOC, CVWEIGHT_SHORT, &
                      CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
                      CVFEN_SHORT, CVFENLX_SHORT, CVFENLY_SHORT, CVFENLZ_SHORT, &
                      X_NONODS, X, Y, Z,  &
