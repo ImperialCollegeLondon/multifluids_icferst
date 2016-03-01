@@ -72,16 +72,13 @@ module multiphase_1D_engine
 contains
 
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
-       Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state, &
+       Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state, &
        tracer, velocity, density, &
        CV_ELE_TYPE,&
-       CV_NDGLN, X_NDGLN, U_NDGLN, MAT_NDGLN,&
-       CV_SNDGLN, U_SNDGLN, &
        !IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
        T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
        SUF_SIG_DIAGTEN_BC, &
        VOLFRA_PORE, &
-       XU_NDGLN, &
        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
        IGOT_T2, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
        THETA_GDIFF, &
@@ -99,18 +96,13 @@ contains
            type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
            type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
            type (multi_sparsities), intent(in) :: Mspars
+           type(multi_ndgln), intent(in) :: ndgln
            type(tensor_field), intent(inout) :: tracer
            type(tensor_field), intent(in) :: velocity, density
            INTEGER, intent( in ) :: CV_ELE_TYPE, IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux
            LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
            LOGICAL, intent( in ), optional ::THERMAL
-           INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-           INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-           INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN, IDs_ndgln
-           INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
-           INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
-           INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
-           INTEGER, DIMENSION( : ), intent( in ) :: U_SNDGLN
+           INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
            REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
            REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
            !REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
@@ -155,21 +147,14 @@ contains
            type(csr_sparsity), pointer :: sparsity
            real, dimension(:,:), allocatable :: ScalarField_Source
            real, dimension(:,:,:), allocatable :: Velocity_Absorption, T_AbsorB
-
            integer :: IGOT_THERM_VIS
            real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
            real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
-
            integer :: ncomp_diff_coef, comp_diffusion_opt
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
-
-
-
            IGOT_THERM_VIS=0
            ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
            ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
-
-
            if (present(icomp)) then
                lcomp=icomp
            else
@@ -224,50 +209,33 @@ contains
                Field_selector = 2
                IGOT_T2_loc = IGOT_T2
            end if
-
            lump_eqns = have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/' // &
                'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
            ! let the coupling work
-
            if ( have_option( '/blasting' ) ) then
                RETRIEVE_SOLID_CTY = .true.
            else
                RETRIEVE_SOLID_CTY = .false.
            end if
-
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
-
-
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
               call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                 Mdims%mat_nloc, Mdims%totele, mat_ndgln, TDIFFUSION )
+                 Mdims%mat_nloc, Mdims%totele, ndgln%mat, TDIFFUSION )
            end if
-
-
            ! get diffusivity for compositional
            if ( lcomp > 0 .and. is_porous_media ) then
               ncomp_diff_coef = 0 ; comp_diffusion_opt = 0
               allocate( Component_Diffusion_Operator_Coefficient( Mdims%ncomp, ncomp_diff_coef, Mdims%nphase ) )
               Component_Diffusion_Operator_Coefficient = 0.0
-
               call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, &
                  Mdims, CV_GIdims, CV_funs, &
-                 mat_ndgln, u_ndgln, x_ndgln, &
+                 ndgln%mat, ndgln%u, ndgln%x, &
                  ncomp_diff_coef, comp_diffusion_opt, &
                  Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
                  TDiffusion )
-
               deallocate( Component_Diffusion_Operator_Coefficient )
            end if
-
-
-
-
-
-
-
-
            ! calculate T_ABSORB
            allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
            if (have_option('/boiling')) then
@@ -277,13 +245,6 @@ contains
                       ScalarField_Source, velocity_absorption, T_AbsorB )
                    deallocate ( Velocity_Absorption, ScalarField_Source )
            end if
-
-
-
-
-
-
-
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                 !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
@@ -294,15 +255,15 @@ contains
                    CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
                    INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
                    CT, &
-                   CV_NDGLN, X_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN, &
+                   ndgln%cv, ndgln%x, ndgln%u, ndgln%suf_cv, ndgln%suf_u, &
                    DEN_ALL, DENOLD_ALL, &
-                   MAT_NDGLN, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
+                   ndgln%mat, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
                    T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, SECOND_THETA, T_BETA, &
                    SUF_SIG_DIAGTEN_BC, &
                    DERIV%val(1,:,:), P%val, &
                    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
                    GETCV_DISC, GETCT, &
-                   XU_NDGLN, &
+                   ndgln%xu, &
                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -6925,34 +6886,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          ALLOCATE( THERM_U_DIFFUSION_VOL(NPHASE,MAT_NONODS*IGOT_THERM_VIS ) )
 
 
-         !CALL INTENERGE_ASSEM_SOLVE( state, packed_state, &
-         !     tfield, tfield,tfield,&
-         !SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-         !NCOLCT, FINDCT, COLCT, &
-         !CV_NONODS, U_NONODS, X_NONODS, TOTELE, &
-         !U_ELE_TYPE, CV_ELE_TYPE, CV_SELE_TYPE,  &
-         !NPHASE,  &
-         !CV_NLOC, U_NLOC, X_NLOC,  &
-         !CV_NDGLN, X_NDGLN, U_NDGLN, &
-         !CV_SNLOC, U_SNLOC, STOTEL, CV_SNDGLN, U_SNDGLN, &
-         !!            CURVATURE, VOLUME_FRAC, &!
-         !MAT_NLOC, MAT_NDGLN, MAT_NONODS, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-         !CV_DISOPT, CV_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
-         !RZERO_DIAGTEN, &
-         !RZERO, &
-         !RZERO, T_ABSORB, RZERO, &
-         !NDIM,  &
-         !NCOLM, FINDM, COLM, MIDM, &
-         !XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-         !RDUM4, RDUM4, &
-         !IGOT_T2, CURVATURE, VOLUME_FRAC,IGOT_THETA_FLUX, SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
-         !DUMMY_THETA_GDIFF, &
-         !IN_ELE_UPWIND, DG_ELE_UPWIND, &
-         ! nits_flux_lim_t
-         !RZERO, &
-         !option_path = '/material_phase[0]/scalar_field::Pressure', &
-         !thermal = .FALSE.,&
-         !StorageIndexes=StorageIndexes, icomp=-1)
 
          DEALLOCATE(T_ABSORB)
 
