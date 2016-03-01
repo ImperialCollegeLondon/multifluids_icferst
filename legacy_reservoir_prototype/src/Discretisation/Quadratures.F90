@@ -27,11 +27,10 @@
 !    USA
 #include "fdebug.h"
 
-
-
   module Quadratures
     use fldebug
     use multi_data_types
+    use FV_Quadratures
 
   contains
 
@@ -641,12 +640,6 @@
       return
     end subroutine vol_cv_tri_tet_shape
 
-
-!!$ ===============
-!!$ ===============
-
-!!$ ===============
-!!$ ===============
 
 !!$ ===============
 !!$ ===============
