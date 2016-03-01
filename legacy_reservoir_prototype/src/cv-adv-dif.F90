@@ -4379,15 +4379,10 @@ contains
         ! I/O variables
         !---------------------------------
         type(state_type) :: packed_state
-<<<<<<< HEAD
-        type(tensor_field_pointer), dimension(:), intent(in) :: fempsi  ! finite element field data
-        type(tensor_field_pointer), dimension(:), intent(in) :: psi     ! finite volume field data
-=======
         type(tensor_field_pointer), dimension(:), intent(inout) :: fempsi  ! finite element field data
         type(tensor_field_pointer), dimension(:), intent(inout) :: psi     ! finite volume field data
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_int ! control volume area
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_ave ! control volume barycentre
->>>>>>> 4928cbc58ef4296a2e35edd37d6a871922b6ec2d
         integer, intent(in) :: ndim                     ! number of dimensions
         integer, intent(in) :: cv_nonods                ! number of control volume barycentres
         integer, intent(in) :: totele                   ! total number of finite elements
@@ -4407,8 +4402,6 @@ contains
         integer, dimension(:), intent(in) :: findcmc    ! row position in the sparse matrix of CMC
         integer, dimension(:), intent(in) :: colcmc     ! column position in the sparse matrix of CMC
         real, dimension(:), intent( inout ) :: mass_mn_pres     ! ??
-        type(vector_field_pointer), dimension(:), intent(in) :: psi_int ! control volume area
-        type(vector_field_pointer), dimension(:), intent(in) :: psi_ave ! control volume barycentre
 
         !---------------------------------
         ! local variables
