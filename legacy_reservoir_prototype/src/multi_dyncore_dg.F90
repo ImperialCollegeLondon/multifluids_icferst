@@ -1806,8 +1806,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !LOGICAL, PARAMETER :: POROUS_VEL = .false. ! For reduced variable porous media treatment.
         ! if STAB_VISC_WITH_ABS then stabilize (in the projection mehtod) the viscosity using absorption.
         REAL, PARAMETER :: WITH_NONLIN = 1.0, TOLER = 1.E-10
-        !  perform Roe averaging
-        LOGICAL, PARAMETER :: ROE_AVE = .false.
         ! NON_LIN_DGFLUX = .TRUE. non-linear DG flux for momentum - if we have an oscillation use upwinding else use central scheme.
         ! UPWIND_DGFLUX=.TRUE. Upwind DG flux.. Else use central scheme. if NON_LIN_DGFLUX = .TRUE. then this option is ignored.
         LOGICAL :: NON_LIN_DGFLUX, UPWIND_DGFLUX
@@ -4257,22 +4255,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 SNDOTQOLD2_KEEP(IPHASE,SGI)   =SUM( SUDOLD2_ALL_KEEP(:,IPHASE,SGI)*SNORMXN_ALL(:,SGI)  )
                             END DO
                         END DO
-                        IF ( ROE_AVE ) THEN ! perform Roe averaging....
-                            do iphase = 1, Mdims%nphase
-                                do sgi = 1, FE_GIdims%sbcvngi
-                                    !  consider momentum normal to the element only...
-                                    ! that is the ( (\rho u_n u_n)_left - (\rho u_n u_n)_right ) / ( (u_n)_left - (u_n)_right )
-                                    SNDOTQ_ROE(IPHASE,SGI) =( SDEN_KEEP(IPHASE,SGI) * SNDOTQ_KEEP(IPHASE,SGI)**2 - &
-                                        SDEN2_KEEP(IPHASE,SGI) * SNDOTQ2_KEEP(IPHASE,SGI)**2 ) &
-                                        / tolfun(  SNDOTQ_KEEP(IPHASE,SGI) -  SNDOTQ2_KEEP(IPHASE,SGI) )
-                                    SNDOTQOLD_ROE(IPHASE,SGI) =( SDENOLD_KEEP(IPHASE,SGI) * SNDOTQOLD_KEEP(IPHASE,SGI)**2 - &
-                                        SDENOLD2_KEEP(IPHASE,SGI) * SNDOTQOLD2_KEEP(IPHASE,SGI)**2 ) &
-                                        / tolfun(  SNDOTQOLD_KEEP(IPHASE,SGI) -  SNDOTQOLD2_KEEP(IPHASE,SGI) )
-                                end do
-                            end do
-                            SINCOME = 0.5 + 0.5 * SIGN( 1.0, -SNDOTQ_ROE )
-                            SINCOMEOLD = 0.5 + 0.5 * SIGN( 1.0, -SNDOTQOLD_ROE )
-                        END IF
+
                         ELE3 = ELE2
                         IF ( ELE2==0 ) ELE3 = ELE
                         N_DOT_DU=0.0
@@ -4783,7 +4766,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             END DO
            !      END DO Loop_Elements
         END DO Loop_Elements2
-        ! **********REVIEWER 4-END**********************
         ! This subroutine combines the distributed and block diagonal for an element
         ! into the matrix DGM_PHA.
         IF(.NOT.NO_MATRIX_STORE) THEN
