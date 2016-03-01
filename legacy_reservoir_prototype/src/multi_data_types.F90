@@ -70,7 +70,6 @@ module multi_data_types
         integer :: scvngi     !Number of gauss integer points in the surface of a control volume
         integer :: sbcvngi    !Number of gauss integer points in the surface boundary of a control volume
         integer :: nface      !Number of faces per element
-        integer :: cv_ngi_short !Number of gauss integer points
     end type multi_gi_dimensions
 
 
@@ -125,6 +124,18 @@ module multi_data_types
         type (multi_sparsity) :: ph      !ph matrix
     end type multi_sparsities
 
+    type multi_ndgln
+        integer, dimension( : ), pointer  :: cv=> null()     !Control volume local to global numbering
+        integer, dimension( : ), pointer  :: u=> null()      !Velocity local to global numbering
+        integer, dimension( : ), pointer  :: p=> null()      !Pressure local to global numbering
+        integer, dimension( : ), pointer  :: x=> null()      !Continuous mesh pressure local to global numbering
+        integer, dimension( : ), pointer  :: x_p1=> null()   !Continuous mesh pressure P1 local to global numbering
+        integer, dimension( : ), pointer  :: xu=> null()     !Continuous mesh velocity local to global numbering
+        integer, dimension( : ), pointer  :: mat=> null()    !Pressure discontinuous local to global numbering
+        integer, dimension( : ), pointer ::  suf_cv=> null() !Surface control volume local to global numering
+        integer, dimension( : ), pointer ::  suf_p=> null()  !Pressure local to global numbering
+        integer, dimension( : ), pointer ::  suf_u=> null()  !Velocity surface local to global numbering
+    end type multi_ndgln
 
 contains
     subroutine allocate_multi_shape_funs(shape_fun,  Mdims, GIdims)
@@ -371,6 +382,22 @@ contains
 
     end subroutine deallocate_multi_sparsities
 
+    subroutine allocate_multi_ndgln(ndgln, Mdims)
+        implicit none
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_ndgln), intent(inout) :: ndgln
+        !Only allocate these three fields since the others are pointers to state
+        allocate( ndgln%suf_cv( Mdims%stotel * Mdims%cv_snloc ), &
+                  ndgln%suf_p( Mdims%stotel * Mdims%p_snloc ),&
+                  ndgln%suf_u( Mdims%stotel * Mdims%u_snloc ) )
+    end subroutine allocate_multi_ndgln
+
+    subroutine deallocate_multi_ndgln(ndgln)
+        implicit none
+        type(multi_ndgln), intent(inout) :: ndgln
+        !Only deallocate these three fields since the others are pointers to state
+        deallocate( ndgln%suf_cv, ndgln%suf_p, ndgln%suf_u)
+    end subroutine deallocate_multi_ndgln
 
 end module multi_data_types
 

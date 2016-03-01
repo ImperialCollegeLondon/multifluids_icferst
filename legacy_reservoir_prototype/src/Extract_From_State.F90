@@ -67,7 +67,7 @@ module Copy_Outof_State
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, Compute_Node_Global_Numbers_new
 
 
     interface Get_SNdgln
@@ -341,25 +341,14 @@ contains
 
         !!$ Linear mesh coordinate
         positions => extract_vector_field( state( 1 ), 'Coordinate' )
-        !!$      call Get_Ndgln( x_ndgln_p1, positions )
-        !!$
         !!$ Positions/Coordinates
         pressure_cg_mesh => extract_mesh( state( 1 ), 'PressureMesh_Continuous' )
-        !!$      call Get_Ndgln( x_ndgln, pressure_cg_mesh )
-        !!$
         !!$ Pressure, control volume and material
         pressure => extract_scalar_field( state( 1 ), 'Pressure' )
-        !!$      call Get_Ndgln( cv_ndgln, pressure )
-        !!$      p_ndgln = cv_ndgln
-        !!$      mat_ndgln = (/ (i, i = 1, totele * cv_nloc ) /)
-        !!$
         !!$ Velocities
         velocity => extract_vector_field( state( 1 ), 'Velocity' )
-        !!$      call Get_Ndgln( u_ndgln, velocity, cv_nloc )
-        !$
         !!$ Velocity in the continuous space
         velocity_cg_mesh => extract_mesh( state( 1 ), 'VelocityMesh_Continuous' )
-        !!$      call Get_Ndgln( xu_ndgln, velocity_cg_mesh )
 
         !!$ Surface-based global node numbers for control volumes and pressure
         call Get_SNdgln( cv_sndgln, pressure )
@@ -372,6 +361,34 @@ contains
         return
     end subroutine Compute_Node_Global_Numbers
 
+
+    subroutine Compute_Node_Global_Numbers_new( state, ndgln)
+        !!$ This subroutine calculates the global node numbers requested to operates in the MP-space.
+        implicit none
+        type( state_type ), dimension( : ), intent( in ) :: state
+        type(multi_ndgln), intent(inout) :: ndgln
+        !Local variables
+        type( vector_field ), pointer :: velocity
+        type( scalar_field ), pointer :: pressure
+        !Point to state
+        ndgln%x_p1=>get_ndglno(extract_mesh(state(1),"CoordinateMesh"))
+        ndgln%x=>get_ndglno(extract_mesh(state(1),"PressureMesh_Continuous"))
+        ndgln%cv=>get_ndglno(extract_mesh(state(1),"PressureMesh"))
+        ndgln%p=>get_ndglno(extract_mesh(state(1),"PressureMesh"))
+        ndgln%mat=>get_ndglno(extract_mesh(state(1),"PressureMesh_Discontinuous"))
+        ndgln%u=>get_ndglno(extract_mesh(state(1),"InternalVelocityMesh"))
+        ndgln%xu=>get_ndglno(extract_mesh(state(1),"VelocityMesh_Continuous"))
+        !!$ Pressure, control volume and material
+        pressure => extract_scalar_field( state( 1 ), 'Pressure' )
+        !!$ Velocities
+        velocity => extract_vector_field( state( 1 ), 'Velocity' )
+        !!$ Surface-based global node numbers for control volumes and pressure
+        call Get_SNdgln( ndgln%suf_cv, pressure )
+        ndgln%suf_p = ndgln%suf_cv
+        !!$ Velocities
+        call Get_SNdgln( ndgln%suf_u, velocity )
+        return
+    end subroutine Compute_Node_Global_Numbers_new
 
     subroutine Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
         mat_ele_type, u_sele_type, cv_sele_type )

@@ -7575,9 +7575,6 @@ contains
                 NOD_ON_BOUNDARY(CV_INOD)=.TRUE.
             END DO
         END DO
-        !ewrite(3,*)'NOD_COUNT_SELE:',NOD_COUNT_SELE
-        !ewrite(3,*)'NOD_ON_BOUNDARY:',NOD_ON_BOUNDARY
-        !stop 831
 
         FIN_ND_SELE(1)=1
         DO CV_INOD=2,CV_NONODS+1
@@ -7682,13 +7679,8 @@ contains
             END DO
             ! Re-order row...
             FACE_ELE(:,ELE)=ELE_ROW(:)
-           !     ewrite(3,*)'FACE_ELE(:,ELE):',FACE_ELE(:,ELE)
         END DO
 
-        !do ele=1,totele
-        !   ewrite(3,*)'ele',ele,' FACE_ELE(IFACE,ELE):',(FACE_ELE(IFACE,ELE),iface=1,nface)
-        !end do
-        !stop 2982
 
         DEALLOCATE( NOD_BELONG_ELE )
         DEALLOCATE( NOD_COUNT_SELE )
