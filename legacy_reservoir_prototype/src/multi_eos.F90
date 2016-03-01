@@ -703,8 +703,8 @@ contains
 
 
 
-    subroutine Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_GIdims, Mspars, Material_Absorption, suf_sig_diagten_bc, &
-                                                      opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+    subroutine Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_GIdims, Mspars, &
+                                                      Material_Absorption, suf_sig_diagten_bc, opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                                                       ids_ndgln, IDs2CV_ndgln, cv_ndgln, cv_sndgln, mat_ndgln, x_ndgln, cv_ele_type )
 
        implicit none

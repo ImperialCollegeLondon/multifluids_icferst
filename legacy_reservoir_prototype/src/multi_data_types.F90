@@ -366,18 +366,42 @@ contains
         if (associated(Mspars%ph%col))        deallocate(Mspars%ph%col)
         if (associated(Mspars%ph%mid))        deallocate(Mspars%ph%mid)
 
-!        deallocate(Mspars%ele%fin, Mspars%ele%col, Mspars%ele%mid)!Not deallocate this one since it points to state
         !Proceed to nullify
-        nullify(Mspars%acv%fin, Mspars%acv%col, Mspars%acv%mid)
-        nullify(Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid)
-        nullify(Mspars%mcy%fin, Mspars%mcy%col, Mspars%mcy%mid)
-        nullify(Mspars%ele%fin, Mspars%ele%col, Mspars%ele%mid)
-        nullify(Mspars%dgm_pha%fin, Mspars%dgm_pha%col, Mspars%dgm_pha%mid)
-        nullify(Mspars%ct%fin, Mspars%ct%col, Mspars%ct%mid)
-        nullify(Mspars%C%fin, Mspars%C%col, Mspars%C%mid)
-        nullify(Mspars%CMC%fin, Mspars%CMC%col, Mspars%CMC%mid)
-        nullify(Mspars%M%fin, Mspars%M%col, Mspars%M%mid)
-        nullify(Mspars%ph%fin, Mspars%ph%col, Mspars%ph%mid)
+        if (associated(Mspars%acv%fin))       nullify(Mspars%acv%fin)
+        if (associated(Mspars%acv%col))       nullify(Mspars%acv%col)
+        if (associated(Mspars%acv%mid))       nullify(Mspars%acv%mid)
+
+        if (associated(Mspars%small_acv%fin)) nullify(Mspars%small_acv%fin)
+        if (associated(Mspars%small_acv%col)) nullify(Mspars%small_acv%col)
+        if (associated(Mspars%small_acv%mid)) nullify(Mspars%small_acv%mid)
+
+        if (associated(Mspars%mcy%fin))       nullify(Mspars%mcy%fin)
+        if (associated(Mspars%mcy%col))       nullify(Mspars%mcy%col)
+        if (associated(Mspars%mcy%mid))       nullify(Mspars%mcy%mid)
+
+        if (associated(Mspars%dgm_pha%fin))   nullify(Mspars%dgm_pha%fin)
+        if (associated(Mspars%dgm_pha%col))   nullify(Mspars%dgm_pha%col)
+        if (associated(Mspars%dgm_pha%mid))   nullify(Mspars%dgm_pha%mid)
+
+        if (associated(Mspars%ct%fin))        nullify(Mspars%ct%fin)
+        if (associated(Mspars%ct%col))        nullify(Mspars%ct%col)
+        if (associated(Mspars%ct%mid))        nullify(Mspars%ct%mid)
+
+        if (associated(Mspars%C%fin))         nullify(Mspars%C%fin)
+        if (associated(Mspars%C%col))         nullify(Mspars%C%col)
+        if (associated(Mspars%C%mid))         nullify(Mspars%C%mid)
+
+        if (associated(Mspars%CMC%fin))       nullify(Mspars%CMC%fin)
+        if (associated(Mspars%CMC%col))       nullify(Mspars%CMC%col)
+        if (associated(Mspars%CMC%mid))       nullify(Mspars%CMC%mid)
+
+        if (associated(Mspars%M%fin))         nullify(Mspars%M%fin)
+        if (associated(Mspars%M%col))         nullify(Mspars%M%col)
+        if (associated(Mspars%M%mid))         nullify(Mspars%M%mid)
+
+        if (associated(Mspars%ph%fin))        nullify(Mspars%ph%fin)
+        if (associated(Mspars%ph%col))        nullify(Mspars%ph%col)
+        if (associated(Mspars%ph%mid))        nullify(Mspars%ph%mid)
 
 
     end subroutine deallocate_multi_sparsities
@@ -397,6 +421,8 @@ contains
         type(multi_ndgln), intent(inout) :: ndgln
         !Only deallocate these three fields since the others are pointers to state
         deallocate( ndgln%suf_cv, ndgln%suf_p, ndgln%suf_u)
+        nullify( ndgln%suf_cv, ndgln%suf_p, ndgln%suf_u)
+
     end subroutine deallocate_multi_ndgln
 
 end module multi_data_types
