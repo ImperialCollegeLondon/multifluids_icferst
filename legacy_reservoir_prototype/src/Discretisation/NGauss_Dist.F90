@@ -460,7 +460,6 @@ contains
        if( cv_ele_type > 2 ) &
             GIdims%scvngi = GIdims%scvngi + GIdims%nface * GIdims%sbcvngi 
     endif
-    GIdims%cv_ngi_short = GIdims%cv_ngi
 
 
     return

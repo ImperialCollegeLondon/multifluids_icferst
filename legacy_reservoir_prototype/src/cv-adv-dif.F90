@@ -1154,7 +1154,7 @@ contains
                 ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
 
         if(is_porous_media .and. calculate_flux ) then
-
+        
             allocate(phaseV(Mdims%nphase,Mdims%cv_nonods))
             allocate(Dens(Mdims%nphase,Mdims%cv_nonods))
             ! Extract Pressure
@@ -2552,7 +2552,7 @@ contains
         END IF
         if(GETCT .and. calculate_flux) then
             ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
-
+           
             do ioutlet = 1,size(outlet_id)
                 totout(:, ioutlet) = totoutflux(:, ioutlet)
                 ! Ensure all processors have the correct value of totout for parallel runs
@@ -4403,9 +4403,7 @@ contains
         integer, dimension(:), intent(in) :: findcmc    ! row position in the sparse matrix of CMC
         integer, dimension(:), intent(in) :: colcmc     ! column position in the sparse matrix of CMC
         real, dimension(:), intent( inout ) :: mass_mn_pres     ! ??
-        !!type(vector_field_pointer), dimension(:), intent(in) :: psi_int ! control volume area
-        !!type(vector_field_pointer), dimension(:), intent(in) :: psi_ave ! control volume barycentre
-
+        
         !---------------------------------
         ! local variables
         !---------------------------------
