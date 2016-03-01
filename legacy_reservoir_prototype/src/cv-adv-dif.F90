@@ -4379,8 +4379,15 @@ contains
         ! I/O variables
         !---------------------------------
         type(state_type) :: packed_state
+<<<<<<< HEAD
         type(tensor_field_pointer), dimension(:), intent(in) :: fempsi  ! finite element field data
         type(tensor_field_pointer), dimension(:), intent(in) :: psi     ! finite volume field data
+=======
+        type(tensor_field_pointer), dimension(:), intent(inout) :: fempsi  ! finite element field data
+        type(tensor_field_pointer), dimension(:), intent(inout) :: psi     ! finite volume field data
+        type(vector_field_pointer), dimension(:), intent(inout) :: psi_int ! control volume area
+        type(vector_field_pointer), dimension(:), intent(inout) :: psi_ave ! control volume barycentre
+>>>>>>> 4928cbc58ef4296a2e35edd37d6a871922b6ec2d
         integer, intent(in) :: ndim                     ! number of dimensions
         integer, intent(in) :: cv_nonods                ! number of control volume barycentres
         integer, intent(in) :: totele                   ! total number of finite elements
@@ -7576,9 +7583,6 @@ contains
                 NOD_ON_BOUNDARY(CV_INOD)=.TRUE.
             END DO
         END DO
-        !ewrite(3,*)'NOD_COUNT_SELE:',NOD_COUNT_SELE
-        !ewrite(3,*)'NOD_ON_BOUNDARY:',NOD_ON_BOUNDARY
-        !stop 831
 
         FIN_ND_SELE(1)=1
         DO CV_INOD=2,CV_NONODS+1
@@ -7683,13 +7687,8 @@ contains
             END DO
             ! Re-order row...
             FACE_ELE(:,ELE)=ELE_ROW(:)
-           !     ewrite(3,*)'FACE_ELE(:,ELE):',FACE_ELE(:,ELE)
         END DO
 
-        !do ele=1,totele
-        !   ewrite(3,*)'ele',ele,' FACE_ELE(IFACE,ELE):',(FACE_ELE(IFACE,ELE),iface=1,nface)
-        !end do
-        !stop 2982
 
         DEALLOCATE( NOD_BELONG_ELE )
         DEALLOCATE( NOD_COUNT_SELE )

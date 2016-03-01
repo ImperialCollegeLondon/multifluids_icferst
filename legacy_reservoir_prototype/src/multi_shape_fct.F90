@@ -702,10 +702,10 @@ contains
 
     ! Local variables
     real, dimension( : , : ), allocatable :: cvn2 ! dimension( cv_nloc, cv_ngi )
-    real, dimension(  : , : ), allocatable :: cvn_short2!dimension( cv_nloc, cv_ngi_short )
+    real, dimension(  : , : ), allocatable :: cvn_short2!dimension( cv_nloc, cv_ngi )
     real, dimension( : ), allocatable :: cvweight2!dimension( cv_ngi )
     real, dimension(  : , : ), allocatable :: cvfen2!dimension( cv_nloc, cv_ngi )
-    real, dimension( : ), allocatable :: cvweight_short2!dimension( cv_ngi_short )
+    real, dimension( : ), allocatable :: cvweight_short2!dimension( cv_ngi )
     real, dimension(  : , : ), allocatable :: cvfen_short2
     real, dimension(:,:,:), allocatable :: cvfenlx_all2, cvfenlx_short_all2, ufenlx_all2, scvfenlx_all2,&
          sufenlx_all2, sbcvfenlx_all2, sbufenlx_all2

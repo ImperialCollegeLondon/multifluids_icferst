@@ -125,6 +125,8 @@ contains
             ntsol
 
         !!$ Node global numbers
+        type(multi_ndgln) :: ndgln
+
         integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, &
             mat_ndgln, u_ndgln, xu_ndgln, cv_sndgln, p_sndgln, u_sndgln
 
@@ -273,6 +275,7 @@ contains
 
         ! Number of pressures to solve for
         npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
+        Mdims%npres = npres ! clean this up...
 
         !Read info for adaptive timestep based on non_linear_iterations
         if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
@@ -323,6 +326,7 @@ contains
             x_snloc, cv_snloc, u_snloc, p_snloc, &
             cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, ph_nloc=ph_nloc, ph_nonods=ph_nonods )
         n_in_pres = nphase / npres
+        Mdims%n_in_pres=n_in_pres
 
         !!$ Compute primary scalars used in most of the code
         call Get_Primary_Scalars_new( state, Mdims )
@@ -336,6 +340,10 @@ contains
             cv_snloc, p_snloc, u_snloc, &
             cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
             cv_sndgln, p_sndgln, u_sndgln )
+
+        !!$ Calculating Global Node Numbers
+        call allocate_multi_ndgln(ndgln, Mdims)
+        call Compute_Node_Global_Numbers_new(state, ndgln)
 
         !!$
         !!$ Computing Sparsity Patterns Matrices
@@ -1648,9 +1656,11 @@ end if
 
                 !Deallocate sparsities
                 call deallocate_multi_sparsities(Mspars)
+                !Deallocate ndgln
+                call deallocate_multi_ndgln(ndgln)
 
                 !!$  Compute primary scalars used in most of the code
-                call Get_Primary_Scalars( state, &
+                call Get_Primary_Scalars( state, &!sprint_to_do; remove
                     nphase, nstate, ncomp, totele, ndim, stotel, &
                     u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
                     x_snloc, cv_snloc, u_snloc, p_snloc, &
@@ -1669,6 +1679,12 @@ end if
                     cv_snloc, p_snloc, u_snloc, &
                     cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
                     cv_sndgln, p_sndgln, u_sndgln )
+
+                !!$ Calculating Global Node Numbers
+                call allocate_multi_ndgln(ndgln, Mdims)
+                call Compute_Node_Global_Numbers_new(state, ndgln)
+
+
                 !!$
                 !!$ Computing Sparsity Patterns Matrices
                 !!$
@@ -1747,11 +1763,6 @@ end if
                 if( ncomp /= 0 )then
                     igot_t2 = 1 ; igot_theta_flux = 1
                 end if
-
-!!$                call retrieve_ngi( ndim, cv_ele_type, cv_nloc, u_nloc, &
-!!$                    cv_ngi, cv_ngi_short, scvngi_theta, sbcvngi, nface, .false. )
-
-!                call retrieve_ngi( GIdims, Mdims, cv_ele_type, .false. )
 
                 scvngi_theta = CV_GIdims%scvngi
                 ncv_faces = CV_count_faces( Mdims, CV_ELE_TYPE, CV_GIdims)
