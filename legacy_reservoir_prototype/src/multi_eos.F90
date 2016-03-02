@@ -156,14 +156,44 @@ contains
                     end if
                  end if
 
+
+if ( .true. ) then
+
+
+                 ! rho = rho +  a_i * rho_i
                  Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
                  PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
+
                  Density_Component( sc : ec ) = Rho
 
                  Cp_s => extract_scalar_field( state( nphase + icomp ), &
                       'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
                  if ( stat == 0 ) Cp = Cp_s % val
                  DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + Rho * Cp * Component_l
+
+else
+
+
+
+                 ! harmonic mean
+                 ! rho = rho + 1.0 / ( a_i / rho_i )
+                 Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + 1.0 / ( Component_l / Rho )
+                 PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + ( 1.0 / Rho ) * (1.0 / (  Component_l / dRhodP ) )
+
+                 Cp_s => extract_scalar_field( state( nphase + icomp ), &
+                      'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
+                 if ( stat == 0 ) Cp = Cp_s % val
+
+
+                 DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + 1.0 / ( Component_l / ( Rho * Cp ) )
+
+
+
+
+end if
+
+
+
 
               else
 
