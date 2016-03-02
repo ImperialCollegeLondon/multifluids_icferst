@@ -117,21 +117,18 @@ contains
     end function my_size_real
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
-        Mdims, CV_GIdims, CV_funs, Mspars, storage_state, &
+        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, storage_state, &
         tracer, velocity, density, &
         CV_RHS_field, PETSC_ACV,&
         CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
         C,&
-        CV_NDGLN, X_NDGLN, U_NDGLN, &
-        CV_SNDGLN, U_SNDGLN, &
         DEN_ALL, DENOLD_ALL, &
-        MAT_NDGLN, TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
+        TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, SECOND_THETA, CV_BETA, &
         SUF_SIG_DIAGTEN_BC, &
         DERIV, CV_P, &
         SOURCT, ABSORBT_ALL, VOLFRA_PORE, &
         GETCV_DISC, GETCT, &
-        XU_NDGLN, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -268,18 +265,13 @@ contains
         type(multi_GI_dimensions), intent(in) :: CV_GIdims
         type(multi_shape_funs), intent(in) :: CV_funs
         type (multi_sparsities), intent(in) :: Mspars
+        type(multi_ndgln), intent(in) :: ndgln
         type(tensor_field), intent(inout), target :: tracer
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
         INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
             IGOT_T2, IGOT_THETA_FLUX, IN_ELE_UPWIND
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN, IDs_ndgln
-        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
-        INTEGER, DIMENSION(: ), intent( in ) :: U_SNDGLN
+        INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
         type(vector_field), intent( inout ) :: CV_RHS_field
         type( petsc_csr_matrix ), intent(inout) :: petsc_ACV
         REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
@@ -845,7 +837,7 @@ contains
             !In this way we substitute an inversion of a matrix by a matrix multiplication
             DO ele=1,Mdims%totele
                 do CV_ILOC = 1, Mdims%cv_nloc
-                    MAT_NODI = MAT_ndgln(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+                    MAT_NODI = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
                     DO IPHASE=1,Mdims%nphase
                         INV_V_OPT_VEL_UPWIND_COEFS(:,:,IPHASE,MAT_NODI) = matmul(perm%val(:,:,ele),opt_vel_upwind_coefs_new(:,:,IPHASE,MAT_NODI))
                         !All the elements should be equal in the diagonal now
@@ -925,8 +917,8 @@ contains
             CAP_DIFFUSION = 0.!Initialize to zero just in case
             do ele = 1, Mdims%totele
                 do CV_ILOC = 1, Mdims%cv_nloc
-                    CV_NODI = cv_ndgln(CV_ILOC + (ele-1) * Mdims%cv_nloc)
-                    MAT_NODI = MAT_ndgln(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+                    CV_NODI = ndgln%cv(CV_ILOC + (ele-1) * Mdims%cv_nloc)
+                    MAT_NODI = ndgln%mat(CV_ILOC + (ele-1) * Mdims%cv_nloc)
                     CAP_DIFFUSION(Phase_with_Pc, MAT_NODI) = &
                         - T_ALL(Phase_with_Pc, CV_NODI) * OvRelax_param(CV_NODI)
                 end do
@@ -981,14 +973,14 @@ contains
         psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
         call set(psi_int(1)%ptr,dim=1,val=1.0)
         if (tracer%mesh%continuity<0) then
-            psi_ave(1)%ptr%val=x_all(:,x_ndgln)
+            psi_ave(1)%ptr%val=x_all(:,ndgln%x)
         else
             call set_all(psi_ave(1)%ptr,X_ALL)
         end if
         call PROJ_CV_TO_FEM_state( packed_state,FEMPSI(1:FEM_IT),&
             PSI(1:FEM_IT), Mdims%ndim, &
             MASS_ELE, &
-            Mdims%cv_nonods, Mdims%totele, CV_NDGLN, X_NDGLN, &
+            Mdims%cv_nonods, Mdims%totele, ndgln%cv, ndgln%x, &
             CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVN, CV_funs%CVWEIGHT,&
             CV_funs%CVFEN, CV_funs%CVFENLX_ALL, &
             Mdims%x_nonods, X_ALL, &
@@ -1048,7 +1040,7 @@ contains
         MEAN_PORE_CV = 0.0 ; SUM_CV = 0.0
         DO ELE = 1, Mdims%totele
             DO CV_ILOC = 1, Mdims%cv_nloc
-                CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                CV_INOD = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                 SUM_CV( CV_INOD ) = SUM_CV( CV_INOD ) + MASS_ELE( ELE )
                 MEAN_PORE_CV( :, CV_INOD ) = MEAN_PORE_CV( :, CV_INOD ) + &
                     MASS_ELE( ELE ) * VOLFRA_PORE( :, ELE )
@@ -1074,7 +1066,7 @@ contains
             CALL ISOTROPIC_LIMITER_ALL( &
                 ! FOR SUB SURRO_CV_MINMAX:
                 T_ALL, TOLD_ALL, T2_ALL, T2OLD_ALL, DEN_ALL, DENOLD_ALL, i_use_volume_frac_t2, Mdims%nphase, Mdims%cv_nonods, Mspars%small_acv%ncol, Mspars%small_acv%mid, Mspars%small_acv%fin, Mspars%small_acv%col, &
-                Mdims%stotel, Mdims%cv_snloc, CV_SNDGLN, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
+                Mdims%stotel, Mdims%cv_snloc, ndgln%suf_cv, SUF_T_BC_ALL, SUF_T2_BC_ALL, SUF_D_BC_ALL, WIC_T_BC_ALL, WIC_T2_BC_ALL, WIC_D_BC_ALL, &
                 MASS_CV, &
                 ! FOR SUB CALC_LIMIT_MATRIX_MAX_MIN:
                 TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
@@ -1088,21 +1080,21 @@ contains
                 T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
                 ! Store the upwind element for interpolation and its weights for
                 ! faster results...
-                i_use_volume_frac_t2,Mdims%nphase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%x_nloc,Mdims%totele,CV_NDGLN, &
+                i_use_volume_frac_t2,Mdims%nphase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%x_nloc,Mdims%totele,ndgln%cv, &
                 Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
-                X_NDGLN,Mdims%x_nonods,Mdims%ndim, &
+                ndgln%x,Mdims%x_nonods,Mdims%ndim, &
                 X_ALL, XC_CV_ALL, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE,&
                 storage_state, "anisotrop", storageindexes(2))
         END IF ! endof IF ( IANISOLIM == 0 ) THEN ELSE
         ALLOCATE( FACE_ELE( CV_GIdims%nface, Mdims%totele ) ) ; FACE_ELE = 0
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-            Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, CV_NDGLN, CV_SNDGLN, &
-            CV_funs%cv_sloclist, Mdims%x_nloc, X_NDGLN )
+            Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+            CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
         IF ( GOT_DIFFUS ) THEN
             CALL DG_DERIVS_ALL2( FEMT_ALL, FEMTOLD_ALL, &
                 DTX_ELE_ALL, DTOLDX_ELE_ALL, &
-                Mdims%ndim, Mdims%nphase, Mdims%cv_nonods, Mdims%totele, CV_NDGLN, &
-                X_NDGLN, Mdims%x_nloc, X_NDGLN,&
+                Mdims%ndim, Mdims%nphase, Mdims%cv_nonods, Mdims%totele, ndgln%cv, &
+                ndgln%x, Mdims%x_nloc, ndgln%x,&
                 CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
                 CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
                 CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
@@ -1152,7 +1144,6 @@ contains
                 ! This was causing extreme slowdown in the code. Hence we now do all the necessary extractions from state relevant
                 ! to calculate_outflux() here. i.e. they happen every time-step still but OUTSIDE the element loop!
                 ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
-
         if(is_porous_media .and. calculate_flux ) then
         
             allocate(phaseV(Mdims%nphase,Mdims%cv_nonods))
@@ -1186,14 +1177,14 @@ contains
                 end if
             end if
             ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-            CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, X_NDGLN, Mdims%totele, Mdims%x_nonods, &
+            CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, ndgln%x, Mdims%totele, Mdims%x_nonods, &
                 Mdims%cv_nloc, CV_GIdims%scvngi, &
                 CV_funs%scvfen, CV_funs%scvfenlx_all, CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, &
                 SCVFENX_ALL, &
                 Mdims%ndim, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
             ! Generate some local F variables ***************
             DO CV_KLOC = 1, Mdims%cv_nloc
-                CV_NODK = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
+                CV_NODK = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
                 ! loc_f
                 IPT=1
                 CALL PACK_LOC( LOC_F(:, CV_KLOC), T_ALL( :, CV_NODK ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) )
@@ -1223,7 +1214,7 @@ contains
                 END IF
             END DO
             DO U_KLOC = 1, Mdims%u_nloc
-                U_NODK = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
                 ! LOC_UF
                 IPT=1
                 IFI=1
@@ -1258,9 +1249,9 @@ contains
             !
             Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc ! Loop over the nodes of the element
                 ! Global node number of the local node
-                CV_NODI = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                X_NODI = X_NDGLN( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
-                MAT_NODI = MAT_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                CV_NODI = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                X_NODI = ndgln%x( ( ELE - 1 ) * Mdims%x_nloc  + CV_ILOC )
+                MAT_NODI = ndgln%mat( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                 IMID = Mspars%small_acv%mid(CV_NODI)
                 ! Generate some local F variables ***************
                 F_CV_NODI(:)= LOC_F(:, CV_ILOC)
@@ -1283,7 +1274,7 @@ contains
                         ! Look for these nodes on the other elements.
                         CALL FIND_OTHER_SIDE( CV_OTHER_LOC, Mdims%cv_nloc, CV_NODI, U_OTHER_LOC, Mdims%u_nloc, &
                             MAT_OTHER_LOC, Mdims%mat_nloc, INTEGRAT_AT_GI, &
-                            Mdims%x_nloc, Mdims%xu_nloc, X_NDGLN, CV_NDGLN, XU_NDGLN, &
+                            Mdims%x_nloc, Mdims%xu_nloc, ndgln%x, ndgln%cv, ndgln%xu, &
                             Mdims%cv_snloc, CV_funs%cvfem_on_face( :, GI ), X_SHARE, Mdims%x_nonods, ELE, ELE2,  &
                             Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, DISTCONTINUOUS_METHOD )
                         IF ( INTEGRAT_AT_GI ) THEN
@@ -1295,7 +1286,7 @@ contains
                                 ! Calculate SELE, CV_SILOC, U_SLOC2LOC, CV_SLOC2LOC
                                 CALL CALC_SELE( ELE, ELE3, SELE, CV_SILOC, CV_ILOC, U_SLOC2LOC, CV_SLOC2LOC, &
                                     FACE_ELE, GI, CV_funs, Mdims, CV_GIdims,&
-                                    CV_NDGLN, U_NDGLN, CV_SNDGLN, U_SNDGLN )
+                                    ndgln%cv, ndgln%u, ndgln%suf_cv, ndgln%suf_u )
                             END IF
                             INTEGRAT_AT_GI = .NOT.( (ELE==ELE2) .AND. (SELE==0) )
                         END IF
@@ -1312,13 +1303,13 @@ contains
                         if (anisotropic_and_frontier) anisotropic_and_frontier = sum(perm%val(:,:,ele) - perm%val(:,:,ele2)) < &
                             10.**(exponent(perm%val(1,1,ele))-9)
                         IF ( between_elements ) THEN
-                            CV_NODJ = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                            X_NODJ = X_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                            MAT_NODJ = MAT_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                            CV_NODJ = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                            X_NODJ = ndgln%x( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                            MAT_NODJ = ndgln%mat( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_JLOC )
                         ELSE
-                            CV_NODJ = CV_NDGLN( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                            X_NODJ = X_NDGLN( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
-                            MAT_NODJ = MAT_NDGLN( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+                            CV_NODJ = ndgln%cv( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+                            X_NODJ = ndgln%x( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
+                            MAT_NODJ = ndgln%mat( ( ELE - 1 )  * Mdims%cv_nloc + CV_JLOC )
                         END IF
                         if((.not.integrate_other_side).or.(CV_NODJ >= CV_NODI)) then
                             ! this is for DG and boundaries of the domain
@@ -1347,14 +1338,14 @@ contains
                             JMID = Mspars%small_acv%mid(CV_NODJ)
                             ! Calculate the control volume normals at the Gauss pts.
                             CALL SCVDETNX_new( ELE, GI, Mdims%x_nloc, CV_GIdims%scvngi, Mdims%totele, Mdims%ndim, &
-                                X_NDGLN, Mdims%x_nonods, SCVDETWEI, CVNORMX_ALL,  &
+                                ndgln%x, Mdims%x_nonods, SCVDETWEI, CVNORMX_ALL,  &
                                 CV_funs%scvfen, CV_funs%scvfenslx, CV_funs%scvfensly, CV_funs%scvfeweigh, XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), &
                                 X_ALL(1:Mdims%ndim,:),  D1, D3, DCYL )
                             ! Pablo could store the outcomes of this:
                             IF( GETCT ) THEN
                                 ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
                                 DO U_KLOC = 1, Mdims%u_nloc
-                                    U_NODK = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                                    U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
                                     JCOUNT = 0
                                     DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
                                         IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
@@ -1377,7 +1368,7 @@ contains
                                 END DO
                                 IF ( between_elements ) THEN
                                     DO U_KLOC =  1, Mdims%u_nloc
-                                        U_NODK = U_NDGLN( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
+                                        U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
                                         JCOUNT = 0
                                         DO COUNT = Mspars%CT%fin( CV_NODI ), Mspars%CT%fin( CV_NODI + 1 ) - 1
                                             IF ( Mspars%CT%col( COUNT ) == U_NODK ) THEN
@@ -1402,7 +1393,7 @@ contains
                                 IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                                     ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
                                     DO U_KLOC = 1, Mdims%u_nloc
-                                        U_NODK = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                                        U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
                                         JCOUNT = 0
                                         !                        DO COUNT = Mspars%C%fin( CV_NODI ), Mspars%C%fin( CV_NODI + 1 ) - 1
                                         !                           IF ( Mspars%C%col( COUNT ) == U_NODK ) THEN
@@ -1429,7 +1420,7 @@ contains
                                     END DO
                                     IF ( between_elements ) THEN
                                         DO U_KLOC =  1, Mdims%u_nloc
-                                            U_NODK = U_NDGLN( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
+                                            U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
                                             JCOUNT = 0
                                             !                           DO COUNT = Mspars%C%fin( CV_NODI ), Mspars%C%fin( CV_NODI + 1 ) - 1
                                             !                              IF ( Mspars%C%col( COUNT ) == U_NODK ) THEN
@@ -1496,7 +1487,7 @@ contains
                                     !                   IF(ELE2>0) THEN
                                     IF(between_elements) THEN
                                         CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                                        CV_NODK2 = CV_NDGLN( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_KLOC2 )
+                                        CV_NODK2 = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_KLOC2 )
                                         IPT=1
                                         CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T_ALL( :, CV_NODK2 ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) )
                                         CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), TOLD_ALL( :, CV_NODK2 ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,2) )
@@ -1585,7 +1576,7 @@ contains
                                 DO U_SKLOC = 1, Mdims%u_snloc
                                     U_KLOC = U_SLOC2LOC(U_SKLOC)
                                     U_KLOC2 = U_OTHER_LOC( U_KLOC )
-                                    U_NODK2 = U_NDGLN((ELE2-1)*Mdims%u_nloc+U_KLOC2)
+                                    U_NODK2 = ndgln%u((ELE2-1)*Mdims%u_nloc+U_KLOC2)
                                     LOC2_U(:, :, U_KLOC) = U_ALL(:, :, U_NODK2)
                                     LOC2_NU(:, :, U_KLOC) = NU_ALL(:, :, U_NODK2)
                                     LOC2_NUOLD(:, :, U_KLOC) = NUOLD_ALL(:, :, U_NODK2)
@@ -1594,7 +1585,7 @@ contains
                                 DO CV_SKLOC=1,Mdims%cv_snloc
                                     CV_KLOC=CV_SLOC2LOC( CV_SKLOC )
                                     CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
-                                    CV_KNOD2 = CV_NDGLN((ELE2-1)*Mdims%cv_nloc+CV_KLOC2)
+                                    CV_KNOD2 = ndgln%cv((ELE2-1)*Mdims%cv_nloc+CV_KLOC2)
                                     LOC2_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_KNOD2)
                                     LOC2_FEMTOLD(:, CV_KLOC) = FEMTOLD_ALL(:, CV_KNOD2)
                                     IF (use_volume_frac_T2) THEN
@@ -1606,7 +1597,7 @@ contains
                             IF ( on_domain_boundary ) THEN
                                 DO U_SKLOC = 1, Mdims%u_snloc
                                     U_KLOC = U_SLOC2LOC( U_SKLOC )
-                                    U_NODK = U_NDGLN(( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
+                                    U_NODK = ndgln%u(( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
                                     U_SNODK = ( SELE - 1 ) * Mdims%u_snloc + U_SKLOC
                                     SLOC_NU(:, :, U_SKLOC) = NU_ALL(:, :, U_NODK)
                                     SLOC_NUOLD(:, :, U_SKLOC) = NUOLD_ALL(:, :, U_NODK)
@@ -1630,7 +1621,7 @@ contains
                                     END DO
                                 ENDIF
                                 CALL DIFFUS_CAL_COEFF( DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX,  &
-                                    Mdims%cv_nloc, Mdims%mat_nloc, Mdims%cv_nonods, Mdims%nphase, Mdims%totele, Mdims%mat_nonods, MAT_NDGLN, &
+                                    Mdims%cv_nloc, Mdims%mat_nloc, Mdims%cv_nonods, Mdims%nphase, Mdims%totele, Mdims%mat_nonods, ndgln%mat, &
                                     CV_funs%scvfen, CV_funs%scvfen, CV_GIdims%scvngi, GI, Mdims%ndim, TDIFFUSION, DUMMY_ZERO_NDIM_NDIM_NPHASE, &
                                     HDC, &
                                     T_ALL_J( : ), T_ALL(:, CV_NODI), &
@@ -1778,7 +1769,7 @@ contains
                                 CALL APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
                                     CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
                                     ELE, Mdims%cv_nonods, Mdims%x_nonods, Mdims%ndim, Mdims%nphase,  &
-                                    Mdims%cv_nloc,Mdims%totele, X_NDGLN, CV_NDGLN,  &
+                                    Mdims%cv_nloc,Mdims%totele, ndgln%x, ndgln%cv,  &
                                     X_ALL,XC_CV_ALL,FACE_ELE,CV_GIdims%nface,BETWEEN_ELEMENTS, integrate_other_side, CV_funs%scvfen, SCVFENX_ALL, GI, INV_JAC, NUGI_ALL, on_domain_boundary )
                             ENDIF
                             ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
@@ -1902,7 +1893,7 @@ contains
                                         IF ( .not.symmetric_P ) THEN
                                             IF ( WIC_P_BC_ALL( 1,1,SELE ) == WIC_P_BC_FREE ) THEN ! on the free surface...
                                                 DO P_JLOC = 1, Mdims%cv_nloc
-                                                    P_JNOD = CV_NDGLN( (ELE-1)*Mdims%cv_nloc + P_JLOC )
+                                                    P_JNOD = ndgln%cv( (ELE-1)*Mdims%cv_nloc + P_JLOC )
                                                     ! Use the same sparcity as the MN matrix...
                                                     COUNT_SUF = 0
                                                     DO COUNT = Mspars%CMC%fin( CV_NODI ), Mspars%CMC%fin( CV_NODI + 1 ) - 1
@@ -1925,7 +1916,7 @@ contains
                                     between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
                                     JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
                                     SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
-                                    WIC_U_BC_ALL, WIC_P_BC_ALL, u_ndgln, pressure_BCs%val, &
+                                    WIC_U_BC_ALL, WIC_P_BC_ALL, ndgln%u, pressure_BCs%val, &
                                     UGI_COEF_ELE_ALL,  &
                                     UGI_COEF_ELE2_ALL,  &
                                     NDOTQNEW, NDOTQOLD, LIMD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, &
@@ -1942,7 +1933,6 @@ contains
                                     end if
                                 end do
                             ENDIF Conditional_GETCT2
-
                             !########################################################################################
                             ! 27/01/2016
                             if(sele > 0) then   ! ONLY DO THIS CALCULATION WHEN SELE > 0 i.e. if(on_domain_boundary)
@@ -1950,7 +1940,7 @@ contains
                                     do ioutlet = 1, size(outlet_id)
                                         !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
                                         call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
-                                            cv_ndgln, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SCVDETWEI , SUF_T_BC_ALL)
+                                            ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SCVDETWEI , SUF_T_BC_ALL)
                                     enddo
                                 end if
                             end if
@@ -2173,7 +2163,7 @@ contains
         if (SUF_INT_MASS_MATRIX2) then
             do ele =1, Mdims%totele
                 ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-                CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, X_NDGLN, Mdims%totele, Mdims%x_nonods, &
+                CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, ndgln%x, Mdims%totele, Mdims%x_nonods, &
                     Mdims%cv_nloc, CV_GIdims%scvngi, &
                     CV_funs%scvfen, CV_funs%scvfenlx_all, CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, &
                     SCVFENX_ALL, &
@@ -2215,8 +2205,8 @@ contains
             OPT_VEL_UPWIND_COEFS_NEW_CV=0.0 ; N=0.0
             DO ELE = 1, Mdims%totele
                 DO CV_ILOC = 1, Mdims%cv_nloc
-                    CV_NODI = CV_NDGLN( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
-                    MAT_NODI = MAT_NDGLN( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
+                    CV_NODI = ndgln%cv( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
+                    MAT_NODI = ndgln%mat( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
                     RSUM_VEC = 0.0
                     DO IDIM = 1, Mdims%ndim
                         RSUM_VEC = RSUM_VEC + OPT_VEL_UPWIND_COEFS_NEW( IDIM, IDIM, :, MAT_NODI ) / REAL( Mdims%ndim )
@@ -2232,8 +2222,8 @@ contains
             IF ( PIPES_1D ) THEN
                 allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods))
                 CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims%nphase, Mdims%npres, Mdims%n_in_pres, Mdims%ndim, Mdims%u_nloc, Mdims%cv_nloc, Mdims%x_nloc, Mspars%small_acv%fin, Mspars%small_acv%col, &
-                    Mdims%u_nonods,Mdims%u_snloc,Mdims%cv_snloc,Mdims%stotel,CV_SNDGLN,U_SNDGLN, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-                    Mdims%cv_nonods, getcv_disc, getct, petsc_acv, Mdims%totele, cv_ndgln, x_ndgln, u_ndgln, mat_ndgln, ct, c, Mspars%CT%fin, Mspars%CT%col, Mspars%C%fin, Mspars%C%col, CV_RHS_field, CT_RHS, &
+                    Mdims%u_nonods,Mdims%u_snloc,Mdims%cv_snloc,Mdims%stotel,ndgln%suf_cv,ndgln%suf_u, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
+                    Mdims%cv_nonods, getcv_disc, getct, petsc_acv, Mdims%totele, ndgln%cv, ndgln%x, ndgln%u, ndgln%mat, ct, c, Mspars%CT%fin, Mspars%CT%col, Mspars%C%fin, Mspars%C%col, CV_RHS_field, CT_RHS, &
                     Mspars%CMC%fin, Mspars%CMC%col, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                     SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, OPT_VEL_UPWIND_COEFS_NEW )
                 ! Used for pipe modelling...
@@ -2476,7 +2466,6 @@ contains
                 call addto(cv_rhs_field,CV_NODI,LOC_CV_RHS_I)
             END DO Loop_CVNODI2
         END IF Conditional_GETCV_DISC2
-
         IF ( GETCT ) THEN
             W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T
             W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD
