@@ -657,11 +657,9 @@ end if
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, storage_state,&
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state,&
                         velocity_field, pressure_field, &
                         U_ELE_TYPE, P_ELE_TYPE, &
-                        ndgln%u, ndgln%p, ndgln%cv, ndgln%x, ndgln%mat,&
-                        ndgln%suf_cv, ndgln%suf_u, ndgln%suf_p, &
                         !!$
                         Material_Absorption, &
                         dt, &
@@ -672,7 +670,6 @@ end if
                         v_disopt, v_dg_vel_int_opt, v_theta, &
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
-                        ndgln%xu, &
                         !!$
                         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
