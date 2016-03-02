@@ -567,12 +567,12 @@ if ( new_ntsol_loop  ) then
                  nphase_scalar = Mdims%nphase
                  tmp_name = "Packed" // field_name_list( it )
               end if
-              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) ) 
+              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
 
 
               if (field_name_list( it)== 'PhaseVolumeFraction' .or.  field_name_list( it)== 'ComponentMassFractionPhase[0]') then
-                    cycle	                   
-              elseif (multiphase_scalar) then             
+                    cycle
+              elseif (multiphase_scalar) then
 
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state,&
@@ -596,7 +596,7 @@ if ( new_ntsol_loop  ) then
 
                     exit
               else
-                    
+
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state,&
                         tracer_field,velocity_field,density_field,&
@@ -617,7 +617,7 @@ if ( new_ntsol_loop  ) then
                         StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                end if
-                    
+
 
            end if
 
