@@ -114,7 +114,6 @@ contains
         !sprint_to_do!remove all the is store inside Mspars when Mspars is fully implemented
         integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
-        !!$ Defining element-pair type and discretisation options and coefficients
         real, dimension(:,:,:,:), allocatable, target :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         !!$ Defining time- and nonlinear interations-loops variables
         integer :: itime, dump_period_in_timesteps, final_timestep, &
@@ -506,20 +505,33 @@ contains
                        Material_Absorption, suf_sig_diagten_bc, opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                        ids_ndgln, IDs2CV_ndgln, ndgln%cv, ndgln%suf_cv, ndgln%mat, ndgln%x, Mdisopt%cv_ele_type )
                 end if
+
+
 !!$ Solve advection of the scalars.   'Temperature':
+
 !!$ Fields...
 !!-
         new_ntsol_loop = .true.
+
 if ( new_ntsol_loop  ) then
+
         call get_ntsol( ntsol )
         call initialise_field_lists_from_options( state, ntsol )
+
+
         call set_nu_to_u( packed_state )
         !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
                     !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
         velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
         density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
         saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+
+
+
+
+
         do it = 1, ntsol
+
            call get_option( trim( field_optionpath_list( it ) ) // &
                 '/prognostic/equation[0]/name', &
                 option_buffer, default = "UnknownEquationType" )
@@ -529,8 +541,12 @@ if ( new_ntsol_loop  ) then
            case default
               use_advdif = .false.
            end select
+
            !use_advdif=.true.
+
+
            if ( use_advdif ) then
+
               ! figure out if scalar field is mutli-phase
               multiphase_scalar = .false.
               do it2 = it+1, ntsol
@@ -538,16 +554,20 @@ if ( new_ntsol_loop  ) then
                     multiphase_scalar = .true.
                  end if
               end do
+
               tmp_name = "Packed" //field_name_list( it )
               nphase_scalar = 1
               if ( multiphase_scalar ) then
                  nphase_scalar = Mdims%nphase
                  tmp_name = "Packed" // field_name_list( it )
               end if
-              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) ) 
+              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
+
+
               if (field_name_list( it)== 'PhaseVolumeFraction' .or.  field_name_list( it)== 'ComponentMassFractionPhase[0]') then
                     cycle
-              elseif (multiphase_scalar) then             
+              elseif (multiphase_scalar) then
+
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state,&
                         tracer_field,velocity_field,density_field,&
@@ -567,6 +587,7 @@ if ( new_ntsol_loop  ) then
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
                     call Calculate_All_Rhos( state, packed_state, Mdims )
+
                     exit
               else
                     
@@ -591,8 +612,11 @@ if ( new_ntsol_loop  ) then
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                end if
                     
+
            end if
+
         end do
+
 end if
                 ScalarField_Source_Store = ScalarField_Source + ScalarField_Source_Component
                 tracer_source => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource")

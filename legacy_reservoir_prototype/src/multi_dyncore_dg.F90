@@ -7273,7 +7273,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
              do cv_nodi = 1, size(Overrelaxation)
                  Overrelaxation(CV_NODI) =  Get_DevCapPressure(satura(Phase_with_Pc, CV_NODI),&
                      Cap_entry_pressure(Phase_with_Pc, IDs2CV_ndgln(CV_NODI)), &
-                     Cap_entry_pressure(Phase_with_Pc, IDs2CV_ndgln(CV_NODI)),&
+                     Cap_exponent(Phase_with_Pc, IDs2CV_ndgln(CV_NODI)),&
                      immobile_fraction(:,IDs2CV_ndgln(CV_NODI)), Phase_with_Pc)
              end do
          end if
