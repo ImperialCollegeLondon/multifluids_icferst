@@ -1656,6 +1656,14 @@ contains
     subroutine pack_multistate(npres, state, packed_state, &
         multiphase_state, multicomponent_state, pmulti_state)
 
+        !---------------------------------------------------------------------
+        ! Description:
+        ! Extract properties from the state and pack them into the local states
+        ! *note: inserted new properties in packed_state may also need to be
+        !        inserted in multicomponent_state
+        !        (may be changed in the future data structure)
+        !---------------------------------------------------------------------
+
         !---------------------------------------
         ! I/O variables
         !---------------------------------------
@@ -1670,12 +1678,9 @@ contains
         ! local variables
         !---------------------------------------
         type(state_type), dimension(:,:), pointer :: multi_state
-        type(scalar_field), pointer :: sfield                   ! a temp scalar field for insertion
-        type(vector_field), pointer :: vfield                   ! a temp vector field for insertion
-        type(tensor_field), pointer :: tfield                   ! a temp tensor field for insertion
-        type(scalar_field), pointer :: pressure                 ! ??
-        type(vector_field), pointer :: velocity, position
-        type(tensor_field), pointer :: p2, d2, drhodp
+        type(scalar_field), pointer :: pressure, sfield
+        type(vector_field), pointer :: velocity, position, vfield
+        type(tensor_field), pointer :: tfield, p2, d2, drhodp
         type(vector_field) :: porosity, vec_field
         type(vector_field) :: p_position, u_position, m_position
         type(tensor_field) :: permeability, ten_field
@@ -1683,11 +1688,11 @@ contains
         type(element_type) :: element_shape
         integer, dimension( : ), pointer :: element_nodes
         logical :: has_density, has_phase_volume_fraction
-        integer :: i, iphase, icomp, idim, ele, ipres           ! loop variables
+        integer :: i, iphase, icomp, idim, iele, ipres
         integer :: nphase,ncomp,ndim,stat,n_in_pres
 
         !---------------------------------------
-        ! special data packing for coupling with FEMDEM
+        ! data packing for coupling with FEMDEM
         !---------------------------------------
 #ifdef USING_FEMDEM
         if(have_option('/blasting')) then
@@ -1756,15 +1761,21 @@ contains
         !---------------------------------------
         ! data packing for general use
         !---------------------------------------
+        ! allocate multiphase or multicomponent states
         ncomp=option_count('/material_phase/is_multiphase_component')
         nphase=size(state)-ncomp
+        allocate(multiphase_state(nphase))
+        allocate(multicomponent_state(ncomp))
+        allocate(multi_state(max(1,ncomp),nphase))
 
+        ! pack coordinate & coordinate mesh
         position=>extract_vector_field(state(1),"Coordinate")
+        call insert(packed_state,position,"Coordinate")
         ndim=mesh_dim(position)
         call insert(packed_state,position%mesh,"CoordinateMesh")
 
         ! pack P0DG
-        if (has_scalar_field(state(1),"Porosity")) then
+        if(has_scalar_field(state(1),"Porosity")) then
             sfield=>extract_scalar_field(state(1),"Porosity")
             element_mesh=>sfield%mesh
             call insert(packed_state,element_mesh,'P0DG')
@@ -1780,111 +1791,105 @@ contains
             element_mesh=>extract_mesh(packed_state,'P0DG')
         end if
 
-        ! if have capillary pressure, then we store 5 entries in PackedRockFluidProp, otherwise just 3
-        if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
+        ! pack rock-fluid properties
+        ! if there is capillary pressure, we store 5 entries, otherwise just 3:
+        ! (Immobile fraction, Krmax, relperm exponent, [capillary entry pressure, capillary exponent])
+        if(have_option_for_any_phase('/multiphase_properties/capillary_pressure',nphase)) then
             call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[5,nphase])
         else
             call allocate(ten_field,element_mesh,"PackedRockFluidProp",dim=[3,nphase])
         end if
-
-        ! introduce the rock-fluid properties (Immobile fraction, Krmax, relperm exponent
-        ! -Capillary entry pressure, capillary exponent-)
         call insert(packed_state,ten_field,"PackedRockFluidProp")
         call deallocate(ten_field)
 
-        allocate(multiphase_state(nphase))
-        allocate(multicomponent_state(ncomp))
-        allocate(multi_state(max(1,ncomp),nphase))
-
+        ! pack pressure mesh
         pressure=>extract_scalar_field(state(1),"Pressure")
         call insert(packed_state,pressure%mesh,"PressureMesh")
 
-        ! barycentre of control volumes
+        ! pack control volume (CV) barycentres
         call allocate(vec_field,ndim,pressure%mesh,"CVBarycentre")
         call zero(vec_field)
         call insert(packed_state,vec_field,"CVBarycentre")
-        do icomp=1,ncomp
+        do icomp = 1, ncomp
             call insert(multicomponent_state(icomp),vec_field,"CVBarycentre")
         end do
         call deallocate(vec_field)
 
-        ! mass of control volumes
+        ! pack CV integral
         call allocate(vec_field,1,pressure%mesh,"CVIntegral")
         call zero(vec_field)
         call insert(packed_state,vec_field,"CVIntegral")
-        do icomp=1,ncomp
+        do icomp = 1, ncomp
             call insert(multicomponent_state(icomp),vec_field,"CVIntegral")
         end do
         call deallocate(vec_field)
 
-        !      call add_new_memory(packed_state,pressure,"FEPressure")
-        !      call add_new_memory(packed_state,pressure,"OldFEPressure")
-        !      call add_new_memory(packed_state,pressure,"CVPressure")
-        !      call add_new_memory(packed_state,pressure,"OldCVPressure")
-
-        call insert_sfield( packed_state,"FEPressure",1,npres )
-
-        tfield => extract_tensor_field( packed_state, "PackedFEPressure" )
-        tfield%option_path = pressure%option_path
-
-        call insert_sfield( packed_state,"CVPressure",1,npres )
-
-        ! dummy field on the pressure mesh, used for evaluating python eos's.
-        ! this could be cleaned up in the future.
-        call add_new_memory(packed_state,pressure,"Dummy")
-
-        tfield => extract_tensor_field( state(1), "Dummy", stat )
-        if ( stat==0 ) call insert( packed_state, tfield, "Dummy" )
-
+        ! pack FE pressure
+        call insert_sfield(packed_state,"FEPressure",1,npres)
+        tfield=>extract_tensor_field(packed_state,"PackedFEPressure")
+        tfield%option_path=pressure%option_path
         p2=>extract_tensor_field(packed_state,"PackedFEPressure")
         do ipres = 1, npres
             p2%val(1,ipres,:)=pressure%val
         end do
-        do icomp=1,ncomp
+        do icomp = 1, ncomp
             call insert(multicomponent_state(icomp),p2,"PackedFEPressure")
         end do
 
+        ! pack CV pressure
+        call insert_sfield(packed_state,"CVPressure",1,npres)
         p2=>extract_tensor_field(packed_state,"PackedCVPressure")
         do ipres = 1, npres
             p2%val(1,ipres,:)=pressure%val
         end do
 
+        ! dummy field on the pressure mesh, used for evaluating python eos's.
+        ! (this could be cleaned up in the future)
+        call add_new_memory(packed_state,pressure,"Dummy")
+        tfield=>extract_tensor_field(state(1),"Dummy",stat)
+        if(stat==0) call insert(packed_state,tfield,"Dummy")
+
+        ! pack FE density
         call insert_sfield(packed_state,"FEDensity",1,nphase)
-
-        call insert_sfield(packed_state,"Density",1,nphase)
-        call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
-
-        call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
-        drhodp => extract_tensor_field(packed_state,"PackedDRhoDPressure")
-        do icomp=1,ncomp
-           call insert(multicomponent_state(icomp),drhodp,"PackedDRhoDPressure")
-        end do
-
         d2=>extract_tensor_field(packed_state,"PackedFEDensity")
-
-        do icomp=1,ncomp
+        do icomp = 1, ncomp
             call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
         end do
 
+        ! ???
+        call insert_sfield(packed_state,"Density",1,nphase)
+        call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
+
+        ! ???
+        call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
+        drhodp=>extract_tensor_field(packed_state,"PackedDRhoDPressure")
+        do icomp = 1, ncomp
+           call insert(multicomponent_state(icomp),drhodp,"PackedDRhoDPressure")
+        end do
+
+        ! pack temperature
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call insert_sfield(packed_state,"Temperature",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
             call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
+
+        ! pack volume fraction
         call insert_sfield(packed_state,"PhaseVolumeFraction",1,nphase,&
             add_source=.true.)
         call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
 
-        !If we have capillary pressure we create a field in packed_state
+        ! pack capillary pressure
         if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
             call allocate(ten_field,pressure%mesh,"PackedCapPressure",dim=[1,nphase])
             call insert(packed_state,ten_field,"PackedCapPressure")
             call deallocate(ten_field)
         end if
 
+        ! pack continuous velocity mesh
         velocity=>extract_vector_field(state(1),"Velocity")
         call insert(packed_state,velocity%mesh,"VelocityMesh")
-        if ( .not. has_mesh(state(1),"VelocityMesh_Continuous") ) then
+        if (.not.has_mesh(state(1),"VelocityMesh_Continuous")) then
             nullify(ovmesh)
             allocate(ovmesh)
             ovmesh=make_mesh(position%mesh,&
@@ -1898,9 +1903,15 @@ contains
             ovmesh=>extract_mesh(state(1),"VelocityMesh_Continuous")
             call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
         end if
-        call allocate(u_position,ndim,ovmesh,"VelocityCoordinate")
 
-        if ( .not. has_mesh(state(1),"PressureMesh_Continuous") ) then
+        ! pack velocity coordinates
+        call allocate(u_position,ndim,ovmesh,"VelocityCoordinate")
+        call remap_field(position,u_position)
+        call insert(packed_state,u_position,"VelocityCoordinate")
+        call deallocate(u_position)
+
+        ! pack continuous pressure mesh
+        if (.not.has_mesh(state(1),"PressureMesh_Continuous")) then
             nullify(ovmesh)
             allocate(ovmesh)
             ovmesh=make_mesh(position%mesh,&
@@ -1916,9 +1927,14 @@ contains
             call insert(packed_state,ovmesh,"PressureMesh_Continuous")
         end if
 
+        ! pack pressure coordinates
         call allocate(p_position,ndim,ovmesh,"PressureCoordinate")
+        call remap_field(position,p_position)
+        call insert(packed_state,p_position,"PressureCoordinate")
+        call deallocate(p_position)
 
-        if ( .not. has_mesh(state(1),"PressureMesh_Discontinuous") ) then
+        ! pack discontinuous pressure mesh
+        if (.not.has_mesh(state(1),"PressureMesh_Discontinuous")) then
             nullify(ovmesh)
             allocate(ovmesh)
             ovmesh=make_mesh(position%mesh,&
@@ -1933,24 +1949,14 @@ contains
             ovmesh=>extract_mesh(state(1),"PressureMesh_Discontinuous")
             call insert(packed_state,ovmesh,"PressureMesh_Discontinuous")
         end if
+
+        ! pack material coordinates
         call allocate(m_position,ndim,ovmesh,"MaterialCoordinate")
-
-
-        call remap_field( position, u_position )
-        call remap_field( position, p_position )
-        call remap_field( position, m_position )
-
-        call insert(packed_state,position,"Coordinate")
-        call insert(packed_state,u_position,"VelocityCoordinate")
-        call insert(packed_state,p_position,"PressureCoordinate")
+        call remap_field(position,m_position)
         call insert(packed_state,m_position,"MaterialCoordinate")
-        call deallocate(p_position)
-        call deallocate(u_position)
         call deallocate(m_position)
 
-        has_density=has_scalar_field(state(1),"Density")
-        has_phase_volume_fraction=has_scalar_field(state(1),"PhaseVolumeFraction")
-
+        ! ??
         call insert(packed_state,velocity%mesh,"InternalVelocityMesh")
         call insert_vfield(packed_state,"Velocity",add_source=.true.)
         call insert_vfield(packed_state,"NonlinearVelocity",zerod=.true.)
@@ -1960,25 +1966,87 @@ contains
             call insert_sfield(packed_state,"ComponentDensity",ncomp,nphase)
             call insert_sfield(packed_state,"ComponentMassFraction",ncomp,&
                 nphase,add_source=.true.)
-
             call insert_sfield(packed_state,"FEComponentDensity",ncomp,nphase)
             call insert_sfield(packed_state,"FEComponentMassFraction",ncomp,nphase)
-
         end if
 
-        iphase=1
-        icomp=1
-        do i=1,size(state)
+        ! pack porosity
+        call allocate(porosity,npres,element_mesh,"Porosity")
+        do ipres = 1, npres
+            call set(porosity,ipres,1.0)
+        end do
+        call insert(packed_state,porosity,"Porosity")
+        call deallocate(porosity)
+        if (has_scalar_field(state(1),"Porosity")) then
+            sfield=>extract_scalar_field(state(1),"Porosity")
+            porosity%val(1,:)=sfield%val
+        end if
+
+        ! pack permeability
+        ! hack to define a lateral from diamond
+        if(npres>1) then
+            vfield=>extract_vector_field(packed_state,"Porosity")
+            sfield=>extract_scalar_field(state(1),"Pipe1")
+            vfield%val(2,:)=sfield%val
+        end if
+        if(has_scalar_field(state(1),"Permeability")) then
+            call allocate(permeability,element_mesh,"Permeability",&
+                dim=[mesh_dim(position),mesh_dim(position)])
+            call zero(permeability)
+            sfield=>extract_scalar_field(state(1),"Permeability")
+            do idim=1,mesh_dim(position)
+                call set(permeability,idim,idim,sfield)
+            end do
+            call insert(packed_state,permeability,"Permeability")
+            call deallocate(permeability)
+        else if(has_vector_field(state(1),"Permeability")) then
+            call allocate(permeability,element_mesh,"Permeability",&
+                dim=[mesh_dim(position),mesh_dim(position)])
+            call zero(permeability)
+            vfield=>extract_vector_field(state(1),"Permeability")
+            call set(permeability,vfield)
+            call insert(packed_state,permeability,"Permeability")
+            call deallocate(permeability)
+        else if(has_tensor_field(state(1),"Permeability")) then
+            call allocate(permeability,element_mesh,"Permeability",&
+                dim=[mesh_dim(position),mesh_dim(position)])
+            call zero(permeability)
+            tfield=>extract_tensor_field(state(1),trim(permeability%name))
+            if(size(tfield%val,3)==1) then!constant field
+                do iele=1,element_count(tfield)
+                    Permeability%val(:,:,iele)=tfield%val(:,:,1)
+                end do
+            else!python
+                do iele=1,element_count(tfield)
+                    element_nodes=>ele_nodes(tfield,iele)
+                    Permeability%val(:,:,iele)=tfield%val(:,:,element_nodes(1))
+                end do
+            end if
+            call insert(packed_state,permeability,"Permeability")
+            call deallocate(permeability)
+        else
+            call allocate(permeability,element_mesh,"Permeability",&
+                dim=[mesh_dim(position),mesh_dim(position)])
+            call zero(permeability)
+            call insert(packed_state,permeability,"Permeability")
+            call deallocate(permeability)
+        end if
+
+        ! pack for multi_state
+        has_density=has_scalar_field(state(1),"Density")
+        has_phase_volume_fraction=has_scalar_field(state(1),"PhaseVolumeFraction")
+        iphase=1; icomp=1
+        do i = 1, size(state)
             if(have_option(trim(state(i)%option_path)&
                 //'/is_multiphase_component')) then
                 velocity=>extract_vector_field(state(i),"Velocity",stat)
-                if (stat==0) velocity%wrapped=.true.
+                if(stat==0) velocity%wrapped=.true.
                 velocity=>extract_vector_field(state(i),"OldVelocity",stat)
-                if (stat==0) velocity%wrapped=.true.
+                if(stat==0) velocity%wrapped=.true.
                 velocity=>extract_vector_field(state(i),"NonlinearVelocity",stat)
-                if (stat==0) velocity%wrapped=.true.
+                if(stat==0) velocity%wrapped=.true.
                 velocity=>extract_vector_field(state(i),"IteratedVelocity",stat)
-                if (stat==0) velocity%wrapped=.true.
+                if(stat==0) velocity%wrapped=.true.
 
                 call unpack_component_sfield(state(i),packed_state,"FEComponentDensity",icomp)
                 call unpack_component_sfield(state(i),packed_state,"OldFEComponentDensity",icomp,prefix='Old')
@@ -1989,17 +2057,14 @@ contains
                 call unpack_component_sfield(state(i),packed_state,"ComponentDensity",icomp)
                 call unpack_component_sfield(state(i),packed_state,"IteratedComponentMassFraction",icomp,prefix='Iterated')
                 call unpack_component_sfield(state(i),packed_state,"ComponentMassFraction",icomp)
-
                 call insert_components_in_multi_state(multi_state(icomp,:),state(i))
 
                 icomp=icomp+1
                 cycle
             else
-
                 pressure=>extract_scalar_field(state(i),"Pressure",stat)
-                if (stat==0) pressure%wrapped=.true.
-
-                if (has_density) then
+                if(stat==0) pressure%wrapped=.true.
+                if(has_density) then
                     call unpack_sfield(state(i),packed_state,"IteratedDensity",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"Density"),&
                         extract_scalar_field(state(i),"IteratedDensity")))
@@ -2007,7 +2072,7 @@ contains
                         check_paired(extract_scalar_field(state(i),"Density"),&
                         extract_scalar_field(state(i),"OldDensity")))
                     call unpack_sfield(state(i),packed_state,"Density",1,iphase)
-                    call insert(multi_state(1,iphase), extract_scalar_field(state(i),"Density"),"Density")
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Density"),"Density")
                 end if
 
                 if(have_option(trim(state(i)%option_path)&
@@ -2021,7 +2086,7 @@ contains
                     call unpack_sfield(state(i),packed_state,"TemperatureSource",1,iphase)
                     call unpack_sfield(state(i),packed_state,"TemperatureAbsorption",1,iphase)
                     call unpack_sfield(state(i),packed_state,"Temperature",1,iphase)
-                    call insert(multi_state(1,iphase), extract_scalar_field(state(i),"Temperature"),"Temperature")
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Temperature"),"Temperature")
                 end if
 
                 if(has_phase_volume_fraction) then
@@ -2033,7 +2098,7 @@ contains
                         extract_scalar_field(state(i),"OldPhaseVolumeFraction")))
                     call unpack_sfield(state(i),packed_state,"PhaseVolumeFraction",1,iphase)
                     call unpack_sfield(state(i),packed_state,"PhaseVolumeFractionSource",1,iphase)
-                    call insert(multi_state(1,iphase), extract_scalar_field(state(i),"PhaseVolumeFraction"),"PhaseVolumeFraction")
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"PhaseVolumeFraction"),"PhaseVolumeFraction")
                 end if
 
                 call unpack_vfield(state(i),packed_state,"IteratedVelocity",iphase,&
@@ -2046,20 +2111,22 @@ contains
                     check_vpaired(extract_vector_field(state(i),"Velocity"),&
                     extract_vector_field(state(i),"NonlinearVelocity")))
                 call unpack_vfield(state(i),packed_state,"Velocity",iphase)
-                call insert(multi_state(1,iphase), extract_vector_field(state(i),"Velocity"),"Velocity")
+                call insert(multi_state(1,iphase),extract_vector_field(state(i),"Velocity"),"Velocity")
 
                 iphase=iphase+1
             end if
         end do
 
-        n_in_pres = nphase / npres
-        do ipres=1,npres
-            i = (ipres-1)*n_in_pres + 1
+        n_in_pres=nphase/npres
+        do ipres = 1, npres
+            i=(ipres-1)*n_in_pres+1
             call unpack_sfield(state(i),packed_state,"Pressure",1,ipres)
-            call insert(multi_state(1,ipres), extract_scalar_field(state(i),"Pressure"),"FEPressure")
+            call insert(multi_state(1,ipres),extract_scalar_field(state(i),"Pressure"),"FEPressure")
         end do
 
-        if (option_count("/material_phase/scalar_field::Temperature")>0) call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
+        if (option_count("/material_phase/scalar_field::Temperature")>0) then
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
+        end if
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Density")
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"PhaseVolumeFraction")
         call allocate_multiphase_vector_bcs(packed_state,multi_state,"Velocity")
@@ -2071,27 +2138,6 @@ contains
             call allocate_multicomponent_scalar_bcs(multicomponent_state,multi_state,"ComponentDensity")
         end if
 
-        !! // How to add density as a dependant of olddensity,  as an example
-        !! // Suppose we have a previous declaration
-
-        !! type(tensor_field), pointer :: old_density, density
-
-        !! old_density=>extract_tensor_field(packed_state,"PackedOldDensity")
-        !! density=>extract_tensor_field(packed_state,"PackedDensity")
-        !! call add_dependant_field(old_density,density)
-
-        !! // if we now make a  call
-
-        !! call mark_as_updated(density)
-
-        !! // then is_updated(density) is now .true. (no other changes)
-        !! // If we then make a  call
-
-
-        !! call mark_as_updated(old_density)
-        !! // then is_updated(old_density) is now .true. and is_updated(density) is .false.
-
-
         if (present(pmulti_state)) then
             pmulti_state=>multi_state
         else
@@ -2099,85 +2145,36 @@ contains
             deallocate(multi_state)
         end if
 
-        call allocate(porosity,npres,element_mesh,"Porosity")
-        do ipres = 1, npres
-            call set(porosity,ipres,1.0)
-        end do
-        call insert(packed_state,porosity,"Porosity")
-        call deallocate(porosity)
-        if (has_scalar_field(state(1),"Porosity")) then
-            sfield => extract_scalar_field(state(1),"Porosity")
-            porosity%val(1,:) = sfield%val
-        end if
+        !! // How to add density as a dependant of olddensity,  as an example
+        !! // Suppose we have a previous declaration
+        !! type(tensor_field), pointer :: old_density, density
+        !! old_density=>extract_tensor_field(packed_state,"PackedOldDensity")
+        !! density=>extract_tensor_field(packed_state,"PackedDensity")
+        !! call add_dependant_field(old_density,density)
+        !! // if we now make a  call
+        !! call mark_as_updated(density)
+        !! // then is_updated(density) is now .true. (no other changes)
+        !! // If we then make a  call
+        !! call mark_as_updated(old_density)
+        !! // then is_updated(old_density) is now .true. and is_updated(density) is .false.
 
-        ! Hack to define a lateral from diamond
-        if ( npres >  1 ) then
-            vfield => extract_vector_field(packed_state,"Porosity")
-            sfield => extract_scalar_field(state(1),"Pipe1")
-            vfield%val(2,:) = sfield%val
-        end if
-
-        if (has_scalar_field(state(1),"Permeability")) then
-            call allocate(permeability,element_mesh,"Permeability",&
-                dim=[mesh_dim(position),mesh_dim(position)])
-            call zero(permeability)
-            sfield=>extract_scalar_field(state(1),"Permeability")
-            do idim=1,mesh_dim(position)
-                call set(permeability,idim,idim,sfield)
-            end do
-            call insert(packed_state,permeability,"Permeability")
-            call deallocate(permeability)
-        else if (has_vector_field(state(1),"Permeability")) then
-            call allocate(permeability,element_mesh,"Permeability",&
-                dim=[mesh_dim(position),mesh_dim(position)])
-            call zero(permeability)
-            vfield=>extract_vector_field(state(1),"Permeability")
-            call set(permeability,vfield)
-            call insert(packed_state,permeability,"Permeability")
-            call deallocate(permeability)
-        else if (has_tensor_field(state(1),"Permeability")) then
-            call allocate(permeability,element_mesh,"Permeability",&
-                dim=[mesh_dim(position),mesh_dim(position)])
-            call zero(permeability)
-            tfield => extract_tensor_field( state(1), trim( permeability % name ) )
-            if( size(tfield%val,3) == 1 ) then!constant field
-                do ele = 1, element_count( tfield )
-                    Permeability%val( :, :, ele ) = tfield % val( :, :, 1 )
-                end do
-            else!python
-                do ele = 1, element_count( tfield )
-                    element_nodes => ele_nodes( tfield, ele )
-                    Permeability%val( :, :, ele ) = &
-                        tfield % val( :, :, element_nodes( 1 ) )
-                end do
-            end if
-            call insert(packed_state,permeability,"Permeability")
-            call deallocate(permeability)
-        else
-            call allocate(permeability,element_mesh,"Permeability",&
-                dim=[mesh_dim(position),mesh_dim(position)])
-            call zero(permeability)
-            call insert(packed_state,permeability,"Permeability")
-            call deallocate(permeability)
-        end if
-
-    !      !Add memory for the DarcyVelocity
-    !      call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity")
-    !      call zero(ten_field)
-    !      call insert(packed_state,ten_field,"PackedDarcyVelocity")
-    !      call deallocate(ten_field)
-    !      !Insert into state and merge memories
-    !      do iphase = 1, size(state)
-    !          call allocate(vec_field, ndim, velocity%mesh, "DarcyVelocity")
-    !          call zero(vec_field)
-    !          call insert(state(iphase),vec_field,"DarcyVelocity")
-    !          call deallocate(vec_field)
-    !      end do
-    !      do iphase = 1, size(state)
-    !          call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase,&
-    !               check_vpaired(extract_vector_field(state(iphase),"DarcyVelocity"),&
-    !               extract_vector_field(state(iphase),"DarcyVelocity")))
-    !      end do
+        ! !Add memory for the DarcyVelocity
+        ! call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity")
+        ! call zero(ten_field)
+        ! call insert(packed_state,ten_field,"PackedDarcyVelocity")
+        ! call deallocate(ten_field)
+        ! !Insert into state and merge memories
+        ! do iphase = 1, size(state)
+        !     call allocate(vec_field, ndim, velocity%mesh, "DarcyVelocity")
+        !     call zero(vec_field)
+        !     call insert(state(iphase),vec_field,"DarcyVelocity")
+        !     call deallocate(vec_field)
+        ! end do
+        ! do iphase = 1, size(state)
+        !     call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase,&
+        !     check_vpaired(extract_vector_field(state(iphase),"DarcyVelocity"),&
+        !     extract_vector_field(state(iphase),"DarcyVelocity")))
+        ! end do
 
     contains
 
@@ -2216,7 +2213,6 @@ contains
             type(vector_field), pointer :: vecfield
             type(tensor_field) :: vfield
 
-
             character (len=FIELD_NAME_LEN), dimension(5) ::names
             character (len=FIELD_NAME_LEN), dimension(4) ::phase_names
             character (len=FIELD_NAME_LEN), dimension(1) ::phase_vector_names
@@ -2248,7 +2244,7 @@ contains
                     vfield%field_type=FIELD_TYPE_NORMAL
                     call insert(mcstate(icomp),vfield,vfield%name)
                     call deallocate(vfield)
-                END do
+                end do
 
             end do
 
@@ -2730,17 +2726,13 @@ contains
             do icomp=1,size(s)
                 mfield=>extract_tensor_field(s(icomp),'Packed'//name)
                 allocate(mfield%bc)
-
                 nbc=0
 
                 do iphase=1,mfield%dim(2)
                     sfield=>extract_scalar_field( ms(icomp,iphase),trim(name),stat)
-
                     if (stat/= 0 ) cycle
-
                     do n=1,get_boundary_condition_count(sfield)
                         bc=>sfield%bc%boundary_condition(n)
-
                         tbc%name=bc%name
                         tbc%type=bc%type
                         tbc%surface_element_list=>bc%surface_element_list
@@ -2754,7 +2746,6 @@ contains
                         allocate(tbc%applies(1,mfield%dim(2)))
                         tbc%applies= .false.
                         tbc%applies(1,iphase)=.true.
-
                         nbc=nbc+1
                         if (nbc>1) then
                             temp=>mfield%bc%boundary_condition
