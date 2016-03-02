@@ -65,6 +65,18 @@ module multi_data_types
 
     end type multi_dimensions
 
+
+    type multi_discretization_opts
+        !This type includes the necessary information to choose from the different discretization options available
+        integer ::  cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, cv_sele_type
+        integer ::  t_disopt, v_disopt
+        real ::     t_beta, v_beta, t_theta, v_theta, u_theta
+        integer ::  t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
+                    in_ele_upwind, dg_ele_upwind, nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp
+        logical ::  volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, &
+                    comp_get_theta_flux, t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction
+    end type multi_discretization_opts
+
     type multi_gi_dimensions
         integer :: cv_ngi     !Number of gauss integer points
         integer :: scvngi     !Number of gauss integer points in the surface of a control volume
