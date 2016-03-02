@@ -543,7 +543,101 @@ contains
         return
     end subroutine Get_Ele_Type
 
-
+    subroutine Get_Ele_Type_new( Mdims, Mdisopt )
+        !-
+        !- Mdisopt%u_ele_type = Mdisopt%cv_ele_type = Mdisopt%p_ele_type will flag the dimension and
+        !- type of element:
+        !- = 1 or 2: 1D (linear and quadratic, respectively)
+        !- = 3 or 4: triangle (linear or quadratic, respectively)
+        !- = 5 or 6: quadrilateral (bi-linear or tri-linear, respectively)
+        !- = 7 or 8: tetrahedron (linear or quadratic, respectively)
+        !- = 9 or 10: hexahedron (bi-linear or tri-linear, respectively)
+        !-
+        implicit none
+        type(multi_dimensions), intent(in) :: Mdims
+        type (multi_discretization_opts) :: Mdisopt
+        !!$ Local variables
+        integer :: ndim, degree
+        call get_option( '/geometry/dimension', ndim)
+        call get_option( &
+            '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', &
+            degree )
+        Select Case( ndim )
+            case( 1 ) ! ndim
+                Select Case( degree )
+                    case( 1 ) ! degree
+                        !!$ ndim=1; p=1
+                        Mdisopt%cv_ele_type = 1
+                    case( 2 ) ! degree
+                        ! ndim=1; p=2
+                        Mdisopt%cv_ele_type = 2
+                    case default; FLAbort('Degree error')
+                end Select ! degree
+            case( 2 ) ! ndim
+                Select Case( degree )
+                    case( 1 ) ! degree
+                        Select Case( Mdims%x_nloc )
+                            case( 3 ) ! Mdims%x_nloc
+                                ! ndim=2; p=1; Mdims%x_nloc=3
+                                ! linear triangle
+                                Mdisopt%cv_ele_type = 3
+                            case( 4 ) ! Mdims%x_nloc
+                                ! ndim=2; p=1; Mdims%x_nloc=4
+                                ! bilinear quad
+                                Mdisopt%cv_ele_type = 5
+                            case default; FLAbort('Mdims%x_nloc error')
+                        end Select ! Mdims%x_nloc
+                    case( 2 ) ! degree
+                        Select Case( Mdims%x_nloc )
+                            case( 6 ) ! Mdims%x_nloc
+                                ! ndim=2; p=2; Mdims%x_nloc=3
+                                ! quadratic triangle
+                                Mdisopt%cv_ele_type = 4
+                            case( 10 ) ! Mdims%x_nloc
+                                ! ndim=2; p=2; Mdims%x_nloc=4
+                                ! bi-quadratic quad
+                                Mdisopt%cv_ele_type = 6
+                            case default; FLAbort('Mdims%x_nloc error')
+                        end Select ! Mdims%x_nloc
+                    case default; FLAbort('Degree error')
+                end Select ! degree
+            case( 3 ) ! ndim
+                Select Case( degree )
+                    case( 1 ) ! degree
+                        Select Case( Mdims%x_nloc )
+                            case( 4 ) ! Mdims%x_nloc
+                                ! ndim=3; p=1; Mdims%x_nloc=4
+                                ! linear tets
+                                Mdisopt%cv_ele_type = 7
+                            case( 8 ) ! Mdims%x_nloc
+                                ! ndim=3; p=1; Mdims%x_nloc=8
+                                ! tri-linear hex
+                                Mdisopt%cv_ele_type = 9
+                            case default; FLAbort('Mdims%x_nloc error')
+                        end Select ! Mdims%x_nloc
+                    case( 2 ) ! degree
+                        Select Case( Mdims%x_nloc )
+                            case( 10 ) ! Mdims%x_nloc
+                                ! ndim=3; p=2; Mdims%x_nloc=4
+                                ! quadratic tet
+                                Mdisopt%cv_ele_type = 8
+                            case( 27 ) ! Mdims%x_nloc
+                                ! ndim=3; p=2; Mdims%x_nloc=8
+                                ! bilinear quad
+                                Mdisopt%cv_ele_type = 10
+                            case default; FLAbort('Mdims%x_nloc error')
+                        end Select ! Mdims%x_nloc
+                    case default; FLAbort('Degree error')
+                end Select ! degree
+        end Select ! ndim
+        Mdisopt%p_ele_type = Mdisopt%cv_ele_type ; Mdisopt%u_ele_type = Mdisopt%cv_ele_type
+        !!$ The following options are hardcoded and need to be either deleted from the code tree or
+        !!$ added into the schema.
+        Mdisopt%mat_ele_type = 1
+        Mdisopt%u_sele_type = 1
+        Mdisopt%cv_sele_type = 1
+        return
+    end subroutine Get_Ele_Type_new
 
     subroutine Get_Discretisation_Options( state, &
         t_disopt, v_disopt, t_beta, v_beta, t_theta, v_theta, u_theta, &
