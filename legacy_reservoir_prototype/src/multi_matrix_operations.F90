@@ -55,6 +55,7 @@ module matrix_operations
     use multiphase_caching, only : get_caching_level, test_caching_level, reshape_vector2pointer
     use global_parameters, only : FIELD_NAME_LEN, is_porous_media
     use boundary_conditions
+    use multi_data_types
     implicit none
 
 contains
@@ -221,12 +222,10 @@ contains
 
 
 
-    SUBROUTINE COLOR_GET_CMC_PHA( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
-        NCOLC, FINDC, COLC, &
+    SUBROUTINE COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, &
         INV_PIVIT_MAT,  &
-        TOTELE, U_NLOC, U_NDGLN, &
-        NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-        CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+        CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
         MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
         got_free_surf,  MASS_SUF, &
         C, CT, storage_state, indx, halos, symmetric_P )
@@ -234,16 +233,13 @@ contains
         !Initialize the momentum equation (CMC) and introduces the corresponding values in it.
         implicit none
         ! form pressure matrix CMC using a colouring approach
+        type(multi_dimensions), intent(in) :: Mdims
+        type (multi_sparsities), intent(in) :: Mspars
+        type(multi_ndgln), intent(in) :: ndgln
         LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
-        INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, NCOLC, &
-            TOTELE, U_NLOC, NCOLCT, NCOLCMC, IGOT_CMC_PRECON
+        INTEGER, intent( in ) :: IGOT_CMC_PRECON
         LOGICAL, intent( in ) :: got_free_surf, symmetric_P
-        INTEGER, DIMENSION( : ), intent( in ) ::FINDC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLC
         REAL, DIMENSION( :, :, : ), intent( in ) :: INV_PIVIT_MAT
-        INTEGER, DIMENSION( : ), intent( in ) ::  U_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDCT
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCT
         REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
         REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
         type(petsc_csr_matrix), intent(inout)::  CMC_petsc
@@ -251,8 +247,6 @@ contains
         REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
         REAL, DIMENSION( : ), intent( in ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
         REAL, DIMENSION( :, :, : ), intent( in ) :: C
         REAL, DIMENSION( :, :, : ), intent( in ) :: CT
         type( state_type ), intent( inout ):: storage_state
@@ -274,55 +268,46 @@ contains
         !Variables for CMC_petsc
         integer, dimension( : ), allocatable :: dnnz
         integer :: cmc_rows
-
         !Initialize CMC_petsc
-
         call zero( CMC_petsc )
-
-        allocate(ndpset(npres)) ; ndpset(:)=-1
+        allocate(ndpset(Mdims%npres)) ; ndpset(:)=-1
         if (ndpset(1)<0) then
             call get_option( '/material_phase[0]/scalar_field::Pressure/' // &
                 'prognostic/reference_node', ndpset(1), default = -1 )
-            ndpset(2:npres)=ndpset(1)
+            ndpset(2:Mdims%npres)=ndpset(1)
         endif
-
         if (isparallel()) then
             if (GetProcNo()>1) ndpset=0
         end if
-
            !Currently this is false, over-ride switch for porous media since it is slower than memory hungry
-        IF ( ( test_caching_level(6) .or.is_porous_media ) .and. npres==1) THEN
+        IF ( ( test_caching_level(6) .or.is_porous_media ) .and. Mdims%npres==1) THEN
             ! Fast but memory intensive...
-            CALL COLOR_GET_CMC_PHA_FAST( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
-                NCOLC, FINDC, COLC, &
+            CALL COLOR_GET_CMC_PHA_FAST( Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mdims%npres, &
+                Mspars%C%ncol, Mspars%C%fin, Mspars%C%col, &
                 INV_PIVIT_MAT,  &
-                TOTELE, U_NLOC, U_NDGLN, &
-                NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+                Mdims%totele, Mdims%u_nloc, ndgln%u, &
+                Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, Mspars%CMC%ncol, Mspars%CMC%fin, Mspars%CMC%col, MASS_MN_PRES, &
                 MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
                 got_free_surf,  MASS_SUF, &
                 C, CT, ndpset, storage_state, indx, symmetric_P )
         ELSE
             ! Slow but memory efficient...
-            CALL COLOR_GET_CMC_PHA_SLOW( CV_NONODS, U_NONODS, NDIM, NPHASE, NPRES, &
-                NCOLC, FINDC, COLC, &
+            CALL COLOR_GET_CMC_PHA_SLOW( Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mdims%npres, &
+                Mspars%C%ncol, Mspars%C%fin, Mspars%C%col, &
                 INV_PIVIT_MAT,  &
-                TOTELE, U_NLOC, U_NDGLN, &
-                NCOLCT, FINDCT, COLCT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, NCOLCMC, FINDCMC, COLCMC, MASS_MN_PRES, &
+                Mdims%totele, Mdims%u_nloc, ndgln%u, &
+                Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, Mspars%CMC%ncol, Mspars%CMC%fin, Mspars%CMC%col, MASS_MN_PRES, &
                 MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
                 got_free_surf,  MASS_SUF, &
                 C, CT, ndpset, symmetric_P )
         END IF
-
-
         !Re-assemble just in case
         CMC_petsc%is_assembled=.false.
         call assemble( CMC_petsc )
-
       !Final step to prepare the CMC_petsc
       !call assemble( CMC_petsc )
-
     END SUBROUTINE COLOR_GET_CMC_PHA
 
 

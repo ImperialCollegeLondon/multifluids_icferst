@@ -990,22 +990,18 @@ contains
             end if
             if (GET_C_IN_CV_ADVDIF) then
                 !Use C_CV to form the CMC matrix
-                CALL COLOR_GET_CMC_PHA( Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mdims%npres, &
-                Mspars%C%ncol, Mspars%C%fin, Mspars%C%col, &
+                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln,&
                 PIVIT_MAT, &
-                Mdims%totele, Mdims%u_nloc, ndgln%u, &
-                Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, Mspars%CMC%ncol, Mspars%CMC%fin, Mspars%CMC%col, MASS_MN_PRES, &
+                DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
                 MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
                 got_free_surf,  MASS_SUF, &
                 C_CV, CT, storage_state, StorageIndexes(11), halo, symmetric_P )
             else
-                CALL COLOR_GET_CMC_PHA( Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mdims%npres, &
-                Mspars%C%ncol, Mspars%C%fin, Mspars%C%col, &
+                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln,&
                 PIVIT_MAT, &
-                Mdims%totele, Mdims%u_nloc, ndgln%u, &
-                Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, Mspars%CMC%ncol, Mspars%CMC%fin, Mspars%CMC%col, MASS_MN_PRES, &
+                DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
                 MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
                 got_free_surf,  MASS_SUF, &
                 C, CT, storage_state, StorageIndexes(11), halo, symmetric_P )
