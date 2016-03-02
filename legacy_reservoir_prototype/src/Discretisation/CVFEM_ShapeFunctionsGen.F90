@@ -71,10 +71,9 @@
 !!$ Determine the surface element shape functions from those calculated in 
 !!$   SHAPESV_FEM_PLUS and also CV_SLOCLIST( NFACE,CV_SNLOC )
 
-         call shapesv_fem_plus( GIdims%scvngi, shape_fun%cv_neiloc, shape_fun%cv_on_face, &
-              shape_fun%cvfem_on_face, &
-              shape_fun%ufem_on_face, &
-              cv_ele_type, Mdims%cv_nloc, shape_fun%scvfen, shape_fun%scvfenslx, shape_fun%scvfensly, &
+         call shapesv_fem_plus( cv_ele_type, shape_fun, Mdims, GIdims, &
+              GIdims%scvngi, &
+              Mdims%cv_nloc, shape_fun%scvfen, shape_fun%scvfenslx, shape_fun%scvfensly, &
               shape_fun%scvfeweigh, &
               shape_fun%scvfenlx_all(1, :, :), shape_fun%scvfenlx_all(2, :, :), &
               shape_fun%scvfenlx_all(3, :, :), &
@@ -370,28 +369,23 @@
 !!$ ===============
 
 
-    subroutine shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-         ufem_on_face, &
-         cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
+    subroutine shapesv_fem_plus( cv_ele_type, shape_fun, Mdims, GIdims, &
+         scvngi, &
+         cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
          scvfenlx, scvfenly, scvfenlz, &
          u_nloc, sufen, sufenslx, sufensly, &
          sufenlx, sufenly, sufenlz, &
          ndim )
+!!$   This subroutine generates the FE basis functions, weights and the
+!!$        derivatives of the shape functions for a variety of elements on the
+!!$        control volume boundaries. The routine also generates the shape functions 
+!!$        and derivatives associated with the CV surfaces and also the FV basis functions.
       implicit none
-      !-
-      !- This subroutine generates the FE basis functions, weights and the
-      !- derivatives of the shape functions for a variety of elements on the
-      !- control volume boundaries.
-      !- The routine also generates the shape functions and derivatives
-      !- associated with the CV surfaces and also the FV basis functions.
-      !-
-      !- date last modified : 29/11/2011
-      !-
-      integer, intent( in ) :: scvngi, cv_nloc
-      integer, dimension( cv_nloc, scvngi ), intent( inout ) :: cv_neiloc
-      logical, dimension( cv_nloc, scvngi ), intent( inout ) :: cv_on_face, cvfem_on_face
-      logical, dimension( u_nloc, scvngi ), intent( inout ) :: ufem_on_face
       integer, intent( in ) :: cv_ele_type
+      type (multi_dimensions), intent(in) :: Mdims
+      type (multi_gi_dimensions), intent(in) :: GIdims
+      type(multi_shape_funs), intent(inout) :: shape_fun
+      integer, intent( in ) :: scvngi, cv_nloc
       real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfen, scvfenslx, scvfensly
       real, dimension( scvngi ), intent( inout ) :: scvfeweigh
       real, dimension( cv_nloc, scvngi ), intent( inout ) :: scvfenlx, scvfenly, scvfenlz
@@ -430,7 +424,7 @@
          call suf_cv_tri_tet_shape( cv_ele_type, ndim, scvngi, cv_nloc, u_nloc, scvfeweigh, &
               scvfen, scvfenlx, scvfenly, scvfenlz, scvfenslx, scvfensly,  &
               sufen, sufenlx, sufenly, sufenlz, sufenslx, sufensly, &
-              cv_neiloc, cvfem_neiloc, ufem_neiloc )
+              shape_fun%cv_neiloc, cvfem_neiloc, ufem_neiloc )
       case( 5 ) ! Bi-linear Quadrilateral
          call fvquad( scvngi, cv_nloc, scvngi, &
               m, scvfen, scvfenslx, &
@@ -481,28 +475,28 @@
 
 
       if(.not.tri_tet) then
-         call volnei( cv_neiloc, cvfem_neiloc, cv_nloc, scvngi, cv_ele_type )
+         call volnei( cv_ele_type, Mdims, GIdims, shape_fun, cvfem_neiloc )
       end if
 
       ewrite(3,*)'cv_ele_type:', cv_ele_type
       ewrite(3,*)'cv_nloc, scvngi:', cv_nloc, scvngi
 
-      cv_on_face = .false. ; cvfem_on_face = .false.
+      shape_fun%cv_on_face = .false. ; shape_fun%cvfem_on_face = .false.
       if ( ( cv_ele_type == 1 ) .or. ( cv_ele_type == 2 ) ) then ! 1D
          do iloc = 1, cv_nloc
-            cv_on_face( iloc, iloc ) = .true.
-            cv_on_face( iloc, iloc + 1 ) = .true.
+            shape_fun%cv_on_face( iloc, iloc ) = .true.
+            shape_fun%cv_on_face( iloc, iloc + 1 ) = .true.
          end do
-         cv_on_face = cvfem_on_face
+         shape_fun%cv_on_face = shape_fun%cvfem_on_face
       else
          do iloc = 1, cv_nloc
             do gi = 1, scvngi 
-               ! ewrite(3,*)'cv_neiloc, cvfem_on_face:', iloc, gi, &
+               ! ewrite(3,*)'shape_fun%cv_neiloc, cvfem_on_face:', iloc, gi, &
                !      cv_neiloc( iloc, gi ), cvfem_neiloc( iloc, gi )
-               if ( cv_neiloc( iloc, gi ) == -1 ) &
-                    cv_on_face( iloc, gi ) = .true.
+               if ( shape_fun%cv_neiloc( iloc, gi ) == -1 ) &
+                    shape_fun%cv_on_face( iloc, gi ) = .true.
                if ( cvfem_neiloc( iloc, gi ) == -1 ) &
-                    cvfem_on_face( iloc, gi ) = .true. 
+                    shape_fun%cvfem_on_face( iloc, gi ) = .true. 
             end do
          end do
 
@@ -510,29 +504,29 @@
          if(NEW_QUADRATIC_ELE_QUADRATURE.and.(cv_nloc==10).and.(ndim==3)) then
             ! Exterior faces :  1,3,6  ----James is this face the face with the 1st 6 surface quadrature points and the 1st 6 CV's.
             !                     This is only the exterior surface faces on the triangle with 1,2,3,4,5,6
-            cvfem_on_face=.false.
-            cvfem_on_face(1:6,1:6)=.true.
+            shape_fun%cvfem_on_face=.false.
+            shape_fun%cvfem_on_face(1:6,1:6)=.true.
             ! Exterior faces :  1,3,10
-            cvfem_on_face(1,7:12)=.true.
-            cvfem_on_face(2,7:17)=.true.
-            cvfem_on_face(3,7:12)=.true.
-            cvfem_on_face(7,7:12)=.true.
-            cvfem_on_face(8,7:12)=.true.
-            cvfem_on_face(10,7:12)=.true.
+            shape_fun%cvfem_on_face(1,7:12)=.true.
+            shape_fun%cvfem_on_face(2,7:17)=.true.
+            shape_fun%cvfem_on_face(3,7:12)=.true.
+            shape_fun%cvfem_on_face(7,7:12)=.true.
+            shape_fun%cvfem_on_face(8,7:12)=.true.
+            shape_fun%cvfem_on_face(10,7:12)=.true.
             ! Exterior faces :  1,6,10
-            cvfem_on_face(1,13:18)=.true.
-            cvfem_on_face(4,13:18)=.true.
-            cvfem_on_face(6,13:18)=.true.
-            cvfem_on_face(7,13:18)=.true.
-            cvfem_on_face(9,13:18)=.true.
-            cvfem_on_face(10,13:18)=.true.
+            shape_fun%cvfem_on_face(1,13:18)=.true.
+            shape_fun%cvfem_on_face(4,13:18)=.true.
+            shape_fun%cvfem_on_face(6,13:18)=.true.
+            shape_fun%cvfem_on_face(7,13:18)=.true.
+            shape_fun%cvfem_on_face(9,13:18)=.true.
+            shape_fun%cvfem_on_face(10,13:18)=.true.
             ! Exterior faces :  3,6,10
-            cvfem_on_face(3,19:24)=.true.
-            cvfem_on_face(5,19:24)=.true.
-            cvfem_on_face(6,19:24)=.true.
-            cvfem_on_face(8,19:24)=.true.
-            cvfem_on_face(9,19:24)=.true.
-            cvfem_on_face(10,19:24)=.true.
+            shape_fun%cvfem_on_face(3,19:24)=.true.
+            shape_fun%cvfem_on_face(5,19:24)=.true.
+            shape_fun%cvfem_on_face(6,19:24)=.true.
+            shape_fun%cvfem_on_face(8,19:24)=.true.
+            shape_fun%cvfem_on_face(9,19:24)=.true.
+            shape_fun%cvfem_on_face(10,19:24)=.true.
          endif
 
 
@@ -540,7 +534,7 @@
 
       do iloc = 1, u_nloc
          do gi = 1, scvngi
-            ufem_on_face( iloc, gi ) = ( ufem_neiloc( iloc, gi ) == -1 )
+            shape_fun%ufem_on_face( iloc, gi ) = ( ufem_neiloc( iloc, gi ) == -1 )
          end do
       end do
 

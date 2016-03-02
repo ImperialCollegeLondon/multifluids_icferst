@@ -31,6 +31,7 @@
     use fldebug
     use multi_data_types
     use FV_Quadratures
+    use NGauss
 
   contains
 
