@@ -117,7 +117,7 @@ contains
     end function my_size_real
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
-        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, storage_state, &
+        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state, &
         tracer, velocity, density, &
         CV_RHS_field, PETSC_ACV,&
         CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
@@ -132,7 +132,6 @@ contains
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-        IN_ELE_UPWIND, &
         MEAN_PORE_CV, &
         MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
         got_free_surf,  MASS_SUF, &
@@ -266,11 +265,12 @@ contains
         type(multi_shape_funs), intent(in) :: CV_funs
         type (multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
+        type (multi_discretization_opts) :: Mdisopt
         type(tensor_field), intent(inout), target :: tracer
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
         INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
-            IGOT_T2, IGOT_THETA_FLUX, IN_ELE_UPWIND
+            IGOT_T2, IGOT_THETA_FLUX
         INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
         type(vector_field), intent( inout ) :: CV_RHS_field
         type( petsc_csr_matrix ), intent(inout) :: petsc_ACV
@@ -3081,7 +3081,7 @@ contains
                     INCOME=0.0
                 END WHERE
                 !Calculate velocity on the interface, either using upwinding or high order methods
-                if (IN_ELE_UPWIND /= 1) then !high order
+                if (Mdisopt%in_ele_upwind /= 1) then !high order
                     !Calculate saturation at GI, necessary for the limiter
                     FEMTGI_IPHA = matmul(LOC_FEMT, CV_funs%scvfen(:,GI) )
                     ! ************NEW LIMITER**************************

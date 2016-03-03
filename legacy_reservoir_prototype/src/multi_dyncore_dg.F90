@@ -76,7 +76,7 @@ contains
        tracer, velocity, density,  DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-       IGOT_T2, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX,  &
+       IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
        THETA_GDIFF, MEAN_PORE_CV, &
        option_path, &
        mass_ele_transp, &
@@ -94,7 +94,7 @@ contains
            type (multi_discretization_opts) :: Mdisopt
            type(tensor_field), intent(inout) :: tracer
            type(tensor_field), intent(in) :: velocity, density
-           INTEGER, intent( in ) :: IGOT_T2, SCVNGI_THETA, igot_theta_flux
+           INTEGER, intent( in ) :: IGOT_T2, igot_theta_flux
            LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
            LOGICAL, intent( in ), optional ::THERMAL
            INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
@@ -237,7 +237,7 @@ contains
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                 !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
-                   Mdims, CV_GIdims, CV_funs, Mspars, ndgln, storage_state,&
+                   Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
                    tracer, velocity, density, &
                    CV_RHS_field, &
                    petsc_acv, &
@@ -254,7 +254,6 @@ contains
                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                   Mdisopt%in_ele_upwind, &
                    MEAN_PORE_CV, &
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
@@ -296,14 +295,11 @@ contains
 
 
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
-         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, storage_state, &
-         CV_ELE_TYPE, &
-         V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, V_BETA, &
-         SUF_SIG_DIAGTEN_BC, &
+         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state, &
+         DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, V_ABSORB, VOLFRA_PORE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-         igot_theta_flux, USE_THETA_FLUX, &
-         IN_ELE_UPWIND, &
+         igot_theta_flux, &
          option_path, &
          mass_ele_transp,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -317,14 +313,12 @@ contains
              type(multi_shape_funs), intent(in) :: CV_funs
              type (multi_sparsities), intent(in) :: Mspars
              type(multi_ndgln), intent(in) :: ndgln
-             INTEGER, intent( in ) :: CV_ELE_TYPE, IN_ELE_UPWIND, igot_theta_flux
-             LOGICAL, intent( in ) :: USE_THETA_FLUX
+             type (multi_discretization_opts) :: Mdisopt
+             INTEGER, intent( in ) :: igot_theta_flux
              INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
              integer, dimension(:), intent(in)  :: IDs2CV_ndgln
              REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-             INTEGER, intent( in ) :: V_DISOPT, V_DG_VEL_INT_OPT
-             REAL, intent( in ) :: DT, V_THETA
-             REAL, intent( inout ) :: V_BETA
+             REAL, intent( in ) :: DT
              REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
              REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
              REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
@@ -436,7 +430,7 @@ contains
                  DEN_ALL => DEN_ALL2%VAL( 1, :, : ) ; DENOLD_ALL => DENOLD_ALL2%VAL( 1, :, : )
              END IF
              TDIFFUSION = 0.0
-             V_BETA = 1.0
+             Mdisopt%v_beta = 1.0
              IGOT_THERM_VIS=0
              ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
              ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
@@ -462,7 +456,7 @@ contains
                  !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
-                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, storage_state,&
+                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt,storage_state,&
                      tracer, velocity, density, &
                      CV_RHS_field, &
                      petsc_acv, &
@@ -471,15 +465,14 @@ contains
                      CT, &
                      DEN_ALL, DENOLD_ALL, &
                      TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-                     V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, SECOND_THETA, V_BETA, &
+                     Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, SECOND_THETA, Mdisopt%v_beta, &
                      SUF_SIG_DIAGTEN_BC, &
                      DERIV%val(1,:,:), P, &
                      V_SOURCE, V_ABSORB, VOLFRA_PORE, &
                      GETCV_DISC, GETCT, &
                      opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                     IGOT_T2, igot_theta_flux, GET_THETA_FLUX, USE_THETA_FLUX, &
+                     IGOT_T2, igot_theta_flux, GET_THETA_FLUX, Mdisopt%volfra_get_theta_flux, &
                      THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                     IN_ELE_UPWIND, &
                      MEAN_PORE_CV, &
                      mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                      .false.,  mass_Mn_pres, &
@@ -540,7 +533,7 @@ contains
                              !and that is done through the sigmas, hence, we have to update them
                              call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_GIdims, Mspars, &
                                 Material_Absorption, suf_sig_diagten_bc, opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                                ids_ndgln, IDs2CV_ndgln, ndgln%cv, ndgln%suf_cv, ndgln%mat, ndgln%x, cv_ele_type )
+                                ids_ndgln, IDs2CV_ndgln, ndgln%cv, ndgln%suf_cv, ndgln%mat, ndgln%x, Mdisopt%cv_ele_type )
                              !Also recalculate the Over-relaxation parameter
                              call getOverrelaxation_parameter(packed_state, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
                          else
@@ -590,7 +583,7 @@ contains
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-        IGOT_THETA_FLUX, SCVNGI_THETA, &
+        IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
         StorageIndexes, IDs_ndgln )
@@ -605,7 +598,7 @@ contains
         type (multi_discretization_opts) :: Mdisopt
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
-        INTEGER, intent( in ) :: IGOT_THETA_FLUX, SCVNGI_THETA, IPLIKE_GRAD_SOU, NLENMCY
+        INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU, NLENMCY
         INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION(  :, :, :  ), intent( inout ) :: MAT_ABSORB
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
@@ -1380,7 +1373,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         density=>extract_tensor_field(packed_state,"PackedDensity")
         call halo_update(density)
         call CV_ASSEMB( state, packed_state, &
-            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, storage_state, &
+            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state, &
             tracer, velocity, density, &
             CV_RHS, &
             ACV, &
@@ -1397,7 +1390,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
             IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, Mdisopt%volfra_use_theta_flux, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-            Mdisopt%in_ele_upwind, &
             MEAN_PORE_CV, &
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &

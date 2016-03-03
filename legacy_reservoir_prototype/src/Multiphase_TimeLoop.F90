@@ -568,7 +568,7 @@ if ( new_ntsol_loop  ) then
                         Porosity_field%val, &
                         !!$
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        0, igot_theta_flux, scvngi_theta, &
+                        0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF, &
                         Mean_Pore_CV, &
@@ -585,7 +585,7 @@ if ( new_ntsol_loop  ) then
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc,  Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        0, igot_theta_flux, scvngi_theta, &
+                        0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF,  Mean_Pore_CV, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
@@ -639,7 +639,7 @@ end if
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        igot_theta_flux, scvngi_theta, &
+                        igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
                         iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
                         StorageIndexes=StorageIndexes, IDs_ndgln=IDs_ndgln )
@@ -652,14 +652,11 @@ end if
                 end if Conditional_ForceBalanceEquation
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, storage_state,&
-                        Mdisopt%cv_ele_type, &
-                        Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, dt, Mdisopt%v_theta, Mdisopt%v_beta, &
-                        SUF_SIG_DIAGTEN_BC, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        igot_theta_flux,Mdisopt%volfra_use_theta_flux, &
-                        Mdisopt%in_ele_upwind, &
+                        igot_theta_flux, &
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         mass_ele_transp = mass_ele,&
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
@@ -710,7 +707,7 @@ end if
                                 tracer_field,velocity_field,density_field, dt, &
                                 SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                                igot_t2, igot_theta_flux, scvngi_theta, &
+                                igot_t2, igot_theta_flux, &
                                 Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &!NEED TO REMOVE EVERYTHING OF THE NEW MDISOPT BUT THE ONES IN THIS LINE...
                                 theta_gdiff, Mean_Pore_CV, &
                                 thermal = .false.,& ! the false means that we don't add an extra source term
