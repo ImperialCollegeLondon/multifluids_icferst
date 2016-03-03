@@ -102,7 +102,7 @@ contains
         type (multi_shape_funs) :: CV_funs, FE_funs
         !!$ Primary scalars
         type(multi_dimensions) :: Mdims
-        type(multi_gi_dimensions) :: CV_GIdims, FE_GIdims, GIdims
+        type(multi_gi_dimensions) :: CV_GIdims, FE_GIdims
         !sprint_to_do !substitute all these instances by the structure Mdims
         integer :: ntsol
         !!$ Node global numbers
@@ -111,6 +111,8 @@ contains
         type (multi_sparsities) :: Mspars
         !!$ Defining element-pair type and discretisation options and coefficients
         type (multi_discretization_opts) :: Mdisopt
+        !!$ Defining the necessary matrices and corresponding RHS
+        type (multi_matrices) :: Mmat
         !sprint_to_do!remove all the is store inside Mspars when Mspars is fully implemented
         integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
@@ -633,7 +635,7 @@ end if
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
                         velocity_field, pressure_field, &
                         Material_Absorption, dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &

@@ -31,7 +31,9 @@
 module multi_data_types
     use fldebug
     use sparse_tools_petsc
+    use sparse_tools
     use fields_data_types
+    use fields_allocates
     use global_parameters, only: option_path_len, is_porous_media
 
     type multi_dimensions
@@ -113,8 +115,8 @@ module multi_data_types
         integer, pointer, dimension( : )  :: findgpts=> null()!dimension( cv_nloc + 1 )
         integer, pointer, dimension( : )  :: colgpts=> null()!dimension( cv_nloc * scvngi )
         integer :: ncolgpts
-        real, dimension( :, :, : ), pointer :: CV2FE => null()!Matrix to convert from CV to FE
-        real, dimension( :, :, : ), pointer :: FE2CV => null()!Matrix to convert from FE to CV
+        type(csr_matrix_pointer) ::CV2FE !Matrix to convert from CV to FE
+        type(csr_matrix_pointer) ::FE2CV !Matrix to convert from FE to CV
     end type multi_shape_funs
 
     !This type comprises the four necessary variables to represent matrices using a CSR structure
@@ -153,16 +155,17 @@ module multi_data_types
     end type multi_ndgln
 
     type multi_matrices
-        real, dimension( :, :, : ), pointer :: C => null()!Pressure matrix using a FE discretization
-        real, dimension( :, :, : ), pointer :: C_CV => null()!Pressure matrix using a CV discretization
+        real, dimension( :, :, : ), pointer :: C => null()!Pressure matrix using a FE discretization (storable)
+        real, dimension( :, :, : ), pointer :: C_CV => null()!Pressure matrix using a CV discretization (storable)
         REAL, DIMENSION( :, :, : ), pointer :: U_RHS => null()!Rigth hand side of the momentum equation
         real, dimension( :, :, : ), pointer :: CT => null()!Continuity equation matrix
-        type(vector_field)                  :: CT_RHS!Rigth hand side of the continuity equation
-        type(petsc_csr_matrix)              :: petsc_ACV!Matrix of the saturation equation
-        type(vector_field)                  :: CV_RHS!Rigth hand side of the saturation equation
-        real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()!Mass matrix (matrix form by the sigmas)
-        type( petsc_csr_matrix ):: DGM_PETSC !Big matrix to solve the pressure in inertia flows (don't know much more)
+        type(vector_field) :: CT_RHS!Rigth hand side of the continuity equation
+        type(petsc_csr_matrix) :: petsc_ACV!Matrix of the saturation equation
+        type(vector_field) :: CV_RHS!Rigth hand side of the saturation equation
+        real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()!Mass matrix (matrix form by the sigmas) (storable)
+        type(petsc_csr_matrix):: DGM_PETSC!Big matrix to solve the pressure in inertia flows (don't know much more)
         logical :: NO_MATRIX_STORE !Flag to whether calculate and use DGM_PETSC or C
+        logical :: CV_pressure     !Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
     end type multi_matrices
 
 contains
@@ -288,6 +291,8 @@ contains
         deallocate(shape_fun%u_sloclist)
         deallocate(shape_fun%findgpts)
         deallocate(shape_fun%colgpts)
+        if (associated(shape_fun%CV2FE%ptr)) call deallocate(shape_fun%CV2FE%ptr)
+        if (associated(shape_fun%FE2CV%ptr)) call deallocate(shape_fun%FE2CV%ptr)
 
         !Nullify pointers
         nullify(shape_fun%cvn)
@@ -324,6 +329,9 @@ contains
         nullify(shape_fun%u_sloclist)
         nullify(shape_fun%findgpts)
         nullify(shape_fun%colgpts)
+        nullify(shape_fun%FE2CV%ptr)
+        nullify(shape_fun%CV2FE%ptr)
+
     end subroutine deallocate_multi_shape_funs
 
 
@@ -452,6 +460,34 @@ contains
         nullify( ndgln%suf_cv, ndgln%suf_p, ndgln%suf_u)
 
     end subroutine deallocate_multi_ndgln
+
+    subroutine destroy_multi_matrices(Mmat)
+        !Deallocates all the memory used, intended to be used after mesh adapt
+        implicit none
+        type (multi_matrices), intent(inout) :: Mmat
+
+        !Deallocate and nullify as required
+        if (associated(Mmat%C)) then
+            deallocate (Mmat%C); nullify(Mmat%C)
+        end if
+        if (associated(Mmat%C_CV)) then
+            deallocate (Mmat%C_CV); nullify(Mmat%C_CV)
+        end if
+        if (associated(Mmat%U_RHS)) then
+            deallocate (Mmat%U_RHS); nullify(Mmat%U_RHS)
+        end if
+        if (associated(Mmat%CT)) then
+            deallocate (Mmat%CT); nullify(Mmat%CT)
+        end if
+        if (associated(Mmat%PIVIT_MAT)) then
+            deallocate (Mmat%PIVIT_MAT); nullify(Mmat%PIVIT_MAT)
+        end if
+        call deallocate(Mmat%CT_RHS)
+        call deallocate(Mmat%CV_RHS)
+        call deallocate(Mmat%petsc_ACV)
+        call deallocate(Mmat%DGM_PETSC)
+
+    end subroutine destroy_multi_matrices
 
 end module multi_data_types
 
