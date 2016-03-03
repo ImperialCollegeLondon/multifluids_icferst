@@ -261,8 +261,7 @@ contains
             mx_ncolacv, mx_ncolm, mx_ncolph )
         nlenmcy = Mdims%u_nonods * Mdims%nphase * Mdims%ndim + Mdims%cv_nonods
         !!$ Defining element-pair type
-        call Get_Ele_Type( Mdims%x_nloc, Mdisopt%cv_ele_type, Mdisopt%p_ele_type, Mdisopt%u_ele_type, &
-            Mdisopt%mat_ele_type, Mdisopt%u_sele_type, Mdisopt%cv_sele_type )
+        call Get_Ele_Type_new( Mdims, Mdisopt )
         !Allocate and calculate the sparsity patterns matrices
         call Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
@@ -336,13 +335,7 @@ contains
         sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
         ScalarField_Source=0. ; ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
         !!$ Defining discretisation options
-        call Get_Discretisation_Options( state, &
-            Mdisopt%t_disopt, Mdisopt%v_disopt, Mdisopt%t_beta, Mdisopt%v_beta, Mdisopt%t_theta, Mdisopt%v_theta, Mdisopt%u_theta, &
-            Mdisopt%t_dg_vel_int_opt, Mdisopt%u_dg_vel_int_opt, Mdisopt%v_dg_vel_int_opt, Mdisopt%w_dg_vel_int_opt, &
-            Mdisopt%in_ele_upwind, Mdisopt%dg_ele_upwind, &
-            Mdisopt%nits_flux_lim_t, Mdisopt%nits_flux_lim_volfra, Mdisopt%nits_flux_lim_comp, &
-            Mdisopt%volfra_use_theta_flux, Mdisopt%volfra_get_theta_flux, Mdisopt%comp_use_theta_flux, Mdisopt%comp_get_theta_flux, &
-            Mdisopt%t_use_theta_flux, Mdisopt%t_get_theta_flux, Mdisopt%scale_momentum_by_volume_fraction )
+        call Get_Discretisation_Options( state, Mdisopt )
         !!$ Option not currently set up in the schema and zeroed from the begining. It is used to control
         !!$ the upwinding rate (in the absorption term) during advection/assembling.
         allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
@@ -569,11 +562,8 @@ if ( new_ntsol_loop  ) then
               elseif (multiphase_scalar) then
 
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state,&
-                        tracer_field,velocity_field,density_field,&
-                        Mdisopt%cv_ele_type,&
-                        !IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-                        Mdisopt%t_disopt, Mdisopt%t_dg_vel_int_opt, dt, Mdisopt%t_theta, Mdisopt%t_beta, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
                         !!$
@@ -581,7 +571,6 @@ if ( new_ntsol_loop  ) then
                         0, igot_theta_flux, scvngi_theta, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF, &
-                        Mdisopt%in_ele_upwind, Mdisopt%dg_ele_upwind, &
                         Mean_Pore_CV, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
@@ -592,20 +581,13 @@ if ( new_ntsol_loop  ) then
               else
                     
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state,&
-                        tracer_field,velocity_field,density_field,&
-                        Mdisopt%cv_ele_type,&
-                        !IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-                        Mdisopt%t_disopt, Mdisopt%t_dg_vel_int_opt, dt, Mdisopt%t_theta, Mdisopt%t_beta, &
-                        suf_sig_diagten_bc, &
-                        Porosity_field%val, &
-                        !!$
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        tracer_field,velocity_field,density_field, dt, &
+                        suf_sig_diagten_bc,  Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         0, igot_theta_flux, scvngi_theta, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, &
-                        Mdisopt%in_ele_upwind, Mdisopt%dg_ele_upwind, &
-                        Mean_Pore_CV, &
+                        THETA_GDIFF,  Mean_Pore_CV, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
@@ -737,21 +719,13 @@ end if
                         Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
                             Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
                             call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
-                                Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state,&
-                                tracer_field,velocity_field,density_field,&
-                                Mdisopt%cv_ele_type, &
-                                !0, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-                                Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, dt, Mdisopt%v_theta, Mdisopt%v_beta, &
-                                SUF_SIG_DIAGTEN_BC,&
-                                Porosity_field%val, &
-                                !Component_Absorption, Porosity_field%val, &
-                                !!$
+                                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                                tracer_field,velocity_field,density_field, dt, &
+                                SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                                 igot_t2, igot_theta_flux, scvngi_theta, &
-                                Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &
-                                theta_gdiff, &
-                                Mdisopt%in_ele_upwind, Mdisopt%dg_ele_upwind, &
-                                Mean_Pore_CV, &
+                                Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &!NEED TO REMOVE EVERYTHING OF THE NEW MDISOPT BUT THE ONES IN THIS LINE...
+                                theta_gdiff, Mean_Pore_CV, &
                                 thermal = .false.,& ! the false means that we don't add an extra source term
                                 theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                                 StorageIndexes=StorageIndexes, icomp=icomp, saturation=saturation_field, IDs_ndgln=IDs_ndgln )

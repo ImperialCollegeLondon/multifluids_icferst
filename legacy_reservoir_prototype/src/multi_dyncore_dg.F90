@@ -72,18 +72,12 @@ module multiphase_1D_engine
 contains
 
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
-       Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state, &
-       tracer, velocity, density, &
-       CV_ELE_TYPE,&
-       !IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-       T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, T_BETA, &
-       SUF_SIG_DIAGTEN_BC, &
-       VOLFRA_PORE, &
+       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state, &
+       tracer, velocity, density,  DT, &
+       SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-       IGOT_T2, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX, &
-       THETA_GDIFF, &
-       IN_ELE_UPWIND, DG_ELE_UPWIND, &
-       MEAN_PORE_CV, &
+       IGOT_T2, igot_theta_flux,SCVNGI_THETA, GET_THETA_FLUX, USE_THETA_FLUX,  &
+       THETA_GDIFF, MEAN_PORE_CV, &
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -93,25 +87,20 @@ contains
            type( state_type ), dimension( : ), intent( inout ) :: state
            type( state_type ), intent( inout ) :: packed_state, storage_state
            type(multi_dimensions), intent(in) :: Mdims
-           type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
-           type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
+           type(multi_GI_dimensions), intent(in) :: CV_GIdims
+           type(multi_shape_funs), intent(in) :: CV_funs
            type (multi_sparsities), intent(in) :: Mspars
            type(multi_ndgln), intent(in) :: ndgln
+           type (multi_discretization_opts) :: Mdisopt
            type(tensor_field), intent(inout) :: tracer
            type(tensor_field), intent(in) :: velocity, density
-           INTEGER, intent( in ) :: CV_ELE_TYPE, IGOT_T2, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, igot_theta_flux
+           INTEGER, intent( in ) :: IGOT_T2, SCVNGI_THETA, igot_theta_flux
            LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
            LOGICAL, intent( in ), optional ::THERMAL
            INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
            REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
            REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-           !REAL, DIMENSION( :,:,:, : ), intent( in ) :: TDIFFUSION
-           !INTEGER, intent( in ) :: IGOT_THERM_VIS
-           !REAL, DIMENSION(:,:,:,:), intent( in ) :: THERM_U_DIFFUSION
-           !REAL, DIMENSION(:,:), intent( in ) :: THERM_U_DIFFUSION_VOL
-           INTEGER, intent( in ) :: T_DISOPT, T_DG_VEL_INT_OPT
-           REAL, intent( in ) :: DT, T_THETA
-           REAL, intent( in ) :: T_BETA
+           REAL, intent( in ) :: DT
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
            REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
@@ -257,7 +246,7 @@ contains
                    CT, &
                    DEN_ALL, DENOLD_ALL, &
                    TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-                   T_DISOPT, T_DG_VEL_INT_OPT, DT, T_THETA, SECOND_THETA, T_BETA, &
+                   Mdisopt%t_disopt, Mdisopt%t_dg_vel_int_opt, DT, Mdisopt%t_theta, SECOND_THETA, Mdisopt%t_beta, &
                    SUF_SIG_DIAGTEN_BC, &
                    DERIV%val(1,:,:), P%val, &
                    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
@@ -265,7 +254,7 @@ contains
                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                   IN_ELE_UPWIND, &
+                   Mdisopt%in_ele_upwind, &
                    MEAN_PORE_CV, &
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &

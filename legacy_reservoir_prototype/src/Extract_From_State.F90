@@ -66,7 +66,7 @@ module Copy_Outof_State
         Extract_TensorFields_Outof_State, Get_Ele_Type, Get_Discretisation_Options, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
-        calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,&
+        calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, Compute_Node_Global_Numbers_new
 
 
@@ -639,24 +639,11 @@ contains
         return
     end subroutine Get_Ele_Type_new
 
-    subroutine Get_Discretisation_Options( state, &
-        t_disopt, v_disopt, t_beta, v_beta, t_theta, v_theta, u_theta, &
-        t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-        in_ele_upwind, dg_ele_upwind, &
-        nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp, &
-        volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, comp_get_theta_flux, &
-        t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction )
+    subroutine Get_Discretisation_Options( state, Mdisopt )
         !!$ This subroutine extract all discretisation options from the schema
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
-        integer, intent( inout ) :: t_disopt, v_disopt
-        real, intent( inout ) :: t_beta, v_beta, t_theta, v_theta, u_theta
-        integer, intent( inout ) :: t_dg_vel_int_opt, u_dg_vel_int_opt, v_dg_vel_int_opt, w_dg_vel_int_opt, &
-            in_ele_upwind, dg_ele_upwind, &
-            nits_flux_lim_t, nits_flux_lim_volfra, nits_flux_lim_comp
-        logical, intent( inout ) :: volfra_use_theta_flux, volfra_get_theta_flux, comp_use_theta_flux, &
-            comp_get_theta_flux, t_use_theta_flux, t_get_theta_flux, scale_momentum_by_volume_fraction
-
+        type (multi_discretization_opts) :: Mdisopt
         !!$ Local variables:
         integer :: nphase, nstate, ncomp, totele, ndim, stotel, iphase
         character( len = option_path_len ) :: option_path, option_path2, option_path3
@@ -672,84 +659,69 @@ contains
         !!$ =7      Finite elements in space    Theta=non-linear   NONE
         !!$ =8      Finite elements in space    Theta=specified    DOWNWIND+INTERFACE TRACKING
         !!$ =9      Finite elements in space    Theta=non-linear   DOWNWIND+INTERFACE TRACKING
-
         !!$ Extracting primary scalars as local variables:
         call Get_Primary_Scalars( state, &
             nphase, nstate, ncomp, totele, ndim, stotel )
-
         !!$ Solving Advection Field: Temperature
         option_path = '/material_phase[0]/scalar_field::Temperature'
         option_path2 = trim( option_path ) //  '/prognostic/spatial_discretisation'
         option_path3 = trim( option_path ) //  '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
-        t_disopt = 1
-
-        call get_option( trim( option_path3 ), nits_flux_lim_t, default = 3 )
-
+        Mdisopt%t_disopt = 1
+        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_t, default = 3 )
         Conditional_TDISOPT: if( have_option( trim( option_path2 ) ) ) then
             if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value/' // &
                 'limiter::CompressiveAdvection' ) ) then
-                t_disopt = 9
+                Mdisopt%t_disopt = 9
             else
                 if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value' ) ) &
-                    t_disopt = 5
+                    Mdisopt%t_disopt = 5
             end if
         end if Conditional_TDISOPT
-
-        call get_option( trim( option_path2 ) // '/conservative_advection', t_beta, default = 0.0 )
+        call get_option( trim( option_path2 ) // '/conservative_advection', Mdisopt%t_beta, default = 0.0 )
         call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/theta', &
-            t_theta, default = 1. )
-
+            Mdisopt%t_theta, default = 1. )
         !!$ Solving Advection Field: Volume fraction
         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction'
         option_path2 = trim( option_path ) // '/prognostic/spatial_discretisation/control_volumes/face_value'
         option_path3 = trim( option_path ) // '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
-        v_disopt = 8
-
-        call get_option( trim( option_path3 ), nits_flux_lim_volfra, default = 3 )
-
+        Mdisopt%v_disopt = 8
+        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_volfra, default = 3 )
         Conditional_VDISOPT: if( have_option( trim( option_path ) ) ) then
-            if( have_option( trim( option_path2 ) // '::FirstOrderUpwind' ) ) v_disopt = 0
-            if( have_option( trim( option_path2 ) // '::Trapezoidal' ) ) v_disopt = 2
-            if( have_option( trim( option_path2 ) // '::FiniteElement/do_not_limit_face_value' ) ) v_disopt = 6
-            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::Sweby' ) ) v_disopt = 5
-            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::CompressiveAdvection' ) ) v_disopt = 9
+            if( have_option( trim( option_path2 ) // '::FirstOrderUpwind' ) ) Mdisopt%v_disopt = 0
+            if( have_option( trim( option_path2 ) // '::Trapezoidal' ) ) Mdisopt%v_disopt = 2
+            if( have_option( trim( option_path2 ) // '::FiniteElement/do_not_limit_face_value' ) ) Mdisopt%v_disopt = 6
+            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::Sweby' ) ) Mdisopt%v_disopt = 5
+            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::CompressiveAdvection' ) ) Mdisopt%v_disopt = 9
         end if Conditional_VDISOPT
-
-        call get_option( trim( option_path ) // '/prognostic/spatial_discretisation/conservative_advection', v_beta )
-        call get_option( trim( option_path ) // '/prognostic/temporal_discretisation/theta', v_theta )
-
+        call get_option( trim( option_path ) // '/prognostic/spatial_discretisation/conservative_advection', Mdisopt%v_beta )
+        call get_option( trim( option_path ) // '/prognostic/temporal_discretisation/theta', Mdisopt%v_theta )
         !!$ Solving Velocity Field
-        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/temporal_discretisation/theta', u_theta )
-
+        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/temporal_discretisation/theta', Mdisopt%u_theta )
         !!$ Solving Component Field
         option_path3 = '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
             'temporal_discretisation/control_volumes/number_advection_iterations'
-        call get_option( trim( option_path3 ), nits_flux_lim_comp, default = 3 )
-
+        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_comp, default = 3 )
         !!$ Scaling factor for the momentum equation
-        scale_momentum_by_volume_fraction = .false.
+        Mdisopt%scale_momentum_by_volume_fraction = .false.
         do iphase = 1, nphase
-            option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/scale_momentum_by_volume_fraction'
-            if( have_option( trim( option_path ) ) ) scale_momentum_by_volume_fraction = .true.
+            option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/Mdisopt%scale_momentum_by_volume_fraction'
+            if( have_option( trim( option_path ) ) ) Mdisopt%scale_momentum_by_volume_fraction = .true.
         end do
-
         !!$ Options below are hardcoded and need to be added into the schema
-        t_dg_vel_int_opt = 1 ; u_dg_vel_int_opt = 4 ; v_dg_vel_int_opt = 4 ; w_dg_vel_int_opt = 0
+        Mdisopt%t_dg_vel_int_opt = 1 ; Mdisopt%u_dg_vel_int_opt = 4 ; Mdisopt%v_dg_vel_int_opt = 4 ; Mdisopt%w_dg_vel_int_opt = 0
         if(is_porous_media) then
             if ( have_option( &
                 '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/DG_weighting') &
-                ) v_dg_vel_int_opt = 10
+                ) Mdisopt%v_dg_vel_int_opt = 10
         else
-            v_dg_vel_int_opt = 1
+            Mdisopt%v_dg_vel_int_opt = 1
         end if
-        volfra_use_theta_flux = .false. ; volfra_get_theta_flux = .true.
-        comp_use_theta_flux = .false. ; comp_get_theta_flux = .true.
-        t_use_theta_flux = .false. ; t_get_theta_flux = .false.
-
-        !!$ IN/DG_ELE_UPWIND are options for optimisation of upwinding across faces in the compact_overlapping
+        Mdisopt%volfra_use_theta_flux = .false. ; Mdisopt%volfra_get_theta_flux = .true.
+        Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
+        Mdisopt%t_use_theta_flux = .false. ; Mdisopt%t_get_theta_flux = .false.
+        !!$ IN/Mdisopt%dg_ele_upwind are options for optimisation of upwinding across faces in the compact_overlapping
         !!$ formulation. The data structure and options for this formulation need to be added later.
-        in_ele_upwind = 3 ; dg_ele_upwind = 3
-
+        Mdisopt%in_ele_upwind = 3 ; Mdisopt%dg_ele_upwind = 3
         return
     end subroutine Get_Discretisation_Options
 
