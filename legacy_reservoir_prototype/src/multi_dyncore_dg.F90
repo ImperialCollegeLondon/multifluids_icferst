@@ -903,9 +903,8 @@ contains
             StorageIndexes(38))%ptr%val, C_CV, Mdims%ndim, Mdims%nphase, size(Mspars%C%col))
         end if
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
-            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state, &
+            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, storage_state, &
              velocity, pressure, &
-            Mdisopt%u_ele_type, Mdisopt%p_ele_type, &
             X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL, UOLD_ALL, &
             P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
@@ -913,19 +912,16 @@ contains
             MAT, NO_MATRIX_STORE, &! Force balance
             MASS_MN_PRES, & ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, &
-            Mdisopt%cv_ele_type, &
-            Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, Mdisopt%v_theta, &
             SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, V_ABSORB, VOLFRA_PORE, &
             U_RHS, MCY_RHS, C, C_CV, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
             NLENMCY, MCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
             UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-            IGOT_THETA_FLUX, SCVNGI_THETA, Mdisopt%volfra_use_theta_flux, &
+            IGOT_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            Mdisopt%in_ele_upwind, Mdisopt%dg_ele_upwind, &
             RETRIEVE_SOLID_CTY, &
-            IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,Mdisopt%scale_momentum_by_volume_fraction ,&
+            IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,&
             StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
         !If pressure in CV only then point the FE matrix C to C_CV
         if ( everything_c_cv .and. GET_C_IN_CV_ADVDIF ) c => c_cv
@@ -1224,9 +1220,8 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
 
 
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state, &
+        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, storage_state, &
         velocity, pressure, &
-        U_ELE_TYPE, P_ELE_TYPE, &
         X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
@@ -1234,19 +1229,16 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         DGM_PETSC, NO_MATRIX_STORE, &! Force balance
         MASS_MN_PRES,&
         got_free_surf,  MASS_SUF, &
-        CV_ELE_TYPE, &
-        V_DISOPT, V_DG_VEL_INT_OPT, V_THETA, &
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         U_RHS, MCY_RHS, C, C_CV, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
         NLENMCY, MCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-        IGOT_THETA_FLUX, SCVNGI_THETA, USE_THETA_FLUX, &
+        IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IN_ELE_UPWIND, DG_ELE_UPWIND, &
         RETRIEVE_SOLID_CTY, &
-        IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL ,scale_momentum_by_volume_fraction,&
+        IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL ,&
         StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
@@ -1257,13 +1249,11 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
         type (multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
+        type (multi_discretization_opts) :: Mdisopt
         type( tensor_field ), intent(in) :: velocity
         type( tensor_field ), intent(in) :: pressure
-        INTEGER, intent( in ) :: U_ELE_TYPE, P_ELE_TYPE, &
-        CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT,&
-        NLENMCY, IGOT_THETA_FLUX, SCVNGI_THETA, &
-        IN_ELE_UPWIND, DG_ELE_UPWIND, IPLIKE_GRAD_SOU
-        LOGICAL, intent( in ) :: USE_THETA_FLUX,scale_momentum_by_volume_fraction, RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
+        INTEGER, intent( in ) :: NLENMCY, IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
+        LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
         INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
         real, dimension(:,:), intent(in) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ABSORB_ALL
@@ -1277,7 +1267,6 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         REAL, intent( in ) :: DT
         type( petsc_csr_matrix ), intent( inout ) :: DGM_PETSC
         logical :: NO_MATRIX_STORE
-        REAL, intent( in ) :: V_THETA
         REAL, DIMENSION(  : , : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
@@ -1306,7 +1295,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         integer, dimension(:), intent(inout) :: StorageIndexes
         logical, intent(in) :: RECALC_C_CV
         ! Local variables
-        REAL, PARAMETER :: V_BETA = 1.0
+        REAL, PARAMETER :: v_beta = 1.0
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
         REAL, PARAMETER :: SECOND_THETA = 1.0
         LOGICAL, PARAMETER :: GETCV_DISC = .FALSE., GETCT= .TRUE., THERMAL= .FALSE.
@@ -1337,9 +1326,8 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         IF( GLOBAL_SOLVE ) MCY = 0.0
         ! Obtain the momentum and C matricies
         CALL ASSEMB_FORCE_CTY( state, packed_state, &
-            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state, &
+            Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, storage_state, &
             velocity, pressure, &
-            U_ELE_TYPE, P_ELE_TYPE,&
             X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL, UOLD_ALL, &
             U_ALL, UOLD_ALL, &    ! This is nu...
@@ -1375,7 +1363,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         END IF
         ALLOCATE( DEN_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DEN_OR_ONE = 1.
         ALLOCATE( DENOLD_OR_ONE( Mdims%nphase, Mdims%cv_nonods )); DENOLD_OR_ONE = 1.
-        IF ( USE_THETA_FLUX ) THEN ! We have already put density in theta...
+        IF ( Mdisopt%volfra_use_theta_flux ) THEN ! We have already put density in theta...
            DEN_OR_ONE = 1.
            DENOLD_OR_ONE = 1.
         ELSE
@@ -1401,15 +1389,15 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             C_CV, & ! C sparsity - global cty eqn
             DEN_OR_ONE, DENOLD_OR_ONE, &
             TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
-            V_DISOPT, V_DG_VEL_INT_OPT, DT, V_THETA, SECOND_THETA, V_BETA, &
+            Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, DT, Mdisopt%v_theta, SECOND_THETA, v_beta, &
             SUF_SIG_DIAGTEN_BC, &
             DERIV, CV_P, &
             V_SOURCE, V_ABSORB, VOLFRA_PORE, &
             GETCV_DISC, GETCT, &
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-            IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
+            IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, Mdisopt%volfra_use_theta_flux, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-            IN_ELE_UPWIND, &
+            Mdisopt%in_ele_upwind, &
             MEAN_PORE_CV, &
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
@@ -1499,9 +1487,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
     SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state, &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state, &
+        Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, storage_state, &
         velocity, pressure, &
-        U_ELE_TYPE, P_ELE_TYPE, &
         X_ALL, U_ABSORB, U_SOURCE, U_SOURCE_CV, &
         U_ALL, UOLD_ALL, &
         NU_ALL, NUOLD_ALL, &
@@ -1519,15 +1506,16 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state, storage_state
         type(multi_dimensions), intent(in) :: Mdims
-        type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
-        type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
+        type(multi_GI_dimensions), intent(in) :: FE_GIdims
+        type(multi_shape_funs), intent(in) :: FE_funs
         type (multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
+        type (multi_discretization_opts) :: Mdisopt
         type( tensor_field ), intent( in ) :: velocity
         type( tensor_field ), intent( in ) :: pressure
 ! If IGOT_VOL_X_PRESSURE=1 then have a voln fraction in the pressure term and multiply density by volume fraction...
         INTEGER, PARAMETER :: IGOT_VOL_X_PRESSURE = 0
-        INTEGER, intent( in ) :: U_ELE_TYPE, P_ELE_TYPE, IPLIKE_GRAD_SOU
+        INTEGER, intent( in ) :: IPLIKE_GRAD_SOU
         REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ABSORB
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE
@@ -3827,7 +3815,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
                                 MASSE = MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 )
                                 MASSE2 = MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE )
-                            ELSE ! Simple average (works well with IN_ELE_UPWIND=DG_ELE_UPWIND=2)...
+                            ELSE ! Simple average (works well with Mdisopt%in_ele_upwind=Mdisopt%dg_ele_upwind=2)...
                                 MASSE = 1.0
                                 MASSE2 = 1.0
                             END IF
