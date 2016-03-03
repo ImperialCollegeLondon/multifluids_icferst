@@ -502,11 +502,48 @@ contains
                 end if
 
 
+                !!$ Solve advection of the scalar 'Temperature':
+if (.true.) then
+                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
+                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
+                    ewrite(3,*)'Now advecting Temperature Field'
+                    call set_nu_to_u( packed_state )
+                    !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
+                    !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
+                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        tracer_field,velocity_field,density_field, dt, &
+                        suf_sig_diagten_bc, &
+                        Porosity_field%val, &
+                        !!$
+                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                        0, igot_theta_flux, &
+                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, &
+                        Mean_Pore_CV, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+                end if Conditional_ScalarAdvectionField
+end if
+
+
+
+
+
+
+
+
 !!$ Solve advection of the scalars.   'Temperature':
 
 !!$ Fields...
 !!-
-        new_ntsol_loop = .true.
+        new_ntsol_loop = .false.
 
 if ( new_ntsol_loop  ) then
 
