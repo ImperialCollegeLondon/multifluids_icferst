@@ -633,29 +633,16 @@ end if
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state,&
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, storage_state,&
                         velocity_field, pressure_field, &
-                        Mdisopt%u_ele_type, Mdisopt%p_ele_type, &
-                        !!$
-                        Material_Absorption, &
-                        dt, &
-                        !!$
-                        NLENMCY, & ! Force balance plus cty multi-phase eqns
-                        Mdisopt%cv_ele_type, &
-                        !!$
-                        Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, Mdisopt%v_theta, &
+                        Material_Absorption, dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
-                        !!$
-                        !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        igot_theta_flux, scvngi_theta, Mdisopt%volfra_use_theta_flux, &
+                        igot_theta_flux, scvngi_theta, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        Mdisopt%in_ele_upwind, Mdisopt%dg_ele_upwind, &
                         iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
-                        Mdisopt%scale_momentum_by_volume_fraction,&
-                        StorageIndexes=StorageIndexes, &
-                        nonlinear_iteration = its, IDs_ndgln=IDs_ndgln )
+                        StorageIndexes=StorageIndexes, IDs_ndgln=IDs_ndgln )
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     !                    !Calculate actual Darcy velocity
                     !                    call get_DarcyVelocity(Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, Mdims%mat_nloc, ndgln%mat, ndgln%u, &

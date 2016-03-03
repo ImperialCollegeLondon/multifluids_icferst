@@ -382,8 +382,7 @@ contains
              call get_var_from_packed_state(packed_state,CVPressure = P)
              call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
              !Get information for capillary pressure to be use in CV_ASSEMB
-             call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, &
-                 Mdims%totele, Mdims%cv_nloc, ndgln%cv, IDs2CV_ndgln)
+             call getOverrelaxation_parameter(packed_state, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
              !Get variable for global convergence method
              if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
                  Dumping_factor = 1.1
@@ -543,8 +542,7 @@ contains
                                 Material_Absorption, suf_sig_diagten_bc, opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                                 ids_ndgln, IDs2CV_ndgln, ndgln%cv, ndgln%suf_cv, ndgln%mat, ndgln%x, cv_ele_type )
                              !Also recalculate the Over-relaxation parameter
-                             call getOverrelaxation_parameter(state, packed_state, OvRelax_param, Phase_with_Pc, &
-                                 Mdims%totele, Mdims%cv_nloc, ndgln%cv, IDs2CV_ndgln)
+                             call getOverrelaxation_parameter(packed_state, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
                          else
                              exit Loop_NonLinearFlux
                          end if
@@ -585,24 +583,17 @@ contains
 
 
     SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state, &
+        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, storage_state, &
         velocity, pressure, &
-        U_ELE_TYPE, P_ELE_TYPE, &
-        MAT_ABSORB, &
-        DT, &
-        NLENMCY, &!sprint_to_do NLENMCY is the size(CMY%ncol?? if so, it can be removed)&
-        CV_ELE_TYPE, &
-        V_DISOPT, V_DG_VEL_INT_OPT, V_THETA, &
+        MAT_ABSORB, DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-        IGOT_THETA_FLUX, SCVNGI_THETA, USE_THETA_FLUX, &
+        IGOT_THETA_FLUX, SCVNGI_THETA, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IN_ELE_UPWIND, DG_ELE_UPWIND, &
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
-        scale_momentum_by_volume_fraction, &
-        StorageIndexes, nonlinear_iteration, IDs_ndgln )
+        StorageIndexes, IDs_ndgln )
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state, storage_state
@@ -611,18 +602,14 @@ contains
         type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
         type (multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
+        type (multi_discretization_opts) :: Mdisopt
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
-        INTEGER, intent( in ) :: U_ELE_TYPE, P_ELE_TYPE, NLENMCY, &
-        CV_ELE_TYPE, V_DISOPT, V_DG_VEL_INT_OPT, &
-        IGOT_THETA_FLUX, SCVNGI_THETA, IN_ELE_UPWIND, DG_ELE_UPWIND, &
-        IPLIKE_GRAD_SOU
-        LOGICAL, intent( in ) :: USE_THETA_FLUX, scale_momentum_by_volume_fraction
+        INTEGER, intent( in ) :: IGOT_THETA_FLUX, SCVNGI_THETA, IPLIKE_GRAD_SOU, NLENMCY
         INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION(  :, :, :  ), intent( inout ) :: MAT_ABSORB
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
-        REAL, intent( in ) :: V_THETA
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
         REAL, DIMENSION(  : ,  : ,: ), intent( in ) :: V_ABSORB
         REAL, DIMENSION(  :, :  ), intent( in ) :: VOLFRA_PORE
@@ -631,7 +618,6 @@ contains
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, DIMENSION( :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         integer, dimension(:), intent(inout) :: StorageIndexes
-        integer, intent(in) :: nonlinear_iteration
         ! Local Variables
         LOGICAL, PARAMETER :: use_continuous_pressure_solver = .false.!For DG pressure,the first non linear iteration we
                                                                       !use a continuous pressure
@@ -919,7 +905,7 @@ contains
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, storage_state, &
              velocity, pressure, &
-            U_ELE_TYPE, P_ELE_TYPE, &
+            Mdisopt%u_ele_type, Mdisopt%p_ele_type, &
             X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL, UOLD_ALL, &
             P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
@@ -927,19 +913,19 @@ contains
             MAT, NO_MATRIX_STORE, &! Force balance
             MASS_MN_PRES, & ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, &
-            CV_ELE_TYPE, &
-            V_DISOPT, V_DG_VEL_INT_OPT, V_THETA, &
+            Mdisopt%cv_ele_type, &
+            Mdisopt%v_disopt, Mdisopt%v_dg_vel_int_opt, Mdisopt%v_theta, &
             SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, V_ABSORB, VOLFRA_PORE, &
             U_RHS, MCY_RHS, C, C_CV, CT, CT_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
             NLENMCY, MCY, PIVIT_MAT, JUST_BL_DIAG_MAT, &
             UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-            IGOT_THETA_FLUX, SCVNGI_THETA, USE_THETA_FLUX, &
+            IGOT_THETA_FLUX, SCVNGI_THETA, Mdisopt%volfra_use_theta_flux, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-            IN_ELE_UPWIND, DG_ELE_UPWIND, &
+            Mdisopt%in_ele_upwind, Mdisopt%dg_ele_upwind, &
             RETRIEVE_SOLID_CTY, &
-            IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,scale_momentum_by_volume_fraction ,&
+            IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,Mdisopt%scale_momentum_by_volume_fraction ,&
             StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
         !If pressure in CV only then point the FE matrix C to C_CV
         if ( everything_c_cv .and. GET_C_IN_CV_ADVDIF ) c => c_cv
@@ -1018,7 +1004,7 @@ contains
             END DO
             if ( high_order_Ph ) then
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
-                  call high_order_pressure_solve( u_rhs, state, packed_state, storage_state, StorageIndexes, Mdims, cv_ele_type, U_absorbin )
+                  call high_order_pressure_solve( u_rhs, state, packed_state, storage_state, StorageIndexes, Mdims, Mdisopt%cv_ele_type, U_absorbin )
                end if
             end if
             IF ( JUST_BL_DIAG_MAT .OR. NO_MATRIX_STORE ) THEN
@@ -7168,18 +7154,15 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
- subroutine getOverrelaxation_parameter(state, packed_state, Overrelaxation, Phase_with_Pc, &
-     totele, cv_nloc, cv_ndgln, IDs2CV_ndgln)
+ subroutine getOverrelaxation_parameter(packed_state, Overrelaxation, Phase_with_Pc, IDs2CV_ndgln)
      !This subroutine calculates the overrelaxation parameter we introduce in the saturation equation
      !It is the derivative of the capillary pressure for each node.
      !Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
      implicit none
-     integer, intent(in) :: totele, cv_nloc
-     type( state_type ), dimension(:), intent(inout) :: state
      type( state_type ), intent(inout) :: packed_state
      real, dimension(:), intent(inout) :: Overrelaxation
      integer, intent(inout) :: Phase_with_Pc
-     integer, dimension(:), intent(in) :: cv_ndgln, IDs2CV_ndgln
+     integer, dimension(:), intent(in) :: IDs2CV_ndgln
      !Local variables
      integer :: iphase, nphase, cv_nodi, cv_nonods
      real :: Pe_aux, aux2
@@ -7196,8 +7179,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      nphase = size(satura,1)
      cv_nonods = size(satura,2)
 
-     !#######Only apply this method if it has been explicitly invoked through Pe_stab!######
-     if (.not.have_option_for_any_phase("/multiphase_properties/Pe_stab", nphase)) then
+     !#######Only apply this method if it has been explicitly invoked through Pe_stab or
+     !non-consistent capillary pressure!######
+     if (.not.(have_option_for_any_phase("/multiphase_properties/Pe_stab", nphase) .or. &
+        have_option_for_any_phase("/multiphase_properties/capillary_pressure/Diffusive_cap_only", nphase))) then
          Overrelaxation = 0.0; Phase_with_Pc = -10
          return
      end if
@@ -7233,14 +7218,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
              call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
              if (Pe_aux<0) then!Automatic set up for Pe
                  aux2 = max(maxval(p(1,1,:)), 0.)
-                 !                    do ele = 1, totele
-                 !                        cv_nodi = cv_ndgln( ( ele - 1 ) * cv_nloc + 1 )
-                 !                        cv_nodj = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_nloc )
-                 !                        aux = sqrt(dot_product( X_ALL(:,cv_nodi) - X_ALL(:,cv_nodj), X_ALL(:,cv_nodi) - X_ALL(:,cv_nodj)))
-                 !                        !Introduce Pe based on the pressure the size of the element and the parameter introduced by the user
-                 !                        Pe(cv_nodi:cv_nodj) = aux2 * min( abs(Pe_aux) * aux, 1d-3)
-                 !                    end do
-                 !                   Pe = p(1,1,:) * 1d-3
                  Pe = aux2 * 1d-3!Seems more stable than p(1,1,:) * 1d-3
              else
                  Pe = Pe_aux
