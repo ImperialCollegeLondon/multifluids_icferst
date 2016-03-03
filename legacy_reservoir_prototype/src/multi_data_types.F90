@@ -30,7 +30,8 @@
 
 module multi_data_types
     use fldebug
-
+    use sparse_tools_petsc
+    use fields_data_types
     use global_parameters, only: option_path_len, is_porous_media
 
     type multi_dimensions
@@ -112,6 +113,8 @@ module multi_data_types
         integer, pointer, dimension( : )  :: findgpts=> null()!dimension( cv_nloc + 1 )
         integer, pointer, dimension( : )  :: colgpts=> null()!dimension( cv_nloc * scvngi )
         integer :: ncolgpts
+        real, dimension( :, :, : ), pointer :: CV2FE => null()!Matrix to convert from CV to FE
+        real, dimension( :, :, : ), pointer :: FE2CV => null()!Matrix to convert from FE to CV
     end type multi_shape_funs
 
     !This type comprises the four necessary variables to represent matrices using a CSR structure
@@ -148,6 +151,19 @@ module multi_data_types
         integer, dimension( : ), pointer ::  suf_p=> null()  !Pressure local to global numbering
         integer, dimension( : ), pointer ::  suf_u=> null()  !Velocity surface local to global numbering
     end type multi_ndgln
+
+    type multi_matrices
+        real, dimension( :, :, : ), pointer :: C => null()!Pressure matrix using a FE discretization
+        real, dimension( :, :, : ), pointer :: C_CV => null()!Pressure matrix using a CV discretization
+        REAL, DIMENSION( :, :, : ), pointer :: U_RHS => null()!Rigth hand side of the momentum equation
+        real, dimension( :, :, : ), pointer :: CT => null()!Continuity equation matrix
+        type(vector_field)                  :: CT_RHS!Rigth hand side of the continuity equation
+        type(petsc_csr_matrix)              :: petsc_ACV!Matrix of the saturation equation
+        type(vector_field)                  :: CV_RHS!Rigth hand side of the saturation equation
+        real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()!Mass matrix (matrix form by the sigmas)
+        type( petsc_csr_matrix ):: DGM_PETSC !Big matrix to solve the pressure in inertia flows (don't know much more)
+        logical :: NO_MATRIX_STORE !Flag to whether calculate and use DGM_PETSC or C
+    end type multi_matrices
 
 contains
     subroutine allocate_multi_shape_funs(shape_fun,  Mdims, GIdims)

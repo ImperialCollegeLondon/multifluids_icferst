@@ -612,8 +612,6 @@ contains
         REAL, DIMENSION( :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         integer, dimension(:), intent(inout) :: StorageIndexes
         ! Local Variables
-        LOGICAL, PARAMETER :: use_continuous_pressure_solver = .false.!For DG pressure,the first non linear iteration we
-                                                                      !use a continuous pressure
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
         ! If IGOT_CMC_PRECON=1 use a sym matrix as pressure preconditioner,=0 else CMC as preconditioner as well.
@@ -1319,7 +1317,7 @@ if (is_porous_media) DEALLOCATE( PIVIT_MAT )
         IF( GLOBAL_SOLVE ) MCY = 0.0
         ! Obtain the momentum and C matricies
         CALL ASSEMB_FORCE_CTY( state, packed_state, &
-            Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, storage_state, &
+            Mdims, FE_GIdims, FE_funs, Mspars, ndgln, storage_state, &
             velocity, pressure, &
             X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL, UOLD_ALL, &
@@ -1479,7 +1477,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
     SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state, &
-        Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mdisopt, storage_state, &
+        Mdims, FE_GIdims, FE_funs, Mspars, ndgln, storage_state, &
         velocity, pressure, &
         X_ALL, U_ABSORB, U_SOURCE, U_SOURCE_CV, &
         U_ALL, UOLD_ALL, &
@@ -1502,7 +1500,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         type(multi_shape_funs), intent(in) :: FE_funs
         type (multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
-        type (multi_discretization_opts) :: Mdisopt
         type( tensor_field ), intent( in ) :: velocity
         type( tensor_field ), intent( in ) :: pressure
 ! If IGOT_VOL_X_PRESSURE=1 then have a voln fraction in the pressure term and multiply density by volume fraction...
