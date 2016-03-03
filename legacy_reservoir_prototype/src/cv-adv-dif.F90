@@ -4411,7 +4411,6 @@ contains
         type(vector_field), dimension(size(psi_int)) :: psi_int_temp
         type(tensor_field), pointer :: tfield
         type(csr_matrix) :: mat
-        type(petsc_csr_matrix) :: pmat
         type(csr_sparsity), pointer :: sparsity
         logical, parameter :: DCYL = .false.
         logical :: do_not_project = .false., cv_test_space = .false.
@@ -4461,7 +4460,6 @@ contains
 
         sparsity=>extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
         call allocate(mat,sparsity,name="ProjectionMatrix")
-        call allocate(pmat,sparsity,[1,1],name="ProjectionMatrix")
         call zero(mat)
         if(igetct/=0) mass_mn_pres=0.0
 
@@ -4588,7 +4586,6 @@ contains
             end do
         end if
         call deallocate(mat)
-        call deallocate(pmat)
         deallocate(detwei2)
         deallocate(ra2)
         deallocate(nx_all2)
@@ -4596,8 +4593,6 @@ contains
         return
 
     END SUBROUTINE PROJ_CV_TO_FEM_state
-
-
 
 
     SUBROUTINE DG_DERIVS_UVW( U, UOLD, V, VOLD, W, WOLD, &
