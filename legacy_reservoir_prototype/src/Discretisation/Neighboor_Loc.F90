@@ -1355,12 +1355,12 @@
     END SUBROUTINE VOLNEI
 
 
-!!$ ===============
-!!$ ===============
 
+!!$ ============================================
+!!$    This subroutine seems to be deprecated.
+!!$ ============================================
 
     subroutine U_Volnei( cv_ele_type, Mdims, GIdims, shape_fun )
-      !cv_ele_type, cv_nloc, u_nloc, scvngi, cv_neiloc,  u_on_face )
       !-----------------------------------------------------------------!
       !- This subroutine calculates U_ON_FACE, a logical that works    -!
       !- in a similar way of CV_ON_FACE.                               -!
