@@ -7638,6 +7638,10 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
             call set_solver_options( path, &
                  ksptype = "cg", &
                  pctype = "hypre", &
+                 !ksptype = "gmres", &
+                 !pctype = "sor", &
+                 !ksptype = "preonly", &
+                 !pctype = "lu", &
                  rtol = 1.0e-10, &
                  atol = 0.0, &
                  max_its = 10000 )
@@ -7645,6 +7649,11 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", stat )
             call set_option( &
                  trim( path ) // "/solver/preconditioner[0]/hypre_type[0]/name", "boomeramg" )
+            !call add_option( &
+            !     trim( path ) // "/solver/preconditioner[0]/factorization_package[0]/name", stat )
+            !call set_option( &
+            !     trim( path ) // "/solver/preconditioner[0]/factorization_package/name", "petsc" )
+
             if ( .not.got_free_surf ) call add_option( &
                     trim( path ) // "/solver/remove_null_space", stat )
             ph_sol % option_path = path
