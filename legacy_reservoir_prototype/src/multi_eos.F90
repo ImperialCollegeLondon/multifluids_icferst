@@ -71,7 +71,7 @@ contains
         type( tensor_field ), pointer :: PackedDRhoDPressure ! (nphase, cv_nonods)
         type( tensor_field ), pointer :: field1, field2, field3, field4
         type( scalar_field ), pointer :: Cp_s
-        integer :: icomp, iphase, ncomp, sc, ec, sp, ep, stat, cv_iloc, cv_nod, ele
+        integer :: icomp, iphase, ncomp, sc, ec, sp, ep, ip, stat, cv_iloc, cv_nod, ele
         logical :: boussinesq
 
         ncomp_in = Mdims%ncomp ; nphase = Mdims%nphase ; ndim = Mdims%ndim
