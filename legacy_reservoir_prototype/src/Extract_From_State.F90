@@ -2343,9 +2343,10 @@ contains
                 tfield=>extract_tensor_field(mstate,index)
                 si=len(trim(tfield%name))
                 !!-PY changed it
-                !           s1=max(0,si) ; s2=si
-                if(tfield%name(si-7:si)=="Pressure")then
-
+                !s1=max(0,si) ; s2=si
+                if(si<=7)then
+                   ! do nothing...
+                else if(tfield%name(si-7:si)=="Pressure")then
                    ! do nothing...
                 else if(tfield%name(:6)=="Packed")then
                     do iphase=1,nphase
