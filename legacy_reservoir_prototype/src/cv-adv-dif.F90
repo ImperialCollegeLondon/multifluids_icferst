@@ -4392,7 +4392,7 @@ contains
         integer, dimension(:), intent(in) :: findcmc    ! row position in the sparse matrix of CMC
         integer, dimension(:), intent(in) :: colcmc     ! column position in the sparse matrix of CMC
         real, dimension(:), intent( inout ) :: mass_mn_pres     ! ??
-        
+
         !---------------------------------
         ! local variables
         !---------------------------------
@@ -4410,7 +4410,6 @@ contains
         type(vector_field), dimension(size(psi_ave)) :: psi_ave_temp
         type(vector_field), dimension(size(psi_int)) :: psi_int_temp
         type(tensor_field), pointer :: tfield
-        type(csr_matrix) :: mat
         type(petsc_csr_matrix) :: pmat
         type(csr_sparsity), pointer :: sparsity
         logical, parameter :: DCYL = .false.
@@ -4460,9 +4459,8 @@ contains
         end if
 
         sparsity=>extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
-        call allocate(mat,sparsity,name="ProjectionMatrix")
         call allocate(pmat,sparsity,[1,1],name="ProjectionMatrix")
-        call zero(mat)
+        call zero(pmat)
         if(igetct/=0) mass_mn_pres=0.0
 
         !---------------------------------
@@ -4502,13 +4500,13 @@ contains
                     end do
 
                     if(cv_test_space) then
-                        call addto(mat,cv_nodi,cv_nodj,mn)
+                        call addto(pmat,1,1,cv_nodi,cv_nodj,mn)
                         do it = 1, size(fempsi_rhs)
                             fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
                                 +mm*psi(it)%ptr%val(:,:,cv_nodj)
                         end do
                     else
-                        call addto(mat,cv_nodi,cv_nodj,nn)
+                        call addto(pmat,1,1,cv_nodi,cv_nodj,nn)
                         do it = 1, size(fempsi_rhs)
                             fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
                                 +nm*psi(it)%ptr%val(:,:,cv_nodj)
@@ -4570,7 +4568,7 @@ contains
             end if
             do it = 1, size(fempsi)
                 call zero_non_owned(fempsi_rhs(it))
-                call petsc_solve(fempsi(it)%ptr,mat,fempsi_rhs(it),option_path = option_path)
+                call petsc_solve(fempsi(it)%ptr,pmat,fempsi_rhs(it),option_path = option_path)
             end do
         end if
 
@@ -4587,7 +4585,6 @@ contains
                 call deallocate(psi_int_temp(it))
             end do
         end if
-        call deallocate(mat)
         call deallocate(pmat)
         deallocate(detwei2)
         deallocate(ra2)
@@ -4596,8 +4593,6 @@ contains
         return
 
     END SUBROUTINE PROJ_CV_TO_FEM_state
-
-
 
 
     SUBROUTINE DG_DERIVS_UVW( U, UOLD, V, VOLD, W, WOLD, &
