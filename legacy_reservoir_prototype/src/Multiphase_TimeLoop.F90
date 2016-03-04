@@ -102,7 +102,7 @@ contains
         type (multi_shape_funs) :: CV_funs, FE_funs
         !!$ Primary scalars
         type(multi_dimensions) :: Mdims
-        type(multi_gi_dimensions) :: CV_GIdims, FE_GIdims, GIdims
+        type(multi_gi_dimensions) :: CV_GIdims, FE_GIdims
         !sprint_to_do !substitute all these instances by the structure Mdims
         integer :: ntsol
         !!$ Node global numbers
@@ -111,6 +111,8 @@ contains
         type (multi_sparsities) :: Mspars
         !!$ Defining element-pair type and discretisation options and coefficients
         type (multi_discretization_opts) :: Mdisopt
+        !!$ Defining the necessary matrices and corresponding RHS
+        type (multi_matrices) :: Mmat
         !sprint_to_do!remove all the is store inside Mspars when Mspars is fully implemented
         integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
@@ -500,11 +502,48 @@ contains
                 end if
 
 
+                !!$ Solve advection of the scalar 'Temperature':
+if (.true.) then
+                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
+                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
+                    ewrite(3,*)'Now advecting Temperature Field'
+                    call set_nu_to_u( packed_state )
+                    !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
+                    !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
+                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        tracer_field,velocity_field,density_field, dt, &
+                        suf_sig_diagten_bc, &
+                        Porosity_field%val, &
+                        !!$
+                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                        0, igot_theta_flux, &
+                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, &
+                        Mean_Pore_CV, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+                end if Conditional_ScalarAdvectionField
+end if
+
+
+
+
+
+
+
+
 !!$ Solve advection of the scalars.   'Temperature':
 
 !!$ Fields...
 !!-
-        new_ntsol_loop = .true.
+        new_ntsol_loop = .false.
 
 if ( new_ntsol_loop  ) then
 
@@ -633,7 +672,7 @@ end if
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
                         velocity_field, pressure_field, &
                         Material_Absorption, dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
