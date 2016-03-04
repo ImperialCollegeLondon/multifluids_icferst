@@ -91,7 +91,9 @@ interface petsc_solve
      petsc_solve_scalar_multiple, &
      petsc_solve_vector_components, &
      petsc_solve_tensor_components, &
-     petsc_solve_scalar_petsc_csr, petsc_solve_vector_petsc_csr
+     petsc_solve_scalar_petsc_csr, &
+     petsc_solve_vector_petsc_csr, &
+     petsc_solve_tensor_petsc_csr
 end interface
   
 interface set_solver_options
@@ -469,7 +471,6 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
   !! with rotated bcs: matrix to transform from x,y,z aligned vectors to boundary aligned
   Mat, intent(in), optional:: rotation_matrix
 
-
   KSP ksp
   Vec y, b
 
@@ -488,8 +489,7 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
   call petsc_solve_setup_petsc_csr(y, b, ksp, &
         solver_option_path, lstartfromzero, &
         matrix, vfield=x, option_path=option_path, &
-        prolongators=prolongators, &
-        positions=positions, rotation_matrix=rotation_matrix)
+        prolongators=prolongators)
         
   ! copy array into PETSc vecs
   call petsc_solve_copy_vectors_from_vector_fields(y, b, x, rhs, &
@@ -507,6 +507,75 @@ subroutine petsc_solve_vector_petsc_csr(x, matrix, rhs, option_path, &
   call petsc_solve_destroy_petsc_csr(y, b, ksp, solver_option_path)
   
 end subroutine petsc_solve_vector_petsc_csr
+
+subroutine petsc_solve_tensor_petsc_csr(x, matrix, rhs, option_path, &
+  prolongators)
+  !!< Solve a linear system the nice way. Options for this
+  !!< come via the options mechanism.
+  type(tensor_field), intent(inout) :: x
+  type(tensor_field), intent(in) :: rhs
+  type(petsc_csr_matrix), intent(inout) :: matrix
+  character(len=*), optional, intent(in) :: option_path
+  !! prolongators to be used at the first levels of 'mg'
+  type(petsc_csr_matrix), dimension(:), optional, intent(in) :: prolongators
+
+  KSP ksp
+  Vec y, b
+
+  type(scalar_field) x_component, rhs_component
+  character(len=OPTION_PATH_LEN) solver_option_path, option_path_in
+  integer literations, i, j, startj
+  logical lstartfromzero
+
+  assert(all(x%dim==rhs%dim))
+  assert(size(x%val,3)==size(rhs%val,3))
+  assert(size(x%val,3)==size(matrix,2))
+  assert(size(rhs%val,3)==size(matrix,1))
+
+  ! option_path_in may still point to field
+  ! (so we have to add "/prognostic/solver" below)
+  if (present(option_path)) then
+    option_path_in=option_path
+  else
+    option_path_in=x%option_path
+  end if
+
+  ! setup PETSc object and petsc_numbering from options and
+  call petsc_solve_setup_petsc_csr(y, b, ksp, &
+        solver_option_path, lstartfromzero, &
+        matrix, tfield=x, option_path=option_path, &
+        prolongators=prolongators)
+
+  startj=1
+  do i=1, x%dim(1)
+
+     do j=startj, x%dim(2)
+
+        x_component=extract_scalar_field(x, i, j)
+        rhs_component=extract_scalar_field(rhs, i, j)
+        ! copy array into PETSc vecs
+        !call petsc_solve_copy_vectors_from_scalar_fields(y, b, x_component, matrix, rhs_component, petsc_numbering, lstartfromzero)
+
+        call petsc_solve_copy_vectors_from_scalar_fields(y, b, x_component, rhs=rhs_component, &
+            petsc_numbering=matrix%row_numbering, startfromzero=lstartfromzero)
+
+        ! the solve and convergence check
+        call petsc_solve_core(y, matrix%M, b, ksp, matrix%row_numbering, &
+              solver_option_path, lstartfromzero, literations, &
+              tfield=x, x0=x_component%val)
+
+        ! Copy back the result using the petsc numbering:
+        call petsc2field(y, matrix%column_numbering, x_component, rhs_component)
+
+     end do
+  end do
+
+  ewrite(1,*) 'Finished solving all components.'
+
+  ! destroy all PETSc objects and the petsc_numbering
+  call petsc_solve_destroy_petsc_csr(y, b, ksp, solver_option_path)
+
+end subroutine petsc_solve_tensor_petsc_csr
 
 subroutine petsc_solve_tensor_components(x, matrix, rhs, &
   symmetric, option_path)
