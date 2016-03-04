@@ -173,20 +173,20 @@ if ( .true. ) then
 
 else
 
-
-
                  ! harmonic mean
                  ! rho = rho + 1.0 / ( a_i / rho_i )
-                 Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + 1.0 / ( Component_l / Rho )
-                 PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + ( 1.0 / Rho ) * (1.0 / (  Component_l / dRhodP ) )
-
                  Cp_s => extract_scalar_field( state( nphase + icomp ), &
                       'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
                  if ( stat == 0 ) Cp = Cp_s % val
 
-
-                 DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + 1.0 / ( Component_l / ( Rho * Cp ) )
-
+                 do cv_nod = 1, cv_nonods
+                    if ( Component_l( cv_nod ) > 0.0 ) then
+                       ip = ( iphase - 1 ) * cv_nonods + cv_nod
+                       !Density_Bulk( ip ) = Density_Bulk( ip ) + 1.0 / ( Component_l(cv_nod) / Rho(cv_nod) )
+                       !PackedDRhoDPressure%val( 1, iphase, cv_nod ) = PackedDRhoDPressure%val( 1, iphase, cv_nod ) + ( 1.0 / Rho(cv_nod) ) * (1.0 / (  Component_l(cv_nod) / dRhodP(cv_nod) ) )
+                       DensityCp_Bulk( ip ) = DensityCp_Bulk( ip ) + 1.0 / ( Component_l(cv_nod) / ( Rho(cv_nod) * Cp(cv_nod) ) )
+                    end if
+                 end do
 
 
 
@@ -1372,7 +1372,13 @@ end if
                                 mu_tmp = ele_val( t_field, ele )
 
                                 do iloc = 1, cv_nloc
-                                    mu_tmp( :, :, iloc ) = mu_tmp( :, :, iloc ) * component_tmp( iloc )
+                                   if ( .true. ) then
+                                      mu_tmp( :, :, iloc ) = mu_tmp( :, :, iloc ) * component_tmp( iloc )
+                                   else
+                                      mu_tmp( :, :, iloc ) = 0.0
+                                      if ( component_tmp( iloc ) > 0.0 ) mu_tmp( :, :, iloc ) = &
+                                           1.0 / ( component_tmp( iloc ) / mu_tmp( :, :, iloc ) )
+                                   end if
                                 end do
 
                                 if ( linearise_viscosity ) then
