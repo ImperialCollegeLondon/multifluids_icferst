@@ -158,6 +158,7 @@ contains
         real, dimension(:,:,:), allocatable  :: reference_field
         type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
         type( tensor_field ), pointer :: MFC_s, MFCOLD_s
+        type( mesh_type ), pointer :: ph_mesh
         !! face value storage
         integer :: ncv_faces
         !Courant number for porous media
@@ -258,6 +259,15 @@ contains
         !!$ Computing Sparsity Patterns Matrices
         !!$
         !!$ Defining lengths and allocating space for the matrices
+
+
+        ! move somewhere else - SPRINT TO DO -
+        ph_mesh => extract_mesh( state( 1 ), "ph", stat )
+        if ( stat == 0 ) then
+           Mdims%ph_nonods = node_count( ph_mesh )
+           Mdims%ph_nloc = ele_loc( ph_mesh, 1 )
+        end if
+
         call Defining_MaxLengths_for_Sparsity_Matrices( Mdims%ndim, Mdims%nphase, Mdims%totele, Mdims%u_nloc, Mdims%cv_nloc, Mdims%ph_nloc, Mdims%cv_nonods, &
             mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
             mx_ncolacv, mx_ncolm, mx_ncolph )

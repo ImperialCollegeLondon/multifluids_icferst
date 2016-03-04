@@ -103,7 +103,7 @@
     INTEGER :: IPOLY, IQADRA, gi, gj, ggi, i, j, ii
 
     Conditional_NWICEL: Select Case( NWICEL )
-    case( 1 )
+    case( 1 ) ! Linear quads and hex
        IF(.NOT.D3) THEN
           CALL RE2DN4(LOWQUA,NGI,0,NLOC,MLOC, &
                M,WEIGHT,N,NLX,NLY,            &
@@ -119,7 +119,7 @@
     case( 2 )
        FLAbort("Option not available yet")
 !!$
-    case( 3 )
+    case( 3 ) ! Quadratic quads and hex
        IF(.NOT.D3) THEN
           CALL RE2DN9(LOWQUA,NGI,0,NLOC,MLOC, &
                M,WEIGHT,N,NLX,NLY,            &
@@ -148,14 +148,14 @@
        ENDIF
 !!$
     case( 4:6 ) ! works for linear or quadratic triangles or tets (also cubic triangles)...
-       CALL TR2or3DQU(NGI,NLOC,MLOC,        &
-            M,MLX,MLY,MLZ,                  &
-            WEIGHT,N,NLX,NLY,NLZ,           &
-            SNGI,SNLOC,SWEIGH,SN,SNLX,SNLY, &
-            SMLOC,                          &
+       CALL LinearQuadratic_TrianglesTetrahedra( NGI,NLOC,MLOC,  &
+            M,MLX,MLY,MLZ,                                       &
+            WEIGHT,N,NLX,NLY,NLZ,                                &
+            SNGI,SNLOC,SWEIGH,SN,SNLX,SNLY,                      &
+            SMLOC,                                               &
             SM,SMLX,SMLY,D3)
 !!$
-    case( 100: )! A Spectal element using Legendra, Lagrange or Chebichef polynomials.
+    case( 100: )! A Spectal element using Legendra, Lagrange or Chebyshev polynomials.
        CALL SPECTR(NGI,NLOC,MLOC, &
             M,WEIGHT,N,NLX,NLY,NLZ,D3,.NOT.D3, IPOLY,IQADRA)
 !!$
