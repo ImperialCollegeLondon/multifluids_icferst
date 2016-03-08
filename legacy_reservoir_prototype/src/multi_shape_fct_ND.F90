@@ -1718,6 +1718,32 @@ contains
   end subroutine DETNLXR_plus_storage
 
 
+  SUBROUTINE DETNLXR_new( ELE, X_ALL, XONDGL, TOTELE, NONODS, NLOC, NGI, &
+       N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
+       NX_ALL)
+    IMPLICIT NONE
+    INTEGER, intent( in ) :: ELE, TOTELE, NONODS, NLOC, NGI
+    INTEGER, DIMENSION( : ) :: XONDGL
+    REAL, DIMENSION( :, : ), intent( in ) :: X_ALL!(NDIM, size(XONDGL))
+    REAL, DIMENSION( :, : ), intent( in ) :: N
+    REAL, DIMENSION( :, :, : ), intent( in ) :: NLX_ALL!(NDIM,NLOC, NGI )
+    REAL, DIMENSION( : ), intent( in ) :: WEIGHT
+    REAL, DIMENSION( : ), pointer, intent( inout ) :: DETWEI, RA
+    REAL, pointer, intent( inout ) :: VOLUME
+    LOGICAL, intent( in ) ::DCYL
+    REAL, DIMENSION( :, : ,:), pointer, intent( inout ) :: NX_ALL!dimension(ndim, NLOC, NGI)
+    !Local variables
+    logical :: D1, D3
+
+
+    D1 = (size(X_ALL,1) == 1); D3 = (size(X_ALL,1) == 3)
+
+    call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, TOTELE, NONODS, NLOC, NGI, &
+         N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+         NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
+
+  end subroutine DETNLXR_new
+
   SUBROUTINE DETNLXR( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
        NX, NY, NZ)

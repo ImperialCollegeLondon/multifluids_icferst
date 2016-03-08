@@ -1072,8 +1072,7 @@ contains
                 i_use_volume_frac_t2,Mdims%nphase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%x_nloc,Mdims%totele,ndgln%cv, &
                 Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
                 ndgln%x,Mdims%x_nonods,Mdims%ndim, &
-                X_ALL, XC_CV_ALL, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE,&
-                storage_state, "anisotrop", storageindexes(2))
+                X_ALL, XC_CV_ALL, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE)
         END IF ! endof IF ( IANISOLIM == 0 ) THEN ELSE
         ALLOCATE( FACE_ELE( CV_GIdims%nface, Mdims%totele ) ) ; FACE_ELE = 0
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
@@ -1892,13 +1891,13 @@ contains
                                 END IF
                                 ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
                                 !sprint_to_do; update to use new structures
-                                CALL PUT_IN_CT_RHS( Mmat%CT, Mmat%C_CV, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
-                                    Mdims, CV_funs,&
-                                    GI, Mspars%CT%ncol, &
+                                CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
+                                    Mdims, CV_funs, ndgln, Mmat, &
+                                    GI,  &
                                     between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
                                     JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
                                     SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
-                                    WIC_U_BC_ALL, WIC_P_BC_ALL, ndgln%u, pressure_BCs%val, &
+                                    WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
                                     UGI_COEF_ELE_ALL,  &
                                     UGI_COEF_ELE2_ALL,  &
                                     NDOTQNEW, NDOTQOLD, LIMD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, &
@@ -1907,7 +1906,7 @@ contains
                                     RETRIEVE_SOLID_CTY,theta_cty_solid, &
                                     loc_u, loc2_u, THETA_VEL, &
                                     rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
-                                    SUF_INT_MASS_MATRIX2, Mmat%PIVIT_MAT, recal_c_cv_rhs, U_RHS=Mmat%U_RHS )
+                                    SUF_INT_MASS_MATRIX2, recal_c_cv_rhs)
                                 do ipres=1,Mdims%npres
                                     call addto(Mmat%CT_RHS,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
                                     if ( integrate_other_side_and_not_boundary ) then
@@ -8159,12 +8158,12 @@ contains
 
 
 
-    SUBROUTINE PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
-        Mdims, CV_funs,GI, NCOLCT, between_elements, on_domain_boundary, &
+    SUBROUTINE PUT_IN_CT_RHS( GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
+        Mdims, CV_funs, ndgln, Mmat, GI, between_elements, on_domain_boundary, &
         ELE, ELE2, SELE, HDC, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, &
         U_SLOC2LOC, CV_SLOC2LOC,  &
         SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
-        WIC_U_BC_ALL, WIC_P_BC_ALL, u_ndgln,SUF_P_BC_ALL,&
+        WIC_U_BC_ALL, WIC_P_BC_ALL,SUF_P_BC_ALL,&
         UGI_COEF_ELE_ALL,  &
         UGI_COEF_ELE2_ALL,  &
         NDOTQ, NDOTQOLD, LIMD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, &
@@ -8174,23 +8173,24 @@ contains
         loc_u, loc2_u, THETA_VEL, &
         ! local memory sent down for speed...
         UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, &
-        CAP_DIFF_COEF_DIVDX, SUF_INT_MASS_MATRIX, MASS_P_CV, RECAL_C_CV_RHS, U_RHS)
-        ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. CT, CT_RHS
+        CAP_DIFF_COEF_DIVDX, SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS)
+        ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. Mmat%CT, Mmat%CT_RHS
         IMPLICIT NONE
-        ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO CT MATRIX
+        ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO Mmat%CT MATRIX
         !    LOGICAL, PARAMETER :: more_in_ct=.false.
-        INTEGER, intent( in ) :: GI, NCOLCT, &
+        INTEGER, intent( in ) :: GI, &
             CV_NODI, CV_NODJ, ELE, ELE2, SELE
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_shape_funs), intent(in) :: CV_funs
+        type(multi_ndgln), intent(in) :: ndgln
+        type (multi_matrices), intent(inout) :: Mmat
         REAL, DIMENSION( :, :, : ), intent( in ) :: loc_u, loc2_u
         LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary,&
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS
         INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
         INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
-        INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC, CV_SLOC2LOC, u_ndgln
-        REAL, DIMENSION( :, :, : ), intent( inout ) :: CT, MASS_P_CV
-        REAL, DIMENSION( :, :, : ), intent( inout ) :: C, SUF_P_BC_ALL
+        INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC, CV_SLOC2LOC
+        REAL, DIMENSION( :, :, : ), intent( inout ) :: SUF_P_BC_ALL
         REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
         REAL, DIMENSION( Mdims%ndim, Mdims%nphase, Mdims%u_nloc ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
         REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI
@@ -8200,7 +8200,6 @@ contains
         REAL, intent( in ) :: NDOTQ_HAT
         REAL, DIMENSION( : ), intent( in ) :: THETA_VEL
         integer, dimension(:,:,:) :: WIC_U_BC_ALL, WIC_P_BC_ALL
-        REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: U_RHS
         ! LIMT_HAT is the normalised voln fraction
         REAL, intent( in ) :: theta_cty_solid, HDC
         REAL,  DIMENSION( Mdims%nphase ), intent( in ) :: FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J
@@ -8216,13 +8215,12 @@ contains
         INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
             U_KLOC_LEV, U_NLOC_LEV, IPHASE, U_SKLOC, I, J, U_KKLOC, IPRES, p_jloc, p_sjloc,&
             u_iloc, u_inod, u_siloc
-
-        !If using C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
-        if (present(U_RHS) .and. RECAL_C_CV_RHS) call introduce_C_CV_boundary_conditions(U_RHS, Bound_ele_correct)
+        !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
+        if (RECAL_C_CV_RHS) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
                ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
                  ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
         IF ( RETRIEVE_SOLID_CTY ) THEN ! For solid modelling...
-            ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the CT matrix and add what we really want)
+            ! Use backward Euler... (This is for the div uhat term - we subtract what we put in the Mmat%CT matrix and add what we really want)
             ct_rhs_phase_cv_nodi(:)=ct_rhs_phase_cv_nodi(:) &
                 +   THETA_CTY_SOLID * SCVDETWEI( GI ) * ( LIMT_HAT(:)*NDOTQ(:) - NDOTQ_HAT/REAL(Mdims%nphase) )
             ! assume cty is satified for solids...
@@ -8246,19 +8244,19 @@ contains
                     * CV_funs%sufen( U_KLOC, GI )
             END IF ! For solid modelling...
             DO IPHASE = 1, Mdims%nphase
-                CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) = CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) &
+                Mmat%CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) = Mmat%CT( :, IPHASE, JCOUNT_KLOC( U_KLOC ) ) &
                     + rcon(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
             END DO
             IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                 rcon(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
                 DO IPHASE=1,Mdims%nphase
                     IF ( between_elements) THEN
-                        C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-                            = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+                        Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+                            = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * 0.5
                     else
-                        C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-                            = C( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+                        Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+                            = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Bound_ele_correct(:, IPHASE, U_KLOC)
                         !Calculate mass matrix
                         if (SUF_INT_MASS_MATRIX) then
@@ -8266,7 +8264,7 @@ contains
                                 do u_kkloc=1,Mdims%u_nloc
                                     I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC-1) * Mdims%ndim * Mdims%nphase
                                     J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
-                                    MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &
+                                    Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) &
                                         + CV_funs%sufen( U_KLOC, GI )*CV_funs%sufen( U_KKLOC, GI )*Bound_ele_correct(IDIM, IPHASE, U_KLOC)&
                                         * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                                 end do
@@ -8284,19 +8282,19 @@ contains
                         * CV_funs%sufen( U_KLOC, GI )
                 END IF ! For solid modelling...
                 DO IPHASE = 1, Mdims%nphase
-                    CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) = CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) &
+                    Mmat%CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) = Mmat%CT( :, IPHASE, ICOUNT_KLOC( U_KLOC ) ) &
                         - RCON_J(IPHASE) * UGI_COEF_ELE_ALL( :, IPHASE, U_KLOC ) * CVNORMX_ALL( :, GI )
                 END DO
                 IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                     RCON_J(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
                     DO IPHASE=1,Mdims%nphase
                         IF ( between_elements ) THEN
-                            C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                                = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                            Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                                = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* 0.5
                         else
-                            C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                                = C( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                            Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+                                = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Bound_ele_correct(:, IPHASE, U_KLOC)
                             !Calculate mass matrix
                             if (SUF_INT_MASS_MATRIX) then
@@ -8304,7 +8302,7 @@ contains
                                     do u_kkloc=1,Mdims%u_nloc
                                         I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC-1) * Mdims%ndim * Mdims%nphase
                                         J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
-                                        MASS_P_CV( I, J, ELE ) = MASS_P_CV( I, J, ELE ) &
+                                        Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) &
                                             + CV_funs%sufen( U_KLOC, GI )*CV_funs%sufen( U_KKLOC, GI )*Bound_ele_correct(idim, IPHASE, U_KLOC)&
                                             * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                                     end do
@@ -8356,15 +8354,15 @@ contains
                         * CV_funs%sufen( U_KLOC, GI )
                 END IF ! For solid modelling...
                 DO IPHASE = 1, Mdims%nphase
-                    CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
-                        = CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
+                    Mmat%CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
+                        = Mmat%CT( :, IPHASE, JCOUNT_KLOC2( U_KLOC2 ) ) &
                         + rcon(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
                 END DO
                 IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                     RCON(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
                     DO IPHASE=1,Mdims%nphase
-                        C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
-                            = C( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
+                        Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
+                            = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             + RCON(IPHASE) * CVNORMX_ALL( :, GI )* 0.5
                         !Calculate mass matrix
                         if (SUF_INT_MASS_MATRIX) then
@@ -8372,7 +8370,7 @@ contains
                                 do u_kkloc=1,Mdims%u_nloc
                                     I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC2-1) * Mdims%ndim * Mdims%nphase
                                     J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
-                                    MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &
+                                    Mmat%PIVIT_MAT( I, J, ELE2 ) = Mmat%PIVIT_MAT( I, J, ELE2 ) &
                                         + CV_funs%sufen( U_KLOC2, GI )*CV_funs%sufen( U_KKLOC, GI )&
                                         * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                                 end do
@@ -8389,15 +8387,15 @@ contains
                             * CV_funs%sufen( U_KLOC, GI )
                     END IF ! For solid modelling...
                     DO IPHASE=1,Mdims%nphase
-                        CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
-                            = CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
+                        Mmat%CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
+                            = Mmat%CT( :, IPHASE, ICOUNT_KLOC2( U_KLOC2 ) ) &
                             - RCON_J(IPHASE) * UGI_COEF_ELE2_ALL( :, IPHASE, U_KLOC2 ) * CVNORMX_ALL( :, GI )
                     END DO
                     IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                         RCON_J(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
                         DO IPHASE=1,Mdims%nphase
-                            C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
-                                = C( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
+                            Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
+                                = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* 0.5
                             !Calculate mass matrix
                             if (SUF_INT_MASS_MATRIX) then
@@ -8405,7 +8403,7 @@ contains
                                     do u_kkloc=1,Mdims%u_nloc
                                         I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC2-1) * Mdims%ndim * Mdims%nphase
                                         J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
-                                        MASS_P_CV( I, J, ELE2 ) = MASS_P_CV( I, J, ELE2 ) &
+                                        Mmat%PIVIT_MAT( I, J, ELE2 ) = Mmat%PIVIT_MAT( I, J, ELE2 ) &
                                             + CV_funs%sufen( U_KLOC2, GI )*CV_funs%sufen( U_KKLOC, GI )&
                                             * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                                     end do
@@ -8418,11 +8416,10 @@ contains
         END IF ! endof IF ( between_elements ) THEN
         RETURN
     contains
-        subroutine introduce_C_CV_boundary_conditions(U_RHS, Bound_ele_correct)
+        subroutine introduce_C_CV_boundary_conditions(Bound_ele_correct)
             !This subroutine populates Bound_ele_correct and Bound_ele2_correct to properly apply the BCs when creating the
-            !C_CV matrix
+            !Mmat%C_CV matrix
             implicit none
-            REAL, DIMENSION( :, :, : ), intent( inout ) :: U_RHS
             real, dimension(:,:,:), intent(out) :: Bound_ele_correct
             !Local variables
             integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC
@@ -8439,19 +8436,19 @@ contains
                         end do
                     end if
                 end do
-                !If C_CV formulation, apply weak pressure boundary conditions if any
+                !If Mmat%C_CV formulation, apply weak pressure boundary conditions if any
                 DO IPRES = 1, Mdims%npres
                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
                         corrector = dble(Mdims%cv_snloc)/dble(Mdims%u_snloc)
                         DO U_SILOC = 1, Mdims%u_snloc
                             U_ILOC = U_SLOC2LOC( U_SILOC )
                             Bound_ele_correct( :, :, U_ILOC ) = 0.
-                            U_INOD = U_NDGLN( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
+                            U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
                             DO P_SJLOC = 1, Mdims%cv_snloc
                                 CV_KLOC = CV_SLOC2LOC( P_SJLOC )
                                 DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
                                     Bound_ele_correct( :, IPHASE, U_ILOC ) = Bound_ele_correct( :, IPHASE, U_ILOC ) + corrector
-                                    U_RHS( :, IPHASE, U_INOD ) = U_RHS( :, IPHASE, U_INOD ) &
+                                    Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
                                         - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI )&
                                         * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )*corrector
                                 end do
@@ -8473,8 +8470,7 @@ contains
         IGOT_T2, NPHASE, CV_NONODS,CV_NLOC, X_NLOC,TOTELE, CV_NDGLN, &
         SMALL_FINDRM, SMALL_CENTRM, SMALL_COLM,NSMALL_COLM, &
         X_NDGLN, X_NONODS, NDIM, &
-        X_ALL, XC_CV_ALL, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE,&
-        storage_state, storname, indx)
+        X_ALL, XC_CV_ALL, IGOT_T_PACK, IGOT_T_CONST, IGOT_T_CONST_VALUE)
         ! For the anisotropic limiting scheme we find the upwind values
         ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
         ! value for each node pair is stored in the matrices TUPWIND AND
@@ -8498,9 +8494,6 @@ contains
         LOGICAL, DIMENSION( NPHASE, 6 ), intent( in) :: IGOT_T_PACK, IGOT_T_CONST
         REAL, DIMENSION( NPHASE, 6 ), intent( in) :: IGOT_T_CONST_VALUE
         REAL, DIMENSION( NDIM, CV_NONODS), intent( in ) :: XC_CV_ALL
-        type( state_type ), intent( inout ) :: storage_state
-        character(len=*), intent(in) :: StorName
-        integer, intent(inout) :: indx
         ! local variables...
         INTEGER :: NFIELD, IMID, NOD, IFIELD
         REAL, DIMENSION( :, : ), ALLOCATABLE :: F_ALL, FEMF_ALL, FUPWIND_MAT_ALL
@@ -8536,8 +8529,7 @@ contains
         !Find upwind field values for limiting
         CALL CALC_ANISOTROP_LIM_VALS( F_ALL, FEMF_ALL, USE_FEMT, FUPWIND_MAT_ALL,  &
             NFIELD,CV_NONODS,CV_NLOC,X_NLOC,TOTELE,CV_NDGLN, SMALL_FINDRM,&
-            SMALL_COLM,NSMALL_COLM, X_NDGLN,X_NONODS,NDIM, X_ALL, XC_CV_ALL,&
-            storage_state, storname,indx )
+            SMALL_COLM,NSMALL_COLM, X_NDGLN,X_NONODS,NDIM, X_ALL, XC_CV_ALL)
 
         ! make sure the diagonal is equal to the value:
         DO NOD=1,CV_NONODS
@@ -8570,8 +8562,7 @@ contains
         NFIELD,NONODS,CV_NLOC,X_NLOC,TOTELE,CV_NDGLN, &
         SMALL_FINDRM,SMALL_COLM,NSMALL_COLM, &
         X_NDGLN,X_NONODS,NDIM, &
-        X_ALL, XC_CV_ALL,&
-        storage_state, storname, indx )
+        X_ALL, XC_CV_ALL)
         ! For the anisotropic limiting scheme we find the upwind values
         ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
         ! value for each node pair is stored in the matrices TUPWIND AND
@@ -8587,9 +8578,6 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: SMALL_COLM
         REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
         REAL, DIMENSION( NDIM, NONODS ), intent( in ) :: XC_CV_ALL
-        type( state_type ), intent( inout ):: storage_state
-        character(len=*), intent(in) :: StorName
-        integer, intent(inout) :: indx
         ! the centre of each CV is: XC_CV, YC_CV, ZC_CV
 
         ! Allocate memory for the interpolated upwind values
@@ -8680,8 +8668,7 @@ contains
             SMALL_FINDRM,SMALL_COLM, NSMALL_COLM, &
             SUB_XNDGLNO, X_NONODS, NDIM, &
             X_ALL, XC_CV_ALL, &
-            N, NLX_ALL, WEIGHT,&
-            storage_state, storname, indx )
+            N, NLX_ALL, WEIGHT)
 
 
         !    DEALLOCATE( N, NLX, NLY, NLZ, L1, L2, L3, L4, &
@@ -8701,8 +8688,7 @@ contains
         FINDRM,COLM,NCOLM, &
         X_NDGLN,X_NONODS,NDIM, &
         X_ALL, XC_CV_ALL,  &
-        N,NLX_ALL, WEIGHT,&
-        storage_state, storname, indx )
+        N,NLX_ALL, WEIGHT)
         ! For the anisotropic limiting scheme we find the upwind values
         ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
         ! value for each node pair is stored in the matrices TUPWIND AND
@@ -8720,9 +8706,6 @@ contains
         REAL, DIMENSION(NLOC,NGI), INTENT(IN) :: N!,NLX,NLY,NLZ
         REAL, DIMENSION(:,:,:), INTENT(IN) :: NLX_ALL!DIMENSION(NDIM, NLOC,NGI)
         REAL, DIMENSION(NGI), INTENT(IN) :: WEIGHT
-        type( state_type ), intent( inout ):: storage_state
-        character(len=*), intent(in) :: StorName
-        integer, intent(inout) :: indx
         !Local variables
 
         INTEGER, DIMENSION( : ), ALLOCATABLE, SAVE :: ELEMATPSI
@@ -8763,7 +8746,7 @@ contains
                 N,NLX_ALL, WEIGHT, &
                 NOD_FINDELE,NOD_COLELE,NCOLEL, &
                 ELEMATPSI,ELEMATWEI,1, &
-                BOUND, REFLECT, storage_state, storName, indx)
+                BOUND, REFLECT)
 
         ELSE IF( RET_STORE_ELE ) THEN
 
@@ -8786,7 +8769,7 @@ contains
                 N,NLX_ALL, WEIGHT, &
                 NOD_FINDELE,NOD_COLELE,NCOLEL, &
                 DUMMYINT,DUMMYREAL,0, &
-                BOUND, REFLECT, storage_state, storname, indx)
+                BOUND, REFLECT)
 
             DEALLOCATE(DUMMYINT,DUMMYREAL)
 
@@ -8949,8 +8932,7 @@ contains
         !     work space...
         FINDELE,COLELE,NCOLEL,&
         ELEMATPSI,ELEMATWEI,IGETSTOR,&
-        BOUND, REFLECT,&
-        storage_state, storname,indx)
+        BOUND, REFLECT)
         !     This sub finds the matrix values MATPSI for a given point on the
         !     stencil
         ! IF IGETSTOR=1 then get ELEMATPSI,ELEMATWEI.
@@ -8973,9 +8955,6 @@ contains
         REAL, dimension(NLOC,NGI), intent(in) :: N!,NLX,NLY,NLZ
         REAL, dimension(:, :,:), intent(in) :: NLX_ALL!dimension(NDIM, NLOC,NGI)
         REAL, dimension(:), intent(in) :: WEIGHT!dimenson(NGI)
-        type( state_type ), intent( inout ):: storage_state
-        character(len=*), intent(in) :: StorName
-        integer, intent(inout) :: indx
         !     work space...
         INTEGER, dimension(X_NONODS+1),intent(in) :: FINDELE
         INTEGER, dimension(NCOLEL),intent(in) :: COLELE
@@ -9013,12 +8992,8 @@ contains
             NORMX_ALL = 0
             MLUM(1:NONODS) = 0.0
             DO ELE=1,TOTELE! Was loop
-
-                call DETNLXR_plus_storage( ELE, X_ALL, X_NDGLN, TOTELE, X_NONODS, NLOC, NGI, &
-                    N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, .false., &
-                    NX_ALL, storage_state, StorName , indx)
-
-                !
+                call DETNLXR_new( ELE, X_ALL, X_NDGLN, TOTELE, X_NONODS, NLOC, NGI, &
+                                 N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, .false., NX_ALL)
                 DO ILOC=1,NLOC! Was loop
                     NODI=NDGLNO((ELE-1)*NLOC+ILOC)
                     DO GI=1,NGI! Was loop
