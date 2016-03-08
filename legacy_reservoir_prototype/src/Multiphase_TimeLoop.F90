@@ -173,21 +173,21 @@ contains
         integer, dimension (38) :: StorageIndexes
         !Distribution of the indexes of StorageIndexes:
         !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)   (REMOVED)
-        !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
+        !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?) (REMOVED)
         !DG_DERIVS_ALL2                : 3 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
         !DETNLXR_INVJAC                : 4
-        !UNPACK_LOC                    : 5,6,7,8,9,10 (disabled)
+        !UNPACK_LOC                    : 5,6,7,8,9,10 (disabled) (REMOVED)
         !COLOR_GET_CMC_PHA             : 11 (can be optimised, now it is not using only pointers)
         !Matrix C                      : 12 (REMOVED)
         !DG_DERIVS_ALL                 : 14 (DETNLXR_PLUS_U_WITH_STORAGE in the inside)
         !DETNLXR_PLUS_U_WITH_STORAGE   : 14
         !Indexes used in SURFACE_TENSION_WRAPPER (deprecated and will be removed):[15,30]
-        !PROJ_CV_TO_FEM_state          : 31 (disabled)
-        !Capillary pressure            : 32 (Pe), 33 (exponent a) (disabled)
+        !PROJ_CV_TO_FEM_state          : 31 (disabled) (removed)
+        !Capillary pressure            : 32 (Pe), 33 (exponent a) (disabled) (removed?)
         !PIVIT_MAT (inverted)          : 34 (REMOVED)
-        !Bound                         : 35
-        !Ph 1                          : 36
-        !Ph 2                          : 37
+        !Bound                         : 35 (removed?)
+        !Ph 1                          : 36 (removed?)
+        !Ph 2                          : 37 (removed?)
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure
