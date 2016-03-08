@@ -353,13 +353,14 @@ contains
         REAL, DIMENSION( :, : ), allocatable :: CVNORMX_ALL, XC_CV_ALL
         REAL, DIMENSION( :, :, : ), allocatable :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
         REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
+        !###Variables for shape function calculation###
+        real :: volume
+        REAL, DIMENSION( Mdims%ndim, Mdims%ndim, CV_GIdims%scvngi ) :: INV_JAC, SCVFENX_ALL
+        real, dimension( CV_GIdims%scvngi ) :: SCVDETWEI, SCVRA
         !###Pointers for Shape function calculation###
         REAL, DIMENSION( : ), allocatable :: SHAPE_CV_SNL
         REAL, DIMENSION( :, :, : ), allocatable :: DUMMY_ZERO_NDIM_NDIM_NPHASE
         REAL, DIMENSION( :, :, :, : ), allocatable :: DTX_ELE_ALL, DTOLDX_ELE_ALL
-        REAL, pointer, DIMENSION( :, :, : ) :: INV_JAC
-        real, pointer, dimension( : ) :: SCVDETWEI, SCVRA
-        real, pointer, dimension( :, :, : ) :: SCVFENX_ALL
         ! Variables used to calculate CV face values:
         REAL, DIMENSION( :, : ), allocatable :: LOC_F, LOC_FEMF
         REAL, DIMENSION( :, : ), allocatable :: SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF
@@ -401,7 +402,6 @@ contains
             W_SUM_ONE1, W_SUM_ONE2, h, rp, Skin, cc, one_m_cv_beta
         REAL :: FTHETA(Mdims%nphase), FTHETA_T2(Mdims%nphase), ONE_M_FTHETA_T2OLD(Mdims%nphase), FTHETA_T2_J(Mdims%nphase), ONE_M_FTHETA_T2OLD_J(Mdims%nphase)
         REAL :: ROBIN1(Mdims%nphase), ROBIN2(Mdims%nphase)
-        real, pointer :: VOLUME
         integer :: IGETCT, IANISOLIM, global_face,J
         ! Functions...
         !REAL :: R2NORM, FACE_THETA
@@ -1148,6 +1148,7 @@ contains
             vecfield => extract_vector_field( packed_state, "Porosity" )
             Por =>  vecfield%val(1,:)
         endif
+
         !###########################################
         Loop_Elements: DO ELE = 1, Mdims%totele
             if (IsParallel()) then
@@ -1164,12 +1165,10 @@ contains
                     if (skip) cycle
                 end if
             end if
+
             ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-            CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, ndgln%x, Mdims%totele, Mdims%x_nonods, &
-                Mdims%cv_nloc, CV_GIdims%scvngi, &
-                CV_funs%scvfen, CV_funs%scvfenlx_all, CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, &
-                SCVFENX_ALL, &
-                Mdims%ndim, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
+            call DETNLXR_INVJAC_new( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
+                CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, SCVFENX_ALL, INV_JAC)
             ! Generate some local F variables ***************
             DO CV_KLOC = 1, Mdims%cv_nloc
                 CV_NODK = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
@@ -2144,11 +2143,14 @@ contains
         if (SUF_INT_MASS_MATRIX2) then
             do ele =1, Mdims%totele
                 ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-                CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, ndgln%x, Mdims%totele, Mdims%x_nonods, &
-                    Mdims%cv_nloc, CV_GIdims%scvngi, &
-                    CV_funs%scvfen, CV_funs%scvfenlx_all, CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, &
-                    SCVFENX_ALL, &
-                    Mdims%ndim, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
+                call DETNLXR_INVJAC_new( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
+                    CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, SCVFENX_ALL, INV_JAC)
+
+!                CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, ndgln%x, Mdims%totele, Mdims%x_nonods, &
+!                    Mdims%cv_nloc, CV_GIdims%scvngi, &
+!                    CV_funs%scvfen, CV_funs%scvfenlx_all, CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, &
+!                    SCVFENX_ALL, &
+!                    Mdims%ndim, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
                 DO IPHASE = 1, Mdims%nphase
                     DO IDIM = 1, Mdims%ndim
                         JPHASE = IPHASE

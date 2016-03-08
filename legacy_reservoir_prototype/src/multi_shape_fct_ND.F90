@@ -1900,6 +1900,29 @@ contains
     RETURN
   END SUBROUTINE DETNLXR
 
+  SUBROUTINE DETNLXR_INVJAC_new( ELE, X_ALL,  Mdims, XONDGL,&
+       N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
+       NX_ALL,INV_JAC)
+    IMPLICIT NONE
+    INTEGER, intent( in ) :: ELE
+    type(multi_dimensions), intent(in) :: Mdims
+    INTEGER, DIMENSION( : ) :: XONDGL
+    REAL, DIMENSION( :, : ), intent( in ) :: X_ALL!dimension(NDIM,size(XONDGL) )
+    REAL, DIMENSION( :, : ), intent( in ) :: N
+    REAL, DIMENSION( :, :, : ), intent( in ) :: NLX_ALL
+    REAL, DIMENSION( : ), intent( in ) :: WEIGHT
+    LOGICAL, intent( in ) :: DCYL
+    REAL, intent( inout ) :: VOLUME
+    REAL, DIMENSION( : ), intent( inout ):: DETWEI, RA
+    REAL, DIMENSION( :, :, : ), intent( inout ) :: NX_ALL
+    REAL, DIMENSION( :,:, : ), intent( inout ):: INV_JAC
+
+    call DETNLXR_INVJAC( ELE, X_ALL(1,:), X_ALL(2,:),X_ALL(3,:) , XONDGL, Mdims%TOTELE, size(X_all,2), size(NX_ALL,2), size(RA), &
+         N, NLX_ALL(1,:,:),NLX_ALL(2,:,:),NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, Mdims%Ndim == 1, &
+         Mdims%Ndim==3, DCYL, NX_ALL(1,:,:),NX_ALL(2,:,:),NX_ALL(3,:,:), Mdims%Ndim, INV_JAC)
+
+  END SUBROUTINE DETNLXR_INVJAC_new
+
 
   SUBROUTINE DETNLXR_INVJAC_plus_storage( ELE, X_ALL, XONDGL, TOTELE, NONODS, NLOC, NGI, &
        N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &

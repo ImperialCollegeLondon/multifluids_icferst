@@ -3776,7 +3776,7 @@ subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, su
     integer, intent(in) :: cv_iloc
 
     integer, intent(in) :: gi
-    real, pointer, dimension( : ), intent(in) :: detwei
+    real, dimension( : ), intent(in) :: detwei
 
     real, dimension( :,:, : ), intent( in ) :: SUF_T_BC_ALL
 

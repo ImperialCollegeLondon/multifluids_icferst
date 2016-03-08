@@ -175,7 +175,7 @@ contains
         !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)   (REMOVED)
         !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?) (REMOVED)
         !DG_DERIVS_ALL2                : 3 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
-        !DETNLXR_INVJAC                : 4
+        !DETNLXR_INVJAC                : 4 (removed)
         !UNPACK_LOC                    : 5,6,7,8,9,10 (disabled) (REMOVED)
         !COLOR_GET_CMC_PHA             : 11 (can be optimised, now it is not using only pointers)
         !Matrix C                      : 12 (REMOVED)
