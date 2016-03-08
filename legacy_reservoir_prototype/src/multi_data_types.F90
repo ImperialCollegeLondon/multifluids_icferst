@@ -115,8 +115,8 @@ module multi_data_types
         integer, pointer, dimension( : )  :: findgpts=> null()!dimension( cv_nloc + 1 )
         integer, pointer, dimension( : )  :: colgpts=> null()!dimension( cv_nloc * scvngi )
         integer :: ncolgpts
-        type(csr_matrix_pointer) ::CV2FE !Matrix to convert from CV to FE
-        type(csr_matrix_pointer) ::FE2CV !Matrix to convert from FE to CV
+        type(petsc_csr_matrix_pointer) ::CV2FE !Matrix to convert from CV to FE
+        type(petsc_csr_matrix_pointer) ::FE2CV !Matrix to convert from FE to CV
     end type multi_shape_funs
 
     !This type comprises the four necessary variables to represent matrices using a CSR structure
@@ -127,7 +127,7 @@ module multi_data_types
         integer, pointer, dimension(:) :: mid=> null()
     end type multi_sparsity
 
-    !This data type contains all the sparcities necessary in the multiphase prototype code
+    !This data type contains all the sparsities necessary in the multiphase prototype code
     type multi_sparsities
         type (multi_sparsity) :: acv     !CV multi-phase eqns (e.g. vol frac, temp)
         type (multi_sparsity) :: small_acv !Local CV multi-phase eqns (e.g. vol frac, temp)

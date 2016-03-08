@@ -261,7 +261,7 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims
         type(multi_shape_funs), intent(in) :: CV_funs
-        type (multi_sparsities), intent(in) :: Mspars
+        type(multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_discretization_opts) :: Mdisopt
         type (multi_matrices), intent(inout) :: Mmat
@@ -969,14 +969,11 @@ contains
         else
             call set_all(psi_ave(1)%ptr,X_ALL)
         end if
-        call PROJ_CV_TO_FEM_state( packed_state,FEMPSI(1:FEM_IT),&
-            PSI(1:FEM_IT), Mdims%ndim, &
-            MASS_ELE, &
-            Mdims%cv_nonods, Mdims%totele, ndgln%cv, ndgln%x, &
-            CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVN, CV_funs%CVWEIGHT,&
-            CV_funs%CVFEN, CV_funs%CVFENLX_ALL, &
-            Mdims%x_nonods, X_ALL, &
-            IGETCT, MASS_MN_PRES, Mspars%CMC%fin, Mspars%CMC%col, Mspars%CMC%ncol, PSI_AVE, PSI_INT)
+        call PROJ_CV_TO_FEM_state(packed_state, &
+            FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &
+            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
+            IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
+            PSI_AVE, PSI_INT)
         XC_CV_ALL=0.0
         !sprint_to_do!use a pointer?
         XC_CV_ALL(1:Mdims%ndim,:)=psi_ave(1)%ptr%val
@@ -4325,11 +4322,10 @@ contains
 
 
     SUBROUTINE PROJ_CV_TO_FEM_state(packed_state, &
-        fempsi, psi, ndim, mass_ele, &
-        cv_nonods, totele, cv_ndgln, x_ndgln, &
-        cv_ngi, cv_nloc, cvn, cvweight, N, NLX_ALL, &
-        x_nonods, X, igetct, mass_mn_pres, &
-        findcmc, colcmc, ncolcmc, psi_ave, psi_int)
+        fempsi, psi, &
+        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
+        igetct, X, mass_ele, mass_mn_pres, &
+        psi_ave, psi_int)
 
         !------------------------------------------------
         ! Subroutine description:
@@ -4352,32 +4348,22 @@ contains
         !---------------------------------
         ! I/O variables
         !---------------------------------
-        type(state_type) :: packed_state
-        type(tensor_field_pointer), dimension(:), intent(inout) :: fempsi  ! finite element field data
-        type(tensor_field_pointer), dimension(:), intent(inout) :: psi     ! finite volume field data
+        type(state_type) :: packed_state                                    ! local state data
+        type(tensor_field_pointer), dimension(:), intent(inout) :: fempsi   ! finite element field data
+        type(tensor_field_pointer), dimension(:), intent(inout) :: psi      ! finite volume field data
+        type(multi_dimensions), intent(in) :: Mdims                         ! dimension data
+        type(multi_GI_dimensions), intent(in) :: CV_GIdims                  ! gauss integer dimension data
+        type(multi_shape_funs), intent(in) :: CV_funs                       ! control volume shape function data
+        type(multi_sparsities), intent(in) :: Mspars                        ! sparsity data
+        type(multi_ndgln), intent(in) :: ndgln                              ! global numbering data
+        integer, intent(in) :: igetct                                       ! whether to get CT matrix (i.e. I get CT)
+        real, dimension(:,:), intent(in) :: X                               ! coordinates of the elements
+        real, dimension(:), intent(inout) :: mass_ele                       ! finite element mass
+        real, dimension(:), intent(inout) :: mass_mn_pres                   ! ??
+        ! the following two need to be changed to optional in the future
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_int ! control volume area
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_ave ! control volume barycentre
 
-        integer, intent(in) :: ndim                     ! number of dimensions
-        integer, intent(in) :: cv_nonods                ! number of control volume barycentres
-        integer, intent(in) :: totele                   ! total number of finite elements
-        integer, intent(in) :: cv_ngi                   ! number of gauss integer points in a control volume
-        integer, intent(in) :: cv_nloc                  ! number of local control volumes
-        integer, intent(in) :: x_nonods                 ! number of control volume in continuous mesh
-        integer, intent(in) :: igetct                   ! whether to get CT matrix (i.e. I get CT)
-        integer, intent(in) :: ncolcmc                  ! number of columns in CMC matrix
-        integer, dimension(:), intent(in) :: cv_ndgln   ! global node ids of control volumes
-        integer, dimension(:), intent(in) :: x_ndgln    ! global node ids of continuous mesh
-        real, dimension(:), intent(in) :: cvweight      ! control volumes weight
-        real, dimension(:,:), intent(in) :: N           ! shape function of fintie elements
-        real, dimension(:,:), intent(in) :: X           ! shape function of continuous mesh
-        real, dimension(:,:), intent(in) :: CVN         ! shape function of control volumes
-        real, dimension(:,:,:), intent(in) :: NLX_ALL   ! derivative of N
-        real, dimension(:), intent(inout) :: mass_ele   ! finite element mass
-        integer, dimension(:), intent(in) :: findcmc    ! row position in the sparse matrix of CMC
-        integer, dimension(:), intent(in) :: colcmc     ! column position in the sparse matrix of CMC
-        real, dimension(:), intent( inout ) :: mass_mn_pres     ! ??
-        
         !---------------------------------
         ! local variables
         !---------------------------------
@@ -4395,8 +4381,7 @@ contains
         type(vector_field), dimension(size(psi_ave)) :: psi_ave_temp
         type(vector_field), dimension(size(psi_int)) :: psi_int_temp
         type(tensor_field), pointer :: tfield
-        type(csr_matrix) :: mat
-        type(petsc_csr_matrix) :: pmat
+        type(petsc_csr_matrix) :: PMAT
         type(csr_sparsity), pointer :: sparsity
         logical, parameter :: DCYL = .false.
         logical :: do_not_project = .false., cv_test_space = .false.
@@ -4417,9 +4402,9 @@ contains
             cal_psi_ave_int = .true.
         end if
 
-        allocate(detwei2(cv_ngi))
-        allocate(ra2(cv_ngi))
-        allocate(NX_ALL2(ndim,cv_nloc,cv_ngi))
+        allocate(detwei2(CV_GIdims%cv_ngi))
+        allocate(ra2(CV_GIdims%cv_ngi))
+        allocate(NX_ALL2(Mdims%ndim,Mdims%cv_nloc,CV_GIdims%cv_ngi))
         do it=1,size(fempsi)
             call zero(fempsi(it)%ptr)
             call allocate(fempsi_rhs(it),psi(it)%ptr%mesh,"RHS",dim=psi(it)%ptr%dim)
@@ -4445,55 +4430,54 @@ contains
         end if
 
         sparsity=>extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
-        call allocate(mat,sparsity,name="ProjectionMatrix")
-        call allocate(pmat,sparsity,[1,1],name="ProjectionMatrix")
-        call zero(mat)
+        call allocate(PMAT,sparsity,[1,1],name="ProjectionMatrix")
+        call zero(PMAT)
         if(igetct/=0) mass_mn_pres=0.0
 
         !---------------------------------
         ! projection
         !---------------------------------
-        Loop_Elements: do iele = 1, totele
-
+        Loop_Elements: do iele = 1, Mdims%totele
             ! check parallelisation
             if(isParallel()) then
                 if(.not.assemble_ele(psi_int(1)%ptr,iele)) cycle ! IS THIS A PROBLEM?
             end if
 
             ! calculate detwei,RA,NX,NY,NZ for the ith element
-            call DETNLXR(iele,X(1,:),X(2,:),X(3,:),x_ndgln,totele,x_nonods, &
-                cv_nloc,cv_ngi,N,NLX_ALL(1,:,:),NLX_ALL(2,:,:),NLX_ALL(3,:,:), &
-                cvweight,detwei2,ra2,volume2,ndim==1,ndim==3,DCYL, &
+            call DETNLXR(iele,X(1,:),X(2,:),X(3,:),ndgln%x, &
+                Mdims%totele,Mdims%x_nonods,Mdims%cv_nloc, &
+                CV_GIdims%cv_ngi,CV_funs%CVFEN,CV_funs%CVFENLX_ALL(1,:,:), &
+                CV_funs%CVFENLX_ALL(2,:,:),CV_funs%CVFENLX_ALL(3,:,:), &
+                CV_funs%cvweight,detwei2,ra2,volume2, &
+                Mdims%ndim==1,Mdims%ndim==3,DCYL, &
                 NX_ALL2(1,:,:),NX_ALL2(2,:,:),NX_ALL2(3,:,:))
             mass_ele(iele) = volume
 
-            Loop_CV_iLoc: do cv_iloc = 1, cv_nloc
-
-                cv_nodi = cv_ndgln((iele-1)*cv_nloc+cv_iloc)
+            Loop_CV_iLoc: do cv_iloc = 1, Mdims%cv_nloc
+                cv_nodi = ndgln%cv((iele-1)*Mdims%cv_nloc+cv_iloc)
                 if(.not.node_owned(psi(1)%ptr,cv_nodi)) cycle
 
-                Loop_CV_jLoc: do cv_jloc = 1, cv_nloc
-
-                    cv_nodj = cv_ndgln((iele-1)*cv_nloc+cv_jloc)
+                Loop_CV_jLoc: do cv_jloc = 1, Mdims%cv_nloc
+                    cv_nodj = ndgln%cv((iele-1)*Mdims%cv_nloc+cv_jloc)
 
                     nn = 0.0; nm = 0.0; mn = 0.0; mm = 0.0
-                    do cv_gi = 1, cv_ngi
-                        mn = mn+CVN(cv_iloc,cv_gi)*N(cv_jloc,cv_gi)*detwei(cv_gi)
-                        mm = mm+CVN(cv_iloc,cv_gi)*CVN(cv_jloc,cv_gi)*detwei(cv_gi)
+                    do cv_gi = 1, CV_GIdims%cv_ngi
+                        mn = mn+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*detwei(cv_gi)
+                        mm = mm+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*detwei(cv_gi)
                         if(.not.cv_test_space) then
-                            nn = nn+N(cv_iloc,cv_gi)*N(cv_jloc,cv_gi)*detwei(cv_gi)
-                            nm = nm+N(cv_iloc,cv_gi)*CVN(cv_jloc,cv_gi)*detwei(cv_gi)
+                            nn = nn+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*detwei(cv_gi)
+                            nm = nm+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*detwei(cv_gi)
                         end if
                     end do
 
                     if(cv_test_space) then
-                        call addto(mat,cv_nodi,cv_nodj,mn)
+                        call addto(PMAT,1,1,cv_nodi,cv_nodj,mn)
                         do it = 1, size(fempsi_rhs)
                             fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
                                 +mm*psi(it)%ptr%val(:,:,cv_nodj)
                         end do
                     else
-                        call addto(mat,cv_nodi,cv_nodj,nn)
+                        call addto(PMAT,1,1,cv_nodi,cv_nodj,nn)
                         do it = 1, size(fempsi_rhs)
                             fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
                                 +nm*psi(it)%ptr%val(:,:,cv_nodj)
@@ -4501,7 +4485,7 @@ contains
                     end if
 
                     if(igetct/=0) then
-                        call PosInMat(COUNT,cv_nodi,cv_nodj,cv_nonods,findcmc,colcmc,ncolcmc)
+                        call PosInMat(COUNT,cv_nodi,cv_nodj,Mdims%cv_nonods,Mspars%CMC%fin,Mspars%CMC%col,Mspars%CMC%ncol)
                         mass_mn_pres(COUNT) = mass_mn_pres(COUNT)+mn
                     end if
 
@@ -4517,9 +4501,7 @@ contains
                     end if
 
                 end do Loop_CV_jLoc
-
             end do Loop_CV_iLoc
-
         end do Loop_Elements
 
         ! The below does not seem superefficient in terms of updating halo information.
@@ -4555,7 +4537,7 @@ contains
             end if
             do it = 1, size(fempsi)
                 call zero_non_owned(fempsi_rhs(it))
-                call petsc_solve(fempsi(it)%ptr,mat,fempsi_rhs(it),option_path = option_path)
+                call petsc_solve(fempsi(it)%ptr,PMAT,fempsi_rhs(it),option_path = option_path)
             end do
         end if
 
@@ -4572,17 +4554,14 @@ contains
                 call deallocate(psi_int_temp(it))
             end do
         end if
-        call deallocate(mat)
-        call deallocate(pmat)
+        call deallocate(PMAT)
         deallocate(detwei2)
         deallocate(ra2)
-        deallocate(nx_all2)
+        deallocate(NX_ALL2)
 
         return
 
     END SUBROUTINE PROJ_CV_TO_FEM_state
-
-
 
 
     SUBROUTINE DG_DERIVS_UVW( U, UOLD, V, VOLD, W, WOLD, &

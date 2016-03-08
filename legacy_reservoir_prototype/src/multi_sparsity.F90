@@ -1,4 +1,4 @@
-  
+
 !    Copyright (C) 2006 Imperial College London and others.
 !
 !    Please see the AUTHORS file in the main source directory for a full list
@@ -26,7 +26,7 @@
 !    Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
 !    USA
 #include "fdebug.h"
-  
+
 
 module sparsity_1D
     use fldebug
@@ -49,7 +49,7 @@ contains
         else
             lcopy=.true.
         end if
-      
+
         allocate(temp(n))
         if (lcopy) temp=A(1:n)
         deallocate(a)
@@ -488,7 +488,7 @@ contains
                 end do
             end do Loop_Phase1
         end do Loop_CVNODS
-                     
+
         finm_pha( nphase * nonods + 1 ) = count2 + 1
         !ncolm_pha = count2
         if(count2.ne.ncolm_pha) then
@@ -627,7 +627,7 @@ contains
 
 
         if ( new_sparcity ) then
-      
+
             count2 = 0
             do ele = 1, totele
                 do iloc = 1, u_nloc
@@ -658,7 +658,7 @@ contains
             end do
             findgm_pha( u_pha_nonods + 1 ) = count2 + 1
             ncoldgm_pha = count2
-      
+
         else
 
             count2 = 0
@@ -689,7 +689,7 @@ contains
             end do Loop_Phase1
             findgm_pha( u_pha_nonods + 1 ) = count2 + 1
             ncoldgm_pha = count2
-      
+
         end if
 
 
@@ -897,7 +897,7 @@ contains
         ! linked list as we go
         ptr = 1
         !ewrite(3,*),'nonods2=',nonods2
-       
+
         Loop_Irow: do irow = 1, nonods2
             findrm( irow ) = ptr
             centrm( irow ) = -1
@@ -1364,7 +1364,7 @@ contains
 
         mx_ncolacv = 3 * mx_nface_p1 * cv_nonods * nphase + cv_nonods * ( nphase - 1 ) * nphase
 
-        mx_ncolph =  mxnele * ph_nloc * ph_nloc
+        mx_ncolph = mxnele * ph_nloc * ph_nloc
 
         return
     end subroutine Defining_MaxLengths_for_Sparsity_Matrices
@@ -1461,7 +1461,7 @@ contains
             call exten_sparse_multi_phase_old( Mdims%totele, ncolele, finele, colele, &
                 Mdims%nphase, Mdims%totele * Mdims%nphase, mx_ncolele_pha, &
                 finele_pha, colele_pha, midele_pha )
- 
+
             findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0
             call form_dgm_pha_sparsity( Mdims%totele, Mdims%nphase, Mdims%u_nloc, Mdims%nphase * Mdims%u_nonods * Mdims%ndim, &
                 Mdims%ndim, mx_ncoldgm_pha, ncoldgm_pha, &
@@ -1620,7 +1620,7 @@ contains
         !-
         deallocate( cv_sndgln, p_sndgln, u_sndgln, centct )
         return
-          
+
     end subroutine Get_Sparsity_Patterns
 
     subroutine Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
@@ -1830,7 +1830,7 @@ contains
             ph_ndgln => get_ndglno( ph_mesh )
             allocate( Mspars%ph%mid( Mdims%ph_nonods ) )
             Mspars%ph%fin = 0 ; Mspars%ph%col = 0 ; Mspars%ph%mid = 0
-            if ( Mdims%cv_nonods == Mdims%x_nonods ) then ! a continuous pressure mesh
+            if ( Mdims%cv_nonods == Mdims%x_nonods ) then ! a continuous pressure mesh   ! BUG HERE!!!
                 call pousinmc2( Mdims%totele, Mdims%ph_nloc, Mdims%ph_nonods, Mdims%ph_nloc, &
                     mx_ncolph, ph_ndgln, ph_ndgln, Mspars%ph%ncol, Mspars%ph%fin, Mspars%ph%col, Mspars%ph%mid )
             else ! a DG pressure field mesh
