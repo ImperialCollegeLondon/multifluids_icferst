@@ -171,23 +171,22 @@ contains
         !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
         integer, dimension (38) :: StorageIndexes
         !Distribution of the indexes of StorageIndexes:
-        !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)
+        !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)   (REMOVED)
         !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
         !DG_DERIVS_ALL2                : 3 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
         !DETNLXR_INVJAC                : 4
         !UNPACK_LOC                    : 5,6,7,8,9,10 (disabled)
         !COLOR_GET_CMC_PHA             : 11 (can be optimised, now it is not using only pointers)
-        !Matrix C                      : 12
+        !Matrix C                      : 12 (REMOVED)
         !DG_DERIVS_ALL                 : 14 (DETNLXR_PLUS_U_WITH_STORAGE in the inside)
         !DETNLXR_PLUS_U_WITH_STORAGE   : 14
         !Indexes used in SURFACE_TENSION_WRAPPER (deprecated and will be removed):[15,30]
         !PROJ_CV_TO_FEM_state          : 31 (disabled)
         !Capillary pressure            : 32 (Pe), 33 (exponent a) (disabled)
-        !PIVIT_MAT (inverted)          : 34
+        !PIVIT_MAT (inverted)          : 34 (REMOVED)
         !Bound                         : 35
         !Ph 1                          : 36
         !Ph 2                          : 37
-        !Matrix C_CV                   : 38
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure
@@ -515,7 +514,7 @@ if (.true.) then
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
@@ -601,7 +600,7 @@ if ( new_ntsol_loop  ) then
               elseif (multiphase_scalar) then
 
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
@@ -620,7 +619,7 @@ if ( new_ntsol_loop  ) then
               else
                     
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc,  Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -691,7 +690,7 @@ end if
                 end if Conditional_ForceBalanceEquation
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
                         dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -742,7 +741,7 @@ end if
                         Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
                             Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
                             call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
-                                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state,&
+                                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
                                 tracer_field,velocity_field,density_field, dt, &
                                 SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -864,6 +863,8 @@ end if
                 end if
                 after_adapt=.false.
                 its = its + 1
+                !Flag the matrices as already calculated (only the storable ones
+                Mmat%stored = .true.
             end do Loop_NonLinearIteration
             ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
             if(calculate_flux) then
@@ -1013,12 +1014,13 @@ end if
         call deallocate(packed_state)
         call deallocate(multiphase_state)
         deallocate(multiphase_state)
-    call deallocate(multicomponent_state)
+        call deallocate(multicomponent_state)
         deallocate(multicomponent_state)
         call deallocate(storage_state)
         call deallocate_multi_shape_funs(CV_funs)
         call deallocate_multi_shape_funs(FE_funs)
         call deallocate_multi_ndgln(ndgln)
+        call destroy_multi_matrices(Mmat)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
         if (numberfields > 0) then
@@ -1283,6 +1285,8 @@ end if
                 call deallocate_multi_sparsities(Mspars)
                 !Deallocate ndgln
                 call deallocate_multi_ndgln(ndgln)
+                !Destroy what remains of the matrices
+                call destroy_multi_matrices(Mmat)
                 !!$ Compute primary scalars used in most of the code
                 call Get_Primary_Scalars_new( state, Mdims )
                 !!$ Calculating Global Node Numbers

@@ -166,6 +166,7 @@ module multi_data_types
         type(petsc_csr_matrix):: DGM_PETSC!Big matrix to solve the pressure in inertia flows (don't know much more)
         logical :: NO_MATRIX_STORE !Flag to whether calculate and use DGM_PETSC or C
         logical :: CV_pressure     !Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
+        logical :: stored = .false.!Flag to be true when the storable matrices have been stored
     end type multi_matrices
 
 contains
@@ -467,11 +468,14 @@ contains
         type (multi_matrices), intent(inout) :: Mmat
 
         !Deallocate and nullify as required
-        if (associated(Mmat%C)) then
-            deallocate (Mmat%C); nullify(Mmat%C)
-        end if
-        if (associated(Mmat%C_CV)) then
-            deallocate (Mmat%C_CV); nullify(Mmat%C_CV)
+        if (Mmat%CV_pressure) then!Deallocate just one of the two!sprint_to_do!There is an error here,
+            if (associated(Mmat%C_CV)) then!probably because the storage deallocates this memory before
+                deallocate (Mmat%C_CV); nullify(Mmat%C_CV)!this method won't be compatible with two matrices, but we want
+            end if                                      !to get rid of it anyway (its unstable)
+        else
+            if (associated(Mmat%C)) then
+                deallocate (Mmat%C); nullify(Mmat%C)
+            end if
         end if
         if (associated(Mmat%U_RHS)) then
             deallocate (Mmat%U_RHS); nullify(Mmat%U_RHS)
@@ -482,11 +486,12 @@ contains
         if (associated(Mmat%PIVIT_MAT)) then
             deallocate (Mmat%PIVIT_MAT); nullify(Mmat%PIVIT_MAT)
         end if
-        call deallocate(Mmat%CT_RHS)
-        call deallocate(Mmat%CV_RHS)
-        call deallocate(Mmat%petsc_ACV)
-        call deallocate(Mmat%DGM_PETSC)
-
+        if (associated(Mmat%CT_RHS%val)) call deallocate(Mmat%CT_RHS)
+        if (associated(Mmat%CV_RHS%val)) call deallocate(Mmat%CV_RHS)
+        if (associated(Mmat%petsc_ACV%refcount)) call deallocate(Mmat%petsc_ACV)
+        if (associated(Mmat%DGM_PETSC%refcount)) call deallocate(Mmat%DGM_PETSC)
+        !Set flag to recalculate
+        Mmat%stored = .false.
     end subroutine destroy_multi_matrices
 
 end module multi_data_types

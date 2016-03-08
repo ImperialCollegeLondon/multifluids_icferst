@@ -117,11 +117,9 @@ contains
     end function my_size_real
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
-        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, storage_state, &
+        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state, &
         tracer, velocity, density, &
-        CV_RHS_field, PETSC_ACV,&
-        CT, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, CT_RHS, &
-        C,&
+        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE,&
         DEN_ALL, DENOLD_ALL, &
         TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, SECOND_THETA, CV_BETA, &
@@ -138,7 +136,7 @@ contains
         MASS_ELE_TRANSP, &
         StorageIndexes, &
         saturation,OvRelax_param, Phase_with_Pc, IDs_ndgln, Courant_number,&
-        RECALC_C_CV, SUF_INT_MASS_MATRIX, MASS_P_CV, U_RHS)
+        RECALC_C_CV, SUF_INT_MASS_MATRIX)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -266,22 +264,18 @@ contains
         type (multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_discretization_opts) :: Mdisopt
+        type (multi_matrices), intent(inout) :: Mmat
         type(tensor_field), intent(inout), target :: tracer
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
         INTEGER, intent( in ) :: CV_DISOPT, CV_DG_VEL_INT_OPT, &
             IGOT_T2, IGOT_THETA_FLUX
         INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
-        type(vector_field), intent( inout ) :: CV_RHS_field
-        type( petsc_csr_matrix ), intent(inout) :: petsc_ACV
-        REAL, DIMENSION( :, :, : ), intent( inout ) :: CT
-        REAL, DIMENSION( :, :, : ), intent( inout ) :: C
         ! Diagonal scaling of (distributed) pressure matrix (used to treat pressure implicitly)
         REAL, DIMENSION( :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: DIAG_SCALE_PRES_COUP ! (Mdims%npres, Mdims%npres, Mdims%cv_nonods)
         REAL, DIMENSION( :, :, : ), intent( inout ), allocatable :: GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B ! (Mdims%nphase, Mdims%nphase, Mdims%cv_nonods)
         REAL, DIMENSION( : ), intent( inout ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
-        type(vector_field), intent( inout ) :: CT_RHS
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL, DENOLD_ALL
@@ -311,8 +305,6 @@ contains
         !Variables to cache get_int_vel OLD
         real, optional, intent(inout) :: Courant_number
         logical, optional, intent(in) :: RECALC_C_CV, SUF_INT_MASS_MATRIX
-        real, dimension(:,:,:), optional, intent(inout):: MASS_P_CV
-        REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: U_RHS
         ! Local variables
         REAL :: ZERO_OR_TWO_THIRDS
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
@@ -331,7 +323,7 @@ contains
         real :: THETA_VEL_HAT = 1.0
         ! if APPLY_ENO then apply ENO method to T and TOLD
         LOGICAL :: APPLY_ENO
-        ! CT will not change with this option...
+        ! Mmat%CT will not change with this option...
         LOGICAL, PARAMETER :: CT_DO_NOT_CHANGE = .FALSE.,  PIPES_1D=.TRUE.
         ! PIPES_1D uses 1D pipes along edges of elements...
         ! GRAVTY is used in the free surface method only...
@@ -340,8 +332,8 @@ contains
         logical, PARAMETER :: EXPLICIT_PIPES= .false.
         logical, PARAMETER :: EXPLICIT_PIPES2= .true.
         logical, PARAMETER :: MULTB_BY_POROSITY= .false.
-        ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the C matrix in here also based on control-volume pressure.
-        ! if RECAL_C_CV_RHS, calculate the RHS forr the C_CV matrix
+        ! If GET_C_IN_CV_ADVDIF_AND_CALC_C_CV then form the Mmat%C matrix in here also based on control-volume pressure.
+        ! if RECAL_C_CV_RHS, calculate the RHS forr the Mmat%C_CV matrix
         logical :: GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, RECAL_C_CV_RHS
         REAL, PARAMETER :: FEM_PIPE_CORRECTION = 0.035
         ! FEM_PIPE_CORRECTION is the FEM pipe correction factor used because the Peacement
@@ -549,13 +541,13 @@ contains
             call get_option( "/porous_media/well_option/dt_pipe_factor", dt_pipe_factor, default = 1.0 )
         end if
         !Check pressure matrix based on Control Volumes
-        !If we do not have an index where we have stored C_CV, then we need to calculate it
+        !If we do not have an index where we have stored Mmat%C_CV, then we need to calculate it
         SUF_INT_MASS_MATRIX2 = .false.
         RECAL_C_CV_RHS = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         if (present_and_true(RECALC_C_CV)) then
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .true.
             if (present_and_true(SUF_INT_MASS_MATRIX)) then
-                MASS_P_CV = 0.
+                Mmat%PIVIT_MAT = 0.
                 SUF_INT_MASS_MATRIX2 = .true.
             end if
         else
@@ -1110,15 +1102,15 @@ contains
         ! Timopt is 1 if CV_DISOPT is odd (non-linear theta scheme)
         TIMOPT = MOD( CV_DISOPT, 2 )
         FTHETA(:) = CV_THETA
-        IF ( GETCT ) THEN ! Obtain the CV discretised CT eqns plus RHS
-            call zero(CT_RHS)
-            CT = 0.0
+        IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqns plus RHS
+            call zero(Mmat%CT_RHS)
+            Mmat%CT = 0.0
             if ( got_free_surf .and. .not.symmetric_P ) MASS_SUF=0.0
         END IF
         IF ( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion eqns
-            call zero(CV_RHS_FIELD)
+            call zero(Mmat%CV_RHS)
             IF ( GETMAT ) THEN
-                call zero(petsc_ACV)
+                call zero(Mmat%petsc_ACV)
             END IF
         END IF
         GET_GTHETA = .FALSE.
@@ -1395,8 +1387,6 @@ contains
                                     DO U_KLOC = 1, Mdims%u_nloc
                                         U_NODK = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_KLOC )
                                         JCOUNT = 0
-                                        !                        DO COUNT = Mspars%C%fin( CV_NODI ), Mspars%C%fin( CV_NODI + 1 ) - 1
-                                        !                           IF ( Mspars%C%col( COUNT ) == U_NODK ) THEN
                                         DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
                                             IF ( Mspars%C%col( COUNT ) == CV_NODI ) THEN
                                                 JCOUNT = COUNT
@@ -1407,8 +1397,6 @@ contains
                                         if(integrate_other_side) then
                                             ! for integrating just on one side...
                                             ICOUNT = 0
-                                            !                            DO COUNT = Mspars%C%fin( CV_NODJ ), Mspars%C%fin( CV_NODJ + 1 ) - 1
-                                            !                               IF ( Mspars%C%col( COUNT ) == U_NODK ) THEN
                                             DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
                                                 IF ( Mspars%C%col( COUNT ) == CV_NODJ ) THEN
                                                     ICOUNT = COUNT
@@ -1422,8 +1410,6 @@ contains
                                         DO U_KLOC =  1, Mdims%u_nloc
                                             U_NODK = ndgln%u( ( ELE2 - 1 ) * Mdims%u_nloc + U_KLOC )
                                             JCOUNT = 0
-                                            !                           DO COUNT = Mspars%C%fin( CV_NODI ), Mspars%C%fin( CV_NODI + 1 ) - 1
-                                            !                              IF ( Mspars%C%col( COUNT ) == U_NODK ) THEN
                                             DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
                                                 IF ( Mspars%C%col( COUNT ) == CV_NODI ) THEN
                                                     JCOUNT = COUNT
@@ -1434,8 +1420,6 @@ contains
                                             if(integrate_other_side) then
                                                 ! for integrating just on one side...
                                                 ICOUNT = 0
-                                                !                               DO COUNT = Mspars%C%fin( CV_NODJ ), Mspars%C%fin( CV_NODJ + 1 ) - 1
-                                                !                                  IF ( Mspars%C%col( COUNT ) == U_NODK ) THEN
                                                 DO COUNT = Mspars%C%fin( U_NODK ), Mspars%C%fin( U_NODK + 1 ) - 1
                                                     IF ( Mspars%C%col( COUNT ) == CV_NODJ ) THEN
                                                         ICOUNT = COUNT
@@ -1533,7 +1517,7 @@ contains
                                     CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T2_BC_ALL( : , : , SELE ),&
                                         Mdims%nphase, NFIELD, IPT, IGOT_T_PACK( :,6) )
                                 ENDIF
-                                ! The b.c values:
+                                ! The b.c's values:
                                 DO CV_SKLOC=1,Mdims%cv_snloc
                                     IPT=1
                                     CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) )
@@ -1881,8 +1865,8 @@ contains
                                 END IF
                             END IF
                             !====================== ACV AND RHS ASSEMBLY ===================
-                            Conditional_GETCT2: IF ( GETCT ) THEN ! Obtain the CV discretised CT eqations plus RHS
-                                IF(CT_DO_NOT_CHANGE) THEN ! CT will not change with this option...
+                            Conditional_GETCT2: IF ( GETCT ) THEN ! Obtain the CV discretised Mmat%CT eqations plus RHS
+                                IF(CT_DO_NOT_CHANGE) THEN ! Mmat%CT will not change with this option...
                                     FTHETA_T2=1.0
                                     ONE_M_FTHETA_T2OLD=0.0
                                     FTHETA_T2_J=1.0
@@ -1910,7 +1894,8 @@ contains
                                     END IF
                                 END IF
                                 ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
-                                CALL PUT_IN_CT_RHS( CT, C, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
+                                !sprint_to_do; update to use new structures
+                                CALL PUT_IN_CT_RHS( Mmat%CT, Mmat%C_CV, GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
                                     Mdims, CV_funs,&
                                     GI, Mspars%CT%ncol, &
                                     between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
@@ -1925,11 +1910,11 @@ contains
                                     RETRIEVE_SOLID_CTY,theta_cty_solid, &
                                     loc_u, loc2_u, THETA_VEL, &
                                     rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
-                                    SUF_INT_MASS_MATRIX2, MASS_P_CV, recal_c_cv_rhs, U_RHS=U_RHS )
+                                    SUF_INT_MASS_MATRIX2, Mmat%PIVIT_MAT, recal_c_cv_rhs, U_RHS=Mmat%U_RHS )
                                 do ipres=1,Mdims%npres
-                                    call addto(ct_rhs,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
+                                    call addto(Mmat%CT_RHS,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
                                     if ( integrate_other_side_and_not_boundary ) then
-                                        call addto(ct_rhs,ipres,cv_nodj,sum(ct_rhs_phase_cv_nodj(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
+                                        call addto(Mmat%CT_RHS,ipres,cv_nodj,sum(ct_rhs_phase_cv_nodj(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
                                     end if
                                 end do
                             ENDIF Conditional_GETCT2
@@ -1975,7 +1960,7 @@ contains
                                         END DO
                                     ELSE
                                         do iphase=1,Mdims%nphase
-                                            call addto(petsc_acv,iphase,iphase,&
+                                            call addto(Mmat%petsc_ACV,iphase,iphase,&
                                                 cv_nodi,cv_nodj,&
                                                 SECOND_THETA * FTHETA_T2(iphase) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * INCOME(iphase) * LIMD(iphase) & ! Advection
                                                 - FTHETA(iphase) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(iphase) & ! Diffusion contribution
@@ -1984,7 +1969,7 @@ contains
                                         end do
                                         if(integrate_other_side_and_not_boundary) then
                                             do iphase=1,Mdims%nphase
-                                                call addto(petsc_acv,iphase,iphase,&
+                                                call addto(Mmat%petsc_ACV,iphase,iphase,&
                                                     cv_nodj,cv_nodi,&
                                                     - SECOND_THETA * FTHETA_T2_J(IPHASE) * SCVDETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME_J(IPHASE) * LIMD(IPHASE) & ! Advection
                                                     - FTHETA(IPHASE) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) & ! Diffusion contribution
@@ -2002,7 +1987,7 @@ contains
                                         END IF
                                     END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
                                     do iphase=1,Mdims%nphase
-                                        call addto(petsc_acv,iphase,iphase,&
+                                        call addto(Mmat%petsc_ACV,iphase,iphase,&
                                             cv_nodi,cv_nodi,&
                                             +  SECOND_THETA * FTHETA_T2(iphase) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) & ! Advection
                                             +  FTHETA(iphase) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(iphase)  &  ! Diffusion contribution
@@ -2015,7 +2000,7 @@ contains
                                     end do
                                     if(integrate_other_side_and_not_boundary) then
                                         do iphase=1,Mdims%nphase
-                                            call addto(petsc_acv,iphase,iphase,&
+                                            call addto(Mmat%petsc_ACV,iphase,iphase,&
                                                 cv_nodj,cv_nodj,&
                                                 !
                                                 -  SECOND_THETA * FTHETA_T2_J(iphase) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME_J(iphase) ) * LIMD(iphase) & ! Advection
@@ -2142,8 +2127,8 @@ contains
                                         END DO! ENDOF DO IPHASE=1,Mdims%nphase
                                     END IF ! GOT_VIS
                                 END IF ! THERMAL
-                                call addto(cv_rhs_field,CV_NODI,LOC_CV_RHS_I)
-                                call addto(cv_rhs_field,CV_NODJ,LOC_CV_RHS_J)
+                                call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
+                                call addto(Mmat%CV_RHS,CV_NODJ,LOC_CV_RHS_J)
                             ENDIF Conditional_GETCV_DISC
                         endif ! if(CV_NODJ.ge.CV_NODI) then
                     END IF Conditional_integration
@@ -2158,7 +2143,7 @@ contains
             deallocate(dens)
         endif
         !#########################
-        !Adjust the value introduced in MASS_P_CV to compensate the fact that we are doing a
+        !Adjust the value introduced in Mmat%PIVIT_MAT to compensate the fact that we are doing a
         !surface integral of what should be a volume integral
         if (SUF_INT_MASS_MATRIX2) then
             do ele =1, Mdims%totele
@@ -2177,14 +2162,14 @@ contains
                             DO U_ILOC = 1, Mdims%u_nloc
                                 I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                 J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                rsum = rsum +mass_p_cv(i,j,ele)
+                                rsum = rsum +Mmat%PIVIT_MAT(i,j,ele)
                             end do
                         end do
                         DO U_JLOC = 1, Mdims%u_nloc
                             DO U_ILOC = 1, Mdims%u_nloc
                                 I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                 J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                mass_p_cv(i,j,ele) =mass_p_cv(i,j,ele)* volume/rsum
+                                Mmat%PIVIT_MAT(i,j,ele) =Mmat%PIVIT_MAT(i,j,ele)* volume/rsum
                             end do
                         end do
                     end do
@@ -2223,7 +2208,7 @@ contains
                 allocate(MASS_PIPE_FOR_COUP(Mdims%cv_nonods))
                 CALL MOD_1D_CT_AND_ADV( state, packed_state, Mdims%nphase, Mdims%npres, Mdims%n_in_pres, Mdims%ndim, Mdims%u_nloc, Mdims%cv_nloc, Mdims%x_nloc, Mspars%small_acv%fin, Mspars%small_acv%col, &
                     Mdims%u_nonods,Mdims%u_snloc,Mdims%cv_snloc,Mdims%stotel,ndgln%suf_cv,ndgln%suf_u, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
-                    Mdims%cv_nonods, getcv_disc, getct, petsc_acv, Mdims%totele, ndgln%cv, ndgln%x, ndgln%u, ndgln%mat, ct, c, Mspars%CT%fin, Mspars%CT%col, Mspars%C%fin, Mspars%C%col, CV_RHS_field, CT_RHS, &
+                    Mdims%cv_nonods, getcv_disc, getct, Mmat%petsc_ACV, Mdims%totele, ndgln%cv, ndgln%x, ndgln%u, ndgln%mat, Mmat%CT, Mmat%C, Mspars%CT%fin, Mspars%CT%col, Mspars%C%fin, Mspars%C%col, Mmat%CV_RHS, Mmat%CT_RHS, &
                     Mspars%CMC%fin, Mspars%CMC%col, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
                     SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, OPT_VEL_UPWIND_COEFS_NEW )
                 ! Used for pipe modelling...
@@ -2417,7 +2402,7 @@ contains
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                         + MASS_CV(CV_NODI) * SOURCT_ALL( :, CV_NODI )
                     DO IPHASE = 1,Mdims%nphase
-                        call addto(petsc_acv,iphase,iphase,&
+                        call addto(Mmat%petsc_ACV,iphase,iphase,&
                             cv_nodi, cv_nodi,&
                             + DEN_ALL( IPHASE, CV_NODI ) * T2_ALL( IPHASE, CV_NODI ) &
                             * R_PHASE(IPHASE))
@@ -2430,7 +2415,7 @@ contains
                     LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                         + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI )
                     DO IPHASE = 1,Mdims%nphase
-                        call addto(petsc_acv,iphase,iphase,&
+                        call addto(Mmat%petsc_ACV,iphase,iphase,&
                             cv_nodi, cv_nodi,&
                             + DEN_ALL( IPHASE, CV_NODI )  &
                             * R_PHASE(IPHASE) )
@@ -2450,11 +2435,11 @@ contains
                     do jphase = 1, Mdims%nphase
                         do iphase=1,Mdims%nphase
                             IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES ) THEN
-                                call addto(petsc_acv,iphase,jphase, &
+                                call addto(Mmat%petsc_ACV,iphase,jphase, &
                                     cv_nodi, cv_nodi, &
                                     MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
                             END IF
-                            call addto(petsc_acv,iphase,jphase, &
+                            call addto(Mmat%petsc_ACV,iphase,jphase, &
                                 cv_nodi, cv_nodi, &
                                 MASS_CV( CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
                         end do
@@ -2463,7 +2448,7 @@ contains
                 !Force Sum of volume fractions to be unity
                 !               if (is_porous_media)&
                 !                  LOC_CV_RHS_I = LOC_CV_RHS_I + R* ( 1.0  - SUM(T_ALL( :, CV_NODI ) ))!Spreads the error to all the phases
-                call addto(cv_rhs_field,CV_NODI,LOC_CV_RHS_I)
+                call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
             END DO Loop_CVNODI2
         END IF Conditional_GETCV_DISC2
         IF ( GETCT ) THEN
@@ -2479,12 +2464,12 @@ contains
                     ! Add constraint to force sum of volume fracts to be unity...
                        ! W_SUM_ONE==1 applies the constraint
                        ! W_SUM_ONE==0 does NOT apply the constraint
-                    call addto(ct_rhs,IPRES,cv_nodi,&
+                    call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
                         - ( W_SUM_ONE1 - W_SUM_ONE2 ) * R_PRES(IPRES))
                     IF(RETRIEVE_SOLID_CTY) THEN
                         ! VOL_FRA_FLUID is the old voln fraction of total fluid...
                         ! multiply by solid-voln fraction: (1.-VOL_FRA_FLUID)
-                        call addto(ct_rhs,IPRES,cv_nodi,&
+                        call addto(Mmat%CT_RHS,IPRES,cv_nodi,&
                             + (1.-VOL_FRA_FLUID( CV_NODI )) * R_PRES(IPRES))
                     ENDIF
                     R_PHASE(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)=R_PRES(IPRES)
@@ -2527,10 +2512,10 @@ contains
                 END IF
                 DO IPRES = 1, Mdims%npres
                     if ( Mdims%npres > 1 ) then
-                        call addto(ct_rhs, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) &
+                        call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) &
                             - MASS_CV_PLUS(IPRES,CV_NODI) * SUM(DIAG_SCALE_PRES_COUP(IPRES,:, cv_nodi) * RESERVOIR_P( : )) )
                     else
-                        call addto(ct_rhs, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) )
+                        call addto(Mmat%CT_RHS, IPRES, cv_nodi, SUM( ct_rhs_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)) )
                     end if
                     DIAG_SCALE_PRES( IPRES,CV_NODI ) = DIAG_SCALE_PRES( IPRES,CV_NODI ) &
                         + sum( DIAG_SCALE_PRES_phase(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres))
