@@ -1,0 +1,19 @@
+<?xml version='1.0' encoding='utf-8'?>
+<testproblem>
+  <name>Adapt_based_on_non_linear</name>
+  <owner userid="pablo.salinas"/>
+  <tags>porous mpml adaptive_time</tags>
+  <problem_definition length="short" nprocs="1">
+    <command_line>../../../bin/multiphase_prototype Adapt_based_on_non_linear.mpml</command_line>
+  </problem_definition>
+  <variables>
+    <variable name="final_dt" language="python">from fluidity_tools import stat_parser as stat
+vals = stat("Adapt_based_on_non_linear.stat")["dt"]
+A = list(vals.values())
+final_dt = A[0][1]</variable>
+  </variables>
+  <pass_tests>
+    <test name="Assert final dT to be correct" language="python">assert(abs(final_dt -0.00196))&lt;0.0001001</test>
+  </pass_tests>
+  <warn_tests/>
+</testproblem>
