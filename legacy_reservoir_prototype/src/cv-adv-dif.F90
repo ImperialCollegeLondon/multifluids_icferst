@@ -260,7 +260,7 @@ contains
         type( state_type ), intent( inout ) :: packed_state, storage_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims
-        type(multi_shape_funs), intent(in) :: CV_funs
+        type(multi_shape_funs), intent(inout) :: CV_funs
         type(multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_discretization_opts) :: Mdisopt
@@ -4296,10 +4296,10 @@ contains
         type(tensor_field_pointer), dimension(:), intent(inout) :: psi      ! finite volume field data
         type(multi_dimensions), intent(in) :: Mdims                         ! dimension data
         type(multi_GI_dimensions), intent(in) :: CV_GIdims                  ! gauss integer dimension data
-        type(multi_shape_funs), intent(in) :: CV_funs                       ! control volume shape function data
+        type(multi_shape_funs), intent(inout) :: CV_funs                    ! control volume shape function data
         type(multi_sparsities), intent(in) :: Mspars                        ! sparsity data
         type(multi_ndgln), intent(in) :: ndgln                              ! global numbering data
-        integer, intent(in) :: igetct                                       ! whether to get CT matrix (i.e. I get CT)
+        integer, intent(in) :: igetct                                       ! whether to get CT matrix
         real, dimension(:,:), intent(in) :: X                               ! coordinates of the elements
         real, dimension(:), intent(inout) :: mass_ele                       ! finite element mass
         real, dimension(:), intent(inout) :: mass_mn_pres                   ! ??
@@ -4324,13 +4324,13 @@ contains
         type(vector_field), dimension(size(psi_ave)) :: psi_ave_temp
         type(vector_field), dimension(size(psi_int)) :: psi_int_temp
         type(tensor_field), pointer :: tfield
-        type(petsc_csr_matrix) :: PMAT
+        type(petsc_csr_matrix), target :: PMAT
         type(csr_sparsity), pointer :: sparsity
         logical, parameter :: DCYL = .false.
         logical :: do_not_project = .false., cv_test_space = .false.
         logical :: cal_psi_ave_int = .false.
-        character (len=*), parameter :: projection_options = '/projections/control_volume_projections'
-        character (len=option_path_len) :: option_path
+        character(len=*), parameter :: projection_options = '/projections/control_volume_projections'
+        character(len=option_path_len) :: option_path
 
         !---------------------------------
         ! initialisation and allocation
@@ -4372,9 +4372,12 @@ contains
             end do
         end if
 
-        sparsity=>extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
-        call allocate(PMAT,sparsity,[1,1],name="ProjectionMatrix")
-        call zero(PMAT)
+        !if(.not.associated(CV_funs%CV2FE%ptr)) then
+            sparsity=>extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
+            call allocate(PMAT,sparsity,[1,1],name="ProjectionMatrix")
+            call zero(PMAT)
+        !    CV_funs%CV2FE%ptr=>PMAT
+        !end if
         if(igetct/=0) mass_mn_pres=0.0
 
         !---------------------------------

@@ -88,7 +88,7 @@ contains
            type( state_type ), intent( inout ) :: packed_state, storage_state
            type(multi_dimensions), intent(in) :: Mdims
            type(multi_GI_dimensions), intent(in) :: CV_GIdims
-           type(multi_shape_funs), intent(in) :: CV_funs
+           type(multi_shape_funs), intent(inout) :: CV_funs
            type (multi_sparsities), intent(in) :: Mspars
            type(multi_ndgln), intent(in) :: ndgln
            type (multi_discretization_opts) :: Mdisopt
@@ -305,7 +305,7 @@ contains
              type( state_type ) :: packed_state, storage_state
              type(multi_dimensions), intent(in) :: Mdims
              type(multi_GI_dimensions), intent(in) :: CV_GIdims
-             type(multi_shape_funs), intent(in) :: CV_funs
+             type(multi_shape_funs), intent(inout) :: CV_funs
              type (multi_sparsities), intent(in) :: Mspars
              type(multi_ndgln), intent(in) :: ndgln
              type (multi_discretization_opts) :: Mdisopt
@@ -581,7 +581,8 @@ contains
         type( state_type ), intent( inout ) :: packed_state, storage_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
-        type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
+        type(multi_shape_funs), intent(inout) :: CV_funs
+        type(multi_shape_funs), intent(in) :: FE_funs
         type (multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_discretization_opts) :: Mdisopt
@@ -1210,11 +1211,12 @@ end if
         type( state_type ), intent( inout ) :: packed_state, storage_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
-        type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
-        type (multi_sparsities), intent(in) :: Mspars
+        type(multi_shape_funs), intent(inout) :: CV_funs
+        type(multi_shape_funs), intent(in) :: FE_funs
+        type(multi_sparsities), intent(in) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
-        type (multi_discretization_opts) :: Mdisopt
-        type (multi_matrices), intent(inout) :: Mmat
+        type(multi_discretization_opts) :: Mdisopt
+        type(multi_matrices), intent(inout) :: Mmat
         type( tensor_field ), intent(in) :: velocity
         type( tensor_field ), intent(in) :: pressure
         INTEGER, intent( in ) :: NLENMCY, IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
