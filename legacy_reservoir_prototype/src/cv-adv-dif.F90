@@ -355,7 +355,8 @@ contains
         REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
         !###Variables for shape function calculation###
         real :: volume
-        REAL, DIMENSION( Mdims%ndim, Mdims%ndim, CV_GIdims%scvngi ) :: INV_JAC, SCVFENX_ALL
+        REAL, DIMENSION( Mdims%ndim, Mdims%cv_nloc , CV_GIdims%scvngi) :: SCVFENX_ALL
+        REAL, DIMENSION( Mdims%ndim, Mdims%ndim, CV_GIdims%scvngi ) :: INV_JAC
         real, dimension( CV_GIdims%scvngi ) :: SCVDETWEI, SCVRA
         !###Pointers for Shape function calculation###
         REAL, DIMENSION( : ), allocatable :: SHAPE_CV_SNL
@@ -1166,9 +1167,7 @@ contains
                 end if
             end if
 
-            ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-            call DETNLXR_INVJAC_new( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
-                CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, SCVFENX_ALL, INV_JAC)
+
             ! Generate some local F variables ***************
             DO CV_KLOC = 1, Mdims%cv_nloc
                 CV_NODK = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
@@ -1743,6 +1742,9 @@ contains
                                 CALL GET_INT_T_DEN_new( LIMF )
                             ENDIF
                             IF(APPLY_ENO) THEN
+                                ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
+                                call DETNLXR_INVJAC_new( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
+                                    CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, SCVFENX_ALL, INV_JAC)
                                 ! Apply a simple ENO scheme to T,TOLD only which is not bounded but gets rid of most of the osillations.
                                 ! Put the results in LIMF.
                                 CALL APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
@@ -1758,7 +1760,7 @@ contains
                             ! loc_f - Unpack into the limiting variables LIMT and may be store them in the cache.
                             !###############TEMPORARY USAGE IN UNPACK_LOC #######################
                             !Currently for UNPACK_LOC we are passing CV_GIdims%scvngi*Mdims%totele as the maximum Global_face value
-                            !However, that is an overstimate. THAT VALUE WILL NEED TO BE CHANGED!!
+                            !However, that is an overstimate. sprint_to_do; change to a correct value
                             !###############################################################
                             IPT=1
                             CALL UNPACK_LOC( LIMF(:), LIMT( : ),    Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,1), GLOBAL_FACE, IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1),&
@@ -2627,6 +2629,7 @@ contains
             end do
             its=its+1
         end subroutine dump_multiphase
+
         SUBROUTINE GET_INT_T_DEN_new( LIMF )
             !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
             IMPLICIT NONE
@@ -2789,10 +2792,8 @@ contains
                                         ELSE
                                             RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
                                         END IF
-                                        !                                  FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (CV_funs%scvfen( CV_KLOC, GI )*0.0 + RGRAY(IFIELD)*0.0)   * LOC_FEMF( IFIELD, CV_KLOC)
                                         FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (CV_funs%scvfen( CV_KLOC, GI ) + RGRAY(IFIELD))   * LOC_FEMF( IFIELD, CV_KLOC)
                                     END DO ! ENDOF DO CV_KLOC = 1, Mdims%cv_nloc
-                                !                              FEMFGI(:)    = FEMFGI(:) + 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
                                 ELSE
                                     DO CV_KLOC = 1, Mdims%cv_nloc
                                         FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  CV_funs%scvfen( CV_KLOC, GI ) * LOC_FEMF( IFIELD, CV_KLOC)
@@ -2800,7 +2801,6 @@ contains
                                 !                              FEMFGI(:)    = 0.5 * ( LOC_F( :, CV_ILOC ) + LOC_F( :, CV_JLOC ) )
                                 END IF
                             END DO ! ENDOF DO IFIELD=1,Mdims%nphase
-                        !       ELSE  ! END OF IF( ( ELE2 == 0 ) .OR. ( ELE2 == ELE ) ) THEN  ---DG saturation across elements
                         ELSE  ! END OF IF( .not. between_elements ) THEN  ---DG saturation across elements
                             FEMFGI_CENT(:) = 0.0
                             FEMFGI_UP(:)   = 0.0
