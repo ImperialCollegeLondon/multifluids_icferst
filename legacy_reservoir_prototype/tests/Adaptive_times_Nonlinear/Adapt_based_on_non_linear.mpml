@@ -194,9 +194,7 @@
         <spatial_discretisation>
           <continuous_galerkin/>
         </spatial_discretisation>
-        <CV_P_matrix>
-          <CV_P_matrix_for_velocity/>
-        </CV_P_matrix>
+        <CV_P_matrix/>
         <solver>
           <iterative_method name="gmres">
             <restart>
