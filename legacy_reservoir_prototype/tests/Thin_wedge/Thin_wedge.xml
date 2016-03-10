@@ -3,7 +3,6 @@
   <name>Thin wedge</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml P_CV</tags>
- <!-- This test case checks, using P1DGP2 and CV pressure, the pressure boundary conditions with different permeabilities in the boundary--> 
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/multiphase_prototype thin_wedge.mpml</command_line>
   </problem_definition>

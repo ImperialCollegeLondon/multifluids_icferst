@@ -546,7 +546,7 @@ contains
         SUF_INT_MASS_MATRIX2 = .false.
         RECAL_C_CV_RHS = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         if (present_and_true(RECALC_C_CV)) then
-            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .true.
+            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .not.Mmat%stored !.true.
             if (present_and_true(SUF_INT_MASS_MATRIX)) then
                 Mmat%PIVIT_MAT = 0.
                 SUF_INT_MASS_MATRIX2 = .true.
@@ -2148,11 +2148,6 @@ contains
                 call DETNLXR_INVJAC_new( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
                     CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, SCVFENX_ALL, INV_JAC)
 
-!                CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, ndgln%x, Mdims%totele, Mdims%x_nonods, &
-!                    Mdims%cv_nloc, CV_GIdims%scvngi, &
-!                    CV_funs%scvfen, CV_funs%scvfenlx_all, CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, &
-!                    SCVFENX_ALL, &
-!                    Mdims%ndim, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
                 DO IPHASE = 1, Mdims%nphase
                     DO IDIM = 1, Mdims%ndim
                         JPHASE = IPHASE

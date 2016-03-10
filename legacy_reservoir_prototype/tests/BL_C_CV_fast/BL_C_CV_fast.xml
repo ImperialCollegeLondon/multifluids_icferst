@@ -2,7 +2,6 @@
 <testproblem>
   <name>BL_C_CV_fast</name>
   <owner userid="pablo.salinas"/>
- <!-- This test case tests the CV formulation of the pressure--> 
   <tags>porous mpml</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>python ./Check_BL_C_CV_fast.py &gt; log</command_line>
