@@ -1537,12 +1537,6 @@ coordinates, the nearest vertex will be selected.</a:documentation>
       <element name="CV_P_matrix">
         <a:documentation>Use a Control Volume discretization to form the Pressure matrix</a:documentation>
         <empty/>
-        <optional>
-          <element name="CV_P_matrix_for_velocity">
-            <a:documentation>Use a Control Volume discretization to obtain the velocities</a:documentation>
-            <empty/>
-          </element>
-        </optional>
       </element>
     </optional>
     <!--
