@@ -612,8 +612,6 @@ contains
         LOGICAL :: RETRIEVE_SOLID_CTY = .FALSE.
 ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
         LOGICAL :: got_free_surf
-        !This is to force the use of a Pressure discretized using CVs everywhere not only to calculate the pressure
-        LOGICAL :: everything_c_cv
         character( len = option_path_len ) :: opt, bc_type
         REAL, DIMENSION( : ), allocatable :: &
         MCY_RHS, MCY, &
@@ -848,8 +846,7 @@ contains
         SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
 
         !Allocation of storable matrices !SPRINT_TO_DO; move as an initialization subroutine
-        if (.not.Mmat%Stored) then!RIGTH NOW IT COMPILES BUT IT DOES NOT RUN petsc fails, CAN BE THE PIVIT MATRIX OR BASICALLY ANYONE...
-            everything_c_cv = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/CV_P_matrix_for_velocity' )
+        if (.not.Mmat%Stored) then
              if (Mmat%CV_pressure) then
                 allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
                 RECALC_C_CV = .true.!sprint_to_do; we may not need this logical
@@ -887,8 +884,8 @@ contains
             StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
 
 
-        !If pressure in CV only then point the FE matrix Mmat%C to Mmat%C_CV
-        if ( everything_c_cv .and. Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
+        !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
+        if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
         if ( Mdims%npres > 1 ) then
            ALLOCATE( SIGMA( Mdims%nphase, Mdims%mat_nonods ) )
            DO IPHASE = 1, Mdims%nphase
@@ -1498,7 +1495,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         LOGICAL, PARAMETER :: STORED_AC_SPAR_PT=.FALSE.
         INTEGER, PARAMETER :: IDO_STORE_AC_SPAR_PT=0
         ! re-calculate Mmat%C matrix...
-        LOGICAL :: got_c_matrix, everything_c_cv
+        LOGICAL :: got_c_matrix
         INTEGER, DIMENSION( :, : ), allocatable ::  FACE_ELE
         INTEGER, DIMENSION( : ), allocatable :: CV_SLOC2LOC, U_SLOC2LOC, &
         U_ILOC_OTHER_SIDE, U_OTHER_LOC, MAT_OTHER_LOC
@@ -1685,8 +1682,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
         !Capillary pressure variables
         logical :: capillary_pressure_activated, Diffusive_cap_only
-        !Logical to control wether to create a CV pressure or FE pressure in multi_dyncore
-        logical, parameter :: GET_C_IN_CV_IN_DYNCORE = .false.
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: sf
@@ -2989,11 +2984,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             Mdims%totele, Mdims%u_nloc, Mdims%p_nloc )
                     END IF
                     !Prepare aid variable NMX_ALL to improve the speed of the calculations
-                    if (GET_C_IN_CV_IN_DYNCORE) then
-                        NMX_ALL( : ) =  - matmul(UFENX_ALL_REVERSED(:,:,U_ILOC),  DETWEI( : ) * CVN_REVERSED( :, P_JLOC ))
-                    else
-                        NMX_ALL( : ) = matmul(CVFENX_ALL_REVERSED(:,:,P_JLOC),  DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ))
-                    end if
+                    NMX_ALL( : ) = matmul(CVFENX_ALL_REVERSED(:,:,P_JLOC),  DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ))
                     Loop_Phase1: DO IPHASE = 1, Mdims%nphase
                         ! Put into matrix
                         IF ( .NOT.GOT_C_MATRIX ) THEN
@@ -3627,11 +3618,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             P_JLOC = CV_SLOC2LOC( P_SJLOC )
                             if(.not.got_c_matrix) JCV_NOD = ndgln%suf_p(( SELE - 1 ) * Mdims%p_snloc + P_SJLOC )
                             !Calculate aid variable NMX_ALL
-                            if (GET_C_IN_CV_IN_DYNCORE) then                                                   !WE NEED A REVERSED FE_funs%sbcvn
-                                NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * FE_funs%sbcvn( P_SJLOC, : ) * SDETWE( : ))
-                            else
-                                NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * SBCVFEN_REVERSED( :, P_SJLOC ) * SDETWE( : ))
-                            end if
+                            NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * SBCVFEN_REVERSED( :, P_SJLOC ) * SDETWE( : ))
                             IF(IGOT_VOL_X_PRESSURE==1) THEN
                                 DO IPHASE = 1, Mdims%nphase
                                     VOL_FRA_NMX_ALL( :, IPHASE ) = VOL_FRA_NMX_ALL( :, IPHASE ) + sum(SVOL_FRA( IPHASE, : )) * NMX_ALL( : )
@@ -3645,7 +3632,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                     IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE, ELE, U_ILOC, P_JLOC, &
                                     Mdims%totele, Mdims%u_nloc, Mdims%p_nloc )
                             END IF
-                            if (.not.everything_c_cv) then!If Mmat%C_CV then BCs are introduced in CV_ASSEMB
+                            if (.not.Mmat%CV_pressure) then!If Mmat%C_CV then BCs are introduced in CV_ASSEMB
                                 DO IPRES = 1, Mdims%npres
                                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
                                         DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
@@ -3658,33 +3645,15 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                                     LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                         - VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + Mdims%p_snloc * ( SELE - 1) )
                                                 ELSE
-                                                    if(GET_C_IN_CV_IN_DYNCORE) then
-                                                        !                                                    IF ( .NOT.GOT_C_MATRIX ) THEN
-                                                        !                                                        Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                        !                                                            - NMX_ALL( IDIM) ! subtract out as we have added it in the surface of the elements
-                                                        !                                                    END IF
-                                                        LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                            - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + Mdims%p_snloc* ( SELE - 1 ) )
-                                                    else!ORIGINAL FORMULATION
-                                                        IF ( .NOT.GOT_C_MATRIX ) THEN
-                                                            Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                                + NMX_ALL( IDIM )
-                                                        END IF
-                                                        LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                            - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + Mdims%p_snloc* ( SELE - 1 ) )
-                                                    endif
+                                                    IF ( .NOT.GOT_C_MATRIX ) THEN
+                                                        Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
+                                                            + NMX_ALL( IDIM )
+                                                    END IF
+                                                    LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                        - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + Mdims%p_snloc* ( SELE - 1 ) )
                                                 END IF
                                             END DO
                                         END DO
-                                    else if(GET_C_IN_CV_IN_DYNCORE) then !Surface contribution
-                                        IF ( .NOT.GOT_C_MATRIX ) THEN
-                                            DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
-                                                DO IDIM = 1, Mdims%ndim
-                                                    Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                        - NMX_ALL( IDIM) ! subtract out as we have added it in the surface of the elements
-                                                end do
-                                            end do
-                                        END IF
                                     END IF
                                 END DO
                             end if
@@ -3718,8 +3687,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                    ! ***********SUBROUTINE DETERMINE_SUF_PRES - END************
                 ENDIF If_on_boundary_domain
                 If_ele2_notzero: IF(ELE2 /= 0) THEN
-                    got_c_matrix1: if(.not.got_c_matrix) then   !NOT VERY ELEGANT THE GET_C_IN_CV_IN_DYNCORE
-                        discontinuous_pres: IF(DISC_PRES.or. GET_C_IN_CV_IN_DYNCORE) THEN
+                    got_c_matrix1: if(.not.got_c_matrix) then
+                        discontinuous_pres: IF(DISC_PRES) THEN
                             IF( VOL_ELE_INT_PRES ) THEN
                                 ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
                                 MASSE = MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 )
@@ -3738,13 +3707,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                     U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
                                     VNMX_ALL = 0.0
                                     DO SGI = 1, FE_GIdims%sbcvngi
-                                        if (GET_C_IN_CV_IN_DYNCORE) then                                       !WE NEED A REVERSED FE_funs%sbcvn
-                                            RNN = SDETWE( SGI ) * SBUFEN_REVERSED( SGI, U_SILOC ) * FE_funs%sbcvn( P_SJLOC, SGI )
-                                            VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
-                                        else
-                                            RNN = SDETWE( SGI ) * SBUFEN_REVERSED( SGI, U_SILOC ) * SBCVFEN_REVERSED( SGI, P_SJLOC )
-                                            VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
-                                        end if
+                                        RNN = SDETWE( SGI ) * SBUFEN_REVERSED( SGI, U_SILOC ) * SBCVFEN_REVERSED( SGI, P_SJLOC )
+                                        VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
                                     END DO
                                     CALL USE_POSINMAT_C_STORE( COUNT, U_INOD, P_JNOD,  &
                                         Mdims%u_nonods, Mspars%C%fin, Mspars%C%col, Mspars%C%ncol, &
@@ -3759,23 +3723,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                         ! weight integral according to non-uniform mesh spacing otherwise it will go unstable.
                                         IF ( .NOT.GOT_C_MATRIX ) THEN
                                             DO IDIM = 1, Mdims%ndim
-                                                !NOT VERY ELEGANT
-                                                IF(GET_C_IN_CV_IN_DYNCORE) THEN
-                                                    IF (DISC_PRES) THEN
-                                                        Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                            + VNMX_ALL( IDIM ) * 0.5
-                                                        Mmat%C( IDIM, IPHASE, COUNT2 ) = Mmat%C( IDIM, IPHASE, COUNT2 ) &
-                                                            + VNMX_ALL( IDIM ) * 0.5
-                                                    ELSE
-                                                        Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                            - VNMX_ALL( IDIM )
-                                                    END IF
-                                                ELSE!ORIGINAL DISCONTINUOUS BETWEEN ELEMENTS FORMULATION
-                                                    Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                        + VNMX_ALL( IDIM ) * MASSE / ( MASSE + MASSE2 )
-                                                    Mmat%C( IDIM, IPHASE, COUNT2 ) = Mmat%C( IDIM, IPHASE, COUNT2 ) &
-                                                        - VNMX_ALL( IDIM ) *  MASSE / ( MASSE + MASSE2 )
-                                                END IF
+                                                Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
+                                                    + VNMX_ALL( IDIM ) * MASSE / ( MASSE + MASSE2 )
+                                                Mmat%C( IDIM, IPHASE, COUNT2 ) = Mmat%C( IDIM, IPHASE, COUNT2 ) &
+                                                    - VNMX_ALL( IDIM ) *  MASSE / ( MASSE + MASSE2 )
                                             END DO
                                         END IF
                                     END DO Loop_Phase5
