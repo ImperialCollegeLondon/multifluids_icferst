@@ -134,7 +134,6 @@ contains
         MASS_MN_PRES, THERMAL, RETRIEVE_SOLID_CTY, &
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, &
-        StorageIndexes, &
         saturation,OvRelax_param, Phase_with_Pc, IDs_ndgln, Courant_number,&
         RECALC_C_CV, SUF_INT_MASS_MATRIX)
         !  =====================================================================
@@ -297,7 +296,6 @@ contains
         REAL, DIMENSION( :, :, :, : ), target, intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV ! (Mdims%npres,Mdims%cv_nonods)
         REAL, DIMENSION( : ), intent( inout ), OPTIONAL  :: MASS_ELE_TRANSP
-        integer, dimension(:), intent(inout) :: StorageIndexes
         type(tensor_field), intent(in), optional, target :: saturation
         !Variables for Capillary pressure
         real, optional, dimension(:), intent(in) :: OvRelax_param
@@ -1090,8 +1088,7 @@ contains
                 Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
                 CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%stotel, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
                 CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
-                CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, &
-                storage_state, "DGDEVAL2", StorageIndexes( 3 ) )
+                CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly)
         END IF
         !     =============== DEFINE THETA FOR TIME-STEPPING ===================
         ! Define the type of time integration:
@@ -4515,7 +4512,7 @@ contains
         NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC,  &
         SUF_U_BC,SUF_V_BC,SUF_W_BC, &
         WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
-        SBCVFEN, SBCVFENSLX, SBCVFENSLY, storage_state, StorName, Indexes)
+        SBCVFEN, SBCVFENSLX, SBCVFENSLY)
 
         ! determine FEMT (finite element wise) etc from T (control volume wise)
         IMPLICIT NONE
@@ -4544,9 +4541,6 @@ contains
         REAL, DIMENSION( :, : ), intent( in ) :: SBUFEN, SBUFENSLX, SBUFENSLY
         REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
         REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-        type( state_type ), intent( inout ) :: storage_state
-        character(len=*), intent(in) :: StorName
-        integer, dimension(:), intent(inout) :: Indexes
 
         CALL DG_DERIVS( U, UOLD, &
             DUX_ELE, DUY_ELE, DUZ_ELE, DUOLDX_ELE, DUOLDY_ELE, DUOLDZ_ELE, &
@@ -4558,8 +4552,7 @@ contains
             X_NONODS, X, Y, Z, &
             NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_U_BC, &
             WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
-            SBCVFEN, SBCVFENSLX, SBCVFENSLY,&
-            storage_state, StorName//"U", Indexes(1))
+            SBCVFEN, SBCVFENSLX, SBCVFENSLY)
         IF(NDIM_VEL.GE.2) THEN
             CALL DG_DERIVS( V, VOLD, &
                 DVX_ELE, DVY_ELE, DVZ_ELE, DVOLDX_ELE, DVOLDY_ELE, DVOLDZ_ELE, &
@@ -4571,8 +4564,7 @@ contains
                 X_NONODS, X, Y, Z, &
                 NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_V_BC, &
                 WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
-                SBCVFEN, SBCVFENSLX, SBCVFENSLY,&
-                storage_state, StorName//"V", Indexes(2))
+                SBCVFEN, SBCVFENSLX, SBCVFENSLY)
         ELSE
             DVX_ELE=0; DVY_ELE=0; DVZ_ELE=0; DVOLDX_ELE=0; DVOLDY_ELE=0; DVOLDZ_ELE=0
         ENDIF
@@ -4588,8 +4580,7 @@ contains
                 X_NONODS, X, Y, Z, &
                 NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_W_BC, &
                 WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
-                SBCVFEN, SBCVFENSLX, SBCVFENSLY,&
-                storage_state,StorName//"W", Indexes(3))
+                SBCVFEN, SBCVFENSLX, SBCVFENSLY)
         ELSE
             DWX_ELE=0; DWY_ELE=0; DWZ_ELE=0; DWOLDX_ELE=0; DWOLDY_ELE=0; DWOLDZ_ELE=0
         ENDIF
@@ -4608,8 +4599,7 @@ contains
         X_NONODS, X, Y, Z, &
         NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
         WIC_T_BC_DIRICHLET, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY,&
-        storage_state, StorName,indx )
+        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
 
         ! determine FEMT (finite element wise) etc from T (control volume wise)
         IMPLICIT NONE
@@ -4633,15 +4623,13 @@ contains
         REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
         REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
         REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-        type( state_type ), intent( inout ) :: storage_state
-        character(len=*), intent(in) :: StorName
-        integer, intent(inout) :: indx
         ! Local variables
         LOGICAL :: D1, D3, APPLYBC
         LOGICAL, PARAMETER :: DCYL = .FALSE.
-        REAL, pointer, DIMENSION( : ) :: DETWEI, RA
-        REAL, pointer, DIMENSION( :, :,: ) :: NX_ALL, X_NX_ALL
-        real, pointer :: VOLUME
+        REAL, DIMENSION( CV_NGI ) :: DETWEI, RA
+        REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI ) :: NX_ALL
+        REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
+        real :: VOLUME
         REAL, DIMENSION( :, :, : ), allocatable :: MASELE
         REAL, DIMENSION( :, :, : ), allocatable :: VTX_ELE, VTY_ELE, VTZ_ELE, VTOLDX_ELE, VTOLDY_ELE, VTOLDZ_ELE
         REAL, DIMENSION( :, : ), allocatable :: MASS, INV_MASS
@@ -4698,33 +4686,14 @@ contains
 
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
-        !DCYL = .FALSE.
-        ! ewrite(3,*)'****X_NLX:',X_NLX
-        ! ewrite(3,*)'****X_NLY:',X_NLY
-
         Loop_Elements1: DO ELE = 1, TOTELE
 
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            !CALL DETNLXR_SUPER( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, X_NLOC, CV_NLOC, CV_NGI, &
-            !     X_N, X_NLX, X_NLY, X_NLZ, N, NLX, NLY, NLZ, &
-            !     CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-            !     NX, NY, NZ )
-            ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
+            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
                 X_NLOC, X_NLOC, CV_NGI, &
                 X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
                 X_NX_ALL, &
-                CV_NLOC, NLX, NLY, NLZ, NX_ALL,&
-                storage_state,StorName, indx)
-
-            !ewrite(3,*)'N',N
-            !ewrite(3,*)'nlx:',nlx
-            !ewrite(3,*)'nx:',nx
-            !ewrite(3,*)'CVWEIGHT:',CVWEIGHT
-            !ewrite(3,*)'DETWEI:',DETWEI
-            !ewrite(3,*)'volume=',volume
-            !stop 12
-
+                CV_NLOC, NLX, NLY, NLZ, NX_ALL)
 
             Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
 
@@ -4764,30 +4733,6 @@ contains
 
         END DO Loop_Elements1
 
-        ! Example of    CV_SLOCLIST for a tet element.
-        !         INTEGER CV_SLOCLIST(NFACE,CV_SNLOC)
-        !         ! The local cords are in anti-clockwise order
-        !         IFACE=1
-        !         CV_SLOCLIST(IFACE,1)=1
-        !         CV_SLOCLIST(IFACE,2)=2
-        !         CV_SLOCLIST(IFACE,3)=3
-        !         IFACE=2
-        !         CV_SLOCLIST(IFACE,1)=1
-        !         CV_SLOCLIST(IFACE,2)=2
-        !         CV_SLOCLIST(IFACE,3)=4
-        !         IFACE=3
-        !         CV_SLOCLIST(IFACE,1)=3
-        !         CV_SLOCLIST(IFACE,2)=2
-        !         CV_SLOCLIST(IFACE,3)=4
-        !         IFACE=4
-        !         CV_SLOCLIST(IFACE,1)=1
-        !         CV_SLOCLIST(IFACE,2)=3
-        !         CV_SLOCLIST(IFACE,3)=4
-
-        ! Loop over surface elements
-        ! EWRITE(3,*)'VTX_ELE(1,1,1 ):',VTX_ELE(1,1,1)
-
-        ! ewrite(3,*)'totele=',totele
 
 
         Loop_Elements2: DO ELE=1,TOTELE
@@ -4822,30 +4767,17 @@ contains
                     SNORMXN, SNORMYN, SNORMZN, &
                     NORMX, NORMY, NORMZ )
 
-                !ewrite(3,*)'*********************'
-                !ewrite(3,*)'ele,ele2,sele2:',ele,ele2,sele2
-                !ewrite(3,*)'iface=',iface
                 IF(SELE2 == 0) THEN
                     ! Calculate the nodes on the other side of the face:
-                    !ewrite(3,*)'X_NLOC,CV_SNLOC,CV_NLOC,ele,ele2:',X_NLOC,CV_SNLOC,CV_NLOC,ele,ele2
-                    !ewrite(3,*)'SLOC2LOC:',SLOC2LOC
                     DO CV_SILOC = 1, CV_SNLOC
                         CV_ILOC = SLOC2LOC( CV_SILOC )
                         CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
-                        ! ewrite(3,*)'CV_SILOC,CV_ILOC,CV_INOD:',CV_SILOC,CV_ILOC,CV_INOD
                         DO CV_ILOC2 = 1, CV_NLOC
                             CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
-                            ! ewrite(3,*)'CV_INOD2,CV_INOD=',CV_INOD2,CV_INOD
                             IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
                         END DO
                     END DO
-                    ! ewrite(3,*)'ILOC_OTHER_SIDE:',ILOC_OTHER_SIDE
                     APPLYBC=(ELE /= ELE2).AND.(ELE2 /= 0)
-                   !ewrite(3,*)'ele,ele2:',ele,ele2
-                   !ewrite(3,*)'iface=',iface
-                   !ewrite(3,*)'CV_SLOCLIST:',CV_SLOCLIST
-                   !ewrite(3,*)'SLOC2LOC:',SLOC2LOC
-                   !ewrite(3,*)'ILOC_OTHER_SIDE:',ILOC_OTHER_SIDE
                 ELSE
                     APPLYBC = ( WIC_T_BC(SELE2) == WIC_T_BC_DIRICHLET )
                 ENDIF
@@ -4863,10 +4795,6 @@ contains
                                 NRBC=0.0
                             ELSE
                                 CV_JLOC2=ILOC_OTHER_SIDE(CV_SJLOC)
-                                ! ewrite(3,*)'(ELE2-1)*CV_NLOC+CV_JLOC2,ELE2,CV_NLOC,CV_JLOC2:', &
-                                !      (ELE2-1)*CV_NLOC+CV_JLOC2,ELE2,CV_NLOC,CV_JLOC2
-                                ! ewrite(3,*)'ILOC_OTHER_SIDE:',ILOC_OTHER_SIDE
-                                ! ewrite(3,*)'ELE,ELE2,SELE2,CV_JLOC2=',ELE,ELE2,SELE2,CV_JLOC2
                                 CV_NODJ2=CV_NDGLN((ELE2-1)*CV_NLOC+CV_JLOC2)
                                 NRBC=1.0
                             ENDIF
@@ -4880,10 +4808,6 @@ contains
                                 VLM_NORY=VLM_NORY+SNORMYN(SGI)*RNN
                                 VLM_NORZ=VLM_NORZ+SNORMZN(SGI)*RNN
                             END DO
-                            !         EWRITE(3,*)'IFACE,CV_SILOC,CV_SJLOC:',IFACE,CV_SILOC,CV_SJLOC
-                            !         EWRITE(3,*)'VLM_NORX,VLM_NORY,VLM_NORZ:',VLM_NORX,VLM_NORY,VLM_NORZ
-                            !         EWRITE(3,*)'SNORMXN:',SNORMXN
-                            !         EWRITE(3,*)'SDETWE:',SDETWE
                             ! add diffusion term...
                             DO IPHASE=1,NPHASE
                                 CV_NODJ_IPHA =CV_NODJ  + (IPHASE-1)*CV_NONODS
@@ -4932,23 +4856,11 @@ contains
 
 
         ! Solve local system for the gradients DTX_ELE etc:
-        !        ewrite(3,*)'masele:', masele
-        !        ewrite(3,*)'ndim=',ndim
 
         Loop_Elements3: DO ELE=1,TOTELE
-            ! ewrite(3,*)'ele=',ele
 
             MASS(:,:)=MASELE(:,:,ELE)
-            ! ewrite(3,*)'mass=',mass
-            ! ewrite(3,*)'MASELE(:,:,ELE):',MASELE(:,:,ELE)
             CALL MATDMATINV( MASS, INV_MASS, CV_NLOC)
-            ! ewrite(3,*)'here 1'
-            ! ewrite(3,*)'inv_mass=',inv_mass
-
-            !INV_MASS = 0.0
-            !INV_MASS(1,1) = 1./sum( MASS(1,:))
-            !INV_MASS(2,2) =  1./sum( MASS(2,:))
-            !INV_MASS(3,3) =  1./sum( MASS(3,:))
 
 
             Loop_IPHASE: DO IPHASE=1,NPHASE
@@ -4959,7 +4871,6 @@ contains
                 VTOLDX(:)=VTOLDX_ELE(:, IPHASE,ELE )
                 VTOLDY(:)=VTOLDY_ELE(:, IPHASE,ELE )
                 VTOLDZ(:)=VTOLDZ_ELE(:, IPHASE,ELE )
-                ! ewrite(3,*)'heree 2'
                 DTX=0.0
                 DTY=0.0
                 DTZ=0.0
@@ -4976,17 +4887,12 @@ contains
                         DTOLDZ(CV_ILOC)=DTOLDZ(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*VTOLDZ(CV_JLOC)
                     END DO
                 END DO
-                ! ewrite(3,*)'heree 3'
                 DTX_ELE(:, IPHASE,ELE )=DTX(:)
-                ! ewrite(3,*)'heree 3.01'
                 DTY_ELE(:, IPHASE,ELE )=DTY(:)
-                ! ewrite(3,*)'heree 3.02'
                 DTZ_ELE(:, IPHASE,ELE )=DTZ(:)
-                ! ewrite(3,*)'heree 3.1'
                 DTOLDX_ELE(:, IPHASE,ELE )=DTOLDX(:)
                 DTOLDY_ELE(:, IPHASE,ELE )=DTOLDY(:)
                 DTOLDZ_ELE(:, IPHASE,ELE )=DTOLDZ(:)
-               ! ewrite(3,*)'heree 3.2'
 
             END DO Loop_IPHASE
 
@@ -5041,8 +4947,7 @@ contains
         X_NONODS, X, Y, Z, &
         NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
         SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY,&
-        storage_state, StorName, indx  )
+        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
 
         ! determine FEMT (finite element wise) etc from T (control volume wise)
         IMPLICIT NONE
@@ -5066,18 +4971,15 @@ contains
         REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
         REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
         REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-        type( state_type ), intent( inout ) :: storage_state
-        character(len=*), intent(in) :: StorName
-        integer, intent(inout) :: indx
         ! Local variables
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
         LOGICAL :: D1, D3, APPLYBC( NCOMP, NPHASE )
         LOGICAL, PARAMETER :: DCYL = .FALSE.
-        REAL, pointer, dimension( : ) :: DETWEI, RA
-        REAL, pointer, DIMENSION( :,:,:):: NX_ALL
-        REAL, pointer, DIMENSION( :, :, : ) :: X_NX_ALL
-        REAL, pointer :: VOLUME
+        REAL, dimension( CV_NGI ) :: DETWEI, RA
+        REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI):: NX_ALL
+        REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
+        REAL :: VOLUME
         REAL, DIMENSION( CV_NLOC, CV_NLOC )  :: MASS, INV_MASS
         REAL, DIMENSION( NDIM, X_SNLOC ) :: XSL( 3, X_SNLOC ), SNORMXN( 3, SBCVNGI ), SDETWE( SBCVNGI )
         INTEGER  :: SLOC2LOC( CV_SNLOC ), X_SLOC2LOC( X_SNLOC ), ILOC_OTHER_SIDE( CV_SNLOC )
@@ -5108,13 +5010,11 @@ contains
         Loop_Elements1: DO ELE = 1, TOTELE
 
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
+            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
                 X_NLOC, X_NLOC, CV_NGI, &
                 X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
                 X_NX_ALL, &
-                CV_NLOC, NLX, NLY, NLZ, NX_ALL&
-                , storage_state,StorName , indx )
-
+                CV_NLOC, NLX, NLY, NLZ, NX_ALL)
             Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
 
                 CV_NODI = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
@@ -5295,8 +5195,7 @@ contains
         X_NONODS, X, Y, Z, &
         NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
         SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY,&
-        storage_state, StorName, StorageIndexes  )
+        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
 
         ! determine FEMT (finite element wise) etc from T (control volume wise)
         IMPLICIT NONE
@@ -5320,19 +5219,16 @@ contains
         REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
         REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
         REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-        type( state_type ), intent( inout ) :: storage_state
-        character(len=*), intent(in) :: StorName
-        integer, intent(inout) :: StorageIndexes
 
         ! Local variables
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
         LOGICAL :: D1, D3, APPLYBC( NPHASE )
         LOGICAL, PARAMETER :: DCYL = .FALSE.
-        REAL, pointer, dimension( : ) :: DETWEI, RA
-        REAL, pointer, DIMENSION( :,:,:):: NX_ALL
-        REAL, pointer, DIMENSION( :, :, : ) :: X_NX_ALL
-        REAL, pointer :: VOLUME
+        REAL, dimension( CV_NGI ) :: DETWEI, RA
+        REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI):: NX_ALL
+        REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
+        REAL :: VOLUME
         REAL, DIMENSION( CV_NLOC, CV_NLOC )  :: MASS, INV_MASS
         REAL, DIMENSION( NDIM, X_SNLOC ) :: XSL( 3, X_SNLOC ), SNORMXN( NDIM, SBCVNGI ), SDETWE( SBCVNGI )
         INTEGER  :: SLOC2LOC( CV_SNLOC ), X_SLOC2LOC( X_SNLOC ), ILOC_OTHER_SIDE( CV_SNLOC )
@@ -5355,16 +5251,15 @@ contains
         D1 = ( NDIM == 1 )
         D3 = ( NDIM == 3 )
         !DCYL = .FALSE.
-
         Loop_Elements1: DO ELE = 1, TOTELE
 
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
+            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
                 X_NLOC, X_NLOC, CV_NGI, &
                 X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
                 X_NX_ALL, &
-                CV_NLOC, NLX, NLY, NLZ, NX_ALL&
-                , storage_state, StorName , StorageIndexes )
+                CV_NLOC, NLX, NLY, NLZ, NX_ALL)
+
 
             Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
 

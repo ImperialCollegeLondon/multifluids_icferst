@@ -173,15 +173,15 @@ contains
         integer, dimension (38) :: StorageIndexes
         !Distribution of the indexes of StorageIndexes:
         !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)   (REMOVED)
-        !CALC_ANISOTROP_LIM            : 2 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?) (REMOVED)
-        !DG_DERIVS_ALL2                : 3 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
+        !CALC_ANISOTROP_LIM            : 2 (REMOVED)
+        !DG_DERIVS_ALL2                : 3 (REMOVED)
         !DETNLXR_INVJAC                : 4 (removed)
-        !UNPACK_LOC                    : 5,6,7,8,9,10 (disabled) (REMOVED)
-        !COLOR_GET_CMC_PHA             : 11 (can be optimised, now it is not using only pointers) (REMOVED)
+        !UNPACK_LOC                    : 5,6,7,8,9,10(REMOVED)
+        !COLOR_GET_CMC_PHA             : 11 (REMOVED)
         !Matrix C                      : 12 (REMOVED)
-        !DG_DERIVS_ALL                 : 14 (DETNLXR_PLUS_U_WITH_STORAGE in the inside)
+        !DG_DERIVS_ALL                 : 14 (REMOVED)
         !DETNLXR_PLUS_U_WITH_STORAGE   : 14
-        !Indexes used in SURFACE_TENSION_WRAPPER (deprecated and will be removed):[15,30]
+        !Indexes used in SURFACE_TENSION_WRAPPER (deprecated and will be removed):[15,30] (REMOVED)
         !PROJ_CV_TO_FEM_state          : 31 (disabled) (removed)
         !Capillary pressure            : 32 (Pe), 33 (exponent a) (disabled) (removed?)
         !PIVIT_MAT (inverted)          : 34 (REMOVED)
@@ -489,8 +489,6 @@ contains
             its = 1
             Loop_NonLinearIteration: do  while (its <= NonLinearIteration)
                 ewrite(2,*) '  NEW ITS', its
-                !To force the recalculation of all the stored variables uncomment the following line:
-                !           call Clean_Storage(storage_state, StorageIndexes)
                 ! open the boiling test for two phases-gas and liquid
                 if (have_option('/boiling') ) then
                    call set_nu_to_u( packed_state )
@@ -536,7 +534,7 @@ if (.true.) then
                         Mean_Pore_CV, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
 end if
@@ -622,7 +620,7 @@ if ( new_ntsol_loop  ) then
                         Mean_Pore_CV, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
                     call Calculate_All_Rhos( state, packed_state, Mdims )
 
                     exit
@@ -638,7 +636,7 @@ if ( new_ntsol_loop  ) then
                         THETA_GDIFF,  Mean_Pore_CV, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        StorageIndexes=StorageIndexes, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                end if
                     
@@ -709,7 +707,7 @@ end if
                         mass_ele_transp = mass_ele,&
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j,&
-                        StorageIndexes=StorageIndexes, Material_Absorption=Material_Absorption,&
+                        Material_Absorption=Material_Absorption,&
                         nonlinear_iteration = its, IDs_ndgln = IDs_ndgln, IDs2CV_ndgln = IDs2CV_ndgln, &
                         Courant_number = Courant_number)
                 end if Conditional_PhaseVolumeFraction
@@ -760,7 +758,7 @@ end if
                                 theta_gdiff, Mean_Pore_CV, &
                                 thermal = .false.,& ! the false means that we don't add an extra source term
                                 theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
-                                StorageIndexes=StorageIndexes, icomp=icomp, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                                icomp=icomp, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
                             tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
                         end do Loop_NonLinearIteration_Components
                         sum_theta_flux = sum_theta_flux + theta_flux
@@ -936,12 +934,12 @@ end if
             numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
             if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
-                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type, 0)
+                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type, 0)
                 else
                     ! In this case, we don't adapt the mesh so we just call both routines straight away which gives back the original field
                     ! Alternatively could just do nothing here
-                    !call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type ,Mdims%nphase, 0, Mdisopt%p_ele_type, Mdims%cv_nloc, Mdims%cv_snloc)
-                    !call M2MInterpolation(state, packed_state, storage_state, StorageIndexes, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type , Mdims%nphase, 1, Mdisopt%p_ele_type, Mdims%cv_nloc, Mdims%cv_snloc)
+                    !call M2MInterpolation(state, packed_state, storage_state, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type ,Mdims%nphase, 0, Mdisopt%p_ele_type, Mdims%cv_nloc, Mdims%cv_snloc)
+                    !call M2MInterpolation(state, packed_state, storage_state, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type , Mdims%nphase, 1, Mdisopt%p_ele_type, Mdims%cv_nloc, Mdims%cv_snloc)
                     !call MemoryCleanupInterpolation2() ! Deallocate the memory used in the second call - the 1st call is deactivated right at the end
                 endif
             endif
@@ -1326,7 +1324,7 @@ end if
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields > 0) then
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
-                        call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, &
+                        call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, &
                                 Mspars%small_acv%fin, Mspars%small_acv%col, Mdisopt%cv_ele_type , 1, IDs2CV_ndgln = IDs2CV_ndgln)
                         call MemoryCleanupInterpolation2()
                     endif
