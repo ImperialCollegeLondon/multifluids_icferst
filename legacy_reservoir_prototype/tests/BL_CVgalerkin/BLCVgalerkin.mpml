@@ -522,6 +522,39 @@
         <detectors>
           <include_in_detectors/>
         </detectors>
+        <CVgalerkin_interpolation/>
+      </prognostic>
+    </scalar_field>
+    <scalar_field name="ProjectedPVF_Continuous" rank="0">
+      <diagnostic>
+        <algorithm source_field_type="scalar" material_phase_support="single" name="scalar_galerkin_projection" source_field_name="PhaseVolumeFraction">
+          <solver>
+            <iterative_method name="cg"/>
+            <preconditioner name="sor"/>
+            <relative_error>
+              <real_value rank="0">1.0e-7</real_value>
+            </relative_error>
+            <max_iterations>
+              <integer_value rank="0">30</integer_value>
+            </max_iterations>
+            <never_ignore_solver_failures/>
+            <diagnostics>
+              <monitors/>
+            </diagnostics>
+          </solver>
+        </algorithm>
+        <mesh name="CoordinateMesh"/>
+        <output/>
+        <stat/>
+        <convergence>
+          <include_in_convergence/>
+        </convergence>
+        <detectors>
+          <include_in_detectors/>
+        </detectors>
+        <steady_state>
+          <include_in_steady_state/>
+        </steady_state>
         <adaptivity_options>
           <absolute_measure>
             <scalar_field name="InterpolationErrorBound" rank="0">
@@ -540,8 +573,7 @@
             </scalar_field>
           </absolute_measure>
         </adaptivity_options>
-        <CVgalerkin_interpolation/>
-      </prognostic>
+      </diagnostic>
     </scalar_field>
     <multiphase_properties>
       <immobile_fraction>
