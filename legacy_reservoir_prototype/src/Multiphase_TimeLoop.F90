@@ -177,7 +177,7 @@ contains
         !DG_DERIVS_ALL2                : 3 (DETNLXR_PLUS_U_WITH_STORAGE in the inside, maybe 14 as well?)
         !DETNLXR_INVJAC                : 4 (removed)
         !UNPACK_LOC                    : 5,6,7,8,9,10 (disabled) (REMOVED)
-        !COLOR_GET_CMC_PHA             : 11 (can be optimised, now it is not using only pointers)
+        !COLOR_GET_CMC_PHA             : 11 (can be optimised, now it is not using only pointers) (REMOVED)
         !Matrix C                      : 12 (REMOVED)
         !DG_DERIVS_ALL                 : 14 (DETNLXR_PLUS_U_WITH_STORAGE in the inside)
         !DETNLXR_PLUS_U_WITH_STORAGE   : 14

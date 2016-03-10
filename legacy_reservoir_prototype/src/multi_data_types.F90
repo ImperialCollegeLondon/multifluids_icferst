@@ -163,7 +163,8 @@ module multi_data_types
         type(petsc_csr_matrix) :: petsc_ACV!Matrix of the saturation equation
         type(vector_field) :: CV_RHS!Rigth hand side of the saturation equation
         real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()!Mass matrix (matrix form by the sigmas) (storable)
-        !ADD ANOTHER POINTER ARRAY TO STORE THE COLOURING
+        integer, dimension(:), pointer :: ICOLOR => null()!Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
+        integer :: NCOLOR !Number of colors in ICOLOR
         type(petsc_csr_matrix):: DGM_PETSC!Big matrix to solve the pressure in inertia flows (don't know much more)
         logical :: NO_MATRIX_STORE !Flag to whether calculate and use DGM_PETSC or C
         logical :: CV_pressure     !Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)

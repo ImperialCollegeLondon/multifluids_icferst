@@ -918,21 +918,18 @@ contains
             end if
             if (Mmat%CV_pressure) then
                 !Use Mmat%C_CV to form the CMC matrix
-                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln,&
-                Mmat%PIVIT_MAT, &
+                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
                 MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
-                got_free_surf,  MASS_SUF, &
-                Mmat%C_CV, Mmat%CT, storage_state, StorageIndexes(11), halo, symmetric_P )
+                got_free_surf,  MASS_SUF, symmetric_P )
             else
-                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln,&
-                Mmat%PIVIT_MAT, &
+                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
                 MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
                 got_free_surf,  MASS_SUF, &
-                Mmat%C, Mmat%CT, storage_state, StorageIndexes(11), halo, symmetric_P )
+                symmetric_P )
             end if
         END IF
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
@@ -964,7 +961,7 @@ contains
                 !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
                 U_RHS_CDP2 = Mmat%U_RHS + CDP_tensor%val
                 ! DU = BLOCK_MAT * CDP
-                CALL PHA_BLOCK_MAT_VEC_old( UP_VEL, Mmat%PIVIT_MAT, U_RHS_CDP2, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, &
+                CALL PHA_BLOCK_MAT_VEC_old( UP_VEL, Mmat%PIVIT_MAT, U_RHS_CDP2, Mdims%ndim, Mdims%nphase, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
                 U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             ELSE
@@ -995,7 +992,7 @@ IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
             else
                DO IPHASE = 1, Mdims%nphase
                   CALL CT_MULT_WITH_C3( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
-                       Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, Mmat%C( :, IPHASE : IPHASE, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                       Mdims%u_nonods, Mdims%ndim, 1, Mmat%C( :, IPHASE : IPHASE, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                END DO
             end if
             DO CV_NOD = 1, Mdims%cv_nonods
@@ -1015,7 +1012,7 @@ ELSE
             else
                DO IPRES = 1, Mdims%npres
                   CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
-                       Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                       Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                END DO
             end if
 END IF
@@ -1099,7 +1096,7 @@ END IF
             call halo_update(cdp_tensor)
             ! Correct velocity...
             ! DU = BLOCK_MAT * CDP
-            CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, &
+            CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
             Mdims%totele, Mdims%u_nloc, ndgln%u )
             U_ALL2 % VAL = U_ALL2 % VAL + DU_VEL
             if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
@@ -2521,9 +2518,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !                END DO
 !
 !                DO IPHASE = 1, Mdims%nphase
-!                    CALL SMLINNGOT( STORE_MASS_U, UDEN_VFILT( IPHASE, : ), RHS_U_CV( IPHASE, : ), Mdims%u_nloc, Mdims%u_nloc, IPIV, GOTDEC )
+!                    CALL SMLINNGOT( STORE_MASS_U, UDEN_VFILT( IPHASE, : ), RHS_U_CV( IPHASE, : ), Mdims%u_nloc, IPIV, GOTDEC )
 !                    GOTDEC = .TRUE.
-!                    CALL SMLINNGOT( STORE_MASS_U, UDENOLD_VFILT( IPHASE, : ), RHS_U_CV_OLD( IPHASE, : ), Mdims%u_nloc, Mdims%u_nloc, IPIV, GOTDEC )
+!                    CALL SMLINNGOT( STORE_MASS_U, UDENOLD_VFILT( IPHASE, : ), RHS_U_CV_OLD( IPHASE, : ), Mdims%u_nloc, IPIV, GOTDEC )
 !                END DO
 !
 !                DO U_ILOC = 1, Mdims%u_nloc
@@ -5312,7 +5309,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          COUNT=POSINMAT_C_STORE(U_ILOC,P_JLOC,ELE)
      ELSE
          CALL POSINMAT( COUNT, U_INOD, P_JNOD,  &
-             U_NONODS, FINDC, COLC, NCOLC )
+             FINDC, COLC )
          IF(IDO_STORE_AC_SPAR_PT.NE.0) POSINMAT_C_STORE(U_ILOC,P_JLOC,ELE) = COUNT
      ENDIF
      RETURN
@@ -5338,7 +5335,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          COUNT=POSINMAT_C_STORE_SUF_DG(U_SILOC,P_SJLOC,IFACE,ELE)
      ELSE
          CALL POSINMAT( COUNT, U_INOD, P_JNOD,  &
-             U_NONODS, FINDC, COLC, NCOLC )
+             FINDC, COLC )
          IF(IDO_STORE_AC_SPAR_PT.NE.0) POSINMAT_C_STORE_SUF_DG(U_SILOC,P_SJLOC,IFACE,ELE)=COUNT
      ENDIF
      RETURN
@@ -6737,10 +6734,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                  ! STORE_MASS is overwritten by lu decomposition which used after the 1st solve.
                  STORE_MASS=MASS
                  GOTDEC = .FALSE.
-                 CALL SMLINNGOT( STORE_MASS, U_SOL_X, RHS_U_SHORT_X, U_NLOC, U_NLOC, IPIV,GOTDEC)
+                 CALL SMLINNGOT( STORE_MASS, U_SOL_X, RHS_U_SHORT_X, U_NLOC, IPIV,GOTDEC)
                  GOTDEC =.TRUE.
-                 IF(NDIM.GE.2) CALL SMLINNGOT( STORE_MASS, U_SOL_Y, RHS_U_SHORT_Y, U_NLOC, U_NLOC, IPIV,GOTDEC)
-                 IF(NDIM.GE.3) CALL SMLINNGOT( STORE_MASS, U_SOL_Z, RHS_U_SHORT_Z, U_NLOC, U_NLOC, IPIV,GOTDEC)
+                 IF(NDIM.GE.2) CALL SMLINNGOT( STORE_MASS, U_SOL_Y, RHS_U_SHORT_Y, U_NLOC, IPIV,GOTDEC)
+                 IF(NDIM.GE.3) CALL SMLINNGOT( STORE_MASS, U_SOL_Z, RHS_U_SHORT_Z, U_NLOC, IPIV,GOTDEC)
 
                  ! Solve mass matrix systems...
                  DO U_ILOC=1,U_NLOC

@@ -4192,12 +4192,12 @@ contains
                     MM = dot_product(CVN( CV_ILOC, : ) * CVN( CV_JLOC, : ) , DETWEI)
 
                     IF(IGETCT.NE.0) THEN
-                        CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, CV_NONODS, FINDCMC, COLCMC, NCOLCMC )
+                        CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, FINDCMC, COLCMC )
 
                         MASS_MN_PRES( COUNT ) = MASS_MN_PRES( COUNT ) + MN
                     ENDIF
 
-                    CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, CV_NONODS, FINDM, COLM, NCOLM )
+                    CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, FINDM, COLM)
 
                     MAT( COUNT ) = MAT( COUNT ) + NN
                     MASS_CV( CV_NODI ) = MASS_CV( CV_NODI ) + MM
@@ -4423,7 +4423,7 @@ contains
                     end if
 
                     if(igetct/=0) then
-                        call PosInMat(COUNT,cv_nodi,cv_nodj,Mdims%cv_nonods,Mspars%CMC%fin,Mspars%CMC%col,Mspars%CMC%ncol)
+                        call PosInMat(COUNT,cv_nodi,cv_nodj,Mspars%CMC%fin,Mspars%CMC%col)
                         mass_mn_pres(COUNT) = mass_mn_pres(COUNT)+mn
                     end if
 
@@ -5975,7 +5975,7 @@ contains
 
                 ! Solve MAT_LOC_2ELES *DIFF = VECRHS_2ELES
                 ! MAT is overwritten by decomposition
-                CALL SMLINNGOT( MAT, DIFF, VECRHS_2ELES, NLEN, NLEN, IPIV, GOTDEC)
+                CALL SMLINNGOT( MAT, DIFF, VECRHS_2ELES, NLEN, IPIV, GOTDEC)
                 GOTDEC =.TRUE.
                 DO U_SILOC=1,U_SNLOC
                     U_ILOC = U_SLOC2LOC( U_SILOC )

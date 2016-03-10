@@ -251,7 +251,7 @@ contains
        if(flag == 0) then ! Solve the element-wise matrix problem MMatrix*EleLHS = EleRHS for EleLHS
           gotdec = .false.
           do ifields = 1, nfields
-             call SMLINNGOT(MNatrix, EleLHS(ifields,:), EleRHS(ifields,:), Mdims%cv_nloc, Mdims%cv_nloc, ipiv, gotdec )
+             call SMLINNGOT(MNatrix, EleLHS(ifields,:), EleRHS(ifields,:), Mdims%cv_nloc, ipiv, gotdec )
              gotdec = .true.
           enddo
           ! Append this solution to the global ph_sol_old
