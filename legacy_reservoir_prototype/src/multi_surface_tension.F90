@@ -777,7 +777,7 @@ contains
 ! Solve MAT_LOC *CV_SOL = RHS_CV_SHORT
 ! STORE_MASS is overwritten by lu decomposition which used after the 1st solve. 
               GOTDEC = .FALSE.
-              CALL SMLINNGOT( MAT_LOC, CV_SOL, RHS_CV_SHORT, Mdims%cv_nloc, Mdims%cv_nloc, IPIV, GOTDEC)
+              CALL SMLINNGOT( MAT_LOC, CV_SOL, RHS_CV_SHORT, Mdims%cv_nloc, IPIV, GOTDEC)
 
 ! Solve mass matrix systems...
               DO CV_ILOC=1,Mdims%cv_nloc
@@ -1343,7 +1343,7 @@ contains
 
       SOL=0.
       GOTDEC = .FALSE.
-      CALL SMLINNGOT( MASS, SOL, RHS_DG, CV_NLOC, CV_NLOC, IPIV, GOTDEC)
+      CALL SMLINNGOT( MASS, SOL, RHS_DG, CV_NLOC, IPIV, GOTDEC)
 
       Between_Elements_And_Boundary1: DO IFACE = 1, -1!NFACE
          ELE2  = FACE_ELE( IFACE, ELE )
@@ -1555,10 +1555,10 @@ contains
       SOL_Y=0.
       SOL_Z=0.
       GOTDEC = .FALSE.
-      CALL SMLINNGOT( MASS, SOL_X, RHS_DG_X, CV_NLOC, CV_NLOC, IPIV, GOTDEC)
+      CALL SMLINNGOT( MASS, SOL_X, RHS_DG_X, CV_NLOC, IPIV, GOTDEC)
       GOTDEC=.TRUE.
-      IF(NDIM.GE.2) CALL SMLINNGOT( MASS, SOL_Y, RHS_DG_Y, CV_NLOC, CV_NLOC, IPIV, GOTDEC)
-      IF(NDIM.GE.3) CALL SMLINNGOT( MASS, SOL_Z, RHS_DG_Z, CV_NLOC, CV_NLOC, IPIV, GOTDEC)
+      IF(NDIM.GE.2) CALL SMLINNGOT( MASS, SOL_Y, RHS_DG_Y, CV_NLOC, IPIV, GOTDEC)
+      IF(NDIM.GE.3) CALL SMLINNGOT( MASS, SOL_Z, RHS_DG_Z, CV_NLOC, IPIV, GOTDEC)
 !      CALL MATDMATINV( MASS, INV_MASS, CV_NLOC)
 
 !      DO CV_ILOC=1,CV_NLOC
