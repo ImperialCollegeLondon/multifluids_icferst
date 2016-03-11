@@ -1327,6 +1327,8 @@ end if
 
             if ( ncomp > 1 ) then
 
+               t_field%val=0.0
+
                do icomp = 1, ncomp
                   do iphase = 1, nphase
 
@@ -1397,6 +1399,7 @@ end if
                      do iloc = 1, cv_nloc
                         mat_nod = mat_ndgln( (ele-1)*cv_nloc + iloc )
                         momentum_diffusion( mat_nod, :, :, iphase ) = mu_tmp( :, :, iloc )
+                        t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
                      end do
                   end do
 
