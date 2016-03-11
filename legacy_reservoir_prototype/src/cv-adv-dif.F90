@@ -546,7 +546,7 @@ contains
         SUF_INT_MASS_MATRIX2 = .false.
         RECAL_C_CV_RHS = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         if (present_and_true(RECALC_C_CV)) then
-            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .true.
+            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .not.Mmat%stored !.true.
             if (present_and_true(SUF_INT_MASS_MATRIX)) then
                 Mmat%PIVIT_MAT = 0.
                 SUF_INT_MASS_MATRIX2 = .true.
@@ -2148,11 +2148,6 @@ contains
                 call DETNLXR_INVJAC_new( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
                     CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, SCVFENX_ALL, INV_JAC)
 
-!                CALL DETNLXR_INVJAC_PLUS_STORAGE( ELE, X_ALL, ndgln%x, Mdims%totele, Mdims%x_nonods, &
-!                    Mdims%cv_nloc, CV_GIdims%scvngi, &
-!                    CV_funs%scvfen, CV_funs%scvfenlx_all, CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, &
-!                    SCVFENX_ALL, &
-!                    Mdims%ndim, INV_JAC, storage_state, "INVJAC", StorageIndexes(4) )
                 DO IPHASE = 1, Mdims%nphase
                     DO IDIM = 1, Mdims%ndim
                         JPHASE = IPHASE
@@ -4197,12 +4192,12 @@ contains
                     MM = dot_product(CVN( CV_ILOC, : ) * CVN( CV_JLOC, : ) , DETWEI)
 
                     IF(IGETCT.NE.0) THEN
-                        CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, CV_NONODS, FINDCMC, COLCMC, NCOLCMC )
+                        CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, FINDCMC, COLCMC )
 
                         MASS_MN_PRES( COUNT ) = MASS_MN_PRES( COUNT ) + MN
                     ENDIF
 
-                    CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, CV_NONODS, FINDM, COLM, NCOLM )
+                    CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, FINDM, COLM)
 
                     MAT( COUNT ) = MAT( COUNT ) + NN
                     MASS_CV( CV_NODI ) = MASS_CV( CV_NODI ) + MM
@@ -4428,7 +4423,7 @@ contains
                     end if
 
                     if(igetct/=0) then
-                        call PosInMat(COUNT,cv_nodi,cv_nodj,Mdims%cv_nonods,Mspars%CMC%fin,Mspars%CMC%col,Mspars%CMC%ncol)
+                        call PosInMat(COUNT,cv_nodi,cv_nodj,Mspars%CMC%fin,Mspars%CMC%col)
                         mass_mn_pres(COUNT) = mass_mn_pres(COUNT)+mn
                     end if
 
@@ -5980,7 +5975,7 @@ contains
 
                 ! Solve MAT_LOC_2ELES *DIFF = VECRHS_2ELES
                 ! MAT is overwritten by decomposition
-                CALL SMLINNGOT( MAT, DIFF, VECRHS_2ELES, NLEN, NLEN, IPIV, GOTDEC)
+                CALL SMLINNGOT( MAT, DIFF, VECRHS_2ELES, NLEN, IPIV, GOTDEC)
                 GOTDEC =.TRUE.
                 DO U_SILOC=1,U_SNLOC
                     U_ILOC = U_SLOC2LOC( U_SILOC )

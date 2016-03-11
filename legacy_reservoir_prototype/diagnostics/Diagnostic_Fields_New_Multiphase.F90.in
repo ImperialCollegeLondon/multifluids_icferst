@@ -283,7 +283,7 @@ contains
     type(tensor_field), pointer :: t_field
     type(vector_field), pointer :: v_field
     
-    ewrite(1, *) "In calculate_diagnostic_variables"
+    ewrite(1, *) "In calculate_diagnostic_variables MP"
     
     do i = 1, size(states)
       do j = 1, scalar_field_count(states(i))
@@ -328,7 +328,7 @@ contains
 
       do j = 1, tensor_field_count(states(i))
         t_field => extract_tensor_field(states(i), j)
-        cycle
+
         ! Only calculate non-aliased diagnostic fields
         if(aliased(t_field) .or. .not. have_option(trim(t_field%option_path) // "/diagnostic")) cycle
         ! Check whether this field should be calculated

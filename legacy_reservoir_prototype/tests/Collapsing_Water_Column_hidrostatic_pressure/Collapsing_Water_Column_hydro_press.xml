@@ -2,7 +2,6 @@
 <testproblem>
   <name>Collapsing_Water_Column</name>
   <owner userid="pablo.salinas"/>
- <!-- This test case tests the hydrostatic pressure for inertia dominated flow--> 
   <tags>components mpml</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>python ./Check_CWC.py &gt; log</command_line>
