@@ -65,7 +65,7 @@ module Copy_Outof_State
     public :: Get_Primary_Scalars, Get_Primary_Scalars_new, Compute_Node_Global_Numbers, &
         Extract_TensorFields_Outof_State, Get_Ele_Type, Get_Discretisation_Options, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
-        get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix, Clean_Storage,&
+        get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
         get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, Compute_Node_Global_Numbers_new
 
@@ -3720,32 +3720,6 @@ function GetFEMName(tfield) result(fem_name)
     end if
 
 end function GetFEMName
-
-!sprint_to_do!see what happens after modifying the storage
-subroutine Clean_Storage(storage_state, StorageIndexes)
-    !This subroutine removes all the storage controlled by StorageIndexes
-    Implicit none
-    type(state_type), intent(inout) :: storage_state
-    integer, dimension(:), intent(inout) :: StorageIndexes
-    !Local variables
-    character (len = 100) :: StorName
-    integer :: maxpos, ignored_var_pos, i
-
-    !Look for the position of stored things and remove them
-    do while (maxval(abs(StorageIndexes)) > 0)
-        maxpos = maxloc(abs(StorageIndexes), dim =1)
-        if (maxpos==38) then!TEMPORARY EXCEPTION => DO NOT REMOVE FROM STORAGE_STATE
-            StorageIndexes(maxpos) = 0
-            CYCLE
-        end if
-        StorName = trim(storage_state%scalar_names(abs(StorageIndexes(maxpos))))!This lines is
-        call remove_scalar_field(storage_state, trim(StorName))           !failing for Xie when using adaptive meshing
-        StorageIndexes(maxpos) = 0
-    end do
-    !Just in case
-    StorageIndexes = 0
-end subroutine Clean_Storage
-
 
 subroutine calculate_outflux(nphase, CVPressure, phaseV, Dens, Por, ndotqnew, surface_ids, totoutflux, ele , sele, &
     cv_ndgln, IDs_ndgln, cv_snloc, cv_nloc ,cv_siloc, cv_iloc , gi, detwei , SUF_T_BC_ALL)

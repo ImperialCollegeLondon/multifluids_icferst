@@ -1226,8 +1226,6 @@ end if
             end if Conditional_Adaptivity_ReallocatingFields
             new_mesh = do_reallocate_fields
             Conditional_ReallocatingFields: if( do_reallocate_fields ) then
-                !The stored variables must be recalculated
-                call Clean_Storage(storage_state, StorageIndexes)
                 Conditional_Adaptivity: if( have_option( '/mesh_adaptivity/hr_adaptivity ') .or. have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric')) then
                     Conditional_Adapt_by_TimeStep: if( mod( itime, adapt_time_steps ) == 0 .or. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
                         call pre_adapt_tasks( sub_state )

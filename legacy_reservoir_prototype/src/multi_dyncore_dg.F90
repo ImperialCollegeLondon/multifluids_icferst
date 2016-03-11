@@ -1521,9 +1521,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         MAT_ELE, DIFFGI_U, RHS_DIFF_U, DIFF_VEC_U, SOUGI_X, RESID_U, U_DT, &
         DIF_STAB_U, U_GRAD_NORM2, U_GRAD_NORM, A_DOT_U, STAR_U_COEF, P_STAR_U
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: UDIFF_SUF_STAB
+
     !###Shape function calculation###
-        real, dimension(Mdims%Ndim, Mdims%X_nloc,FE_GIdims%cv_ngi) :: CVFENX_ALL
-        real, dimension(Mdims%Ndim, Mdims%U_nloc,FE_GIdims%cv_ngi) :: UFENX_ALL
+        real, dimension(Mdims%Ndim, size(FE_funs%cvfenlx_all,2),FE_GIdims%cv_ngi) :: CVFENX_ALL
+        real, dimension(Mdims%Ndim, size(FE_funs%ufenlx_all,2),FE_GIdims%cv_ngi) :: UFENX_ALL
         real, dimension(FE_GIdims%cv_ngi) :: RA, DETWEI
         real :: VOLUME
 ! Local variables...
@@ -6714,8 +6715,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      real, dimension(Mdims%cv_nloc, FE_GIdims%cv_ngi) :: CV_Shape_Func
      real, dimension(Mdims%NDIM) :: NMX_ALL
      !Pointers for detwei
-    real, dimension(Mdims%Ndim, Mdims%X_nloc, FE_GIdims%cv_ngi) :: CVFENX_ALL
-    real, dimension(Mdims%Ndim, Mdims%U_nloc, FE_GIdims%cv_ngi) :: UFENX_ALL
+    real, dimension(Mdims%Ndim, size(FE_funs%cvfenlx_all,2), FE_GIdims%cv_ngi) :: CVFENX_ALL
+    real, dimension(Mdims%Ndim, size(FE_funs%ufenlx_all,2), FE_GIdims%cv_ngi) :: UFENX_ALL
     real, dimension(FE_GIdims%cv_ngi) :: RA, DETWEI
     real :: VOLUME
 
