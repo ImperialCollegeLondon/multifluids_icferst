@@ -934,13 +934,7 @@ end if
             numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
             if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method
                 if (have_option('/mesh_adaptivity')) then ! Only need to use interpolation if mesh adaptivity switched on
-                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type, 0)
-                else
-                    ! In this case, we don't adapt the mesh so we just call both routines straight away which gives back the original field
-                    ! Alternatively could just do nothing here
-                    !call M2MInterpolation(state, packed_state, storage_state, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type ,Mdims%nphase, 0, Mdisopt%p_ele_type, Mdims%cv_nloc, Mdims%cv_snloc)
-                    !call M2MInterpolation(state, packed_state, storage_state, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type , Mdims%nphase, 1, Mdisopt%p_ele_type, Mdims%cv_nloc, Mdims%cv_snloc)
-                    !call MemoryCleanupInterpolation2() ! Deallocate the memory used in the second call - the 1st call is deactivated right at the end
+                    call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, Mspars%small_acv%fin, Mspars%small_acv%col ,Mdisopt%cv_ele_type, 0)
                 endif
             endif
             !!!$! ******************
@@ -1226,6 +1220,7 @@ end if
             end if Conditional_Adaptivity_ReallocatingFields
             new_mesh = do_reallocate_fields
             Conditional_ReallocatingFields: if( do_reallocate_fields ) then
+                !The stored variables must be recalculated
                 Conditional_Adaptivity: if( have_option( '/mesh_adaptivity/hr_adaptivity ') .or. have_option( '/mesh_adaptivity/hr_adaptivity_prescribed_metric')) then
                     Conditional_Adapt_by_TimeStep: if( mod( itime, adapt_time_steps ) == 0 .or. have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
                         call pre_adapt_tasks( sub_state )
@@ -1322,7 +1317,7 @@ end if
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields > 0) then
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
-                        call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, &
+                        call M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, &
                                 Mspars%small_acv%fin, Mspars%small_acv%col, Mdisopt%cv_ele_type , 1, IDs2CV_ndgln = IDs2CV_ndgln)
                         call MemoryCleanupInterpolation2()
                     endif

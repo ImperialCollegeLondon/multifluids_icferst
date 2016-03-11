@@ -73,12 +73,12 @@ module multi_interpolation
 
 contains
 
-  subroutine M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, small_finacv, &
+  subroutine M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, &
             small_colacv, cv_ele_type, flag, IDs2CV_ndgln)
     implicit none
     ! IMPORTANT: flag is a switch before and after the adapt and tells us which interpolation step (1) or (3) to implement
     type( state_type ), dimension( : ), intent( inout ) :: state
-    type( state_type ), intent( inout ) :: packed_state, storage_state
+    type( state_type ), intent( inout ) :: packed_state
     type(multi_dimensions), intent(in) :: Mdims
     type(multi_GI_dimensions), intent(in) :: CV_GIdims
     type(multi_shape_funs), intent(in) :: CV_funs
@@ -104,7 +104,7 @@ contains
     real, dimension( :, :, : ), allocatable :: tmp_cvfenx_all
     real, dimension( :, :, : ), allocatable :: other_fenx_all
     real, dimension( CV_GIdims%cv_ngi ) :: detwei, ra
-    real, pointer :: volume
+    real :: volume
     ! Element by element inversion variables
     real, dimension(:,:), allocatable :: MMatrix, MNatrix
     real, dimension(:,:), allocatable :: EleRHS
@@ -208,8 +208,8 @@ contains
     end if
     ! INITIALISATIONS for the element loop
     !Allocate shape function vars
-    allocate(tmp_cvfenx_all(Mdims%Ndim, Mdims%x_nloc, CV_GIdims%cv_ngi))
-    allocate(other_fenx_all(Mdims%Ndim, other_nloc, CV_GIdims%cv_ngi))
+    allocate(tmp_cvfenx_all(3, size(tmp_cvfenlx_all,2), CV_GIdims%cv_ngi))
+    allocate(other_fenx_all(3, size(other_fenlx_all,2), CV_GIdims%cv_ngi))
     EleLHS = 0
     if(flag ==1) then
        Long_EleRHS = 0.0

@@ -5095,6 +5095,5 @@ contains
     RETURN
   END SUBROUTINE DETNLXR_PLUS_U
 
-
 end module shape_functions_prototype
 

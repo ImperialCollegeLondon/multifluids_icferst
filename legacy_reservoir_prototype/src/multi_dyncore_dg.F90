@@ -7108,8 +7108,8 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
          stop 7555
       end if
 
-      allocate(tmp_cvfenx_all(ndim, x_nloc, ph_ngi))
-      allocate(other_fenx_all(ndim, other_nloc ,ph_ngi))
+      allocate(tmp_cvfenx_all(ndim, size(tmp_cvfenlx_all,2), ph_ngi))
+      allocate(other_fenx_all(ndim, size(other_fenlx_all,2) ,ph_ngi))
       allocate(detwei(ph_ngi))
       allocate(ra(ph_ngi))
 
