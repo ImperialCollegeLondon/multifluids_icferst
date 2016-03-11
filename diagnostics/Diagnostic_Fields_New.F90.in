@@ -328,7 +328,7 @@ contains
 
       do j = 1, tensor_field_count(states(i))
         t_field => extract_tensor_field(states(i), j)
-        
+
         ! Only calculate non-aliased diagnostic fields
         if(aliased(t_field) .or. .not. have_option(trim(t_field%option_path) // "/diagnostic")) cycle
         ! Check whether this field should be calculated

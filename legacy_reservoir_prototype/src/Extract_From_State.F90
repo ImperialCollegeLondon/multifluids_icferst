@@ -726,172 +726,172 @@ contains
     end subroutine Get_Discretisation_Options
 
 
-    subroutine Get_ScalarFields_Outof_State( state, initialised, iphase, field, &
-        field_prot, wic_bc, suf_bc, field_prot_source, field_prot_absorption, suf_bc_rob1, suf_bc_rob2 )
-        implicit none
-        type( state_type ), dimension( : ), intent( in ) :: state
-        logical, intent( in ) :: initialised
-        integer, intent( in ) :: iphase
-        type( scalar_field ), pointer :: field, field_prot_bc
-        real, dimension( : ), intent( inout ) :: field_prot
-        real, dimension( : ), intent( inout ), optional :: field_prot_source,field_prot_absorption, suf_bc_rob1, suf_bc_rob2
-        integer, dimension( : ), intent( inout ), optional :: wic_bc
-        real, dimension( : ), intent( inout ), optional :: suf_bc
-
-        ! Local variables
-        type( mesh_type ), pointer :: pmesh, cmesh
-        type(scalar_field), pointer :: pressure, field_source, field_absorption
-        type(scalar_field) :: dummy
-        type(vector_field), pointer :: positions
-        integer, dimension(:), allocatable :: sufid_bc
-        character( len = option_path_len ) :: option_path, option_path2, field_name
-        integer :: stotel, nobcs, bc_type, i, j, k, kk, sele
-        integer :: nstate, nphase, ncomp, snloc, stat
-        integer :: shape_option(2)
-        real :: initial_constant
-        logical :: have_source, have_absorption
-        integer, dimension(:), allocatable :: face_nodes
-        character( len = 8192 ) :: func
-
-        field_name = trim( field % name )
-        have_source = .false. ; have_absorption = .false.
-
-        Conditional_SourceField: if( present( field_prot_source ) ) then
-            field_source => extract_scalar_field( state( iphase ), trim(field_name) // 'Source', stat )
-            have_source = ( stat == 0 )
-
-            if ( have_source ) then
-                do j = 1, node_count( field_source )
-                    field_prot_source( ( iphase - 1 ) * node_count( field_source ) + j ) = &
-                        field_source % val( j )
-                end do
-            end if
-        end if Conditional_SourceField
-
-        Conditional_AbsorptionField: if( present( field_prot_absorption ) ) then
-            field_absorption => extract_scalar_field( state( iphase ), trim(field_name) // 'Absorption', stat )
-            have_absorption = ( stat == 0 )
-            if ( have_absorption ) then
-                do j = 1, node_count( field_absorption )
-                    field_prot_absorption( ( iphase - 1 ) * node_count( field_absorption ) + j ) = &
-                        field_absorption % val( j )
-                end do
-            end if
-        end if Conditional_AbsorptionField
-
-        pressure => extract_scalar_field( state( 1 ), 'Pressure' )
-        pmesh => extract_mesh( state, 'PressureMesh' )
-        cmesh => extract_mesh( state, 'CoordinateMesh' )
-        positions => extract_vector_field( state( 1 ), 'Coordinate' )
-
-        snloc = face_loc( pressure, 1 ) ; stotel = surface_element_count( cmesh ) ; &
-            nstate = option_count( '/material_phase' )
-
-        ncomp = 0
-        do i = 1, nstate
-            if( have_option( '/material_phase[' // int2str( i - 1) // ']/is_multiphase_component' ) )then
-                ncomp = ncomp + 1
-            end if
-        end do
-        nphase = nstate - ncomp
-        option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
-        ewrite(3,*)'option_path:', trim( option_path )
-
-
-        !!$ This will need to be ammended later on to take into account python functions that impose
-        !!$ time-dependent field changes
-        Conditional_InitialisationFromFLML: if( initialised ) then ! Extracting from state after initialisation
-            field_prot = field % val
-        !!$         field_prot( 1 : node_count( field ) ) = field % val
-        !!$         field_prot( ( iphase - 1 ) * node_count( field ) + 1 : iphase * node_count( field ) ) = &
-        !!$              field % val
-
-        else !Initialisation before adapt
-            if( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant' ) )then
-                call get_option(trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant', &
-                    initial_constant )
-                field_prot = initial_constant
-
-            elseif( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python ') )then
-                call get_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python', func )
-                call allocate( dummy, field % mesh, 'dummy' )
-                call get_option('/timestepping/current_time', current_time)
-                call set_from_python_function(dummy, trim(func), positions, current_time)
-                field_prot = dummy % val
-                call deallocate( dummy )
-            elseif( have_option( trim( option_path ) // '/prognostic/initial_condition/from_file')) then
-                field_prot = field % val
-
-            else if (have_option( trim( option_path ) // '/prognostic/initial_condition') )then
-                call allocate( dummy, field % mesh, 'dummy' )
-                call get_option('/timestepping/current_time', current_time)
-                call initialise_field_over_regions(dummy, trim( option_path ) // '/prognostic/initial_condition', positions, current_time)
-                field_prot = dummy%val
-                call deallocate( dummy )
-
-            else
-               !ewrite(-1,*) 'No initial condition for field::', trim( field_name )
-               !FLAbort( 'Check initial conditions' )
-            end if
-        end if Conditional_InitialisationFromFLML
-
-        !!$ Boundary conditions
-        if (present( wic_bc ) ) then
-
-            option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
-            nobcs = get_boundary_condition_count( field )
-            Loop_BC: do k = 1, nobcs
-
-                option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
-                shape_option = option_shape( trim( option_path ) )
-                allocate( SufID_BC( 1 : shape_option( 1 ) ) )
-                call get_option( trim( option_path ), SufID_BC )
-                allocate( face_nodes( face_loc( field, 1) ) )
-
-                option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
-
-                Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
-
-                    BC_Type = 1
-                    field_prot_bc => extract_surface_field( field, k, 'value' )
-
-                    sele = 1
-                    do j = 1, stotel
-                        if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-                            wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-                            face_nodes = ele_nodes( field_prot_bc, sele )
-                            do kk = 1, snloc
-                                suf_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
-                                    field_prot_bc % val( face_nodes( kk ) )
-                            end do
-                            sele = sele + 1
-                        end if
-                    end do
-
-                else if( have_option( trim( option_path ) // 'type::robin' ) ) then
-
-                    BC_Type = 2
-
-                    do j = 1, stotel
-                        if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-                            wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-                        end if
-                    end do
-
-                    ! calculate this later on...
-                    suf_bc_rob1 = 0.
-                    suf_bc_rob2 = 0.
-
-                end if Conditional_Field_BC
-
-                deallocate( face_nodes, sufid_bc )
-
-            end do Loop_BC
-
-        end if
-
-        return
-    end subroutine Get_ScalarFields_Outof_State
+!    subroutine Get_ScalarFields_Outof_State( state, initialised, iphase, field, &
+!        field_prot, wic_bc, suf_bc, field_prot_source, field_prot_absorption, suf_bc_rob1, suf_bc_rob2 )
+!        implicit none
+!        type( state_type ), dimension( : ), intent( in ) :: state
+!        logical, intent( in ) :: initialised
+!        integer, intent( in ) :: iphase
+!        type( scalar_field ), pointer :: field, field_prot_bc
+!        real, dimension( : ), intent( inout ) :: field_prot
+!        real, dimension( : ), intent( inout ), optional :: field_prot_source,field_prot_absorption, suf_bc_rob1, suf_bc_rob2
+!        integer, dimension( : ), intent( inout ), optional :: wic_bc
+!        real, dimension( : ), intent( inout ), optional :: suf_bc
+!
+!        ! Local variables
+!        type( mesh_type ), pointer :: pmesh, cmesh
+!        type(scalar_field), pointer :: pressure, field_source, field_absorption
+!        type(scalar_field) :: dummy
+!        type(vector_field), pointer :: positions
+!        integer, dimension(:), allocatable :: sufid_bc
+!        character( len = option_path_len ) :: option_path, option_path2, field_name
+!        integer :: stotel, nobcs, bc_type, i, j, k, kk, sele
+!        integer :: nstate, nphase, ncomp, snloc, stat
+!        integer :: shape_option(2)
+!        real :: initial_constant
+!        logical :: have_source, have_absorption
+!        integer, dimension(:), allocatable :: face_nodes
+!        character( len = 8192 ) :: func
+!
+!        field_name = trim( field % name )
+!        have_source = .false. ; have_absorption = .false.
+!
+!        Conditional_SourceField: if( present( field_prot_source ) ) then
+!            field_source => extract_scalar_field( state( iphase ), trim(field_name) // 'Source', stat )
+!            have_source = ( stat == 0 )
+!
+!            if ( have_source ) then
+!                do j = 1, node_count( field_source )
+!                    field_prot_source( ( iphase - 1 ) * node_count( field_source ) + j ) = &
+!                        field_source % val( j )
+!                end do
+!            end if
+!        end if Conditional_SourceField
+!
+!        Conditional_AbsorptionField: if( present( field_prot_absorption ) ) then
+!            field_absorption => extract_scalar_field( state( iphase ), trim(field_name) // 'Absorption', stat )
+!            have_absorption = ( stat == 0 )
+!            if ( have_absorption ) then
+!                do j = 1, node_count( field_absorption )
+!                    field_prot_absorption( ( iphase - 1 ) * node_count( field_absorption ) + j ) = &
+!                        field_absorption % val( j )
+!                end do
+!            end if
+!        end if Conditional_AbsorptionField
+!
+!        pressure => extract_scalar_field( state( 1 ), 'Pressure' )
+!        pmesh => extract_mesh( state, 'PressureMesh' )
+!        cmesh => extract_mesh( state, 'CoordinateMesh' )
+!        positions => extract_vector_field( state( 1 ), 'Coordinate' )
+!
+!        snloc = face_loc( pressure, 1 ) ; stotel = surface_element_count( cmesh ) ; &
+!            nstate = option_count( '/material_phase' )
+!
+!        ncomp = 0
+!        do i = 1, nstate
+!            if( have_option( '/material_phase[' // int2str( i - 1) // ']/is_multiphase_component' ) )then
+!                ncomp = ncomp + 1
+!            end if
+!        end do
+!        nphase = nstate - ncomp
+!        option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
+!        ewrite(3,*)'option_path:', trim( option_path )
+!
+!
+!        !!$ This will need to be ammended later on to take into account python functions that impose
+!        !!$ time-dependent field changes
+!        Conditional_InitialisationFromFLML: if( initialised ) then ! Extracting from state after initialisation
+!            field_prot = field % val
+!        !!$         field_prot( 1 : node_count( field ) ) = field % val
+!        !!$         field_prot( ( iphase - 1 ) * node_count( field ) + 1 : iphase * node_count( field ) ) = &
+!        !!$              field % val
+!
+!        else !Initialisation before adapt
+!            if( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant' ) )then
+!                call get_option(trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant', &
+!                    initial_constant )
+!                field_prot = initial_constant
+!
+!            elseif( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python ') )then
+!                call get_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python', func )
+!                call allocate( dummy, field % mesh, 'dummy' )
+!                call get_option('/timestepping/current_time', current_time)
+!                call set_from_python_function(dummy, trim(func), positions, current_time)
+!                field_prot = dummy % val
+!                call deallocate( dummy )
+!            elseif( have_option( trim( option_path ) // '/prognostic/initial_condition/from_file')) then
+!                field_prot = field % val
+!
+!            else if (have_option( trim( option_path ) // '/prognostic/initial_condition') )then
+!                call allocate( dummy, field % mesh, 'dummy' )
+!                call get_option('/timestepping/current_time', current_time)
+!                call initialise_field_over_regions(dummy, trim( option_path ) // '/prognostic/initial_condition', positions, current_time)
+!                field_prot = dummy%val
+!                call deallocate( dummy )
+!
+!            else
+!               !ewrite(-1,*) 'No initial condition for field::', trim( field_name )
+!               !FLAbort( 'Check initial conditions' )
+!            end if
+!        end if Conditional_InitialisationFromFLML
+!
+!        !!$ Boundary conditions
+!        if (present( wic_bc ) ) then
+!
+!            option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
+!            nobcs = get_boundary_condition_count( field )
+!            Loop_BC: do k = 1, nobcs
+!
+!                option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
+!                shape_option = option_shape( trim( option_path ) )
+!                allocate( SufID_BC( 1 : shape_option( 1 ) ) )
+!                call get_option( trim( option_path ), SufID_BC )
+!                allocate( face_nodes( face_loc( field, 1) ) )
+!
+!                option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
+!
+!                Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
+!
+!                    BC_Type = 1
+!                    field_prot_bc => extract_surface_field( field, k, 'value' )
+!
+!                    sele = 1
+!                    do j = 1, stotel
+!                        if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
+!                            wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
+!                            face_nodes = ele_nodes( field_prot_bc, sele )
+!                            do kk = 1, snloc
+!                                suf_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
+!                                    field_prot_bc % val( face_nodes( kk ) )
+!                            end do
+!                            sele = sele + 1
+!                        end if
+!                    end do
+!
+!                else if( have_option( trim( option_path ) // 'type::robin' ) ) then
+!
+!                    BC_Type = 2
+!
+!                    do j = 1, stotel
+!                        if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
+!                            wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
+!                        end if
+!                    end do
+!
+!                    ! calculate this later on...
+!                    suf_bc_rob1 = 0.
+!                    suf_bc_rob2 = 0.
+!
+!                end if Conditional_Field_BC
+!
+!                deallocate( face_nodes, sufid_bc )
+!
+!            end do Loop_BC
+!
+!        end if
+!
+!        return
+!    end subroutine Get_ScalarFields_Outof_State
 
 
 
