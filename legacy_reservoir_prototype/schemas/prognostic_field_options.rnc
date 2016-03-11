@@ -1336,9 +1336,6 @@ prognostic_pressure_field =
        ## Use a Control Volume discretization to form the Pressure matrix
          element CV_P_matrix {
             empty,
-           ## Use a Control Volume discretization to obtain the velocities
-             element CV_P_matrix_for_velocity {
-                empty}?
          }
       )?,
 #      ## **UNDER DEVELOPMENT**
