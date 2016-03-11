@@ -104,10 +104,10 @@ contains
         end if
 
         allocate( Rho( cv_nonods ), dRhodP( cv_nonods ) )
-        allocate( Cp( cv_nonods ) ) ; Cp = 1.
+        allocate( Cp( cv_nonods ) ) ; Cp = 1.0
         allocate( Density_Component( ncomp * nphase * cv_nonods ) )
         allocate( Density_Bulk( nphase * cv_nonods ), DensityCp_Bulk( nphase * cv_nonods ) )
-        Density_Bulk = 0. ; DensityCp_Bulk = 0.
+        Density_Bulk = 0.0 ; DensityCp_Bulk = 0.0
 
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
 
@@ -173,6 +173,11 @@ if ( .true. ) then
 
 else
 
+                 Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
+                 PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
+
+                 Density_Component( sc : ec ) = Rho
+
                  ! harmonic mean
                  ! rho = rho + 1.0 / ( a_i / rho_i )
                  Cp_s => extract_scalar_field( state( nphase + icomp ), &
@@ -188,12 +193,7 @@ else
                     end if
                  end do
 
-
-
 end if
-
-
-
 
               else
 
@@ -209,7 +209,7 @@ end if
            end do ! iphase
         end do ! icomp
 
-        if ( ncomp > 1 ) then
+       if ( ncomp > 1 ) then
            call Cap_Bulk_Rho( state, ncomp, nphase, &
                 cv_nonods, Density_Component, Density_Bulk, DensityCp_Bulk )
         end if
@@ -218,14 +218,12 @@ end if
         field2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
         if( ncomp > 1 ) field3 => extract_tensor_field( packed_state, "PackedComponentDensity" )
 
-        !sf => extract_scalar_field( packed_state, "SolidConcentration" )
-
         do iphase = 1, nphase
            sp = ( iphase - 1 ) * cv_nonods + 1
            ep = iphase * cv_nonods
 
-           field1 % val ( 1, iphase, : ) = Density_Bulk( sp : ep )         !* ( 1. - sf%val)     +   1000. *  sf%val
-           field2 % val ( 1, iphase, : ) = DensityCp_Bulk( sp : ep )       !* ( 1. - sf%val)     +   1000. *  sf%val
+           field1 % val ( 1, iphase, : ) = Density_Bulk( sp : ep )
+           field2 % val ( 1, iphase, : ) = DensityCp_Bulk( sp : ep )
 
            if ( ncomp > 1 ) then
               do icomp = 1, ncomp
@@ -262,11 +260,11 @@ end if
         real, dimension( : ), allocatable :: Cp
         integer :: sp, ep, sc, ec, iphase, icomp, stat
 
-        allocate( Density_Component_Min( nphase, cv_nonods ) ) ; Density_Component_Min = 1.e+15
-        allocate( Density_Component_Max( nphase, cv_nonods ) ) ; Density_Component_Max = 0.
-        allocate( Density_Cp_Component_Min( nphase, cv_nonods ) ) ; Density_Cp_Component_Min = 1.e+15
-        allocate( Density_Cp_Component_Max( nphase, cv_nonods ) ) ; Density_Cp_Component_Max = 0.
-        allocate( Cp( cv_nonods ) ) ; Cp = 1.
+        allocate( Density_Component_Min( nphase, cv_nonods ) ) ; Density_Component_Min = 1.0e+15
+        allocate( Density_Component_Max( nphase, cv_nonods ) ) ; Density_Component_Max = 0.0
+        allocate( Density_Cp_Component_Min( nphase, cv_nonods ) ) ; Density_Cp_Component_Min = 1.0e+15
+        allocate( Density_Cp_Component_Max( nphase, cv_nonods ) ) ; Density_Cp_Component_Max = 0.0
+        allocate( Cp( cv_nonods ) ) ; Cp = 1.0
 
         do iphase = 1, nphase
             do icomp = 1, ncomp
@@ -276,7 +274,7 @@ end if
                 Density_Component_Min( iphase, : ) = min( Density_Component_Min( iphase, : ), Density_Component( sc : ec ) )
                 Density_Component_Max( iphase, : ) = max( Density_Component_Max( iphase, : ), Density_Component( sc : ec ) )
 
-                Cp = 1.
+                Cp = 1.0
                 Cp_s => extract_scalar_field( state( nphase + icomp ), &
                     'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
                 if( stat == 0 ) Cp = Cp_s % val
