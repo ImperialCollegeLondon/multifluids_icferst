@@ -2,7 +2,7 @@
 <testproblem>
   <name>Collapsing_Water_Column</name>
   <owner userid="pablo.salinas"/>
-  <tags>components mpml</tags>
+  <tags>components mpml tbc</tags>
   <problem_definition length="short" nprocs="1">
     <command_line>python ./Check_CWC.py &gt; log</command_line>
   </problem_definition>

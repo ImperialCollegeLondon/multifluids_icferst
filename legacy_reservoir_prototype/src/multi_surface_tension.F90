@@ -123,7 +123,6 @@ contains
      allocate( Y(  X_NONODS ) ) ; Y = 0.0
      allocate( Z(  X_NONODS ) ) ; Z = 0.0
 
-     MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
 
      x_all => extract_vector_field( packed_state, "PressureCoordinate" )
      x = x_all % val( 1, : )
@@ -142,6 +141,8 @@ contains
              ']/is_multiphase_component/surface_tension' )
 
          if ( surface_tension ) then
+
+             MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
 
              ewrite(3,*) 'Calculating surface tension for component ', icomp
 

@@ -1335,8 +1335,7 @@ prognostic_pressure_field =
      (	
        ## Use a Control Volume discretization to form the Pressure matrix
          element CV_P_matrix {
-            empty,
-         }
+            empty}
       )?,
 #      ## **UNDER DEVELOPMENT**
 #      ## This searches the CMC matrix diagonal looking for nodes that are less than the maximum value time epsilon(0.0) (i.e. nodes that are effectively zero).
