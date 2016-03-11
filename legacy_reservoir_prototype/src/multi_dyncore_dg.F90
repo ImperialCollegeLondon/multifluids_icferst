@@ -207,7 +207,7 @@ contains
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
               call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                 Mdims%mat_nloc, Mdims%totele, ndgln%mat, TDIFFUSION )
+                 Mdims%mat_nloc, Mdims%totele, ndgln%mat, ndgln%cv, TDIFFUSION )
            end if
            ! get diffusivity for compositional
            if ( lcomp > 0 .and. is_porous_media ) then

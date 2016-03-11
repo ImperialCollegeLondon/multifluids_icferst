@@ -1208,18 +1208,18 @@ end if
     end subroutine calculate_u_source_cv
 
     subroutine calculate_diffusivity(state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
-         mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
+         mat_nloc, totele, mat_ndgln, cv_ndgln, ScalarAdvectionField_Diffusion )
 
       type(state_type), dimension(:), intent(in) :: state
       integer, intent(in) :: ncomp, nphase, ndim, cv_nonods, mat_nonods, mat_nloc, totele
-      integer, dimension(:), intent(in) :: mat_ndgln
+      integer, dimension(:), intent(in) :: mat_ndgln, cv_ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
 
       type(scalar_field), pointer :: component
       type(tensor_field), pointer :: diffusivity
       integer, dimension(:), pointer :: element_nodes
       integer :: icomp, iphase, idim, stat, ele
-      integer :: iloc,mat_iloc
+      integer :: iloc, mat_inod, cv_inod
 
       ScalarAdvectionField_Diffusion = 0.0
 
@@ -1235,27 +1235,26 @@ end if
 
                   do ele = 1, totele
 
-                     element_nodes => ele_nodes( component, ele )
-
                      do iloc = 1, mat_nloc
-                        mat_iloc = mat_ndgln( (ele-1)*mat_nloc + iloc )
+                        mat_inod = mat_ndgln( (ele-1)*mat_nloc + iloc )
+                        cv_inod = cv_ndgln( (ele-1)*mat_nloc + iloc )
 
                         if ( .true. ) then
 
                            do idim = 1, ndim
-                              ScalarAdvectionField_Diffusion( mat_iloc, idim, idim, iphase ) = &
-                                   ScalarAdvectionField_Diffusion( mat_iloc, idim, idim, iphase ) + &
-                                   node_val( component, element_nodes(iloc) ) * node_val( diffusivity, idim, idim, element_nodes(iloc) )
+                              ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                   ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
+                                   node_val( component, cv_inod ) * node_val( diffusivity, idim, idim, mat_inod )
                            end do
 
                         else
 
-                           if ( node_val( component, element_nodes(iloc) ) > 0.0 ) then
+                           if ( node_val( component, cv_inod ) > 0.0 ) then
 
                               do idim = 1, ndim
-                                 ScalarAdvectionField_Diffusion( mat_iloc, idim, idim, iphase ) = &
-                                      ScalarAdvectionField_Diffusion( mat_iloc, idim, idim, iphase ) + &
-                                      1.0 / ( node_val( component, element_nodes(iloc) ) / node_val( diffusivity, idim, idim, element_nodes(iloc) ) )
+                                 ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
+                                      1.0 / ( node_val( component, cv_inod ) / node_val( diffusivity, idim, idim, mat_inod ) )
                               end do
 
                            end if
@@ -1276,7 +1275,7 @@ end if
 
             if ( stat == 0 ) then
                do idim = 1, ndim
-                  ScalarAdvectionField_Diffusion(:, idim, idim, iphase) = node_val( diffusivity, idim, idim, 1 )
+                  ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, 1 )
                end do
             end if
          end do
