@@ -81,7 +81,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       StorageIndexes, icomp, saturation, IDs_ndgln )
+       icomp, saturation, IDs_ndgln )
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -108,7 +108,6 @@ contains
            REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
            character( len = * ), intent( in ), optional :: option_path
            real, dimension( : ), intent( inout ), optional :: mass_ele_transp
-           integer, dimension(:), intent(inout) :: StorageIndexes
            type(tensor_field), intent(in), optional :: saturation
            integer, optional :: icomp
            ! Local variables
@@ -207,7 +206,7 @@ contains
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
               call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                 Mdims%mat_nloc, Mdims%totele, ndgln%mat, TDIFFUSION )
+                 Mdims%mat_nloc, Mdims%totele, ndgln%mat, ndgln%cv, TDIFFUSION )
            end if
            ! get diffusivity for compositional
            if ( lcomp > 0 .and. is_porous_media ) then
@@ -252,7 +251,6 @@ contains
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &
-                   StorageIndexes, &
                    saturation=saturation, IDs_ndgln = IDs_ndgln )
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
@@ -298,7 +296,7 @@ contains
          option_path, &
          mass_ele_transp,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-         StorageIndexes, Material_Absorption,nonlinear_iteration, IDs_ndgln,&
+         Material_Absorption,nonlinear_iteration, IDs_ndgln,&
          IDs2CV_ndgln, Courant_number)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state
@@ -322,7 +320,6 @@ contains
              REAL, DIMENSION( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
              character(len= * ), intent(in), optional :: option_path
              real, dimension( : ), intent( inout ) :: mass_ele_transp
-             integer, dimension(:), intent(inout) :: StorageIndexes
              real, dimension( :, :, : ), intent(inout) :: Material_Absorption
              integer, intent(in) :: nonlinear_iteration
              real, intent(inout) :: Courant_number
@@ -465,8 +462,7 @@ contains
                      MEAN_PORE_CV, &
                      mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                      .false.,  mass_Mn_pres, &
-                     mass_ele_transp,&
-                     StorageIndexes, &            !Capillary variables
+                     mass_ele_transp,&          !Capillary variables
                      OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      IDs_ndgln=IDs_ndgln, Courant_number = Courant_number)
                  !Solve the system
@@ -613,8 +609,6 @@ contains
         LOGICAL :: RETRIEVE_SOLID_CTY = .FALSE.
 ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
         LOGICAL :: got_free_surf
-        !This is to force the use of a Pressure discretized using CVs everywhere not only to calculate the pressure
-        LOGICAL :: everything_c_cv
         character( len = option_path_len ) :: opt, bc_type
         REAL, DIMENSION( : ), allocatable :: &
         MCY_RHS, MCY, &
@@ -849,8 +843,7 @@ contains
         SUF_INT_MASS_MATRIX = .false.!= have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/Suf_mass_matrix' )
 
         !Allocation of storable matrices !SPRINT_TO_DO; move as an initialization subroutine
-        if (.not.Mmat%Stored) then!RIGTH NOW IT COMPILES BUT IT DOES NOT RUN petsc fails, CAN BE THE PIVIT MATRIX OR BASICALLY ANYONE...
-            everything_c_cv = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix/CV_P_matrix_for_velocity' )
+        if (.not.Mmat%Stored) then
              if (Mmat%CV_pressure) then
                 allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
                 RECALC_C_CV = .true.!sprint_to_do; we may not need this logical
@@ -888,8 +881,8 @@ contains
             StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
 
 
-        !If pressure in CV only then point the FE matrix Mmat%C to Mmat%C_CV
-        if ( everything_c_cv .and. Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
+        !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
+        if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
         if ( Mdims%npres > 1 ) then
            ALLOCATE( SIGMA( Mdims%nphase, Mdims%mat_nonods ) )
            DO IPHASE = 1, Mdims%nphase
@@ -922,21 +915,18 @@ contains
             end if
             if (Mmat%CV_pressure) then
                 !Use Mmat%C_CV to form the CMC matrix
-                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln,&
-                Mmat%PIVIT_MAT, &
+                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
                 MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
-                got_free_surf,  MASS_SUF, &
-                Mmat%C_CV, Mmat%CT, storage_state, StorageIndexes(11), halo, symmetric_P )
+                got_free_surf,  MASS_SUF, symmetric_P )
             else
-                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln,&
-                Mmat%PIVIT_MAT, &
+                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
                 CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
                 MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
                 got_free_surf,  MASS_SUF, &
-                Mmat%C, Mmat%CT, storage_state, StorageIndexes(11), halo, symmetric_P )
+                symmetric_P )
             end if
         END IF
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
@@ -968,7 +958,7 @@ contains
                 !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
                 U_RHS_CDP2 = Mmat%U_RHS + CDP_tensor%val
                 ! DU = BLOCK_MAT * CDP
-                CALL PHA_BLOCK_MAT_VEC_old( UP_VEL, Mmat%PIVIT_MAT, U_RHS_CDP2, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, &
+                CALL PHA_BLOCK_MAT_VEC_old( UP_VEL, Mmat%PIVIT_MAT, U_RHS_CDP2, Mdims%ndim, Mdims%nphase, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
                 U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             ELSE
@@ -999,7 +989,7 @@ IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
             else
                DO IPHASE = 1, Mdims%nphase
                   CALL CT_MULT_WITH_C3( rhs_p2(IPHASE,:), U_ALL2%VAL( :, IPHASE : IPHASE, : ), &
-                       Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, Mmat%C( :, IPHASE : IPHASE, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                       Mdims%u_nonods, Mdims%ndim, 1, Mmat%C( :, IPHASE : IPHASE, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                END DO
             end if
             DO CV_NOD = 1, Mdims%cv_nonods
@@ -1019,7 +1009,7 @@ ELSE
             else
                DO IPRES = 1, Mdims%npres
                   CALL CT_MULT_WITH_C3( rhs_p%val(IPRES,:), U_ALL2%VAL( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), &
-                       Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                       Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(IPRES-1)*Mdims%n_in_pres : IPRES*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
                END DO
             end if
 END IF
@@ -1103,7 +1093,7 @@ END IF
             call halo_update(cdp_tensor)
             ! Correct velocity...
             ! DU = BLOCK_MAT * CDP
-            CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, &
+            CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
             Mdims%totele, Mdims%u_nloc, ndgln%u )
             U_ALL2 % VAL = U_ALL2 % VAL + DU_VEL
             if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
@@ -1355,7 +1345,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
             dummy_transp, &                                                 !sprint_to_do; remove SUF_INT_MASS_MATRIX?
-            StorageIndexes, IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false.)
+            IDs_ndgln=IDs_ndgln, RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false.)
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
             ! Put Mmat%CT into global matrix MCY...
@@ -1500,7 +1490,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         LOGICAL, PARAMETER :: STORED_AC_SPAR_PT=.FALSE.
         INTEGER, PARAMETER :: IDO_STORE_AC_SPAR_PT=0
         ! re-calculate Mmat%C matrix...
-        LOGICAL :: got_c_matrix, everything_c_cv
+        LOGICAL :: got_c_matrix
         INTEGER, DIMENSION( :, : ), allocatable ::  FACE_ELE
         INTEGER, DIMENSION( : ), allocatable :: CV_SLOC2LOC, U_SLOC2LOC, &
         U_ILOC_OTHER_SIDE, U_OTHER_LOC, MAT_OTHER_LOC
@@ -1533,10 +1523,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         MAT_ELE, DIFFGI_U, RHS_DIFF_U, DIFF_VEC_U, SOUGI_X, RESID_U, U_DT, &
         DIF_STAB_U, U_GRAD_NORM2, U_GRAD_NORM, A_DOT_U, STAR_U_COEF, P_STAR_U
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: UDIFF_SUF_STAB
-    !###Pointers for Shape function calculation###
-        real, pointer, dimension(:,:,:) :: CVFENX_ALL, UFENX_ALL
-        real, pointer, dimension(:) :: RA, DETWEI
-        real, pointer :: VOLUME
+
+    !###Shape function calculation###
+        real, dimension(Mdims%Ndim, size(FE_funs%cvfenlx_all,2),FE_GIdims%cv_ngi) :: CVFENX_ALL
+        real, dimension(Mdims%Ndim, size(FE_funs%ufenlx_all,2),FE_GIdims%cv_ngi) :: UFENX_ALL
+        real, dimension(FE_GIdims%cv_ngi) :: RA, DETWEI
+        real :: VOLUME
 ! Local variables...
 !            INTEGER, PARAMETER :: LES_DISOPT=0
             INTEGER :: LES_DISOPT
@@ -1687,8 +1679,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
         !Capillary pressure variables
         logical :: capillary_pressure_activated, Diffusive_cap_only
-        !Logical to control wether to create a CV pressure or FE pressure in multi_dyncore
-        logical, parameter :: GET_C_IN_CV_IN_DYNCORE = .false.
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: sf
@@ -2203,9 +2193,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 Mdims%x_nonods, X, Y, Z, &
                 FE_GIdims%nface, FACE_ELE, FE_funs%u_sloclist, FE_funs%cv_sloclist, Mdims%stotel, Mdims%u_snloc, Mdims%cv_snloc, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
                 FE_GIdims%sbcvngi, FE_funs%sbufen, FE_funs%sbufenslx, FE_funs%sbufensly, FE_funs%sbcvfeweigh, &
-                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly ,&
-                storage_state ,"C_1", StorageIndexes(14))!<== We use the same index that we use in the DETNLXR_PLUS_U_WITH_STORAGE
-            !below since inside this subroutine the only thing we store is DETNLXR_PLUS_U_WITH_STORAGE
+                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly )
         ENDIF
         ! LES VISCOCITY CALC.
         IF ( GOT_DIFFUS ) THEN
@@ -2253,14 +2241,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             allocate( vol_s_min_gi( FE_GIdims%cv_ngi ) )
             allocate( cv_dengi( Mdims%nphase, FE_GIdims%cv_ngi ) )
         endif
+
         Loop_Elements: DO ELE = 1, Mdims%totele ! Volume integral
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), ndgln%x, Mdims%totele, Mdims%x_nonods, &
+            CALL DETNLXR_PLUS_U( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), ndgln%x, Mdims%totele, Mdims%x_nonods, &
                 Mdims%x_nloc, Mdims%cv_nloc, FE_GIdims%cv_ngi, &
                 FE_funs%cvfen, FE_funs%cvfenlx_all(1,:,:), FE_funs%cvfenlx_all(2,:,:), FE_funs%cvfenlx_all(3,:,:), FE_funs%cvweight, DETWEI, RA, VOLUME, D1, D3, DCYL, &
                 CVFENX_ALL, &
-                Mdims%u_nloc, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), UFENX_ALL , &
-                storage_state ,"C_1", StorageIndexes(14))
+                Mdims%u_nloc, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), UFENX_ALL)
             !Prepare linear diffusion for the mass matrix
             n_mat = 0.
             K_mat=0.0
@@ -2528,9 +2516,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !                END DO
 !
 !                DO IPHASE = 1, Mdims%nphase
-!                    CALL SMLINNGOT( STORE_MASS_U, UDEN_VFILT( IPHASE, : ), RHS_U_CV( IPHASE, : ), Mdims%u_nloc, Mdims%u_nloc, IPIV, GOTDEC )
+!                    CALL SMLINNGOT( STORE_MASS_U, UDEN_VFILT( IPHASE, : ), RHS_U_CV( IPHASE, : ), Mdims%u_nloc, IPIV, GOTDEC )
 !                    GOTDEC = .TRUE.
-!                    CALL SMLINNGOT( STORE_MASS_U, UDENOLD_VFILT( IPHASE, : ), RHS_U_CV_OLD( IPHASE, : ), Mdims%u_nloc, Mdims%u_nloc, IPIV, GOTDEC )
+!                    CALL SMLINNGOT( STORE_MASS_U, UDENOLD_VFILT( IPHASE, : ), RHS_U_CV_OLD( IPHASE, : ), Mdims%u_nloc, IPIV, GOTDEC )
 !                END DO
 !
 !                DO U_ILOC = 1, Mdims%u_nloc
@@ -2991,11 +2979,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             Mdims%totele, Mdims%u_nloc, Mdims%p_nloc )
                     END IF
                     !Prepare aid variable NMX_ALL to improve the speed of the calculations
-                    if (GET_C_IN_CV_IN_DYNCORE) then
-                        NMX_ALL( : ) =  - matmul(UFENX_ALL_REVERSED(:,:,U_ILOC),  DETWEI( : ) * CVN_REVERSED( :, P_JLOC ))
-                    else
-                        NMX_ALL( : ) = matmul(CVFENX_ALL_REVERSED(:,:,P_JLOC),  DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ))
-                    end if
+                    NMX_ALL( : ) = matmul(CVFENX_ALL_REVERSED(:,:,P_JLOC),  DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ))
                     Loop_Phase1: DO IPHASE = 1, Mdims%nphase
                         ! Put into matrix
                         IF ( .NOT.GOT_C_MATRIX ) THEN
@@ -3423,7 +3407,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                 if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
                     packed_state,storage_state, Mdims, FE_GIdims, FE_funs, X_ALL, LOC_U_RHS, ele, &
-                    ndgln%cv, ndgln%x, StorageIndexes, ele2, iface,&
+                    ndgln%cv, ndgln%x, ele2, iface,&
                     sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC )
                 ! ********Mapping to local variables****************
                 ! CV variables...
@@ -3629,11 +3613,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             P_JLOC = CV_SLOC2LOC( P_SJLOC )
                             if(.not.got_c_matrix) JCV_NOD = ndgln%suf_p(( SELE - 1 ) * Mdims%p_snloc + P_SJLOC )
                             !Calculate aid variable NMX_ALL
-                            if (GET_C_IN_CV_IN_DYNCORE) then                                                   !WE NEED A REVERSED FE_funs%sbcvn
-                                NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * FE_funs%sbcvn( P_SJLOC, : ) * SDETWE( : ))
-                            else
-                                NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * SBCVFEN_REVERSED( :, P_SJLOC ) * SDETWE( : ))
-                            end if
+                            NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * SBCVFEN_REVERSED( :, P_SJLOC ) * SDETWE( : ))
                             IF(IGOT_VOL_X_PRESSURE==1) THEN
                                 DO IPHASE = 1, Mdims%nphase
                                     VOL_FRA_NMX_ALL( :, IPHASE ) = VOL_FRA_NMX_ALL( :, IPHASE ) + sum(SVOL_FRA( IPHASE, : )) * NMX_ALL( : )
@@ -3647,7 +3627,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                     IDO_STORE_AC_SPAR_PT, STORED_AC_SPAR_PT, POSINMAT_C_STORE, ELE, U_ILOC, P_JLOC, &
                                     Mdims%totele, Mdims%u_nloc, Mdims%p_nloc )
                             END IF
-                            if (.not.everything_c_cv) then!If Mmat%C_CV then BCs are introduced in CV_ASSEMB
+                            if (.not.Mmat%CV_pressure) then!If Mmat%C_CV then BCs are introduced in CV_ASSEMB
                                 DO IPRES = 1, Mdims%npres
                                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
                                         DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
@@ -3660,33 +3640,15 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                                     LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                                         - VOL_FRA_NMX_ALL( IDIM, IPHASE ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + Mdims%p_snloc * ( SELE - 1) )
                                                 ELSE
-                                                    if(GET_C_IN_CV_IN_DYNCORE) then
-                                                        !                                                    IF ( .NOT.GOT_C_MATRIX ) THEN
-                                                        !                                                        Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                        !                                                            - NMX_ALL( IDIM) ! subtract out as we have added it in the surface of the elements
-                                                        !                                                    END IF
-                                                        LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                            - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + Mdims%p_snloc* ( SELE - 1 ) )
-                                                    else!ORIGINAL FORMULATION
-                                                        IF ( .NOT.GOT_C_MATRIX ) THEN
-                                                            Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                                + NMX_ALL( IDIM )
-                                                        END IF
-                                                        LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                                            - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + Mdims%p_snloc* ( SELE - 1 ) )
-                                                    endif
+                                                    IF ( .NOT.GOT_C_MATRIX ) THEN
+                                                        Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
+                                                            + NMX_ALL( IDIM )
+                                                    END IF
+                                                    LOC_U_RHS( IDIM, IPHASE, U_ILOC) =  LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                                        - NMX_ALL( IDIM ) * SUF_P_BC_ALL( 1,IPRES,P_SJLOC + Mdims%p_snloc* ( SELE - 1 ) )
                                                 END IF
                                             END DO
                                         END DO
-                                    else if(GET_C_IN_CV_IN_DYNCORE) then !Surface contribution
-                                        IF ( .NOT.GOT_C_MATRIX ) THEN
-                                            DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
-                                                DO IDIM = 1, Mdims%ndim
-                                                    Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                        - NMX_ALL( IDIM) ! subtract out as we have added it in the surface of the elements
-                                                end do
-                                            end do
-                                        END IF
                                     END IF
                                 END DO
                             end if
@@ -3720,8 +3682,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                    ! ***********SUBROUTINE DETERMINE_SUF_PRES - END************
                 ENDIF If_on_boundary_domain
                 If_ele2_notzero: IF(ELE2 /= 0) THEN
-                    got_c_matrix1: if(.not.got_c_matrix) then   !NOT VERY ELEGANT THE GET_C_IN_CV_IN_DYNCORE
-                        discontinuous_pres: IF(DISC_PRES.or. GET_C_IN_CV_IN_DYNCORE) THEN
+                    got_c_matrix1: if(.not.got_c_matrix) then
+                        discontinuous_pres: IF(DISC_PRES) THEN
                             IF( VOL_ELE_INT_PRES ) THEN
                                 ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
                                 MASSE = MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 )
@@ -3740,13 +3702,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                     U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
                                     VNMX_ALL = 0.0
                                     DO SGI = 1, FE_GIdims%sbcvngi
-                                        if (GET_C_IN_CV_IN_DYNCORE) then                                       !WE NEED A REVERSED FE_funs%sbcvn
-                                            RNN = SDETWE( SGI ) * SBUFEN_REVERSED( SGI, U_SILOC ) * FE_funs%sbcvn( P_SJLOC, SGI )
-                                            VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
-                                        else
-                                            RNN = SDETWE( SGI ) * SBUFEN_REVERSED( SGI, U_SILOC ) * SBCVFEN_REVERSED( SGI, P_SJLOC )
-                                            VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
-                                        end if
+                                        RNN = SDETWE( SGI ) * SBUFEN_REVERSED( SGI, U_SILOC ) * SBCVFEN_REVERSED( SGI, P_SJLOC )
+                                        VNMX_ALL = VNMX_ALL + SNORMXN_ALL( :, SGI ) * RNN
                                     END DO
                                     CALL USE_POSINMAT_C_STORE( COUNT, U_INOD, P_JNOD,  &
                                         Mdims%u_nonods, Mspars%C%fin, Mspars%C%col, Mspars%C%ncol, &
@@ -3761,23 +3718,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                         ! weight integral according to non-uniform mesh spacing otherwise it will go unstable.
                                         IF ( .NOT.GOT_C_MATRIX ) THEN
                                             DO IDIM = 1, Mdims%ndim
-                                                !NOT VERY ELEGANT
-                                                IF(GET_C_IN_CV_IN_DYNCORE) THEN
-                                                    IF (DISC_PRES) THEN
-                                                        Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                            + VNMX_ALL( IDIM ) * 0.5
-                                                        Mmat%C( IDIM, IPHASE, COUNT2 ) = Mmat%C( IDIM, IPHASE, COUNT2 ) &
-                                                            + VNMX_ALL( IDIM ) * 0.5
-                                                    ELSE
-                                                        Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                            - VNMX_ALL( IDIM )
-                                                    END IF
-                                                ELSE!ORIGINAL DISCONTINUOUS BETWEEN ELEMENTS FORMULATION
-                                                    Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
-                                                        + VNMX_ALL( IDIM ) * MASSE / ( MASSE + MASSE2 )
-                                                    Mmat%C( IDIM, IPHASE, COUNT2 ) = Mmat%C( IDIM, IPHASE, COUNT2 ) &
-                                                        - VNMX_ALL( IDIM ) *  MASSE / ( MASSE + MASSE2 )
-                                                END IF
+                                                Mmat%C( IDIM, IPHASE, COUNT ) = Mmat%C( IDIM, IPHASE, COUNT ) &
+                                                    + VNMX_ALL( IDIM ) * MASSE / ( MASSE + MASSE2 )
+                                                Mmat%C( IDIM, IPHASE, COUNT2 ) = Mmat%C( IDIM, IPHASE, COUNT2 ) &
+                                                    - VNMX_ALL( IDIM ) *  MASSE / ( MASSE + MASSE2 )
                                             END DO
                                         END IF
                                     END DO Loop_Phase5
@@ -5363,7 +5307,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          COUNT=POSINMAT_C_STORE(U_ILOC,P_JLOC,ELE)
      ELSE
          CALL POSINMAT( COUNT, U_INOD, P_JNOD,  &
-             U_NONODS, FINDC, COLC, NCOLC )
+             FINDC, COLC )
          IF(IDO_STORE_AC_SPAR_PT.NE.0) POSINMAT_C_STORE(U_ILOC,P_JLOC,ELE) = COUNT
      ENDIF
      RETURN
@@ -5389,7 +5333,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          COUNT=POSINMAT_C_STORE_SUF_DG(U_SILOC,P_SJLOC,IFACE,ELE)
      ELSE
          CALL POSINMAT( COUNT, U_INOD, P_JNOD,  &
-             U_NONODS, FINDC, COLC, NCOLC )
+             FINDC, COLC )
          IF(IDO_STORE_AC_SPAR_PT.NE.0) POSINMAT_C_STORE_SUF_DG(U_SILOC,P_SJLOC,IFACE,ELE)=COUNT
      ENDIF
      RETURN
@@ -6127,8 +6071,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
          RZERO, &
          1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-         SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-         storage_state, "wrap1", StorageIndexes(15) )
+         SBCVFEN, SBCVFENSLX, SBCVFENSLY)
 
 
      CALL DG_DERIVS( SHARP_FEMT, FEMTOLD, &
@@ -6142,8 +6085,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
          RZERO, &
          1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-         SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-         storage_state, "Surf_ten_wrap2", StorageIndexes(16))
+         SBCVFEN, SBCVFENSLX, SBCVFENSLY)
 
      ! determine the curvature by solving a simple eqn...
 
@@ -6336,27 +6278,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                  GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
                  RZERO,RZERO,RZERO, &
                  1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-                 SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                 storage_state, "wrapp1", StorageIndexes(17:19))
+                 SBCVFEN, SBCVFENSLX, SBCVFENSLY)
 
 
 
              U_FORCE_X_SUF_TEN = pack(DX_TAU_XX(:,1,:) + DY_TAU_XY(:,1,:) + DZ_TAU_XZ(:,1,:),.true.)
-             !!$            femtold=0.0
-             !!$            DO ELE=1,TOTELE
-             !!$               DO CV_ILOC=1,CV_NLOC
-             !!$                  CV_NOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
-             !!$                  dg_cv_nod=(ELE-1)*CV_NLOC+CV_ILOC
-             !!$                  femtold(cv_nod)=femtold(cv_nod)+U_FORCE_X_SUF_TEn(dg_cv_nod) * MASS_ELE(ELE) / MASS_NORMALISE(CV_NOD)
-             !!$               END DO
-             !!$            END DO
-             !!$            DO ELE=1,TOTELE
-             !!$               DO CV_ILOC=1,CV_NLOC
-             !!$                  CV_NOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
-             !!$                  dg_cv_nod=(ELE-1)*CV_NLOC+CV_ILOC
-             !!$                  U_FORCE_X_SUF_TEn(dg_cv_nod) = femtold(cv_nod)
-             !!$               END DO
-             !!$            END DO
 
              IF(NDIM.GE.2) THEN
                  CALL DG_DERIVS_UVW( TAU_YX, TAU_YX, TAU_YY, TAU_YY, TAU_YZ, TAU_YZ, &
@@ -6372,29 +6298,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
                      RZERO,RZERO,RZERO, &
                      1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                     storage_state, "wrapp2", StorageIndexes(20:22))
+                     SBCVFEN, SBCVFENSLX, SBCVFENSLY)
 
                  U_FORCE_Y_SUF_TEN = pack(DX_TAU_YX(:,1,:)+ DY_TAU_YY(:,1,:) + DZ_TAU_YZ(:,1,:),.true.)
-
-
-             !!$               femtold=0.0
-             !!$               DO ELE=1,TOTELE
-             !!$                  DO CV_ILOC=1,CV_NLOC
-             !!$                     CV_NOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
-             !!$                     dg_cv_nod=(ELE-1)*CV_NLOC+CV_ILOC
-             !!$                     femtold(cv_nod)=femtold(cv_nod)+U_FORCE_Y_SUF_TEn(dg_cv_nod) * MASS_ELE(ELE) / MASS_NORMALISE(CV_NOD)
-             !!$               END DO
-             !!$            END DO
-             !!$            DO ELE=1,TOTELE
-             !!$               DO CV_ILOC=1,CV_NLOC
-             !!$                  CV_NOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
-             !!$                  dg_cv_nod=(ELE-1)*CV_NLOC+CV_ILOC
-             !!$                  U_FORCE_Y_SUF_TEn(dg_cv_nod) = femtold(cv_nod)
-             !!$               END DO
-             !!$            END DO
-
-
 
              ENDIF
 
@@ -6412,27 +6318,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
                      RZERO,RZERO,RZERO, &
                      1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                     storage_state, "wrapp3", StorageIndexes(23:25))
+                     SBCVFEN, SBCVFENSLX, SBCVFENSLY)
 
                  U_FORCE_Z_SUF_TEN = pack(DX_TAU_ZX(:,1,:) + DY_TAU_ZY(:,1,:) + DZ_TAU_ZZ(:,1,:),.true.)
-
-             !!$               femtold=0.0
-             !!$               DO ELE=1,TOTELE
-             !!$                  DO CV_ILOC=1,CV_NLOC
-             !!$                     CV_NOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
-             !!$                     dg_cv_nod=(ELE-1)*CV_NLOC+CV_ILOC
-             !!$                     femtold(cv_nod)=femtold(cv_nod)+U_FORCE_Z_SUF_TEn(dg_cv_nod) * MASS_ELE(ELE) / MASS_NORMALISE(CV_NOD)
-             !!$               END DO
-             !!$            END DO
-             !!$            DO ELE=1,TOTELE
-             !!$               DO CV_ILOC=1,CV_NLOC
-             !!$                  CV_NOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
-             !!$                  dg_cv_nod=(ELE-1)*CV_NLOC+CV_ILOC
-             !!$                  U_FORCE_Z_SUF_TEn(dg_cv_nod) = femtold(cv_nod)
-             !!$               END DO
-             !!$            END DO
-
 
              ENDIF
 
@@ -6471,8 +6359,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO,  &
                      RZERO,RZERO,RZERO, &
                      1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                     storage_state, "wrapp4", StorageIndexes(26:28))
+                     SBCVFEN, SBCVFENSLX, SBCVFENSLY)
 
              else
 
@@ -6496,8 +6383,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
                      RZERO, &
                      1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                     storage_state, "wrap4", StorageIndexes(29))
+                     SBCVFEN, SBCVFENSLX, SBCVFENSLY)
 
                  DO ELE=1,TOTELE
                      DO CV_ILOC=1,CV_NLOC
@@ -6527,8 +6413,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      GIDIMS%NFACE, FACE_ELE, CV_SLOCLIST, CV_SLOCLIST, STOTEL, CV_SNLOC, CV_SNLOC, IZERO, &
                      RZERO, &
                      1, GIDIMS%SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-                     SBCVFEN, SBCVFENSLX, SBCVFENSLY, &
-                     storage_state, "wrap5", StorageIndexes(30))
+                     SBCVFEN, SBCVFENSLX, SBCVFENSLY)
 
                  DO ELE=1,TOTELE
                      DO CV_ILOC=1,CV_NLOC
@@ -6550,12 +6435,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      CURVATURE(CV_NOD) = CURVATURE(CV_NOD) + RR * MASS_ELE(ELE) / MASS_NORMALISE(CV_NOD)
                  END DO
              END DO
-
-            !DEALLOCATE(DIF_TX, DIF_TY, DIF_TZ)
-            !DEALLOCATE(DG_CV_NDGLN)
-            !DEALLOCATE(DX_DIFF_X, DY_DIFF_X, DZ_DIFF_X)
-            !DEALLOCATE(DX_DIFF_Y, DY_DIFF_Y, DZ_DIFF_Y)
-            !DEALLOCATE(DX_DIFF_Z, DY_DIFF_Z, DZ_DIFF_Z)
 
          end if
 
@@ -6580,21 +6459,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
          ! should be minus because is discretised as a pressure term
 
-         !PLIKE_GRAD_SOU_COEF = PLIKE_GRAD_SOU_COEF - SUF_TENSION_COEF * ABS( CURVATURE )
-         !         PLIKE_GRAD_SOU_COEF = PLIKE_GRAD_SOU_COEF + SUF_TENSION_COEF * max(0.0,CURVATURE)
          PLIKE_GRAD_SOU_COEF = PLIKE_GRAD_SOU_COEF + SUF_TENSION_COEF * CURVATURE
 
-         !PLIKE_GRAD_SOU_GRAD = PLIKE_GRAD_SOU_GRAD + VOLUME_FRAC
-         !PLIKE_GRAD_SOU_GRAD = PLIKE_GRAD_SOU_GRAD + FEMT
          PLIKE_GRAD_SOU_GRAD = PLIKE_GRAD_SOU_GRAD + sharp_FEMT
-
-        !ewrite(3,*) 'MASS_ELE:', MASS_ELE
-        !ewrite(3,*) 'MASS_NORMALISE:', MASS_NORMALISE
-
-        !ewrite(3,*) 'CURVATURE:', CURVATURE
-        !ewrite(3,*) 'PLIKE_GRAD_SOU_COEF:', PLIKE_GRAD_SOU_COEF
-        !ewrite(3,*) 'PLIKE_GRAD_SOU_GRAD:', PLIKE_GRAD_SOU_GRAD
-        !stop 2481
 
      ELSE
 
@@ -6629,8 +6496,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                              ENDIF
                          END DO
                          FEMTOLD2(CV_NOD)=0.5*FEMTold(CV_NOD)+0.5*RSUM/RRSUM
-                        !         FEMTOLD(CV_NOD)=0.75*FEMT(CV_NOD)+0.25*RSUM/RRSUM
-                        !         FEMTOLD(CV_NOD)=0.9*FEMT(CV_NOD)+0.1*RSUM/RRSUM
                      END DO
                      FEMTOLD=FEMTOLD2
                  END DO
@@ -6661,8 +6526,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                              ENDIF
                          END DO
                          FEMTOLD2(CV_NOD)=0.5*FEMTold(CV_NOD)+0.5*RSUM/RRSUM
-                        !         FEMTOLD(CV_NOD)=0.75*FEMT(CV_NOD)+0.25*RSUM/RRSUM
-                        !         FEMTOLD(CV_NOD)=0.9*FEMT(CV_NOD)+0.1*RSUM/RRSUM
                      END DO
                      FEMTOLD=FEMTOLD2
                  END DO
@@ -6695,26 +6558,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                          grad_c_x=SHARP_DTX_ELE(CV_ILOC, 1, ELE)
                          grad_c_y=SHARP_DTY_ELE(CV_ILOC, 1, ELE)
                          grad_c_z=SHARP_DTZ_ELE(CV_ILOC, 1, ELE)
-                        !                    grad_c_x=DTX_ELE(CV_ILOC, 1, ELE)
-                        !                    grad_c_y=DTY_ELE(CV_ILOC, 1, ELE)
-                        !                    grad_c_z=DTZ_ELE(CV_ILOC, 1, ELE)
                      endif
-
-                     !CV_FORCE_X_SUF_TEN(CV_NOD)=CV_FORCE_X_SUF_TEN(CV_NOD)+RR*DTX_ELE(CV_ILOC, 1, ELE)
-                     !IF(NDIM.GE.2) CV_FORCE_Y_SUF_TEN(CV_NOD)=CV_FORCE_Y_SUF_TEN(CV_NOD)+RR*DTY_ELE(CV_ILOC, 1, ELE)
-                     !IF(NDIM.GE.3) CV_FORCE_Z_SUF_TEN(CV_NOD)=CV_FORCE_Z_SUF_TEN(CV_NOD)+RR*DTZ_ELE(CV_ILOC, 1, ELE)
 
                      RR=DX_DIFF_X(DG_CV_NOD,1 ,ele)
                      IF(NDIM.GE.2) RR=RR + DY_DIFF_Y(DG_CV_NOD,1 ,ele)
                      IF(NDIM.GE.3) RR=RR + DZ_DIFF_Z(DG_CV_NOD,1, ele)
-                     !                 if(rr.ne.0.0) print *,'ele,cv_iloc,rr=',ele,cv_iloc,rr, &
-                     !                     sqrt(DTX_ELE(CV_ILOC, 1, ELE)**2+DTX_ELE(CV_ILOC, 1, ELE)**2)
-                     !                  RR = - SUF_TENSION_COEF * max(RR,0.0)
-                     !                  rr=0.5*16.6666
                      RR = - SUF_TENSION_COEF * RR
 
                      U_FORCE_X_SUF_TEN(DG_CV_NOD) = U_FORCE_X_SUF_TEN(DG_CV_NOD) + RR * grad_c_x
-                     !                  U_FORCE_X_SUF_TEN(DG_CV_NOD) = U_FORCE_X_SUF_TEN(DG_CV_NOD) + RR * DTX_ELE(CV_ILOC, 1, ELE)
                      IF(NDIM.GE.2) U_FORCE_Y_SUF_TEN(DG_CV_NOD) = U_FORCE_Y_SUF_TEN(DG_CV_NOD) + RR *grad_c_y
                      IF(NDIM.GE.3) U_FORCE_Z_SUF_TEN(DG_CV_NOD) = U_FORCE_Z_SUF_TEN(DG_CV_NOD) + RR *grad_c_z
 
@@ -6727,84 +6578,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
              DEALLOCATE(DX_DIFF_X, DY_DIFF_X, DZ_DIFF_X)
              DEALLOCATE(DX_DIFF_Y, DY_DIFF_Y, DZ_DIFF_Y)
              DEALLOCATE(DX_DIFF_Z, DY_DIFF_Z, DZ_DIFF_Z)
-
-         end if
-
-         !CV_U_FORCE_X_SUF_TEN = CV_FORCE_X_SUF_TEN
-         !IF(NDIM.GE.2) CV_U_FORCE_Y_SUF_TEN = CV_FORCE_Y_SUF_TEN
-         !IF(NDIM.GE.3) CV_U_FORCE_Z_SUF_TEN = CV_FORCE_Z_SUF_TEN
-
-         if (.false.) then
-
-             ! Convert force to velocity space...
-             ALLOCATE(MASS(U_NLOC,U_NLOC))
-             ALLOCATE(STORE_MASS(U_NLOC,U_NLOC))
-             ALLOCATE(IPIV(U_NLOC))
-             ALLOCATE(B_CV_X(CV_NLOC), B_CV_Y(CV_NLOC), B_CV_Z(CV_NLOC))
-             ALLOCATE(RHS_U_SHORT_X(U_NLOC), RHS_U_SHORT_Y(U_NLOC), RHS_U_SHORT_Z(U_NLOC))
-             ALLOCATE(U_SOL_X(U_NLOC), U_SOL_Y(U_NLOC), U_SOL_Z(U_NLOC))
-             DO ELE=1,TOTELE
-                 ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-                 CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
-                     X_NLOC, CV_NLOC, GIDIMS%CV_NGI, &
-                     CVFEN, CVFENLX, CVFENLY, CVFENLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-                     CVFENX_ALL, &
-                     U_NLOC, UFENLX, UFENLY, UFENLZ, UFENX_ALL)
-
-                 MASS=0.0
-                 DO U_ILOC=1,U_NLOC
-                     DO U_JLOC=1,U_NLOC
-                         NN=0.0
-                         DO GI=1,GIDIMS%CV_NGI
-                             NN = NN + UFEN( U_ILOC, GI ) * UFEN( U_JLOC, GI ) * DETWEI(GI)
-                         END DO
-                         MASS(U_ILOC,U_JLOC)=MASS(U_ILOC,U_JLOC)+NN
-                     END DO
-                 END DO
-
-                 DO CV_JLOC=1,CV_NLOC
-                     CV_JNOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_JLOC)
-                     B_CV_X(CV_JLOC)=CV_FORCE_X_SUF_TEN(CV_JNOD)
-                     IF(NDIM.GE.2) B_CV_Y(CV_JLOC)=CV_FORCE_Y_SUF_TEN(CV_JNOD)
-                     IF(NDIM.GE.3) B_CV_Z(CV_JLOC)=CV_FORCE_Z_SUF_TEN(CV_JNOD)
-                 END DO
-
-                 RHS_U_SHORT_X=0.0
-                 RHS_U_SHORT_Y=0.0
-                 RHS_U_SHORT_Z=0.0
-                 DO U_ILOC=1,U_NLOC
-                     DO CV_JLOC=1,CV_NLOC
-                         NM=0.0
-                         DO GI=1,GIDIMS%CV_NGI
-                             NM=NM+UFEN( U_ILOC, GI ) * CVFEN( CV_JLOC, GI ) *DETWEI(GI)
-                         END DO
-                         RHS_U_SHORT_X(U_ILOC)=RHS_U_SHORT_X(U_ILOC)+NM*B_CV_X(CV_JLOC)
-                         IF(NDIM.GE.2) RHS_U_SHORT_Y(U_ILOC)=RHS_U_SHORT_Y(U_ILOC)+NM*B_CV_Y(CV_JLOC)
-                         IF(NDIM.GE.3) RHS_U_SHORT_Z(U_ILOC)=RHS_U_SHORT_Z(U_ILOC)+NM*B_CV_Z(CV_JLOC)
-                     END DO
-                 END DO
-                 ! Invert mass matrix...
-                 ! Solve STORE_MASS *U_SOL_X = RHS_U_SHORT_X
-                 ! STORE_MASS is overwritten by lu decomposition which used after the 1st solve.
-                 STORE_MASS=MASS
-                 GOTDEC = .FALSE.
-                 CALL SMLINNGOT( STORE_MASS, U_SOL_X, RHS_U_SHORT_X, U_NLOC, U_NLOC, IPIV,GOTDEC)
-                 GOTDEC =.TRUE.
-                 IF(NDIM.GE.2) CALL SMLINNGOT( STORE_MASS, U_SOL_Y, RHS_U_SHORT_Y, U_NLOC, U_NLOC, IPIV,GOTDEC)
-                 IF(NDIM.GE.3) CALL SMLINNGOT( STORE_MASS, U_SOL_Z, RHS_U_SHORT_Z, U_NLOC, U_NLOC, IPIV,GOTDEC)
-
-                 ! Solve mass matrix systems...
-                 DO U_ILOC=1,U_NLOC
-                     U_NOD=U_NDGLN((ELE-1)*U_NLOC+U_ILOC)
-                     U_FORCE_X_SUF_TEN(U_INOD)=U_SOL_X(U_ILOC)
-                     IF(NDIM.GE.2) U_FORCE_Y_SUF_TEN(U_INOD)=U_SOL_Y(U_ILOC)
-                     IF(NDIM.GE.3) U_FORCE_Z_SUF_TEN(U_INOD)=U_SOL_Z(U_ILOC)
-                 END DO
-             END DO
-
-             DEALLOCATE( MASS, STORE_MASS, B_CV_X, B_CV_Y, B_CV_Z, &
-                 RHS_U_SHORT_X, RHS_U_SHORT_Y, RHS_U_SHORT_Z, &
-                 U_SOL_X, U_SOL_Y, U_SOL_Z, IPIV)
 
          end if
 
@@ -6915,7 +6688,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
  subroutine Introduce_Cap_press_term(packed_state, storage_state, Mdims, FE_GIdims, FE_funs, &
-     X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln, StorageIndexes,&
+     X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln,&
      ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
      !This subroutine introduces the capillary pressure term in the RHS
      Implicit none
@@ -6925,7 +6698,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      type(multi_shape_funs), intent(in) :: FE_funs
      integer, intent(in) :: ele, iface, ele2
      integer, dimension(:), intent(in) :: cv_ndgln, x_ndgln
-     integer, dimension(:), intent(inout) :: StorageIndexes
      REAL, DIMENSION ( :, :, : ), intent(inout) :: LOC_U_RHS
      real, dimension(:,:) :: X_ALL
      real, dimension(:,:), intent(in) :: SNORMXN_ALL
@@ -6945,21 +6717,21 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      real, dimension(Mdims%cv_nloc, FE_GIdims%cv_ngi) :: CV_Shape_Func
      real, dimension(Mdims%NDIM) :: NMX_ALL
      !Pointers for detwei
-     real, pointer, dimension(:) :: DETWEI, RA
-     real, pointer:: volume
-     REAL, pointer, DIMENSION(:,:,:):: CVFENX_ALL, UFENX_ALL
+    real, dimension(Mdims%Ndim, size(FE_funs%cvfenlx_all,2), FE_GIdims%cv_ngi) :: CVFENX_ALL
+    real, dimension(Mdims%Ndim, size(FE_funs%ufenlx_all,2), FE_GIdims%cv_ngi) :: UFENX_ALL
+    real, dimension(FE_GIdims%cv_ngi) :: RA, DETWEI
+    real :: VOLUME
 
      call get_var_from_packed_state(packed_state, CapPressure = CapPressure)
 
      d1 = (Mdims%ndim ==1); d3 = (Mdims%ndim ==3)
 
      !#####Area to retrieve the shape functions#####
-     CALL DETNLXR_PLUS_U_WITH_STORAGE( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, Mdims%totele, Mdims%x_nonods, &
+     CALL DETNLXR_PLUS_U( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, Mdims%totele, Mdims%x_nonods, &
          Mdims%x_nloc, Mdims%cv_nloc, FE_GIdims%cv_ngi, FE_funs%cvfen, FE_funs%cvfenlx_all(1,:,:), &
          FE_funs%cvfenlx_all(2,:,:), FE_funs%cvfenlx_all(3,:,:), FE_funs%cvweight, DETWEI, RA, VOLUME, D1, D3, .false., &
          CVFENX_ALL, &
-         Mdims%u_nloc, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), UFENX_ALL,&
-         storage_state ,"C_1", StorageIndexes(14))
+         Mdims%u_nloc, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), UFENX_ALL)
      !##### End of area to obtain shape functions#####
      !Project to FEM
      if (CAP_to_FEM) then
@@ -7193,9 +6965,12 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
       logical :: quad_over_whole_ele, d1, d3, dcyl
       type( vector_field ), pointer :: x
       type( mesh_type ), pointer :: phmesh
+      !vars for the derivatives of the shape functions
+      real, dimension( :, :, : ), allocatable, target :: tmp_cvfenx_all
+      real, dimension( :, :, : ), allocatable, target :: other_fenx_all
+      real, dimension( : ), allocatable, target :: detwei, ra
+      real :: volume
 
-      real, dimension( : ), pointer :: detwei, ra
-      real, pointer :: volume
       real, dimension(:,:,:), pointer :: phfenx_all, ufenx_all
 
       real, dimension( :, :, : ), allocatable :: u_ph_source_vel, u_ph_source_cv
@@ -7210,11 +6985,9 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
       real, dimension( : ), pointer :: tmp_cv_weight
       real, dimension( :, : ), pointer :: tmp_cvfen
       real, dimension( :, :, : ), pointer :: tmp_cvfenlx_all
-      real, dimension( :, :, : ), pointer :: tmp_cvfenx_all
 
       real, dimension( :, : ), pointer :: other_fen
       real, dimension( :, :, : ), pointer :: other_fenlx_all
-      real, dimension( :, :, : ), pointer :: other_fenx_all
 
       real :: nxnx, nm, gravity_magnitude, dt
 
@@ -7337,6 +7110,10 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
          stop 7555
       end if
 
+      allocate(tmp_cvfenx_all(ndim, size(tmp_cvfenlx_all,2), ph_ngi))
+      allocate(other_fenx_all(ndim, size(other_fenlx_all,2) ,ph_ngi))
+      allocate(detwei(ph_ngi))
+      allocate(ra(ph_ngi))
 
       allocate( u_ph_source_vel( ndim, nphase, u_nonods ), &
            &    u_ph_source_cv( ndim, nphase, cv_nonods ), &
@@ -7395,12 +7172,12 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
          do  ele = 1, totele
 
             ! calculate detwei,ra,nx,ny,nz for element ele
-            call detnlxr_plus_u_with_storage( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
+            call detnlxr_plus_u( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
                  x_ndgln, totele, x_nonods, x_nloc, tmp_cv_nloc, ph_ngi, &
                  tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
                  tmp_cv_weight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
                  other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
-                 other_fenx_all, storage_state , "ph_2", StorageIndexes( 37 ) )
+                 other_fenx_all)
 
             if ( u_nloc == tmp_cv_nloc ) then
                 ufenx_all => tmp_cvfenx_all
@@ -7597,11 +7374,11 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
       call deallocate( ph_sol )
       call deallocate( matrix )
       deallocate( u_ph_source_vel, u_ph_source_cv, alpha_cv, &
-           &      coef_alpha_cv, u_ph_source_ph, alpha_ph, &
-           &      ph, coef_alpha_ph, dx_ph_gi, u_s_gi, &
-           &      dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, sigma_gi, &
-           &      ph_on_face, phfem_on_face, u_on_face, ufem_on_face )
-
+                 coef_alpha_cv, u_ph_source_ph, alpha_ph, &
+                 ph, coef_alpha_ph, dx_ph_gi, u_s_gi, &
+                 dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, sigma_gi, &
+                 ph_on_face, phfem_on_face, u_on_face, ufem_on_face,&
+                 tmp_cvfenx_all, other_fenx_all, detwei, ra )
       ewrite(3,*) "leaving high_order_pressure_solve"
 
       return

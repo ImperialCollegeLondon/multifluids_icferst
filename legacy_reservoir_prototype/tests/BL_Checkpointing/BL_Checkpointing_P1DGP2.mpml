@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <multiphase_options>
   <simulation_name>
-    <string_value lines="1">QuickTest_DGCVGalerkin</string_value>
+    <string_value lines="1">BL_Checkpointing_P1DGP2</string_value>
   </simulation_name>
   <geometry>
     <dimension>
@@ -20,7 +20,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">1</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -40,14 +40,14 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">1</integer_value>
+            <integer_value rank="0">2</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
         </mesh_shape>
         <mesh_continuity>
-          <string_value>discontinuous</string_value>
+          <string_value>continuous</string_value>
         </mesh_continuity>
         <stat>
           <exclude_from_stat/>
@@ -78,7 +78,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">1</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -97,7 +97,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">1</integer_value>
+            <integer_value rank="0">2</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -116,7 +116,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">1</integer_value>
+            <integer_value rank="0">2</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -146,11 +146,11 @@
       </constant>
     </dump_period_in_timesteps>
     <output_mesh name="PressureMesh"/>
-    <dump_boundaryflux name="inlet">
-      <surface_ids>
-        <integer_value shape="1" rank="1">1</integer_value>
-      </surface_ids>
-    </dump_boundaryflux>
+    <checkpointing>
+      <checkpoint_period_in_dumps>
+        <integer_value rank="0">1</integer_value>
+      </checkpoint_period_in_dumps>
+    </checkpointing>
     <stat/>
   </io>
   <timestepping>
@@ -161,7 +161,7 @@
       <real_value rank="0">10e-3</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">0.2</real_value>
+      <real_value rank="0">20e-3</real_value>
     </finish_time>
     <nonlinear_iterations>
       <integer_value rank="0">30</integer_value>
@@ -240,9 +240,7 @@
         <steady_state>
           <include_in_steady_state/>
         </steady_state>
-        <galerkin_projection>
-          <discontinuous/>
-        </galerkin_projection>
+        <no_interpolation/>
       </prognostic>
     </scalar_field>
     <scalar_field name="Density" rank="0">
@@ -258,7 +256,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
@@ -292,7 +290,7 @@
               <nonlinear_scheme/>
             </viscosity_scheme>
             <advection_scheme>
-              <upwind/>
+              <DG_weighting/>
               <integrate_advection_by_parts>
                 <twice/>
               </integrate_advection_by_parts>
@@ -304,17 +302,19 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
           <relaxation>
             <real_value rank="0">1</real_value>
           </relaxation>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
-          </preconditioner>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="sor"/>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
           </relative_error>
@@ -446,9 +446,7 @@
         <steady_state>
           <include_in_steady_state/>
         </steady_state>
-        <galerkin_projection>
-          <discontinuous/>
-        </galerkin_projection>
+        <consistent_interpolation/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -472,7 +470,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <solver>
@@ -481,9 +479,7 @@
               <integer_value rank="0">30</integer_value>
             </restart>
           </iterative_method>
-          <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
-          </preconditioner>
+          <preconditioner name="sor"/>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
           </relative_error>
@@ -522,58 +518,8 @@
         <detectors>
           <include_in_detectors/>
         </detectors>
-        <CVgalerkin_interpolation/>
+        <consistent_interpolation/>
       </prognostic>
-    </scalar_field>
-    <scalar_field name="ProjectedPVF_Continuous" rank="0">
-      <diagnostic>
-        <algorithm source_field_type="scalar" material_phase_support="single" name="scalar_galerkin_projection" source_field_name="PhaseVolumeFraction">
-          <solver>
-            <iterative_method name="cg"/>
-            <preconditioner name="sor"/>
-            <relative_error>
-              <real_value rank="0">1.0e-7</real_value>
-            </relative_error>
-            <max_iterations>
-              <integer_value rank="0">30</integer_value>
-            </max_iterations>
-            <never_ignore_solver_failures/>
-            <diagnostics>
-              <monitors/>
-            </diagnostics>
-          </solver>
-        </algorithm>
-        <mesh name="CoordinateMesh"/>
-        <output/>
-        <stat/>
-        <convergence>
-          <include_in_convergence/>
-        </convergence>
-        <detectors>
-          <include_in_detectors/>
-        </detectors>
-        <steady_state>
-          <include_in_steady_state/>
-        </steady_state>
-        <adaptivity_options>
-          <absolute_measure>
-            <scalar_field name="InterpolationErrorBound" rank="0">
-              <prescribed>
-                <value name="WholeMesh">
-                  <constant>
-                    <real_value rank="0">0.001</real_value>
-                  </constant>
-                </value>
-                <output/>
-                <stat/>
-                <detectors>
-                  <exclude_from_detectors/>
-                </detectors>
-              </prescribed>
-            </scalar_field>
-          </absolute_measure>
-        </adaptivity_options>
-      </diagnostic>
     </scalar_field>
     <multiphase_properties>
       <immobile_fraction>
@@ -624,7 +570,7 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <initial_condition name="WholeMesh">
@@ -669,17 +615,19 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
           <relaxation>
             <real_value rank="0">1.0</real_value>
           </relaxation>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
-          </preconditioner>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="sor"/>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
           </relative_error>
@@ -791,9 +739,7 @@
         <steady_state>
           <include_in_steady_state/>
         </steady_state>
-        <galerkin_projection>
-          <discontinuous/>
-        </galerkin_projection>
+        <consistent_interpolation/>
       </prognostic>
     </vector_field>
     <scalar_field name="PhaseVolumeFraction" rank="0">
@@ -817,14 +763,16 @@
         </spatial_discretisation>
         <temporal_discretisation>
           <theta>
-            <real_value rank="0">1</real_value>
+            <real_value rank="0">-1</real_value>
           </theta>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="preonly"/>
-          <preconditioner name="lu">
-            <factorization_package name="petsc"/>
-          </preconditioner>
+          <iterative_method name="gmres">
+            <restart>
+              <integer_value rank="0">30</integer_value>
+            </restart>
+          </iterative_method>
+          <preconditioner name="sor"/>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
           </relative_error>
@@ -863,7 +811,7 @@
         <detectors>
           <include_in_detectors/>
         </detectors>
-        <CVgalerkin_interpolation/>
+        <consistent_interpolation/>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
@@ -886,40 +834,6 @@
       </immobile_fraction>
     </multiphase_properties>
   </material_phase>
-  <mesh_adaptivity>
-    <hr_adaptivity>
-      <period_in_timesteps>
-        <integer_value rank="0">1</integer_value>
-      </period_in_timesteps>
-      <maximum_number_of_nodes>
-        <integer_value rank="0">100000</integer_value>
-      </maximum_number_of_nodes>
-      <disable_gradation/>
-      <tensor_field name="MinimumEdgeLengths">
-        <anisotropic_symmetric>
-          <constant>
-            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">0.005 0 0 0.005</real_value>
-          </constant>
-        </anisotropic_symmetric>
-      </tensor_field>
-      <tensor_field name="MaximumEdgeLengths">
-        <anisotropic_symmetric>
-          <constant>
-            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">0.08 0 0 0.08</real_value>
-          </constant>
-        </anisotropic_symmetric>
-      </tensor_field>
-      <aspect_ratio_bound>
-        <real_value rank="0">2</real_value>
-      </aspect_ratio_bound>
-      <adapt_at_first_timestep>
-        <number_of_adapts>
-          <integer_value rank="0">0</integer_value>
-        </number_of_adapts>
-      </adapt_at_first_timestep>
-      <preserve_mesh_regions/>
-    </hr_adaptivity>
-  </mesh_adaptivity>
   <porous_media>
     <scalar_field name="Porosity">
       <prescribed>

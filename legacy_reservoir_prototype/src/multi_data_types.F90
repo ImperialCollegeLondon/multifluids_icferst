@@ -163,7 +163,8 @@ module multi_data_types
         type(petsc_csr_matrix) :: petsc_ACV!Matrix of the saturation equation
         type(vector_field) :: CV_RHS!Rigth hand side of the saturation equation
         real, dimension( :, :, : ), pointer :: PIVIT_MAT => null()!Mass matrix (matrix form by the sigmas) (storable)
-        !ADD ANOTHER POINTER ARRAY TO STORE THE COLOURING
+        integer, dimension(:), pointer :: ICOLOR => null()!Array used to accelerate the creation of CMC in COLOR_GET_CMC_PHA_FAST
+        integer :: NCOLOR !Number of colors in ICOLOR
         type(petsc_csr_matrix):: DGM_PETSC!Big matrix to solve the pressure in inertia flows (don't know much more)
         logical :: NO_MATRIX_STORE !Flag to whether calculate and use DGM_PETSC or C
         logical :: CV_pressure     !Flag to whether calculate the pressure using FE (ASSEMB_FORCE_CTY) or CV (cv_assemb)
@@ -215,40 +216,40 @@ contains
         allocate(shape_fun%colgpts( Mdims%cv_nloc * GIdims%scvngi ))
 
         !Set everything to zero
-       shape_fun%cvn = 0.
-       shape_fun%cvweight = 0.
-       shape_fun%cvfen = 0.
-       shape_fun%cvfenlx_all = 0.
-       shape_fun%ufen = 0.
-       shape_fun%ufenlx_all = 0.
-       shape_fun%cv_neiloc = 0
-       shape_fun%cv_on_face = .false.
-       shape_fun%cvfem_on_face = .false.
-       shape_fun%scvfen = 0.
-       shape_fun%scvfenslx = 0.
-       shape_fun%scvfensly = 0.
-       shape_fun%scvfeweigh = 0.
-       shape_fun%scvfenlx_all = 0.
-       shape_fun%sufen = 0.
-       shape_fun%sufenslx = 0.
-       shape_fun%sufensly = 0.
-       shape_fun%sufenlx_all = 0.
-       shape_fun%u_on_face = .false.
-       shape_fun%ufem_on_face = .false.
-       shape_fun%sbcvn = 0.
-       shape_fun%sbcvfen = 0.
-       shape_fun%sbcvfenslx = 0.
-       shape_fun%sbcvfensly = 0.
-       shape_fun%sbcvfeweigh = 0.
-       shape_fun%sbcvfenlx_all = 0.
-       shape_fun%sbufen = 0.
-       shape_fun%sbufenslx = 0.
-       shape_fun%sbufensly = 0.
-       shape_fun%sbufenlx_all = 0.
-       shape_fun%cv_sloclist = 0
-       shape_fun%u_sloclist = 0
-       shape_fun%findgpts = 0
-       shape_fun%colgpts = 0
+        shape_fun%cvn = 0.
+        shape_fun%cvweight = 0.
+        shape_fun%cvfen = 0.
+        shape_fun%cvfenlx_all = 0.
+        shape_fun%ufen = 0.
+        shape_fun%ufenlx_all = 0.
+        shape_fun%cv_neiloc = 0
+        shape_fun%cv_on_face = .false.
+        shape_fun%cvfem_on_face = .false.
+        shape_fun%scvfen = 0.
+        shape_fun%scvfenslx = 0.
+        shape_fun%scvfensly = 0.
+        shape_fun%scvfeweigh = 0.
+        shape_fun%scvfenlx_all = 0.
+        shape_fun%sufen = 0.
+        shape_fun%sufenslx = 0.
+        shape_fun%sufensly = 0.
+        shape_fun%sufenlx_all = 0.
+        shape_fun%u_on_face = .false.
+        shape_fun%ufem_on_face = .false.
+        shape_fun%sbcvn = 0.
+        shape_fun%sbcvfen = 0.
+        shape_fun%sbcvfenslx = 0.
+        shape_fun%sbcvfensly = 0.
+        shape_fun%sbcvfeweigh = 0.
+        shape_fun%sbcvfenlx_all = 0.
+        shape_fun%sbufen = 0.
+        shape_fun%sbufenslx = 0.
+        shape_fun%sbufensly = 0.
+        shape_fun%sbufenlx_all = 0.
+        shape_fun%cv_sloclist = 0
+        shape_fun%u_sloclist = 0
+        shape_fun%findgpts = 0
+        shape_fun%colgpts = 0
 
     end subroutine allocate_multi_shape_funs
 

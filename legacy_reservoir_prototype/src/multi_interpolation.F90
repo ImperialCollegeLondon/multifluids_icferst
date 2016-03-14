@@ -73,17 +73,16 @@ module multi_interpolation
 
 contains
 
-  subroutine M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, storage_state, StorageIndexes, small_finacv, &
+  subroutine M2MInterpolation(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, &
             small_colacv, cv_ele_type, flag, IDs2CV_ndgln)
     implicit none
     ! IMPORTANT: flag is a switch before and after the adapt and tells us which interpolation step (1) or (3) to implement
     type( state_type ), dimension( : ), intent( inout ) :: state
-    type( state_type ), intent( inout ) :: packed_state, storage_state
+    type( state_type ), intent( inout ) :: packed_state
     type(multi_dimensions), intent(in) :: Mdims
     type(multi_GI_dimensions), intent(in) :: CV_GIdims
     type(multi_shape_funs), intent(in) :: CV_funs
     integer, intent( in ) :: cv_ele_type
-    integer, dimension( : ), intent( inout ) :: StorageIndexes
     integer, intent(in) :: flag
     integer, dimension(:), pointer, intent(inout) :: small_finacv, small_colacv
     integer, optional, dimension(:) :: IDs2CV_ndgln
@@ -94,17 +93,18 @@ contains
     integer, dimension( : ), pointer ::  x_ndgln, cv_ndgln, u_ndgln, dg_nodes
     logical :: quad_over_whole_ele, d1, d3, dcyl
     type( vector_field ), pointer :: x
-    real, dimension( : ), pointer :: detwei, ra
-    real, pointer :: volume
     real, dimension( :, : ), pointer :: tmp_cvfen
     real, dimension( :, :, : ), pointer :: tmp_cvfenlx_all
     real, dimension( :, :, : ), pointer :: other_fenlx_all
-    real, dimension( :, :, : ), pointer :: tmp_cvfenx_all
-    real, dimension( :, :, : ), pointer :: other_fenx_all
     type( mesh_type ), pointer :: mesh_pres, mesh_pres_disc
     type( vector_field ) :: positions_old, positions_new
     integer :: cv_nodi, cv_nodj
     real :: MN, MM
+    !Shape functions vars
+    real, dimension( :, :, : ), allocatable :: tmp_cvfenx_all
+    real, dimension( :, :, : ), allocatable :: other_fenx_all
+    real, dimension( CV_GIdims%cv_ngi ) :: detwei, ra
+    real :: volume
     ! Element by element inversion variables
     real, dimension(:,:), allocatable :: MMatrix, MNatrix
     real, dimension(:,:), allocatable :: EleRHS
@@ -207,6 +207,9 @@ contains
        other_fenlx_all => CV_funs%ufenlx_all
     end if
     ! INITIALISATIONS for the element loop
+    !Allocate shape function vars
+    allocate(tmp_cvfenx_all(3, size(tmp_cvfenlx_all,2), CV_GIdims%cv_ngi))
+    allocate(other_fenx_all(3, size(other_fenlx_all,2), CV_GIdims%cv_ngi))
     EleLHS = 0
     if(flag ==1) then
        Long_EleRHS = 0.0
@@ -214,12 +217,12 @@ contains
     endif
     do  ele = 1, Mdims%totele
        ! Calculate detwei related quantities
-       call detnlxr_plus_u_with_storage( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
+       call detnlxr_plus_u( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
             x_ndgln, Mdims%totele, Mdims%x_nonods, Mdims%x_nloc, tmp_cv_nloc, CV_GIdims%cv_ngi, &
             tmp_cvfen, tmp_cvfenlx_all(1,:,:), tmp_cvfenlx_all(2,:,:), tmp_cvfenlx_all(3,:,:), &
             CV_funs%cvweight, detwei, ra, volume, d1, d3, dcyl, tmp_cvfenx_all, &
             other_nloc, other_fenlx_all(1,:,:), other_fenlx_all(2,:,:), other_fenlx_all(3,:,:), &
-            other_fenx_all, storage_state , "ph_2", StorageIndexes( 37 ) )
+            other_fenx_all)
        ! LOOP to calculate the mass matrices and right hand side element by element and invert the linear problem.
        ! Problem is inverted element by element
        mesh_pres_disc => extract_mesh( packed_state, "PressureMesh_Discontinuous" )
@@ -251,7 +254,7 @@ contains
        if(flag == 0) then ! Solve the element-wise matrix problem MMatrix*EleLHS = EleRHS for EleLHS
           gotdec = .false.
           do ifields = 1, nfields
-             call SMLINNGOT(MNatrix, EleLHS(ifields,:), EleRHS(ifields,:), Mdims%cv_nloc, Mdims%cv_nloc, ipiv, gotdec )
+             call SMLINNGOT(MNatrix, EleLHS(ifields,:), EleRHS(ifields,:), Mdims%cv_nloc, ipiv, gotdec )
              gotdec = .true.
           enddo
           ! Append this solution to the global ph_sol_old
@@ -293,7 +296,7 @@ contains
     deallocate(EleLHS, EleRHS, MMatrix, MNatrix, ipiv)
     deallocate(Long_EleRHS, mass_diag)
     deallocate(scalar_field_list)
-
+    deallocate(tmp_cvfenx_all, other_fenx_all)
     if(flag == 0) then
        do ifields = 1, nfields
           call deallocate(ph_sol_old(ifields)) ! Check theoretically why it has to be call deallocate, then deallocate (in that order)

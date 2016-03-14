@@ -3,8 +3,6 @@
   <name>Porous_media_general</name>
   <owner userid="pablo.salinas"/>
   <tags>porous mpml tbc</tags>
- <!-- This test case is intended to be run before commiting. It checks, porous media, heterogenenous materials, non-consistent capillary pressure, FPI with backtracking--> 
- <!-- anisotropic permeability, adaptive courant number, P2DGP1DG, CVGalerking, gravity, inlet velocity boundary conditions and outlet pressure boundary conditions (but different to zero)--> 
   <problem_definition length="short" nprocs="1">
     <command_line>../../../bin/multiphase_prototype Mid_discontinuous.mpml</command_line>
   </problem_definition>
@@ -12,8 +10,7 @@
     <variable name="final_dt" language="python">from fluidity_tools import stat_parser as stat
 vals = stat("mid_discontinuous.stat")["dt"]
 A = list(vals.values())
-final_dt = A[0][5]
-</variable>
+final_dt = A[0][5]</variable>
     <variable name="max_sat1" language="python">from fluidity_tools import stat_parser as stat
 max_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["max"][-1]</variable>
     <variable name="int_sat1" language="python">from fluidity_tools import stat_parser as stat

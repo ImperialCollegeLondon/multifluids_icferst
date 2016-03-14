@@ -104,10 +104,10 @@ contains
         end if
 
         allocate( Rho( cv_nonods ), dRhodP( cv_nonods ) )
-        allocate( Cp( cv_nonods ) ) ; Cp = 1.
+        allocate( Cp( cv_nonods ) ) ; Cp = 1.0
         allocate( Density_Component( ncomp * nphase * cv_nonods ) )
         allocate( Density_Bulk( nphase * cv_nonods ), DensityCp_Bulk( nphase * cv_nonods ) )
-        Density_Bulk = 0. ; DensityCp_Bulk = 0.
+        Density_Bulk = 0.0 ; DensityCp_Bulk = 0.0
 
         allocate( Component_l( cv_nonods ) ) ; Component_l = 0.
 
@@ -173,6 +173,11 @@ if ( .true. ) then
 
 else
 
+                 Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
+                 PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
+
+                 Density_Component( sc : ec ) = Rho
+
                  ! harmonic mean
                  ! rho = rho + 1.0 / ( a_i / rho_i )
                  Cp_s => extract_scalar_field( state( nphase + icomp ), &
@@ -188,12 +193,7 @@ else
                     end if
                  end do
 
-
-
 end if
-
-
-
 
               else
 
@@ -209,7 +209,7 @@ end if
            end do ! iphase
         end do ! icomp
 
-        if ( ncomp > 1 ) then
+       if ( ncomp > 1 ) then
            call Cap_Bulk_Rho( state, ncomp, nphase, &
                 cv_nonods, Density_Component, Density_Bulk, DensityCp_Bulk )
         end if
@@ -218,14 +218,12 @@ end if
         field2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
         if( ncomp > 1 ) field3 => extract_tensor_field( packed_state, "PackedComponentDensity" )
 
-        !sf => extract_scalar_field( packed_state, "SolidConcentration" )
-
         do iphase = 1, nphase
            sp = ( iphase - 1 ) * cv_nonods + 1
            ep = iphase * cv_nonods
 
-           field1 % val ( 1, iphase, : ) = Density_Bulk( sp : ep )         !* ( 1. - sf%val)     +   1000. *  sf%val
-           field2 % val ( 1, iphase, : ) = DensityCp_Bulk( sp : ep )       !* ( 1. - sf%val)     +   1000. *  sf%val
+           field1 % val ( 1, iphase, : ) = Density_Bulk( sp : ep )
+           field2 % val ( 1, iphase, : ) = DensityCp_Bulk( sp : ep )
 
            if ( ncomp > 1 ) then
               do icomp = 1, ncomp
@@ -262,11 +260,11 @@ end if
         real, dimension( : ), allocatable :: Cp
         integer :: sp, ep, sc, ec, iphase, icomp, stat
 
-        allocate( Density_Component_Min( nphase, cv_nonods ) ) ; Density_Component_Min = 1.e+15
-        allocate( Density_Component_Max( nphase, cv_nonods ) ) ; Density_Component_Max = 0.
-        allocate( Density_Cp_Component_Min( nphase, cv_nonods ) ) ; Density_Cp_Component_Min = 1.e+15
-        allocate( Density_Cp_Component_Max( nphase, cv_nonods ) ) ; Density_Cp_Component_Max = 0.
-        allocate( Cp( cv_nonods ) ) ; Cp = 1.
+        allocate( Density_Component_Min( nphase, cv_nonods ) ) ; Density_Component_Min = 1.0e+15
+        allocate( Density_Component_Max( nphase, cv_nonods ) ) ; Density_Component_Max = 0.0
+        allocate( Density_Cp_Component_Min( nphase, cv_nonods ) ) ; Density_Cp_Component_Min = 1.0e+15
+        allocate( Density_Cp_Component_Max( nphase, cv_nonods ) ) ; Density_Cp_Component_Max = 0.0
+        allocate( Cp( cv_nonods ) ) ; Cp = 1.0
 
         do iphase = 1, nphase
             do icomp = 1, ncomp
@@ -276,7 +274,7 @@ end if
                 Density_Component_Min( iphase, : ) = min( Density_Component_Min( iphase, : ), Density_Component( sc : ec ) )
                 Density_Component_Max( iphase, : ) = max( Density_Component_Max( iphase, : ), Density_Component( sc : ec ) )
 
-                Cp = 1.
+                Cp = 1.0
                 Cp_s => extract_scalar_field( state( nphase + icomp ), &
                     'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
                 if( stat == 0 ) Cp = Cp_s % val
@@ -1210,18 +1208,18 @@ end if
     end subroutine calculate_u_source_cv
 
     subroutine calculate_diffusivity(state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
-         mat_nloc, totele, mat_ndgln, ScalarAdvectionField_Diffusion )
+         mat_nloc, totele, mat_ndgln, cv_ndgln, ScalarAdvectionField_Diffusion )
 
       type(state_type), dimension(:), intent(in) :: state
       integer, intent(in) :: ncomp, nphase, ndim, cv_nonods, mat_nonods, mat_nloc, totele
-      integer, dimension(:), intent(in) :: mat_ndgln
+      integer, dimension(:), intent(in) :: mat_ndgln, cv_ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
 
       type(scalar_field), pointer :: component
       type(tensor_field), pointer :: diffusivity
       integer, dimension(:), pointer :: element_nodes
       integer :: icomp, iphase, idim, stat, ele
-      integer :: iloc,mat_iloc
+      integer :: iloc, mat_inod, cv_inod
 
       ScalarAdvectionField_Diffusion = 0.0
 
@@ -1237,27 +1235,26 @@ end if
 
                   do ele = 1, totele
 
-                     element_nodes => ele_nodes( component, ele )
-
                      do iloc = 1, mat_nloc
-                        mat_iloc = mat_ndgln( (ele-1)*mat_nloc + iloc )
+                        mat_inod = mat_ndgln( (ele-1)*mat_nloc + iloc )
+                        cv_inod = cv_ndgln( (ele-1)*mat_nloc + iloc )
 
                         if ( .true. ) then
 
                            do idim = 1, ndim
-                              ScalarAdvectionField_Diffusion( mat_iloc, idim, idim, iphase ) = &
-                                   ScalarAdvectionField_Diffusion( mat_iloc, idim, idim, iphase ) + &
-                                   node_val( component, element_nodes(iloc) ) * node_val( diffusivity, idim, idim, element_nodes(iloc) )
+                              ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                   ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
+                                   node_val( component, cv_inod ) * node_val( diffusivity, idim, idim, mat_inod )
                            end do
 
                         else
 
-                           if ( node_val( component, element_nodes(iloc) ) > 0.0 ) then
+                           if ( node_val( component, cv_inod ) > 0.0 ) then
 
                               do idim = 1, ndim
-                                 ScalarAdvectionField_Diffusion( mat_iloc, idim, idim, iphase ) = &
-                                      ScalarAdvectionField_Diffusion( mat_iloc, idim, idim, iphase ) + &
-                                      1.0 / ( node_val( component, element_nodes(iloc) ) / node_val( diffusivity, idim, idim, element_nodes(iloc) ) )
+                                 ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                                      ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
+                                      1.0 / ( node_val( component, cv_inod ) / node_val( diffusivity, idim, idim, mat_inod ) )
                               end do
 
                            end if
@@ -1278,7 +1275,7 @@ end if
 
             if ( stat == 0 ) then
                do idim = 1, ndim
-                  ScalarAdvectionField_Diffusion(:, idim, idim, iphase) = node_val( diffusivity, idim, idim, 1 )
+                  ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, 1 )
                end do
             end if
          end do
@@ -1288,218 +1285,132 @@ end if
       return
     end subroutine calculate_diffusivity
 
-    subroutine calculate_viscosity( state, packed_state, ncomp, nphase, ndim, mat_nonods, mat_ndgln, Momentum_Diffusion  )
+    subroutine calculate_viscosity( state, packed_state, ncomp, nphase, ndim, mat_nonods, mat_ndgln, Momentum_Diffusion )
 
-        type(state_type), dimension(:), intent(in) :: state
-        type(state_type), intent(in) :: packed_state
+      type( state_type ), dimension( : ), intent( in ) :: state
+      type( state_type ), intent( in ) :: packed_state
 
-        integer, intent(in) :: ncomp, nphase, ndim, mat_nonods
-        integer, dimension(:), intent(in) :: mat_ndgln
+      integer, intent( in ) :: ncomp, nphase, ndim, mat_nonods
+      integer, dimension( : ), intent( in ) :: mat_ndgln
 
-        real, dimension( :, :, :, : ), intent(inout) :: Momentum_Diffusion
-        character( len = option_path_len ) :: option_path_python, buffer
-        type(tensor_field), pointer :: t_field
-        integer :: iphase, icomp, stat, mat_nod, cv_nloc, ele
+      real, dimension( :, :, :, : ), intent( inout ) :: Momentum_Diffusion
+      character( len = option_path_len ) :: option_path_python, buffer
+      type( tensor_field ), pointer :: t_field, tp_field, tc_field
+      integer :: iphase, icomp, stat, mat_nod, cv_nloc, ele
 
-        type(scalar_field), pointer :: component
-        logical :: linearise_viscosity, python_diagnostic_field
-        real, dimension( : ), allocatable :: component_tmp
-        real, dimension( :, :, : ), allocatable :: mu_tmp
+      type( scalar_field ), pointer :: component
+      logical :: linearise_viscosity, python_diagnostic_field
+      real, dimension( : ), allocatable :: component_tmp
+      real, dimension( :, :, : ), allocatable :: mu_tmp
 
-        character( len = python_func_len ) :: pycode
-        real :: dt, current_time
-        integer :: iloc
+      character( len = python_func_len ) :: pycode
+      real :: dt, current_time
+      integer :: iloc
 
+      if ( is_porous_media ) then
 
+         momentum_diffusion=0.0
 
-        if ( have_option( '/physical_parameters/mobility' ) .or. is_porous_media ) then
+      else
 
-            ! if solving for porous media and mobility is calculated
-            ! through the viscosity ratio this code will fail
-            momentum_diffusion=0.
+         momentum_diffusion=0.0
 
-        else
+         t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
+         if ( stat == 0 ) then
 
-            momentum_diffusion=0.
+            cv_nloc = ele_loc( t_field, ele )
+            linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
+            allocate( component_tmp( cv_nloc ), mu_tmp( ndim, ndim, cv_nloc ) )
 
-            t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
-            if ( stat == 0 ) then
+            if ( ncomp > 1 ) then
 
-                cv_nloc = ele_loc( t_field, ele )
-                linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
-                allocate( component_tmp( cv_nloc ), mu_tmp( ndim, ndim, cv_nloc ) )
+               t_field%val=0.0
 
+               do icomp = 1, ncomp
+                  do iphase = 1, nphase
 
-                if ( ncomp > 1 ) then
+                     component => extract_scalar_field( state(nphase + icomp), 'ComponentMassFractionPhase' // int2str(iphase) )
+                     tc_field => extract_tensor_field( state( nphase + icomp ), 'Viscosity' )
+                     tp_field => extract_tensor_field( state( iphase ), 'Viscosity' )
 
+                     ewrite(3,*) 'Component, Phase, Visc_min_max', icomp, iphase, minval( tc_field%val ), maxval( tc_field%val )
 
-                    do icomp = 1, ncomp
-                        do iphase = 1, nphase
+                     do ele = 1, ele_count( tc_field )
+                        component_tmp = ele_val( component, ele )
+                        mu_tmp = ele_val( tc_field, ele )
 
-                            component => extract_scalar_field( state(nphase + icomp), 'ComponentMassFractionPhase' // int2str(iphase) )
-
-                            python_diagnostic_field = &
-                                have_option( '/material_phase[' // int2str(nphase + icomp - 1 ) //  &
-                                ']/scalar_field::ComponentMassFractionPhase' // int2str(iphase) // &
-                                '/prognostic/tensor_field::Viscosity/diagnostic'    )
-
-                            if ( python_diagnostic_field ) then
-
-#ifdef HAVE_NUMPY
-                        ewrite(3,*) "Have both NumPy and a python viscosity..."
-#else
-                                FLAbort("Python eos requires NumPy, which cannot be located.")
-#endif
-
-                                option_path_python = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
-                                    ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
-                                    '/prognostic/tensor_field::Viscosity/diagnostic' )
-
-                                t_field => extract_tensor_field( packed_state, 'Dummy' )
-                                call zero( t_field )
-
-                                call python_reset()
-                                call python_add_state( packed_state )
-
-                                call python_run_string("field = state.tensor_fields['Dummy']")
-                                call get_option("/timestepping/current_time", current_time)
-                                write(buffer,*) current_time
-                                call python_run_string("time="//trim(buffer))
-                                call get_option("/timestepping/timestep", dt)
-                                write(buffer,*) dt
-                                call python_run_string("dt="//trim(buffer))
-
-                                ! Get the code
-                                call get_option( trim( option_path_python ) // '/algorithm', pycode )
-
-                                ! Run the code
-                                call python_run_string( trim( pycode ) )
-
-                            else
-                                t_field => extract_tensor_field( state( nphase + icomp ), 'Viscosity' )
-                            end if
-
-                            ewrite(3,*) 'Component, Phase, Visc_min_max', icomp, iphase, minval( t_field%val ), maxval( t_field%val )
-
-                            do ele = 1, ele_count( t_field )
-
-                                component_tmp = ele_val( component, ele )
-                                mu_tmp = ele_val( t_field, ele )
-
-                                do iloc = 1, cv_nloc
-                                   if ( .true. ) then
-                                      mu_tmp( :, :, iloc ) = mu_tmp( :, :, iloc ) * component_tmp( iloc )
-                                   else
-                                      mu_tmp( :, :, iloc ) = 0.0
-                                      if ( component_tmp( iloc ) > 0.0 ) mu_tmp( :, :, iloc ) = &
-                                           1.0 / ( component_tmp( iloc ) / mu_tmp( :, :, iloc ) )
-                                   end if
-                                end do
-
-                                if ( linearise_viscosity ) then
-                                    mu_tmp( :, :, 2 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 3 ) )
-                                    mu_tmp( :, :, 4 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 6 ) )
-                                    mu_tmp( :, :, 5 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 6 ) )
-
-                                    if ( cv_nloc == 10 ) then
-                                        mu_tmp( :, :, 7 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 10 ) )
-                                        mu_tmp( :, :, 8 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 10 ) )
-                                        mu_tmp( :, :, 9 ) = 0.5 * ( mu_tmp( :, :, 6 ) + mu_tmp( :, :, 10 ) )
-                                    end if
-                                end if
-
-
-                                do iloc = 1, cv_nloc
-                                    mat_nod = mat_ndgln( (ele-1)*cv_nloc + iloc )
-                                    momentum_diffusion( mat_nod, :, :, iphase ) = momentum_diffusion( mat_nod, :, :, iphase ) + mu_tmp( :, :, iloc )
-                                end do
-                            end do
-
+                        do iloc = 1, cv_nloc
+                           if ( .true. ) then
+                              mu_tmp( :, :, iloc ) = mu_tmp( :, :, iloc ) * component_tmp( iloc )
+                           else
+                              mu_tmp( :, :, iloc ) = 0.0
+                              if ( component_tmp( iloc ) > 0.0 ) mu_tmp( :, :, iloc ) = &
+                                   1.0 / ( component_tmp( iloc ) / mu_tmp( :, :, iloc ) )
+                           end if
                         end do
-                    end do
 
-                else
+                        if ( linearise_viscosity ) then
+                           mu_tmp( :, :, 2 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 3 ) )
+                           mu_tmp( :, :, 4 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 6 ) )
+                           mu_tmp( :, :, 5 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 6 ) )
 
-                    do iphase = 1, nphase
-
-
-                        python_diagnostic_field = &
-                            have_option( '/material_phase[' // int2str(iphase - 1 ) //  &
-                            ']/vector_field::Velocity/prognostic/tensor_field::Viscosity/diagnostic' )
-
-
-                        if ( python_diagnostic_field ) then
-
-#ifdef HAVE_NUMPY
-                     ewrite(3,*) "Have both NumPy and a python viscosity..."
-#else
-                            FLAbort("Python eos requires NumPy, which cannot be located.")
-#endif
-
-                            option_path_python = trim( '/material_phase[' // int2str( iphase - 1 ) // &
-                                ']/vector_field::Velocity' // &
-                                '/prognostic/tensor_field::Viscosity/diagnostic' )
-
-                            t_field => extract_tensor_field( packed_state, 'Dummy' )
-                            call zero( t_field )
-
-                            call python_reset()
-                            call python_add_state( packed_state )
-
-                            call python_run_string("field = state.tensor_fields['Dummy']")
-                            call get_option("/timestepping/current_time", current_time)
-                            write(buffer,*) current_time
-                            call python_run_string("time="//trim(buffer))
-                            call get_option("/timestepping/timestep", dt)
-                            write(buffer,*) dt
-                            call python_run_string("dt="//trim(buffer))
-
-                            ! Get the code
-                            call get_option( trim( option_path_python ) // '/algorithm', pycode )
-
-                            ! Run the code
-                            call python_run_string( trim( pycode ) )
-
-                        else
-
-                            t_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
-
+                           if ( cv_nloc == 10 ) then
+                              mu_tmp( :, :, 7 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 10 ) )
+                              mu_tmp( :, :, 8 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 10 ) )
+                              mu_tmp( :, :, 9 ) = 0.5 * ( mu_tmp( :, :, 6 ) + mu_tmp( :, :, 10 ) )
+                           end if
                         end if
 
-
-                        do ele = 1, ele_count( t_field )
-
-                            mu_tmp = ele_val( t_field, ele )
-
-                            if ( linearise_viscosity ) then
-                                mu_tmp( :, :, 2 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 3 ) )
-                                mu_tmp( :, :, 4 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 6 ) )
-                                mu_tmp( :, :, 5 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 6 ) )
-
-                                if ( cv_nloc == 10 ) then
-                                    mu_tmp( :, :, 7 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 10 ) )
-                                    mu_tmp( :, :, 8 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 10 ) )
-                                    mu_tmp( :, :, 9 ) = 0.5 * ( mu_tmp( :, :, 6 ) + mu_tmp( :, :, 10 ) )
-                                end if
-                            end if
-
-                            do iloc = 1, cv_nloc
-                                mat_nod = mat_ndgln( (ele-1)*cv_nloc + iloc )
-                                momentum_diffusion( mat_nod, :, :, iphase ) = mu_tmp( :, :, iloc )
-                            end do
+                        do iloc = 1, cv_nloc
+                           mat_nod = mat_ndgln( (ele-1)*cv_nloc + iloc )
+                           momentum_diffusion( mat_nod, :, :, iphase ) = momentum_diffusion( mat_nod, :, :, iphase ) + mu_tmp( :, :, iloc )
+                           t_field%val( :, :, mat_nod ) = t_field%val( :, :, mat_nod ) + mu_tmp( :, :, iloc )
                         end do
+                     end do
 
-                    end do
+                  end do
+               end do
 
-                end if
+            else
 
-                deallocate( component_tmp, mu_tmp )
+               do iphase = 1, nphase
+
+                  tp_field => extract_tensor_field( state( iphase ), 'Viscosity', stat )
+
+                  do ele = 1, ele_count( tp_field )
+
+                     mu_tmp = ele_val( tp_field, ele )
+
+                     if ( linearise_viscosity ) then
+                        mu_tmp( :, :, 2 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 3 ) )
+                        mu_tmp( :, :, 4 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 6 ) )
+                        mu_tmp( :, :, 5 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 6 ) )
+
+                        if ( cv_nloc == 10 ) then
+                           mu_tmp( :, :, 7 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 10 ) )
+                           mu_tmp( :, :, 8 ) = 0.5 * ( mu_tmp( :, :, 3 ) + mu_tmp( :, :, 10 ) )
+                           mu_tmp( :, :, 9 ) = 0.5 * ( mu_tmp( :, :, 6 ) + mu_tmp( :, :, 10 ) )
+                        end if
+                     end if
+
+                     do iloc = 1, cv_nloc
+                        mat_nod = mat_ndgln( (ele-1)*cv_nloc + iloc )
+                        momentum_diffusion( mat_nod, :, :, iphase ) = mu_tmp( :, :, iloc )
+                        t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
+                     end do
+                  end do
+
+               end do
 
             end if
 
-        end if
+            deallocate( component_tmp, mu_tmp )
 
-        return
+         end if
+
+      end if
+
+      return
     end subroutine calculate_viscosity
 
     subroutine calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, totele, stotel, cv_nloc, &

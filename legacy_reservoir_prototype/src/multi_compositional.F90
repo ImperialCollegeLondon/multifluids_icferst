@@ -294,8 +294,8 @@ contains
         real :: VOLUME
         QUAD_OVER_WHOLE_ELE=.FALSE.
 
-        ALLOCATE(UFENX_ALL(Mdims%ndim,Mdims%u_nloc,CV_GIdims%cv_ngi))
         ALLOCATE(CVFENX_ALL(Mdims%ndim,Mdims%cv_nloc,CV_GIdims%cv_ngi))
+        ALLOCATE(UFENX_ALL(Mdims%ndim,Mdims%u_nloc,CV_GIdims%cv_ngi))
         ALLOCATE(DETWEI(CV_GIdims%cv_ngi))
         ALLOCATE(RA(CV_GIdims%cv_ngi))
 
