@@ -73,6 +73,7 @@ contains
         type( scalar_field ), pointer :: Cp_s
         integer :: icomp, iphase, ncomp, sc, ec, sp, ep, ip, stat, cv_iloc, cv_nod, ele
         logical :: boussinesq
+        logical, parameter :: harmonic_average=.false.
 
         ncomp_in = Mdims%ncomp ; nphase = Mdims%nphase ; ndim = Mdims%ndim
         cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
@@ -156,44 +157,38 @@ contains
                     end if
                  end if
 
+                 if ( .not.harmonic_average ) then
 
-if ( .true. ) then
+                    ! rho = rho +  a_i * rho_i
+                    Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
+                    PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
 
+                    Density_Component( sc : ec ) = Rho
 
-                 ! rho = rho +  a_i * rho_i
-                 Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
-                 PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
+                    Cp_s => extract_scalar_field( state( nphase + icomp ), &
+                         'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
+                    if ( stat == 0 ) Cp = Cp_s % val
+                    DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + Rho * Cp * Component_l
 
-                 Density_Component( sc : ec ) = Rho
+                 else
 
-                 Cp_s => extract_scalar_field( state( nphase + icomp ), &
-                      'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                 if ( stat == 0 ) Cp = Cp_s % val
-                 DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + Rho * Cp * Component_l
+                    Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
+                    PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
 
-else
+                    Density_Component( sc : ec ) = Rho
 
-                 Density_Bulk( sp : ep ) = Density_Bulk( sp : ep ) + Rho * Component_l
-                 PackedDRhoDPressure%val( 1, iphase, : ) = PackedDRhoDPressure%val( 1, iphase, : ) + dRhodP * Component_l / Rho
+                    ! harmonic average
+                    ! rho = rho + 1.0 / ( a_i / rho_i )
+                    Cp_s => extract_scalar_field( state( nphase + icomp ), &
+                         'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
+                    if ( stat == 0 ) Cp = Cp_s % val
 
-                 Density_Component( sc : ec ) = Rho
-
-                 ! harmonic mean
-                 ! rho = rho + 1.0 / ( a_i / rho_i )
-                 Cp_s => extract_scalar_field( state( nphase + icomp ), &
-                      'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                 if ( stat == 0 ) Cp = Cp_s % val
-
-                 do cv_nod = 1, cv_nonods
-                    if ( Component_l( cv_nod ) > 0.0 ) then
+                    do cv_nod = 1, cv_nonods
                        ip = ( iphase - 1 ) * cv_nonods + cv_nod
-                       !Density_Bulk( ip ) = Density_Bulk( ip ) + 1.0 / ( Component_l(cv_nod) / Rho(cv_nod) )
-                       !PackedDRhoDPressure%val( 1, iphase, cv_nod ) = PackedDRhoDPressure%val( 1, iphase, cv_nod ) + ( 1.0 / Rho(cv_nod) ) * (1.0 / (  Component_l(cv_nod) / dRhodP(cv_nod) ) )
-                       DensityCp_Bulk( ip ) = DensityCp_Bulk( ip ) + 1.0 / ( Component_l(cv_nod) / ( Rho(cv_nod) * Cp(cv_nod) ) )
-                    end if
-                 end do
+                       DensityCp_Bulk( ip ) = DensityCp_Bulk( ip ) + Component_l(cv_nod) / ( Rho(cv_nod) * Cp(cv_nod) )
+                    end do
 
-end if
+                 end if
 
               else
 
@@ -209,7 +204,8 @@ end if
            end do ! iphase
         end do ! icomp
 
-       if ( ncomp > 1 ) then
+        if ( ncomp > 1 ) then
+           if ( harmonic_average ) DensityCp_Bulk = 1.0 / DensityCp_Bulk
            call Cap_Bulk_Rho( state, ncomp, nphase, &
                 cv_nonods, Density_Component, Density_Bulk, DensityCp_Bulk )
         end if
@@ -1220,6 +1216,7 @@ end if
       integer, dimension(:), pointer :: element_nodes
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod
+      logical, parameter :: harmonic_average=.false.
 
       ScalarAdvectionField_Diffusion = 0.0
 
@@ -1232,14 +1229,13 @@ end if
                diffusivity => extract_tensor_field( state(nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) // 'Diffusivity', stat )
 
                if ( stat == 0 ) then
-
                   do ele = 1, totele
 
                      do iloc = 1, mat_nloc
                         mat_inod = mat_ndgln( (ele-1)*mat_nloc + iloc )
                         cv_inod = cv_ndgln( (ele-1)*mat_nloc + iloc )
 
-                        if ( .true. ) then
+                        if ( .not.harmonic_average ) then
 
                            do idim = 1, ndim
                               ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
@@ -1249,15 +1245,13 @@ end if
 
                         else
 
-                           if ( node_val( component, cv_inod ) > 0.0 ) then
-
-                              do idim = 1, ndim
+                           do idim = 1, ndim
+                              if (  node_val( diffusivity, idim, idim, mat_inod ) > 0.0 ) then
                                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
-                                      1.0 / ( node_val( component, cv_inod ) / node_val( diffusivity, idim, idim, mat_inod ) )
-                              end do
-
-                           end if
+                                      node_val( component, cv_inod ) / node_val( diffusivity, idim, idim, mat_inod )
+                              end if
+                           end do
 
                         end if
 
@@ -1281,6 +1275,25 @@ end if
          end do
 
       end if
+
+      if ( harmonic_average ) then
+         ! ScalarAdvectionField_Diffusion = 1.0 / ScalarAdvectionField_Diffusion
+         do iphase = 1, nphase
+            do idim = 1, ndim
+               do mat_inod = 1, mat_nonods
+                  if ( ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) > 0.0 ) &
+                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
+                       1.0 / ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )
+               end do
+            end do
+         end do
+      end if
+
+      do iphase = 1, nphase
+         ewrite(3,*) 'Thermal conductivity min_max', iphase, &
+              minval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) ), &
+              maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
+      end do
 
       return
     end subroutine calculate_diffusivity
