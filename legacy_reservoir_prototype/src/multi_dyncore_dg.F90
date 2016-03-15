@@ -117,7 +117,7 @@ contains
            REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B
            REAL, DIMENSION( :,:,:, : ), allocatable :: TDIFFUSION
            REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
-           real, dimension( my_size(Mspars%small_acv%col )) ::  mass_mn_pres!sprint_to_do!just use size!! and the remove my_size functions
+           real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
            REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
            type( tensor_field ), pointer :: P

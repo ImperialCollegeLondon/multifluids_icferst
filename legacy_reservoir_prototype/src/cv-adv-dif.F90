@@ -88,33 +88,7 @@ module cv_advection
         WIC_P_BC_DIRICHLET = 1, &
         WIC_P_BC_FREE = 2
 
-    interface my_size
-        module procedure my_size_integer, my_size_real
-    end interface
-
 contains
-
-    integer PURE  function my_size_integer(A,n)
-        integer, dimension(:), intent(in) :: A
-        integer, optional, intent(in) :: n
-
-        if (present(n)) then
-            my_size_integer=size(A,n)
-        else
-            my_size_integer=size(A)
-        end if
-    end function my_size_integer
-
-    integer PURE  function my_size_real(A,n)
-        real, dimension(:), intent(in) :: A
-        integer, optional, intent(in) :: n
-
-        if (present(n)) then
-            my_size_real=size(A,n)
-        else
-            my_size_real=size(A)
-        end if
-    end function my_size_real
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
