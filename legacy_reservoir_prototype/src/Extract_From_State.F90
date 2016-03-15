@@ -58,6 +58,7 @@ module Copy_Outof_State
     use solvers
     use conservative_interpolation_module
     use multi_data_types
+    use multi_tools
     implicit none
 
     private
@@ -67,7 +68,7 @@ module Copy_Outof_State
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, Compute_Node_Global_Numbers_new
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix
 
 
     interface Get_SNdgln
@@ -302,67 +303,7 @@ contains
         return
     end subroutine Get_Primary_Scalars_new
 
-
-
-
-    !sprint_to_do!move to a library pointer something?
-    function get_ndglno(mesh) result(ndglno)
-        type(mesh_type) :: mesh
-        integer, dimension(:), pointer  ::  ndglno
-
-        ndglno=> mesh%ndglno
-    end function get_ndglno
-
-    !sprint_to_do!optimize this!
-    subroutine Compute_Node_Global_Numbers( state, &
-        totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
-        cv_snloc, p_snloc, u_snloc, &
-        cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
-        cv_sndgln, p_sndgln, u_sndgln )
-        !!$ This subroutine calculates the global node numbers requested to operates in the MP-space.
-        implicit none
-        type( state_type ), dimension( : ), intent( in ) :: state
-        type( vector_field ), pointer :: positions, velocity
-        type( mesh_type ), pointer :: pressure_cg_mesh, velocity_cg_mesh
-        type( scalar_field ), pointer :: pressure
-        integer, intent( in ) :: totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
-            cv_snloc, p_snloc, u_snloc
-        integer, dimension( : ), pointer  :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln
-        integer, dimension( : ) ::  cv_sndgln, p_sndgln, u_sndgln
-        !!$ Local variables
-
-        x_ndgln_p1=>get_ndglno(extract_mesh(state(1),"CoordinateMesh"))
-        x_ndgln=>get_ndglno(extract_mesh(state(1),"PressureMesh_Continuous"))
-        cv_ndgln=>get_ndglno(extract_mesh(state(1),"PressureMesh"))
-        p_ndgln=>get_ndglno(extract_mesh(state(1),"PressureMesh"))
-        mat_ndgln=>get_ndglno(extract_mesh(state(1),"PressureMesh_Discontinuous"))
-        u_ndgln=>get_ndglno(extract_mesh(state(1),"InternalVelocityMesh"))
-        xu_ndgln=>get_ndglno(extract_mesh(state(1),"VelocityMesh_Continuous"))
-
-        !!$ Linear mesh coordinate
-        positions => extract_vector_field( state( 1 ), 'Coordinate' )
-        !!$ Positions/Coordinates
-        pressure_cg_mesh => extract_mesh( state( 1 ), 'PressureMesh_Continuous' )
-        !!$ Pressure, control volume and material
-        pressure => extract_scalar_field( state( 1 ), 'Pressure' )
-        !!$ Velocities
-        velocity => extract_vector_field( state( 1 ), 'Velocity' )
-        !!$ Velocity in the continuous space
-        velocity_cg_mesh => extract_mesh( state( 1 ), 'VelocityMesh_Continuous' )
-
-        !!$ Surface-based global node numbers for control volumes and pressure
-        call Get_SNdgln( cv_sndgln, pressure )
-        p_sndgln = cv_sndgln
-
-        !!$ Velocities
-
-        call Get_SNdgln( u_sndgln, velocity )
-
-        return
-    end subroutine Compute_Node_Global_Numbers
-
-
-    subroutine Compute_Node_Global_Numbers_new( state, ndgln)
+    subroutine Compute_Node_Global_Numbers( state, ndgln)
         !!$ This subroutine calculates the global node numbers requested to operates in the MP-space.
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
@@ -388,7 +329,7 @@ contains
         !!$ Velocities
         call Get_SNdgln( ndgln%suf_u, velocity )
         return
-    end subroutine Compute_Node_Global_Numbers_new
+    end subroutine Compute_Node_Global_Numbers
 
     subroutine Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
         mat_ele_type, u_sele_type, cv_sele_type )

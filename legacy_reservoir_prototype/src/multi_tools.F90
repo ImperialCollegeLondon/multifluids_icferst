@@ -30,7 +30,7 @@
 
 module multi_tools
     use fldebug
-
+    use fields
 
     implicit none
 
@@ -302,6 +302,16 @@ contains
         nvd_limit= MAX(  MIN(UF, XI_LIMIT*UC, 1.0), UC)
 
     end function nvdfunnew_many_sqrt
+
+
+
+    function get_ndglno(mesh) result(ndglno)
+        type(mesh_type) :: mesh
+        integer, dimension(:), pointer  ::  ndglno
+
+        ndglno=> mesh%ndglno
+    end function get_ndglno
+
 
 end module multi_tools
 
