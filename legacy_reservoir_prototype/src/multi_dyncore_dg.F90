@@ -1654,8 +1654,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         integer :: nb
         logical :: skip, FEM_BUOYANCY
         !variables for linear velocity relaxation
-        real, dimension(Mdims%u_nloc, Mdims%u_nloc) :: M_inv, K_mat, kmk_mat, N_mat, K_mat_sym
-        real, dimension(Mdims%ndim, Mdims%u_nloc, Mdims%u_nloc) :: K_mat_xall, n_mat_xall
         type(tensor_field), pointer :: fem_vol_frac_f
         real, dimension( :, : ), pointer :: fem_vol_frac
         ! If =0 then false, if =1 then true.
@@ -2193,36 +2191,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 FE_funs%cvfen, FE_funs%cvfenlx_all(1,:,:), FE_funs%cvfenlx_all(2,:,:), FE_funs%cvfenlx_all(3,:,:), FE_funs%cvweight, DETWEI, RA, VOLUME, D1, D3, DCYL, &
                 CVFENX_ALL, &
                 Mdims%u_nloc, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), UFENX_ALL)
-            !Prepare linear diffusion for the mass matrix
-            n_mat = 0.
-            K_mat=0.0
-            K_mat_sym=0.0
-            K_mat_xall=0.0
-            do U_ILOC = 1, Mdims%u_nloc!sprint_to_do!What shall we do with this?
-                do u_jloc = 1, Mdims%u_nloc
-                    m_inv(u_iloc,u_jloc) =sum(FE_funs%ufen(u_iloc,:) * FE_funs%ufen(u_jloc,:)*DETWEI)
-                    do idim =1, Mdims%ndim
-                        K_mat_sym(u_iloc,u_jloc) = K_mat_sym(u_iloc,u_jloc) + sum(UFENX_ALL(idim,u_iloc,:) * UFENX_ALL(idim,u_jloc,:)*DETWEI)
-                        K_mat_xall(idim,u_iloc,u_jloc) = sum(FE_funs%ufen(u_iloc,:) * UFENX_ALL(idim,u_jloc,:)*DETWEI)
-                    end do
-                end do
-            end do
-            call invert(m_inv)
-            !Multiply matrices
-            n_mat =0.0
-            n_mat_xall =0.0
-            do idim=1,Mdims%ndim
-                n_mat = n_mat + matmul(K_mat_xall(idim,:,:),matmul(m_inv,K_mat_xall(idim,:,:)))
-                n_mat_xall(idim,:,:) =  matmul(K_mat_xall(idim,:,:),matmul(m_inv,K_mat_xall(idim,:,:)))
-            end do
-            if(.false.) then !new seperate enq 4th order diffusion
-                kmk_mat = 0.0
-                do idim=1,Mdims%ndim
-                    kmk_mat = kmk_mat +matmul(transpose(n_mat_xall(idim,:,:)),matmul(m_inv,n_mat_xall(idim,:,:)))
-                end do
-            else
-                kmk_mat = 0.
-            end if
             DO GI = 1, FE_GIdims%CV_NGI
                 CVFENX_ALL_REVERSED(:,GI,:) = CVFENX_ALL(:,:,GI)
                 UFENX_ALL_REVERSED(:,GI,:) = UFENX_ALL(:,:,GI)
@@ -2648,11 +2616,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                                 NN_SIGMAGI_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_SIGMAGI_STAB_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC ) &
                                                 + NN_MASS_ELE(IPHA_IDIM, JPHA_JDIM, U_ILOC, U_JLOC )/DT
-                                            if  (.false.) then
-                                                if((idim==jdim).and.(iphase==jphase)) then
-                                                    Mmat%PIVIT_MAT( I, J, ELE ) =  Mmat%PIVIT_MAT( I, J, ELE ) + 0.01*kmk_mat(u_iloc,u_jloc)
-                                                endif
-                                            end if
                                         END IF
                                         IF ( .NOT.Mmat%NO_MATRIX_STORE ) THEN
                                             IF ( .NOT.JUST_BL_DIAG_MAT ) THEN!Only for inertia
