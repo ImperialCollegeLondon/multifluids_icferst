@@ -103,7 +103,6 @@ contains
         !!$ Primary scalars
         type(multi_dimensions) :: Mdims
         type(multi_gi_dimensions) :: CV_GIdims, FE_GIdims
-        !sprint_to_do !substitute all these instances by the structure Mdims
         integer :: ntsol
         !!$ Node global numbers
         type(multi_ndgln) :: ndgln
@@ -113,7 +112,6 @@ contains
         type (multi_discretization_opts) :: Mdisopt
         !!$ Defining the necessary matrices and corresponding RHS
         type (multi_matrices) :: Mmat
-        !sprint_to_do!remove all the is store inside Mspars when Mspars is fully implemented
         integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         real, dimension(:,:,:,:), allocatable, target :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
@@ -276,7 +274,7 @@ contains
         !Allocate and calculate the sparsity patterns matrices
         call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
-        call temp_mem_hacks()
+        call put_CSR_spars_into_packed_state()
         !!$ Allocating space for various arrays:
         allocate( &
             !!$
@@ -1035,8 +1033,9 @@ end if
         if (calculate_flux) deallocate(outlet_id, totout, intflux)
         return
     contains
-        !!!!!sprint_to_do!!!rename and/or move elsewhere
-        subroutine temp_mem_hacks()
+
+        !!!!!sprint_to_do!!!move elsewhere (it requires to pass down all the fields...)
+        subroutine put_CSR_spars_into_packed_state()
             !!! routine puts various CSR sparsities into packed_state
             use sparse_tools
             type(csr_sparsity), pointer :: sparsity
@@ -1114,7 +1113,10 @@ end if
             end do
             sparsity=> extract_csr_sparsity(state(1),"ElementConnectivity")
             call insert(packed_state,sparsity,"ElementConnectivity")
-        end subroutine temp_mem_hacks
+        end subroutine put_CSR_spars_into_packed_state
+
+
+
         subroutine linearise_components()
             integer :: ist,ip,ele
             type ( scalar_field ), pointer :: nfield
@@ -1198,6 +1200,9 @@ end if
                 end if
             end do
         end subroutine linearise_components
+
+
+        !This subroutine performs all the necessary steps to adapt the mesh and create new memory
         subroutine adapt_mesh_mp()
             do_reallocate_fields = .false.
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
@@ -1312,7 +1317,8 @@ end if
                     !Convert material properties to be stored using region ids, only if porous media
                     call get_regionIDs2nodes(state, packed_state, ndgln%cv, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
                 end if
-                call temp_mem_hacks()
+
+                call put_CSR_spars_into_packed_state()
                 ! SECOND INTERPOLATION CALL - After adapting the mesh ******************************
                 if (numberfields > 0) then
                     if(have_option('/mesh_adaptivity')) then ! This clause may be redundant and could be removed - think this code in only executed IF adaptivity is on
@@ -1391,7 +1397,9 @@ end if
                 call Calculate_All_Rhos( state, packed_state, Mdims )
             end if Conditional_ReallocatingFields
         end subroutine adapt_mesh_mp
-    end subroutine MultiFluids_SolveTimeLoop
+
+
+
     subroutine copy_packed_new_to_old(packed_state)
         type(state_type), intent(inout) :: packed_state
         type(scalar_field), pointer :: sfield, nsfield
@@ -1426,7 +1434,8 @@ end if
         ntfield=>extract_tensor_field(packed_state,"PackedCVPressure")
         tfield%val=ntfield%val
     end subroutine copy_packed_new_to_old
-        !!!!!sprint_to_do!!!rename and/or move elsewhere
+
+        !!!!!sprint_to_do!!! (don't know where to put it... maybe this is correct place)
     subroutine set_nu_to_u(packed_state)
         type(state_type), intent(inout) :: packed_state
         type(tensor_field), pointer :: u, uold, nu, nuold
@@ -1437,78 +1446,11 @@ end if
         nu % val = u % val
         nuold % val = uold % val
     end subroutine set_nu_to_u
-    !!!!sprint_to_do!!!!take this somewhere else
-    subroutine dump_outflux(current_time, itime, outflux, intflux)
-        ! Subroutine that dumps the total flux at a given timestep across all specified boudaries to a file  called 'outfluxes.txt'. In addition, the time integrated flux
-        ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
-        ! (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
-        !wish to integrate over).
-        real,intent(in) :: current_time
-        integer, intent(in) :: itime
-        real, dimension(:,:), intent(inout) :: outflux, intflux
-        integer :: ioutlet
-        integer :: counter
-        type(stat_type), target :: default_stat
-        character (len=1000000) :: whole_line
-        character (len=1000000) :: numbers
-        integer :: iphase
-        ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
-        character (len = 1000000), dimension(size(outflux,1)) :: fluxstring
-        character (len = 1000000), dimension(size(outflux,1)) :: intfluxstring
-        default_stat%conv_unit=free_unit()
-        if (itime == 1) then
-            !The first time, remove file if already exists
-            open(unit=default_stat%conv_unit, file="outfluxes.csv", status="replace", action="write")
-        else
-            open(unit=default_stat%conv_unit, file="outfluxes.csv", action="write", position="append")
-        end if
-        ! Write column headings to file
-        counter = 0
-        if(itime.eq.1) then
-            write(whole_line,*) "Current Time"
-            do ioutlet =1, size(outflux,2)
-                write(numbers,*) "Surface_id=", outlet_id(ioutlet)
-                if(counter.eq.0) then
-                    whole_line = trim(numbers) //","// trim(whole_line)
-                else
-                    whole_line = trim(whole_line) //","// trim(numbers)
-                endif
-                !write(whole_line,*)trim(numbers)  //","//  "Current Time"
-                do iphase = 1, size(outflux,1)
-                    write(fluxstring(iphase),*) "Phase", iphase, "boundary flux"
-                    whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-                enddo
-                do iphase = 1, size(outflux,1)
-                    write(intfluxstring(iphase),*) "Phase", iphase,  "time integrated flux (volume/time)"
-                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
-                enddo
-                counter = counter + 1
-            end do
-             ! Write out the line
-            write(default_stat%conv_unit,*), trim(whole_line)
-        else
-            ! Write the actual numbers to the file now
-            counter = 0
-            write(numbers,*) current_time
-            whole_line =  ","// trim(numbers)
-            do ioutlet =1, size(outflux,2)
-                if(counter > 0) then
-                    whole_line = trim(whole_line) //","
-                endif
-                !write(whole_line,*) current_time
-                do iphase = 1, size(outflux,1)
-                    write(fluxstring(iphase),*) outflux(iphase,ioutlet)
-                    whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
-                enddo
-                do iphase = 1, size(outflux,1)
-                    write(intfluxstring(iphase),*) intflux(iphase,ioutlet)
-                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
-                enddo
-                counter = counter + 1
-            end do
-            ! Write out the line
-            write(default_stat%conv_unit,*), trim(whole_line)
-        endif
-        close (default_stat%conv_unit)
-    end subroutine dump_outflux
+
+    end subroutine MultiFluids_SolveTimeLoop
+
+
+
+
+
 end module multiphase_time_loop
