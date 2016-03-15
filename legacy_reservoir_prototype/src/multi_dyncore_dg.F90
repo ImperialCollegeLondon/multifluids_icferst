@@ -60,12 +60,9 @@ module multiphase_1D_engine
     use multi_pipes
     implicit none
 
-    private :: CV_ASSEMB_FORCE_CTY, &
-    PUT_CT_IN_GLOB_MAT, &
-    ASSEMB_FORCE_CTY
+    private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY
 
-    public  :: INTENERGE_ASSEM_SOLVE, &
-    VolumeFraction_Assemble_Solve, &
+    public  :: INTENERGE_ASSEM_SOLVE, VolumeFraction_Assemble_Solve, &
     FORCE_BAL_CTY_ASSEM_SOLVE
 
 contains
@@ -1329,10 +1326,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             ! Put Mmat%CT into global matrix MCY...
             MCY_RHS( Mdims%u_nonods * Mdims%ndim * Mdims%nphase + 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase + Mdims%cv_nonods ) = &
             Mmat%CT_RHS%val( 1, 1 : Mdims%cv_nonods )
-            CALL PUT_CT_IN_GLOB_MAT( Mdims%nphase, Mdims%ndim, Mdims%u_nonods, &
-            NLENMCY, Mspars%MCY%ncol, MCY, Mspars%MCY%fin, &
-            Mdims%cv_nonods, Mspars%CT%ncol, Mmat%CT, DIAG_SCALE_PRES, Mspars%CT%fin, &
-            Mspars%CMC%fin, Mspars%CMC%ncol, MASS_MN_PRES )
+            CALL PUT_CT_IN_GLOB_MAT( Mmat, MCY )
         END IF
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
         IF ( IGOT_T2 == 1 ) THEN
@@ -1343,65 +1337,44 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         DEALLOCATE( TDIFFUSION )
         DEALLOCATE( MEAN_PORE_CV )
         ewrite(3,*) 'Leaving CV_ASSEMB_FORCE_CTY'
+
+
+        contains
+            SUBROUTINE PUT_CT_IN_GLOB_MAT( Mmat, MCY)
+                implicit none
+                ! Put Mmat%CT into global matrix MCY
+                type (multi_matrices), intent(inout) :: Mmat
+                REAL, DIMENSION( : ), intent( inout ) :: MCY
+
+                ! Local variables...
+                INTEGER CV_NOD, IWID, COUNT, IPHASE, COUNT_MCY1, &
+                    COUNT_MCY, COUNT_CMC, IDIM, I
+                ewrite(3,*) 'In PUT_CT_IN_GLOB_MAT'
+                Loop_CVNOD: DO CV_NOD = 1, Mdims%cv_nonods
+                    IWID = Mspars%CT%fin( CV_NOD + 1 ) - Mspars%CT%fin( CV_NOD )
+                    Loop_COUNT: DO COUNT = Mspars%CT%fin( CV_NOD ), Mspars%CT%fin( CV_NOD + 1 ) - 1
+                        Loop_PHASE: DO IPHASE = 1, Mdims%nphase
+                            Loop_DIM: DO IDIM = 1, Mdims%ndim
+                                COUNT_MCY1 = Mspars%MCY%fin( Mdims%u_nonods * Mdims%nphase * Mdims%ndim + CV_NOD ) - 1 + (COUNT - Mspars%CT%fin( CV_NOD ) +1) &
+                                    + ( IPHASE - 1 ) * IWID * Mdims%ndim &
+                                    + IWID*(IDIM-1)
+                                MCY( COUNT_MCY1 ) = Mmat%CT( IDIM, IPHASE, COUNT )
+                            END DO Loop_DIM
+                        END DO Loop_PHASE
+                    END DO Loop_COUNT
+                END DO Loop_CVNOD
+                DO CV_NOD = 1, Mdims%cv_nonods
+                    IWID = Mspars%CMC%fin( CV_NOD + 1 )- Mspars%CMC%fin( CV_NOD )
+                    DO I = 1, IWID
+                        COUNT_CMC = Mspars%CMC%fin( CV_NOD + 1) - I
+                        COUNT_MCY = Mspars%MCY%fin( Mdims%ndim * Mdims%nphase * Mdims%u_nonods + CV_NOD + 1 ) - I
+                        MCY( COUNT_MCY ) = DIAG_SCALE_PRES( 1, CV_NOD ) * MASS_MN_PRES( COUNT_CMC )
+                    END DO
+                END DO
+                ewrite(3,*) 'Leaving PUT_CT_IN_GLOB_MAT'
+                RETURN
+            END SUBROUTINE PUT_CT_IN_GLOB_MAT
     END SUBROUTINE CV_ASSEMB_FORCE_CTY
-
-
-    !SPRINT_TO_DO!!UPDATE MEMORY
-    SUBROUTINE PUT_CT_IN_GLOB_MAT( NPHASE, NDIM, U_NONODS, &
-    NLENMCY, NCOLMCY, MCY, FINMCY, &
-    CV_NONODS, NCOLCT, CT, DIAG_SCALE_PRES, FINDCT, &
-    FINDCMC, NCOLCMC, MASS_MN_PRES )
-        implicit none
-        ! Put CT into global matrix MCY
-
-        INTEGER, intent( in ) ::  NPHASE, NDIM, U_NONODS, NLENMCY, NCOLMCY, CV_NONODS, NCOLCT, &
-        NCOLCMC
-        REAL, DIMENSION( : ), intent( inout ) :: MCY
-        INTEGER, DIMENSION( : ), intent( in ) ::  FINMCY
-        REAL, DIMENSION( :, :, : ), intent( in ) :: CT
-        REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDCT, FINDCMC
-        REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
-        ! Local variables...
-        INTEGER CV_NOD, IWID, COUNT, IPHASE, COUNT_MCY1, &
-        COUNT_MCY, COUNT_CMC, IDIM, I
-
-        ewrite(3,*) 'In PUT_CT_IN_GLOB_MAT'
-
-        Loop_CVNOD: DO CV_NOD = 1, CV_NONODS
-            IWID = FINDCT( CV_NOD + 1 ) - FINDCT( CV_NOD )
-
-            Loop_COUNT: DO COUNT = FINDCT( CV_NOD ), FINDCT( CV_NOD + 1 ) - 1
-
-                Loop_PHASE: DO IPHASE = 1, NPHASE
-                    Loop_DIM: DO IDIM = 1, NDIM
-                        COUNT_MCY1 = FINMCY( U_NONODS * NPHASE * NDIM + CV_NOD ) - 1 + (COUNT - FINDCT( CV_NOD ) +1) &
-                        + ( IPHASE - 1 ) * IWID * NDIM &
-                        + IWID*(IDIM-1)
-                        MCY( COUNT_MCY1 ) = CT( IDIM, IPHASE, COUNT )
-
-                    END DO Loop_DIM
-                END DO Loop_PHASE
-
-            END DO Loop_COUNT
-
-        END DO Loop_CVNOD
-
-        DO CV_NOD = 1, CV_NONODS
-            IWID = FINDCMC( CV_NOD + 1 )- FINDCMC( CV_NOD )
-            DO I = 1, IWID
-                COUNT_CMC = FINDCMC( CV_NOD + 1) - I
-                COUNT_MCY = FINMCY( NDIM * NPHASE * U_NONODS + CV_NOD + 1 ) - I
-                MCY( COUNT_MCY ) = DIAG_SCALE_PRES( 1, CV_NOD ) * MASS_MN_PRES( COUNT_CMC )
-            END DO
-        END DO
-
-        ewrite(3,*) 'Leaving PUT_CT_IN_GLOB_MAT'
-
-        RETURN
-
-    END SUBROUTINE PUT_CT_IN_GLOB_MAT
-
 
 
 
