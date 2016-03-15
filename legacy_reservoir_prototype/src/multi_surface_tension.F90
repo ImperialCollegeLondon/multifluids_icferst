@@ -50,7 +50,7 @@ module multi_surface_tension
 
 contains
 
- SUBROUTINE CALCULATE_SURFACE_TENSION_NEW( state, packed_state, storage_state, Mdims, Mspars, ndgln, Mdisopt, nphase, ncomp, &
+ SUBROUTINE CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, nphase, ncomp, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
      !U_SOURCE_CV, U_SOURCE, &
      NCOLACV, FINACV, COLACV, MIDACV, &
@@ -63,18 +63,17 @@ contains
      MAT_NLOC, MAT_NDGLN, MAT_NONODS,  &
      NDIM,  &
      NCOLM, FINDM, COLM, MIDM, &
-     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-     StorageIndexes )
+     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE)
 
      IMPLICIT NONE
 
-     real, dimension( : ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
+     real, dimension( :, :, : ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
      integer, intent( inout ) :: IPLIKE_GRAD_SOU
      !real, dimension( cv_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE_CV
      !real, dimension( u_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE
 
      type(state_type), dimension( : ), intent( inout ) :: state
-     type(state_type), intent( inout ) :: packed_state, storage_state
+     type(state_type), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
      type(multi_sparsities), intent(in) :: Mspars
      type(multi_ndgln), intent(in) :: ndgln
@@ -104,7 +103,6 @@ contains
      integer, dimension( : ), intent( in ) :: MIDM
      integer, dimension( : ), intent( in ) :: FINELE
      integer, dimension( : ), intent( in ) :: COLELE
-     integer, dimension(:), intent(inout) ::  StorageIndexes
      !Local variables
      real, dimension( : ), allocatable :: U_FORCE_X_SUF_TEN, U_FORCE_Y_SUF_TEN, U_FORCE_Z_SUF_TEN, &
          CV_U_FORCE_X_SUF_TEN, CV_U_FORCE_Y_SUF_TEN, CV_U_FORCE_Z_SUF_TEN, X, Y, Z
@@ -135,7 +133,7 @@ contains
      PLIKE_GRAD_SOU_COEF = 0.0
 
 
-     do icomp = 1, 1!ncomp
+     do icomp = 1, ncomp
 
          surface_tension = have_option( '/material_phase[' // int2str( nphase - 1 + icomp ) // &
              ']/is_multiphase_component/surface_tension' )
@@ -162,9 +160,9 @@ contains
 
              do iphase = 1, nphase
 
-                 CALL SURFACE_TENSION_WRAPPER_NEW( state, packed_state, storage_state, &
-                     !PLIKE_GRAD_SOU_COEF( icomp, iphase, :), PLIKE_GRAD_SOU_GRAD( icomp, iphase, :), &
-                     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
+                 CALL SURFACE_TENSION_WRAPPER_NEW( state, packed_state, &
+                     PLIKE_GRAD_SOU_COEF( icomp, iphase, :), PLIKE_GRAD_SOU_GRAD( icomp, iphase, :), &
+                     !PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
                      COEFFICIENT, &
                      MFC_s%val( icomp, iphase, :), &
                      Mdims, Mspars, ndgln, Mdisopt )
@@ -187,7 +185,7 @@ contains
      RETURN
  END SUBROUTINE CALCULATE_SURFACE_TENSION_NEW
 
- SUBROUTINE SURFACE_TENSION_WRAPPER_NEW( state, packed_state, storage_state, &
+ SUBROUTINE SURFACE_TENSION_WRAPPER_NEW( state, packed_state, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
      SUF_TENSION_COEF, VOLUME_FRAC, &
      Mdims, Mspars, ndgln, Mdisopt )
@@ -199,11 +197,10 @@ contains
 
      !use shape_functions
      !use matrix_operations
-     !use printout
      ! Inputs/Outputs
      IMPLICIT NONE
      type(state_type), dimension( : ), intent( inout ) :: state
-     type(state_type), intent( inout ) :: packed_state, storage_state
+     type(state_type), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
      type(multi_sparsities), intent(in) :: Mspars
      type(multi_ndgln), intent(in) :: ndgln

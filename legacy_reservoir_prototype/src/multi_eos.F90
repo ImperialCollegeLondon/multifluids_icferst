@@ -903,174 +903,169 @@ contains
         deallocate( u_absorb2, satura2, Max_sat )
         ewrite(3,*) 'Leaving calculate_absorption'
 
-        RETURN
+        contains
+            SUBROUTINE calculate_absorption2( packed_state, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
+                CV_NDGLN, MAT_NDGLN, &
+                U_ABSORB, PERM2, visc_phases, IDs_ndgln)
+                ! Calculate absorption for momentum eqns
+                use matrix_operations
+                !    use cv_advection
+                implicit none
+                type( state_type ), intent( inout ) :: packed_state
+                INTEGER, intent( in ) :: CV_NONODS, NPHASE, NDIM, TOTELE, CV_NLOC,MAT_NLOC
+                REAL, DIMENSION( :, : ), intent( in ) :: SATURA
+                INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+                INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN, IDs_ndgln
+                REAL, DIMENSION( :, :, : ), intent( inout ) :: U_ABSORB
+                REAL, DIMENSION( :, :, : ), intent( in ) :: PERM2
+                real, intent(in), dimension(:) :: visc_phases
+                ! Local variable
+                type (tensor_field), pointer :: RockFluidProp
+                real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
+                REAL, PARAMETER :: TOLER = 1.E-10
+                INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
+                    IPHA_IDIM, IDIM, JDIM, IPHASE, id_reg
+                REAL, DIMENSION( :, :, :), allocatable :: INV_PERM, PERM
 
+                RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
+
+                ewrite(3,*) 'In calculate_absorption2'
+                ALLOCATE( INV_PERM(  size(PERM2,1), size(PERM2,2), size(PERM2,3) ))
+                ALLOCATE( PERM( size(PERM2,1), size(PERM2,2) , size(PERM2,3)))
+                perm=perm2
+                do id_reg = 1, size(perm,3)
+                    inv_perm( :, :, id_reg)=inverse(perm( :, :, id_reg))
+                end do
+                U_ABSORB = 0.0
+                Loop_NPHASE: DO IPHASE = 1, NPHASE
+
+                    Loop_ELE: DO ELE = 1, TOTELE
+                        !Get properties from packed state
+                        Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
+                        Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
+                        Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
+                        Loop_CVNLOC: DO CV_ILOC = 1, CV_NLOC
+
+                            MAT_NOD = MAT_NDGLN(( ELE - 1 ) * MAT_NLOC + CV_ILOC)
+                            CV_NOD = CV_NDGLN(( ELE - 1) * CV_NLOC + CV_ILOC )
+
+                            Loop_DimensionsI: DO IDIM = 1, NDIM
+
+                                Loop_DimensionsJ: DO JDIM = 1, NDIM
+
+                                    CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * CV_NONODS
+                                    IPHA_IDIM = ( IPHASE - 1 ) * NDIM + IDIM
+                                    JPHA_JDIM = ( IPHASE - 1 ) * NDIM + JDIM
+                                    if (is_porous_media) then
+                                        call get_relperm(nphase, iphase, U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ),&
+                                                    SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, ELE),&
+                                                    Immobile_fraction, Corey_exponent, Endpoint_relperm)
+                                    else
+                                        U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = 0.
+                                    end if
+                                END DO Loop_DimensionsJ
+
+                            END DO Loop_DimensionsI
+
+                        END DO Loop_CVNLOC
+
+                    END DO Loop_ELE
+
+                END DO Loop_NPHASE
+
+                DEALLOCATE( PERM, INV_PERM )
+
+                ewrite(3,*) 'Leaving calculate_absorption2'
+
+                RETURN
+
+            END SUBROUTINE calculate_absorption2
     END SUBROUTINE Calculate_AbsorptionTerm
 
-
-
-    !sprint_to_do!internal subroutine
-    SUBROUTINE calculate_absorption2( packed_state, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
-        CV_NDGLN, MAT_NDGLN, &
-        U_ABSORB, PERM2, visc_phases, IDs_ndgln)
-        ! Calculate absorption for momentum eqns
-        use matrix_operations
-        !    use cv_advection
-        implicit none
-        type( state_type ), intent( inout ) :: packed_state
-        INTEGER, intent( in ) :: CV_NONODS, NPHASE, NDIM, TOTELE, CV_NLOC,MAT_NLOC
-        REAL, DIMENSION( :, : ), intent( in ) :: SATURA
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN, IDs_ndgln
-        REAL, DIMENSION( :, :, : ), intent( inout ) :: U_ABSORB
-        REAL, DIMENSION( :, :, : ), intent( in ) :: PERM2
-        real, intent(in), dimension(:) :: visc_phases
-        ! Local variable
-        type (tensor_field), pointer :: RockFluidProp
-        real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
-        REAL, PARAMETER :: TOLER = 1.E-10
-        INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
-            IPHA_IDIM, IDIM, JDIM, IPHASE, id_reg
-        REAL, DIMENSION( :, :, :), allocatable :: INV_PERM, PERM
-
-        RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
-
-        ewrite(3,*) 'In calculate_absorption2'
-        ALLOCATE( INV_PERM(  size(PERM2,1), size(PERM2,2), size(PERM2,3) ))
-        ALLOCATE( PERM( size(PERM2,1), size(PERM2,2) , size(PERM2,3)))
-        perm=perm2
-        do id_reg = 1, size(perm,3)
-            inv_perm( :, :, id_reg)=inverse(perm( :, :, id_reg))
-        end do
-        U_ABSORB = 0.0
-        Loop_NPHASE: DO IPHASE = 1, NPHASE
-
-            Loop_ELE: DO ELE = 1, TOTELE
-                !Get properties from packed state
-                Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
-                Endpoint_relperm => RockFluidProp%val(2, :, IDs_ndgln(ELE))
-                Corey_exponent => RockFluidProp%val(3, :, IDs_ndgln(ELE))
-                Loop_CVNLOC: DO CV_ILOC = 1, CV_NLOC
-
-                    MAT_NOD = MAT_NDGLN(( ELE - 1 ) * MAT_NLOC + CV_ILOC)
-                    CV_NOD = CV_NDGLN(( ELE - 1) * CV_NLOC + CV_ILOC )
-
-                    Loop_DimensionsI: DO IDIM = 1, NDIM
-
-                        Loop_DimensionsJ: DO JDIM = 1, NDIM
-
-                            CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * CV_NONODS
-                            IPHA_IDIM = ( IPHASE - 1 ) * NDIM + IDIM
-                            JPHA_JDIM = ( IPHASE - 1 ) * NDIM + JDIM
-                            if (is_porous_media) then
-                                select case (NPHASE)
-                                    case (1)!No relperm needed, we calculate directly the result
-                                        U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = INV_PERM( IDIM, JDIM, ELE ) *&
-                                            visc_phases(1) * min(1.0,max(1d-5,SATURA(1,CV_NOD)))
-                                    case (2)
-                                        CALL relperm_corey_epsilon( U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), visc_phases, &
-                                            INV_PERM( IDIM, JDIM, ELE ), SATURA(iphase,CV_NOD), IPHASE,&
-                                            Immobile_fraction, Corey_exponent, Endpoint_relperm)
-                                    case (3)!For three phases we use the Stone model. !With predefined order: Water, oil, gas
-                                        call relperm_stone(U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ), iphase,&
-                                            SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, ELE),&
-                                            Immobile_fraction, Corey_exponent, Endpoint_relperm)
-                                    case default
-                                        FLAbort("No relative permeability function implemented for more than 3 phases")
-                                end select
-                            else
-                                U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = 0.
-                            end if
-                        END DO Loop_DimensionsJ
-
-                    END DO Loop_DimensionsI
-
-                END DO Loop_CVNLOC
-
-            END DO Loop_ELE
-
-        END DO Loop_NPHASE
-
-        DEALLOCATE( PERM, INV_PERM )
-
-        ewrite(3,*) 'Leaving calculate_absorption2'
-
-        RETURN
-
-    END SUBROUTINE calculate_absorption2
-
-
-
-    SUBROUTINE relperm_corey_epsilon( ABSP, visc_phase, INV_PERM, SAT, IPHASE,&
-        Immobile_fraction, Corey_exponent, Endpoint_relperm )
-          !This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
-          !when dividing it to obtain the sigma.
-        IMPLICIT NONE
-        REAL, intent( inout ) :: ABSP
-        REAL, intent( in ) :: SAT, INV_PERM
-        INTEGER, intent( in ) :: IPHASE
-        real, dimension(:), intent(in) :: visc_phase, Immobile_fraction, Corey_exponent, Endpoint_relperm
-        ! Local variables...
-        REAL :: KR, aux
-        real, parameter :: epsilon = 1d-15!This value should in theory never be used, the real lower limit
-        real, parameter :: eps = 1d-5!should be eps ** Corey_exponent
-        !Kr_max should only multiply the wetting phase,
-        !however as we do not know if it is phase 1 or 2, we let the decision to the user
-        !and we multiply both phases by kr_max. By default kr_max= 1
-
-        aux = 1.0 - sum(Immobile_fraction)
-        KR = Endpoint_relperm(iphase)*( max( sat - Immobile_fraction(iphase), sat*eps+eps) / aux ) ** Corey_exponent(iphase)
-        !Make sure that the relperm is between bounds
-        KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
-        ABSP = INV_PERM * (visc_phase(iphase) * max(1d-5, sat)) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
-          !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
-
-        RETURN
-    END SUBROUTINE relperm_corey_epsilon
-
-
-    subroutine relperm_stone(ABSP, iphase, sat, visc, INV_PERM, Immobile_fraction, Corey_exponent, Endpoint_relperm )
-        !This subroutine calculates the relative permeability for three phases
-        !First phase has to be water, second oil and the third gas
-        !We use Stone's model II adapted, and for the two phases we use the Corey model
-        !Model explained in: Aziz, K. And Settari, T.:“Petroleum Reservoir Simulation” Applied Science Publishers, London, 30-38, 1979.
+    subroutine get_relperm(nphase, iphase, ABSP, sat, visc, INV_PERM, Immobile_fraction, Corey_exponent, Endpoint_relperm)
+        !Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
         implicit none
         real, intent(inout) :: ABSP
         real, intent(in) :: INV_PERM
         real, dimension(:), intent(in) :: sat, visc, Immobile_fraction, Corey_exponent, Endpoint_relperm
-        integer, intent(in) :: iphase
-        !Local variables
-        real, dimension(3) :: Norm_sat, relperm, KR
-        real :: Krow, Krog
-        real, parameter :: epsilon = 1d-10
+        integer, intent(in) :: iphase, nphase
 
-        !Prepare data
-        !We consider two models for two phase flow, water-oil and oil-gas
-        if (iphase /= 3) then
-            Norm_sat(1) = ( sat(1) - Immobile_fraction(1)) /( 1. - Immobile_fraction(1) - Immobile_fraction(2))!Water
-            relperm(1) = Endpoint_relperm(1)* Norm_sat(1) ** Corey_exponent(1)!Water, Krw
-        end if
-        if (iphase /= 1) then
-            Norm_sat(3) = ( sat(3) - Immobile_fraction(3)) /(1. - Immobile_fraction(2) - Immobile_fraction(1))!Gas
-            !For phase 1 and 3 (water and gas respectively) we can use the Brooks Corey model
-            relperm(3) = Endpoint_relperm(3)* Norm_sat(3) ** Corey_exponent(3)!Gas, Krg
+        select case (nphase)
+            case (1)
+                ABSP = INV_PERM* visc(iphase) * min(1.0,max(1d-5,sat(iphase)))
+            case (2)
+                call relperm_corey_epsilon( ABSP)
+            case (3)
+                call relperm_stone(ABSP)
+            case default!One phase
+                FLAbort("No relative permeability function implemented for more than 3 phases")
+        end select
 
-        end if
-        !Oil relperm is obtained as a combination
-        if (iphase == 2 ) then
+        contains
+            SUBROUTINE relperm_corey_epsilon( ABSP )
+                  !This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
+                  !when dividing it to obtain the sigma.
+                IMPLICIT NONE
+                REAL, intent( inout ) :: ABSP
+                ! Local variables...
+                REAL :: KR, aux
+                real, parameter :: epsilon = 1d-15!This value should in theory never be used, the real lower limit
+                real, parameter :: eps = 1d-5!should be eps ** Corey_exponent
+                !Kr_max should only multiply the wetting phase,
+                !however as we do not know if it is phase 1 or 2, we let the decision to the user
+                !and we multiply both phases by kr_max. By default kr_max= 1
 
-            Krow = Endpoint_relperm(2)* (1.0 - Norm_sat(1)) ** Corey_exponent(2)!Oil, Krow
-            Krog = Endpoint_relperm(2)* (1.0 - Norm_sat(3)) ** Corey_exponent(2)!Oil, Krog
-            !For the second phase, oil, we need to recalculate the real value(Stone model 2)
-            relperm(2) = Endpoint_relperm(2)*( (Krow/Endpoint_relperm(2) + relperm(1))*&
-                (Krog/Endpoint_relperm(2) + relperm(3)) - (relperm(1) + relperm(3)) )
-        end if
-        !Make sure that the relperm is between bounds
-        KR(iphase) = min(max(epsilon, relperm(iphase)),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
-        ABSP = INV_PERM * (VISC(iphase) * max(1d-5,sat(iphase))) / KR(iphase) !The value 1d-5 is only used if the boundaries have values of saturation of zero.
-        !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
+                aux = 1.0 - sum(Immobile_fraction)
+                KR = Endpoint_relperm(iphase)*( max( sat(iphase) - Immobile_fraction(iphase), sat(iphase)*eps+eps) / aux ) ** Corey_exponent(iphase)
+                !Make sure that the relperm is between bounds
+                KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+                ABSP = INV_PERM * (visc(iphase) * max(1d-5, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
+                  !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
 
-    end subroutine relperm_stone
+            END SUBROUTINE relperm_corey_epsilon
+
+            subroutine relperm_stone(ABSP)
+                !This subroutine calculates the relative permeability for three phases
+                !First phase has to be water, second oil and the third gas
+                !We use Stone's model II adapted, and for the two phases we use the Corey model
+                !Model explained in: Aziz, K. And Settari, T.:“Petroleum Reservoir Simulation” Applied Science Publishers, London, 30-38, 1979.
+                implicit none
+                real, intent(inout) :: ABSP
+                !Local variables
+                real, dimension(3) :: Norm_sat, relperm, KR
+                real :: Krow, Krog
+                real, parameter :: epsilon = 1d-10
+
+                !Prepare data
+                !We consider two models for two phase flow, water-oil and oil-gas
+                if (iphase /= 3) then
+                    Norm_sat(1) = ( sat(1) - Immobile_fraction(1)) /( 1. - Immobile_fraction(1) - Immobile_fraction(2))!Water
+                    relperm(1) = Endpoint_relperm(1)* Norm_sat(1) ** Corey_exponent(1)!Water, Krw
+                end if
+                if (iphase /= 1) then
+                    Norm_sat(3) = ( sat(3) - Immobile_fraction(3)) /(1. - Immobile_fraction(2) - Immobile_fraction(1))!Gas
+                    !For phase 1 and 3 (water and gas respectively) we can use the Brooks Corey model
+                    relperm(3) = Endpoint_relperm(3)* Norm_sat(3) ** Corey_exponent(3)!Gas, Krg
+
+                end if
+                !Oil relperm is obtained as a combination
+                if (iphase == 2 ) then
+
+                    Krow = Endpoint_relperm(2)* (1.0 - Norm_sat(1)) ** Corey_exponent(2)!Oil, Krow
+                    Krog = Endpoint_relperm(2)* (1.0 - Norm_sat(3)) ** Corey_exponent(2)!Oil, Krog
+                    !For the second phase, oil, we need to recalculate the real value(Stone model 2)
+                    relperm(2) = Endpoint_relperm(2)*( (Krow/Endpoint_relperm(2) + relperm(1))*&
+                        (Krog/Endpoint_relperm(2) + relperm(3)) - (relperm(1) + relperm(3)) )
+                end if
+                !Make sure that the relperm is between bounds
+                KR(iphase) = min(max(epsilon, relperm(iphase)),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
+                ABSP = INV_PERM * (VISC(iphase) * max(1d-5,sat(iphase))) / KR(iphase) !The value 1d-5 is only used if the boundaries have values of saturation of zero.
+                !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
+
+            end subroutine relperm_stone
+
+    end subroutine get_relperm
+
 
     SUBROUTINE calculate_capillary_pressure( packed_state, Sat_in_FEM,&
         CV_NDGLN, ids_ndgln, totele, cv_nloc)
@@ -1131,24 +1126,21 @@ contains
         END DO
 
         deallocate(Cont_correction)
-        RETURN
+        contains
+            pure real function Get_capPressure(sat, Pe, a, Immobile_fraction, iphase)
+                !This functions returns the capillary pressure for a certain input saturation
+                !There is another function, its derivative in cv-adv-diff called Get_DevCapPressure
+                Implicit none
+                real, intent(in) :: sat, Pe, a
+                real, dimension(:), intent(in) :: Immobile_fraction
+                integer, intent(in) :: iphase
+                !Local
+                real, parameter :: eps = 1d-3 !Small values requires smaller time steps
+
+                Get_capPressure = &
+                    Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - Immobile_fraction(iphase)), 1.0) ** (-a)
+            end function Get_capPressure
     END SUBROUTINE calculate_capillary_pressure
-
-
-    pure real function Get_capPressure(sat, Pe, a, Immobile_fraction, iphase)
-        !This functions returns the capillary pressure for a certain input saturation
-        !There is another function, its derivative in cv-adv-diff called Get_DevCapPressure
-        Implicit none
-        real, intent(in) :: sat, Pe, a
-        real, dimension(:), intent(in) :: Immobile_fraction
-        integer, intent(in) :: iphase
-        !Local
-        real, parameter :: eps = 1d-3 !Small values requires smaller time steps
-
-        Get_capPressure = &
-            Pe * min((sat - Immobile_fraction(iphase) + eps) / (1.0 - Immobile_fraction(iphase)), 1.0) ** (-a)
-    end function Get_capPressure
-
 
     PURE real function Get_DevCapPressure(sat, Pe, a, immobile_fraction, iphase)
         !This functions returns the derivative of the capillary pressure with the saturation
@@ -1549,21 +1541,9 @@ contains
 
                                 do idim = 1, ndim
                                     do jdim = 1, ndim
-                                        select case ( nphase )
-                                            case (1) ! No relperm needed, we calculate directly the result
-                                                sigma_out( idim, jdim ) = inv_perm( idim, jdim ) *&
-                                                    visc_phases(1) * min(1.0,max(1d-5,satura_bc))
-                                            case (2)
-                                                call relperm_corey_epsilon( sigma_out( idim, jdim ), visc_phases, &
-                                                    inv_perm( idim, jdim ), satura_bc, IPHASE,&
-                                                    Immobile_fraction, Corey_exponent, Endpoint_relperm)
-                                            case (3) ! For three phases we use the Stone model. !With predefined order: Water, oil, gas
-                                                call relperm_stone(sigma_out( idim, jdim ), iphase,&
-                                                    volfrac_BCs%val(1,:,cv_snodi), visc_phases, inv_perm( idim, jdim ),&
-                                                    Immobile_fraction, Corey_exponent, Endpoint_relperm)
-                                            case default
-                                                FLAbort("No relative permeability function implemented for more than 3 phases")
-                                        end select
+                                        call get_relperm(nphase, iphase, sigma_out( idim, jdim ),&
+                                            volfrac_BCs%val(1,:,cv_snodi), visc_phases, inv_perm( idim, jdim ),&
+                                            Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                     end do
                                 end do
 
@@ -1706,58 +1686,6 @@ contains
         return
     end subroutine update_velocity_source
 
-
-    !sprint_to_do!do this properly
-    subroutine extract_scalar_from_diamond(state, storage_state, field_values, path, StorName, indx, iphase, nphase)
-        !Gets a scalar field directly from Diamond
-        !Path have to end in /prescribed/value
-        !Indx is for the cashing
-        !If no phases, then pass iphase = nphase = 1
-        !NOTE: This was initially done for capillary pressure with regions
-        implicit none
-        type(state_type), dimension(:), intent(inout) :: state
-        type(state_type), intent(inout) :: storage_state
-        real, dimension(:), pointer, intent(inout) :: field_values
-        character(len=*), intent(in) :: path, StorName
-        integer, intent(inout) :: indx
-        integer, intent(in) :: iphase, nphase
-        !Working pointers
-        type (scalar_field), pointer :: Sfield
-        type(vector_field), pointer :: position
-        type(scalar_field), target :: targ_Store
-        type(mesh_type), pointer :: fl_mesh
-        type(mesh_type) :: Auxmesh
-        integer :: siz
-        if (indx<=0) then!Everything needs to be calculated
-            if (has_scalar_field(storage_state, StorName)) then
-                !If we are recalculating due to a mesh modification then
-                !we return to the original situation
-                call remove_scalar_field(storage_state, StorName)
-            end if
-
-
-            !By default I use the Pressure mesh (Number 1)
-            Sfield => extract_scalar_field(state(1),1)
-            position => get_external_coordinate_field(state(1), Sfield%mesh)
-            fl_mesh => extract_mesh( storage_state, "FakeMesh" )
-            Auxmesh = fl_mesh
-            !The number of nodes I want does not coincide
-            Auxmesh%nodes = size(Sfield%val,1) * nphase
-            call allocate (targ_Store, Auxmesh, StorName)
-
-            !            call allocate(targ_Store, Sfield%mesh)
-            call initialise_field_over_regions(targ_Store, path, position)
-            !Now we insert them in state and store the indexes
-            call insert(storage_state, targ_Store, StorName)
-            call deallocate (targ_Store)
-            indx = size(storage_state%scalar_fields)
-        end if
-        !Get the data
-        siz = size(storage_state%scalar_fields(abs(indx))%ptr%val(:),1)/nphase
-        field_values => storage_state%scalar_fields(abs(indx))%ptr%val((iphase-1)*siz + 1: siz * iphase )
-
-
-    end subroutine extract_scalar_from_diamond
 
     !sprint_to_do!delete before the sprint is over
     subroutine boiling( states, packed_state, cv_nonods, mat_nonods, nphase, ndim, &

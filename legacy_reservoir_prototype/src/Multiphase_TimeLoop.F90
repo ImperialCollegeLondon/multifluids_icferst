@@ -81,7 +81,6 @@ module multiphase_time_loop
 #endif
     !use matrix_operations
     !use shape_functions
-    !use printout
     implicit none
     private
     !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux
@@ -133,7 +132,7 @@ contains
         real, dimension( :, : ), allocatable :: Mean_Pore_CV
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
         integer :: iplike_grad_sou
-        real, dimension( : ), allocatable :: plike_grad_sou_grad, plike_grad_sou_coef
+        real, dimension( :, :, : ), allocatable :: plike_grad_sou_grad, plike_grad_sou_coef
         !!$ Adaptivity related fields and options:
         type( tensor_field ) :: metric_tensor
         type( state_type ), dimension( : ), pointer :: sub_state => null()
@@ -187,7 +186,7 @@ contains
         !Capillary pressure            : 32 (Pe), 33 (exponent a) (disabled) (removed?)
         !PIVIT_MAT (inverted)          : 34 (REMOVED)
         !Bound                         : 35 (removed?)
-        !Ph 1                          : 36 (removed?)
+        !Ph 1                          : 36 (added back, need to remove again)
         !Ph 2                          : 37 (removed?)
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
@@ -254,7 +253,7 @@ contains
         call Get_Primary_Scalars_new( state, Mdims )
         !!$ Calculating Global Node Numbers
         call allocate_multi_ndgln(ndgln, Mdims)
-        call Compute_Node_Global_Numbers_new(state, ndgln)
+        call Compute_Node_Global_Numbers(state, ndgln)
         !!$
         !!$ Computing Sparsity Patterns Matrices
         !!$
@@ -275,7 +274,7 @@ contains
         !!$ Defining element-pair type
         call Get_Ele_Type_new( Mdims, Mdisopt )
         !Allocate and calculate the sparsity patterns matrices
-        call Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+        call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
         call temp_mem_hacks()
         !!$ Allocating space for various arrays:
@@ -288,8 +287,8 @@ contains
             Material_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
             ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), & ! fix me..move in intenerg
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
-            plike_grad_sou_grad( Mdims%cv_nonods * Mdims%nphase ), &
-            plike_grad_sou_coef( Mdims%cv_nonods * Mdims%nphase ), &
+            plike_grad_sou_grad( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ), &
+            plike_grad_sou_coef( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ), &
             )
         !!$
         suf_sig_diagten_bc=0.
@@ -347,7 +346,7 @@ contains
         sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
         ScalarField_Source=0. ; ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
         !!$ Defining discretisation options
-        call Get_Discretisation_Options( state, Mdisopt )
+        call Get_Discretisation_Options( state, Mdims, Mdisopt )
         !!$ Option not currently set up in the schema and zeroed from the begining. It is used to control
         !!$ the upwinding rate (in the absorption term) during advection/assembling.
         allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
@@ -395,7 +394,7 @@ contains
                     state(iphase), field_name = "Saturation_bak", parent_mesh = "PressureMesh")
             end do
         end if
-        !Look for bad elements to apply a correction on them
+
         if (is_porous_media) then
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state)
@@ -509,117 +508,144 @@ contains
                        ids_ndgln, IDs2CV_ndgln, ndgln%cv, ndgln%suf_cv, ndgln%mat, ndgln%x, Mdisopt%cv_ele_type )
                 end if
 
-                !!$ Solve advection of the scalar 'Temperature':
-                if (.true.) then
-                    Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
-                        have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-                        ewrite(3,*)'Now advecting Temperature Field'
-                        call set_nu_to_u( packed_state )
-                        !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                        !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
-                        tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
-                        velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                        density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-                        saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                        call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
-                            tracer_field,velocity_field,density_field, dt, &
-                            suf_sig_diagten_bc, &
-                            Porosity_field%val, &
-                            !!$
-                            opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                            0, igot_theta_flux, &
-                            Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                            THETA_GDIFF, &
-                            Mean_Pore_CV, &
-                            option_path = '/material_phase[0]/scalar_field::Temperature', &
-                            thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                            saturation=saturation_field, IDs_ndgln=IDs_ndgln )
-                        call Calculate_All_Rhos( state, packed_state, Mdims )
-                    end if Conditional_ScalarAdvectionField
-                end if
 
-                !!$ Solve advection of the scalars.   'Temperature':
-                !!$ Fields...
-                !!-
-                new_ntsol_loop = .false.
-                if ( new_ntsol_loop  ) then
-                    call get_ntsol( ntsol )
-                    call initialise_field_lists_from_options( state, ntsol )
+                !!$ Solve advection of the scalar 'Temperature':
+if (.true.) then
+                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
+                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
+                    ewrite(3,*)'Now advecting Temperature Field'
                     call set_nu_to_u( packed_state )
                     !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                                !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
+                    !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
+                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                        tracer_field,velocity_field,density_field, dt, &
+                        suf_sig_diagten_bc, &
+                        Porosity_field%val, &
+                        !!$
+                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                        0, igot_theta_flux, &
+                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, &
+                        Mean_Pore_CV, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+                end if Conditional_ScalarAdvectionField
+end if
 
-                    do it = 1, ntsol
 
-                        call get_option( trim( field_optionpath_list( it ) ) // &
-                            '/prognostic/equation[0]/name', &
-                            option_buffer, default = "UnknownEquationType" )
-                        select case( trim( option_buffer ) )
-                        case ( "AdvectionDiffusion", "InternalEnergy" )
-                          use_advdif = .true.
-                        case default
-                          use_advdif = .false.
-                        end select
 
-                        !use_advdif=.true.
-                        if ( use_advdif ) then
-                            ! figure out if scalar field is mutli-phase
-                            multiphase_scalar = .false.
-                            do it2 = it+1, ntsol
-                                if ( field_name_list( it ) == field_name_list( it2 ) ) then
-                                    multiphase_scalar = .true.
-                                end if
-                            end do
 
-                            tmp_name = "Packed" //field_name_list( it )
-                            nphase_scalar = 1
-                            if ( multiphase_scalar ) then
-                                nphase_scalar = Mdims%nphase
-                                tmp_name = "Packed" // field_name_list( it )
-                            end if
-                            tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
 
-                            if (field_name_list( it)== 'PhaseVolumeFraction' .or.  field_name_list( it)== 'ComponentMassFractionPhase[0]') then
-                                cycle
-                            elseif (multiphase_scalar) then
-                                call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
-                                    tracer_field,velocity_field,density_field, dt, &
-                                    suf_sig_diagten_bc, &
-                                    Porosity_field%val, &
-                                    !!$
-                                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                                    0, igot_theta_flux, &
-                                    Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                                    THETA_GDIFF, &
-                                    Mean_Pore_CV, &
-                                    option_path = '/material_phase[0]/scalar_field::Temperature', &
-                                    thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                                    saturation=saturation_field, IDs_ndgln=IDs_ndgln )
-                                call Calculate_All_Rhos( state, packed_state, Mdims )
-                                exit
-                            else
-                                call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
-                                    tracer_field,velocity_field,density_field, dt, &
-                                    suf_sig_diagten_bc,  Porosity_field%val, &
-                                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                                    0, igot_theta_flux, &
-                                    Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                                    THETA_GDIFF,  Mean_Pore_CV, &
-                                    option_path = '/material_phase[0]/scalar_field::Temperature', &
-                                    thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                                    saturation=saturation_field, IDs_ndgln=IDs_ndgln )
-                                call Calculate_All_Rhos( state, packed_state, Mdims )
-                           end if
-                       end if
-                    end do
-                end if
 
+
+
+!!$ Solve advection of the scalars.   'Temperature':
+
+!!$ Fields...
+!!-
+        new_ntsol_loop = .false.
+
+if ( new_ntsol_loop  ) then
+
+        call get_ntsol( ntsol )
+        call initialise_field_lists_from_options( state, ntsol )
+
+
+        call set_nu_to_u( packed_state )
+        !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
+                    !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
+        velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+        density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+        saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+
+
+
+
+
+        do it = 1, ntsol
+
+           call get_option( trim( field_optionpath_list( it ) ) // &
+                '/prognostic/equation[0]/name', &
+                option_buffer, default = "UnknownEquationType" )
+           select case( trim( option_buffer ) )
+           case ( "AdvectionDiffusion", "InternalEnergy" )
+              use_advdif = .true.
+           case default
+              use_advdif = .false.
+           end select
+
+           !use_advdif=.true.
+
+
+           if ( use_advdif ) then
+
+              ! figure out if scalar field is mutli-phase
+              multiphase_scalar = .false.
+              do it2 = it+1, ntsol
+                 if ( field_name_list( it ) == field_name_list( it2 ) ) then
+                    multiphase_scalar = .true.
+                 end if
+              end do
+
+              tmp_name = "Packed" //field_name_list( it )
+              nphase_scalar = 1
+              if ( multiphase_scalar ) then
+                 nphase_scalar = Mdims%nphase
+                 tmp_name = "Packed" // field_name_list( it )
+              end if
+              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
+
+
+              if (field_name_list( it)== 'PhaseVolumeFraction' .or.  field_name_list( it)== 'ComponentMassFractionPhase[0]') then
+                    cycle
+              elseif (multiphase_scalar) then
+
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                        tracer_field,velocity_field,density_field, dt, &
+                        suf_sig_diagten_bc, &
+                        Porosity_field%val, &
+                        !!$
+                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                        0, igot_theta_flux, &
+                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF, &
+                        Mean_Pore_CV, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+
+                    exit
+              else
+                    
+                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                        tracer_field,velocity_field,density_field, dt, &
+                        suf_sig_diagten_bc,  Porosity_field%val, &
+                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                        0, igot_theta_flux, &
+                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                        THETA_GDIFF,  Mean_Pore_CV, &
+                        option_path = '/material_phase[0]/scalar_field::Temperature', &
+                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                    call Calculate_All_Rhos( state, packed_state, Mdims )
+               end if
+                    
+
+           end if
+
+        end do
+
+end if
                 ScalarField_Source_Store = ScalarField_Source + ScalarField_Source_Component
                 tracer_source => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource")
                 Mdisopt%volfra_use_theta_flux = .true.
@@ -631,8 +657,7 @@ contains
                     !!$ extended to surface tension -like term.
                     iplike_grad_sou = 0
                     plike_grad_sou_grad = 0
-                    CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, storage_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
-                    !CALL CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims%nphase, Mdims%ncomp,  &
+                    CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
                         PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
                         Mspars%ACV%ncol, Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid, &
                         Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
@@ -644,8 +669,7 @@ contains
                         Mdims%mat_nloc, ndgln%mat, Mdims%mat_nonods,  &
                         Mdims%ndim,  &
                         Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
-                        Mdims%xu_nloc, ndgln%xu, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, &
-                        StorageIndexes=StorageIndexes )
+                        Mdims%xu_nloc, ndgln%xu, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol)
                     if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
                                 !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
                         call calculate_capillary_pressure(packed_state, .false., &
@@ -673,7 +697,7 @@ contains
                 end if Conditional_ForceBalanceEquation
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -724,7 +748,7 @@ contains
                         Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
                             Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
                             call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
-                                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                                 tracer_field,velocity_field,density_field, dt, &
                                 SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -964,7 +988,6 @@ contains
                 exit Loop_Time
             end if
         end do Loop_Time
-
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:
         deallocate( &
@@ -1265,7 +1288,7 @@ contains
                 call Get_Primary_Scalars_new( state, Mdims )
                 !!$ Calculating Global Node Numbers
                 call allocate_multi_ndgln(ndgln, Mdims)
-                call Compute_Node_Global_Numbers_new(state, ndgln)
+                call Compute_Node_Global_Numbers(state, ndgln)
                 !!$
                 !!$ Computing Sparsity Patterns Matrices
                 !!$
@@ -1278,7 +1301,7 @@ contains
                 call Get_Ele_Type( Mdims%x_nloc, Mdisopt%cv_ele_type, Mdisopt%p_ele_type, Mdisopt%u_ele_type, &
                     Mdisopt%mat_ele_type, Mdisopt%u_sele_type, Mdisopt%cv_sele_type )
                 !Allocate and calculate the sparsity patterns
-                call Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+                call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                     mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
                 if (is_porous_media) then
                     !Re-calculate IDs_ndgln after adapting the mesh
@@ -1306,8 +1329,8 @@ contains
                     Material_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
                     ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), &
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
-                    plike_grad_sou_grad( Mdims%cv_nonods * Mdims%nphase ), &
-                    plike_grad_sou_coef( Mdims%cv_nonods * Mdims%nphase ) )
+                    plike_grad_sou_grad( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ), &
+                    plike_grad_sou_coef( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ) )
                 !!$
                 Component_Absorption=0.
                 !!$

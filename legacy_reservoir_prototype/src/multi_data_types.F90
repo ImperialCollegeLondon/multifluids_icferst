@@ -470,8 +470,8 @@ contains
         type (multi_matrices), intent(inout) :: Mmat
 
         !Deallocate and nullify as required
-        if (Mmat%CV_pressure) then!Deallocate just one of the two!sprint_to_do!There is an error here,
-            if (associated(Mmat%C_CV)) then!probably because the storage deallocates this memory before
+        if (Mmat%CV_pressure) then!Deallocate just one of the two
+            if (associated(Mmat%C_CV)) then
                 deallocate (Mmat%C_CV); nullify(Mmat%C_CV)!this method won't be compatible with two matrices, but we want
             end if                                      !to get rid of it anyway (its unstable)
         else
