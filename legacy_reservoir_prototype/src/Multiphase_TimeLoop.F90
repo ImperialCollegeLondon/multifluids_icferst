@@ -659,7 +659,6 @@ end if
                     iplike_grad_sou = 0
                     plike_grad_sou_grad = 0
                     CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
-                    !CALL CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims%nphase, Mdims%ncomp,  &
                         PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
                         Mspars%ACV%ncol, Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid, &
                         Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
