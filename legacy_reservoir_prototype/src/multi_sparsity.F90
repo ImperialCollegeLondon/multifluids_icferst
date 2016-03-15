@@ -237,28 +237,6 @@ contains
         RETURN
     END SUBROUTINE DEF_SPAR_CT_DG
 
-    !sprint_to_do!change for quicksort
-    subroutine ibubble(ivec)
-        ! sort ivec in increasing order
-        implicit none
-        integer, dimension( : ), intent( inout ) :: ivec
-        ! Local variables
-        integer :: nvec, i, j, itemp
-
-        nvec = size(ivec)
-
-        do j = 1, nvec
-            do i = 1, nvec - 1
-                if ( ivec( i ) > ivec( i + 1 ) ) then
-                    itemp = ivec( i + 1 )
-                    ivec( i + 1 ) = ivec( i )
-                    ivec( i ) = itemp
-                end if
-            end do
-        end do
-        return
-    end subroutine ibubble
-
 end module sparsity_1D
 
 module sparsity_ND
@@ -268,7 +246,7 @@ module sparsity_ND
     use shape_functions_Linear_Quadratic
     use cv_advection
     use multi_data_types
-
+    use multi_tools
 contains
 
     subroutine getfinele( totele, nloc, snloc, nonods, ndglno, mx_nface_p1, &
@@ -695,13 +673,12 @@ contains
 
         ! perform a bubble sort to order the row in ioncreasing order
         do irow = 1, u_pha_nonods
-            call ibubble( coldgm_pha( findgm_pha( irow ) : findgm_pha( irow + 1 ) - 1 ) )
+            call quicksort( coldgm_pha( findgm_pha( irow ) : findgm_pha( irow + 1 ) - 1 ) , 1)
             do count = findgm_pha( irow ), findgm_pha( irow + 1 ) - 1
                 jrow = coldgm_pha( count )
                 if( irow == jrow ) middgm_pha( irow ) = count
             end do
         end do
-
 
         if( ncoldgm_pha > mx_ncoldgm_pha ) &
             FLAbort(" Incorrect number of dimension of sparsity matrix - ncoldgm_pha ")
@@ -710,89 +687,6 @@ contains
 
         return
     end subroutine form_dgm_pha_sparsity
-
-
-
-
-
-
-
-
-
-
-
-
-    subroutine form_dgm_pha_sparsity_old( totele, nphase, u_nloc, u_pha_nonods, &
-        ndim, mx_ncoldgm_pha, ncoldgm_pha, &
-        coldgm_pha, findgm_pha, middgm_pha, &
-        finele, colele, ncolele )
-        ! Form the sparsity of the phase coupled DG discretised matrix
-        ! from the element-wise multi-phase sparsity matrix.
-        implicit none
-        integer, intent( in ) :: totele, nphase, u_nloc, u_pha_nonods, &
-            mx_ncoldgm_pha, ndim, ncolele
-        integer, intent( inout ) :: ncoldgm_pha
-        integer, dimension( mx_ncoldgm_pha ), intent( inout ) :: coldgm_pha
-        integer, dimension( u_pha_nonods + 1 ), intent( inout ) :: findgm_pha
-        integer, dimension( u_pha_nonods ), intent( inout ) :: middgm_pha
-        integer, dimension( totele + 1 ), intent( in ) :: finele
-        integer, dimension( ncolele ), intent( in ) :: colele
-
-        ! Local variables
-        integer :: count, count2, iloc, jloc, irow, jrow
-        integer :: ele, ele2, idim, jdim, iphase, jphase, u_nonods
-
-
-        ewrite(3,*) 'In form_dgm_pha_sparsity subrt.'
-
-        u_nonods = u_pha_nonods / ( nphase * ndim )
-
-        count2 = 0
-        Loop_Phase1: do iphase = 1, nphase
-            Loop_Dim1: do idim = 1, ndim
-                Loop_Element: do ele = 1, totele
-                    Loop_Loc1: do iloc = 1, u_nloc
-                        irow = ( ele - 1 ) * u_nloc + iloc  + ( idim - 1 ) * u_nonods + (iphase-1)*u_nonods*ndim
-                        !ewrite(3,*)'irow, ele, u_nloc, iloc, idim, u_nonods, iphase, count2:', &
-                        !     irow, ele, u_nloc, iloc, idim, u_nonods, iphase, count2+1
-                        findgm_pha( irow ) = count2 + 1
-                        Loop_Phase2: do jphase = 1, nphase
-                            Loop_Dim2: do jdim = 1, ndim
-                                Loop_Count: do count = finele( ele ), finele( ele + 1 ) - 1
-                                    ele2 = colele( count )
-                                    Loop_Loc2: do jloc = 1, u_nloc
-                                        jrow = ( ele2 - 1 ) * u_nloc + jloc  + ( jdim - 1 ) * u_nonods + (jphase-1)*u_nonods*ndim
-                                        count2 = count2 + 1
-                                        coldgm_pha( count2 ) = jrow
-                                        if( irow == jrow ) middgm_pha( irow ) = count2
-                                    end do Loop_Loc2
-                                end do Loop_Count
-                            end do Loop_Dim2
-                        end do Loop_Phase2
-                    end do Loop_Loc1
-                end do Loop_Element
-            end do Loop_Dim1
-        end do Loop_Phase1
-        findgm_pha( u_pha_nonods + 1 ) = count2 + 1
-        ncoldgm_pha = count2
-
-        ! perform a bubble sort to order the row in ioncreasing order
-        do irow = 1, u_pha_nonods
-            call ibubble( coldgm_pha( findgm_pha( irow ) : findgm_pha( irow + 1 ) - 1 ) )
-            do count = findgm_pha( irow ), findgm_pha( irow + 1 ) - 1
-                jrow = coldgm_pha( count )
-                if( irow == jrow ) middgm_pha( irow ) = count
-            end do
-        end do
-
-
-        if( ncoldgm_pha > mx_ncoldgm_pha ) &
-            FLAbort(" Incorrect number of dimension of sparsity matrix - ncoldgm_pha ")
-
-        ewrite(3,*) 'Leaving form_dgm_pha_sparsity subrt. '
-
-        return
-    end subroutine form_dgm_pha_sparsity_old
 
 
     subroutine pousinmc2( totele, nloc1, nonods2, nloc2, &
@@ -1318,7 +1212,7 @@ module spact
     use shape_functions_prototype
     use Copy_Outof_State
     use multi_data_types
-
+    use multi_tools
 contains
 
 
@@ -1659,9 +1553,7 @@ contains
 
         ! sort colct in increasing order
         do cv_nodi = 1, cv_nonods
-            call ibubble( colct( findct( cv_nodi ) : findct( cv_nodi + 1 ) -1 ) )
-           !ewrite(3,*) 'cv_nodi, colct:', &
-           !     cv_nodi, colct( findct( cv_nodi ) : findct( cv_nodi + 1 ) -1 )
+            call quicksort( colct( findct( cv_nodi ) : findct( cv_nodi + 1 ) -1 ) , 1)
         end do
 
         return

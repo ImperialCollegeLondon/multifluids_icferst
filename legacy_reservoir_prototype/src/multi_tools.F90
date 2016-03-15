@@ -312,6 +312,8 @@ contains
         ndglno=> mesh%ndglno
     end function get_ndglno
 
+    !Sort a list in increasing order
+    !Vec is the vector to sort and n is an starting point, like 1
     recursive  subroutine quicksort(vec,n)
 
         implicit none

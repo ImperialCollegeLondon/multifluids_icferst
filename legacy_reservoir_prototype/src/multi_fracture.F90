@@ -43,7 +43,7 @@ module multiphase_fractures
     use implicit_solids
     use FLDebug
     use memory_diagnostics
-
+    use multi_tools
     implicit none
 
 #ifdef USING_FEMDEM
@@ -1503,7 +1503,7 @@ print *, "passed populate here" !!-ao
             call delete_duplicates( tmp, nnodes_s )
             allocate( nodes_s( nnodes_s ) ) ; nodes_s = tmp( 1 : nnodes_s )
             ! sort the node numbers
-            call ibubble( nodes_s )
+            call quicksort(nodes_s, 1)
 
             ! re-numbering
 
@@ -1617,30 +1617,6 @@ print *, "passed populate here" !!-ao
 
     !----------------------------------------------------------------------------------------------------------
     !----------------------------------------------------------------------------------------------------------
-
-    subroutine ibubble( a )
-
-        implicit none
-
-        integer, dimension( : ), intent( inout ) :: a
-        !Local variables
-        integer :: n, i, j, p, q
-
-        n = size( a )
-
-        do i = 1, n
-            do j = n, i + 1, -1
-                p = a( j - 1 )
-                q = a( j )
-                if ( p > q ) then
-                    a( j - 1 ) = q
-                    a( j ) = p
-                end if
-            end do
-        end do
-
-        return
-    end subroutine ibubble
 
     subroutine delete_duplicates( a, count )
 
