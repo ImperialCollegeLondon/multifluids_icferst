@@ -233,7 +233,7 @@ contains
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                 !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
-                   Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                   Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                    tracer, velocity, density, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
                    INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, &
@@ -445,7 +445,7 @@ contains
                  !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
-                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                      tracer, velocity, density, &
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
                      INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE,&
@@ -859,7 +859,7 @@ contains
             Mmat%PIVIT_MAT=0.0
         end if
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
-            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state, &
+            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
              velocity, pressure, &
             X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL, UOLD_ALL, &
@@ -1175,7 +1175,7 @@ end if
 
 
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state, &
+        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
         velocity, pressure, &
         X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
@@ -1197,7 +1197,7 @@ end if
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state, storage_state
+        type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
         type(multi_shape_funs), intent(in) :: CV_funs, FE_funs
@@ -1274,7 +1274,7 @@ end if
         IF( GLOBAL_SOLVE ) MCY = 0.0
         ! Obtain the momentum and Mmat%C matricies
         CALL ASSEMB_FORCE_CTY( state, packed_state, &
-            Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, storage_state, &
+            Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
             velocity, pressure, &
             X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL, UOLD_ALL, &
@@ -1325,7 +1325,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         density=>extract_tensor_field(packed_state,"PackedDensity")
         call halo_update(density)
         call CV_ASSEMB( state, packed_state, &
-            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state, &
+            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
             tracer, velocity, density, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
             INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, &
@@ -1427,7 +1427,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
     SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state, &
-        Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, storage_state, &
+        Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
         velocity, pressure, &
         X_ALL, U_ABSORB, U_SOURCE, U_SOURCE_CV, &
         U_ALL, UOLD_ALL, &
@@ -1440,7 +1440,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         StorageIndexes, got_free_surf, mass_suf, symmetric_P )
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state, storage_state
+        type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: FE_GIdims
         type(multi_shape_funs), intent(in) :: FE_funs
@@ -3404,7 +3404,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ENDIF
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                 if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
-                    packed_state,storage_state, Mdims, FE_GIdims, FE_funs, X_ALL, LOC_U_RHS, ele, &
+                    packed_state, Mdims, FE_GIdims, FE_funs, X_ALL, LOC_U_RHS, ele, &
                     ndgln%cv, ndgln%x, ele2, iface,&
                     sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC )
                 ! ********Mapping to local variables****************
@@ -6685,12 +6685,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
  end subroutine linearise_field
 
 
- subroutine Introduce_Cap_press_term(packed_state, storage_state, Mdims, FE_GIdims, FE_funs, &
+ subroutine Introduce_Cap_press_term(packed_state, Mdims, FE_GIdims, FE_funs, &
      X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln,&
      ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
      !This subroutine introduces the capillary pressure term in the RHS
      Implicit none
-     type( state_type ), intent( inout ) :: packed_state, storage_state
+     type( state_type ), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
      type(multi_GI_dimensions), intent(in) :: FE_GIdims
      type(multi_shape_funs), intent(in) :: FE_funs

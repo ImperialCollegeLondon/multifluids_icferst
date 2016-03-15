@@ -117,7 +117,7 @@ contains
     end function my_size_real
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
-        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state, &
+        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
         tracer, velocity, density, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE,&
         DEN_ALL, DENOLD_ALL, &
@@ -256,7 +256,7 @@ contains
         ! Inputs/Outputs
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state, storage_state
+        type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims
         type(multi_shape_funs), intent(in) :: CV_funs

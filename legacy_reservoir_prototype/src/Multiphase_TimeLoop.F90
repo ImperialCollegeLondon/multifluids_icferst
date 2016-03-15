@@ -187,7 +187,7 @@ contains
         !Capillary pressure            : 32 (Pe), 33 (exponent a) (disabled) (removed?)
         !PIVIT_MAT (inverted)          : 34 (REMOVED)
         !Bound                         : 35 (removed?)
-        !Ph 1                          : 36 (removed?)
+        !Ph 1                          : 36 (added back, need to remove again)
         !Ph 2                          : 37 (removed?)
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
