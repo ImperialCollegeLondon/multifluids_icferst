@@ -63,8 +63,7 @@ contains
      MAT_NLOC, MAT_NDGLN, MAT_NONODS,  &
      NDIM,  &
      NCOLM, FINDM, COLM, MIDM, &
-     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-     StorageIndexes )
+     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE)
 
      IMPLICIT NONE
 
@@ -104,7 +103,6 @@ contains
      integer, dimension( : ), intent( in ) :: MIDM
      integer, dimension( : ), intent( in ) :: FINELE
      integer, dimension( : ), intent( in ) :: COLELE
-     integer, dimension(:), intent(inout) ::  StorageIndexes
      !Local variables
      real, dimension( : ), allocatable :: U_FORCE_X_SUF_TEN, U_FORCE_Y_SUF_TEN, U_FORCE_Z_SUF_TEN, &
          CV_U_FORCE_X_SUF_TEN, CV_U_FORCE_Y_SUF_TEN, CV_U_FORCE_Z_SUF_TEN, X, Y, Z

@@ -625,10 +625,6 @@ contains
         real, save :: rescaleVal = -1.0
         !CMC using petsc format
         type(petsc_csr_matrix)::  CMC_petsc
-        !Variables to store things in state
-        type(mesh_type), pointer :: fl_mesh
-        type(mesh_type) :: Auxmesh
-        type(scalar_field), target :: Targ_C_Mat
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: MAT_INOD, IPRES, JPRES, iphase_real, jphase_real
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABSORB
@@ -877,7 +873,7 @@ contains
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,&
-            StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
+            symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
 
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -1193,7 +1189,7 @@ end if
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL ,&
-        StorageIndexes, symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
+        symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1240,7 +1236,6 @@ end if
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( :, :), intent( in ) :: PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL
-        integer, dimension(:), intent(inout) :: StorageIndexes
         logical, intent(in) :: RECALC_C_CV
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
@@ -1284,7 +1279,7 @@ end if
             JUST_BL_DIAG_MAT, &
             UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, DENOLD_ALL, RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, &
-            P, StorageIndexes=StorageIndexes, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, SYMMETRIC_P=symmetric_P)
+            P, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, SYMMETRIC_P=symmetric_P)
         ! scale the momentum equations by the volume fraction / saturation for the matrix and rhs
         IF ( GLOBAL_SOLVE ) THEN
             ! put momentum and Mmat%C matrices into global matrix MCY...
@@ -1437,7 +1432,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         UDIFFUSION, UDIFFUSION_VOL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, DENOLD_ALL, RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
         P,&
-        StorageIndexes, got_free_surf, mass_suf, symmetric_P )
+        got_free_surf, mass_suf, symmetric_P )
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -1468,7 +1463,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION( :, :, : ), intent( in ) :: P
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL, DENOLD_ALL
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, symmetric_P
-        integer, dimension(:), intent(inout) :: StorageIndexes
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         ! Local Variables
         ! This is for decifering WIC_U_BC & WIC_P_BC
@@ -5354,8 +5348,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      MAT_NLOC, MAT_NDGLN, MAT_NONODS,  &
      NDIM,  &
      NCOLM, FINDM, COLM, MIDM, &
-     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-     StorageIndexes )
+     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE)
 
      IMPLICIT NONE
 
@@ -5392,7 +5385,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      integer, dimension( : ), intent( in ) :: MIDM
      integer, dimension( : ), intent( in ) :: FINELE
      integer, dimension( : ), intent( in ) :: COLELE
-     integer, dimension(:), intent(inout) ::  StorageIndexes
      !Local variables
      real, dimension( : ), allocatable :: U_FORCE_X_SUF_TEN, U_FORCE_Y_SUF_TEN, U_FORCE_Z_SUF_TEN, &
          CV_U_FORCE_X_SUF_TEN, CV_U_FORCE_Y_SUF_TEN, CV_U_FORCE_Z_SUF_TEN, X, Y, Z
@@ -5486,8 +5478,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      NDIM, USE_PRESSURE_FORCE, &
                      NCOLM, FINDM, COLM, MIDM, &
                      XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-                     USE_SMOOTHING,&
-                     StorageIndexes )
+                     USE_SMOOTHING)
 
              end do
 
@@ -5538,8 +5529,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      NDIM, USE_PRESSURE_FORCE, &
      NCOLM, FINDM, COLM, MIDM, &
      XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE, &
-     USE_SMOOTHING,&
-     StorageIndexes )
+     USE_SMOOTHING)
 
      ! Calculate the surface tension force: U_FORCE_X_SUF_TEN,U_FORCE_X_SUF_TEN,U_FORCE_X_SUF_TEN
      ! or PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD,
@@ -5706,7 +5696,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      INTEGER, DIMENSION( : ), intent( in ) :: FINELE
      INTEGER, DIMENSION( : ), intent( in ) :: COLELE
      LOGICAL, intent( in ) :: USE_PRESSURE_FORCE, USE_SMOOTHING
-     integer, dimension(:), intent(inout) ::  StorageIndexes
      ! Local variables
      type( multi_GI_dimensions ) :: GIdims
      LOGICAL, DIMENSION( : ), allocatable :: X_SHARE,LOG_ON_BOUND

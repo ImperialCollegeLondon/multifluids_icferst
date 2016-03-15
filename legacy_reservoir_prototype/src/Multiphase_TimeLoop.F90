@@ -671,8 +671,7 @@ end if
                         Mdims%mat_nloc, ndgln%mat, Mdims%mat_nonods,  &
                         Mdims%ndim,  &
                         Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
-                        Mdims%xu_nloc, ndgln%xu, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol, &
-                        StorageIndexes=StorageIndexes )
+                        Mdims%xu_nloc, ndgln%xu, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol)
                     if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
                                 !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
                         call calculate_capillary_pressure(packed_state, .false., &
