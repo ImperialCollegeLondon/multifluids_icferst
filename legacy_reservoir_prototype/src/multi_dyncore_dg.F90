@@ -1626,7 +1626,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, : ), allocatable :: SLOC_VOL_FRA, SLOC2_VOL_FRA,  SVOL_FRA, SVOL_FRA2, VOL_FRA_NMX_ALL
         ! revere ordering of shape functions used to get optimized code...
         REAL, DIMENSION ( :, :, : ), allocatable ::  CVFENX_ALL_REVERSED, UFENX_ALL_REVERSED
-        REAL, DIMENSION ( :, : ), allocatable ::  UFEN_REVERSED, CVFEN_SHORT_REVERSED, CVN_SHORT_REVERSED, CVN_REVERSED, CVFEN_REVERSED
+        REAL, DIMENSION ( :, : ), allocatable ::  UFEN_REVERSED, CVN_REVERSED, CVFEN_REVERSED
         REAL, DIMENSION ( :, : ), allocatable :: SBCVFEN_REVERSED, SBUFEN_REVERSED
         !Capillary pressure variables
         logical :: capillary_pressure_activated, Diffusive_cap_only
@@ -1799,7 +1799,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             RESID_BASED_STAB_DIF, U_NONLIN_SHOCK_COEF, RNO_P_IN_A_DOT
         FEM_BUOYANCY = have_option( "/physical_parameters/gravity/fem_buoyancy" )
         GOT_DIFFUS = .FALSE.
-        ! is this the 1st iteration of the time step.!sprint_to_do!replace for something more optimized
+        ! is this the 1st iteration of the time step.!sprint_to_do!replace with the new global variable introduced by quinhua
         FIRSTST = ( SUM( (U_ALL(1,:,:) - UOLD_ALL(1,:,:) ) **2) < 1.e-10 )
         IF(Mdims%ndim>=2) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(2,:,:) - UOLD_ALL(2,:,:) )**2 ) < 1.e-10 )
         IF(Mdims%ndim>=3) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(3,:,:) - UOLD_ALL(3,:,:) )**2 ) < 1.e-10 )
@@ -2081,16 +2081,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 MASS_SUF=0.0
             end if
         end if
-        !REVISIT THIS!!SPRINT_TO_DO
+
         quad_over_whole_ele = .true.
-!        if ( quad_over_whole_ele ) then
-!            FE_funs%cvn => FE_funs%cvfen
-!            FE_funs%sbcvn => FE_funs%sbcvfen
-!        end if
         ! ALLOCATE reversed ordering for computational speed****************
         ALLOCATE( CVFENX_ALL_REVERSED(Mdims%ndim,FE_GIdims%cv_ngi,Mdims%cv_nloc), UFENX_ALL_REVERSED(Mdims%ndim,FE_GIdims%cv_ngi,Mdims%u_nloc) ) ! NOT CALCULATED IN SUB cv_fem_shape_funs_plus_storage
-        ALLOCATE( UFEN_REVERSED(FE_GIdims%cv_ngi,Mdims%u_nloc), CVFEN_SHORT_REVERSED(FE_GIdims%cv_ngi,Mdims%cv_nloc) )
-        ALLOCATE( CVN_SHORT_REVERSED(FE_GIdims%cv_ngi,Mdims%cv_nloc), CVN_REVERSED(FE_GIdims%cv_ngi,Mdims%cv_nloc), CVFEN_REVERSED(FE_GIdims%cv_ngi,Mdims%cv_nloc) )
+        ALLOCATE( UFEN_REVERSED(FE_GIdims%cv_ngi,Mdims%u_nloc))
+        ALLOCATE( CVN_REVERSED(FE_GIdims%cv_ngi,Mdims%cv_nloc), CVFEN_REVERSED(FE_GIdims%cv_ngi,Mdims%cv_nloc) )
         ALLOCATE( SBCVFEN_REVERSED(FE_GIdims%sbcvngi,Mdims%cv_snloc), SBUFEN_REVERSED(FE_GIdims%sbcvngi,Mdims%u_snloc) )
         DO U_ILOC=1,Mdims%u_nloc
             DO GI=1,FE_GIdims%cv_ngi
@@ -2099,15 +2095,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         END DO
         DO CV_ILOC=1,Mdims%cv_nloc
             DO GI=1,FE_GIdims%cv_ngi
-                CVFEN_SHORT_REVERSED(GI,CV_ILOC)= FE_funs%cvfen(CV_ILOC,GI)
-                !sprint_to_do
+                CVFEN_REVERSED(GI,CV_ILOC)= FE_funs%cvfen(CV_ILOC,GI)
                 !############THIS IS A FIX FOR GRAVITY######################
                 !IF quad_over_whole_ele = .TRUE. NEEDS TO BE ACTIVATED
-                CVN_SHORT_REVERSED(GI,CV_ILOC)  = FE_funs%cvfen(CV_ILOC,GI)
-                CVN_REVERSED(GI,CV_ILOC)        = FE_funs%cvfen(CV_ILOC,GI)
+                CVN_REVERSED(GI,CV_ILOC)  = FE_funs%cvfen(CV_ILOC,GI)
                 !###########################################################
-!                CVN_REVERSED(GI,CV_ILOC)        = FE_funs%cvn(CV_ILOC,GI)
-                CVFEN_REVERSED(GI,CV_ILOC)      = FE_funs%cvfen(CV_ILOC,GI)
+                CVFEN_REVERSED(GI,CV_ILOC)= FE_funs%cvfen(CV_ILOC,GI)
             END DO
         END DO
         DO U_SILOC=1,Mdims%u_snloc
@@ -2390,7 +2383,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     CV_INOD = ndgln%cv( (ELE-1)*Mdims%cv_nloc + CV_ILOC )
                     DO GI = 1, FE_GIdims%CV_NGI
                         DO IPHASE=1,Mdims%nphase
-                            VOL_FRA_GI( IPHASE, GI )           = VOL_FRA_GI( IPHASE,GI )            + CVFEN_SHORT_REVERSED( GI, CV_ILOC )       * FEM_VOL_FRAC( IPHASE, CV_INOD )
+                            VOL_FRA_GI( IPHASE, GI )           = VOL_FRA_GI( IPHASE,GI )            + CVFEN_REVERSED( GI, CV_ILOC )       * FEM_VOL_FRAC( IPHASE, CV_INOD )
                             VOL_FRA_GI_DX_ALL( :, IPHASE, GI ) = VOL_FRA_GI_DX_ALL( :, IPHASE, GI ) + CVFENX_ALL_REVERSED( 1:Mdims%ndim, GI, CV_ILOC )* FEM_VOL_FRAC( IPHASE, CV_INOD )
                         END DO
                     END DO
@@ -2406,26 +2399,26 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             DO CV_ILOC = 1, Mdims%cv_nloc
                 DO GI = 1, FE_GIdims%CV_NGI
                     IF ( FEM_DEN ) then ! FEM DEN...
-                        DENGI( :, GI ) = DENGI( :, GI ) + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_UDEN( :, CV_ILOC )
+                        DENGI( :, GI ) = DENGI( :, GI ) + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_UDEN( :, CV_ILOC )
                         DENGIOLD( :, GI ) = DENGIOLD( :, GI ) &
-                            + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_UDENOLD( :, CV_ILOC )
+                            + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_UDENOLD( :, CV_ILOC )
                     ELSE ! CV DEN...
-                        DENGI( :, GI ) = DENGI( :, GI ) + CVN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_UDEN( :, CV_ILOC )
+                        DENGI( :, GI ) = DENGI( :, GI ) + CVN_REVERSED( GI, CV_ILOC ) * LOC_UDEN( :, CV_ILOC )
                         DENGIOLD( :, GI ) = DENGIOLD( :, GI ) &
-                            + CVN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_UDENOLD( :, CV_ILOC )
+                            + CVN_REVERSED( GI, CV_ILOC ) * LOC_UDENOLD( :, CV_ILOC )
                     END IF
                     IF(GOT_VIRTUAL_MASS) THEN
                         IF ( FEM_DEN ) then ! FEM DEN...
-                            VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
-                            VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
+                            VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
+                            VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
                         ELSE
-                            VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
-                            VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
+                            VIRTUAL_MASS_GI( :,:, GI )         = VIRTUAL_MASS_GI( :,:, GI )         + CVN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS( :,:, CV_ILOC )
+                            VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
                         ENDIF
                     ENDIF
                     IF ( IPLIKE_GRAD_SOU == 1 ) THEN
                         GRAD_SOU_GI( :, :, GI ) = GRAD_SOU_GI( :, :, GI ) &
-                            + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_COEF( :, :, CV_ILOC )
+                            + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_COEF( :, :, CV_ILOC )
                     END IF
                 END DO
             END DO
@@ -2509,7 +2502,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     DO CV_ILOC = 1, Mdims%cv_nloc
                         CV_INOD = ndgln%cv( (ELE-1)*Mdims%cv_nloc + CV_ILOC )
                         DO GI = 1, FE_GIdims%CV_NGI
-                            !VOL_S_GI( GI ) = VOL_S_GI( GI ) + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * sf%val( cv_inod )
+                            !VOL_S_GI( GI ) = VOL_S_GI( GI ) + CVFEN_REVERSED( GI, CV_ILOC ) * sf%val( cv_inod )
                             VOL_S_GI( GI ) = VOL_S_GI( GI ) + CVN_REVERSED( GI, CV_ILOC ) * sf%val( cv_inod )
                             CV_DENGI(:, GI ) = CV_DENGI(:, GI ) + CVN_REVERSED( GI, CV_ILOC ) * den_all( :, cv_inod )
                         END DO
@@ -4400,7 +4393,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         DEALLOCATE( VLK_UVW )
         ! reversed indicies for shape functions...
         DEALLOCATE( CVFENX_ALL_REVERSED, UFENX_ALL_REVERSED )
-        DEALLOCATE( UFEN_REVERSED, CVFEN_SHORT_REVERSED, CVN_SHORT_REVERSED, CVN_REVERSED, CVFEN_REVERSED )
+        DEALLOCATE( UFEN_REVERSED, CVN_REVERSED, CVFEN_REVERSED )
         DEALLOCATE( SBCVFEN_REVERSED, SBUFEN_REVERSED )
         call deallocate(velocity_BCs)
         call deallocate(velocity_BCs_visc)
