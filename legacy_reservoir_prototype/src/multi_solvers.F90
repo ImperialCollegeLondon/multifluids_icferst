@@ -59,16 +59,15 @@ module solvers_module
 
     private
 
-    public :: solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one
+    public :: multi_solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one
 
-    interface solver
+    interface multi_solver
         module procedure solve_via_copy_to_petsc_csr_matrix
     end interface
   
 contains
 
     ! -----------------------------------------------------------------------------
-    !sprint_to_do!see if this is still being used
     subroutine solve_via_copy_to_petsc_csr_matrix( A, &
         x, b, findfe, colfe, option_path, block_size )
 

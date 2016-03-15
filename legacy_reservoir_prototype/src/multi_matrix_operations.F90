@@ -1261,9 +1261,6 @@ contains
     END SUBROUTINE CT_MULT
 
 
-
-
-
     !sprint_to_do !try to use the many version only
     SUBROUTINE CT_MULT2( CV_RHS, U, CV_NONODS, U_NONODS, NDIM, NPHASE, &
         CT, NCOLCT, FINDCT, COLCT )
