@@ -7433,7 +7433,7 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
         return
     end function dg_oscilat_detect
 
-
+    !sprint_to_do; new structures
     SUBROUTINE DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( DIFF_COEF_DIVDX, &
         DIFF_COEFOLD_DIVDX, STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
         U_SNLOC, U_NLOC, CV_SNLOC, CV_NLOC, MAT_NLOC, NPHASE,  &
