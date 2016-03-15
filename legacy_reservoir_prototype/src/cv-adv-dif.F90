@@ -7834,11 +7834,6 @@ contains
                     END DO ! Was loop 20
                 END DO ! Was loop 10
                 !    stop 67
-#ifdef USING_GFORTRAN
-                !nothing to do
-#else
-                deallocate(NX_ALL)
-#endif
                 RETURN
 
             end subroutine finptsstore

@@ -1156,15 +1156,6 @@ END IF
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
         end if
-#ifdef USING_GFORTRAN
-!Nothing to do
-#else!deallocate the Mmat%C and Mmat%PIVIT_MAT matrices
-DEALLOCATE( Mmat%C )!sprint_to_do remove this when storage is removed
-if (is_porous_media) then
-    DEALLOCATE( Mmat%PIVIT_MAT )
-    nullify(Mmat%PIVIT_MAT)
-end if
-#endif
         ewrite(3,*) 'Leaving FORCE_BAL_CTY_ASSEM_SOLVE'
         return
     END SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE
@@ -4444,13 +4435,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         call deallocate(momentum_BCs)
         call deallocate(pressure_BCs)
         ewrite(3,*)'Leaving assemb_force_cty'
-!SPRINT_TO_DO!REMOVE THIS EXCEPTIONS ONCE THE STORAGE IS UNUSED
-#ifdef USING_GFORTRAN
-        !Nothing to do
-#else
-        !Variables from DETNLXR_PLUS_U_WITH_STORAGE
-        deallocate(CVFENX_ALL, UFENX_ALL)
-#endif
         RETURN
     END SUBROUTINE ASSEMB_FORCE_CTY
 
