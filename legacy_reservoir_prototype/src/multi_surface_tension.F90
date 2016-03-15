@@ -67,7 +67,7 @@ contains
 
      IMPLICIT NONE
 
-     real, dimension( : ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
+     real, dimension( :, :, : ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
      integer, intent( inout ) :: IPLIKE_GRAD_SOU
      !real, dimension( cv_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE_CV
      !real, dimension( u_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE
@@ -133,7 +133,7 @@ contains
      PLIKE_GRAD_SOU_COEF = 0.0
 
 
-     do icomp = 1, 1!ncomp
+     do icomp = 1, ncomp
 
          surface_tension = have_option( '/material_phase[' // int2str( nphase - 1 + icomp ) // &
              ']/is_multiphase_component/surface_tension' )
@@ -161,8 +161,8 @@ contains
              do iphase = 1, nphase
 
                  CALL SURFACE_TENSION_WRAPPER_NEW( state, packed_state, &
-                     !PLIKE_GRAD_SOU_COEF( icomp, iphase, :), PLIKE_GRAD_SOU_GRAD( icomp, iphase, :), &
-                     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
+                     PLIKE_GRAD_SOU_COEF( icomp, iphase, :), PLIKE_GRAD_SOU_GRAD( icomp, iphase, :), &
+                     !PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
                      COEFFICIENT, &
                      MFC_s%val( icomp, iphase, :), &
                      Mdims, Mspars, ndgln, Mdisopt )

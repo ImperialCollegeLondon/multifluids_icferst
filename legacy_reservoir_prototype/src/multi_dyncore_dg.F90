@@ -595,7 +595,7 @@ contains
         REAL, DIMENSION(  :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-        REAL, DIMENSION( :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
+        REAL, DIMENSION( :, :, :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         integer, dimension(:), intent(inout) :: StorageIndexes
         ! Local Variables
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
@@ -628,7 +628,7 @@ contains
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: MAT_INOD, IPRES, JPRES, iphase_real, jphase_real
         REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABSORB
-        REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, UDEN3
+        REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, UDEN3
         REAL, DIMENSION( :, :, :, : ), allocatable :: uDIFFUSION, UDIFFUSION_ALL
         REAL, DIMENSION( :, : ), allocatable :: uDIFFUSION_VOL, UDIFFUSION_VOL_ALL, rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
@@ -822,13 +822,7 @@ contains
             UDIFFUSION_ALL( :, :, :, MAT_INOD ) = UDIFFUSION( MAT_INOD, :, :, : )
             UDIFFUSION_VOL_ALL( :, MAT_INOD ) = UDIFFUSION_VOL( MAT_INOD, : )
         END DO
-        !sprint_to_do !DO NOT MAKE ANY CONVERSIONS!!
-        ALLOCATE( PLIKE_GRAD_SOU_COEF_ALL( Mdims%nphase, Mdims%cv_nonods ) )
-        ALLOCATE( PLIKE_GRAD_SOU_GRAD_ALL( Mdims%nphase, Mdims%cv_nonods ) )
-        DO IPHASE = 1, Mdims%nphase
-            PLIKE_GRAD_SOU_COEF_ALL( IPHASE, : ) = PLIKE_GRAD_SOU_COEF( 1 + (IPHASE-1)*Mdims%cv_nonods : IPHASE*Mdims%cv_nonods )
-            PLIKE_GRAD_SOU_GRAD_ALL( IPHASE, : ) = PLIKE_GRAD_SOU_GRAD( 1 + (IPHASE-1)*Mdims%cv_nonods : IPHASE*Mdims%cv_nonods )
-        END DO
+
         !##########TEMPORARY ADAPT FROM OLD VARIABLES TO NEW############
         !Check if the pressure matrix is a CV matrix
         Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
@@ -872,7 +866,7 @@ contains
             IGOT_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, &
-            IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL,&
+            IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD,&
             symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
 
 
@@ -1179,7 +1173,7 @@ END IF
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
-        IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL ,&
+        IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD,&
         symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
@@ -1226,7 +1220,7 @@ END IF
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-        REAL, DIMENSION( :, :), intent( in ) :: PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL
+        REAL, DIMENSION( :, :, :), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         logical, intent(in) :: RECALC_C_CV
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
@@ -1269,7 +1263,7 @@ END IF
             DT, &
             JUST_BL_DIAG_MAT, &
             UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, DENOLD_ALL, RETRIEVE_SOLID_CTY, &
-            IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF_ALL, PLIKE_GRAD_SOU_GRAD_ALL, &
+            IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
             P, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, SYMMETRIC_P=symmetric_P)
         ! scale the momentum equations by the volume fraction / saturation for the matrix and rhs
         IF ( GLOBAL_SOLVE ) THEN
@@ -1450,7 +1444,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION( :, :, :, : ), intent( inout ) :: THERM_U_DIFFUSION
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
-        REAL, DIMENSION( :, : ), intent( in) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
+        REAL, DIMENSION( :, :, : ), intent( in) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         REAL, DIMENSION( :, :, : ), intent( in ) :: P
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL, DENOLD_ALL
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, symmetric_P
@@ -1480,7 +1474,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION( : ),    ALLOCATABLE ::  &
         SNORMXN, SNORMYN, SNORMZN, SDETWE, NXUDN, VLN,VLN_OLD, &
         XSL,YSL,ZSL, MASS_ELE, VLK
-        REAL, DIMENSION( :, : ),    ALLOCATABLE :: XL_ALL, XL2_ALL, XSL_ALL, SNORMXN_ALL, GRAD_SOU_GI_NMX
+        REAL, DIMENSION( :, : ),    ALLOCATABLE :: XL_ALL, XL2_ALL, XSL_ALL, SNORMXN_ALL
+        REAL, DIMENSION ( : , :,  : ), allocatable :: GRAD_SOU_GI_NMX, GRAD_SOU_GI
         REAL, DIMENSION( : ),    ALLOCATABLE :: NORMX_ALL
         REAL, DIMENSION( : ), allocatable :: X, Y, Z
         REAL, DIMENSION ( : , :,  : ), allocatable :: SIGMAGI, SIGMAGI_STAB, SIGMAGI_STAB_SOLID_RHS, &
@@ -1488,7 +1483,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, FTHETA, SNDOTQ_IN, SNDOTQ_OUT, &
         SNDOTQOLD_IN, SNDOTQOLD_OUT, UD, UDOLD, UD_ND, UDOLD_ND
         REAL, DIMENSION ( : , : ), allocatable :: MAT_M,  &
-        DENGI, DENGIOLD,GRAD_SOU_GI, &
+        DENGI, DENGIOLD, &
         SNDOTQ, SNDOTQOLD, SNDOTQ_ROE, SNDOTQOLD_ROE, SINCOME, SINCOMEOLD, SDEN, SDENOLD, &
         SDEN_KEEP, SDENOLD_KEEP, SDEN2_KEEP, SDENOLD2_KEEP, &
         SNDOTQ_KEEP, SNDOTQ2_KEEP, SNDOTQOLD_KEEP, SNDOTQOLD2_KEEP, &
@@ -1582,7 +1577,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !REAL, DIMENSION ( :, :, : ), allocatable :: SUF_P_BC_ALL
         REAL, DIMENSION ( :, : ), allocatable :: LOC_UDEN,  LOC_UDENOLD
         REAL, DIMENSION ( : ), allocatable :: LOC_P
-        REAL, DIMENSION ( :, : ), allocatable :: LOC_PLIKE_GRAD_SOU_COEF, LOC_PLIKE_GRAD_SOU_GRAD
+        REAL, DIMENSION ( :, :, : ), allocatable :: LOC_PLIKE_GRAD_SOU_COEF, LOC_PLIKE_GRAD_SOU_GRAD
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U_SOURCE, LOC_U_SOURCE_CV
         REAL, DIMENSION ( :, :, :,   :, :, :,   : ), allocatable :: DIAG_BIGM_CON, BIGM_CON
         ! memory for fast retreval of surface info...
@@ -1614,7 +1609,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             CV_ILOC, CV_JLOC, CV_NOD, P_JLOC2, P_JNOD, P_JNOD2, &
             CV_SILOC, JDIM, JPHASE, &
             cv_inod, COUNT_ELE, CV_ILOC2, CV_INOD2, IDIMSF,JDIMSF, &
-            IPRES
+            IPRES, ICOMP
         REAL    :: NN, NM, SAREA,R
         REAL    :: HDC, VLM, VLM_NEW,VLM_OLD, NN_SNDOTQ_IN,NN_SNDOTQ_OUT, &
             NN_SNDOTQOLD_IN,NN_SNDOTQOLD_OUT, RNN, c1(Mdims%ndim), c2(Mdims%ndim)
@@ -1849,7 +1844,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( UDOLD_ND( Mdims%ndim, Mdims%nphase, FE_GIdims%cv_ngi ))
         ALLOCATE( DENGI( Mdims%nphase, FE_GIdims%cv_ngi ))
         ALLOCATE( DENGIOLD( Mdims%nphase, FE_GIdims%cv_ngi ))
-        ALLOCATE( GRAD_SOU_GI( Mdims%nphase, FE_GIdims%cv_ngi ))
+        ALLOCATE( GRAD_SOU_GI( Mdims%ncomp, Mdims%nphase, FE_GIdims%cv_ngi ))
         ALLOCATE( RHS_U_CV( Mdims%nphase, Mdims%u_nloc ))
         ALLOCATE( RHS_U_CV_OLD( Mdims%nphase, Mdims%u_nloc ))
         ALLOCATE( UDEN_VFILT( Mdims%nphase, Mdims%u_nloc ))
@@ -1948,7 +1943,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( XSL(Mdims%cv_snloc) )
         ALLOCATE( YSL(Mdims%cv_snloc) )
         ALLOCATE( ZSL(Mdims%cv_snloc) )
-        ALLOCATE( GRAD_SOU_GI_NMX( Mdims%ndim, Mdims%nphase ))
+        ALLOCATE( GRAD_SOU_GI_NMX( Mdims%ndim, Mdims%ncomp, Mdims%nphase ))
         GRAD_SOU_GI_NMX = 0.
         ALLOCATE( MASS_ELE( Mdims%totele ))
         MASS_ELE=0.0
@@ -1984,8 +1979,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( LOC_NU(Mdims%ndim, Mdims%nphase, Mdims%u_nloc),  LOC_NUOLD(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) )
         ALLOCATE( LOC_UDEN(Mdims%nphase, Mdims%cv_nloc),  LOC_UDENOLD(Mdims%nphase, Mdims%cv_nloc) )
         ALLOCATE( LOC_P(Mdims%p_nloc) )
-        ALLOCATE( LOC_PLIKE_GRAD_SOU_COEF(Mdims%nphase, Mdims%cv_nloc) )
-        ALLOCATE( LOC_PLIKE_GRAD_SOU_GRAD(Mdims%nphase, Mdims%cv_nloc) )
+        ALLOCATE( LOC_PLIKE_GRAD_SOU_COEF(Mdims%ncomp, Mdims%nphase, Mdims%cv_nloc) )
+        ALLOCATE( LOC_PLIKE_GRAD_SOU_GRAD(Mdims%ncomp, Mdims%nphase, Mdims%cv_nloc) )
         ALLOCATE( LOC_U_SOURCE(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) )
         ALLOCATE( LOC_U_SOURCE_CV(Mdims%ndim, Mdims%nphase, Mdims%cv_nloc) )
         ALLOCATE( LOC_U_ABSORB  (Mdims%ndim* Mdims%nphase, Mdims%ndim* Mdims%nphase, Mdims%mat_nloc) )
@@ -2328,8 +2323,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ENDIF
                 DO IPHASE = 1, Mdims%nphase
                     IF ( IPLIKE_GRAD_SOU /= 0) THEN
-                        LOC_PLIKE_GRAD_SOU_COEF( IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_COEF( IPHASE, CV_INOD )
-                        LOC_PLIKE_GRAD_SOU_GRAD( IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_GRAD( IPHASE, CV_INOD )
+                        LOC_PLIKE_GRAD_SOU_COEF( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_COEF( :, IPHASE, CV_INOD )
+                        LOC_PLIKE_GRAD_SOU_GRAD( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_GRAD( :, IPHASE, CV_INOD )
                     END IF
                     DO IDIM = 1, Mdims%ndim
                         LOC_U_SOURCE_CV( IDIM, IPHASE, CV_ILOC ) = U_SOURCE_CV( IDIM, IPHASE, CV_INOD )
@@ -2456,8 +2451,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                         ENDIF
                     ENDIF
                     IF ( IPLIKE_GRAD_SOU == 1 ) THEN
-                        GRAD_SOU_GI( :, GI ) = GRAD_SOU_GI( :, GI ) &
-                            + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_COEF( :, CV_ILOC )
+                        GRAD_SOU_GI( :, :, GI ) = GRAD_SOU_GI( :, :, GI ) &
+                            + CVFEN_SHORT_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_COEF( :, :, CV_ILOC )
                     END IF
                 END DO
             END DO
@@ -2944,9 +2939,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     if ( IPLIKE_GRAD_SOU == 1) then
                         !In this section of the assembly we add the volumetric part.
                         ! Coeff * Integral(N grad FE_funs%cvfen PLIKE_GRAD_SOU dV)
-                        GRAD_SOU_GI_NMX( :, :) = matmul(CVFENX_ALL_REVERSED(:, :, P_JLOC),&
-                            SPREAD(DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ), DIM=2, NCOPIES=Mdims%nphase)*&
-                            transpose(GRAD_SOU_GI(:, :)))
+                        DO ICOMP= 1, Mdims%ncomp
+                            GRAD_SOU_GI_NMX( :, ICOMP, :) = matmul(CVFENX_ALL_REVERSED(:, :, P_JLOC),&
+                                SPREAD(DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ), DIM=2, NCOPIES=Mdims%nphase)*&
+                                transpose(GRAD_SOU_GI(ICOMP, :, :)))
+                        END DO
                     end if
                     ! Coeff * Integral(N grad FE_funs%cvfen VOL_FRA dV)
                     IF(IGOT_VOL_X_PRESSURE==1) THEN
@@ -2976,8 +2973,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                         END IF
                         IF ( IPLIKE_GRAD_SOU == 1) THEN ! Pressure like term
                             DO IDIM = 1, Mdims%ndim
-                                LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
-                                    - GRAD_SOU_GI_NMX( IDIM, IPHASE ) * LOC_PLIKE_GRAD_SOU_GRAD( IPHASE, P_JLOC )
+                                DO ICOMP = 1, Mdims%ncomp
+                                    LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                        - GRAD_SOU_GI_NMX( IDIM, ICOMP, IPHASE ) * LOC_PLIKE_GRAD_SOU_GRAD( ICOMP, IPHASE, P_JLOC )
+                                END DO
                             END DO
                         END IF
                     END DO Loop_Phase1
@@ -3046,9 +3045,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                         P_DX( :, GI ) = P_DX( :, GI ) + CVFENX_ALL_REVERSED(1:Mdims%ndim, GI, P_ILOC ) * LOC_P( P_ILOC )
                         IF ( IPLIKE_GRAD_SOU == 1 ) THEN ! Pressure like terms...
                             DO IPHASE = 1, Mdims%nphase
-                                R = GRAD_SOU_GI( IPHASE, GI ) * LOC_PLIKE_GRAD_SOU_GRAD( IPHASE, P_ILOC )
-                                DO IDIM = 1, Mdims%ndim
-                                    RESID_U( IDIM, IPHASE, GI ) = RESID_U( IDIM, IPHASE, GI ) + R * CVFENX_ALL_REVERSED( IDIM, GI, P_ILOC )
+                                DO ICOMP = 1, Mdims%ncomp
+                                    R = GRAD_SOU_GI( ICOMP, IPHASE, GI ) * LOC_PLIKE_GRAD_SOU_GRAD( ICOMP, IPHASE, P_ILOC )
+                                    DO IDIM = 1, Mdims%ndim
+                                        RESID_U( IDIM, IPHASE, GI ) = RESID_U( IDIM, IPHASE, GI ) + R * CVFENX_ALL_REVERSED( IDIM, GI, P_ILOC )
+                                    END DO
                                 END DO
                             END DO
                         END IF
