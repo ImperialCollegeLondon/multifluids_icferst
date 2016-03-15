@@ -217,7 +217,8 @@ contains
     END SUBROUTINE SMLINNGOT
 
 
-
+    !sprint_to_do!make internal subroutine. try to delete this and only use the fast version
+    !remove if we finally remove this subroutine all the subroutines that are only called in here
     SUBROUTINE COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
         CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
@@ -275,172 +276,463 @@ contains
         !Re-assemble just in case
         CMC_petsc%is_assembled=.false.
         call assemble( CMC_petsc )
-      !Final step to prepare the CMC_petsc
-      !call assemble( CMC_petsc )
-    END SUBROUTINE COLOR_GET_CMC_PHA
+    contains
 
 
+        SUBROUTINE COLOR_GET_CMC_PHA_SLOW( Mdims, Mspars, ndgln, Mmat,  &
+            DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+            CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
+            MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
+            got_free_surf,  MASS_SUF, ndpset, symmetric_P )
+            !use multiphase_1D_engine
+            implicit none
+            ! form pressure matrix CMC using a colouring approach
+            type(multi_dimensions), intent(in) :: Mdims
+            type (multi_sparsities), intent(in) :: Mspars
+            type(multi_ndgln), intent(in) :: ndgln
+            type (multi_matrices), intent(inout) :: Mmat
+            INTEGER, intent( in ) :: IGOT_CMC_PRECON
+            LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
+            LOGICAL, intent( in ) :: got_free_surf, symmetric_P
+            INTEGER, DIMENSION( : ), intent( in ) :: ndpset
+            REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
+            REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
+            type(petsc_csr_matrix), intent(inout)::  CMC_petsc
+            REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
+            REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
+            REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
+            REAL, DIMENSION( : ), intent( in ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE
+            ! Local variables
+            INTEGER, PARAMETER :: MX_NCOLOR = 1000
+            REAL, PARAMETER :: INFINY = 1.0E+10
+            LOGICAL :: UNDONE, LCOL
+            logical, DIMENSION( : ), allocatable :: NEED_COLOR
+            logical, DIMENSION( Mdims%cv_nonods ) :: to_color
+            LOGICAL :: EXPLICIT_PIPES2
+            REAL, DIMENSION( : ), allocatable :: COLOR_VEC
+            REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC, CMC_COLOR_VEC2, CMC_COLOR_VEC_PHASE, CMC_COLOR_VEC2_PHASE!, ld
+            REAL, DIMENSION( : ), allocatable :: DU, DV, DW, DU_LONG
+            REAL, DIMENSION( :, :, : ), allocatable :: CDP
+            INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IPHASE, CV_JNOD2
+            INTEGER :: ierr, IV_STAR, IV_FINI, i_indx, j_indx, IPRES, JPRES
+            REAL :: RSUM, RSUM_SUF
+            ALLOCATE( NEED_COLOR( Mdims%cv_nonods ) )
+            ALLOCATE( COLOR_VEC( Mdims%cv_nonods ) )
+            ALLOCATE( CDP( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
+            ALLOCATE( DU_LONG( Mdims%u_nonods * Mdims%ndim * Mdims%nphase ) )
+            ALLOCATE( DU( Mdims%u_nonods * Mdims%nphase ) )
+            ALLOCATE( DV( Mdims%u_nonods * Mdims%nphase ) )
+            ALLOCATE( DW( Mdims%u_nonods * Mdims%nphase ) )
+            ALLOCATE( CMC_COLOR_VEC( Mdims%npres, Mdims%cv_nonods ) )
+            ALLOCATE( CMC_COLOR_VEC2( Mdims%npres, Mdims%cv_nonods ) )
 
-
-    !sprint_to_do!make internal subroutine
-    SUBROUTINE COLOR_GET_CMC_PHA_FAST( Mdims, Mspars, ndgln, Mmat, &
-        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-        CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-        MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE,  &
-        got_free_surf,  MASS_SUF, ndpset, symmetric_P )
-        implicit none
-        ! form pressure matrix CMC using a colouring approach
-        type(multi_dimensions), intent(in) :: Mdims
-        type (multi_sparsities), intent(in) :: Mspars
-        type(multi_ndgln), intent(in) :: ndgln
-        type (multi_matrices), intent(inout) :: Mmat
-        INTEGER, intent( in ) :: IGOT_CMC_PRECON
-        LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
-        LOGICAL, intent( in ) :: got_free_surf, symmetric_P
-        INTEGER, DIMENSION( : ), intent( in ) :: ndpset
-        REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
-        REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
-        type(petsc_csr_matrix), intent(inout)::  CMC_petsc
-        REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
-        REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
-        REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
-        REAL, DIMENSION( : ), intent( in ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE
-        ! Local variables
-        INTEGER, PARAMETER :: MX_NCOLOR = 1000
-        REAL, PARAMETER :: INFINY = 1.0E+10
-        LOGICAL :: EXPLICIT_PIPES2
-        LOGICAL, DIMENSION( Mdims%cv_nonods ) :: COLOR_LOGICAL
-        INTEGER, DIMENSION( : ), allocatable :: COLOR_IN_ROW, COLOR_IN_ROW2
-        REAL, DIMENSION( :, : ), allocatable :: COLOR_VEC_MANY
-        REAL, DIMENSION( :, :, :, : ), allocatable :: CDP_MANY, DU_LONG_MANY
-        REAL, DIMENSION( :, :, : ), allocatable :: CMC_COLOR_VEC_MANY, CMC_COLOR_VEC2_MANY, &
-            CMC_COLOR_VEC_MANY_PHASE, CMC_COLOR_VEC2_MANY_PHASE
-        REAL, DIMENSION( : ), allocatable :: CMC_COLOR_VEC_MANY_PHASE_SHORT
-        REAL, DIMENSION( :, : ), allocatable :: RINV_B_COLNS_ZEROED, CMC_COLOR_VEC_PRES_MANY_SHORT
-        INTEGER :: CV_NOD, CV_JNOD, COUNT, COUNT2, IPHASE, CV_JNOD2
-        INTEGER :: MAX_COLOR_IN_ROW, I, ICAN_COLOR, MX_COLOR, NOD_COLOR
-        INTEGER :: ierr, i_indx, j_indx, IPRES, JPRES
-        REAL :: RSUM, RSUM_SUF
-        IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
-        EXPLICIT_PIPES2 = .true.
-        MAX_COLOR_IN_ROW = 0
-        DO CV_NOD = 1, Mdims%cv_nonods
-            MAX_COLOR_IN_ROW = MAX( MAX_COLOR_IN_ROW, Mspars%CMC%fin( CV_NOD + 1 ) - Mspars%CMC%fin( CV_NOD ) )
-        END DO
-        ALLOCATE( COLOR_IN_ROW( MAX_COLOR_IN_ROW**2 ) )
-        ALLOCATE( COLOR_IN_ROW2( MAX_COLOR_IN_ROW**2 ) )
-
-        !Calculate coloring if it is not in memory already
-        IF ( .not.Mmat%Stored ) THEN
-            allocate(Mmat%ICOLOR(Mdims%cv_nonods)); Mmat%ICOLOR = 0
-            Mmat%NCOLOR = 0
-
-            COLOR_LOGICAL = .FALSE.
-            Loop_CVNOD7: DO CV_NOD = 1, Mdims%cv_nonods
-                ! Color this node CV_NOD
-                MX_COLOR=0
-                ! use a distance-2 colouring...
-                Loop_Row7: DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CV_JNOD = Mspars%CMC%col( COUNT )
-                    Loop_Row2: DO COUNT2 = Mspars%CMC%fin( CV_JNOD ), Mspars%CMC%fin( CV_JNOD + 1 ) - 1
-                        CV_JNOD2 = Mspars%CMC%col( COUNT2 )
-                        IF(CV_NOD.NE.CV_JNOD2) THEN
-                            NOD_COLOR=Mmat%ICOLOR(CV_JNOD2)
-                            IF(NOD_COLOR.NE.0) THEN
-                                COLOR_LOGICAL( NOD_COLOR ) = .TRUE.
-                                MX_COLOR=MAX(MX_COLOR, NOD_COLOR )
-                            ENDIF
-                        ENDIF
-                    END DO Loop_Row2
-                END DO Loop_Row7
-                ! Find the node colour to use...
-                ICAN_COLOR = 0
-                DO I=1,MX_COLOR
-                    IF(.NOT.COLOR_LOGICAL(I)) THEN ! This is a colour we can use...
-                        ICAN_COLOR = I
-                        EXIT
-                    ENDIF
-                END DO
-                IF(ICAN_COLOR == 0) THEN
-                    ICAN_COLOR =MX_COLOR + 1
-                ENDIF
-                Mmat%ICOLOR(CV_NOD)=ICAN_COLOR
-                Mmat%NCOLOR=MAX(Mmat%NCOLOR,ICAN_COLOR)
-                ! Reset the colors for the next node...
-                COLOR_LOGICAL(1:max(1,MX_COLOR))=.FALSE.
-            END DO Loop_CVNOD7
-            IF ( Mmat%NCOLOR > MX_NCOLOR ) THEN
-                EWRITE(-1, *) 'NOT ENOUGH COLOURS STOPPING - NEED TO MAKE MX_COLOR BIGGER'
-                STOP 281
-            END IF
-        END IF ! SAVED_CMC_COLOR
-
-
-
-        ALLOCATE( COLOR_VEC_MANY( Mmat%NCOLOR, Mdims%cv_nonods ) )
-        COLOR_VEC_MANY = 0.0
-        Loop_CVNOD: DO CV_NOD = 1, Mdims%cv_nonods
-            COLOR_VEC_MANY( Mmat%ICOLOR( CV_NOD ), CV_NOD ) = 1.0
-        END DO Loop_CVNOD
-        ! we use the same colouring for each pressure variable when Mdims%npres>1.
-        ALLOCATE( CDP_MANY( Mmat%NCOLOR, Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
-        CALL C_MULT_MANY( CDP_MANY, COLOR_VEC_MANY, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
-            Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-
-        ! DU_LONG = Mmat%PIVIT_MAT * CDP
-        ALLOCATE( DU_LONG_MANY( Mmat%NCOLOR, Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
-        CALL PHA_BLOCK_MAT_VEC_MANY( DU_LONG_MANY, Mmat%PIVIT_MAT, CDP_MANY, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
-            Mdims%totele, Mdims%u_nloc, ndgln%u )
-                 ! NB. P_RHS = Mmat%CT * U + CV_RHS
-                 ! DU_LONG = CDP
-        IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
-            ALLOCATE( CMC_COLOR_VEC_MANY_PHASE( Mmat%NCOLOR, Mdims%nphase, Mdims%cv_nonods ) )
-            ALLOCATE( CMC_COLOR_VEC_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
-            DO IPHASE = 1, Mdims%nphase
-                CALL CT_MULT_MANY( CMC_COLOR_VEC_MANY_PHASE(:,IPHASE,:), &
-                    DU_LONG_MANY(:,:,IPHASE:IPHASE,:), &
-                    Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, Mmat%NCOLOR, &
-                    Mmat%CT(:,IPHASE:IPHASE,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
-            END DO
-            ALLOCATE( RINV_B_COLNS_ZEROED(Mdims%nphase,Mdims%nphase) )
-            ALLOCATE( CMC_COLOR_VEC_MANY_PHASE_SHORT(Mdims%nphase) )
-            ALLOCATE( CMC_COLOR_VEC_PRES_MANY_SHORT(Mmat%NCOLOR,Mdims%npres) )
-            DO JPRES=1,Mdims%npres
-                DO CV_NOD = 1, Mdims%cv_nonods
-                    RINV_B_COLNS_ZEROED(:,:) = 0.0
-                    RINV_B_COLNS_ZEROED(:,  1+(JPRES-1)*Mdims%n_in_pres:JPRES*Mdims%n_in_pres ) = INV_B(:,  1+(JPRES-1)*Mdims%n_in_pres:JPRES*Mdims%n_in_pres,  CV_NOD)
-                    DO I = 1, Mmat%NCOLOR
-                        !                  CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
-                        CMC_COLOR_VEC_MANY_PHASE_SHORT(:) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
+            IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
+            EXPLICIT_PIPES2 = .true.
+            NEED_COLOR = .TRUE.
+            NCOLOR = 0
+            UNDONE = .TRUE.
+            Loop_while: DO WHILE ( UNDONE )
+                NCOLOR = NCOLOR + 1 ! Determine what nodes can be coloured with the new color
+                TO_COLOR = .FALSE.
+                Loop_CVNOD: DO CV_NOD = 1, Mdims%cv_nonods
+                    IF ( NEED_COLOR( CV_NOD ) ) THEN
+                        LCOL= .FALSE.
+                        ! use a distance-2 colouring...
+                        Loop_Row: DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                            CV_JNOD = Mspars%CMC%col( COUNT )
+                            IF( TO_COLOR( CV_JNOD ) ) THEN
+                                LCOL=.TRUE.
+                                EXIT
+                            END IF
+                            Loop_Row2: DO COUNT2 = Mspars%CMC%fin( CV_JNOD ), Mspars%CMC%fin( CV_JNOD + 1 ) - 1
+                                IF ( TO_COLOR( Mspars%CMC%col( COUNT2 ) ) )  THEN
+                                    LCOL = .TRUE.
+                                    EXIT
+                                END IF
+                            END DO Loop_Row2
+                            IF ( LCOL ) EXIT
+                        END DO Loop_Row
+                        IF ( .NOT.LCOL ) THEN
+                            TO_COLOR( CV_NOD ) = .TRUE.
+                        END IF
+                    END IF
+                END DO Loop_CVNOD
+                NEED_COLOR = NEED_COLOR .AND. .NOT.TO_COLOR
+                COLOR_VEC = MERGE( 1.0, 0.0, TO_COLOR )
+                CALL C_MULT2( CDP, COLOR_VEC, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, &
+                    Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                ! DU_LONG = BLOCK_MAT * CDP
+                CALL PHA_BLOCK_MAT_VEC( DU_LONG, Mmat%PIVIT_MAT, CDP, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, &
+                    Mdims%totele, Mdims%u_nloc, ndgln%u )
+                ! NB. P_RHS = Mmat%CT * U + CV_RHS
+                ! DU_LONG = CDP
+                CALL ULONG_2_UVW( DU, DV, DW, DU_LONG, Mdims%u_nonods, Mdims%ndim, Mdims%nphase )
+                IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
+                    ALLOCATE( CMC_COLOR_VEC_PHASE( Mdims%nphase, Mdims%cv_nonods ) )
+                    DO IPHASE = 1, Mdims%nphase
+                        IV_STAR = 1+(IPHASE-1)*Mdims%u_nonods*Mdims%ndim
+                        IV_FINI = IPHASE*Mdims%u_nonods*Mdims%ndim
+                        CALL CT_MULT( CMC_COLOR_VEC_PHASE(IPHASE,:), DU(IV_STAR:IV_FINI), &
+                            DV(IV_STAR:IV_FINI), DW(IV_STAR:IV_FINI), Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, &
+                            Mmat%CT(:,IPHASE:IPHASE,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
+                    END DO
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        CMC_COLOR_VEC_PHASE(:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), CMC_COLOR_VEC_PHASE(:,CV_NOD) )
+                    END DO
+                    DO CV_NOD = 1, Mdims%cv_nonods
                         DO IPRES = 1, Mdims%npres
-                            CMC_COLOR_VEC_PRES_MANY_SHORT(I,IPRES) = SUM( CMC_COLOR_VEC_MANY_PHASE_SHORT(1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres) )
+                            CMC_COLOR_VEC(IPRES,CV_NOD) = SUM(CMC_COLOR_VEC_PHASE(1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,CV_NOD) )
                         END DO
                     END DO
+                    IF ( IGOT_CMC_PRECON /= 0 ) THEN
+                        ALLOCATE( CMC_COLOR_VEC2_PHASE( Mdims%nphase, Mdims%cv_nonods ) )
+                        DO IPHASE = 1, Mdims%nphase
+                            IV_STAR = 1+(IPHASE-1)*Mdims%u_nonods*Mdims%ndim
+                            IV_FINI = IPHASE*Mdims%u_nonods*Mdims%ndim
+                            CALL CT_MULT_WITH_C( CMC_COLOR_VEC2_PHASE(IPHASE,:), &
+                                DU_LONG(IV_STAR:IV_FINI), &
+                                Mdims%u_nonods, Mdims%ndim, 1,  &
+                                Mmat%C(:,IPHASE:IPHASE,:), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                        END DO
+                        DO CV_NOD = 1, Mdims%cv_nonods
+                            CMC_COLOR_VEC2_PHASE(:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), CMC_COLOR_VEC2_PHASE(:,CV_NOD) )
+                        END DO
+                        DO CV_NOD = 1, Mdims%cv_nonods
+                            DO IPHASE = 1, Mdims%nphase
+                                CMC_COLOR_VEC2(IPHASE,CV_NOD) = SUM(CMC_COLOR_VEC2_PHASE(IPHASE:IPHASE,CV_NOD) )
+                            END DO
+                        END DO
+                    END IF
+                ELSE
+                    DO IPRES = 1, Mdims%npres
+                        IV_STAR = 1+(IPRES-1)*Mdims%n_in_pres*Mdims%u_nonods
+                        IV_FINI = IPRES*Mdims%n_in_pres*Mdims%u_nonods
+                        CALL CT_MULT( CMC_COLOR_VEC(IPRES,:), DU(IV_STAR:IV_FINI), &
+                            DV(IV_STAR:IV_FINI), DW(IV_STAR:IV_FINI), Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
+                            Mmat%CT(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
+                    END DO
+
+                    IF ( IGOT_CMC_PRECON /= 0 ) THEN
+                        DO IPRES = 1, Mdims%npres
+                            IV_STAR = 1+(IPRES-1)*Mdims%n_in_pres*Mdims%u_nonods*Mdims%ndim
+                            IV_FINI = IPRES*Mdims%n_in_pres*Mdims%u_nonods*Mdims%ndim
+                            CALL CT_MULT_WITH_C( CMC_COLOR_VEC2(IPRES,:), &
+                                DU_LONG(IV_STAR:IV_FINI), Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
+                                Mmat%C(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+                        END DO
+                    END IF
+                END IF
+                ! Matrix vector involving the mass diagonal term
+                DO CV_NOD = 1, Mdims%cv_nonods
+                    RSUM = 0.0
+                    RSUM_SUF = 0.0
                     DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
                         CV_JNOD = Mspars%CMC%col( COUNT )
                         DO IPRES = 1, Mdims%npres
-                            call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-                                val = dot_product(CMC_COLOR_VEC_PRES_MANY_SHORT( :, IPRES ), COLOR_VEC_MANY( :, CV_JNOD ) ))
+                            IF((Mdims%npres>1).AND.PIPES_1D) THEN
+                                IF(IPRES==1) THEN
+                                    CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
+                                        + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
+                                ELSE
+                                    CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
+                                        + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_CVFEM2PIPE_TRUE( COUNT ) * COLOR_VEC( CV_JNOD )
+                                ENDIF
+                            ELSE
+                                CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
+                                    + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
+                            ENDIF
+                            if ( got_free_surf ) then
+                                CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) +&
+                                    MASS_SUF( COUNT ) * COLOR_VEC( CV_JNOD )
+                            end if
+                        END DO
+                        if ( got_free_surf ) then
+                            RSUM_SUF = RSUM_SUF + MASS_SUF( COUNT )
+                        end if
+                        RSUM = RSUM + MASS_MN_PRES( COUNT )
+                    END DO
+                    IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                        DO IPRES = 1, Mdims%npres
+                            CMC_COLOR_VEC2( IPRES, CV_NOD ) = CMC_COLOR_VEC2( IPRES, CV_NOD ) &
+                                + (DIAG_SCALE_PRES( IPRES, CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC( CV_NOD )
+                        END DO
+                    END IF
+                END DO
+                !Put into matrix CMC
+                if ( .not.symmetric_P ) then
+                    ! original method
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                            CV_JNOD = Mspars%CMC%col( COUNT )
+                            DO IPRES = 1, Mdims%npres
+                                JPRES = IPRES ! Add contributions to the block diagonal only.
+                                call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                                    val = CMC_COLOR_VEC( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD ) )
+                                !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                                IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
+                                    CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD )
+                            END DO
+                        END DO
+                    END DO
+                else  ! endof if ( .not.symmetric_P ) then
+                    ! symmetric P matrix
+                    DO CV_NOD = 1, Mdims%cv_nonods
+                        DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                            CV_JNOD = Mspars%CMC%col( COUNT )
+                            DO IPRES = 1, Mdims%npres
+                                JPRES = IPRES ! Add contributions to the block diagonal only.
+                                call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                                    val = CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD ) )
+                                !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                                IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
+                                    CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD )
+                            END DO
+                        END DO
+                    END DO
+                end if  ! endof if ( .not.symmetric_P ) then else
+                UNDONE = ANY( NEED_COLOR )
+                ewrite(3,*)'************ rsum,undone,NCOLOR=', rsum, undone, NCOLOR
+            END DO Loop_while
+            ! the matrix coupling term place immediately into matrix and not through colouring...
+            ! Matrix vector involving the mass diagonal term
+            IF(Mdims%npres > 1) THEN
+                DO CV_NOD = 1, Mdims%cv_nonods
+                    RSUM = 0.0
+                    RSUM_SUF = 0.0
+                    DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                        CV_JNOD = Mspars%CMC%col( COUNT )
+                        DO IPRES = 1, Mdims%npres
+                            DO JPRES = 1, Mdims%npres
+                                IF(PIPES_1D) THEN
+                                    call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                                        val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_CVFEM2PIPE( COUNT ))
+                                    IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                                        CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+                                            + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD )) * &
+                                            MASS_CVFEM2PIPE( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
+                                    END IF
+                                ELSE
+                                    call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                                        val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ))
+                                    IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                                        CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+                                            + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD )) * &
+                                            MASS_MN_PRES( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
+                                    END IF
+                                ENDIF
+                            END DO
                         END DO
                     END DO
                 END DO
-            END DO ! ENDOF DO JPRES=1,Mdims%npres
-            IF ( IGOT_CMC_PRECON /= 0 ) THEN
-                ALLOCATE( CMC_COLOR_VEC2_MANY_PHASE( Mmat%NCOLOR, Mdims%nphase, Mdims%cv_nonods ) )
-                ALLOCATE( CMC_COLOR_VEC2_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
-                DO IPHASE = 1, Mdims%nphase
-                    CALL CT_MULT_WITH_C_MANY( CMC_COLOR_VEC2_MANY_PHASE(:,IPHASE,:), &
-                        DU_LONG_MANY(:,:,IPHASE:IPHASE,:), &
-                        Mdims%u_nonods, Mdims%ndim, 1,&
-                        Mmat%C(:,IPHASE:IPHASE,:), Mspars%C%fin, Mspars%C%col )
+            END IF ! ENDOF IF(Mdims%npres > 1) THEN
+            !If we have a reference node with pressure zero we impose that here.
+            DO IPRES = 1, Mdims%npres
+                IF ( NDPSET(IPRES) > 0 ) THEN
+                    CV_NOD = NDPSET( IPRES )
+                    i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
+                    DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                        CV_JNOD = Mspars%CMC%col( COUNT )
+                        IF ( CV_JNOD /= CV_NOD ) THEN
+                            do jpres = 1, Mdims%npres
+                                j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
+                                call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr) ! not the diagonal
+                                !CMC( COUNT ) = 0.0 ! not the diagonal
+                                IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = 0.0
+                                DO COUNT2 = Mspars%CMC%fin( CV_JNOD ), Mspars%CMC%fin( CV_JNOD + 1 ) - 1
+                                    CV_JNOD2 = Mspars%CMC%col( COUNT2 )
+                                    IF ( CV_JNOD2 == CV_NOD ) then
+                                        i_indx = CMC_petsc%row_numbering%gnn2unn( cv_jnod, ipres )
+                                        j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD2, jpres )
+                                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, INSERT_VALUES, ierr) ! not the diagonal
+                                        IF ( IGOT_CMC_PRECON/=0 ) CMC_PRECON( ipres, jpres, COUNT2 ) = 0.0
+                                    END IF
+                                END DO
+                            end do ! do jpres=1,Mdims%npres
+                        END IF
+                    END DO
+                END IF
+            END DO
+            DO CV_NOD = 1, Mdims%cv_nonods
+                if ( mass_pipe(cv_nod) == 0.0 ) then
+                    CV_JNOD = CV_NOD
+                    DO IPRES = 2, Mdims%npres
+                        JPRES = IPRES
+                        i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+                        j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD, jpres )
+                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, INSERT_VALUES, ierr)
+                    END DO
+                end if
+            END DO
+            if ( .false. ) then
+                cv_nod = 226
+                IPRES = 2
+                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
+                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                    CV_JNOD = Mspars%CMC%col( COUNT )
+                    jpres = ipres
+                    j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod,jpres)
+                    IF ( CV_JNOD /= CV_NOD ) THEN
+                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr)
+                    ELSE
+                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0,INSERT_VALUES, ierr)
+                    END IF
                 END DO
+                cv_nod = 151
+                IPRES = 2
+                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
+                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                    CV_JNOD = Mspars%CMC%col( COUNT )
+                    jpres = ipres
+                    j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod,jpres)
+                    IF ( CV_JNOD /= CV_NOD ) THEN
+                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr)
+                    ELSE
+                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0,INSERT_VALUES, ierr)
+                    END IF
+                END DO
+            end if
+            CMC_petsc%is_assembled = .false.
+            call assemble( CMC_petsc )
+
+            DEALLOCATE( NEED_COLOR )
+            DEALLOCATE( COLOR_VEC )
+            DEALLOCATE( CDP )
+            DEALLOCATE( DU_LONG )
+            DEALLOCATE( DU, DV, DW )
+            DEALLOCATE( CMC_COLOR_VEC )
+            DEALLOCATE( CMC_COLOR_VEC2 )
+            RETURN
+        END SUBROUTINE COLOR_GET_CMC_PHA_SLOW
+
+        SUBROUTINE COLOR_GET_CMC_PHA_FAST( Mdims, Mspars, ndgln, Mmat, &
+            DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+            CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
+            MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE,  &
+            got_free_surf,  MASS_SUF, ndpset, symmetric_P )
+            implicit none
+            ! form pressure matrix CMC using a colouring approach
+            type(multi_dimensions), intent(in) :: Mdims
+            type (multi_sparsities), intent(in) :: Mspars
+            type(multi_ndgln), intent(in) :: ndgln
+            type (multi_matrices), intent(inout) :: Mmat
+            INTEGER, intent( in ) :: IGOT_CMC_PRECON
+            LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
+            LOGICAL, intent( in ) :: got_free_surf, symmetric_P
+            INTEGER, DIMENSION( : ), intent( in ) :: ndpset
+            REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
+            REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
+            type(petsc_csr_matrix), intent(inout)::  CMC_petsc
+            REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
+            REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
+            REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
+            REAL, DIMENSION( : ), intent( in ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE
+            ! Local variables
+            INTEGER, PARAMETER :: MX_NCOLOR = 1000
+            REAL, PARAMETER :: INFINY = 1.0E+10
+            LOGICAL :: EXPLICIT_PIPES2
+            LOGICAL, DIMENSION( Mdims%cv_nonods ) :: COLOR_LOGICAL
+            INTEGER, DIMENSION( : ), allocatable :: COLOR_IN_ROW, COLOR_IN_ROW2
+            REAL, DIMENSION( :, : ), allocatable :: COLOR_VEC_MANY
+            REAL, DIMENSION( :, :, :, : ), allocatable :: CDP_MANY, DU_LONG_MANY
+            REAL, DIMENSION( :, :, : ), allocatable :: CMC_COLOR_VEC_MANY, CMC_COLOR_VEC2_MANY, &
+                CMC_COLOR_VEC_MANY_PHASE, CMC_COLOR_VEC2_MANY_PHASE
+            REAL, DIMENSION( : ), allocatable :: CMC_COLOR_VEC_MANY_PHASE_SHORT
+            REAL, DIMENSION( :, : ), allocatable :: RINV_B_COLNS_ZEROED, CMC_COLOR_VEC_PRES_MANY_SHORT
+            INTEGER :: CV_NOD, CV_JNOD, COUNT, COUNT2, IPHASE, CV_JNOD2
+            INTEGER :: MAX_COLOR_IN_ROW, I, ICAN_COLOR, MX_COLOR, NOD_COLOR
+            INTEGER :: ierr, i_indx, j_indx, IPRES, JPRES
+            REAL :: RSUM, RSUM_SUF
+            IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
+            EXPLICIT_PIPES2 = .true.
+            MAX_COLOR_IN_ROW = 0
+            DO CV_NOD = 1, Mdims%cv_nonods
+                MAX_COLOR_IN_ROW = MAX( MAX_COLOR_IN_ROW, Mspars%CMC%fin( CV_NOD + 1 ) - Mspars%CMC%fin( CV_NOD ) )
+            END DO
+            ALLOCATE( COLOR_IN_ROW( MAX_COLOR_IN_ROW**2 ) )
+            ALLOCATE( COLOR_IN_ROW2( MAX_COLOR_IN_ROW**2 ) )
+
+            !Calculate coloring if it is not in memory already
+            IF ( .not.Mmat%Stored ) THEN
+                allocate(Mmat%ICOLOR(Mdims%cv_nonods)); Mmat%ICOLOR = 0
+                Mmat%NCOLOR = 0
+
+                COLOR_LOGICAL = .FALSE.
+                Loop_CVNOD7: DO CV_NOD = 1, Mdims%cv_nonods
+                    ! Color this node CV_NOD
+                    MX_COLOR=0
+                    ! use a distance-2 colouring...
+                    Loop_Row7: DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                        CV_JNOD = Mspars%CMC%col( COUNT )
+                        Loop_Row2: DO COUNT2 = Mspars%CMC%fin( CV_JNOD ), Mspars%CMC%fin( CV_JNOD + 1 ) - 1
+                            CV_JNOD2 = Mspars%CMC%col( COUNT2 )
+                            IF(CV_NOD.NE.CV_JNOD2) THEN
+                                NOD_COLOR=Mmat%ICOLOR(CV_JNOD2)
+                                IF(NOD_COLOR.NE.0) THEN
+                                    COLOR_LOGICAL( NOD_COLOR ) = .TRUE.
+                                    MX_COLOR=MAX(MX_COLOR, NOD_COLOR )
+                                ENDIF
+                            ENDIF
+                        END DO Loop_Row2
+                    END DO Loop_Row7
+                    ! Find the node colour to use...
+                    ICAN_COLOR = 0
+                    DO I=1,MX_COLOR
+                        IF(.NOT.COLOR_LOGICAL(I)) THEN ! This is a colour we can use...
+                            ICAN_COLOR = I
+                            EXIT
+                        ENDIF
+                    END DO
+                    IF(ICAN_COLOR == 0) THEN
+                        ICAN_COLOR =MX_COLOR + 1
+                    ENDIF
+                    Mmat%ICOLOR(CV_NOD)=ICAN_COLOR
+                    Mmat%NCOLOR=MAX(Mmat%NCOLOR,ICAN_COLOR)
+                    ! Reset the colors for the next node...
+                    COLOR_LOGICAL(1:max(1,MX_COLOR))=.FALSE.
+                END DO Loop_CVNOD7
+                IF ( Mmat%NCOLOR > MX_NCOLOR ) THEN
+                    EWRITE(-1, *) 'NOT ENOUGH COLOURS STOPPING - NEED TO MAKE MX_COLOR BIGGER'
+                    STOP 281
+                END IF
+            END IF ! SAVED_CMC_COLOR
+
+
+
+            ALLOCATE( COLOR_VEC_MANY( Mmat%NCOLOR, Mdims%cv_nonods ) )
+            COLOR_VEC_MANY = 0.0
+            Loop_CVNOD: DO CV_NOD = 1, Mdims%cv_nonods
+                COLOR_VEC_MANY( Mmat%ICOLOR( CV_NOD ), CV_NOD ) = 1.0
+            END DO Loop_CVNOD
+            ! we use the same colouring for each pressure variable when Mdims%npres>1.
+            ALLOCATE( CDP_MANY( Mmat%NCOLOR, Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
+            CALL C_MULT_MANY( CDP_MANY, COLOR_VEC_MANY, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
+                Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
+
+            ! DU_LONG = Mmat%PIVIT_MAT * CDP
+            ALLOCATE( DU_LONG_MANY( Mmat%NCOLOR, Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
+            CALL PHA_BLOCK_MAT_VEC_MANY( DU_LONG_MANY, Mmat%PIVIT_MAT, CDP_MANY, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
+                Mdims%totele, Mdims%u_nloc, ndgln%u )
+                     ! NB. P_RHS = Mmat%CT * U + CV_RHS
+                     ! DU_LONG = CDP
+            IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
+                ALLOCATE( CMC_COLOR_VEC_MANY_PHASE( Mmat%NCOLOR, Mdims%nphase, Mdims%cv_nonods ) )
+                ALLOCATE( CMC_COLOR_VEC_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
+                DO IPHASE = 1, Mdims%nphase
+                    CALL CT_MULT_MANY( CMC_COLOR_VEC_MANY_PHASE(:,IPHASE,:), &
+                        DU_LONG_MANY(:,:,IPHASE:IPHASE,:), &
+                        Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, Mmat%NCOLOR, &
+                        Mmat%CT(:,IPHASE:IPHASE,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
+                END DO
+                ALLOCATE( RINV_B_COLNS_ZEROED(Mdims%nphase,Mdims%nphase) )
+                ALLOCATE( CMC_COLOR_VEC_MANY_PHASE_SHORT(Mdims%nphase) )
+                ALLOCATE( CMC_COLOR_VEC_PRES_MANY_SHORT(Mmat%NCOLOR,Mdims%npres) )
                 DO JPRES=1,Mdims%npres
                     DO CV_NOD = 1, Mdims%cv_nonods
                         RINV_B_COLNS_ZEROED(:,:) = 0.0
                         RINV_B_COLNS_ZEROED(:,  1+(JPRES-1)*Mdims%n_in_pres:JPRES*Mdims%n_in_pres ) = INV_B(:,  1+(JPRES-1)*Mdims%n_in_pres:JPRES*Mdims%n_in_pres,  CV_NOD)
                         DO I = 1, Mmat%NCOLOR
-                            ! The following uses CMC_COLOR_VEC2_MANY_PHASE:
-                            CMC_COLOR_VEC_MANY_PHASE_SHORT(:) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC2_MANY_PHASE(I,:,CV_NOD) )
+                            !                  CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
+                            CMC_COLOR_VEC_MANY_PHASE_SHORT(:) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC_MANY_PHASE(I,:,CV_NOD) )
                             DO IPRES = 1, Mdims%npres
                                 CMC_COLOR_VEC_PRES_MANY_SHORT(I,IPRES) = SUM( CMC_COLOR_VEC_MANY_PHASE_SHORT(1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres) )
                             END DO
@@ -448,172 +740,204 @@ contains
                         DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
                             CV_JNOD = Mspars%CMC%col( COUNT )
                             DO IPRES = 1, Mdims%npres
-                                CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
-                                    sum( CMC_COLOR_VEC_PRES_MANY_SHORT( :, IPRES )* COLOR_VEC_MANY( :, CV_JNOD ) )
+                                call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                                    val = dot_product(CMC_COLOR_VEC_PRES_MANY_SHORT( :, IPRES ), COLOR_VEC_MANY( :, CV_JNOD ) ))
                             END DO
                         END DO
                     END DO
                 END DO ! ENDOF DO JPRES=1,Mdims%npres
-                CMC_COLOR_VEC2_MANY=0.0
-            END IF
-            ! Re-set CMC_COLOR_VEC_MANY & CMC_COLOR_VEC_MANY2 as we have already added the
-            ! contributions up to this point into the matrix.
-            CMC_COLOR_VEC_MANY=0.0
-        ELSE
-            ALLOCATE( CMC_COLOR_VEC_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
-            DO IPRES = 1, Mdims%npres
-                CALL CT_MULT_MANY( CMC_COLOR_VEC_MANY(:,IPRES,:), &
-                    DU_LONG_MANY(:,:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), &
-                    Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%NCOLOR, &
-                    Mmat%CT(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
-            END DO
-            IF ( IGOT_CMC_PRECON /= 0 ) THEN
-                ALLOCATE( CMC_COLOR_VEC2_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
-                DO IPRES = 1, Mdims%npres
-                    CALL CT_MULT_WITH_C_MANY( CMC_COLOR_VEC2_MANY(:,IPRES,:), &
-                        DU_LONG_MANY(:,:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres, :), &
-                        Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
-                        Mmat%C(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%C%fin, Mspars%C%col )
-                END DO
-            END IF
-        END IF
-        ! Matrix vector involving the mass diagonal term
-        DO CV_NOD = 1, Mdims%cv_nonods
-            RSUM = 0.0
-            RSUM_SUF = 0.0
-            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                CV_JNOD = Mspars%CMC%col( COUNT )
-                DO IPRES = 1, Mdims%npres
-                    IF((Mdims%npres>1).AND.PIPES_1D) THEN
-                        IF(IPRES==1) THEN
-                            CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
-                                DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
-                        ELSE
-                            CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
-                                DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_CVFEM2PIPE_TRUE( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
-                        ENDIF
-                    ELSE
-                        CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
-                            DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
-                    ENDIF
-                    CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
-                        DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
-                    if ( got_free_surf ) then
-                        CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
-                            MASS_SUF( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
-                    end if
-                END DO
-                if ( got_free_surf ) then
-                    RSUM_SUF = RSUM_SUF + MASS_SUF( COUNT )
-                end if
-                RSUM = RSUM + MASS_MN_PRES( COUNT )
-            END DO
-            IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-                DO IPRES=1,Mdims%npres
-                    CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) &
-                        + ( DIAG_SCALE_PRES( IPRES, CV_NOD ) * RSUM + RSUM_SUF ) * COLOR_VEC_MANY( :, CV_NOD )
-                END DO
-            END IF
-        END DO
-        !Put into matrix CMC
-        if ( .not.symmetric_P ) then
-            ! original method
-            DO CV_NOD = 1, Mdims%cv_nonods
-                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CV_JNOD = Mspars%CMC%col( COUNT )
-                    DO IPRES = 1, Mdims%npres
-                        JPRES = IPRES ! Add contributions to the block diagonal only.
-                        call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-                            val = dot_product(CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
-                        !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
-                        IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
-                            sum(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                IF ( IGOT_CMC_PRECON /= 0 ) THEN
+                    ALLOCATE( CMC_COLOR_VEC2_MANY_PHASE( Mmat%NCOLOR, Mdims%nphase, Mdims%cv_nonods ) )
+                    ALLOCATE( CMC_COLOR_VEC2_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
+                    DO IPHASE = 1, Mdims%nphase
+                        CALL CT_MULT_WITH_C_MANY( CMC_COLOR_VEC2_MANY_PHASE(:,IPHASE,:), &
+                            DU_LONG_MANY(:,:,IPHASE:IPHASE,:), &
+                            Mdims%u_nonods, Mdims%ndim, 1,&
+                            Mmat%C(:,IPHASE:IPHASE,:), Mspars%C%fin, Mspars%C%col )
                     END DO
+                    DO JPRES=1,Mdims%npres
+                        DO CV_NOD = 1, Mdims%cv_nonods
+                            RINV_B_COLNS_ZEROED(:,:) = 0.0
+                            RINV_B_COLNS_ZEROED(:,  1+(JPRES-1)*Mdims%n_in_pres:JPRES*Mdims%n_in_pres ) = INV_B(:,  1+(JPRES-1)*Mdims%n_in_pres:JPRES*Mdims%n_in_pres,  CV_NOD)
+                            DO I = 1, Mmat%NCOLOR
+                                ! The following uses CMC_COLOR_VEC2_MANY_PHASE:
+                                CMC_COLOR_VEC_MANY_PHASE_SHORT(:) = MATMUL( RINV_B_COLNS_ZEROED(:,:), CMC_COLOR_VEC2_MANY_PHASE(I,:,CV_NOD) )
+                                DO IPRES = 1, Mdims%npres
+                                    CMC_COLOR_VEC_PRES_MANY_SHORT(I,IPRES) = SUM( CMC_COLOR_VEC_MANY_PHASE_SHORT(1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres) )
+                                END DO
+                            END DO
+                            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                                CV_JNOD = Mspars%CMC%col( COUNT )
+                                DO IPRES = 1, Mdims%npres
+                                    CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
+                                        sum( CMC_COLOR_VEC_PRES_MANY_SHORT( :, IPRES )* COLOR_VEC_MANY( :, CV_JNOD ) )
+                                END DO
+                            END DO
+                        END DO
+                    END DO ! ENDOF DO JPRES=1,Mdims%npres
+                    CMC_COLOR_VEC2_MANY=0.0
+                END IF
+                ! Re-set CMC_COLOR_VEC_MANY & CMC_COLOR_VEC_MANY2 as we have already added the
+                ! contributions up to this point into the matrix.
+                CMC_COLOR_VEC_MANY=0.0
+            ELSE
+                ALLOCATE( CMC_COLOR_VEC_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
+                DO IPRES = 1, Mdims%npres
+                    CALL CT_MULT_MANY( CMC_COLOR_VEC_MANY(:,IPRES,:), &
+                        DU_LONG_MANY(:,:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), &
+                        Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%NCOLOR, &
+                        Mmat%CT(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                 END DO
-            END DO
-        else
-            ! symmetric P matrix
-            DO CV_NOD = 1, Mdims%cv_nonods
-                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CV_JNOD = Mspars%CMC%col( COUNT )
+                IF ( IGOT_CMC_PRECON /= 0 ) THEN
+                    ALLOCATE( CMC_COLOR_VEC2_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
                     DO IPRES = 1, Mdims%npres
-                        JPRES = IPRES ! Add contributions to the block diagonal only.
-                        call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-                            val = dot_product(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
-                        !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
-                        IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
-                            sum(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                        CALL CT_MULT_WITH_C_MANY( CMC_COLOR_VEC2_MANY(:,IPRES,:), &
+                            DU_LONG_MANY(:,:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres, :), &
+                            Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
+                            Mmat%C(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%C%fin, Mspars%C%col )
                     END DO
-                END DO
-            END DO
-        end if
-        ! the matrix coupling term place immediately into matrix and not through colouring...
-        ! Matrix vector involving the mass diagonal term
-        IF ( Mdims%npres > 1) THEN
+                END IF
+            END IF
+            ! Matrix vector involving the mass diagonal term
             DO CV_NOD = 1, Mdims%cv_nonods
                 RSUM = 0.0
                 RSUM_SUF = 0.0
                 DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
                     CV_JNOD = Mspars%CMC%col( COUNT )
                     DO IPRES = 1, Mdims%npres
-                        DO JPRES = 1, Mdims%npres
-                            IF(PIPES_1D) THEN ! 1D PIPE MODELLING
-                                call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD,&
-                                    val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_CVFEM2PIPE( COUNT ))
-                                IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-                                    CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
-                                        + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ))* &
-                                        MASS_CVFEM2PIPE( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
-                                END IF
+                        IF((Mdims%npres>1).AND.PIPES_1D) THEN
+                            IF(IPRES==1) THEN
+                                CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
+                                    DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
                             ELSE
-                                call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD,&
-                                    val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ))
-                                IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-                                    CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
-                                        + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ))* &
-                                        MASS_MN_PRES( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
-                                END IF
+                                CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
+                                    DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_CVFEM2PIPE_TRUE( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
                             ENDIF
+                        ELSE
+                            CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
+                                DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+                        ENDIF
+                        CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
+                            DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+                        if ( got_free_surf ) then
+                            CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ) + &
+                                MASS_SUF( COUNT ) * COLOR_VEC_MANY( :, CV_JNOD )
+                        end if
+                    END DO
+                    if ( got_free_surf ) then
+                        RSUM_SUF = RSUM_SUF + MASS_SUF( COUNT )
+                    end if
+                    RSUM = RSUM + MASS_MN_PRES( COUNT )
+                END DO
+                IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                    DO IPRES=1,Mdims%npres
+                        CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) = CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) &
+                            + ( DIAG_SCALE_PRES( IPRES, CV_NOD ) * RSUM + RSUM_SUF ) * COLOR_VEC_MANY( :, CV_NOD )
+                    END DO
+                END IF
+            END DO
+            !Put into matrix CMC
+            if ( .not.symmetric_P ) then
+                ! original method
+                DO CV_NOD = 1, Mdims%cv_nonods
+                    DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                        CV_JNOD = Mspars%CMC%col( COUNT )
+                        DO IPRES = 1, Mdims%npres
+                            JPRES = IPRES ! Add contributions to the block diagonal only.
+                            call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                                val = dot_product(CMC_COLOR_VEC_MANY( :, IPRES, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
+                            !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                            IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
+                                sum(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                         END DO
                     END DO
                 END DO
-            END DO
-        END IF ! ENDOF IF(Mdims%npres > 1) THEN
-        !If we have a reference node with pressure zero we impose that here.
-        DO IPRES = 1, Mdims%npres
-            IF ( NDPSET(IPRES) > 0 ) THEN
-                CV_NOD = NDPSET(IPRES)
-                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
-                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CV_JNOD = Mspars%CMC%col( COUNT )
-                    IF ( CV_JNOD /= CV_NOD ) THEN
-                        do jpres = 1, Mdims%npres
-                            j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
-                            call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr) ! not the diagonal
-                            !CMC( COUNT ) = 0.0 ! not the diagonal
-                            IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = 0.0
-                            DO COUNT2 = Mspars%CMC%fin( CV_JNOD ), Mspars%CMC%fin( CV_JNOD + 1 ) - 1
-                                CV_JNOD2 = Mspars%CMC%col( COUNT2 )
-                                IF ( CV_JNOD2 /= CV_NOD ) then
-                                    i_indx = CMC_petsc%row_numbering%gnn2unn( cv_jnod, ipres )
-                                    j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD2, jpres )
-                                    call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, INSERT_VALUES, ierr) ! not the diagonal
-                                    IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( ipres, jpres, COUNT2 ) = 0.0
-                                END IF
-                            END DO
-                        end do ! do jpres=1,Mdims%npres
-                    END IF
+            else
+                ! symmetric P matrix
+                DO CV_NOD = 1, Mdims%cv_nonods
+                    DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                        CV_JNOD = Mspars%CMC%col( COUNT )
+                        DO IPRES = 1, Mdims%npres
+                            JPRES = IPRES ! Add contributions to the block diagonal only.
+                            call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
+                                val = dot_product(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
+                            !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                            IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
+                                sum(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
+                        END DO
+                    END DO
                 END DO
-            END IF
-        END DO
-        !Re-assemble
-        CMC_petsc%is_assembled=.false.
-        call assemble( CMC_petsc )
-        IF ( IGOT_CMC_PRECON /= 0 ) deallocate(CMC_COLOR_VEC2_MANY)
-        deallocate(COLOR_IN_ROW, COLOR_IN_ROW2 )
-        deallocate(COLOR_VEC_MANY,CMC_COLOR_VEC_MANY, CDP_MANY, DU_LONG_MANY)
-        RETURN
-    END SUBROUTINE COLOR_GET_CMC_PHA_FAST
+            end if
+            ! the matrix coupling term place immediately into matrix and not through colouring...
+            ! Matrix vector involving the mass diagonal term
+            IF ( Mdims%npres > 1) THEN
+                DO CV_NOD = 1, Mdims%cv_nonods
+                    RSUM = 0.0
+                    RSUM_SUF = 0.0
+                    DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                        CV_JNOD = Mspars%CMC%col( COUNT )
+                        DO IPRES = 1, Mdims%npres
+                            DO JPRES = 1, Mdims%npres
+                                IF(PIPES_1D) THEN ! 1D PIPE MODELLING
+                                    call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD,&
+                                        val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_CVFEM2PIPE( COUNT ))
+                                    IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                                        CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+                                            + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ))* &
+                                            MASS_CVFEM2PIPE( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
+                                    END IF
+                                ELSE
+                                    call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD,&
+                                        val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ))
+                                    IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
+                                        CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
+                                            + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ))* &
+                                            MASS_MN_PRES( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
+                                    END IF
+                                ENDIF
+                            END DO
+                        END DO
+                    END DO
+                END DO
+            END IF ! ENDOF IF(Mdims%npres > 1) THEN
+            !If we have a reference node with pressure zero we impose that here.
+            DO IPRES = 1, Mdims%npres
+                IF ( NDPSET(IPRES) > 0 ) THEN
+                    CV_NOD = NDPSET(IPRES)
+                    i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
+                    DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+                        CV_JNOD = Mspars%CMC%col( COUNT )
+                        IF ( CV_JNOD /= CV_NOD ) THEN
+                            do jpres = 1, Mdims%npres
+                                j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
+                                call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr) ! not the diagonal
+                                !CMC( COUNT ) = 0.0 ! not the diagonal
+                                IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = 0.0
+                                DO COUNT2 = Mspars%CMC%fin( CV_JNOD ), Mspars%CMC%fin( CV_JNOD + 1 ) - 1
+                                    CV_JNOD2 = Mspars%CMC%col( COUNT2 )
+                                    IF ( CV_JNOD2 /= CV_NOD ) then
+                                        i_indx = CMC_petsc%row_numbering%gnn2unn( cv_jnod, ipres )
+                                        j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD2, jpres )
+                                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, INSERT_VALUES, ierr) ! not the diagonal
+                                        IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( ipres, jpres, COUNT2 ) = 0.0
+                                    END IF
+                                END DO
+                            end do ! do jpres=1,Mdims%npres
+                        END IF
+                    END DO
+                END IF
+            END DO
+            !Re-assemble
+            CMC_petsc%is_assembled=.false.
+            call assemble( CMC_petsc )
+            IF ( IGOT_CMC_PRECON /= 0 ) deallocate(CMC_COLOR_VEC2_MANY)
+            deallocate(COLOR_IN_ROW, COLOR_IN_ROW2 )
+            deallocate(COLOR_VEC_MANY,CMC_COLOR_VEC_MANY, CDP_MANY, DU_LONG_MANY)
+            RETURN
+        END SUBROUTINE COLOR_GET_CMC_PHA_FAST
+
+    END SUBROUTINE COLOR_GET_CMC_PHA
+
 
 
     !sprint_to_do!move to library and aid subroutines as well
@@ -633,394 +957,66 @@ contains
             call insertion_sort(vec,n)
         end if
 
-    end subroutine quicksort
-        
-    integer function partition(v)
+    contains
+        integer function partition(v)
           
-        implicit none
+            implicit none
 
-        integer, intent(inout), dimension(:) :: v
-        integer :: i,j, pivot, temp
+            integer, intent(inout), dimension(:) :: v
+            integer :: i,j, pivot, temp
 
-        i=0
-        j=size(v)+1
+            i=0
+            j=size(v)+1
 
-        pivot=v(j/2)
+            pivot=v(j/2)
           
-        do while (i < j)
-            j= j-1
-            do while ( v(j) > pivot)
-                j=j-1
-            end do
-            i = i + 1
-            do while  ( v(i) < pivot )
+            do while (i < j)
+                j= j-1
+                do while ( v(j) > pivot)
+                    j=j-1
+                end do
                 i = i + 1
+                do while  ( v(i) < pivot )
+                    i = i + 1
+                end do
+                if ( i < j ) then
+                    temp=v(i); v(i)=v(j); v(j)= temp
+                elseif ( i == j ) then
+                    partition = i+1
+                    return
+                else
+                    partition = i
+                end if
             end do
-            if ( i < j ) then
-                temp=v(i); v(i)=v(j); v(j)= temp
-            elseif ( i == j ) then
-                partition = i+1
-                return
-            else
-                partition = i
-            end if
-        end do
 
-    end function partition
+        end function partition
            
-    subroutine insertion_sort(vec,n)
+        subroutine insertion_sort(vec,n)
           
-        implicit none
+            implicit none
 
-        integer :: n
-        integer, dimension(n) :: vec(n)
+            integer :: n
+            integer, dimension(n) :: vec(n)
 
-        integer :: i ,j, temp
+            integer :: i ,j, temp
 
 
-        do i = 2, N
-            j = i - 1
-            temp = vec(i)
+            do i = 2, N
+                j = i - 1
+                temp = vec(i)
 
-            do while ( j> 0 )
-                if ( vec(j) <= temp ) exit
-                vec(j+1)=vec(j)
-                j=j-1
+                do while ( j> 0 )
+                    if ( vec(j) <= temp ) exit
+                    vec(j+1)=vec(j)
+                    j=j-1
+                end do
+
+                vec(j+1) = temp
             end do
 
-            vec(j+1) = temp
-        end do
+        end subroutine insertion_sort
 
-    end subroutine insertion_sort
-
-
-    !sprint_to_do!make internal subroutine. try to delete this and only use the fast version
-    !remove if we finally remove this subroutine all the subroutines that are only called in here
-    SUBROUTINE COLOR_GET_CMC_PHA_SLOW( Mdims, Mspars, ndgln, Mmat,  &
-        DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-        CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-        MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
-        got_free_surf,  MASS_SUF, ndpset, symmetric_P )
-        !use multiphase_1D_engine
-        implicit none
-        ! form pressure matrix CMC using a colouring approach
-        type(multi_dimensions), intent(in) :: Mdims
-        type (multi_sparsities), intent(in) :: Mspars
-        type(multi_ndgln), intent(in) :: ndgln
-        type (multi_matrices), intent(inout) :: Mmat
-        INTEGER, intent( in ) :: IGOT_CMC_PRECON
-        LOGICAL, PARAMETER :: PIPES_1D=.TRUE.
-        LOGICAL, intent( in ) :: got_free_surf, symmetric_P
-        INTEGER, DIMENSION( : ), intent( in ) :: ndpset
-        REAL, DIMENSION( :, : ), intent( in ) :: DIAG_SCALE_PRES
-        REAL, DIMENSION( :, :, : ), intent( in ) :: DIAG_SCALE_PRES_COUP, INV_B
-        type(petsc_csr_matrix), intent(inout)::  CMC_petsc
-        REAL, DIMENSION( :, :, : ), intent( inout ) :: CMC_PRECON
-        REAL, DIMENSION( : ), intent( in ) :: MASS_MN_PRES
-        REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
-        REAL, DIMENSION( : ), intent( in ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE
-        ! Local variables
-        INTEGER, PARAMETER :: MX_NCOLOR = 1000
-        REAL, PARAMETER :: INFINY = 1.0E+10
-        LOGICAL :: UNDONE, LCOL
-        logical, DIMENSION( : ), allocatable :: NEED_COLOR
-        logical, DIMENSION( Mdims%cv_nonods ) :: to_color
-        LOGICAL :: EXPLICIT_PIPES2
-        REAL, DIMENSION( : ), allocatable :: COLOR_VEC
-        REAL, DIMENSION( :, : ), allocatable :: CMC_COLOR_VEC, CMC_COLOR_VEC2, CMC_COLOR_VEC_PHASE, CMC_COLOR_VEC2_PHASE!, ld
-        REAL, DIMENSION( : ), allocatable :: DU, DV, DW, DU_LONG
-        REAL, DIMENSION( :, :, : ), allocatable :: CDP
-        INTEGER :: NCOLOR, CV_NOD, CV_JNOD, COUNT, COUNT2, IPHASE, CV_JNOD2
-        INTEGER :: ierr, IV_STAR, IV_FINI, i_indx, j_indx, IPRES, JPRES
-        REAL :: RSUM, RSUM_SUF
-        ALLOCATE( NEED_COLOR( Mdims%cv_nonods ) )
-        ALLOCATE( COLOR_VEC( Mdims%cv_nonods ) )
-        ALLOCATE( CDP( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
-        ALLOCATE( DU_LONG( Mdims%u_nonods * Mdims%ndim * Mdims%nphase ) )
-        ALLOCATE( DU( Mdims%u_nonods * Mdims%nphase ) )
-        ALLOCATE( DV( Mdims%u_nonods * Mdims%nphase ) )
-        ALLOCATE( DW( Mdims%u_nonods * Mdims%nphase ) )
-        ALLOCATE( CMC_COLOR_VEC( Mdims%npres, Mdims%cv_nonods ) )
-        ALLOCATE( CMC_COLOR_VEC2( Mdims%npres, Mdims%cv_nonods ) )
-
-        IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON = 0.0
-        EXPLICIT_PIPES2 = .true.
-        NEED_COLOR = .TRUE.
-        NCOLOR = 0
-        UNDONE = .TRUE.
-        Loop_while: DO WHILE ( UNDONE )
-            NCOLOR = NCOLOR + 1 ! Determine what nodes can be coloured with the new color
-            TO_COLOR = .FALSE.
-            Loop_CVNOD: DO CV_NOD = 1, Mdims%cv_nonods
-                IF ( NEED_COLOR( CV_NOD ) ) THEN
-                    LCOL= .FALSE.
-                    ! use a distance-2 colouring...
-                    Loop_Row: DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                        CV_JNOD = Mspars%CMC%col( COUNT )
-                        IF( TO_COLOR( CV_JNOD ) ) THEN
-                            LCOL=.TRUE.
-                            EXIT
-                        END IF
-                        Loop_Row2: DO COUNT2 = Mspars%CMC%fin( CV_JNOD ), Mspars%CMC%fin( CV_JNOD + 1 ) - 1
-                            IF ( TO_COLOR( Mspars%CMC%col( COUNT2 ) ) )  THEN
-                                LCOL = .TRUE.
-                                EXIT
-                            END IF
-                        END DO Loop_Row2
-                        IF ( LCOL ) EXIT
-                    END DO Loop_Row
-                    IF ( .NOT.LCOL ) THEN
-                        TO_COLOR( CV_NOD ) = .TRUE.
-                    END IF
-                END IF
-            END DO Loop_CVNOD
-            NEED_COLOR = NEED_COLOR .AND. .NOT.TO_COLOR
-            COLOR_VEC = MERGE( 1.0, 0.0, TO_COLOR )
-            CALL C_MULT2( CDP, COLOR_VEC, Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, &
-                Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-            ! DU_LONG = BLOCK_MAT * CDP
-            CALL PHA_BLOCK_MAT_VEC( DU_LONG, Mmat%PIVIT_MAT, CDP, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, &
-                Mdims%totele, Mdims%u_nloc, ndgln%u )
-            ! NB. P_RHS = Mmat%CT * U + CV_RHS
-            ! DU_LONG = CDP
-            CALL ULONG_2_UVW( DU, DV, DW, DU_LONG, Mdims%u_nonods, Mdims%ndim, Mdims%nphase )
-            IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
-                ALLOCATE( CMC_COLOR_VEC_PHASE( Mdims%nphase, Mdims%cv_nonods ) )
-                DO IPHASE = 1, Mdims%nphase
-                    IV_STAR = 1+(IPHASE-1)*Mdims%u_nonods*Mdims%ndim
-                    IV_FINI = IPHASE*Mdims%u_nonods*Mdims%ndim
-                    CALL CT_MULT( CMC_COLOR_VEC_PHASE(IPHASE,:), DU(IV_STAR:IV_FINI), &
-                        DV(IV_STAR:IV_FINI), DW(IV_STAR:IV_FINI), Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, &
-                        Mmat%CT(:,IPHASE:IPHASE,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
-                END DO
-                DO CV_NOD = 1, Mdims%cv_nonods
-                    CMC_COLOR_VEC_PHASE(:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), CMC_COLOR_VEC_PHASE(:,CV_NOD) )
-                END DO
-                DO CV_NOD = 1, Mdims%cv_nonods
-                    DO IPRES = 1, Mdims%npres
-                        CMC_COLOR_VEC(IPRES,CV_NOD) = SUM(CMC_COLOR_VEC_PHASE(1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,CV_NOD) )
-                    END DO
-                END DO
-                IF ( IGOT_CMC_PRECON /= 0 ) THEN
-                    ALLOCATE( CMC_COLOR_VEC2_PHASE( Mdims%nphase, Mdims%cv_nonods ) )
-                    DO IPHASE = 1, Mdims%nphase
-                        IV_STAR = 1+(IPHASE-1)*Mdims%u_nonods*Mdims%ndim
-                        IV_FINI = IPHASE*Mdims%u_nonods*Mdims%ndim
-                        CALL CT_MULT_WITH_C( CMC_COLOR_VEC2_PHASE(IPHASE,:), &
-                            DU_LONG(IV_STAR:IV_FINI), &
-                            Mdims%u_nonods, Mdims%ndim, 1,  &
-                            Mmat%C(:,IPHASE:IPHASE,:), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-                    END DO
-                    DO CV_NOD = 1, Mdims%cv_nonods
-                        CMC_COLOR_VEC2_PHASE(:,CV_NOD) = MATMUL( INV_B(:,:,CV_NOD), CMC_COLOR_VEC2_PHASE(:,CV_NOD) )
-                    END DO
-                    DO CV_NOD = 1, Mdims%cv_nonods
-                        DO IPHASE = 1, Mdims%nphase
-                            CMC_COLOR_VEC2(IPHASE,CV_NOD) = SUM(CMC_COLOR_VEC2_PHASE(IPHASE:IPHASE,CV_NOD) )
-                        END DO
-                    END DO
-                END IF
-            ELSE
-                DO IPRES = 1, Mdims%npres
-                    IV_STAR = 1+(IPRES-1)*Mdims%n_in_pres*Mdims%u_nonods
-                    IV_FINI = IPRES*Mdims%n_in_pres*Mdims%u_nonods
-                    CALL CT_MULT( CMC_COLOR_VEC(IPRES,:), DU(IV_STAR:IV_FINI), &
-                        DV(IV_STAR:IV_FINI), DW(IV_STAR:IV_FINI), Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
-                        Mmat%CT(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
-                END DO
-      
-                IF ( IGOT_CMC_PRECON /= 0 ) THEN
-                    DO IPRES = 1, Mdims%npres
-                        IV_STAR = 1+(IPRES-1)*Mdims%n_in_pres*Mdims%u_nonods*Mdims%ndim
-                        IV_FINI = IPRES*Mdims%n_in_pres*Mdims%u_nonods*Mdims%ndim
-                        CALL CT_MULT_WITH_C( CMC_COLOR_VEC2(IPRES,:), &
-                            DU_LONG(IV_STAR:IV_FINI), Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, &
-                            Mmat%C(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
-                    END DO
-                END IF
-            END IF
-            ! Matrix vector involving the mass diagonal term
-            DO CV_NOD = 1, Mdims%cv_nonods
-                RSUM = 0.0
-                RSUM_SUF = 0.0
-                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CV_JNOD = Mspars%CMC%col( COUNT )
-                    DO IPRES = 1, Mdims%npres
-                        IF((Mdims%npres>1).AND.PIPES_1D) THEN
-                            IF(IPRES==1) THEN
-                                CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
-                                    + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
-                            ELSE
-                                CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
-                                    + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_CVFEM2PIPE_TRUE( COUNT ) * COLOR_VEC( CV_JNOD )
-                            ENDIF
-                        ELSE
-                            CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) &
-                                + DIAG_SCALE_PRES( IPRES, CV_NOD ) * MASS_MN_PRES( COUNT ) * COLOR_VEC( CV_JNOD )
-                        ENDIF
-                        if ( got_free_surf ) then
-                            CMC_COLOR_VEC( IPRES, CV_NOD ) = CMC_COLOR_VEC( IPRES, CV_NOD ) +&
-                                MASS_SUF( COUNT ) * COLOR_VEC( CV_JNOD )
-                        end if
-                    END DO
-                    if ( got_free_surf ) then
-                        RSUM_SUF = RSUM_SUF + MASS_SUF( COUNT )
-                    end if
-                    RSUM = RSUM + MASS_MN_PRES( COUNT )
-                END DO
-                IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-                    DO IPRES = 1, Mdims%npres
-                        CMC_COLOR_VEC2( IPRES, CV_NOD ) = CMC_COLOR_VEC2( IPRES, CV_NOD ) &
-                            + (DIAG_SCALE_PRES( IPRES, CV_NOD ) * RSUM + RSUM_SUF) * COLOR_VEC( CV_NOD )
-                    END DO
-                END IF
-            END DO
-            !Put into matrix CMC
-            if ( .not.symmetric_P ) then
-                ! original method
-                DO CV_NOD = 1, Mdims%cv_nonods
-                    DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                        CV_JNOD = Mspars%CMC%col( COUNT )
-                        DO IPRES = 1, Mdims%npres
-                            JPRES = IPRES ! Add contributions to the block diagonal only.
-                            call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-                                val = CMC_COLOR_VEC( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD ) )
-                            !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
-                            IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
-                                CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD )
-                        END DO
-                    END DO
-                END DO
-            else  ! endof if ( .not.symmetric_P ) then
-                ! symmetric P matrix
-                DO CV_NOD = 1, Mdims%cv_nonods
-                    DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                        CV_JNOD = Mspars%CMC%col( COUNT )
-                        DO IPRES = 1, Mdims%npres
-                            JPRES = IPRES ! Add contributions to the block diagonal only.
-                            call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-                                val = CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD ) )
-                            !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
-                            IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
-                                CMC_COLOR_VEC2( IPRES, CV_NOD ) * COLOR_VEC( CV_JNOD )
-                        END DO
-                    END DO
-                END DO
-            end if  ! endof if ( .not.symmetric_P ) then else
-            UNDONE = ANY( NEED_COLOR )
-            ewrite(3,*)'************ rsum,undone,NCOLOR=', rsum, undone, NCOLOR
-        END DO Loop_while
-        ! the matrix coupling term place immediately into matrix and not through colouring...
-        ! Matrix vector involving the mass diagonal term
-        IF(Mdims%npres > 1) THEN
-            DO CV_NOD = 1, Mdims%cv_nonods
-                RSUM = 0.0
-                RSUM_SUF = 0.0
-                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CV_JNOD = Mspars%CMC%col( COUNT )
-                    DO IPRES = 1, Mdims%npres
-                        DO JPRES = 1, Mdims%npres
-                            IF(PIPES_1D) THEN
-                                call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-                                    val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_CVFEM2PIPE( COUNT ))
-                                IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-                                    CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
-                                        + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD )) * &
-                                        MASS_CVFEM2PIPE( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
-                                END IF
-                            ELSE
-                                call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-                                    val = DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD ) * MASS_MN_PRES( COUNT ))
-                                IF ( IGOT_CMC_PRECON /= 0 ) THEN ! Use lumping of MASS_MN_PRES & MASS_SUF...
-                                    CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) &
-                                        + sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_NOD )) * &
-                                        MASS_MN_PRES( COUNT )*sqrt(DIAG_SCALE_PRES_COUP( IPRES, JPRES, CV_JNOD ))
-                                END IF
-                            ENDIF
-                        END DO
-                    END DO
-                END DO
-            END DO
-        END IF ! ENDOF IF(Mdims%npres > 1) THEN
-        !If we have a reference node with pressure zero we impose that here.
-        DO IPRES = 1, Mdims%npres
-            IF ( NDPSET(IPRES) > 0 ) THEN
-                CV_NOD = NDPSET( IPRES )
-                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
-                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CV_JNOD = Mspars%CMC%col( COUNT )
-                    IF ( CV_JNOD /= CV_NOD ) THEN
-                        do jpres = 1, Mdims%npres
-                            j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod, jpres )
-                            call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr) ! not the diagonal
-                            !CMC( COUNT ) = 0.0 ! not the diagonal
-                            IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = 0.0
-                            DO COUNT2 = Mspars%CMC%fin( CV_JNOD ), Mspars%CMC%fin( CV_JNOD + 1 ) - 1
-                                CV_JNOD2 = Mspars%CMC%col( COUNT2 )
-                                IF ( CV_JNOD2 == CV_NOD ) then
-                                    i_indx = CMC_petsc%row_numbering%gnn2unn( cv_jnod, ipres )
-                                    j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD2, jpres )
-                                    call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0, INSERT_VALUES, ierr) ! not the diagonal
-                                    IF ( IGOT_CMC_PRECON/=0 ) CMC_PRECON( ipres, jpres, COUNT2 ) = 0.0
-                                END IF
-                            END DO
-                        end do ! do jpres=1,Mdims%npres
-                    END IF
-                END DO
-            END IF
-        END DO
-        DO CV_NOD = 1, Mdims%cv_nonods
-            if ( mass_pipe(cv_nod) == 0.0 ) then
-                CV_JNOD = CV_NOD
-                DO IPRES = 2, Mdims%npres
-                    JPRES = IPRES
-                    i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod, ipres )
-                    j_indx = CMC_petsc%column_numbering%gnn2unn( CV_JNOD, jpres )
-                    call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0, INSERT_VALUES, ierr)
-                END DO
-            end if
-        END DO
-        if ( .false. ) then
-            cv_nod = 226
-            IPRES = 2
-            i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
-            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                CV_JNOD = Mspars%CMC%col( COUNT )
-                jpres = ipres
-                j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod,jpres)
-                IF ( CV_JNOD /= CV_NOD ) THEN
-                    call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr)
-                ELSE
-                    call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0,INSERT_VALUES, ierr)
-                END IF
-            END DO
-            cv_nod = 151
-            IPRES = 2
-            i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
-            DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                CV_JNOD = Mspars%CMC%col( COUNT )
-                jpres = ipres
-                j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod,jpres)
-                IF ( CV_JNOD /= CV_NOD ) THEN
-                    call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr)
-                ELSE
-                    call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0,INSERT_VALUES, ierr)
-                END IF
-            END DO
-        end if
-        CMC_petsc%is_assembled = .false.
-        call assemble( CMC_petsc )
-
-        DEALLOCATE( NEED_COLOR )
-        DEALLOCATE( COLOR_VEC )
-        DEALLOCATE( CDP )
-        DEALLOCATE( DU_LONG )
-        DEALLOCATE( DU, DV, DW )
-        DEALLOCATE( CMC_COLOR_VEC )
-        DEALLOCATE( CMC_COLOR_VEC2 )
-        RETURN
-    END SUBROUTINE COLOR_GET_CMC_PHA_SLOW
-
+    end subroutine quicksort
 
 
     !sprint_to_do!figure it out why are we not using the blas library
