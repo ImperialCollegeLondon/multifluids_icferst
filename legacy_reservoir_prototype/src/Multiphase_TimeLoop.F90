@@ -35,7 +35,7 @@ module multiphase_time_loop
         check_diagnostic_dependencies
     use global_parameters, only: timestep, simulation_start_time, simulation_start_cpu_time, &
         simulation_start_wall_time, new_mesh, &
-        topology_mesh_name, current_time, is_porous_media, after_adapt, is_multifracture, is_first_time_step, &
+        topology_mesh_name, current_time, is_porous_media, after_adapt, is_multifracture, &
         OPTION_PATH_LEN, FIELD_NAME_LEN
     use fldebug
     use reference_counting
@@ -509,144 +509,117 @@ contains
                        ids_ndgln, IDs2CV_ndgln, ndgln%cv, ndgln%suf_cv, ndgln%mat, ndgln%x, Mdisopt%cv_ele_type )
                 end if
 
-
                 !!$ Solve advection of the scalar 'Temperature':
-if (.true.) then
-                Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
-                    have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
-                    ewrite(3,*)'Now advecting Temperature Field'
+                if (.true.) then
+                    Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
+                        have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
+                        ewrite(3,*)'Now advecting Temperature Field'
+                        call set_nu_to_u( packed_state )
+                        !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
+                        !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
+                        tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                        velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                        density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
+                        saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                        call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                            tracer_field,velocity_field,density_field, dt, &
+                            suf_sig_diagten_bc, &
+                            Porosity_field%val, &
+                            !!$
+                            opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                            0, igot_theta_flux, &
+                            Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                            THETA_GDIFF, &
+                            Mean_Pore_CV, &
+                            option_path = '/material_phase[0]/scalar_field::Temperature', &
+                            thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                            saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                        call Calculate_All_Rhos( state, packed_state, Mdims )
+                    end if Conditional_ScalarAdvectionField
+                end if
+
+                !!$ Solve advection of the scalars.   'Temperature':
+                !!$ Fields...
+                !!-
+                new_ntsol_loop = .false.
+                if ( new_ntsol_loop  ) then
+                    call get_ntsol( ntsol )
+                    call initialise_field_lists_from_options( state, ntsol )
                     call set_nu_to_u( packed_state )
                     !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                    !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
-                    tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
+                                !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
-                        tracer_field,velocity_field,density_field, dt, &
-                        suf_sig_diagten_bc, &
-                        Porosity_field%val, &
-                        !!$
-                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        0, igot_theta_flux, &
-                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, &
-                        Mean_Pore_CV, &
-                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-                end if Conditional_ScalarAdvectionField
-end if
 
+                    do it = 1, ntsol
 
+                        call get_option( trim( field_optionpath_list( it ) ) // &
+                            '/prognostic/equation[0]/name', &
+                            option_buffer, default = "UnknownEquationType" )
+                        select case( trim( option_buffer ) )
+                        case ( "AdvectionDiffusion", "InternalEnergy" )
+                          use_advdif = .true.
+                        case default
+                          use_advdif = .false.
+                        end select
 
+                        !use_advdif=.true.
+                        if ( use_advdif ) then
+                            ! figure out if scalar field is mutli-phase
+                            multiphase_scalar = .false.
+                            do it2 = it+1, ntsol
+                                if ( field_name_list( it ) == field_name_list( it2 ) ) then
+                                    multiphase_scalar = .true.
+                                end if
+                            end do
 
+                            tmp_name = "Packed" //field_name_list( it )
+                            nphase_scalar = 1
+                            if ( multiphase_scalar ) then
+                                nphase_scalar = Mdims%nphase
+                                tmp_name = "Packed" // field_name_list( it )
+                            end if
+                            tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
 
+                            if (field_name_list( it)== 'PhaseVolumeFraction' .or.  field_name_list( it)== 'ComponentMassFractionPhase[0]') then
+                                cycle
+                            elseif (multiphase_scalar) then
+                                call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                                    tracer_field,velocity_field,density_field, dt, &
+                                    suf_sig_diagten_bc, &
+                                    Porosity_field%val, &
+                                    !!$
+                                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                                    0, igot_theta_flux, &
+                                    Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                                    THETA_GDIFF, &
+                                    Mean_Pore_CV, &
+                                    option_path = '/material_phase[0]/scalar_field::Temperature', &
+                                    thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                                    saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                                call Calculate_All_Rhos( state, packed_state, Mdims )
+                                exit
+                            else
+                                call INTENERGE_ASSEM_SOLVE( state, packed_state, &
+                                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                                    tracer_field,velocity_field,density_field, dt, &
+                                    suf_sig_diagten_bc,  Porosity_field%val, &
+                                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+                                    0, igot_theta_flux, &
+                                    Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
+                                    THETA_GDIFF,  Mean_Pore_CV, &
+                                    option_path = '/material_phase[0]/scalar_field::Temperature', &
+                                    thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
+                                    saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                                call Calculate_All_Rhos( state, packed_state, Mdims )
+                           end if
+                       end if
+                    end do
+                end if
 
-
-
-!!$ Solve advection of the scalars.   'Temperature':
-
-!!$ Fields...
-!!-
-        new_ntsol_loop = .false.
-
-if ( new_ntsol_loop  ) then
-
-        call get_ntsol( ntsol )
-        call initialise_field_lists_from_options( state, ntsol )
-
-
-        call set_nu_to_u( packed_state )
-        !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                    !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
-        velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-        density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
-        saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-
-
-
-
-
-        do it = 1, ntsol
-
-           call get_option( trim( field_optionpath_list( it ) ) // &
-                '/prognostic/equation[0]/name', &
-                option_buffer, default = "UnknownEquationType" )
-           select case( trim( option_buffer ) )
-           case ( "AdvectionDiffusion", "InternalEnergy" )
-              use_advdif = .true.
-           case default
-              use_advdif = .false.
-           end select
-
-           !use_advdif=.true.
-
-
-           if ( use_advdif ) then
-
-              ! figure out if scalar field is mutli-phase
-              multiphase_scalar = .false.
-              do it2 = it+1, ntsol
-                 if ( field_name_list( it ) == field_name_list( it2 ) ) then
-                    multiphase_scalar = .true.
-                 end if
-              end do
-
-              tmp_name = "Packed" //field_name_list( it )
-              nphase_scalar = 1
-              if ( multiphase_scalar ) then
-                 nphase_scalar = Mdims%nphase
-                 tmp_name = "Packed" // field_name_list( it )
-              end if
-              tracer_field => extract_tensor_field( packed_state, trim( tmp_name ) )
-
-
-              if (field_name_list( it)== 'PhaseVolumeFraction' .or.  field_name_list( it)== 'ComponentMassFractionPhase[0]') then
-                    cycle
-              elseif (multiphase_scalar) then
-
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
-                        tracer_field,velocity_field,density_field, dt, &
-                        suf_sig_diagten_bc, &
-                        Porosity_field%val, &
-                        !!$
-                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        0, igot_theta_flux, &
-                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, &
-                        Mean_Pore_CV, &
-                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-
-                    exit
-              else
-                    
-                    call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
-                        tracer_field,velocity_field,density_field, dt, &
-                        suf_sig_diagten_bc,  Porosity_field%val, &
-                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        0, igot_theta_flux, &
-                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF,  Mean_Pore_CV, &
-                        option_path = '/material_phase[0]/scalar_field::Temperature', &
-                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
-                    call Calculate_All_Rhos( state, packed_state, Mdims )
-               end if
-                    
-
-           end if
-
-        end do
-
-end if
                 ScalarField_Source_Store = ScalarField_Source + ScalarField_Source_Component
                 tracer_source => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource")
                 Mdisopt%volfra_use_theta_flux = .true.
@@ -990,10 +963,8 @@ end if
                 ewrite(1,*) "Caught signal, exiting"
                 exit Loop_Time
             end if
-            if(itime==1) then
-                is_first_time_step = .false.
-            end if
         end do Loop_Time
+
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:
         deallocate( &

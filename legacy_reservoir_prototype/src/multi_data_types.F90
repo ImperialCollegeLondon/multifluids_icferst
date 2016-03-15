@@ -115,8 +115,8 @@ module multi_data_types
         integer, pointer, dimension( : )  :: findgpts=> null()!dimension( cv_nloc + 1 )
         integer, pointer, dimension( : )  :: colgpts=> null()!dimension( cv_nloc * scvngi )
         integer :: ncolgpts
-        type(petsc_csr_matrix_pointer) ::CV2FE !Matrix to convert from CV to FE
-        type(petsc_csr_matrix_pointer) ::FE2CV !Matrix to convert from FE to CV
+        type(petsc_csr_matrix) ::CV2FE !Matrix to convert from CV to FE
+        type(petsc_csr_matrix) ::FE2CV !Matrix to convert from FE to CV
     end type multi_shape_funs
 
     !This type comprises the four necessary variables to represent matrices using a CSR structure
@@ -294,8 +294,8 @@ contains
         deallocate(shape_fun%u_sloclist)
         deallocate(shape_fun%findgpts)
         deallocate(shape_fun%colgpts)
-        if (associated(shape_fun%CV2FE%ptr)) call deallocate(shape_fun%CV2FE%ptr)
-        if (associated(shape_fun%FE2CV%ptr)) call deallocate(shape_fun%FE2CV%ptr)
+        if (associated(shape_fun%CV2FE%refcount)) call deallocate(shape_fun%CV2FE)
+        if (associated(shape_fun%FE2CV%refcount)) call deallocate(shape_fun%FE2CV)
 
         !Nullify pointers
         nullify(shape_fun%cvn)
@@ -332,8 +332,8 @@ contains
         nullify(shape_fun%u_sloclist)
         nullify(shape_fun%findgpts)
         nullify(shape_fun%colgpts)
-        nullify(shape_fun%FE2CV%ptr)
-        nullify(shape_fun%CV2FE%ptr)
+        nullify(shape_fun%FE2CV%refcount)
+        nullify(shape_fun%CV2FE%refcount)
 
     end subroutine deallocate_multi_shape_funs
 

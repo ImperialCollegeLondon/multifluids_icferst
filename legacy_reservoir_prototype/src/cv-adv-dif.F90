@@ -38,7 +38,7 @@ module cv_advection
 
     use solvers_module
     use spud
-    use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media, pi, after_adapt, is_first_time_step
+    use global_parameters, only: option_path_len, field_name_len, timestep, is_porous_media, pi, after_adapt
     use futils, only: int2str
     use adapt_state_prescribed_module
     use sparse_tools
@@ -962,17 +962,11 @@ contains
         end do
         psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
         psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
-        call set(psi_int(1)%ptr,dim=1,val=1.0)
-        if (tracer%mesh%continuity<0) then
-            psi_ave(1)%ptr%val=x_all(:,ndgln%x)
-        else
-            call set_all(psi_ave(1)%ptr,X_ALL)
-        end if
         call PROJ_CV_TO_FEM_state(packed_state, &
             FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
             IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
-            PSI_AVE, PSI_INT)
+            tracer,PSI_AVE, PSI_INT)
         XC_CV_ALL=0.0
         !sprint_to_do!use a pointer?
         XC_CV_ALL(1:Mdims%ndim,:)=psi_ave(1)%ptr%val
@@ -4260,7 +4254,7 @@ contains
         fempsi, psi, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
         igetct, X, mass_ele, mass_mn_pres, &
-        psi_ave, psi_int)
+        tracer, psi_ave, psi_int)
 
         !------------------------------------------------
         ! Subroutine description:
@@ -4295,6 +4289,7 @@ contains
         real, dimension(:,:), intent(in) :: X                               ! coordinates of the elements
         real, dimension(:), intent(inout) :: mass_ele                       ! finite element mass
         real, dimension(:), intent(inout) :: mass_mn_pres                   ! ??
+        type(tensor_field), intent(in) :: tracer
         ! the following two need to be changed to optional in the future
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_int ! control volume area
         type(vector_field_pointer), dimension(:), intent(inout) :: psi_ave ! control volume barycentre
@@ -4316,26 +4311,18 @@ contains
         type(vector_field), dimension(size(psi_ave)) :: psi_ave_temp
         type(vector_field), dimension(size(psi_int)) :: psi_int_temp
         type(tensor_field), pointer :: tfield
-        type(petsc_csr_matrix), target :: PMAT
         type(csr_sparsity), pointer :: sparsity
         logical, parameter :: DCYL = .false.
-        logical :: do_not_project = .false., cv_test_space = .false.
-        logical :: cal_psi_ave_int = .false.
+        logical :: do_not_project, cv_test_space, is_to_update
         character(len=*), parameter :: projection_options = '/projections/control_volume_projections'
         character(len=option_path_len) :: option_path
 
         !---------------------------------
         ! initialisation and allocation
         !---------------------------------
-        if(have_option(projection_options//'/do_not_project')) then
-            do_not_project = .true.
-        end if
-        if(have_option(projection_options//'/test_function_space::ControlVolume')) then
-            cv_test_space = .true.
-        end if
-        if(is_first_time_step.or.after_adapt) then
-            cal_psi_ave_int = .true.
-        end if
+        do_not_project = have_option(projection_options//'/do_not_project')
+        cv_test_space = have_option(projection_options//'/test_function_space::ControlVolume')
+        is_to_update = .not.associated(CV_funs%CV2FE%refcount)
 
         allocate(detwei2(CV_GIdims%cv_ngi))
         allocate(ra2(CV_GIdims%cv_ngi))
@@ -4349,27 +4336,32 @@ contains
         volume=>volume2; detwei=>detwei2; ra=>ra2
         tfield=>psi(1)%ptr; NX_ALL=>NX_ALL2
 
-        if(cal_psi_ave_int) then
+        if(is_to_update) then
             call allocate(cv_mass,psi(1)%ptr%mesh,'CV_mass')
             call zero(cv_mass)
+
+            if (tracer%mesh%continuity<0) then
+                psi_ave(1)%ptr%val=X(:,ndgln%x)
+            else
+                call set_all(psi_ave(1)%ptr,X)
+            end if
             do it=1,size(psi_ave)
                 call allocate(psi_ave_temp(it),psi_ave(it)%ptr%dim,psi_ave(it)%ptr%mesh,"PsiAveTemp")
                 call set(psi_ave_temp(it),psi_ave(it)%ptr)
                 call zero(psi_ave(it)%ptr)
             end do
+
+            call set(psi_int(1)%ptr,dim=1,val=1.0)
             do it=1,size(psi_int)
                 call allocate(psi_int_temp(it),psi_int(it)%ptr%dim,psi_int(it)%ptr%mesh,"PsiIntTemp")
                 call set(psi_int_temp(it),psi_int(it)%ptr)
                 call zero(psi_int(it)%ptr)
             end do
-        end if
 
-        !if(.not.associated(CV_funs%CV2FE%ptr)) then
             sparsity=>extract_csr_sparsity(packed_state,"PressureMassMatrixSparsity")
-            call allocate(PMAT,sparsity,[1,1],name="ProjectionMatrix")
-            call zero(PMAT)
-        !    CV_funs%CV2FE%ptr=>PMAT
-        !end if
+            call allocate(CV_funs%CV2FE,sparsity,[1,1],name="ProjectionMatrix")
+            call zero(CV_funs%CV2FE)
+        end if
         if(igetct/=0) mass_mn_pres=0.0
 
         !---------------------------------
@@ -4409,13 +4401,13 @@ contains
                     end do
 
                     if(cv_test_space) then
-                        call addto(PMAT,1,1,cv_nodi,cv_nodj,mn)
+                        if(is_to_update) call addto(CV_funs%CV2FE,1,1,cv_nodi,cv_nodj,mn)
                         do it = 1, size(fempsi_rhs)
                             fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
                                 +mm*psi(it)%ptr%val(:,:,cv_nodj)
                         end do
                     else
-                        call addto(PMAT,1,1,cv_nodi,cv_nodj,nn)
+                        if(is_to_update) call addto(CV_funs%CV2FE,1,1,cv_nodi,cv_nodj,nn)
                         do it = 1, size(fempsi_rhs)
                             fempsi_rhs(it)%val(:,:,cv_nodi) = fempsi_rhs(it)%val(:,:,cv_nodi) &
                                 +nm*psi(it)%ptr%val(:,:,cv_nodj)
@@ -4428,7 +4420,7 @@ contains
                     end if
 
                     ! mass, barycentre and area of CVs
-                    if(cal_psi_ave_int) then
+                    if(is_to_update) then
                         call addto(cv_mass,cv_nodi,mm)
                         do it = 1, size(psi_ave)
                             call addto(psi_ave(it)%ptr,node_number=cv_nodi,val=mn*psi_ave_temp(it)%val(:,cv_nodj))
@@ -4442,9 +4434,11 @@ contains
             end do Loop_CV_iLoc
         end do Loop_Elements
 
-        ! The below does not seem superefficient in terms of updating halo information.
-        ! Form average...
-        if(cal_psi_ave_int) then
+        !---------------------------------
+        ! solving, updating & deallocating
+        !---------------------------------
+        ! update the halo information
+        if(is_to_update) then
             call halo_update(cv_mass)
             call invert(cv_mass)
             do it = 1, size(psi_ave)
@@ -4456,7 +4450,7 @@ contains
             end do
         end if
 
-        ! Solve...
+        ! solve the petsc matrix
         if(do_not_project) then
             do it = 1, size(fempsi)
                 call set(fempsi(it)%ptr,psi(it)%ptr)
@@ -4466,7 +4460,7 @@ contains
                 option_path=projection_options//'/solver'
             else
                 call get_option(trim(psi(1)%ptr%option_path)//"/prognostic/solver/max_iterations", &
-                    max_iterations, default=500)
+                    max_iterations,default=500)
                 if(max_iterations==0) then
                     option_path="/material_phase[0]/scalar_field::Pressure/prognostic"
                 else
@@ -4475,16 +4469,16 @@ contains
             end if
             do it = 1, size(fempsi)
                 call zero_non_owned(fempsi_rhs(it))
-                call petsc_solve(fempsi(it)%ptr,PMAT,fempsi_rhs(it),option_path = option_path)
+                call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = option_path)
             end do
         end if
 
-        !! deallocation
-        call deallocate(cv_mass)
+        ! deallocation
         do it = 1,size(fempsi_rhs)
             call deallocate(fempsi_rhs(it))
         end do
-        if(cal_psi_ave_int) then
+        if(is_to_update) then
+            call deallocate(cv_mass)
             do it = 1,size(psi_ave_temp)
                 call deallocate(psi_ave_temp(it))
             end do
@@ -4492,7 +4486,6 @@ contains
                 call deallocate(psi_int_temp(it))
             end do
         end if
-        call deallocate(PMAT)
         deallocate(detwei2)
         deallocate(ra2)
         deallocate(NX_ALL2)
