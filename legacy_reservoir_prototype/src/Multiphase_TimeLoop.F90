@@ -133,7 +133,7 @@ contains
         real, dimension( :, : ), allocatable :: Mean_Pore_CV
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
         integer :: iplike_grad_sou
-        real, dimension( : ), allocatable :: plike_grad_sou_grad, plike_grad_sou_coef
+        real, dimension( :, :, : ), allocatable :: plike_grad_sou_grad, plike_grad_sou_coef
         !!$ Adaptivity related fields and options:
         type( tensor_field ) :: metric_tensor
         type( state_type ), dimension( : ), pointer :: sub_state => null()
@@ -288,8 +288,8 @@ contains
             Material_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
             ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), & ! fix me..move in intenerg
             !!$ Variables used in the diffusion-like term: capilarity and surface tension:
-            plike_grad_sou_grad( Mdims%cv_nonods * Mdims%nphase ), &
-            plike_grad_sou_coef( Mdims%cv_nonods * Mdims%nphase ), &
+            plike_grad_sou_grad( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ), &
+            plike_grad_sou_coef( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ), &
             )
         !!$
         suf_sig_diagten_bc=0.
@@ -1333,8 +1333,8 @@ end if
                     Material_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
                     ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), &
                     !!$ Variables used in the diffusion-like term: capilarity and surface tension:
-                    plike_grad_sou_grad( Mdims%cv_nonods * Mdims%nphase ), &
-                    plike_grad_sou_coef( Mdims%cv_nonods * Mdims%nphase ) )
+                    plike_grad_sou_grad( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ), &
+                    plike_grad_sou_coef( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ) )
                 !!$
                 Component_Absorption=0.
                 !!$
