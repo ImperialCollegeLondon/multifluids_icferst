@@ -19,7 +19,7 @@ Extract_From_State.o ../include/copy_outof_state.mod: Extract_From_State.F90 \
    ../../include/populate_state_module.mod ../../include/shape_functions.mod \
    ../../include/solvers.mod ../../include/spud.mod \
    ../../include/state_module.mod ../../include/surface_integrals.mod \
-   ../include/multi_data_types.mod
+   ../include/multi_data_types.mod ../include/multi_tools.mod
 
 Multiphase_Prototype_Wrapper.o : Multiphase_Prototype_Wrapper.F90 \
    ../../include/boundary_conditions_from_options.mod \
@@ -80,13 +80,12 @@ cv-adv-dif.o ../include/cv_advection.mod: cv-adv-dif.F90 \
    ../../include/futils.mod ../../include/global_parameters.mod \
    ../../include/memory_diagnostics.mod ../../include/petsc_legacy.h \
    ../../include/petsc_tools.mod ../../include/reference_counting.mod \
-   ../../include/shape_functions.mod ../../include/solvers.mod \
-   ../../include/sparse_tools.mod ../../include/sparsity_patterns.mod \
-   ../../include/spud.mod ../../include/vtk_interfaces.mod \
-   ../include/copy_outof_state.mod ../include/matrix_operations.mod \
-   ../include/multi_data_types.mod ../include/multi_interpolation.mod \
-   ../include/multi_pipes.mod ../include/multi_tools.mod \
-   ../include/shape_functions_linear_quadratic.mod \
+   ../../include/solvers.mod ../../include/sparse_tools.mod \
+   ../../include/sparsity_patterns.mod ../../include/spud.mod \
+   ../../include/vtk_interfaces.mod ../include/copy_outof_state.mod \
+   ../include/matrix_operations.mod ../include/multi_data_types.mod \
+   ../include/multi_interpolation.mod ../include/multi_pipes.mod \
+   ../include/multi_tools.mod ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod
 
@@ -297,12 +296,14 @@ multi_surface_tension.o ../include/multi_surface_tension.mod: \
    ../../include/parallel_tools.mod ../../include/shape_functions.mod \
    ../../include/spud.mod ../../include/state_module.mod \
    ../include/copy_outof_state.mod ../include/cv_advection.mod \
-   ../include/multi_data_types.mod ../include/shape_functions_ndim.mod \
+   ../include/matrix_operations.mod ../include/multi_data_types.mod \
+   ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod
 
 ../include/multi_tools.mod: multi_tools.o
 	@true
 
 multi_tools.o ../include/multi_tools.mod: multi_tools.F90 \
-   ../../include/confdefs.h ../../include/fdebug.h ../../include/fldebug.mod
+   ../../include/confdefs.h ../../include/fdebug.h ../../include/fields.mod \
+   ../../include/fldebug.mod
 
