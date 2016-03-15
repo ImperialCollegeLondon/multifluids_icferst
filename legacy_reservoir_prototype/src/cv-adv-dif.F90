@@ -1320,10 +1320,7 @@ contains
                             GLOBAL_FACE = GLOBAL_FACE + 1
                             JMID = Mspars%small_acv%mid(CV_NODJ)
                             ! Calculate the control volume normals at the Gauss pts.
-                            CALL SCVDETNX_new( ELE, GI, Mdims%x_nloc, CV_GIdims%scvngi, Mdims%totele, Mdims%ndim, &
-                                ndgln%x, Mdims%x_nonods, SCVDETWEI, CVNORMX_ALL,  &
-                                CV_funs%scvfen, CV_funs%scvfenslx, CV_funs%scvfensly, CV_funs%scvfeweigh, XC_CV_ALL( 1:Mdims%ndim, CV_NODI ), &
-                                X_ALL(1:Mdims%ndim,:),  D1, D3, DCYL )
+                            CALL SCVDETNX_new( ELE, GI, SCVDETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ))
                             ! Pablo could store the outcomes of this:
                             IF( GETCT ) THEN
                                 ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
@@ -1755,24 +1752,14 @@ contains
                             !FVD(:)=DEN_ALL(:,CV_NODI)*(1.0-INCOME(:)) + DEN_ALL(:,CV_NODJ)*INCOME(:)
                             ! Generate some local F variables ***************
                             ! loc_f - Unpack into the limiting variables LIMT and may be store them in the cache.
-                            !###############TEMPORARY USAGE IN UNPACK_LOC #######################
-                            !Currently for UNPACK_LOC we are passing CV_GIdims%scvngi*Mdims%totele as the maximum Global_face value
-                            !However, that is an overstimate. sprint_to_do; change to a correct value
-                            !###############################################################
                             IPT=1
-                            CALL UNPACK_LOC( LIMF(:), LIMT( : ),    Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,1), GLOBAL_FACE, IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1),&
-                                CV_GIdims%scvngi*Mdims%totele)
-                            CALL UNPACK_LOC( LIMF(:), LIMTOLD( : ), Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,2), GLOBAL_FACE, IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2),&
-                                CV_GIdims%scvngi*Mdims%totele)
-                            CALL UNPACK_LOC( LIMF(:), LIMD( : ),    Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,3), GLOBAL_FACE, IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3),&
-                                CV_GIdims%scvngi*Mdims%totele)
-                            CALL UNPACK_LOC( LIMF(:), LIMDOLD( : ), Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,4), GLOBAL_FACE, IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4),&
-                                CV_GIdims%scvngi*Mdims%totele)
+                            CALL UNPACK_LOC( LIMF(:), LIMT( : ),    Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,1), GLOBAL_FACE, IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1))
+                            CALL UNPACK_LOC( LIMF(:), LIMTOLD( : ), Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,2), GLOBAL_FACE, IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2))
+                            CALL UNPACK_LOC( LIMF(:), LIMD( : ),    Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,3), GLOBAL_FACE, IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3))
+                            CALL UNPACK_LOC( LIMF(:), LIMDOLD( : ), Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,4), GLOBAL_FACE, IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4))
                             IF ( use_volume_frac_T2 ) THEN
-                                CALL UNPACK_LOC( LIMF(:), LIMT2( : ),    Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,5), GLOBAL_FACE, IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5),&
-                                    CV_GIdims%scvngi*Mdims%totele)
-                                CALL UNPACK_LOC( LIMF(:), LIMT2OLD( : ), Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,6), GLOBAL_FACE, IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6),&
-                                    CV_GIdims%scvngi*Mdims%totele)
+                                CALL UNPACK_LOC( LIMF(:), LIMT2( : ),    Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,5), GLOBAL_FACE, IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5))
+                                CALL UNPACK_LOC( LIMF(:), LIMT2OLD( : ), Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,6), GLOBAL_FACE, IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6))
                             else
                                 LIMT2( : )=1.0; LIMT2OLD( : )=1.0
                             ENDIF
@@ -1888,22 +1875,18 @@ contains
                                     END IF
                                 END IF
                                 ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
-                                !sprint_to_do; update to use new structures
+
                                 CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
-                                    Mdims, CV_funs, ndgln, Mmat, &
-                                    GI,  &
+                                    Mdims, CV_funs, ndgln, Mmat, GI,  &
                                     between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
                                     JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
                                     SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
                                     WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
-                                    UGI_COEF_ELE_ALL,  &
-                                    UGI_COEF_ELE2_ALL,  &
-                                    NDOTQNEW, NDOTQOLD, LIMD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, &
-                                    NDOTQ_HAT, &
+                                    UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
+                                    NDOTQNEW, NDOTQOLD, LIMD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
                                     FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
-                                    RETRIEVE_SOLID_CTY,theta_cty_solid, &
-                                    loc_u, loc2_u, THETA_VEL, &
-                                    rdum_ndim_nphase_1,   rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
+                                    RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, loc2_u, THETA_VEL, &
+                                    rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
                                     SUF_INT_MASS_MATRIX2, recal_c_cv_rhs)
                                 do ipres=1,Mdims%npres
                                     call addto(Mmat%CT_RHS,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
@@ -2566,26 +2549,6 @@ contains
         end if
         if (capillary_pressure_activated) deallocate(CAP_DIFFUSION)
         ewrite(3,*) 'Leaving CV_ASSEMB'
-#ifdef USING_GFORTRAN
-        !Nothing to do here
-#else
-        !THIS IS ONLY NECESSARY BECAUSE THE COMPILER IN CX1 DOES NOT ALLOW RESHAPING VECTORS
-        !Variables from cv_fem_shape_funs_plus_storage!sprint_to_do remove this
-        deallocate(CV_funs%cvn, CVN_SHORT,CV_funs%cvfen, CV_funs%cvfenlx_all,CVFEN_SHORT, CVFENLX_SHORT_ALL, &
-            CV_funs%ufen, CV_funs%ufenlx_all,CV_funs%cv_neiloc, &
-            CV_funs%scvfen, CV_funs%scvfenslx, CV_funs%scvfensly,CV_funs%scvfenlx_all,CV_funs%sufen, CV_funs%sufenslx, CV_funs%sufensly,  &
-            CV_funs%sufenlx_all,CV_funs%sbcvn, CV_funs%sbcvfen,CV_funs%sbcvfenslx,&
-            CV_funs%sbcvfensly, CV_funs%sbcvfenlx_all,CV_funs%sbufen, CV_funs%sbufenslx,&
-            CV_funs%sbufensly, CV_funs%sbufenlx_all, CV_funs%cv_sloclist, CV_funs%u_sloclist)
-        !Variables from DETNLXR_INVJAC
-        deallocate(SCVFENX_ALL, INV_JAC)
-        !We make sure the storage of get_int_vel is not used
-        if (present(indx)) then
-            indx = 0
-            deallocate(INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
-            nullify(INCOMEOLD); nullify(NDOTQOLD); nullify(NUOLDGI_ALL)
-        end if
-#endif
         RETURN
     contains
         subroutine dump_multiphase(prefix,icp)
@@ -3322,6 +3285,180 @@ contains
             TDLIM = MAX( TDLIM, 0.0 )
             RETURN
         END SUBROUTINE ONVDLIM_ANO_MANY
+
+
+
+    SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL)
+        !     --------------------------------------------------
+        !
+        !     - this subroutine calculates the control volume (CV)
+        !     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
+        !     - integration points GI. NODI = the current global
+        !     - node number for the co-ordinates.
+        !     - (XC,YC,ZC) is the centre of CV NODI
+        !
+        !     -------------------------------
+        !     - date last modified : 15/03/2003
+        !     -------------------------------
+        IMPLICIT NONE
+        INTEGER, intent( in ) :: ELE, GI
+        REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
+        REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
+        REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
+
+        !     - Local variables
+        INTEGER :: NODJ,  JLOC
+        REAL :: A, B, C
+        REAL :: DETJ
+        REAL :: DXDLX, DXDLY, DYDLX
+        REAL :: DYDLY, DZDLX, DZDLY
+        REAL :: TWOPI
+        REAL, PARAMETER :: PI = 3.14159265
+        REAL :: POSVGIX, POSVGIY, POSVGIZ
+        REAL :: RGI, RDUM
+
+        !ewrite(3,*)' In SCVDETNX'
+
+        Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
+
+            DXDLX = 0.0;DXDLY = 0.0
+            DYDLX = 0.0;DYDLY = 0.0
+            DZDLX = 0.0;DZDLY = 0.0
+            POSVGIX = 0.0;POSVGIY = 0.0;POSVGIZ = 0.0
+
+            do  JLOC = 1, Mdims%x_nloc
+
+                NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+                DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
+                DXDLY = DXDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(1,NODJ)
+                DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
+                DYDLY = DYDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(2,NODJ)
+                DZDLX = DZDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(3,NODJ)
+                DZDLY = DZDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(3,NODJ)
+
+                POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
+                POSVGIY = POSVGIY + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
+                POSVGIZ = POSVGIZ + CV_funs%scvfen(JLOC,GI)*X_ALL(3,NODJ)
+            end do
+
+            !     - Note that POSVGIX,POSVGIY and POSVGIZ can be considered as the
+            !     - components of the Gauss pnt GI with the co-ordinate origin
+            !     - positioned at the current control volume NODI.
+
+            POSVGIX = POSVGIX - XC_ALL(1)
+            POSVGIY = POSVGIY - XC_ALL(2)
+            POSVGIZ = POSVGIZ - XC_ALL(3)
+
+            A = DYDLX*DZDLY - DYDLY*DZDLX
+            B = DXDLX*DZDLY - DXDLY*DZDLX
+            C = DXDLX*DYDLY - DXDLY*DYDLX
+            !
+            !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
+            !
+            DETJ = SQRT( A**2 + B**2 + C**2 )
+            !
+            !     - Calculate the determinant times the surface weight at Gauss pnt GI.
+            !
+            SCVDETWEI(GI) = DETJ*CV_funs%scvfeweigh(GI)
+            !
+            !     - Calculate the normal at the Gauss pts
+            !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
+            !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
+            !     - Perform cross-product. N = T1 x T2
+            !
+            CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
+                DXDLX,       DYDLX,       DZDLX, &
+                DXDLY,       DYDLY,       DZDLY,&
+                POSVGIX,     POSVGIY,     POSVGIZ )
+
+        ELSE IF(Mdims%ndim == 2) THEN
+
+            TWOPI = 1.0
+
+            RGI   = 0.0
+            DXDLX = 0.0;DXDLY = 0.0
+            DYDLX = 0.0;DYDLY = 0.0
+            DZDLX = 0.0
+            !
+            !     - Note that we set the derivative wrt to y of coordinate z to 1.0
+            !
+            DZDLY = 1.0
+
+            POSVGIX = 0.0;POSVGIY = 0.0;POSVGIZ = 0.0
+
+            do  JLOC = 1, Mdims%x_nloc! Was loop 300
+
+                NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+                DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
+                DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
+
+                POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
+                POSVGIY = POSVGIY + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
+
+                RGI = RGI + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
+
+            end do ! Was loop 300
+            !
+            !     - Note that POSVGIX and POSVGIY can be considered as the components
+            !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
+            !     - current control volume NODI.
+            !
+
+            POSVGIX = POSVGIX - XC_ALL(1)
+            POSVGIY = POSVGIY - XC_ALL(2)
+
+            RGI = 1.0
+
+            DETJ = SQRT( DXDLX**2 + DYDLX**2 )
+            SCVDETWEI(GI)  = TWOPI*RGI*DETJ*CV_funs%scvfeweigh(GI)
+            !
+            !     - Calculate the normal at the Gauss pts
+            !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
+            !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
+            !     - Perform cross-product. N = T1 x T2
+            !
+            CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
+                DXDLX,       DYDLX,       DZDLX, &
+                DXDLY,       DYDLY,       DZDLY,&
+                POSVGIX,     POSVGIY,     POSVGIZ )
+
+        ELSE
+            ! For 1D...
+
+            POSVGIX = 0.0
+
+            do  JLOC = 1, Mdims%x_nloc! Was loop 300
+
+                NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+                POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
+
+            end do ! Was loop 300
+            !
+            !     - Note that POSVGIX and POSVGIY can be considered as the components
+            !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
+            !     - current control volume NODI.
+            !
+            !          EWRITE(3,*)'POSVGIX, XC,POSVGIX - XC:',POSVGIX, XC,POSVGIX - XC
+            POSVGIX = POSVGIX - XC_ALL(1)
+            ! SIGN(A,B) sign of B times A.
+            !       CVNORMX(GI) = SIGN( 1.0, POSVGIX )
+            CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGIX )
+
+            DETJ = 1.0
+            SCVDETWEI(GI)  = DETJ*CV_funs%scvfeweigh(GI)
+
+
+        ENDIF Conditional_Dimension
+
+    END SUBROUTINE SCVDETNX_new
+
+
+
+
+
     END SUBROUTINE CV_ASSEMB
 
 
@@ -3737,51 +3874,40 @@ contains
         CALL PACK_LOC( LIMF(:), TGI( 1:NPHASE ),    NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,1) ) ! t
         CALL PACK_LOC( LIMF(:), TGI( 1+NPHASE:2*NPHASE ), NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,2) ) ! TOLD_ALL
 
-        RETURN
+        contains
+
+        SUBROUTINE TRI_tet_LOCCORDS(Xpt, LOCCORDS,  &
+            !     The 3 corners of the tri...
+            X_CORNERS_ALL, NDIM,CV_NLOC)
+            ! obtain the local coordinates LOCCORDS from a pt in or outside the tet/triangle Xpt
+            ! with corner nodes X_CORNERS_ALL
+            IMPLICIT NONE
+            INTEGER, intent(in) :: NDIM,CV_NLOC
+            REAL, dimension(NDIM), intent(in) :: Xpt
+            REAL, dimension(NDIM+1), intent(inout) :: LOCCORDS
+            REAL, dimension(NDIM,CV_NLOC), intent(in) :: X_CORNERS_ALL
+
+            IF (NDIM==3) THEN
+
+                CALL TRILOCCORDS(Xpt(1),Xpt(2),Xpt(3), &
+                    LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
+                    !     The 4 corners of the tet...
+                    X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),X_CORNERS_ALL(3,1),&
+                    X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),X_CORNERS_ALL(3,2),&
+                    X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3),X_CORNERS_ALL(3,3),&
+                    X_CORNERS_ALL(1,4),X_CORNERS_ALL(2,4),X_CORNERS_ALL(3,4) )
+            ELSE
+                CALL TRILOCCORDS2D(Xpt(1),Xpt(2), &
+                    LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
+                    !     The 3 corners of the tri...
+                    X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),&
+                    X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),&
+                    X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3) )
+            END IF
+            ! From  the local coordinates find the shape function value...
+            RETURN
+        END SUBROUTINE TRI_tet_LOCCORDS
     END SUBROUTINE APPLY_ENO_2_T
-    !
-    !
-    !
-    !
-    !sprint_to_do !make internal subroutine?
-    SUBROUTINE TRI_tet_LOCCORDS(Xpt, LOCCORDS,  &
-        !     The 3 corners of the tri...
-        X_CORNERS_ALL, NDIM,CV_NLOC)
-        ! obtain the local coordinates LOCCORDS from a pt in or outside the tet/triangle Xpt
-        ! with corner nodes X_CORNERS_ALL
-        IMPLICIT NONE
-        INTEGER, intent(in) :: NDIM,CV_NLOC
-        REAL, dimension(NDIM), intent(in) :: Xpt
-        REAL, dimension(NDIM+1), intent(inout) :: LOCCORDS
-        REAL, dimension(NDIM,CV_NLOC), intent(in) :: X_CORNERS_ALL
-
-        IF (NDIM==3) THEN
-
-            CALL TRILOCCORDS(Xpt(1),Xpt(2),Xpt(3), &
-                LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),LOCCORDS(4),&
-                !     The 4 corners of the tet...
-                X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),X_CORNERS_ALL(3,1),&
-                X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),X_CORNERS_ALL(3,2),&
-                X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3),X_CORNERS_ALL(3,3),&
-                X_CORNERS_ALL(1,4),X_CORNERS_ALL(2,4),X_CORNERS_ALL(3,4) )
-        ELSE
-            CALL TRILOCCORDS2D(Xpt(1),Xpt(2), &
-                LOCCORDS(1),LOCCORDS(2),LOCCORDS(3),&
-                !     The 3 corners of the tri...
-                X_CORNERS_ALL(1,1),X_CORNERS_ALL(2,1),&
-                X_CORNERS_ALL(1,2),X_CORNERS_ALL(2,2),&
-                X_CORNERS_ALL(1,3),X_CORNERS_ALL(2,3) )
-        END IF
-        ! From  the local coordinates find the shape function value...
-        RETURN
-    END SUBROUTINE TRI_tet_LOCCORDS
-
-
-
-
-
-
-
 
 
     SUBROUTINE IS_FIELD_CONSTANT(IGOT_T_CONST, IGOT_T_CONST_VALUE, T_ALL, CV_NONODS)
@@ -3861,12 +3987,11 @@ contains
     END SUBROUTINE I_PACK_LOC
 
 
-    SUBROUTINE UNPACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK, GLOBAL_FACE, IGOT_T_CONST, IGOT_T_CONST_VALUE,&
-        TOTAL_GLOBAL_FACE)
+    SUBROUTINE UNPACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK, GLOBAL_FACE, IGOT_T_CONST, IGOT_T_CONST_VALUE)
         ! If PACK then UNpack loc_f into T_ALL  as long at IGOT_T==1 and STORE and not already in storage.
         IMPLICIT NONE
         LOGICAL, intent( in ) :: STORE
-        INTEGER, intent( in ) :: NPHASE,NFIELD, TOTAL_GLOBAL_FACE
+        INTEGER, intent( in ) :: NPHASE,NFIELD
         INTEGER, intent( in ) :: GLOBAL_FACE
         ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
         INTEGER, intent( inout ) :: IPT
@@ -4269,14 +4394,6 @@ contains
         ! (2) (optional) calculate psi_int (area) and
         !     psi_ave (barycentre) over each CV
         !------------------------------------------------
-
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        !sprint_to_do!not use internal use in subroutines
-        use shape_functions
-        use shape_functions_Linear_Quadratic
-        use solvers_module
-        use matrix_operations
-        !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
         implicit none
 
@@ -5507,228 +5624,7 @@ contains
 
 
     !sprint_to_do!find a new house for this
-    SUBROUTINE SCVDETNX_new( ELE,      GI,        &
-                                 !     - INTEGERS
-        NLOC,     SVNGI,   TOTELE, NDIM,  &
-        XNDGLN,   XNONOD,&
-                                 !     - REALS
-        CVDETWEI, CVNORMX_ALL, &
-        SVN,     SVNLX,    &
-        SVNLY,    SVWEIGH, XC_ALL,     &
-        X_ALL,        &
-                                 !     - LOGICALS
-        D1,       D3,       DCYL )
-        !     --------------------------------------------------
-        !
-        !     - this subroutine calculates the control volume (CV)
-        !     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
-        !     - integration points GI. NODI = the current global
-        !     - node number for the co-ordinates.
-        !     - (XC,YC,ZC) is the centre of CV NODI
-        !
-        !     -------------------------------
-        !     - date last modified : 15/03/2003
-        !     -------------------------------
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: ELE,    GI
-        INTEGER, intent( in ) ::  NLOC
-        INTEGER , intent( in ) ::  SVNGI,  TOTELE, NDIM
-        INTEGER, intent( in ) ::   XNONOD
-        REAL, DIMENSION( NDIM ), intent( in ) ::   XC_ALL
-        INTEGER, DIMENSION( : ), intent( in ) :: XNDGLN
-        REAL, DIMENSION( NDIM, SVNGI ), intent( inout ) :: CVNORMX_ALL
-        REAL, DIMENSION( : ), intent( inout ) :: CVDETWEI
-        REAL, DIMENSION( :, : ), intent( in ) :: SVN, SVNLX, SVNLY
-        REAL, DIMENSION( : ), intent( in ) :: SVWEIGH
-        REAL, DIMENSION( :, : ), intent( in ) :: X_ALL ! dimension(NDIM,XNONOD)
-        LOGICAL, intent( in ) ::  D1, D3, DCYL
 
-        !     - Local variables
-        INTEGER :: NODJ,  JLOC
-        REAL :: A, B, C
-        REAL :: DETJ
-        REAL :: DXDLX, DXDLY, DYDLX
-        REAL :: DYDLY, DZDLX, DZDLY
-        REAL :: TWOPI
-        REAL, PARAMETER :: PI = 3.14159265
-        REAL :: POSVGIX, POSVGIY, POSVGIZ
-        REAL :: RGI, RDUM
-
-        !ewrite(3,*)' In SCVDETNX'
-
-        Conditional_Dimension: IF( D3 ) THEN
-
-            DXDLX = 0.0
-            DXDLY = 0.0
-
-            DYDLX = 0.0
-            DYDLY = 0.0
-
-            DZDLX = 0.0
-            DZDLY = 0.0
-
-            POSVGIX = 0.0
-            POSVGIY = 0.0
-            POSVGIZ = 0.0
-
-            do  JLOC = 1, NLOC
-
-                NODJ = XNDGLN((ELE-1)*NLOC+JLOC)
-
-                DXDLX = DXDLX + SVNLX(JLOC,GI)*X_ALL(1,NODJ)
-                DXDLY = DXDLY + SVNLY(JLOC,GI)*X_ALL(1,NODJ)
-                DYDLX = DYDLX + SVNLX(JLOC,GI)*X_ALL(2,NODJ)
-                DYDLY = DYDLY + SVNLY(JLOC,GI)*X_ALL(2,NODJ)
-                DZDLX = DZDLX + SVNLX(JLOC,GI)*X_ALL(3,NODJ)
-                DZDLY = DZDLY + SVNLY(JLOC,GI)*X_ALL(3,NODJ)
-
-                POSVGIX = POSVGIX + SVN(JLOC,GI)*X_ALL(1,NODJ)
-                POSVGIY = POSVGIY + SVN(JLOC,GI)*X_ALL(2,NODJ)
-                POSVGIZ = POSVGIZ + SVN(JLOC,GI)*X_ALL(3,NODJ)
-            end do
-
-            !     - Note that POSVGIX,POSVGIY and POSVGIZ can be considered as the
-            !     - components of the Gauss pnt GI with the co-ordinate origin
-            !     - positioned at the current control volume NODI.
-
-            POSVGIX = POSVGIX - XC_ALL(1)
-            POSVGIY = POSVGIY - XC_ALL(2)
-            POSVGIZ = POSVGIZ - XC_ALL(3)
-
-            A = DYDLX*DZDLY - DYDLY*DZDLX
-            B = DXDLX*DZDLY - DXDLY*DZDLX
-            C = DXDLX*DYDLY - DXDLY*DYDLX
-            !
-            !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
-            !
-            DETJ = SQRT( A**2 + B**2 + C**2 )
-            !
-            !     - Calculate the determinant times the surface weight at Gauss pnt GI.
-            !
-            CVDETWEI(GI) = DETJ*SVWEIGH(GI)
-            !
-            !     - Calculate the normal at the Gauss pts
-            !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
-            !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
-            !     - Perform cross-product. N = T1 x T2
-            !
-            !       CALL NORMGI( CVNORMX(GI), CVNORMY(GI), CVNORMZ(GI),&
-            CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
-                DXDLX,       DYDLX,       DZDLX, &
-                DXDLY,       DYDLY,       DZDLY,&
-                POSVGIX,     POSVGIY,     POSVGIZ )
-
-        ELSE IF(.NOT.D1) THEN
-
-            TWOPI = 1.0
-
-            IF( DCYL ) TWOPI = 2.0*PI
-
-            RGI   = 0.0
-
-            DXDLX = 0.0
-            DXDLY = 0.0
-
-            DYDLX = 0.0
-            DYDLY = 0.0
-
-            DZDLX = 0.0
-            !
-            !     - Note that we set the derivative wrt to y of coordinate z to 1.0
-            !
-            DZDLY = 1.0
-
-            POSVGIX = 0.0
-            POSVGIY = 0.0
-            POSVGIZ = 0.0
-
-            do  JLOC = 1, NLOC! Was loop 300
-
-                NODJ = XNDGLN((ELE-1)*NLOC+JLOC)
-
-                DXDLX = DXDLX + SVNLX(JLOC,GI)*X_ALL(1,NODJ)
-                DYDLX = DYDLX + SVNLX(JLOC,GI)*X_ALL(2,NODJ)
-
-                POSVGIX = POSVGIX + SVN(JLOC,GI)*X_ALL(1,NODJ)
-                POSVGIY = POSVGIY + SVN(JLOC,GI)*X_ALL(2,NODJ)
-
-                RGI = RGI + SVN(JLOC,GI)*X_ALL(2,NODJ)
-
-            end do ! Was loop 300
-            !
-            !     - Note that POSVGIX and POSVGIY can be considered as the components
-            !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
-            !     - current control volume NODI.
-            !
-
-            POSVGIX = POSVGIX - XC_ALL(1)
-            POSVGIY = POSVGIY - XC_ALL(2)
-
-            IF( .NOT. DCYL ) RGI = 1.0
-
-            DETJ = SQRT( DXDLX**2 + DYDLX**2 )
-            CVDETWEI(GI)  = TWOPI*RGI*DETJ*SVWEIGH(GI)
-            !
-            !     - Calculate the normal at the Gauss pts
-            !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
-            !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
-            !     - Perform cross-product. N = T1 x T2
-            !
-            !       CALL NORMGI( CVNORMX(GI), CVNORMY(GI), CVNORMZ(GI),&
-            CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
-                DXDLX,       DYDLX,       DZDLX, &
-                DXDLY,       DYDLY,       DZDLY,&
-                POSVGIX,     POSVGIY,     POSVGIZ )
-
-           !ewrite(3,*) 'CVNORMX(GI), CVNORMY(GI), CVNORMZ(GI):',CVNORMX(GI), CVNORMY(GI), CVNORMZ(GI)
-           !ewrite(3,*) 'DXDLX,       DYDLX,       DZDLX:',DXDLX,       DYDLX,       DZDLX
-           !ewrite(3,*) 'DXDLY,       DYDLY,       DZDLY:',DXDLY,       DYDLY,       DZDLY
-           !ewrite(3,*) 'POSVGIX,     POSVGIY,     POSVGIZ:',POSVGIX,     POSVGIY,     POSVGIZ
-           !
-           !     - End of GI loop
-
-        ELSE
-            ! For 1D...
-
-            POSVGIX = 0.0
-
-            do  JLOC = 1, NLOC! Was loop 300
-
-                NODJ = XNDGLN((ELE-1)*NLOC+JLOC)
-
-                POSVGIX = POSVGIX + SVN(JLOC,GI)*X_ALL(1,NODJ)
-
-            end do ! Was loop 300
-            !
-            !     - Note that POSVGIX and POSVGIY can be considered as the components
-            !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
-            !     - current control volume NODI.
-            !
-            !          EWRITE(3,*)'POSVGIX, XC,POSVGIX - XC:',POSVGIX, XC,POSVGIX - XC
-            POSVGIX = POSVGIX - XC_ALL(1)
-            ! SIGN(A,B) sign of B times A.
-            !       CVNORMX(GI) = SIGN( 1.0, POSVGIX )
-            CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGIX )
-
-            !       IF(POSVGIX > 0 ) THEN
-            !          CVNORMX_ALL(1,GI) = +1.0
-            !       ELSE
-            !          CVNORMX_ALL(1,GI) = -1.0
-            !       ENDIF
-            !       CVNORMY(GI)=0.0
-            !       CVNORMZ(GI)=0.0
-
-            DETJ = 1.0
-            CVDETWEI(GI)  = DETJ*SVWEIGH(GI)
-
-           !       IF(GI.EQ.3) THEN
-           !         EWRITE(3,*)'CVNORMX(GI),POSVGIX,XC:',CVNORMX(GI),POSVGIX,XC
-           !         STOP 39344
-           !       ENDIF
-
-        ENDIF Conditional_Dimension
-
-    END SUBROUTINE SCVDETNX_new
 
 
 
