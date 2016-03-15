@@ -89,12 +89,6 @@ cv-adv-dif.o ../include/cv_advection.mod: cv-adv-dif.F90 \
    ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod
 
-../include/printout.mod: multi_IO.o
-	@true
-
-multi_IO.o ../include/printout.mod: multi_IO.F90 ../../include/confdefs.h \
-   ../../include/fdebug.h ../../include/fldebug.mod
-
 ../include/multiphase_caching.mod: multi_caching.o
 	@true
 
@@ -139,7 +133,7 @@ multi_dyncore_dg.o ../include/multiphase_1d_engine.mod: multi_dyncore_dg.F90 \
    ../include/cv_advection.mod ../include/matrix_operations.mod \
    ../include/multi_data_types.mod ../include/multi_pipes.mod \
    ../include/multiphase_caching.mod ../include/multiphase_eos.mod \
-   ../include/printout.mod ../include/shape_functions_ndim.mod \
+   ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod \
    ../include/spact.mod
 

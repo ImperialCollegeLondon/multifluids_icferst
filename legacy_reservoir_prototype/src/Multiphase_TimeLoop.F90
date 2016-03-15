@@ -81,7 +81,6 @@ module multiphase_time_loop
 #endif
     !use matrix_operations
     !use shape_functions
-    !use printout
     implicit none
     private
     !public :: MultiFluids_SolveTimeLoop, rheology, dump_outflux

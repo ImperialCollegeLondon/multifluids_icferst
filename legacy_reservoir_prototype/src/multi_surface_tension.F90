@@ -197,7 +197,6 @@ contains
 
      !use shape_functions
      !use matrix_operations
-     !use printout
      ! Inputs/Outputs
      IMPLICIT NONE
      type(state_type), dimension( : ), intent( inout ) :: state
