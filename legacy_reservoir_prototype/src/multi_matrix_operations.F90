@@ -1042,68 +1042,6 @@ contains
         RETURN
     END SUBROUTINE PHA_BLOCK_INV
 
-    !sprint_to_do!see what we do with storage
-    SUBROUTINE PHA_BLOCK_INV_plus_storage( PIVIT_MAT, TOTELE, &
-        NBLOCK, Storage_state, StorName, indx)
-          !Retrieves the inverse of the PIVIT_MAT fron the storage
-        implicit none
-        INTEGER, intent( in ) :: TOTELE, NBLOCK
-        REAL, DIMENSION( : , : , : ), intent( inout ), pointer :: PIVIT_MAT
-        type( state_type ), intent( inout ):: Storage_state
-        character(len=*), intent(in) :: StorName
-        integer, intent(inout) :: indx
-        ! Local variables
-        integer :: from, to
-        type(mesh_type), pointer :: fl_mesh
-        type(mesh_type) :: Auxmesh
-        type(scalar_field), target :: targ_NX_ALL
-        REAL, DIMENSION( :, :, : ), allocatable :: PIVIT_MAT2
-
-        if (indx==0) then !The first time we need to introduce the targets in state
-            if (has_scalar_field(Storage_state, trim(Storname))) then
-                !If we are recalculating due to a mesh modification then
-                !we return to the original situation
-                call remove_scalar_field(Storage_state, trim(Storname))
-            end if
-            !Get mesh file just to be able to allocate the fields we want to store
-            fl_mesh => extract_mesh( Storage_state, "FakeMesh" )
-            Auxmesh = make_mesh(fl_mesh,name=trim(Storname))
-            !The number of nodes I want does not coincide
-            Auxmesh%nodes = NBLOCK * NBLOCK * TOTELE
-
-            call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
-
-            !Now we insert them in state and store the indexes
-            call insert(Storage_state, Targ_NX_ALL, trim(Storname))
-            !Store index
-            indx = size(Storage_state%scalar_fields)
-
-            call deallocate (Targ_NX_ALL)
-            call deallocate (Auxmesh)
-
-            !We have to calculate and store the inverse
-            ALLOCATE( PIVIT_MAT2( NBLOCK, NBLOCK, TOTELE ))
-
-            PIVIT_MAT2 = PIVIT_MAT!Very slow, but necessary because CX1 cannot reshape pointers...
-            deallocate(PIVIT_MAT)!PIVIT_MAT comes already allocated
-            nullify(PIVIT_MAT)
-            call PHA_BLOCK_INV( PIVIT_MAT2, TOTELE, NBLOCK )
-
-            !Store data
-            from = 1; to = NBLOCK * NBLOCK * TOTELE
-            Storage_state%scalar_fields(abs(indx))%ptr%val(from:to) =&
-                reshape(PIVIT_MAT2,[NBLOCK * NBLOCK * TOTELE])
-            deallocate(PIVIT_MAT2)
-            indx = abs(indx)
-        end if
-
-        !Set the pointer to the  solution
-        from = 1; to = NBLOCK * NBLOCK * TOTELE
-        call reshape_vector2pointer(Storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
-            PIVIT_MAT, NBLOCK, NBLOCK, TOTELE)
-
-
-    END SUBROUTINE PHA_BLOCK_INV_plus_storage
 
 
     SUBROUTINE PHA_BLOCK_MAT_VEC_old( U, BLOCK_MAT, CDP, NDIM, NPHASE, &
@@ -1153,10 +1091,6 @@ contains
 
 
     END SUBROUTINE PHA_BLOCK_MAT_VEC_old
-
-
-
-
 
 
     SUBROUTINE PHA_BLOCK_MAT_VEC( U, BLOCK_MAT, CDP, U_NONODS, NDIM, NPHASE, &

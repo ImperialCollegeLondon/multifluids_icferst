@@ -182,7 +182,7 @@ contains
     end subroutine Calculate_ComponentAbsorptionTerm
 
 
-    subroutine Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, &
+    subroutine Calculate_ComponentDiffusionTerm( state, packed_state, &
         Mdims, CV_GIdims, CV_funs,&
         mat_ndgln, u_ndgln, x_ndgln, &
         ncomp_diff_coef, comp_diffusion_opt, &
@@ -195,7 +195,7 @@ contains
         !!$ COMP_DIFF_COEF( Mdims%ncomp,  NCOMP_DIFF_COEF, Mdims%nphase  )
         implicit none
         type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state, storage_state
+        type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims
         type(multi_shape_funs), intent(in) :: CV_funs
@@ -241,7 +241,7 @@ contains
             Mdims, CV_GIdims, CV_funs,&
             COMP_DIFFUSION, NCOMP_DIFF_COEF, COMP_DIFF_COEF, &
             X_ALL%val, NU, NV, NW, MAT_NDGLN, U_NDGLN, X_NDGLN, &
-            MAT_U,  storage_state)
+            MAT_U)
         ! Determine the diffusion coeff tensor COMP_DIFFUSION from MAT_U and COMP_DIFF_COEF
         DO MAT_NOD = 1, Mdims%mat_nonods
             DO IPHASE = 1, Mdims%nphase
@@ -264,7 +264,7 @@ contains
         Mdims, CV_GIdims, CV_funs,&
         COMP_DIFFUSION, NCOMP_DIFF_COEF, COMP_DIFF_COEF, &
         X_ALL, NU, NV, NW, MAT_NDGLN, U_NDGLN, X_NDGLN, &
-        MAT_U,  storage_state)
+        MAT_U)
         ! Determine MAT_U from NU,NV,NW which are variables mapped to material mesh.
 
         implicit none
@@ -280,7 +280,6 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
         INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN
         REAL, DIMENSION( :), intent( inout ) :: MAT_U
-        type( state_type ), intent( inout ) :: storage_state
         ! Determine MAT_U from NU,NV,NW which are these variables mapped to material mesh.
         ! Local variables
         REAL, DIMENSION( :, : ), ALLOCATABLE :: MASS, INV_MASS, MASS2U, INV_MASS_NM

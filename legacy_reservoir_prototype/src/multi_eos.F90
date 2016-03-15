@@ -1707,58 +1707,6 @@ contains
     end subroutine update_velocity_source
 
 
-    !sprint_to_do!do this properly
-    subroutine extract_scalar_from_diamond(state, storage_state, field_values, path, StorName, indx, iphase, nphase)
-        !Gets a scalar field directly from Diamond
-        !Path have to end in /prescribed/value
-        !Indx is for the cashing
-        !If no phases, then pass iphase = nphase = 1
-        !NOTE: This was initially done for capillary pressure with regions
-        implicit none
-        type(state_type), dimension(:), intent(inout) :: state
-        type(state_type), intent(inout) :: storage_state
-        real, dimension(:), pointer, intent(inout) :: field_values
-        character(len=*), intent(in) :: path, StorName
-        integer, intent(inout) :: indx
-        integer, intent(in) :: iphase, nphase
-        !Working pointers
-        type (scalar_field), pointer :: Sfield
-        type(vector_field), pointer :: position
-        type(scalar_field), target :: targ_Store
-        type(mesh_type), pointer :: fl_mesh
-        type(mesh_type) :: Auxmesh
-        integer :: siz
-        if (indx<=0) then!Everything needs to be calculated
-            if (has_scalar_field(storage_state, StorName)) then
-                !If we are recalculating due to a mesh modification then
-                !we return to the original situation
-                call remove_scalar_field(storage_state, StorName)
-            end if
-
-
-            !By default I use the Pressure mesh (Number 1)
-            Sfield => extract_scalar_field(state(1),1)
-            position => get_external_coordinate_field(state(1), Sfield%mesh)
-            fl_mesh => extract_mesh( storage_state, "FakeMesh" )
-            Auxmesh = fl_mesh
-            !The number of nodes I want does not coincide
-            Auxmesh%nodes = size(Sfield%val,1) * nphase
-            call allocate (targ_Store, Auxmesh, StorName)
-
-            !            call allocate(targ_Store, Sfield%mesh)
-            call initialise_field_over_regions(targ_Store, path, position)
-            !Now we insert them in state and store the indexes
-            call insert(storage_state, targ_Store, StorName)
-            call deallocate (targ_Store)
-            indx = size(storage_state%scalar_fields)
-        end if
-        !Get the data
-        siz = size(storage_state%scalar_fields(abs(indx))%ptr%val(:),1)/nphase
-        field_values => storage_state%scalar_fields(abs(indx))%ptr%val((iphase-1)*siz + 1: siz * iphase )
-
-
-    end subroutine extract_scalar_from_diamond
-
     !sprint_to_do!delete before the sprint is over
     subroutine boiling( states, packed_state, cv_nonods, mat_nonods, nphase, ndim, &
         ScalarField_Source, velocity_absorption, temperature_absorption )

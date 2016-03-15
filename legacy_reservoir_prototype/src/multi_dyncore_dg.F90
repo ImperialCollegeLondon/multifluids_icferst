@@ -72,7 +72,7 @@ module multiphase_1D_engine
 contains
 
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
-       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state, &
+       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
        tracer, velocity, density,  DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -85,7 +85,7 @@ contains
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
-           type( state_type ), intent( inout ) :: packed_state, storage_state
+           type( state_type ), intent( inout ) :: packed_state
            type(multi_dimensions), intent(in) :: Mdims
            type(multi_GI_dimensions), intent(in) :: CV_GIdims
            type(multi_shape_funs), intent(in) :: CV_funs
@@ -213,7 +213,7 @@ contains
               ncomp_diff_coef = 0 ; comp_diffusion_opt = 0
               allocate( Component_Diffusion_Operator_Coefficient( Mdims%ncomp, ncomp_diff_coef, Mdims%nphase ) )
               Component_Diffusion_Operator_Coefficient = 0.0
-              call Calculate_ComponentDiffusionTerm( state, packed_state, storage_state, &
+              call Calculate_ComponentDiffusionTerm( state, packed_state, &
                  Mdims, CV_GIdims, CV_funs, &
                  ndgln%mat, ndgln%u, ndgln%x, &
                  ncomp_diff_coef, comp_diffusion_opt, &
@@ -288,7 +288,7 @@ contains
 
 
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
-         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state, &
+         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
          DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, V_ABSORB, VOLFRA_PORE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -300,7 +300,7 @@ contains
          IDs2CV_ndgln, Courant_number)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state
-             type( state_type ) :: packed_state, storage_state
+             type( state_type ) :: packed_state
              type(multi_dimensions), intent(in) :: Mdims
              type(multi_GI_dimensions), intent(in) :: CV_GIdims
              type(multi_shape_funs), intent(in) :: CV_funs
@@ -5341,7 +5341,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
- SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims, nphase, ncomp, &
+ SUBROUTINE CALCULATE_SURFACE_TENSION( state, packed_state, Mdims, nphase, ncomp, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
      !U_SOURCE_CV, U_SOURCE, &
      NCOLACV, FINACV, COLACV, MIDACV, &
@@ -5365,7 +5365,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      !real, dimension( u_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE
 
      type(state_type), dimension( : ), intent( inout ) :: state
-     type(state_type), intent( inout ) :: packed_state, storage_state
+     type(state_type), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
      integer, intent( in ) :: nphase, ncomp, cv_nonods, U_NONODS, X_NONODS, MAT_NONODS, &
          NCOLACV, NCOLCT, TOTELE, CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
@@ -5466,7 +5466,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
              do iphase = 1, nphase
 
-                 CALL SURFACE_TENSION_WRAPPER( state, packed_state, storage_state, Mdims, &
+                 CALL SURFACE_TENSION_WRAPPER( state, packed_state, Mdims, &
                      U_FORCE_X_SUF_TEN, U_FORCE_Y_SUF_TEN, U_FORCE_Z_SUF_TEN, &
                      CV_U_FORCE_X_SUF_TEN, CV_U_FORCE_Y_SUF_TEN, CV_U_FORCE_Z_SUF_TEN, &
                      PLIKE_GRAD_SOU_COEF( 1+CV_NONODS*(IPHASE-1) : CV_NONODS*IPHASE ), &
@@ -5521,7 +5521,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
- SUBROUTINE SURFACE_TENSION_WRAPPER( state, packed_state, storage_state, Mdims,&
+ SUBROUTINE SURFACE_TENSION_WRAPPER( state, packed_state, Mdims,&
      U_FORCE_X_SUF_TEN, U_FORCE_Y_SUF_TEN, U_FORCE_Z_SUF_TEN, &
      CV_U_FORCE_X_SUF_TEN, CV_U_FORCE_Y_SUF_TEN, CV_U_FORCE_Z_SUF_TEN, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
@@ -5666,7 +5666,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      ! Inputs/Outputs
      IMPLICIT NONE
      type(state_type), dimension( : ), intent( inout ) :: state
-     type(state_type), intent( inout ) :: packed_state, storage_state
+     type(state_type), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
 
      INTEGER, PARAMETER :: NPHASE = 1

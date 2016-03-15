@@ -523,7 +523,7 @@ if (.true.) then
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
@@ -609,7 +609,7 @@ if ( new_ntsol_loop  ) then
               elseif (multiphase_scalar) then
 
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
@@ -628,7 +628,7 @@ if ( new_ntsol_loop  ) then
               else
                     
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc,  Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -658,7 +658,7 @@ end if
                     !!$ extended to surface tension -like term.
                     iplike_grad_sou = 0
                     plike_grad_sou_grad = 0
-                    CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, storage_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
+                    CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
                     !CALL CALCULATE_SURFACE_TENSION( state, packed_state, storage_state, Mdims%nphase, Mdims%ncomp,  &
                         PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
                         Mspars%ACV%ncol, Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid, &
@@ -700,7 +700,7 @@ end if
                 end if Conditional_ForceBalanceEquation
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -751,7 +751,7 @@ end if
                         Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
                             Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
                             call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
-                                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                                 tracer_field,velocity_field,density_field, dt, &
                                 SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &

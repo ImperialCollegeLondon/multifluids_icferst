@@ -50,7 +50,7 @@ module multi_surface_tension
 
 contains
 
- SUBROUTINE CALCULATE_SURFACE_TENSION_NEW( state, packed_state, storage_state, Mdims, Mspars, ndgln, Mdisopt, nphase, ncomp, &
+ SUBROUTINE CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, nphase, ncomp, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
      !U_SOURCE_CV, U_SOURCE, &
      NCOLACV, FINACV, COLACV, MIDACV, &
@@ -74,7 +74,7 @@ contains
      !real, dimension( u_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE
 
      type(state_type), dimension( : ), intent( inout ) :: state
-     type(state_type), intent( inout ) :: packed_state, storage_state
+     type(state_type), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
      type(multi_sparsities), intent(in) :: Mspars
      type(multi_ndgln), intent(in) :: ndgln
@@ -162,7 +162,7 @@ contains
 
              do iphase = 1, nphase
 
-                 CALL SURFACE_TENSION_WRAPPER_NEW( state, packed_state, storage_state, &
+                 CALL SURFACE_TENSION_WRAPPER_NEW( state, packed_state, &
                      !PLIKE_GRAD_SOU_COEF( icomp, iphase, :), PLIKE_GRAD_SOU_GRAD( icomp, iphase, :), &
                      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
                      COEFFICIENT, &
@@ -187,7 +187,7 @@ contains
      RETURN
  END SUBROUTINE CALCULATE_SURFACE_TENSION_NEW
 
- SUBROUTINE SURFACE_TENSION_WRAPPER_NEW( state, packed_state, storage_state, &
+ SUBROUTINE SURFACE_TENSION_WRAPPER_NEW( state, packed_state, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
      SUF_TENSION_COEF, VOLUME_FRAC, &
      Mdims, Mspars, ndgln, Mdisopt )
@@ -203,7 +203,7 @@ contains
      ! Inputs/Outputs
      IMPLICIT NONE
      type(state_type), dimension( : ), intent( inout ) :: state
-     type(state_type), intent( inout ) :: packed_state, storage_state
+     type(state_type), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
      type(multi_sparsities), intent(in) :: Mspars
      type(multi_ndgln), intent(in) :: ndgln
