@@ -4353,7 +4353,7 @@ contains
 
         ! Solve...
         DO IT = 1, NTSOL
-            CALL SOLVER( MAT,  &
+            CALL multi_solver( MAT,  &
                 FEMPSI( 1 + (IT - 1 ) * CV_NONODS : CV_NONODS + (IT - 1 ) * CV_NONODS ),  &
                 FEMPSI_RHS( 1 + ( IT - 1 ) * CV_NONODS : CV_NONODS + (IT - 1 ) * CV_NONODS ),  &
                 FINDM, &
