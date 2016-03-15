@@ -56,6 +56,7 @@ module matrix_operations
     use global_parameters, only : FIELD_NAME_LEN, is_porous_media
     use boundary_conditions
     use multi_data_types
+    use multi_tools
     implicit none
 
 contains
@@ -217,7 +218,7 @@ contains
     END SUBROUTINE SMLINNGOT
 
 
-    !sprint_to_do!make internal subroutine. try to delete this and only use the fast version
+    !sprint_to_do!try to delete this and only use the fast version???
     !remove if we finally remove this subroutine all the subroutines that are only called in here
     SUBROUTINE COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
@@ -940,86 +941,8 @@ contains
 
 
 
-    !sprint_to_do!move to library and aid subroutines as well
-    recursive  subroutine quicksort(vec,n)
-
-        implicit none
-
-        integer, intent(in) :: n
-        integer, dimension(:), intent(inout) :: vec(n)
-        integer :: ii
-
-        if (n>20) then
-            ii=partition(vec)
-            call quicksort(vec(1:ii-1),ii-1)
-            call quicksort(vec(ii:n),n-ii+1)
-        else
-            call insertion_sort(vec,n)
-        end if
-
-    contains
-        integer function partition(v)
-          
-            implicit none
-
-            integer, intent(inout), dimension(:) :: v
-            integer :: i,j, pivot, temp
-
-            i=0
-            j=size(v)+1
-
-            pivot=v(j/2)
-          
-            do while (i < j)
-                j= j-1
-                do while ( v(j) > pivot)
-                    j=j-1
-                end do
-                i = i + 1
-                do while  ( v(i) < pivot )
-                    i = i + 1
-                end do
-                if ( i < j ) then
-                    temp=v(i); v(i)=v(j); v(j)= temp
-                elseif ( i == j ) then
-                    partition = i+1
-                    return
-                else
-                    partition = i
-                end if
-            end do
-
-        end function partition
-           
-        subroutine insertion_sort(vec,n)
-          
-            implicit none
-
-            integer :: n
-            integer, dimension(n) :: vec(n)
-
-            integer :: i ,j, temp
 
 
-            do i = 2, N
-                j = i - 1
-                temp = vec(i)
-
-                do while ( j> 0 )
-                    if ( vec(j) <= temp ) exit
-                    vec(j+1)=vec(j)
-                    j=j-1
-                end do
-
-                vec(j+1) = temp
-            end do
-
-        end subroutine insertion_sort
-
-    end subroutine quicksort
-
-
-    !sprint_to_do!figure it out why are we not using the blas library
     SUBROUTINE PHA_BLOCK_INV( PIVIT_MAT, TOTELE, NBLOCK )
         implicit none
         INTEGER, intent( in ) :: TOTELE, NBLOCK
@@ -1027,12 +950,12 @@ contains
         ! Local variables
         INTEGER :: ELE
 
-        REAL, DIMENSION( NBLOCK , NBLOCK ) :: MAT
-        REAL, DIMENSION( NBLOCK ) :: X, B
+!        REAL, DIMENSION( NBLOCK , NBLOCK ) :: MAT
+!        REAL, DIMENSION( NBLOCK ) :: X, B
 
         DO ELE = 1, TOTELE
-            !         CALL MATINV( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK )
-            CALL MATINVold( PIVIT_MAT( :, :, ele ), NBLOCK, MAT, X, B )
+            CALL MATINV( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK )
+!            CALL MATINVold( PIVIT_MAT( :, :, ele ), NBLOCK, MAT, X, B )!Went back to use BLAS, if something odd occurs, go back to this method
         END DO
 
         RETURN
