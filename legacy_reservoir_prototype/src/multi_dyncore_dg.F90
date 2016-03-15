@@ -4439,11 +4439,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         RETURN
     END SUBROUTINE ASSEMB_FORCE_CTY
 
-
-
-
-
-
     SUBROUTINE DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT, NNX_MAT2, NN_MAT, NN_MAT2,  &
         U_SNLOC, U_NLOC, SBUFEN_REVERSED, SDETWE, SBCVNGI, SNORMXN_ALL, NDIM, &
         U_SLOC2LOC, U_OTHER_LOC, U_NLOC_EXT, ON_BOUNDARY )

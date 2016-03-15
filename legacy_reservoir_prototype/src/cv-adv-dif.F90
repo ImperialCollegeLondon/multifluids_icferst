@@ -8230,10 +8230,6 @@ contains
 
     END SUBROUTINE CALC_ANISOTROP_LIM
 
-    !sprint_to_do !change name or whatever to this one and CALC_ANISOTROP_LIM_VALS2
-
-    !
-    !
     !
     !sprint_to_do!think about this
     Subroutine TRILOCCORDS(Xp,Yp,Zp, &

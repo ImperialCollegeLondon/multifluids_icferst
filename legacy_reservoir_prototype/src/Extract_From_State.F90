@@ -58,6 +58,7 @@ module Copy_Outof_State
     use solvers
     use conservative_interpolation_module
     use multi_data_types
+    use multi_tools
     implicit none
 
     private
@@ -67,7 +68,7 @@ module Copy_Outof_State
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, Compute_Node_Global_Numbers_new
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix
 
 
     interface Get_SNdgln
@@ -302,67 +303,7 @@ contains
         return
     end subroutine Get_Primary_Scalars_new
 
-
-
-
-    !sprint_to_do!move to a library pointer something?
-    function get_ndglno(mesh) result(ndglno)
-        type(mesh_type) :: mesh
-        integer, dimension(:), pointer  ::  ndglno
-
-        ndglno=> mesh%ndglno
-    end function get_ndglno
-
-    !sprint_to_do!optimize this!
-    subroutine Compute_Node_Global_Numbers( state, &
-        totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
-        cv_snloc, p_snloc, u_snloc, &
-        cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
-        cv_sndgln, p_sndgln, u_sndgln )
-        !!$ This subroutine calculates the global node numbers requested to operates in the MP-space.
-        implicit none
-        type( state_type ), dimension( : ), intent( in ) :: state
-        type( vector_field ), pointer :: positions, velocity
-        type( mesh_type ), pointer :: pressure_cg_mesh, velocity_cg_mesh
-        type( scalar_field ), pointer :: pressure
-        integer, intent( in ) :: totele, stotel, x_nloc, x_nloc_p1, cv_nloc, p_nloc, u_nloc, xu_nloc, &
-            cv_snloc, p_snloc, u_snloc
-        integer, dimension( : ), pointer  :: cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln
-        integer, dimension( : ) ::  cv_sndgln, p_sndgln, u_sndgln
-        !!$ Local variables
-
-        x_ndgln_p1=>get_ndglno(extract_mesh(state(1),"CoordinateMesh"))
-        x_ndgln=>get_ndglno(extract_mesh(state(1),"PressureMesh_Continuous"))
-        cv_ndgln=>get_ndglno(extract_mesh(state(1),"PressureMesh"))
-        p_ndgln=>get_ndglno(extract_mesh(state(1),"PressureMesh"))
-        mat_ndgln=>get_ndglno(extract_mesh(state(1),"PressureMesh_Discontinuous"))
-        u_ndgln=>get_ndglno(extract_mesh(state(1),"InternalVelocityMesh"))
-        xu_ndgln=>get_ndglno(extract_mesh(state(1),"VelocityMesh_Continuous"))
-
-        !!$ Linear mesh coordinate
-        positions => extract_vector_field( state( 1 ), 'Coordinate' )
-        !!$ Positions/Coordinates
-        pressure_cg_mesh => extract_mesh( state( 1 ), 'PressureMesh_Continuous' )
-        !!$ Pressure, control volume and material
-        pressure => extract_scalar_field( state( 1 ), 'Pressure' )
-        !!$ Velocities
-        velocity => extract_vector_field( state( 1 ), 'Velocity' )
-        !!$ Velocity in the continuous space
-        velocity_cg_mesh => extract_mesh( state( 1 ), 'VelocityMesh_Continuous' )
-
-        !!$ Surface-based global node numbers for control volumes and pressure
-        call Get_SNdgln( cv_sndgln, pressure )
-        p_sndgln = cv_sndgln
-
-        !!$ Velocities
-
-        call Get_SNdgln( u_sndgln, velocity )
-
-        return
-    end subroutine Compute_Node_Global_Numbers
-
-
-    subroutine Compute_Node_Global_Numbers_new( state, ndgln)
+    subroutine Compute_Node_Global_Numbers( state, ndgln)
         !!$ This subroutine calculates the global node numbers requested to operates in the MP-space.
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
@@ -388,7 +329,7 @@ contains
         !!$ Velocities
         call Get_SNdgln( ndgln%suf_u, velocity )
         return
-    end subroutine Compute_Node_Global_Numbers_new
+    end subroutine Compute_Node_Global_Numbers
 
     subroutine Get_Ele_Type( x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
         mat_ele_type, u_sele_type, cv_sele_type )
@@ -639,13 +580,14 @@ contains
         return
     end subroutine Get_Ele_Type_new
 
-    subroutine Get_Discretisation_Options( state, Mdisopt )
+    subroutine Get_Discretisation_Options( state, Mdims, Mdisopt )
         !!$ This subroutine extract all discretisation options from the schema
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
+        type(multi_dimensions), intent(in) :: Mdims
         type (multi_discretization_opts) :: Mdisopt
         !!$ Local variables:
-        integer :: nphase, nstate, ncomp, totele, ndim, stotel, iphase
+        integer :: iphase
         character( len = option_path_len ) :: option_path, option_path2, option_path3
         !!$ DISOPT Options:
         !!$ =0      1st order in space          Theta=specified    UNIVERSAL
@@ -659,9 +601,6 @@ contains
         !!$ =7      Finite elements in space    Theta=non-linear   NONE
         !!$ =8      Finite elements in space    Theta=specified    DOWNWIND+INTERFACE TRACKING
         !!$ =9      Finite elements in space    Theta=non-linear   DOWNWIND+INTERFACE TRACKING
-        !!$ Extracting primary scalars as local variables:
-        call Get_Primary_Scalars( state, &
-            nphase, nstate, ncomp, totele, ndim, stotel )
         !!$ Solving Advection Field: Temperature
         option_path = '/material_phase[0]/scalar_field::Temperature'
         option_path2 = trim( option_path ) //  '/prognostic/spatial_discretisation'
@@ -698,12 +637,12 @@ contains
         !!$ Solving Velocity Field
         call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/temporal_discretisation/theta', Mdisopt%u_theta )
         !!$ Solving Component Field
-        option_path3 = '/material_phase[' // int2str( nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
+        option_path3 = '/material_phase[' // int2str( Mdims%nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
             'temporal_discretisation/control_volumes/number_advection_iterations'
         call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_comp, default = 3 )
         !!$ Scaling factor for the momentum equation
         Mdisopt%scale_momentum_by_volume_fraction = .false.
-        do iphase = 1, nphase
+        do iphase = 1, Mdims%nphase
             option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/Mdisopt%scale_momentum_by_volume_fraction'
             if( have_option( trim( option_path ) ) ) Mdisopt%scale_momentum_by_volume_fraction = .true.
         end do
@@ -724,495 +663,6 @@ contains
         Mdisopt%in_ele_upwind = 3 ; Mdisopt%dg_ele_upwind = 3
         return
     end subroutine Get_Discretisation_Options
-
-
-!    subroutine Get_ScalarFields_Outof_State( state, initialised, iphase, field, &
-!        field_prot, wic_bc, suf_bc, field_prot_source, field_prot_absorption, suf_bc_rob1, suf_bc_rob2 )
-!        implicit none
-!        type( state_type ), dimension( : ), intent( in ) :: state
-!        logical, intent( in ) :: initialised
-!        integer, intent( in ) :: iphase
-!        type( scalar_field ), pointer :: field, field_prot_bc
-!        real, dimension( : ), intent( inout ) :: field_prot
-!        real, dimension( : ), intent( inout ), optional :: field_prot_source,field_prot_absorption, suf_bc_rob1, suf_bc_rob2
-!        integer, dimension( : ), intent( inout ), optional :: wic_bc
-!        real, dimension( : ), intent( inout ), optional :: suf_bc
-!
-!        ! Local variables
-!        type( mesh_type ), pointer :: pmesh, cmesh
-!        type(scalar_field), pointer :: pressure, field_source, field_absorption
-!        type(scalar_field) :: dummy
-!        type(vector_field), pointer :: positions
-!        integer, dimension(:), allocatable :: sufid_bc
-!        character( len = option_path_len ) :: option_path, option_path2, field_name
-!        integer :: stotel, nobcs, bc_type, i, j, k, kk, sele
-!        integer :: nstate, nphase, ncomp, snloc, stat
-!        integer :: shape_option(2)
-!        real :: initial_constant
-!        logical :: have_source, have_absorption
-!        integer, dimension(:), allocatable :: face_nodes
-!        character( len = 8192 ) :: func
-!
-!        field_name = trim( field % name )
-!        have_source = .false. ; have_absorption = .false.
-!
-!        Conditional_SourceField: if( present( field_prot_source ) ) then
-!            field_source => extract_scalar_field( state( iphase ), trim(field_name) // 'Source', stat )
-!            have_source = ( stat == 0 )
-!
-!            if ( have_source ) then
-!                do j = 1, node_count( field_source )
-!                    field_prot_source( ( iphase - 1 ) * node_count( field_source ) + j ) = &
-!                        field_source % val( j )
-!                end do
-!            end if
-!        end if Conditional_SourceField
-!
-!        Conditional_AbsorptionField: if( present( field_prot_absorption ) ) then
-!            field_absorption => extract_scalar_field( state( iphase ), trim(field_name) // 'Absorption', stat )
-!            have_absorption = ( stat == 0 )
-!            if ( have_absorption ) then
-!                do j = 1, node_count( field_absorption )
-!                    field_prot_absorption( ( iphase - 1 ) * node_count( field_absorption ) + j ) = &
-!                        field_absorption % val( j )
-!                end do
-!            end if
-!        end if Conditional_AbsorptionField
-!
-!        pressure => extract_scalar_field( state( 1 ), 'Pressure' )
-!        pmesh => extract_mesh( state, 'PressureMesh' )
-!        cmesh => extract_mesh( state, 'CoordinateMesh' )
-!        positions => extract_vector_field( state( 1 ), 'Coordinate' )
-!
-!        snloc = face_loc( pressure, 1 ) ; stotel = surface_element_count( cmesh ) ; &
-!            nstate = option_count( '/material_phase' )
-!
-!        ncomp = 0
-!        do i = 1, nstate
-!            if( have_option( '/material_phase[' // int2str( i - 1) // ']/is_multiphase_component' ) )then
-!                ncomp = ncomp + 1
-!            end if
-!        end do
-!        nphase = nstate - ncomp
-!        option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
-!        ewrite(3,*)'option_path:', trim( option_path )
-!
-!
-!        !!$ This will need to be ammended later on to take into account python functions that impose
-!        !!$ time-dependent field changes
-!        Conditional_InitialisationFromFLML: if( initialised ) then ! Extracting from state after initialisation
-!            field_prot = field % val
-!        !!$         field_prot( 1 : node_count( field ) ) = field % val
-!        !!$         field_prot( ( iphase - 1 ) * node_count( field ) + 1 : iphase * node_count( field ) ) = &
-!        !!$              field % val
-!
-!        else !Initialisation before adapt
-!            if( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant' ) )then
-!                call get_option(trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant', &
-!                    initial_constant )
-!                field_prot = initial_constant
-!
-!            elseif( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python ') )then
-!                call get_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python', func )
-!                call allocate( dummy, field % mesh, 'dummy' )
-!                call get_option('/timestepping/current_time', current_time)
-!                call set_from_python_function(dummy, trim(func), positions, current_time)
-!                field_prot = dummy % val
-!                call deallocate( dummy )
-!            elseif( have_option( trim( option_path ) // '/prognostic/initial_condition/from_file')) then
-!                field_prot = field % val
-!
-!            else if (have_option( trim( option_path ) // '/prognostic/initial_condition') )then
-!                call allocate( dummy, field % mesh, 'dummy' )
-!                call get_option('/timestepping/current_time', current_time)
-!                call initialise_field_over_regions(dummy, trim( option_path ) // '/prognostic/initial_condition', positions, current_time)
-!                field_prot = dummy%val
-!                call deallocate( dummy )
-!
-!            else
-!               !ewrite(-1,*) 'No initial condition for field::', trim( field_name )
-!               !FLAbort( 'Check initial conditions' )
-!            end if
-!        end if Conditional_InitialisationFromFLML
-!
-!        !!$ Boundary conditions
-!        if (present( wic_bc ) ) then
-!
-!            option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
-!            nobcs = get_boundary_condition_count( field )
-!            Loop_BC: do k = 1, nobcs
-!
-!                option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
-!                shape_option = option_shape( trim( option_path ) )
-!                allocate( SufID_BC( 1 : shape_option( 1 ) ) )
-!                call get_option( trim( option_path ), SufID_BC )
-!                allocate( face_nodes( face_loc( field, 1) ) )
-!
-!                option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
-!
-!                Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
-!
-!                    BC_Type = 1
-!                    field_prot_bc => extract_surface_field( field, k, 'value' )
-!
-!                    sele = 1
-!                    do j = 1, stotel
-!                        if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-!                            wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-!                            face_nodes = ele_nodes( field_prot_bc, sele )
-!                            do kk = 1, snloc
-!                                suf_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
-!                                    field_prot_bc % val( face_nodes( kk ) )
-!                            end do
-!                            sele = sele + 1
-!                        end if
-!                    end do
-!
-!                else if( have_option( trim( option_path ) // 'type::robin' ) ) then
-!
-!                    BC_Type = 2
-!
-!                    do j = 1, stotel
-!                        if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-!                            wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-!                        end if
-!                    end do
-!
-!                    ! calculate this later on...
-!                    suf_bc_rob1 = 0.
-!                    suf_bc_rob2 = 0.
-!
-!                end if Conditional_Field_BC
-!
-!                deallocate( face_nodes, sufid_bc )
-!
-!            end do Loop_BC
-!
-!        end if
-!
-!        return
-!    end subroutine Get_ScalarFields_Outof_State
-
-
-
-
-    !subroutine Get_ScalarFields_Outof_State2( state, initialised, iphase, field, &
-    !         field_prot, wic_bc, suf_bc, field_prot_source, field_prot_absorption, suf_bc_rob1, suf_bc_rob2 )
-    !      implicit none
-    !      type( state_type ), dimension( : ), intent( in ) :: state
-    !      logical, intent( in ) :: initialised
-    !      integer, intent( in ) :: iphase
-    !      type( scalar_field ), pointer :: field, field_prot_bc, field_prot_bc1, field_prot_bc2
-    !      real, dimension( : ), intent( inout ) :: field_prot
-    !      real, dimension( : ), intent( inout ), optional :: field_prot_absorption, suf_bc_rob1, suf_bc_rob2
-    !      integer, dimension( : ), intent( inout ), optional :: wic_bc
-    !      real, dimension( : ), intent( inout ), optional :: suf_bc
-    !      real, dimension( : , : ), intent( inout ), optional :: field_prot_source
-    !
-    !      ! Local variables
-    !      type( mesh_type ), pointer :: pmesh, cmesh
-    !      type(scalar_field), pointer :: pressure, field_source, field_absorption
-    !      type(scalar_field) :: dummy
-    !      type(vector_field), pointer :: positions
-    !      integer, dimension(:), allocatable :: sufid_bc
-    !      character( len = option_path_len ) :: option_path, option_path2, field_name
-    !      integer :: stotel, nobcs, bc_type, i, j, k, kk, sele
-    !      integer :: nstate, nphase, ncomp, snloc, stat
-    !      integer :: shape_option(2)
-    !      real :: initial_constant
-    !      logical :: have_source, have_absorption
-    !      integer, dimension(:), allocatable :: face_nodes
-    !      character( len = 8192 ) :: func
-    !
-    !      field_name = trim( field % name )
-    !      have_source = .false. ; have_absorption = .false.
-    !
-    !      Conditional_SourceField: if( present( field_prot_source ) ) then
-    !         field_source => extract_scalar_field( state( iphase ), trim(field_name) // 'Source', stat )
-    !         have_source = ( stat == 0 )
-    !
-    !         if ( have_source ) then
-    !            do j = 1, node_count( field_source )
-    !               !field_prot_source( ( iphase - 1 ) * node_count( field_source ) + j ) = &
-    !               !     field_source % val( j )
-    !               field_prot_source( iphase, j ) = &
-    !                    field_source % val( j )
-    !            end do
-    !         end if
-    !      end if Conditional_SourceField
-    !
-    !      Conditional_AbsorptionField: if( present( field_prot_absorption ) ) then
-    !         field_absorption => extract_scalar_field( state( iphase ), trim(field_name) // 'Absorption', stat )
-    !         have_absorption = ( stat == 0 )
-    !         if ( have_absorption ) then
-    !            do j = 1, node_count( field_absorption )
-    !               field_prot_absorption( ( iphase - 1 ) * node_count( field_absorption ) + j ) = &
-    !                    field_absorption % val( j )
-    !            end do
-    !         end if
-    !      end if Conditional_AbsorptionField
-    !
-    !      pressure => extract_scalar_field( state( 1 ), 'Pressure' )
-    !      pmesh => extract_mesh( state, 'PressureMesh' )
-    !      cmesh => extract_mesh( state, 'CoordinateMesh' )
-    !      positions => extract_vector_field( state( 1 ), 'Coordinate' )
-    !
-    !      snloc = face_loc( pressure, 1 ) ; stotel = surface_element_count( cmesh ) ; &
-    !           nstate = option_count( '/material_phase' )
-    !
-    !      ncomp = 0
-    !      do i = 1, nstate
-    !         if( have_option( '/material_phase[' // int2str( i - 1) // ']/is_multiphase_component' ) )then
-    !            ncomp = ncomp + 1
-    !         end if
-    !      end do
-    !      nphase = nstate - ncomp
-    !      option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
-    !      ewrite(3,*)'option_path:', trim( option_path )
-    !
-    !
-    !$ This will need to be ammended later on to take into account python functions that impose
-    !$ time-dependent field changes
-    !      Conditional_InitialisationFromFLML: if( initialised ) then ! Extracting from state after initialisation
-    !         field_prot = field % val
-    !$         field_prot( 1 : node_count( field ) ) = field % val
-    !$         field_prot( ( iphase - 1 ) * node_count( field ) + 1 : iphase * node_count( field ) ) = &
-    !$              field % val
-    !
-    !      else !Initialisation before adapt
-    !         if( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant' ) )then
-    !            call get_option(trim( option_path ) // '/prognostic/initial_condition::WholeMesh/constant', &
-    !                 initial_constant )
-    !            field_prot = initial_constant
-    !
-    !         elseif( have_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python ') )then
-    !            call get_option( trim( option_path ) // '/prognostic/initial_condition::WholeMesh/python', func )
-    !            call allocate( dummy, field % mesh, 'dummy' )
-    !            call get_option('/timestepping/current_time', current_time)
-    !            call set_from_python_function(dummy, trim(func), positions, current_time)
-    !            field_prot = dummy % val
-    !            call deallocate( dummy )
-    !         elseif( have_option( trim( option_path ) // '/prognostic/initial_condition/from_file')) then
-    !            field_prot = field % val
-    !
-    !         else if (have_option( trim( option_path ) // '/prognostic/initial_condition') )then
-    !            call allocate( dummy, field % mesh, 'dummy' )
-    !            call get_option('/timestepping/current_time', current_time)
-    !            call initialise_field_over_regions(dummy, trim( option_path ) // '/prognostic/initial_condition', positions, current_time)
-    !            field_prot = dummy%val
-    !            call deallocate( dummy )
-    !
-    !         else
-    !            !ewrite(-1,*) 'No initial condition for field::', trim( field_name )
-    !            !FLAbort( 'Check initial conditions' )
-    !         end if
-    !      end if Conditional_InitialisationFromFLML
-    !
-    !$ Boundary conditions
-    !      if (present( wic_bc ) ) then
-    !
-    !         option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
-    !         nobcs = get_boundary_condition_count( field )
-    !         Loop_BC: do k = 1, nobcs
-    !
-    !            option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/surface_ids'
-    !            shape_option = option_shape( trim( option_path ) )
-    !            allocate( SufID_BC( 1 : shape_option( 1 ) ) )
-    !            call get_option( trim( option_path ), SufID_BC )
-    !            allocate( face_nodes( face_loc( field, 1) ) )
-    !
-    !            option_path = trim( option_path2 ) // int2str( k - 1 ) // ']/'
-    !
-    !            Conditional_Field_BC: if( have_option( trim( option_path ) // 'type::dirichlet' ) ) then
-    !
-    !               BC_Type = 1
-    !               field_prot_bc => extract_surface_field( field, k, 'value' )
-    !
-    !               sele = 1
-    !               do j = 1, stotel
-    !                  if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-    !                     wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-    !                     face_nodes = ele_nodes( field_prot_bc, sele )
-    !                     do kk = 1, snloc
-    !                        suf_bc( ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
-    !                             field_prot_bc % val( face_nodes( kk ) )
-    !                     end do
-    !                     sele = sele + 1
-    !                  end if
-    !               end do
-    !
-    !            else if( have_option( trim( option_path ) // 'type::robin' ) ) then
-    !
-    !               BC_Type = 2
-    !
-    !               do j = 1, stotel
-    !                  if( any ( SufID_BC == pmesh % faces % boundary_ids( j ) ) ) then
-    !                     wic_bc( j + ( iphase - 1 ) * stotel ) = BC_Type
-    !                  end if
-    !               end do
-    !
-    !               ! calculate this later on...
-    !               suf_bc_rob1 = 0.
-    !               suf_bc_rob2 = 0.
-    !
-    !            end if Conditional_Field_BC
-    !
-    !            deallocate( face_nodes, sufid_bc )
-    !
-    !         end do Loop_BC
-    !
-    !      end if
-    !
-    !      return
-    !    end subroutine Get_ScalarFields_Outof_State2
-
-
-
-
-    !    subroutine Get_CompositionFields_Outof_State( state, initialised, nphase, icomp, iphase, field, &
-    !         field_prot, wic_bc, &
-    !         kprime, kprime2, &
-    !         suf_bc, &
-    !         field_prot_source, field_prot_absorption )
-    !      implicit none
-    !      type( state_type ), dimension( : ), intent( in ) :: state
-    !      logical, intent( in ) :: initialised
-    !      integer, intent( in ) :: nphase, icomp, iphase
-    !      type( scalar_field ), pointer :: field, field_prot_bc
-    !      real, dimension( : ), intent( inout ) :: field_prot
-    !      real, dimension( : ), intent( inout ), optional :: field_prot_source, field_prot_absorption
-    !      integer, dimension( : ), intent( inout ), optional :: wic_bc
-    !      integer, intent( in ), optional  :: kprime, kprime2
-    !      real, dimension(  :  ), intent( inout ), optional  :: suf_bc
-    !      ! Local variables
-    !      type( mesh_type ), pointer :: pmesh, cmesh
-    !      type(scalar_field), pointer :: pressure, field_source, field_absorption
-    !      type( scalar_field ) :: dummy
-    !      type( vector_field ), pointer :: positions
-    !      integer, dimension( : ), allocatable :: sufid_bc, face_nodes
-    !      integer :: shape_option( 2 )
-    !      character( len = option_path_len ) :: option_path, field_name
-    !      logical :: have_source, have_absorption
-    !      integer :: nstate, stotel, nobcs, bc_type, i, j, k, kk, sele, stat, snloc
-    !      real :: initial_constant
-    !      character( len = 8192 ) :: func
-    !
-    !      field_name = trim( field % name )
-    !      positions => extract_vector_field( state( 1 ), 'Coordinate' )
-    !      pressure => extract_scalar_field( state( 1 ), 'Pressure' )
-    !      pmesh => extract_mesh( state, 'PressureMesh' )
-    !      cmesh => extract_mesh( state, 'CoordinateMesh' )
-    !
-    !      field_source => extract_scalar_field( state( iphase ), field_name // 'Source', stat )
-    !      have_source = ( stat == 0 )
-    !      field_absorption => extract_scalar_field( state( iphase ), field_name // 'Absorption', stat )
-    !      have_absorption = ( stat == 0 )
-    !
-    !      snloc = face_loc( pressure, 1 )
-    !      nstate = option_count('/material_phase')
-    !      stotel = surface_element_count( cmesh )
-    !
-    !      option_path = '/material_phase[' // int2str( icomp - 1 ) // &
-    !           ']/scalar_field::ComponentMassFractionPhase' // &
-    !           int2str( iphase )
-    !
-    !      Conditional_InitialisedFromFLML: if( initialised ) then
-    !         field_prot = field % val
-    !      else
-    !         !option_path = '/material_phase[' // int2str( icomp - 1 ) // &
-    !         !     ']/scalar_field::ComponentMassFractionPhase' // &
-    !         !     int2str( iphase )
-    !
-    !         Conditional_Composition_MassFraction: if ( have_option( trim( option_path ) // &
-    !              '/prognostic/initial_condition::WholeMesh/constant' ) ) then
-    !
-    !            call get_option( trim( option_path ) // &
-    !                 '/prognostic/initial_condition::WholeMesh/constant', initial_constant )
-    !            field_prot = initial_constant
-    !
-    !         elseif( have_option( trim( option_path ) // &
-    !              '/prognostic/initial_condition::WholeMesh/python') ) then
-    !
-    !            call get_option( trim( option_path ) // &
-    !                 '/prognostic/initial_condition::WholeMesh/python', func )
-    !
-    !            call allocate( dummy, field % mesh, 'dummy' )
-    !            call get_option( '/timestepping/current_time', current_time )
-    !            call set_from_python_function( dummy, trim( func ), positions, current_time )
-    !            field_prot = dummy % val
-    !            call deallocate( dummy )
-    !         elseif( have_option( trim( option_path ) // '/prognostic/initial_condition/from_file')) then
-    !            field_prot = field % val
-    !         else
-    !            ewrite(-1,*) 'No initial condition for field::', trim( field_name )
-    !            FLAbort( ' Check initial conditions ' )
-    !
-    !         end if Conditional_Composition_MassFraction
-    !
-    !      end if Conditional_InitialisedFromFLML
-    !      if ( present(wic_bc)) then
-    !
-    !
-    !         Conditional_Composition_BC: if ( have_option( trim( option_path ) // &
-    !              '/prognostic/boundary_conditions[0]/type::dirichlet' )) then
-    !
-    !            BC_Type = 1
-    !            nobcs = get_boundary_condition_count( field )
-    !
-    !            Loop_Over_BC: do k = 1, nobcs
-    !               field_prot_bc => extract_surface_field( field, k, 'value' )
-    !               shape_option = option_shape( trim( option_path ) // &
-    !                    '/prognostic/boundary_conditions[' // &
-    !                    int2str( k - 1 ) // ']/surface_ids' )
-    !               allocate( sufid_bc( 1 : shape_option( 1 ) ) )
-    !
-    !               call get_option( trim( option_path ) // &
-    !                    '/prognostic/boundary_conditions[' // &
-    !                    int2str( k - 1 ) // ']/surface_ids', sufid_bc )
-    !
-    !               allocate( face_nodes( face_loc( field, 1 ) ) )
-    !               sele = 1
-    !               do j = 1, stotel
-    !                  if( any ( sufid_bc == pmesh % faces % boundary_ids( j ) ) ) then
-    !                     wic_bc( j + ( iphase - 1 ) * stotel ) = bc_type
-    !                     face_nodes = ele_nodes( field_prot_bc, sele )
-    !                     do kk = 1, snloc
-    !                        suf_bc( ( icomp - ( nphase + 1 ) ) * nphase * stotel * snloc + &
-    !                             ( iphase - 1 ) * stotel * snloc + ( j - 1 ) * snloc + kk ) = &
-    !                             field_prot_bc % val( face_nodes( kk ) )
-    !                     end do
-    !                     sele = sele + 1
-    !                  end if
-    !               end do
-    !
-    !               deallocate( face_nodes )
-    !               deallocate( sufid_bc )
-    !
-    !            end do Loop_Over_BC ! End of BC loop
-    !
-    !         end if Conditional_Composition_BC
-    !
-    !      end if
-    !
-    !
-    !      if ( have_source )  then
-    !         do j = 1, node_count( field_source )
-    !            field_prot_source( ( iphase - 1 ) * node_count( field_source ) + j ) = &
-    !                 field_source % val( j )
-    !         end do
-    !      end if
-    !
-    !      if ( have_absorption ) then
-    !         do j = 1, node_count( field_absorption )
-    !            field_prot_absorption( ( iphase - 1 ) * node_count( field_absorption ) + j ) = &
-    !                 field_absorption % val( j )
-    !         end do
-    !      end if
-    !
-    !      return
-    !    end subroutine Get_CompositionFields_Outof_State
-
-
 
     subroutine Get_VectorFields_Outof_State( state, initialised, iphase, field, &
         wic_bc, wic_momu_bc, suf_u_bc, suf_v_bc, suf_w_bc, &
@@ -3840,7 +3290,9 @@ logical function have_option_for_any_phase(path, nphase)
 
 
 end function have_option_for_any_phase
-!sprint_to_do!what is happening with this?
+
+
+!sprint_to_do!PERMEABILITY AND POROSITY AT PRESENT ARE NOT COMPACTED
 subroutine get_regionIDs2nodes(state, packed_state, CV_NDGLN, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln)
     !This subroutine creates a conversor so material variables
     !can be stored based on region ids, but accessed in a normal way (node access)
@@ -4071,8 +3523,6 @@ contains
 call register_deallocation("scalar_field", "real", &
     size(s_field_bak,1), s_field%name)
 #endif
-        !            s_field%mesh%nodes = size(IDs_ndgln)
-        !            s_field%mesh%elements = size(IDs_ndgln)
 #ifdef HAVE_MEMORY_STATS
 call register_allocation("scalar_field", "real", &
 size(s_field%val,1), s_field%name)

@@ -254,7 +254,7 @@ contains
         call Get_Primary_Scalars_new( state, Mdims )
         !!$ Calculating Global Node Numbers
         call allocate_multi_ndgln(ndgln, Mdims)
-        call Compute_Node_Global_Numbers_new(state, ndgln)
+        call Compute_Node_Global_Numbers(state, ndgln)
         !!$
         !!$ Computing Sparsity Patterns Matrices
         !!$
@@ -275,7 +275,7 @@ contains
         !!$ Defining element-pair type
         call Get_Ele_Type_new( Mdims, Mdisopt )
         !Allocate and calculate the sparsity patterns matrices
-        call Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+        call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
         call temp_mem_hacks()
         !!$ Allocating space for various arrays:
@@ -347,7 +347,7 @@ contains
         sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
         ScalarField_Source=0. ; ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
         !!$ Defining discretisation options
-        call Get_Discretisation_Options( state, Mdisopt )
+        call Get_Discretisation_Options( state, Mdims, Mdisopt )
         !!$ Option not currently set up in the schema and zeroed from the begining. It is used to control
         !!$ the upwinding rate (in the absorption term) during advection/assembling.
         allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
@@ -395,7 +395,7 @@ contains
                     state(iphase), field_name = "Saturation_bak", parent_mesh = "PressureMesh")
             end do
         end if
-        !Look for bad elements to apply a correction on them
+
         if (is_porous_media) then
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state)
@@ -1292,7 +1292,7 @@ end if
                 call Get_Primary_Scalars_new( state, Mdims )
                 !!$ Calculating Global Node Numbers
                 call allocate_multi_ndgln(ndgln, Mdims)
-                call Compute_Node_Global_Numbers_new(state, ndgln)
+                call Compute_Node_Global_Numbers(state, ndgln)
                 !!$
                 !!$ Computing Sparsity Patterns Matrices
                 !!$
@@ -1305,7 +1305,7 @@ end if
                 call Get_Ele_Type( Mdims%x_nloc, Mdisopt%cv_ele_type, Mdisopt%p_ele_type, Mdisopt%u_ele_type, &
                     Mdisopt%mat_ele_type, Mdisopt%u_sele_type, Mdisopt%cv_sele_type )
                 !Allocate and calculate the sparsity patterns
-                call Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+                call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                     mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
                 if (is_porous_media) then
                     !Re-calculate IDs_ndgln after adapting the mesh
