@@ -347,7 +347,7 @@ contains
         sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
         ScalarField_Source=0. ; ScalarField_Source_Store=0. ; ScalarField_Source_Component=0.
         !!$ Defining discretisation options
-        call Get_Discretisation_Options( state, Mdisopt )
+        call Get_Discretisation_Options( state, Mdims, Mdisopt )
         !!$ Option not currently set up in the schema and zeroed from the begining. It is used to control
         !!$ the upwinding rate (in the absorption term) during advection/assembling.
         allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
@@ -395,7 +395,7 @@ contains
                     state(iphase), field_name = "Saturation_bak", parent_mesh = "PressureMesh")
             end do
         end if
-        !Look for bad elements to apply a correction on them
+
         if (is_porous_media) then
             !Get into packed state relative permeability, immobile fractions, ...
             call get_RockFluidProp(state, packed_state)
