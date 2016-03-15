@@ -274,7 +274,7 @@ contains
         !!$ Defining element-pair type
         call Get_Ele_Type_new( Mdims, Mdisopt )
         !Allocate and calculate the sparsity patterns matrices
-        call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+        call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
         call temp_mem_hacks()
         !!$ Allocating space for various arrays:
@@ -1304,7 +1304,7 @@ end if
                 call Get_Ele_Type( Mdims%x_nloc, Mdisopt%cv_ele_type, Mdisopt%p_ele_type, Mdisopt%u_ele_type, &
                     Mdisopt%mat_ele_type, Mdisopt%u_sele_type, Mdisopt%cv_sele_type )
                 !Allocate and calculate the sparsity patterns
-                call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+                call Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                     mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
                 if (is_porous_media) then
                     !Re-calculate IDs_ndgln after adapting the mesh

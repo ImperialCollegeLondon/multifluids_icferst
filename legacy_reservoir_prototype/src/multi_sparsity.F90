@@ -1263,7 +1263,7 @@ contains
         return
     end subroutine Defining_MaxLengths_for_Sparsity_Matrices
 
-    subroutine Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+    subroutine Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
         !!$ Allocate and obtain the sparsity patterns of the two types of matricies for
         !!$ (momentum + cty) and for energy
@@ -1272,20 +1272,16 @@ contains
         type(multi_dimensions), intent(inout) :: Mdims
         type (multi_sparsities), intent(inout) :: Mspars
         type(multi_ndgln), intent(in) :: ndgln
+        type (multi_discretization_opts) :: Mdisopt
         integer, intent( in ) :: mx_ncolacv, nlenmcy, mx_ncolmcy, mx_ncoldgm_pha, &
             mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1
         !!$ Local variables
         integer, dimension( : ), pointer :: ph_ndgln, colele_pha, finele_pha, midele_pha, centct, dummyvec
-        integer :: mx_ncolsmall_acv, count, cv_inod, mx_ncolele_pha, nsmall_acv, nsmall_acv2, &
-            cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, &
-            cv_sele_type, stat
+        integer :: mx_ncolsmall_acv, count, cv_inod, mx_ncolele_pha, nsmall_acv, nsmall_acv2, stat
         logical :: presym
         type(csr_sparsity), pointer :: sparsity
         type(mesh_type), pointer :: element_mesh, ph_mesh
         ewrite(3,*)'In Get_Sparsity_Patterns'
-        !sprint_to_do (this should be passed down)
-        call Get_Ele_Type( Mdims%x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
-            mat_ele_type, u_sele_type, cv_sele_type )
         !Check if sparsities have been associated (allocated), if not, allocate
         if (.not.associated(Mspars%ACV%fin)) then
             call allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, &
@@ -1432,7 +1428,7 @@ contains
         allocate( Mspars%small_acv%col( mx_ncolsmall_acv ) )
         Mspars%small_acv%ncol = mx_ncolsmall_acv
         Mspars%small_acv%mid = 0 ; Mspars%small_acv%fin = 0 ; Mspars%small_acv%col = 0
-        call CV_Neighboor_Sparsity( Mdims, cv_ele_type, &
+        call CV_Neighboor_Sparsity( Mdims, Mdisopt%cv_ele_type, &
             ndgln%cv, ndgln%x, &
             Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
             Mspars%M%ncol, mx_ncolsmall_acv, Mspars%M%fin, Mspars%M%col, &
@@ -1441,7 +1437,7 @@ contains
         call resize(Mspars%small_acv%col,nsmall_acv)
         Mspars%ACV%ncol =  Mdims%nphase * nsmall_acv + ( Mdims%nphase - 1 ) * Mdims%nphase * Mdims%cv_nonods
         nsmall_acv = Mspars%ACV%ncol
-        Mspars%small_acv%ncol = Mspars%ACV%ncol!<== Not sure about this (sprint_to_do)
+        Mspars%small_acv%ncol = Mspars%ACV%ncol!<== Not sure about this (but it is working...)
         Mspars%ACV%fin = 0 ; Mspars%ACV%col = 0 ; Mspars%ACV%mid = 0
         call exten_sparse_multi_phase( Mdims%cv_nonods, nsmall_acv2, Mspars%small_acv%fin, Mspars%small_acv%col, &
             Mdims%nphase, Mdims%nphase * Mdims%cv_nonods, Mspars%ACV%ncol, &
