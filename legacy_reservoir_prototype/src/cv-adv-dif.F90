@@ -4457,19 +4457,19 @@ contains
             call allocate(cv_mass,psi(1)%ptr%mesh,'CV_mass')
             call zero(cv_mass)
 
-            if (tracer%mesh%continuity<0) then
-                psi_ave(1)%ptr%val=X(:,ndgln%X)
+            if(tracer%mesh%continuity<0) then
+                psi_ave(1)%ptr%val = X(:,ndgln%x)
             else
                 call set_all(psi_ave(1)%ptr,X)
             end if
-            do it=1,size(psi_ave)
+            do it = 1,size(psi_ave)
                 call allocate(psi_ave_temp(it),psi_ave(it)%ptr%dim,psi_ave(it)%ptr%mesh,"PsiAveTemp")
                 call set(psi_ave_temp(it),psi_ave(it)%ptr)
                 call zero(psi_ave(it)%ptr)
             end do
 
             call set(psi_int(1)%ptr,dim=1,val=1.0)
-            do it=1,size(psi_int)
+            do it = 1,size(psi_int)
                 call allocate(psi_int_temp(it),psi_int(it)%ptr%dim,psi_int(it)%ptr%mesh,"PsiIntTemp")
                 call set(psi_int_temp(it),psi_int(it)%ptr)
                 call zero(psi_int(it)%ptr)

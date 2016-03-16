@@ -338,6 +338,18 @@ contains
     end subroutine deallocate_multi_shape_funs
 
 
+    subroutine deallocate_projection_matrices(shape_fun)
+        !This subroutine deallocates projection matrices CV2FE & FE2CV stored in shape_fun
+        implicit none
+        type(multi_shape_funs), intent(inout) :: shape_fun
+
+        if (associated(shape_fun%CV2FE%refcount)) call deallocate(shape_fun%CV2FE)
+        if (associated(shape_fun%FE2CV%refcount)) call deallocate(shape_fun%FE2CV)
+        nullify(shape_fun%FE2CV%refcount)
+        nullify(shape_fun%CV2FE%refcount)
+
+    end subroutine deallocate_projection_matrices
+
     !This subroutine, despite it can be called by itself it is highly recommended to be called ONLY through multi_sparsity/Get_Sparsity_Patterns
     subroutine allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
         !This subroutine allocates part of the memory inside Mspars

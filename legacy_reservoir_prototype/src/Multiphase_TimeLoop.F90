@@ -1195,6 +1195,7 @@ end if
                 end if
             end do
         end subroutine linearise_components
+
         subroutine adapt_mesh_mp()
             do_reallocate_fields = .false.
             Conditional_Adaptivity_ReallocatingFields: if( have_option( '/mesh_adaptivity/hr_adaptivity') ) then
@@ -1259,6 +1260,8 @@ end if
                 !call unlinearise_components()
                 deallocate(multiphase_state)
                 deallocate(multicomponent_state)
+                call deallocate_projection_matrices(CV_funs)
+                call deallocate_projection_matrices(FE_funs)
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
                 call set_boundary_conditions_values(state, shift_time=.true.)
@@ -1388,7 +1391,9 @@ end if
                 call Calculate_All_Rhos( state, packed_state, Mdims )
             end if Conditional_ReallocatingFields
         end subroutine adapt_mesh_mp
+
     end subroutine MultiFluids_SolveTimeLoop
+
     subroutine copy_packed_new_to_old(packed_state)
         type(state_type), intent(inout) :: packed_state
         type(scalar_field), pointer :: sfield, nsfield
