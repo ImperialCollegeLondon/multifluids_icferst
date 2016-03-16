@@ -337,7 +337,6 @@ contains
 
     end subroutine deallocate_multi_shape_funs
 
-
     subroutine deallocate_projection_matrices(shape_fun)
         !This subroutine deallocates projection matrices CV2FE & FE2CV stored in shape_fun
         implicit none
@@ -371,7 +370,6 @@ contains
         Mspars%CT%col = 0 ; Mspars%C%fin = 0 ; Mspars%C%col = 0 ; Mspars%CMC%fin = 0
         Mspars%CMC%col = 0 ; Mspars%CMC%mid = 0 ; Mspars%M%fin = 0
         Mspars%M%col = 0 ; Mspars%M%mid = 0 ; Mspars%ph%fin = 0 ; Mspars%ph%col = 0
-
 
     end subroutine allocate_multi_sparsities
 

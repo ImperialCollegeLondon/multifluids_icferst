@@ -68,7 +68,7 @@ module Copy_Outof_State
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
-        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix
+        get_Convergence_Functional, get_DarcyVelocity, printCSRMatrix, dump_outflux
 
 
     interface Get_SNdgln
@@ -3676,6 +3676,79 @@ end subroutine get_DarcyVelocity
       return
     end subroutine Get_Vector_SNdgln
 
+    subroutine dump_outflux(current_time, itime, outflux, intflux)
+        ! Subroutine that dumps the total flux at a given timestep across all specified boudaries to a file  called 'outfluxes.txt'. In addition, the time integrated flux
+        ! up to the current timestep is also outputted to this file. Integration boundaries are specified in diamond via surface_ids.
+        ! (In diamond this option can be found under "/io/dump_boundaryflux/surface_ids" and the user should specify an integer array containing the IDs of every boundary they
+        !wish to integrate over).
+        real,intent(in) :: current_time
+        integer, intent(in) :: itime
+        real, dimension(:,:), intent(inout) :: outflux, intflux
+        integer :: ioutlet
+        integer :: counter
+        type(stat_type), target :: default_stat
+        character (len=1000000) :: whole_line
+        character (len=1000000) :: numbers
+        integer :: iphase
+        ! Strictly speaking don't need character arrays for fluxstring and intfluxstring, could just overwrite each time (may change later)
+        character (len = 1000000), dimension(size(outflux,1)) :: fluxstring
+        character (len = 1000000), dimension(size(outflux,1)) :: intfluxstring
+        default_stat%conv_unit=free_unit()
+        if (itime == 1) then
+            !The first time, remove file if already exists
+            open(unit=default_stat%conv_unit, file="outfluxes.csv", status="replace", action="write")
+        else
+            open(unit=default_stat%conv_unit, file="outfluxes.csv", action="write", position="append")
+        end if
+        ! Write column headings to file
+        counter = 0
+        if(itime.eq.1) then
+            write(whole_line,*) "Current Time"
+            do ioutlet =1, size(outflux,2)
+                write(numbers,*) "Surface_id=", outlet_id(ioutlet)
+                if(counter.eq.0) then
+                    whole_line = trim(numbers) //","// trim(whole_line)
+                else
+                    whole_line = trim(whole_line) //","// trim(numbers)
+                endif
+                !write(whole_line,*)trim(numbers)  //","//  "Current Time"
+                do iphase = 1, size(outflux,1)
+                    write(fluxstring(iphase),*) "Phase", iphase, "boundary flux"
+                    whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+                enddo
+                do iphase = 1, size(outflux,1)
+                    write(intfluxstring(iphase),*) "Phase", iphase,  "time integrated flux (volume/time)"
+                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+                enddo
+                counter = counter + 1
+            end do
+             ! Write out the line
+            write(default_stat%conv_unit,*), trim(whole_line)
+        else
+            ! Write the actual numbers to the file now
+            counter = 0
+            write(numbers,*) current_time
+            whole_line =  ","// trim(numbers)
+            do ioutlet =1, size(outflux,2)
+                if(counter > 0) then
+                    whole_line = trim(whole_line) //","
+                endif
+                !write(whole_line,*) current_time
+                do iphase = 1, size(outflux,1)
+                    write(fluxstring(iphase),*) outflux(iphase,ioutlet)
+                    whole_line = trim(whole_line) //","// trim(fluxstring(iphase))
+                enddo
+                do iphase = 1, size(outflux,1)
+                    write(intfluxstring(iphase),*) intflux(iphase,ioutlet)
+                    whole_line = trim(whole_line) //","// trim(intfluxstring(iphase))
+                enddo
+                counter = counter + 1
+            end do
+            ! Write out the line
+            write(default_stat%conv_unit,*), trim(whole_line)
+        endif
+        close (default_stat%conv_unit)
+    end subroutine dump_outflux
 
 end module Copy_Outof_State
 

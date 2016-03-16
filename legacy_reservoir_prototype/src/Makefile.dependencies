@@ -203,7 +203,8 @@ multi_matrix_operations.o ../include/matrix_operations.mod: \
    ../../include/parallel_tools.mod ../../include/petsc_tools.mod \
    ../../include/sparse_tools.mod ../../include/sparse_tools_petsc.mod \
    ../../include/spud.mod ../../include/state_module.mod \
-   ../include/multi_data_types.mod ../include/multiphase_caching.mod
+   ../include/multi_data_types.mod ../include/multi_tools.mod \
+   ../include/multiphase_caching.mod
 
 ../include/multi_pipes.mod: multi_pipes.o
 	@true
@@ -275,7 +276,7 @@ multi_sparsity.o ../include/spact.mod ../include/sparsity_nd.mod \
    ../../include/fdebug.h ../../include/fldebug.mod ../../include/futils.mod \
    ../../include/global_parameters.mod ../../include/spud.mod \
    ../include/copy_outof_state.mod ../include/cv_advection.mod \
-   ../include/multi_data_types.mod \
+   ../include/multi_data_types.mod ../include/multi_tools.mod \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_prototype.mod
 

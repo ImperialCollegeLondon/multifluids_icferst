@@ -36,7 +36,7 @@ module multi_tools
 
 contains
 
-    !sprint_to_do!update to use new memory
+    !sprint_to_do!update to use new memory, or remove it since it is unused
     SUBROUTINE SIMPNORM( NORMX, NORMY, NORMZ, D3, &
         SNDGLN, STOTEL, SNLOC, X_NONODS, NONODS, ELE, &
         X, Y, Z, &
@@ -312,6 +312,8 @@ contains
         ndglno=> mesh%ndglno
     end function get_ndglno
 
+    !Sort a list in increasing order
+    !Vec is the vector to sort and n is an starting point, like 1
     recursive  subroutine quicksort(vec,n)
 
         implicit none
