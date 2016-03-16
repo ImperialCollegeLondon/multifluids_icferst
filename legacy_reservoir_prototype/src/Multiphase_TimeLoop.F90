@@ -66,7 +66,6 @@ module multiphase_time_loop
     use Compositional_Terms
     use multiphase_EOS
     use multiphase_fractures
-    use multiphase_caching
     use Compositional_Terms
     use Copy_Outof_State
     use cv_advection, only : cv_count_faces
@@ -96,8 +95,6 @@ contains
         !!$ additional state variables for multiphase & multicomponent
         type(state_type) :: packed_state
         type(state_type), dimension(:), pointer :: multiphase_state, multicomponent_state
-        !!$ additional state variable for storage
-        type(state_type) :: storage_state
         !!Define shape functions
         type (multi_shape_funs) :: CV_funs, FE_funs
         !!$ Primary scalars
@@ -168,24 +165,6 @@ contains
         !Array to map nodes to region ids
         integer, dimension(:), allocatable :: IDs_ndgln, IDs2CV_ndgln!sprint_to_do; get this into ndgln structure?
         !Variable to store where we store things. Do not oversize this array, the size has to be the last index in use
-        integer, dimension (38) :: StorageIndexes
-        !Distribution of the indexes of StorageIndexes:
-        !cv_fem_shape_funs_plus_storage: 1 (ASSEMB_FORCE_CTY), 13 (CV_ASSEMB)   (REMOVED)
-        !CALC_ANISOTROP_LIM            : 2 (REMOVED)
-        !DG_DERIVS_ALL2                : 3 (REMOVED)
-        !DETNLXR_INVJAC                : 4 (removed)
-        !UNPACK_LOC                    : 5,6,7,8,9,10(REMOVED)
-        !COLOR_GET_CMC_PHA             : 11 (REMOVED)
-        !Matrix C                      : 12 (REMOVED)
-        !DG_DERIVS_ALL                 : 14 (REMOVED)
-        !DETNLXR_PLUS_U_WITH_STORAGE   : 14
-        !Indexes used in SURFACE_TENSION_WRAPPER (deprecated and will be removed):[15,30] (REMOVED)
-        !PROJ_CV_TO_FEM_state          : 31 (disabled) (removed)
-        !Capillary pressure            : 32 (Pe), 33 (exponent a) (disabled) (removed?)
-        !PIVIT_MAT (inverted)          : 34 (REMOVED)
-        !Bound                         : 35 (removed?)
-        !Ph 1                          : 36 (added back, need to remove again)
-        !Ph 2                          : 37 (removed?)
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure
@@ -210,8 +189,6 @@ contains
       ierr = Zoltan_Initialize(ver)
       assert(ierr == ZOLTAN_OK)
 #endif
-        !Initially we set to use Stored data and that we have a new mesh
-        StorageIndexes = 0!Initialize them as zero !
         ! Number of pressures to solve for
         Mdims%npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
         !Read info for adaptive timestep based on non_linear_iterations
@@ -233,11 +210,7 @@ contains
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
         call set_boundary_conditions_values(state, shift_time=.true.)
-        !Prepare the caching
-        call set_caching_level()
-        call initialize_storage( packed_state, storage_state )
-        !call print_state( packed_state )
-        !stop 78
+
         !  Access boundary conditions via a call like
         !  call get_entire_boundary_condition(extract_tensor_field(packed_state,"Packed"//name),["weakdirichlet"],tfield,bc_type_list)
         !  where tfield is type(tensor_field) and bc_type_list is integer, dimension(tfield%dim(1),tfield%dim(2),nonods)
@@ -676,7 +649,7 @@ end if
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state,&
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         velocity_field, pressure_field, &
                         Material_Absorption, dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
@@ -684,8 +657,7 @@ end if
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, &
-                        StorageIndexes=StorageIndexes, IDs_ndgln=IDs_ndgln )
+                        iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, IDs_ndgln=IDs_ndgln )
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     !                    !Calculate actual Darcy velocity
                     !                    call get_DarcyVelocity(Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, Mdims%mat_nloc, ndgln%mat, ndgln%u, &
@@ -1012,7 +984,6 @@ end if
         deallocate(multiphase_state)
         call deallocate(multicomponent_state)
         deallocate(multicomponent_state)
-        call deallocate(storage_state)
         call deallocate_multi_shape_funs(CV_funs)
         call deallocate_multi_shape_funs(FE_funs)
         call deallocate_multi_ndgln(ndgln)

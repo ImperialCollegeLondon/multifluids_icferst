@@ -52,7 +52,6 @@ module multiphase_1D_engine
     use Copy_Outof_State, only: as_vector
     use fldebug
     use solvers
-    use multiphase_caching, only: reshape_vector2pointer
     use memory_diagnostics
     use reference_counting
     use multi_data_types
@@ -557,7 +556,7 @@ contains
 
 
     SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, storage_state, &
+        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
         velocity, pressure, &
         MAT_ABSORB, DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
         SUF_SIG_DIAGTEN_BC, &
@@ -566,11 +565,10 @@ contains
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
-        StorageIndexes, IDs_ndgln )
+        IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IDs_ndgln )
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
-        type( state_type ), intent( inout ) :: packed_state, storage_state
+        type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims, FE_GIdims
         type(multi_shape_funs), intent(inout) :: CV_funs
@@ -593,7 +591,6 @@ contains
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
         REAL, DIMENSION( :, :, :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
-        integer, dimension(:), intent(inout) :: StorageIndexes
         ! Local Variables
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
@@ -937,7 +934,7 @@ contains
             END DO
             if ( high_order_Ph ) then
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
-                  call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, storage_state, Mdisopt%cv_ele_type, Mdims%nphase, u_absorbin )
+                  call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, Mdisopt%cv_ele_type, Mdims%nphase, u_absorbin )
                end if
             end if
             IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
@@ -5539,14 +5536,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
-subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, storage_state, cv_ele_type, nphase, u_absorbin )
+subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, cv_ele_type, nphase, u_absorbin )
 
       implicit none
 
       type(multi_dimensions), intent( in ) :: Mdims
       real, dimension( :, :, : ), intent( inout ) :: u_rhs
       type( state_type ), dimension( : ), intent( inout ) :: state
-      type( state_type ), intent( inout ) :: packed_state, storage_state
+      type( state_type ), intent( inout ) :: packed_state
       integer, intent( in ) :: cv_ele_type, nphase
 
       real, dimension( :, :, : ), intent( in ) :: u_absorbin

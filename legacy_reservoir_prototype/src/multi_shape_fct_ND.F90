@@ -42,7 +42,6 @@ module shape_functions_Linear_Quadratic
   use spud
   use Fields_Allocates, only : allocate, make_mesh
   use fields_data_types, only: mesh_type, scalar_field
-  use multiphase_caching, only: cache_level, reshape_vector2pointer
   use multi_data_types
 
   logical :: NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE = .false.

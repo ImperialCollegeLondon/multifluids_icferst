@@ -671,14 +671,6 @@ at the first timestep or not.</a:documentation>
           </element>
         </optional>
       </element>
-      <element name="caching">
-        <optional>
-          <element name="cache_shape_functions">
-            <a:documentation>Activate this to store the shape functions for every element.</a:documentation>
-            <empty/>
-          </element>
-        </optional>
-      </element>
       <optional>
         <element name="Fix_bad_elements">
           <a:documentation>Options applicable to the the fix to bad elements (elements with angles bigger than 105 degrees)

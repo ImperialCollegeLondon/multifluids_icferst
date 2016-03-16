@@ -52,7 +52,6 @@ module matrix_operations
     use halos
     use petsc_tools
     use petsc
-    use multiphase_caching, only : get_caching_level, test_caching_level, reshape_vector2pointer
     use global_parameters, only : FIELD_NAME_LEN, is_porous_media
     use boundary_conditions
     use multi_data_types
@@ -257,7 +256,7 @@ contains
             if (GetProcNo()>1) ndpset=0
         end if
            !Currently this is false, over-ride switch for porous media since it is slower than memory hungry
-        IF ( ( test_caching_level(6) .or.is_porous_media ) .and. Mdims%npres==1) THEN
+        IF ( ( is_porous_media ) .and. Mdims%npres==1) THEN
             ! Fast but memory intensive...
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
