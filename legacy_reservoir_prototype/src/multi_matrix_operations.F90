@@ -131,14 +131,14 @@ contains
 
     END SUBROUTINE MATINV
 
-    SUBROUTINE MATINVold( A, N, MAT, X, B)
+    SUBROUTINE MATINVold( A, N, MAT,B)
         ! This sub finds the inverse of the matrix A and puts it back in A.
         ! MAT, MAT2, X and B are working vectors.
         IMPLICIT NONE
         INTEGER, intent( in ) :: N
         REAL, DIMENSION( :, : ), intent( inout ) ::  A
         REAL, DIMENSION( :, : ), intent( inout ) :: MAT
-        REAL, DIMENSION( : ), intent( inout ) :: X, B
+        REAL, DIMENSION( : ), intent( inout ) :: B
         ! Local variables
         INTEGER :: ICOL
         INTEGER , DIMENSION(N) :: IPIV
@@ -150,24 +150,22 @@ contains
 
         MAT = A( 1:N,1:N )
 
-        CALL SMLINNGOT( MAT, X, B, N, IPIV, .FALSE. ) ! X contains the column ICOL of inverse
-
-        A( :, ICOL ) = X( : )
+        CALL SMLINNGOT( MAT, A( :, ICOL ), B, N, IPIV, .FALSE. ) ! X contains the column ICOL of inverse
 
         DO ICOL = 2, N ! Form column ICOL of the inverse.
             B = 0.
             B( ICOL ) = 1.0 ! Solve MAT X=B (NB MAT is overwritten).
 
-            CALL SMLINNGOT( MAT, X, B, N, IPIV, .TRUE. ) ! X contains the column ICOL of inverse
+            CALL SMLINNGOT( MAT, A( :, ICOL ), B, N, IPIV, .TRUE. ) ! X contains the column ICOL of inverse
 
-            A( :, ICOL ) = X( : )
         END DO
 
         RETURN
     END SUBROUTINE MATINVold
 
-    !sprint_to_do!add some comments
     SUBROUTINE SMLINNGOT( A, X, B, NMX, IPIV, GOTDEC )
+    !Calculate the inverse using the LU decomposition
+    !L can be provided, speeding up the method to O(n)
         IMPLICIT NONE
         INTEGER :: NMX
         REAL, DIMENSION( :, : ), intent( inout ) :: A
@@ -950,12 +948,12 @@ contains
         ! Local variables
         INTEGER :: ELE
 
-!        REAL, DIMENSION( NBLOCK , NBLOCK ) :: MAT
-!        REAL, DIMENSION( NBLOCK ) :: X, B
+        REAL, DIMENSION( NBLOCK , NBLOCK ) :: MAT
+        REAL, DIMENSION( NBLOCK ) :: B
 
         DO ELE = 1, TOTELE
-            CALL MATINV( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK )
-!            CALL MATINVold( PIVIT_MAT( :, :, ele ), NBLOCK, MAT, X, B )!Went back to use BLAS, if something odd occurs, go back to this method
+!            CALL MATINV( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK )
+            CALL MATINVold( PIVIT_MAT( :, :, ele ), NBLOCK, MAT, B )
         END DO
 
         RETURN
