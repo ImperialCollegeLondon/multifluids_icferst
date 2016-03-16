@@ -937,7 +937,7 @@ contains
             END DO
             if ( high_order_Ph ) then
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
-                  call high_order_pressure_solve( Mmat%u_rhs, state, packed_state, storage_state, StorageIndexes, Mdisopt%cv_ele_type, Mdims%nphase, u_absorbin )
+                  call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, storage_state, Mdisopt%cv_ele_type, Mdims%nphase, u_absorbin )
                end if
             end if
             IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
@@ -5539,42 +5539,31 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
-subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state, StorageIndexes, cv_ele_type, nphase, u_absorbin )
+subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, storage_state, cv_ele_type, nphase, u_absorbin )
 
       implicit none
 
+      type(multi_dimensions), intent( in ) :: Mdims
       real, dimension( :, :, : ), intent( inout ) :: u_rhs
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state, storage_state
       integer, intent( in ) :: cv_ele_type, nphase
-      integer, dimension( : ), intent( inout ) :: StorageIndexes
 
       real, dimension( :, :, : ), intent( in ) :: u_absorbin
 
       ! local variables...
       type ( tensor_field ), pointer :: ufield
-      integer :: ndim, ph_ngi, ph_ngi_short, ph_nloc, ph_snloc, &
-           &     u_nloc, u_snloc, sphngi, sbphngi, nface, stat, &
+      integer :: ndim, ph_ngi, ph_nloc, ph_snloc, &
+           &     u_nloc, u_snloc, stat, &
            &     totele, x_nonods, ele, x_nloc, &
            &     ph_ele_type, iloop, u_nonods, cv_nonods, &
            &     cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, cv_nloc, &
            &     ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
-      real, dimension( : ), pointer :: phweight, phweight_short, sphfeweigh, sbphfeweigh, &
-           &                           sele_overlap_scale
-      real, dimension( :, : ), pointer :: phn, phn_short, phfen, phfen_short, ufen, &
-           &                              sphfen, sphfenslx, sphfensly, sufen, sufenslx, sufensly, &
-           &                              sbphn, sbphfen, sbphfenslx, sbphfensly, sbufen, sbufenslx, sbufensly
-      real, dimension( :, :, : ), pointer :: phfenlx_all, phfenlx_short_all, ufenlx_all, &
-           &                                 sphfenlx_all, sufenlx_all, sbphfenlx_all, sbufenlx_all
-      logical, dimension( :, : ), allocatable :: u_on_face, ufem_on_face, &
-           &                                     ph_on_face, phfem_on_face
-      integer, pointer :: ncolgpts
-      integer, dimension( : ), pointer :: findgpts, colgpts, x_ndgln, cv_ndgln, ph_ndgln, u_ndgln, surface_node_list, mat_ndgln
-      integer, dimension( :, : ), pointer :: ph_neiloc, ph_sloclist, u_sloclist
+      integer, dimension( : ), pointer :: x_ndgln, cv_ndgln, ph_ndgln, u_ndgln, surface_node_list, mat_ndgln
       logical :: quad_over_whole_ele, d1, d3, dcyl
       type( vector_field ), pointer :: x
       type( mesh_type ), pointer :: phmesh
-      !vars for the derivatives of the shape functions
+
       real, dimension( :, :, : ), allocatable, target :: tmp_cvfenx_all
       real, dimension( :, :, : ), allocatable, target :: other_fenx_all
       real, dimension( : ), allocatable, target :: detwei, ra
@@ -5598,7 +5587,7 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
       real, dimension( :, : ), pointer :: other_fen
       real, dimension( :, :, : ), pointer :: other_fenlx_all
 
-      real :: nxnx, nm, gravity_magnitude, dt
+      real :: nxnx, gravity_magnitude, dt
 
       type( scalar_field ) :: rhs, ph_sol
       type( petsc_csr_matrix ) :: matrix
@@ -5610,10 +5599,13 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
       type( scalar_field ), pointer :: printf
       type( vector_field ), pointer :: printu, x_p2, gravity_direction
 
-
-      logical :: on_boundary, boussinesq, got_free_surf
+      logical :: boussinesq, got_free_surf
       integer :: inod, ph_jnod2, ierr, count, count2, i, j, mat_inod
-      integer, dimension(:), pointer :: findph, colph
+      integer, dimension( : ), pointer :: findph, colph
+
+      type( multi_GI_dimensions ) :: phGIdims
+      type( multi_dimensions ) :: phdims
+      type( multi_shape_funs ) :: ph_funs
 
 
       ewrite(3,*) "inside high_order_pressure_solve"
@@ -5648,35 +5640,16 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
          stop 567
       end if
 
-      call retrieve_ngi_old( ndim, ph_ele_type, ph_nloc, u_nloc, &
-           ph_ngi, ph_ngi_short, sphngi, sbphngi, nface, quad_over_whole_ele )
+      phdims%ndim = Mdims%ndim
+      phdims%u_nloc = Mdims%u_nloc ; phdims%u_snloc = Mdims%u_snloc
+      phdims%cv_nloc = ph_nloc ; phdims%cv_snloc = ph_snloc
 
-      allocate( ph_on_face( ph_nloc, sphngi ), phfem_on_face( ph_nloc, sphngi ) )
-      allocate( u_on_face( u_nloc, sphngi ), ufem_on_face( u_nloc, sphngi ) )
+      call retrieve_ngi( phGIdims, phdims, ph_ele_type, quad_over_whole_ele )
 
-      call cv_fem_shape_funs_plus_storage( &
-                                ! volume shape functions...
-           ndim, ph_ele_type,  &
-           ph_ngi, ph_ngi_short, ph_nloc, u_nloc, phn, phn_short, &
-           phweight, phfen, phfenlx_all, &
-           phweight_short, phfen_short, phfenlx_short_all, &
-           ufen, ufenlx_all, &
-                                ! surface of each ph shape functions...
-           sphngi, ph_neiloc, ph_on_face, phfem_on_face, &
-           sphfen, sphfenslx, sphfensly, sphfeweigh, &
-           sphfenlx_all,  &
-           sufen, sufenslx, sufensly, &
-           sufenlx_all, &
-                                ! surface element shape funcs...
-           u_on_face, ufem_on_face, nface, &
-           sbphngi, sbphn, sbphfen, sbphfenslx, sbphfensly, sbphfeweigh, sbphfenlx_all, &
-           sbufen, sbufenslx, sbufensly, sbufenlx_all, &
-           ph_sloclist, u_sloclist, ph_snloc, u_snloc, &
-                                ! define the gauss points that lie on the surface of the ph...
-           findgpts, colgpts, ncolgpts, &
-           sele_overlap_scale, quad_over_whole_ele, &
-           storage_state, "ph_1" , storageindexes( 36 ) )
+      call allocate_multi_shape_funs( ph_funs, phdims, phGIdims )
+      call cv_fem_shape_funs_new( ph_funs, phdims, phGIdims, ph_ele_type, quad_over_whole_ele )
 
+      ph_ngi = phGIdims%cv_ngi
       totele = ele_count( ufield )
       x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
       cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
@@ -5696,24 +5669,24 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
       if ( cv_nloc == u_nloc ) then
 
          tmp_cv_nloc = u_nloc
-         tmp_cvfen => ufen
-         tmp_cvfenlx_all => ufenlx_all
-         tmp_cv_weight => phweight_short
+         tmp_cvfen => ph_funs%ufen
+         tmp_cvfenlx_all => ph_funs%ufenlx_all
+         tmp_cv_weight => ph_funs%cvweight
 
          other_nloc = ph_nloc
-         other_fen => phfen
-         other_fenlx_all => phfenlx_all
+         other_fen => ph_funs%cvfen
+         other_fenlx_all => ph_funs%cvfenlx_all
 
       else if ( cv_nloc == ph_nloc ) then
 
          tmp_cv_nloc = ph_nloc
-         tmp_cvfen => phfen
-         tmp_cvfenlx_all => phfenlx_all
-         tmp_cv_weight => phweight_short
+         tmp_cvfen => ph_funs%cvfen
+         tmp_cvfenlx_all => ph_funs%cvfenlx_all
+         tmp_cv_weight => ph_funs%cvweight
 
          other_nloc = u_nloc
-         other_fen => ufen
-         other_fenlx_all => ufenlx_all
+         other_fen => ph_funs%ufen
+         other_fenlx_all => ph_funs%ufenlx_all
 
       else
          stop 7555
@@ -5807,7 +5780,7 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
                do iphase = 1, nphase
                   do idim = 1, ndim
                      u_s_gi( :, idim, iphase ) = u_s_gi( :, idim, iphase ) + &
-                          ufen( u_iloc, : ) * u_ph_source_vel( idim, iphase, u_inod )
+                          ph_funs%ufen( u_iloc, : ) * u_ph_source_vel( idim, iphase, u_inod )
                   end do
                end do
             end do
@@ -5853,7 +5826,7 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
                           phfenx_all( idim, ph_iloc, : ) * ph( iphase, ph_inod )
                   end do
                   coef_alpha_gi( :, iphase ) = coef_alpha_gi( :, iphase ) + &
-                       phfen( ph_iloc, : ) * coef_alpha_ph( iphase, ph_inod )
+                       ph_funs%cvfen( ph_iloc, : ) * coef_alpha_ph( iphase, ph_inod )
                end do
             end do
 
@@ -5890,7 +5863,7 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
                   do iphase = 1, nphase
                      do idim = 1, ndim
                         u_rhs( idim, iphase, u_inod ) = u_rhs( idim, iphase, u_inod ) + &
-                             sum( ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
+                             sum( ph_funs%ufen( u_iloc, : ) * ( - dx_ph_gi( :, idim, iphase ) &
                              + u_s_gi( :, idim, iphase ) - coef_alpha_gi( :, iphase ) * &
                              dx_alpha_gi( :, idim, iphase ) ) * detwei )
                      end do
@@ -5986,7 +5959,6 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
                  coef_alpha_cv, u_ph_source_ph, alpha_ph, &
                  ph, coef_alpha_ph, dx_ph_gi, u_s_gi, &
                  dx_alpha_gi, coef_alpha_gi, den_gi, inv_den_gi, sigma_gi, &
-                 ph_on_face, phfem_on_face, u_on_face, ufem_on_face,&
                  tmp_cvfenx_all, other_fenx_all, detwei, ra )
       ewrite(3,*) "leaving high_order_pressure_solve"
 
@@ -6312,7 +6284,7 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
                 REAL, DIMENSION( : , : ), allocatable :: DIFF_VOL_GI, DIFF_VOL_GI_BOTH
                 REAL, DIMENSION( :, :, :, : ), allocatable :: DUDX_ALL_GI, DUOLDDX_ALL_GI
                 REAL, DIMENSION( :, : ), allocatable :: IDENT
-                REAL :: COEF, DIVU, DIVUOLD
+                REAL :: DIVU, DIVUOLD
                 INTEGER :: U_KLOC,U_KLOC2,MAT_KLOC,MAT_KLOC2,IDIM,JDIM,IDIM_VEL,U_SKLOC,CV_SKLOC
                 INTEGER :: SGI,IPHASE
                 LOGICAL :: ZER_DIFF,SIMPLE_DIFF_CALC
