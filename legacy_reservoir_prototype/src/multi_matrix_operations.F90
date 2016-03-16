@@ -163,8 +163,9 @@ contains
         RETURN
     END SUBROUTINE MATINVold
 
-    !sprint_to_do!add some comments
     SUBROUTINE SMLINNGOT( A, X, B, NMX, IPIV, GOTDEC )
+    !Calculate the inverse using the LU decomposition
+    !L can be provided, speeding up the method to O(n)
         IMPLICIT NONE
         INTEGER :: NMX
         REAL, DIMENSION( :, : ), intent( inout ) :: A
