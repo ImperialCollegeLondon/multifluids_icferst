@@ -950,12 +950,12 @@ contains
         ! Local variables
         INTEGER :: ELE
 
-!        REAL, DIMENSION( NBLOCK , NBLOCK ) :: MAT
-!        REAL, DIMENSION( NBLOCK ) :: X, B
+        REAL, DIMENSION( NBLOCK , NBLOCK ) :: MAT
+        REAL, DIMENSION( NBLOCK ) :: X, B
 
         DO ELE = 1, TOTELE
-            CALL MATINV( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK )
-!            CALL MATINVold( PIVIT_MAT( :, :, ele ), NBLOCK, MAT, X, B )!Went back to use BLAS, if something odd occurs, go back to this method
+!            CALL MATINV( PIVIT_MAT( :, :, ele ), NBLOCK, NBLOCK )
+            CALL MATINVold( PIVIT_MAT( :, :, ele ), NBLOCK, MAT, X, B )
         END DO
 
         RETURN
