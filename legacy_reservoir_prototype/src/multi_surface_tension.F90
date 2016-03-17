@@ -261,9 +261,9 @@ contains
 !-----------------------------------------------------------------------
      !Local variables
       real, dimension( : ), allocatable :: X, Y, Z, PSIGI_X, DGI_X, PSISGI_X, NORMX
-      real, dimension( : , : ), allocatable :: SOL_DERIV_X, SOL_DERIV_X1, UD, SNORMXN, x_all
+      real, dimension( : , : ), allocatable :: SOL_DERIV_X, SOL_DERIV_X1, UD, SNORMXN
      
-      type( vector_field ), pointer :: x_all2
+      type( vector_field ), pointer :: x_all
       QUAD_OVER_WHOLE_ELE=.true. 
       ! If QUAD_OVER_WHOLE_ELE=.true. then dont divide element into CV's to form quadrature.
       call retrieve_ngi( CV_GIdims, Mdims, Mdisopt%cv_ele_type, quad_over_whole_ele )
@@ -280,14 +280,12 @@ contains
       ALLOCATE( SNORMXN( Mdims%ndim, CV_GIdims%sbcvngi )); SNORMXN = 0.0
       ALLOCATE( CV_OTHER_LOC( Mdims%cv_nloc ))    
       ALLOCATE( CV_SLOC2LOC( Mdims%cv_snloc ))
-      ALLOCATE( x_all(  3, Mdims%x_nonods ) ) ; x_all = 0.0
-      x_all2 => extract_vector_field( packed_state, "PressureCoordinate" )
-      x = x_all2 % val( 1, : )
-      if (Mdims%ndim >=2 ) y = x_all2 % val( 2, : )
-      if (Mdims%ndim >=3 ) z = x_all2 % val( 3, : )
-      x_all(1,:) = x_all2 % val( 1, : )
-      if (Mdims%ndim >=2 ) x_all(2,:) = x_all2 % val( 2, : )
-      if (Mdims%ndim >=3 ) x_all(3,:) = x_all2 % val( 3, : )
+
+      x_all => extract_vector_field( packed_state, "PressureCoordinate" )
+      x = x_all % val( 1, : )
+      if (Mdims%ndim >=2 ) y = x_all % val( 2, : )
+      if (Mdims%ndim >=3 ) z = x_all % val( 3, : )
+
       ds => extract_scalar_field( state(1), 'ds'  )
       dx => extract_scalar_field( state(1), 'dx'  )
       dy => extract_scalar_field( state(1), 'dy'  )
@@ -305,7 +303,7 @@ contains
       call allocate_multi_dev_shape_funs(CV_funs, Devfuns)
       DO ELE=1,Mdims%totele
         ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
-        call DETNLXR_PLUS_U_new(ELE, X_ALL, ndgln%x, CV_funs%cvweight, &
+        call DETNLXR_PLUS_U_new(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
               CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
          MASS_ELE( ELE ) = DevFuns%VOLUME
       END DO
@@ -383,7 +381,7 @@ contains
             X_INOD2 = ndgln%x(( ELE - 1 ) * Mdims%cv_nloc + 1 )
             !HDC=MAX(HDC, SQRT( (X(X_INOD)-X(X_INOD2))**2+(Y(X_INOD)-Y(X_INOD2))**2 &
             !              +(Z(X_INOD)-Z(X_INOD2))**2  ))
-            HDC = MAX(HDC, SQRT( SUM( (X_ALL2%val(1:Mdims%ndim,X_INOD)-X_ALL2%val(1:Mdims%ndim,X_INOD2))**2) ))
+            HDC = MAX(HDC, SQRT( SUM( (X_ALL%val(1:Mdims%ndim,X_INOD)-X_ALL%val(1:Mdims%ndim,X_INOD2))**2) ))
          END DO
          END IF
       END DO
@@ -445,7 +443,7 @@ contains
             X_INOD2 = ndgln%x(( ELE - 1 ) * Mdims%cv_nloc + 1 )
             !HDC=MIN(HDC, SQRT( (X(X_INOD)-X(X_INOD2))**2+(Y(X_INOD)-Y(X_INOD2))**2 &
             !              +(Z(X_INOD)-Z(X_INOD2))**2  ))
-            HDC = MIN(HDC, SQRT( SUM( (X_ALL2%val(1:Mdims%ndim,X_INOD)-X_ALL2%val(1:Mdims%ndim,X_INOD2))**2) ))
+            HDC = MIN(HDC, SQRT( SUM( (X_ALL%val(1:Mdims%ndim,X_INOD)-X_ALL%val(1:Mdims%ndim,X_INOD2))**2) ))
          END DO
          END IF
       END DO
@@ -464,7 +462,7 @@ contains
 !Calculate Laplacian of the diffused interface DevFuns%VOLUME fraction or distance function
             DO ELE=1,Mdims%totele ! ELE loop 1
                IF(INTERFACE_ELE(ELE)) THEN
-                call DETNLXR_PLUS_U_new(ELE, X_ALL, ndgln%x, CV_funs%cvweight, &
+                call DETNLXR_PLUS_U_new(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
  
                CALL LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
@@ -518,7 +516,7 @@ contains
             DO ELE=1,Mdims%totele  ! ELE loop 4
                IF(INTERFACE_ELE(ELE)) THEN
                  ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
-                 call DETNLXR_PLUS_U_new(ELE, X_ALL, ndgln%x, CV_funs%cvweight, &
+                 call DETNLXR_PLUS_U_new(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
                DO INNER_ITS=1,1
 ! Calculate the velocity...
@@ -707,7 +705,7 @@ contains
       DO ELE=1,Mdims%totele ! ELE loop 7
          IF (INTERFACE_ELE(ELE)) THEN
 ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
-                call DETNLXR_PLUS_U_new(ELE, X_ALL, ndgln%x, CV_funs%cvweight, &
+                call DETNLXR_PLUS_U_new(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
  
             CALL LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
@@ -782,7 +780,7 @@ contains
       DO ELE=1,Mdims%totele ! ELE loop 10
          IF(INTERFACE_ELE(ELE)) THEN
                 ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
-                call DETNLXR_PLUS_U_new(ELE, X_ALL, ndgln%x, CV_funs%cvweight, &
+                call DETNLXR_PLUS_U_new(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
 ! calculate curvature:
             CALL LOC_1ST_DERIV_XYZ_DG_CURV(CURV, DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
@@ -837,7 +835,6 @@ contains
       DEALLOCATE( X, Y, Z )
       DEALLOCATE( DGI_X, UD, PSISGI_X, NORMX, SNORMXN )
       DEALLOCATE( CV_OTHER_LOC, CV_SLOC2LOC )
-      DEALLOCATE( X_ALL )
       DEALLOCATE( MASS_CV, FACE_ELE, MASS_ELE)
       DEALLOCATE( CURVATURE, CURV, INTERFACE_ELE, INTERFACE_ELE2, DISTANCE_FUN, DISTANCE_FUN_OLD, DISTANCE_FUN1 )
       DEALLOCATE( SOL_DERIV_X, SOL_DERIV_X1, SIGN_FUN_GI, SIGN_FUN_SGI )
