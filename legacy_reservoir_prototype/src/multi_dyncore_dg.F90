@@ -621,8 +621,8 @@ contains
         type(petsc_csr_matrix)::  CMC_petsc
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: MAT_INOD, IPRES, JPRES, iphase_real, jphase_real
-        REAL, DIMENSION( :, :, : ), allocatable :: U_ALL, UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABSORB
-        REAL, DIMENSION( :, : ), allocatable :: X_ALL, UDEN_ALL, UDENOLD_ALL, UDEN3
+        REAL, DIMENSION( :, :, : ), allocatable :: UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABSORB
+        REAL, DIMENSION( :, : ), allocatable :: UDEN_ALL, UDENOLD_ALL, UDEN3
         REAL, DIMENSION( :, :, :, : ), allocatable :: uDIFFUSION, UDIFFUSION_ALL
         REAL, DIMENSION( :, : ), allocatable :: uDIFFUSION_VOL, UDIFFUSION_VOL_ALL, rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
@@ -665,9 +665,8 @@ contains
         IGOT_CMC_PRECON = 0
         if ( symmetric_P ) IGOT_CMC_PRECON = 1
         !sprint_to_do!this looks like a place than can be easily optimized
-        ALLOCATE( U_ALL( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ), UOLD_ALL( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ), &
-        X_ALL( Mdims%ndim, Mdims%x_nonods ), UDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), UDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) )
-        U_ALL = 0. ; UOLD_ALL = 0. ; X_ALL = 0. ; UDEN_ALL = 0. ; UDENOLD_ALL = 0.
+        ALLOCATE( UDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), UDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) )
+        UDEN_ALL = 0.; UDENOLD_ALL = 0.
         allocate ( uDiffusion( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ), uDiffusion_Vol( Mdims%mat_nonods, Mdims%nphase ) )
         uDiffusion = 0. ; uDiffusion_Vol = 0.
         ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
@@ -675,7 +674,8 @@ contains
         call allocate(Mmat%CT_RHS,Mdims%npres,pressure%mesh,"Mmat%CT_RHS")
         ALLOCATE( Mmat%U_RHS( Mdims%ndim, Mdims%nphase, Mdims%u_nonods )) ; Mmat%U_RHS=0.
         ALLOCATE( DIAG_SCALE_PRES( Mdims%npres,Mdims%cv_nonods )) ; DIAG_SCALE_PRES=0.
-        ALLOCATE(DIAG_SCALE_PRES_COUP(Mdims%npres,Mdims%npres,Mdims%cv_nonods),GAMMA_PRES_ABS(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods),GAMMA_PRES_ABS_NANO(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods),INV_B(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods))
+        ALLOCATE(DIAG_SCALE_PRES_COUP(Mdims%npres,Mdims%npres,Mdims%cv_nonods),GAMMA_PRES_ABS(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods), &
+            GAMMA_PRES_ABS_NANO(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods),INV_B(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods))
         allocate(MASS_PIPE(Mdims%cv_nonods), MASS_CVFEM2PIPE(Mspars%CMC%ncol), MASS_PIPE2CVFEM(Mspars%CMC%ncol), MASS_CVFEM2PIPE_TRUE(Mspars%CMC%ncol))
         ALLOCATE( MCY_RHS( Mdims%ndim * Mdims%nphase * Mdims%u_nonods + Mdims%cv_nonods )) ; MCY_RHS=0.
         ALLOCATE( MCY( Mspars%MCY%ncol )) ; MCY=0.
@@ -715,11 +715,8 @@ contains
 
         !################TEMPORARY ADAPT FROM OLD VARIABLES TO NEW###############!sprint_to_do; remove conversion
         U_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
-        U_ALL = U_ALL2%VAL
         UOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
-        UOLD_ALL = UOLD_ALL2%VAL
         X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
-        X_ALL = X_ALL2%VAL
         P_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
         CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedCVPressure" )
         linearise_density = have_option( '/material_phase[0]/linearise_density' )
@@ -762,11 +759,11 @@ contains
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
         end if
-         if ( have_option( '/blasting' ) ) then
-               RETRIEVE_SOLID_CTY = .true.
-               call get_option( '/blasting/Gidaspow_model', opt )
-               if ( trim( opt ) == "A" ) SOLID_FLUID_MODEL_B = .false.
-         end if
+        if ( have_option( '/blasting' ) ) then
+            RETRIEVE_SOLID_CTY = .true.
+            call get_option( '/blasting/Gidaspow_model', opt )
+            if ( trim( opt ) == "A" ) SOLID_FLUID_MODEL_B = .false.
+        end if
         IF(RETRIEVE_SOLID_CTY) THEN
         ! if model B and solid-fluid coupling:
            sf => EXTRACT_SCALAR_FIELD( PACKED_STATE, "SolidConcentration" )
@@ -845,8 +842,8 @@ contains
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
              velocity, pressure, &
-            X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
-            U_ALL, UOLD_ALL, &
+            X_ALL2%VAL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
+            U_ALL2%VAL, UOLD_ALL2%VAL, &
             P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
             DT, &
             MASS_MN_PRES, & ! pressure matrix for projection method
@@ -878,7 +875,7 @@ contains
            !Introduce well modelling
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mmat%U_RHS, Mdims, Mspars, associated(Mmat%PIVIT_MAT), &
                                     Mmat%C, ndgln%cv, ndgln%u, ndgln%x, ndgln%mat, Mmat%PIVIT_MAT, &
-                                    ndgln%suf_p, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, U_ALL, &
+                                    ndgln%suf_p, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, U_ALL2%VAL, &
                                     U_SOURCE*0.0, U_SOURCE_CV*0.0 ) ! No sources in the wells for now...
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
@@ -1062,7 +1059,6 @@ END IF
             call halo_update(p_all)
             deallocate( UP_VEL )
             deallocate(U_RHS_CDP2)
-            deallocate(U_ALL)
             call deallocate(rhs_p)
             call deallocate(cmc_petsc)
             ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
