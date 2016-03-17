@@ -1445,7 +1445,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION( :, : ),    ALLOCATABLE :: XL_ALL, XL2_ALL, XSL_ALL, SNORMXN_ALL
         REAL, DIMENSION ( : , :,  : ), allocatable :: GRAD_SOU_GI_NMX, GRAD_SOU_GI
         REAL, DIMENSION( : ),    ALLOCATABLE :: NORMX_ALL
-        REAL, DIMENSION( : ), allocatable :: X, Y, Z
         REAL, DIMENSION ( : , :,  : ), allocatable :: SIGMAGI, SIGMAGI_STAB, SIGMAGI_STAB_SOLID_RHS, &
         WORK_ELE_ALL, &
         DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, FTHETA, SNDOTQ_IN, SNDOTQ_OUT, &
@@ -1982,26 +1981,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( U_NODJ_SGI_IPHASE_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( UOLD_NODI_SGI_IPHASE_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( UOLD_NODJ_SGI_IPHASE_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
-        ALLOCATE( X(Mdims%x_nonods), Y(Mdims%x_nonods), Z(Mdims%x_nonods) ) !; X=0. ; Y=0. ; Z=0.
-        IF (Mdims%ndim<3) THEN
-            z=0
-            IF (Mdims%ndim<2) y=0
-        END IF
         IF(IDIVID_BY_VOL_FRAC+IGOT_VOL_X_PRESSURE.GE.1) THEN
             ALLOCATE( VOL_FRA_GI(Mdims%nphase, FE_GIdims%CV_NGI), VOL_FRA_GI_DX_ALL( Mdims%ndim, Mdims%nphase, FE_GIdims%CV_NGI) )
             ALLOCATE( SLOC_VOL_FRA(Mdims%nphase, Mdims%cv_snloc), SLOC2_VOL_FRA(Mdims%nphase, Mdims%cv_snloc))
             ALLOCATE( SVOL_FRA(Mdims%nphase, FE_GIdims%sbcvngi), SVOL_FRA2(Mdims%nphase, FE_GIdims%sbcvngi) )
             ALLOCATE( VOL_FRA_NMX_ALL(Mdims%ndim,Mdims%nphase) )
         ENDIF
-        DO IDIM = 1, Mdims%ndim
-            IF ( IDIM == 1 ) THEN
-                X = X_ALL( IDIM, : )
-            ELSE IF ( IDIM == 2 ) THEN
-                Y = X_ALL( IDIM, : )
-            ELSE
-                Z = X_ALL( IDIM, : )
-            END IF
-        END DO
         GOT_DIFFUS = ( R2NORM( UDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0.0 )  &
             .OR. ( R2NORM( UDIFFUSION_VOL, Mdims%mat_nonods * Mdims%nphase ) /= 0.0 ) .OR. BETWEEN_ELE_STAB
         IF(LES_DISOPT.NE.0) GOT_DIFFUS=.TRUE.
@@ -2115,17 +2100,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
         IF( GOT_DIFFUS ) THEN
-            CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &
-                DUX_ELE_ALL, DUOLDX_ELE_ALL, &
-                Mdims%ndim, Mdims%nphase, Mdims%ndim, Mdims%u_nonods, Mdims%totele, ndgln%u, &
-                ndgln%xu, Mdims%x_nloc, ndgln%x, &
-                FE_GIdims%cv_ngi, Mdims%u_nloc, FE_funs%cvweight, &
-                FE_funs%ufen, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), &
-                FE_funs%cvfen, FE_funs%cvfenlx_all(1,:,:), FE_funs%cvfenlx_all(2,:,:), FE_funs%cvfenlx_all(3,:,:), &
-                Mdims%x_nonods, X, Y, Z, &
-                FE_GIdims%nface, FACE_ELE, FE_funs%u_sloclist, FE_funs%cv_sloclist, Mdims%stotel, Mdims%u_snloc, Mdims%cv_snloc, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
-                FE_GIdims%sbcvngi, FE_funs%sbufen, FE_funs%sbufenslx, FE_funs%sbufensly, FE_funs%sbcvfeweigh, &
-                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly )
+            CALL DG_DERIVS_ALL ( Mdims, FE_GIdims, FE_funs, ndgln%u, ndgln%xu, U_ALL, UOLD_ALL, &
+                X_ALL, DUX_ELE_ALL, DUOLDX_ELE_ALL, FACE_ELE, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, FOR_CVs =.false.)
         ENDIF
         ! LES VISCOCITY CALC.
         IF ( GOT_DIFFUS ) THEN
