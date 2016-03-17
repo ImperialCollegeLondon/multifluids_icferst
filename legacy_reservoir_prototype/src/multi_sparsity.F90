@@ -1127,7 +1127,7 @@ contains
       ! Computing Gauss points and array containing node points on neighboors elements
       call retrieve_ngi( GIdims, Mdims, cv_ele_type, .false. )
       call allocate_multi_shape_funs( CV_funs, Mdims, GIdims )
-      call cv_fem_shape_funs_new( CV_funs, Mdims, GIdims, cv_ele_type, quad_over_whole_ele = .false. )
+      call cv_fem_shape_funs( CV_funs, Mdims, GIdims, cv_ele_type, quad_over_whole_ele = .false. )
 
       ! Allocating space
       found = .false.

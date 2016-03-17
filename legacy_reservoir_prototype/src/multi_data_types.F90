@@ -36,6 +36,12 @@ module multi_data_types
     use fields_allocates
     use global_parameters, only: option_path_len, is_porous_media
 
+    interface allocate_multi_dev_shape_funs
+        module procedure allocate_multi_dev_shape_funs1
+        module procedure allocate_multi_dev_shape_funs2
+    end interface
+
+
     type multi_dimensions
         integer :: ndim       !Number of dimensions
         integer :: cv_nloc    !Number of local control volumes
@@ -119,6 +125,14 @@ module multi_data_types
         type(petsc_csr_matrix) ::FE2CV !Matrix to convert from FE to CV
     end type multi_shape_funs
 
+    !Data structure to store the derivatives of the shape functions and conversors from reference element to local
+    type multi_dev_shape_funs
+        real :: volume!Volume of the local element
+        real, pointer, dimension(:) :: detwei=> null()!Determinant times weigth (i.e: conversor from reference element to local element)
+        real, pointer, dimension(:) :: ra => null()   !???
+        real, pointer, dimension(: ,:, :)  :: cvfenx_all=> null()!Space derivatives of the pressure (CV) shape functions
+        real, pointer, dimension(: ,:, :)  :: ufenx_all=> null()!Space derivatives of the velocity (FE) shape functions
+    end type multi_dev_shape_funs
     !This type comprises the four necessary variables to represent matrices using a CSR structure
     type multi_sparsity
         integer :: ncol
@@ -505,6 +519,44 @@ contains
         !Set flag to recalculate
         Mmat%stored = .false.
     end subroutine destroy_multi_matrices
+
+    subroutine allocate_multi_dev_shape_funs1(funs, Dev_funs)
+        implicit none
+        type (multi_shape_funs), intent(in) ::funs
+        type (multi_dev_shape_funs), intent(inout) :: Dev_funs
+
+        allocate(Dev_funs%detwei(size(funs%cvfenlx_all,3)))
+        allocate(Dev_funs%ra(size(funs%cvfenlx_all,3)))
+        allocate(Dev_funs%cvfenx_all(size(funs%cvfenlx_all,1),size(funs%cvfenlx_all,2),size(funs%cvfenlx_all,3)))
+        allocate(Dev_funs%ufenx_all(size(funs%ufenlx_all,1),size(funs%ufenlx_all,2),size(funs%ufenlx_all,3)))
+
+    end subroutine allocate_multi_dev_shape_funs1
+
+    subroutine allocate_multi_dev_shape_funs2(Mdims, GIdims, Dev_funs)
+        implicit none
+        type (multi_dimensions), intent(in)  ::Mdims
+        type(multi_GI_dimensions), intent(in) :: GIdims
+        type (multi_dev_shape_funs), intent(inout) :: Dev_funs
+
+        allocate(Dev_funs%detwei(GIdims%cv_ngi))
+        allocate(Dev_funs%ra(GIdims%cv_ngi))
+        allocate(Dev_funs%cvfenx_all(Mdims%Ndim, Mdims%cv_nloc,GIdims%cv_ngi))
+        allocate(Dev_funs%ufenx_all(Mdims%Ndim, Mdims%u_nloc, GIdims%cv_ngi))
+
+    end subroutine allocate_multi_dev_shape_funs2
+
+
+    subroutine deallocate_multi_dev_shape_funs(Dev_funs)
+        implicit none
+        type (multi_dev_shape_funs), intent(inout) :: Dev_funs
+        !Deallocate memory
+        if (associated(Dev_funs%detwei)) deallocate(Dev_funs%detwei)
+        if (associated(Dev_funs%ra)) deallocate(Dev_funs%ra)
+        if (associated(Dev_funs%ufenx_all)) deallocate(Dev_funs%ufenx_all)
+        !Nullify pointers
+        nullify(Dev_funs%cvfenx_all);nullify(Dev_funs%ufenx_all)
+        nullify(Dev_funs%detwei); nullify(Dev_funs%ra)
+    end subroutine deallocate_multi_dev_shape_funs
 
 end module multi_data_types
 

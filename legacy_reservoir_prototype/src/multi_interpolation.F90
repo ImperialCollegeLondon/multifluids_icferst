@@ -215,6 +215,7 @@ contains
        Long_EleRHS = 0.0
        mass_diag = 0.0
     endif
+
     do  ele = 1, Mdims%totele
        ! Calculate detwei related quantities
        call detnlxr_plus_u( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
