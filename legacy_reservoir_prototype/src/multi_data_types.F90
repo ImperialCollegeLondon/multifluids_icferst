@@ -39,8 +39,8 @@ module multi_data_types
     interface allocate_multi_dev_shape_funs
         module procedure allocate_multi_dev_shape_funs1
         module procedure allocate_multi_dev_shape_funs2
+        module procedure allocate_multi_dev_shape_funs3
     end interface
-
 
     type multi_dimensions
         integer :: ndim       !Number of dimensions
@@ -185,6 +185,8 @@ module multi_data_types
         logical :: stored = .false.!Flag to be true when the storable matrices have been stored
     end type multi_matrices
 
+
+    private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3
 contains
     subroutine allocate_multi_shape_funs(shape_fun,  Mdims, GIdims)
     !This subroutine allocates all the arrays in a multi_shape_funs data type
@@ -545,7 +547,17 @@ contains
 
     end subroutine allocate_multi_dev_shape_funs2
 
+    subroutine allocate_multi_dev_shape_funs3(cvfenlx_all, ufenlx_all, Dev_funs)
+        implicit none
+        real, dimension(:,:,:), intent(in) :: cvfenlx_all, ufenlx_all
+        type (multi_dev_shape_funs), intent(inout) :: Dev_funs
 
+        allocate(Dev_funs%detwei(size(cvfenlx_all,3)))
+        allocate(Dev_funs%ra(size(cvfenlx_all,3)))
+        allocate(Dev_funs%cvfenx_all(size(cvfenlx_all,1),size(cvfenlx_all,2),size(cvfenlx_all,3)))
+        allocate(Dev_funs%ufenx_all(size(ufenlx_all,1),size(ufenlx_all,2),size(ufenlx_all,3)))
+
+    end subroutine allocate_multi_dev_shape_funs3
     subroutine deallocate_multi_dev_shape_funs(Dev_funs)
         implicit none
         type (multi_dev_shape_funs), intent(inout) :: Dev_funs
