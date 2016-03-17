@@ -659,9 +659,9 @@ end if
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
                         iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, IDs_ndgln=IDs_ndgln )
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                    !                    !Calculate actual Darcy velocity
-                    !                    call get_DarcyVelocity(Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, Mdims%mat_nloc, ndgln%mat, ndgln%u, &
-                    !                            ndgln%cv, state, packed_state, Material_Absorption)
+!                    !Calculate actual Darcy velocity
+!                    call get_DarcyVelocity(Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, Mdims%mat_nloc, ndgln%mat, ndgln%u, &
+!                            ndgln%cv, state, packed_state, Material_Absorption)
                     !!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
                 end if Conditional_ForceBalanceEquation

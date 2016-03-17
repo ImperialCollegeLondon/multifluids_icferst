@@ -4377,7 +4377,7 @@ contains
       call DETNLXR_PLUS_U( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), XONDGL, dummy, dummy, &
        size(cvshapelx,2), dummy, size(cvshapelx,3), &
        cvshape, cvshapelx(1,:,:), cvshapelx(2,:,:), cvshapelx(3,:,:), WEIGHT, &
-       dev_funs%DETWEI, dev_funs%RA, dev_funs%VOLUME, size(X_ALL,1)==1, size(X_ALL,1)==3, .false., &
+       dev_funs%DETWEI, dev_funs%RA, dev_funs%VOLUME, size(X_ALL,1) == 1, size(X_ALL,1) == 3, .false., &
        dev_funs%cvfenx_all, &
        size(ushapelx,2), ushapelx(1,:,:), ushapelx(2,:,:), ushapelx(3,:,:), dev_funs%ufenx_all)
 
