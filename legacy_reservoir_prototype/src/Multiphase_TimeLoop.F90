@@ -298,8 +298,8 @@ contains
         !! Compute reference shape functions
         call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
         call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
-        call cv_fem_shape_funs_new( CV_funs, Mdims, CV_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
-        call cv_fem_shape_funs_new( FE_funs, Mdims, FE_GIdims, Mdisopt%u_ele_type, quad_over_whole_ele = .true. )
+        call cv_fem_shape_funs( CV_funs, Mdims, CV_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
+        call cv_fem_shape_funs( FE_funs, Mdims, FE_GIdims, Mdisopt%u_ele_type, quad_over_whole_ele = .true. )
         !Obtain the number of faces in the control volume space
         ncv_faces=CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIDIMS = CV_GIdims)
         allocate( theta_flux( Mdims%nphase, ncv_faces * igot_theta_flux ), &

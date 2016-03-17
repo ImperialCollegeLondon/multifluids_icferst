@@ -294,7 +294,7 @@ contains
 
       call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
 
-      call cv_fem_shape_funs_new( CV_funs, Mdims, CV_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele )
+      call cv_fem_shape_funs( CV_funs, Mdims, CV_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele )
 
       ALLOCATE( X(  Mdims%x_nonods ) ) ; X = 0.0
       ALLOCATE( Y(  Mdims%x_nonods ) ) ; Y = 0.0

@@ -5317,37 +5317,28 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      !Local variables
      integer :: iphase, cv_inod, u_siloc, cv_jloc,&
          CV_SJLOC, u_iloc, cv_Xnod
-     logical :: d1, d3
      real, dimension(:,:), pointer :: CapPressure
-     real, dimension(Mdims%cv_snloc, FE_GIdims%sbcvngi) :: CV_Bound_Shape_Func
-     real, dimension(Mdims%cv_nloc, FE_GIdims%cv_ngi) :: CV_Shape_Func
+     real, pointer, dimension(:, :) :: CV_Bound_Shape_Func
+     real, pointer, dimension(:, :) :: CV_Shape_Func
      real, dimension(Mdims%NDIM) :: NMX_ALL
-     !Pointers for detwei
-    real, dimension(Mdims%Ndim, size(FE_funs%cvfenlx_all,2), FE_GIdims%cv_ngi) :: CVFENX_ALL
-    real, dimension(Mdims%Ndim, size(FE_funs%ufenlx_all,2), FE_GIdims%cv_ngi) :: UFENX_ALL
-    real, dimension(FE_GIdims%cv_ngi) :: RA, DETWEI
-    real :: VOLUME
+     type(multi_dev_shape_funs) :: dev_funs
 
      call get_var_from_packed_state(packed_state, CapPressure = CapPressure)
 
-     d1 = (Mdims%ndim ==1); d3 = (Mdims%ndim ==3)
+     !Retrieve derivatives of the shape functions
+     call allocate_multi_dev_shape_funs(FE_funs, dev_funs)
+     call DETNLXR_PLUS_U_new(ELE, X_ALL, X_NDGLN, FE_funs%cvweight, &
+        FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, dev_funs)
 
-     !#####Area to retrieve the shape functions#####
-     CALL DETNLXR_PLUS_U( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, Mdims%totele, Mdims%x_nonods, &
-         Mdims%x_nloc, Mdims%cv_nloc, FE_GIdims%cv_ngi, FE_funs%cvfen, FE_funs%cvfenlx_all(1,:,:), &
-         FE_funs%cvfenlx_all(2,:,:), FE_funs%cvfenlx_all(3,:,:), FE_funs%cvweight, DETWEI, RA, VOLUME, D1, D3, .false., &
-         CVFENX_ALL, &
-         Mdims%u_nloc, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), UFENX_ALL)
-     !##### End of area to obtain shape functions#####
      !Project to FEM
      if (CAP_to_FEM) then
          !Point my pointers to the FEM shape functions
-         CV_Bound_Shape_Func = FE_funs%sbcvfen
-         CV_Shape_Func = FE_funs%cvfen
+         CV_Bound_Shape_Func => FE_funs%sbcvfen
+         CV_Shape_Func => FE_funs%cvfen
      else
          !Point my shape functions to the Control volume ones
-         CV_Bound_Shape_Func = FE_funs%sbcvn
-         CV_Shape_Func = FE_funs%cvn
+         CV_Bound_Shape_Func => FE_funs%sbcvn
+         CV_Shape_Func => FE_funs%cvn
      end if
      !Integration by parts
      if (Int_by_part_CapPress .or. .not. CAP_to_FEM) then
@@ -5355,12 +5346,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
              !Firstly we add the volumetric integral
              DO U_ILOC = 1, Mdims%u_nloc
                  DO CV_JLOC = 1, Mdims%cv_nloc
-                     ! -Integral(FE_funs%cvn CapPressure ᐁFE_funs%ufen dV)
+                     ! -Integral(FE_funs%cvn CapPressure Grad FE_funs%ufen dV)
                      CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
                      DO IPHASE = 1, Mdims%nphase
                          LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
-                             !(FE_funs%cvn ᐁFE_funs%ufen)
-                             + matmul(UFENX_ALL(:,U_ILOC,:),CV_Shape_Func( CV_JLOC, : ) *DETWEI( : ))&
+                             !(FE_funs%cvn Grad FE_funs%ufen)
+                             + matmul(dev_funs%UFENX_ALL(:,U_ILOC,:),CV_Shape_Func( CV_JLOC, : ) *dev_funs%detwei )&
                              !CapPressure
                              * CapPressure(IPHASE, CV_INOD)
                      END DO
@@ -5390,12 +5381,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          if (iface ==1) then!The volumetric term is added just one time
              DO U_ILOC = 1, Mdims%u_nloc
                  DO CV_JLOC = 1, Mdims%cv_nloc
-                     ! Integral(ᐁFE_funs%cvn CapPressure FE_funs%ufen dV)
+                     ! Integral(Grad FE_funs%cvn CapPressure FE_funs%ufen dV)
                      CV_INOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
                      DO IPHASE = 1, Mdims%nphase
                          LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
-                             !(ᐁFE_funs%cvn FE_funs%ufen)
-                             - matmul(CVFENX_ALL(:,CV_JLOC,:),FE_funs%ufen( U_ILOC, : ) *DETWEI( : ))&
+                             !(Grad FE_funs%cvn FE_funs%ufen)
+                             - matmul(dev_funs%CVFENX_ALL(:,CV_JLOC,:),FE_funs%ufen( U_ILOC, : ) *dev_funs%DETWEI )&
                              !CapPressure
                              * CapPressure(IPHASE, CV_INOD)
                      END DO
@@ -5422,6 +5413,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
              end do
          end do
      end if
+
+    !Deallocate derivatives of the shape functions
+    call deallocate_multi_dev_shape_funs(Dev_funs)
 
  end subroutine Introduce_Cap_press_term
 
@@ -5644,7 +5638,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, cv_ele_
       call retrieve_ngi( phGIdims, phdims, ph_ele_type, quad_over_whole_ele )
 
       call allocate_multi_shape_funs( ph_funs, phdims, phGIdims )
-      call cv_fem_shape_funs_new( ph_funs, phdims, phGIdims, ph_ele_type, quad_over_whole_ele )
+      call cv_fem_shape_funs( ph_funs, phdims, phGIdims, ph_ele_type, quad_over_whole_ele )
 
       ph_ngi = phGIdims%cv_ngi
       totele = ele_count( ufield )
