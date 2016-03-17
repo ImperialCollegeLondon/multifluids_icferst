@@ -1401,7 +1401,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         type (multi_matrices), intent(inout) :: Mmat
         type( tensor_field ), intent( in ) :: velocity
         type( tensor_field ), intent( in ) :: pressure
-! If IGOT_VOL_X_PRESSURE=1 then have a voln fraction in the pressure term and multiply density by volume fraction...
+! If IGOT_VOL_X_PRESSURE=1 then have a voln fraction in the pressure term and multiply density by DevFuns%VOLUME fraction...
         INTEGER, PARAMETER :: IGOT_VOL_X_PRESSURE = 0
         INTEGER, intent( in ) :: IPLIKE_GRAD_SOU
         REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
@@ -1473,12 +1473,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         MAT_ELE, DIFFGI_U, RHS_DIFF_U, DIFF_VEC_U, SOUGI_X, RESID_U, U_DT, &
         DIF_STAB_U, U_GRAD_NORM2, U_GRAD_NORM, A_DOT_U, STAR_U_COEF, P_STAR_U
         REAL, DIMENSION ( :, :, :, :, : ), allocatable :: UDIFF_SUF_STAB
+        !###Shape function calculation###
+        type(multi_dev_shape_funs) :: Devfuns
 
-    !###Shape function calculation###
-        real, dimension(Mdims%Ndim, size(FE_funs%cvfenlx_all,2),FE_GIdims%cv_ngi) :: CVFENX_ALL
-        real, dimension(Mdims%Ndim, size(FE_funs%ufenlx_all,2),FE_GIdims%cv_ngi) :: UFENX_ALL
-        real, dimension(FE_GIdims%cv_ngi) :: RA, DETWEI
-        real :: VOLUME
 ! Local variables...
 !            INTEGER, PARAMETER :: LES_DISOPT=0
             INTEGER :: LES_DISOPT
@@ -1507,7 +1504,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 ! If FEM_DEN then use an FEM representation of density - only used within an element (default is FEM for between elements and on boundary).
             LOGICAL, PARAMETER :: FEM_DEN = .false.
             real :: w
-            real, parameter :: wv=1.0, ws=1.0 ! volume off-diagonal and surface weights, respectively
+            real, parameter :: wv=1.0, ws=1.0 ! DevFuns%VOLUME off-diagonal and surface weights, respectively
 ! LINEAR_HIGHORDER_DIFFUSION is the switch for the high-order linear scheme...
 !            LOGICAL, PARAMETER ::  LINEAR_HIGHORDER_DIFFUSION = .TRUE.
             LOGICAL ::  LINEAR_HIGHORDER_DIFFUSION
@@ -1657,7 +1654,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         real, dimension( :, : ), pointer :: fem_vol_frac
         ! If =0 then false, if =1 then true.
         ! If =1 then modify the stress term to take into
-        ! account dividing through by volume fraction.
+        ! account dividing through by DevFuns%VOLUME fraction.
         integer, parameter :: IDIVID_BY_VOL_FRAC = 0
         fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
@@ -1672,7 +1669,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', Mdims%nphase)
         !We set the value of logicals
         PIVIT_ON_VISC = .false.
-
         call get_option( "/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/viscosity_scheme/zero_or_two_thirds", zero_or_two_thirds, default=2./3. )
         ! Stress form for the fluid viscocity
         STRESS_FORM = have_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/viscosity_scheme/stress_form' )
@@ -1715,7 +1711,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         Porous_media_PIVIT_not_stored_yet = (.not.is_porous_media .or. .not. Mmat%stored)
         !If we do not have an index where we have stored Mmat%C, then we need to calculate it
         got_c_matrix  = Mmat%stored .or. Mmat%CV_pressure
-
         ewrite(3,*) 'In ASSEMB_FORCE_CTY'
         !! get boundary information
         call get_entire_boundary_condition(pressure,&
@@ -1983,6 +1978,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( SLOC_UDIFFUSION_VOL( Mdims%nphase, Mdims%cv_snloc) )
         ALLOCATE( SLOC2_UDIFFUSION_VOL( Mdims%nphase, Mdims%cv_snloc) )
         ! Derivatives...
+        call allocate_multi_dev_shape_funs(FE_funs, Devfuns)
         ALLOCATE( NMX_ALL(Mdims%ndim) )
         ALLOCATE( VNMX_ALL(Mdims%ndim) )
         ALLOCATE( RNMX_ALL(Mdims%ndim) )
@@ -2078,7 +2074,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 MASS_SUF=0.0
             end if
         end if
-
         quad_over_whole_ele = .true.
         ! ALLOCATE reversed ordering for computational speed****************
         ALLOCATE( CVFENX_ALL_REVERSED(Mdims%ndim,FE_GIdims%cv_ngi,Mdims%cv_nloc), UFENX_ALL_REVERSED(Mdims%ndim,FE_GIdims%cv_ngi,Mdims%u_nloc) ) ! NOT CALCULATED IN SUB cv_fem_shape_funs_plus_storage
@@ -2182,20 +2177,16 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             allocate( vol_s_min_gi( FE_GIdims%cv_ngi ) )
             allocate( cv_dengi( Mdims%nphase, FE_GIdims%cv_ngi ) )
         endif
-
-        Loop_Elements: DO ELE = 1, Mdims%totele ! Volume integral
-            ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), ndgln%x, Mdims%totele, Mdims%x_nonods, &
-                Mdims%x_nloc, Mdims%cv_nloc, FE_GIdims%cv_ngi, &
-                FE_funs%cvfen, FE_funs%cvfenlx_all(1,:,:), FE_funs%cvfenlx_all(2,:,:), FE_funs%cvfenlx_all(3,:,:), FE_funs%cvweight, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-                CVFENX_ALL, &
-                Mdims%u_nloc, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), UFENX_ALL)
+        Loop_Elements: DO ELE = 1, Mdims%totele ! VOLUME integral
+            ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
+             call DETNLXR_PLUS_U_new(ELE, X_ALL, ndgln%x, FE_funs%cvweight, &
+                FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
             DO GI = 1, FE_GIdims%CV_NGI
-                CVFENX_ALL_REVERSED(:,GI,:) = CVFENX_ALL(:,:,GI)
-                UFENX_ALL_REVERSED(:,GI,:) = UFENX_ALL(:,:,GI)
+                CVFENX_ALL_REVERSED(:,GI,:) = DevFuns%CVFENX_ALL(:,:,GI)
+                UFENX_ALL_REVERSED(:,GI,:) = DevFuns%UFENX_ALL(:,:,GI)
             END DO
-            ! Adjust the volume according to the number of levels.
-            MASS_ELE( ELE ) = VOLUME
+            ! Adjust the DevFuns%VOLUME according to the number of levels.
+            MASS_ELE( ELE ) = DevFuns%VOLUME
             if (IsParallel()) then
                 if (.not. assemble_ele(pressure,ele)) then
                     skip=.true.
@@ -2399,7 +2390,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !                MASS_U = 0.0 ; MASS_U_CV = 0.0
 !                DO U_ILOC = 1, Mdims%u_nloc
 !                    DO U_JLOC = 1, Mdims%u_nloc
-!                        NN = SUM( FE_funs%ufen( U_ILOC, : ) * FE_funs%ufen( U_JLOC, : ) * DETWEI(:) )
+!                        NN = SUM( FE_funs%ufen( U_ILOC, : ) * FE_funs%ufen( U_JLOC, : ) * DevFuns%DETWEI(:) )
 !                        IF ( FILT_DEN==2 ) THEN ! Lump the mass matrix for the filter - positive density...
 !                            MASS_U( U_ILOC, U_ILOC ) = MASS_U( U_ILOC, U_ILOC ) + NN
 !                        ELSE
@@ -2409,7 +2400,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 !                END DO
 !                DO U_ILOC = 1, Mdims%u_nloc
 !                    DO CV_JLOC = 1, Mdims%cv_nloc
-!                        NCVM = SUM( FE_funs%ufen( U_ILOC, : ) * CVN_SHORT( CV_JLOC, : ) * DETWEI(:) )
+!                        NCVM = SUM( FE_funs%ufen( U_ILOC, : ) * CVN_SHORT( CV_JLOC, : ) * DevFuns%DETWEI(:) )
 !                        MASS_U_CV( U_ILOC, CV_JLOC ) = MASS_U_CV( U_ILOC, CV_JLOC ) + NCVM
 !                    END DO
 !                END DO
@@ -2504,15 +2495,15 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 IF ( STRESS_FORM ) THEN ! stress form of viscosity...
                                     IF(IDIVID_BY_VOL_FRAC==1) THEN
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                            ( -UFEN_REVERSED( GI, U_ILOC )*VOL_FRA_GI_DX_ALL(1:Mdims%ndim,IPHASE,GI) + UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
+                                            ( -UFEN_REVERSED( GI, U_ILOC )*VOL_FRA_GI_DX_ALL(1:Mdims%ndim,IPHASE,GI) + UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
                                     ELSE
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                            UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
+                                            UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL( IPHASE, GI) )
                                     ENDIF
                                 ELSE
                                     DO IDIM = 1, Mdims%ndim
                                         VLK_ELE( IPHASE, U_ILOC, U_JLOC ) = VLK_ELE( IPHASE, U_ILOC, U_JLOC ) + &
-                                            UFENX_ALL_REVERSED( IDIM, GI, U_ILOC ) * SUM( UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ) * TEN_XX( IDIM, :, IPHASE, GI ) ) * DETWEI( GI )
+                                            UFENX_ALL_REVERSED( IDIM, GI, U_ILOC ) * SUM( UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ) * TEN_XX( IDIM, :, IPHASE, GI ) ) * DevFuns%DETWEI( GI )
                                     END DO
                                 END IF
                             END DO
@@ -2524,7 +2515,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO GI = 1, FE_GIdims%cv_ngi
-                            RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI )
+                            RNN = UFEN_REVERSED( GI, U_ILOC ) * UFEN_REVERSED( GI, U_JLOC ) * DevFuns%DETWEI( GI )
                             if ( lump_absorption ) then
                                 NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) = &
                                     NN_SIGMAGI_ELE(:, :, U_ILOC, U_ILOC ) + RNN * LOC_U_ABSORB( :, :, U_ILOC)
@@ -2649,15 +2640,15 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                         Loop_CVNods21: DO U_JLOC = 1, Mdims%u_nloc
                             CV_JLOC = ELEMENT_CORNERS( U_JLOC )
                             ! Miss out the mid side nodes...
-                            NM = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
+                            NM = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DevFuns%DETWEI( : ) )
                             LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_JLOC )
                         END DO LOOP_CVNODS21
                     ELSE ! ENDOF IF ( LUMP_MASS .AND. ( Mdims%cv_nloc==6 .OR. (Mdims%cv_nloc==10 .AND. Mdims%ndim==3) ) ) THEN ! Quadratice
                         Loop_CVNods2: DO CV_JLOC = 1, Mdims%cv_nloc
                             IF ( RETRIEVE_SOLID_CTY .OR. FEM_BUOYANCY ) THEN
-                                NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
+                                NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )
                             ELSE
-                                NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
+                                NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )
                             END IF
                             IF ( LUMP_MASS ) THEN
                                 CV_ILOC = U_ILOC
@@ -2680,39 +2671,39 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 IF ( MOM_CONSERV ) THEN
                                     VLN( IPHASE ) = VLN( IPHASE ) - &
                                         DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ) )  &
-                                        * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI ) * WITH_NONLIN
+                                        * UFEN_REVERSED( GI, U_JLOC ) * DevFuns%DETWEI( GI ) * WITH_NONLIN
                                     VLN_OLD( IPHASE ) = VLN_OLD( IPHASE ) - &
                                         DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ) )  &
-                                        * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI ) * WITH_NONLIN
+                                        * UFEN_REVERSED( GI, U_JLOC ) * DevFuns%DETWEI( GI ) * WITH_NONLIN
                                 ELSE
                                     VLN( IPHASE ) = VLN( IPHASE ) + &
                                         FE_funs%ufen( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UD( :, IPHASE, GI ) * UFENX_ALL_REVERSED(1:Mdims%ndim, GI, U_JLOC ) ) &
-                                        * DETWEI( GI ) * WITH_NONLIN
+                                        * DevFuns%DETWEI( GI ) * WITH_NONLIN
                                     VLN_OLD( IPHASE ) = VLN_OLD( IPHASE ) + &
                                         FE_funs%ufen( U_ILOC, GI ) * DENGI( IPHASE, GI ) * SUM( UDOLD( :, IPHASE, GI ) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ) ) &
-                                        * DETWEI( GI ) * WITH_NONLIN
+                                        * DevFuns%DETWEI( GI ) * WITH_NONLIN
                                 END IF
                                 IF(GOT_VIRTUAL_MASS) THEN
                                     DO JPHASE = 1, Mdims%nphase
                                         VLN_CVM( IPHASE,JPHASE ) = VLN_CVM( IPHASE,JPHASE )  &
                                             ! conservative discretization
                                             - CVM_BETA*VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ) )  &
-                                            * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI ) * WITH_NONLIN_CVM &
+                                            * UFEN_REVERSED( GI, U_JLOC ) * DevFuns%DETWEI( GI ) * WITH_NONLIN_CVM &
                                             ! non-conservative discretization
                                             + (1.-CVM_BETA)*UFEN_REVERSED( GI, U_ILOC ) *VIRTUAL_MASS_GI(IPHASE,JPHASE,GI)* SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UD( :, IPHASE, GI ))* UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ) )  &
-                                            *  DETWEI( GI ) * WITH_NONLIN_CVM
+                                            *  DevFuns%DETWEI( GI ) * WITH_NONLIN_CVM
                                         VLN_OLD_CVM( IPHASE,JPHASE ) = VLN_OLD_CVM( IPHASE,JPHASE )  &
                                             ! conservative discretization
                                             - CVM_BETA*VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ) )  &
-                                            * UFEN_REVERSED( GI, U_JLOC ) * DETWEI( GI ) * WITH_NONLIN_CVM &
+                                            * UFEN_REVERSED( GI, U_JLOC ) * DevFuns%DETWEI( GI ) * WITH_NONLIN_CVM &
                                             ! non-conservative discretization
                                             + (1.-CVM_BETA)*UFEN_REVERSED( GI, U_ILOC ) *VIRTUAL_MASS_OLD_GI(IPHASE,JPHASE,GI) * SUM( (VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE)*UDOLD( :, JPHASE, GI ) +(1.-VIRTUAL_MASS_ADV_CUR(IPHASE,JPHASE))*UDOLD( :, IPHASE, GI )) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ) )  &
-                                            *  DETWEI( GI ) * WITH_NONLIN_CVM
+                                            *  DevFuns%DETWEI( GI ) * WITH_NONLIN_CVM
                                     END DO
                                 ENDIF
                             END DO Loop_IPHASE
                         END DO Loop_Gauss2
-                        NN = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
+                        NN = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DevFuns%DETWEI( : ) )
                         LOC_U_RHS( :, :, U_ILOC ) =  LOC_U_RHS( :, :, U_ILOC ) + NN * LOC_U_SOURCE( :, :, U_JLOC  )
                         DO JPHASE = 1, Mdims%nphase
                             DO JDIM = 1, Mdims%ndim
@@ -2833,11 +2824,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             else !Adding sources to the RHS for porous media
                 DO U_ILOC = 1, Mdims%u_nloc
                     DO CV_JLOC = 1, Mdims%cv_nloc
-                        NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
+                        NM = SUM( UFEN_REVERSED( :, U_ILOC ) * CVN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )
                         LOC_U_RHS( :, :, U_ILOC ) = LOC_U_RHS( :, :, U_ILOC ) + NM * LOC_U_SOURCE_CV( :, :, CV_JLOC )
                     end do
                     DO U_JLOC = 1, Mdims%u_nloc
-                        NN = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
+                        NN = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DevFuns%DETWEI( : ) )
                         LOC_U_RHS( :, :, U_ILOC ) =  LOC_U_RHS( :, :, U_ILOC ) + NN * LOC_U_SOURCE( :, :, U_JLOC  )
                     end do
                 end do
@@ -2849,10 +2840,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 DO U_ILOC = 1, Mdims%u_nloc
                     DO U_JLOC = 1, Mdims%u_nloc
                         NN_MAT_ELE( U_ILOC, U_JLOC, ELE ) = NN_MAT_ELE( U_ILOC, U_JLOC, ELE ) + &
-                            SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
+                            SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DevFuns%DETWEI( : ) )
                         DO IDIM=1,Mdims%ndim
                             NNX_MAT_ELE( IDIM, U_ILOC, U_JLOC, ELE ) = NNX_MAT_ELE( IDIM, U_ILOC, U_JLOC, ELE ) + &
-                                SUM( UFEN_REVERSED( :, U_ILOC ) * UFENX_ALL_REVERSED( IDIM, :, U_JLOC ) * DETWEI( : ) )
+                                SUM( UFEN_REVERSED( :, U_ILOC ) * UFENX_ALL_REVERSED( IDIM, :, U_JLOC ) * DevFuns%DETWEI( : ) )
                         END DO
                     END DO
                 END DO
@@ -2869,14 +2860,14 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                         ! Coeff * Integral(N grad FE_funs%cvfen PLIKE_GRAD_SOU dV)
                         DO ICOMP= 1, Mdims%ncomp
                             GRAD_SOU_GI_NMX( :, ICOMP, :) = matmul(CVFENX_ALL_REVERSED(:, :, P_JLOC),&
-                                SPREAD(DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ), DIM=2, NCOPIES=Mdims%nphase)*&
+                                SPREAD(DevFuns%DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ), DIM=2, NCOPIES=Mdims%nphase)*&
                                 transpose(GRAD_SOU_GI(ICOMP, :, :)))
                         END DO
                     end if
                     ! Coeff * Integral(N grad FE_funs%cvfen VOL_FRA dV)
                     IF(IGOT_VOL_X_PRESSURE==1) THEN
                         VOL_FRA_NMX_ALL( :, : ) = matmul(CVFENX_ALL_REVERSED(:, :, P_JLOC),&
-                            SPREAD(DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ), DIM=2, NCOPIES=Mdims%nphase)*&
+                            SPREAD(DevFuns%DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ), DIM=2, NCOPIES=Mdims%nphase)*&
                             transpose(VOL_FRA_GI(:, :)))
                     ENDIF
                     ! Put into matrix
@@ -2887,7 +2878,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             Mdims%totele, Mdims%u_nloc, Mdims%p_nloc )
                     END IF
                     !Prepare aid variable NMX_ALL to improve the speed of the calculations
-                    NMX_ALL( : ) = matmul(CVFENX_ALL_REVERSED(:,:,P_JLOC),  DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ))
+                    NMX_ALL( : ) = matmul(CVFENX_ALL_REVERSED(:,:,P_JLOC),  DevFuns%DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ))
                     Loop_Phase1: DO IPHASE = 1, Mdims%nphase
                         ! Put into matrix
                         IF ( .NOT.GOT_C_MATRIX ) THEN
@@ -2916,7 +2907,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
                         ! Sum over quadrature pts...
-                        LOC_MASS( U_ILOC, U_JLOC ) = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
+                        LOC_MASS( U_ILOC, U_JLOC ) = SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DevFuns%DETWEI( : ) )
                     END DO
                 END DO
                 LOC_MASS_INV = LOC_MASS
@@ -3011,7 +3002,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             DO IDIM = 1, Mdims%ndim
                                 U_GRAD_N_MAX2( IDIM ) = MAX( U_GRAD_N_MAX2( IDIM ), &
                                     ( JTT_INV * U_DT( IDIM, IPHASE, GI ) )**2 &
-                                    + 4. * SUM( ( UFENX_ALL( 1:Mdims%ndim, U_ILOC, GI ) * U_DX_ALL( 1:Mdims%ndim, IDIM, IPHASE, GI ) )**2 ) )
+                                    + 4. * SUM( ( DevFuns%UFENX_ALL( 1:Mdims%ndim, U_ILOC, GI ) * U_DX_ALL( 1:Mdims%ndim, IDIM, IPHASE, GI ) )**2 ) )
                             END DO
                         END DO
                         DO IDIM = 1, Mdims%ndim
@@ -3042,10 +3033,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 DO IPHASE = 1, Mdims%nphase
                                     IF(IDIVID_BY_VOL_FRAC==1) THEN
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                            ( -UFEN_REVERSED( GI, U_ILOC )*VOL_FRA_GI_DX_ALL(1:Mdims%ndim,IPHASE,GI) + UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
+                                            ( -UFEN_REVERSED( GI, U_ILOC )*VOL_FRA_GI_DX_ALL(1:Mdims%ndim,IPHASE,GI) + UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC )*VOL_FRA_GI(IPHASE,GI) ),  UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
                                     ELSE
                                         CALL CALC_STRESS_TEN( STRESS_IJ_ELE( :, :, IPHASE, U_ILOC, U_JLOC ), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                            UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
+                                            UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ), UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC )* DevFuns%DETWEI( GI ), TEN_XX( :, :, IPHASE, GI ), TEN_VOL(IPHASE,GI) )
                                     ENDIF
                                 END DO
                             END DO
@@ -3079,7 +3070,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 JPHASE = IPHASE
                                 VLK_UVW = 0.0
                                 DO GI = 1, FE_GIdims%cv_ngi
-                                    VLKNN = SUM( UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ) ) * DETWEI( GI )
+                                    VLKNN = SUM( UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_ILOC ) * UFENX_ALL_REVERSED( 1:Mdims%ndim, GI, U_JLOC ) ) * DevFuns%DETWEI( GI )
                                     VLK_UVW( : ) = VLK_UVW( : ) + DIF_STAB_U( :, IPHASE, GI ) * VLKNN
                                 END DO
                                 DO IDIM = 1, Mdims%ndim
@@ -3114,7 +3105,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     DO U_JLOC = 1, Mdims%u_nloc
                         DO U_ILOC = 1, Mdims%u_nloc
                             MAT_ELE( U_ILOC, U_JLOC, ELE ) = MAT_ELE( U_ILOC, U_JLOC, ELE ) + &
-                                SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DETWEI( : ) )
+                                SUM( UFEN_REVERSED( :, U_ILOC ) * UFEN_REVERSED( :, U_JLOC ) * DevFuns%DETWEI( : ) )
                         END DO
                     END DO
                     DO U_ILOC = 1, Mdims%u_nloc
@@ -3123,7 +3114,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 ! we store these vectors in order to try and work out the between element
                                 ! diffusion/viscocity.
                                 DIFF_FOR_BETWEEN_U( :, IPHASE, U_ILOC, ELE ) = DIFF_FOR_BETWEEN_U( :, IPHASE, U_ILOC, ELE ) &
-                                    + UFEN_REVERSED( GI, U_ILOC ) * DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
+                                    + UFEN_REVERSED( GI, U_ILOC ) * DevFuns%DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
                             END DO
                         END DO
                     END DO
@@ -3136,8 +3127,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     DO CV_ILOC = 1, Mdims%cv_nloc
                         DO CV_JLOC = 1, Mdims%cv_nloc
                             MAT_ELE_CV_LOC( CV_ILOC, CV_JLOC ) = &
-                                !SUM( CVFEN_REVERSED( :, CV_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
-                                SUM( CVN_REVERSED( :, CV_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DETWEI( : ) )
+                                !SUM( CVFEN_REVERSED( :, CV_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )
+                                SUM( CVN_REVERSED( :, CV_ILOC ) * CVFEN_REVERSED( :, CV_JLOC ) * DevFuns%DETWEI( : ) )
                         END DO
                     END DO
                     DIFF_FOR_BETWEEN_CV = 0.0
@@ -3147,8 +3138,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 ! we store these vectors in order to try and work out the between element
                                 ! diffusion/viscocity.
                                 DIFF_FOR_BETWEEN_CV( :, IPHASE, CV_ILOC ) = DIFF_FOR_BETWEEN_CV( :, IPHASE, CV_ILOC ) &
-                                    !+ CVFEN_REVERSED( GI, CV_ILOC ) * DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
-                                    + CVN_REVERSED( GI, CV_ILOC ) * DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
+                                    !+ CVFEN_REVERSED( GI, CV_ILOC ) * DevFuns%DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
+                                    + CVN_REVERSED( GI, CV_ILOC ) * DevFuns%DETWEI( GI ) * DIF_STAB_U( :, IPHASE, GI )
                             END DO
                         END DO
                     END DO
@@ -3318,7 +3309,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ENDIF
                 !Calculate all the necessary stuff and introduce the CapPressure in the RHS
                 if (capillary_pressure_activated.and..not. Diffusive_cap_only) call Introduce_Cap_press_term(&
-                    packed_state, Mdims, FE_GIdims, FE_funs, X_ALL, LOC_U_RHS, ele, &
+                    packed_state, Mdims, FE_funs, Devfuns, X_ALL, LOC_U_RHS, ele, &
                     ndgln%cv, ndgln%x, ele2, iface,&
                     sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC )
                 ! ********Mapping to local variables****************
@@ -3771,7 +3762,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                     vel_dot2(sgi) =  sum( SUD2_ALL(:,IPHASE,SGI)*snormxn_all(:,sgi) )
                                     velold_dot(sgi)  = sum( SUDOLD_ALL(:,IPHASE,SGI) *snormxn_all(:,sgi) )
                                     velold_dot2(sgi) = sum( SUDOLD2_ALL(:,IPHASE,SGI) *snormxn_all(:,sgi) )
-                                    grad_fact(sgi) = sum( UFENX_ALL(1:Mdims%ndim,U_ILOC,1)*snormxn_ALL(:,SGI) )
+                                    grad_fact(sgi) = sum( DevFuns%UFENX_ALL(1:Mdims%ndim,U_ILOC,1)*snormxn_ALL(:,SGI) )
                                 end do
                                 N_DOT_DU(iphase,:)  = N_DOT_DU(iphase,:)  + grad_fact(:)*vel_dot(:)
                                 N_DOT_DU2(iphase,:) = N_DOT_DU2(iphase,:) + grad_fact(:)*vel_dot2(:)
@@ -4361,9 +4352,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         call deallocate(velocity_BCs_robin2)
         call deallocate(momentum_BCs)
         call deallocate(pressure_BCs)
+        call deallocate_multi_dev_shape_funs(Devfuns)
         ewrite(3,*)'Leaving assemb_force_cty'
         RETURN
     END SUBROUTINE ASSEMB_FORCE_CTY
+
 
     SUBROUTINE DG_VISC_LIN( S_INV_NNX_MAT12, NNX_MAT, NNX_MAT2, NN_MAT, NN_MAT2,  &
         U_SNLOC, U_NLOC, SBUFEN_REVERSED, SDETWE, SBCVNGI, SNORMXN_ALL, NDIM, &
@@ -5293,14 +5286,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
  end subroutine linearise_field
 
 
- subroutine Introduce_Cap_press_term(packed_state, Mdims, FE_GIdims, FE_funs, &
+ subroutine Introduce_Cap_press_term(packed_state, Mdims, FE_funs, Devfuns, &
      X_ALL, LOC_U_RHS, ele, cv_ndgln, x_ndgln,&
      ele2, iface, sdetwe, SNORMXN_ALL, U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC)
      !This subroutine introduces the capillary pressure term in the RHS
      Implicit none
      type( state_type ), intent( inout ) :: packed_state
      type(multi_dimensions), intent(in) :: Mdims
-     type(multi_GI_dimensions), intent(in) :: FE_GIdims
      type(multi_shape_funs), intent(in) :: FE_funs
      integer, intent(in) :: ele, iface, ele2
      integer, dimension(:), intent(in) :: cv_ndgln, x_ndgln
@@ -5309,6 +5301,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      real, dimension(:,:), intent(in) :: SNORMXN_ALL
      integer, dimension(:), intent(in) :: U_SLOC2LOC, CV_SLOC2LOC, MAT_OTHER_LOC
      real, dimension(:), intent(in) :: sdetwe
+     type(multi_dev_shape_funs), intent(inout) :: Devfuns
      !Local parameters
      !!Use a finite element projection of the CapPressure, it can only be false for PnDGPn(DG) elements
      logical, parameter :: Cap_to_FEM = .true.
@@ -5321,14 +5314,13 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      real, pointer, dimension(:, :) :: CV_Bound_Shape_Func
      real, pointer, dimension(:, :) :: CV_Shape_Func
      real, dimension(Mdims%NDIM) :: NMX_ALL
-     type(multi_dev_shape_funs) :: dev_funs
+
 
      call get_var_from_packed_state(packed_state, CapPressure = CapPressure)
 
      !Retrieve derivatives of the shape functions
-     call allocate_multi_dev_shape_funs(FE_funs, dev_funs)
      call DETNLXR_PLUS_U_new(ELE, X_ALL, X_NDGLN, FE_funs%cvweight, &
-        FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, dev_funs)
+        FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
 
      !Project to FEM
      if (CAP_to_FEM) then
@@ -5351,7 +5343,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      DO IPHASE = 1, Mdims%nphase
                          LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
                              !(FE_funs%cvn Grad FE_funs%ufen)
-                             + matmul(dev_funs%UFENX_ALL(:,U_ILOC,:),CV_Shape_Func( CV_JLOC, : ) *dev_funs%detwei )&
+                             + matmul(Devfuns%UFENX_ALL(:,U_ILOC,:),CV_Shape_Func( CV_JLOC, : ) *Devfuns%detwei )&
                              !CapPressure
                              * CapPressure(IPHASE, CV_INOD)
                      END DO
@@ -5386,7 +5378,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                      DO IPHASE = 1, Mdims%nphase
                          LOC_U_RHS( :, IPHASE, U_ILOC ) = LOC_U_RHS( :, IPHASE, U_ILOC ) &
                              !(Grad FE_funs%cvn FE_funs%ufen)
-                             - matmul(dev_funs%CVFENX_ALL(:,CV_JLOC,:),FE_funs%ufen( U_ILOC, : ) *dev_funs%DETWEI )&
+                             - matmul(Devfuns%CVFENX_ALL(:,CV_JLOC,:),FE_funs%ufen( U_ILOC, : ) *Devfuns%DETWEI )&
                              !CapPressure
                              * CapPressure(IPHASE, CV_INOD)
                      END DO
@@ -5413,9 +5405,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
              end do
          end do
      end if
-
-    !Deallocate derivatives of the shape functions
-    call deallocate_multi_dev_shape_funs(Dev_funs)
 
  end subroutine Introduce_Cap_press_term
 
