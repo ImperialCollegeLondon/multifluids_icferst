@@ -4214,12 +4214,10 @@ contains
         !---------------------------------
         ! local variables
         !---------------------------------
+        type (multi_dev_shape_funs) :: DevFuns
         integer :: cv_nodi, cv_nodj, COUNT, max_iterations
         integer :: iele, cv_iloc, cv_jloc, cv_gi, it                         ! loop variables
         real :: nn, nm, mn, mm
-        real, dimension(CV_GIdims%cv_ngi) :: detwei, ra
-        real, dimension(Mdims%ndim,Mdims%cv_nloc,CV_GIdims%cv_ngi) :: NX_ALL
-        real :: volume
         type(scalar_field) :: cv_mass
         type(tensor_field), dimension(size(psi)) :: fempsi_rhs
         type(vector_field), dimension(size(psi_ave)) :: psi_ave_temp
@@ -4277,6 +4275,8 @@ contains
         !---------------------------------
         ! projection
         !---------------------------------
+        call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
+
         Loop_Elements: do iele = 1, Mdims%totele
             ! check parallelisation
             if(isParallel()) then
@@ -4284,11 +4284,9 @@ contains
             end if
 
             ! calculate detwei,RA,NX,NY,NZ for the ith element
-            call DETNLXR( iele, X, ndgln%x, Mdims%cv_nloc, CV_GIdims%cv_ngi, &
-                CV_funs%CVFEN, CV_funs%CVFENLX_ALL, CV_funs%cvweight, DETWEI, &
-                RA, VOLUME, .false., NX_ALL)
+            call DETNLXR(iele, X, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
 
-            mass_ele(iele) = volume
+            mass_ele(iele) = DevFuns%volume
 
             Loop_CV_iLoc: do cv_iloc = 1, Mdims%cv_nloc
                 cv_nodi = ndgln%cv((iele-1)*Mdims%cv_nloc+cv_iloc)
@@ -4299,11 +4297,11 @@ contains
 
                     nn = 0.0; nm = 0.0; mn = 0.0; mm = 0.0
                     do cv_gi = 1, CV_GIdims%cv_ngi
-                        mn = mn+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*detwei(cv_gi)
-                        mm = mm+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*detwei(cv_gi)
+                        mn = mn+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
+                        mm = mm+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
                         if(.not.cv_test_space) then
-                            nn = nn+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*detwei(cv_gi)
-                            nm = nm+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*detwei(cv_gi)
+                            nn = nn+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
+                            nm = nm+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
                         end if
                     end do
 
@@ -4381,6 +4379,8 @@ contains
         end if
 
         ! deallocation
+        call deallocate_multi_dev_shape_funs(DevFuns)
+
         do it = 1,size(fempsi_rhs)
             call deallocate(fempsi_rhs(it))
         end do
