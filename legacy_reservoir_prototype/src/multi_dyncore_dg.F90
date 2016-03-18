@@ -2107,8 +2107,17 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
         IF( GOT_DIFFUS ) THEN
-            CALL DG_DERIVS_ALL ( Mdims, FE_GIdims, FE_funs, ndgln%u, ndgln%xu, U_ALL, UOLD_ALL, &
-                X_ALL, DUX_ELE_ALL, DUOLDX_ELE_ALL, FACE_ELE, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, FOR_CVs =.false.)
+            CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &
+                DUX_ELE_ALL, DUOLDX_ELE_ALL, &
+                Mdims%ndim, Mdims%nphase, Mdims%ndim, Mdims%u_nonods, Mdims%totele, ndgln%u, &
+                ndgln%xu, Mdims%x_nloc, ndgln%x, &
+                FE_GIdims%cv_ngi, Mdims%u_nloc, FE_funs%cvweight, &
+                FE_funs%ufen, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), &
+                FE_funs%cvfen, FE_funs%cvfenlx_all(1,:,:), FE_funs%cvfenlx_all(2,:,:), FE_funs%cvfenlx_all(3,:,:), &
+                Mdims%x_nonods, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), &
+                FE_GIdims%nface, FACE_ELE, FE_funs%u_sloclist, FE_funs%cv_sloclist, Mdims%stotel, Mdims%u_snloc, Mdims%cv_snloc, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
+                FE_GIdims%sbcvngi, FE_funs%sbufen, FE_funs%sbufenslx, FE_funs%sbufensly, FE_funs%sbcvfeweigh, &
+                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly )
         ENDIF
         ! LES VISCOCITY CALC.
         IF ( GOT_DIFFUS ) THEN

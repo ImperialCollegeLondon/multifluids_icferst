@@ -1051,8 +1051,17 @@ contains
             Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
         IF ( GOT_DIFFUS ) THEN
-            call DG_DERIVS_ALL2( Mdims, CV_GIdims,  CV_funs, ndgln%cv, ndgln%x, FEMT_ALL, FEMTOLD_ALL, &
-                X_ALL, DTX_ELE_ALL, DTOLDX_ELE_ALL, FACE_ELE, WIC_T_BC_ALL, SUF_T_BC_ALL, FOR_CVs=.true.)
+            CALL DG_DERIVS_ALL( FEMT_ALL, FEMTOLD_ALL, &
+                DTX_ELE_ALL, DTOLDX_ELE_ALL, &
+                Mdims%ndim, Mdims%nphase, Mdims%cv_nonods, Mdims%totele, ndgln%cv, &
+                ndgln%x, Mdims%x_nloc, ndgln%x,&
+                CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
+                CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
+                CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
+                Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
+                CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%stotel, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
+                CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
+                CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly)
         END IF
         !     =============== DEFINE THETA FOR TIME-STEPPING ===================
         ! Define the type of time integration:
@@ -4400,146 +4409,206 @@ contains
 
 
 
-   SUBROUTINE DG_DERIVS_ALL1( Mdims, GIdims, funs, ndgln, x_ndgln, FEMT, FEMTOLD, &
-        X_ALL, DTX_ELE, DTOLDX_ELE, FACE_ELE, WIC_T_BC, SUF_T_BC, FOR_CVs)
-        ! determine FEMT (finite element wise) etc from T (control DevFuns%VOLUME wise)
+    !sprint_to_do try to simplify these 4 subroutines and end up with one using the new structures
+    SUBROUTINE DG_DERIVS_ALL1( FEMT, FEMTOLD, &
+        DTX_ELE, DTOLDX_ELE, &
+        NDIM, NPHASE, NCOMP, CV_NONODS, TOTELE, CV_NDGLN, &
+        XCV_NDGLN, X_NLOC, X_NDGLN,&
+        CV_NGI, CV_NLOC, CVWEIGHT, &
+        N, NLX, NLY, NLZ, &
+        X_N, X_NLX, X_NLY, X_NLZ, &
+        X_NONODS, X, Y, Z, &
+        NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
+        SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
+        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
+
+        ! determine FEMT (finite element wise) etc from T (control volume wise)
         IMPLICIT NONE
-        type(multi_dimensions), intent(in) :: Mdims
-        type(multi_GI_dimensions), intent(in) :: GIdims
-        type(multi_shape_funs), intent(in) :: funs
-        integer, dimension(:), intent(in) :: ndgln, x_ndgln
-        real, dimension(:,:) :: X_ALL
+
+        INTEGER, intent( in ) :: NDIM, NPHASE, NCOMP,CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
+            X_NONODS, STOTEL, CV_SNLOC, X_SNLOC, SBCVNGI, NFACE
         REAL, DIMENSION( :, :, : ), intent( in ) :: FEMT, FEMTOLD
         REAL, DIMENSION( :, :, :, :, : ), intent( inout ) :: DTX_ELE, DTOLDX_ELE
-        INTEGER, DIMENSION( :,  :, : ), intent( in ) ::  WIC_T_BC
+        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
+        INTEGER, DIMENSION( : ), intent( in ) ::  XCV_NDGLN
+        INTEGER, DIMENSION( :, :, : ), intent( in ) ::  WIC_T_BC
         REAL, DIMENSION( :, :, : ), intent( in ) ::  SUF_T_BC
+        INTEGER, DIMENSION( :, : ), intent( in ) ::  CV_SLOCLIST
+        INTEGER, DIMENSION( :, : ), intent( in ) ::  X_SLOCLIST
         INTEGER, DIMENSION( :, : ), intent( in ) ::  FACE_ELE
-        logical, intent(in) :: FOR_CVs
+        REAL, DIMENSION( : ), intent( in ) :: CVWEIGHT
+        REAL, DIMENSION( :, : ), intent( in ) :: N, NLX, NLY, NLZ
+        REAL, DIMENSION( :, : ), intent( in ) :: X_N, X_NLX, X_NLY, X_NLZ
+        REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
+        REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
+        REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
+        REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
         ! Local variables
-        type(multi_dev_shape_funs) :: Devfuns
-        real, dimension(:,:), pointer :: N
-        real, dimension(:,:,:), pointer :: NLX_ALL
-        integer, dimension(:, :), pointer :: N_SLOCLIST
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
-        LOGICAL :: APPLYBC( Mdims%ncomp, Mdims%nphase )
-        REAL, DIMENSION( Mdims%cv_nloc, Mdims%cv_nloc )  :: MASS, INV_MASS
-        REAL :: XSL( 3, Mdims%x_snloc ), SNORMXN( 3, GIdims%sbcvngi ), SDETWE( GIdims%sbcvngi )
-        INTEGER  :: SLOC2LOC( Mdims%cv_snloc ), X_SLOC2LOC( Mdims%x_snloc ), ILOC_OTHER_SIDE( Mdims%cv_snloc )
-        REAL :: NN, NNX( Mdims%ndim ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( Mdims%ndim )
+        LOGICAL :: D1, D3, APPLYBC( NCOMP, NPHASE )
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
+        REAL, dimension( CV_NGI ) :: DETWEI, RA
+        REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI):: NX_ALL
+        REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
+        REAL :: VOLUME
+        REAL, DIMENSION( CV_NLOC, CV_NLOC )  :: MASS, INV_MASS
+        REAL, DIMENSION( NDIM, X_SNLOC ) :: XSL( 3, X_SNLOC ), SNORMXN( 3, SBCVNGI ), SDETWE( SBCVNGI )
+        INTEGER  :: SLOC2LOC( CV_SNLOC ), X_SLOC2LOC( X_SNLOC ), ILOC_OTHER_SIDE( CV_SNLOC )
+        REAL :: NN, NNX( NDIM ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( NDIM )
         INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
             CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, &
             CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
             X_INOD, X_SILOC, X_ILOC, ICOMP, IDIM
         INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1
+
         ewrite(3,*)'in DG_DERIVS'
+
         DTX_ELE = 0.0 ; DTOLDX_ELE = 0.0
-        ALLOCATE( MASELE( Mdims%cv_nloc, Mdims%cv_nloc, Mdims%totele ) )
-        ALLOCATE( VTX_ELE( Mdims%ndim, Mdims%ncomp, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ) )
-        ALLOCATE( VTOLDX_ELE( Mdims%ndim, Mdims%ncomp, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ) )
-        MASELE = 0.0;VTX_ELE = 0.0;VTOLDX_ELE = 0.0
-        XSL = 0.
 
-        if (FOR_CVs) then
-            N => funs%cvfen; NLX_ALL => funs%cvfenlx_all
-            N_SLOCLIST => funs%cv_sloclist
-        else
-            N => funs%ufen; NLX_ALL => funs%ufenlx_all
-            N_SLOCLIST => funs%u_sloclist
-        end if
+        ALLOCATE( MASELE( CV_NLOC, CV_NLOC, TOTELE ) )
+        ALLOCATE( VTX_ELE( NDIM, NCOMP, NPHASE, CV_NLOC, TOTELE ) )
+        ALLOCATE( VTOLDX_ELE( NDIM, NCOMP, NPHASE, CV_NLOC, TOTELE ) )
 
-        call allocate_multi_dev_shape_funs(NLX_ALL, NLX_ALL, Devfuns)
-        Loop_Elements1: DO ELE = 1, Mdims%totele
-            ! Calculate DevFuns%DETWEI
-            call DETNLXR_PLUS_U(ELE, X_ALL, x_ndgln, funs%cvweight, &
-                   N, NLX_ALL, NLX_ALL, Devfuns)
-            Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc
-                CV_NODI = ndgln( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                Loop_CV_JLOC: DO CV_JLOC = 1, Mdims%cv_nloc
-                    CV_NODJ = ndgln( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                    NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DevFuns%DETWEI )
-                    NNX = MATMUL( Devfuns%UFENX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DevFuns%DETWEI )
+        MASELE = 0.0
+        VTX_ELE = 0.0
+
+        VTOLDX_ELE = 0.0
+
+        D1 = ( NDIM == 1 )
+        D3 = ( NDIM == 3 )
+        !DCYL = .FALSE.
+
+        Loop_Elements1: DO ELE = 1, TOTELE
+
+            ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
+            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
+                X_NLOC, X_NLOC, CV_NGI, &
+                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+                X_NX_ALL, &
+                CV_NLOC, NLX, NLY, NLZ, NX_ALL)
+            Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
+
+                CV_NODI = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
+
+                Loop_CV_JLOC: DO CV_JLOC = 1, CV_NLOC
+
+                    CV_NODJ = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
+
+                    NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DETWEI )
+                    NNX = MATMUL( NX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DETWEI )
+
                     MASELE( CV_ILOC, CV_JLOC, ELE) = MASELE( CV_ILOC, CV_JLOC, ELE ) + NN
-                    DO IPHASE = 1, Mdims%nphase
-                        DO ICOMP = 1, Mdims%ncomp
+
+                    DO IPHASE = 1, NPHASE
+                        DO ICOMP = 1, NCOMP
                             VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) = &
                                 VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) &
                                 + NNX (:) * FEMT( ICOMP, IPHASE, CV_NODJ )
+
                             VTOLDX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) = &
                                 VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) &
                                 + NNX (:) * FEMTOLD( ICOMP, IPHASE, CV_NODJ )
                         END DO
                     END DO
+
                 END DO Loop_CV_JLOC
+
             END DO Loop_CV_ILOC
+
         END DO Loop_Elements1
-        Loop_Elements2: DO ELE = 1, Mdims%totele
-            Between_Elements_And_Boundary: DO IFACE = 1, GIdims%nface
+
+
+        Loop_Elements2: DO ELE = 1, TOTELE
+
+            Between_Elements_And_Boundary: DO IFACE = 1, NFACE
                 ELE2 = FACE_ELE( IFACE, ELE )
                 SELE2 = MAX( 0, - ELE2 )
                 ELE2 = MAX( 0, + ELE2 )
+                !ewrite(3,*)'FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE ):',FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE )
+
                 ! The surface nodes on element face IFACE.
-                SLOC2LOC( : ) = N_SLOCLIST( IFACE, : )
-                X_SLOC2LOC( : ) = funs%cv_sloclist( IFACE, : )
+                SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
+                X_SLOC2LOC( : ) = X_SLOCLIST( IFACE, : )
+
                 ! Form approximate surface normal (NORMX,NORMY,NORMZ)
-                CALL DGSIMPLNORM( ELE, X_SLOC2LOC, Mdims%totele, Mdims%x_nloc, Mdims%x_snloc, X_NDGLN, &
-                    X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), Mdims%x_nonods, NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
+                CALL DGSIMPLNORM( ELE, X_SLOC2LOC, TOTELE, X_NLOC, X_SNLOC, X_NDGLN, &
+                    X, Y, Z, X_NONODS, NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
+
                 ! Recalculate the normal...
-                DO X_SILOC = 1, Mdims%x_snloc
+                DO X_SILOC = 1, X_SNLOC
                     X_ILOC = X_SLOC2LOC( X_SILOC )
-                    X_INOD = X_NDGLN(( ELE - 1 ) * Mdims%x_nloc + X_ILOC )
-                    XSL( 1:Mdims%NDIM, X_SILOC ) = X_ALL(1:Mdims%NDIM, X_INOD )
+                    X_INOD = X_NDGLN(( ELE - 1 ) * X_NLOC + X_ILOC )
+                    if (NDIM >= 1) XSL( 1, X_SILOC ) = X( X_INOD )
+                    if (NDIM >= 2) XSL( 2, X_SILOC ) = Y( X_INOD )
+                    if (NDIM >= 3) XSL( 3, X_SILOC ) = Z( X_INOD )
                 END DO
-                CALL DGSDETNXLOC2(Mdims%x_snloc, GIdims%sbcvngi, &
+
+                CALL DGSDETNXLOC2(X_SNLOC, SBCVNGI, &
                     XSL( 1, : ), XSL( 2, : ), XSL( 3, : ), &
-                    funs%sbcvfen, funs%sbcvfenslx, funs%sbcvfensly, funs%sbcvfeweigh, SDETWE, SAREA, &
-                    (Mdims%ndim==1), (Mdims%ndim==3), (Mdims%ndim==-2), &
+                    X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, SBWEIGH, SDETWE, SAREA, &
+                    (NDIM==1), (NDIM==3), (NDIM==-2), &
                     SNORMXN( 1, : ), SNORMXN( 2, : ), SNORMXN( 3, : ), &
                     NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
+
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
-                    DO CV_SILOC = 1, Mdims%cv_snloc
+
+                    DO CV_SILOC = 1, CV_SNLOC
                         CV_ILOC = SLOC2LOC( CV_SILOC )
-                        CV_INOD = x_ndgln(( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                        DO CV_ILOC2 = 1, Mdims%cv_nloc
-                            CV_INOD2 = x_ndgln(( ELE2 - 1 ) * Mdims%cv_nloc + CV_ILOC2 )
+                        CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
+
+                        DO CV_ILOC2 = 1, CV_NLOC
+                            CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
+
                             IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
                         END DO
                     END DO
+
                     APPLYBC = (ELE /= ELE2) .AND. (ELE2 /= 0)
+
                 ELSE
                     APPLYBC = ( WIC_T_BC( :, :, SELE2 ) == WIC_T_BC_DIRICHLET )
                 END IF
-                DO CV_SILOC = 1, Mdims%cv_snloc
+
+                DO CV_SILOC = 1, CV_SNLOC
                     CV_ILOC = SLOC2LOC( CV_SILOC )
-                    DO CV_SJLOC = 1, Mdims%cv_snloc
+                    DO CV_SJLOC = 1, CV_SNLOC
                         CV_JLOC = SLOC2LOC( CV_SJLOC )
-                        CV_NODJ = ndgln( (ELE-1)*Mdims%cv_nloc + CV_JLOC )
+                        CV_NODJ = CV_NDGLN( (ELE-1)*CV_NLOC + CV_JLOC )
                         IF ( SELE2 /= 0 ) THEN
                             CV_JLOC2 = CV_JLOC
                             CV_SJLOC2 = CV_SJLOC
                             CV_NODJ2 = CV_NODJ
-                            SUF_CV_SJ2 = CV_SJLOC + Mdims%cv_snloc * ( SELE2 - 1 )
+                            SUF_CV_SJ2 = CV_SJLOC + CV_SNLOC * ( SELE2 - 1 )
                             NRBC = 0.0
                         ELSE
                             CV_JLOC2 = ILOC_OTHER_SIDE( CV_SJLOC )
-                            CV_NODJ2 = ndgln( (ELE2-1)*Mdims%cv_nloc + CV_JLOC2 )
+                            CV_NODJ2 = CV_NDGLN( (ELE2-1)*CV_NLOC + CV_JLOC2 )
                             NRBC = 1.0
                         END IF
+
                         ! Have a surface integral on element boundary...
-                        VLM_NORX(:) = MATMUL( SNORMXN( 1:Mdims%ndim, : ), &
-                            SDETWE(:) * funs%sbcvfen( CV_SILOC, : ) * funs%sbcvfen( CV_SJLOC, : ) )
+                        VLM_NORX(:) = MATMUL( SNORMXN( 1:NDIM, : ), &
+                            SDETWE(:) * SBCVFEN( CV_SILOC, : ) * SBCVFEN( CV_SJLOC, : ) )
+
                         ! add diffusion term...
-                        DO IPHASE = 1, Mdims%nphase
-                            DO ICOMP = 1, Mdims%ncomp
+                        DO IPHASE = 1, NPHASE
+                            DO ICOMP = 1, NCOMP
                                 IF ( APPLYBC( ICOMP, IPHASE ) ) THEN
+
                                     IF ( SELE2 /= 0 ) THEN
                                         IF ( WIC_T_BC( ICOMP, IPHASE, SELE2 ) == WIC_T_BC_DIRICHLET ) THEN
-                                            RTBC = SUF_T_BC( ICOMP, IPHASE, CV_SJLOC2 + Mdims%cv_snloc * ( SELE2 - 1 ) )
+
+                                            RTBC = SUF_T_BC( ICOMP, IPHASE, CV_SJLOC2 + CV_SNLOC * ( SELE2 - 1 ) )
+
                                             VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) = VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) &
                                                 - VLM_NORX(:) * 0.5 * ( FEMT( ICOMP, IPHASE, CV_NODJ ) - RTBC  )
+
                                             VTOLDX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) = VTOLDX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) &
                                                 - VLM_NORX(:) * 0.5 * ( FEMTOLD( ICOMP, IPHASE, CV_NODJ ) - RTBC  )
+
                                         END IF
                                     ELSE
                                         VTX_ELE(:, ICOMP, IPHASE, CV_ILOC, ELE ) = &
@@ -4548,190 +4617,281 @@ contains
                                         VTOLDX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) = &
                                             VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) &
                                             - VLM_NORX(:) * 0.5 * ( FEMTOLD( ICOMP, IPHASE, CV_NODJ ) - FEMTOLD( ICOMP, IPHASE, CV_NODJ2 )  )
+
                                     END IF
+
                                 END IF
                             END DO
                         END DO
                     END DO
+
                 END DO
+
             END DO Between_Elements_And_Boundary
+
+
         END DO Loop_Elements2
-        Loop_Elements3: DO ELE = 1, Mdims%totele
+
+
+        Loop_Elements3: DO ELE = 1, TOTELE
+
             MASS( :, : ) = MASELE( :, :, ELE )
-            CALL MATDMATINV( MASS, INV_MASS, Mdims%cv_nloc )
-            FORALL ( IDIM = 1:Mdims%ndim, ICOMP = 1:Mdims%ncomp, IPHASE = 1:Mdims%nphase )
+            CALL MATDMATINV( MASS, INV_MASS, CV_NLOC )
+
+            FORALL ( IDIM = 1:NDIM, ICOMP = 1:NCOMP, IPHASE = 1:NPHASE )
+
                 DTX_ELE( ICOMP, IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, ICOMP, IPHASE, :, ELE ) )
                 DTOLDX_ELE( ICOMP, IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ) , VTOLDX_ELE( IDIM, ICOMP, IPHASE, :, ELE ) )
+
             END FORALL
+
         END DO Loop_Elements3
+
         DEALLOCATE( MASELE, VTX_ELE, VTOLDX_ELE )
+
         ewrite(3,*)'about to leave DG_DERIVS'
+
         RETURN
+
     END SUBROUTINE DG_DERIVS_ALL1
 
 
+    SUBROUTINE DG_DERIVS_ALL2( FEMT, FEMTOLD, &
+        DTX_ELE, DTOLDX_ELE, &
+        NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
+        XCV_NDGLN, X_NLOC, X_NDGLN,&
+        CV_NGI, CV_NLOC, CVWEIGHT, &
+        N, NLX, NLY, NLZ, &
+        X_N, X_NLX, X_NLY, X_NLZ, &
+        X_NONODS, X, Y, Z, &
+        NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
+        SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
+        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
 
-   SUBROUTINE DG_DERIVS_ALL2( Mdims, GIdims,  funs, ndgln, x_ndgln, FEMT, FEMTOLD, &
-        X_ALL, DTX_ELE, DTOLDX_ELE, FACE_ELE, WIC_T_BC, SUF_T_BC, FOR_CVs)
-        ! determine FEMT (finite element wise) etc from T (control DevFuns%VOLUME wise)
+        ! determine FEMT (finite element wise) etc from T (control volume wise)
         IMPLICIT NONE
-        type(multi_dimensions), intent(in) :: Mdims
-        type(multi_GI_dimensions), intent(in) :: GIdims
-        type(multi_shape_funs), intent(in) :: funs
-        integer, dimension(:), intent(in) :: ndgln, x_ndgln
-        real, dimension(:,:) :: X_ALL
+
+        INTEGER, intent( in ) :: NDIM, NPHASE, CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
+            &                   X_NONODS, STOTEL, CV_SNLOC, X_SNLOC, SBCVNGI, NFACE
         REAL, DIMENSION( :, : ), intent( in ) :: FEMT, FEMTOLD
         REAL, DIMENSION( :, :, :, : ), intent( inout ) :: DTX_ELE, DTOLDX_ELE
+        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
+        INTEGER, DIMENSION( : ), intent( in ) ::  XCV_NDGLN
         INTEGER, DIMENSION( :,  :, : ), intent( in ) ::  WIC_T_BC
         REAL, DIMENSION( :, :, : ), intent( in ) ::  SUF_T_BC
+        INTEGER, DIMENSION( :, : ), intent( in ) ::  CV_SLOCLIST
+        INTEGER, DIMENSION( :, : ), intent( in ) ::  X_SLOCLIST
         INTEGER, DIMENSION( :, : ), intent( in ) ::  FACE_ELE
-        logical, intent(in) :: FOR_CVs
+        REAL, DIMENSION( : ), intent( in ) :: CVWEIGHT
+        REAL, DIMENSION( :, : ), intent( in ) :: N, NLX, NLY, NLZ
+        REAL, DIMENSION( :, : ), intent( in ) :: X_N, X_NLX, X_NLY, X_NLZ
+        REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
+        REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
+        REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
+        REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
+
         ! Local variables
-        type(multi_dev_shape_funs) :: Devfuns
-        real, dimension(:,:), pointer :: N
-        real, dimension(:,:,:), pointer :: NLX_ALL
-        integer, dimension(:, :), pointer :: N_SLOCLIST
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
-        LOGICAL :: APPLYBC( Mdims%nphase )
-        REAL, DIMENSION( Mdims%cv_nloc, Mdims%cv_nloc )  :: MASS!, INV_MASS
-        REAL :: XSL( 3, Mdims%x_snloc ), SNORMXN( Mdims%ndim, GIdims%sbcvngi ), SDETWE( GIdims%sbcvngi )
-        INTEGER  :: SLOC2LOC( Mdims%cv_snloc ), X_SLOC2LOC( Mdims%x_snloc ), ILOC_OTHER_SIDE( Mdims%cv_snloc )
-        REAL :: NN, NNX( Mdims%ndim ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( Mdims%ndim )
+        LOGICAL :: D1, D3, APPLYBC( NPHASE )
+        LOGICAL, PARAMETER :: DCYL = .FALSE.
+        REAL, dimension( CV_NGI ) :: DETWEI, RA
+        REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI):: NX_ALL
+        REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
+        REAL :: VOLUME
+        REAL, DIMENSION( CV_NLOC, CV_NLOC )  :: MASS, INV_MASS
+        REAL, DIMENSION( NDIM, X_SNLOC ) :: XSL( 3, X_SNLOC ), SNORMXN( NDIM, SBCVNGI ), SDETWE( SBCVNGI )
+        INTEGER  :: SLOC2LOC( CV_SNLOC ), X_SLOC2LOC( X_SNLOC ), ILOC_OTHER_SIDE( CV_SNLOC )
+        REAL :: NN, NNX( NDIM ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( NDIM )
         INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
             CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, &
             CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
             X_INOD, X_SILOC, X_ILOC, IDIM
 
+        ewrite(3,*)'in DG_DERIVS'
+
         DTX_ELE = 0.0 ; DTOLDX_ELE = 0.0
-        ALLOCATE( MASELE( Mdims%cv_nloc, Mdims%cv_nloc, Mdims%totele ) )
-        ALLOCATE( VTX_ELE( Mdims%ndim, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ) )
-        ALLOCATE( VTOLDX_ELE( Mdims%ndim, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ) )
+
+        ALLOCATE( MASELE( CV_NLOC, CV_NLOC, TOTELE ) )
+        ALLOCATE( VTX_ELE( NDIM, NPHASE, CV_NLOC, TOTELE ) )
+        ALLOCATE( VTOLDX_ELE( NDIM, NPHASE, CV_NLOC, TOTELE ) )
+
         MASELE = 0.0 ; VTX_ELE = 0.0 ; VTOLDX_ELE = 0.0
-        XSL = 0.
 
-        if (FOR_CVs) then
-            N => funs%cvfen; NLX_ALL => funs%CVFENLX_ALL
-            N_SLOCLIST => funs%cv_sloclist
-        else
-            N => funs%ufen; NLX_ALL => funs%UFENLX_ALL
-            N_SLOCLIST => funs%u_sloclist
-        end if
+        D1 = ( NDIM == 1 )
+        D3 = ( NDIM == 3 )
+        !DCYL = .FALSE.
+        Loop_Elements1: DO ELE = 1, TOTELE
 
-        call allocate_multi_dev_shape_funs(NLX_ALL, NLX_ALL, Devfuns)
-        Loop_Elements1: DO ELE = 1, Mdims%totele
-            ! Calculate DETWEI
-            call DETNLXR_PLUS_U(ELE, X_ALL, x_ndgln, funs%cvweight, &
-                   N, NLX_ALL, NLX_ALL, Devfuns)
+            ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
+            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
+                X_NLOC, X_NLOC, CV_NGI, &
+                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
+                X_NX_ALL, &
+                CV_NLOC, NLX, NLY, NLZ, NX_ALL)
 
-            Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc
-                CV_NODI = ndgln( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                Loop_CV_JLOC: DO CV_JLOC = 1, Mdims%cv_nloc
-                    CV_NODJ = ndgln( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
-                    NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DevFuns%DETWEI )
-                    NNX = MATMUL( Devfuns%UFENX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DevFuns%DETWEI )
+
+            Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
+
+                CV_NODI = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
+
+                Loop_CV_JLOC: DO CV_JLOC = 1, CV_NLOC
+
+                    CV_NODJ = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
+
+                    NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DETWEI )
+                    NNX = MATMUL( NX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DETWEI )
+
                     MASELE( CV_ILOC, CV_JLOC, ELE) = MASELE( CV_ILOC, CV_JLOC, ELE ) + NN
-                    DO IPHASE = 1, Mdims%nphase
+
+                    DO IPHASE = 1, NPHASE
                         VTX_ELE( :, IPHASE, CV_ILOC, ELE ) = &
                             VTX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                             + NNX (:) * FEMT( IPHASE, CV_NODJ )
+
                         VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) = &
                             VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                             + NNX (:) * FEMTOLD( IPHASE, CV_NODJ )
                     END DO
+
                 END DO Loop_CV_JLOC
+
             END DO Loop_CV_ILOC
+
         END DO Loop_Elements1
-        Loop_Elements2: DO ELE = 1, Mdims%totele
-            Between_Elements_And_Boundary: DO IFACE = 1, GIdims%nface
+
+
+        Loop_Elements2: DO ELE = 1, TOTELE
+
+            Between_Elements_And_Boundary: DO IFACE = 1, NFACE
                 ELE2 = FACE_ELE( IFACE, ELE )
                 SELE2 = MAX( 0, - ELE2 )
                 ELE2 = MAX( 0, + ELE2 )
+                !ewrite(3,*)'FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE ):',FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE )
+
                 ! The surface nodes on element face IFACE.
-                SLOC2LOC( : ) = N_SLOCLIST( IFACE, : )
-                X_SLOC2LOC( : ) = funs%cv_sloclist( IFACE, : )
+                SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
+                X_SLOC2LOC( : ) = X_SLOCLIST( IFACE, : )
+
                 ! Form approximate surface normal (NORMX,NORMY,NORMZ)
-                CALL DGSIMPLNORM( ELE, X_SLOC2LOC, Mdims%totele, Mdims%x_nloc, Mdims%x_snloc, x_ndgln, &
-                    X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), Mdims%x_nonods, NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
+                CALL DGSIMPLNORM( ELE, X_SLOC2LOC, TOTELE, X_NLOC, X_SNLOC, X_NDGLN, &
+                    X, Y, Z, X_NONODS, NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
+
                 ! Recalculate the normal...
-                DO X_SILOC = 1, Mdims%x_snloc
+                DO X_SILOC = 1, X_SNLOC
                     X_ILOC = X_SLOC2LOC( X_SILOC )
-                    X_INOD = x_ndgln(( ELE - 1 ) * Mdims%x_nloc + X_ILOC )
-                    XSL( 1:Mdims%NDIM, X_SILOC ) = X_ALL(1:Mdims%NDIM, X_INOD )
+                    X_INOD = X_NDGLN(( ELE - 1 ) * X_NLOC + X_ILOC )
+                    if (NDIM >= 1) XSL( 1, X_SILOC ) = X( X_INOD )
+                    if (NDIM >= 2) XSL( 2, X_SILOC ) = Y( X_INOD )
+                    if (NDIM >= 3) XSL( 3, X_SILOC ) = Z( X_INOD )
                 END DO
-                CALL DGSDETNXLOC2(Mdims%x_snloc, GIdims%sbcvngi, &
+
+                CALL DGSDETNXLOC2(X_SNLOC, SBCVNGI, &
                     XSL( 1, : ), XSL( 2, : ), XSL( 3, : ), &
-                    funs%sbcvfen, funs%sbcvfenslx, funs%sbcvfensly, funs%sbcvfeweigh, SDETWE, SAREA, &
-                    (Mdims%ndim==1), (Mdims%ndim==3), (Mdims%ndim==-2), &
+                    X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, SBWEIGH, SDETWE, SAREA, &
+                    (NDIM==1), (NDIM==3), (NDIM==-2), &
                     SNORMXN( 1, : ), SNORMXN( 2, : ), SNORMXN( 3, : ), &
                     NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
+
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
-                    DO CV_SILOC = 1, Mdims%cv_snloc
+
+                    DO CV_SILOC = 1, CV_SNLOC
                         CV_ILOC = SLOC2LOC( CV_SILOC )
-                        CV_INOD = x_ndgln(( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
-                        DO CV_ILOC2 = 1, Mdims%cv_nloc
-                            CV_INOD2 = x_ndgln(( ELE2 - 1 ) * Mdims%cv_nloc + CV_ILOC2 )
+                        CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
+
+                        DO CV_ILOC2 = 1, CV_NLOC
+                            CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
+
                             IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
                         END DO
                     END DO
+
                     APPLYBC = (ELE /= ELE2) .AND. (ELE2 /= 0)
+
                 ELSE
                     APPLYBC = ( WIC_T_BC( 1, :, SELE2 ) == WIC_T_BC_DIRICHLET )
                 END IF
-                DO CV_SILOC = 1, Mdims%cv_snloc
+
+
+
+                DO CV_SILOC = 1, CV_SNLOC
                     CV_ILOC = SLOC2LOC( CV_SILOC )
-                    DO CV_SJLOC = 1, Mdims%cv_snloc
+                    DO CV_SJLOC = 1, CV_SNLOC
                         CV_JLOC = SLOC2LOC( CV_SJLOC )
-                        CV_NODJ = ndgln( (ELE-1)*Mdims%cv_nloc + CV_JLOC )
+                        CV_NODJ = CV_NDGLN( (ELE-1)*CV_NLOC + CV_JLOC )
                         IF ( SELE2 /= 0 ) THEN
                             CV_JLOC2 = CV_JLOC
                             CV_SJLOC2 = CV_SJLOC
                             CV_NODJ2 = CV_NODJ
-                            SUF_CV_SJ2 = CV_SJLOC + Mdims%cv_snloc * ( SELE2 - 1 )
+                            SUF_CV_SJ2 = CV_SJLOC + CV_SNLOC * ( SELE2 - 1 )
                             NRBC = 0.0
                         ELSE
                             CV_JLOC2 = ILOC_OTHER_SIDE( CV_SJLOC )
-                            CV_NODJ2 = ndgln( (ELE2-1)*Mdims%cv_nloc + CV_JLOC2 )
+                            CV_NODJ2 = CV_NDGLN( (ELE2-1)*CV_NLOC + CV_JLOC2 )
                             NRBC = 1.0
                         END IF
+
                         ! Have a surface integral on element boundary...
                         VLM_NORX(:) = MATMUL( SNORMXN( :, : ), &
-                            SDETWE(:) * funs%sbcvfen( CV_SILOC, : ) * funs%sbcvfen( CV_SJLOC, : ) )
+                            SDETWE(:) * SBCVFEN( CV_SILOC, : ) * SBCVFEN( CV_SJLOC, : ) )
+
                         ! add diffusion term...
-                        DO IPHASE = 1, Mdims%nphase
+                        DO IPHASE = 1, NPHASE
                             IF ( APPLYBC( IPHASE ) ) THEN
+
                                 VTX_ELE( :, IPHASE, CV_ILOC, ELE ) = &
                                     VTX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                                     - VLM_NORX(:) * 0.5 * ( FEMT( IPHASE, CV_NODJ ) - FEMT( IPHASE, CV_NODJ2 ) * NRBC )
                                 VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) = &
                                     VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                                     - VLM_NORX(:) * 0.5 * ( FEMTOLD( IPHASE, CV_NODJ ) - FEMTOLD( IPHASE, CV_NODJ2 ) * NRBC )
+
                                 IF ( SELE2 /= 0 ) THEN
                                     IF ( WIC_T_BC(1,  IPHASE, SELE2 ) == WIC_T_BC_DIRICHLET ) THEN
-                                        RTBC = SUF_T_BC( 1,IPHASE, CV_SJLOC2+ Mdims%cv_snloc*( SELE2-1) )
+
+                                        RTBC = SUF_T_BC( 1,IPHASE, CV_SJLOC2+ CV_SNLOC*( SELE2-1) )
+
                                         VTX_ELE( :, IPHASE, CV_ILOC, ELE ) = VTX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                                             + VLM_NORX(:) * 0.5 * RTBC
                                         VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) = VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                                             + VLM_NORX(:) * 0.5 * RTBC
+
                                     END IF
                                 END IF
                             END IF
                         END DO
                     END DO
                 END DO
+
             END DO Between_Elements_And_Boundary
+
         END DO Loop_Elements2
-        Loop_Elements3: DO ELE = 1, Mdims%totele
+
+
+        Loop_Elements3: DO ELE = 1, TOTELE
+
             MASS( :, : ) = MASELE( :, :, ELE )
-            CALL INVERT( MASS )
-            FORALL ( IDIM = 1:Mdims%ndim, IPHASE = 1:Mdims%nphase )
-                DTX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( MASS( :, : ), VTX_ELE( IDIM, IPHASE, :, ELE ) )
-                DTOLDX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( MASS( :, : ) , VTOLDX_ELE( IDIM, IPHASE, :, ELE ) )
+            INV_MASS=MASS
+            !       CALL MATDMATINV( MASS, INV_MASS, CV_NLOC )
+            CALL INVERT( INV_MASS )
+
+            FORALL ( IDIM = 1:NDIM, IPHASE = 1:NPHASE )
+
+                DTX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, IPHASE, :, ELE ) )
+                DTOLDX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ) , VTOLDX_ELE( IDIM, IPHASE, :, ELE ) )
+
+               !DTX_ELE( IDIM, :, IPHASE, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, IPHASE, :, ELE ) )
+               !DTOLDX_ELE( IDIM, :, IPHASE, ELE ) = MATMUL( INV_MASS( :, : ) , VTOLDX_ELE( IDIM, IPHASE, :, ELE ) )
             END FORALL
+
         END DO Loop_Elements3
+
         DEALLOCATE( MASELE, VTX_ELE, VTOLDX_ELE )
-        call deallocate_multi_dev_shape_funs(Devfuns)
+
+        ewrite(3,*)'about to leave DG_DERIVS'
+
     END SUBROUTINE DG_DERIVS_ALL2
 
 
