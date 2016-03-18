@@ -4221,12 +4221,9 @@ contains
         integer :: cv_nodi, cv_nodj, COUNT, max_iterations
         integer :: iele, cv_iloc, cv_jloc, cv_gi, it                         ! loop variables
         real :: nn, nm, mn, mm
-        real, dimension(:), allocatable, target :: detwei2, ra2
-        real, dimension(:), pointer :: detwei, ra
-        real, dimension(:,:,:), allocatable, target :: NX_ALL2
-        real, dimension(:,:,:), pointer :: NX_ALL
-        real, target :: volume2
-        real, pointer :: volume
+        real, dimension(CV_GIdims%cv_ngi) :: detwei, ra
+        real, dimension(Mdims%ndim,Mdims%cv_nloc,CV_GIdims%cv_ngi) :: NX_ALL
+        real :: volume
         type(scalar_field) :: cv_mass
         type(tensor_field), dimension(size(psi)) :: fempsi_rhs
         type(vector_field), dimension(size(psi_ave)) :: psi_ave_temp
@@ -4245,17 +4242,13 @@ contains
         cv_test_space = have_option(projection_options//'/test_function_space::ControlVolume')
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)
 
-        allocate(detwei2(CV_GIdims%cv_ngi))
-        allocate(ra2(CV_GIdims%cv_ngi))
-        allocate(NX_ALL2(Mdims%ndim,Mdims%cv_nloc,CV_GIdims%cv_ngi))
         do it=1,size(fempsi)
             call zero(fempsi(it)%ptr)
             call allocate(fempsi_rhs(it),psi(it)%ptr%mesh,"RHS",dim=psi(it)%ptr%dim)
             call zero(fempsi_rhs(it))
             call halo_update(psi(it)%ptr)
         end do
-        volume=>volume2; detwei=>detwei2; ra=>ra2
-        tfield=>psi(1)%ptr; NX_ALL=>NX_ALL2
+        tfield=>psi(1)%ptr
 
         if(is_to_update) then
             call allocate(cv_mass,psi(1)%ptr%mesh,'CV_mass')
@@ -4295,13 +4288,10 @@ contains
             end if
 
             ! calculate detwei,RA,NX,NY,NZ for the ith element
-            call DETNLXR(iele,X(1,:),X(2,:),X(3,:),ndgln%x, &
-                Mdims%totele,Mdims%x_nonods,Mdims%cv_nloc, &
-                CV_GIdims%cv_ngi,CV_funs%CVFEN,CV_funs%CVFENLX_ALL(1,:,:), &
-                CV_funs%CVFENLX_ALL(2,:,:),CV_funs%CVFENLX_ALL(3,:,:), &
-                CV_funs%cvweight,detwei2,ra2,volume2, &
-                Mdims%ndim==1,Mdims%ndim==3,DCYL, &
-                NX_ALL2(1,:,:),NX_ALL2(2,:,:),NX_ALL2(3,:,:))
+            call DETNLXR( iele, X, ndgln%x, Mdims%cv_nloc, CV_GIdims%cv_ngi, &
+                CV_funs%CVFEN, CV_funs%CVFENLX_ALL, CV_funs%cvweight, DETWEI, &
+                RA, VOLUME, .false., NX_ALL)
+
             mass_ele(iele) = volume
 
             Loop_CV_iLoc: do cv_iloc = 1, Mdims%cv_nloc
@@ -4407,9 +4397,6 @@ contains
                 call deallocate(psi_int_temp(it))
             end do
         end if
-        deallocate(detwei2)
-        deallocate(ra2)
-        deallocate(NX_ALL2)
 
         return
 
@@ -6949,7 +6936,7 @@ contains
                     NORMX_ALL = 0
                     MLUM(1:NONODS) = 0.0
                     DO ELE=1,TOTELE! Was loop
-                        call DETNLXR_new( ELE, X_ALL, X_NDGLN, TOTELE, X_NONODS, NLOC, NGI, &
+                        call DETNLXR( ELE, X_ALL, X_NDGLN, NLOC, NGI, &
                             N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, .false., NX_ALL)
                         DO ILOC=1,NLOC! Was loop
                             NODI=NDGLNO((ELE-1)*NLOC+ILOC)

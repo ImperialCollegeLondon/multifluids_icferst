@@ -839,6 +839,13 @@ contains
             if (.not.associated(Mmat%PIVIT_MAT)) allocate( Mmat%PIVIT_MAT( Mdims%ndim * Mdims%nphase * Mdims%u_nloc, Mdims%ndim * Mdims%nphase * Mdims%u_nloc, Mdims%totele ) )
             Mmat%PIVIT_MAT=0.0
         end if
+
+        if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
+            !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
+            call calculate_capillary_pressure(packed_state, .false., &!sprint_to_do; shouldn't this flag change after the first non-linear iteration?
+                ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
+        end if
+
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
              velocity, pressure, &

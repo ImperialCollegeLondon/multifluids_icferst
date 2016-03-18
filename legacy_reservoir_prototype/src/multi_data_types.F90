@@ -130,8 +130,10 @@ module multi_data_types
         real :: volume!Volume of the local element
         real, pointer, dimension(:) :: detwei=> null()!Determinant times weigth (i.e: conversor from reference element to local element)
         real, pointer, dimension(:) :: ra => null()   !???
-        real, pointer, dimension(: ,:, :)  :: cvfenx_all=> null()!Space derivatives of the pressure (CV) shape functions
-        real, pointer, dimension(: ,:, :)  :: ufenx_all=> null()!Space derivatives of the velocity (FE) shape functions
+        real, pointer, dimension(:, :, :) :: cvfenx_all=> null()!Space derivatives of the pressure (CV) shape functions
+        real, pointer, dimension(:, :, :) :: ufenx_all=> null()!Space derivatives of the velocity (FE) shape functions
+        real, pointer, dimension(:, :, :) :: nx_all => null()!Space derivatives of a generic field.
+        real, pointer, dimension(:, :, :) :: inv_jac => null()!Inverse of the Jacobian matrix
     end type multi_dev_shape_funs
     !This type comprises the four necessary variables to represent matrices using a CSR structure
     type multi_sparsity
@@ -522,42 +524,90 @@ contains
         Mmat%stored = .false.
     end subroutine destroy_multi_matrices
 
-    subroutine allocate_multi_dev_shape_funs1(funs, Dev_funs)
+    subroutine allocate_multi_dev_shape_funs1(funs, Dev_funs, nx_all_FE_size)
         implicit none
         type (multi_shape_funs), intent(in) ::funs
         type (multi_dev_shape_funs), intent(inout) :: Dev_funs
+        logical, optional, intent(in) :: nx_all_FE_size!If true then the size of the generic nx_all is set like
+                                                       !like ufenlx_all, otherwise, like cvfenlx_all
+        !Local variable
+        logical :: nx_all_FE_size2
+        nx_all_FE_size2 = .false.
 
         allocate(Dev_funs%detwei(size(funs%cvfenlx_all,3)))
         allocate(Dev_funs%ra(size(funs%cvfenlx_all,3)))
         allocate(Dev_funs%cvfenx_all(size(funs%cvfenlx_all,1),size(funs%cvfenlx_all,2),size(funs%cvfenlx_all,3)))
         allocate(Dev_funs%ufenx_all(size(funs%ufenlx_all,1),size(funs%ufenlx_all,2),size(funs%ufenlx_all,3)))
+        allocate(Dev_funs%inv_jac(size(funs%ufenlx_all,1),size(funs%ufenlx_all,1),size(funs%ufenlx_all,3)))
+
+        if (present(nx_all_FE_size)) then
+            if (nx_all_FE_size) nx_all_FE_size2 = .true.
+        end if
+
+        if (nx_all_FE_size2) then
+            allocate(Dev_funs%nx_all(size(funs%ufenlx_all,1),size(funs%ufenlx_all,2),size(funs%ufenlx_all,3)))
+        else
+            allocate(Dev_funs%nx_all(size(funs%cvfenlx_all,1),size(funs%cvfenlx_all,2),size(funs%cvfenlx_all,3)))
+        end if
 
     end subroutine allocate_multi_dev_shape_funs1
 
-    subroutine allocate_multi_dev_shape_funs2(Mdims, GIdims, Dev_funs)
+    subroutine allocate_multi_dev_shape_funs2(Mdims, GIdims, Dev_funs, nx_all_FE_size)
         implicit none
         type (multi_dimensions), intent(in)  ::Mdims
         type(multi_GI_dimensions), intent(in) :: GIdims
         type (multi_dev_shape_funs), intent(inout) :: Dev_funs
+        logical, optional, intent(in) :: nx_all_FE_size!If true then the size of the generic nx_all is set like
+                                                       !like ufenlx_all, otherwise, like cvfenlx_all
+        !Local variable
+        logical :: nx_all_FE_size2
+        nx_all_FE_size2 = .false.
 
         allocate(Dev_funs%detwei(GIdims%cv_ngi))
         allocate(Dev_funs%ra(GIdims%cv_ngi))
         allocate(Dev_funs%cvfenx_all(Mdims%Ndim, Mdims%cv_nloc,GIdims%cv_ngi))
         allocate(Dev_funs%ufenx_all(Mdims%Ndim, Mdims%u_nloc, GIdims%cv_ngi))
+        allocate(Dev_funs%inv_jac(Mdims%Ndim, Mdims%Ndim, GIdims%cv_ngi))
+
+        if (present(nx_all_FE_size)) then
+            if (nx_all_FE_size) nx_all_FE_size2 = .true.
+        end if
+
+        if (nx_all_FE_size2) then
+            allocate(Dev_funs%nx_all(Mdims%Ndim, Mdims%u_nloc, GIdims%cv_ngi))
+        else
+            allocate(Dev_funs%nx_all(Mdims%Ndim, Mdims%cv_nloc,GIdims%cv_ngi))
+        end if
 
     end subroutine allocate_multi_dev_shape_funs2
 
-    subroutine allocate_multi_dev_shape_funs3(cvfenlx_all, ufenlx_all, Dev_funs)
+    subroutine allocate_multi_dev_shape_funs3(cvfenlx_all, ufenlx_all, Dev_funs, nx_all_FE_size)
         implicit none
         real, dimension(:,:,:), intent(in) :: cvfenlx_all, ufenlx_all
         type (multi_dev_shape_funs), intent(inout) :: Dev_funs
+        logical, optional, intent(in) :: nx_all_FE_size!If true then the size of the generic nx_all is set like
+                                                       !like ufenlx_all, otherwise, like cvfenlx_all
+        !Local variable
+        logical :: nx_all_FE_size2
+        nx_all_FE_size2 = .false.
 
         allocate(Dev_funs%detwei(size(cvfenlx_all,3)))
         allocate(Dev_funs%ra(size(cvfenlx_all,3)))
         allocate(Dev_funs%cvfenx_all(size(cvfenlx_all,1),size(cvfenlx_all,2),size(cvfenlx_all,3)))
         allocate(Dev_funs%ufenx_all(size(ufenlx_all,1),size(ufenlx_all,2),size(ufenlx_all,3)))
+        allocate(Dev_funs%inv_jac(size(ufenlx_all,1), size(ufenlx_all,1), size(ufenlx_all,3)))
 
+        if (present(nx_all_FE_size)) then
+            if (nx_all_FE_size) nx_all_FE_size2 = .true.
+        end if
+
+        if (nx_all_FE_size2) then
+            allocate(Dev_funs%nx_all(size(ufenlx_all,1),size(ufenlx_all,2),size(ufenlx_all,3)))
+        else
+            allocate(Dev_funs%nx_all(size(cvfenlx_all,1),size(cvfenlx_all,2),size(cvfenlx_all,3)))
+        end if
     end subroutine allocate_multi_dev_shape_funs3
+
     subroutine deallocate_multi_dev_shape_funs(Dev_funs)
         implicit none
         type (multi_dev_shape_funs), intent(inout) :: Dev_funs
@@ -565,9 +615,14 @@ contains
         if (associated(Dev_funs%detwei)) deallocate(Dev_funs%detwei)
         if (associated(Dev_funs%ra)) deallocate(Dev_funs%ra)
         if (associated(Dev_funs%ufenx_all)) deallocate(Dev_funs%ufenx_all)
+        if (associated(Dev_funs%cvfenx_all)) deallocate(Dev_funs%cvfenx_all)
+        if (associated(Dev_funs%nx_all)) deallocate(Dev_funs%nx_all)
+        if (associated(Dev_funs%inv_jac)) deallocate(Dev_funs%inv_jac)
+
         !Nullify pointers
         nullify(Dev_funs%cvfenx_all);nullify(Dev_funs%ufenx_all)
         nullify(Dev_funs%detwei); nullify(Dev_funs%ra)
+        nullify(Dev_funs%nx_all); nullify(Dev_funs%inv_jac)
     end subroutine deallocate_multi_dev_shape_funs
 
 end module multi_data_types

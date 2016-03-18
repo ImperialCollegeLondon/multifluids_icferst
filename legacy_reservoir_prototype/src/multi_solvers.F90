@@ -274,11 +274,11 @@ contains
         mass_cv = 0.0
         do  ele = 1, Mdims%totele
             call detnlxr( ele, x%val( 1, : ), x%val( 2, : ), x%val( 3, : ), &
-                &        x_ndgln, Mdims%totele, Mdims%x_nonods, Mdims%cv_nloc, CV_GIdims%cv_ngi, CV_funs%cvfen, &
-                &        CV_funs%cvfenlx_all( 1, :, : ), CV_funs%cvfenlx_all( 2, :, : ), &
-                &        CV_funs%cvfenlx_all( 3, :, : ), &
-                &        CV_funs%cvweight, detwei2, ra2, volume2, d1, d3, dcyl, &
-                &        nx_all2( 1, :, : ), nx_all2( 2, :, : ), nx_all2( 3, :, : ) )
+                        x_ndgln, Mdims%totele, Mdims%x_nonods, Mdims%cv_nloc, CV_GIdims%cv_ngi, CV_funs%cvfen, &
+                        CV_funs%cvfenlx_all( 1, :, : ), CV_funs%cvfenlx_all( 2, :, : ), &
+                        CV_funs%cvfenlx_all( 3, :, : ), &
+                        CV_funs%cvweight, detwei2, ra2, volume2, d1, d3, dcyl, &
+                        nx_all2( 1, :, : ), nx_all2( 2, :, : ), nx_all2( 3, :, : ) )
             detwei => detwei2
             do iloc = 1, Mdims%cv_nloc
                 inod = cv_ndgln( ( ele - 1 ) * Mdims%cv_nloc + iloc )
