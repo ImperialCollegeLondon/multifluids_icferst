@@ -161,7 +161,6 @@
       <integer_value rank="0">3</integer_value>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <physical_parameters>
     <gravity>
       <magnitude>
@@ -540,16 +539,10 @@
       <alpha_beta>
         <real_value rank="0">0</real_value>
       </alpha_beta>
-      <KComp_Sigmoid>
-        <K_Comp>
-          <real_value rank="0">0</real_value>
-        </K_Comp>
-      </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">0.1</real_value>
+          <real_value rank="0">0</real_value>
         </Relaxation_Coefficient>
-        <Ensure_Positive/>
         <Enforce_Comp_Sum2One/>
       </Comp_Sum2One>
     </is_multiphase_component>
@@ -679,9 +672,8 @@
       </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">0.1</real_value>
+          <real_value rank="0">0</real_value>
         </Relaxation_Coefficient>
-        <Ensure_Positive/>
         <Enforce_Comp_Sum2One/>
       </Comp_Sum2One>
     </is_multiphase_component>
@@ -811,9 +803,8 @@
       </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">0.1</real_value>
+          <real_value rank="0">0</real_value>
         </Relaxation_Coefficient>
-        <Ensure_Positive/>
         <Enforce_Comp_Sum2One/>
       </Comp_Sum2One>
     </is_multiphase_component>
@@ -943,9 +934,8 @@
       </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">0.1</real_value>
+          <real_value rank="0">0</real_value>
         </Relaxation_Coefficient>
-        <Ensure_Positive/>
         <Enforce_Comp_Sum2One/>
       </Comp_Sum2One>
     </is_multiphase_component>
@@ -1075,9 +1065,8 @@
       </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">0.1</real_value>
+          <real_value rank="0">0</real_value>
         </Relaxation_Coefficient>
-        <Ensure_Positive/>
         <Enforce_Comp_Sum2One/>
       </Comp_Sum2One>
     </is_multiphase_component>

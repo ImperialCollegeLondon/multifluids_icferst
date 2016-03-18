@@ -125,7 +125,6 @@ contains
            integer :: lcomp, Field_selector, IGOT_T2_loc
            type(vector_field)  :: vtracer
            type(csr_sparsity), pointer :: sparsity
-           real, dimension(:,:), allocatable :: ScalarField_Source
            real, dimension(:,:,:), allocatable :: Velocity_Absorption, T_AbsorB
            integer :: IGOT_THERM_VIS
            real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
@@ -219,11 +218,10 @@ contains
            ! calculate T_ABSORB
            allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
            if (have_option('/boiling')) then
-                   allocate ( Velocity_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
-                              ScalarField_Source( Mdims%nphase, Mdims%cv_nonods ) )
-                   call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-                      ScalarField_Source, velocity_absorption, T_AbsorB )
-                   deallocate ( Velocity_Absorption, ScalarField_Source )
+              allocate ( Velocity_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
+              call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
+                   velocity_absorption, T_AbsorB )
+              deallocate ( Velocity_Absorption )
            end if
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                 !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
@@ -607,7 +605,7 @@ contains
         MCY_RHS, MCY, &
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
-        REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES, ScalarField_Source
+        REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE, U_SOURCE_CV, U_ABSORBIN, temperature_absorption
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
@@ -790,10 +788,9 @@ contains
         ! open the boiling test for two phases-gas and liquid
         if (have_option('/boiling')) then
            allocate( temperature_absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
-           allocate( ScalarField_Source( Mdims%nphase, Mdims%cv_nonods ) )
            call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-              ScalarField_Source, U_ABSORBIN, temperature_absorption )
-           deallocate( temperature_absorption, ScalarField_Source )
+                U_ABSORBIN, temperature_absorption )
+           deallocate( temperature_absorption )
         end if
         allocate( U_ABSORB( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
         U_ABSORB = U_ABSORBIN + MAT_ABSORB
