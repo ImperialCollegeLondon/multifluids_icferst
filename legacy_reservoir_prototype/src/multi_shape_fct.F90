@@ -4367,7 +4367,7 @@ contains
   END SUBROUTINE GAUSSILOC
 
 
-  subroutine DETNLXR_PLUS_U1(ELE, X_ALL, XONDGL, weight, cvshape, cvshapelx, ushapelx, dev_funs)
+  subroutine DETNLXR_PLUS_U1(ELE, X_ALL, XONDGL, weight, cvshape, cvshapelx, ushapelx, DevFuns)
       implicit none
       integer, intent(in) :: ELE
       real, dimension(:,:), intent( in ) :: X_ALL
@@ -4375,16 +4375,16 @@ contains
       real, dimension(:), intent( in ) :: weight
       real, dimension(:,:), intent( in ) :: cvshape
       real, dimension(:,:,:), intent( in ) :: cvshapelx, ushapelx
-      type (multi_dev_shape_funs) :: dev_funs
+      type (multi_dev_shape_funs) :: DevFuns
 
       integer :: dummy
 
       call DETNLXR_PLUS_U( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), XONDGL, dummy, dummy, &
        size(cvshapelx,2), dummy, size(cvshapelx,3), &
        cvshape, cvshapelx(1,:,:), cvshapelx(2,:,:), cvshapelx(3,:,:), WEIGHT, &
-       dev_funs%DETWEI, dev_funs%RA, dev_funs%VOLUME, size(X_ALL,1) == 1, size(X_ALL,1) == 3, .false., &
-       dev_funs%cvfenx_all, &
-       size(ushapelx,2), ushapelx(1,:,:), ushapelx(2,:,:), ushapelx(3,:,:), dev_funs%ufenx_all)
+       DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME, size(X_ALL,1) == 1, size(X_ALL,1) == 3, .false., &
+       DevFuns%cvfenx_all, &
+       size(ushapelx,2), ushapelx(1,:,:), ushapelx(2,:,:), ushapelx(3,:,:), DevFuns%ufenx_all)
 
 
   end subroutine DETNLXR_PLUS_U1

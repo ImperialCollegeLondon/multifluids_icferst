@@ -1634,9 +1634,9 @@ contains
   end subroutine lagrot
 
 
-  subroutine DETNLXR1(ELE, X_ALL, XONDGL, weight, nshape, nshapelx, dev_funs)
-      !Calculates the derivatives of the shape functions, which are stored into dev_funs%NX_ALL
-      !and also dev_funs%DETWEI, dev_funs%RA, dev_funs%VOLUME
+  subroutine DETNLXR1(ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)
+      !Calculates the derivatives of the shape functions, which are stored into DevFuns%NX_ALL
+      !and also DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME
       implicit none
       integer, intent(in) :: ELE
       real, dimension(:,:), intent( in ) :: X_ALL
@@ -1644,14 +1644,14 @@ contains
       real, dimension(:), intent( in ) :: weight
       real, dimension(:,:), intent( in ) :: nshape
       real, dimension(:,:,:), intent( in ) :: nshapelx
-      type (multi_dev_shape_funs) :: dev_funs
+      type (multi_dev_shape_funs) :: DevFuns
 
       integer :: dummy
 
       call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, dummy, dummy, size(nshapelx,2), size(nshapelx,3), &
-         nshape, nshapelx(1,:,:), nshapelx(2,:,:), nshapelx(3,:,:), WEIGHT, dev_funs%DETWEI, dev_funs%RA, dev_funs%VOLUME, &
+         nshape, nshapelx(1,:,:), nshapelx(2,:,:), nshapelx(3,:,:), WEIGHT, DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME, &
          size(X_ALL,1) == 1, size(X_ALL,1) == 3, .false., &
-         dev_funs%nx_all(1, :,:),dev_funs%nx_all(2, :,:),dev_funs%nx_all(3, :,:) )
+         DevFuns%nx_all(1, :,:),DevFuns%nx_all(2, :,:),DevFuns%nx_all(3, :,:) )
 
   end subroutine DETNLXR1
 
@@ -1841,7 +1841,7 @@ contains
 
 
 
-  SUBROUTINE DETNLXR_INVJAC1( ELE, X_ALL, XONDGL, weight, nshape, nshapelx, dev_funs)
+  SUBROUTINE DETNLXR_INVJAC1( ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)
     implicit none
     integer, intent(in) :: ELE
     real, dimension(:,:), intent( in ) :: X_ALL
@@ -1849,15 +1849,15 @@ contains
     real, dimension(:), intent( in ) :: weight
     real, dimension(:,:), intent( in ) :: nshape
     real, dimension(:,:,:), intent( in ) :: nshapelx
-    type (multi_dev_shape_funs) :: dev_funs
+    type (multi_dev_shape_funs) :: DevFuns
 
     integer :: dummy
 
     call DETNLXR_INVJAC( ELE, X_ALL(1,:), X_ALL(2,:),X_ALL(3,:), XONDGL, dummy, dummy, &
          size(nshapelx,2), size(nshapelx,3), nshape, nshapelx(1,:,:),nshapelx(2,:,:),&
-         nshapelx(3,:,:), WEIGHT, dev_funs%DETWEI, dev_funs%RA, dev_funs%VOLUME, size(nshapelx,1) == 1, &
-         size(nshapelx,1)==3, .false., dev_funs%NX_ALL(1,:,:),dev_funs%NX_ALL(2,:,:),&
-         dev_funs%NX_ALL(3,:,:), dummy, dev_funs%INV_JAC)
+         nshapelx(3,:,:), WEIGHT, DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME, size(nshapelx,1) == 1, &
+         size(nshapelx,1)==3, .false., DevFuns%NX_ALL(1,:,:),DevFuns%NX_ALL(2,:,:),&
+         DevFuns%NX_ALL(3,:,:), dummy, DevFuns%INV_JAC)
 
   END SUBROUTINE DETNLXR_INVJAC1
 
