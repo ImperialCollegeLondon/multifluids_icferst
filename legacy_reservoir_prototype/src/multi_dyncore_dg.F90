@@ -2158,7 +2158,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         endif
         Loop_Elements: DO ELE = 1, Mdims%totele ! VOLUME integral
             ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
-             call DETNLXR_PLUS_U_new(ELE, X_ALL, ndgln%x, FE_funs%cvweight, &
+             call DETNLXR_PLUS_U(ELE, X_ALL, ndgln%x, FE_funs%cvweight, &
                 FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
             DO GI = 1, FE_GIdims%CV_NGI
                 CVFENX_ALL_REVERSED(:,GI,:) = DevFuns%CVFENX_ALL(:,:,GI)
@@ -5298,7 +5298,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      call get_var_from_packed_state(packed_state, CapPressure = CapPressure)
 
      !Retrieve derivatives of the shape functions
-     call DETNLXR_PLUS_U_new(ELE, X_ALL, X_NDGLN, FE_funs%cvweight, &
+     call DETNLXR_PLUS_U(ELE, X_ALL, X_NDGLN, FE_funs%cvweight, &
         FE_funs%cvfen, FE_funs%cvfenlx_all, FE_funs%ufenlx_all, Devfuns)
 
      !Project to FEM

@@ -1704,7 +1704,7 @@ contains
                             ENDIF
                             IF(APPLY_ENO) THEN
                                 ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-                                call DETNLXR_INVJAC_new( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
+                                call DETNLXR_INVJAC( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
                                     CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, SCVFENX_ALL, INV_JAC)
                                 ! Apply a simple ENO scheme to T,TOLD only which is not bounded but gets rid of most of the osillations.
                                 ! Put the results in LIMF.
@@ -2092,7 +2092,7 @@ contains
         if (SUF_INT_MASS_MATRIX2) then
             do ele =1, Mdims%totele
                 ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-                call DETNLXR_INVJAC_new( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
+                call DETNLXR_INVJAC( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
                     CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, SCVFENX_ALL, INV_JAC)
 
                 DO IPHASE = 1, Mdims%nphase
@@ -4455,7 +4455,7 @@ contains
         call allocate_multi_dev_shape_funs(NLX_ALL, NLX_ALL, Devfuns)
         Loop_Elements1: DO ELE = 1, Mdims%totele
             ! Calculate DevFuns%DETWEI
-            call DETNLXR_PLUS_U_new(ELE, X_ALL, x_ndgln, funs%cvweight, &
+            call DETNLXR_PLUS_U(ELE, X_ALL, x_ndgln, funs%cvweight, &
                    N, NLX_ALL, NLX_ALL, Devfuns)
             Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc
                 CV_NODI = ndgln( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
@@ -4625,7 +4625,7 @@ contains
         call allocate_multi_dev_shape_funs(NLX_ALL, NLX_ALL, Devfuns)
         Loop_Elements1: DO ELE = 1, Mdims%totele
             ! Calculate DETWEI
-            call DETNLXR_PLUS_U_new(ELE, X_ALL, x_ndgln, funs%cvweight, &
+            call DETNLXR_PLUS_U(ELE, X_ALL, x_ndgln, funs%cvweight, &
                    N, NLX_ALL, NLX_ALL, Devfuns)
 
             Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc

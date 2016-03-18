@@ -298,7 +298,7 @@ contains
 
         Loop_Elements1: DO ELE = 1, Mdims%totele
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            call DETNLXR_PLUS_U_new(ELE, X_ALL, X_NDGLN, CV_funs%cvweight, &
+            call DETNLXR_PLUS_U(ELE, X_ALL, X_NDGLN, CV_funs%cvweight, &
                    CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
             MASELE = 0.0
             Loop_MAT_ILOC: DO MAT_ILOC = 1, Mdims%mat_nloc

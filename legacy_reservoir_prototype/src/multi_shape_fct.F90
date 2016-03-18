@@ -47,6 +47,11 @@ module shape_functions_prototype
   use multi_data_types
   implicit none
 
+    interface DETNLXR_PLUS_U
+        module procedure DETNLXR_PLUS_U1
+        module procedure DETNLXR_PLUS_U2
+    end interface DETNLXR_PLUS_U
+
 contains
 
 !!!
@@ -4362,7 +4367,7 @@ contains
   END SUBROUTINE GAUSSILOC
 
 
-  subroutine DETNLXR_PLUS_U_new(ELE, X_ALL, XONDGL, weight, cvshape, cvshapelx, ushapelx, dev_funs)
+  subroutine DETNLXR_PLUS_U1(ELE, X_ALL, XONDGL, weight, cvshape, cvshapelx, ushapelx, dev_funs)
       implicit none
       integer, intent(in) :: ELE
       real, dimension(:,:), intent( in ) :: X_ALL
@@ -4382,10 +4387,10 @@ contains
        size(ushapelx,2), ushapelx(1,:,:), ushapelx(2,:,:), ushapelx(3,:,:), dev_funs%ufenx_all)
 
 
-  end subroutine DETNLXR_PLUS_U_new
+  end subroutine DETNLXR_PLUS_U1
 
 
-  SUBROUTINE DETNLXR_PLUS_U( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
+  SUBROUTINE DETNLXR_PLUS_U2( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
        X_NLOC, CV_NLOC, NGI, &
        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
        NX_ALL, &
@@ -4531,7 +4536,7 @@ contains
     end select
 
     RETURN
-  END SUBROUTINE DETNLXR_PLUS_U
+  END SUBROUTINE DETNLXR_PLUS_U2
 
 end module shape_functions_prototype
 

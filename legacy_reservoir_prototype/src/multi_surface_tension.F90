@@ -303,7 +303,7 @@ contains
       call allocate_multi_dev_shape_funs(CV_funs, Devfuns)
       DO ELE=1,Mdims%totele
         ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
-        call DETNLXR_PLUS_U_new(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
+        call DETNLXR_PLUS_U(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
               CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
          MASS_ELE( ELE ) = DevFuns%VOLUME
       END DO
@@ -462,7 +462,7 @@ contains
 !Calculate Laplacian of the diffused interface DevFuns%VOLUME fraction or distance function
             DO ELE=1,Mdims%totele ! ELE loop 1
                IF(INTERFACE_ELE(ELE)) THEN
-                call DETNLXR_PLUS_U_new(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
+                call DETNLXR_PLUS_U(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
  
                CALL LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
@@ -516,7 +516,7 @@ contains
             DO ELE=1,Mdims%totele  ! ELE loop 4
                IF(INTERFACE_ELE(ELE)) THEN
                  ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
-                 call DETNLXR_PLUS_U_new(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
+                 call DETNLXR_PLUS_U(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
                DO INNER_ITS=1,1
 ! Calculate the velocity...
@@ -705,7 +705,7 @@ contains
       DO ELE=1,Mdims%totele ! ELE loop 7
          IF (INTERFACE_ELE(ELE)) THEN
 ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
-                call DETNLXR_PLUS_U_new(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
+                call DETNLXR_PLUS_U(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
  
             CALL LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
@@ -780,7 +780,7 @@ contains
       DO ELE=1,Mdims%totele ! ELE loop 10
          IF(INTERFACE_ELE(ELE)) THEN
                 ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
-                call DETNLXR_PLUS_U_new(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
+                call DETNLXR_PLUS_U(ELE, x_all % val, ndgln%x, CV_funs%cvweight, &
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
 ! calculate curvature:
             CALL LOC_1ST_DERIV_XYZ_DG_CURV(CURV, DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
