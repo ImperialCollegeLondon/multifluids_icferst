@@ -47,6 +47,11 @@ module shape_functions_prototype
   use multi_data_types
   implicit none
 
+    interface DETNLXR_PLUS_U
+        module procedure DETNLXR_PLUS_U1
+        module procedure DETNLXR_PLUS_U2
+    end interface DETNLXR_PLUS_U
+
 contains
 
 !!!
@@ -103,7 +108,7 @@ contains
 
   end subroutine shape_cv_n
 
-  subroutine cv_fem_shape_funs_new(shape_fun, Mdims, GIdims, cv_ele_type, QUAD_OVER_WHOLE_ELE)
+  subroutine cv_fem_shape_funs(shape_fun, Mdims, GIdims, cv_ele_type, QUAD_OVER_WHOLE_ELE)
     ! This subrt defines the sub-control volume and FEM shape functions.
     ! Shape functions associated with volume integration using both CV basis
     ! functions CVN as well as FEM basis functions CVFEN (and its derivatives
@@ -158,7 +163,7 @@ contains
 
     findgpts2 = 0; colgpts2= 0; ncolgpts2 = 0
 
-    call cv_fem_shape_funs( &
+    call cv_fem_shape_funs_old( &
          Mdims%ndim, cv_ele_type, &
          GIdims%cv_ngi, GIdims%cv_ngi, Mdims%cv_nloc, Mdims%u_nloc, cvn2, cvn_short2, &
                                 ! Volume shape functions
@@ -210,183 +215,181 @@ contains
          cv_sloclist2,  u_sloclist2, findgpts2, colgpts2, sele_overlap_scale2)
 
 
-  end subroutine cv_fem_shape_funs_new
+    contains
 
-  subroutine cv_fem_shape_funs( &
-       ndim, cv_ele_type, &
-       cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
-                                ! Volume shape functions
-       cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
-       cvweight_short, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
-       ufen, ufenlx, ufenly, ufenlz, &
-                                ! Surface of each CV shape functions
-       scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-       scvfen, scvfenslx, scvfensly, scvfeweigh, &
-       scvfenlx, scvfenly, scvfenlz, &
-       sufen, sufenslx, sufensly, &
-       sufenlx, sufenly, sufenlz, &
-                                ! Surface element shape funcs
-       u_on_face, ufem_on_face, nface, &
-       sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx, sbcvfenly, sbcvfenlz, &
-       sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz, &
-       cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-                                ! Define the gauss points that lie on the surface of the CV
-       findgpts, colgpts, ncolgpts, &
-       sele_overlap_scale, QUAD_OVER_WHOLE_ELE )
-    ! This subrt defines the sub-control volume and FEM shape functions.
-    ! Shape functions associated with volume integration using both CV basis
-    ! functions CVN as well as FEM basis functions CVFEN (and its derivatives
-    ! CVFENLX, CVFENLY, CVFENLZ)
-    implicit none
-    integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_ngi_short, cv_nloc, u_nloc
-    real, dimension( :, : ), intent( inout ) :: cvn
-    real, dimension( :, : ), intent( inout ) :: cvn_short
-    real, dimension( : ), intent( inout ) :: cvweight
-    real, dimension( :, : ), intent( inout ) :: cvfen, cvfenlx, cvfenly, cvfenlz
-    real, dimension( : ), intent( inout ) :: cvweight_short
-    real, dimension( :, : ), intent( inout ) :: cvfen_short, cvfenlx_short, &
-         cvfenly_short, cvfenlz_short
-    real, dimension( :, : ), intent( inout ) :: ufen, ufenlx, ufenly, ufenlz
-    integer, intent( in ) :: scvngi
-    integer, dimension( :, : ), intent( inout ) :: cv_neiloc
-    logical, dimension( :, : ), intent( inout ) :: cv_on_face, cvfem_on_face
-    real, dimension( :, : ), intent( inout ) :: scvfen, scvfenslx, scvfensly
-    real, dimension( : ), intent( inout ) :: scvfeweigh
-    real, dimension( :, : ), intent( inout ) :: scvfenlx, scvfenly, scvfenlz
-    real, dimension( :, : ), intent( inout ) :: sufen, sufenslx, sufensly, sufenlx, &
-         sufenly, sufenlz
-    logical, dimension( :, : ), intent( inout ) :: u_on_face, ufem_on_face
-    integer, intent( in ) :: nface, sbcvngi
-    logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
-    ! if QUAD_OVER_WHOLE_ELE then dont divide element into CV's to form quadrature.
-    real, dimension( :, : ), intent( inout ) :: sbcvn
-    real, dimension( :, : ), intent( inout ) :: sbcvfen, sbcvfenslx, sbcvfensly
-    real, dimension( : ), intent( inout ) :: sbcvfeweigh
-    real, dimension( :, : ), intent( inout ) :: sbcvfenlx, sbcvfenly, sbcvfenlz
-    integer, intent( in ) :: cv_snloc, u_snloc
-    real, dimension( :, : ), intent( inout ) :: sbufen, sbufenslx, sbufensly, &
-         sbufenlx, sbufenly, sbufenlz
-    integer, dimension( :, : ), intent( inout ) :: cv_sloclist
-    integer, dimension( :, : ), intent( inout ) :: u_sloclist
-    integer, dimension( : ), intent( inout ) :: findgpts
-    integer, dimension( : ), intent( inout ) :: colgpts
-    integer, intent( inout ) :: ncolgpts
-    real, dimension( : ), intent( inout ) :: sele_overlap_scale
-    ! Local variables
-    logical, dimension( :, : ), allocatable :: ufem_on_face2
-    integer, dimension( :, : ), allocatable :: u_sloclist2
-    real, dimension( :, : ), allocatable :: ufen2, ufenlx2, ufenly2, ufenlz2, &
-         sufen2, sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2, &
-         sbufen2, sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, sbufenlz2
-    integer :: u_ele_type2, gi
-    integer :: sgi, cv_siloc
-    integer, dimension(1):: cv_skloc
-    real :: rmax
-
-    ewrite(3,*) 'in  cv_fem_shape_funs subrt'
-    sele_overlap_scale = 1.
-
-    if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
-       ewrite(3,*)'2 going into SHAPE_one_ele'
-       call SHAPE_one_ele2(&
+        subroutine cv_fem_shape_funs_old( &
             ndim, cv_ele_type, &
-            cv_ngi, cv_nloc, u_nloc,  &
-                                ! Volume shape functions
+            cv_ngi, cv_ngi_short, cv_nloc, u_nloc, cvn, cvn_short, &
+                                     ! Volume shape functions
             cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
+            cvweight_short, cvfen_short, cvfenlx_short, cvfenly_short, cvfenlz_short, &
             ufen, ufenlx, ufenly, ufenlz, &
-                                ! Surface of each CV shape functions
-            sbcvngi,  &
-            sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
-            sbufen, sbufenslx, sbufensly, &
-                                ! Surface element shape funcs
-            nface, &
-            cv_sloclist, u_sloclist, cv_snloc, u_snloc )
-
-       if(scvngi/=sbcvngi) FLAbort("scvngi/=sbcvngi")
-
-    else
-       call shape_cv_n( ndim, cv_ele_type, &
-            cv_ngi, cv_nloc, u_nloc, cvn, cvweight, &
-            cvfen, cvfenlx, cvfenly, cvfenlz, &
-            ufen, ufenlx, ufenly, ufenlz )
-    endif
-    cvn_short = cvn
-    cvfen_short = cvfen
-    cvfenlx_short = cvfenlx
-    cvfenly_short = cvfenly
-    cvfenlz_short = cvfenlz
-    cvweight_short = cvweight
-
-
-    !
-    !(a) scvfen( cv_nloc, scvngi ): the shape function evaluated for each node
-    !          at each surface gauss point
-    !(b) scvfenslx[y/z]( cv_nloc, scvngi ): the surface derivatives of the shape
-    !          function for each node at those same points, and the derivatives
-    !          of the shape
-    !(c) scvfeweigh( scvngi ): the Gauss weights to use when integrating around
-    !          the control volume surface
-    !(d) cv_neiloc( cv_nloc, scvngi ): neighbour node for a given node/gauss-point
-    !          pair. This also include quadature points around the element.
-    !
-
-    if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element
-       call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
-            ufem_on_face, &
-            cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
+                                     ! Surface of each CV shape functions
+            scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
+            scvfen, scvfenslx, scvfensly, scvfeweigh, &
             scvfenlx, scvfenly, scvfenlz, &
-            u_nloc, sufen, sufenslx, sufensly, &
+            sufen, sufenslx, sufensly, &
             sufenlx, sufenly, sufenlz, &
-            ndim )
-
-       ! Determine the surface element shape functions from those
-       ! calculated in SHAPESV_FEM_PLUS and also CV_SLOCLIST( NFACE,CV_SNLOC )
-       call det_suf_ele_shape( scvngi, nface, &
-            cvfem_on_face, &
-            cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
-            scvfenlx, scvfenly, scvfenlz, &
-            u_nloc, sufen, sufenslx, sufensly, &
-            sufenlx, sufenly, sufenlz, &
-            sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
-            sbcvfenlx, sbcvfenly, sbcvfenlz,  &
-            sbufen, sbufenslx, sbufensly, &
-            sbufenlx, sbufenly, sbufenlz, &
+                                     ! Surface element shape funcs
+            u_on_face, ufem_on_face, nface, &
+            sbcvngi, sbcvn, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, sbcvfenlx, sbcvfenly, sbcvfenlz, &
+            sbufen, sbufenslx, sbufensly, sbufenlx, sbufenly, sbufenlz, &
             cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
-            ndim, cv_ele_type )
-       ! Define the gauss points that lie on the surface of the
-       ! control volume surrounding a given local node (iloc)
-       ! that is FINDGPTS, COLGPTS, NCOLGPTS
-       call gaussiloc( findgpts, colgpts, ncolgpts, &
-            cv_neiloc, cv_nloc, scvngi )
-    endif
+                                     ! Define the gauss points that lie on the surface of the CV
+            findgpts, colgpts, ncolgpts, &
+            sele_overlap_scale, QUAD_OVER_WHOLE_ELE )
+            ! This subrt defines the sub-control volume and FEM shape functions.
+            ! Shape functions associated with volume integration using both CV basis
+            ! functions CVN as well as FEM basis functions CVFEN (and its derivatives
+            ! CVFENLX, CVFENLY, CVFENLZ)
+            implicit none
+            integer, intent( in ) :: ndim, cv_ele_type, cv_ngi, cv_ngi_short, cv_nloc, u_nloc
+            real, dimension( :, : ), intent( inout ) :: cvn
+            real, dimension( :, : ), intent( inout ) :: cvn_short
+            real, dimension( : ), intent( inout ) :: cvweight
+            real, dimension( :, : ), intent( inout ) :: cvfen, cvfenlx, cvfenly, cvfenlz
+            real, dimension( : ), intent( inout ) :: cvweight_short
+            real, dimension( :, : ), intent( inout ) :: cvfen_short, cvfenlx_short, &
+                cvfenly_short, cvfenlz_short
+            real, dimension( :, : ), intent( inout ) :: ufen, ufenlx, ufenly, ufenlz
+            integer, intent( in ) :: scvngi
+            integer, dimension( :, : ), intent( inout ) :: cv_neiloc
+            logical, dimension( :, : ), intent( inout ) :: cv_on_face, cvfem_on_face
+            real, dimension( :, : ), intent( inout ) :: scvfen, scvfenslx, scvfensly
+            real, dimension( : ), intent( inout ) :: scvfeweigh
+            real, dimension( :, : ), intent( inout ) :: scvfenlx, scvfenly, scvfenlz
+            real, dimension( :, : ), intent( inout ) :: sufen, sufenslx, sufensly, sufenlx, &
+                sufenly, sufenlz
+            logical, dimension( :, : ), intent( inout ) :: u_on_face, ufem_on_face
+            integer, intent( in ) :: nface, sbcvngi
+            logical, intent( in ) :: QUAD_OVER_WHOLE_ELE
+            ! if QUAD_OVER_WHOLE_ELE then dont divide element into CV's to form quadrature.
+            real, dimension( :, : ), intent( inout ) :: sbcvn
+            real, dimension( :, : ), intent( inout ) :: sbcvfen, sbcvfenslx, sbcvfensly
+            real, dimension( : ), intent( inout ) :: sbcvfeweigh
+            real, dimension( :, : ), intent( inout ) :: sbcvfenlx, sbcvfenly, sbcvfenlz
+            integer, intent( in ) :: cv_snloc, u_snloc
+            real, dimension( :, : ), intent( inout ) :: sbufen, sbufenslx, sbufensly, &
+                sbufenlx, sbufenly, sbufenlz
+            integer, dimension( :, : ), intent( inout ) :: cv_sloclist
+            integer, dimension( :, : ), intent( inout ) :: u_sloclist
+            integer, dimension( : ), intent( inout ) :: findgpts
+            integer, dimension( : ), intent( inout ) :: colgpts
+            integer, intent( inout ) :: ncolgpts
+            real, dimension( : ), intent( inout ) :: sele_overlap_scale
+            ! Local variables
+            logical, dimension( :, : ), allocatable :: ufem_on_face2
+            integer, dimension( :, : ), allocatable :: u_sloclist2
+            real, dimension( :, : ), allocatable :: ufen2, ufenlx2, ufenly2, ufenlz2, &
+                sufen2, sufenslx2, sufensly2, sufenlx2, sufenly2, sufenlz2, &
+                sbufen2, sbufenslx2, sbufensly2, sbufenlx2, sbufenly2, sbufenlz2
+            integer :: u_ele_type2, gi
+            integer :: sgi, cv_siloc
+            integer, dimension(1):: cv_skloc
+            real :: rmax
 
-    ! Set to zero anything that should be zero in case it was not pre-defined
-    if( ndim < 2 ) then
-       cvfenly = 0.0 ; cvfenly_short = 0.0 ; ufenly = 0.0 ; scvfenslx = 0.0 ; &
-            scvfenly = 0.0 ; sufenslx = 0.0 ; sufenly = 0.0 ; sbcvfenslx = 0.0 ;  &
-            sbcvfenly = 0.0 ; sbufenslx = 0.0 ; sbufenly = 0.0
+            ewrite(3,*) 'in  cv_fem_shape_funs subrt'
+            sele_overlap_scale = 1.
 
-    elseif( ndim < 3 ) then
-       cvfenlz = 0.0 ; cvfenlz_short = 0.0 ; ufenlz = 0.0 ; scvfensly = 0.0 ; &
-            scvfenlz = 0.0 ; sufensly = 0.0 ; sufenlz = 0.0 ; sbcvfensly = 0.0 ; &
-            sbcvfenlz = 0.0 ; sbufensly = 0.0 ;sbufenlz = 0.0
+            if(QUAD_OVER_WHOLE_ELE) then ! integrate over whole element
+                ewrite(3,*)'2 going into SHAPE_one_ele'
+                call SHAPE_one_ele2(&
+                    ndim, cv_ele_type, &
+                    cv_ngi, cv_nloc, u_nloc,  &
+                                        ! Volume shape functions
+                    cvweight, cvfen, cvfenlx, cvfenly, cvfenlz, &
+                    ufen, ufenlx, ufenly, ufenlz, &
+                                        ! Surface of each CV shape functions
+                    sbcvngi,  &
+                    sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
+                    sbufen, sbufenslx, sbufensly, &
+                                        ! Surface element shape funcs
+                    nface, &
+                    cv_sloclist, u_sloclist, cv_snloc, u_snloc )
 
-    end if
+                if(scvngi/=sbcvngi) FLAbort("scvngi/=sbcvngi")
 
-    ! calculate sbcvn from sbcvfen - Use the max scvfen at a quadrature pt and set to 1:
-    SBCVN = 0.0
-    do sgi = 1, sbcvngi
-       cv_skloc = maxloc( sbcvfen( :, sgi) )
-       sbcvn( cv_skloc(1), sgi ) = 1.
-    end do
-    
+            else
+                call shape_cv_n( ndim, cv_ele_type, &
+                    cv_ngi, cv_nloc, u_nloc, cvn, cvweight, &
+                    cvfen, cvfenlx, cvfenly, cvfenlz, &
+                    ufen, ufenlx, ufenly, ufenlz )
+            endif
+            cvn_short = cvn
+            cvfen_short = cvfen
+            cvfenlx_short = cvfenlx
+            cvfenly_short = cvfenly
+            cvfenlz_short = cvfenlz
+            cvweight_short = cvweight
 
-    return
+
+            !
+            !(a) scvfen( cv_nloc, scvngi ): the shape function evaluated for each node
+            !          at each surface gauss point
+            !(b) scvfenslx[y/z]( cv_nloc, scvngi ): the surface derivatives of the shape
+            !          function for each node at those same points, and the derivatives
+            !          of the shape
+            !(c) scvfeweigh( scvngi ): the Gauss weights to use when integrating around
+            !          the control volume surface
+            !(d) cv_neiloc( cv_nloc, scvngi ): neighbour node for a given node/gauss-point
+            !          pair. This also include quadature points around the element.
+            !
+
+            if(.not.QUAD_OVER_WHOLE_ELE) then ! not integrate over whole element
+                call shapesv_fem_plus( scvngi, cv_neiloc, cv_on_face, cvfem_on_face, &
+                    ufem_on_face, &
+                    cv_ele_type, cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
+                    scvfenlx, scvfenly, scvfenlz, &
+                    u_nloc, sufen, sufenslx, sufensly, &
+                    sufenlx, sufenly, sufenlz, &
+                    ndim )
+
+                ! Determine the surface element shape functions from those
+                ! calculated in SHAPESV_FEM_PLUS and also CV_SLOCLIST( NFACE,CV_SNLOC )
+                call det_suf_ele_shape( scvngi, nface, &
+                    cvfem_on_face, &
+                    cv_nloc, scvfen, scvfenslx, scvfensly, scvfeweigh, &
+                    scvfenlx, scvfenly, scvfenlz, &
+                    u_nloc, sufen, sufenslx, sufensly, &
+                    sufenlx, sufenly, sufenlz, &
+                    sbcvngi, sbcvfen, sbcvfenslx, sbcvfensly, sbcvfeweigh, &
+                    sbcvfenlx, sbcvfenly, sbcvfenlz,  &
+                    sbufen, sbufenslx, sbufensly, &
+                    sbufenlx, sbufenly, sbufenlz, &
+                    cv_sloclist, u_sloclist, cv_snloc, u_snloc, &
+                    ndim, cv_ele_type )
+                ! Define the gauss points that lie on the surface of the
+                ! control volume surrounding a given local node (iloc)
+                ! that is FINDGPTS, COLGPTS, NCOLGPTS
+                call gaussiloc( findgpts, colgpts, ncolgpts, &
+                    cv_neiloc, cv_nloc, scvngi )
+            endif
+
+            ! Set to zero anything that should be zero in case it was not pre-defined
+            if( ndim < 2 ) then
+                cvfenly = 0.0 ; cvfenly_short = 0.0 ; ufenly = 0.0 ; scvfenslx = 0.0 ; &
+                    scvfenly = 0.0 ; sufenslx = 0.0 ; sufenly = 0.0 ; sbcvfenslx = 0.0 ;  &
+                    sbcvfenly = 0.0 ; sbufenslx = 0.0 ; sbufenly = 0.0
+
+            elseif( ndim < 3 ) then
+                cvfenlz = 0.0 ; cvfenlz_short = 0.0 ; ufenlz = 0.0 ; scvfensly = 0.0 ; &
+                    scvfenlz = 0.0 ; sufensly = 0.0 ; sufenlz = 0.0 ; sbcvfensly = 0.0 ; &
+                    sbcvfenlz = 0.0 ; sbufensly = 0.0 ;sbufenlz = 0.0
+
+            end if
+
+            ! calculate sbcvn from sbcvfen - Use the max scvfen at a quadrature pt and set to 1:
+            SBCVN = 0.0
+            do sgi = 1, sbcvngi
+                cv_skloc = maxloc( sbcvfen( :, sgi) )
+                sbcvn( cv_skloc(1), sgi ) = 1.
+            end do
+
+
+            return
+        end subroutine cv_fem_shape_funs_old
+
   end subroutine cv_fem_shape_funs
-
-
-
-
 
   SUBROUTINE DET_SUF_ELE_SHAPE( SCVNGI, NFACE, &
        CVFEM_ON_FACE, &
@@ -4363,7 +4366,31 @@ contains
     RETURN
   END SUBROUTINE GAUSSILOC
 
-  SUBROUTINE DETNLXR_PLUS_U( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
+
+  subroutine DETNLXR_PLUS_U1(ELE, X_ALL, XONDGL, weight, cvshape, cvshapelx, ushapelx, DevFuns)
+      implicit none
+      integer, intent(in) :: ELE
+      real, dimension(:,:), intent( in ) :: X_ALL
+      integer, dimension( : ), intent( in ) :: XONDGL
+      real, dimension(:), intent( in ) :: weight
+      real, dimension(:,:), intent( in ) :: cvshape
+      real, dimension(:,:,:), intent( in ) :: cvshapelx, ushapelx
+      type (multi_dev_shape_funs) :: DevFuns
+
+      integer :: dummy
+
+      call DETNLXR_PLUS_U( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), XONDGL, dummy, dummy, &
+       size(cvshapelx,2), dummy, size(cvshapelx,3), &
+       cvshape, cvshapelx(1,:,:), cvshapelx(2,:,:), cvshapelx(3,:,:), WEIGHT, &
+       DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME, size(X_ALL,1) == 1, size(X_ALL,1) == 3, .false., &
+       DevFuns%cvfenx_all, &
+       size(ushapelx,2), ushapelx(1,:,:), ushapelx(2,:,:), ushapelx(3,:,:), DevFuns%ufenx_all)
+
+
+  end subroutine DETNLXR_PLUS_U1
+
+
+  SUBROUTINE DETNLXR_PLUS_U2( ELE, X, Y, Z, XONDGL, TOTELE, NONODS, &
        X_NLOC, CV_NLOC, NGI, &
        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
        NX_ALL, &
@@ -4509,7 +4536,7 @@ contains
     end select
 
     RETURN
-  END SUBROUTINE DETNLXR_PLUS_U
+  END SUBROUTINE DETNLXR_PLUS_U2
 
 end module shape_functions_prototype
 

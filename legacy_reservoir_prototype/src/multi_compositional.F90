@@ -287,39 +287,26 @@ contains
             ELE, MAT_ILOC, MAT_JLOC, CV_GI, U_JLOC, MAT_KLOC, MAT_NODI, MAT_NOD, &
             U_NODJ, IPHASE, U_NODJ_IP, IDIM, JDIM, MAT_NOD_ID_IP, CV_GI_SHORT
         REAL :: NN, NFEMU, MASELE
-        LOGICAL :: D1, D3, DCYL, QUAD_OVER_WHOLE_ELE
-        real, allocatable, dimension(:,:,:) :: UFENX_ALL, CVFENX_ALL
-        real, allocatable, dimension(:) :: DETWEI,RA
-        real :: VOLUME
-        QUAD_OVER_WHOLE_ELE=.FALSE.
-
-        ALLOCATE(CVFENX_ALL(Mdims%ndim,Mdims%cv_nloc,CV_GIdims%cv_ngi))
-        ALLOCATE(UFENX_ALL(Mdims%ndim,Mdims%u_nloc,CV_GIdims%cv_ngi))
-        ALLOCATE(DETWEI(CV_GIdims%cv_ngi))
-        ALLOCATE(RA(CV_GIdims%cv_ngi))
+        type(multi_dev_shape_funs) :: Devfuns
 
         ALLOCATE( MASS( Mdims%mat_nloc, Mdims%mat_nloc ))
         ALLOCATE( INV_MASS( Mdims%mat_nloc, Mdims%mat_nloc ))
         ALLOCATE( MASS2U( Mdims%mat_nloc, Mdims%u_nloc ))
         ALLOCATE( INV_MASS_NM( Mdims%mat_nloc, Mdims%u_nloc ))
-        D1 = ( Mdims%ndim == 1 )
-        D3 = ( Mdims%ndim == 3 )
-        DCYL = .FALSE.
+
+        call allocate_multi_dev_shape_funs(CV_funs, Devfuns)
 
         Loop_Elements1: DO ELE = 1, Mdims%totele
             ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U( ELE, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), X_NDGLN, Mdims%totele, Mdims%x_nonods, Mdims%x_nloc, Mdims%cv_nloc, CV_GIdims%cv_ngi, &
-                CV_funs%cvfen, CV_funs%CVFENLX_all(1,:,:), CV_funs%CVFENLX_all(2,:,:), CV_funs%CVFENLX_all(3,:,:), &
-                CV_funs%cvweight, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-                CVFENX_ALL, &
-                Mdims%u_nloc, CV_funs%UFENLX_all(1,:,:), CV_funs%UFENLX_all(2,:,:), CV_funs%UFENLX_all(3,:,:), UFENX_ALL)
+            call DETNLXR_PLUS_U(ELE, X_ALL, X_NDGLN, CV_funs%cvweight, &
+                   CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
             MASELE = 0.0
             Loop_MAT_ILOC: DO MAT_ILOC = 1, Mdims%mat_nloc
                 Loop_MAT_JLOC: DO MAT_JLOC = 1, Mdims%mat_nloc
                     NN = 0.0
                     DO CV_GI_SHORT = 1, CV_GIdims%cv_ngi
                         NN = NN +  CV_funs%cvfen( MAT_ILOC, CV_GI_SHORT )  * CV_funs%cvfen(  MAT_JLOC, CV_GI_SHORT ) &
-                            * DETWEI( CV_GI_SHORT )
+                            * DevFuns%DETWEI( CV_GI_SHORT )
                     END DO
                     MASS( MAT_ILOC,MAT_JLOC)  = MASS( MAT_ILOC,MAT_JLOC) + NN
                 END DO Loop_MAT_JLOC
@@ -330,7 +317,7 @@ contains
                 Loop_U_JLOC: DO U_JLOC = 1, Mdims%u_nloc
                     NFEMU = 0.0
                     DO CV_GI = 1, CV_GIdims%cv_ngi
-                        NFEMU = NFEMU +  CV_funs%cvfen( MAT_ILOC, CV_GI ) * CV_funs%ufen(  U_JLOC, CV_GI ) * DETWEI( CV_GI )
+                        NFEMU = NFEMU +  CV_funs%cvfen( MAT_ILOC, CV_GI ) * CV_funs%ufen(  U_JLOC, CV_GI ) * DevFuns%DETWEI( CV_GI )
                     END DO
                     MASS2U( MAT_ILOC,U_JLOC)  = MASS2U( MAT_ILOC,U_JLOC) + NFEMU
                 END DO Loop_U_JLOC
@@ -374,14 +361,11 @@ contains
             END DO Loop_MAT_ILOC3
         END DO Loop_Elements1
         ! Deallocating temporary arrays
+        call deallocate_multi_dev_shape_funs(Devfuns)
         DEALLOCATE( MASS )
         DEALLOCATE( INV_MASS )
         DEALLOCATE( MASS2U )
         DEALLOCATE( INV_MASS_NM )
-        DEALLOCATE(UFENX_ALL)
-        DEALLOCATE(CVFENX_ALL)
-        DEALLOCATE(DETWEI)
-        DEALLOCATE(RA)
         RETURN
     end subroutine PROJ_U2MAT
 

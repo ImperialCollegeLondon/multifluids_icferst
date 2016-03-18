@@ -74,7 +74,6 @@ module multiphase_time_loop
     use multi_data_types
     use vtk_interfaces
     use multi_interpolation
-    use multi_surface_tension
 #ifdef HAVE_ZOLTAN
   use zoltan
 #endif
@@ -298,8 +297,8 @@ contains
         !! Compute reference shape functions
         call allocate_multi_shape_funs( CV_funs, Mdims, CV_GIdims )
         call allocate_multi_shape_funs( FE_funs, Mdims, FE_GIdims )
-        call cv_fem_shape_funs_new( CV_funs, Mdims, CV_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
-        call cv_fem_shape_funs_new( FE_funs, Mdims, FE_GIdims, Mdisopt%u_ele_type, quad_over_whole_ele = .true. )
+        call cv_fem_shape_funs( CV_funs, Mdims, CV_GIdims, Mdisopt%cv_ele_type, quad_over_whole_ele = .false. )
+        call cv_fem_shape_funs( FE_funs, Mdims, FE_GIdims, Mdisopt%u_ele_type, quad_over_whole_ele = .true. )
         !Obtain the number of faces in the control volume space
         ncv_faces=CV_count_faces( Mdims, Mdisopt%cv_ele_type, CV_GIDIMS = CV_GIdims)
         allocate( theta_flux( Mdims%nphase, ncv_faces * igot_theta_flux ), &
@@ -634,33 +633,9 @@ end if
 
                     call set_nu_to_u( packed_state )
 
-
-                    !!$ Diffusion-like term -- here used as part of the capillary pressure for porous media. It can also be
-                    !!$ extended to surface tension -like term.
-                    iplike_grad_sou = 0
-                    plike_grad_sou_grad = 0
-                    CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
-                        PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-                        Mspars%ACV%ncol, Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid, &
-                        Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
-                        Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
-                        Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, Mdims%stotel, &
-                        Mdisopt%cv_ele_type, Mdisopt%cv_sele_type, Mdisopt%u_ele_type, &
-                        Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, Mdims%cv_snloc, Mdims%u_snloc, &
-                        ndgln%cv, ndgln%suf_cv, ndgln%x, ndgln%u, ndgln%suf_u, &
-                        Mdims%mat_nloc, ndgln%mat, Mdims%mat_nonods,  &
-                        Mdims%ndim,  &
-                        Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
-                        Mdims%xu_nloc, ndgln%xu, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol)
-
-                    if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', Mdims%nphase ) )then
-                       !The first time (itime/=1 .or. its/=1) we use CVSat since FESAt is not defined yet
-                       call calculate_capillary_pressure(packed_state, .false., &
-                            ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
-                    end if
-
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
+
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         velocity_field, pressure_field, &

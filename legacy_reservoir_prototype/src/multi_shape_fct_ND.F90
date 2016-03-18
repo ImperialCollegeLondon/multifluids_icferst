@@ -48,6 +48,18 @@ module shape_functions_Linear_Quadratic
   !    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
   logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.
 
+    interface DETNLXR
+        module procedure DETNLXR1
+        module procedure DETNLXR2
+        module procedure DETNLXR3
+    end interface DETNLXR
+
+    interface DETNLXR_INVJAC
+        module procedure DETNLXR_INVJAC1
+        module procedure DETNLXR_INVJAC2
+        module procedure DETNLXR_INVJAC3
+    end interface DETNLXR_INVJAC
+    private :: DETNLXR1, DETNLXR2, DETNLXR3, DETNLXR_INVJAC1, DETNLXR_INVJAC2, DETNLXR_INVJAC3
 contains
 
 
@@ -1622,33 +1634,55 @@ contains
   end subroutine lagrot
 
 
-  SUBROUTINE DETNLXR_new( ELE, X_ALL, XONDGL, TOTELE, NONODS, NLOC, NGI, &
+  subroutine DETNLXR1(ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)
+      !Calculates the derivatives of the shape functions, which are stored into DevFuns%NX_ALL
+      !and also DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME
+      implicit none
+      integer, intent(in) :: ELE
+      real, dimension(:,:), intent( in ) :: X_ALL
+      integer, dimension( : ), intent( in ) :: XONDGL
+      real, dimension(:), intent( in ) :: weight
+      real, dimension(:,:), intent( in ) :: nshape
+      real, dimension(:,:,:), intent( in ) :: nshapelx
+      type (multi_dev_shape_funs) :: DevFuns
+
+      integer :: dummy
+
+      call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, dummy, dummy, size(nshapelx,2), size(nshapelx,3), &
+         nshape, nshapelx(1,:,:), nshapelx(2,:,:), nshapelx(3,:,:), WEIGHT, DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME, &
+         size(X_ALL,1) == 1, size(X_ALL,1) == 3, .false., &
+         DevFuns%nx_all(1, :,:),DevFuns%nx_all(2, :,:),DevFuns%nx_all(3, :,:) )
+
+  end subroutine DETNLXR1
+
+
+  SUBROUTINE DETNLXR2( ELE, X_ALL, XONDGL, NLOC, NGI, &
        N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
        NX_ALL)
     IMPLICIT NONE
-    INTEGER, intent( in ) :: ELE, TOTELE, NONODS, NLOC, NGI
+    INTEGER, intent( in ) :: ELE, NLOC, NGI
     INTEGER, DIMENSION( : ) :: XONDGL
     REAL, DIMENSION( :, : ), intent( in ) :: X_ALL!(NDIM, size(XONDGL))
     REAL, DIMENSION( :, : ), intent( in ) :: N
     REAL, DIMENSION( :, :, : ), intent( in ) :: NLX_ALL!(NDIM,NLOC, NGI )
     REAL, DIMENSION( : ), intent( in ) :: WEIGHT
-    REAL, DIMENSION( : ), pointer, intent( inout ) :: DETWEI, RA
-    REAL, pointer, intent( inout ) :: VOLUME
+    REAL, DIMENSION( : ), intent( inout ) :: DETWEI, RA
+    REAL, intent( inout ) :: VOLUME
     LOGICAL, intent( in ) ::DCYL
-    REAL, DIMENSION( :, : ,:), pointer, intent( inout ) :: NX_ALL!dimension(ndim, NLOC, NGI)
+    REAL, DIMENSION( :, : ,:), intent( inout ) :: NX_ALL!dimension(ndim, NLOC, NGI)
     !Local variables
     logical :: D1, D3
-
+    integer :: dummy
 
     D1 = (size(X_ALL,1) == 1); D3 = (size(X_ALL,1) == 3)
 
-    call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, TOTELE, NONODS, NLOC, NGI, &
+    call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, dummy, dummy, NLOC, NGI, &
          N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
          NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
 
-  end subroutine DETNLXR_new
+  end subroutine DETNLXR2
 
-  SUBROUTINE DETNLXR( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
+  SUBROUTINE DETNLXR3( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
        NX, NY, NZ)
     IMPLICIT NONE
@@ -1802,9 +1836,34 @@ contains
     ENDIF
     !
     RETURN
-  END SUBROUTINE DETNLXR
+  END SUBROUTINE DETNLXR3
 
-  SUBROUTINE DETNLXR_INVJAC_new( ELE, X_ALL,  Mdims, XONDGL,&
+
+
+
+  SUBROUTINE DETNLXR_INVJAC1( ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)
+    implicit none
+    integer, intent(in) :: ELE
+    real, dimension(:,:), intent( in ) :: X_ALL
+    integer, dimension( : ), intent( in ) :: XONDGL
+    real, dimension(:), intent( in ) :: weight
+    real, dimension(:,:), intent( in ) :: nshape
+    real, dimension(:,:,:), intent( in ) :: nshapelx
+    type (multi_dev_shape_funs) :: DevFuns
+
+    integer :: dummy
+
+    call DETNLXR_INVJAC( ELE, X_ALL(1,:), X_ALL(2,:),X_ALL(3,:), XONDGL, dummy, dummy, &
+         size(nshapelx,2), size(nshapelx,3), nshape, nshapelx(1,:,:),nshapelx(2,:,:),&
+         nshapelx(3,:,:), WEIGHT, DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME, size(nshapelx,1) == 1, &
+         size(nshapelx,1)==3, .false., DevFuns%NX_ALL(1,:,:),DevFuns%NX_ALL(2,:,:),&
+         DevFuns%NX_ALL(3,:,:), dummy, DevFuns%INV_JAC)
+
+  END SUBROUTINE DETNLXR_INVJAC1
+
+
+
+  SUBROUTINE DETNLXR_INVJAC2( ELE, X_ALL,  Mdims, XONDGL,&
        N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
        NX_ALL,INV_JAC)
     IMPLICIT NONE
@@ -1821,17 +1880,19 @@ contains
     REAL, DIMENSION( :, :, : ), intent( inout ) :: NX_ALL
     REAL, DIMENSION( :,:, : ), intent( inout ):: INV_JAC
 
-    call DETNLXR_INVJAC( ELE, X_ALL(1,:), X_ALL(2,:),X_ALL(3,:) , XONDGL, Mdims%TOTELE, size(X_all,2), size(NX_ALL,2), size(RA), &
+    integer :: dummy
+
+    call DETNLXR_INVJAC( ELE, X_ALL(1,:), X_ALL(2,:),X_ALL(3,:) , XONDGL, dummy, dummy, size(NX_ALL,2), size(RA), &
          N, NLX_ALL(1,:,:),NLX_ALL(2,:,:),NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, Mdims%Ndim == 1, &
          Mdims%Ndim==3, DCYL, NX_ALL(1,:,:),NX_ALL(2,:,:),NX_ALL(3,:,:), Mdims%Ndim, INV_JAC)
 
-  END SUBROUTINE DETNLXR_INVJAC_new
+  END SUBROUTINE DETNLXR_INVJAC2
 
 
 
 
 
-  SUBROUTINE DETNLXR_INVJAC( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
+  SUBROUTINE DETNLXR_INVJAC3( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
        NX, NY, NZ,&
        NDIM, INV_JAC  )
@@ -2006,7 +2067,7 @@ contains
     ENDIF
     !
     RETURN
-  END SUBROUTINE DETNLXR_INVJAC
+  END SUBROUTINE DETNLXR_INVJAC3
 
 
 

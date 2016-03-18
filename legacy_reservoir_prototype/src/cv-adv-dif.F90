@@ -63,8 +63,16 @@ module cv_advection
   use petsc
 #endif
 
+
+
     implicit none
 
+    interface DG_DERIVS_ALL
+        module procedure DG_DERIVS_ALL1
+        module procedure DG_DERIVS_ALL2
+    end interface DG_DERIVS_ALL
+
+    !sprint_to_do; get rid of public variables
     ! Public totout needed when calculating outfluxes across a specified boundary. Will store the sum of totoutflux across all elements contained in the boundary.
     ! Multiphase_TimeLoop needs to access this variable so easiest to make it public. (Same situation with mat1, mat2)
 
@@ -326,10 +334,7 @@ contains
         REAL, DIMENSION( :, :, : ), allocatable :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
         REAL, DIMENSION( :, : ), allocatable :: CAP_DIFFUSION
         !###Variables for shape function calculation###
-        real :: volume
-        REAL, DIMENSION( Mdims%ndim, Mdims%cv_nloc , CV_GIdims%scvngi) :: SCVFENX_ALL
-        REAL, DIMENSION( Mdims%ndim, Mdims%ndim, CV_GIdims%scvngi ) :: INV_JAC
-        real, dimension( CV_GIdims%scvngi ) :: SCVDETWEI, SCVRA
+        type (multi_dev_shape_funs) :: SdevFuns
         !###Pointers for Shape function calculation###
         REAL, DIMENSION( : ), allocatable :: SHAPE_CV_SNL
         REAL, DIMENSION( :, :, : ), allocatable :: DUMMY_ZERO_NDIM_NDIM_NPHASE
@@ -451,7 +456,6 @@ contains
         real :: theta_cty_solid, VOL_FRA_FLUID_I, VOL_FRA_FLUID_J
         type( tensor_field_pointer ), dimension(4+2*IGOT_T2) :: psi,fempsi
         type( vector_field_pointer ), dimension(1) :: PSI_AVE,PSI_INT
-        type( vector_field ), pointer :: coord
         type( tensor_field ), pointer :: old_tracer, old_density, old_saturation, tfield
         integer :: FEM_IT
         integer, dimension(:), pointer :: neighbours
@@ -480,6 +484,7 @@ contains
         integer :: U_JLOC
         real :: h_nano, RP_NANO, dt_pipe_factor
         logical :: got_nano
+
         !#########################################
         ! 27/01/2016 Variables needed when doing calculate_outflux(). For each phase, totoutflux will be sum up over elements
         ! the outgoing flux through a specified boundary.
@@ -936,7 +941,7 @@ contains
         end do
         psi_int(1)%ptr=>extract_vector_field(packed_state,"CVIntegral")
         psi_ave(1)%ptr=>extract_vector_field(packed_state,"CVBarycentre")
-        call PROJ_CV_TO_FEM_state(packed_state, &
+        call PROJ_CV_TO_FEM(packed_state, &
             FEMPSI(1:FEM_IT),PSI(1:FEM_IT), &
             Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
             IGETCT, X_ALL, MASS_ELE, MASS_MN_PRES, &
@@ -1046,17 +1051,8 @@ contains
             Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
         IF ( GOT_DIFFUS ) THEN
-            CALL DG_DERIVS_ALL2( FEMT_ALL, FEMTOLD_ALL, &
-                DTX_ELE_ALL, DTOLDX_ELE_ALL, &
-                Mdims%ndim, Mdims%nphase, Mdims%cv_nonods, Mdims%totele, ndgln%cv, &
-                ndgln%x, Mdims%x_nloc, ndgln%x,&
-                CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%CVWEIGHT, &
-                CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
-                CV_funs%CVFEN, CV_funs%CVFENLX_ALL(1,:,:), CV_funs%CVFENLX_ALL(2,:,:), CV_funs%CVFENLX_ALL(3,:,:), &
-                Mdims%x_nonods, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), &
-                CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, CV_funs%cv_sloclist, Mdims%stotel, Mdims%cv_snloc, Mdims%cv_snloc, WIC_T_BC_ALL, SUF_T_BC_ALL, &
-                CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
-                CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly)
+            call DG_DERIVS_ALL2( Mdims, CV_GIdims,  CV_funs, ndgln%cv, ndgln%x, FEMT_ALL, FEMTOLD_ALL, &
+                X_ALL, DTX_ELE_ALL, DTOLDX_ELE_ALL, FACE_ELE, WIC_T_BC_ALL, SUF_T_BC_ALL, FOR_CVs=.true.)
         END IF
         !     =============== DEFINE THETA FOR TIME-STEPPING ===================
         ! Define the type of time integration:
@@ -1115,6 +1111,8 @@ contains
             Por =>  vecfield%val(1,:)
         endif
 
+        !Allocate derivatives of the shape functions
+        call allocate_multi_dev_shape_funs(CV_funs%scvfenlx_all, CV_funs%sufenlx_all, SdevFuns)
         !###########################################
         Loop_Elements: DO ELE = 1, Mdims%totele
             if (IsParallel()) then
@@ -1288,7 +1286,7 @@ contains
                             GLOBAL_FACE = GLOBAL_FACE + 1
                             JMID = Mspars%small_acv%mid(CV_NODJ)
                             ! Calculate the control volume normals at the Gauss pts.
-                            CALL SCVDETNX_new( ELE, GI, SCVDETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ))
+                            CALL SCVDETNX_new( ELE, GI, SdevFuns%DETWEI, CVNORMX_ALL,XC_CV_ALL( 1:Mdims%ndim, CV_NODI ))
                             ! Pablo could store the outcomes of this:
                             IF( GETCT ) THEN
                                 ! could retrieve JCOUNT_KLOC and ICOUNT_KLOC from storage depending on quadrature point GLOBAL_FACE
@@ -1705,15 +1703,15 @@ contains
                             ENDIF
                             IF(APPLY_ENO) THEN
                                 ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-                                call DETNLXR_INVJAC_new( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
-                                    CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, SCVFENX_ALL, INV_JAC)
+                                call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
+
                                 ! Apply a simple ENO scheme to T,TOLD only which is not bounded but gets rid of most of the osillations.
                                 ! Put the results in LIMF.
                                 CALL APPLY_ENO_2_T(LIMF, T_ALL,TOLD_ALL, FEMT_ALL,FEMTOLD_ALL, INCOME,INCOMEOLD, IGOT_T_PACK, &
                                     CV_NODI, CV_NODJ, X_NODI, X_NODJ, CV_ILOC, CV_JLOC, &
                                     ELE, Mdims%cv_nonods, Mdims%x_nonods, Mdims%ndim, Mdims%nphase,  &
                                     Mdims%cv_nloc,Mdims%totele, ndgln%x, ndgln%cv,  &
-                                    X_ALL,XC_CV_ALL,FACE_ELE,CV_GIdims%nface,BETWEEN_ELEMENTS, integrate_other_side, CV_funs%scvfen, SCVFENX_ALL, GI, INV_JAC, NUGI_ALL, on_domain_boundary )
+                                    X_ALL,XC_CV_ALL,FACE_ELE,CV_GIdims%nface,BETWEEN_ELEMENTS, integrate_other_side, CV_funs%scvfen, SdevFuns%NX_ALL, GI, SdevFuns%INV_JAC, NUGI_ALL, on_domain_boundary )
                             ENDIF
                             ! it does not matter about bcs for FVT below as its zero'ed out in the eqns:
                             FVT(:)=T_ALL(:,CV_NODI)*(1.0-INCOME(:)) + T_ALL(:,CV_NODJ)*INCOME(:)
@@ -1835,7 +1833,7 @@ contains
                                                             EXIT
                                                         END IF
                                                     END DO
-                                                    MM_GRAVTY = CVNORMX_ALL( 3, GI ) * CV_funs%scvfen( P_JLOC, GI ) * SCVDETWEI(GI) / ( DT**2 * GRAVTY )
+                                                    MM_GRAVTY = CVNORMX_ALL( 3, GI ) * CV_funs%scvfen( P_JLOC, GI ) * SdevFuns%DETWEI(GI) / ( DT**2 * GRAVTY )
                                                     MASS_SUF( COUNT_SUF ) = MASS_SUF( COUNT_SUF ) + MM_GRAVTY
                                                 END DO
                                             END IF
@@ -1848,7 +1846,7 @@ contains
                                     Mdims, CV_funs, ndgln, Mmat, GI,  &
                                     between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
                                     JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
-                                    SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
+                                    SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
                                     WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
                                     UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
                                     NDOTQNEW, NDOTQOLD, LIMD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
@@ -1870,7 +1868,7 @@ contains
                                     do ioutlet = 1, size(outlet_id)
                                         !Subroutine call to calculate the flux across this element if the element is part of the boundary. Adds value to totoutflux
                                         call calculate_outflux(Mdims%nphase, CVPressure, phaseV, Dens, Por, ndotqnew, outlet_id(ioutlet), totoutflux(:,ioutlet), ele , sele, &
-                                            ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SCVDETWEI , SUF_T_BC_ALL)
+                                            ndgln%cv, IDs_ndgln, Mdims%cv_snloc, Mdims%cv_nloc ,cv_siloc, cv_iloc , gi, SdevFuns%DETWEI , SUF_T_BC_ALL)
                                     enddo
                                 end if
                             end if
@@ -1894,11 +1892,11 @@ contains
                                         DO IPHASE=1,Mdims%nphase
                                             IF(WIC_T_BC_ALL(1,iphase,sele) == WIC_T_BC_DIRICHLET) THEN
                                                 LOC_CV_RHS_I( IPHASE ) =  LOC_CV_RHS_I( IPHASE ) &
-                                                    + FTHETA(IPHASE) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
+                                                    + FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
                                                     * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1))
                                                 IF(GET_GTHETA) THEN
                                                     THETA_GDIFF( IPHASE, CV_NODI ) =  THETA_GDIFF( IPHASE, CV_NODI ) &
-                                                        + FTHETA(IPHASE) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
+                                                        + FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) &
                                                         * SUF_T_BC_ALL( 1, IPHASE, CV_SILOC + Mdims%cv_snloc*( SELE- 1) )
                                                 END IF
                                             END IF
@@ -1907,117 +1905,117 @@ contains
                                         do iphase=1,Mdims%nphase
                                             call addto(Mmat%petsc_ACV,iphase,iphase,&
                                                 cv_nodi,cv_nodj,&
-                                                SECOND_THETA * FTHETA_T2(iphase) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * INCOME(iphase) * LIMD(iphase) & ! Advection
-                                                - FTHETA(iphase) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(iphase) & ! Diffusion contribution
-                                                - SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase)) ! Stabilization of capillary diffusion contribution
+                                                SECOND_THETA * FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * INCOME(iphase) * LIMD(iphase) & ! Advection
+                                                - FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase) & ! Diffusion contribution
+                                                - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase)) ! Stabilization of capillary diffusion contribution
                                          ! integrate the other CV side contribution (the sign is changed)...
                                         end do
                                         if(integrate_other_side_and_not_boundary) then
                                             do iphase=1,Mdims%nphase
                                                 call addto(Mmat%petsc_ACV,iphase,iphase,&
                                                     cv_nodj,cv_nodi,&
-                                                    - SECOND_THETA * FTHETA_T2_J(IPHASE) * SCVDETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME_J(IPHASE) * LIMD(IPHASE) & ! Advection
-                                                    - FTHETA(IPHASE) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) & ! Diffusion contribution
-                                                    - SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE)) ! Stabilization of capillary diffusion contribution
+                                                    - SECOND_THETA * FTHETA_T2_J(IPHASE) * SdevFuns%DETWEI( GI ) * NDOTQNEW(IPHASE) * INCOME_J(IPHASE) * LIMD(IPHASE) & ! Advection
+                                                    - FTHETA(IPHASE) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(IPHASE) & ! Diffusion contribution
+                                                    - SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(IPHASE)) ! Stabilization of capillary diffusion contribution
                                             end do
                                         endif
                                         IF ( GET_GTHETA ) THEN
                                             THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                                + FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODJ) ! Diffusion contribution
+                                                + FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODJ) ! Diffusion contribution
                                             ! integrate the other CV side contribution (the sign is changed)...
                                             if(integrate_other_side_and_not_boundary) then
                                                 THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                                    + FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODI) ! Diffusion contribution
+                                                    + FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODI) ! Diffusion contribution
                                             endif
                                         END IF
                                     END IF ! endif of IF ( on_domain_boundary ) THEN ELSE
                                     do iphase=1,Mdims%nphase
                                         call addto(Mmat%petsc_ACV,iphase,iphase,&
                                             cv_nodi,cv_nodi,&
-                                            +  SECOND_THETA * FTHETA_T2(iphase) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) & ! Advection
-                                            +  FTHETA(iphase) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(iphase)  &  ! Diffusion contribution
-                                            +  SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase)  &  ! Stabilization of capilary diffusion
-                                            +  SCVDETWEI( GI ) * ROBIN1(iphase)  & ! Robin bc
+                                            +  SECOND_THETA * FTHETA_T2(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME(iphase) ) * LIMD(iphase) & ! Advection
+                                            +  FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase)  &  ! Diffusion contribution
+                                            +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase)  &  ! Stabilization of capilary diffusion
+                                            +  SdevFuns%DETWEI( GI ) * ROBIN1(iphase)  & ! Robin bc
                                             !
                                             ! CV_BETA=0 for Non-conservative discretisation (CV_BETA=1 for conservative disc)
                                             !                           CSR_ACV( IMID_IPHA ) = CSR_ACV( IMID_IPHA )  &
-                                            - SECOND_THETA * FTHETA_T2(iphase) * ( ONE_M_CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
+                                            - SECOND_THETA * FTHETA_T2(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
                                     end do
                                     if(integrate_other_side_and_not_boundary) then
                                         do iphase=1,Mdims%nphase
                                             call addto(Mmat%petsc_ACV,iphase,iphase,&
                                                 cv_nodj,cv_nodj,&
                                                 !
-                                                -  SECOND_THETA * FTHETA_T2_J(iphase) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME_J(iphase) ) * LIMD(iphase) & ! Advection
-                                                +  FTHETA(iphase) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(iphase)  &  ! Diffusion contribution
-                                                +  SCVDETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase)   &  ! Stabilization of capilary diffusion
+                                                -  SECOND_THETA * FTHETA_T2_J(iphase) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * ( 1. - INCOME_J(iphase) ) * LIMD(iphase) & ! Advection
+                                                +  FTHETA(iphase) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(iphase)  &  ! Diffusion contribution
+                                                +  SdevFuns%DETWEI( GI ) * CAP_DIFF_COEF_DIVDX(iphase)   &  ! Stabilization of capilary diffusion
                                                 !
                                                 ! CV_BETA=0 for Non-conservative discretisation (CV_BETA=1 for conservative disc)
-                                                + SECOND_THETA * FTHETA_T2_J(iphase) * ( ONE_M_CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
+                                                + SECOND_THETA * FTHETA_T2_J(iphase) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(iphase) * LIMD(iphase))
                                         end do
                                     endif
                                     IF ( GET_GTHETA ) THEN
                                         THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                            -  FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODI) & ! Diffusion contribution
-                                            -  SCVDETWEI( GI ) * ROBIN1(:) * T_ALL(:, CV_NODI)  ! Robin bc
+                                            -  FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODI) & ! Diffusion contribution
+                                            -  SdevFuns%DETWEI( GI ) * ROBIN1(:) * T_ALL(:, CV_NODI)  ! Robin bc
                                         if(integrate_other_side_and_not_boundary) then
                                             THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                                -  FTHETA(:) * SCVDETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODJ) ! Diffusion contribution
+                                                -  FTHETA(:) * SdevFuns%DETWEI( GI ) * DIFF_COEF_DIVDX(:) * T_ALL(:, CV_NODJ) ! Diffusion contribution
                                         endif
                                     END IF
                                 END IF  ! ENDOF IF ( GETMAT ) THEN
                                 ! Put results into the RHS vector
                                 LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : )  &
                                        ! subtract 1st order adv. soln.
-                                    + SECOND_THETA * FTHETA_T2(:) * NDOTQNEW(:) * SCVDETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
-                                    -  SCVDETWEI( GI ) * ( FTHETA_T2(:) * NDOTQNEW(:) * LIMDT(:) &
+                                    + SECOND_THETA * FTHETA_T2(:) * NDOTQNEW(:) * SdevFuns%DETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
+                                    -  SdevFuns%DETWEI( GI ) * ( FTHETA_T2(:) * NDOTQNEW(:) * LIMDT(:) &
                                     + ONE_M_FTHETA_T2OLD(:)* NDOTQOLD(:) * LIMDTOLD(:) ) ! hi order adv
                                 ! Subtract out 1st order term non-conservative adv.
                                 LOC_CV_RHS_I( : ) =  LOC_CV_RHS_I( : ) &
-                                    - FTHETA_T2(:) * ( ONE_M_CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODI) &
+                                    - FTHETA_T2(:) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODI) &
                                     !
                                     ! High-order non-conservative advection contribution
-                                    + ( ONE_M_CV_BETA) * SCVDETWEI( GI ) &
+                                    + ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
                                     * ( FTHETA_T2(:) * NDOTQNEW(:) * T_ALL(:, CV_NODI) * LIMD(:)  &
                                     + ONE_M_FTHETA_T2OLD(:) * NDOTQOLD(:) * LIMDOLD(:) * TOLD_ALL(:, CV_NODI) )  &
                                     !
                                     ! Diffusion contribution
-                                    + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
+                                    + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
                                     * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) ) &
-                                    - (1.-Diffusive_cap_only_real) * SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &  ! capillary pressure stabilization term..
+                                    - (1.-Diffusive_cap_only_real) * SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) &  ! capillary pressure stabilization term..
                                     * ( T_ALL(:, CV_NODJ) - T_ALL(:, CV_NODI) ) &
                                     !                                ! Robin bc
-                                    + SCVDETWEI( GI ) * ROBIN2(:)
+                                    + SdevFuns%DETWEI( GI ) * ROBIN2(:)
                                 if(integrate_other_side_and_not_boundary) then
                                     LOC_CV_RHS_J( : ) =  LOC_CV_RHS_J( : )  &
                                            ! subtract 1st order adv. soln.
-                                        - SECOND_THETA * FTHETA_T2_J(:) * NDOTQNEW(:) * SCVDETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
-                                        +  SCVDETWEI( GI ) * ( FTHETA_T2_J(:) * NDOTQNEW(:) * LIMDT(:) &
+                                        - SECOND_THETA * FTHETA_T2_J(:) * NDOTQNEW(:) * SdevFuns%DETWEI( GI ) * LIMD(:) * FVT(:) * BCZERO(:) &
+                                        +  SdevFuns%DETWEI( GI ) * ( FTHETA_T2_J(:) * NDOTQNEW(:) * LIMDT(:) &
                                         + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDTOLD(:) )  & ! hi order adv
                                         !
                                         ! Subtract out 1st order term non-conservative adv.
-                                        + FTHETA_T2_J(:) * ( ONE_M_CV_BETA ) * SCVDETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODJ) &
+                                        + FTHETA_T2_J(:) * ( ONE_M_CV_BETA ) * SdevFuns%DETWEI( GI ) * NDOTQNEW(:) * LIMD(:) * T_ALL(:, CV_NODJ) &
                                         !
                                         ! High-order non-conservative advection contribution
-                                        - ( ONE_M_CV_BETA) * SCVDETWEI( GI ) &
+                                        - ( ONE_M_CV_BETA) * SdevFuns%DETWEI( GI ) &
                                         * ( FTHETA_T2_J(:) * NDOTQNEW(:) * T_ALL(:, CV_NODJ) * LIMD(:)  &
                                         + ONE_M_FTHETA_T2OLD_J(:) * NDOTQOLD(:) * LIMDOLD(:) * TOLD_ALL(:, CV_NODJ) )  &
                                         !
                                         ! Diffusion contribution
-                                        + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
+                                        + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
                                         * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) ) &
-                                        - (1.-Diffusive_cap_only_real) *SCVDETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) & ! capillary pressure stabilization term..
+                                        - (1.-Diffusive_cap_only_real) *SdevFuns%DETWEI(GI) * CAP_DIFF_COEF_DIVDX(:) & ! capillary pressure stabilization term..
                                         * ( T_ALL(:, CV_NODI) - T_ALL(:, CV_NODJ) )
                                 endif
                                 IF ( GET_GTHETA ) THEN
                                     THETA_GDIFF( :, CV_NODI ) =  THETA_GDIFF( :, CV_NODI ) &
-                                        + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
+                                        + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
                                         * ( TOLD_ALL(:, CV_NODJ) - TOLD_ALL(:, CV_NODI) ) &
                                         ! Robin bc
-                                        + SCVDETWEI( GI ) * ROBIN2(:)
+                                        + SdevFuns%DETWEI( GI ) * ROBIN2(:)
                                     if(integrate_other_side_and_not_boundary) then
                                         THETA_GDIFF( :, CV_NODJ ) =  THETA_GDIFF( :, CV_NODJ ) &
-                                            + (1.-FTHETA(:)) * SCVDETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
+                                            + (1.-FTHETA(:)) * SdevFuns%DETWEI(GI) * DIFF_COEFOLD_DIVDX(:) &
                                             * ( TOLD_ALL(:, CV_NODI) - TOLD_ALL(:, CV_NODJ) )
                                     endif
                                 END IF
@@ -2036,12 +2034,12 @@ contains
                                         CV_P_PHASE_NODJ(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres)=CV_P( 1, IPRES, CV_NODJ )
                                     END DO
                                     LOC_CV_RHS_I( : ) = LOC_CV_RHS_I( : ) &
-                                        - CV_P_PHASE_NODI( : ) * SCVDETWEI( GI ) * ( &
+                                        - CV_P_PHASE_NODI( : ) * SdevFuns%DETWEI( GI ) * ( &
                                         THERM_FTHETA * NDOTQNEW( : ) * LIMT2( : ) &
                                         + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD( : ) )*VOL_FRA_FLUID_I
                                     if ( integrate_other_side_and_not_boundary ) then
                                         LOC_CV_RHS_J( : ) = LOC_CV_RHS_J( : ) &
-                                            + CV_P_PHASE_NODJ( : ) * SCVDETWEI( GI ) * ( &
+                                            + CV_P_PHASE_NODJ( : ) * SdevFuns%DETWEI( GI ) * ( &
                                             THERM_FTHETA * NDOTQNEW(:) * LIMT2(:) &
                                             + ( 1. - THERM_FTHETA ) * NDOTQOLD(:) * LIMT2OLD(:) )*VOL_FRA_FLUID_J
                                     end if
@@ -2051,21 +2049,21 @@ contains
                                         STRESS_IJ_THERM(:,:,:) = 0.0
                                         DO IPHASE=1,Mdims%nphase
                                             CALL CALC_STRESS_TEN( STRESS_IJ_THERM(:,:,IPHASE), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                                CVNORMX_ALL(:,GI), NU_LEV_GI(:,IPHASE) * SCVDETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,MAT_NODI), THERM_U_DIFFUSION_VOL(IPHASE,MAT_NODI) )
+                                                CVNORMX_ALL(:,GI), NU_LEV_GI(:,IPHASE) * SdevFuns%DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,MAT_NODI), THERM_U_DIFFUSION_VOL(IPHASE,MAT_NODI) )
                                               !UFENX_ALL(1:Mdims%ndim,U_ILOC,GI), UFENX_ALL(1:Mdims%ndim,U_JLOC,GI) * DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,CV_NODI), THERM_U_DIFFUSION_VOL(IPHASE,CV_NODI) )
                                             if ( integrate_other_side_and_not_boundary ) then
                                                 STRESS_IJ_THERM_J(:,:,IPHASE) = 0.0
                                                 CALL CALC_STRESS_TEN( STRESS_IJ_THERM_J(:,:,IPHASE), ZERO_OR_TWO_THIRDS, Mdims%ndim, &
-                                                    CVNORMX_ALL(:,GI), NU_LEV_GI(:,IPHASE) * SCVDETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,MAT_NODJ), THERM_U_DIFFUSION_VOL(IPHASE,MAT_NODJ) )
+                                                    CVNORMX_ALL(:,GI), NU_LEV_GI(:,IPHASE) * SdevFuns%DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,MAT_NODJ), THERM_U_DIFFUSION_VOL(IPHASE,MAT_NODJ) )
                                                  !UFENX_ALL(1:Mdims%ndim,U_ILOC,GI), UFENX_ALL(1:Mdims%ndim,U_JLOC,GI) * DETWEI(GI), THERM_U_DIFFUSION(:,:,IPHASE,CV_NODJ), THERM_U_DIFFUSION_VOL(IPHASE,CV_NODJ) )
                                             end if
                                             DO JDIM = 1, Mdims%ndim
                                                 DO IDIM = 1, Mdims%ndim
                                                     VECS_STRESS(IDIM,JDIM,IPHASE,CV_NODI) = VECS_STRESS(IDIM,JDIM,IPHASE,CV_NODI) + STRESS_IJ_THERM(IDIM,JDIM,IPHASE)
-                                                    VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODI) = VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODI) + NU_LEV_GI(IDIM,IPHASE) * CVNORMX_ALL(JDIM,GI) * SCVDETWEI(GI)
+                                                    VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODI) = VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODI) + NU_LEV_GI(IDIM,IPHASE) * CVNORMX_ALL(JDIM,GI) * SdevFuns%DETWEI(GI)
                                                     if ( integrate_other_side_and_not_boundary ) then
                                                         VECS_STRESS(IDIM,JDIM,IPHASE,CV_NODJ) = VECS_STRESS(IDIM,JDIM,IPHASE,CV_NODJ) - STRESS_IJ_THERM_J(IDIM,JDIM,IPHASE )
-                                                        VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODJ) = VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODJ) - NU_LEV_GI(IDIM,IPHASE) * CVNORMX_ALL(JDIM,GI) * SCVDETWEI(GI)
+                                                        VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODJ) = VECS_GRAD_U(IDIM,JDIM,IPHASE,CV_NODJ) - NU_LEV_GI(IDIM,IPHASE) * CVNORMX_ALL(JDIM,GI) * SdevFuns%DETWEI(GI)
                                                     end if
                                                 END DO
                                             END DO
@@ -2093,8 +2091,7 @@ contains
         if (SUF_INT_MASS_MATRIX2) then
             do ele =1, Mdims%totele
                 ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-                call DETNLXR_INVJAC_new( ELE, X_ALL, Mdims, ndgln%x, CV_funs%scvfen, CV_funs%scvfenlx_all,&
-                    CV_funs%scvfeweigh, SCVDETWEI, SCVRA, VOLUME, DCYL, SCVFENX_ALL, INV_JAC)
+                call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
 
                 DO IPHASE = 1, Mdims%nphase
                     DO IDIM = 1, Mdims%ndim
@@ -2112,7 +2109,7 @@ contains
                             DO U_ILOC = 1, Mdims%u_nloc
                                 I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
                                 J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                Mmat%PIVIT_MAT(i,j,ele) =Mmat%PIVIT_MAT(i,j,ele)* volume/rsum
+                                Mmat%PIVIT_MAT(i,j,ele) =Mmat%PIVIT_MAT(i,j,ele)* SdevFuns%volume/rsum
                             end do
                         end do
                     end do
@@ -2496,6 +2493,7 @@ contains
         DEALLOCATE(T2UPWIND_MAT_ALL)
         DEALLOCATE(T2OLDUPWIND_MAT_ALL)
         DEALLOCATE( DUMMY_ZERO_NDIM_NDIM_NPHASE )
+        call deallocate_multi_dev_shape_funs(SdevFuns)
         call deallocate(tracer_BCs)
         call deallocate(tracer_BCs_robin2)
         call deallocate(density_BCs)
@@ -2623,7 +2621,7 @@ contains
                                 IF ( DOWNWIND_EXTRAP  ) THEN
                                     DO IFIELD=1,MIN(2*Mdims%nphase,NFIELD)
                                         DO IDIM=1,Mdims%ndim
-                                            FXGI_ALL(IDIM,IFIELD) = dot_product(SCVFENX_ALL(IDIM, : , GI ) , LOC_FEMF(IFIELD,:))
+                                            FXGI_ALL(IDIM,IFIELD) = dot_product(SdevFuns%NX_ALL(IDIM, : , GI ) , LOC_FEMF(IFIELD,:))
                                         END DO
                                         !FEMFGI(IFIELD) = dot_product( CV_funs%scvfen( : , GI ), LOC_FEMF(IFIELD,:)  )
                                         DO IDIM=1,Mdims%ndim
@@ -2635,7 +2633,7 @@ contains
                                         DO IFIELD=1,MIN(2*Mdims%nphase,NFIELD) ! It should be Mdims%nphase because interface tracking only applied to the 1st set of fields.
                                             RSCALE(IFIELD) = 1.0 / PTOLFUN( SQRT( SUM( UDGI_ALL(:,IFIELD)**2)   ) )
                                             DO IDIM = 1, Mdims%ndim
-                                                VEC_VEL2(IDIM,IFIELD) = SUM( INV_JAC(IDIM, 1:Mdims%ndim, GI) * UDGI_ALL(1:Mdims%ndim,IFIELD) )
+                                                VEC_VEL2(IDIM,IFIELD) = SUM( SdevFuns%INV_JAC(IDIM, 1:Mdims%ndim, GI) * UDGI_ALL(1:Mdims%ndim,IFIELD) )
                                             END DO
                                             ! normalize the velocity in here:
                                             ELE_LENGTH_SCALE(IFIELD) = 0.5 * SQRT( SUM(UDGI_ALL(:,IFIELD)**2) ) / PTOLFUN( SUM( VEC_VEL2(:,IFIELD)**2 ) )
@@ -2655,7 +2653,7 @@ contains
                                             A_STAR_F(IFIELD) = 0.0
                                             A_STAR_X_ALL(:,IFIELD) = COEF(IFIELD) * FXGI_ALL(:,IFIELD)
                                             RESIDGI(IFIELD) = SQRT ( SUM( UDGI_ALL(:,IFIELD)**2 )  ) / HDC
-                                            VEC_VEL2(1:Mdims%ndim,IFIELD) = matmul( INV_JAC(:,:,GI), A_STAR_X_ALL(1:Mdims%ndim,IFIELD) )
+                                            VEC_VEL2(1:Mdims%ndim,IFIELD) = matmul( SdevFuns%INV_JAC(:,:,GI), A_STAR_X_ALL(1:Mdims%ndim,IFIELD) )
                                             ! Needs 0.25 for quadratic elements...Chris
                                             P_STAR(IFIELD) = 0.5 * HDC / PTOLFUN( SQRT( SUM( A_STAR_X_ALL(:,IFIELD)**2 )))
                                             !                                      IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
@@ -2671,25 +2669,25 @@ contains
                                                 case ( 6 )     ! accurate...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                                     DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)**2 / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                 case ( 7 )     ! accurate (could be positive or negative)...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                                     DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
                                                         / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                 case ( 8 )     ! accurate (force to be positive)...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                                     DIFF_COEF(IFIELD) = P_STAR(IFIELD) * RESIDGI(IFIELD)*SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc) &
                                                         / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                     DIFF_COEF(IFIELD) = abs(   DIFF_COEF(IFIELD)  )
                                                 case ( 9 )     ! accurate (simplified residual squared)...
                                                     P_STAR(IFIELD)=0.5/PTOLFUN( maxval(abs(VEC_VEL2(1:Mdims%ndim,IFIELD)))  )
                                                     IF( QUAD_ELEMENTS ) P_STAR(IFIELD) = 0.5 * P_STAR(IFIELD)
-                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                                    RESIDGI(IFIELD)=SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                                     DIFF_COEF(IFIELD) = P_STAR(IFIELD) * (SUM(CVNORMX_ALL(:,GI)*UDGI_ALL(:,IFIELD)) * ((LOC_F( IFIELD, CV_JLOC )-LOC_F( IFIELD, CV_ILOC ))/hdc))**2 &
                                                         / PTOLFUN( SUM(FXGI_ALL(:,IFIELD)**2)  )
                                                 case default   ! isotropic diffusion with u magnitide
@@ -2708,12 +2706,12 @@ contains
                                     DO CV_KLOC = 1, Mdims%cv_nloc
                                         IF ( NON_LIN_PETROV_INTERFACE.NE.0 ) THEN
                                             IF ( NON_LIN_PETROV_INTERFACE == 4 ) THEN ! anisotropic diffusion...
-                                                RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                                RGRAY(IFIELD) = RSCALE(IFIELD) * COEF2(IFIELD) * P_STAR(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                             ELSE
-                                                RGRAY(IFIELD) = - DIFF_COEF(IFIELD) * RSCALE(IFIELD) * SUM( CVNORMX_ALL(:,GI)*SCVFENX_ALL( :, CV_KLOC, GI )  )
+                                                RGRAY(IFIELD) = - DIFF_COEF(IFIELD) * RSCALE(IFIELD) * SUM( CVNORMX_ALL(:,GI)*SdevFuns%NX_ALL( :, CV_KLOC, GI )  )
                                             END IF
                                         ELSE
-                                            RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SCVFENX_ALL( :, CV_KLOC, GI ) )
+                                            RGRAY(IFIELD) = RSCALE(IFIELD) * ELE_LENGTH_SCALE(IFIELD) * SUM( UDGI_ALL(:,IFIELD)*SdevFuns%NX_ALL( :, CV_KLOC, GI ) )
                                         END IF
                                         FEMFGI(IFIELD)    = FEMFGI(IFIELD)     +  (CV_funs%scvfen( CV_KLOC, GI ) + RGRAY(IFIELD))   * LOC_FEMF( IFIELD, CV_KLOC)
                                     END DO ! ENDOF DO CV_KLOC = 1, Mdims%cv_nloc
@@ -3256,175 +3254,172 @@ contains
 
 
 
-    SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL)
-        !     --------------------------------------------------
-        !
-        !     - this subroutine calculates the control volume (CV)
-        !     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
-        !     - integration points GI. NODI = the current global
-        !     - node number for the co-ordinates.
-        !     - (XC,YC,ZC) is the centre of CV NODI
-        !
-        !     -------------------------------
-        !     - date last modified : 15/03/2003
-        !     -------------------------------
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: ELE, GI
-        REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
-        REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
-        REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
-
-        !     - Local variables
-        INTEGER :: NODJ,  JLOC
-        REAL :: A, B, C
-        REAL :: DETJ
-        REAL :: DXDLX, DXDLY, DYDLX
-        REAL :: DYDLY, DZDLX, DZDLY
-        REAL :: TWOPI
-        REAL, PARAMETER :: PI = 3.14159265
-        REAL :: POSVGIX, POSVGIY, POSVGIZ
-        REAL :: RGI, RDUM
-
-        !ewrite(3,*)' In SCVDETNX'
-
-        Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
-
-            DXDLX = 0.0;DXDLY = 0.0
-            DYDLX = 0.0;DYDLY = 0.0
-            DZDLX = 0.0;DZDLY = 0.0
-            POSVGIX = 0.0;POSVGIY = 0.0;POSVGIZ = 0.0
-
-            do  JLOC = 1, Mdims%x_nloc
-
-                NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
-
-                DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
-                DXDLY = DXDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(1,NODJ)
-                DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
-                DYDLY = DYDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(2,NODJ)
-                DZDLX = DZDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(3,NODJ)
-                DZDLY = DZDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(3,NODJ)
-
-                POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
-                POSVGIY = POSVGIY + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
-                POSVGIZ = POSVGIZ + CV_funs%scvfen(JLOC,GI)*X_ALL(3,NODJ)
-            end do
-
-            !     - Note that POSVGIX,POSVGIY and POSVGIZ can be considered as the
-            !     - components of the Gauss pnt GI with the co-ordinate origin
-            !     - positioned at the current control volume NODI.
-
-            POSVGIX = POSVGIX - XC_ALL(1)
-            POSVGIY = POSVGIY - XC_ALL(2)
-            POSVGIZ = POSVGIZ - XC_ALL(3)
-
-            A = DYDLX*DZDLY - DYDLY*DZDLX
-            B = DXDLX*DZDLY - DXDLY*DZDLX
-            C = DXDLX*DYDLY - DXDLY*DYDLX
+        SUBROUTINE SCVDETNX_new( ELE,GI,SCVDETWEI, CVNORMX_ALL,XC_ALL)
+            !     --------------------------------------------------
             !
-            !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
+            !     - this subroutine calculates the control volume (CV)
+            !     - CVNORMX, CVNORMY, CVNORMZ normals at the Gaussian
+            !     - integration points GI. NODI = the current global
+            !     - node number for the co-ordinates.
+            !     - (XC,YC,ZC) is the centre of CV NODI
             !
-            DETJ = SQRT( A**2 + B**2 + C**2 )
-            !
-            !     - Calculate the determinant times the surface weight at Gauss pnt GI.
-            !
-            SCVDETWEI(GI) = DETJ*CV_funs%scvfeweigh(GI)
-            !
-            !     - Calculate the normal at the Gauss pts
-            !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
-            !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
-            !     - Perform cross-product. N = T1 x T2
-            !
-            CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
-                DXDLX,       DYDLX,       DZDLX, &
-                DXDLY,       DYDLY,       DZDLY,&
-                POSVGIX,     POSVGIY,     POSVGIZ )
+            !     -------------------------------
+            !     - date last modified : 15/03/2003
+            !     -------------------------------
+            IMPLICIT NONE
+            INTEGER, intent( in ) :: ELE, GI
+            REAL, DIMENSION( Mdims%ndim ), intent( in ) ::   XC_ALL
+            REAL, DIMENSION( Mdims%ndim, CV_GIdims%scvngi ), intent( inout ) :: CVNORMX_ALL
+            REAL, DIMENSION( : ), intent( inout ) :: SCVDETWEI
 
-        ELSE IF(Mdims%ndim == 2) THEN
+            !     - Local variables
+            INTEGER :: NODJ,  JLOC
+            REAL :: A, B, C
+            REAL :: DETJ
+            REAL :: DXDLX, DXDLY, DYDLX
+            REAL :: DYDLY, DZDLX, DZDLY
+            REAL :: TWOPI
+            REAL, PARAMETER :: PI = 3.14159265
+            REAL :: POSVGIX, POSVGIY, POSVGIZ
+            REAL :: RGI, RDUM
 
-            TWOPI = 1.0
+            !ewrite(3,*)' In SCVDETNX'
 
-            RGI   = 0.0
-            DXDLX = 0.0;DXDLY = 0.0
-            DYDLX = 0.0;DYDLY = 0.0
-            DZDLX = 0.0
-            !
-            !     - Note that we set the derivative wrt to y of coordinate z to 1.0
-            !
-            DZDLY = 1.0
+            Conditional_Dimension: IF( Mdims%ndim == 3 ) THEN
 
-            POSVGIX = 0.0;POSVGIY = 0.0;POSVGIZ = 0.0
+                DXDLX = 0.0;DXDLY = 0.0
+                DYDLX = 0.0;DYDLY = 0.0
+                DZDLX = 0.0;DZDLY = 0.0
+                POSVGIX = 0.0;POSVGIY = 0.0;POSVGIZ = 0.0
 
-            do  JLOC = 1, Mdims%x_nloc! Was loop 300
+                do  JLOC = 1, Mdims%x_nloc
 
-                NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+                    NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
 
-                DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
-                DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
+                    DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
+                    DXDLY = DXDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(1,NODJ)
+                    DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
+                    DYDLY = DYDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(2,NODJ)
+                    DZDLX = DZDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(3,NODJ)
+                    DZDLY = DZDLY + CV_funs%scvfensly(JLOC,GI)*X_ALL(3,NODJ)
 
-                POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
-                POSVGIY = POSVGIY + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
+                    POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
+                    POSVGIY = POSVGIY + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
+                    POSVGIZ = POSVGIZ + CV_funs%scvfen(JLOC,GI)*X_ALL(3,NODJ)
+                end do
 
-                RGI = RGI + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
+                !     - Note that POSVGIX,POSVGIY and POSVGIZ can be considered as the
+                !     - components of the Gauss pnt GI with the co-ordinate origin
+                !     - positioned at the current control volume NODI.
 
-            end do ! Was loop 300
-            !
-            !     - Note that POSVGIX and POSVGIY can be considered as the components
-            !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
-            !     - current control volume NODI.
-            !
+                POSVGIX = POSVGIX - XC_ALL(1)
+                POSVGIY = POSVGIY - XC_ALL(2)
+                POSVGIZ = POSVGIZ - XC_ALL(3)
 
-            POSVGIX = POSVGIX - XC_ALL(1)
-            POSVGIY = POSVGIY - XC_ALL(2)
+                A = DYDLX*DZDLY - DYDLY*DZDLX
+                B = DXDLX*DZDLY - DXDLY*DZDLX
+                C = DXDLX*DYDLY - DXDLY*DYDLX
+                !
+                !     - Calculate the determinant of the Jacobian at Gauss pnt GI.
+                !
+                DETJ = SQRT( A**2 + B**2 + C**2 )
+                !
+                !     - Calculate the determinant times the surface weight at Gauss pnt GI.
+                !
+                SCVDETWEI(GI) = DETJ*CV_funs%scvfeweigh(GI)
+                !
+                !     - Calculate the normal at the Gauss pts
+                !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
+                !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
+                !     - Perform cross-product. N = T1 x T2
+                !
+                CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), CVNORMX_ALL(3,GI),&
+                    DXDLX,       DYDLX,       DZDLX, &
+                    DXDLY,       DYDLY,       DZDLY,&
+                    POSVGIX,     POSVGIY,     POSVGIZ )
 
-            RGI = 1.0
+            ELSE IF(Mdims%ndim == 2) THEN
 
-            DETJ = SQRT( DXDLX**2 + DYDLX**2 )
-            SCVDETWEI(GI)  = TWOPI*RGI*DETJ*CV_funs%scvfeweigh(GI)
-            !
-            !     - Calculate the normal at the Gauss pts
-            !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
-            !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
-            !     - Perform cross-product. N = T1 x T2
-            !
-            CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
-                DXDLX,       DYDLX,       DZDLX, &
-                DXDLY,       DYDLY,       DZDLY,&
-                POSVGIX,     POSVGIY,     POSVGIZ )
+                TWOPI = 1.0
 
-        ELSE
-            ! For 1D...
+                RGI   = 0.0
+                DXDLX = 0.0;DXDLY = 0.0
+                DYDLX = 0.0;DYDLY = 0.0
+                DZDLX = 0.0
+                !
+                !     - Note that we set the derivative wrt to y of coordinate z to 1.0
+                !
+                DZDLY = 1.0
 
-            POSVGIX = 0.0
+                POSVGIX = 0.0;POSVGIY = 0.0;POSVGIZ = 0.0
 
-            do  JLOC = 1, Mdims%x_nloc! Was loop 300
+                do  JLOC = 1, Mdims%x_nloc! Was loop 300
 
-                NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+                    NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
 
-                POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
+                    DXDLX = DXDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(1,NODJ)
+                    DYDLX = DYDLX + CV_funs%scvfenslx(JLOC,GI)*X_ALL(2,NODJ)
 
-            end do ! Was loop 300
-            !
-            !     - Note that POSVGIX and POSVGIY can be considered as the components
-            !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
-            !     - current control volume NODI.
-            !
-            !          EWRITE(3,*)'POSVGIX, XC,POSVGIX - XC:',POSVGIX, XC,POSVGIX - XC
-            POSVGIX = POSVGIX - XC_ALL(1)
-            ! SIGN(A,B) sign of B times A.
-            !       CVNORMX(GI) = SIGN( 1.0, POSVGIX )
-            CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGIX )
+                    POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
+                    POSVGIY = POSVGIY + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
 
-            DETJ = 1.0
-            SCVDETWEI(GI)  = DETJ*CV_funs%scvfeweigh(GI)
+                    RGI = RGI + CV_funs%scvfen(JLOC,GI)*X_ALL(2,NODJ)
+
+                end do ! Was loop 300
+                !
+                !     - Note that POSVGIX and POSVGIY can be considered as the components
+                !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
+                !     - current control volume NODI.
+                !
+
+                POSVGIX = POSVGIX - XC_ALL(1)
+                POSVGIY = POSVGIY - XC_ALL(2)
+
+                RGI = 1.0
+
+                DETJ = SQRT( DXDLX**2 + DYDLX**2 )
+                SCVDETWEI(GI)  = TWOPI*RGI*DETJ*CV_funs%scvfeweigh(GI)
+                !
+                !     - Calculate the normal at the Gauss pts
+                !     - TANX1 = DXDLX, TANY1 = DYDLX, TANZ1 = DZDLX,
+                !     - TANX2 = DXDLY, TANY2 = DYDLY, TANZ2 = DZDLY
+                !     - Perform cross-product. N = T1 x T2
+                !
+                CALL NORMGI( CVNORMX_ALL(1,GI), CVNORMX_ALL(2,GI), RDUM,&
+                    DXDLX,       DYDLX,       DZDLX, &
+                    DXDLY,       DYDLY,       DZDLY,&
+                    POSVGIX,     POSVGIY,     POSVGIZ )
+
+            ELSE
+                ! For 1D...
+
+                POSVGIX = 0.0
+
+                do  JLOC = 1, Mdims%x_nloc! Was loop 300
+
+                    NODJ = ndgln%x((ELE-1)*Mdims%x_nloc+JLOC)
+
+                    POSVGIX = POSVGIX + CV_funs%scvfen(JLOC,GI)*X_ALL(1,NODJ)
+
+                end do ! Was loop 300
+                !
+                !     - Note that POSVGIX and POSVGIY can be considered as the components
+                !     - of the Gauss pnt GI with the co-ordinate origin positioned at the
+                !     - current control volume NODI.
+                !
+                !          EWRITE(3,*)'POSVGIX, XC,POSVGIX - XC:',POSVGIX, XC,POSVGIX - XC
+                POSVGIX = POSVGIX - XC_ALL(1)
+                ! SIGN(A,B) sign of B times A.
+                !       CVNORMX(GI) = SIGN( 1.0, POSVGIX )
+                CVNORMX_ALL(1,GI) = SIGN( 1.0, POSVGIX )
+
+                DETJ = 1.0
+                SCVDETWEI(GI)  = DETJ*CV_funs%scvfeweigh(GI)
 
 
-        ENDIF Conditional_Dimension
+            ENDIF Conditional_Dimension
 
-    END SUBROUTINE SCVDETNX_new
-
-
-
+        END SUBROUTINE SCVDETNX_new
 
 
     END SUBROUTINE CV_ASSEMB
@@ -4180,176 +4175,7 @@ contains
 
     END SUBROUTINE FIND_OTHER_SIDE
 
-
-
-
-
-
-
-
-    !sprint_to_do!remove when updated in surface tension wrapper
-    SUBROUTINE PROJ_CV_TO_FEM( FEMPSI, PSI, NTSOL, NDIM, &
-        PSI_AVE, NTSOL_AVE, PSI_INT, NTSOL_INT, MASS_ELE, &
-        CV_NONODS, TOTELE, CV_NDGLN, X_NLOC, X_NDGLN, &
-        CV_NGI, CV_NLOC, CVN, CVWEIGHT, N, NLX, NLY, NLZ, &
-        X_NONODS, X, Y, Z, NCOLM, FINDM, COLM, MIDM, &
-        IGETCT, MASS_MN_PRES, FINDCMC, COLCMC, NCOLCMC, PATH )
-
-        ! Determine FEMT (finite element wise) etc from T (control volume wise)
-        ! Also integrate PSI_INT over each CV and average PSI_AVE over each CV.
-
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: NTSOL, NTSOL_AVE, NTSOL_INT, NDIM, CV_NONODS, TOTELE, &
-            X_NLOC, CV_NGI, CV_NLOC, X_NONODS, NCOLM, IGETCT, NCOLCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-        REAL, DIMENSION( : ), intent( inout ) :: FEMPSI
-        REAL, DIMENSION( : ), intent( in ) :: PSI
-        REAL, DIMENSION( :, : ), intent( in ) :: CVN
-        REAL, DIMENSION( : ), intent( inout ) :: PSI_AVE
-        REAL, DIMENSION( : ), intent( inout ) :: PSI_INT
-        REAL, DIMENSION( : ), intent( inout ) :: CVWEIGHT
-        REAL, DIMENSION( :, : ), intent( in ) :: N, NLX, NLY, NLZ
-        REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
-        REAL, DIMENSION( : ), intent( inout ) :: MASS_ELE
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDM
-        INTEGER, DIMENSION( : ), intent( in ) :: COLM
-        INTEGER, DIMENSION( : ), intent( in ) :: MIDM
-        CHARACTER(100), intent(in) :: PATH
-
-        REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
-        INTEGER, DIMENSION( : ), intent( in ) :: FINDCMC
-        INTEGER, DIMENSION( : ), intent( in ) :: COLCMC
-        ! Local variables
-        LOGICAL :: D1, D3
-        LOGICAL, PARAMETER ::DCYL = .FALSE.
-        REAL, DIMENSION( : ), allocatable :: MASS_CV, FEMPSI_RHS, &
-            PSI_AVE2, PSI_INT2, MAT, DETWEI, RA
-        REAL, DIMENSION( :, : ), allocatable :: NX, NY, NZ
-        REAL :: VOLUME, NN, NM, MN, MM
-        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, COUNT, IT
-
-        ewrite(3,*) 'In PROJ_CV_TO_FEM'
-
-        ALLOCATE( MASS_CV( CV_NONODS ))
-        ALLOCATE( FEMPSI_RHS( CV_NONODS * NTSOL ))
-        ALLOCATE( PSI_AVE2( CV_NONODS * NTSOL_AVE ))
-        ALLOCATE( PSI_INT2( CV_NONODS * NTSOL_INT ))
-        ALLOCATE( MAT( NCOLM ))
-        ALLOCATE( DETWEI( CV_NGI ))
-        ALLOCATE( RA( CV_NGI ))
-        ALLOCATE( NX( CV_NLOC, CV_NGI ))
-        ALLOCATE( NY( CV_NLOC, CV_NGI ))
-        ALLOCATE( NZ( CV_NLOC, CV_NGI ))
-
-        FEMPSI = 0.0
-
-        PSI_AVE2 = PSI_AVE
-        PSI_INT2 = PSI_INT
-        PSI_AVE = 0.0
-        PSI_INT = 0.0
-
-        FEMPSI_RHS = 0.0
-        MAT = 0.0
-        MASS_CV = 0.0
-        IF(IGETCT.NE.0) MASS_MN_PRES=0.0
-
-        D1 = ( NDIM == 1 )
-        D3 = ( NDIM == 3 )
-        !DCYL = .FALSE.
-
-        Loop_Elements: DO ELE = 1, TOTELE
-
-            ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, CV_NLOC, CV_NGI, &
-                N, NLX, NLY, NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-                NX, NY, NZ )
-            MASS_ELE( ELE ) = VOLUME
-
-            Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
-
-                CV_NODI = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
-                !ewrite(3,*)'ele,CV_NODI,CV_ILOC:',ele,CV_NODI,CV_ILOC, x(CV_NODI)
-
-                Loop_CV_JLOC: DO CV_JLOC = 1, CV_NLOC
-
-                    CV_NODJ = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_JLOC )
-
-                    !Combination of CV shape functions with FE
-                    NN =  dot_product(N( CV_ILOC, : )   * N(   CV_JLOC, : ), DETWEI)
-                    NM = dot_product(N( CV_ILOC, : )   * CVN( CV_JLOC, : ) , DETWEI)
-                    MN = dot_product(CVN( CV_ILOC, : ) * N( CV_JLOC, : )   , DETWEI)
-                    MM = dot_product(CVN( CV_ILOC, : ) * CVN( CV_JLOC, : ) , DETWEI)
-
-                    IF(IGETCT.NE.0) THEN
-                        CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, FINDCMC, COLCMC )
-
-                        MASS_MN_PRES( COUNT ) = MASS_MN_PRES( COUNT ) + MN
-                    ENDIF
-
-                    CALL POSINMAT( COUNT, CV_NODI, CV_NODJ, FINDM, COLM)
-
-                    MAT( COUNT ) = MAT( COUNT ) + NN
-                    MASS_CV( CV_NODI ) = MASS_CV( CV_NODI ) + MM
-
-                    DO IT = 1, NTSOL
-                        FEMPSI_RHS( CV_NODI + ( IT - 1 ) * CV_NONODS ) = FEMPSI_RHS( CV_NODI +( IT - 1 ) &
-                            * CV_NONODS ) + NM * PSI( CV_NODJ + ( IT - 1 ) * CV_NONODS )
-                    END DO
-                    DO IT = 1, NTSOL_AVE
-                        PSI_AVE( CV_NODI + ( IT - 1 ) * CV_NONODS ) = PSI_AVE( CV_NODI +( IT - 1 ) &
-                            * CV_NONODS ) + MN * PSI_AVE2( CV_NODJ + ( IT - 1) * CV_NONODS )
-                    END DO
-                    DO IT = 1, NTSOL_INT
-                        PSI_INT( CV_NODI + ( IT - 1 ) * CV_NONODS ) = PSI_INT( CV_NODI +( IT - 1 ) &
-                            * CV_NONODS ) + MN * PSI_INT2( CV_NODJ + ( IT - 1) * CV_NONODS )
-                    END DO
-
-                END DO Loop_CV_JLOC
-
-            END DO Loop_CV_ILOC
-
-        END DO Loop_Elements
-
-        ! Form average...
-        DO IT = 1, NTSOL_AVE
-            DO CV_NODI=1,CV_NONODS
-                PSI_AVE( CV_NODI + ( IT - 1 ) * CV_NONODS ) = PSI_AVE( CV_NODI +( IT - 1 ) &
-                    * CV_NONODS ) / MASS_CV( CV_NODI )
-            END DO
-        END DO
-
-        ! Solve...
-        DO IT = 1, NTSOL
-            CALL multi_solver( MAT,  &
-                FEMPSI( 1 + (IT - 1 ) * CV_NONODS : CV_NONODS + (IT - 1 ) * CV_NONODS ),  &
-                FEMPSI_RHS( 1 + ( IT - 1 ) * CV_NONODS : CV_NONODS + (IT - 1 ) * CV_NONODS ),  &
-                FINDM, &
-                COLM, &
-                option_path = trim(path) )
-        END DO
-
-        !    FEMPSI=PSI
-
-        DEALLOCATE( MASS_CV )
-        DEALLOCATE( FEMPSI_RHS )
-        DEALLOCATE( PSI_AVE2 )
-        DEALLOCATE( PSI_INT2 )
-        DEALLOCATE( MAT )
-        DEALLOCATE( DETWEI )
-        DEALLOCATE( RA )
-        DEALLOCATE( NX )
-        DEALLOCATE( NY )
-        DEALLOCATE( NZ )
-
-        ewrite(3,*) 'Leaving PROJ_CV_TO_FEM'
-
-        RETURN
-
-    END SUBROUTINE PROJ_CV_TO_FEM
-
-
-    SUBROUTINE PROJ_CV_TO_FEM_state(packed_state, &
+    SUBROUTINE PROJ_CV_TO_FEM(packed_state, &
         fempsi, psi, &
         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, &
         igetct, X, mass_ele, mass_mn_pres, &
@@ -4388,15 +4214,10 @@ contains
         !---------------------------------
         ! local variables
         !---------------------------------
+        type (multi_dev_shape_funs) :: DevFuns
         integer :: cv_nodi, cv_nodj, COUNT, max_iterations
         integer :: iele, cv_iloc, cv_jloc, cv_gi, it                         ! loop variables
         real :: nn, nm, mn, mm
-        real, dimension(:), allocatable, target :: detwei2, ra2
-        real, dimension(:), pointer :: detwei, ra
-        real, dimension(:,:,:), allocatable, target :: NX_ALL2
-        real, dimension(:,:,:), pointer :: NX_ALL
-        real, target :: volume2
-        real, pointer :: volume
         type(scalar_field) :: cv_mass
         type(tensor_field), dimension(size(psi)) :: fempsi_rhs
         type(vector_field), dimension(size(psi_ave)) :: psi_ave_temp
@@ -4415,17 +4236,13 @@ contains
         cv_test_space = have_option(projection_options//'/test_function_space::ControlVolume')
         is_to_update = .not.associated(CV_funs%CV2FE%refcount)
 
-        allocate(detwei2(CV_GIdims%cv_ngi))
-        allocate(ra2(CV_GIdims%cv_ngi))
-        allocate(NX_ALL2(Mdims%ndim,Mdims%cv_nloc,CV_GIdims%cv_ngi))
         do it=1,size(fempsi)
             call zero(fempsi(it)%ptr)
             call allocate(fempsi_rhs(it),psi(it)%ptr%mesh,"RHS",dim=psi(it)%ptr%dim)
             call zero(fempsi_rhs(it))
             call halo_update(psi(it)%ptr)
         end do
-        volume=>volume2; detwei=>detwei2; ra=>ra2
-        tfield=>psi(1)%ptr; NX_ALL=>NX_ALL2
+        tfield=>psi(1)%ptr
 
         if(is_to_update) then
             call allocate(cv_mass,psi(1)%ptr%mesh,'CV_mass')
@@ -4458,6 +4275,8 @@ contains
         !---------------------------------
         ! projection
         !---------------------------------
+        call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
+
         Loop_Elements: do iele = 1, Mdims%totele
             ! check parallelisation
             if(isParallel()) then
@@ -4465,14 +4284,9 @@ contains
             end if
 
             ! calculate detwei,RA,NX,NY,NZ for the ith element
-            call DETNLXR(iele,X(1,:),X(2,:),X(3,:),ndgln%x, &
-                Mdims%totele,Mdims%x_nonods,Mdims%cv_nloc, &
-                CV_GIdims%cv_ngi,CV_funs%CVFEN,CV_funs%CVFENLX_ALL(1,:,:), &
-                CV_funs%CVFENLX_ALL(2,:,:),CV_funs%CVFENLX_ALL(3,:,:), &
-                CV_funs%cvweight,detwei2,ra2,volume2, &
-                Mdims%ndim==1,Mdims%ndim==3,DCYL, &
-                NX_ALL2(1,:,:),NX_ALL2(2,:,:),NX_ALL2(3,:,:))
-            mass_ele(iele) = volume
+            call DETNLXR(iele, X, ndgln%x, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
+
+            mass_ele(iele) = DevFuns%volume
 
             Loop_CV_iLoc: do cv_iloc = 1, Mdims%cv_nloc
                 cv_nodi = ndgln%cv((iele-1)*Mdims%cv_nloc+cv_iloc)
@@ -4483,11 +4297,11 @@ contains
 
                     nn = 0.0; nm = 0.0; mn = 0.0; mm = 0.0
                     do cv_gi = 1, CV_GIdims%cv_ngi
-                        mn = mn+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*detwei(cv_gi)
-                        mm = mm+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*detwei(cv_gi)
+                        mn = mn+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
+                        mm = mm+CV_funs%CVN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
                         if(.not.cv_test_space) then
-                            nn = nn+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*detwei(cv_gi)
-                            nm = nm+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*detwei(cv_gi)
+                            nn = nn+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVFEN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
+                            nm = nm+CV_funs%CVFEN(cv_iloc,cv_gi)*CV_funs%CVN(cv_jloc,cv_gi)*DevFuns%detwei(cv_gi)
                         end if
                     end do
 
@@ -4565,6 +4379,8 @@ contains
         end if
 
         ! deallocation
+        call deallocate_multi_dev_shape_funs(DevFuns)
+
         do it = 1,size(fempsi_rhs)
             call deallocate(fempsi_rhs(it))
         end do
@@ -4577,652 +4393,153 @@ contains
                 call deallocate(psi_int_temp(it))
             end do
         end if
-        deallocate(detwei2)
-        deallocate(ra2)
-        deallocate(NX_ALL2)
 
         return
 
-    END SUBROUTINE PROJ_CV_TO_FEM_state
+    END SUBROUTINE PROJ_CV_TO_FEM
 
 
-    SUBROUTINE DG_DERIVS_UVW( U, UOLD, V, VOLD, W, WOLD, &
-        DUX_ELE, DUY_ELE, DUZ_ELE, DUOLDX_ELE, DUOLDY_ELE, DUOLDZ_ELE, &
-        DVX_ELE, DVY_ELE, DVZ_ELE, DVOLDX_ELE, DVOLDY_ELE, DVOLDZ_ELE, &
-        DWX_ELE, DWY_ELE, DWZ_ELE, DWOLDX_ELE, DWOLDY_ELE, DWOLDZ_ELE, &
-        NDIM, NDIM_VEL, NPHASE, U_NONODS, TOTELE, U_NDGLN, &
-        XU_NDGLN, X_NLOC, X_NDGLN, &
-        CV_NGI, U_NLOC, CVWEIGHT, &
-        N, NLX, NLY, NLZ, &
-        CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
-        X_NONODS, X, Y, Z, &
-        NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC,  &
-        SUF_U_BC,SUF_V_BC,SUF_W_BC, &
-        WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
-        SBCVFEN, SBCVFENSLX, SBCVFENSLY)
 
-        ! determine FEMT (finite element wise) etc from T (control volume wise)
+   SUBROUTINE DG_DERIVS_ALL1( Mdims, GIdims, funs, ndgln, x_ndgln, FEMT, FEMTOLD, &
+        X_ALL, DTX_ELE, DTOLDX_ELE, FACE_ELE, WIC_T_BC, SUF_T_BC, FOR_CVs)
+        ! determine FEMT (finite element wise) etc from T (control DevFuns%VOLUME wise)
         IMPLICIT NONE
-        INTEGER, intent( in ) :: NDIM, NDIM_VEL, NPHASE, &
-            U_NONODS, TOTELE, X_NLOC, CV_NGI, U_NLOC, &
-            X_NONODS, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC_DIRICHLET, SBCVNGI, NFACE
-        REAL, DIMENSION( :), intent( in ) :: U, UOLD, V, VOLD, W, WOLD
-        REAL, DIMENSION( : , : , : ), intent( inout ) :: DUX_ELE,DUY_ELE,DUZ_ELE, &
-            DUOLDX_ELE,DUOLDY_ELE,DUOLDZ_ELE
-        REAL, DIMENSION( : , : , : ), intent( inout ) :: DVX_ELE,DVY_ELE,DVZ_ELE, &
-            DVOLDX_ELE,DVOLDY_ELE,DVOLDZ_ELE
-        REAL, DIMENSION( : , : , : ), intent( inout ) :: DWX_ELE,DWY_ELE,DWZ_ELE, &
-            DWOLDX_ELE,DWOLDY_ELE,DWOLDZ_ELE
-        INTEGER, DIMENSION( : ), intent( in ) :: U_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) :: XU_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  WIC_U_BC
-        REAL, DIMENSION( : ), intent( in ) ::  SUF_U_BC,SUF_V_BC,SUF_W_BC
-        INTEGER, DIMENSION( :,: ), intent( in ) ::  U_SLOCLIST
-        INTEGER, DIMENSION( :,: ), intent( in ) ::  CV_SLOCLIST
-        INTEGER, DIMENSION( :,: ), intent( in ) ::  FACE_ELE
-        REAL, DIMENSION( : ), intent( inout ) :: CVWEIGHT
-        REAL, DIMENSION( :, : ), intent( in ) :: N, NLX, NLY, NLZ
-        REAL, DIMENSION( :, : ), intent( in ) :: CVFEN, CVFENLX, CVFENLY, CVFENLZ
-        REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
-        REAL, DIMENSION( :, : ), intent( in ) :: SBUFEN, SBUFENSLX, SBUFENSLY
-        REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
-        REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-
-        CALL DG_DERIVS( U, UOLD, &
-            DUX_ELE, DUY_ELE, DUZ_ELE, DUOLDX_ELE, DUOLDY_ELE, DUOLDZ_ELE, &
-            NDIM, NPHASE, U_NONODS, TOTELE, U_NDGLN, &
-            XU_NDGLN, X_NLOC, X_NDGLN, &
-            CV_NGI, U_NLOC, CVWEIGHT, &
-            N, NLX, NLY, NLZ, &
-            CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
-            X_NONODS, X, Y, Z, &
-            NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_U_BC, &
-            WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
-            SBCVFEN, SBCVFENSLX, SBCVFENSLY)
-        IF(NDIM_VEL.GE.2) THEN
-            CALL DG_DERIVS( V, VOLD, &
-                DVX_ELE, DVY_ELE, DVZ_ELE, DVOLDX_ELE, DVOLDY_ELE, DVOLDZ_ELE, &
-                NDIM, NPHASE, U_NONODS, TOTELE, U_NDGLN, &
-                XU_NDGLN, X_NLOC, X_NDGLN, &
-                CV_NGI, U_NLOC, CVWEIGHT, &
-                N, NLX, NLY, NLZ, &
-                CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
-                X_NONODS, X, Y, Z, &
-                NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_V_BC, &
-                WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
-                SBCVFEN, SBCVFENSLX, SBCVFENSLY)
-        ELSE
-            DVX_ELE=0; DVY_ELE=0; DVZ_ELE=0; DVOLDX_ELE=0; DVOLDY_ELE=0; DVOLDZ_ELE=0
-        ENDIF
-
-        IF(NDIM_VEL.GE.3) THEN
-            CALL DG_DERIVS( W, WOLD, &
-                DWX_ELE, DWY_ELE, DWZ_ELE, DWOLDX_ELE, DWOLDY_ELE, DWOLDZ_ELE, &
-                NDIM, NPHASE, U_NONODS, TOTELE, U_NDGLN, &
-                XU_NDGLN, X_NLOC, X_NDGLN, &
-                CV_NGI, U_NLOC, CVWEIGHT, &
-                N, NLX, NLY, NLZ, &
-                CVFEN, CVFENLX, CVFENLY, CVFENLZ, &
-                X_NONODS, X, Y, Z, &
-                NFACE, FACE_ELE, U_SLOCLIST, CV_SLOCLIST, STOTEL, U_SNLOC, CV_SNLOC, WIC_U_BC, SUF_W_BC, &
-                WIC_U_BC_DIRICHLET, SBCVNGI, SBUFEN, SBUFENSLX, SBUFENSLY, SBWEIGH, &
-                SBCVFEN, SBCVFENSLX, SBCVFENSLY)
-        ELSE
-            DWX_ELE=0; DWY_ELE=0; DWZ_ELE=0; DWOLDX_ELE=0; DWOLDY_ELE=0; DWOLDZ_ELE=0
-        ENDIF
-
-        RETURN
-    END SUBROUTINE DG_DERIVS_UVW
-
-
-    SUBROUTINE DG_DERIVS( FEMT, FEMTOLD, &
-        DTX_ELE, DTY_ELE, DTZ_ELE, DTOLDX_ELE, DTOLDY_ELE, DTOLDZ_ELE, &
-        NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
-        XCV_NDGLN, X_NLOC, X_NDGLN,&
-        CV_NGI, CV_NLOC, CVWEIGHT, &
-        N, NLX, NLY, NLZ, &
-        X_N, X_NLX, X_NLY, X_NLZ, &
-        X_NONODS, X, Y, Z, &
-        NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
-        WIC_T_BC_DIRICHLET, SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
-
-        ! determine FEMT (finite element wise) etc from T (control volume wise)
-        IMPLICIT NONE
-        INTEGER, intent( in ) :: NDIM, NPHASE, CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
-            X_NONODS, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC_DIRICHLET, SBCVNGI, NFACE
-        REAL, DIMENSION( : ), intent( in ) :: FEMT, FEMTOLD
-        REAL, DIMENSION( : , : , : ), intent( inout ) :: DTX_ELE, DTY_ELE, DTZ_ELE, &
-            DTOLDX_ELE, DTOLDY_ELE, DTOLDZ_ELE
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  XCV_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  WIC_T_BC
-        REAL, DIMENSION( : ), intent( in ) ::  SUF_T_BC
-        INTEGER, DIMENSION( :,: ), intent( in ) ::  CV_SLOCLIST
-        INTEGER, DIMENSION( :,: ), intent( in ) ::  X_SLOCLIST
-        INTEGER, DIMENSION( :,: ), intent( in ) ::  FACE_ELE
-        REAL, DIMENSION( : ), intent( inout ) :: CVWEIGHT
-        REAL, DIMENSION( :, : ), intent( in ) :: N, NLX, NLY, NLZ
-        REAL, DIMENSION( :, : ), intent( in ) :: X_N, X_NLX, X_NLY, X_NLZ
-        REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
-        REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
-        REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
-        REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-        ! Local variables
-        LOGICAL :: D1, D3, APPLYBC
-        LOGICAL, PARAMETER :: DCYL = .FALSE.
-        REAL, DIMENSION( CV_NGI ) :: DETWEI, RA
-        REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI ) :: NX_ALL
-        REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
-        real :: VOLUME
-        REAL, DIMENSION( :, :, : ), allocatable :: MASELE
-        REAL, DIMENSION( :, :, : ), allocatable :: VTX_ELE, VTY_ELE, VTZ_ELE, VTOLDX_ELE, VTOLDY_ELE, VTOLDZ_ELE
-        REAL, DIMENSION( :, : ), allocatable :: MASS, INV_MASS
-        REAL, DIMENSION( : ), allocatable :: VTX, VTY, VTZ, VTOLDX, VTOLDY, VTOLDZ, DTX, DTY, DTZ, DTOLDX, DTOLDY, DTOLDZ
-        REAL, DIMENSION( : ), allocatable :: XSL, YSL, ZSL, SNORMXN, SNORMYN, SNORMZN, SDETWE
-        INTEGER, DIMENSION( : ), allocatable :: SLOC2LOC, X_SLOC2LOC, ILOC_OTHER_SIDE
-        REAL :: NN, NNX, NNY, NNZ, NORMX, NORMY, NORMZ, SAREA, NRBC, RNN, RTBC, &
-            VLM_NORX, VLM_NORY, VLM_NORZ
-        INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_GI, CV_ILOC2, &
-            CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, CV_NODJ2_IPHA, CV_NODJ_IPHA, &
-            CV_SILOC, CV_SJLOC, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, SUF_CV_SJ2_IPHA, &
-            X_INOD, SGI, X_SILOC, X_ILOC
-
-        ewrite(3,*)'in DG_DERIVS sbrt'
-        ALLOCATE( MASELE( CV_NLOC, CV_NLOC, TOTELE ))
-        ALLOCATE( VTX_ELE( CV_NLOC, NPHASE, TOTELE ))
-        ALLOCATE( VTY_ELE( CV_NLOC, NPHASE, TOTELE ))
-        ALLOCATE( VTZ_ELE( CV_NLOC, NPHASE, TOTELE ))
-        ALLOCATE( VTOLDX_ELE( CV_NLOC, NPHASE, TOTELE ))
-        ALLOCATE( VTOLDY_ELE( CV_NLOC, NPHASE, TOTELE ))
-        ALLOCATE( VTOLDZ_ELE( CV_NLOC, NPHASE, TOTELE ))
-        ALLOCATE( MASS( CV_NLOC, CV_NLOC) )
-        ALLOCATE( INV_MASS( CV_NLOC, CV_NLOC) )
-        ALLOCATE( VTX( CV_NLOC ))
-        ALLOCATE( VTY( CV_NLOC ))
-        ALLOCATE( VTZ( CV_NLOC ))
-        ALLOCATE( VTOLDX( CV_NLOC ))
-        ALLOCATE( VTOLDY( CV_NLOC ))
-        ALLOCATE( VTOLDZ( CV_NLOC ))
-        ALLOCATE( SLOC2LOC( CV_SNLOC ))
-        ALLOCATE( X_SLOC2LOC( X_SNLOC ))
-        ALLOCATE( ILOC_OTHER_SIDE( CV_SNLOC ))
-        ALLOCATE( XSL( X_SNLOC ))
-        ALLOCATE( YSL( X_SNLOC ))
-        ALLOCATE( ZSL( X_SNLOC ))
-        ALLOCATE( SNORMXN( SBCVNGI ))
-        ALLOCATE( SNORMYN( SBCVNGI ))
-        ALLOCATE( SNORMZN( SBCVNGI ))
-        ALLOCATE( SDETWE( SBCVNGI ))
-        ALLOCATE( DTX( CV_NLOC ))
-        ALLOCATE( DTY( CV_NLOC ))
-        ALLOCATE( DTZ( CV_NLOC ))
-        ALLOCATE( DTOLDX( CV_NLOC ))
-        ALLOCATE( DTOLDY( CV_NLOC ))
-        ALLOCATE( DTOLDZ( CV_NLOC ))
-
-        MASELE = 0.0
-        VTX_ELE = 0.0
-        VTY_ELE = 0.0
-        VTZ_ELE = 0.0
-        VTOLDX_ELE = 0.0
-        VTOLDY_ELE = 0.0
-        VTOLDZ_ELE = 0.0
-
-        D1 = ( NDIM == 1 )
-        D3 = ( NDIM == 3 )
-        Loop_Elements1: DO ELE = 1, TOTELE
-
-            ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
-                X_NLOC, X_NLOC, CV_NGI, &
-                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-                X_NX_ALL, &
-                CV_NLOC, NLX, NLY, NLZ, NX_ALL)
-
-            Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
-
-                CV_NODI = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
-
-                Loop_CV_JLOC: DO CV_JLOC = 1, CV_NLOC
-
-                    CV_NODJ = CV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_JLOC )
-
-                    NN = 0.0
-                    NNX = 0.0
-                    NNY = 0.0
-                    NNZ = 0.0
-                    DO CV_GI = 1, CV_NGI
-                        NN = NN +  N( CV_ILOC, CV_GI )  * N(  CV_JLOC, CV_GI ) * DETWEI( CV_GI )
-                        NNX = NNX + N( CV_ILOC, CV_GI )  * NX_ALL(1, CV_JLOC, CV_GI ) * DETWEI( CV_GI )
-                        NNY = NNY + N( CV_ILOC, CV_GI )  * NX_ALL(2, CV_JLOC, CV_GI ) * DETWEI( CV_GI )
-                        NNZ = NNZ + N( CV_ILOC, CV_GI )  * NX_ALL(3, CV_JLOC, CV_GI ) * DETWEI( CV_GI )
-                    END DO
-
-                    MASELE( CV_ILOC,CV_JLOC, ELE)  = MASELE( CV_ILOC,CV_JLOC, ELE ) + NN
-
-                    DO IPHASE = 1, NPHASE
-                        CV_NODJ_IPHA = CV_NODJ + ( IPHASE - 1 ) * CV_NONODS
-                        VTX_ELE( CV_ILOC, IPHASE, ELE ) = VTX_ELE( CV_ILOC, IPHASE, ELE ) + NNX * FEMT( CV_NODJ_IPHA )
-                        VTY_ELE( CV_ILOC, IPHASE, ELE ) = VTY_ELE( CV_ILOC, IPHASE, ELE ) + NNY * FEMT( CV_NODJ_IPHA )
-                        VTZ_ELE( CV_ILOC, IPHASE, ELE ) = VTZ_ELE( CV_ILOC, IPHASE, ELE ) + NNZ * FEMT( CV_NODJ_IPHA )
-
-                        VTOLDX_ELE( CV_ILOC, IPHASE, ELE ) = VTOLDX_ELE( CV_ILOC, IPHASE, ELE ) + NNX * FEMTOLD( CV_NODJ_IPHA )
-                        VTOLDY_ELE( CV_ILOC, IPHASE, ELE ) = VTOLDY_ELE( CV_ILOC, IPHASE, ELE ) + NNY * FEMTOLD( CV_NODJ_IPHA )
-                        VTOLDZ_ELE( CV_ILOC, IPHASE, ELE ) = VTOLDZ_ELE( CV_ILOC, IPHASE, ELE ) + NNZ * FEMTOLD( CV_NODJ_IPHA )
-                    END DO
-
-                END DO Loop_CV_JLOC
-
-            END DO Loop_CV_ILOC
-
-        END DO Loop_Elements1
-
-
-
-        Loop_Elements2: DO ELE=1,TOTELE
-
-            Between_Elements_And_Boundary: DO IFACE = 1, NFACE
-                ELE2 = FACE_ELE( IFACE, ELE )
-                SELE2 = MAX( 0, - ELE2 )
-                ELE2 = MAX( 0, + ELE2 )
-                !ewrite(3,*)'FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE ):',FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE )
-
-                ! The surface nodes on element face IFACE.
-                SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
-                X_SLOC2LOC( : ) = X_SLOCLIST( IFACE, : )
-
-                ! Form approximate surface normal (NORMX,NORMY,NORMZ)
-                CALL DGSIMPLNORM( ELE, X_SLOC2LOC, TOTELE, X_NLOC, X_SNLOC, X_NDGLN, &
-                    X, Y, Z, X_NONODS, NORMX, NORMY, NORMZ )
-
-                ! Recalculate the normal...
-                DO X_SILOC = 1, X_SNLOC
-                    X_ILOC = X_SLOC2LOC( X_SILOC )
-                    X_INOD = X_NDGLN(( ELE - 1 ) * X_NLOC + X_ILOC )
-                    XSL( X_SILOC ) = X( X_INOD )
-                    YSL( X_SILOC ) = Y( X_INOD )
-                    ZSL( X_SILOC ) = Z( X_INOD )
-                END DO
-
-                CALL DGSDETNXLOC2(X_SNLOC, SBCVNGI, &
-                    XSL, YSL, ZSL, &
-                    X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, SBWEIGH, SDETWE, SAREA, &
-                    (NDIM==1), (NDIM==3), (NDIM==-2), &
-                    SNORMXN, SNORMYN, SNORMZN, &
-                    NORMX, NORMY, NORMZ )
-
-                IF(SELE2 == 0) THEN
-                    ! Calculate the nodes on the other side of the face:
-                    DO CV_SILOC = 1, CV_SNLOC
-                        CV_ILOC = SLOC2LOC( CV_SILOC )
-                        CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
-                        DO CV_ILOC2 = 1, CV_NLOC
-                            CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
-                            IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
-                        END DO
-                    END DO
-                    APPLYBC=(ELE /= ELE2).AND.(ELE2 /= 0)
-                ELSE
-                    APPLYBC = ( WIC_T_BC(SELE2) == WIC_T_BC_DIRICHLET )
-                ENDIF
-
-                IF(APPLYBC) THEN
-                    DO CV_SILOC=1,CV_SNLOC
-                        CV_ILOC   =SLOC2LOC(CV_SILOC)
-                        DO CV_SJLOC=1,CV_SNLOC
-                            CV_JLOC =SLOC2LOC(CV_SJLOC)
-                            CV_NODJ=CV_NDGLN((ELE-1)*CV_NLOC+CV_JLOC)
-                            IF(SELE2 /= 0) THEN
-                                CV_JLOC2=CV_JLOC
-                                CV_NODJ2=CV_NODJ
-                                SUF_CV_SJ2 = CV_SJLOC + CV_SNLOC * ( SELE2 - 1 )
-                                NRBC=0.0
-                            ELSE
-                                CV_JLOC2=ILOC_OTHER_SIDE(CV_SJLOC)
-                                CV_NODJ2=CV_NDGLN((ELE2-1)*CV_NLOC+CV_JLOC2)
-                                NRBC=1.0
-                            ENDIF
-                            VLM_NORX=0.0
-                            VLM_NORY=0.0
-                            VLM_NORZ=0.0
-                            ! Have a surface integral on element boundary...
-                            DO SGI=1,SBCVNGI
-                                RNN=SDETWE(SGI)*SBCVFEN(CV_SILOC,SGI)*SBCVFEN(CV_SJLOC,SGI)
-                                VLM_NORX=VLM_NORX+SNORMXN(SGI)*RNN
-                                VLM_NORY=VLM_NORY+SNORMYN(SGI)*RNN
-                                VLM_NORZ=VLM_NORZ+SNORMZN(SGI)*RNN
-                            END DO
-                            ! add diffusion term...
-                            DO IPHASE=1,NPHASE
-                                CV_NODJ_IPHA =CV_NODJ  + (IPHASE-1)*CV_NONODS
-                                CV_NODJ2_IPHA=CV_NODJ2 + (IPHASE-1)*CV_NONODS
-                                VTX_ELE(CV_ILOC, IPHASE,ELE ) = VTX_ELE(CV_ILOC, IPHASE,ELE ) &
-                                    - VLM_NORX*0.5*(FEMT(CV_NODJ_IPHA)-FEMT(CV_NODJ2_IPHA)*NRBC)
-                                VTY_ELE(CV_ILOC, IPHASE,ELE ) = VTY_ELE(CV_ILOC, IPHASE,ELE ) &
-                                    - VLM_NORY*0.5*(FEMT(CV_NODJ_IPHA)-FEMT(CV_NODJ2_IPHA)*NRBC)
-                                VTZ_ELE(CV_ILOC, IPHASE,ELE ) = VTZ_ELE(CV_ILOC, IPHASE,ELE ) &
-                                    - VLM_NORZ*0.5*(FEMT(CV_NODJ_IPHA)-FEMT(CV_NODJ2_IPHA)*NRBC)
-
-                                VTOLDX_ELE(CV_ILOC, IPHASE,ELE ) = VTOLDX_ELE(CV_ILOC, IPHASE,ELE ) &
-                                    - VLM_NORX*0.5*(FEMTOLD(CV_NODJ_IPHA)-FEMTOLD(CV_NODJ2_IPHA)*NRBC)
-                                VTOLDY_ELE(CV_ILOC, IPHASE,ELE ) = VTOLDY_ELE(CV_ILOC, IPHASE,ELE ) &
-                                    - VLM_NORY*0.5*(FEMTOLD(CV_NODJ_IPHA)-FEMTOLD(CV_NODJ2_IPHA)*NRBC)
-                                VTOLDZ_ELE(CV_ILOC, IPHASE,ELE ) = VTOLDZ_ELE(CV_ILOC, IPHASE,ELE ) &
-                                    - VLM_NORZ*0.5*(FEMTOLD(CV_NODJ_IPHA)-FEMTOLD(CV_NODJ2_IPHA)*NRBC)
-                                IF(SELE2.NE.0) THEN
-                                    IF(WIC_T_BC(SELE2+(IPHASE-1)*STOTEL) == WIC_T_BC_DIRICHLET) THEN
-                                        SUF_CV_SJ2_IPHA = SUF_CV_SJ2 + STOTEL * CV_SNLOC * ( IPHASE - 1 )
-                                        RTBC=SUF_T_BC( SUF_CV_SJ2_IPHA )
-                                        VTX_ELE(CV_ILOC, IPHASE,ELE ) = VTX_ELE(CV_ILOC, IPHASE,ELE ) &
-                                            + VLM_NORX*0.5*RTBC
-                                        VTY_ELE(CV_ILOC, IPHASE,ELE ) = VTY_ELE(CV_ILOC, IPHASE,ELE ) &
-                                            + VLM_NORY*0.5*RTBC
-                                        VTZ_ELE(CV_ILOC, IPHASE,ELE ) = VTZ_ELE(CV_ILOC, IPHASE,ELE ) &
-                                            + VLM_NORZ*0.5*RTBC
-
-                                        VTOLDX_ELE(CV_ILOC, IPHASE,ELE ) = VTOLDX_ELE(CV_ILOC, IPHASE,ELE ) &
-                                            + VLM_NORX*0.5*RTBC
-                                        VTOLDY_ELE(CV_ILOC, IPHASE,ELE ) = VTOLDY_ELE(CV_ILOC, IPHASE,ELE ) &
-                                            + VLM_NORY*0.5*RTBC
-                                        VTOLDZ_ELE(CV_ILOC, IPHASE,ELE ) = VTOLDZ_ELE(CV_ILOC, IPHASE,ELE ) &
-                                            + VLM_NORZ*0.5*RTBC
-                                    ENDIF
-                                ENDIF
-                            END DO
-                        END DO
-                    END DO
-                ENDIF
-
-
-            END DO Between_Elements_And_Boundary
-
-        END DO Loop_Elements2
-
-
-        ! Solve local system for the gradients DTX_ELE etc:
-
-        Loop_Elements3: DO ELE=1,TOTELE
-
-            MASS(:,:)=MASELE(:,:,ELE)
-            CALL MATDMATINV( MASS, INV_MASS, CV_NLOC)
-
-
-            Loop_IPHASE: DO IPHASE=1,NPHASE
-
-                VTX(:)=VTX_ELE(:, IPHASE,ELE )
-                VTY(:)=VTY_ELE(:, IPHASE,ELE )
-                VTZ(:)=VTZ_ELE(:, IPHASE,ELE )
-                VTOLDX(:)=VTOLDX_ELE(:, IPHASE,ELE )
-                VTOLDY(:)=VTOLDY_ELE(:, IPHASE,ELE )
-                VTOLDZ(:)=VTOLDZ_ELE(:, IPHASE,ELE )
-                DTX=0.0
-                DTY=0.0
-                DTZ=0.0
-                DTOLDX=0.0
-                DTOLDY=0.0
-                DTOLDZ=0.0
-                DO CV_JLOC=1,CV_NLOC
-                    DO CV_ILOC=1,CV_NLOC
-                        DTX(CV_ILOC)=DTX(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*VTX(CV_JLOC)
-                        DTY(CV_ILOC)=DTY(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*VTY(CV_JLOC)
-                        DTZ(CV_ILOC)=DTZ(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*VTZ(CV_JLOC)
-                        DTOLDX(CV_ILOC)=DTOLDX(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*VTOLDX(CV_JLOC)
-                        DTOLDY(CV_ILOC)=DTOLDY(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*VTOLDY(CV_JLOC)
-                        DTOLDZ(CV_ILOC)=DTOLDZ(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*VTOLDZ(CV_JLOC)
-                    END DO
-                END DO
-                DTX_ELE(:, IPHASE,ELE )=DTX(:)
-                DTY_ELE(:, IPHASE,ELE )=DTY(:)
-                DTZ_ELE(:, IPHASE,ELE )=DTZ(:)
-                DTOLDX_ELE(:, IPHASE,ELE )=DTOLDX(:)
-                DTOLDY_ELE(:, IPHASE,ELE )=DTOLDY(:)
-                DTOLDZ_ELE(:, IPHASE,ELE )=DTOLDZ(:)
-
-            END DO Loop_IPHASE
-
-        END DO Loop_Elements3
-
-
-        DEALLOCATE( MASELE )
-        DEALLOCATE( VTX_ELE )
-        DEALLOCATE( VTY_ELE )
-        DEALLOCATE( VTZ_ELE )
-        DEALLOCATE( VTOLDX_ELE )
-        DEALLOCATE( VTOLDY_ELE )
-        DEALLOCATE( VTOLDZ_ELE )
-        DEALLOCATE( MASS )
-        DEALLOCATE( INV_MASS )
-        DEALLOCATE( VTX )
-        DEALLOCATE( VTY )
-        DEALLOCATE( VTZ )
-        DEALLOCATE( VTOLDX )
-        DEALLOCATE( VTOLDY )
-        DEALLOCATE( VTOLDZ )
-        DEALLOCATE( SLOC2LOC )
-        DEALLOCATE( ILOC_OTHER_SIDE )
-        DEALLOCATE( XSL )
-        DEALLOCATE( YSL )
-        DEALLOCATE( ZSL )
-        DEALLOCATE( SNORMXN )
-        DEALLOCATE( SNORMYN )
-        DEALLOCATE( SNORMZN )
-        DEALLOCATE( SDETWE )
-        DEALLOCATE( DTX )
-        DEALLOCATE( DTY )
-        DEALLOCATE( DTZ )
-        DEALLOCATE( DTOLDX )
-        DEALLOCATE( DTOLDY )
-        DEALLOCATE( DTOLDZ )
-        ! ewrite(3,*)'about to leave DG_DERIVS'
-
-        RETURN
-
-    END SUBROUTINE DG_DERIVS
-
-
-    !sprint_to_do try to simplify these 4 subroutines and end up with one using the new structures
-    SUBROUTINE DG_DERIVS_ALL( FEMT, FEMTOLD, &
-        DTX_ELE, DTOLDX_ELE, &
-        NDIM, NPHASE, NCOMP, CV_NONODS, TOTELE, CV_NDGLN, &
-        XCV_NDGLN, X_NLOC, X_NDGLN,&
-        CV_NGI, CV_NLOC, CVWEIGHT, &
-        N, NLX, NLY, NLZ, &
-        X_N, X_NLX, X_NLY, X_NLZ, &
-        X_NONODS, X, Y, Z, &
-        NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
-        SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
-
-        ! determine FEMT (finite element wise) etc from T (control volume wise)
-        IMPLICIT NONE
-
-        INTEGER, intent( in ) :: NDIM, NPHASE, NCOMP,CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
-            X_NONODS, STOTEL, CV_SNLOC, X_SNLOC, SBCVNGI, NFACE
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_GI_dimensions), intent(in) :: GIdims
+        type(multi_shape_funs), intent(in) :: funs
+        integer, dimension(:), intent(in) :: ndgln, x_ndgln
+        real, dimension(:,:) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: FEMT, FEMTOLD
         REAL, DIMENSION( :, :, :, :, : ), intent( inout ) :: DTX_ELE, DTOLDX_ELE
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  XCV_NDGLN
-        INTEGER, DIMENSION( :, :, : ), intent( in ) ::  WIC_T_BC
+        INTEGER, DIMENSION( :,  :, : ), intent( in ) ::  WIC_T_BC
         REAL, DIMENSION( :, :, : ), intent( in ) ::  SUF_T_BC
-        INTEGER, DIMENSION( :, : ), intent( in ) ::  CV_SLOCLIST
-        INTEGER, DIMENSION( :, : ), intent( in ) ::  X_SLOCLIST
         INTEGER, DIMENSION( :, : ), intent( in ) ::  FACE_ELE
-        REAL, DIMENSION( : ), intent( in ) :: CVWEIGHT
-        REAL, DIMENSION( :, : ), intent( in ) :: N, NLX, NLY, NLZ
-        REAL, DIMENSION( :, : ), intent( in ) :: X_N, X_NLX, X_NLY, X_NLZ
-        REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
-        REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
-        REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
-        REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
+        logical, intent(in) :: FOR_CVs
         ! Local variables
+        type(multi_dev_shape_funs) :: Devfuns
+        real, dimension(:,:), pointer :: N
+        real, dimension(:,:,:), pointer :: NLX_ALL
+        integer, dimension(:, :), pointer :: N_SLOCLIST
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
-        LOGICAL :: D1, D3, APPLYBC( NCOMP, NPHASE )
-        LOGICAL, PARAMETER :: DCYL = .FALSE.
-        REAL, dimension( CV_NGI ) :: DETWEI, RA
-        REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI):: NX_ALL
-        REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
-        REAL :: VOLUME
-        REAL, DIMENSION( CV_NLOC, CV_NLOC )  :: MASS, INV_MASS
-        REAL, DIMENSION( NDIM, X_SNLOC ) :: XSL( 3, X_SNLOC ), SNORMXN( 3, SBCVNGI ), SDETWE( SBCVNGI )
-        INTEGER  :: SLOC2LOC( CV_SNLOC ), X_SLOC2LOC( X_SNLOC ), ILOC_OTHER_SIDE( CV_SNLOC )
-        REAL :: NN, NNX( NDIM ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( NDIM )
+        LOGICAL :: APPLYBC( Mdims%ncomp, Mdims%nphase )
+        REAL, DIMENSION( Mdims%cv_nloc, Mdims%cv_nloc )  :: MASS, INV_MASS
+        REAL :: XSL( 3, Mdims%x_snloc ), SNORMXN( 3, GIdims%sbcvngi ), SDETWE( GIdims%sbcvngi )
+        INTEGER  :: SLOC2LOC( Mdims%cv_snloc ), X_SLOC2LOC( Mdims%x_snloc ), ILOC_OTHER_SIDE( Mdims%cv_snloc )
+        REAL :: NN, NNX( Mdims%ndim ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( Mdims%ndim )
         INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
             CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, &
             CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
             X_INOD, X_SILOC, X_ILOC, ICOMP, IDIM
         INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1
-
         ewrite(3,*)'in DG_DERIVS'
-
         DTX_ELE = 0.0 ; DTOLDX_ELE = 0.0
+        ALLOCATE( MASELE( Mdims%cv_nloc, Mdims%cv_nloc, Mdims%totele ) )
+        ALLOCATE( VTX_ELE( Mdims%ndim, Mdims%ncomp, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ) )
+        ALLOCATE( VTOLDX_ELE( Mdims%ndim, Mdims%ncomp, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ) )
+        MASELE = 0.0;VTX_ELE = 0.0;VTOLDX_ELE = 0.0
+        XSL = 0.
 
-        ALLOCATE( MASELE( CV_NLOC, CV_NLOC, TOTELE ) )
-        ALLOCATE( VTX_ELE( NDIM, NCOMP, NPHASE, CV_NLOC, TOTELE ) )
-        ALLOCATE( VTOLDX_ELE( NDIM, NCOMP, NPHASE, CV_NLOC, TOTELE ) )
+        if (FOR_CVs) then
+            N => funs%cvfen; NLX_ALL => funs%cvfenlx_all
+            N_SLOCLIST => funs%cv_sloclist
+        else
+            N => funs%ufen; NLX_ALL => funs%ufenlx_all
+            N_SLOCLIST => funs%u_sloclist
+        end if
 
-        MASELE = 0.0
-        VTX_ELE = 0.0
-
-        VTOLDX_ELE = 0.0
-
-        D1 = ( NDIM == 1 )
-        D3 = ( NDIM == 3 )
-        !DCYL = .FALSE.
-
-        Loop_Elements1: DO ELE = 1, TOTELE
-
-            ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
-                X_NLOC, X_NLOC, CV_NGI, &
-                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-                X_NX_ALL, &
-                CV_NLOC, NLX, NLY, NLZ, NX_ALL)
-            Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
-
-                CV_NODI = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
-
-                Loop_CV_JLOC: DO CV_JLOC = 1, CV_NLOC
-
-                    CV_NODJ = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
-
-                    NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DETWEI )
-                    NNX = MATMUL( NX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DETWEI )
-
+        call allocate_multi_dev_shape_funs(NLX_ALL, NLX_ALL, Devfuns)
+        Loop_Elements1: DO ELE = 1, Mdims%totele
+            ! Calculate DevFuns%DETWEI
+            call DETNLXR_PLUS_U(ELE, X_ALL, x_ndgln, funs%cvweight, &
+                   N, NLX_ALL, NLX_ALL, Devfuns)
+            Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc
+                CV_NODI = ndgln( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                Loop_CV_JLOC: DO CV_JLOC = 1, Mdims%cv_nloc
+                    CV_NODJ = ndgln( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                    NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DevFuns%DETWEI )
+                    NNX = MATMUL( Devfuns%UFENX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DevFuns%DETWEI )
                     MASELE( CV_ILOC, CV_JLOC, ELE) = MASELE( CV_ILOC, CV_JLOC, ELE ) + NN
-
-                    DO IPHASE = 1, NPHASE
-                        DO ICOMP = 1, NCOMP
+                    DO IPHASE = 1, Mdims%nphase
+                        DO ICOMP = 1, Mdims%ncomp
                             VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) = &
                                 VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) &
                                 + NNX (:) * FEMT( ICOMP, IPHASE, CV_NODJ )
-
                             VTOLDX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) = &
                                 VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) &
                                 + NNX (:) * FEMTOLD( ICOMP, IPHASE, CV_NODJ )
                         END DO
                     END DO
-
                 END DO Loop_CV_JLOC
-
             END DO Loop_CV_ILOC
-
         END DO Loop_Elements1
-
-
-        Loop_Elements2: DO ELE = 1, TOTELE
-
-            Between_Elements_And_Boundary: DO IFACE = 1, NFACE
+        Loop_Elements2: DO ELE = 1, Mdims%totele
+            Between_Elements_And_Boundary: DO IFACE = 1, GIdims%nface
                 ELE2 = FACE_ELE( IFACE, ELE )
                 SELE2 = MAX( 0, - ELE2 )
                 ELE2 = MAX( 0, + ELE2 )
-                !ewrite(3,*)'FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE ):',FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE )
-
                 ! The surface nodes on element face IFACE.
-                SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
-                X_SLOC2LOC( : ) = X_SLOCLIST( IFACE, : )
-
+                SLOC2LOC( : ) = N_SLOCLIST( IFACE, : )
+                X_SLOC2LOC( : ) = funs%cv_sloclist( IFACE, : )
                 ! Form approximate surface normal (NORMX,NORMY,NORMZ)
-                CALL DGSIMPLNORM( ELE, X_SLOC2LOC, TOTELE, X_NLOC, X_SNLOC, X_NDGLN, &
-                    X, Y, Z, X_NONODS, NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
-
+                CALL DGSIMPLNORM( ELE, X_SLOC2LOC, Mdims%totele, Mdims%x_nloc, Mdims%x_snloc, X_NDGLN, &
+                    X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), Mdims%x_nonods, NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
                 ! Recalculate the normal...
-                DO X_SILOC = 1, X_SNLOC
+                DO X_SILOC = 1, Mdims%x_snloc
                     X_ILOC = X_SLOC2LOC( X_SILOC )
-                    X_INOD = X_NDGLN(( ELE - 1 ) * X_NLOC + X_ILOC )
-                    XSL( 1, X_SILOC ) = X( X_INOD )
-                    XSL( 2, X_SILOC ) = Y( X_INOD )
-                    XSL( 3, X_SILOC ) = Z( X_INOD )
+                    X_INOD = X_NDGLN(( ELE - 1 ) * Mdims%x_nloc + X_ILOC )
+                    XSL( 1:Mdims%NDIM, X_SILOC ) = X_ALL(1:Mdims%NDIM, X_INOD )
                 END DO
-
-                CALL DGSDETNXLOC2(X_SNLOC, SBCVNGI, &
+                CALL DGSDETNXLOC2(Mdims%x_snloc, GIdims%sbcvngi, &
                     XSL( 1, : ), XSL( 2, : ), XSL( 3, : ), &
-                    X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, SBWEIGH, SDETWE, SAREA, &
-                    (NDIM==1), (NDIM==3), (NDIM==-2), &
+                    funs%sbcvfen, funs%sbcvfenslx, funs%sbcvfensly, funs%sbcvfeweigh, SDETWE, SAREA, &
+                    (Mdims%ndim==1), (Mdims%ndim==3), (Mdims%ndim==-2), &
                     SNORMXN( 1, : ), SNORMXN( 2, : ), SNORMXN( 3, : ), &
                     NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
-
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
-
-                    DO CV_SILOC = 1, CV_SNLOC
+                    DO CV_SILOC = 1, Mdims%cv_snloc
                         CV_ILOC = SLOC2LOC( CV_SILOC )
-                        CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
-
-                        DO CV_ILOC2 = 1, CV_NLOC
-                            CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
-
+                        CV_INOD = x_ndgln(( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                        DO CV_ILOC2 = 1, Mdims%cv_nloc
+                            CV_INOD2 = x_ndgln(( ELE2 - 1 ) * Mdims%cv_nloc + CV_ILOC2 )
                             IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
                         END DO
                     END DO
-
                     APPLYBC = (ELE /= ELE2) .AND. (ELE2 /= 0)
-
                 ELSE
                     APPLYBC = ( WIC_T_BC( :, :, SELE2 ) == WIC_T_BC_DIRICHLET )
                 END IF
-
-                DO CV_SILOC = 1, CV_SNLOC
+                DO CV_SILOC = 1, Mdims%cv_snloc
                     CV_ILOC = SLOC2LOC( CV_SILOC )
-                    DO CV_SJLOC = 1, CV_SNLOC
+                    DO CV_SJLOC = 1, Mdims%cv_snloc
                         CV_JLOC = SLOC2LOC( CV_SJLOC )
-                        CV_NODJ = CV_NDGLN( (ELE-1)*CV_NLOC + CV_JLOC )
+                        CV_NODJ = ndgln( (ELE-1)*Mdims%cv_nloc + CV_JLOC )
                         IF ( SELE2 /= 0 ) THEN
                             CV_JLOC2 = CV_JLOC
                             CV_SJLOC2 = CV_SJLOC
                             CV_NODJ2 = CV_NODJ
-                            SUF_CV_SJ2 = CV_SJLOC + CV_SNLOC * ( SELE2 - 1 )
+                            SUF_CV_SJ2 = CV_SJLOC + Mdims%cv_snloc * ( SELE2 - 1 )
                             NRBC = 0.0
                         ELSE
                             CV_JLOC2 = ILOC_OTHER_SIDE( CV_SJLOC )
-                            CV_NODJ2 = CV_NDGLN( (ELE2-1)*CV_NLOC + CV_JLOC2 )
+                            CV_NODJ2 = ndgln( (ELE2-1)*Mdims%cv_nloc + CV_JLOC2 )
                             NRBC = 1.0
                         END IF
-
                         ! Have a surface integral on element boundary...
-                        VLM_NORX(:) = MATMUL( SNORMXN( 1:NDIM, : ), &
-                            SDETWE(:) * SBCVFEN( CV_SILOC, : ) * SBCVFEN( CV_SJLOC, : ) )
-
+                        VLM_NORX(:) = MATMUL( SNORMXN( 1:Mdims%ndim, : ), &
+                            SDETWE(:) * funs%sbcvfen( CV_SILOC, : ) * funs%sbcvfen( CV_SJLOC, : ) )
                         ! add diffusion term...
-                        DO IPHASE = 1, NPHASE
-                            DO ICOMP = 1, NCOMP
+                        DO IPHASE = 1, Mdims%nphase
+                            DO ICOMP = 1, Mdims%ncomp
                                 IF ( APPLYBC( ICOMP, IPHASE ) ) THEN
-
                                     IF ( SELE2 /= 0 ) THEN
                                         IF ( WIC_T_BC( ICOMP, IPHASE, SELE2 ) == WIC_T_BC_DIRICHLET ) THEN
-
-                                            RTBC = SUF_T_BC( ICOMP, IPHASE, CV_SJLOC2 + CV_SNLOC * ( SELE2 - 1 ) )
-
+                                            RTBC = SUF_T_BC( ICOMP, IPHASE, CV_SJLOC2 + Mdims%cv_snloc * ( SELE2 - 1 ) )
                                             VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) = VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) &
                                                 - VLM_NORX(:) * 0.5 * ( FEMT( ICOMP, IPHASE, CV_NODJ ) - RTBC  )
-
                                             VTOLDX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) = VTOLDX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) &
                                                 - VLM_NORX(:) * 0.5 * ( FEMTOLD( ICOMP, IPHASE, CV_NODJ ) - RTBC  )
-
                                         END IF
                                     ELSE
                                         VTX_ELE(:, ICOMP, IPHASE, CV_ILOC, ELE ) = &
@@ -5231,283 +4548,190 @@ contains
                                         VTOLDX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) = &
                                             VTX_ELE( :, ICOMP, IPHASE, CV_ILOC, ELE ) &
                                             - VLM_NORX(:) * 0.5 * ( FEMTOLD( ICOMP, IPHASE, CV_NODJ ) - FEMTOLD( ICOMP, IPHASE, CV_NODJ2 )  )
-
                                     END IF
-
                                 END IF
                             END DO
                         END DO
                     END DO
-
                 END DO
-
             END DO Between_Elements_And_Boundary
-
-
         END DO Loop_Elements2
-
-
-        Loop_Elements3: DO ELE = 1, TOTELE
-
+        Loop_Elements3: DO ELE = 1, Mdims%totele
             MASS( :, : ) = MASELE( :, :, ELE )
-            CALL MATDMATINV( MASS, INV_MASS, CV_NLOC )
-
-            FORALL ( IDIM = 1:NDIM, ICOMP = 1:NCOMP, IPHASE = 1:NPHASE )
-
+            CALL MATDMATINV( MASS, INV_MASS, Mdims%cv_nloc )
+            FORALL ( IDIM = 1:Mdims%ndim, ICOMP = 1:Mdims%ncomp, IPHASE = 1:Mdims%nphase )
                 DTX_ELE( ICOMP, IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, ICOMP, IPHASE, :, ELE ) )
                 DTOLDX_ELE( ICOMP, IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ) , VTOLDX_ELE( IDIM, ICOMP, IPHASE, :, ELE ) )
-
-               !DTX_ELE( ICOMP, IDIM, :, IPHASE, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, ICOMP, IPHASE, :, ELE ) )
-               !DTOLDX_ELE( ICOMP, IDIM, :, IPHASE, ELE ) = MATMUL( INV_MASS( :, : ) , VTOLDX_ELE( IDIM, ICOMP, IPHASE, :, ELE ) )
             END FORALL
-
         END DO Loop_Elements3
-
         DEALLOCATE( MASELE, VTX_ELE, VTOLDX_ELE )
-
         ewrite(3,*)'about to leave DG_DERIVS'
-
         RETURN
+    END SUBROUTINE DG_DERIVS_ALL1
 
-    END SUBROUTINE DG_DERIVS_ALL
 
 
-    SUBROUTINE DG_DERIVS_ALL2( FEMT, FEMTOLD, &
-        DTX_ELE, DTOLDX_ELE, &
-        NDIM, NPHASE, CV_NONODS, TOTELE, CV_NDGLN, &
-        XCV_NDGLN, X_NLOC, X_NDGLN,&
-        CV_NGI, CV_NLOC, CVWEIGHT, &
-        N, NLX, NLY, NLZ, &
-        X_N, X_NLX, X_NLY, X_NLZ, &
-        X_NONODS, X, Y, Z, &
-        NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, STOTEL, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
-        SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
-
-        ! determine FEMT (finite element wise) etc from T (control volume wise)
+   SUBROUTINE DG_DERIVS_ALL2( Mdims, GIdims,  funs, ndgln, x_ndgln, FEMT, FEMTOLD, &
+        X_ALL, DTX_ELE, DTOLDX_ELE, FACE_ELE, WIC_T_BC, SUF_T_BC, FOR_CVs)
+        ! determine FEMT (finite element wise) etc from T (control DevFuns%VOLUME wise)
         IMPLICIT NONE
-
-        INTEGER, intent( in ) :: NDIM, NPHASE, CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
-            &                   X_NONODS, STOTEL, CV_SNLOC, X_SNLOC, SBCVNGI, NFACE
+        type(multi_dimensions), intent(in) :: Mdims
+        type(multi_GI_dimensions), intent(in) :: GIdims
+        type(multi_shape_funs), intent(in) :: funs
+        integer, dimension(:), intent(in) :: ndgln, x_ndgln
+        real, dimension(:,:) :: X_ALL
         REAL, DIMENSION( :, : ), intent( in ) :: FEMT, FEMTOLD
         REAL, DIMENSION( :, :, :, : ), intent( inout ) :: DTX_ELE, DTOLDX_ELE
-        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
-        INTEGER, DIMENSION( : ), intent( in ) ::  XCV_NDGLN
         INTEGER, DIMENSION( :,  :, : ), intent( in ) ::  WIC_T_BC
         REAL, DIMENSION( :, :, : ), intent( in ) ::  SUF_T_BC
-        INTEGER, DIMENSION( :, : ), intent( in ) ::  CV_SLOCLIST
-        INTEGER, DIMENSION( :, : ), intent( in ) ::  X_SLOCLIST
         INTEGER, DIMENSION( :, : ), intent( in ) ::  FACE_ELE
-        REAL, DIMENSION( : ), intent( in ) :: CVWEIGHT
-        REAL, DIMENSION( :, : ), intent( in ) :: N, NLX, NLY, NLZ
-        REAL, DIMENSION( :, : ), intent( in ) :: X_N, X_NLX, X_NLY, X_NLZ
-        REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
-        REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
-        REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
-        REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
-
+        logical, intent(in) :: FOR_CVs
         ! Local variables
+        type(multi_dev_shape_funs) :: Devfuns
+        real, dimension(:,:), pointer :: N
+        real, dimension(:,:,:), pointer :: NLX_ALL
+        integer, dimension(:, :), pointer :: N_SLOCLIST
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
-        LOGICAL :: D1, D3, APPLYBC( NPHASE )
-        LOGICAL, PARAMETER :: DCYL = .FALSE.
-        REAL, dimension( CV_NGI ) :: DETWEI, RA
-        REAL, DIMENSION( NDIM, size(NLX,1), CV_NGI):: NX_ALL
-        REAL, DIMENSION( NDIM, size(X_NLX,1),CV_NGI ) :: X_NX_ALL
-        REAL :: VOLUME
-        REAL, DIMENSION( CV_NLOC, CV_NLOC )  :: MASS, INV_MASS
-        REAL, DIMENSION( NDIM, X_SNLOC ) :: XSL( 3, X_SNLOC ), SNORMXN( NDIM, SBCVNGI ), SDETWE( SBCVNGI )
-        INTEGER  :: SLOC2LOC( CV_SNLOC ), X_SLOC2LOC( X_SNLOC ), ILOC_OTHER_SIDE( CV_SNLOC )
-        REAL :: NN, NNX( NDIM ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( NDIM )
+        LOGICAL :: APPLYBC( Mdims%nphase )
+        REAL, DIMENSION( Mdims%cv_nloc, Mdims%cv_nloc )  :: MASS!, INV_MASS
+        REAL :: XSL( 3, Mdims%x_snloc ), SNORMXN( Mdims%ndim, GIdims%sbcvngi ), SDETWE( GIdims%sbcvngi )
+        INTEGER  :: SLOC2LOC( Mdims%cv_snloc ), X_SLOC2LOC( Mdims%x_snloc ), ILOC_OTHER_SIDE( Mdims%cv_snloc )
+        REAL :: NN, NNX( Mdims%ndim ), NORMX( 3 ), SAREA, NRBC, RTBC, VLM_NORX( Mdims%ndim )
         INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
             CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, &
             CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
             X_INOD, X_SILOC, X_ILOC, IDIM
 
-        ewrite(3,*)'in DG_DERIVS'
-
         DTX_ELE = 0.0 ; DTOLDX_ELE = 0.0
-
-        ALLOCATE( MASELE( CV_NLOC, CV_NLOC, TOTELE ) )
-        ALLOCATE( VTX_ELE( NDIM, NPHASE, CV_NLOC, TOTELE ) )
-        ALLOCATE( VTOLDX_ELE( NDIM, NPHASE, CV_NLOC, TOTELE ) )
-
+        ALLOCATE( MASELE( Mdims%cv_nloc, Mdims%cv_nloc, Mdims%totele ) )
+        ALLOCATE( VTX_ELE( Mdims%ndim, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ) )
+        ALLOCATE( VTOLDX_ELE( Mdims%ndim, Mdims%nphase, Mdims%cv_nloc, Mdims%totele ) )
         MASELE = 0.0 ; VTX_ELE = 0.0 ; VTOLDX_ELE = 0.0
+        XSL = 0.
 
-        D1 = ( NDIM == 1 )
-        D3 = ( NDIM == 3 )
-        !DCYL = .FALSE.
-        Loop_Elements1: DO ELE = 1, TOTELE
+        if (FOR_CVs) then
+            N => funs%cvfen; NLX_ALL => funs%CVFENLX_ALL
+            N_SLOCLIST => funs%cv_sloclist
+        else
+            N => funs%ufen; NLX_ALL => funs%UFENLX_ALL
+            N_SLOCLIST => funs%u_sloclist
+        end if
 
-            ! Calculate DETWEI,RA,NX,NY,NZ for element ELE
-            CALL DETNLXR_PLUS_U( ELE, X, Y, Z, X_NDGLN, TOTELE, X_NONODS, &
-                X_NLOC, X_NLOC, CV_NGI, &
-                X_N, X_NLX, X_NLY, X_NLZ, CVWEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-                X_NX_ALL, &
-                CV_NLOC, NLX, NLY, NLZ, NX_ALL)
+        call allocate_multi_dev_shape_funs(NLX_ALL, NLX_ALL, Devfuns)
+        Loop_Elements1: DO ELE = 1, Mdims%totele
+            ! Calculate DETWEI
+            call DETNLXR_PLUS_U(ELE, X_ALL, x_ndgln, funs%cvweight, &
+                   N, NLX_ALL, NLX_ALL, Devfuns)
 
-
-            Loop_CV_ILOC: DO CV_ILOC = 1, CV_NLOC
-
-                CV_NODI = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
-
-                Loop_CV_JLOC: DO CV_JLOC = 1, CV_NLOC
-
-                    CV_NODJ = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_JLOC )
-
-                    NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DETWEI )
-                    NNX = MATMUL( NX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DETWEI )
-
+            Loop_CV_ILOC: DO CV_ILOC = 1, Mdims%cv_nloc
+                CV_NODI = ndgln( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                Loop_CV_JLOC: DO CV_JLOC = 1, Mdims%cv_nloc
+                    CV_NODJ = ndgln( ( ELE - 1 ) * Mdims%cv_nloc + CV_JLOC )
+                    NN  = SUM( N( CV_ILOC, : ) * N(  CV_JLOC, : ) * DevFuns%DETWEI )
+                    NNX = MATMUL( Devfuns%UFENX_ALL( :, CV_JLOC, : ), N( CV_ILOC, : )  * DevFuns%DETWEI )
                     MASELE( CV_ILOC, CV_JLOC, ELE) = MASELE( CV_ILOC, CV_JLOC, ELE ) + NN
-
-                    DO IPHASE = 1, NPHASE
+                    DO IPHASE = 1, Mdims%nphase
                         VTX_ELE( :, IPHASE, CV_ILOC, ELE ) = &
                             VTX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                             + NNX (:) * FEMT( IPHASE, CV_NODJ )
-
                         VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) = &
                             VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                             + NNX (:) * FEMTOLD( IPHASE, CV_NODJ )
                     END DO
-
                 END DO Loop_CV_JLOC
-
             END DO Loop_CV_ILOC
-
         END DO Loop_Elements1
-
-
-        Loop_Elements2: DO ELE = 1, TOTELE
-
-            Between_Elements_And_Boundary: DO IFACE = 1, NFACE
+        Loop_Elements2: DO ELE = 1, Mdims%totele
+            Between_Elements_And_Boundary: DO IFACE = 1, GIdims%nface
                 ELE2 = FACE_ELE( IFACE, ELE )
                 SELE2 = MAX( 0, - ELE2 )
                 ELE2 = MAX( 0, + ELE2 )
-                !ewrite(3,*)'FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE ):',FACE_ELE( 1, ELE ),FACE_ELE( 2, ELE )
-
                 ! The surface nodes on element face IFACE.
-                SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
-                X_SLOC2LOC( : ) = X_SLOCLIST( IFACE, : )
-
+                SLOC2LOC( : ) = N_SLOCLIST( IFACE, : )
+                X_SLOC2LOC( : ) = funs%cv_sloclist( IFACE, : )
                 ! Form approximate surface normal (NORMX,NORMY,NORMZ)
-                CALL DGSIMPLNORM( ELE, X_SLOC2LOC, TOTELE, X_NLOC, X_SNLOC, X_NDGLN, &
-                    X, Y, Z, X_NONODS, NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
-
+                CALL DGSIMPLNORM( ELE, X_SLOC2LOC, Mdims%totele, Mdims%x_nloc, Mdims%x_snloc, x_ndgln, &
+                    X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), Mdims%x_nonods, NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
                 ! Recalculate the normal...
-                DO X_SILOC = 1, X_SNLOC
+                DO X_SILOC = 1, Mdims%x_snloc
                     X_ILOC = X_SLOC2LOC( X_SILOC )
-                    X_INOD = X_NDGLN(( ELE - 1 ) * X_NLOC + X_ILOC )
-                    XSL( 1, X_SILOC ) = X( X_INOD )
-                    XSL( 2, X_SILOC ) = Y( X_INOD )
-                    XSL( 3, X_SILOC ) = Z( X_INOD )
+                    X_INOD = x_ndgln(( ELE - 1 ) * Mdims%x_nloc + X_ILOC )
+                    XSL( 1:Mdims%NDIM, X_SILOC ) = X_ALL(1:Mdims%NDIM, X_INOD )
                 END DO
-
-                CALL DGSDETNXLOC2(X_SNLOC, SBCVNGI, &
+                CALL DGSDETNXLOC2(Mdims%x_snloc, GIdims%sbcvngi, &
                     XSL( 1, : ), XSL( 2, : ), XSL( 3, : ), &
-                    X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, SBWEIGH, SDETWE, SAREA, &
-                    (NDIM==1), (NDIM==3), (NDIM==-2), &
+                    funs%sbcvfen, funs%sbcvfenslx, funs%sbcvfensly, funs%sbcvfeweigh, SDETWE, SAREA, &
+                    (Mdims%ndim==1), (Mdims%ndim==3), (Mdims%ndim==-2), &
                     SNORMXN( 1, : ), SNORMXN( 2, : ), SNORMXN( 3, : ), &
                     NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
-
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
-
-                    DO CV_SILOC = 1, CV_SNLOC
+                    DO CV_SILOC = 1, Mdims%cv_snloc
                         CV_ILOC = SLOC2LOC( CV_SILOC )
-                        CV_INOD = XCV_NDGLN(( ELE - 1 ) * CV_NLOC + CV_ILOC )
-
-                        DO CV_ILOC2 = 1, CV_NLOC
-                            CV_INOD2 = XCV_NDGLN(( ELE2 - 1 ) * CV_NLOC + CV_ILOC2 )
-
+                        CV_INOD = x_ndgln(( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
+                        DO CV_ILOC2 = 1, Mdims%cv_nloc
+                            CV_INOD2 = x_ndgln(( ELE2 - 1 ) * Mdims%cv_nloc + CV_ILOC2 )
                             IF( CV_INOD2 == CV_INOD ) ILOC_OTHER_SIDE( CV_SILOC ) = CV_ILOC2
                         END DO
                     END DO
-
                     APPLYBC = (ELE /= ELE2) .AND. (ELE2 /= 0)
-
                 ELSE
                     APPLYBC = ( WIC_T_BC( 1, :, SELE2 ) == WIC_T_BC_DIRICHLET )
                 END IF
-
-
-
-                DO CV_SILOC = 1, CV_SNLOC
+                DO CV_SILOC = 1, Mdims%cv_snloc
                     CV_ILOC = SLOC2LOC( CV_SILOC )
-                    DO CV_SJLOC = 1, CV_SNLOC
+                    DO CV_SJLOC = 1, Mdims%cv_snloc
                         CV_JLOC = SLOC2LOC( CV_SJLOC )
-                        CV_NODJ = CV_NDGLN( (ELE-1)*CV_NLOC + CV_JLOC )
+                        CV_NODJ = ndgln( (ELE-1)*Mdims%cv_nloc + CV_JLOC )
                         IF ( SELE2 /= 0 ) THEN
                             CV_JLOC2 = CV_JLOC
                             CV_SJLOC2 = CV_SJLOC
                             CV_NODJ2 = CV_NODJ
-                            SUF_CV_SJ2 = CV_SJLOC + CV_SNLOC * ( SELE2 - 1 )
+                            SUF_CV_SJ2 = CV_SJLOC + Mdims%cv_snloc * ( SELE2 - 1 )
                             NRBC = 0.0
                         ELSE
                             CV_JLOC2 = ILOC_OTHER_SIDE( CV_SJLOC )
-                            CV_NODJ2 = CV_NDGLN( (ELE2-1)*CV_NLOC + CV_JLOC2 )
+                            CV_NODJ2 = ndgln( (ELE2-1)*Mdims%cv_nloc + CV_JLOC2 )
                             NRBC = 1.0
                         END IF
-
                         ! Have a surface integral on element boundary...
                         VLM_NORX(:) = MATMUL( SNORMXN( :, : ), &
-                            SDETWE(:) * SBCVFEN( CV_SILOC, : ) * SBCVFEN( CV_SJLOC, : ) )
-
+                            SDETWE(:) * funs%sbcvfen( CV_SILOC, : ) * funs%sbcvfen( CV_SJLOC, : ) )
                         ! add diffusion term...
-                        DO IPHASE = 1, NPHASE
+                        DO IPHASE = 1, Mdims%nphase
                             IF ( APPLYBC( IPHASE ) ) THEN
-
                                 VTX_ELE( :, IPHASE, CV_ILOC, ELE ) = &
                                     VTX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                                     - VLM_NORX(:) * 0.5 * ( FEMT( IPHASE, CV_NODJ ) - FEMT( IPHASE, CV_NODJ2 ) * NRBC )
                                 VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) = &
                                     VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                                     - VLM_NORX(:) * 0.5 * ( FEMTOLD( IPHASE, CV_NODJ ) - FEMTOLD( IPHASE, CV_NODJ2 ) * NRBC )
-
                                 IF ( SELE2 /= 0 ) THEN
                                     IF ( WIC_T_BC(1,  IPHASE, SELE2 ) == WIC_T_BC_DIRICHLET ) THEN
-
-                                        RTBC = SUF_T_BC( 1,IPHASE, CV_SJLOC2+ CV_SNLOC*( SELE2-1) )
-
+                                        RTBC = SUF_T_BC( 1,IPHASE, CV_SJLOC2+ Mdims%cv_snloc*( SELE2-1) )
                                         VTX_ELE( :, IPHASE, CV_ILOC, ELE ) = VTX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                                             + VLM_NORX(:) * 0.5 * RTBC
                                         VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) = VTOLDX_ELE( :, IPHASE, CV_ILOC, ELE ) &
                                             + VLM_NORX(:) * 0.5 * RTBC
-
                                     END IF
                                 END IF
                             END IF
                         END DO
                     END DO
                 END DO
-
             END DO Between_Elements_And_Boundary
-
         END DO Loop_Elements2
-
-
-        Loop_Elements3: DO ELE = 1, TOTELE
-
+        Loop_Elements3: DO ELE = 1, Mdims%totele
             MASS( :, : ) = MASELE( :, :, ELE )
-            INV_MASS=MASS
-            !       CALL MATDMATINV( MASS, INV_MASS, CV_NLOC )
-            CALL INVERT( INV_MASS )
-
-            FORALL ( IDIM = 1:NDIM, IPHASE = 1:NPHASE )
-
-                DTX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, IPHASE, :, ELE ) )
-                DTOLDX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( INV_MASS( :, : ) , VTOLDX_ELE( IDIM, IPHASE, :, ELE ) )
-
-               !DTX_ELE( IDIM, :, IPHASE, ELE ) = MATMUL( INV_MASS( :, : ), VTX_ELE( IDIM, IPHASE, :, ELE ) )
-               !DTOLDX_ELE( IDIM, :, IPHASE, ELE ) = MATMUL( INV_MASS( :, : ) , VTOLDX_ELE( IDIM, IPHASE, :, ELE ) )
+            CALL INVERT( MASS )
+            FORALL ( IDIM = 1:Mdims%ndim, IPHASE = 1:Mdims%nphase )
+                DTX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( MASS( :, : ), VTX_ELE( IDIM, IPHASE, :, ELE ) )
+                DTOLDX_ELE( IDIM, IPHASE, :, ELE ) = MATMUL( MASS( :, : ) , VTOLDX_ELE( IDIM, IPHASE, :, ELE ) )
             END FORALL
-
         END DO Loop_Elements3
-
         DEALLOCATE( MASELE, VTX_ELE, VTOLDX_ELE )
-
-        ewrite(3,*)'about to leave DG_DERIVS'
-
+        call deallocate_multi_dev_shape_funs(Devfuns)
     END SUBROUTINE DG_DERIVS_ALL2
 
 
@@ -7708,7 +6932,7 @@ contains
                     NORMX_ALL = 0
                     MLUM(1:NONODS) = 0.0
                     DO ELE=1,TOTELE! Was loop
-                        call DETNLXR_new( ELE, X_ALL, X_NDGLN, TOTELE, X_NONODS, NLOC, NGI, &
+                        call DETNLXR( ELE, X_ALL, X_NDGLN, NLOC, NGI, &
                             N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, .false., NX_ALL)
                         DO ILOC=1,NLOC! Was loop
                             NODI=NDGLNO((ELE-1)*NLOC+ILOC)
