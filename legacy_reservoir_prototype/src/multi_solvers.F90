@@ -201,7 +201,7 @@ contains
 
 
     subroutine BoundedSolutionCorrections( state, packed_state, &
-        Mdims, CV_GIdims, CV_funs, small_findrm, small_colm, &
+        Mdims, CV_funs, small_findrm, small_colm, &
         for_sat, IDs2CV_ndgln)
         implicit none
         ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
@@ -219,12 +219,12 @@ contains
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
-        type(multi_GI_dimensions), intent(in) :: CV_GIdims
         type(multi_shape_funs), intent(in) :: CV_funs
         integer, dimension( : ), intent( in ) :: small_findrm, small_colm
         logical, optional, intent(in) :: for_sat
         integer, optional, dimension(:) :: IDs2CV_ndgln
         ! local variables...
+        type (multi_dev_shape_funs) :: DevFuns
         type ( tensor_field ), pointer :: field, ufield
         real, dimension( :, :, : ), allocatable :: field_dev_val, field_alt_val, field_min, field_max
         real, dimension( :, : ), allocatable :: scalar_field_dev_max, scalar_field_dev_min
@@ -236,14 +236,9 @@ contains
         real :: max_change, error_changed, max_max_error, scalar_field_dev, mass_off, alt_max, alt_min
         integer :: ele, iloc, jloc
         real :: mm
-        real, dimension( : ), pointer :: detwei
         integer, dimension( : ), pointer ::  x_ndgln, cv_ndgln
-        logical :: d1, d3, dcyl
         type(scalar_field) :: mass_cv_sur_halo
         type( vector_field ), pointer :: x
-        real, dimension( : ), allocatable, target :: detwei2, ra2
-        real, dimension( :, : , :), allocatable, target :: nx_all2
-        real, target :: volume2
         real, dimension(:,:), pointer :: Immobile_fraction
         if (present_and_true(for_sat)) then
             field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -269,21 +264,16 @@ contains
         x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
         x => extract_vector_field( packed_state, "PressureCoordinate" )
-        d1 = ( Mdims%ndim == 1 ) ; d3 = ( Mdims%ndim == 3 ) ; dcyl = .false.
-        allocate( detwei2( CV_GIdims%cv_ngi ), ra2( CV_GIdims%cv_ngi ), nx_all2( Mdims%ndim, Mdims%cv_nloc, CV_GIdims%cv_ngi ) )
         mass_cv = 0.0
+        call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
         do  ele = 1, Mdims%totele
-            call detnlxr( ele, x%val( 1, : ), x%val( 2, : ), x%val( 3, : ), &
-                        x_ndgln, Mdims%totele, Mdims%x_nonods, Mdims%cv_nloc, CV_GIdims%cv_ngi, CV_funs%cvfen, &
-                        CV_funs%cvfenlx_all( 1, :, : ), CV_funs%cvfenlx_all( 2, :, : ), &
-                        CV_funs%cvfenlx_all( 3, :, : ), &
-                        CV_funs%cvweight, detwei2, ra2, volume2, d1, d3, dcyl, &
-                        nx_all2( 1, :, : ), nx_all2( 2, :, : ), nx_all2( 3, :, : ) )
-            detwei => detwei2
+            !Retrieve DevFuns%detwei
+            call DETNLXR(ele, X%val, x_ndgln, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
+
             do iloc = 1, Mdims%cv_nloc
                 inod = cv_ndgln( ( ele - 1 ) * Mdims%cv_nloc + iloc )
                 do jloc = 1, Mdims%cv_nloc
-                    mm = sum( CV_funs%cvn( iloc, : ) * CV_funs%cvn( jloc, : ) * detwei( : ) )
+                    mm = sum( CV_funs%cvn( iloc, : ) * CV_funs%cvn( jloc, : ) * DevFuns%detwei )
                     mass_cv( inod ) = mass_cv( inod ) + mm
                 end do
             end do
@@ -440,8 +430,8 @@ contains
         deallocate( r_min, r_max )
         deallocate( ii_min, ii_max )
         deallocate( mass_cv, mass_cv_sur )
-        deallocate( detwei2, ra2, nx_all2 )
         call deallocate(mass_cv_sur_halo)
+        call deallocate_multi_dev_shape_funs(DevFuns)
         return
     end subroutine BoundedSolutionCorrections
 
