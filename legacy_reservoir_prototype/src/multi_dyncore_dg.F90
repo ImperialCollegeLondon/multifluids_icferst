@@ -126,7 +126,6 @@ contains
            integer :: lcomp, Field_selector, IGOT_T2_loc
            type(vector_field)  :: vtracer
            type(csr_sparsity), pointer :: sparsity
-           real, dimension(:,:), allocatable :: ScalarField_Source
            real, dimension(:,:,:), allocatable :: Velocity_Absorption, T_AbsorB
            integer :: IGOT_THERM_VIS
            real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
@@ -220,11 +219,10 @@ contains
            ! calculate T_ABSORB
            allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
            if (have_option('/boiling')) then
-                   allocate ( Velocity_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
-                              ScalarField_Source( Mdims%nphase, Mdims%cv_nonods ) )
-                   call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-                      ScalarField_Source, velocity_absorption, T_AbsorB )
-                   deallocate ( Velocity_Absorption, ScalarField_Source )
+              allocate ( Velocity_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
+              call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
+                   velocity_absorption, T_AbsorB )
+              deallocate ( Velocity_Absorption )
            end if
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                 !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
@@ -607,7 +605,7 @@ contains
         MCY_RHS, MCY, &
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
-        REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES, ScalarField_Source
+        REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE, U_SOURCE_CV, U_ABSORBIN, temperature_absorption
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
@@ -790,10 +788,9 @@ contains
         ! open the boiling test for two phases-gas and liquid
         if (have_option('/boiling')) then
            allocate( temperature_absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
-           allocate( ScalarField_Source( Mdims%nphase, Mdims%cv_nonods ) )
            call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-              ScalarField_Source, U_ABSORBIN, temperature_absorption )
-           deallocate( temperature_absorption, ScalarField_Source )
+                U_ABSORBIN, temperature_absorption )
+           deallocate( temperature_absorption )
         end if
         allocate( U_ABSORB( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
         U_ABSORB = U_ABSORBIN + MAT_ABSORB
@@ -2131,8 +2128,17 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
         IF( GOT_DIFFUS ) THEN
-            CALL DG_DERIVS_ALL ( Mdims, FE_GIdims, FE_funs, ndgln%u, ndgln%xu, U_ALL, UOLD_ALL, &
-                X_ALL, DUX_ELE_ALL, DUOLDX_ELE_ALL, FACE_ELE, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, FOR_CVs =.false.)
+            CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &
+                DUX_ELE_ALL, DUOLDX_ELE_ALL, &
+                Mdims%ndim, Mdims%nphase, Mdims%ndim, Mdims%u_nonods, Mdims%totele, ndgln%u, &
+                ndgln%xu, Mdims%x_nloc, ndgln%x, &
+                FE_GIdims%cv_ngi, Mdims%u_nloc, FE_funs%cvweight, &
+                FE_funs%ufen, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), &
+                FE_funs%cvfen, FE_funs%cvfenlx_all(1,:,:), FE_funs%cvfenlx_all(2,:,:), FE_funs%cvfenlx_all(3,:,:), &
+                Mdims%x_nonods, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), &
+                FE_GIdims%nface, FACE_ELE, FE_funs%u_sloclist, FE_funs%cv_sloclist, Mdims%stotel, Mdims%u_snloc, Mdims%cv_snloc, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
+                FE_GIdims%sbcvngi, FE_funs%sbufen, FE_funs%sbufenslx, FE_funs%sbufensly, FE_funs%sbcvfeweigh, &
+                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly )
         ENDIF
         ! LES VISCOCITY CALC.
         IF ( GOT_DIFFUS ) THEN

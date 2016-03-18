@@ -1172,17 +1172,6 @@ contains
     subroutine pack_multistate(npres, state, packed_state, &
         multiphase_state, multicomponent_state, pmulti_state)
 
-        !---------------------------------------------------------------------
-        ! Description:
-        ! Extract properties from the state and pack them into the local states
-        ! *note: inserted new properties in packed_state may also need to be
-        !        inserted in multicomponent_state
-        !        (may be changed in the future data structure)
-        !---------------------------------------------------------------------
-
-        !---------------------------------------
-        ! I/O variables
-        !---------------------------------------
         integer, intent(in) :: npres
         type(state_type), dimension(:), intent(inout) :: state
         type(state_type), intent(inout) :: packed_state
@@ -1190,9 +1179,6 @@ contains
             multiphase_state, multicomponent_state
         type(state_type), dimension(:,:), pointer, optional :: pmulti_state
 
-        !---------------------------------------
-        ! local variables
-        !---------------------------------------
         type(state_type), dimension(:,:), pointer :: multi_state
         type(scalar_field), pointer :: pressure, sfield
         type(vector_field), pointer :: velocity, position, vfield
@@ -1207,9 +1193,6 @@ contains
         integer :: i, iphase, icomp, idim, iele, ipres
         integer :: nphase,ncomp,ndim,stat,n_in_pres
 
-        !---------------------------------------
-        ! data packing for coupling with FEMDEM
-        !---------------------------------------
 #ifdef USING_FEMDEM
         if(have_option('/blasting')) then
             sfield=>extract_scalar_field(state(1),"SolidConcentration" )
@@ -1274,23 +1257,17 @@ contains
         end if
 #endif
 
-        !---------------------------------------
-        ! data packing for general use
-        !---------------------------------------
-        ! allocate multiphase or multicomponent states
         ncomp=option_count('/material_phase/is_multiphase_component')
         nphase=size(state)-ncomp
         allocate(multiphase_state(nphase))
         allocate(multicomponent_state(ncomp))
         allocate(multi_state(max(1,ncomp),nphase))
 
-        ! pack coordinate & coordinate mesh
         position=>extract_vector_field(state(1),"Coordinate")
         call insert(packed_state,position,"Coordinate")
         ndim=mesh_dim(position)
         call insert(packed_state,position%mesh,"CoordinateMesh")
 
-        ! pack P0DG
         if(has_scalar_field(state(1),"Porosity")) then
             sfield=>extract_scalar_field(state(1),"Porosity")
             element_mesh=>sfield%mesh
@@ -1318,11 +1295,10 @@ contains
         call insert(packed_state,ten_field,"PackedRockFluidProp")
         call deallocate(ten_field)
 
-        ! pack pressure mesh
         pressure=>extract_scalar_field(state(1),"Pressure")
         call insert(packed_state,pressure%mesh,"PressureMesh")
 
-        ! pack control volume (CV) barycentres
+        ! control volume barycentres
         call allocate(vec_field,ndim,pressure%mesh,"CVBarycentre")
         call zero(vec_field)
         call insert(packed_state,vec_field,"CVBarycentre")
@@ -1331,7 +1307,6 @@ contains
         end do
         call deallocate(vec_field)
 
-        ! pack CV integral
         call allocate(vec_field,1,pressure%mesh,"CVIntegral")
         call zero(vec_field)
         call insert(packed_state,vec_field,"CVIntegral")
@@ -1340,7 +1315,6 @@ contains
         end do
         call deallocate(vec_field)
 
-        ! pack FE pressure
         call insert_sfield(packed_state,"FEPressure",1,npres)
         tfield=>extract_tensor_field(packed_state,"PackedFEPressure")
         tfield%option_path=pressure%option_path
@@ -1352,7 +1326,6 @@ contains
             call insert(multicomponent_state(icomp),p2,"PackedFEPressure")
         end do
 
-        ! pack CV pressure
         call insert_sfield(packed_state,"CVPressure",1,npres)
         p2=>extract_tensor_field(packed_state,"PackedCVPressure")
         do ipres = 1, npres
@@ -1365,43 +1338,41 @@ contains
         tfield=>extract_tensor_field(state(1),"Dummy",stat)
         if(stat==0) call insert(packed_state,tfield,"Dummy")
 
-        ! pack FE density
         call insert_sfield(packed_state,"FEDensity",1,nphase)
         d2=>extract_tensor_field(packed_state,"PackedFEDensity")
         do icomp = 1, ncomp
             call insert(multicomponent_state(icomp),d2,"PackedFEDensity")
         end do
 
-        ! ???
         call insert_sfield(packed_state,"Density",1,nphase)
         call insert_sfield(packed_state,"DensityHeatCapacity",1,nphase)
 
-        ! ???
         call insert_sfield(packed_state,"DRhoDPressure",1,nphase)
         drhodp=>extract_tensor_field(packed_state,"PackedDRhoDPressure")
         do icomp = 1, ncomp
            call insert(multicomponent_state(icomp),drhodp,"PackedDRhoDPressure")
         end do
 
-        ! pack temperature
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call insert_sfield(packed_state,"Temperature",1,nphase,&
                 add_source=.true.,add_absorption=.true.)
             call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
 
-        ! pack volume fraction
         call insert_sfield(packed_state,"PhaseVolumeFraction",1,nphase,&
             add_source=.true.)
         call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
+        if (ncomp>1) then
+           call insert_sfield(packed_state,"PhaseVolumeFractionComponentSource",1,nphase)
+        end if
 
-        ! pack capillary pressure
         if( have_option_for_any_phase( '/multiphase_properties/capillary_pressure', nphase ) ) then
             call allocate(ten_field,pressure%mesh,"PackedCapPressure",dim=[1,nphase])
             call insert(packed_state,ten_field,"PackedCapPressure")
             call deallocate(ten_field)
         end if
 
+<<<<<<< HEAD
         ! pack surface tension terms
         if( have_option_for_any_phase( '/is_multiphase_component/surface_tension', nphase+ncomp ) ) then
             call allocate(ten_field,pressure%mesh,"SurfaceTensionGrad",dim=[ncomp,nphase])
@@ -1413,6 +1384,8 @@ contains
         end if
 
         ! pack continuous velocity mesh
+=======
+>>>>>>> 35676e1098c13f683079ac12a15b7ad39d9056dc
         velocity=>extract_vector_field(state(1),"Velocity")
         call insert(packed_state,velocity%mesh,"VelocityMesh")
         if (.not.has_mesh(state(1),"VelocityMesh_Continuous")) then
@@ -1430,13 +1403,11 @@ contains
             call insert(packed_state,ovmesh,"VelocityMesh_Continuous")
         end if
 
-        ! pack velocity coordinates
         call allocate(u_position,ndim,ovmesh,"VelocityCoordinate")
         call remap_field(position,u_position)
         call insert(packed_state,u_position,"VelocityCoordinate")
         call deallocate(u_position)
 
-        ! pack continuous pressure mesh
         if (.not.has_mesh(state(1),"PressureMesh_Continuous")) then
             nullify(ovmesh)
             allocate(ovmesh)
@@ -1453,13 +1424,11 @@ contains
             call insert(packed_state,ovmesh,"PressureMesh_Continuous")
         end if
 
-        ! pack pressure coordinates
         call allocate(p_position,ndim,ovmesh,"PressureCoordinate")
         call remap_field(position,p_position)
         call insert(packed_state,p_position,"PressureCoordinate")
         call deallocate(p_position)
 
-        ! pack discontinuous pressure mesh
         if (.not.has_mesh(state(1),"PressureMesh_Discontinuous")) then
             nullify(ovmesh)
             allocate(ovmesh)
@@ -1476,13 +1445,11 @@ contains
             call insert(packed_state,ovmesh,"PressureMesh_Discontinuous")
         end if
 
-        ! pack material coordinates
         call allocate(m_position,ndim,ovmesh,"MaterialCoordinate")
         call remap_field(position,m_position)
         call insert(packed_state,m_position,"MaterialCoordinate")
         call deallocate(m_position)
 
-        ! ??
         call insert(packed_state,velocity%mesh,"InternalVelocityMesh")
         call insert_vfield(packed_state,"Velocity",add_source=.true.)
         call insert_vfield(packed_state,"NonlinearVelocity",zerod=.true.)
@@ -1496,7 +1463,6 @@ contains
             call insert_sfield(packed_state,"FEComponentMassFraction",ncomp,nphase)
         end if
 
-        ! pack porosity
         call allocate(porosity,npres,element_mesh,"Porosity")
         do ipres = 1, npres
             call set(porosity,ipres,1.0)
@@ -1508,13 +1474,13 @@ contains
             porosity%val(1,:)=sfield%val
         end if
 
-        ! pack permeability
         ! hack to define a lateral from diamond
         if(npres>1) then
             vfield=>extract_vector_field(packed_state,"Porosity")
             sfield=>extract_scalar_field(state(1),"Pipe1")
             vfield%val(2,:)=sfield%val
         end if
+
         if(has_scalar_field(state(1),"Permeability")) then
             call allocate(permeability,element_mesh,"Permeability",&
                 dim=[mesh_dim(position),mesh_dim(position)])
@@ -1542,7 +1508,7 @@ contains
                 do iele=1,element_count(tfield)
                     Permeability%val(:,:,iele)=tfield%val(:,:,1)
                 end do
-            else!python
+            else ! python
                 do iele=1,element_count(tfield)
                     element_nodes=>ele_nodes(tfield,iele)
                     Permeability%val(:,:,iele)=tfield%val(:,:,element_nodes(1))
@@ -1558,7 +1524,6 @@ contains
             call deallocate(permeability)
         end if
 
-        ! pack for multi_state
         has_density=has_scalar_field(state(1),"Density")
         has_phase_volume_fraction=has_scalar_field(state(1),"PhaseVolumeFraction")
         iphase=1; icomp=1
