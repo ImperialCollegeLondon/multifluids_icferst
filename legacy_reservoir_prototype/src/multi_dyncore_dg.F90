@@ -57,6 +57,7 @@ module multiphase_1D_engine
     use multi_data_types
     use Compositional_Terms
     use multi_pipes
+    use multi_surface_tension
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY
@@ -125,7 +126,6 @@ contains
            integer :: lcomp, Field_selector, IGOT_T2_loc
            type(vector_field)  :: vtracer
            type(csr_sparsity), pointer :: sparsity
-           real, dimension(:,:), allocatable :: ScalarField_Source
            real, dimension(:,:,:), allocatable :: Velocity_Absorption, T_AbsorB
            integer :: IGOT_THERM_VIS
            real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
@@ -219,11 +219,10 @@ contains
            ! calculate T_ABSORB
            allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
            if (have_option('/boiling')) then
-                   allocate ( Velocity_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
-                              ScalarField_Source( Mdims%nphase, Mdims%cv_nonods ) )
-                   call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-                      ScalarField_Source, velocity_absorption, T_AbsorB )
-                   deallocate ( Velocity_Absorption, ScalarField_Source )
+              allocate ( Velocity_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
+              call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
+                   velocity_absorption, T_AbsorB )
+              deallocate ( Velocity_Absorption )
            end if
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                 !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
@@ -579,7 +578,7 @@ contains
         type (multi_matrices), intent(inout) :: Mmat
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
-        INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU, NLENMCY
+        INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY
         INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION(  :, :, :  ), intent( inout ) :: MAT_ABSORB
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
@@ -590,7 +589,8 @@ contains
         REAL, DIMENSION(  :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-        REAL, DIMENSION( :, :, :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
+        INTEGER, intent( inout ) :: IPLIKE_GRAD_SOU
+        REAL, DIMENSION( :, :, :  ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         ! Local Variables
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
@@ -607,7 +607,7 @@ contains
         MCY_RHS, MCY, &
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
-        REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES, ScalarField_Source
+        REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
         REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE, U_SOURCE_CV, U_ABSORBIN, temperature_absorption
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
@@ -787,10 +787,9 @@ contains
         ! open the boiling test for two phases-gas and liquid
         if (have_option('/boiling')) then
            allocate( temperature_absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
-           allocate( ScalarField_Source( Mdims%nphase, Mdims%cv_nonods ) )
            call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-              ScalarField_Source, U_ABSORBIN, temperature_absorption )
-           deallocate( temperature_absorption, ScalarField_Source )
+                U_ABSORBIN, temperature_absorption )
+           deallocate( temperature_absorption )
         end if
         allocate( U_ABSORB( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
         U_ABSORB = U_ABSORBIN + MAT_ABSORB
@@ -845,6 +844,22 @@ contains
             call calculate_capillary_pressure(packed_state, .false., &!sprint_to_do; shouldn't this flag change after the first non-linear iteration?
                 ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
         end if
+
+        ! calculate surface tension
+        !!$ extended to surface tension -like term.
+        CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
+            PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
+            Mspars%ACV%ncol, Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid, &
+            Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
+            Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
+            Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, Mdims%stotel, &
+            Mdisopt%cv_ele_type, Mdisopt%cv_sele_type, Mdisopt%u_ele_type, &
+            Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, Mdims%cv_snloc, Mdims%u_snloc, &
+            ndgln%cv, ndgln%suf_cv, ndgln%x, ndgln%u, ndgln%suf_u, &
+            Mdims%mat_nloc, ndgln%mat, Mdims%mat_nonods,  &
+            Mdims%ndim,  &
+            Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
+            Mdims%xu_nloc, ndgln%xu, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol)
 
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &

@@ -131,6 +131,7 @@ contains
      ! Initialise...
      IPLIKE_GRAD_SOU = 0
      PLIKE_GRAD_SOU_COEF = 0.0
+     PLIKE_GRAD_SOU_GRAD = 0.0
 
 
      do icomp = 1, ncomp

@@ -528,67 +528,61 @@ contains
 
 
     SUBROUTINE CAL_COMP_SUM2ONE_SOU( packed_state, CV_NONODS, NPHASE, NCOMP2, DT, ITS, NITS, MEAN_PORE_CV )
-        ! make sure the composition sums to 1.0
-        implicit none
-        type( state_type ) :: packed_state
-        integer, intent( in ) :: cv_nonods, nphase, ncomp2, its, nits
-        real, intent( in ) :: dt
-        !      real, dimension( :, : ), intent( inout ) :: V_SOURCE_COMP
-        real, dimension( :, : ), intent( in ) :: MEAN_PORE_CV
-        !      real, dimension( : ), intent( in ) :: SATURA
-        !      real, dimension( : ), intent( in ) :: COMP, COMPOLD
+      ! make sure the composition sums to 1.0
+      implicit none
+      type( state_type ) :: packed_state
+      integer, intent( in ) :: cv_nonods, nphase, ncomp2, its, nits
+      real, intent( in ) :: dt
+      !      real, dimension( :, : ), intent( inout ) :: V_SOURCE_COMP
+      real, dimension( :, : ), intent( in ) :: MEAN_PORE_CV
+      !      real, dimension( : ), intent( in ) :: SATURA
+      !      real, dimension( : ), intent( in ) :: COMP, COMPOLD
 
-        ! the relaxing (sum2one_relax) is to help convergence.
-        ! =1 is full adjustment to make sure we have sum to 1.
-        ! =0 is no adjustment.
-        real :: sum2one_relax, comp_sum
-        integer :: iphase, cv_nodi, icomp
-        logical :: ensure_positive
-        !Working pointer
-        real, dimension(:,:), pointer ::satura
-        type( tensor_field ), pointer :: MFC_s, tracer_source
+      ! the relaxing (sum2one_relax) is to help convergence.
+      ! =1 is full adjustment to make sure we have sum to 1.
+      ! =0 is no adjustment.
+      real :: sum2one_relax, comp_sum
+      integer :: iphase, cv_nodi, icomp
+      logical :: ensure_positive, use_comp_sum2one_sou
+      !Working pointer
+      real, dimension(:,:), pointer ::satura
+      type( tensor_field ), pointer :: MFC_s, tracer_source
 
-        call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
-        MFC_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedComponentMassFraction" )
-        tracer_source => extract_tensor_field(packed_state, "PackedPhaseVolumeFractionSource")
+      call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
+      MFC_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedComponentMassFraction" )
+      tracer_source => extract_tensor_field(packed_state, "PackedPhaseVolumeFractionComponentSource")
 
-        if( have_option( '/material_phase[' // int2str( nphase ) // &
-            ']/is_multiphase_component/Comp_Sum2One/Relaxation_Coefficient' ) ) then
-            call get_option( '/material_phase[' // int2str( nphase ) // &
-                ']/is_multiphase_component/Comp_Sum2One/Relaxation_Coefficient', &
-                sum2one_relax )
+      if( have_option( '/material_phase[' // int2str( nphase ) // &
+           ']/is_multiphase_component/Comp_Sum2One/Relaxation_Coefficient' ) ) then
+         call get_option( '/material_phase[' // int2str( nphase ) // &
+              ']/is_multiphase_component/Comp_Sum2One/Relaxation_Coefficient', &
+              sum2one_relax )
 
-            ensure_positive = have_option( '/material_phase[' // int2str( nphase ) // &
-                ']/is_multiphase_component/Comp_Sum2One/Ensure_Positive' )
-        else
-            FLAbort( 'Please define the relaxation coefficient for components mass conservation constraint.' )
-        end if
+         ensure_positive = have_option( '/material_phase[' // int2str( nphase ) // &
+              ']/is_multiphase_component/Comp_Sum2One/Ensure_Positive' )
+      else
+         FLAbort( 'Please define the relaxation coefficient for components mass conservation constraint.' )
+      end if
 
-        ewrite(3,*) 'sum2one_relax, ensure_positive', sum2one_relax, ensure_positive
+      ewrite(3,*) 'sum2one_relax, ensure_positive', sum2one_relax, ensure_positive
 
-        DO IPHASE = 1, NPHASE
-            DO CV_NODI = 1, CV_NONODS
+      DO IPHASE = 1, NPHASE
+         DO CV_NODI = 1, CV_NONODS
 
+            COMP_SUM = SUM (MFC_s % val (:, IPHASE, CV_NODI) )
 
-                COMP_SUM = SUM (MFC_s % val (:, IPHASE, CV_NODI) )
-                !ewrite(3,*)'IPHASE,CV_NODI,S,COMP_SUM:',IPHASE,CV_NODI,SATURA( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ),COMP_SUM
+            IF ( ENSURE_POSITIVE ) THEN
+               tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) &
+                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
+            ELSE
+               tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) &
+                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
+            END IF
 
-                IF ( ENSURE_POSITIVE ) THEN
-                    !               V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) &
-                    !                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
-                    tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) &
-                        - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
-                ELSE
-                    !               V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) = V_SOURCE_COMP( CV_NODI + ( IPHASE - 1 ) * CV_NONODS ) &
-                    !                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
-                    tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) &
-                        - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
-                END IF
+         END DO
+      END DO
 
-            END DO
-        END DO
-
-        RETURN
+      RETURN
     END SUBROUTINE CAL_COMP_SUM2ONE_SOU
 
 
