@@ -74,7 +74,6 @@ module multiphase_time_loop
     use multi_data_types
     use vtk_interfaces
     use multi_interpolation
-    use multi_surface_tension
 #ifdef HAVE_ZOLTAN
   use zoltan
 #endif
@@ -624,24 +623,7 @@ end if
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
                 Conditional_ForceBalanceEquation: if ( solve_force_balance ) then
                     call set_nu_to_u( packed_state )
-                    !!$ Diffusion-like term -- here used as part of the capillary pressure for porous media. It can also be
-                    !!$ extended to surface tension -like term.
-                    iplike_grad_sou = 0
-                    plike_grad_sou_grad = 0
-                    CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
-                        PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-                        Mspars%ACV%ncol, Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid, &
-                        Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
-                        Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
-                        Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, Mdims%stotel, &
-                        Mdisopt%cv_ele_type, Mdisopt%cv_sele_type, Mdisopt%u_ele_type, &
-                        Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, Mdims%cv_snloc, Mdims%u_snloc, &
-                        ndgln%cv, ndgln%suf_cv, ndgln%x, ndgln%u, ndgln%suf_u, &
-                        Mdims%mat_nloc, ndgln%mat, Mdims%mat_nonods,  &
-                        Mdims%ndim,  &
-                        Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
-                        Mdims%xu_nloc, ndgln%xu, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol)
-
+                    
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &

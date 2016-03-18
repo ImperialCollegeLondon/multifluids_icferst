@@ -57,6 +57,7 @@ module multiphase_1D_engine
     use multi_data_types
     use Compositional_Terms
     use multi_pipes
+    use multi_surface_tension
     implicit none
 
     private :: CV_ASSEMB_FORCE_CTY, ASSEMB_FORCE_CTY
@@ -579,7 +580,7 @@ contains
         type (multi_matrices), intent(inout) :: Mmat
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
-        INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU, NLENMCY
+        INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY
         INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION(  :, :, :  ), intent( inout ) :: MAT_ABSORB
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
@@ -590,7 +591,8 @@ contains
         REAL, DIMENSION(  :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-        REAL, DIMENSION( :, :, :  ), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
+        INTEGER, intent( inout ) :: IPLIKE_GRAD_SOU
+        REAL, DIMENSION( :, :, :  ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         ! Local Variables
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
@@ -845,6 +847,22 @@ contains
             call calculate_capillary_pressure(packed_state, .false., &!sprint_to_do; shouldn't this flag change after the first non-linear iteration?
                 ndgln%cv, ids_ndgln, Mdims%totele, Mdims%cv_nloc)
         end if
+
+        ! calculate surface tension
+        !!$ extended to surface tension -like term.
+        CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
+            PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
+            Mspars%ACV%ncol, Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid, &
+            Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
+            Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
+            Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, Mdims%stotel, &
+            Mdisopt%cv_ele_type, Mdisopt%cv_sele_type, Mdisopt%u_ele_type, &
+            Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, Mdims%cv_snloc, Mdims%u_snloc, &
+            ndgln%cv, ndgln%suf_cv, ndgln%x, ndgln%u, ndgln%suf_u, &
+            Mdims%mat_nloc, ndgln%mat, Mdims%mat_nonods,  &
+            Mdims%ndim,  &
+            Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
+            Mdims%xu_nloc, ndgln%xu, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol)
 
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &

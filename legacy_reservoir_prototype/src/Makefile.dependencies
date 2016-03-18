@@ -65,8 +65,8 @@ Multiphase_TimeLoop.o ../include/multiphase_time_loop.mod: \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
    ../include/cv_advection.mod ../include/diagnostic_fields_new_multiphase.mod \
    ../include/multi_data_types.mod ../include/multi_interpolation.mod \
-   ../include/multi_surface_tension.mod ../include/multiphase_1d_engine.mod \
-   ../include/multiphase_eos.mod ../include/multiphase_fractures.mod \
+   ../include/multiphase_1d_engine.mod ../include/multiphase_eos.mod \
+   ../include/multiphase_fractures.mod \
    ../include/shape_functions_linear_quadratic.mod ../include/spact.mod
 
 ../include/cv_advection.mod: cv-adv-dif.o
@@ -122,7 +122,8 @@ multi_dyncore_dg.o ../include/multiphase_1d_engine.mod: multi_dyncore_dg.F90 \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
    ../include/cv_advection.mod ../include/matrix_operations.mod \
    ../include/multi_data_types.mod ../include/multi_pipes.mod \
-   ../include/multiphase_eos.mod ../include/shape_functions_ndim.mod \
+   ../include/multi_surface_tension.mod ../include/multiphase_eos.mod \
+   ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod \
    ../include/spact.mod
 
