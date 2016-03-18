@@ -566,7 +566,7 @@ contains
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IDs_ndgln )
+        IDs_ndgln )
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -591,8 +591,6 @@ contains
         REAL, DIMENSION(  :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
-        INTEGER, intent( inout ) :: IPLIKE_GRAD_SOU
-        REAL, DIMENSION( :, :, :  ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         ! Local Variables
         LOGICAL, PARAMETER :: PIPES_1D = .TRUE. ! Switch on 1D pipe modelling
         LOGICAL, PARAMETER :: GLOBAL_SOLVE = .FALSE.
@@ -645,6 +643,9 @@ contains
         integer :: IGOT_THERM_VIS
         real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
         real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
+        !!$ Variables used in the diffusion-like term: capilarity and surface tension:
+        type( tensor_field ), pointer :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
+        INTEGER :: IPLIKE_GRAD_SOU
         ! if q scheme allocate a field in state and use pointers..
         IGOT_THERM_VIS=0
         ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
@@ -850,19 +851,24 @@ contains
 
         ! calculate surface tension
         !!$ extended to surface tension -like term.
-        CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
-            PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-            Mspars%ACV%ncol, Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid, &
-            Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
-            Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
-            Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, Mdims%stotel, &
-            Mdisopt%cv_ele_type, Mdisopt%cv_sele_type, Mdisopt%u_ele_type, &
-            Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, Mdims%cv_snloc, Mdims%u_snloc, &
-            ndgln%cv, ndgln%suf_cv, ndgln%x, ndgln%u, ndgln%suf_u, &
-            Mdims%mat_nloc, ndgln%mat, Mdims%mat_nonods,  &
-            Mdims%ndim,  &
-            Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
-            Mdims%xu_nloc, ndgln%xu, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol)
+        IPLIKE_GRAD_SOU = 0
+        if( have_option_for_any_phase( '/is_multiphase_component/surface_tension', Mdims%nphase+Mdims%ncomp ) ) then
+            PLIKE_GRAD_SOU_GRAD => EXTRACT_TENSOR_FIELD( PACKED_STATE, "SurfaceTensionGrad" )
+            PLIKE_GRAD_SOU_COEF => EXTRACT_TENSOR_FIELD( PACKED_STATE, "SurfaceTensionCoef" )
+            CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, Mdims%nphase, Mdims%ncomp, &
+                PLIKE_GRAD_SOU_COEF%val, PLIKE_GRAD_SOU_GRAD%val, IPLIKE_GRAD_SOU, &
+                Mspars%ACV%ncol, Mspars%ACV%fin, Mspars%ACV%col, Mspars%ACV%mid, &
+                Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid, &
+                Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
+                Mdims%cv_nonods, Mdims%u_nonods, Mdims%x_nonods, Mdims%totele, Mdims%stotel, &
+                Mdisopt%cv_ele_type, Mdisopt%cv_sele_type, Mdisopt%u_ele_type, &
+                Mdims%cv_nloc, Mdims%u_nloc, Mdims%x_nloc, Mdims%cv_snloc, Mdims%u_snloc, &
+                ndgln%cv, ndgln%suf_cv, ndgln%x, ndgln%u, ndgln%suf_u, &
+                Mdims%mat_nloc, ndgln%mat, Mdims%mat_nonods,  &
+                Mdims%ndim,  &
+                Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid, &
+                Mdims%xu_nloc, ndgln%xu, Mspars%ELE%fin, Mspars%ELE%col, Mspars%ELE%ncol)
+        end if
 
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
@@ -882,7 +888,7 @@ contains
             IGOT_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, &
-            IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD,&
+            IPLIKE_GRAD_SOU,&
             symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
 
 
@@ -1189,7 +1195,7 @@ END IF
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
-        IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD,&
+        IPLIKE_GRAD_SOU, &
         symmetric_P, boussinesq, IDs_ndgln , RECALC_C_CV)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
@@ -1237,7 +1243,6 @@ END IF
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-        REAL, DIMENSION( :, :, :), intent( in ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         logical, intent(in) :: RECALC_C_CV
         ! Local variables
         REAL, PARAMETER :: v_beta = 1.0
@@ -1280,7 +1285,7 @@ END IF
             DT, &
             JUST_BL_DIAG_MAT, &
             UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, DENOLD_ALL, RETRIEVE_SOLID_CTY, &
-            IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
+            IPLIKE_GRAD_SOU, &
             P, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, SYMMETRIC_P=symmetric_P)
         ! scale the momentum equations by the volume fraction / saturation for the matrix and rhs
         IF ( GLOBAL_SOLVE ) THEN
@@ -1408,7 +1413,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         UDEN, UDENOLD, DERIV, &
         DT, JUST_BL_DIAG_MAT,  &
         UDIFFUSION, UDIFFUSION_VOL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, DENOLD_ALL, RETRIEVE_SOLID_CTY, &
-        IPLIKE_GRAD_SOU, PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
+        IPLIKE_GRAD_SOU, &
         P,&
         got_free_surf, mass_suf, symmetric_P )
         implicit none
@@ -1437,7 +1442,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION( :, :, :, : ), intent( inout ) :: THERM_U_DIFFUSION
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
-        REAL, DIMENSION( :, :, : ), intent( in) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         REAL, DIMENSION( :, :, : ), intent( in ) :: P
         REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL, DENOLD_ALL
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, symmetric_P
@@ -1661,6 +1665,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         type(tensor_field) :: velocity_BCs, velocity_BCs_visc, velocity_BCs_adv, velocity_BCs_robin2
         type(tensor_field) :: momentum_BCs
         INTEGER, DIMENSION( 4 ), PARAMETER :: ELEMENT_CORNERS=(/1,3,6,10/)
+        !!$ Variables used in the diffusion-like term: capilarity and surface tension:
+        type( tensor_field ), pointer :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         ! GRAVTY is used in the free surface method only...
         REAL :: GRAVTY
         REAL :: MM_GRAVTY
@@ -2174,6 +2180,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             allocate( vol_s_min_gi( FE_GIdims%cv_ngi ) )
             allocate( cv_dengi( Mdims%nphase, FE_GIdims%cv_ngi ) )
         endif
+        ! surface tension terms
+        IF ( IPLIKE_GRAD_SOU /= 0) THEN
+            PLIKE_GRAD_SOU_GRAD => EXTRACT_TENSOR_FIELD( PACKED_STATE, "SurfaceTensionGrad" )
+            PLIKE_GRAD_SOU_COEF => EXTRACT_TENSOR_FIELD( PACKED_STATE, "SurfaceTensionCoef" )
+        END IF
         Loop_Elements: DO ELE = 1, Mdims%totele ! VOLUME integral
             ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
              call DETNLXR_PLUS_U(ELE, X_ALL, ndgln%x, FE_funs%cvweight, &
@@ -2244,8 +2255,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ENDIF
                 DO IPHASE = 1, Mdims%nphase
                     IF ( IPLIKE_GRAD_SOU /= 0) THEN
-                        LOC_PLIKE_GRAD_SOU_COEF( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_COEF( :, IPHASE, CV_INOD )
-                        LOC_PLIKE_GRAD_SOU_GRAD( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_GRAD( :, IPHASE, CV_INOD )
+
+                        LOC_PLIKE_GRAD_SOU_COEF( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_COEF%val( :, IPHASE, CV_INOD )
+                        LOC_PLIKE_GRAD_SOU_GRAD( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_GRAD%val( :, IPHASE, CV_INOD )
                     END IF
                     DO IDIM = 1, Mdims%ndim
                         LOC_U_SOURCE_CV( IDIM, IPHASE, CV_ILOC ) = U_SOURCE_CV( IDIM, IPHASE, CV_INOD )
