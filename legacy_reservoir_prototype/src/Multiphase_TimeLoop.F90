@@ -248,7 +248,7 @@ contains
             suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
             mass_ele( Mdims%totele ), &
             !!$
-            Material_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
+            Material_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
             ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) & ! fix me..move in intenerg
             )
         !!$
@@ -447,8 +447,8 @@ contains
                 ewrite(2,*) '  NEW ITS', its
                 ! open the boiling test for two phases-gas and liquid
                 if (have_option('/boiling') ) then
-                   call set_nu_to_u( packed_state )
-                   allocate ( Velocity_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
+                   call set_nu_to_u( packed_state )!sprint_to_do, this seems odd, the outputs of boiling are deallocated instantly
+                   allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
                               Temperature_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
                    call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
                         velocity_absorption, temperature_absorption )
@@ -1293,7 +1293,7 @@ end if
                     suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
                     mass_ele( Mdims%totele ), &
                     !!$
-                    Material_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
+                    Material_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
                     ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
                 !!$
                 Component_Absorption=0.

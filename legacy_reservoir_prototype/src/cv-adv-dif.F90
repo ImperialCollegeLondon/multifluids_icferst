@@ -107,7 +107,7 @@ contains
         CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, SECOND_THETA, CV_BETA, &
         SUF_SIG_DIAGTEN_BC, &
         DERIV, CV_P, &
-        SOURCT, ABSORBT_ALL, VOLFRA_PORE, &
+        SOURCT, ABSORBT_ALL, VOLFRA_PORE, &!sprint_to_do ABSORBT_ALL is always zero???
         GETCV_DISC, GETCT, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &

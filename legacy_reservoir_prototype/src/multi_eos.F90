@@ -830,11 +830,11 @@ contains
 
         material_absorption = 0.0
 
-        allocate( material_absorption2( mat_nonods, nphase * ndim, nphase * ndim ), satura2( N_IN_PRES, size(SATURA,2) ) )
+        allocate( material_absorption2( nphase * ndim, nphase * ndim, mat_nonods ), satura2( N_IN_PRES, size(SATURA,2) ) )
         material_absorption2 = 0. ; satura2 = 0.
 
         CALL calculate_absorption2( packed_state, CV_NONODS, N_IN_PRES, NDIM, SATURA(1:N_IN_PRES,:), TOTELE, CV_NLOC, MAT_NLOC, &
-            CV_NDGLN, MAT_NDGLN, material_absorption(:,1:N_IN_PRES*NDIM,1:N_IN_PRES*NDIM), PERM%val, visc_phases, IDs_ndgln)
+            CV_NDGLN, MAT_NDGLN, material_absorption(1:N_IN_PRES*NDIM,1:N_IN_PRES*NDIM,:), PERM%val, visc_phases, IDs_ndgln)
 
         !Introduce perturbation, positive for the increasing and negative for decreasing phase
         !Make sure that the perturbation is between bounds
@@ -865,9 +865,7 @@ contains
                     LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
                     LOC2 = (1-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
 
-                    !material_absorption( :, LOC, LOC ) = 1000.0
-                    material_absorption( :, LOC, LOC ) = Spipe%val
-                   !material_absorption( :, LOC, LOC ) = material_absorption( :, LOC2, LOC2 )
+                    material_absorption( LOC, LOC, : ) = Spipe%val
                 end do
             end do
         end do
@@ -881,15 +879,15 @@ contains
                         DO IDIM = 1, NDIM
 
                             opt_vel_upwind_coefs_new(IDIM, JDIM, IPHASE, IMAT) = &
-                                material_absorption( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )
+                                material_absorption( IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ,IMAT)
 
                             if ( iphase <= n_in_pres ) then
 
                                 ! This is the gradient
                                 ! Assume d\sigma / dS = 0.0 for the pipes for now
                                 opt_vel_upwind_grad_new(IDIM, JDIM, IPHASE, IMAT) = &
-                                    (material_absorption2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
-                                    material_absorption( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )) &
+                                    (material_absorption2( IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM , IMAT) -&
+                                    material_absorption( IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ,IMAT)) &
                                     / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
 
                             end if
@@ -936,7 +934,7 @@ contains
                 do id_reg = 1, size(perm,3)
                     inv_perm( :, :, id_reg)=inverse(perm( :, :, id_reg))
                 end do
-                material_absorption = 0.0
+!                material_absorption = 0.0
                 Loop_NPHASE: DO IPHASE = 1, NPHASE
 
                     Loop_ELE: DO ELE = 1, TOTELE
@@ -957,11 +955,11 @@ contains
                                     IPHA_IDIM = ( IPHASE - 1 ) * NDIM + IDIM
                                     JPHA_JDIM = ( IPHASE - 1 ) * NDIM + JDIM
                                     if (is_porous_media) then
-                                        call get_relperm(nphase, iphase, material_absorption( MAT_NOD, IPHA_IDIM, JPHA_JDIM ),&
+                                        call get_relperm(nphase, iphase, material_absorption( IPHA_IDIM, JPHA_JDIM, MAT_NOD ),&
                                                     SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, ELE),&
                                                     Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                     else
-                                        material_absorption( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = 0.
+                                        material_absorption( IPHA_IDIM, JPHA_JDIM, MAT_NOD) = 0.
                                     end if
                                 END DO Loop_DimensionsJ
 
@@ -1327,7 +1325,7 @@ contains
                         end if
                         do iloc = 1, Mdims%cv_nloc
                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
-                           momentum_diffusion( mat_nod, :, :, iphase ) = momentum_diffusion( mat_nod, :, :, iphase ) + mu_tmp( :, :, iloc )
+                           momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion(  :, :, iphase, mat_nod ) + mu_tmp( :, :, iloc )
                            t_field%val( :, :, mat_nod ) = t_field%val( :, :, mat_nod ) + mu_tmp( :, :, iloc )
                         end do
                      end do
@@ -1350,7 +1348,7 @@ contains
                      end if
                      do iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
-                        momentum_diffusion( mat_nod, :, :, iphase ) = mu_tmp( :, :, iloc )
+                        momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                         t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
                      end do
                   end do
@@ -1494,7 +1492,7 @@ contains
                                 if ( mat_perm_bc_dg ) then
                                     ! if mat_perm_bc_dg use the method that is used for DG between the elements.
                                     sigma_in=0.0
-                                    sigma_in = material_absorption( mat_nod, s : e, s : e )
+                                    sigma_in = material_absorption( s : e, s : e, mat_nod )
                                     mat = sigma_out  +  matmul(  sigma_in,  matmul( inverse( sigma_out ), sigma_in ) )
                                     mat_inv = matmul( inverse( sigma_in+sigma_out ), mat )
                                     suf_sig_diagten_bc( cv_snodi_ipha, 1 : ndim ) = (/ (mat_inv(i, i), i = 1, ndim) /)
@@ -1509,8 +1507,8 @@ contains
                                     suf_sig_diagten_bc( cv_snodi_ipha, 1 : ndim ) = 1.
 
                                     if ( idone( mat_nod+(iphase-1)*mat_nonods ) == 0 ) then
-                                        material_absorption( mat_nod, s : e, s : e  ) &
-                                            = matmul( mat, material_absorption( mat_nod, s : e, s : e ) )
+                                        material_absorption( s : e, s : e, mat_nod  ) &
+                                            = matmul( mat, material_absorption( s : e, s : e, mat_nod ) )
                                         idone( mat_nod+(iphase-1)*mat_nonods ) = 1
                                     end if
                                 end if
@@ -1532,7 +1530,7 @@ contains
         return
     end subroutine calculate_SUF_SIG_DIAGTEN_BC
 
-
+    !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
     subroutine update_velocity_absorption( states, ndim, nphase, mat_nonods,velocity_absorption )
 
         implicit none
@@ -1556,12 +1554,12 @@ contains
             if ( have_absorption ) then
                 absorption => extract_vector_field( states( iphase ), 'VelocityAbsorption' )
                 do idim = 1, ndim
-                    velocity_absorption( :, idim + (iphase-1)*ndim, idim + (iphase-1)*ndim ) =  &
+                    velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) =  &
                         absorption % val( idim, : )
                 end do
             else
                 do idim = 1, ndim
-                    velocity_absorption( :, idim + (iphase-1)*ndim, idim + (iphase-1)*ndim ) = 0.0
+                    velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) = 0.0
                 end do
             end if
         end do
@@ -1569,14 +1567,14 @@ contains
         return
     end subroutine update_velocity_absorption
 
-
-    subroutine update_velocity_absorption_coriolis( states, ndim, nphase, sigma )
+    !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
+    subroutine update_velocity_absorption_coriolis( states, ndim, nphase, velocity_absorption )
 
       implicit none
 
       integer, intent( in ) :: ndim, nphase
       type( state_type ), dimension( : ), intent( in ) :: states
-      real, dimension( :, :, : ), intent( inout ) :: sigma
+      real, dimension( :, :, : ), intent( inout ) :: velocity_absorption
 
       type( scalar_field ), pointer :: f
       integer :: iphase, stat, idx1, idx2
@@ -1585,8 +1583,8 @@ contains
          f => extract_scalar_field( states( iphase ), 'f', stat )
          if ( stat == 0 ) then
             idx1 = 1 + (iphase-1)*ndim ;  idx2 = 2 + (iphase-1)*ndim
-            sigma( :, idx1, idx2 ) = sigma( :, idx1, idx2 ) - f % val
-            sigma( :, idx2, idx1 ) = sigma( :, idx2, idx1 ) + f % val
+            velocity_absorption( idx1, idx2, : ) = velocity_absorption(idx1, idx2, : ) - f % val
+            velocity_absorption( idx2, idx1, : ) = velocity_absorption(idx2, idx1, : ) + f % val
          end if
       end do
 
@@ -1673,41 +1671,41 @@ contains
 
         iphase=1 ; jphase=1
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = S_lg_l + S_ls_l
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = S_lg_l + S_ls_l
         end do
         iphase=1 ; jphase=2
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_lg_l
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_lg_l
         end do
         iphase=1 ; jphase=3
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_ls_l
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_ls_l
         end do
 
         iphase=2 ; jphase=1
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_lg_g
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_lg_g
         end do
         iphase=2 ; jphase=2
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = S_lg_g + S_gs_g
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = S_lg_g + S_gs_g
         end do
         iphase=2 ; jphase=3
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_gs_g
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_gs_g
         end do
 
         iphase=3 ; jphase=1
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = 0.0
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = 0.0
         end do
         iphase=3 ; jphase=2
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = 0.0
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = 0.0
         end do
         iphase=3 ; jphase=3
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = 1.0e+15
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = 1.0e+15
         end do
 
 
