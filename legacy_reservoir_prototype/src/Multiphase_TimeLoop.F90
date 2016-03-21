@@ -648,14 +648,11 @@ end if
                         dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        igot_theta_flux, &
+                        igot_theta_flux, mass_ele,Material_Absorption,&
+                        its, IDs_ndgln, IDs2CV_ndgln, Courant_number,&
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
-                        mass_ele_transp = mass_ele,&
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
-                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j,&
-                        Material_Absorption=Material_Absorption,&
-                        nonlinear_iteration = its, IDs_ndgln = IDs_ndgln, IDs2CV_ndgln = IDs2CV_ndgln, &
-                        Courant_number = Courant_number)
+                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j)
                 end if Conditional_PhaseVolumeFraction
 
 

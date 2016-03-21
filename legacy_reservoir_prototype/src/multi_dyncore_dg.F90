@@ -285,12 +285,11 @@ contains
          DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, V_ABSORB, VOLFRA_PORE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-         igot_theta_flux, &
-         option_path, &
-         mass_ele_transp,&
-         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
+         igot_theta_flux, mass_ele_transp,&
          Material_Absorption,nonlinear_iteration, IDs_ndgln,&
-         IDs2CV_ndgln, Courant_number)
+         IDs2CV_ndgln, Courant_number,&
+         option_path,&
+         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state
              type( state_type ) :: packed_state
@@ -304,18 +303,18 @@ contains
              INTEGER, intent( in ) :: igot_theta_flux
              INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
              integer, dimension(:), intent(in)  :: IDs2CV_ndgln
-             REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
              REAL, intent( in ) :: DT
              REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
              REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
              REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              REAL, DIMENSION( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-             character(len= * ), intent(in), optional :: option_path
              real, dimension( : ), intent( inout ) :: mass_ele_transp
              real, dimension( :, :, : ), intent(inout) :: Material_Absorption
              integer, intent(in) :: nonlinear_iteration
              real, intent(inout) :: Courant_number
+             character(len= * ), intent(in), optional :: option_path
+             REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
              ! Local Variables
              LOGICAL, PARAMETER :: THERMAL= .false.
              integer :: igot_t2
