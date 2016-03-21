@@ -73,7 +73,7 @@ contains
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
-       THETA_GDIFF, MEAN_PORE_CV, &
+       THETA_GDIFF, &
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -101,7 +101,6 @@ contains
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
            REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-           REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
            character( len = * ), intent( in ), optional :: option_path
            real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
@@ -123,6 +122,7 @@ contains
            REAL, PARAMETER :: SECOND_THETA = 1.0
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv
+           type( vector_field ), pointer  :: MeanPoreCV
            integer :: lcomp, Field_selector, IGOT_T2_loc
            type(vector_field)  :: vtracer
            type(csr_sparsity), pointer :: sparsity
@@ -224,6 +224,9 @@ contains
                    velocity_absorption, T_AbsorB )
               deallocate ( Velocity_Absorption )
            end if
+
+           MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                 !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
@@ -241,7 +244,7 @@ contains
                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                   MEAN_PORE_CV, &
+                   MeanPoreCV%val, &
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &

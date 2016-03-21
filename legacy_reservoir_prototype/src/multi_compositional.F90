@@ -527,26 +527,31 @@ contains
 
 
 
-    SUBROUTINE CAL_COMP_SUM2ONE_SOU( packed_state, CV_NONODS, NPHASE, NCOMP2, DT, ITS, NITS, MEAN_PORE_CV )
+    SUBROUTINE CAL_COMP_SUM2ONE_SOU( packed_state, Mdims )
+
       ! make sure the composition sums to 1.0
       implicit none
-      type( state_type ) :: packed_state
-      integer, intent( in ) :: cv_nonods, nphase, ncomp2, its, nits
-      real, intent( in ) :: dt
-      !      real, dimension( :, : ), intent( inout ) :: V_SOURCE_COMP
-      real, dimension( :, : ), intent( in ) :: MEAN_PORE_CV
-      !      real, dimension( : ), intent( in ) :: SATURA
-      !      real, dimension( : ), intent( in ) :: COMP, COMPOLD
+      type( state_type ), intent( inout ) :: packed_state
+      type( multi_dimensions ), intent( in ) :: Mdims
 
       ! the relaxing (sum2one_relax) is to help convergence.
       ! =1 is full adjustment to make sure we have sum to 1.
       ! =0 is no adjustment.
-      real :: sum2one_relax, comp_sum
-      integer :: iphase, cv_nodi, icomp
+      real :: dt, sum2one_relax, comp_sum
+      integer :: cv_nonods, nphase, ncomp2, iphase, cv_nodi, icomp
       logical :: ensure_positive, use_comp_sum2one_sou
       !Working pointer
       real, dimension(:,:), pointer ::satura
+      type( vector_field ), pointer :: MeanPoreCV
       type( tensor_field ), pointer :: MFC_s, tracer_source
+
+      cv_nonods = Mdims%cv_nonods
+      nphase = Mdims%nphase
+      ncomp2 = Mdims%ncomp
+
+      call get_option( '/timestepping/timestep', dt )
+
+      MeanPoreCV => extract_vector_field( packed_state, "MeanPoreCV" )
 
       call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
       MFC_s  => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedComponentMassFraction" )
@@ -573,10 +578,10 @@ contains
 
             IF ( ENSURE_POSITIVE ) THEN
                tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) &
-                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
+                    - SUM2ONE_RELAX * MeanPoreCV%val( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * MAX( ( 1. - COMP_SUM ), 0. ) / DT
             ELSE
                tracer_source%val(1, iphase, cv_nodi) = tracer_source%val(1, iphase, cv_nodi) &
-                    - SUM2ONE_RELAX * MEAN_PORE_CV( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
+                    - SUM2ONE_RELAX * MeanPoreCV%val( 1, CV_NODI ) * SATURA( IPHASE, CV_NODI ) * ( 1. - COMP_SUM ) / DT
             END IF
 
          END DO

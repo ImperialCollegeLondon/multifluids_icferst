@@ -450,6 +450,7 @@ contains
         REAL, DIMENSION ( Mdims%ndim,Mdims%nphase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
         real, dimension( Mdims%ndim ) :: rdum_ndim_1, rdum_ndim_2, rdum_ndim_3
         real, dimension( Mdims%nphase ) :: LOC_CV_RHS_I, LOC_CV_RHS_J, THETA_VEL
+        type( vector_field ), pointer :: MeanPoreCV
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: solid_vol_fra
@@ -1016,6 +1017,9 @@ contains
             MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / dt_pipe_factor
         END DO
         ewrite(3,*) 'MEAN_PORE_CV MIN/MAX:', MINVAL( MEAN_PORE_CV ), MAXVAL( MEAN_PORE_CV )
+        MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+        MeanPoreCV%val=MEAN_PORE_CV
+
         IANISOLIM = 0
         IF ( CV_DISOPT >= 5 ) IANISOLIM = 1
         ALLOCATE( TUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), TOLDUPWIND_MAT_ALL( Mdims%nphase, Mspars%small_acv%ncol ), &
