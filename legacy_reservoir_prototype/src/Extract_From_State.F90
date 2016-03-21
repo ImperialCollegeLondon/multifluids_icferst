@@ -1315,6 +1315,14 @@ contains
         end do
         call deallocate(vec_field)
 
+        call allocate(vec_field,npres,pressure%mesh,"MeanPoreCV")
+        call zero(vec_field)
+        call insert(packed_state,vec_field,"MeanPoreCV")
+        do icomp = 1, ncomp
+            call insert(multicomponent_state(icomp),vec_field,"MeanPoreCV")
+        end do
+        call deallocate(vec_field)
+
         call insert_sfield(packed_state,"FEPressure",1,npres)
         tfield=>extract_tensor_field(packed_state,"PackedFEPressure")
         tfield%option_path=pressure%option_path
