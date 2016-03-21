@@ -388,13 +388,16 @@ contains
 !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
+
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
+
             if ( do_checkpoint_simulation( dtime ) ) then
                call checkpoint_simulation( state, cp_no=checkpoint_number, &
                     protect_simulation_name=.true., file_type='.mpml' )
                checkpoint_number=checkpoint_number+1
             end if
             dtime = dtime + 1
+
             ! Adapt mesh within the FPI?
             adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
             itime = itime + 1
@@ -650,14 +653,15 @@ end if
                 end if Conditional_PhaseVolumeFraction
 
 
-                !!$ Starting loop over components
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
-                if ( Mdims%ncomp > 1 ) PhaseVolumeFractionComponentSource%val = 0.0
-                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                old_saturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
 
-                Conditional_Components:if( have_component_field ) then
+                Conditional_Components: if ( have_component_field ) then
+
+                    PhaseVolumeFractionComponentSource%val = 0.0
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    old_saturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
+
                     PhaseVolumeFractionComponentSource%val = 0.0
                     D_s  => extract_tensor_field( packed_state, "PackedDensity" )
                     DC_s  => extract_tensor_field( packed_state, "PackedComponentDensity" )
@@ -665,6 +669,8 @@ end if
                     MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
                     MFCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentMassFraction" )
 
+
+                    !!$ Starting loop over components
                     Loop_Components: do icomp = 1, Mdims%ncomp
 
                         tracer_field=>extract_tensor_field(multicomponent_state(icomp),"PackedComponentMassFraction")
