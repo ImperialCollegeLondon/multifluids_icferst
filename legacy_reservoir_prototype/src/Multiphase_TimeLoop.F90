@@ -469,7 +469,6 @@ contains
 
 
                 !!$ Solve advection of the scalar 'Temperature':
-if (.true.) then
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
                     have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
                     ewrite(3,*)'Now advecting Temperature Field'
@@ -494,13 +493,6 @@ if (.true.) then
                         saturation=saturation_field, IDs_ndgln=IDs_ndgln )
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
-end if
-
-
-
-
-
-
 
 
 !!$ Solve advection of the scalars.   'Temperature':

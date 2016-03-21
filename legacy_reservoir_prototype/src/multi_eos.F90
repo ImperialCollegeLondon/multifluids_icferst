@@ -1616,12 +1616,13 @@ contains
             if ( have_source ) then
                 source => extract_vector_field( states( iphase ), 'VelocitySource' )
                 do idim = 1, ndim
-                    velocity_u_source( idim, iphase, : ) =  source % val( idim, : )
+                    velocity_u_source( idim, iphase, : ) =  velocity_u_source( idim, iphase, : ) +&
+                                                              source % val( idim, : )
                 end do
-            else
-                do idim = 1, ndim
-                    velocity_u_source( idim, iphase, : ) = 0.0
-                end do
+!            else
+!                do idim = 1, ndim
+!                    velocity_u_source( idim, iphase, : ) = velocity_u_source( idim, iphase, : )+ 0.0
+!                end do
             end if
         end do
 

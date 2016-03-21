@@ -107,7 +107,7 @@ contains
         CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, SECOND_THETA, CV_BETA, &
         SUF_SIG_DIAGTEN_BC, &
         DERIV, CV_P, &
-        SOURCT, ABSORBT_ALL, VOLFRA_PORE, &!sprint_to_do ABSORBT_ALL is always zero???
+        SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &!sprint_to_do ABSORBT_ALL is always zero???
         GETCV_DISC, GETCT, &
         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
         IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
@@ -270,7 +270,7 @@ contains
         REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (Mdims%nphase,Mdims%cv_nonods)
         REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
-        REAL, DIMENSION( :, : ), intent( in ) :: SOURCT
+        REAL, DIMENSION( :, : ), intent( in ) :: SOURCT_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT_ALL
         REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE ! (Mdims%npres,Mdims%totele)
         LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
@@ -411,7 +411,7 @@ contains
         REAL , DIMENSION( :, : ), allocatable :: NUOLDGI_ALL
         REAL, DIMENSION( : ), allocatable :: NDOTQOLD, INCOMEOLD
         REAL, DIMENSION( :, : ), ALLOCATABLE, target :: &
-            FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL, SOURCT_ALL
+            FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL
         LOGICAL, DIMENSION( : ), ALLOCATABLE :: DOWNWIND_EXTRAP_INDIVIDUAL
         LOGICAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_PACK, IGOT_T_CONST
         REAL, DIMENSION( :, : ), ALLOCATABLE :: IGOT_T_CONST_VALUE
@@ -726,12 +726,7 @@ contains
         ALLOCATE( FEMT2_ALL( Mdims%nphase, Mdims%cv_nonods ), FEMT2OLD_ALL( Mdims%nphase, Mdims%cv_nonods ) )
         allocate(CV_P_PHASE_NODI(Mdims%nphase),CV_P_PHASE_NODJ(Mdims%nphase))
         allocate(CT_RHS_PHASE_CV_NODI(Mdims%nphase),CT_RHS_PHASE_CV_NODJ(Mdims%nphase))
-        ALLOCATE( SOURCT_ALL( Mdims%nphase, Mdims%cv_nonods ) )
-        !DO IPHASE = 1, Mdims%nphase
-        !   tracer_source=>extract_tensor_field(packed_state,trim(tracer%name)//"Source")
-        !   SOURCT_ALL = tracer_source%val(1,:,:)
-        !END DO
-        SOURCT_ALL = SOURCT
+
         IF ( GOT_T2 .OR. THERMAL) call get_var_from_packed_state( packed_state, &
             PhaseVolumeFraction = T2_ALL, OldPhaseVolumeFraction = T2OLD_ALL )
         ! variables for get_int_tden********************
