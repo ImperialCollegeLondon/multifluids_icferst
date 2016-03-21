@@ -776,9 +776,9 @@ contains
               END DO
            ENDIF
         ENDIF
-        ! calculate the viscosity for the momentum equation...
-        uDiffusion_VOL = 0.0
-        call calculate_viscosity( state, packed_state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%mat_nonods, ndgln%mat, uDiffusion )
+        ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside, even for porous media)
+        call calculate_viscosity( state, packed_state, Mdims, ndgln, uDiffusion )
+
         ! allocate and define U_ABSORBIN here...
         allocate( U_ABSORBIN( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
         U_ABSORBIN=0.0
