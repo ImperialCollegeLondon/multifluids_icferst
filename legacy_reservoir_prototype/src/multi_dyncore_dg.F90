@@ -200,8 +200,7 @@ contains
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
-              call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                 Mdims%mat_nloc, Mdims%totele, ndgln%mat, ndgln%cv, TDIFFUSION )
+              call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION )
            end if
            ! get diffusivity for compositional
            if ( lcomp > 0 .and. is_porous_media ) then
@@ -776,8 +775,8 @@ contains
               END DO
            ENDIF
         ENDIF
-        ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside, even for porous media)
-        call calculate_viscosity( state, packed_state, Mdims, ndgln, uDiffusion )
+        ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
+        call calculate_viscosity( state, Mdims, ndgln, uDiffusion )
 
         ! allocate and define U_ABSORBIN here...
         allocate( U_ABSORBIN( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )

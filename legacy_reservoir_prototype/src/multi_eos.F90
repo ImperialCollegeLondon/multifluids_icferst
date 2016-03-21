@@ -1195,84 +1195,66 @@ contains
 
     end subroutine calculate_u_source_cv
 
-    subroutine calculate_diffusivity(state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
-         mat_nloc, totele, mat_ndgln, cv_ndgln, ScalarAdvectionField_Diffusion )
-
+    subroutine calculate_diffusivity(state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
       type(state_type), dimension(:), intent(in) :: state
-      integer, intent(in) :: ncomp, nphase, ndim, cv_nonods, mat_nonods, mat_nloc, totele
-      integer, dimension(:), intent(in) :: mat_ndgln, cv_ndgln
+      type(multi_dimensions), intent(in) :: Mdims
+      type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
-
+      !Local variables
       type(scalar_field), pointer :: component
       type(tensor_field), pointer :: diffusivity
       integer, dimension(:), pointer :: element_nodes
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod
       logical, parameter :: harmonic_average=.false.
-
       ScalarAdvectionField_Diffusion = 0.0
 
-      if ( ncomp > 1 ) then
 
-         do icomp = 1, ncomp
-            do iphase = 1, nphase
-
-               component => extract_scalar_field( state(nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) )
-               diffusivity => extract_tensor_field( state(nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) // 'Diffusivity', stat )
-
+      if ( Mdims%ncomp > 1 ) then
+         do icomp = 1, Mdims%ncomp
+            do iphase = 1, Mdims%nphase
+               component => extract_scalar_field( state(Mdims%nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) )
+               diffusivity => extract_tensor_field( state(Mdims%nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) // 'Diffusivity', stat )
                if ( stat == 0 ) then
-                  do ele = 1, totele
-
-                     do iloc = 1, mat_nloc
-                        mat_inod = mat_ndgln( (ele-1)*mat_nloc + iloc )
-                        cv_inod = cv_ndgln( (ele-1)*mat_nloc + iloc )
-
+                  do ele = 1, Mdims%totele
+                     do iloc = 1, Mdims%mat_nloc
+                        mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                        cv_inod = ndgln%cv( (ele-1)*Mdims%mat_nloc + iloc )
                         if ( .not.harmonic_average ) then
-
-                           do idim = 1, ndim
+                           do idim = 1, Mdims%ndim
                               ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
                                    node_val( component, cv_inod ) * node_val( diffusivity, idim, idim, mat_inod )
                            end do
-
                         else
-
-                           do idim = 1, ndim
+                           do idim = 1, Mdims%ndim
                               if (  node_val( diffusivity, idim, idim, mat_inod ) > 0.0 ) then
                                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
                                       node_val( component, cv_inod ) / node_val( diffusivity, idim, idim, mat_inod )
                               end if
                            end do
-
                         end if
-
                      end do
                   end do
                end if
-
             end do
          end do
-
       else
-
-         do iphase = 1, nphase
+         do iphase = 1, Mdims%nphase
             diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-
             if ( stat == 0 ) then
-               do idim = 1, ndim
+               do idim = 1, Mdims%ndim
                   ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, 1 )
                end do
             end if
          end do
-
       end if
-
       if ( harmonic_average ) then
          ! ScalarAdvectionField_Diffusion = 1.0 / ScalarAdvectionField_Diffusion
-         do iphase = 1, nphase
-            do idim = 1, ndim
-               do mat_inod = 1, mat_nonods
+         do iphase = 1, Mdims%nphase
+            do idim = 1, Mdims%ndim
+               do mat_inod = 1, Mdims%mat_nonods
                   if ( ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) > 0.0 ) &
                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                        1.0 / ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )
@@ -1280,22 +1262,19 @@ contains
             end do
          end do
       end if
-
-      do iphase = 1, nphase
+      do iphase = 1, Mdims%nphase
          ewrite(3,*) 'Thermal conductivity min_max', iphase, &
               minval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) ), &
               maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
       end do
-
       return
     end subroutine calculate_diffusivity
 
-    subroutine calculate_viscosity( state, packed_state, Mdims, ndgln, Momentum_Diffusion )
+    subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion )
       implicit none
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       type( state_type ), dimension( : ), intent( in ) :: state
-      type( state_type ), intent( in ) :: packed_state
       real, dimension( :, :, :, : ), intent( inout ) :: Momentum_Diffusion
       !Local variables
       character( len = option_path_len ) :: option_path_python, buffer

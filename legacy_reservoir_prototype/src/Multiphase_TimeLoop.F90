@@ -475,8 +475,7 @@ if (.true.) then
                     have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
                     ewrite(3,*)'Now advecting Temperature Field'
                     call set_nu_to_u( packed_state )
-                    !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                    !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
+                    !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
                     tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
@@ -519,8 +518,7 @@ if ( new_ntsol_loop  ) then
 
 
         call set_nu_to_u( packed_state )
-        !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                    !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
+        !call calculate_diffusivity( state, Mdim, ndgln, ScalarAdvectionField_Diffusion )
         velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
         density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
         saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
