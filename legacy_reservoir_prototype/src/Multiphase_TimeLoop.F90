@@ -124,9 +124,6 @@ contains
         integer :: scvngi_theta, igot_t2, igot_theta_flux, IGOT_THERM_VIS
         !!$ CV-wise porosity
         real, dimension( :, : ), allocatable :: Mean_Pore_CV
-        !!$ Variables used in the diffusion-like term: capilarity and surface tension:
-        integer :: iplike_grad_sou
-        real, dimension( :, :, : ), allocatable :: plike_grad_sou_grad, plike_grad_sou_coef
         !!$ Adaptivity related fields and options:
         type( tensor_field ) :: metric_tensor
         type( state_type ), dimension( : ), pointer :: sub_state => null()
@@ -255,10 +252,7 @@ contains
             mass_ele( Mdims%totele ), &
             !!$
             Material_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
-            ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), & ! fix me..move in intenerg
-            !!$ Variables used in the diffusion-like term: capilarity and surface tension:
-            plike_grad_sou_grad( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ), &
-            plike_grad_sou_coef( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ), &
+            ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) & ! fix me..move in intenerg
             )
         !!$
         suf_sig_diagten_bc=0.
@@ -269,9 +263,6 @@ contains
         Material_Absorption=0.
         ScalarField_Absorption=0. ; Component_Absorption=0.
         !!$
-        plike_grad_sou_grad=0.
-        plike_grad_sou_coef=0.
-        iplike_grad_sou=0
         do iphase = 1, Mdims%nphase
             f1 => extract_scalar_field( state(iphase), "Temperature", stat )
             if ( stat==0 ) then
@@ -645,7 +636,7 @@ end if
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        iplike_grad_sou, plike_grad_sou_coef, plike_grad_sou_grad, IDs_ndgln=IDs_ndgln )
+                        IDs_ndgln=IDs_ndgln )
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
 
                     !!$ Calculate Density_Component for compositional
@@ -980,8 +971,6 @@ end if
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
             !!$ For output:
             Mean_Pore_CV, &
-            !!$ Variables used in the diffusion-like term: capilarity and surface tension:
-            plike_grad_sou_grad, plike_grad_sou_coef, &
             !!$ Working arrays
             theta_gdiff, ScalarField_Source_Store, &
             mass_ele,&
@@ -1261,8 +1250,6 @@ end if
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                     !!$ For output:
                     Mean_Pore_CV, &
-                    !!$ Variables used in the diffusion-like term: capilarity and surface tension:
-                    plike_grad_sou_grad, plike_grad_sou_coef, &
                     !!$ Working arrays
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source_Store, &
@@ -1321,18 +1308,13 @@ end if
                     mass_ele( Mdims%totele ), &
                     !!$
                     Material_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
-                    ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), &
-                    !!$ Variables used in the diffusion-like term: capilarity and surface tension:
-                    plike_grad_sou_grad( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ), &
-                    plike_grad_sou_coef( Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ) )
+                    ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
                 !!$
                 Component_Absorption=0.
                 !!$
                 ScalarField_Absorption=0.
                 !!$
                 Material_Absorption=0.
-                !!$
-                plike_grad_sou_grad=0. ; plike_grad_sou_coef=0.
                 !!$
                 suf_sig_diagten_bc=0.
                 !!$

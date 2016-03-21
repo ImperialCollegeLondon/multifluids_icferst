@@ -1372,6 +1372,17 @@ contains
             call deallocate(ten_field)
         end if
 
+        ! pack surface tension terms
+        if( have_option_for_any_phase( '/is_multiphase_component/surface_tension', nphase+ncomp ) ) then
+            call allocate(ten_field,pressure%mesh,"SurfaceTensionGrad",dim=[ncomp,nphase])
+            call insert(packed_state,ten_field,"SurfaceTensionGrad")
+            call deallocate(ten_field)
+            call allocate(ten_field,pressure%mesh,"SurfaceTensionCoef",dim=[ncomp,nphase])
+            call insert(packed_state,ten_field,"SurfaceTensionCoef")
+            call deallocate(ten_field)
+        end if
+
+        ! pack continuous velocity mesh
         velocity=>extract_vector_field(state(1),"Velocity")
         call insert(packed_state,velocity%mesh,"VelocityMesh")
         if (.not.has_mesh(state(1),"VelocityMesh_Continuous")) then
