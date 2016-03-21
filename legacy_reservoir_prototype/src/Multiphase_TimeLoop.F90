@@ -672,13 +672,12 @@ end if
 
                 !!$ Starting loop over components
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
-                PhaseVolumeFractionComponentSource%val = 0.0
                 velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                 saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                 old_saturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
 
                 Conditional_Components:if( have_component_field ) then
-
+                    PhaseVolumeFractionComponentSource%val = 0.0
                     D_s  => extract_tensor_field( packed_state, "PackedDensity" )
                     DC_s  => extract_tensor_field( packed_state, "PackedComponentDensity" )
                     DCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentDensity" )
