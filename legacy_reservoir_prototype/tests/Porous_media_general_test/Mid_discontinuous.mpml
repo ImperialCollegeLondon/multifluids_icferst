@@ -179,7 +179,6 @@
       </courant_number>
     </adaptive_timestep>
   </timestepping>
-  <caching/>
   <physical_parameters>
     <gravity>
       <magnitude>
