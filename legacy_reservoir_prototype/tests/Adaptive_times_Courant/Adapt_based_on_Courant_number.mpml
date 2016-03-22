@@ -182,7 +182,6 @@
       </increase_tolerance>
     </adaptive_timestep>
   </timestepping>
-  <caching/>
   <material_phase name="phase1">
     <equation_of_state>
       <incompressible>

@@ -163,7 +163,6 @@
       <integer_value rank="0">3</integer_value>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <projections/>
   <material_phase name="phase1">
     <equation_of_state>

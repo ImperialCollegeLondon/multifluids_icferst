@@ -168,7 +168,6 @@
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <material_phase name="phase1">
     <equation_of_state>
       <incompressible>
