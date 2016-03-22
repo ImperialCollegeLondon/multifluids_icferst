@@ -1096,7 +1096,7 @@ contains
             call insert_sfield(packed_state,"FEComponentMassFraction",ncomp,nphase)
         end if
 
-        if(is_porous_media) then
+        if (have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')) then
             ovmesh=>extract_mesh(packed_state,"PressureMesh_Discontinuous")
             call allocate(ten_field,ovmesh,"PorousMedia_AbsorptionTerm",dim=[ndim*nphase,ndim*nphase])
             call insert(packed_state,ten_field,"PorousMedia_AbsorptionTerm")
