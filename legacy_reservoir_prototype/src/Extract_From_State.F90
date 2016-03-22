@@ -1101,6 +1101,10 @@ contains
             call allocate(ten_field,ovmesh,"PorousMedia_AbsorptionTerm",dim=[ndim*nphase,ndim*nphase])
             call insert(packed_state,ten_field,"PorousMedia_AbsorptionTerm")
             call deallocate(ten_field)
+            if ( ncomp > 0 ) then
+               ! Add component absorption (nphase, nphase, cv_nonods)
+               ! to packed_state and all multicomponent_states
+            end if
         end if
 
         call allocate(porosity,npres,element_mesh,"Porosity")

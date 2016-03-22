@@ -134,7 +134,7 @@ contains
         real, dimension( :, : ), pointer :: &
             ScalarField_Source_Store
         real, dimension( :, :, : ), allocatable :: &
-            Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption
+            Velocity_Absorption, ScalarField_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
         integer :: stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod
@@ -162,6 +162,7 @@ contains
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
+        type(tensor_field), pointer :: Component_Absorption
         type(scalar_field), pointer :: f1, f2
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
         logical, parameter :: write_all_stats=.true.
@@ -248,14 +249,14 @@ contains
             suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
             mass_ele( Mdims%totele ), &
             !!$
-            ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) & ! fix me..move in intenerg
+            ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), &
             )
         !!$
         suf_sig_diagten_bc=0.
         !!$
         mass_ele=0.
         !!$
-        ScalarField_Absorption=0. ; Component_Absorption=0.
+        ScalarField_Absorption=0.
         !!$
         do iphase = 1, Mdims%nphase
             f1 => extract_scalar_field( state(iphase), "Temperature", stat )
@@ -270,7 +271,7 @@ contains
         !!$
         !!$ Initialising Absorption terms that do not appear in the schema
         !!$
-        ScalarField_Absorption = 0. ; Component_Absorption = 0.
+        ScalarField_Absorption = 0.
         !!$ Computing shape function scalars
         igot_t2 = 0 ; igot_theta_flux = 0
         if( Mdims%ncomp /= 0 )then
@@ -670,22 +671,26 @@ end if
                             ']/is_multiphase_component/KComp_Sigmoid' ) .and. Mdims%nphase > 1 ) then
 
                            !!$ Computing the absorption term for the multi-components equation
+
+                           Component_Absorption => extract_tensor_field( multicomponent_state(icomp), "ComponentAbsorption")
+
                            call Calculate_ComponentAbsorptionTerm( state, packed_state, &
                                 icomp, ndgln%cv, Mdims, &
                                 D_s%val, Porosity_field%val, mass_ele, &
-                                Component_Absorption, IDs_ndgln )
+                                Component_Absorption%val, IDs_ndgln )
 
                            do cv_nodi = 1, Mdims%cv_nonods
                               if ( saturation_field%val( 1, 1, cv_nodi ) > 0.95 ) then
                                  do iphase = 1, Mdims%nphase
                                     do jphase = min( iphase + 1, Mdims%nphase ), Mdims%nphase
-                                       Component_Absorption( iphase, jphase, cv_nodi ) = &
-                                            Component_Absorption( iphase, jphase, cv_nodi ) * max( 0.01, &
+                                       Component_Absorption%val( iphase, jphase, cv_nodi ) = &
+                                            Component_Absorption%val( iphase, jphase, cv_nodi ) * max( 0.01, &
                                             20. * ( 1. - saturation_field%val( 1, 1, cv_nodi ) ) )
                                     end do
                                  end do
                               end if
                            end do
+
                         end if
 
                         !!$ NonLinear iteration for the components advection:
@@ -739,17 +744,19 @@ end if
                        if ( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
                             ']/is_multiphase_component/KComp_Sigmoid' ) .and. Mdims%nphase > 1 ) then
 
+                           Component_Absorption => extract_tensor_field( multicomponent_state(icomp), "ComponentAbsorption")
+
                           call Calculate_ComponentAbsorptionTerm( state, packed_state, &
                                icomp, ndgln%cv, Mdims, &
                                D_s%val, Porosity_field%val, mass_ele, &
-                               Component_Absorption, IDs_ndgln )
+                               Component_Absorption%val, IDs_ndgln )
 
                           do cv_nodi = 1, Mdims%cv_nonods
                              if( saturation_field%val( 1, 1, cv_nodi ) > 0.95 ) then
                                 do iphase = 1, Mdims%nphase
                                    do jphase = min( iphase + 1, Mdims%nphase ), Mdims%nphase
-                                      Component_Absorption( iphase, jphase, cv_nodi ) = &
-                                           Component_Absorption( iphase, jphase, cv_nodi ) * max( 0.01, &
+                                      Component_Absorption%val( iphase, jphase, cv_nodi ) = &
+                                           Component_Absorption%val( iphase, jphase, cv_nodi ) * max( 0.01, &
                                            20. * ( 1. - saturation_field%val (1,1, cv_nodi ) ) )
                                    end do
                                 end do
@@ -761,7 +768,7 @@ end if
                                 Loop_Phase_SourceTerm2: do jphase = 1, Mdims%nphase
                                    PhaseVolumeFractionComponentSource%val( 1, iphase, cv_nodi ) = &
                                         PhaseVolumeFractionComponentSource%val( 1, iphase, cv_nodi ) &
-                                        - Component_Absorption( iphase, jphase, cv_nodi ) &
+                                        - Component_Absorption%val( iphase, jphase, cv_nodi ) &
                                         * MFC_s%val( icomp, jphase, cv_nodi ) &
                                         / DC_s%val( icomp, iphase, cv_nodi )
                                 end do Loop_Phase_SourceTerm2
@@ -1287,9 +1294,7 @@ end if
                     suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
                     mass_ele( Mdims%totele ), &
                     !!$
-                    ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
-                !!$
-                Component_Absorption=0.
+                    ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
                 !!$
                 ScalarField_Absorption=0.
                 !!$
@@ -1298,7 +1303,7 @@ end if
                 !!$
                 !!$ Initialising Absorption terms that do not appear in the schema
                 !!$
-                ScalarField_Absorption = 0. ; Component_Absorption = 0.
+                ScalarField_Absorption = 0.
                 !!$ Computing shape function scalars
                 igot_t2 = 0 ; igot_theta_flux = 0
                 if( Mdims%ncomp /= 0 )then

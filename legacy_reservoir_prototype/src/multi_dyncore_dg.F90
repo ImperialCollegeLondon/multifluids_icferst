@@ -215,8 +215,13 @@ contains
                  TDiffusion )
               deallocate( Component_Diffusion_Operator_Coefficient )
            end if
+
+
            ! calculate T_ABSORB
            allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
+           ! add pointers
+
+
            if (have_option('/boiling')) then
               allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
               call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
