@@ -133,7 +133,7 @@ contains
         !!$
         real, dimension( :, : ), pointer :: &
             ScalarField_Source_Store
-        real, dimension( :, :, : ), allocatable :: &
+        real, dimension( :, :, : ), allocatable :: Material_Absorption, &
             Velocity_Absorption, ScalarField_Absorption, Component_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
@@ -248,6 +248,7 @@ contains
             suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
             mass_ele( Mdims%totele ), &
             !!$
+            Material_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
             ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) & ! fix me..move in intenerg
             )
         !!$
@@ -255,6 +256,7 @@ contains
         !!$
         mass_ele=0.
         !!$
+        Material_Absorption=0.
         ScalarField_Absorption=0. ; Component_Absorption=0.
         !!$
         do iphase = 1, Mdims%nphase
@@ -461,7 +463,7 @@ contains
                 call Calculate_All_Rhos( state, packed_state, Mdims )
                 if( solve_force_balance .and. is_porous_media ) then
                     call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
-                       Mspars, ndgln, suf_sig_diagten_bc, &
+                       Mspars, ndgln, Material_Absorption, suf_sig_diagten_bc, &
                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, ids_ndgln, IDs2CV_ndgln )
                 end if
 
@@ -570,7 +572,7 @@ if ( new_ntsol_loop  ) then
 
                     exit
               else
-
+                    
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         tracer_field,velocity_field,density_field, dt, &
@@ -584,7 +586,7 @@ if ( new_ntsol_loop  ) then
                         saturation=saturation_field, IDs_ndgln=IDs_ndgln )
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                end if
-
+                    
 
            end if
 
@@ -615,7 +617,7 @@ end if
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         velocity_field, pressure_field, &
-                        dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
+                        Material_Absorption, dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
@@ -631,12 +633,12 @@ end if
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        igot_theta_flux, mass_ele, &
-                        its, IDs_ndgln, IDs2CV_ndgln, Courant_number, &
+                        igot_theta_flux, mass_ele,Material_Absorption,&
+                        its, IDs_ndgln, IDs2CV_ndgln, Courant_number,&
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j)
@@ -959,6 +961,7 @@ end if
             !!$ Working arrays
             theta_gdiff, ScalarField_Source_Store, &
             mass_ele,&
+            Material_Absorption, &
             ScalarField_Absorption, Component_Absorption, &
             theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
@@ -1236,6 +1239,7 @@ end if
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source_Store, &
                     mass_ele, &
+                    Material_Absorption, &
                     ScalarField_Absorption, Component_Absorption, &
                     theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, sum_theta_flux, &
                     sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
@@ -1287,11 +1291,14 @@ end if
                     suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
                     mass_ele( Mdims%totele ), &
                     !!$
+                    Material_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
                     ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
                 !!$
                 Component_Absorption=0.
                 !!$
                 ScalarField_Absorption=0.
+                !!$
+                Material_Absorption=0.
                 !!$
                 suf_sig_diagten_bc=0.
                 !!$

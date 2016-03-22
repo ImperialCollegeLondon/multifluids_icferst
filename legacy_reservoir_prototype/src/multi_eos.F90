@@ -728,7 +728,7 @@ contains
 
 
     subroutine Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
-                                                      suf_sig_diagten_bc, &
+                                                      Material_Absorption, suf_sig_diagten_bc, &
                                                       opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                                                       ids_ndgln, IDs2CV_ndgln )
 
@@ -736,26 +736,25 @@ contains
        type( state_type ), dimension( : ), intent( in ) :: state
        type( state_type ), intent( inout ) :: packed_state
        type( multi_dimensions ), intent( in ) :: Mdims
-       type( multi_shape_funs), intent(inout) :: CV_funs
+       type(multi_shape_funs), intent(inout) :: CV_funs
        type( multi_gi_dimensions ), intent( in )  :: CV_GIdims
-       type( multi_sparsities), intent( in ) :: Mspars
-       type( multi_ndgln ), intent( in ) :: ndgln
+       type (multi_sparsities), intent( in ) :: Mspars
+       type(multi_ndgln), intent(in) :: ndgln
        integer, dimension( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
 
        real, dimension( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
+       real, dimension( :, :, : ), intent( inout ) :: Material_Absorption
        real, dimension( :, : ), intent( inout ) :: suf_sig_diagten_bc
-       type( tensor_field ), pointer :: PorousMedia_AbsorptionTerm
 
-       PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
 
        call Calculate_AbsorptionTerm( state, packed_state, Mdims, ndgln,  &
-          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, PorousMedia_AbsorptionTerm%val, ids_ndgln, IDs2CV_ndgln )
+          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, Material_Absorption, ids_ndgln, IDs2CV_ndgln )
 
        ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
        ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
        ! is diagonal
        call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
-                                        Mspars, ndgln, PorousMedia_AbsorptionTerm%val, state, ids_ndgln )
+                                        Mspars, ndgln, material_absorption, state, ids_ndgln )
 
        return
     end subroutine Calculate_PorousMedia_AbsorptionTerms
