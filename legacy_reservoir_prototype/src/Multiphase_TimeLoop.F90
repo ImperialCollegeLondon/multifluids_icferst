@@ -966,7 +966,7 @@ end if
             !!$ Working arrays
             theta_gdiff, ScalarField_Source_Store, &
             mass_ele,&
-            ScalarField_Absorption, Component_Absorption, &
+            ScalarField_Absorption, &
             theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
         ! Dump at end, unless explicitly disabled
@@ -1243,7 +1243,7 @@ end if
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source_Store, &
                     mass_ele, &
-                    ScalarField_Absorption, Component_Absorption, &
+                    ScalarField_Absorption, &
                     theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, sum_theta_flux, &
                     sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
                 !Deallocate sparsities
