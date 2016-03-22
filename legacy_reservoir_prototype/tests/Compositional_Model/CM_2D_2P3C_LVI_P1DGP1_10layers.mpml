@@ -162,7 +162,6 @@
       <integer_value rank="0">3</integer_value>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <physical_parameters/>
   <material_phase name="phase1">
     <scalar_field name="Pressure" rank="0">

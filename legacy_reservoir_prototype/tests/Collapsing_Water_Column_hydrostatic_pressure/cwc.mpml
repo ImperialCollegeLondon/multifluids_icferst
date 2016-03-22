@@ -180,7 +180,6 @@
       <integer_value rank="0">3</integer_value>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <physical_parameters>
     <gravity>
       <magnitude>

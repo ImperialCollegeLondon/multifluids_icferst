@@ -171,7 +171,6 @@
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <physical_parameters>
     <gravity>
       <magnitude>
