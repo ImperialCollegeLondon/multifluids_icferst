@@ -511,9 +511,9 @@ contains
                              backtrack_sat = sat_bak
                              !For the non-linear iteration inside this loop we need to update the velocities
                              !and that is done through the sigmas, hence, we have to update them
-                             call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_GIdims, Mspars, &
-                                Material_Absorption, suf_sig_diagten_bc, opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                                ids_ndgln, IDs2CV_ndgln, ndgln%cv, ndgln%suf_cv, ndgln%mat, ndgln%x, Mdisopt%cv_ele_type )
+                             call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, &
+                                CV_GIdims, Mspars, ndgln, Material_Absorption, suf_sig_diagten_bc, &
+                                opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, ids_ndgln, IDs2CV_ndgln)
                              !Also recalculate the Over-relaxation parameter
                              call getOverrelaxation_parameter(packed_state, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
                          else

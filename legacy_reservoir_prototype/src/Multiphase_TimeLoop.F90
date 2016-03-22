@@ -462,9 +462,9 @@ contains
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
                 if( solve_force_balance .and. is_porous_media ) then
-                    call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_GIdims, Mspars, &
-                       Material_Absorption, suf_sig_diagten_bc, opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                       ids_ndgln, IDs2CV_ndgln, ndgln%cv, ndgln%suf_cv, ndgln%mat, ndgln%x, Mdisopt%cv_ele_type )
+                    call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
+                       Mspars, ndgln, Material_Absorption, suf_sig_diagten_bc, &
+                       opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, ids_ndgln, IDs2CV_ndgln )
                 end if
 
 

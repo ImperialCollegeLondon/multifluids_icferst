@@ -109,7 +109,7 @@ contains
         DERIV, CV_P, &
         SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &!sprint_to_do ABSORBT_ALL is always zero???
         GETCV_DISC, GETCT, &
-        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
+        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &!<= sprint_to_do; these two variables are only used for porous media, take the permeability out of them and adapt subroutines as required(change names?)!!
         IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
         MEAN_PORE_CV, &
