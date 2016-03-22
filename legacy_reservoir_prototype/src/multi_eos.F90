@@ -765,7 +765,7 @@ contains
 
     subroutine Calculate_AbsorptionTerm( state, packed_state, &
         npres, cv_ndgln, mat_ndgln, &
-        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, u_absorb, IDs_ndgln, IDs2CV_ndgln )
+        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, material_absorption, IDs_ndgln, IDs2CV_ndgln )
         ! Calculate absorption for momentum eqns
         use matrix_operations
         implicit none
@@ -774,7 +774,7 @@ contains
         integer, intent( in ) :: npres
         integer, dimension( : ), intent( in ) :: cv_ndgln, mat_ndgln, IDs_ndgln, IDs2CV_ndgln
         real, dimension( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-        real, dimension( :, :, : ), intent( inout ) :: u_absorb
+        real, dimension( :, :, : ), intent( inout ) :: material_absorption
         !!$ Local variables:
         type( tensor_field ), pointer :: viscosity_ph
         integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
@@ -783,7 +783,7 @@ contains
             ele, imat, icv, iphase, cv_iloc, idim, jdim, ipres, n_in_pres, loc, loc2
         real :: Mobility, pert
         real, dimension(:), allocatable :: Max_sat
-        real, dimension( :, :, : ), allocatable :: u_absorb2
+        real, dimension( :, :, : ), allocatable :: material_absorption2
         !      real, dimension( : ), allocatable :: satura2
         real, dimension( :, : ), allocatable :: satura2
         real, dimension(size(state,1)) :: visc_phases
@@ -828,13 +828,13 @@ contains
             mobility = visc_phases(1)
         end if
 
-        u_absorb = 0.0
+        material_absorption = 0.0
 
-        allocate( u_absorb2( mat_nonods, nphase * ndim, nphase * ndim ), satura2( N_IN_PRES, size(SATURA,2) ) )
-        u_absorb2 = 0. ; satura2 = 0.
+        allocate( material_absorption2( nphase * ndim, nphase * ndim, mat_nonods ), satura2( N_IN_PRES, size(SATURA,2) ) )
+        material_absorption2 = 0. ; satura2 = 0.
 
         CALL calculate_absorption2( packed_state, CV_NONODS, N_IN_PRES, NDIM, SATURA(1:N_IN_PRES,:), TOTELE, CV_NLOC, MAT_NLOC, &
-            CV_NDGLN, MAT_NDGLN, U_ABSORB(:,1:N_IN_PRES*NDIM,1:N_IN_PRES*NDIM), PERM%val, visc_phases, IDs_ndgln)
+            CV_NDGLN, MAT_NDGLN, material_absorption(1:N_IN_PRES*NDIM,1:N_IN_PRES*NDIM,:), PERM%val, visc_phases, IDs_ndgln)
 
         !Introduce perturbation, positive for the increasing and negative for decreasing phase
         !Make sure that the perturbation is between bounds
@@ -853,7 +853,7 @@ contains
         end do
 
         CALL calculate_absorption2( packed_state, CV_NONODS, N_IN_PRES, NDIM, SATURA2, TOTELE, CV_NLOC, MAT_NLOC, &
-            CV_NDGLN, MAT_NDGLN, U_ABSORB2, PERM%val, visc_phases, IDs_ndgln)
+            CV_NDGLN, MAT_NDGLN, material_absorption2, PERM%val, visc_phases, IDs_ndgln)
 
         do ipres = 2, npres
 
@@ -865,9 +865,7 @@ contains
                     LOC = (IPRES-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
                     LOC2 = (1-1) * NDIM * N_IN_PRES + (IPHASE-1) * NDIM + IDIM
 
-                    !U_ABSORB( :, LOC, LOC ) = 1000.0
-                    U_ABSORB( :, LOC, LOC ) = Spipe%val
-                   !U_ABSORB( :, LOC, LOC ) = U_ABSORB( :, LOC2, LOC2 )
+                    material_absorption( LOC, LOC, : ) = Spipe%val
                 end do
             end do
         end do
@@ -881,15 +879,15 @@ contains
                         DO IDIM = 1, NDIM
 
                             opt_vel_upwind_coefs_new(IDIM, JDIM, IPHASE, IMAT) = &
-                                U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )
+                                material_absorption( IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ,IMAT)
 
                             if ( iphase <= n_in_pres ) then
 
                                 ! This is the gradient
                                 ! Assume d\sigma / dS = 0.0 for the pipes for now
                                 opt_vel_upwind_grad_new(IDIM, JDIM, IPHASE, IMAT) = &
-                                    (U_ABSORB2( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ) -&
-                                    U_ABSORB( IMAT, IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM )) &
+                                    (material_absorption2( IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM , IMAT) -&
+                                    material_absorption( IDIM + ( IPHASE - 1 ) * NDIM, JDIM + ( IPHASE - 1 ) * NDIM ,IMAT)) &
                                     / ( SATURA2(IPHASE, ICV ) - SATURA(IPHASE, ICV))
 
                             end if
@@ -900,13 +898,13 @@ contains
             END DO
         END DO
 
-        deallocate( u_absorb2, satura2, Max_sat )
+        deallocate( material_absorption2, satura2, Max_sat )
         ewrite(3,*) 'Leaving calculate_absorption'
 
         contains
             SUBROUTINE calculate_absorption2( packed_state, CV_NONODS, NPHASE, NDIM, SATURA, TOTELE, CV_NLOC, MAT_NLOC, &
                 CV_NDGLN, MAT_NDGLN, &
-                U_ABSORB, PERM2, visc_phases, IDs_ndgln)
+                material_absorption, PERM2, visc_phases, IDs_ndgln)
                 ! Calculate absorption for momentum eqns
                 use matrix_operations
                 !    use cv_advection
@@ -916,7 +914,7 @@ contains
                 REAL, DIMENSION( :, : ), intent( in ) :: SATURA
                 INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
                 INTEGER, DIMENSION( : ), intent( in ) :: MAT_NDGLN, IDs_ndgln
-                REAL, DIMENSION( :, :, : ), intent( inout ) :: U_ABSORB
+                REAL, DIMENSION( :, :, : ), intent( inout ) :: material_absorption
                 REAL, DIMENSION( :, :, : ), intent( in ) :: PERM2
                 real, intent(in), dimension(:) :: visc_phases
                 ! Local variable
@@ -936,7 +934,7 @@ contains
                 do id_reg = 1, size(perm,3)
                     inv_perm( :, :, id_reg)=inverse(perm( :, :, id_reg))
                 end do
-                U_ABSORB = 0.0
+!                material_absorption = 0.0
                 Loop_NPHASE: DO IPHASE = 1, NPHASE
 
                     Loop_ELE: DO ELE = 1, TOTELE
@@ -957,11 +955,11 @@ contains
                                     IPHA_IDIM = ( IPHASE - 1 ) * NDIM + IDIM
                                     JPHA_JDIM = ( IPHASE - 1 ) * NDIM + JDIM
                                     if (is_porous_media) then
-                                        call get_relperm(nphase, iphase, U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ),&
+                                        call get_relperm(nphase, iphase, material_absorption( IPHA_IDIM, JPHA_JDIM, MAT_NOD ),&
                                                     SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, ELE),&
                                                     Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                     else
-                                        U_ABSORB( MAT_NOD, IPHA_IDIM, JPHA_JDIM ) = 0.
+                                        material_absorption( IPHA_IDIM, JPHA_JDIM, MAT_NOD) = 0.
                                     end if
                                 END DO Loop_DimensionsJ
 
@@ -982,31 +980,31 @@ contains
             END SUBROUTINE calculate_absorption2
     END SUBROUTINE Calculate_AbsorptionTerm
 
-    subroutine get_relperm(nphase, iphase, ABSP, sat, visc, INV_PERM, Immobile_fraction, Corey_exponent, Endpoint_relperm)
+    subroutine get_relperm(nphase, iphase, material_absorption, sat, visc, INV_PERM, Immobile_fraction, Corey_exponent, Endpoint_relperm)
         !Calculates the relative permeability for 1, 2 (Brooks-corey) or 3 (stone's model) phases
         implicit none
-        real, intent(inout) :: ABSP
+        real, intent(inout) :: material_absorption
         real, intent(in) :: INV_PERM
         real, dimension(:), intent(in) :: sat, visc, Immobile_fraction, Corey_exponent, Endpoint_relperm
         integer, intent(in) :: iphase, nphase
 
         select case (nphase)
             case (1)
-                ABSP = INV_PERM* visc(iphase) * min(1.0,max(1d-5,sat(iphase)))
+                material_absorption = INV_PERM* visc(iphase) * min(1.0,max(1d-5,sat(iphase)))
             case (2)
-                call relperm_corey_epsilon( ABSP)
+                call relperm_corey_epsilon( material_absorption)
             case (3)
-                call relperm_stone(ABSP)
+                call relperm_stone(material_absorption)
             case default!One phase
                 FLAbort("No relative permeability function implemented for more than 3 phases")
         end select
 
         contains
-            SUBROUTINE relperm_corey_epsilon( ABSP )
+            SUBROUTINE relperm_corey_epsilon( material_absorption )
                   !This subroutine add a small quantity to the corey function to avoid getting a relperm=0 that may give problems
                   !when dividing it to obtain the sigma.
                 IMPLICIT NONE
-                REAL, intent( inout ) :: ABSP
+                REAL, intent( inout ) :: material_absorption
                 ! Local variables...
                 REAL :: KR, aux
                 real, parameter :: epsilon = 1d-15!This value should in theory never be used, the real lower limit
@@ -1019,18 +1017,18 @@ contains
                 KR = Endpoint_relperm(iphase)*( max( sat(iphase) - Immobile_fraction(iphase), sat(iphase)*eps+eps) / aux ) ** Corey_exponent(iphase)
                 !Make sure that the relperm is between bounds
                 KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
-                ABSP = INV_PERM * (visc(iphase) * max(1d-5, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
+                material_absorption = INV_PERM * (visc(iphase) * max(1d-5, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
                   !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
 
             END SUBROUTINE relperm_corey_epsilon
 
-            subroutine relperm_stone(ABSP)
+            subroutine relperm_stone(material_absorption)
                 !This subroutine calculates the relative permeability for three phases
                 !First phase has to be water, second oil and the third gas
                 !We use Stone's model II adapted, and for the two phases we use the Corey model
                 !Model explained in: Aziz, K. And Settari, T.:“Petroleum Reservoir Simulation” Applied Science Publishers, London, 30-38, 1979.
                 implicit none
-                real, intent(inout) :: ABSP
+                real, intent(inout) :: material_absorption
                 !Local variables
                 real, dimension(3) :: Norm_sat, relperm, KR
                 real :: Krow, Krog
@@ -1059,7 +1057,7 @@ contains
                 end if
                 !Make sure that the relperm is between bounds
                 KR(iphase) = min(max(epsilon, relperm(iphase)),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
-                ABSP = INV_PERM * (VISC(iphase) * max(1d-5,sat(iphase))) / KR(iphase) !The value 1d-5 is only used if the boundaries have values of saturation of zero.
+                material_absorption = INV_PERM * (VISC(iphase) * max(1d-5,sat(iphase))) / KR(iphase) !The value 1d-5 is only used if the boundaries have values of saturation of zero.
                 !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
 
             end subroutine relperm_stone
@@ -1195,84 +1193,66 @@ contains
 
     end subroutine calculate_u_source_cv
 
-    subroutine calculate_diffusivity(state, ncomp, nphase, ndim, cv_nonods, mat_nonods, &
-         mat_nloc, totele, mat_ndgln, cv_ndgln, ScalarAdvectionField_Diffusion )
-
+    subroutine calculate_diffusivity(state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
       type(state_type), dimension(:), intent(in) :: state
-      integer, intent(in) :: ncomp, nphase, ndim, cv_nonods, mat_nonods, mat_nloc, totele
-      integer, dimension(:), intent(in) :: mat_ndgln, cv_ndgln
+      type(multi_dimensions), intent(in) :: Mdims
+      type(multi_ndgln), intent(in) :: ndgln
       real, dimension(:, :, :, :), intent(inout) :: ScalarAdvectionField_Diffusion
-
+      !Local variables
       type(scalar_field), pointer :: component
       type(tensor_field), pointer :: diffusivity
       integer, dimension(:), pointer :: element_nodes
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod
       logical, parameter :: harmonic_average=.false.
-
       ScalarAdvectionField_Diffusion = 0.0
 
-      if ( ncomp > 1 ) then
 
-         do icomp = 1, ncomp
-            do iphase = 1, nphase
-
-               component => extract_scalar_field( state(nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) )
-               diffusivity => extract_tensor_field( state(nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) // 'Diffusivity', stat )
-
+      if ( Mdims%ncomp > 1 ) then
+         do icomp = 1, Mdims%ncomp
+            do iphase = 1, Mdims%nphase
+               component => extract_scalar_field( state(Mdims%nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) )
+               diffusivity => extract_tensor_field( state(Mdims%nphase+icomp), 'ComponentMassFractionPhase' // int2str(iphase) // 'Diffusivity', stat )
                if ( stat == 0 ) then
-                  do ele = 1, totele
-
-                     do iloc = 1, mat_nloc
-                        mat_inod = mat_ndgln( (ele-1)*mat_nloc + iloc )
-                        cv_inod = cv_ndgln( (ele-1)*mat_nloc + iloc )
-
+                  do ele = 1, Mdims%totele
+                     do iloc = 1, Mdims%mat_nloc
+                        mat_inod = ndgln%mat( (ele-1)*Mdims%mat_nloc + iloc )
+                        cv_inod = ndgln%cv( (ele-1)*Mdims%mat_nloc + iloc )
                         if ( .not.harmonic_average ) then
-
-                           do idim = 1, ndim
+                           do idim = 1, Mdims%ndim
                               ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                                    ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
                                    node_val( component, cv_inod ) * node_val( diffusivity, idim, idim, mat_inod )
                            end do
-
                         else
-
-                           do idim = 1, ndim
+                           do idim = 1, Mdims%ndim
                               if (  node_val( diffusivity, idim, idim, mat_inod ) > 0.0 ) then
                                  ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                                       ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) + &
                                       node_val( component, cv_inod ) / node_val( diffusivity, idim, idim, mat_inod )
                               end if
                            end do
-
                         end if
-
                      end do
                   end do
                end if
-
             end do
          end do
-
       else
-
-         do iphase = 1, nphase
+         do iphase = 1, Mdims%nphase
             diffusivity => extract_tensor_field( state(iphase), 'TemperatureDiffusivity', stat )
-
             if ( stat == 0 ) then
-               do idim = 1, ndim
+               do idim = 1, Mdims%ndim
                   ScalarAdvectionField_Diffusion( :, idim, idim, iphase ) = node_val( diffusivity, idim, idim, 1 )
                end do
             end if
          end do
-
       end if
-
       if ( harmonic_average ) then
          ! ScalarAdvectionField_Diffusion = 1.0 / ScalarAdvectionField_Diffusion
-         do iphase = 1, nphase
-            do idim = 1, ndim
-               do mat_inod = 1, mat_nonods
+         do iphase = 1, Mdims%nphase
+            do idim = 1, Mdims%ndim
+               do mat_inod = 1, Mdims%mat_nonods
                   if ( ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) > 0.0 ) &
                        ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase ) = &
                        1.0 / ScalarAdvectionField_Diffusion( mat_inod, idim, idim, iphase )
@@ -1280,22 +1260,19 @@ contains
             end do
          end do
       end if
-
-      do iphase = 1, nphase
+      do iphase = 1, Mdims%nphase
          ewrite(3,*) 'Thermal conductivity min_max', iphase, &
               minval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) ), &
               maxval( ScalarAdvectionField_Diffusion( :, 1, 1, iphase ) )
       end do
-
       return
     end subroutine calculate_diffusivity
 
-    subroutine calculate_viscosity( state, packed_state, Mdims, ndgln, Momentum_Diffusion )
+    subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion )
       implicit none
       type(multi_dimensions), intent(in) :: Mdims
       type(multi_ndgln), intent(in) :: ndgln
       type( state_type ), dimension( : ), intent( in ) :: state
-      type( state_type ), intent( in ) :: packed_state
       real, dimension( :, :, :, : ), intent( inout ) :: Momentum_Diffusion
       !Local variables
       character( len = option_path_len ) :: option_path_python, buffer
@@ -1348,7 +1325,7 @@ contains
                         end if
                         do iloc = 1, Mdims%cv_nloc
                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
-                           momentum_diffusion( mat_nod, :, :, iphase ) = momentum_diffusion( mat_nod, :, :, iphase ) + mu_tmp( :, :, iloc )
+                           momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion(  :, :, iphase, mat_nod ) + mu_tmp( :, :, iloc )
                            t_field%val( :, :, mat_nod ) = t_field%val( :, :, mat_nod ) + mu_tmp( :, :, iloc )
                         end do
                      end do
@@ -1371,7 +1348,7 @@ contains
                      end if
                      do iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
-                        momentum_diffusion( mat_nod, :, :, iphase ) = mu_tmp( :, :, iloc )
+                        momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
                         t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
                      end do
                   end do
@@ -1515,7 +1492,7 @@ contains
                                 if ( mat_perm_bc_dg ) then
                                     ! if mat_perm_bc_dg use the method that is used for DG between the elements.
                                     sigma_in=0.0
-                                    sigma_in = material_absorption( mat_nod, s : e, s : e )
+                                    sigma_in = material_absorption( s : e, s : e, mat_nod )
                                     mat = sigma_out  +  matmul(  sigma_in,  matmul( inverse( sigma_out ), sigma_in ) )
                                     mat_inv = matmul( inverse( sigma_in+sigma_out ), mat )
                                     suf_sig_diagten_bc( cv_snodi_ipha, 1 : ndim ) = (/ (mat_inv(i, i), i = 1, ndim) /)
@@ -1530,8 +1507,8 @@ contains
                                     suf_sig_diagten_bc( cv_snodi_ipha, 1 : ndim ) = 1.
 
                                     if ( idone( mat_nod+(iphase-1)*mat_nonods ) == 0 ) then
-                                        material_absorption( mat_nod, s : e, s : e  ) &
-                                            = matmul( mat, material_absorption( mat_nod, s : e, s : e ) )
+                                        material_absorption( s : e, s : e, mat_nod  ) &
+                                            = matmul( mat, material_absorption( s : e, s : e, mat_nod ) )
                                         idone( mat_nod+(iphase-1)*mat_nonods ) = 1
                                     end if
                                 end if
@@ -1553,7 +1530,7 @@ contains
         return
     end subroutine calculate_SUF_SIG_DIAGTEN_BC
 
-
+    !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
     subroutine update_velocity_absorption( states, ndim, nphase, mat_nonods,velocity_absorption )
 
         implicit none
@@ -1577,12 +1554,12 @@ contains
             if ( have_absorption ) then
                 absorption => extract_vector_field( states( iphase ), 'VelocityAbsorption' )
                 do idim = 1, ndim
-                    velocity_absorption( :, idim + (iphase-1)*ndim, idim + (iphase-1)*ndim ) =  &
+                    velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) =  &
                         absorption % val( idim, : )
                 end do
             else
                 do idim = 1, ndim
-                    velocity_absorption( :, idim + (iphase-1)*ndim, idim + (iphase-1)*ndim ) = 0.0
+                    velocity_absorption( idim + (iphase-1)*ndim, idim + (iphase-1)*ndim, : ) = 0.0
                 end do
             end if
         end do
@@ -1590,14 +1567,14 @@ contains
         return
     end subroutine update_velocity_absorption
 
-
-    subroutine update_velocity_absorption_coriolis( states, ndim, nphase, sigma )
+    !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
+    subroutine update_velocity_absorption_coriolis( states, ndim, nphase, velocity_absorption )
 
       implicit none
 
       integer, intent( in ) :: ndim, nphase
       type( state_type ), dimension( : ), intent( in ) :: states
-      real, dimension( :, :, : ), intent( inout ) :: sigma
+      real, dimension( :, :, : ), intent( inout ) :: velocity_absorption
 
       type( scalar_field ), pointer :: f
       integer :: iphase, stat, idx1, idx2
@@ -1606,8 +1583,8 @@ contains
          f => extract_scalar_field( states( iphase ), 'f', stat )
          if ( stat == 0 ) then
             idx1 = 1 + (iphase-1)*ndim ;  idx2 = 2 + (iphase-1)*ndim
-            sigma( :, idx1, idx2 ) = sigma( :, idx1, idx2 ) - f % val
-            sigma( :, idx2, idx1 ) = sigma( :, idx2, idx1 ) + f % val
+            velocity_absorption( idx1, idx2, : ) = velocity_absorption(idx1, idx2, : ) - f % val
+            velocity_absorption( idx2, idx1, : ) = velocity_absorption(idx2, idx1, : ) + f % val
          end if
       end do
 
@@ -1639,12 +1616,13 @@ contains
             if ( have_source ) then
                 source => extract_vector_field( states( iphase ), 'VelocitySource' )
                 do idim = 1, ndim
-                    velocity_u_source( idim, iphase, : ) =  source % val( idim, : )
+                    velocity_u_source( idim, iphase, : ) =  velocity_u_source( idim, iphase, : ) +&
+                                                              source % val( idim, : )
                 end do
-            else
-                do idim = 1, ndim
-                    velocity_u_source( idim, iphase, : ) = 0.0
-                end do
+!            else
+!                do idim = 1, ndim
+!                    velocity_u_source( idim, iphase, : ) = velocity_u_source( idim, iphase, : )+ 0.0
+!                end do
             end if
         end do
 
@@ -1694,41 +1672,41 @@ contains
 
         iphase=1 ; jphase=1
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = S_lg_l + S_ls_l
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = S_lg_l + S_ls_l
         end do
         iphase=1 ; jphase=2
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_lg_l
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_lg_l
         end do
         iphase=1 ; jphase=3
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_ls_l
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_ls_l
         end do
 
         iphase=2 ; jphase=1
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_lg_g
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_lg_g
         end do
         iphase=2 ; jphase=2
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = S_lg_g + S_gs_g
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = S_lg_g + S_gs_g
         end do
         iphase=2 ; jphase=3
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = -S_gs_g
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = -S_gs_g
         end do
 
         iphase=3 ; jphase=1
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = 0.0
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = 0.0
         end do
         iphase=3 ; jphase=2
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = 0.0
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = 0.0
         end do
         iphase=3 ; jphase=3
         do idim = 1, ndim
-            velocity_absorption( :, idim + (iphase-1)*ndim, idim + (jphase-1)*ndim ) = 1.0e+15
+            velocity_absorption( idim + (iphase-1)*ndim, idim + (jphase-1)*ndim, : ) = 1.0e+15
         end do
 
 

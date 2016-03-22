@@ -122,8 +122,6 @@ contains
         integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
         !!$ Shape function related fields:
         integer :: scvngi_theta, igot_t2, igot_theta_flux, IGOT_THERM_VIS
-        !!$ CV-wise porosity
-        real, dimension( :, : ), allocatable :: Mean_Pore_CV
         !!$ Adaptivity related fields and options:
         type( tensor_field ) :: metric_tensor
         type( state_type ), dimension( : ), pointer :: sub_state => null()
@@ -165,7 +163,7 @@ contains
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(scalar_field), pointer :: f1, f2
-        type(vector_field), pointer :: positions, porosity_field
+        type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
         logical, parameter :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
         ! Ioutlet counts the number of boundaries over which to calculate the outflux
@@ -248,16 +246,14 @@ contains
         allocate( &
             !!$
             suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
-            Mean_Pore_CV( Mdims%npres, Mdims%cv_nonods ), &
             mass_ele( Mdims%totele ), &
             !!$
-            Material_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
+            Material_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
             ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) & ! fix me..move in intenerg
             )
         !!$
         suf_sig_diagten_bc=0.
         !!$
-        Mean_Pore_CV=0.
         mass_ele=0.
         !!$
         Material_Absorption=0.
@@ -392,13 +388,16 @@ contains
 !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
+
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
+
             if ( do_checkpoint_simulation( dtime ) ) then
                call checkpoint_simulation( state, cp_no=checkpoint_number, &
                     protect_simulation_name=.true., file_type='.mpml' )
                checkpoint_number=checkpoint_number+1
             end if
             dtime = dtime + 1
+
             ! Adapt mesh within the FPI?
             adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
             itime = itime + 1
@@ -451,8 +450,8 @@ contains
                 ewrite(2,*) '  NEW ITS', its
                 ! open the boiling test for two phases-gas and liquid
                 if (have_option('/boiling') ) then
-                   call set_nu_to_u( packed_state )
-                   allocate ( Velocity_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
+                   call set_nu_to_u( packed_state )!sprint_to_do, this seems odd, the outputs of boiling are deallocated instantly
+                   allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
                               Temperature_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
                    call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
                         velocity_absorption, temperature_absorption )
@@ -470,13 +469,11 @@ contains
 
 
                 !!$ Solve advection of the scalar 'Temperature':
-if (.true.) then
                 Conditional_ScalarAdvectionField: if( have_temperature_field .and. &
                     have_option( '/material_phase[0]/scalar_field::Temperature/prognostic' ) ) then
                     ewrite(3,*)'Now advecting Temperature Field'
                     call set_nu_to_u( packed_state )
-                    !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                    !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
+                    !call calculate_diffusivity( state, Mdims, ndgln, ScalarAdvectionField_Diffusion )
                     tracer_field=>extract_tensor_field(packed_state,"PackedTemperature")
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
@@ -491,19 +488,11 @@ if (.true.) then
                         0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF, &
-                        Mean_Pore_CV, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, IDs_ndgln=IDs_ndgln )
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
-end if
-
-
-
-
-
-
 
 
 !!$ Solve advection of the scalars.   'Temperature':
@@ -519,8 +508,7 @@ if ( new_ntsol_loop  ) then
 
 
         call set_nu_to_u( packed_state )
-        !call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                    !    Mdims%mat_nloc, Mdims%totele, ndgln%mat, ScalarAdvectionField_Diffusion )
+        !call calculate_diffusivity( state, Mdim, ndgln, ScalarAdvectionField_Diffusion )
         velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
         density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
         saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
@@ -577,7 +565,6 @@ if ( new_ntsol_loop  ) then
                         0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
                         THETA_GDIFF, &
-                        Mean_Pore_CV, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, IDs_ndgln=IDs_ndgln )
@@ -593,7 +580,7 @@ if ( new_ntsol_loop  ) then
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF,  Mean_Pore_CV, &
+                        THETA_GDIFF, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field, IDs_ndgln=IDs_ndgln )
@@ -650,24 +637,23 @@ end if
                         dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        igot_theta_flux, &
+                        igot_theta_flux, mass_ele,Material_Absorption,&
+                        its, IDs_ndgln, IDs2CV_ndgln, Courant_number,&
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
-                        mass_ele_transp = mass_ele,&
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
-                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j,&
-                        Material_Absorption=Material_Absorption,&
-                        nonlinear_iteration = its, IDs_ndgln = IDs_ndgln, IDs2CV_ndgln = IDs2CV_ndgln, &
-                        Courant_number = Courant_number)
+                        theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j)
                 end if Conditional_PhaseVolumeFraction
 
 
-                !!$ Starting loop over components
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
-                velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
-                saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
-                old_saturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
 
-                Conditional_Components:if( have_component_field ) then
+                Conditional_Components: if ( have_component_field ) then
+
+                    PhaseVolumeFractionComponentSource%val = 0.0
+                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
+                    saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+                    old_saturation_field=>extract_tensor_field(packed_state,"PackedOldPhaseVolumeFraction")
+
                     PhaseVolumeFractionComponentSource%val = 0.0
                     D_s  => extract_tensor_field( packed_state, "PackedDensity" )
                     DC_s  => extract_tensor_field( packed_state, "PackedComponentDensity" )
@@ -675,6 +661,8 @@ end if
                     MFC_s  => extract_tensor_field( packed_state, "PackedComponentMassFraction" )
                     MFCOLD_s  => extract_tensor_field( packed_state, "PackedOldComponentMassFraction" )
 
+
+                    !!$ Starting loop over components
                     Loop_Components: do icomp = 1, Mdims%ncomp
 
                         tracer_field=>extract_tensor_field(multicomponent_state(icomp),"PackedComponentMassFraction")
@@ -713,7 +701,7 @@ end if
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                                 igot_t2, igot_theta_flux, &
                                 Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &!NEED TO REMOVE EVERYTHING OF THE NEW MDISOPT BUT THE ONES IN THIS LINE...
-                                theta_gdiff, Mean_Pore_CV, &
+                                theta_gdiff, &
                                 thermal = .false.,& ! the false means that we don't add an extra source term
                                 theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                                 icomp=icomp, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
@@ -745,6 +733,8 @@ end if
                        END DO
                        DEALLOCATE( RSUM )
                     end if
+
+                    MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
                     do icomp = 1, Mdims%ncomp
 
@@ -787,7 +777,7 @@ end if
                           do cv_nodi = 1, Mdims%cv_nonods
                              PhaseVolumeFractionComponentSource%val( 1, iphase, cv_nodi ) =  &
                                   PhaseVolumeFractionComponentSource%val( 1, iphase, cv_nodi ) &
-                                  + Mean_Pore_CV( 1, cv_nodi ) * MFCOLD_s%val( icomp, iphase, cv_nodi ) &
+                                  + MeanPoreCV%val( 1, cv_nodi ) * MFCOLD_s%val( icomp, iphase, cv_nodi ) &
                                   * ( DCOLD_s%val( icomp, iphase, cv_nodi ) - DC_s%val( icomp, iphase, cv_nodi ) ) &
                                   * old_saturation_field%val( 1, IPHASE, Mdims%cv_nonods ) &
                                   / ( DC_s%val( ICOMP, IPHASE, CV_NODI ) * DT )
@@ -798,8 +788,7 @@ end if
 
                     if ( is_porous_media .and. have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
                          ']/is_multiphase_component/Comp_Sum2One' ) .and. ( Mdims%ncomp > 1 ) ) then
-                       call Cal_Comp_Sum2One_Sou( packed_state, Mdims%cv_nonods, Mdims%nphase, Mdims%ncomp, dt, its, &
-                            NonLinearIteration, Mean_Pore_CV )
+                       call Cal_Comp_Sum2One_Sou( packed_state, Mdims )
                     end if
 
                 end if Conditional_Components
@@ -969,8 +958,6 @@ end if
         deallocate( &
             !!$ Defining element-pair type and discretisation options and coefficients
             opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-            !!$ For output:
-            Mean_Pore_CV, &
             !!$ Working arrays
             theta_gdiff, ScalarField_Source_Store, &
             mass_ele,&
@@ -1248,8 +1235,6 @@ end if
                 deallocate( &
                     !!$ Defining element-pair type and discretisation options and coefficients
                     opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                    !!$ For output:
-                    Mean_Pore_CV, &
                     !!$ Working arrays
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source_Store, &
@@ -1304,10 +1289,9 @@ end if
                 allocate( &
                     !!$
                     suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
-                    Mean_Pore_CV( Mdims%npres, Mdims%cv_nonods ), &
                     mass_ele( Mdims%totele ), &
                     !!$
-                    Material_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ), &
+                    Material_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ), &
                     ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), Component_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
                 !!$
                 Component_Absorption=0.

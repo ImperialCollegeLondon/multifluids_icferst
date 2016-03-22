@@ -73,7 +73,7 @@ contains
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
-       THETA_GDIFF, MEAN_PORE_CV, &
+       THETA_GDIFF, &
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -101,7 +101,6 @@ contains
            REAL, DIMENSION( :, : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
            REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
            REAL, DIMENSION( :, :, :, : ), intent( in ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-           REAL, DIMENSION( :, : ), intent( inout ) :: MEAN_PORE_CV
            character( len = * ), intent( in ), optional :: option_path
            real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
@@ -123,6 +122,7 @@ contains
            REAL, PARAMETER :: SECOND_THETA = 1.0
            LOGICAL :: RETRIEVE_SOLID_CTY
            type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv
+           type( vector_field ), pointer  :: MeanPoreCV
            integer :: lcomp, Field_selector, IGOT_T2_loc
            type(vector_field)  :: vtracer
            type(csr_sparsity), pointer :: sparsity
@@ -200,8 +200,7 @@ contains
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
-              call calculate_diffusivity( state, Mdims%ncomp, Mdims%nphase, Mdims%ndim, Mdims%cv_nonods, Mdims%mat_nonods, &
-                 Mdims%mat_nloc, Mdims%totele, ndgln%mat, ndgln%cv, TDIFFUSION )
+              call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION )
            end if
            ! get diffusivity for compositional
            if ( lcomp > 0 .and. is_porous_media ) then
@@ -219,11 +218,14 @@ contains
            ! calculate T_ABSORB
            allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
            if (have_option('/boiling')) then
-              allocate ( Velocity_Absorption( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
+              allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
               call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
                    velocity_absorption, T_AbsorB )
               deallocate ( Velocity_Absorption )
            end if
+
+           MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
+
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                 !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
@@ -241,7 +243,7 @@ contains
                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                    IGOT_T2_loc,IGOT_THETA_FLUX ,GET_THETA_FLUX, USE_THETA_FLUX, &
                    THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
-                   MEAN_PORE_CV, &
+                   MeanPoreCV%val, &
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, &
@@ -286,12 +288,11 @@ contains
          DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, V_ABSORB, VOLFRA_PORE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-         igot_theta_flux, &
-         option_path, &
-         mass_ele_transp,&
-         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
+         igot_theta_flux, mass_ele_transp,&
          Material_Absorption,nonlinear_iteration, IDs_ndgln,&
-         IDs2CV_ndgln, Courant_number)
+         IDs2CV_ndgln, Courant_number,&
+         option_path,&
+         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
              implicit none
              type( state_type ), dimension( : ), intent( inout ) :: state
              type( state_type ) :: packed_state
@@ -305,18 +306,18 @@ contains
              INTEGER, intent( in ) :: igot_theta_flux
              INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
              integer, dimension(:), intent(in)  :: IDs2CV_ndgln
-             REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
              REAL, intent( in ) :: DT
              REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
              REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
              REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              REAL, DIMENSION( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
-             character(len= * ), intent(in), optional :: option_path
              real, dimension( : ), intent( inout ) :: mass_ele_transp
              real, dimension( :, :, : ), intent(inout) :: Material_Absorption
              integer, intent(in) :: nonlinear_iteration
              real, intent(inout) :: Courant_number
+             character(len= * ), intent(in), optional :: option_path
+             REAL, DIMENSION( :, :), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
              ! Local Variables
              LOGICAL, PARAMETER :: THERMAL= .false.
              integer :: igot_t2
@@ -557,7 +558,7 @@ contains
     SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
         velocity, pressure, &
-        MAT_ABSORB, DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
+        material_absorption, DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -580,7 +581,7 @@ contains
         type( tensor_field ), intent(inout) :: pressure
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY
         INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln
-        REAL, DIMENSION(  :, :, :  ), intent( inout ) :: MAT_ABSORB
+        REAL, DIMENSION(  :, :, :  ), intent( inout ) :: material_absorption
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
@@ -606,7 +607,12 @@ contains
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
         REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-        REAL, DIMENSION(  :, :, :  ), allocatable :: U_SOURCE, U_SOURCE_CV, U_ABSORBIN, temperature_absorption
+        real, dimension(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods) :: velocity_absorption
+        real, dimension(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods) :: U_SOURCE_CV_ALL
+        real, dimension(Mdims%ndim, Mdims%nphase, Mdims%u_nonods) :: U_SOURCE_ALL
+        real, dimension(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods) :: UDIFFUSION_ALL
+        real, dimension(Mdims%nphase, Mdims%mat_nonods) :: UDIFFUSION_VOL_ALL
+        REAL, DIMENSION(  :, :, :  ), allocatable :: temperature_absorption, U_ABSORBIN
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
         REAL, DIMENSION( :, :, : ), allocatable :: DU_VEL, U_RHS_CDP2
@@ -619,10 +625,8 @@ contains
         type(petsc_csr_matrix)::  CMC_petsc
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
         INTEGER :: MAT_INOD, IPRES, JPRES, iphase_real, jphase_real
-        REAL, DIMENSION( :, :, : ), allocatable :: UOLD_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, U_ABSORB_ALL, U_ABSORB
         REAL, DIMENSION( :, : ), allocatable :: UDEN_ALL, UDENOLD_ALL, UDEN3
-        REAL, DIMENSION( :, :, :, : ), allocatable :: uDIFFUSION, UDIFFUSION_ALL
-        REAL, DIMENSION( :, : ), allocatable :: uDIFFUSION_VOL, UDIFFUSION_VOL_ALL, rhs_p2, sigma
+        REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
         type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv
@@ -668,8 +672,6 @@ contains
         !sprint_to_do!this looks like a place than can be easily optimized
         ALLOCATE( UDEN_ALL( Mdims%nphase, Mdims%cv_nonods ), UDENOLD_ALL( Mdims%nphase, Mdims%cv_nonods ) )
         UDEN_ALL = 0.; UDENOLD_ALL = 0.
-        allocate ( uDiffusion( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ), uDiffusion_Vol( Mdims%mat_nonods, Mdims%nphase ) )
-        uDiffusion = 0. ; uDiffusion_Vol = 0.
         ewrite(3,*) 'In FORCE_BAL_CTY_ASSEM_SOLVE'
         ALLOCATE( Mmat%CT( Mdims%ndim, Mdims%nphase, Mspars%CT%ncol )) ; Mmat%CT=0.
         call allocate(Mmat%CT_RHS,Mdims%npres,pressure%mesh,"Mmat%CT_RHS")
@@ -714,7 +716,7 @@ contains
         GAMMA_PRES_ABS_NANO = GAMMA_PRES_ABS
         ! this can be optimised in the future...
 
-        !################TEMPORARY ADAPT FROM OLD VARIABLES TO NEW###############!sprint_to_do; remove conversion
+
         U_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedVelocity" )
         UOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldVelocity" )
         X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
@@ -734,10 +736,10 @@ contains
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
         end IF
         !Calculate gravity source terms
-        allocate( u_source_cv( Mdims%ndim, Mdims%nphase, Mdims%cv_nonods ) ) ; u_source_cv=0.0
+        U_SOURCE_CV_ALL=0.0
         if ( is_porous_media )then
            UDEN_ALL=0.0; UDENOLD_ALL=0.0
-           call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, DEN_ALL, U_Source_CV )
+           call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, DEN_ALL, U_SOURCE_CV_ALL )
         else
            if ( linearise_density ) then
               call linearise_field( DEN_ALL2, UDEN_ALL )
@@ -754,7 +756,7 @@ contains
               UDEN3 = uden_all
            end if
            if ( have_option( "/physical_parameters/gravity/hydrostatic_pressure_solver" ) ) UDEN3 = 0.0
-           call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, uden3, U_Source_CV )
+           call calculate_u_source_cv( state, Mdims%cv_nonods, Mdims%ndim, Mdims%nphase, uden3, U_SOURCE_CV_ALL )
            deallocate( uden3 )
            if ( boussinesq ) then
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
@@ -776,45 +778,26 @@ contains
               END DO
            ENDIF
         ENDIF
-        ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside, even for porous media)
-        call calculate_viscosity( state, packed_state, Mdims, ndgln, uDiffusion )
-
-        ! allocate and define U_ABSORBIN here...
-        allocate( U_ABSORBIN( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
-        U_ABSORBIN=0.0
+        ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
+        call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL )
+        UDIFFUSION_VOL_ALL = 0.
+        ! define velocity_absorption here...
+        velocity_absorption=0.0
         ! update velocity absorption
-        call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods, U_ABSORBIN )
-        call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
+        call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods, velocity_absorption )
+        call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
         ! open the boiling test for two phases-gas and liquid
         if (have_option('/boiling')) then
            allocate( temperature_absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
            call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-                U_ABSORBIN, temperature_absorption )
+                velocity_absorption, temperature_absorption )!temperature_absorption <= sprint_to_do whats is temperature_absorption for???
            deallocate( temperature_absorption )
         end if
-        allocate( U_ABSORB( Mdims%mat_nonods, Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase ) )
-        U_ABSORB = U_ABSORBIN + MAT_ABSORB
-        ALLOCATE( U_SOURCE( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) ) ; u_source=0.0
-        ! update velocity source
-        call update_velocity_source( state, Mdims%ndim, Mdims%nphase, Mdims%u_nonods, u_source )
-        ALLOCATE( U_SOURCE_ALL( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
-        ALLOCATE( U_SOURCE_CV_ALL( Mdims%ndim, Mdims%nphase, Mdims%cv_nonods ) )
-        DO IPHASE = 1, Mdims%nphase
-            DO IDIM = 1, Mdims%ndim
-                U_SOURCE_ALL( IDIM, IPHASE, : ) = U_SOURCE( IDIM, IPHASE, : )
-                U_SOURCE_CV_ALL( IDIM, IPHASE, : ) = U_SOURCE_CV( IDIM, IPHASE, : )
-            END DO
-        END DO
-        ALLOCATE( U_ABSORB_ALL( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
-        ALLOCATE( UDIFFUSION_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods ) )
-        ALLOCATE( UDIFFUSION_VOL_ALL( Mdims%nphase, Mdims%mat_nonods ) )
-        DO MAT_INOD = 1, Mdims%mat_nonods
-            U_ABSORB_ALL( :, :, MAT_INOD ) = U_ABSORB( MAT_INOD, :, : )
-            UDIFFUSION_ALL( :, :, :, MAT_INOD ) = UDIFFUSION( MAT_INOD, :, :, : )
-            UDIFFUSION_VOL_ALL( :, MAT_INOD ) = UDIFFUSION_VOL( MAT_INOD, : )
-        END DO
 
-        !##########TEMPORARY ADAPT FROM OLD VARIABLES TO NEW############
+        ! update velocity source
+        call update_velocity_source( state, Mdims%ndim, Mdims%nphase, Mdims%u_nonods, u_source_all )
+
+        velocity_absorption = material_absorption + velocity_absorption
         !Check if the pressure matrix is a CV matrix
         Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         !sprint_to_do!RECALC_C_CV should be consistent with one of these variables like after_adapt
@@ -870,7 +853,7 @@ contains
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
              velocity, pressure, &
-            X_ALL2%VAL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
+            X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL2%VAL, UOLD_ALL2%VAL, &
             P_ALL%VAL, CVP_ALL%VAL, DEN_ALL, DENOLD_ALL, DERIV%val(1,:,:), &
             DT, &
@@ -894,7 +877,7 @@ contains
         if ( Mdims%npres > 1 ) then
            ALLOCATE( SIGMA( Mdims%nphase, Mdims%mat_nonods ) )
            DO IPHASE = 1, Mdims%nphase
-              SIGMA( IPHASE, : ) = U_ABSORB_ALL( (IPHASE-1)*Mdims%ndim+1, (IPHASE-1)*Mdims%ndim+1, : )
+              SIGMA( IPHASE, : ) = velocity_absorption( (IPHASE-1)*Mdims%ndim+1, (IPHASE-1)*Mdims%ndim+1, : )
            END DO
            call get_entire_boundary_condition( pressure,&
                 ['weakdirichlet','freesurface  '],&
@@ -904,7 +887,7 @@ contains
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mmat%U_RHS, Mdims, Mspars, associated(Mmat%PIVIT_MAT), &
                                     Mmat%C, ndgln%cv, ndgln%u, ndgln%x, ndgln%mat, Mmat%PIVIT_MAT, &
                                     ndgln%suf_p, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, U_ALL2%VAL, &
-                                    U_SOURCE*0.0, U_SOURCE_CV*0.0 ) ! No sources in the wells for now...
+                                    U_SOURCE_ALL*0.0, U_SOURCE_CV_ALL*0.0 ) ! No sources in the wells for now...
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
@@ -959,7 +942,12 @@ contains
             END DO
             if ( high_order_Ph ) then
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
-                  call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, Mdisopt%cv_ele_type, Mdims%nphase, u_absorbin )
+                  allocate (U_ABSORBIN(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
+                  call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods, U_ABSORBIN )
+                  call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
+                  !sprint_to_do; what is actually necessary here from U_ABSORBIN??
+                  call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, Mdisopt%cv_ele_type, Mdims%nphase, U_ABSORBIN )
+                  deallocate(U_ABSORBIN)
                end if
             end if
             IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
@@ -1177,7 +1165,7 @@ END IF
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
         velocity, pressure, &
-        X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
+        X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
         P, CV_P, DEN_ALL, DENOLD_ALL, DERIV, &
         DT, &
@@ -1212,7 +1200,7 @@ END IF
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
         INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
         real, dimension(:,:), intent(in) :: X_ALL
-        REAL, DIMENSION( :, :, : ), intent( in ) :: U_ABSORB_ALL
+        REAL, DIMENSION( :, :, : ), intent( in ) :: velocity_absorption
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL
@@ -1246,7 +1234,6 @@ END IF
 ! NEED TO CHANGE RETRIEVE_SOLID_CTY TO MAKE AN OPTION
         REAL, PARAMETER :: SECOND_THETA = 1.0
         LOGICAL, PARAMETER :: GETCV_DISC = .FALSE., GETCT= .TRUE., THERMAL= .FALSE.
-        type( petsc_csr_matrix ) :: acv
         REAL, DIMENSION( : ), allocatable ::  dummy_transp
         REAL, DIMENSION( :,:,:,: ), allocatable :: TDIFFUSION
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
@@ -1257,7 +1244,6 @@ END IF
         INTEGER :: IGOT_T2, I, IGOT_THERM_VIS
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM
         type(tensor_field), pointer :: tracer, density
-        type(vector_field) :: cv_rhs
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
@@ -1275,7 +1261,7 @@ END IF
         CALL ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
             velocity, pressure, &
-            X_ALL, U_ABSORB_ALL, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
+            X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL, UOLD_ALL, &
             U_ALL, UOLD_ALL, &    ! This is nu...
             UDEN_ALL, UDENOLD_ALL, DERIV, &
@@ -5549,11 +5535,11 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, cv_ele_
       ! local variables...
       type ( tensor_field ), pointer :: ufield
       integer :: ndim, ph_ngi, ph_nloc, ph_snloc, &
-           &     u_nloc, u_snloc, stat, &
-           &     totele, x_nonods, ele, x_nloc, &
-           &     ph_ele_type, iloop, u_nonods, cv_nonods, &
-           &     cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, cv_nloc, &
-           &     ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
+                u_nloc, u_snloc, stat, &
+                totele, x_nonods, ele, x_nloc, &
+                ph_ele_type, iloop, u_nonods, cv_nonods, &
+                cv_iloc, cv_inod, idim, iphase, u_inod, u_iloc, cv_nloc, &
+                ph_iloc, ph_inod, ph_nonods, ph_jloc, ph_jnod, tmp_cv_nloc, other_nloc
       integer, dimension( : ), pointer :: x_ndgln, cv_ndgln, ph_ndgln, u_ndgln, surface_node_list, mat_ndgln
       logical :: quad_over_whole_ele, d1, d3, dcyl
       type( vector_field ), pointer :: x
@@ -5802,7 +5788,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, cv_ele_
                   end if
 
                   sigma_gi( :, iphase ) = sigma_gi( :, iphase ) + &
-                        tmp_cvfen( cv_iloc, : ) * u_absorbin( mat_inod, 1, iphase )
+                        tmp_cvfen( cv_iloc, : ) * u_absorbin(  1, iphase, mat_inod )
 
                end do
             end do
