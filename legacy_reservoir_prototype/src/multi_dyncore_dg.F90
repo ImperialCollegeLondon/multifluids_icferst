@@ -289,7 +289,7 @@ contains
          V_SOURCE, V_ABSORB, VOLFRA_PORE, &
          opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
          igot_theta_flux, mass_ele_transp,&
-         Material_Absorption,nonlinear_iteration, IDs_ndgln,&
+         nonlinear_iteration, IDs_ndgln,&
          IDs2CV_ndgln, Courant_number,&
          option_path,&
          THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J)
@@ -313,7 +313,6 @@ contains
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              REAL, DIMENSION( :, :, :, : ), intent( inout ) :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
              real, dimension( : ), intent( inout ) :: mass_ele_transp
-             real, dimension( :, :, : ), intent(inout) :: Material_Absorption
              integer, intent(in) :: nonlinear_iteration
              real, intent(inout) :: Courant_number
              character(len= * ), intent(in), optional :: option_path
@@ -340,7 +339,7 @@ contains
              !Working pointers
              real, dimension(:,:,:), pointer :: p
              real, dimension(:, :), pointer :: satura
-             type(tensor_field), pointer :: tracer, velocity, density, deriv
+             type(tensor_field), pointer :: tracer, velocity, density, deriv, PorousMedia_AbsorptionTerm
              type(scalar_field), pointer :: gamma
              !Variables for global convergence method
              real :: Dumping_factor
@@ -368,6 +367,8 @@ contains
                  call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Dumping_factor',&
                      Dumping_factor, default = 1.0)
              end if
+             if ( Dumping_factor < 1.01 ) PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
+
              GET_THETA_FLUX = .FALSE.
              IGOT_T2 = 0
              deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
@@ -512,7 +513,7 @@ contains
                              !For the non-linear iteration inside this loop we need to update the velocities
                              !and that is done through the sigmas, hence, we have to update them
                              call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, &
-                                CV_GIdims, Mspars, ndgln, Material_Absorption, suf_sig_diagten_bc, &
+                                CV_GIdims, Mspars, ndgln, suf_sig_diagten_bc, &
                                 opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, ids_ndgln, IDs2CV_ndgln)
                              !Also recalculate the Over-relaxation parameter
                              call getOverrelaxation_parameter(packed_state, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
@@ -558,7 +559,7 @@ contains
     SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
         velocity, pressure, &
-        material_absorption, DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
+        DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -581,7 +582,6 @@ contains
         type( tensor_field ), intent(inout) :: pressure
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY
         INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln
-        REAL, DIMENSION(  :, :, :  ), intent( inout ) :: material_absorption
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
@@ -629,7 +629,7 @@ contains
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
         type( tensor_field ), pointer :: u_all2, uold_all2, den_all2, denold_all2, tfield, den_all3
-        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv
+        type( tensor_field ), pointer :: p_all, pold_all, cvp_all, deriv, PorousMedia_AbsorptionTerm
         type( vector_field ), pointer :: x_all2
         type( scalar_field ), pointer ::  sf, soldf, gamma
         type( vector_field ) :: packed_vel, rhs
@@ -797,7 +797,9 @@ contains
         ! update velocity source
         call update_velocity_source( state, Mdims%ndim, Mdims%nphase, Mdims%u_nonods, u_source_all )
 
-        velocity_absorption = material_absorption + velocity_absorption
+        PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm", stat )
+        if ( stat ==0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
+
         !Check if the pressure matrix is a CV matrix
         Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         !sprint_to_do!RECALC_C_CV should be consistent with one of these variables like after_adapt
