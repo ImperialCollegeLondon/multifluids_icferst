@@ -1250,10 +1250,11 @@ contains
                 !and we multiply both phases by kr_max. By default kr_max= 1
 
                 aux = 1.0 - sum(Immobile_fraction)
-                KR = Endpoint_relperm(iphase)*( sat(iphase) - Immobile_fraction(iphase) / aux ) ** Corey_exponent(iphase)
-                if (present(inv_mat_absorp).and.present(PERM)) &!This has to be done BEFORE capping KR
-                            inv_mat_absorp = (perm * KR)/(visc(iphase) * max(1d-5, sat(iphase)))
-!                KR = Endpoint_relperm(iphase)*( max( sat(iphase) - Immobile_fraction(iphase), sat(iphase)*eps+eps) / aux ) ** Corey_exponent(iphase)
+                if (present(inv_mat_absorp).and.present(PERM)) then!This has to be done BEFORE capping KR
+                    KR = Endpoint_relperm(iphase)*( sat(iphase) - Immobile_fraction(iphase) / aux ) ** Corey_exponent(iphase)
+                    inv_mat_absorp = (perm * KR)/(visc(iphase) * max(1d-5, sat(iphase)))
+                end if
+                KR = Endpoint_relperm(iphase)*( max( sat(iphase) - Immobile_fraction(iphase), sat(iphase)*eps+eps) / aux ) ** Corey_exponent(iphase)
                 !Make sure that the relperm is between bounds
                 KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
                 material_absorption = INV_PERM * (visc(iphase) * max(1d-5, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
