@@ -135,7 +135,7 @@ contains
         real, dimension( :, : ), pointer :: &
             ScalarField_Source_Store
         real, dimension( :, :, : ), allocatable :: &
-            Velocity_Absorption, ScalarField_Absorption, Temperature_Absorption
+            Velocity_Absorption, Temperature_Absorption
         real, dimension( :, : ), allocatable ::theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j
         integer :: stat, istate, iphase, jphase, icomp, its, its2, cv_nodi, adapt_time_steps, cv_inod
@@ -163,7 +163,7 @@ contains
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
-        type(tensor_field), pointer :: Component_Absorption, material_Absorption
+        type(tensor_field), pointer :: Component_Absorption
         type(scalar_field), pointer :: f1, f2
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
         logical, parameter :: write_all_stats=.true.
@@ -249,16 +249,10 @@ contains
             !!$
             suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
             mass_ele( Mdims%totele ), &
-            !!$
-            ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods )& ! fix me..move in intenerg
             )
         !!$
         suf_sig_diagten_bc=0.
-        !!$
         mass_ele=0.
-        !!$
-        !!$ Initialising Absorption terms that do not appear in the schema
-        ScalarField_Absorption=0.
         !!$
         do iphase = 1, Mdims%nphase
             f1 => extract_scalar_field( state(iphase), "Temperature", stat )
@@ -270,6 +264,7 @@ contains
         !!$ Calculate diagnostic fields
         call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
         call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
+        !!$
         !!$ Computing shape function scalars
         igot_t2 = 0 ; igot_theta_flux = 0
         if( Mdims%ncomp /= 0 )then
@@ -568,7 +563,7 @@ if ( new_ntsol_loop  ) then
 
                     exit
               else
-                    
+
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, dt, &
@@ -581,7 +576,7 @@ if ( new_ntsol_loop  ) then
                         saturation=saturation_field)
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                end if
-                    
+
 
            end if
 
@@ -614,7 +609,7 @@ end if
                         velocity_field, pressure_field, &
                         dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
-                        ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
+                        ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
                         IDs_ndgln, IDs2CV_ndgln )
@@ -627,11 +622,11 @@ end if
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
                         dt, SUF_SIG_DIAGTEN_BC, &
-                        ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
-                        igot_theta_flux, mass_ele,&
-                        its, IDs_ndgln, IDs2CV_ndgln, Courant_number,&
+                        ScalarField_Source_Store, Porosity_field%val, &
+                        igot_theta_flux, mass_ele, &
+                        its, IDs_ndgln, IDs2CV_ndgln, Courant_number, &
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j)
@@ -684,6 +679,7 @@ end if
                                  end do
                               end if
                            end do
+
                         end if
 
                         !!$ NonLinear iteration for the components advection:
@@ -957,7 +953,6 @@ end if
             !!$ Working arrays
             theta_gdiff, ScalarField_Source_Store, &
             mass_ele,&
-            ScalarField_Absorption, &
             theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, &
             sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
         ! Dump at end, unless explicitly disabled
@@ -1233,7 +1228,6 @@ end if
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source_Store, &
                     mass_ele, &
-                    ScalarField_Absorption, &
                     theta_flux, one_m_theta_flux, theta_flux_j, one_m_theta_flux_j, sum_theta_flux, &
                     sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j )
                 !Deallocate sparsities
@@ -1284,17 +1278,11 @@ end if
                 allocate( &
                     !!$
                     suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
-                    mass_ele( Mdims%totele ), &
-                    !!$
-                    ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
+                    mass_ele( Mdims%totele ) )
                 !!$
-                ScalarField_Absorption=0.
                 suf_sig_diagten_bc=0.
+                mass_ele=0.
                 !!$
-                !!$
-                !!$ Initialising Absorption terms that do not appear in the schema
-                !!$
-                ScalarField_Absorption = 0.
                 !!$ Computing shape function scalars
                 igot_t2 = 0 ; igot_theta_flux = 0
                 if( Mdims%ncomp /= 0 )then

@@ -126,7 +126,8 @@ contains
            integer :: lcomp, Field_selector, IGOT_T2_loc
            type(vector_field)  :: vtracer
            type(csr_sparsity), pointer :: sparsity
-           real, dimension(:,:,:), allocatable :: Velocity_Absorption, T_AbsorB
+           real, dimension(:,:,:), allocatable :: Velocity_Absorption
+           real, dimension(:,:,:), pointer :: T_AbsorB=>null()
            integer :: IGOT_THERM_VIS
            real, dimension(:,:), allocatable :: THERM_U_DIFFUSION_VOL
            real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
@@ -285,7 +286,7 @@ contains
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
          Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
          DT, SUF_SIG_DIAGTEN_BC, &
-         V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+         V_SOURCE, VOLFRA_PORE, &
          igot_theta_flux, mass_ele_transp,&
          nonlinear_iteration, IDs_ndgln,&
          IDs2CV_ndgln, Courant_number,&
@@ -308,7 +309,7 @@ contains
              REAL, intent( in ) :: DT
              REAL, DIMENSION( :, : ), intent( inout ) :: SUF_SIG_DIAGTEN_BC
              REAL, DIMENSION( :, : ), intent( in ) :: V_SOURCE
-             REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
+             !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
              REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
              real, dimension( : ), intent( inout ) :: mass_ele_transp
              integer, intent(in) :: nonlinear_iteration
@@ -335,7 +336,7 @@ contains
              LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE., RETRIEVE_SOLID_CTY= .FALSE.
              type( tensor_field ), pointer :: den_all2, denold_all2
              !Working pointers
-             real, dimension(:,:,:), pointer :: p
+             real, dimension(:,:,:), pointer :: p, V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
              real, dimension(:, :), pointer :: satura
              type(tensor_field), pointer :: tracer, velocity, density, deriv, PorousMedia_AbsorptionTerm
              type(scalar_field), pointer :: gamma
@@ -556,7 +557,7 @@ contains
         velocity, pressure, &
         DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
         SUF_SIG_DIAGTEN_BC, &
-        V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+        V_SOURCE, VOLFRA_PORE, &
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -580,7 +581,7 @@ contains
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
-        REAL, DIMENSION(  : ,  : ,: ), intent( in ) :: V_ABSORB
+        !REAL, DIMENSION(  : ,  : ,: ), intent( in ) :: V_ABSORB
         REAL, DIMENSION(  :, :  ), intent( in ) :: VOLFRA_PORE
         REAL, DIMENSION( : ,  :  ), intent( inout ) :: &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
@@ -856,7 +857,7 @@ contains
             MASS_MN_PRES, & ! pressure matrix for projection method
             got_free_surf,  MASS_SUF, &
             SUF_SIG_DIAGTEN_BC, &
-            V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+            V_SOURCE, VOLFRA_PORE, &
             MCY_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
             NLENMCY, MCY, JUST_BL_DIAG_MAT, &
             UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -1167,7 +1168,7 @@ END IF
         MASS_MN_PRES,&
         got_free_surf,  MASS_SUF, &
         SUF_SIG_DIAGTEN_BC, &
-        V_SOURCE, V_ABSORB, VOLFRA_PORE, &
+        V_SOURCE, VOLFRA_PORE, &
         MCY_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
         NLENMCY, MCY, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
@@ -1206,7 +1207,7 @@ END IF
         REAL, intent( in ) :: DT
         REAL, DIMENSION(  : , : ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
-        REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
+        !REAL, DIMENSION( :, :, : ), intent( in ) :: V_ABSORB
         REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE
         REAL, DIMENSION( : ), intent( inout ) :: MCY_RHS
         REAL, DIMENSION( : ), intent( inout ) :: MASS_MN_PRES
@@ -1238,6 +1239,8 @@ END IF
         INTEGER :: IGOT_T2, I, IGOT_THERM_VIS
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM
         type(tensor_field), pointer :: tracer, density
+        REAL, DIMENSION( : , :, : ), pointer :: V_ABSORB => null() ! this is PhaseVolumeFraction_AbsorptionTerm
+
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
