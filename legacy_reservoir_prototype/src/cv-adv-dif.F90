@@ -2877,9 +2877,9 @@ contains
             LOC_T_I, LOC_T_J, LOC_FEMT, &
             LOC_NU, LOC2_NU, SLOC_NU, &
             UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-            VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-            VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS, &
-            INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS, &
+            I_adv_coef, I_adv_coef_grad, &
+            J_adv_coef, J_adv_coef_grad, &
+            I_inv_adv_coef, J_inv_adv_coef, &
             UDGI_ALL,MASS_CV_I, MASS_CV_J, &
             TUPWIND_IN, TUPWIND_OUT, &
             not_OLD_VEL, anisotropic_and_frontier)
@@ -2892,9 +2892,9 @@ contains
             REAL, DIMENSION( :, : ), intent( in ) :: LOC_FEMT
             REAL, DIMENSION( :, :, : ), intent( in ) ::  LOC_NU, LOC2_NU, SLOC_NU
             REAL, DIMENSION( :, :, : ), intent( inout ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
-            REAL, DIMENSION( :, :, : ), intent( in ) :: VI_LOC_OPT_VEL_UPWIND_COEFS, GI_LOC_OPT_VEL_UPWIND_COEFS, &
-                VJ_LOC_OPT_VEL_UPWIND_COEFS, GJ_LOC_OPT_VEL_UPWIND_COEFS
-            REAL, DIMENSION( :, :, : ), intent( in ) :: INV_VI_LOC_OPT_VEL_UPWIND_COEFS, INV_VJ_LOC_OPT_VEL_UPWIND_COEFS
+            REAL, DIMENSION( :, :, : ), intent( in ) :: I_adv_coef, I_adv_coef_grad, &
+                J_adv_coef, J_adv_coef_grad
+            REAL, DIMENSION( :, :, : ), intent( in ) :: I_inv_adv_coef, J_inv_adv_coef
             REAL, DIMENSION( :, :  ), intent( inout ) :: UDGI_ALL
             REAL, intent( in ) :: MASS_CV_I, MASS_CV_J
             REAL, DIMENSION( : ), intent( in ) :: TUPWIND_IN, TUPWIND_OUT!(Mdims%nphase)
@@ -2912,13 +2912,13 @@ contains
                 !Initialize variables
                 if (not_OLD_VEL) then
                     forall (iphase = 1:Mdims%nphase, idim = 1:Mdims%ndim)
-                        ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+                        ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(I_inv_adv_coef(IDIM,:,IPHASE))
                     end forall
                 end if
                 DO IPHASE = 1, Mdims%nphase
                     IF( WIC_U_BC_ALL( 1, IPHASE, SELE) /= WIC_U_BC_DIRICHLET ) THEN ! velocity free boundary
                         !(vel * shape_functions)/sigma
-                        UDGI_ALL(:, IPHASE) = matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),&
+                        UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
                         ! Here we assume that sigma_out/sigma_in is a diagonal matrix
                         ! which effectively assumes that the anisotropy just inside the domain
@@ -2945,7 +2945,7 @@ contains
                                 ELSE
                                     UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)=1.0
                                 ENDIF
-                                UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)= matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC))
+                                UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC)= matmul(I_inv_adv_coef(:,:,IPHASE),UGI_COEF_ELE_ALL(:, IPHASE, U_KLOC))
                             END DO
                         end if
                         IF(Incomming_flow) THEN ! Incomming...
@@ -2968,15 +2968,15 @@ contains
                                 UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) + CV_funs%sufen( U_KLOC, GI )*SUF_U_BC_ALL(:, IPHASE, Mdims%u_snloc* (SELE-1) +U_SKLOC)
                             END IF
                         END DO
-                        UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE)  + matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),UDGI_ALL_FOR_INV(:, IPHASE))
+                        UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE)  + matmul(I_inv_adv_coef(:,:,IPHASE),UDGI_ALL_FOR_INV(:, IPHASE))
                     END IF
                 END DO ! PHASE LOOP
             ELSE IF( .not. between_elements .and. not_use_DG_within_ele) THEN!same element
                 !vel(GI) = (vel * shape_functions)/sigma
                 do iphase = 1, Mdims%nphase
-                    UDGI_ALL(:, IPHASE) = matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),&
+                    UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                         matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
-                    UDGI2_ALL(:, IPHASE) = matmul(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),&
+                    UDGI2_ALL(:, IPHASE) = matmul(J_inv_adv_coef(:,:,IPHASE),&
                         matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
                 end do
                 !Get the projected velocity
@@ -2998,10 +2998,10 @@ contains
                         LOC_T_I(:), LOC_T_J(:),XI_LIMIT(:), TUPWIND_IN(:), TUPWIND_OUT(:) )
                     !We perform: n' * sigma * n
                     DO IPHASE = 1, Mdims%nphase
-                        ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
-                        GRAD_ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(GI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
-                        ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
-                        GRAD_ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(GJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                        ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                        GRAD_ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef_grad(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                        ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(J_adv_coef(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                        GRAD_ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(J_adv_coef_grad(:,:,IPHASE), CVNORMX_ALL(:, GI)))
                     END DO
                     abs_tilde(:) = 0.5*(ABS_CV_NODI_IPHA(:) + ( LIMT3(:) - LOC_T_I(:) ) * GRAD_ABS_CV_NODI_IPHA(:)+&
                         ABS_CV_NODJ_IPHA(:) + ( LIMT3 - LOC_T_J(:) ) * GRAD_ABS_CV_NODJ_IPHA(:) )
@@ -3023,8 +3023,8 @@ contains
                 END DO ! PHASE LOOP
                 if (not_OLD_VEL) then
                     forall (iphase = 1:Mdims%nphase, idim = 1:Mdims%ndim)
-                        ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
-                        ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+                        ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(I_inv_adv_coef(IDIM,:,IPHASE))
+                        ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(J_inv_adv_coef(IDIM,:,IPHASE))
                     end forall
                     DO IPHASE = 1, Mdims%nphase
                         UGI_COEF_ELE_ALL(:, IPHASE, :)=SPREAD(ROW_SUM_INV_VI(:,IPHASE)* (1.0-INCOME(IPHASE)) &
@@ -3039,7 +3039,7 @@ contains
                     !Normal flow including sigma, to know direction of flow
                     NDOTQ(iphase)  = dot_product( CVNORMX_ALL(:, GI),UDGI_ALL(:, IPHASE))
                     !Actual advection velocity by removing the contribution of sigma
-                    UDGI_ALL(:, IPHASE) = matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),UDGI_ALL(:, IPHASE))
+                    UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),UDGI_ALL(:, IPHASE))
                 end do
                 IF( between_elements ) THEN
                     do iphase = 1, Mdims%nphase
@@ -3048,11 +3048,11 @@ contains
                         !Normal flow including sigma, to know direction of flow
                         NDOTQ2(iphase) = dot_product( CVNORMX_ALL(:, GI),UDGI2_ALL(:, IPHASE))
                         !Actual advection velocity by removing the contribution of sigma
-                        UDGI2_ALL(:, IPHASE) = matmul(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),UDGI2_ALL(:, IPHASE))
+                        UDGI2_ALL(:, IPHASE) = matmul(J_inv_adv_coef(:,:,IPHASE),UDGI2_ALL(:, IPHASE))
                     end do
                 else !same element
                     do iphase = 1, Mdims%nphase
-                        UDGI2_ALL(:, IPHASE) = matmul(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),&
+                        UDGI2_ALL(:, IPHASE) = matmul(J_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
                     end do
                     NDOTQ2 = NDOTQ
@@ -3068,34 +3068,34 @@ contains
                         ones(idim, idim) = 1.0
                     end do
                     !Sigma averaged with the mass to be used as divisor
-                    sigma_aver = VI_LOC_OPT_VEL_UPWIND_COEFS*MASS_CV_I+VJ_LOC_OPT_VEL_UPWIND_COEFS*MASS_CV_J
+                    sigma_aver = I_adv_coef*MASS_CV_I+J_adv_coef*MASS_CV_J
                     do iphase = 1, Mdims%nphase
                         call invert(sigma_aver(:,:, iphase))
                         !Calculate the contribution of each side, considering sigma and the volume of the CVs
                         if ( ( NDOTQ(iphase) + NDOTQ2(iphase) ) > 0.0 ) then
                             !We redefine sigma so that it detects oscillations using first order taylor series
-                            aux_tensor(:,:,IPHASE) =  VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE) &
-                                + 0.5*( LOC_T_J(iphase) - LOC_T_I(iphase) ) * GI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE)
+                            aux_tensor(:,:,IPHASE) =  I_adv_coef(:,:,IPHASE) &
+                                + 0.5*( LOC_T_J(iphase) - LOC_T_I(iphase) ) * I_adv_coef_grad(:,:,IPHASE)
                             !We limit the value
-                            aux_tensor(:,:,IPHASE) = min(1000.*max(VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),  VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE)), &
-                                max(0.001*min(VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),  VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE)), aux_tensor(:,:,IPHASE) ))
-                            aux_tensor(:,:,IPHASE)= min( 1.0, matmul(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), aux_tensor(:,:,IPHASE)))
+                            aux_tensor(:,:,IPHASE) = min(1000.*max(I_adv_coef(:,:,IPHASE),  J_adv_coef(:,:,IPHASE)), &
+                                max(0.001*min(I_adv_coef(:,:,IPHASE),  J_adv_coef(:,:,IPHASE)), aux_tensor(:,:,IPHASE) ))
+                            aux_tensor(:,:,IPHASE)= min( 1.0, matmul(I_inv_adv_coef(:,:,IPHASE), aux_tensor(:,:,IPHASE)))
                             !Calculate importance of each side
-                            aux_tensor2(:,:,IPHASE) = matmul(aux_tensor(:,:,IPHASE), matmul(sigma_aver(:,:,IPHASE),VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE)*MASS_CV_I ))
+                            aux_tensor2(:,:,IPHASE) = matmul(aux_tensor(:,:,IPHASE), matmul(sigma_aver(:,:,IPHASE),I_adv_coef(:,:,IPHASE)*MASS_CV_I ))
                             !aux_tensor2 has to be calculated before since aux_tensor is rewritten!
-                            aux_tensor(:,:,IPHASE) = (ones(:,:)-aux_tensor(:,:,IPHASE)) + matmul(aux_tensor(:,:,IPHASE),matmul(sigma_aver(:,:,IPHASE), VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE)*MASS_CV_J ))
+                            aux_tensor(:,:,IPHASE) = (ones(:,:)-aux_tensor(:,:,IPHASE)) + matmul(aux_tensor(:,:,IPHASE),matmul(sigma_aver(:,:,IPHASE), J_adv_coef(:,:,IPHASE)*MASS_CV_J ))
                         else
                             !We redefine sigma so that it detects oscillations using first order taylor series
-                            aux_tensor(:,:,IPHASE) =  VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE) &
-                                + 0.5*( LOC_T_I(iphase) - LOC_T_J(iphase) ) * GJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE)
+                            aux_tensor(:,:,IPHASE) =  J_adv_coef(:,:,IPHASE) &
+                                + 0.5*( LOC_T_I(iphase) - LOC_T_J(iphase) ) * J_adv_coef_grad(:,:,IPHASE)
                             !We limit the value
-                            aux_tensor(:,:,IPHASE) = min(1000.*max(VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),  VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE)), &
-                                max(0.001*min(VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE),  VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE)), aux_tensor(:,:,IPHASE) ))
-                            aux_tensor(:,:,IPHASE)= min( 1.0, matmul(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), aux_tensor(:,:,IPHASE)))
+                            aux_tensor(:,:,IPHASE) = min(1000.*max(I_adv_coef(:,:,IPHASE),  J_adv_coef(:,:,IPHASE)), &
+                                max(0.001*min(I_adv_coef(:,:,IPHASE),  J_adv_coef(:,:,IPHASE)), aux_tensor(:,:,IPHASE) ))
+                            aux_tensor(:,:,IPHASE)= min( 1.0, matmul(J_inv_adv_coef(:,:,IPHASE), aux_tensor(:,:,IPHASE)))
                             !Calculate importance of each side
-                            aux_tensor2(:,:,IPHASE) = (ones(:,:)-aux_tensor(:,:,IPHASE)) + matmul(aux_tensor(:,:,IPHASE),matmul(sigma_aver(:,:,IPHASE), VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE)*MASS_CV_I ))
+                            aux_tensor2(:,:,IPHASE) = (ones(:,:)-aux_tensor(:,:,IPHASE)) + matmul(aux_tensor(:,:,IPHASE),matmul(sigma_aver(:,:,IPHASE), I_adv_coef(:,:,IPHASE)*MASS_CV_I ))
                             !aux_tensor2 has to be calculated before since aux_tensor is rewritten!
-                            aux_tensor(:,:,IPHASE) = matmul(aux_tensor(:,:,IPHASE), matmul(sigma_aver(:,:,IPHASE),VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE)*MASS_CV_J ))
+                            aux_tensor(:,:,IPHASE) = matmul(aux_tensor(:,:,IPHASE), matmul(sigma_aver(:,:,IPHASE),J_adv_coef(:,:,IPHASE)*MASS_CV_J ))
                         end if
                         !Calculation of the velocity at the GI point
                         UDGI_ALL(:, IPHASE) = matmul(aux_tensor(:,:,IPHASE), UDGI_ALL(:, IPHASE)) + matmul( aux_tensor2(:,:,IPHASE),UDGI2_ALL(:, IPHASE))
@@ -3103,8 +3103,8 @@ contains
                     !Calculation of the coefficients at the GI point
                     if (not_OLD_VEL) then
                         forall (iphase = 1:Mdims%nphase, idim = 1:Mdims%ndim)
-                            ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
-                            ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+                            ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(I_inv_adv_coef(IDIM,:,IPHASE))
+                            ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(J_inv_adv_coef(IDIM,:,IPHASE))
                         end forall
                         IF( between_elements ) then
                             DO IPHASE = 1, Mdims%nphase
@@ -3124,10 +3124,10 @@ contains
                     !CV_DG_VEL_INT_OPT <= parameter to choose different options for DG
                     !We perform: n' * sigma * n
                     DO IPHASE = 1, Mdims%nphase
-                        ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(VI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
-                        GRAD_ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(GI_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
-                        ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(VJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
-                        GRAD_ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(GJ_LOC_OPT_VEL_UPWIND_COEFS(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                        ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                        GRAD_ABS_CV_NODI_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(I_adv_coef_grad(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                        ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(J_adv_coef(:,:,IPHASE), CVNORMX_ALL(:, GI)))
+                        GRAD_ABS_CV_NODJ_IPHA(IPHASE) = dot_product(CVNORMX_ALL(:, GI),matmul(J_adv_coef_grad(:,:,IPHASE), CVNORMX_ALL(:, GI)))
                         !Axuliar variable to reduce computations, LIMT3 was unused for this part of the code
                         LIMT3(IPHASE) = ABS_CV_NODI_IPHA(IPHASE)*MASS_CV_I+ABS_CV_NODJ_IPHA(IPHASE)*MASS_CV_J
                         !Calculate the contribution of each side, considering sigma and the volume of the CVs
@@ -3158,8 +3158,8 @@ contains
                     !Calculation of the coefficients at the GI point
                     if (not_OLD_VEL) then
                         forall (iphase = 1:Mdims%nphase, idim = 1:Mdims%ndim)
-                            ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(INV_VI_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
-                            ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(INV_VJ_LOC_OPT_VEL_UPWIND_COEFS(IDIM,:,IPHASE))
+                            ROW_SUM_INV_VI(IDIM,IPHASE)=SUM(I_inv_adv_coef(IDIM,:,IPHASE))
+                            ROW_SUM_INV_VJ(IDIM,IPHASE)=SUM(J_inv_adv_coef(IDIM,:,IPHASE))
                         end forall
                         IF( between_elements ) then
                             DO IPHASE = 1, Mdims%nphase
