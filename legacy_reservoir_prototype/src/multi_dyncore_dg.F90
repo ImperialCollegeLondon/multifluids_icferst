@@ -217,8 +217,8 @@ contains
               deallocate( Component_Diffusion_Operator_Coefficient )
            end if
            ! calculate T_ABSORB
-           allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
            if (have_option('/boiling')) then
+              allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
               allocate ( Velocity_Absorption( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods ) )
               call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
                    velocity_absorption, T_AbsorB )
@@ -274,6 +274,8 @@ contains
                    END IF
                END IF Conditional_Lumping
            END DO Loop_NonLinearFlux
+
+           if (have_option('/boiling')) deallocate(T_absorb)
 
            call deallocate(Mmat%petsc_ACV)
            call deallocate(Mmat%CV_RHS)
