@@ -44,7 +44,7 @@ module multi_surface_tension
     use fields
     use cv_advection, only : calc_face_ele, dgsimplnorm
     use matrix_operations, only : smlinngot
-
+    use multi_tools, only: CALC_FACE_ELE
 
     implicit none
 

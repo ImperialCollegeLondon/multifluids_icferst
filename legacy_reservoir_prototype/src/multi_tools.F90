@@ -391,6 +391,177 @@ contains
 
     end subroutine quicksort
 
+
+    SUBROUTINE CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, NFACE, &
+        NCOLELE, FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN, CV_SNDGLN, &
+        CV_SLOCLIST, X_NLOC, X_NDGLN)
+        ! Calculate FACE_ELE - the list of elements surrounding an
+        ! element and referenced with a face -ve values correspond to surface elements.
+        IMPLICIT NONE
+        INTEGER, intent( in ) :: TOTELE, STOTEL, NFACE, NCOLELE, CV_NLOC, CV_SNLOC, CV_NONODS, &
+            X_NLOC
+        INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
+        INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN
+        INTEGER, DIMENSION( : ), intent( in ) :: CV_SNDGLN
+        INTEGER, DIMENSION( :, : ), intent( in ) :: CV_SLOCLIST
+        INTEGER, DIMENSION( :, : ), intent( inout ) :: FACE_ELE
+        INTEGER, DIMENSION( : ), intent( in ) :: FINELE
+        INTEGER, DIMENSION( : ), intent( in ) :: COLELE
+        ! Local variables
+        LOGICAL, DIMENSION( : ), allocatable :: NOD_BELONG_ELE
+        INTEGER, DIMENSION( : ), allocatable :: NOD_COUNT_SELE, FIN_ND_SELE, COL_ND_SELE, ELE_ROW
+        LOGICAL, DIMENSION( : ), allocatable :: NOD_ON_BOUNDARY
+        INTEGER :: ELE, ELE2, SELE, CV_ILOC, CV_INOD, COUNT, IFACE, CV_SILOC, JFACE, &
+            CV_ILOC2, CV_INOD2, CV_SILOC2, IFACE2, SELE2
+        LOGICAL :: FOUND, SELE_FOUND, GOT_ALL
+
+        ALLOCATE( NOD_BELONG_ELE( CV_NONODS ))
+        ALLOCATE( NOD_COUNT_SELE( CV_NONODS ))
+        ALLOCATE( FIN_ND_SELE( CV_NONODS + 1 ))
+        ALLOCATE( NOD_ON_BOUNDARY( CV_NONODS ))
+        ALLOCATE( ELE_ROW( NFACE ))
+
+        FACE_ELE=0
+        DO ELE=1,TOTELE
+            IFACE=0
+            DO COUNT=FINELE(ELE),FINELE(ELE+1)-1
+                ELE2=COLELE(COUNT)
+                IF(ELE2.NE.ELE) THEN
+                    IFACE=IFACE+1
+                    FACE_ELE(IFACE,ELE)=ELE2
+                END IF
+            END DO
+        END DO
+
+        NOD_COUNT_SELE=0
+        NOD_ON_BOUNDARY=.FALSE.
+        DO SELE=1,STOTEL
+            DO CV_SILOC=1,CV_SNLOC
+                CV_INOD=CV_SNDGLN((SELE-1)*CV_SNLOC+CV_SILOC)
+                !ewrite(3,*)'sele,CV_INOD:',sele,CV_INOD
+                NOD_COUNT_SELE(CV_INOD)=NOD_COUNT_SELE(CV_INOD)+1
+                NOD_ON_BOUNDARY(CV_INOD)=.TRUE.
+            END DO
+        END DO
+
+        FIN_ND_SELE(1)=1
+        DO CV_INOD=2,CV_NONODS+1
+            FIN_ND_SELE(CV_INOD)=FIN_ND_SELE(CV_INOD-1)+NOD_COUNT_SELE(CV_INOD-1)
+        END DO
+        ALLOCATE(COL_ND_SELE(FIN_ND_SELE(CV_NONODS+1)-1))
+
+        NOD_COUNT_SELE=0
+        DO SELE=1,STOTEL
+            DO CV_SILOC=1,CV_SNLOC
+                CV_INOD=CV_SNDGLN((SELE-1)*CV_SNLOC+CV_SILOC)
+                NOD_COUNT_SELE(CV_INOD)=NOD_COUNT_SELE(CV_INOD)+1
+                COL_ND_SELE(FIN_ND_SELE(CV_INOD)-1+NOD_COUNT_SELE(CV_INOD))=SELE
+            END DO
+        END DO
+
+        ! Put surface elements into FACE_ELE
+        NOD_BELONG_ELE=.FALSE.
+        DO ELE=1,TOTELE
+            DO CV_ILOC=1,CV_NLOC
+                CV_INOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
+                NOD_BELONG_ELE(CV_INOD)=.TRUE.
+            END DO
+            DO IFACE=1,NFACE
+                IF(FACE_ELE(IFACE,ELE)==0) THEN
+                    DO CV_ILOC=1,CV_NLOC
+                        CV_INOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
+                        DO COUNT=FIN_ND_SELE(CV_INOD),FIN_ND_SELE(CV_INOD+1)-1
+                            SELE=COL_ND_SELE(COUNT)
+                            FOUND=.FALSE.
+                            DO JFACE=1,IFACE-1
+                                IF(SELE == - FACE_ELE(JFACE,ELE)) THEN
+                                    FOUND=.TRUE.
+                                    EXIT
+                                ENDIF
+                            END DO
+                            IF(.NOT.FOUND) THEN ! SELE is a candidate.
+                                SELE_FOUND=.TRUE.
+                                DO CV_SILOC=1,CV_SNLOC
+                                    CV_INOD=CV_SNDGLN((SELE-1)*CV_SNLOC+CV_SILOC)
+                                    IF(.NOT.NOD_BELONG_ELE(CV_INOD)) THEN
+                                        SELE_FOUND=.FALSE.
+                                        EXIT
+                                    ENDIF
+                                END DO
+                                IF(SELE_FOUND) FACE_ELE(IFACE,ELE)= - SELE
+                            ENDIF
+                        END DO
+                    END DO
+                ENDIF
+            END DO
+            DO CV_ILOC=1,CV_NLOC
+                CV_INOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
+                NOD_BELONG_ELE(CV_INOD)=.FALSE.
+            END DO
+        END DO
+
+        !do ele=1,totele
+        !   ewrite(3,*)'ele',ele,' FACE_ELE(IFACE,ELE):',(FACE_ELE(IFACE,ELE),iface=1,nface)
+        !end do
+
+        ! ***********************************************************
+        ! Now re-arrange ordering of elements in FACE_ELE so they are
+        ! consistent with the local nodes in CV_SLOCLIST
+        DO ELE=1,TOTELE
+            DO IFACE=1,NFACE
+                ! Find the suitable element in row ELE of FACE_ELE for face IFACE.
+                DO IFACE2=1,NFACE
+                    ELE2=FACE_ELE(IFACE2,ELE)
+                    SELE2 = MAX( 0, - ELE2 )
+                    ELE2 = MAX( 0, + ELE2 )
+                    GOT_ALL=.TRUE.
+                    DO CV_SILOC=1,CV_SNLOC
+                        CV_ILOC=CV_SLOCLIST(IFACE,CV_SILOC)
+                        FOUND=.FALSE.
+                        IF(SELE2 == 0 .and. ele2>0) THEN ! is a volume element
+                            CV_INOD=X_NDGLN((ELE-1)*X_NLOC+CV_ILOC)
+                            DO CV_ILOC2=1,CV_NLOC
+                                CV_INOD2=X_NDGLN((ELE2-1)*X_NLOC+CV_ILOC2)
+                                IF(CV_INOD == CV_INOD2) THEN
+                                    FOUND=.TRUE.
+                                    EXIT
+                                ENDIF
+                            END DO
+                        ELSE if (sele2>0) then ! is a surface element
+                            CV_INOD=CV_NDGLN((ELE-1)*CV_NLOC+CV_ILOC)
+                            DO CV_SILOC2=1,CV_SNLOC
+                                CV_INOD2=CV_SNDGLN((SELE2-1)*CV_SNLOC+CV_SILOC2)
+                                IF(CV_INOD == CV_INOD2) THEN
+                                    FOUND=.TRUE.
+                                    EXIT
+                                ENDIF
+                            END DO
+                        ENDIF
+                        IF(.NOT.FOUND) THEN
+                            GOT_ALL=.FALSE.
+                            EXIT
+                        ENDIF
+                    END DO
+                    IF(GOT_ALL) ELE_ROW(IFACE)=FACE_ELE(IFACE2,ELE)
+                END DO
+            END DO
+            ! Re-order row...
+            FACE_ELE(:,ELE)=ELE_ROW(:)
+        END DO
+
+
+        DEALLOCATE( NOD_BELONG_ELE )
+        DEALLOCATE( NOD_COUNT_SELE )
+        DEALLOCATE( FIN_ND_SELE )
+        DEALLOCATE( NOD_ON_BOUNDARY )
+        DEALLOCATE( COL_ND_SELE )
+        DEALLOCATE( ELE_ROW )
+
+        RETURN
+
+    END SUBROUTINE CALC_FACE_ELE
+
+
 end module multi_tools
 
 

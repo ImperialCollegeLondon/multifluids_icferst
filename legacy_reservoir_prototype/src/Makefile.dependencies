@@ -84,7 +84,8 @@ cv-adv-dif.o ../include/cv_advection.mod: cv-adv-dif.F90 \
    ../../include/vtk_interfaces.mod ../include/copy_outof_state.mod \
    ../include/matrix_operations.mod ../include/multi_data_types.mod \
    ../include/multi_interpolation.mod ../include/multi_pipes.mod \
-   ../include/multi_tools.mod ../include/shape_functions_linear_quadratic.mod \
+   ../include/multi_tools.mod ../include/multiphase_eos.mod \
+   ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod
 
@@ -122,8 +123,8 @@ multi_dyncore_dg.o ../include/multiphase_1d_engine.mod: multi_dyncore_dg.F90 \
    ../include/compositional_terms.mod ../include/copy_outof_state.mod \
    ../include/cv_advection.mod ../include/matrix_operations.mod \
    ../include/multi_data_types.mod ../include/multi_pipes.mod \
-   ../include/multi_surface_tension.mod ../include/multiphase_eos.mod \
-   ../include/shape_functions_ndim.mod \
+   ../include/multi_surface_tension.mod ../include/multi_tools.mod \
+   ../include/multiphase_eos.mod ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod ../include/solvers_module.mod \
    ../include/spact.mod
 
@@ -131,16 +132,17 @@ multi_dyncore_dg.o ../include/multiphase_1d_engine.mod: multi_dyncore_dg.F90 \
 	@true
 
 multi_eos.o ../include/multiphase_eos.mod: multi_eos.F90 \
-   ../../include/arbitrary_function.mod ../../include/confdefs.h \
-   ../../include/fdebug.h ../../include/field_options.mod \
-   ../../include/fields.mod ../../include/fldebug.mod ../../include/futils.mod \
+   ../../include/arbitrary_function.mod ../../include/boundary_conditions.mod \
+   ../../include/confdefs.h ../../include/fdebug.h \
+   ../../include/field_options.mod ../../include/fields.mod \
+   ../../include/fldebug.mod ../../include/futils.mod \
    ../../include/global_parameters.mod \
    ../../include/initialise_fields_module.mod \
    ../../include/multiphase_module.mod ../../include/python_state.mod \
    ../../include/sparse_tools.mod ../../include/sparsity_patterns_meshes.mod \
    ../../include/spud.mod ../../include/state_module.mod \
    ../../include/vector_tools.mod ../include/copy_outof_state.mod \
-   ../include/cv_advection.mod ../include/matrix_operations.mod \
+   ../include/matrix_operations.mod ../include/multi_tools.mod \
    ../include/shape_functions_linear_quadratic.mod
 
 ../include/multiphase_fractures.mod: multi_fracture.o
@@ -281,7 +283,7 @@ multi_surface_tension.o ../include/multi_surface_tension.mod: \
    ../../include/spud.mod ../../include/state_module.mod \
    ../include/copy_outof_state.mod ../include/cv_advection.mod \
    ../include/matrix_operations.mod ../include/multi_data_types.mod \
-   ../include/shape_functions_ndim.mod \
+   ../include/multi_tools.mod ../include/shape_functions_ndim.mod \
    ../include/shape_functions_prototype.mod
 
 ../include/multi_tools.mod: multi_tools.o

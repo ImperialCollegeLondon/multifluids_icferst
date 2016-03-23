@@ -110,7 +110,6 @@ contains
         type (multi_matrices) :: Mmat
         integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
-        real, dimension(:,:,:,:), allocatable, target :: opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new
         !!$ Defining time- and nonlinear interations-loops variables
         integer :: itime, dump_period_in_timesteps, final_timestep, &
             NonLinearIteration, NonLinearIteration_Components, dtime
@@ -162,7 +161,7 @@ contains
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
-        type(tensor_field), pointer :: Component_Absorption
+        type(tensor_field), pointer :: Component_Absorption, material_Absorption
         type(scalar_field), pointer :: f1, f2
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
         logical, parameter :: write_all_stats=.true.
@@ -249,13 +248,14 @@ contains
             suf_sig_diagten_bc( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), &
             mass_ele( Mdims%totele ), &
             !!$
-            ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ), &
+            ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods )& ! fix me..move in intenerg
             )
         !!$
         suf_sig_diagten_bc=0.
         !!$
         mass_ele=0.
         !!$
+        !!$ Initialising Absorption terms that do not appear in the schema
         ScalarField_Absorption=0.
         !!$
         do iphase = 1, Mdims%nphase
@@ -268,10 +268,6 @@ contains
         !!$ Calculate diagnostic fields
         call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
         call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
-        !!$
-        !!$ Initialising Absorption terms that do not appear in the schema
-        !!$
-        ScalarField_Absorption = 0.
         !!$ Computing shape function scalars
         igot_t2 = 0 ; igot_theta_flux = 0
         if( Mdims%ncomp /= 0 )then
@@ -304,8 +300,8 @@ contains
         call Get_Discretisation_Options( state, Mdims, Mdisopt )
         !!$ Option not currently set up in the schema and zeroed from the begining. It is used to control
         !!$ the upwinding rate (in the absorption term) during advection/assembling.
-        allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
-        allocate(opt_vel_upwind_grad_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_grad_new =0.
+!        allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.!sprint_to_do removed this
+!        allocate(opt_vel_upwind_grad_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_grad_new =0.!sprint_to_do removed this
         !!$ Defining problem to be solved:
         call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &
             velocity_max_iterations,  default =  500 )
@@ -462,8 +458,7 @@ contains
                 call Calculate_All_Rhos( state, packed_state, Mdims )
                 if( solve_force_balance .and. is_porous_media ) then
                     call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
-                       Mspars, ndgln, suf_sig_diagten_bc, &
-                       opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, ids_ndgln, IDs2CV_ndgln )
+                       Mspars, ndgln, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
                 end if
 
 
@@ -483,13 +478,12 @@ contains
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
                         !!$
-                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, &
+                        THETA_GDIFF, IDs_ndgln, IDs2CV_ndgln, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                        saturation=saturation_field)
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                 end if Conditional_ScalarAdvectionField
 
@@ -560,32 +554,30 @@ if ( new_ntsol_loop  ) then
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
                         !!$
-                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, &
+                        THETA_GDIFF, IDs_ndgln, IDs2CV_ndgln, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                        saturation=saturation_field )
                     call Calculate_All_Rhos( state, packed_state, Mdims )
 
                     exit
               else
-
+                    
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
                         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc,  Porosity_field%val, &
-                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, &
+                        THETA_GDIFF, IDs_ndgln, IDs2CV_ndgln, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
-                        saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                        saturation=saturation_field)
                     call Calculate_All_Rhos( state, packed_state, Mdims )
                end if
-
+                    
 
            end if
 
@@ -619,10 +611,9 @@ end if
                         dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
-                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln=IDs_ndgln )
+                        IDs_ndgln, IDs2CV_ndgln )
                     velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
 
                     !!$ Calculate Density_Component for compositional
@@ -632,12 +623,11 @@ end if
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                         dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
-                        opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
-                        igot_theta_flux, mass_ele, &
-                        its, IDs_ndgln, IDs2CV_ndgln, Courant_number, &
+                        igot_theta_flux, mass_ele,&
+                        its, IDs_ndgln, IDs2CV_ndgln, Courant_number,&
                         option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction', &
                         theta_flux=sum_theta_flux, one_m_theta_flux=sum_one_m_theta_flux, &
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j)
@@ -690,7 +680,6 @@ end if
                                  end do
                               end if
                            end do
-
                         end if
 
                         !!$ NonLinear iteration for the components advection:
@@ -701,13 +690,12 @@ end if
                                 Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
                                 tracer_field,velocity_field,density_field, dt, &
                                 SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
-                                opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                                 igot_t2, igot_theta_flux, &
                                 Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &!NEED TO REMOVE EVERYTHING OF THE NEW MDISOPT BUT THE ONES IN THIS LINE...
-                                theta_gdiff, &
+                                theta_gdiff, IDs_ndgln, IDs2CV_ndgln, &
                                 thermal = .false.,& ! the false means that we don't add an extra source term
                                 theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
-                                icomp=icomp, saturation=saturation_field, IDs_ndgln=IDs_ndgln )
+                                icomp=icomp, saturation=saturation_field)
                             tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
                         end do Loop_NonLinearIteration_Components
 
@@ -962,7 +950,6 @@ end if
         !!$ Now deallocating arrays:
         deallocate( &
             !!$ Defining element-pair type and discretisation options and coefficients
-            opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
             !!$ Working arrays
             theta_gdiff, ScalarField_Source_Store, &
             mass_ele,&
@@ -1237,8 +1224,6 @@ end if
                 call set_boundary_conditions_values(state, shift_time=.true.)
                 !!$ Deallocating array variables:
                 deallocate( &
-                    !!$ Defining element-pair type and discretisation options and coefficients
-                    opt_vel_upwind_coefs_new, opt_vel_upwind_grad_new, &
                     !!$ Working arrays
                     suf_sig_diagten_bc, &
                     theta_gdiff, ScalarField_Source_Store, &
@@ -1297,7 +1282,6 @@ end if
                     ScalarField_Absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
                 !!$
                 ScalarField_Absorption=0.
-                !!$
                 suf_sig_diagten_bc=0.
                 !!$
                 !!$
@@ -1324,8 +1308,8 @@ end if
                 sum_theta_flux = 1. ; sum_one_m_theta_flux = 0.
                 sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
                 ScalarField_Source_Store=0.
-                allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
-                allocate(opt_vel_upwind_grad_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_grad_new =0.
+!                allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.
+!                allocate(opt_vel_upwind_grad_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_grad_new =0.
                 if( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
                     ']/is_multiphase_component/Comp_Sum2One/Enforce_Comp_Sum2One' ) ) then
                     ! Initially clip and then ensure the components sum to unity so we don't get surprising results...
