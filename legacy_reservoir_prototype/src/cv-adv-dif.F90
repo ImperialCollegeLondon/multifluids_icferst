@@ -271,7 +271,7 @@ contains
         REAL, DIMENSION( :, : ), intent( in ) :: DERIV ! (Mdims%nphase,Mdims%cv_nonods)
         REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P ! (1,Mdims%npres,Mdims%cv_nonods)
         REAL, DIMENSION( :, : ), intent( in ) :: SOURCT_ALL
-        REAL, DIMENSION( :, :, : ), intent( in ) :: ABSORBT_ALL
+        REAL, DIMENSION( :, :, : ), pointer, intent( in ) :: ABSORBT_ALL
         REAL, DIMENSION( :, : ), intent( in ) :: VOLFRA_PORE ! (Mdims%npres,Mdims%totele)
         LOGICAL, intent( in ) :: GETCV_DISC, GETCT, GET_THETA_FLUX, USE_THETA_FLUX, THERMAL, RETRIEVE_SOLID_CTY, got_free_surf
         ! got_free_surf - INDICATED IF WE HAVE A FREE SURFACE - TAKEN FROM DIAMOND EVENTUALLY...
@@ -488,6 +488,8 @@ contains
         real :: h_nano, RP_NANO, dt_pipe_factor
         logical :: got_nano
 
+        logical :: have_absorption=.false.
+
         !#########################################
         ! 27/01/2016 Variables needed when doing calculate_outflux(). For each phase, totoutflux will be sum up over elements
         ! the outgoing flux through a specified boundary.
@@ -501,6 +503,9 @@ contains
         real, dimension( : , : ), allocatable :: Dens
         real, dimension(:), pointer :: Por
         !#########################################
+
+        if ( associated( absorbt_all ) ) have_absorption = .true.
+
         if ( Mdims%npres > 1 )then
             reservoir_P( 1 ) = 0.0 !1.0e+7
             reservoir_P( 2 ) = 0.0
@@ -1107,7 +1112,7 @@ contains
                 ! to calculate_outflux() here. i.e. they happen every time-step still but OUTSIDE the element loop!
                 ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
         if(is_porous_media .and. calculate_flux ) then
-        
+
             allocate(phaseV(Mdims%nphase,Mdims%cv_nonods))
             allocate(Dens(Mdims%nphase,Mdims%cv_nonods))
             ! Extract Pressure
@@ -2392,9 +2397,11 @@ contains
                                     cv_nodi, cv_nodi, &
                                     MASS_PIPE_FOR_COUP( CV_NODI ) * PIPE_ABS( iphase, jphase, CV_NODI ))
                             END IF
-                            call addto(Mmat%petsc_ACV,iphase,jphase, &
-                                cv_nodi, cv_nodi, &
-                                MASS_CV( CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
+                            if ( have_absorption ) then
+                               call addto(Mmat%petsc_ACV,iphase,jphase, &
+                                   cv_nodi, cv_nodi, &
+                                   MASS_CV( CV_NODI ) * ABSORBT_ALL( iphase, jphase, CV_NODI ))
+                            end if
                         end do
                     end do
                 END IF Conditional_GETMAT2
@@ -2439,10 +2446,12 @@ contains
                     / ( DT * DEN_ALL( :, CV_NODI ) )
                 ct_rhs_phase(:)=ct_rhs_phase(:)  &
                     + MASS_CV( CV_NODI ) * SOURCT_ALL( :, CV_NODI ) / DEN_ALL( :, CV_NODI )
-                DO JPHASE = 1, Mdims%nphase
-                    ct_rhs_phase(:)=ct_rhs_phase(:)  &
-                        - MASS_CV( CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL( :, CV_NODI )
-                END DO
+                IF ( HAVE_ABSORPTION ) THEN
+                   DO JPHASE = 1, Mdims%nphase
+                      ct_rhs_phase(:)=ct_rhs_phase(:)  &
+                         - MASS_CV( CV_NODI ) * ABSORBT_ALL( :, JPHASE, CV_NODI ) * T_ALL( JPHASE, CV_NODI ) / DEN_ALL( :, CV_NODI )
+                   END DO
+                END IF
                 ! scaling coefficient...
                 IF ( Mdims%npres > 1 .AND. explicit_pipes2 ) THEN
                     DO IPRES=1,Mdims%npres
@@ -2479,7 +2488,7 @@ contains
         END IF
         if(GETCT .and. calculate_flux) then
             ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
-           
+
             do ioutlet = 1,size(outlet_id)
                 totout(:, ioutlet) = totoutflux(:, ioutlet)
                 ! Ensure all processors have the correct value of totout for parallel runs
