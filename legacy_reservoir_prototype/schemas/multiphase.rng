@@ -672,23 +672,6 @@ at the first timestep or not.</a:documentation>
         </optional>
       </element>
       <optional>
-        <element name="Fix_bad_elements">
-          <a:documentation>Options applicable to the the fix to bad elements (elements with angles bigger than 105 degrees)
-
-An artificial compressible-like term is introduced in the bad angle</a:documentation>
-          <optional>
-            <element name="Bad_ele_scale">
-              <a:documentation>Scaling factor of the introduced term. 
-
-If this term is too big the system is easier to solve but the solutions may be wrong.
-
-Default valued 0.5e-4.</a:documentation>
-              <ref name="real"/>
-            </element>
-          </optional>
-        </element>
-      </optional>
-      <optional>
         <element name="projections">
           <optional>
             <element name="control_volume_projections">

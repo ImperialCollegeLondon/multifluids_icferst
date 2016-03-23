@@ -1084,12 +1084,15 @@ contains
         real, optional, intent(inout) :: inv_mat_absorp
         real, optional, intent(in) :: PERM
         !Local variables
+        real, parameter :: epsilon = 1d-10!This value should in theory never be used, the real lower limit
+        real, parameter :: eps = 1d-5!eps is another epsilon value, for less restrictive things
+
 
         select case (nphase)
             case (1)
-                material_absorption = INV_PERM* visc(iphase) * min(1.0,max(1d-5,sat(iphase)))
+                material_absorption = INV_PERM* visc(iphase) * min(1.0,max(eps,sat(iphase)))
                 if (present(inv_mat_absorp).and.present(PERM)) &
-                        inv_mat_absorp = PERM /(visc(iphase) * min(1.0,max(1d-5,sat(iphase))))
+                        inv_mat_absorp = PERM /(visc(iphase) * min(1.0,max(eps,sat(iphase))))
             case (2)
                 call relperm_corey_epsilon(material_absorption)
             case (3)
@@ -1106,23 +1109,19 @@ contains
                 REAL, intent( inout ) :: material_absorption
                 ! Local variables...
                 REAL :: KR, aux     !sprint_to_do; maybe we can relax de epsilons here? since now the flow will be stopped as the inverse is obtained directly here, meaning that the flow WON'T move
-                real, parameter :: epsilon = 1d-15!This value should in theory never be used, the real lower limit
-                real, parameter :: eps = 1d-5!should be eps ** Corey_exponent
                 !Kr_max should only multiply the wetting phase,
                 !however as we do not know if it is phase 1 or 2, we let the decision to the user
                 !and we multiply both phases by kr_max. By default kr_max= 1
 
-                !sprint_to_do; maybe we can relax the epsilons if the inverse works correctly, should help to reduce the number of non-linear iterations
-
                 aux = 1.0 - sum(Immobile_fraction)
                 if (present(inv_mat_absorp).and.present(PERM)) then
                     KR = Endpoint_relperm(iphase)*( (sat(iphase) - Immobile_fraction(iphase)) / aux ) ** Corey_exponent(iphase)
-                    inv_mat_absorp = (perm * max(0.0, KR))/(visc(iphase) * max(1d-5, sat(iphase)))
+                    inv_mat_absorp = (perm * max(0.0, KR))/(visc(iphase) * max(eps, sat(iphase)))
                 end if
                 KR = Endpoint_relperm(iphase)*( max( sat(iphase) - Immobile_fraction(iphase), sat(iphase)*eps+eps) / aux ) ** Corey_exponent(iphase)
                 !Make sure that the relperm is between bounds
                 KR = min(max(epsilon, KR),Endpoint_relperm(iphase))!Lower value just to make sure we do not divide by zero.
-                material_absorption = INV_PERM * (visc(iphase) * max(1d-5, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
+                material_absorption = INV_PERM * (visc(iphase) * max(eps, sat(iphase))) / KR !The value 1d-5 is only used if the boundaries have values of saturation of zero.
                   !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
             END SUBROUTINE relperm_corey_epsilon
 
@@ -1136,9 +1135,6 @@ contains
                 !Local variables
                 real, dimension(3) :: Norm_sat, relperm, KR
                 real :: Krow, Krog
-                real, parameter :: epsilon = 1d-10
-
-                !sprint_to_do; maybe we can relax the epsilons if the inverse works correctly, should help to reduce the number of non-linear iterations
 
                 !Prepare data
                 !We consider two models for two phase flow, water-oil and oil-gas
@@ -1166,7 +1162,7 @@ contains
                 material_absorption = INV_PERM * (VISC(iphase) * max(1d-5,sat(iphase))) / KR(iphase) !The value 1d-5 is only used if the boundaries have values of saturation of zero.
                 !Otherwise, the saturation should never be zero, since immobile fraction is always bigger than zero.
                 if (present(inv_mat_absorp).and.present(PERM)) &!This part is to ensure that the flow is stopped
-                            inv_mat_absorp = (perm * max(0.0,relperm(iphase)))/(VISC(iphase) * max(1d-5,sat(iphase)))
+                            inv_mat_absorp = (perm * max(0.0,relperm(iphase)))/(VISC(iphase) * max(eps,sat(iphase)))
             end subroutine relperm_stone
 
     end subroutine get_relperm

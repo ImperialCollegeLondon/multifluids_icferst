@@ -161,9 +161,9 @@
     <nonlinear_iterations>
       <integer_value rank="0">100</integer_value>
       <Fixed_Point_Iteration>
-        <real_value rank="0">0.04</real_value>
+        <real_value rank="0">1e-8</real_value>
         <Dumping_factor>
-          <real_value rank="0">0.3334</real_value>
+          <real_value rank="0">-0.3334</real_value>
         </Dumping_factor>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>

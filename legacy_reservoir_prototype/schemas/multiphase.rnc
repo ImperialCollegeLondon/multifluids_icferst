@@ -572,19 +572,6 @@ start =
                }?
             }?
          },
-     ## Options applicable to the the fix to bad elements (elements with angles bigger than 105 degrees)
-     ##
-     ## An artificial compressible-like term is introduced in the bad angle
-	 element Fix_bad_elements {
-	    ## Scaling factor of the introduced term. 
-        ##
-        ## If this term is too big the system is easier to solve but the solutions may be wrong.
-        ## 
-        ## Default valued 0.5e-4.
-	    element Bad_ele_scale {
-            real
-        }?
-	 }?,
 	 element projections {
 	    ## Options applicable to the projections used in
 	    ## the multiphase prototype code
