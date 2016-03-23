@@ -69,7 +69,7 @@ module multiphase_1D_engine
 contains
 
   SUBROUTINE INTENERGE_ASSEM_SOLVE( state, packed_state, &
-       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
+       Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd,&
        tracer, velocity, density,  DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
@@ -89,6 +89,7 @@ contains
            type(multi_ndgln), intent(in) :: ndgln
            type (multi_discretization_opts) :: Mdisopt
            type (multi_matrices), intent(inout) :: Mmat
+           type (porous_adv_coefs), intent(inout) :: upwnd
            type(tensor_field), intent(inout) :: tracer
            type(tensor_field), intent(in) :: velocity, density
            INTEGER, intent( in ) :: IGOT_T2, igot_theta_flux
@@ -228,7 +229,7 @@ contains
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
                 !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
-                   Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                   Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, &
                    DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
                    INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, &
@@ -282,7 +283,7 @@ contains
 
 
     subroutine VolumeFraction_Assemble_Solve( state,packed_state, &
-         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
+         Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
          DT, SUF_SIG_DIAGTEN_BC, &
          V_SOURCE, V_ABSORB, VOLFRA_PORE, &
          igot_theta_flux, mass_ele_transp,&
@@ -300,6 +301,7 @@ contains
              type(multi_ndgln), intent(in) :: ndgln
              type (multi_discretization_opts) :: Mdisopt
              type (multi_matrices), intent(inout) :: Mmat
+             type (porous_adv_coefs), intent(inout) :: upwnd
              INTEGER, intent( in ) :: igot_theta_flux
              INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
              integer, dimension(:), intent(in)  :: IDs2CV_ndgln
@@ -437,7 +439,7 @@ contains
                  !Assemble the matrix and the RHS
                  !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                  call CV_ASSEMB( state, packed_state, &
-                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                     Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                      tracer, velocity, density, &
                      DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
                      INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE,&
@@ -505,11 +507,9 @@ contains
                          if (.not. satisfactory_convergence) then
                              !Store old saturation to fully undo an iteration if it is very divergent
                              backtrack_sat = sat_bak
-                             !For the non-linear iteration inside this loop we need to update the velocities
-                             !and that is done through the sigmas, hence, we have to update them
-                             call Calculate_PorousMedia_AbsorptionTerms(state, packed_state, Mdims, CV_funs, CV_GIdims, Mspars, ndgln,&
-                                            suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
-
+                             !Velocity is recalculated through updating the sigmas
+                             call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
+                                   Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
                              !Also recalculate the Over-relaxation parameter
                              call getOverrelaxation_parameter(packed_state, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
                          else
@@ -552,7 +552,7 @@ contains
 
 
     SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
+        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
         velocity, pressure, &
         DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
         SUF_SIG_DIAGTEN_BC, &
@@ -572,6 +572,7 @@ contains
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_discretization_opts) :: Mdisopt
         type (multi_matrices), intent(inout) :: Mmat
+        type (porous_adv_coefs), intent(inout) :: upwnd
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY
@@ -846,7 +847,7 @@ contains
         end if
 
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
-            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
+            Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
              velocity, pressure, &
             X_ALL2%VAL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
             U_ALL2%VAL, UOLD_ALL2%VAL, &
@@ -1157,7 +1158,7 @@ END IF
 
 
     SUBROUTINE CV_ASSEMB_FORCE_CTY( state, packed_state, &
-        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, &
+        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
         velocity, pressure, &
         X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
         U_ALL, UOLD_ALL, &
@@ -1187,6 +1188,7 @@ END IF
         type(multi_ndgln), intent(in) :: ndgln
         type(multi_discretization_opts) :: Mdisopt
         type(multi_matrices), intent(inout) :: Mmat
+        type (porous_adv_coefs), intent(inout) :: upwnd
         type( tensor_field ), intent(in) :: velocity
         type( tensor_field ), intent(in) :: pressure
         INTEGER, intent( in ) :: NLENMCY, IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
@@ -1302,7 +1304,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         density=>extract_tensor_field(packed_state,"PackedDensity")
         call halo_update(density)
         call CV_ASSEMB( state, packed_state, &
-            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
+            Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
             tracer, velocity, density, &
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, &
             INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, &

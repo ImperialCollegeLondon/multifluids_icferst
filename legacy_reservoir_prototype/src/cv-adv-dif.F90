@@ -100,7 +100,7 @@ module cv_advection
 contains
 
     SUBROUTINE CV_ASSEMB( state, packed_state, &
-        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, &
+        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
         tracer, velocity, density, &
         DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE,&
         DEN_ALL, DENOLD_ALL, &
@@ -246,6 +246,7 @@ contains
         type(multi_ndgln), intent(in) :: ndgln
         type (multi_discretization_opts) :: Mdisopt
         type (multi_matrices), intent(inout) :: Mmat
+        type (porous_adv_coefs), intent(inout) :: upwnd
         type(tensor_field), intent(inout), target :: tracer
         type(tensor_field), intent(in), target :: density
         type(tensor_field), intent(in) :: velocity
@@ -406,7 +407,6 @@ contains
         REAL , DIMENSION( :, : ), ALLOCATABLE :: NUGI_ALL, NU_LEV_GI, SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, opt_vel_upwind_coefs_new_cv
         REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: VECS_STRESS, VECS_GRAD_U
         REAL , DIMENSION( :, :, : ), ALLOCATABLE :: STRESS_IJ_THERM, STRESS_IJ_THERM_J
-        REAL , DIMENSION( :, :, :, : ), ALLOCATABLE :: inv_adv_coef, adv_coef, adv_coef_grad
         REAL :: BCZERO(Mdims%nphase),  T_ALL_J( Mdims%nphase ), TOLD_ALL_J( Mdims%nphase )
         INTEGER :: LOC_WIC_T_BC_ALL(Mdims%nphase)
         REAL , DIMENSION( :, : ), allocatable :: NUOLDGI_ALL
@@ -800,25 +800,6 @@ contains
         ! This logical needs to be expanded...
         DOWNWIND_EXTRAP_INDIVIDUAL = .FALSE.
         IF ( CV_DISOPT>=8 ) DOWNWIND_EXTRAP_INDIVIDUAL = .TRUE.
-        !sprint_to_do; this can be improved by only updating the values for acv,
-        !otherwise use the values introduced
-        IF ( is_porous_media .or. PIPES_1D .or. have_option('/boiling') ) THEN
-            ALLOCATE( adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods) )
-            ALLOCATE( adv_coef_grad(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods) )
-            ALLOCATE( inv_adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods) )
-
-            call Calculate_PorousMedia_adv_terms( state, packed_state, Mdims, ndgln, &
-                 adv_coef, inv_adv_coef, adv_coef_grad, ids_ndgln, IDs2CV_ndgln )
-
-               !Old method, inverting the matrix
-!             inv_adv_coef = adv_coef
-!             DO MAT_NODI=1,Mdims%mat_nonods
-!                DO IPHASE=1,Mdims%nphase
-!                   call invert(inv_adv_coef(:,:,IPHASE,MAT_NODI))
-!                END DO
-!             END DO
-
-        ENDIF
          IF( GETCV_DISC ) THEN ! Obtain the CV discretised advection/diffusion equations
              IF(THERMAL) THEN
                  IF( RETRIEVE_SOLID_CTY ) THEN
@@ -1590,9 +1571,9 @@ contains
                                              T2OLD_ALL(:, CV_NODI), T2OLD_ALL(:, CV_NODJ), LOC_FEMT2OLD, &
                                              LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                                              UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                             adv_coef(:,:,:, MAT_NODI), adv_coef_grad(:,:,:, MAT_NODI), &
-                                             adv_coef(:,:,:, MAT_NODJ), adv_coef_grad(:,:,:, MAT_NODJ), &
-                                             inv_adv_coef(:,:,:,MAT_NODI), inv_adv_coef(:,:,:,MAT_NODJ), &
+                                             upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
+                                             upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
+                                             upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
                                              NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                              T2OLDUPWIND_MAT_ALL( :, COUNT_IN), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                              .false., anisotropic_and_frontier)
@@ -1600,9 +1581,9 @@ contains
                                              T2_ALL(:, CV_NODI), T2_ALL(:, CV_NODJ), LOC_FEMT2, &
                                              LOC_NU, LOC2_NU, SLOC_NU, &
                                              UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                             adv_coef(:,:,:, MAT_NODI), adv_coef_grad(:,:,:, MAT_NODI), &
-                                             adv_coef(:,:,:, MAT_NODJ), adv_coef_grad(:,:,:, MAT_NODJ), &
-                                             inv_adv_coef(:,:,:,MAT_NODI), inv_adv_coef(:,:,:,MAT_NODJ), &
+                                             upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
+                                             upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
+                                             upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
                                              NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                              T2UPWIND_MAT_ALL( :, COUNT_IN), T2UPWIND_MAT_ALL( :, COUNT_OUT), &
                                              .true., anisotropic_and_frontier)
@@ -1622,9 +1603,9 @@ contains
                                              TOLD_ALL(:, CV_NODI), TOLD_ALL(:, CV_NODJ), LOC_FEMTOLD, &
                                              LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD, &
                                              UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                             adv_coef(:,:,:, MAT_NODI), adv_coef_grad(:,:,:, MAT_NODI), &
-                                             adv_coef(:,:,:, MAT_NODJ), adv_coef_grad(:,:,:, MAT_NODJ), &
-                                             inv_adv_coef(:,:,:,MAT_NODI), inv_adv_coef(:,:,:,MAT_NODJ), &
+                                             upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
+                                             upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
+                                             upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
                                              NUOLDGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                              TOLDUPWIND_MAT_ALL( :, COUNT_IN), TOLDUPWIND_MAT_ALL( :, COUNT_OUT), &
                                              .false., anisotropic_and_frontier)
@@ -1632,9 +1613,9 @@ contains
                                              T_ALL(:, CV_NODI), T_ALL(:, CV_NODJ), LOC_FEMT, &
                                              LOC_NU, LOC2_NU, SLOC_NU, &
                                              UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL, &
-                                             adv_coef(:,:,:, MAT_NODI), adv_coef_grad(:,:,:, MAT_NODI), &
-                                             adv_coef(:,:,:, MAT_NODJ), adv_coef_grad(:,:,:, MAT_NODJ), &
-                                             inv_adv_coef(:,:,:,MAT_NODI), inv_adv_coef(:,:,:,MAT_NODJ), &
+                                             upwnd%adv_coef(:,:,:, MAT_NODI), upwnd%adv_coef_grad(:,:,:, MAT_NODI), &
+                                             upwnd%adv_coef(:,:,:, MAT_NODJ), upwnd%adv_coef_grad(:,:,:, MAT_NODJ), &
+                                             upwnd%inv_adv_coef(:,:,:,MAT_NODI), upwnd%inv_adv_coef(:,:,:,MAT_NODJ), &
                                              NUGI_ALL, MASS_CV(CV_NODI), MASS_CV(CV_NODJ), &
                                              TUPWIND_MAT_ALL( :, COUNT_IN), TUPWIND_MAT_ALL( :, COUNT_OUT), &
                                              .true., anisotropic_and_frontier)
@@ -1666,9 +1647,9 @@ contains
                                      IF(SELE == 0) THEN
                                          CAP_DIFF_COEF_DIVDX = 0.
                                          do iphase =1, Mdims%nphase
-                                             rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(inv_adv_coef(:,:,iphase,MAT_NODI),&
+                                             rsum_nodi(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODI),&
                                                  CVNORMX_ALL(:, GI)))
-                                             rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(inv_adv_coef(:,:,iphase,MAT_NODJ),&
+                                             rsum_nodj(iphase) = dot_product(CVNORMX_ALL(:, GI), matmul(upwnd%inv_adv_coef(:,:,iphase,MAT_NODJ),&
                                                  CVNORMX_ALL(:, GI) ))
                                          end do!If we are using the non-consistent capillary pressure we want to use the central...
                                          IF(UPWIND_CAP_DIFFUSION .and. .not. Diffusive_cap_only ) THEN!...method to encourage a normal diffusion
@@ -2143,7 +2124,7 @@ contains
                          MAT_NODI = ndgln%mat( CV_ILOC + (ELE-1)*Mdims%cv_nloc )
                          RSUM_VEC = 0.0
                          DO IDIM = 1, Mdims%ndim
-                             RSUM_VEC = RSUM_VEC + adv_coef( IDIM, IDIM, :, MAT_NODI ) / REAL( Mdims%ndim )
+                             RSUM_VEC = RSUM_VEC + upwnd%adv_coef( IDIM, IDIM, :, MAT_NODI ) / REAL( Mdims%ndim )
                          END DO
                          OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) = OPT_VEL_UPWIND_COEFS_NEW_CV( :, CV_NODI ) + &
                              RSUM_VEC * MASS_ELE( ELE )
@@ -2159,7 +2140,7 @@ contains
                          Mdims%u_nonods,Mdims%u_snloc,Mdims%cv_snloc,Mdims%stotel,ndgln%suf_cv,ndgln%suf_u, WIC_T_BC_ALL,WIC_D_BC_ALL,WIC_U_BC_ALL, SUF_T_BC_ALL,SUF_D_BC_ALL,SUF_U_BC_ALL, &
                          Mdims%cv_nonods, getcv_disc, getct, Mmat%petsc_ACV, Mdims%totele, ndgln%cv, ndgln%x, ndgln%u, ndgln%mat, Mmat%CT, Mmat%C, Mspars%CT%fin, Mspars%CT%col, Mspars%C%fin, Mspars%C%col, Mmat%CV_RHS, Mmat%CT_RHS, &
                          Mspars%CMC%fin, Mspars%CMC%col, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, mass_pipe, MASS_PIPE_FOR_COUP, &
-                         SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, adv_coef )
+                         SIGMA_INV_APPROX, SIGMA_INV_APPROX_NANO, upwnd%adv_coef )
                      ! Used for pipe modelling...
                      DO CV_NODI = 1, Mdims%cv_nonods
                          MASS_CV_PLUS(2:Mdims%npres,CV_NODI) = mass_pipe(CV_NODI)
@@ -2515,8 +2496,6 @@ contains
                  call deallocate(saturation_BCs)
                  call deallocate(saturation_BCs_robin2)
              end if
-             if (is_porous_media .or. PIPES_1D .or. have_option('/boiling') ) &
-                 deallocate(adv_coef,adv_coef_grad,  inv_adv_coef)
              deallocate(INCOMEOLD, NDOTQOLD, NUOLDGI_ALL)
              DEALLOCATE( FEMT_ALL, FEMTOLD_ALL, FEMDEN_ALL, FEMDENOLD_ALL, FEMT2_ALL, FEMT2OLD_ALL)
              nullify(FEMT_ALL); nullify(FEMTOLD_ALL);

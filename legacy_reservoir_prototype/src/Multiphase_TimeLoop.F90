@@ -108,6 +108,8 @@ contains
         type (multi_discretization_opts) :: Mdisopt
         !!$ Defining the necessary matrices and corresponding RHS
         type (multi_matrices) :: Mmat
+        !!$ Defining variables to calculate the sigmas at the interface for porous media
+        type (porous_adv_coefs) :: upwnd
         integer :: nlenmcy, mx_nface_p1, mx_ncolacv, mxnele, mx_ncoldgm_pha, &
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining time- and nonlinear interations-loops variables
@@ -352,6 +354,8 @@ contains
             !Convert material properties to be stored using region ids, only if porous media
             call get_regionIDs2nodes(state, packed_state, ndgln%cv, IDs_ndgln, IDs2CV_ndgln, &
                 fake_IDs_ndgln = .not. is_porous_media)! .or. is_multifracture )
+            !Allocate the memory to obtain the sigmas at the interface between elements
+            call allocate_porous_adv_coefs(Mdims, upwnd)
         end if
         !!$ Starting Time Loop
         itime = 0
@@ -458,7 +462,7 @@ contains
                 call Calculate_All_Rhos( state, packed_state, Mdims )
                 if( solve_force_balance .and. is_porous_media ) then
                     call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
-                       Mspars, ndgln, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
+                       Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
                 end if
 
 
@@ -473,7 +477,7 @@ contains
                     density_field=>extract_tensor_field(packed_state,"PackedDensity",stat)
                     saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
@@ -549,7 +553,7 @@ if ( new_ntsol_loop  ) then
               elseif (multiphase_scalar) then
 
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc, &
                         Porosity_field%val, &
@@ -566,7 +570,7 @@ if ( new_ntsol_loop  ) then
               else
                     
                     call INTENERGE_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         tracer_field,velocity_field,density_field, dt, &
                         suf_sig_diagten_bc,  Porosity_field%val, &
                         0, igot_theta_flux, &
@@ -606,7 +610,7 @@ end if
                     pressure_field=>extract_tensor_field(packed_state,"PackedFEPressure")
 
                     CALL FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state, &
-                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                        Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         velocity_field, pressure_field, &
                         dt, NLENMCY, & ! Force balance plus cty multi-phase eqns
                         SUF_SIG_DIAGTEN_BC, &
@@ -623,7 +627,7 @@ end if
 
                 Conditional_PhaseVolumeFraction: if ( solve_PhaseVolumeFraction ) then
                     call VolumeFraction_Assemble_Solve( state, packed_state, &
-                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                        Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                         dt, SUF_SIG_DIAGTEN_BC, &
                         ScalarField_Source_Store, ScalarField_Absorption, Porosity_field%val, &
                         igot_theta_flux, mass_ele,&
@@ -687,7 +691,7 @@ end if
 
                             Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
                             call INTENERGE_ASSEM_SOLVE( state, multicomponent_state(icomp), &
-                                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,&
+                                Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd,&
                                 tracer_field,velocity_field,density_field, dt, &
                                 SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
                                 igot_t2, igot_theta_flux, &
@@ -970,6 +974,7 @@ end if
         call deallocate_multi_shape_funs(FE_funs)
         call deallocate_multi_ndgln(ndgln)
         call destroy_multi_matrices(Mmat)
+        call deallocate_porous_adv_coefs(upwnd)
         !***************************************
         ! INTERPOLATION MEMORY CLEANUP
         if (numberfields > 0) then
@@ -1261,6 +1266,8 @@ end if
                     call get_RockFluidProp(state, packed_state)
                     !Convert material properties to be stored using region ids, only if porous media
                     call get_regionIDs2nodes(state, packed_state, ndgln%cv, IDs_ndgln, IDs2CV_ndgln, fake_IDs_ndgln = .not. is_porous_media)
+                    call deallocate_porous_adv_coefs(upwnd)
+                    call allocate_porous_adv_coefs(Mdims, upwnd)
                 end if
 
                 call put_CSR_spars_into_packed_state()

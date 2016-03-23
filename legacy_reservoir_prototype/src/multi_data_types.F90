@@ -188,6 +188,12 @@ module multi_data_types
     end type multi_matrices
 
 
+    type porous_adv_coefs
+        real, dimension( :, :, :, : ), pointer :: adv_coef => null()!Sigmas at the boundary to calculate fluxes
+        real, dimension( :, :, :, : ), pointer :: inv_adv_coef => null()!Inverse of sigmas at the boundary to calculate fluxes
+        real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()!Gradient of the sigmas at the boundary to calculate fluxes
+    end type porous_adv_coefs
+
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3
 contains
     subroutine allocate_multi_shape_funs(shape_fun,  Mdims, GIdims)
@@ -624,6 +630,25 @@ contains
         nullify(DevFuns%detwei); nullify(DevFuns%ra)
         nullify(DevFuns%nx_all); nullify(DevFuns%inv_jac)
     end subroutine deallocate_multi_dev_shape_funs
+
+    subroutine allocate_porous_adv_coefs(Mdims, upwnd)
+        type (porous_adv_coefs), intent(inout) :: upwnd
+        type (multi_dimensions), intent(in)  ::Mdims
+
+        if (.not.associated(upwnd%adv_coef)) allocate(upwnd%adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
+        if (.not.associated(upwnd%inv_adv_coef)) allocate(upwnd%inv_adv_coef(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
+        if (.not.associated(upwnd%adv_coef_grad)) allocate(upwnd%adv_coef_grad(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods))
+    end subroutine allocate_porous_adv_coefs
+
+    subroutine deallocate_porous_adv_coefs(upwnd)
+        type (porous_adv_coefs), intent(inout) :: upwnd
+
+        if (associated(upwnd%adv_coef)) deallocate(upwnd%adv_coef)
+        if (associated(upwnd%inv_adv_coef)) deallocate(upwnd%inv_adv_coef)
+        if (associated(upwnd%adv_coef_grad)) deallocate(upwnd%adv_coef_grad)
+
+        nullify(upwnd%adv_coef); nullify(upwnd%inv_adv_coef);nullify(upwnd%adv_coef_grad)
+    end subroutine deallocate_porous_adv_coefs
 
 end module multi_data_types
 
