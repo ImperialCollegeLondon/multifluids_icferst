@@ -179,6 +179,7 @@ module global_parameters
   real :: dumping_in_sat
   logical :: FPI_have_converged = .false.
   logical :: after_adapt = .false.
+  logical :: first_time_step = .false.
 
 contains
 

@@ -108,7 +108,7 @@ contains
         CV_DISOPT, CV_DG_VEL_INT_OPT, DT, CV_THETA, SECOND_THETA, CV_BETA, &
         SUF_SIG_DIAGTEN_BC, &
         DERIV, CV_P, &
-        SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &!sprint_to_do ABSORBT_ALL is always zero???
+        SOURCT_ALL, ABSORBT_ALL, VOLFRA_PORE, &
         GETCV_DISC, GETCT, &
         IGOT_T2, IGOT_THETA_FLUX, GET_THETA_FLUX, USE_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, THETA_GDIFF, &
@@ -4403,7 +4403,6 @@ contains
 
 
 
-    !sprint_to_do try to simplify these 4 subroutines and end up with one using the new structures
     SUBROUTINE DG_DERIVS_ALL1( FEMT, FEMTOLD, &
         DTX_ELE, DTOLDX_ELE, &
         NDIM, NPHASE, NCOMP, CV_NONODS, TOTELE, CV_NDGLN, &
@@ -6907,8 +6906,6 @@ contains
 
 
                 NORMX1_ALL=0.0
-                !    NORMY1=0.0
-                !    NORMZ1=0.0
                 IF(REFLECT) THEN
                     !     calculate normals...********************
                     ALLOCATE(MLUM(NONODS))
@@ -6940,8 +6937,6 @@ contains
                     END DO
                 ENDIF
 
-                !    ALLOCATE(MINPSI(TOTELE*NFIELD))
-                !    ALLOCATE(MAXPSI(TOTELE*NFIELD))
                 ALLOCATE(MINPSI(NFIELD, TOTELE))
                 ALLOCATE(MAXPSI(NFIELD, TOTELE))
 
@@ -7017,7 +7012,6 @@ contains
             !
             !
             !
-            !sprint_to_do!turn this ones into internal subroutines???
             SUBROUTINE MATPTSSTORE(MATPSI_ALL,COUNT,NFIELD,NOD,XNOD,&
                 PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
                 NLOC,TOTELE,X_NDGLN,NDGLNO,&
@@ -7200,7 +7194,6 @@ contains
                         LOCCORDSK(ILOC)=LOCCORDSK(ILOC)/RSUM
                     END DO
                 ENDIF
-                !         print *,'nod,ELEWIC,LOCCORDSk(1:NLOC)=',nod,ELEWIC,LOCCORDSk(1:NLOC)
                 DO IFIELD=1,NFIELD
                     RMATPSI=0.0
                     DO ILOC=1,NLOC! Was loop
@@ -7235,7 +7228,6 @@ contains
             !
             !
             !
-            !!sprint_to_do!make it internal subroutine
             SUBROUTINE PHILNODELE(NONODS,FINDELE,COLELE, &
                 NCOLEL,MXNCOLEL, &
                 TOTELE,NLOC,NDGLNO, &
@@ -7526,7 +7518,6 @@ contains
         Return
 
     end subroutine triloccords2d
-
 
 
 end module cv_advection

@@ -379,10 +379,12 @@ contains
             enddo
         endif
         checkpoint_number=1
+        first_time_step = .true.
 !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
 
+            !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
 
             if ( do_checkpoint_simulation( dtime ) ) then
@@ -946,6 +948,7 @@ end if
                 exit Loop_Time
             end if
         end do Loop_Time
+        first_time_step = .false.
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:
         deallocate( &

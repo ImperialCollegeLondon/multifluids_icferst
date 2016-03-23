@@ -33,7 +33,7 @@ module multiphase_1D_engine
     use field_options
     use state_module
     use spud
-    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat, after_adapt
+    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat, after_adapt, first_time_step
     use futils, only: int2str
 
     use Fields_Allocates, only : allocate
@@ -943,7 +943,6 @@ contains
                   allocate (U_ABSORBIN(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
                   call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods, U_ABSORBIN )
                   call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
-                  !sprint_to_do; what is actually necessary here from U_ABSORBIN??
                   call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, Mdisopt%cv_ele_type, Mdims%nphase, U_ABSORBIN )
                   deallocate(U_ABSORBIN)
                end if
@@ -1798,10 +1797,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             RESID_BASED_STAB_DIF, U_NONLIN_SHOCK_COEF, RNO_P_IN_A_DOT
         FEM_BUOYANCY = have_option( "/physical_parameters/gravity/fem_buoyancy" )
         GOT_DIFFUS = .FALSE.
-        ! is this the 1st iteration of the time step.!sprint_to_do!replace with the new global variable introduced by quinhua
-        FIRSTST = ( SUM( (U_ALL(1,:,:) - UOLD_ALL(1,:,:) ) **2) < 1.e-10 )!sprint_to_do; change this
-        IF(Mdims%ndim>=2) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(2,:,:) - UOLD_ALL(2,:,:) )**2 ) < 1.e-10 )
-        IF(Mdims%ndim>=3) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(3,:,:) - UOLD_ALL(3,:,:) )**2 ) < 1.e-10 )
+        ! is this the 1st iteration of the time step.
+        FIRSTST = first_time_step!sprint_to_do; <= not very well checked
+!        FIRSTST = ( SUM( (U_ALL(1,:,:) - UOLD_ALL(1,:,:) ) **2) < 1.e-10 )!sprint_to_do; change this
+!        IF(Mdims%ndim>=2) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(2,:,:) - UOLD_ALL(2,:,:) )**2 ) < 1.e-10 )
+!        IF(Mdims%ndim>=3) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(3,:,:) - UOLD_ALL(3,:,:) )**2 ) < 1.e-10 )
         UPWIND_DGFLUX = .TRUE.
         if ( have_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/central_differencing') &
