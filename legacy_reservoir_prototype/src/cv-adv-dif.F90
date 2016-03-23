@@ -487,7 +487,7 @@ contains
         real :: h_nano, RP_NANO, dt_pipe_factor
         logical :: got_nano
 
-        logical :: have_absorption=.false.
+        logical :: have_absorption
 
         !#########################################
         ! 27/01/2016 Variables needed when doing calculate_outflux(). For each phase, totoutflux will be sum up over elements
@@ -503,6 +503,7 @@ contains
         real, dimension(:), pointer :: Por
         !#########################################
 
+        have_absorption=.false.
         if ( associated( absorbt_all ) ) have_absorption = .true.
 
         if ( Mdims%npres > 1 )then
@@ -1089,7 +1090,7 @@ contains
                 ! to calculate_outflux() here. i.e. they happen every time-step still but OUTSIDE the element loop!
                 ! SHOULD RETHINK THESE ALLOCATIONS - only need to allocate # gauss points worth of memory
         if(is_porous_media .and. calculate_flux ) then
-        
+
             allocate(phaseV(Mdims%nphase,Mdims%cv_nonods))
             allocate(Dens(Mdims%nphase,Mdims%cv_nonods))
             ! Extract Pressure
@@ -2465,7 +2466,7 @@ contains
         END IF
         if(GETCT .and. calculate_flux) then
             ! Having finished loop over elements etc. Pass the total flux across all boundaries to the global variable totout
-           
+
             do ioutlet = 1,size(outlet_id)
                 totout(:, ioutlet) = totoutflux(:, ioutlet)
                 ! Ensure all processors have the correct value of totout for parallel runs
