@@ -743,7 +743,6 @@ contains
        type( tensor_field ), pointer :: PorousMedia_AbsorptionTerm
 
        PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
-
         call Calculate_PorousMedia_adv_terms( state, packed_state, Mdims, ndgln, &
                PorousMedia_AbsorptionTerm%val, upwnd, ids_ndgln, IDs2CV_ndgln )
 
@@ -803,7 +802,7 @@ contains
                end if
                !sprint_to_do get directly upwnd%adv_coef, upwnd%inv_adv_coef without requiring material_absorption
                allocate( material_absorption2( Mdims%nphase * Mdims%ndim, Mdims%nphase * Mdims%ndim, Mdims%mat_nonods ))
-               allocate( inv_mat_absorp( Mdims%nphase * Mdims%ndim, Mdims%nphase * Mdims%ndim, Mdims%mat_nonods ))
+               allocate( inv_mat_absorp( size(material_absorption,1), size(material_absorption,2), size(material_absorption,3) ))
                allocate( satura2( Mdims%n_in_pres, size(SATURA,2) ) )
                material_absorption = 0.0;material_absorption2 = 0. ; satura2 = 0.; inv_mat_absorp = 0
                CALL calculate_absorption2( packed_state, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
@@ -831,8 +830,9 @@ contains
                        do idim = 1, Mdims%ndim
                            ! set \sigma for the pipes here
                            LOC = (IPRES-1) * Mdims%ndim * Mdims%n_in_pres + (IPHASE-1) * Mdims%ndim + IDIM
-                           LOC2 = (1-1) * Mdims%ndim * Mdims%n_in_pres + (IPHASE-1) * Mdims%ndim + IDIM
+!                           LOC2 = (1-1) * Mdims%ndim * Mdims%n_in_pres + (IPHASE-1) * Mdims%ndim + IDIM
                            material_absorption( LOC, LOC, : ) = Spipe%val
+                           inv_mat_absorp( LOC, LOC, : ) = 1./Spipe%val
                        end do
                    end do
                end do
@@ -1039,7 +1039,7 @@ contains
             inv_perm( :, :, id_reg)=inverse(perm( :, :, id_reg))
         end do
 
-        Loop_NPHASE: DO IPHASE = 1, Mdims%nphase
+        Loop_NPHASE: DO IPHASE = 1, Mdims%n_in_pres
             Loop_ELE: DO ELE = 1, Mdims%totele
                 !Get properties from packed state
                 Immobile_fraction => RockFluidProp%val(1, :, IDs_ndgln(ELE))
@@ -1057,6 +1057,8 @@ contains
                                 call get_relperm(Mdims%nphase, iphase, material_absorption( IPHA_IDIM, JPHA_JDIM, MAT_NOD ),&
                                     SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, ELE),&
                                     Immobile_fraction, Corey_exponent, Endpoint_relperm, perm( IDIM, JDIM, ELE), inv_mat_absorp( IPHA_IDIM, JPHA_JDIM, MAT_NOD ))
+                               !Temporary fix, the inverse requires to be bounded for consistency reasons, specially for wells(the value is precise for epsilon 1e-10)
+                               if (IPHA_IDIM==JPHA_JDIM) inv_mat_absorp( IPHA_IDIM, JPHA_JDIM, MAT_NOD ) = max(inv_mat_absorp( IPHA_IDIM, JPHA_JDIM, MAT_NOD ), 9.869223000e-11)
                             else
                                 call get_relperm(Mdims%nphase, iphase, material_absorption( IPHA_IDIM, JPHA_JDIM, MAT_NOD ),&
                                     SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, ELE),&
@@ -1100,7 +1102,6 @@ contains
             case default!One phase
                 FLAbort("No relative permeability function implemented for more than 3 phases")
         end select
-        if (present(inv_mat_absorp).and.present(PERM)) inv_mat_absorp = max(inv_mat_absorp,epsilon)
 
         contains
             SUBROUTINE relperm_corey_epsilon( material_absorption )
@@ -1109,14 +1110,14 @@ contains
                 IMPLICIT NONE
                 REAL, intent( inout ) :: material_absorption
                 ! Local variables...
-                REAL :: KR, aux     !sprint_to_do; maybe we can relax de epsilons here? since now the flow will be stopped as the inverse is obtained directly here, meaning that the flow WON'T move
+                REAL :: KR, aux
                 !Kr_max should only multiply the wetting phase,
                 !however as we do not know if it is phase 1 or 2, we let the decision to the user
                 !and we multiply both phases by kr_max. By default kr_max= 1
 
                 aux = 1.0 - sum(Immobile_fraction)
                 if (present(inv_mat_absorp).and.present(PERM)) then
-                    KR = Endpoint_relperm(iphase)*( (sat(iphase) - Immobile_fraction(iphase)) / aux ) ** Corey_exponent(iphase)
+                    KR = Endpoint_relperm(iphase)*((sat(iphase) - Immobile_fraction(iphase)) / aux ) ** Corey_exponent(iphase)
                     inv_mat_absorp = (perm * max(0.0, KR))/(visc(iphase) * max(eps, sat(iphase)))
                 end if
                 KR = Endpoint_relperm(iphase)*( max( sat(iphase) - Immobile_fraction(iphase), sat(iphase)*eps+eps) / aux ) ** Corey_exponent(iphase)
