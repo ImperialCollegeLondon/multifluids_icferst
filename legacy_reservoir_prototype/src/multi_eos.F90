@@ -1100,6 +1100,7 @@ contains
             case default!One phase
                 FLAbort("No relative permeability function implemented for more than 3 phases")
         end select
+        if (present(inv_mat_absorp).and.present(PERM)) inv_mat_absorp = max(inv_mat_absorp,epsilon)
 
         contains
             SUBROUTINE relperm_corey_epsilon( material_absorption )

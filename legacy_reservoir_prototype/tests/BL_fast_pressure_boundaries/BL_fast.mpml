@@ -20,7 +20,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">1</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -78,7 +78,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">1</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
