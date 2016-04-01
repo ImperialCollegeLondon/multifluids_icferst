@@ -25,8 +25,9 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.5
-Tolerance_L2_NORM = 0.02
+Tolerance_L1_NORM = 0.41
+Tolerance_L2_NORM = 0.016
+
 
 AutomaticLine = 0
 
@@ -221,15 +222,15 @@ for i in range(len(Experimental_X)):
 L1_norm= L1_sum / len(Experimental_X) 
 L2_norm = L2_sum**0.5 / len(Experimental_X)    
 
-Passed = True
+Passed = False
 
-if (L1_norm > Tolerance_L1_NORM): Passed = False
-if (L2_norm > Tolerance_L2_NORM): Passed = False
-#print L1_norm, L2_norm
+if (L1_norm <= Tolerance_L1_NORM): Passed = True
+if (L2_norm <= Tolerance_L2_NORM): Passed = True
+print L1_norm, L2_norm
 if (Passed): 
-    print 'BL thicker works OK'
+    print 'Works OK'
 else:
-    print 'BL thicker does NOT work'
+    print 'Does NOT work'
 
 if (showPlot):
     fig, ax = plt.subplots()

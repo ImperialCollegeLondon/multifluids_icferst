@@ -161,13 +161,14 @@
     <nonlinear_iterations>
       <integer_value rank="0">30</integer_value>
       <Fixed_Point_Iteration>
-        <real_value rank="0">1e-9</real_value>
-        <Dumping_factor>
-          <real_value rank="0">-0.15</real_value>
-        </Dumping_factor>
+        <real_value rank="0">2e-2</real_value>
+        <Backtracking_factor>
+          <real_value rank="0">-0.5</real_value>
+        </Backtracking_factor>
         <Acceleration_exp>
-          <real_value rank="0">1</real_value>
+          <real_value rank="0">0.5</real_value>
         </Acceleration_exp>
+        <Show_Convergence/>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
@@ -559,7 +560,7 @@
         </scalar_field>
       </immobile_fraction>
       <Pe_stab>
-        <real_value rank="0">-1</real_value>
+        <real_value rank="0">1e-3</real_value>
       </Pe_stab>
     </multiphase_properties>
   </material_phase>

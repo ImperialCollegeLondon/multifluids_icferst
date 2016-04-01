@@ -40,7 +40,7 @@ module Copy_Outof_State
     use diagnostic_variables
     use diagnostic_fields
     use diagnostic_fields_wrapper
-    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat, is_multifracture, FPI_have_converged
+    use global_parameters, only: option_path_len, is_porous_media, backtrack_or_convergence, is_multifracture, FPI_have_converged
     use diagnostic_fields_wrapper_new
     use element_numbering
     use shape_functions
@@ -2020,17 +2020,11 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !Local variables
     real :: dt
     logical, save :: show_FPI_conv
-    logical, save :: Time_step_decreased_with_dumping = .false.
     real, save :: OldDt
-    real, save :: Accumulated_sol
     real, parameter :: check_sat_threshold = 1d-6
     real, dimension(:,:,:), pointer :: pressure
     real, dimension(:,:), pointer :: phasevolumefraction
     real, dimension(:,:,:), pointer :: velocity
-
-    !        real, dimension(:,:,:), pointer :: tVar, tVar_it
-    !        real, dimension(:,:), pointer :: vVar, vVar_it
-    !        real, dimension(:,:), pointer :: sVar, sVar_it
 
     !Variables for automatic non-linear iterations
     real :: tolerance_between_non_linear, initial_dt, min_ts, max_ts, increase_ts_switch, decrease_ts_switch,&
@@ -2135,14 +2129,12 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
             !If Automatic_NonLinerIterations then we compare the variation of the a property from one time step to the next one
             ExitNonLinearLoop = .false.
             Repeat_time_step = .false.
+            call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
+                phasevolumefraction = phasevolumefraction)
 
-            if (its == 1) Accumulated_sol = dumping_in_sat
-
-            if (its > 1 ) then
-
-                call get_var_from_packed_state(packed_state, velocity = velocity, pressure = pressure,&
-                    phasevolumefraction = phasevolumefraction)
-
+            if (its == 1) then
+                ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
+            else
                 select case (variable_selection)
                     case (1)
                         ts_ref_val = maxval(abs(reference_field(1,1,:)-pressure(1,1,:)))
@@ -2150,23 +2142,20 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         ts_ref_val = maxval(abs(reference_field-velocity))
                     case default
                         !Calculate infinite norm
-                        inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/dumping_in_sat
+                        inf_norm_val = maxval(abs(reference_field(1,:,:)-phasevolumefraction))/backtrack_or_convergence
 
                         !Calculate value of the functional
-                        ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), dumping_in_sat)
+                        ts_ref_val = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence, its)
+                        backtrack_or_convergence = get_Convergence_Functional(phasevolumefraction, reference_field(1,:,:), backtrack_or_convergence)
                 end select
 
                 !If it is parallel then we want to be consistent between cpus
                 if (IsParallel()) call allmax(ts_ref_val)
-                !We cannot go to the next time step until we have performed a full time step
-                Accumulated_sol = Accumulated_sol + dumping_in_sat
-                if (IsParallel()) call allmax(Accumulated_sol)
 
-                !TEMPORARY, re-use of global variable dumping_in_sat to send
+                !TEMPORARY, re-use of global variable backtrack_or_convergence to send
                 !information about convergence to the trust_region_method
-                dumping_in_sat = ts_ref_val
-
-                ewrite(1,*) "FPI convergence: ", "L2^2 norm=>",ts_ref_val,"; L_inf norm =>", inf_norm_val, "; Total iterations:", its
+!                backtrack_or_convergence = ts_ref_val
+                ewrite(1,*) "FPI convergence: ",ts_ref_val,";L_inf:", inf_norm_val, ";Total iterations:", its
 
                 !If only non-linear iterations
                 if (.not.nonLinearAdaptTs) then
@@ -2175,7 +2164,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                         .or. its >= NonLinearIteration)
                     if (ExitNonLinearLoop .and. show_FPI_conv) then
                         !Tell the user the number of FPI and final convergence to help improving the parameters
-                        print *, "FPI convergence: ", "L2^2 norm=>",ts_ref_val,"; L_inf norm =>", inf_norm_val, "; Total iterations:", its
+                        print *, "FPI convergence: ", ts_ref_val,";L_inf:", inf_norm_val, ";Total iterations:", its
                     end if
                     return
                 end if
@@ -2183,7 +2172,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
                 !If we have a dumping parameter we only reduce the time-step if we reach
                 !the maximum number of non-linear iterations
-                if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Dumping_factor')) then
+                if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor')) then
                     !Tell the user if we have not converged
                     if (its == NonLinearIteration) then
                         ewrite(1,*) "Fixed point method failed to converge in ",NonLinearIteration,"iterations, final convergence is", ts_ref_val
@@ -2272,7 +2261,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
 
 end subroutine Adaptive_NonLinear
 
-real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping)
+real function get_Convergence_Functional(phasevolumefraction, reference_sat, dumping, its)
     !We create the potential to optimize F = sum (f**2), so the solution is when this potential
     !reach a minimum. Typically the value to consider convergence is the sqrt(epsilon of the machine), i.e. 10^-8
     !f = (NewSat-OldSat)/Number of nodes; this is the typical approach for algebraic non linear systems
@@ -2282,7 +2271,9 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
     implicit none
     real, dimension(:,:), intent(in) :: phasevolumefraction, reference_sat
     real, intent(in) :: dumping
+    integer, optional, intent(in) :: its
     !Local variables
+    real, save :: First_potential
     integer :: cv_inod, modified_vals, iphase
     real :: aux
     real, parameter :: tol = 1d-5
@@ -2296,22 +2287,29 @@ real function get_Convergence_Functional(phasevolumefraction, reference_sat, dum
             /size(phasevolumefraction,2))**2.0), get_Convergence_Functional)
     end do
 
-    !        !(L2)**2 norm of all the elements whose value has changed (has problems to converge at
-    !        !the beginning since only a shock front is happening, however it is better than simple l2 norm)
-    !        do cv_inod = 1, size(phasevolumefraction,2)
-    !            aux = maxval(abs(reference_sat(:,cv_inod)-phasevolumefraction(:,cv_inod)))
-    !            if (aux > tol) then
-    !                get_Convergence_Functional = get_Convergence_Functional + aux**2.0
-    !                modified_vals = modified_vals + 1
-    !            end if
-    !        end do
-    !        get_Convergence_Functional = (get_Convergence_Functional / dble(modified_vals)**2.0)
+!        !(L2)**2 norm of all the elements whose value has changed (has problems to converge at
+!        !the beginning since only a shock front is happening, however it is better than simple l2 norm)
+!        do cv_inod = 1, size(phasevolumefraction,2)
+!            aux = maxval(abs(reference_sat(:,cv_inod)-phasevolumefraction(:,cv_inod)))
+!            if (aux > tol) then
+!                get_Convergence_Functional = get_Convergence_Functional + (aux)**2.0
+!                modified_vals = modified_vals + 1
+!            end if
+!        end do
+!        get_Convergence_Functional = (get_Convergence_Functional / dble(modified_vals)**2.0)
 
     !Rescale using the dumping in saturation to get a more efficient number to compare with
-    !if the dumping_in_sat was 10-2 then ts_ref_val will always be small
+    !if the backtrack_or_convergence was 10-2 then ts_ref_val will always be small
     !To make consistent the dumping parameter with the Potential, we have to raise it to 2.0
     get_Convergence_Functional = get_Convergence_Functional / dumping**2.0
 
+    if (present(its)) then
+        if (its == 1) then
+            First_potential = get_Convergence_Functional
+        else
+            get_Convergence_Functional = get_Convergence_Functional/First_potential
+        end if
+    end if
 
 end function get_Convergence_Functional
 

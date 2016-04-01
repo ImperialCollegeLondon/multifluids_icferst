@@ -38,7 +38,7 @@ module multi_interpolation
     use diagnostic_variables
     use diagnostic_fields
     use diagnostic_fields_wrapper
-    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat, is_multifracture
+    use global_parameters, only: option_path_len, is_porous_media, is_multifracture
     use diagnostic_fields_wrapper_new
     use element_numbering
     use shape_functions

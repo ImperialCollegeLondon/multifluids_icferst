@@ -142,7 +142,7 @@
     </dump_format>
     <dump_period_in_timesteps>
       <constant>
-        <integer_value rank="0">4</integer_value>
+        <integer_value rank="0">8</integer_value>
       </constant>
     </dump_period_in_timesteps>
     <output_mesh name="PressureMesh"/>
@@ -153,18 +153,19 @@
       <real_value rank="0">0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">1e7</real_value>
+      <real_value rank="0">0.5e7</real_value>
     </timestep>
     <finish_time>
       <real_value rank="0">2.9e8</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">100</integer_value>
+      <integer_value rank="0">20</integer_value>
       <Fixed_Point_Iteration>
-        <real_value rank="0">5e-8</real_value>
-        <Dumping_factor>
-          <real_value rank="0">0.1</real_value>
-        </Dumping_factor>
+        <real_value rank="0">5e-2</real_value>
+        <Backtracking_factor>
+          <real_value rank="0">-0.15</real_value>
+        </Backtracking_factor>
+        <Show_Convergence/>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
@@ -209,7 +210,7 @@
           <continuous_galerkin/>
         </spatial_discretisation>
         <reference_node>
-          <integer_value rank="0">10</integer_value>
+          <integer_value rank="0">1</integer_value>
         </reference_node>
         <solver>
           <iterative_method name="gmres">
@@ -461,7 +462,7 @@
           <max_iterations>
             <integer_value rank="0">300</integer_value>
           </max_iterations>
-          <never_ignore_solver_failures/>
+          <ignore_all_solver_failures/>
           <diagnostics>
             <monitors/>
           </diagnostics>

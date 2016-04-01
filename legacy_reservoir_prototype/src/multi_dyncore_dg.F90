@@ -33,7 +33,7 @@ module multiphase_1D_engine
     use field_options
     use state_module
     use spud
-    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat, after_adapt, first_time_step
+    use global_parameters, only: option_path_len, is_porous_media, backtrack_or_convergence, after_adapt, first_time_step
     use futils, only: int2str
 
     use Fields_Allocates, only : allocate
@@ -343,7 +343,7 @@ contains
              type(tensor_field), pointer :: tracer, velocity, density, deriv, PorousMedia_AbsorptionTerm
              type(scalar_field), pointer :: gamma
              !Variables for global convergence method
-             real :: Dumping_factor
+             real :: backtrack_par_factor
              type(vector_field)  :: vtracer, residual
              type(csr_sparsity), pointer :: sparsity
              !Variables for capillary pressure
@@ -351,7 +351,7 @@ contains
              integer :: Phase_with_Pc
              !Variables to stabilize the non-linear iteration solver
              real, dimension(Mdims%nphase, Mdims%cv_nonods) :: sat_bak, backtrack_sat
-             real :: Previous_convergence, updating, new_dumping, aux, resold, first_res
+             real :: Previous_convergence, updating, new_backtrack_par, aux, resold, first_res
              real, save :: res = -1
              logical :: satisfactory_convergence
              integer :: its, useful_sats
@@ -363,12 +363,12 @@ contains
              call getOverrelaxation_parameter(packed_state, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
              !Get variable for global convergence method
              if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
-                 Dumping_factor = 1.1
+                 backtrack_par_factor = 1.1
              else !Get value with the default value of 1.
-                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Dumping_factor',&
-                     Dumping_factor, default = 1.0)
+                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Backtracking_factor',&
+                     backtrack_par_factor, default = 1.0)
              end if
-             if ( Dumping_factor < 1.01 ) PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
+             if ( backtrack_par_factor < 1.01 ) PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
 
              GET_THETA_FLUX = .FALSE.
              IGOT_T2 = 0
@@ -429,12 +429,12 @@ contains
              satisfactory_convergence = .false.
              updating = 0.0
              !We store the convergence of the previous FPI to compare with
-             Previous_convergence = dumping_in_sat!<== deprecated?
+             Previous_convergence = backtrack_or_convergence!<== deprecated?
              its = 1; useful_sats = 1;
              if (resold < 0 ) res = huge(res)!<=initialize res once
              call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
              !Allocate residual, to compute the residual
-             if (Dumping_factor < 1.01) call allocate(residual,Mdims%nphase,tracer%mesh,"residual")
+             if (backtrack_par_factor < 1.01) call allocate(residual,Mdims%nphase,tracer%mesh,"residual")
              Loop_NonLinearFlux: do while (.not. satisfactory_convergence)
                  !If I don't re-allocate this field every iteration, PETSC complains(sometimes),
                  !it works, but it complains...
@@ -464,12 +464,12 @@ contains
                  !Solve the system
                  vtracer=as_vector(tracer,dim=2)
                  !If using FPI with backtracking
-                 if (Dumping_factor < 1.01) then
+                 if (backtrack_par_factor < 1.01) then
                      !Backup of the saturation field, to adjust the solution
                      sat_bak = satura
                      !If using ADAPTIVE FPI with backtracking
-                     if (Dumping_factor < 0) then
-                         !Calculate the actual residual using a previous dumping
+                     if (backtrack_par_factor < 0) then
+                         !Calculate the actual residual using a previous backtrack_par
                          call mult(residual, Mmat%petsc_ACV, vtracer)
                          !Calculate residual
                          residual%val = Mmat%CV_RHS%val - residual%val
@@ -490,17 +490,17 @@ contains
                  call zero(Mmat%CV_RHS)
                  call deallocate(Mmat%petsc_ACV)
                  !Correct the solution obtained to make sure we are on track towards the final solution
-                 if (Dumping_factor < 1.01) then
+                 if (backtrack_par_factor < 1.01) then
                      !If convergence is not good, then we calculate a new saturation using backtracking
                      if (.not. satisfactory_convergence) then
-                         !Calculate a dumping parameter and update saturation with that parameter, ensuring convergence
-                         call FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_factor, IDs2CV_ndgln,&
-                             Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration,&
+                         !Calculate a backtrack_par parameter and update saturation with that parameter, ensuring convergence
+                         call FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_factor, IDs2CV_ndgln,&
+                             Previous_convergence, satisfactory_convergence, new_backtrack_par, its, nonlinear_iteration,&
                              useful_sats,res, res/resold, first_res, Mdims%npres)
                          !Store the accumulated updated done
-                         updating = updating + new_dumping
-                         !If the dumping factor is not adaptive, then, just one iteration
-                         if (Dumping_factor > 0) then
+                         updating = updating + new_backtrack_par
+                         !If the backtrack_par factor is not adaptive, then, just one iteration
+                         if (backtrack_par_factor > 0) then
                              satisfactory_convergence = .true.
                              exit Loop_NonLinearFlux
                          end if
@@ -525,15 +525,15 @@ contains
                  its = its + 1
                  useful_sats = useful_sats + 1
              END DO Loop_NonLinearFlux
-             !Store the final accumulated dumping_factor to properly calculate the convergence functional
-             if (Dumping_factor < 1.01) then
-                 !Final effective dumping to calculate properly the non linear convergence is:
-                 dumping_in_sat = updating
+             !Store the final accumulated backtrack_par_factor to properly calculate the convergence functional
+             if (backtrack_par_factor < 1.01) then
+                 !Final effective backtrack_par to calculate properly the non linear convergence is:
+                 backtrack_or_convergence = updating
              else
-                 dumping_in_sat = 1
+                 backtrack_or_convergence = 1
              end if
              !Make sure the parameter is consistent between cpus
-             if (IsParallel()) call allmin(dumping_in_sat)
+             if (IsParallel()) call allmin(backtrack_or_convergence)
              DEALLOCATE( mass_mn_pres )
              DEALLOCATE( Mmat%CT )
              DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO )
@@ -544,7 +544,7 @@ contains
              END IF
              DEALLOCATE( THETA_GDIFF )
              call deallocate(Mmat%CV_RHS)
-             if (Dumping_factor < 1.01) call deallocate(residual)
+             if (backtrack_par_factor < 1.01) call deallocate(residual)
              !Deallocate pointers only if not pointing to something in packed state
              if (IGOT_THETA_FLUX == 1) then
                  deallocate(DEN_ALL, DENOLD_ALL)

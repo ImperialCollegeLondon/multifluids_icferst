@@ -161,10 +161,13 @@
     <nonlinear_iterations>
       <integer_value rank="0">100</integer_value>
       <Fixed_Point_Iteration>
-        <real_value rank="0">1e-8</real_value>
-        <Dumping_factor>
-          <real_value rank="0">0.3334</real_value>
-        </Dumping_factor>
+        <real_value rank="0">5e-2</real_value>
+        <Backtracking_factor>
+          <real_value rank="0">-0.5</real_value>
+        </Backtracking_factor>
+        <Acceleration_exp>
+          <real_value rank="0">0.5</real_value>
+        </Acceleration_exp>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>

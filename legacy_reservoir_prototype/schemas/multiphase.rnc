@@ -419,46 +419,48 @@ start =
                element nonlinear_iterations_at_adapt {
                   integer
                }?,
-               ## This is the convergence criteria for the Fixed Point Iteration solver.
+               ## This is the convergence criterion for the Fixed Point Iteration solver.
                ## The functional to compare is: 
                ##
-               ## f = sum(average(dSat/dumping_parameter))^2;
-               ## dSat is the difference in saturation between FPI
+               ## f = L2norm(S*-So)/L2norm(S1-So)
                ##
-               ## 
-               ## Recommended values: from 1e-9 to 1e-10
+               ## S* is the latest saturation; So is the saturation at the previous FPI
+               ## S1 is the saturation after the first FPI. Hence, the reduction of the difference
+               ## of saturation is tested
+               ##
+               ## Recommended value: 5e-2
                element Fixed_Point_Iteration{
                   real,
                   (
                     ## dSat obtained from the Saturation equation is backtracked by this factor
                     ##
-                    ## Sat = Sat(Previous FPI) + dumping_parameter * dSat
+                    ## Sat = Sat(Previous FPI) + Backtracking_parameter * dSat
                     ##
-                    ## Defined as: 0 < dumping_parameter < 1. Negative values => automatically 
+                    ## Defined as: 0 < Backtracking_parameter < 1. Negative values => automatically 
                     ##
                     ## Default value is 1.
                     ##
-                    ## For FIXED dumping parameters:
+                    ## For FIXED backtracking parameters:
                     ## Recommended settings: Non-linear iterations >= 100
                     ##
-                    ## Recommended settings: Courant < 1 => dumping_parameter = 1;
-                    ## Courant > 1 => dumping_parameter from 1.0 to 0.1;
+                    ## Recommended settings: Courant < 1 => Backtracking_parameter = 1;
+                    ## Courant > 1 => Backtracking_parameter from 1.0 to 0.1;
                     ##
                     ## For DYNAMIC dumping parameters:
                     ##
                     ## Recommended settings: Non-linear iterations >= 30
-                    ## The Dumping value introduced is used as reference, so it may have a big impact on the convergence
+                    ## The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
                     ##
-                    ## Recommended settings: dumping_parameter = -0.33 or -0.5 or -0.8; 
+                    ## Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
                     ## Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
                     ##
                     ## The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be
-                    element Dumping_factor{
+                    element Backtracking_factor{
                     real
                     }?
                   ),
                   (
-                    ## THIS ONLY WORKS with automatics dumpings factor, i.e. Dumping_factor < 0
+                    ## THIS ONLY WORKS with automatics dumpings factor, i.e. Backtracking_factor < 0
                     ##
                     ## This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
                     ## 
