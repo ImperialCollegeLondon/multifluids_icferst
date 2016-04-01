@@ -226,7 +226,7 @@ Passed = False
 
 if (L1_norm <= Tolerance_L1_NORM): Passed = True
 if (L2_norm <= Tolerance_L2_NORM): Passed = True
-print L1_norm, L2_norm
+#print L1_norm, L2_norm
 if (Passed): 
     print 'Works OK'
 else:

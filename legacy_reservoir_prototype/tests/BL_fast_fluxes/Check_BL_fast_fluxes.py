@@ -10,7 +10,7 @@ tCA,f1CA,f2CA,t1CA,t2CA,ssumA = [], [], [], [], [], []
 
 tolerance1 = 1e-4
 tolerance2 = 1e-4
-
+toleranceMass = 2e-5
 
 path = os.getcwd()
 binpath = path[:path.index('legacy_reservoir_prototype')] + 'bin/multiphase_prototype'
@@ -92,13 +92,22 @@ L1_sum6 = (L1_sum5**0.5)/len(tC)
 L1_sum7 = (L1_sum5**0.5)/len(tC)
 L1_sum8 = (L1_sum5**0.5)/len(tC)
 
+
+pos = len(tC)-1
+totalMass = t2C[pos]+t1C[pos]
+totalMass_reference = fn3(tC[pos])+fn4(tC[pos])
+InjectedMass = 0.008
+#print totalMass - InjectedMass
 #print  L1_sum1, L1_sum2, L1_sum3, L1_sum4, L1_sum5, L1_sum6, L1_sum7, L1_sum8
 
-if(L1_sum1 < tolerance1 and L1_sum2 < tolerance1 and  L1_sum3 < tolerance1 and L1_sum4 < tolerance1 and L1_sum5 < tolerance2 and L1_sum6 < tolerance2 and L1_sum7 < tolerance2 and L1_sum8 < tolerance2) :
-    
-    print "BL with fluxes works OK"
-
+#First and most important thing of this test is to check if we conserve Mass
+if (abs(totalMass-InjectedMass) < toleranceMass):
+    print "BL with fluxes conserves mass OK"
 else:
+    if(L1_sum1 < tolerance1 and L1_sum2 < tolerance1 and  L1_sum3 < tolerance1 and L1_sum4 < tolerance1 and L1_sum5 < tolerance2 and L1_sum6 < tolerance2 and L1_sum7 < tolerance2 and L1_sum8 < tolerance2) :
+        print "BL with fluxes works OK"
+    else:
+        print "BL with fluxes does not work" 
 
-    print "BL with fluxes does not work" 
+
 

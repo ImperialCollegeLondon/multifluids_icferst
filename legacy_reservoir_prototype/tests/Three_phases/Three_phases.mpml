@@ -165,7 +165,6 @@
         <Backtracking_factor>
           <real_value rank="0">-0.15</real_value>
         </Backtracking_factor>
-        <Show_Convergence/>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
