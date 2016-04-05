@@ -53,7 +53,7 @@ contains
   
     character(len = *), parameter :: base_path = "/mesh_adaptivity/hr_adaptivity/node_locking"
     character(len = PYTHON_FUNC_LEN) :: func
-    integer :: i, index, stat, iphase
+    integer :: i, index, stat, iphase, iscalars
     integer, dimension(:), allocatable :: is_node_locked
     real :: lcurrent_time
     !Variables for wells node locking
@@ -82,21 +82,23 @@ contains
 
     !Section to add the nodes locked by the wells
     do iphase = 1, option_count('/material_phase')
-        well_path ='/material_phase['// int2str( iphase -1 ) //']/scalar_field::DiameterPipe1/prescribed/value/python'
-        if (have_option(well_path)) then
-            call get_option(well_path, func)
+        do iscalars = 1, option_count('/material_phase/scalar_field')
+            well_path ='/material_phase['// int2str( iphase -1 ) //']/scalar_field::DiameterPipe'// int2str(iscalars) //'/prescribed/value/python'
+            if (have_option(well_path)) then
+                call get_option(well_path, func)
 
-            allocate(is_node_locked_scalar(node_count(positions)));is_node_locked_scalar = 0.0
-            call set_scalar_field_from_python(func, len_trim(func), positions%dim, node_count(positions), &
-              & positions%val(1,:), positions%val(2,:), positions%val(3,:), lcurrent_time, &
-              & is_node_locked_scalar, stat)
+                allocate(is_node_locked_scalar(node_count(positions)));is_node_locked_scalar = 0.0
+                call set_scalar_field_from_python(func, len_trim(func), positions%dim, node_count(positions), &
+                  & positions%val(1,:), positions%val(2,:), positions%val(3,:), lcurrent_time, &
+                  & is_node_locked_scalar, stat)
 
-            !We add the nodes introduced by the wells
-            do i = 1, size(is_node_locked_scalar)
-                if(abs(is_node_locked_scalar(i)) >= 1e-8) is_node_locked(i) = 1
-            end do
-            deallocate(is_node_locked_scalar)
-        end if
+                !We add the nodes introduced by the wells
+                do i = 1, size(is_node_locked_scalar)
+                    if(abs(is_node_locked_scalar(i)) >= 1e-8) is_node_locked(i) = 1
+                end do
+                deallocate(is_node_locked_scalar)
+            end if
+        end do
     end do
     !End of section to add the nodes locked by the wells
     if(stat /= 0) then
