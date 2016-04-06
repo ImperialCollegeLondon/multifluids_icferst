@@ -66,12 +66,12 @@ contains
 !      return
 !    end if
     
+    stat = 0
     if(present(current_time)) then
       lcurrent_time = current_time
     else
       call get_option("/timestepping/current_time", lcurrent_time, default = 0.0)
     end if
-
     allocate(is_node_locked(node_count(positions))); is_node_locked = 0
     if( have_option(base_path)) then
         call get_option(base_path // "/python", func)
@@ -101,6 +101,7 @@ contains
         end do
     end do
     !End of section to add the nodes locked by the wells
+
     if(stat /= 0) then
        ewrite(-1, *) "Python error, Python string was:"
        ewrite(-1, *) trim(func)
