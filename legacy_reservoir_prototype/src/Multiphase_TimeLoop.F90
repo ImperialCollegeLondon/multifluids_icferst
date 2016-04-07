@@ -1359,18 +1359,17 @@ contains
         integer :: iphase
         integer, save :: phaseToAdapt = -1
 
-
         if (phaseToAdapt<0) then
             !Retrieve which phase has the options to adapt to
             do iphase = 1, Mdims%nphase
-                if (have_option('/material_phase['//int2str(Mdims%nphase-1)//']/scalar_field::PhaseVolumeFraction/adaptivity_options')) then
+                if (have_option('/material_phase['//int2str(iphase-1)//']/scalar_field::PhaseVolumeFraction/prognostic/adaptivity_options')) then
                     phaseToAdapt = iphase
                     exit
                 end if
             end do
-            !Make sure it is not the last phase!
-            if (phaseToAdapt==Mdims%nphase) then
-                ewrite(0,*) "WARNING: Adapt_mesh_within_FPI requires the last phase NOT to be the only target for adapting the mesh"
+            !Make sure it is not the last phase! and that the option can be used
+            if (phaseToAdapt==Mdims%nphase .or. phaseToAdapt < 0 .or. .not.is_porous_media ) then
+                ewrite(0,*) "WARNING: Adapt_mesh_within_FPI requires porous media flow and the last PhaseVolumeFraction NOT to be the only target for adapting the mesh"
                 return
             end if
         end if
@@ -1397,6 +1396,7 @@ contains
                 sat1%val = abs(sat1%val - sat2%val)**0.8
                 call adapt_mesh_mp()
                 !3.Reconstruct the Saturation of the first phase
+                sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
                 sat1%val = 1.0
                 do iphase = 1, Mdims%nphase
                     if (iphase /= phaseToAdapt) then
@@ -1410,7 +1410,8 @@ contains
                     sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
                     sat1%val = sat2%val
                 end do
-
+                !Pointing to porosity again is required
+                porosity_field=>extract_vector_field(packed_state,"Porosity")
                 !Now we have to converge again within the same time-step
                 ExitNonLinearLoop = .false.; its = 1
                 adapt_mesh_in_FPI = .false.

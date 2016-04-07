@@ -844,7 +844,7 @@ via a compressible equation of state.</a:documentation>
           </optional>
           <optional>
             <element name="scalar_field">
-              <a:documentation>Density.</a:documentation>
+              <a:documentation>Density</a:documentation>
               <attribute name="rank">
                 <value>0</value>
               </attribute>
@@ -1465,10 +1465,7 @@ and divides the rhs by this.</a:documentation>
 
 Only specify one condition if not using mesh regions.
 Otherwise select other initial_condition option, specify region_ids
-and distinct names.  Then add extra intial conditions for other regions
-
-*** For the initial condition, this is ignored in the code, use material_phase/equation_of_state/incompressible/linear/all_equal to specific the density ***
-.</a:documentation>
+and distinct names.  Then add extra intial conditions for other regions.</a:documentation>
           <attribute name="name">
             <value>WholeMesh</value>
           </attribute>
