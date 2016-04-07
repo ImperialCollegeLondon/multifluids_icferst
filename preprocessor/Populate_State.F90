@@ -1302,8 +1302,8 @@ contains
     ! insert auxiliary fields if is_porous_media and adapting the mesh within the non-linear solver
     if (is_porous_media) then
         if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
-            do i=1, nstates
-                call allocate_and_insert_scalar_field('/material_phase['//int2str(i-1)//']/scalar_field::Density', &
+            do i=1, nstates!We consider that the last phase is not the one adapting to
+                call allocate_and_insert_scalar_field('/material_phase['//int2str(nstates-1)//']/scalar_field::PhaseVolumeFraction', &
                  states(i), field_name = "Saturation_bak", parent_mesh = "PressureMesh")
             end do
         end if
