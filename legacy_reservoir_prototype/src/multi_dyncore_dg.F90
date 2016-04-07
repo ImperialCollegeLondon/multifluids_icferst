@@ -5476,7 +5476,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
              call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
              if (Pe_aux<0) then!Automatic set up for Pe
                  !Method based on calculating an entry pressure for a given capillary number;
-                 !Npc = Kr*K*Pc/(q * L * mu); q = darcy velocity
+                 !Npc = Kr*K*Pc/(q * L * mu); q = darcy velocity. Definition from Shook et al. 1992
                  !Pc = Npc * Vel * L. The velocity includes the sigma!
                  Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
                  !Since it is an approximation, the domain length is the maximum distance
