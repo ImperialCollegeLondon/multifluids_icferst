@@ -360,7 +360,7 @@ contains
              call get_var_from_packed_state(packed_state,CVPressure = P)
              call get_var_from_packed_state(packed_state,PhaseVolumeFraction = satura)
              !Get information for capillary pressure to be use in CV_ASSEMB
-             call getOverrelaxation_parameter(packed_state, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
+             call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
              !Get variable for global convergence method
              if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
                  backtrack_par_factor = 1.1
@@ -514,7 +514,7 @@ contains
                              call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
                                    Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
                              !Also recalculate the Over-relaxation parameter
-                             call getOverrelaxation_parameter(packed_state, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
+                             call getOverrelaxation_parameter(packed_state, Mdims, ndgln, OvRelax_param, Phase_with_Pc, IDs2CV_ndgln)
                          else
                              exit Loop_NonLinearFlux
                          end if
@@ -5409,22 +5409,25 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
- subroutine getOverrelaxation_parameter(packed_state, Overrelaxation, Phase_with_Pc, IDs2CV_ndgln)
+ subroutine getOverrelaxation_parameter(packed_state, Mdims, ndgln, Overrelaxation, Phase_with_Pc, IDs2CV_ndgln)
      !This subroutine calculates the overrelaxation parameter we introduce in the saturation equation
      !It is the derivative of the capillary pressure for each node.
      !Overrelaxation has to be alocate before calling this subroutine its size is cv_nonods
      implicit none
      type( state_type ), intent(inout) :: packed_state
+     type (multi_dimensions), intent(in) :: Mdims
+     type(multi_ndgln), intent(in) :: ndgln
      real, dimension(:), intent(inout) :: Overrelaxation
      integer, intent(inout) :: Phase_with_Pc
      integer, dimension(:), intent(in) :: IDs2CV_ndgln
      !Local variables
-     integer :: iphase, nphase, cv_nodi, cv_nonods
-     real :: Pe_aux, aux2
+     integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc
+     real :: Pe_aux, aux2, domain_length
      real, dimension(:), pointer ::Pe, Cap_exp
      logical :: Artificial_Pe, Diffusive_cap_only
      real, dimension(:,:,:), pointer :: p
      real, dimension(:,:), pointer :: satura, immobile_fraction, Cap_entry_pressure, Cap_exponent, X_ALL
+     type( tensor_field ), pointer :: Velocity
 
      !Extract variables from packed_state
      call get_var_from_packed_state(packed_state,FEPressure = P,&
@@ -5472,12 +5475,27 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
              Artificial_Pe = .true.
              call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
              if (Pe_aux<0) then!Automatic set up for Pe
-                 aux2 = max(maxval(p(1,1,:)), 0.)
-                 Pe = aux2 * 1d-3!Seems more stable than p(1,1,:) * 1d-3
+                 !Method based on calculating an entry pressure for a given capillary number;
+                 !Npc = Kr*K*Pc/(q * L * mu); q = darcy velocity
+                 !Pc = Npc * Vel * L. The velocity includes the sigma!
+                 Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
+                 !Since it is an approximation, the domain length is the maximum distance
+                 domain_length = abs(maxval(X_ALL)-minval(X_ALL))
+                 Pe_aux = abs(Pe_aux)
+                 !Obtain an approximation of the capillary number to obtain an entry pressure
+                 do ele = 1, Mdims%totele
+                     do u_iloc = 1, Mdims%u_nloc
+                         u_inod = ndgln%u(( ELE - 1 ) * Mdims%u_nloc +u_iloc )
+                         do cv_iloc = 1, Mdims%cv_nloc
+                             cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
+                             Pe(cv_nodi) = (Pe_aux * sum(abs(Velocity%val(:,Phase_with_Pc,u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
+                         end do
+                     end do
+                 end do
              else
                  Pe = Pe_aux
              end if
-             !                Cap_exp = 1.!Linear exponent
+!            Cap_exp = 1.!Linear exponent
              Cap_exp = 2.!Quadratic exponent
          end if
 

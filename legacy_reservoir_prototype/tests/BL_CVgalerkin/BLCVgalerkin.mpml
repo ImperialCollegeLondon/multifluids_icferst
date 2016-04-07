@@ -168,7 +168,7 @@
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Backtracking_factor>
-          <real_value rank="0">0.3334</real_value>
+          <real_value rank="0">-0.3334</real_value>
         </Backtracking_factor>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
@@ -593,7 +593,7 @@
         </scalar_field>
       </immobile_fraction>
       <Pe_stab>
-        <real_value rank="0">0.25e-2</real_value>
+        <real_value rank="0">-0.1</real_value>
       </Pe_stab>
     </multiphase_properties>
   </material_phase>

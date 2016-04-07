@@ -168,7 +168,6 @@
         <Acceleration_exp>
           <real_value rank="0">0.5</real_value>
         </Acceleration_exp>
-        <Show_Convergence/>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
@@ -560,7 +559,7 @@
         </scalar_field>
       </immobile_fraction>
       <Pe_stab>
-        <real_value rank="0">1e-3</real_value>
+        <real_value rank="0">-0.05</real_value>
       </Pe_stab>
     </multiphase_properties>
   </material_phase>

@@ -751,8 +751,8 @@ contains
        end do
 
        PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
-        call Calculate_PorousMedia_adv_terms( state, packed_state, Mdims, ndgln, &
-               PorousMedia_AbsorptionTerm%val, upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm)
+       call Calculate_PorousMedia_adv_terms( state, packed_state, Mdims, ndgln, &
+              PorousMedia_AbsorptionTerm%val, upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm)
 
        ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
        ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC

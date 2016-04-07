@@ -3239,7 +3239,7 @@ subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, MAT_NDGLN, U_NDG
                         Velocity % val( :, iphase , u_inod) )
                     !P0 darcy velocities per element
                     DarcyVelocity % val ( :, iphase , u_inod) = DarcyVelocity% val ( :, iphase , u_inod)+ &
-                        aux(:)*saturation%val(1,iphase, cv_loc)/ cv_nloc
+                        aux(:)*saturation%val(1,iphase, cv_loc)/ real(cv_nloc)
                 end do
             end do
         end do
