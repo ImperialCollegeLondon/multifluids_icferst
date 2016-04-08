@@ -6179,7 +6179,7 @@ contains
                     IF ( between_elements) THEN
                         ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
                         !This is to perform the average between two DG pressures (same mass => 0.5)
-                        Mass_corrector = (MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
+                        Mass_corrector = (MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
 
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
@@ -6219,11 +6219,9 @@ contains
                     RCON_J(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
                     DO IPHASE=1,Mdims%nphase
                         IF ( between_elements ) THEN
-                            Mass_corrector = (MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
-
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector
+                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector!(1.- Mass_corrector)
                         else
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
@@ -6292,11 +6290,10 @@ contains
                 END DO
                 IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                     RCON(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
-                    Mass_corrector = (MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
                     DO IPHASE=1,Mdims%nphase
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
-                            + RCON(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector
+                            + RCON(IPHASE) * CVNORMX_ALL( :, GI )* (1.- Mass_corrector)
                         !Calculate mass matrix
                         if (SUF_INT_MASS_MATRIX) then
                             do IDIM = 1, Mdims%ndim
@@ -6326,11 +6323,10 @@ contains
                     END DO
                     IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                         RCON_J(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
-                        Mass_corrector = (MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
                         DO IPHASE=1,Mdims%nphase
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
-                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector
+                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* (1.-Mass_corrector)!Mass_corrector
                             !Calculate mass matrix
                             if (SUF_INT_MASS_MATRIX) then
                                 do IDIM = 1, Mdims%ndim
