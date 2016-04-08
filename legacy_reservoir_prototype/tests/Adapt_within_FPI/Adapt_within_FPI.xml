@@ -15,9 +15,9 @@ int_sat1 = stat("mid_discontinuous.stat")["phase1"]["PhaseVolumeFraction"]["inte
 Num_elements = stat("mid_discontinuous.stat")["CoordinateMesh"]["elements"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.66) &lt; 0.01)</test>
+    <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.67) &lt; 0.01)</test>
     <test name="Assert integral saturation 1" language="python">assert(abs(int_sat1 - 0.25) &lt; 0.001)</test>
-    <test name="Assert number of elements" language="python">assert(abs(Num_elements - 1102) &lt; 10)</test>
+    <test name="Assert number of elements" language="python">assert(abs(Num_elements - 1426) &lt; 10)</test>
   </pass_tests>
   <warn_tests/>
 </testproblem>
