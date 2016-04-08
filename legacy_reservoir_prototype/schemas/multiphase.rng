@@ -508,7 +508,7 @@ Recommended value: 5e-2</a:documentation>
 
 Sat = Sat(Previous FPI) + Backtracking_parameter * dSat
 
-Defined as: 0 &lt; Backtracking_parameter &lt; 1. Negative values =&gt; automatically 
+Defined as: 0.01 &lt; Backtracking_parameter &lt; 1. Negative values =&gt; automatically 
 
 Default value is 1.
 
@@ -516,7 +516,7 @@ For FIXED backtracking parameters:
 Recommended settings: Non-linear iterations &gt;= 100
 
 Recommended settings: Courant &lt; 1 =&gt; Backtracking_parameter = 1;
-Courant &gt; 1 =&gt; Backtracking_parameter from 1.0 to 0.1;
+Courant &gt; 1 =&gt; Backtracking_parameter from 1.0 to 0.01;
 
 For DYNAMIC dumping parameters:
 

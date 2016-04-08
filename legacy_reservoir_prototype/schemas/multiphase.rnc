@@ -436,7 +436,7 @@ start =
                     ##
                     ## Sat = Sat(Previous FPI) + Backtracking_parameter * dSat
                     ##
-                    ## Defined as: 0 < Backtracking_parameter < 1. Negative values => automatically 
+                    ## Defined as: 0.01 < Backtracking_parameter < 1. Negative values => automatically 
                     ##
                     ## Default value is 1.
                     ##
@@ -444,7 +444,7 @@ start =
                     ## Recommended settings: Non-linear iterations >= 100
                     ##
                     ## Recommended settings: Courant < 1 => Backtracking_parameter = 1;
-                    ## Courant > 1 => Backtracking_parameter from 1.0 to 0.1;
+                    ## Courant > 1 => Backtracking_parameter from 1.0 to 0.01;
                     ##
                     ## For DYNAMIC dumping parameters:
                     ##
