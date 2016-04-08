@@ -1864,6 +1864,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             ! CVM_BETA=0.0 (nonconservative virtual mass- standard),  =1. (conservative virtual mass)
             CVM_BETA=0.0
         ENDIF
+        !sprint_to_do; make all this memory static and/or between if for the memory that it is not always required
         ALLOCATE( NXUDN( FE_GIdims%scvngi ))
         ALLOCATE( SDETWE( FE_GIdims%sbcvngi ))
         ALLOCATE( CV_SLOC2LOC( Mdims%cv_snloc ))
@@ -3196,6 +3197,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
         !! *************************loop over surfaces*********************************************
         ! at some pt we need to merge these 2 loops but there is a bug when doing that!!!!!
+        !it does not work because some things, like MASS_ELE(ele2) require to have gone through all the elements first
         ! **********REVIEWER 3-START**********************
         DISC_PRES = ( Mdims%cv_nonods == Mdims%totele * Mdims%cv_nloc )
         Loop_Elements2: DO ELE = 1, Mdims%totele

@@ -1839,7 +1839,7 @@ contains
 
                                 CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
                                     Mdims, CV_funs, ndgln, Mmat, GI,  &
-                                    between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, &
+                                    between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
                                     JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC,  U_SLOC2LOC, CV_SLOC2LOC,&
                                     SdevFuns%DETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
                                     WIC_U_BC_ALL, WIC_P_BC_ALL, pressure_BCs%val, &
@@ -6084,7 +6084,7 @@ contains
 
     SUBROUTINE PUT_IN_CT_RHS( GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
         Mdims, CV_funs, ndgln, Mmat, GI, between_elements, on_domain_boundary, &
-        ELE, ELE2, SELE, HDC, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
+        ELE, ELE2, SELE, HDC, MASS_ELE, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
         C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2, U_OTHER_LOC, &
         U_SLOC2LOC, CV_SLOC2LOC,  &
         SCVDETWEI, CVNORMX_ALL, DEN_ALL, CV_NODI, CV_NODJ, &
@@ -6095,7 +6095,7 @@ contains
         NDOTQ_HAT, &
         FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
         RETRIEVE_SOLID_CTY,theta_cty_solid, &
-        loc_u, loc2_u, THETA_VEL, &
+        loc_u, loc2_u, THETA_VEL,&
         ! local memory sent down for speed...
         UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, &
         CAP_DIFF_COEF_DIVDX, SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS)
@@ -6118,7 +6118,7 @@ contains
         REAL, DIMENSION( :, :, : ), intent( inout ) :: SUF_P_BC_ALL
         REAL, DIMENSION( : ), intent( inout ) :: ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj
         REAL, DIMENSION( Mdims%ndim, Mdims%nphase, Mdims%u_nloc ), intent( in ) :: UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL
-        REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI
+        REAL, DIMENSION( : ), intent( in ) :: SCVDETWEI, MASS_ELE
         REAL, DIMENSION( :, : ), intent( in ) :: CVNORMX_ALL
         REAL, DIMENSION( :, : ), intent( in ) :: DEN_ALL
         REAL, DIMENSION( : ), intent( in ) :: NDOTQ, NDOTQOLD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, LIMD
@@ -6140,6 +6140,7 @@ contains
         INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
             U_KLOC_LEV, U_NLOC_LEV, IPHASE, U_SKLOC, I, J, U_KKLOC, IPRES, p_jloc, p_sjloc,&
             u_iloc, u_inod, u_siloc
+        real :: Mass_corrector
         !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
         if (RECAL_C_CV_RHS) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
                ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
@@ -6176,9 +6177,13 @@ contains
                 rcon(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
                 DO IPHASE=1,Mdims%nphase
                     IF ( between_elements) THEN
+                        ! bias the weighting towards bigger eles - works with 0.25 and 0.1 and not 0.01.
+                        !This is to perform the average between two DG pressures (same mass => 0.5)
+                        Mass_corrector = (MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
+
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-                            + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * 0.5
+                            + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Mass_corrector
                     else
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
@@ -6214,9 +6219,11 @@ contains
                     RCON_J(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
                     DO IPHASE=1,Mdims%nphase
                         IF ( between_elements ) THEN
+                            Mass_corrector = (MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
+
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* 0.5
+                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector
                         else
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
@@ -6285,10 +6292,11 @@ contains
                 END DO
                 IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                     RCON(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
+                    Mass_corrector = (MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
                     DO IPHASE=1,Mdims%nphase
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
-                            + RCON(IPHASE) * CVNORMX_ALL( :, GI )* 0.5
+                            + RCON(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector
                         !Calculate mass matrix
                         if (SUF_INT_MASS_MATRIX) then
                             do IDIM = 1, Mdims%ndim
@@ -6318,10 +6326,11 @@ contains
                     END DO
                     IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) THEN
                         RCON_J(:) = SCVDETWEI( GI ) * CV_funs%sufen( U_KLOC, GI )
+                        Mass_corrector = (MASS_ELE( ELE ) + 0.25 * MASS_ELE( ELE2 ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
                         DO IPHASE=1,Mdims%nphase
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
-                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* 0.5
+                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector
                             !Calculate mass matrix
                             if (SUF_INT_MASS_MATRIX) then
                                 do IDIM = 1, Mdims%ndim
