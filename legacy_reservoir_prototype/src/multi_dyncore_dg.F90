@@ -5423,8 +5423,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      integer, intent(inout) :: Phase_with_Pc
      integer, dimension(:), intent(in) :: IDs2CV_ndgln
      !Local variables
+     real, save :: domain_length = -1
      integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc
-     real :: Pe_aux, aux2, domain_length
+     real :: Pe_aux, aux2
      real, dimension(:), pointer ::Pe, Cap_exp
      logical :: Artificial_Pe, Diffusive_cap_only
      real, dimension(:,:,:), pointer :: p
@@ -5481,8 +5482,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                  !Npc = Kr*K*Pc/(q * L * mu); q = darcy velocity. Definition from Shook et al. 1992
                  !Pc = Npc * Vel * L. The velocity includes the sigma!
                  Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
-                 !Since it is an approximation, the domain length is the maximum distance
-                 domain_length = abs(maxval(X_ALL)-minval(X_ALL))
+                 !Since it is an approximation, the domain length is the maximum distance, we only calculate it once
+                 if (domain_length < 0) domain_length = abs(maxval(X_ALL)-minval(X_ALL))
                  Pe_aux = abs(Pe_aux)
                  !Obtain an approximation of the capillary number to obtain an entry pressure
                  do ele = 1, Mdims%totele
