@@ -2361,7 +2361,7 @@ contains
                         + (ONE_M_CV_BETA) * DEN_ALL( :, CV_NODI ) ) &
                         * R_PHASE(:) * TOLD_ALL( :, CV_NODI )
                 END IF
-                IF( Mdims%npres > 1 .and. explicit_pipes ) THEN
+                IF( Mdims%npres > 1 .and. explicit_pipes ) THEN ! this is not safe...
                     DO JPHASE = 1, Mdims%nphase
                         LOC_CV_RHS_I(:)=LOC_CV_RHS_I(:)  &
                             - MASS_PIPE( CV_NODI ) * A_GAMMA_PRES_ABS(:,JPHASE,CV_NODI )*CV_P_PHASE_NODI(JPHASE )
@@ -2383,12 +2383,12 @@ contains
                         end do
                     end do
                 END IF Conditional_GETMAT2
-                !Force Sum of volume fractions to be unity
-                !               if (is_porous_media)&
-                !                  LOC_CV_RHS_I = LOC_CV_RHS_I + R* ( 1.0  - SUM(T_ALL( :, CV_NODI ) ))!Spreads the error to all the phases
+
                 call addto(Mmat%CV_RHS,CV_NODI,LOC_CV_RHS_I)
+
             END DO Loop_CVNODI2
         END IF Conditional_GETCV_DISC2
+
         IF ( GETCT ) THEN
             W_SUM_ONE1 = 1.0 !If == 1.0 applies constraint to T
             W_SUM_ONE2 = 0.0 !If == 1.0 applies constraint to TOLD
