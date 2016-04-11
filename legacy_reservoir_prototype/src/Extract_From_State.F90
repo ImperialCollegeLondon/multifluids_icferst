@@ -990,8 +990,14 @@ contains
             call insert(packed_state,ten_field,"PorousMedia_AbsorptionTerm")
             call deallocate(ten_field)
             if ( ncomp > 0 ) then
-               ! Add component absorption (nphase, nphase, cv_nonods)
-               ! to packed_state and all multicomponent_states
+                ovmesh=>extract_mesh(packed_state,"PressureMesh")
+                do icomp = 1, ncomp
+                   ! Add component absorption (nphase, nphase, cv_nonods)
+                   ! to packed_state and all multicomponent_states
+                    call allocate(ten_field,ovmesh,"ComponentAbsorption",dim=[nphase,nphase])
+                    call insert(multicomponent_state(icomp),ten_field,"ComponentAbsorption")
+                    call deallocate(ten_field)
+                end do
             end if
         end if
 
@@ -3254,6 +3260,7 @@ end subroutine get_DarcyVelocity
         endif
         close (default_stat%conv_unit)
     end subroutine dump_outflux
+
 
 end module Copy_Outof_State
 
