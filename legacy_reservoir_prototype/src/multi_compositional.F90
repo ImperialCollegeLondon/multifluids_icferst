@@ -63,11 +63,10 @@ contains
         real, dimension( :, :, : ), intent( inout ) :: comp_absorb
 
         ! Local Variables
-        integer :: nphase, nstate, ncomp, totele, ndim, stotel, &
-            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-            x_snloc, cv_snloc, u_snloc, p_snloc, cv_nonods, mat_nonods, u_nonods, &
-            xu_nonods, x_nonods, x_nonods_p1, p_nonods, &
-            istate, iphase, jphase, ele, cv_iloc, cv_nod, jcomp
+        integer :: nphase, ncomp, nstate, totele, &
+            cv_nloc, &
+            cv_nonods, &
+            iphase, jphase, ele, cv_iloc, cv_nod, jcomp
         real :: dt, alpha_beta, max_k, min_k
         character( len = option_path_len ) :: option_path
         logical :: KComp_Sigmoid
@@ -86,11 +85,8 @@ contains
         tfield=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         satura => tfield%val(1,:,:)
 
-        call Get_Primary_Scalars( state, &
-            nphase, nstate, ncomp, totele, ndim, stotel, &
-            u_nloc, xu_nloc, cv_nloc, x_nloc, x_nloc_p1, p_nloc, mat_nloc, &
-            x_snloc, cv_snloc, u_snloc, p_snloc, &
-            cv_nonods, mat_nonods, u_nonods, xu_nonods, x_nonods, x_nonods_p1, p_nonods )
+        totele = Mdims%totele ; cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc
+        ncomp = Mdims%ncomp ; nphase = Mdims%nphase ; nstate = Mdims%nstate
 
         allocate( alpha( cv_nonods ), sum_nod( cv_nonods ), volfra_pore_nod( cv_nonods ), &
             k_comp( ncomp, nphase, nphase ), k_comp2( ncomp, cv_nonods, nphase, nphase ) )
