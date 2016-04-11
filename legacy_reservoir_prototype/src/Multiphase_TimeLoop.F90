@@ -671,7 +671,7 @@ contains
             !!$ Calculate diagnostic fields
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
-            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime )  ! Write stat file
+            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime ) ! Write stat file
             Conditional_TimeDump: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
                 dtime=dtime+1
                 if (do_checkpoint_simulation(dtime)) then
