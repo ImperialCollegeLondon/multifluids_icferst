@@ -133,24 +133,27 @@ contains
            real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
            integer :: ncomp_diff_coef, comp_diffusion_opt
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
-           IGOT_THERM_VIS=0
+
+           IGOT_THERM_VIS = 0
            ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
            ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
-           if (present(icomp)) then
-               lcomp=icomp
-           else
-               lcomp=0
-           end if
+
+           lcomp = 0
+           if ( present( icomp ) ) lcomp = icomp
+
            call allocate(Mmat%CV_RHS,Mdims%nphase,tracer%mesh,"RHS")
            sparsity=>extract_csr_sparsity(packed_state,"ACVSparsity")
            call allocate(Mmat%petsc_ACV,sparsity,[Mdims%nphase,Mdims%nphase],"ACV",.false.,.false.)
-           call zero(Mmat%petsc_ACV)
+           call zero( Mmat%petsc_ACV )
+
            allocate(den_all(Mdims%nphase,Mdims%cv_nonods),denold_all(Mdims%nphase,Mdims%cv_nonods))
-           allocate(DIAG_SCALE_PRES(0,0))
-           allocate(DIAG_SCALE_PRES_COUP(0,0,0),GAMMA_PRES_ABS(0,0,0),GAMMA_PRES_ABS_NANO(0,0,0),INV_B(0,0,0))
-           allocate(MASS_PIPE(0), MASS_CVFEM2PIPE(0), MASS_PIPE2CVFEM(0), MASS_CVFEM2PIPE_TRUE(0))
+           allocate( DIAG_SCALE_PRES(0,0) )
+           allocate( DIAG_SCALE_PRES_COUP(0,0,0),GAMMA_PRES_ABS(0,0,0),GAMMA_PRES_ABS_NANO(0,0,0),INV_B(0,0,0) )
+           allocate( MASS_PIPE(0), MASS_CVFEM2PIPE(0), MASS_PIPE2CVFEM(0), MASS_CVFEM2PIPE_TRUE(0) )
            allocate( T_SOURCE( Mdims%nphase, Mdims%cv_nonods ) ) ; T_SOURCE=0.0
+
            IGOT_T2_loc = 0
+
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
                p => extract_tensor_field( packed_state, "PackedCVPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
@@ -176,6 +179,7 @@ contains
                den_all=1.0
                denold_all=1.0
            end if
+
            if( present( option_path ) ) then ! solving for Temperature or Internal Energy
                if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
                    call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
@@ -190,19 +194,19 @@ contains
                Field_selector = 2
                IGOT_T2_loc = IGOT_T2
            end if
+
            lump_eqns = have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/' // &
                'spatial_discretisation/continuous_galerkin/mass_terms/lump_mass_matrix' )
-           ! let the coupling work
-           if ( have_option( '/blasting' ) ) then
-               RETRIEVE_SOLID_CTY = .true.
-           else
-               RETRIEVE_SOLID_CTY = .false.
-           end if
+
+           RETRIEVE_SOLID_CTY = .false.
+           if ( have_option( '/blasting' ) ) RETRIEVE_SOLID_CTY = .true.
+
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
               call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION )
            end if
+
            ! get diffusivity for compositional
            if ( lcomp > 0 .and. is_porous_media ) then
               ncomp_diff_coef = 0 ; comp_diffusion_opt = 0
@@ -216,6 +220,7 @@ contains
                  TDiffusion )
               deallocate( Component_Diffusion_Operator_Coefficient )
            end if
+
            ! calculate T_ABSORB
            if (have_option('/boiling')) then
               allocate ( T_AbsorB( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) ) ; T_AbsorB=0.0
@@ -228,7 +233,7 @@ contains
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
            Loop_NonLinearFlux: DO ITS_FLUX_LIM = 1, NITS_FLUX_LIM
-                !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
+               !before the sprint in this call the small_acv sparsity was passed as cmc sparsity...
                call CV_ASSEMB( state, packed_state, &
                    Mdims, CV_GIdims, CV_funs, Mspars, ndgln, Mdisopt, Mmat, upwnd, &
                    tracer, velocity, density, &

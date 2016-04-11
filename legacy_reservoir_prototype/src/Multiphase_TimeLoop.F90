@@ -164,7 +164,6 @@ contains
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
         type(tensor_field), pointer :: Component_Absorption
-        type(scalar_field), pointer :: f1, f2
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
         logical, parameter :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
@@ -245,13 +244,7 @@ contains
         suf_sig_diagten_bc=0.
         mass_ele=0.
         !!$
-        do iphase = 1, Mdims%nphase
-            f1 => extract_scalar_field( state(iphase), "Temperature", stat )
-            if ( stat==0 ) then
-                f2 => extract_scalar_field( state(iphase),"Dummy", stat )
-                if ( stat==0 ) f2%val = f1%val
-            end if
-        end do
+
         !!$ Calculate diagnostic fields
         call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
         call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
@@ -600,7 +593,6 @@ contains
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
                         IDs_ndgln, IDs2CV_ndgln )
-                    velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
 
                     !!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
@@ -675,17 +667,11 @@ contains
             call set_option( '/timestepping/timestep', dt)
             current_time = acctim
             call Calculate_All_Rhos( state, packed_state, Mdims )
-            do iphase = 1, Mdims%nphase
-                f1 => extract_scalar_field( state(iphase), "Temperature", stat )
-                if ( stat==0 ) then
-                    f2 => extract_scalar_field( state(iphase),"Dummy", stat )
-                    if ( stat==0 ) f2%val = f1%val
-                end if
-            end do
+
             !!$ Calculate diagnostic fields
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
-            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime )  ! Write stat file
+            if (write_all_stats) call write_diagnostics( state, current_time, dt, itime ) ! Write stat file
             Conditional_TimeDump: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
                 dtime=dtime+1
                 if (do_checkpoint_simulation(dtime)) then
