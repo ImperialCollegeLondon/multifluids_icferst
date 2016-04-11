@@ -122,7 +122,7 @@ contains
         !!$ Defining solver options
         integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
         !!$ Shape function related fields:
-        integer :: scvngi_theta, igot_t2, igot_theta_flux, IGOT_THERM_VIS
+        integer :: scvngi_theta, igot_t2, igot_theta_flux
         !!$ Adaptivity related fields and options:
         type( tensor_field ) :: metric_tensor
         type( state_type ), dimension( : ), pointer :: sub_state => null()
@@ -185,8 +185,7 @@ contains
       ierr = Zoltan_Initialize(ver)
       assert(ierr == ZOLTAN_OK)
 #endif
-        ! Number of pressures to solve for
-        Mdims%npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
+
         !Read info for adaptive timestep based on non_linear_iterations
         if(have_option("/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")) then
             if(have_option("/timestepping/nonlinear_iterations/nonlinear_iterations_at_adapt")) then
@@ -199,10 +198,14 @@ contains
             call delete_option(&
                 "/mesh_adaptivity/hr_adaptivity/adapt_at_first_timestep")
         end if
+
+        !!$ Compute primary scalars used in most of the code
+        call Get_Primary_Scalars_new( state, Mdims )
+
         if(use_sub_state()) then
             call populate_sub_state(state,sub_state)
         end if
-        !! JRP changes to make a multiphasic state
+
         call pack_multistate( Mdims%npres, state, packed_state, multiphase_state, &
             multicomponent_state )
         call set_boundary_conditions_values(state, shift_time=.true.)
@@ -214,25 +217,13 @@ contains
         !  Type ids are in bc_type_list(1/Mdims%ndim/Mdims%ncomp,Mdims%nphase,Mdims%stotel)
         !
         !  A deallocate tfield when finished!!
-        Repeat_time_step = .false.!Initially has to be false
-        nonLinearAdaptTs = have_option(  '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
-        !!$ Compute primary scalars used in most of the code
-        call Get_Primary_Scalars_new( state, Mdims )
+
+        Repeat_time_step = .false.
+        nonLinearAdaptTs = have_option('/timestepping/nonlinear_iterations/Fixed_Point_Iteration/adaptive_timestep_nonlinear')
+
         !!$ Calculating Global Node Numbers
         call allocate_multi_ndgln(ndgln, Mdims)
         call Compute_Node_Global_Numbers(state, ndgln)
-        !!$
-        !!$ Computing Sparsity Patterns Matrices
-        !!$
-        !!$ Defining lengths and allocating space for the matrices
-
-
-        ! move somewhere else - SPRINT TO DO -
-        ph_mesh => extract_mesh( state( 1 ), "ph", stat )
-        if ( stat == 0 ) then
-           Mdims%ph_nonods = node_count( ph_mesh )
-           Mdims%ph_nloc = ele_loc( ph_mesh, 1 )
-        end if
 
         call Defining_MaxLengths_for_Sparsity_Matrices( Mdims%ndim, Mdims%nphase, Mdims%totele, Mdims%u_nloc, Mdims%cv_nloc, Mdims%ph_nloc, Mdims%cv_nonods, &
             mx_nface_p1, mxnele, mx_nct, mx_nc, mx_ncolcmc, mx_ncoldgm_pha, mx_ncolmcy, &
@@ -313,7 +304,7 @@ contains
         call get_option( '/timestepping/finish_time', finish_time )
         call get_option( '/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1 )
         call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
-        !      call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
+        !call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
         !!$
         have_temperature_field = .false. ; have_component_field = .false. ; have_extra_DiffusionLikeTerm = .false.
         do istate = 1, Mdims%nstate
@@ -1039,6 +1030,8 @@ contains
                 deallocate(multicomponent_state)
                 call deallocate_projection_matrices(CV_funs)
                 call deallocate_projection_matrices(FE_funs)
+                !!$ Compute primary scalars used in most of the code
+                call Get_Primary_Scalars_new( state, Mdims )
                 call pack_multistate(Mdims%npres,state,packed_state,&
                     multiphase_state,multicomponent_state)
                 call set_boundary_conditions_values(state, shift_time=.true.)
@@ -1056,8 +1049,6 @@ contains
                 call deallocate_multi_ndgln(ndgln)
                 !Destroy what remains of the matrices
                 call destroy_multi_matrices(Mmat)
-                !!$ Compute primary scalars used in most of the code
-                call Get_Primary_Scalars_new( state, Mdims )
                 !!$ Calculating Global Node Numbers
                 call allocate_multi_ndgln(ndgln, Mdims)
                 call Compute_Node_Global_Numbers(state, ndgln)
