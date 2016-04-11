@@ -859,8 +859,6 @@ contains
         ! dummy field on the pressure mesh, used for evaluating python eos's.
         ! (this could be cleaned up in the future)
         call add_new_memory(packed_state,pressure,"Dummy")
-        tfield=>extract_tensor_field(state(1),"Dummy",stat)
-        if(stat==0) call insert(packed_state,tfield,"Dummy")
 
         call insert_sfield(packed_state,"FEDensity",1,nphase)
         d2=>extract_tensor_field(packed_state,"PackedFEDensity")
