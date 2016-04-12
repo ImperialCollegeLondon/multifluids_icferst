@@ -163,7 +163,7 @@ contains
         !Working pointers
         type(tensor_field), pointer :: tracer_field, velocity_field, density_field, saturation_field, old_saturation_field   !, tracer_source
         type(tensor_field), pointer :: pressure_field, cv_pressure, fe_pressure, PhaseVolumeFractionSource, PhaseVolumeFractionComponentSource
-        type(tensor_field), pointer :: Component_Absorption
+        type(tensor_field), pointer :: Component_Absorption, perm_field
         type(vector_field), pointer :: positions, porosity_field, MeanPoreCV
         logical, parameter :: write_all_stats=.true.
         ! Variables used for calculating boundary outfluxes. Logical "calculate_flux" determines if this calculation is done. Intflux is the time integrated outflux
@@ -574,6 +574,8 @@ contains
                 PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
                 if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
 
+!sprint_to_do; FIXME THIS SHOULD WORK WITHOUT BEING FORCED TO BE ZEROED
+ScalarField_Source_Store = 0.0
 
                 Mdisopt%volfra_use_theta_flux = Mdims%ncomp > 1
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
@@ -1175,6 +1177,7 @@ contains
     subroutine calc_components()
         implicit none
 
+        perm_field => extract_tensor_field(packed_state,"Permeability")
         PhaseVolumeFractionComponentSource%val = 0.0
         velocity_field=>extract_tensor_field(packed_state,"PackedVelocity")
         saturation_field=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
@@ -1233,7 +1236,7 @@ contains
                     theta_gdiff, IDs_ndgln, IDs2CV_ndgln, &
                     thermal = .false.,& ! the false means that we don't add an extra source term
                     theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
-                    icomp=icomp, saturation=saturation_field)
+                    icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field)
                 tracer_field%val = min (max( tracer_field%val, 0.0), 1.0)
             end do Loop_NonLinearIteration_Components
 
