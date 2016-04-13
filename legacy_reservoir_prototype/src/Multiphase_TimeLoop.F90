@@ -571,11 +571,14 @@ contains
                    PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
                    ScalarField_Source_Store = PhaseVolumeFractionComponentSource%val(1,:,:)
                 end if
-                PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
-                if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
 
 !sprint_to_do; FIXME THIS SHOULD WORK WITHOUT BEING FORCED TO BE ZEROED
 ScalarField_Source_Store = 0.0
+
+
+                PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
+                if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
+
 
                 Mdisopt%volfra_use_theta_flux = Mdims%ncomp > 1
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
