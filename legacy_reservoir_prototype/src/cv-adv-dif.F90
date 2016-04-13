@@ -688,7 +688,7 @@ contains
         QUAD_ELEMENTS = ( ((Mdims%ndim==2).AND.(Mdims%cv_nloc==6)).or.((Mdims%ndim==3).AND.(Mdims%cv_nloc==10)) )
         !Pointer to permeability
         if ( is_porous_media ) then
-            perm=>extract_tensor_field(packed_state,"Permeability")
+            perm=>extract_tensor_field(state(1),"Permeability")
             !Check if the permeability is not isotropic and the method is DG
             anisotropic_perm = .not.have_option('porous_media/scalar_field::Permeability') .and. DISTCONTINUOUS_METHOD
         end if

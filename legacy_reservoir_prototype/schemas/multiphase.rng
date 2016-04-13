@@ -1199,16 +1199,16 @@ You should specify this ONLY for the wetting phase</a:documentation>
                 </element>
               </optional>
               <optional>
-                <element name="Pe_stab">
+                <element name="Sat_overRelax">
                   <a:documentation>Introduce over-relaxation in the saturation equation that diminishes as the FPI converges. 
 This helps to increase the convergence rate of the FPI solver.
 You should specify this ONLY for the wetting phase.
 
 If positive, the input value is the entry pressure.
 
-If negative, the input value is Capillary number desired.
+If negative, the input value is Peclet number desired.
 
-Recommended values: from -0.01 to -0.1
+Recommended values: from -1e2 to -1e1
 
 Tip: if Diffusive_cap_only is activated Pe is ignored.</a:documentation>
                   <ref name="real"/>

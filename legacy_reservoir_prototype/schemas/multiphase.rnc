@@ -913,12 +913,12 @@ start =
                ##
                ## If positive, the input value is the entry pressure.
                ##
-               ## If negative, the input value is Capillary number desired.
+               ## If negative, the input value is Peclet number desired.
                ##
-               ## Recommended values: from -0.01 to -0.1
+               ## Recommended values: from -1e2 to -1e1
                ##
                ## Tip: if Diffusive_cap_only is activated Pe is ignored.
-               element Pe_stab {real}?
+               element Sat_overRelax {real}?
             }?
          }+,
          mesh_adaptivity_options?,
