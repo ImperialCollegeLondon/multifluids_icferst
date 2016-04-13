@@ -524,9 +524,9 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
-      <Pe_stab>
+      <Sat_overRelax>
         <real_value rank="0">0.1e-3</real_value>
-      </Pe_stab>
+      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">

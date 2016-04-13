@@ -5456,7 +5456,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
      !#######Only apply this method if it has been explicitly invoked through Pe_stab or
      !non-consistent capillary pressure!######
-     if (.not.(have_option_for_any_phase("/multiphase_properties/Pe_stab", nphase) .or. &
+     if (.not.(have_option_for_any_phase("/multiphase_properties/Sat_overRelax", nphase) .or. &
         have_option_for_any_phase("/multiphase_properties/capillary_pressure/Diffusive_cap_only", nphase))) then
          Overrelaxation = 0.0; Phase_with_Pc = -10
          return
@@ -5470,7 +5470,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          if (have_option( "/material_phase["//int2str(iphase-1)//&
              "]/multiphase_properties/capillary_pressure" ) .or.&
              have_option("/material_phase[["//int2str(iphase-1)//&
-             "]/multiphase_properties/Pe_stab")) then
+             "]/multiphase_properties/Sat_overRelax")) then
              Phase_with_Pc = iphase
          end if
      end do
@@ -5486,15 +5486,15 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
          !If we want to introduce a stabilization term, this one is imposed over the capillary pressure.
          !Unless we are using the non-consistent form of the capillary pressure
          Diffusive_cap_only = have_option_for_any_phase('/multiphase_properties/capillary_pressure/Diffusive_cap_only', nphase)
-         if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab")&
+         if (have_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Sat_overRelax")&
              .and..not.Diffusive_cap_only) then
              allocate(Pe(CV_NONODS), Cap_exp(CV_NONODS))
              Artificial_Pe = .true.
-             call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Pe_stab", Pe_aux)
+             call get_option("/material_phase["//int2str(Phase_with_Pc-1)//"]/multiphase_properties/Sat_overRelax", Pe_aux)
              if (Pe_aux<0) then!Automatic set up for Pe
-                 !Method based on calculating an entry pressure for a given capillary number;
-                 !Npc = Kr*K*Pc/(q * L * mu); q = darcy velocity. Definition from Shook et al. 1992
-                 !Pc = Npc * Vel * L. The velocity includes the sigma!
+                 !Method based on calculating an entry pressure for a given Peclet number;
+                 !Peclet = V * L / Diffusivity; We consider only the entry pressure for the diffusivity
+                 !Pe = Vel * L/ Peclet. At present we are using the velocity that includes the sigma. Maybe might be worth it using the Darcy velocity?
                  Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
                  !Since it is an approximation, the domain length is the maximum distance, we only calculate it once
                  if (domain_length < 0) domain_length = abs(maxval(X_ALL)-minval(X_ALL))
@@ -5505,7 +5505,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                          u_inod = ndgln%u(( ELE - 1 ) * Mdims%u_nloc +u_iloc )
                          do cv_iloc = 1, Mdims%cv_nloc
                              cv_nodi = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + cv_iloc )
-                             Pe(cv_nodi) = (Pe_aux * sum(abs(Velocity%val(:,Phase_with_Pc,u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
+                             Pe(cv_nodi) = (1./Pe_aux) * (sum(abs(Velocity%val(:,Phase_with_Pc,u_inod)))/real(Mdims%ndim) * domain_length)/real(Mdims%u_nloc)
                          end do
                      end do
                  end do
