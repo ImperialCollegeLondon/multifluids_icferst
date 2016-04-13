@@ -1306,9 +1306,9 @@ contains
 
         if( have_gravity .and. .not.high_order_Ph ) then
             gravity_direction => extract_vector_field( state( 1 ), 'GravityDirection' )
-            g = node_val( gravity_direction, 1 ) * gravity_magnitude
             u_source_cv = 0.
             do nod = 1, cv_nonods
+                g = node_val( gravity_direction, nod ) * gravity_magnitude
                 do iphase = 1, nphase
                     do idim = 1, ndim
                         u_source_cv( idim, iphase, nod ) = den( iphase, nod ) * g( idim )

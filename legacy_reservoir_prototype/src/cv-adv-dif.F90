@@ -117,7 +117,7 @@ contains
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, IDs_ndgln, IDs2CV_ndgln, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
-        RECALC_C_CV, SUF_INT_MASS_MATRIX)
+        RECALC_C_CV, SUF_INT_MASS_MATRIX, Permeability_tensor_field)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -285,6 +285,7 @@ contains
         !Variables to cache get_int_vel OLD
         real, optional, intent(inout) :: Courant_number
         logical, optional, intent(in) :: RECALC_C_CV, SUF_INT_MASS_MATRIX
+        type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
         ! Local variables
         REAL :: ZERO_OR_TWO_THIRDS
         ! if integrate_other_side then just integrate over a face when cv_nodj>cv_nodi
@@ -688,7 +689,11 @@ contains
         QUAD_ELEMENTS = ( ((Mdims%ndim==2).AND.(Mdims%cv_nloc==6)).or.((Mdims%ndim==3).AND.(Mdims%cv_nloc==10)) )
         !Pointer to permeability
         if ( is_porous_media ) then
-            perm=>extract_tensor_field(state(1),"Permeability")
+            if (present(Permeability_tensor_field)) then
+                perm => Permeability_tensor_field
+            else
+            perm=>extract_tensor_field(packed_state,"Permeability")
+            end if
             !Check if the permeability is not isotropic and the method is DG
             anisotropic_perm = .not.have_option('porous_media/scalar_field::Permeability') .and. DISTCONTINUOUS_METHOD
         end if

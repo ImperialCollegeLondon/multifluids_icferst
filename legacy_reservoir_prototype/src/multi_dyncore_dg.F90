@@ -77,7 +77,7 @@ contains
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-       icomp, saturation )
+       icomp, saturation, Permeability_tensor_field )
            ! Solve for internal energy using a control volume method.
            implicit none
            type( state_type ), dimension( : ), intent( inout ) :: state
@@ -104,6 +104,7 @@ contains
            character( len = * ), intent( in ), optional :: option_path
            real, dimension( : ), intent( inout ), optional :: mass_ele_transp
            type(tensor_field), intent(in), optional :: saturation
+           type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
            integer, optional :: icomp
            ! Local variables
            LOGICAL, PARAMETER :: GETCV_DISC = .TRUE., GETCT= .FALSE.
@@ -121,7 +122,7 @@ contains
            INTEGER :: IPHASE
            REAL, PARAMETER :: SECOND_THETA = 1.0
            LOGICAL :: RETRIEVE_SOLID_CTY
-           type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv
+           type( tensor_field ), pointer :: den_all2, denold_all2, a, aold, deriv, Component_Absorption
            type( vector_field ), pointer  :: MeanPoreCV
            integer :: lcomp, Field_selector, IGOT_T2_loc
            type(vector_field)  :: vtracer
@@ -133,7 +134,13 @@ contains
            real, dimension(:,:,:,:), allocatable :: THERM_U_DIFFUSION
            integer :: ncomp_diff_coef, comp_diffusion_opt
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
+           type( tensor_field ), pointer :: perm
 
+            if (present(Permeability_tensor_field)) then
+                perm => Permeability_tensor_field
+            else
+                perm=>extract_tensor_field(packed_state,"Permeability")
+            end if
            IGOT_THERM_VIS = 0
            ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
            ALLOCATE( THERM_U_DIFFUSION_VOL(Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
@@ -219,6 +226,8 @@ contains
                  Component_Diffusion_Operator_Coefficient( icomp, :, : ), &
                  TDiffusion )
               deallocate( Component_Diffusion_Operator_Coefficient )
+              Component_Absorption => extract_tensor_field( packed_state, "ComponentAbsorption")
+              T_ABSORB => Component_Absorption%val
            end if
 
            ! calculate T_ABSORB
@@ -252,7 +261,7 @@ contains
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
                    mass_ele_transp, IDs_ndgln, IDs2CV_ndgln, &
-                   saturation=saturation)
+                   saturation=saturation, Permeability_tensor_field = perm)
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
                    ALLOCATE( CV_RHS_SUB( Mdims%cv_nonods ) )

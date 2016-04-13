@@ -1007,7 +1007,8 @@ contains
         call deallocate(porosity)
         if (has_scalar_field(state(1),"Porosity")) then
             sfield=>extract_scalar_field(state(1),"Porosity")
-            porosity%val(1,:)=sfield%val
+!            porosity%val(1,:)=sfield%val
+            call set(porosity,1,sfield)
         end if
 
         ! hack to define a lateral from diamond

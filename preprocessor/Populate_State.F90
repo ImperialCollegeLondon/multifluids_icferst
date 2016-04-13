@@ -1895,7 +1895,8 @@ contains
     is_prescribed=have_option(trim(path)//"/prescribed")
     is_diagnostic=have_option(trim(path)//"/diagnostic")
 
-    is_constant=allocate_tensor_field_as_constant(path)
+    !is_constant=allocate_tensor_field_as_constant(path)
+    is_constant=allocate_scalar_field_as_constant(path)
 
     ewrite(1,*) "Is field prognostic? ", is_prognostic
     ewrite(1,*) "Is field prescribed? ", is_prescribed
