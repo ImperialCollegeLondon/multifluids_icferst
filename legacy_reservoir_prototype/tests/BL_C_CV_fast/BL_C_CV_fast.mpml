@@ -539,7 +539,7 @@
       </immobile_fraction>
       <Sat_overRelax>
         <real_value rank="0">-10</real_value>
-      </PSat_overRelax>
+      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
