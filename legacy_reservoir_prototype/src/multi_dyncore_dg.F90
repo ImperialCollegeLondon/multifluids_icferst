@@ -356,6 +356,9 @@ contains
              real, dimension(:, :), pointer :: satura
              type(tensor_field), pointer :: tracer, velocity, density, deriv, PorousMedia_AbsorptionTerm
              type(scalar_field), pointer :: gamma
+             !Variable to assign an automatic maximum backtracking parameter based on the Courant number
+             logical :: Auto_max_backtrack
+             real :: physics_adjustment
              !Variables for global convergence method
              real :: backtrack_par_factor
              type(vector_field)  :: vtracer, residual
@@ -383,6 +386,8 @@ contains
                      backtrack_par_factor, default = 1.0)
              end if
              if ( backtrack_par_factor < 1.01 ) PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
+             !For backtrack_par_factor == -10 we will set backtrack_par_factor based on the shock front Courant number
+             Auto_max_backtrack = (backtrack_par_factor == -10)
 
              GET_THETA_FLUX = .FALSE.
              IGOT_T2 = 0
@@ -483,6 +488,32 @@ contains
                      sat_bak = satura
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
+                         if (Auto_max_backtrack) then!The maximum backtracking factor depends on the Courant number
+                            physics_adjustment = 1.!If there are physics, the problem is more complex
+                            if (have_option("/physical_parameters/gravity")) physics_adjustment = physics_adjustment * 1.5
+                            if (have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)) &
+                                                physics_adjustment = physics_adjustment * 2.0
+                            if (Mdims%ncomp > 0 ) physics_adjustment = physics_adjustment * 1.5
+                             !For the time being, it is based on this simple table
+                             if (Courant_number * physics_adjustment > 40.) then
+                                 backtrack_par_factor = -0.1
+                             else if (Courant_number * physics_adjustment > 25.) then
+                                 backtrack_par_factor = -0.15
+                             else if (Courant_number * physics_adjustment > 15.) then
+                                 backtrack_par_factor = -0.2
+                             else if (Courant_number * physics_adjustment > 8.) then
+                                 backtrack_par_factor = -0.33
+                             else if (Courant_number * physics_adjustment > 5.) then
+                                backtrack_par_factor = -0.5
+                             else if (Courant_number * physics_adjustment > 1) then
+                                backtrack_par_factor = -0.8
+                             else
+                                backtrack_par_factor = -1.
+                            end if
+                            !For the first calculation, the Courant number is usually zero, hence we force a safe value here
+                            if (first_time_step .and. nonlinear_iteration == 1) backtrack_par_factor = -0.05
+                         end if
+
                          !Calculate the actual residual using a previous backtrack_par
                          call mult(residual, Mmat%petsc_ACV, vtracer)
                          !Calculate residual

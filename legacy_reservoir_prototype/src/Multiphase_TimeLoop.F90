@@ -737,8 +737,8 @@ contains
                 ewrite(1,*) "Caught signal, exiting"
                 exit Loop_Time
             end if
+            first_time_step = .false.
         end do Loop_Time
-        first_time_step = .false.
         if (has_references(metric_tensor)) call deallocate(metric_tensor)
         !!$ Now deallocating arrays:
         deallocate( &
