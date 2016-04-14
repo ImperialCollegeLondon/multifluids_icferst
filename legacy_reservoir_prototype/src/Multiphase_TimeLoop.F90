@@ -565,19 +565,13 @@ contains
 !
 !end if
 
-
                 ScalarField_Source_Store = 0.0
                 if ( Mdims%ncomp > 1 ) then
-!sprint_to_do; FIXME THIS SHOULD WORK WITH THE LINES BELOW ACTIVE
                    PhaseVolumeFractionComponentSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionComponentSource")
-!                   ScalarField_Source_Store = PhaseVolumeFractionComponentSource%val(1,:,:)
+                   ScalarField_Source_Store = PhaseVolumeFractionComponentSource%val(1,:,:)
                 end if
-
-
-
                 PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
                 if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
-
 
                 Mdisopt%volfra_use_theta_flux = Mdims%ncomp > 1
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
@@ -615,9 +609,7 @@ contains
                         theta_flux_j=sum_theta_flux_j, one_m_theta_flux_j=sum_one_m_theta_flux_j)
                 end if Conditional_PhaseVolumeFraction
 
-
                 sum_theta_flux = 0. ; sum_one_m_theta_flux = 0. ; sum_theta_flux_j = 0. ; sum_one_m_theta_flux_j = 0.
-
 
                 if ( have_component_field ) call calc_components()
 
@@ -1206,22 +1198,8 @@ contains
 
                 Component_Absorption => extract_tensor_field( multicomponent_state(icomp), "ComponentAbsorption")
 
-                call Calculate_ComponentAbsorptionTerm( state, packed_state, &
-                    icomp, ndgln%cv, Mdims, &
-                    D_s%val, Porosity_field%val, mass_ele, &
-                    Component_Absorption%val, IDs_ndgln )
-
-                do cv_nodi = 1, Mdims%cv_nonods
-                    if ( saturation_field%val( 1, 1, cv_nodi ) > 0.95 ) then
-                        do iphase = 1, Mdims%nphase
-                            do jphase = min( iphase + 1, Mdims%nphase ), Mdims%nphase
-                                Component_Absorption%val( iphase, jphase, cv_nodi ) = &
-                                    Component_Absorption%val( iphase, jphase, cv_nodi ) * max( 0.01, &
-                                    20. * ( 1. - saturation_field%val( 1, 1, cv_nodi ) ) )
-                            end do
-                        end do
-                    end if
-                end do
+                call Calculate_ComponentAbsorptionTerm( state, packed_state, icomp, ndgln%cv, &
+                     Mdims, D_s%val, Porosity_field%val, mass_ele, Component_Absorption%val )
 
             end if
 
@@ -1275,24 +1253,8 @@ contains
             if ( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
                 ']/is_multiphase_component/KComp_Sigmoid' ) .and. Mdims%nphase > 1 ) then
 
-                Component_Absorption => extract_tensor_field( multicomponent_state(icomp), "ComponentAbsorption")
-
-                call Calculate_ComponentAbsorptionTerm( state, packed_state, &
-                    icomp, ndgln%cv, Mdims, &
-                    D_s%val, Porosity_field%val, mass_ele, &
-                    Component_Absorption%val, IDs_ndgln )
-
-                do cv_nodi = 1, Mdims%cv_nonods
-                    if( saturation_field%val( 1, 1, cv_nodi ) > 0.95 ) then
-                        do iphase = 1, Mdims%nphase
-                            do jphase = min( iphase + 1, Mdims%nphase ), Mdims%nphase
-                                Component_Absorption%val( iphase, jphase, cv_nodi ) = &
-                                    Component_Absorption%val( iphase, jphase, cv_nodi ) * max( 0.01, &
-                                    20. * ( 1. - saturation_field%val (1,1, cv_nodi ) ) )
-                            end do
-                        end do
-                    end if
-                end do
+                call Calculate_ComponentAbsorptionTerm( state, packed_state, icomp, ndgln%cv, &
+                     Mdims, D_s%val, Porosity_field%val, mass_ele, Component_Absorption%val )
 
                 do cv_nodi = 1, Mdims%cv_nonods
                     Loop_Phase_SourceTerm1: do iphase = 1, Mdims%nphase

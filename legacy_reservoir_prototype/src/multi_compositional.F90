@@ -42,10 +42,8 @@ module Compositional_Terms
 
 contains
 
-    subroutine Calculate_ComponentAbsorptionTerm( state, packed_state, &
-        icomp, cv_ndgln, Mdims, &
-        denold, volfra_pore, mass_ele, &
-        comp_absorb, IDs_ndgln )
+    subroutine Calculate_ComponentAbsorptionTerm( state, packed_state, icomp, cv_ndgln, &
+                                                  Mdims, denold, volfra_pore, mass_ele, comp_absorb )
 
         !!$ Calculate compositional model linkage between the phase expressed in COMP_ABSORB.
         !!$ Use values from the previous time step so its easier to converge.
@@ -56,10 +54,10 @@ contains
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
         integer, intent( in ) :: icomp
-        integer, dimension( : ), intent( in ) :: cv_ndgln, IDs_ndgln
+        integer, dimension( : ), intent( in ) :: cv_ndgln
         real, dimension( : ), intent( in ) :: mass_ele
-        real, dimension( :, : ), intent( in ) :: volfra_pore
         real, dimension( :, :, : ), intent( in ) :: denold
+        real, dimension( :, : ), intent( in ) :: volfra_pore
         real, dimension( :, :, : ), intent( inout ) :: comp_absorb
 
         ! Local Variables
@@ -90,7 +88,7 @@ contains
 
         allocate( alpha( cv_nonods ), sum_nod( cv_nonods ), volfra_pore_nod( cv_nonods ), &
             k_comp( ncomp, nphase, nphase ), k_comp2( ncomp, cv_nonods, nphase, nphase ) )
-        alpha = 0. ; sum_nod = 0. ; volfra_pore_nod = 0. ; k_comp = 0. ; k_comp2 = 0.
+        alpha = 0.0 ; k_comp = 0.0 ; k_comp2 = 0.0
 
         option_path = 'material_phase[' // int2str( nstate - ncomp ) // &
             ']/is_multiphase_component'
@@ -106,8 +104,7 @@ contains
         call get_option( '/timestepping/timestep', dt )
 
         !!$ Determine a node-wise representation of porosity VOLFRA_PORE_NOD.
-        SUM_NOD = 0.0
-        VOLFRA_PORE_NOD = 0.0
+        SUM_NOD = 0.0 ; VOLFRA_PORE_NOD = 0.0
         DO ELE = 1, TOTELE
             DO CV_ILOC = 1, CV_NLOC
                 CV_NOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
@@ -170,6 +167,18 @@ contains
             END DO
 
         END DO
+
+        do cv_nod = 1, cv_nonods
+           if( satura( 1, cv_nod ) > 0.95 ) then
+              do iphase = 1, nphase
+                 do jphase = min( iphase + 1, nphase ), nphase
+                    Comp_Absorb( iphase, jphase, cv_nod ) = &
+                       Comp_Absorb( iphase, jphase, cv_nod ) * max( 0.01, &
+                       20.0 * ( 1. - satura ( 1, cv_nod ) ) )
+                 end do
+              end do
+           end if
+        end do
 
         deallocate( alpha, sum_nod, volfra_pore_nod, k_comp, k_comp2 )
 

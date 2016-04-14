@@ -25,6 +25,7 @@
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
+          <Porous_media/>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -146,7 +147,6 @@
     </dump_period_in_timesteps>
     <output_mesh name="P0DG"/>
     <stat/>
-    <log_output/>
   </io>
   <timestepping>
     <current_time>
@@ -297,7 +297,7 @@
             <real_value rank="0">1e-7</real_value>
           </relative_error>
           <max_iterations>
-            <integer_value rank="0">5000</integer_value>
+            <integer_value rank="0">500</integer_value>
           </max_iterations>
           <never_ignore_solver_failures/>
           <diagnostics>
@@ -689,7 +689,7 @@ for i in range( field.node_count ):
             <value name="WholeMesh">
               <isotropic>
                 <constant>
-                  <real_value rank="0">10.0</real_value>
+                  <real_value rank="0">6.0</real_value>
                 </constant>
               </isotropic>
             </value>
@@ -1076,7 +1076,7 @@ for i in range( field.node_count ):
       </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">1.0</real_value>
+          <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
       </Comp_Sum2One>
     </is_multiphase_component>
@@ -1244,7 +1244,7 @@ for i in range( field.node_count ):
       </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">1.0</real_value>
+          <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
       </Comp_Sum2One>
     </is_multiphase_component>
@@ -1412,7 +1412,7 @@ for i in range( field.node_count ):
       </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">1.0</real_value>
+          <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
       </Comp_Sum2One>
     </is_multiphase_component>
@@ -1584,13 +1584,15 @@ for i in range( field.node_count ):
         </detectors>
       </prescribed>
     </scalar_field>
-    <scalar_field name="Permeability">
+    <tensor_field name="Permeability">
       <prescribed>
         <mesh name="P0DG"/>
         <value name="WholeMesh">
-          <constant>
-            <real_value rank="0">1.0</real_value>
-          </constant>
+          <anisotropic_asymmetric>
+            <constant>
+              <real_value symmetric="false" dim2="dim" shape="2 2" dim1="dim" rank="2">1 0 0 1</real_value>
+            </constant>
+          </anisotropic_asymmetric>
         </value>
         <output/>
         <stat/>
@@ -1598,6 +1600,6 @@ for i in range( field.node_count ):
           <exclude_from_detectors/>
         </detectors>
       </prescribed>
-    </scalar_field>
+    </tensor_field>
   </porous_media>
 </multiphase_options>
