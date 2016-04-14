@@ -494,6 +494,10 @@ contains
                             if (have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)) &
                                                 physics_adjustment = physics_adjustment * 2.0
                             if (Mdims%ncomp > 0 ) physics_adjustment = physics_adjustment * 1.5
+
+                            if (have_option_for_any_phase("/multiphase_properties/Sat_overRelax", Mdims%nphase)) &
+                                                physics_adjustment = physics_adjustment * 0.8
+
                              !For the time being, it is based on this simple table
                              if (Courant_number * physics_adjustment > 40.) then
                                  backtrack_par_factor = -0.1
@@ -512,6 +516,8 @@ contains
                             end if
                             !For the first calculation, the Courant number is usually zero, hence we force a safe value here
                             if (first_time_step .and. nonlinear_iteration == 1) backtrack_par_factor = -0.05
+                            !Use the most restrictive value across all the processors
+                            if (IsParallel()) call allmin(backtrack_par_factor)
                          end if
 
                          !Calculate the actual residual using a previous backtrack_par
