@@ -6359,6 +6359,7 @@ contains
             !Local variables
             integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC
             real :: corrector
+            logical, save :: show_warn_msg = .true.
             !By default no modification is required
             Bound_ele_correct = 1.0
             IF ( on_domain_boundary ) THEN
@@ -6388,6 +6389,11 @@ contains
                                         Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
                                             - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI )&
                                             * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )*corrector
+                                    else
+                                        if (show_warn_msg) then
+                                            ewrite(0,*) "WARNING: One or more boundaries have velocity and pressure boundary conditions."
+                                            show_warn_msg = .false.
+                                        end if
                                     end if
                                 end do
                             end do
