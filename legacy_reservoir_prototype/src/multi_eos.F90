@@ -846,9 +846,11 @@ contains
                        do idim = 1, Mdims%ndim
                            ! set \sigma for the pipes here
                            LOC = (IPRES-1) * Mdims%ndim * Mdims%n_in_pres + (IPHASE-1) * Mdims%ndim + IDIM
-!                           LOC2 = (1-1) * Mdims%ndim * Mdims%n_in_pres + (IPHASE-1) * Mdims%ndim + IDIM
-                           material_absorption( LOC, LOC, : ) = Spipe%val
-!                           inv_mat_absorp( LOC, LOC, : ) = 1./Spipe%val
+                           if (size(material_absorption,3) /= size(Spipe%val)) then
+                            material_absorption( LOC, LOC, : ) = Spipe%val(1)!sprint_to_do; we need to see how this behaves
+                           else                                                 !with many regions ids
+                            material_absorption( LOC, LOC, : ) = Spipe%val
+                           end if
                        end do
                    end do
                end do

@@ -417,7 +417,11 @@ contains
                                  iphase_real = iphase-(ipres-1)*Mdims%n_in_pres
                                  jphase_real = jphase-(jpres-1)*Mdims%n_in_pres
                                  if ( iphase_real == jphase_real ) then
-                                     GAMMA_PRES_ABS(IPHASE,JPHASE,:) = gamma%val
+                                      if (size(GAMMA_PRES_ABS,3)/=size(gamma%val)) then
+                                        GAMMA_PRES_ABS(IPHASE,JPHASE,:) = gamma%val(1)!sprint_to_do; we need to see how this behaves
+                                      else                                              !with many regions ids
+                                        GAMMA_PRES_ABS(IPHASE,JPHASE,:) = gamma%val
+                                      end if
                                  end if
                              end do
                          end if
@@ -754,7 +758,11 @@ contains
                        iphase_real = iphase-(ipres-1)*Mdims%n_in_pres
                        jphase_real = jphase-(jpres-1)*Mdims%n_in_pres
                        if ( iphase_real == jphase_real ) then
-                          GAMMA_PRES_ABS(IPHASE,JPHASE,:) = gamma%val
+                          if (size(GAMMA_PRES_ABS,3)/=size(gamma%val)) then
+                            GAMMA_PRES_ABS(IPHASE,JPHASE,:) = gamma%val(1)!sprint_to_do; we need to see how this behaves
+                          else                                              !with many regions ids
+                            GAMMA_PRES_ABS(IPHASE,JPHASE,:) = gamma%val
+                          end if
                        end if
                     end do
                  end if

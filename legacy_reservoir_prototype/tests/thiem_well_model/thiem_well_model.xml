@@ -19,8 +19,8 @@ phase2_pressure_min = stat("twm.stat")["phase2"]["Pressure"]["min"][-1]</variabl
     <variable name="phase1_pressure_min_ref" language="python">phase1_pressure_min_ref = 939932.294612</variable>
     <variable name="phase2_pressure_max_ref" language="python">phase2_pressure_max_ref = 923268.544617</variable>
     <variable name="phase2_pressure_min_ref" language="python">phase2_pressure_min_ref = 0.0</variable>
-    <variable name="tolerance" language="python">tolerance = 0.05</variable>
-    <variable name="tolerance2" language="python">tolerance2 = 15.0</variable>
+    <variable name="tolerance" language="python">tolerance = 0.5</variable>
+    <variable name="tolerance2" language="python">tolerance2 = 25.0</variable>
     <variable name="tolerance3" language="python">tolerance3 = 10.0</variable>
     <variable name="tolerance4" language="python">tolerance4 = 1.0e-5</variable>
   </variables>
