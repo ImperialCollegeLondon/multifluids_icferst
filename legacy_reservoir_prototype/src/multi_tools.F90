@@ -561,6 +561,20 @@ contains
 
     END SUBROUTINE CALC_FACE_ELE
 
+    !sprint_to_do; we need to see how this behaves with many regions ids
+    subroutine assign_val(outval,inval)
+        !Copies the data from inval to outval safely.
+        !If the sizes are different outval is populated using the first value of inval
+        implicit none
+        real, dimension(:), intent(inout) :: outval
+        real, dimension(:), intent(in) :: inval
+
+        if (size(outval)/=size(inval)) then
+            outval = inval(1)
+        else
+            outval = inval
+        end if
+    end subroutine assign_val
 
 end module multi_tools
 

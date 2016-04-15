@@ -48,7 +48,7 @@ module multiphase_EOS
     use boundary_conditions, only: get_entire_boundary_condition
     use Field_Options, only: get_external_coordinate_field
     use initialise_fields_module, only: initialise_field_over_regions
-    use multi_tools, only: CALC_FACE_ELE
+    use multi_tools, only: CALC_FACE_ELE, assign_val
     implicit none
 
 
@@ -166,7 +166,7 @@ contains
 
                     Cp_s => extract_scalar_field( state( nphase + icomp ), &
                          'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                    if ( stat == 0 ) Cp = Cp_s % val
+                    if ( stat == 0 ) call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
                     DensityCp_Bulk( sp : ep ) = DensityCp_Bulk( sp : ep ) + Rho * Cp * Component_l
 
                  else
@@ -180,7 +180,7 @@ contains
                     ! rho = rho + 1.0 / ( a_i / rho_i )
                     Cp_s => extract_scalar_field( state( nphase + icomp ), &
                          'ComponentMassFractionPhase' // int2str( iphase ) // 'HeatCapacity', stat )
-                    if ( stat == 0 ) Cp = Cp_s % val
+                    if ( stat == 0 ) call assign_val(Cp,Cp_s % val)!Cp = Cp_s % val
 
                     do cv_nod = 1, cv_nonods
                        ip = ( iphase - 1 ) * cv_nonods + cv_nod
@@ -195,7 +195,7 @@ contains
                  PackedDRhoDPressure%val( 1, iphase, : ) = dRhodP
 
                  Cp_s => extract_scalar_field( state( iphase ), 'TemperatureHeatCapacity', stat )
-                 if ( stat == 0 ) Cp = Cp_s % val
+                 if ( stat == 0 ) call assign_val(Cp,Cp_s % val)
                  DensityCp_Bulk( sp : ep ) = Rho * Cp
 
               end if
@@ -846,11 +846,7 @@ contains
                        do idim = 1, Mdims%ndim
                            ! set \sigma for the pipes here
                            LOC = (IPRES-1) * Mdims%ndim * Mdims%n_in_pres + (IPHASE-1) * Mdims%ndim + IDIM
-                           if (size(material_absorption,3) /= size(Spipe%val)) then
-                            material_absorption( LOC, LOC, : ) = Spipe%val(1)!sprint_to_do; we need to see how this behaves
-                           else                                                 !with many regions ids
-                            material_absorption( LOC, LOC, : ) = Spipe%val
-                           end if
+                           call assign_val(material_absorption( LOC, LOC, : ),Spipe%val)
                        end do
                    end do
                end do
