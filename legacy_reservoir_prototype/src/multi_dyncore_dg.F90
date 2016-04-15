@@ -1644,7 +1644,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL :: JTT_INV
         REAL :: VLKNN, zero_or_two_thirds
         INTEGER :: P_INOD, IDIM_VEL
-        logical firstst
         logical :: mom_conserv, lump_mass, lump_mass2, lump_absorption, BETWEEN_ELE_STAB
         real :: beta, therm_ftheta
         INTEGER :: FILT_DEN, J2, JU2_NOD_DIM_PHA
@@ -1848,11 +1847,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             RESID_BASED_STAB_DIF, U_NONLIN_SHOCK_COEF, RNO_P_IN_A_DOT
         FEM_BUOYANCY = have_option( "/physical_parameters/gravity/fem_buoyancy" )
         GOT_DIFFUS = .FALSE.
-        ! is this the 1st iteration of the time step.
-        FIRSTST = first_time_step!sprint_to_do; <= not very well checked
-!        FIRSTST = ( SUM( (U_ALL(1,:,:) - UOLD_ALL(1,:,:) ) **2) < 1.e-10 )!sprint_to_do; change this
-!        IF(Mdims%ndim>=2) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(2,:,:) - UOLD_ALL(2,:,:) )**2 ) < 1.e-10 )
-!        IF(Mdims%ndim>=3) FIRSTST = FIRSTST .OR. ( SUM( ( U_ALL(3,:,:) - UOLD_ALL(3,:,:) )**2 ) < 1.e-10 )
         UPWIND_DGFLUX = .TRUE.
         if ( have_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/central_differencing') &
@@ -2952,7 +2946,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     END DO Loop_Phase1
                 END DO Loop_P_JLOC1
             END DO Loop_U_ILOC1
-            IF( (.NOT.FIRSTST) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN!sprint_to_do; internal subroutine for this?
+!            IF( (.NOT.first_time_step) .AND. (RESID_BASED_STAB_DIF/=0) ) THEN!sprint_to_do; first_time_step had to be always true
+            if (RESID_BASED_STAB_DIF/=0) then
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 !! *************************INNER ELEMENT STABILIZATION****************************************
                 DO U_JLOC = 1, Mdims%u_nloc
