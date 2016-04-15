@@ -6364,7 +6364,7 @@ contains
             IF ( on_domain_boundary ) THEN
                 !Prepare to apply the boundary conditions
                 DO IPHASE=1,size(Bound_ele_correct,2)
-                    if (WIC_U_BC_ALL( 1, IPHASE, SELE ) == WIC_U_BC_DIRICHLET ) then
+                    if (WIC_U_BC_ALL( 1, IPHASE, SELE ) == WIC_U_BC_DIRICHLET) then
                         DO U_SKLOC = 1, Mdims%u_snloc
                             U_KLOC = U_SLOC2LOC( U_SKLOC )
                             Bound_ele_correct( :, IPHASE, U_KLOC ) = 0.
@@ -6382,10 +6382,13 @@ contains
                             DO P_SJLOC = 1, Mdims%cv_snloc
                                 CV_KLOC = CV_SLOC2LOC( P_SJLOC )
                                 DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
-                                    Bound_ele_correct( :, IPHASE, U_ILOC ) = Bound_ele_correct( :, IPHASE, U_ILOC ) + corrector
-                                    Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                        - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI )&
-                                        * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )*corrector
+                                    !We give priority to velocity boundary conditions
+                                    if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET) then
+                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = Bound_ele_correct( :, IPHASE, U_ILOC ) + corrector
+                                        Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                            - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI )&
+                                            * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )*corrector
+                                    end if
                                 end do
                             end do
                         end do
