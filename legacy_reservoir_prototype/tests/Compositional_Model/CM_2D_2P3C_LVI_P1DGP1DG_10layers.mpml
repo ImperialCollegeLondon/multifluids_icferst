@@ -1595,10 +1595,6 @@ for i in range( field.node_count ):
           </anisotropic_asymmetric>
         </value>
         <output/>
-        <stat/>
-        <detectors>
-          <exclude_from_detectors/>
-        </detectors>
       </prescribed>
     </tensor_field>
   </porous_media>
