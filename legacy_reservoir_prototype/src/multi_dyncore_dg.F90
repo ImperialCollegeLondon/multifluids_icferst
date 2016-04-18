@@ -1286,7 +1286,6 @@ END IF
         REAL, DIMENSION( :, : ), allocatable :: THETA_GDIFF
         REAL, DIMENSION( : , : ), allocatable :: DEN_OR_ONE, DENOLD_OR_ONE
         REAL, DIMENSION( :, : ), allocatable :: MEAN_PORE_CV
-        REAL, DIMENSION( :, : ), allocatable :: T2, T2OLD
         LOGICAL :: GET_THETA_FLUX
         INTEGER :: IGOT_T2, I, IGOT_THERM_VIS
         INTEGER :: ELE, U_ILOC, U_INOD, IPHASE, IDIM
@@ -1296,10 +1295,6 @@ END IF
         ewrite(3,*)'In CV_ASSEMB_FORCE_CTY'
         GET_THETA_FLUX = .FALSE.
         IGOT_T2 = 0
-        IF ( IGOT_T2 == 1 ) THEN
-           ALLOCATE( T2( Mdims%nphase, Mdims%cv_nonods )) ; T2 = 0.
-           ALLOCATE( T2OLD( Mdims%nphase, Mdims%cv_nonods )) ; T2OLD =0.
-        END IF
         ALLOCATE( THETA_GDIFF( Mdims%nphase * IGOT_T2, Mdims%cv_nonods * IGOT_T2 )) ; THETA_GDIFF = 0.
         ALLOCATE( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase )) ; TDIFFUSION = 0.
         ALLOCATE( MEAN_PORE_CV( Mdims%npres, Mdims%cv_nonods )) ; MEAN_PORE_CV = 0.
@@ -1385,10 +1380,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             CALL PUT_CT_IN_GLOB_MAT( Mmat, MCY )
         END IF
         deallocate( DEN_OR_ONE, DENOLD_OR_ONE )
-        IF ( IGOT_T2 == 1 ) THEN
-           DEALLOCATE( T2 )
-           DEALLOCATE( T2OLD )
-        END IF
         DEALLOCATE( THETA_GDIFF )
         DEALLOCATE( TDIFFUSION )
         DEALLOCATE( MEAN_PORE_CV )
