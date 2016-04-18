@@ -15,7 +15,7 @@ min_P = stat("Thin_wedge.stat")["phase1"]["Pressure"]["min"][-1]</variable>
 max_P = stat("Thin_wedge.stat")["phase1"]["Pressure"]["max"][-1]</variable>
   </variables>
   <pass_tests>
-    <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.33) &lt; 0.01)</test>
+    <test name="Assert final max sat 1" language="python">assert(abs(max_sat1 - 0.36) &lt; 0.01)</test>
     <test name="Assert outlet pressure boundary condition" language="python">assert(abs(min_P - 0.) &lt; 0.1)</test>
     <test name="Assert inlet pressure boundary condition" language="python">assert(abs(max_P - 1.0) &lt; 0.1)</test>
   </pass_tests>
