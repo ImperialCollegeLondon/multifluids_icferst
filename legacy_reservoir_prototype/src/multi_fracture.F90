@@ -621,21 +621,16 @@ print *, "passed populate here" !!-ao
         permeability => extract_tensor_field( packed_state, "Permeability" )
         totele=ele_count(fl_mesh)
 
+      call get_option("/porous_media/tensor_field::Permeability/prescribed/value::WholeMesh/isotropic/constant", bg_perm)
+      call get_option("/porous_media/scalar_field::Porosity/prescribed/value::WholeMesh/constant", bg_poro)
         allocate( perm(ndim, ndim, totele) ) ; perm= 0.0
         do ele=1, totele
-            if (rvf % val (ele) > 0.0) then
-              if (have_option('/femdem_fracture/oneway_coupling_only')) then
+            if ((rvf % val (ele) > 0.0) .AND. (field_fl_p11%val(ele)>bg_perm)) then
                   ! non-normalised and conservative permeability interpolation
                 perm( 1, 1, ele ) = field_fl_p11 % val (ele)
                 perm( 1, 2, ele ) = field_fl_p12 % val (ele)
                 perm( 2, 1, ele ) = field_fl_p21 % val (ele)
                 perm( 2, 2, ele ) = field_fl_p22 % val (ele)
-              else ! this is where we normalise the elements overalpping with the ring to 1 (for permeability)
-                  perm( 1, 1, ele ) = field_fl_p11 % val (ele)!/rvf % val(ele)
-                  perm( 1, 2, ele ) = field_fl_p12 % val (ele)!/rvf % val(ele)
-                  perm( 2, 1, ele ) = field_fl_p21 % val (ele)!/rvf % val(ele)
-                  perm( 2, 2, ele ) = field_fl_p22 % val (ele)!/rvf % val(ele)
-              endif
             else
                 perm( 1, 1, ele ) =permeability%val(1,1,ele)
                 perm( 1, 2, ele ) =permeability%val(1,2,ele)
@@ -643,9 +638,6 @@ print *, "passed populate here" !!-ao
                 perm( 2, 2, ele ) =permeability%val(2,2,ele)
             end if
         end do
-
-        call get_option("/porous_media/tensor_field::Permeability/prescribed/value::WholeMesh/isotropic/constant", bg_perm)
-        call get_option("/porous_media/scalar_field::Porosity/prescribed/value::WholeMesh/constant", bg_poro)
 
         ! assign permeability from interpolation to the memory
         permeability % val( 1, 1, : ) =   perm( 1, 1, : )
@@ -662,12 +654,6 @@ print *, "passed populate here" !!-ao
         do ele = 1, totele
             if (rvf % val (ele) > 0.0) porosity % val (ele) = 1 ! rvf % val(ele) * scale(ele)
             if ( maxval( permeability % val( :, :, ele ) ) <= bg_perm ) porosity % val (ele) = bg_poro !!-ao making the ring mesh porosity normalised
-            if ( porosity%val(ele) <= bg_poro ) then
-                permeability % val( 1, 1, ele ) = bg_perm
-                permeability % val( 1, 2, ele ) = 0
-                permeability % val( 2, 1, ele ) = 0
-                permeability % val( 2, 2, ele ) = bg_perm
-            endif
         end do
 
         call bound_volume_fraction( vf%val )
@@ -677,7 +663,13 @@ print *, "passed populate here" !!-ao
         perm_val => extract_scalar_field( state(1), "Dummy" )
         allocate(perm_val%val(totele))
         call zero( perm_val)
-        perm_val % val = perm (1,1,:)/maxval(perm (1,1,:)) !!-ao
+        do ele=1,totele
+            if (rvf%val(ele)> 0.0) then
+                perm_val % val (ele)= field_fl_p11 % val (ele)/maxval(field_fl_p11 % val (:)) !!-ao
+            else
+                perm_val % val (ele)= perm(1,1,ele)
+            end if
+        end do
 
 !        !visualising permeability in 'totalflux'Dummy field
         perm2_val => extract_scalar_field( state(1), "TotalFlux" )
