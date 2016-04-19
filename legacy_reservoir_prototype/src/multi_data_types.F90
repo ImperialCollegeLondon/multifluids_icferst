@@ -35,6 +35,9 @@ module multi_data_types
     use fields_data_types
     use fields_allocates
     use global_parameters, only: option_path_len, is_porous_media
+    use state_module
+    use fields
+
 
     interface allocate_multi_dev_shape_funs
         module procedure allocate_multi_dev_shape_funs1
@@ -208,7 +211,37 @@ module multi_data_types
 
 
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3
+
 contains
+
+    subroutine allocate_multi_field( state, sfield, mfield )
+        implicit none
+
+        type( state_type ), intent( in ) :: state
+        type( scalar_field ), intent( in ) :: sfield
+        type( multi_field ), intent( inout ) :: mfield
+
+        mfield%have_field = .true.
+
+
+
+
+
+
+        return
+    end subroutine allocate_multi_field
+
+
+
+
+
+
+
+
+
+
+
+
     subroutine allocate_multi_shape_funs(shape_fun,  Mdims, GIdims)
     !This subroutine allocates all the arrays in a multi_shape_funs data type
         implicit none
