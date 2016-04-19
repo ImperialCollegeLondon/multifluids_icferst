@@ -1478,7 +1478,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! This is for decifering WIC_U_BC & WIC_P_BC
         LOGICAL, PARAMETER :: VOL_ELE_INT_PRES = .TRUE., STAB_VISC_WITH_ABS=.FALSE.
         LOGICAL :: STRESS_FORM, STRESS_FORM_STAB, THERMAL_STAB_VISC, THERMAL_LES_VISC, THERMAL_FLUID_VISC, Q_SCHEME
-        !LOGICAL, PARAMETER :: POROUS_VEL = .false. ! For reduced variable porous media treatment.
         ! if STAB_VISC_WITH_ABS then stabilize (in the projection mehtod) the viscosity using absorption.
         REAL, PARAMETER :: WITH_NONLIN = 1.0, TOLER = 1.E-10
         ! NON_LIN_DGFLUX = .TRUE. non-linear DG flux for momentum - if we have an oscillation use upwinding else use central scheme.
@@ -1497,18 +1496,17 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         INTEGER, DIMENSION( : ), allocatable :: CV_SLOC2LOC, U_SLOC2LOC, &
         U_ILOC_OTHER_SIDE, U_OTHER_LOC, MAT_OTHER_LOC
         REAL, DIMENSION( : ),    ALLOCATABLE ::  &
-        SNORMXN, SNORMYN, SNORMZN, SDETWE, NXUDN, VLN,VLN_OLD, &
-        XSL,YSL,ZSL, MASS_ELE, VLK
+        SDETWE, VLN,VLN_OLD, &
+        MASS_ELE
         REAL, DIMENSION( :, : ),    ALLOCATABLE :: XL_ALL, XL2_ALL, XSL_ALL, SNORMXN_ALL
         REAL, DIMENSION ( : , :,  : ), allocatable :: GRAD_SOU_GI_NMX, GRAD_SOU_GI
         REAL, DIMENSION( : ),    ALLOCATABLE :: NORMX_ALL
         REAL, DIMENSION ( : , :,  : ), allocatable :: SIGMAGI, SIGMAGI_STAB, SIGMAGI_STAB_SOLID_RHS, &
-        WORK_ELE_ALL, &
         DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, FTHETA, SNDOTQ_IN, SNDOTQ_OUT, &
         SNDOTQOLD_IN, SNDOTQOLD_OUT, UD, UDOLD, UD_ND, UDOLD_ND
-        REAL, DIMENSION ( : , : ), allocatable :: MAT_M,  &
+        REAL, DIMENSION ( : , : ), allocatable :: &
         DENGI, DENGIOLD, &
-        SNDOTQ, SNDOTQOLD, SNDOTQ_ROE, SNDOTQOLD_ROE, SINCOME, SINCOMEOLD, SDEN, SDENOLD, &
+        SNDOTQ, SNDOTQOLD, SINCOME, SINCOMEOLD, SDEN, SDENOLD, &
         SDEN_KEEP, SDENOLD_KEEP, SDEN2_KEEP, SDENOLD2_KEEP, &
         SNDOTQ_KEEP, SNDOTQ2_KEEP, SNDOTQOLD_KEEP, SNDOTQOLD2_KEEP, &
         N_DOT_DU, N_DOT_DU2, N_DOT_DUOLD, N_DOT_DUOLD2, RHS_U_CV, RHS_U_CV_OLD, UDEN_VFILT, UDENOLD_VFILT
@@ -1516,10 +1514,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         SUDOLD_ALL_KEEP, SUD2_ALL_KEEP, SUDOLD2_ALL_KEEP
         REAL, DIMENSION ( : ), allocatable :: vel_dot, vel_dot2, velold_dot, velold_dot2, grad_fact
         ! Nonlinear Petrov-Galerkin stuff...
-        REAL, DIMENSION ( : , : ), allocatable ::LOC_MASS_INV, LOC_MASS, &
-        UOLD_DX, UOLD_DY, UOLD_DZ, VOLD_DX, VOLD_DY, VOLD_DZ, &
-        WOLD_DX, WOLD_DY, WOLD_DZ, &
-        P_DX
+        REAL, DIMENSION ( : , : ), allocatable ::LOC_MASS_INV, LOC_MASS, P_DX        
         REAL, DIMENSION ( : ), allocatable :: VLK_UVW, U_R2_COEF, U_GRAD_N_MAX2
         REAL, DIMENSION ( :, :, : ), allocatable :: &
         MAT_ELE, DIFFGI_U, RHS_DIFF_U, DIFF_VEC_U, SOUGI_X, RESID_U, U_DT, &
@@ -1564,7 +1559,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! Variables used to reduce indirect addressing...
         !INTEGER, DIMENSION ( :, :, : ), allocatable :: WIC_U_BC_ALL
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U_RHS
-        REAL, DIMENSION ( :, :, :, : ), allocatable :: UFENX_JLOC_U
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U, LOC_UOLD, LOC_US, LOC_U_ABS_STAB_SOLID_RHS
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_NU, LOC_NUOLD
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U_ABSORB, LOC_U_ABS_STAB
@@ -1616,8 +1610,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, :, : ), allocatable :: U_NODI_SGI_IPHASE_ALL, U_NODJ_SGI_IPHASE_ALL, UOLD_NODI_SGI_IPHASE_ALL, UOLD_NODJ_SGI_IPHASE_ALL
         REAL, DIMENSION ( :, :, : ), allocatable :: CENT_RELAX, CENT_RELAX_OLD
         ! For derivatives...
-        REAL, DIMENSION ( : ), allocatable :: NMX_ALL, VNMX_ALL,  RNMX_ALL
-        LOGICAL :: D1, D3, DCYL, GOT_DIFFUS, GOT_UDEN, DISC_PRES, QUAD_OVER_WHOLE_ELE
+        REAL, DIMENSION ( : ), allocatable :: NMX_ALL, VNMX_ALL
+        LOGICAL :: GOT_DIFFUS, GOT_UDEN, DISC_PRES, QUAD_OVER_WHOLE_ELE
         INTEGER :: IPHASE, KPHASE, ELE, GI, IU_NOD, JCV_NOD, &
             COUNT, COUNT2, IPHA_IDIM, JPHA_JDIM, MAT_NOD, SGI, SELE, &
             U_SILOC, P_SJLOC, &
@@ -1642,7 +1636,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL :: VLKNN, zero_or_two_thirds
         INTEGER :: P_INOD, IDIM_VEL
         logical :: mom_conserv, lump_mass, lump_mass2, lump_absorption, BETWEEN_ELE_STAB
-        real :: beta, therm_ftheta
+        real :: beta
         INTEGER :: FILT_DEN, J2, JU2_NOD_DIM_PHA
         LOGICAL :: SIMPLE_DIFF_CALC
         REAL :: DIFF_MIN_FRAC, DIFF_MAX_FRAC
@@ -1680,7 +1674,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
         type( scalar_field ), pointer :: sf
-        real, dimension( : ), allocatable :: vol_s_gi, vol_s_min_gi
+        real, dimension( : ), allocatable :: vol_s_gi
         !! Boundary_conditions
         INTEGER, DIMENSION ( Mdims%ndim , Mdims%nphase , surface_element_count(velocity) )  :: WIC_U_BC_ALL, WIC_U_BC_ALL_VISC, &
             WIC_U_BC_ALL_ADV, WIC_MOMU_BC_ALL, WIC_NU_BC_ALL
@@ -1735,8 +1729,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         THERMAL_STAB_VISC = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/spatial_discretisation/control_volumes/q_scheme/include_stabilisation_viscosity' )
         ! Put the LES viscocity in the thermal energy eqn...
         THERMAL_LES_VISC = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/spatial_discretisation/control_volumes/q_scheme/include_les_viscosity' )
-        ! therm_ftheta
-        call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/spatial_discretisation/control_volumes/q_scheme/therm_ftheta', therm_fTHETA, default=1.0 )
         ! Put the LES theta value for time stepping (LES_THETA=1 is default)...
         call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/les_model/les_theta', LES_THETA, default=1.0 )
         ! Put the LES viscocity in the thermal energy eqn...
@@ -1865,10 +1857,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( UDENOLD_VFILT( Mdims%nphase, Mdims%u_nloc ))
         ALLOCATE( SIGMAGI( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, FE_GIdims%cv_ngi ))
         ALLOCATE( SIGMAGI_STAB( Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, FE_GIdims%cv_ngi ))
-        ALLOCATE( MAT_M( Mdims%mat_nloc, FE_GIdims%cv_ngi ))
-        ALLOCATE( SNORMXN( FE_GIdims%sbcvngi ))
-        ALLOCATE( SNORMYN( FE_GIdims%sbcvngi ))
-        ALLOCATE( SNORMZN( FE_GIdims%sbcvngi ))
         ALLOCATE( XL_ALL(Mdims%ndim,Mdims%cv_nloc), XL2_ALL(Mdims%ndim,Mdims%cv_nloc), XSL_ALL(Mdims%ndim,Mdims%cv_snloc) )
         ALLOCATE( NORMX_ALL(Mdims%ndim), SNORMXN_ALL(Mdims%ndim,FE_GIdims%sbcvngi) )
         !Variables to improve Mmat%PIVIT_MAT creation speed
@@ -1907,7 +1895,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             CVM_BETA=0.0
         ENDIF
         !sprint_to_do; make all this memory static and/or between if for the memory that it is not always required
-        ALLOCATE( NXUDN( FE_GIdims%scvngi ))
         ALLOCATE( SDETWE( FE_GIdims%sbcvngi ))
         ALLOCATE( CV_SLOC2LOC( Mdims%cv_snloc ))
         ALLOCATE( U_SLOC2LOC( Mdims%u_snloc ))
@@ -1918,15 +1905,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( TEN_VOL( Mdims%nphase, FE_GIdims%cv_ngi ))
         ALLOCATE( VLN( Mdims%nphase ))
         ALLOCATE( VLN_OLD( Mdims%nphase ))
-        ALLOCATE( VLK( Mdims%nphase ))
         ALLOCATE( SUD_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SUDOLD_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SUD2_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SUDOLD2_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SNDOTQ(Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SNDOTQOLD(Mdims%nphase,FE_GIdims%sbcvngi) )
-        ALLOCATE( SNDOTQ_ROE(Mdims%nphase,FE_GIdims%sbcvngi) )
-        ALLOCATE( SNDOTQOLD_ROE(Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SINCOME(Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SINCOMEOLD(Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SDEN(Mdims%nphase,FE_GIdims%sbcvngi) )
@@ -1955,9 +1939,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( SNDOTQ_OUT(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SNDOTQOLD_IN(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SNDOTQOLD_OUT(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
-        ALLOCATE( XSL(Mdims%cv_snloc) )
-        ALLOCATE( YSL(Mdims%cv_snloc) )
-        ALLOCATE( ZSL(Mdims%cv_snloc) )
         ALLOCATE( GRAD_SOU_GI_NMX( Mdims%ndim, Mdims%ncomp, Mdims%nphase ))
         GRAD_SOU_GI_NMX = 0.
         ALLOCATE( MASS_ELE( Mdims%totele ))
@@ -1971,9 +1952,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( U_DT(Mdims%ndim, Mdims%nphase,FE_GIdims%cv_ngi) )
         ALLOCATE( U_DX_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, FE_GIdims%cv_ngi ) )
         ALLOCATE( UOLD_DX_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, FE_GIdims%cv_ngi ) )
-        ALLOCATE( UOLD_DX(FE_GIdims%cv_ngi,Mdims%nphase), UOLD_DY(FE_GIdims%cv_ngi,Mdims%nphase), UOLD_DZ(FE_GIdims%cv_ngi,Mdims%nphase) )
-        ALLOCATE( VOLD_DX(FE_GIdims%cv_ngi,Mdims%nphase), VOLD_DY(FE_GIdims%cv_ngi,Mdims%nphase), VOLD_DZ(FE_GIdims%cv_ngi,Mdims%nphase) )
-        ALLOCATE( WOLD_DX(FE_GIdims%cv_ngi,Mdims%nphase), WOLD_DY(FE_GIdims%cv_ngi,Mdims%nphase), WOLD_DZ(FE_GIdims%cv_ngi,Mdims%nphase) )
         ALLOCATE( SOUGI_X(Mdims%ndim,Mdims%nphase,FE_GIdims%cv_ngi) )
         ALLOCATE( RESID_U(Mdims%ndim,Mdims%nphase,FE_GIdims%cv_ngi) )
         ALLOCATE( P_DX(Mdims%ndim, FE_GIdims%cv_ngi)  )
@@ -2003,7 +1981,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( LOC_UDIFFUSION(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nloc) )
         ALLOCATE( LOC_UDIFFUSION_VOL( Mdims%nphase, Mdims%mat_nloc) )
         ALLOCATE( LOC_U_RHS( Mdims%ndim, Mdims%nphase, Mdims%u_nloc ) )
-        ALLOCATE( UFENX_JLOC_U(Mdims%ndim,Mdims%ndim,FE_GIdims%cv_ngi,Mdims%u_nloc) )
         ! To memory access very local...
         ALLOCATE( SLOC_U(Mdims%ndim,Mdims%nphase,Mdims%u_snloc) )
         ALLOCATE( SLOC_UOLD(Mdims%ndim,Mdims%nphase,Mdims%u_snloc) )
@@ -2031,7 +2008,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         call allocate_multi_dev_shape_funs(FE_funs, Devfuns)
         ALLOCATE( NMX_ALL(Mdims%ndim) )
         ALLOCATE( VNMX_ALL(Mdims%ndim) )
-        ALLOCATE( RNMX_ALL(Mdims%ndim) )
         ALLOCATE( U_NODI_SGI_IPHASE_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( U_NODJ_SGI_IPHASE_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( UOLD_NODI_SGI_IPHASE_ALL(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
@@ -2091,11 +2067,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         IF ( GOT_DIFFUS ) THEN
             ALLOCATE( DUX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
             ALLOCATE( DUOLDX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
-            ALLOCATE( WORK_ELE_ALL( Mdims%u_nloc, Mdims%nphase, Mdims%totele ) )
         ENDIF
-        D1   = ( Mdims%ndim == 1 )
-        DCYL = ( Mdims%ndim ==-2 )
-        D3   = ( Mdims%ndim == 3 )
         IF( (.NOT.JUST_BL_DIAG_MAT) .AND. (.NOT.Mmat%NO_MATRIX_STORE) ) call zero( Mmat%DGM_petsc )
         if (.not.got_c_matrix) Mmat%C = 0.0
         Mmat%U_RHS = 0.0
@@ -2210,7 +2182,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 END DO
             end if
             allocate( vol_s_gi( FE_GIdims%cv_ngi ) )
-            allocate( vol_s_min_gi( FE_GIdims%cv_ngi ) )
             allocate( cv_dengi( Mdims%nphase, FE_GIdims%cv_ngi ) )
         endif
         ! surface tension terms
@@ -2703,7 +2674,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     Loop_DGNods2: DO U_JLOC = 1, Mdims%u_nloc
                         VLN = 0.0
                         VLN_OLD = 0.0
-                        !                        VLK = 0.0
+
                         IF(GOT_VIRTUAL_MASS) THEN
                             VLN_CVM=0.0
                             VLN_OLD_CVM=0.0
@@ -4316,15 +4287,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         DEALLOCATE( GRAD_SOU_GI )
         DEALLOCATE( SIGMAGI )
         DEALLOCATE( SIGMAGI_STAB )
-        DEALLOCATE( MAT_M )
-        DEALLOCATE( SNORMXN )
-        DEALLOCATE( SNORMYN )
-        DEALLOCATE( SNORMZN )
         DEALLOCATE( NN_SIGMAGI_ELE )
         DEALLOCATE( NN_SIGMAGI_STAB_ELE )
         DEALLOCATE( NN_MASS_ELE )
         DEALLOCATE( NN_MASSOLD_ELE )
-        DEALLOCATE( NXUDN )
         DEALLOCATE( CV_SLOC2LOC )
         DEALLOCATE( U_SLOC2LOC )
         DEALLOCATE(SDETWE)
@@ -4337,7 +4303,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         DEALLOCATE( TEN_XX )
         DEALLOCATE( VLN )
         DEALLOCATE( VLN_OLD )
-        DEALLOCATE( VLK )
         DEALLOCATE( STRESS_IJ_ELE )
         DEALLOCATE( VLK_ELE )
         DEALLOCATE( SUD_ALL )
@@ -4346,8 +4311,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         DEALLOCATE( SUDOLD2_ALL )
         DEALLOCATE( SNDOTQ )
         DEALLOCATE( SNDOTQOLD )
-        DEALLOCATE( SNDOTQ_ROE )
-        DEALLOCATE( SNDOTQOLD_ROE )
         DEALLOCATE( SINCOME )
         DEALLOCATE( SINCOMEOLD )
         DEALLOCATE( SDEN )
@@ -4363,9 +4326,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         DEALLOCATE( SNDOTQ_OUT )
         DEALLOCATE( SNDOTQOLD_IN )
         DEALLOCATE( SNDOTQOLD_OUT )
-        DEALLOCATE( XSL )
-        DEALLOCATE( YSL )
-        DEALLOCATE( ZSL )
         DEALLOCATE( GRAD_SOU_GI_NMX )
         DEALLOCATE( MASS_ELE )
         DEALLOCATE( FACE_ELE )
