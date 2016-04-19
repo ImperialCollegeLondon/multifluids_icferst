@@ -5,6 +5,7 @@ SIM = Buckley_Leverett_2D
 input: clean
 
 	gmsh -2 src/2d_mesh_10layers.geo
+	gmsh -2 src/2d_mesh_20layers.geo
 	gmsh -2 src/2d_mesh_50layers.geo
 	gmsh -2 src/2d_mesh_100layers.geo
 	gmsh -2 src/2d_mesh_250layers.geo
