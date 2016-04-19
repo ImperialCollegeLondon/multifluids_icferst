@@ -194,6 +194,19 @@ module multi_data_types
         real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()!Gradient of the sigmas at the boundary to calculate fluxes
     end type porous_adv_coefs
 
+    type multi_field                                            ! maybe we could arrange it like this?
+        real, dimension( :, :, :, : ), pointer :: val => null() ! ndim1           x ndim2           x ndim3  x nonods =
+                                                                ! ndim            x ndim            x nphase x nonods, or
+                                                                ! (ndim x nphase) x (ndim x nphase) x 1      x nonods, or
+                                                                ! ncomp           x nphase          x 1      x nonods, or
+                                                                ! nphase          x 1               x 1      x nonods.
+        logical :: have_field = .false. ! do we need this field for this simulation?
+        logical :: is_constant = .true. ! spatially, i.e. how many DoF?
+        integer :: values_to_store = 0 ! how many values per DoF should we store?
+        integer :: ndim1 = -1, ndim2 = -1, ndim3 = -1 ! dimensions of field
+    end type multi_field
+
+
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3
 contains
     subroutine allocate_multi_shape_funs(shape_fun,  Mdims, GIdims)

@@ -655,11 +655,17 @@ contains
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
         REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
+
+!!! THIS IS CRIMINAL!!! REMOVE ASAP !!!
+
         real, dimension(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods) :: velocity_absorption
         real, dimension(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods) :: U_SOURCE_CV_ALL
         real, dimension(Mdims%ndim, Mdims%nphase, Mdims%u_nonods) :: U_SOURCE_ALL
         real, dimension(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods) :: UDIFFUSION_ALL
         real, dimension(Mdims%nphase, Mdims%mat_nonods) :: UDIFFUSION_VOL_ALL
+
+!!!
+
         REAL, DIMENSION(  :, :, :  ), allocatable :: temperature_absorption, U_ABSORBIN
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
         REAL, DIMENSION( : ), ALLOCATABLE :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE
