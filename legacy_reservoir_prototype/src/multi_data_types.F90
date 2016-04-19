@@ -204,8 +204,8 @@ module multi_data_types
                                                                 ! ncomp           x nphase          x 1      x nonods, or
                                                                 ! nphase          x 1               x 1      x nonods.
         logical :: have_field = .false. ! do we need this field for this simulation?
-        logical :: is_constant = .true. ! spatially, i.e. how many DoF?
-        integer :: values_to_store = 0 ! how many values per DoF should we store?
+        logical :: is_constant = .false. ! spatially
+        integer :: values_to_store = 0 ! how many values per node should we store?
         integer :: ndim1 = -1, ndim2 = -1, ndim3 = -1 ! dimensions of field
     end type multi_field
 
@@ -222,7 +222,7 @@ contains
         type( multi_field ), intent( inout ) :: mfield
 
         mfield%have_field = .true.
-
+        if ( sfield%field_type == FIELD_TYPE_CONSTANT ) mfield%is_constant = .true.
 
 
 
