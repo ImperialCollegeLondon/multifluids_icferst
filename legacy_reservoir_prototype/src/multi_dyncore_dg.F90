@@ -776,11 +776,14 @@ contains
         X_ALL2 => EXTRACT_VECTOR_FIELD( PACKED_STATE, "PressureCoordinate" )
         P_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedFEPressure" )
         CVP_ALL => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedCVPressure" )
+
         linearise_density = have_option( '/material_phase[0]/linearise_density' )
+
         DEN_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedDensity" )
         DENOLD_ALL2 => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedOldDensity" )
         DEN_ALL(1:, 1:) => DEN_ALL2%VAL( 1, :, : )
         DENOLD_ALL(1:, 1:) => DENOLD_ALL2%VAL( 1, :, : )
+
         call allocate(deltaP,Mdims%npres,pressure%mesh,"DeltaP")
         call allocate(rhs_p,Mdims%npres,pressure%mesh,"PressureCorrectionRHS")
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
@@ -789,6 +792,7 @@ contains
            sparsity=>extract_csr_sparsity(packed_state,"MomentumSparsity")
            Mmat%DGM_PETSC = allocate_momentum_matrix(sparsity,velocity)
         end IF
+
         !Calculate gravity source terms
         U_SOURCE_CV_ALL=0.0
         if ( is_porous_media )then
@@ -816,11 +820,13 @@ contains
               UDEN_ALL=1.0; UDENOLD_ALL=1.0
            end if
         end if
+
         if ( have_option( '/blasting' ) ) then
             RETRIEVE_SOLID_CTY = .true.
             call get_option( '/blasting/Gidaspow_model', opt )
             if ( trim( opt ) == "A" ) SOLID_FLUID_MODEL_B = .false.
         end if
+
         IF(RETRIEVE_SOLID_CTY) THEN
         ! if model B and solid-fluid coupling:
            sf => EXTRACT_SCALAR_FIELD( PACKED_STATE, "SolidConcentration" )
@@ -832,19 +838,22 @@ contains
               END DO
            ENDIF
         ENDIF
+
         ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
         call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL )
         UDIFFUSION_VOL_ALL = 0.
+
         ! define velocity_absorption here...
         velocity_absorption=0.0
         ! update velocity absorption
         call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods, velocity_absorption )
         call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
+
         ! open the boiling test for two phases-gas and liquid
         if (have_option('/boiling')) then
            allocate( temperature_absorption( Mdims%nphase, Mdims%nphase, Mdims%cv_nonods ) )
            call boiling( state, packed_state, Mdims%cv_nonods, Mdims%mat_nonods, Mdims%nphase, Mdims%ndim, &
-                velocity_absorption, temperature_absorption )!temperature_absorption <= sprint_to_do whats is temperature_absorption for???
+                velocity_absorption, temperature_absorption )
            deallocate( temperature_absorption )
         end if
 
@@ -852,7 +861,7 @@ contains
         call update_velocity_source( state, Mdims%ndim, Mdims%nphase, Mdims%u_nonods, u_source_all )
 
         PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm", stat )
-        if ( stat ==0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
+        if ( stat == 0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
 
         !Check if the pressure matrix is a CV matrix
         Mmat%CV_pressure = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
@@ -1465,8 +1474,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION ( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL, NU_ALL, NUOLD_ALL
         REAL, DIMENSION( :, : ), intent( in ) :: UDEN, UDENOLD, DERIV
         REAL, intent( in ) :: DT
-        REAL, DIMENSION( :, :, :, : ), intent( inout ) :: UDIFFUSION
-        REAL, DIMENSION( :, : ), intent( inout ) :: UDIFFUSION_VOL
+        REAL, DIMENSION( :, :, :, : ), intent( in ) :: UDIFFUSION
+        REAL, DIMENSION( :, : ), intent( in ) :: UDIFFUSION_VOL
         REAL, DIMENSION( :, :, :, : ), intent( inout ) :: THERM_U_DIFFUSION
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
