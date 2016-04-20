@@ -848,7 +848,7 @@ contains
         ! define velocity_absorption here...
         velocity_absorption=0.0
         ! update velocity absorption
-        call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods, velocity_absorption )
+        call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
         call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
 
         ! open the boiling test for two phases-gas and liquid
@@ -860,7 +860,7 @@ contains
         end if
 
         ! update velocity source
-        call update_velocity_source( state, Mdims%ndim, Mdims%nphase, Mdims%u_nonods, u_source_all )
+        call update_velocity_source( state, Mdims%ndim, Mdims%nphase, u_source_all )
 
         PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm", stat )
         if ( stat == 0 ) velocity_absorption = velocity_absorption + PorousMedia_AbsorptionTerm%val
@@ -1009,7 +1009,7 @@ contains
             if ( high_order_Ph ) then
                if ( .not. ( after_adapt .and. cty_proj_after_adapt ) ) then
                   allocate (U_ABSORBIN(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
-                  call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods, U_ABSORBIN )
+                  call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
                   call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
                   call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, Mdisopt%cv_ele_type, Mdims%nphase, U_ABSORBIN )
                   deallocate(U_ABSORBIN)
