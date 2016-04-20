@@ -662,9 +662,11 @@ contains
         real, dimension(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods) :: U_SOURCE_CV_ALL
         real, dimension(Mdims%ndim, Mdims%nphase, Mdims%u_nonods) :: U_SOURCE_ALL
         real, dimension(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods) :: UDIFFUSION_ALL
-        real, dimension(Mdims%nphase, Mdims%mat_nonods) :: UDIFFUSION_VOL_ALL
 
 !!!
+
+        type( multi_field ) :: UDIFFUSION_VOL_ALL
+
 
         REAL, DIMENSION(  :, :, :  ), allocatable :: temperature_absorption, U_ABSORBIN
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
@@ -841,7 +843,7 @@ contains
 
         ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
         call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL )
-        UDIFFUSION_VOL_ALL = 0.
+        !UDIFFUSION_VOL_ALL = 0.
 
         ! define velocity_absorption here...
         velocity_absorption=0.0
@@ -1285,9 +1287,9 @@ END IF
         LOGICAL, intent( in ) :: GLOBAL_SOLVE
         REAL, DIMENSION( : ), intent( inout ) :: MCY
         REAL, DIMENSION( :, : ), intent( in ) :: UDEN_ALL, UDENOLD_ALL
-        REAL, DIMENSION( :, :, :, : ), intent( inout ) :: UDIFFUSION_ALL
+        REAL, DIMENSION( :, :, :, : ), intent( in ) :: UDIFFUSION_ALL
         REAL, DIMENSION( :, :, :, : ), intent( inout ) :: THERM_U_DIFFUSION
-        REAL, DIMENSION( :, : ), intent( inout ) :: UDIFFUSION_VOL_ALL
+        type( multi_field ), intent( in ) :: UDIFFUSION_VOL_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         logical, intent(in) :: RECALC_C_CV
@@ -1475,7 +1477,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION( :, : ), intent( in ) :: UDEN, UDENOLD, DERIV
         REAL, intent( in ) :: DT
         REAL, DIMENSION( :, :, :, : ), intent( in ) :: UDIFFUSION
-        REAL, DIMENSION( :, : ), intent( in ) :: UDIFFUSION_VOL
+        type( multi_field ), intent( in ) :: UDIFFUSION_VOL
         REAL, DIMENSION( :, :, :, : ), intent( inout ) :: THERM_U_DIFFUSION
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
@@ -2011,8 +2013,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( SLOC2_UDENOLD(Mdims%nphase, Mdims%cv_snloc) )
         ALLOCATE( SLOC_UDIFFUSION(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
         ALLOCATE( SLOC2_UDIFFUSION(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%cv_snloc) )
-        ALLOCATE( SLOC_UDIFFUSION_VOL( Mdims%nphase, Mdims%cv_snloc) )
-        ALLOCATE( SLOC2_UDIFFUSION_VOL( Mdims%nphase, Mdims%cv_snloc) )
+        ALLOCATE( SLOC_UDIFFUSION_VOL( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC_UDIFFUSION_VOL=0.0
+        ALLOCATE( SLOC2_UDIFFUSION_VOL( Mdims%nphase, Mdims%cv_snloc) ) ; SLOC2_UDIFFUSION_VOL=0.0
         ! Derivatives...
         call allocate_multi_dev_shape_funs(FE_funs, Devfuns)
         ALLOCATE( NMX_ALL(Mdims%ndim) )
@@ -2028,7 +2030,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             ALLOCATE( VOL_FRA_NMX_ALL(Mdims%ndim,Mdims%nphase) )
         ENDIF
         GOT_DIFFUS = ( R2NORM( UDIFFUSION, Mdims%mat_nonods * Mdims%ndim * Mdims%ndim * Mdims%nphase ) /= 0.0 )  &
-            .OR. ( R2NORM( UDIFFUSION_VOL, Mdims%mat_nonods * Mdims%nphase ) /= 0.0 ) .OR. BETWEEN_ELE_STAB
+            .OR. ( UDIFFUSION_VOL%have_field ) .OR. BETWEEN_ELE_STAB
         IF(LES_DISOPT.NE.0) GOT_DIFFUS=.TRUE.
         IF(GOT_DIFFUS.AND.LINEAR_HIGHORDER_DIFFUSION) THEN
             ALLOCATE( STRESS_IJ_ELE_EXT( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_snloc, 2*Mdims%u_nloc ) )
@@ -2168,10 +2170,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ELSE
                     UDIFFUSION_ALL=UDIFFUSION + LES_UDIFFUSION
                 ENDIF
-                UDIFFUSION_VOL_ALL=UDIFFUSION_VOL + LES_UDIFFUSION_VOL
+                !UDIFFUSION_VOL_ALL=UDIFFUSION_VOL + LES_UDIFFUSION_VOL
+                if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
+                UDIFFUSION_VOL_ALL = UDIFFUSION_VOL_ALL + LES_UDIFFUSION_VOL
             ELSE
                 UDIFFUSION_ALL=UDIFFUSION
-                UDIFFUSION_VOL_ALL=UDIFFUSION_VOL
+                if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
             ENDIF
         ENDIF
         if( RETRIEVE_SOLID_CTY ) THEN
@@ -3213,7 +3217,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 THERM_U_DIFFUSION_VOL = THERM_U_DIFFUSION_VOL + UDIFFUSION_VOL_ALL
             ELSE IF ( THERMAL_FLUID_VISC ) THEN
                 THERM_U_DIFFUSION = THERM_U_DIFFUSION + UDIFFUSION
-                THERM_U_DIFFUSION_VOL = THERM_U_DIFFUSION_VOL + UDIFFUSION_VOL
+                !THERM_U_DIFFUSION_VOL = THERM_U_DIFFUSION_VOL + UDIFFUSION_VOL
+                if ( UDIFFUSION_VOL%have_field ) THERM_U_DIFFUSION_VOL = THERM_U_DIFFUSION_VOL + UDIFFUSION_VOL%val(:,1,1,:)
             END IF
         END IF
         !!XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX!!
@@ -3381,10 +3386,10 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                                 SLOC2_UDIFFUSION_VOL( IPHASE, CV_SILOC ) = UDIFFUSION_VOL_ALL( IPHASE, MAT_INOD2 )
                             ELSE
                                 ! set to 0.0 for free-slip
-                                SLOC_UDIFFUSION( 1:Mdims%ndim, 1:Mdims%ndim, IPHASE, CV_SILOC ) = UDIFFUSION( 1:Mdims%ndim, 1:Mdims%ndim, IPHASE, MAT_INOD ) !* 0.
-                                SLOC_UDIFFUSION_VOL( IPHASE, CV_SILOC ) = UDIFFUSION_VOL( IPHASE, MAT_INOD ) !* 0.
-                                SLOC2_UDIFFUSION( 1:Mdims%ndim, 1:Mdims%ndim, IPHASE, CV_SILOC ) = UDIFFUSION( 1:Mdims%ndim, 1:Mdims%ndim, IPHASE, MAT_INOD2 ) !* 0.
-                                SLOC2_UDIFFUSION_VOL( IPHASE, CV_SILOC ) = UDIFFUSION_VOL( IPHASE, MAT_INOD2 ) !* 0.
+                                SLOC_UDIFFUSION( 1:Mdims%ndim, 1:Mdims%ndim, IPHASE, CV_SILOC ) = UDIFFUSION( 1:Mdims%ndim, 1:Mdims%ndim, IPHASE, MAT_INOD )
+                                if ( UDIFFUSION_VOL%have_field ) SLOC_UDIFFUSION_VOL( IPHASE, CV_SILOC ) = UDIFFUSION_VOL%val( IPHASE, 1,1,MAT_INOD )
+                                SLOC2_UDIFFUSION( 1:Mdims%ndim, 1:Mdims%ndim, IPHASE, CV_SILOC ) = UDIFFUSION( 1:Mdims%ndim, 1:Mdims%ndim, IPHASE, MAT_INOD2 )
+                                if ( UDIFFUSION_VOL%have_field ) SLOC2_UDIFFUSION_VOL( IPHASE, CV_SILOC ) = UDIFFUSION_VOL%val( IPHASE, 1,1,MAT_INOD2 )
                             ENDIF
                         END DO
                     END IF
