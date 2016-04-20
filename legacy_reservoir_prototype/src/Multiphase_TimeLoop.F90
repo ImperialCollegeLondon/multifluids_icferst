@@ -1202,7 +1202,6 @@ contains
                      Mdims, D_s%val, Porosity_field%val, mass_ele, Component_Absorption%val )
 
             end if
-
             !!$ NonLinear iteration for the components advection:
             Loop_NonLinearIteration_Components: do its2 = 1, NonLinearIteration_Components
 
