@@ -1553,9 +1553,11 @@ contains
         type ( multi_field ), intent( inout ) :: u_source
 
         type( vector_field ), pointer :: source
-        integer :: iphase, idim
+        integer :: iphase, idim, u_nonods
         logical :: have_source
         character( len = option_path_len ) :: option_path
+
+        ! Needs to be cleaned up !! SPRINT TO DO..
 
 
         !option_count("/material_phase/vector_field::Velocity/prognostic/vector_field::Source")
@@ -1569,9 +1571,12 @@ contains
             have_source = have_option( trim(option_path) )
             if ( have_source ) then
                 source => extract_vector_field( states( iphase ), 'VelocitySource' )
+
+                u_nonods = node_count( source )
                 do idim = 1, ndim
-                    u_source%val( idim, iphase, 1, : ) = source % val( idim, : )
+                    u_source%val( idim:idim, iphase:iphase, 1:1, 1:u_nonods ) => source % val( idim, : )
                 end do
+
             end if
         end do
 
