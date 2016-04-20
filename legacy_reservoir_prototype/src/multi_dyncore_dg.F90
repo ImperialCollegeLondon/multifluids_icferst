@@ -660,12 +660,11 @@ contains
 
         real, dimension(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods) :: velocity_absorption
         real, dimension(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods) :: U_SOURCE_CV_ALL
-        real, dimension(Mdims%ndim, Mdims%nphase, Mdims%u_nonods) :: U_SOURCE_ALL
         real, dimension(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods) :: UDIFFUSION_ALL
 
 !!!
 
-        type( multi_field ) :: UDIFFUSION_VOL_ALL
+        type( multi_field ) :: UDIFFUSION_VOL_ALL, U_SOURCE_ALL   ! NEED TO ALLOCATE THESE - SUBS TO DO THIS ARE MISSING... - SO SET 0.0 FOR NOW
 
 
         REAL, DIMENSION(  :, :, :  ), allocatable :: temperature_absorption, U_ABSORBIN
@@ -953,7 +952,7 @@ contains
            CALL MOD_1D_FORCE_BAL_C( STATE, packed_state, Mmat%U_RHS, Mdims, Mspars, associated(Mmat%PIVIT_MAT), &
                                     Mmat%C, ndgln%cv, ndgln%u, ndgln%x, ndgln%mat, Mmat%PIVIT_MAT, &
                                     ndgln%suf_p, WIC_P_BC_ALL, SUF_P_BC_ALL, SIGMA, U_ALL2%VAL, &
-                                    U_SOURCE_ALL*0.0, U_SOURCE_CV_ALL*0.0 ) ! No sources in the wells for now...
+                                    U_SOURCE_ALL, U_SOURCE_CV_ALL*0.0 ) ! No sources in the wells for now...
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
@@ -1266,7 +1265,7 @@ END IF
         INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
         real, dimension(:,:), intent(in) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: velocity_absorption
-        REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_ALL
+        type( multi_field ), intent( in ) :: U_SOURCE_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: CV_P, P
@@ -1471,7 +1470,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         INTEGER, intent( in ) :: IPLIKE_GRAD_SOU
         REAL, DIMENSION( :, : ), intent( in ) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_ABSORB
-        REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE
+        type( multi_field ), intent( in ) :: U_SOURCE
         REAL, DIMENSION( :, :, : ), intent( in ) :: U_SOURCE_CV
         REAL, DIMENSION ( :, :, : ), intent( in ) :: U_ALL, UOLD_ALL, NU_ALL, NUOLD_ALL
         REAL, DIMENSION( :, : ), intent( in ) :: UDEN, UDENOLD, DERIV
@@ -1985,7 +1984,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( LOC_P(Mdims%p_nloc) )
         ALLOCATE( LOC_PLIKE_GRAD_SOU_COEF(Mdims%ncomp, Mdims%nphase, Mdims%cv_nloc) )
         ALLOCATE( LOC_PLIKE_GRAD_SOU_GRAD(Mdims%ncomp, Mdims%nphase, Mdims%cv_nloc) )
-        ALLOCATE( LOC_U_SOURCE(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) )
+        ALLOCATE( LOC_U_SOURCE(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) ) ; LOC_U_SOURCE=0.0
         ALLOCATE( LOC_U_SOURCE_CV(Mdims%ndim, Mdims%nphase, Mdims%cv_nloc) )
         ALLOCATE( LOC_U_ABSORB  (Mdims%ndim* Mdims%nphase, Mdims%ndim* Mdims%nphase, Mdims%mat_nloc) )
         ALLOCATE( LOC_U_ABS_STAB(Mdims%ndim* Mdims%nphase, Mdims%ndim* Mdims%nphase, Mdims%mat_nloc) )
@@ -2241,7 +2240,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     DO IDIM = 1, Mdims%ndim
                         LOC_U( IDIM, IPHASE, U_ILOC ) = U_ALL( IDIM, IPHASE, U_INOD )
                         LOC_UOLD( IDIM, IPHASE, U_ILOC ) = UOLD_ALL( IDIM, IPHASE, U_INOD )
-                        LOC_U_SOURCE( IDIM, IPHASE, U_ILOC ) = U_SOURCE( IDIM, IPHASE, U_INOD )
+                        if ( u_source%have_field ) LOC_U_SOURCE( IDIM, IPHASE, U_ILOC ) = U_SOURCE%val( IDIM, IPHASE, 1, U_INOD )
                         IF(RETRIEVE_SOLID_CTY) THEN
                             LOC_US( IDIM, IPHASE, U_ILOC ) = us_all%val( IDIM, U_INOD )
                         ENDIF

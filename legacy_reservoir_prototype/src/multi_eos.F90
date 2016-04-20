@@ -1556,7 +1556,8 @@ contains
 
         integer, intent( in ) :: ndim, nphase
         type( state_type ), dimension( : ), intent( in ) :: states
-        real, dimension( :, :, : ), intent( inout ) :: u_source
+        !real, dimension( :, :, : ), intent( inout ) :: u_source
+        type ( multi_field ), intent( inout ) :: u_source
 
         type( vector_field ), pointer :: source
         integer :: iphase, idim
@@ -1566,7 +1567,7 @@ contains
 
         !option_count("/material_phase/vector_field::Velocity/prognostic/vector_field::Source")
 
-        u_source = 0.
+        !u_source = 0.
 
         do iphase = 1, nphase
             have_source = .false.
@@ -1576,7 +1577,7 @@ contains
             if ( have_source ) then
                 source => extract_vector_field( states( iphase ), 'VelocitySource' )
                 do idim = 1, ndim
-                    u_source( idim, iphase, : ) = source % val( idim, : )
+                    u_source%val( idim, iphase, 1, : ) = source % val( idim, : )
                 end do
             end if
         end do
