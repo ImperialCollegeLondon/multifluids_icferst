@@ -61,42 +61,42 @@ contains
         real, dimension( :, :, : ), intent( inout ) :: comp_absorb
 
         ! Local Variables
-        integer :: nphase, ncomp, nstate, totele, &
-            cv_nloc, &
-            cv_nonods, &
+        integer :: sphase,&
             iphase, jphase, ele, cv_iloc, cv_nod, jcomp
-        real :: dt, alpha_beta, max_k, min_k
+        real :: dt, alpha_beta, max_k, min_k, alpha
         character( len = option_path_len ) :: option_path
         logical :: KComp_Sigmoid
-        real, dimension( : ), allocatable :: alpha, sum_nod, volfra_pore_nod
+        real, dimension( : ), allocatable :: sum_nod, volfra_pore_nod
         real, dimension( :, :, : ), allocatable :: k_comp
         real, dimension( :, :, :, : ), allocatable :: k_comp2
         !working pointers
         type(tensor_field), pointer :: tfield
         real, dimension(:,:), pointer :: satura
-
-        if ( Mdims%nphase < 2 ) then
-           comp_absorb = 0.0
-           return
-        end if
+        !Initialize comp_absorb
+        comp_absorb = 0.0
+        !Only two or three phases. if three, the first one is inert
+        if ( Mdims%nphase < 2 .or. Mdims%nphase > 4) return
 
         tfield=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         satura => tfield%val(1,:,:)
 
-        totele = Mdims%totele ; cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc
-        ncomp = Mdims%ncomp ; nphase = Mdims%nphase ; nstate = Mdims%nstate
+        !sphase is the starting phase
+        !if three phases, the first one is water and therefore does not take part in the compositional
+        sphase = Mdims%nphase - 1
 
-        allocate( alpha( cv_nonods ), sum_nod( cv_nonods ), volfra_pore_nod( cv_nonods ), &
-            k_comp( ncomp, nphase, nphase ), k_comp2( ncomp, cv_nonods, nphase, nphase ) )
-        alpha = 0.0 ; k_comp = 0.0 ; k_comp2 = 0.0
+        allocate( sum_nod( Mdims%cv_nonods ), volfra_pore_nod( Mdims%cv_nonods ), &
+            k_comp( Mdims%ncomp, Mdims%nphase, Mdims%nphase ), k_comp2( Mdims%ncomp, Mdims%cv_nonods, Mdims%nphase, Mdims%nphase ) )
+        k_comp = 0.0 ; k_comp2 = 0.0
 
-        option_path = 'material_phase[' // int2str( nstate - ncomp ) // &
+        option_path = 'material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
             ']/is_multiphase_component'
         call get_option( trim( option_path ) // '/alpha_beta', alpha_beta, default = 1. )
+
+
         KComp_Sigmoid = have_option( trim( option_path ) // '/KComp_Sigmoid' )
         if( KComp_Sigmoid ) then
-            do jcomp = 1, ncomp
-                call get_option( 'material_phase[' // int2str( nphase + jcomp - 1 ) // &
+            do jcomp = 1, Mdims%ncomp
+                call get_option( 'material_phase[' // int2str( Mdims%nphase + jcomp - 1 ) // &
                     ']/is_multiphase_component/KComp_Sigmoid/K_Comp', k_comp( jcomp, 1, 1 ) )
                 k_comp( jcomp, :, : ) = k_comp( jcomp, 1, 1 )
             end do
@@ -105,9 +105,9 @@ contains
 
         !!$ Determine a node-wise representation of porosity VOLFRA_PORE_NOD.
         SUM_NOD = 0.0 ; VOLFRA_PORE_NOD = 0.0
-        DO ELE = 1, TOTELE
-            DO CV_ILOC = 1, CV_NLOC
-                CV_NOD = CV_NDGLN( ( ELE - 1 ) * CV_NLOC + CV_ILOC )
+        DO ELE = 1, Mdims%totele
+            DO CV_ILOC = 1, Mdims%cv_nloc
+                CV_NOD = CV_NDGLN( ( ELE - 1 ) * Mdims%cv_nloc + CV_ILOC )
                 SUM_NOD( CV_NOD ) = SUM_NOD( CV_NOD ) + mass_ele( ele )
                 VOLFRA_PORE_NOD( CV_NOD ) = VOLFRA_PORE_NOD( CV_NOD ) + &
                     VOLFRA_PORE( 1, ELE ) * mass_ele( ele )
@@ -115,42 +115,42 @@ contains
         END DO
         VOLFRA_PORE_NOD = VOLFRA_PORE_NOD / SUM_NOD
 
-        COMP_ABSORB = 0.0
+        !If water phase, we stablish no interchange with the other phases
+        if (sphase == 2) COMP_ABSORB(1,1,:) = 1.0
+
         MIN_K = max( 1.e-1, MINVAL( K_COMP( ICOMP, : , : )))
         MAX_K = MAXVAL( K_COMP( ICOMP, : , : ) )
-        CALL Calc_KComp2( cv_nonods, nphase, ncomp, icomp, KComp_Sigmoid, &
+        CALL Calc_KComp2( Mdims%cv_nonods, Mdims%nphase, Mdims%ncomp, icomp, KComp_Sigmoid, &
             min( 1., max( 0., satura )), K_Comp, max_k, min_k, &
             K_Comp2 )
 
-        DO CV_NOD = 1, CV_NONODS
-            DO IPHASE = 1, NPHASE
-                DO JPHASE = IPHASE + 1, NPHASE, 1
+        DO CV_NOD = 1, Mdims%cv_nonods
+            DO IPHASE = sphase, Mdims%nphase
+                DO JPHASE = IPHASE + 1, Mdims%nphase, 1
 
-                    ALPHA( CV_NOD ) = ALPHA_BETA * VOLFRA_PORE_NOD( CV_NOD ) * &
-
+                    ALPHA= ALPHA_BETA * VOLFRA_PORE_NOD( CV_NOD ) * &
                         ( max( 0.0, SATURA( IPHASE, CV_NOD ) * &
                         DENOLD( 1, IPHASE, CV_NOD ) ) / &
                         K_COMP2( ICOMP, CV_NOD, IPHASE, JPHASE ) + &
                         max( 0.0, SATURA( JPHASE,CV_NOD ) * &
                         DENOLD( 1, JPHASE, CV_NOD ) ) ) / DT
-
                     COMP_ABSORB( IPHASE, IPHASE, CV_NOD ) = &
                         COMP_ABSORB( IPHASE, IPHASE, CV_NOD ) + &
-                        ALPHA( CV_NOD ) * &
+                        ALPHA* &
                         K_COMP2( ICOMP, CV_NOD, IPHASE, JPHASE )
 
                     COMP_ABSORB( IPHASE, JPHASE, CV_NOD ) = &
-                        - ALPHA( CV_NOD )
+                        - ALPHA
 
                 END DO
             END DO
         END DO
 
-        DO CV_NOD = 1, CV_NONODS
-            DO IPHASE = 1, NPHASE
-                DO JPHASE = 1, IPHASE - 1
+        DO CV_NOD = 1, Mdims%cv_nonods
+            DO IPHASE = sphase, Mdims%nphase
+                DO JPHASE = sphase, IPHASE - 1
 
-                    ALPHA( CV_NOD ) = ALPHA_BETA * VOLFRA_PORE_NOD( CV_NOD ) * &
+                    ALPHA= ALPHA_BETA * VOLFRA_PORE_NOD( CV_NOD ) * &
                         ( max(0.0,SATURA (IPHASE, CV_NOD ) * &
                         DENOLD( 1, IPHASE, CV_NOD ) ) + &
                         max(0.0,SATURA (JPHASE, CV_NOD ) * &
@@ -158,9 +158,9 @@ contains
                         K_COMP2( ICOMP, CV_NOD, JPHASE, IPHASE ) ) / DT
 
                     COMP_ABSORB( IPHASE, IPHASE, CV_NOD ) = &
-                        COMP_ABSORB( IPHASE, IPHASE, CV_NOD ) + ALPHA( CV_NOD )
+                        COMP_ABSORB( IPHASE, IPHASE, CV_NOD ) + ALPHA
 
-                    COMP_ABSORB( IPHASE, JPHASE, CV_NOD ) = - ALPHA( CV_NOD ) * &
+                    COMP_ABSORB( IPHASE, JPHASE, CV_NOD ) = - ALPHA* &
                         K_COMP2( ICOMP, CV_NOD, JPHASE, IPHASE )
 
                 END DO
@@ -168,19 +168,20 @@ contains
 
         END DO
 
-        do cv_nod = 1, cv_nonods
-           if( satura( 1, cv_nod ) > 0.95 ) then
-              do iphase = 1, nphase
-                 do jphase = min( iphase + 1, nphase ), nphase
+        do cv_nod = 1, Mdims%cv_nonods
+            if( satura( 1, cv_nod ) > 0.95 ) then
+              do iphase = sphase, Mdims%nphase
+                 do jphase = min( iphase + 1, Mdims%nphase ), Mdims%nphase
                     Comp_Absorb( iphase, jphase, cv_nod ) = &
                        Comp_Absorb( iphase, jphase, cv_nod ) * max( 0.01, &
                        20.0 * ( 1. - satura ( 1, cv_nod ) ) )
                  end do
               end do
-           end if
+            end if
         end do
 
-        deallocate( alpha, sum_nod, volfra_pore_nod, k_comp, k_comp2 )
+
+        deallocate( sum_nod, volfra_pore_nod, k_comp, k_comp2 )
 
         RETURN
 
@@ -453,8 +454,6 @@ contains
                     do jphase = iphase + 1, nphase, 1
                         K_Comp2( icomp, cv_nod, iphase, jphase ) = &
                             1. / K_Comp( icomp, iphase, jphase )
-                       !ewrite(3,*)'KComp:', icomp, iphase, jphase, cv_nod, ':', &
-                       !     K_Comp2( icomp, cv_nod, iphase, jphase )
                     end do
                 end do
             end do
@@ -469,14 +468,8 @@ contains
                             K_Comp2( icomp, cv_nod, iphase, jphase ) = &
                                 1. / sigmoid_function( satura(iphase,cv_nod ), &
                                 Sat0, Width, min_k, max_k )
-                               !Sat0, Width, max_k, min_k )
                         endif
-                       !K_Comp2( icomp, cv_nod, iphase, jphase ) = K_Comp2( icomp, cv_nod, jphase, iphase )
                     end do
-                   !ewrite(3,*)'icomp, iphase, sat, kcomp:',icomp, cv_nod, iphase, &
-                   !     satura( ( iphase - 1 ) * cv_nonods + cv_nod ), '::', &
-                   !     ( K_Comp2( icomp, cv_nod, iphase, jphase ), &
-                   !     jphase = 1, nphase )
                 end do
             end do
 

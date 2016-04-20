@@ -305,36 +305,29 @@ contains
       type( state_type ), intent( inout ) :: packed_state
       type( multi_dimensions ), intent( in ) :: Mdims
 
-      integer :: ncomp, nphase, cv_nonods
       real, dimension( : ), allocatable :: Rho, dRhodP
       type( tensor_field ), pointer :: field
       character( len = option_path_len ) :: eos_option_path
       integer :: icomp, iphase, s, e
 
-      ncomp = Mdims%ncomp ; nphase = Mdims%nphase
-      cv_nonods =  Mdims%cv_nonods
 
-      allocate( Rho( cv_nonods ), dRhodP( cv_nonods ) )
+      allocate( Rho( Mdims%cv_nonods ), dRhodP( Mdims%cv_nonods ) )
 
       field => extract_tensor_field( packed_state, "PackedComponentDensity" )
 
-      do icomp = 1, ncomp
-
-         do iphase = 1, nphase
-            s = ( icomp - 1 ) * nphase * cv_nonods + ( iphase - 1 ) * cv_nonods + 1
-            e = ( icomp - 1 ) * nphase * cv_nonods + iphase * cv_nonods
-
-            eos_option_path = trim( '/material_phase[' // int2str( nphase + icomp - 1 ) // &
+      do icomp = 1, Mdims%ncomp
+         do iphase = 1, Mdims%nphase
+            s = ( icomp - 1 ) * Mdims%nphase * Mdims%cv_nonods + ( iphase - 1 ) * Mdims%cv_nonods + 1
+            e = ( icomp - 1 ) * Mdims%nphase * Mdims%cv_nonods + iphase * Mdims%cv_nonods
+            eos_option_path = trim( '/material_phase[' // int2str( Mdims%nphase + icomp - 1 ) // &
                  ']/scalar_field::ComponentMassFractionPhase' // int2str( iphase ) // &
                  '/prognostic/equation_of_state' )
-
             call Assign_Equation_of_State( eos_option_path )
             Rho=0. ; dRhodP=0.
             call Calculate_Rho_dRhodP( state, packed_state, iphase, icomp, &
-                 nphase, ncomp, eos_option_path, Rho, dRhodP )
+                 Mdims%nphase, Mdims%ncomp, eos_option_path, Rho, dRhodP )
 
             field % val( icomp, iphase, : ) = Rho
-
          end do ! iphase
       end do ! icomp
       deallocate( Rho, dRhodP )
