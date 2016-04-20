@@ -769,10 +769,10 @@ contains
                real, dimension(:, :, :), target, intent(in):: inv_perm
                !!$ Local variables:
                type( tensor_field ), pointer :: viscosity_ph
-               integer :: ele, imat, icv, iphase, cv_iloc, idim, jdim, ipres, loc, loc2
+               integer :: ele, imat, icv, iphase, cv_iloc, idim, jdim, ipres, loc
                real :: Mobility, pert
                real, dimension(:), allocatable :: Max_sat
-               real, dimension( :, :, : ), allocatable :: material_absorption2, inv_mat_absorp
+               real, dimension( :, :, : ), allocatable :: material_absorption2
                real, dimension( :, : ), allocatable :: satura2
                real, dimension(size(state,1)) :: visc_phases
                !Working pointers
@@ -1321,7 +1321,6 @@ contains
       !Local variables
       type(scalar_field), pointer :: component
       type(tensor_field), pointer :: diffusivity
-      integer, dimension(:), pointer :: element_nodes
       integer :: icomp, iphase, idim, stat, ele
       integer :: iloc, mat_inod, cv_inod
       logical, parameter :: harmonic_average=.false.
@@ -1395,11 +1394,10 @@ contains
       type( state_type ), dimension( : ), intent( in ) :: state
       real, dimension( :, :, :, : ), intent( inout ) :: Momentum_Diffusion
       !Local variables
-      character( len = option_path_len ) :: option_path_python, buffer
       type( tensor_field ), pointer :: t_field, tp_field, tc_field
       integer :: iphase, icomp, stat, mat_nod, ele
       type( scalar_field ), pointer :: component
-      logical :: linearise_viscosity, python_diagnostic_field
+      logical :: linearise_viscosity
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
       integer :: iloc
@@ -1483,11 +1481,11 @@ contains
 
 
     !sprint_to_do, re-use material_absoprtion by updating the values of the input absoprtion
-    subroutine update_velocity_absorption( states, ndim, nphase, mat_nonods,velocity_absorption )
+    subroutine update_velocity_absorption( states, ndim, nphase, velocity_absorption )
 
         implicit none
 
-        integer, intent( in ) :: ndim, nphase, mat_nonods
+        integer, intent( in ) :: ndim, nphase
         type( state_type ), dimension( : ), intent( in ) :: states
         real, dimension( :, :, : ), intent( inout ) :: velocity_absorption
 
@@ -1545,36 +1543,34 @@ contains
 
 
 
-    subroutine update_velocity_source( states, ndim, nphase, u_nonods, velocity_u_source )
+    subroutine update_velocity_source( states, ndim, nphase, u_source )
 
         implicit none
 
-        integer, intent( in ) :: ndim, nphase, u_nonods
+        integer, intent( in ) :: ndim, nphase
         type( state_type ), dimension( : ), intent( in ) :: states
-        real, dimension( :, :, : ), intent( inout ) :: velocity_u_source
+        real, dimension( :, :, : ), intent( inout ) :: u_source
 
         type( vector_field ), pointer :: source
         integer :: iphase, idim
         logical :: have_source
         character( len = option_path_len ) :: option_path
 
-        velocity_u_source = 0.
+
+        !option_count("/material_phase/vector_field::Velocity/prognostic/vector_field::Source")
+
+        u_source = 0.
 
         do iphase = 1, nphase
             have_source = .false.
             option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/vector_field::Velocity' // &
-                '/prognostic/vector_field::Source/prescribed'
+                '/prognostic/vector_field::Source'
             have_source = have_option( trim(option_path) )
             if ( have_source ) then
                 source => extract_vector_field( states( iphase ), 'VelocitySource' )
                 do idim = 1, ndim
-                    velocity_u_source( idim, iphase, : ) =  velocity_u_source( idim, iphase, : ) +&
-                                                              source % val( idim, : )
+                    u_source( idim, iphase, : ) = source % val( idim, : )
                 end do
-!            else
-!                do idim = 1, ndim
-!                    velocity_u_source( idim, iphase, : ) = velocity_u_source( idim, iphase, : )+ 0.0
-!                end do
             end if
         end do
 
