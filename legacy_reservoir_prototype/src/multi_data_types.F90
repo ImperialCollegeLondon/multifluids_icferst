@@ -214,19 +214,41 @@ module multi_data_types
 
 contains
 
-    subroutine allocate_multi_field( state, sfield, mfield )
+    subroutine allocate_multi_field( state, field_name, mfield )
         implicit none
 
-        type( state_type ), intent( in ) :: state
-        type( scalar_field ), intent( in ) :: sfield
+        type( state_type ), dimension( : ), intent( in ) :: state
         type( multi_field ), intent( inout ) :: mfield
+        character(len=FIELD_NAME_LEN), intent( in ) :: field_name
+
+        type( scalar_field ), pointer :: sfield
+        type( vector_field ), pointer :: vfield
+        type( tensor_field ), pointer :: tfield
+
+        integer, dimension( 3 ) :: stat
 
         mfield%have_field = .true.
-        if ( sfield%field_type == FIELD_TYPE_CONSTANT ) mfield%is_constant = .true.
+
+        sfield => extract_scalar_field( state( 1 ), trim( field_name ), stat( 1 ) )
+        vfield => extract_vector_field( state( 1 ), trim( field_name ), stat( 2 ) )
+        tfield => extract_tensor_field( state( 1 ), trim( field_name ), stat( 3 ) )
+
+        if ( sum( stat ) /= 2 ) FLAbort( "Cannot determine multi_field source." )
+
+        if ( stat( 1 ) == 0 ) then
+
+           if ( sfield%field_type == FIELD_TYPE_CONSTANT ) mfield%is_constant = .true.
+
+        else if ( stat( 2 ) == 0 ) then
+
+           if ( vfield%field_type == FIELD_TYPE_CONSTANT ) mfield%is_constant = .true.
 
 
+        else if ( stat( 3 ) == 0 ) then
 
+           if ( tfield%field_type == FIELD_TYPE_CONSTANT ) mfield%is_constant = .true.
 
+        end if
 
         return
     end subroutine allocate_multi_field
