@@ -990,8 +990,8 @@ contains
             if ( ncomp > 0 ) then
                 ovmesh=>extract_mesh(packed_state,"PressureMesh")
                 do icomp = 1, ncomp
-                   ! Add component absorption (nphase, nphase, cv_nonods)
-                   ! to packed_state and all multicomponent_states
+                    ! Add component absorption (nphase, nphase, cv_nonods)
+                    ! to packed_state and all multicomponent_states
                     call allocate(ten_field,ovmesh,"ComponentAbsorption",dim=[nphase,nphase])
                     call insert(multicomponent_state(icomp),ten_field,"ComponentAbsorption")
                     call deallocate(ten_field)

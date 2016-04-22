@@ -4952,7 +4952,6 @@ contains
         ALLOCATE( DIFF_GI2( NDIM, NDIM, NPHASE ) )
 
         ZER_DIFF = .FALSE.
-        !    IF ( SELE /= 0 ) ZER_DIFF = ANY ( LOC_WIC_T_BC( : ) /= WIC_T_BC_DIRICHLET )
         IF ( on_domain_boundary ) ZER_DIFF = ANY ( LOC_WIC_T_BC( : ) /= WIC_T_BC_DIRICHLET )
 
         Cond_ZerDiff: IF ( ZER_DIFF ) THEN
