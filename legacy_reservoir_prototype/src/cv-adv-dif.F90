@@ -343,10 +343,10 @@ contains
         ! Variables used to calculate CV face values:
         REAL, DIMENSION( :, : ), allocatable :: LOC_F, LOC_FEMF
         REAL, DIMENSION( :, : ), allocatable :: SLOC_F, SLOC_FEMF, SLOC2_F, SLOC2_FEMF
-        REAL, DIMENSION( :, :, : ), allocatable :: LOC_UF, SLOC_UF, SLOC2_UF
+        REAL, DIMENSION( :, :, : ), allocatable :: LOC_UF
         INTEGER, DIMENSION( : ), allocatable :: SELE_LOC_WIC_F_BC
         REAL, DIMENSION( :, : ), allocatable :: SLOC_SUF_F_BC
-        REAL, DIMENSION( : ), allocatable :: FUPWIND_IN, FUPWIND_OUT, FVF, LIMF, F_INCOME, F_NDOTQ
+        REAL, DIMENSION( : ), allocatable :: FUPWIND_IN, FUPWIND_OUT, LIMF, F_INCOME, F_NDOTQ
         ! Variables used in GET_INT_VEL_NEW:
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_U, LOC2_U
         REAL, DIMENSION ( :, :, : ), allocatable :: LOC_NU, LOC2_NU, SLOC_NU, LOC_NUOLD, LOC2_NUOLD, SLOC_NUOLD
@@ -358,10 +358,9 @@ contains
         REAL, DIMENSION( : ), allocatable :: CAP_DIFF_COEF_DIVDX, DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, &
             NDOTQNEW,   INCOME_J, LIMT2OLD, LIMDTOLD, &
             NDOTQ, INCOME, LIMT2, LIMTOLD, LIMT, LIMT_HAT, &
-            FVTOLD, FVT2OLD, FVDOLD, &
             LIMDOLD, LIMDTT2OLD,&
             FVT, FVT2, FVD, LIMD,  &
-            LIMDT, LIMDTT2, SUM_LIMT, SUM_LIMTOLD
+            LIMDT, LIMDTT2
         LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS
         !Logical to check if we using a conservative method or not, to save cpu time
         logical :: conservative_advection
@@ -828,8 +827,6 @@ contains
         ALLOCATE(SLOC2_F(NFIELD,Mdims%cv_snloc))
         ALLOCATE(SLOC2_FEMF(NFIELD,Mdims%cv_snloc))
         ALLOCATE(LOC_UF(Mdims%ndim,NFIELD,Mdims%u_nloc))
-        ALLOCATE(SLOC_UF(Mdims%ndim,NFIELD,Mdims%u_snloc))
-        ALLOCATE(SLOC2_UF(Mdims%ndim,NFIELD,Mdims%u_snloc))
         ! Local variables used in GET_INT_VEL_NEW:
         ALLOCATE( LOC_U(Mdims%ndim, Mdims%nphase, Mdims%u_nloc), LOC2_U(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) )
         ALLOCATE( LOC_NU(Mdims%ndim, Mdims%nphase, Mdims%u_nloc), LOC2_NU(Mdims%ndim, Mdims%nphase, Mdims%u_nloc) )
@@ -848,7 +845,7 @@ contains
         ALLOCATE( FUPWIND_IN( NFIELD ) )
         ALLOCATE( FUPWIND_OUT( NFIELD ) )
         ! limiting and upwinding:
-        ALLOCATE( FVF( NFIELD ), LIMF( NFIELD ) )
+        ALLOCATE( LIMF( NFIELD ) )
         ALLOCATE( F_INCOME( NFIELD ), F_NDOTQ( NFIELD ) )
         !
         ALLOCATE( F_CV_NODI( NFIELD ), F_CV_NODJ( NFIELD ) )
@@ -863,10 +860,9 @@ contains
         ALLOCATE(CAP_DIFF_COEF_DIVDX(Mdims%nphase), DIFF_COEF_DIVDX(Mdims%nphase), DIFF_COEFOLD_DIVDX(Mdims%nphase), &
             NDOTQNEW(Mdims%nphase), LIMT2OLD(Mdims%nphase), LIMDTOLD(Mdims%nphase), INCOMEOLD(Mdims%nphase), NDOTQOLD(Mdims%nphase), &
             NDOTQ(Mdims%nphase), INCOME(Mdims%nphase), LIMT2(Mdims%nphase), LIMTOLD(Mdims%nphase), LIMT(Mdims%nphase), LIMT_HAT(Mdims%nphase), &
-            FVTOLD(Mdims%nphase), FVT2OLD(Mdims%nphase), FVDOLD(Mdims%nphase), &
             LIMDOLD(Mdims%nphase), LIMDTT2OLD(Mdims%nphase),&
             FVT(Mdims%nphase), FVT2(Mdims%nphase), FVD(Mdims%nphase), LIMD(Mdims%nphase),  &
-            LIMDT(Mdims%nphase), LIMDTT2(Mdims%nphase), SUM_LIMT(Mdims%nphase), SUM_LIMTOLD(Mdims%nphase)  )
+            LIMDT(Mdims%nphase), LIMDTT2(Mdims%nphase)  )
         LIMT_HAT=0.0
         ALLOCATE(INCOME_J(Mdims%nphase))
         IF ( capillary_pressure_activated) THEN
