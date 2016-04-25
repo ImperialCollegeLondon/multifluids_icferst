@@ -265,9 +265,11 @@ contains
            nonods = size( sfield%val )
 
            ! Phases not coupled
+           !mfield%memory_type = [0 1]
            !mfield%val( 1:1, 1:1, iphase:iphase, 1:nonods ) => sfield%val
 
            ! Phases coupled
+           !mfield%memory_type = 3
            !mfield%val( 1:1, iphase:iphase, jphase:jphase, 1:nonods ) => sfield%val
 
         else if ( stat( 3 ) == 0 ) then
@@ -281,9 +283,11 @@ contains
            nonods = size( tfield%val, 3 )
 
            ! Phases not coupled
+           !mfield%memory_type = 2
            !mfield%val( 1:ndim, 1:ndim, iphase:iphase, 1:nonods ) => tfield%val
 
            ! Phases coupled
+           !mfield%memory_type = 4
            !mfield%val( 1:1, 1:ndim*nphase, 1:ndim*nphase, 1:nonods ) => tfield%val
            !mfield%val( 1:1, ndim*(iphase-1)+1:ndim*iphase, ndim*(jphase-1)+1:ndim*jphase, 1:nonods ) => tfield%val
 
