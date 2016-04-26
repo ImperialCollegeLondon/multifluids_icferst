@@ -445,7 +445,7 @@ contains
             SUF_T_BC_ROB1, SUF_T_BC_ROB2
         !Working variables for subroutines that are called several times
         real, dimension( Mdims%ndim,Mdims%nphase ) :: rdum_ndim_nphase_1
-        real, dimension( Mdims%nphase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5
+        real, dimension( Mdims%nphase ) :: rdum_nphase_1, rdum_nphase_2, rdum_nphase_3
         REAL, DIMENSION( Mdims%nphase ) :: ABS_CV_NODI_IPHA, ABS_CV_NODJ_IPHA, GRAD_ABS_CV_NODI_IPHA, GRAD_ABS_CV_NODJ_IPHA, &
                 wrelax, XI_LIMIT, FEMTGI_IPHA, NDOTQ_TILDE, NDOTQ_INT, DT_J, abs_tilde, NDOTQ2, DT_I, LIMT3
         REAL, DIMENSION ( Mdims%ndim,Mdims%nphase ) :: UDGI_ALL, UDGI2_ALL, UDGI_INT_ALL, ROW_SUM_INV_VI, ROW_SUM_INV_VJ, UDGI_ALL_FOR_INV
@@ -1848,7 +1848,8 @@ contains
                                     NDOTQNEW, NDOTQOLD, LIMD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
                                     FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
                                     RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, loc2_u, THETA_VEL, &
-                                    rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
+                                    rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
+                                    !rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
                                     SUF_INT_MASS_MATRIX2, recal_c_cv_rhs)
                                 do ipres=1,Mdims%npres
                                     call addto(Mmat%CT_RHS,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
@@ -5100,7 +5101,7 @@ contains
         !    REAL, DIMENSION(NDIM) :: one_dim
 
         INTEGER :: CV_KLOC,CV_KLOC2,MAT_KLOC,MAT_KLOC2,MAT_NODK,MAT_NODK2,IDIM,JDIM,CV_SKLOC
-        INTEGER :: SGI,IPHASE,U_ILOC_EXT,U_JLOC12,I,J, U_SILOC, U_SJLOC
+        INTEGER :: SGI,IPHASE,U_ILOC_EXT,U_JLOC12,I,U_SILOC,U_SJLOC
         REAL :: RDUM
 
 
@@ -5516,7 +5517,7 @@ contains
         REAL, DIMENSION( NDIM ), intent( inout ) :: NORMX_ALL
         ! Local variables
         REAL :: XC(NDIM), SXC(NDIM), NORM
-        INTEGER :: ILOC, IDIM
+        INTEGER :: IDIM
 
         DO IDIM = 1, NDIM
             XC(IDIM) = SUM( XL_ALL( IDIM, : ) )
@@ -6081,7 +6082,6 @@ contains
 
 
 
-
     SUBROUTINE PUT_IN_CT_RHS( GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
         Mdims, CV_funs, ndgln, Mmat, GI, between_elements, on_domain_boundary, &
         ELE, ELE2, SELE, HDC, MASS_ELE, JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, &
@@ -6097,7 +6097,7 @@ contains
         RETRIEVE_SOLID_CTY,theta_cty_solid, &
         loc_u, loc2_u, THETA_VEL,&
         ! local memory sent down for speed...
-        UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, &
+        UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, &
         CAP_DIFF_COEF_DIVDX, SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS)
         ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. Mmat%CT, Mmat%CT_RHS
         IMPLICIT NONE
@@ -6130,16 +6130,16 @@ contains
         REAL,  DIMENSION( Mdims%nphase ), intent( in ) :: FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J
         ! local memory sent down for speed...
         REAL,  DIMENSION( Mdims%ndim, Mdims%nphase ), intent( inout ) :: UDGI_IMP_ALL
-        REAL,  DIMENSION( Mdims%nphase ), intent( inout ) :: RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct
+        REAL,  DIMENSION( Mdims%nphase ), intent( inout ) :: RCON, RCON_J, NDOTQ_IMP
         REAL,  DIMENSION( Mdims%ndim ), intent( inout ) :: UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL
         ! Need to pass down cap_diff_coef_divdx to this routine
         REAL, DIMENSION( Mdims%nphase ) :: CAP_DIFF_COEF_DIVDX
         !Variable to account for boundary conditions if using GET_C_IN_CV_ADVDIF_AND_CALC_C_CV
         real, dimension (Mdims%ndim, Mdims%nphase, Mdims%u_nloc ) :: Bound_ele_correct
         ! Local variables...
-        INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, JCOUNT2_IPHA, &
-            U_KLOC_LEV, U_NLOC_LEV, IPHASE, U_SKLOC, I, J, U_KKLOC, IPRES, p_jloc, p_sjloc,&
-            u_iloc, u_inod, u_siloc
+        INTEGER :: U_KLOC, U_KLOC2, JCOUNT_IPHA, IDIM, U_NODK, U_NODK_IPHA, &
+            IPHASE, U_SKLOC, I, J, U_KKLOC, &
+            u_iloc, u_siloc
         real :: Mass_corrector
         !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
         if (RECAL_C_CV_RHS) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
@@ -6467,7 +6467,7 @@ contains
 
         !Find upwind field values for limiting
         CALL CALC_ANISOTROP_LIM_VALS( F_ALL, FEMF_ALL, USE_FEMT, FUPWIND_MAT_ALL,  &
-            NFIELD,CV_NONODS,CV_NLOC,X_NLOC,TOTELE,CV_NDGLN, SMALL_FINDRM,&
+            NFIELD,CV_NONODS,CV_NLOC,TOTELE,CV_NDGLN, SMALL_FINDRM,&
             SMALL_COLM,NSMALL_COLM, X_NDGLN,X_NONODS,NDIM, X_ALL, XC_CV_ALL)
 
         ! make sure the diagonal is equal to the value:
@@ -6496,7 +6496,7 @@ contains
                 T_ALL, &
                 FEMT_ALL, USE_FEMT, &
                 TUPWIND_ALL, &
-                NFIELD,NONODS,CV_NLOC,X_NLOC,TOTELE,CV_NDGLN, &
+                NFIELD,NONODS,CV_NLOC,TOTELE,CV_NDGLN, &
                 SMALL_FINDRM,SMALL_COLM,NSMALL_COLM, &
                 X_NDGLN,X_NONODS,NDIM, &
                 X_ALL, XC_CV_ALL)
@@ -6504,7 +6504,7 @@ contains
                 ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
                 ! value for each node pair is stored in the matrices TUPWIND AND
                 IMPLICIT NONE
-                INTEGER, intent(in) :: NONODS,X_NONODS,TOTELE,CV_NLOC, X_NLOC, NSMALL_COLM, NFIELD,NDIM
+                INTEGER, intent(in) :: NONODS,X_NONODS,TOTELE,CV_NLOC,NSMALL_COLM,NFIELD,NDIM
                 REAL, DIMENSION( :, : ), intent( in ) :: T_ALL
                 REAL, DIMENSION( :, : ), intent( in ) :: FEMT_ALL
                 LOGICAL, intent( in ) :: USE_FEMT
@@ -6522,8 +6522,8 @@ contains
                 real, dimension (:, :, :), allocatable :: NLX_ALL
                 real, dimension( : ), allocatable :: WEIGHT, L1, L2, L3, L4
                 integer, dimension( : ), allocatable :: SUB_NDGLNO, SUB_XNDGLNO, ndgln_p2top1
-                INTEGER :: COUNT, COUNT2, NOD, SUB_TOTELE, NGI,NLOC, ELE, IL_LOC, IQ_LOC, &
-                    LOC_ELE, SUB_ELE, SUB_LIN_TOTELE, IMID
+                INTEGER :: SUB_TOTELE, NGI,NLOC, ELE, IL_LOC, IQ_LOC, &
+                    LOC_ELE, SUB_ELE, SUB_LIN_TOTELE
 
 
                 ! **********************Calculate linear shape functions...
@@ -6648,7 +6648,6 @@ contains
                 INTEGER, DIMENSION( : ), ALLOCATABLE, SAVE :: ELEMATPSI
                 REAL, DIMENSION( :  ), ALLOCATABLE, SAVE :: ELEMATWEI
                 LOGICAL, SAVE :: STORE_ELE=.TRUE., RET_STORE_ELE=.FALSE.
-                LOGICAL, SAVE :: adapt_in_FPI = .false.
                 ! Allocate memory for the interpolated upwind values
                 LOGICAL, PARAMETER :: BOUND  = .TRUE., REFLECT = .FALSE. ! limiting options
                 INTEGER, DIMENSION( : ), allocatable :: NOD_FINDELE,NOD_COLELE, NLIST, INLIST, DUMMYINT
@@ -6764,7 +6763,6 @@ contains
                 REAL, DIMENSION(NCOLM*NLOC),  INTENT(IN) ::  ELEMATWEI
                 !  LOCAL VARIABLES...
                 INTEGER NOD,COUNT,ELEWIC,ILOC,INOD,IFIELD
-                INTEGER KNOD,COUNT2,JNOD
                 REAL RMATPSI
                 REAL, ALLOCATABLE, DIMENSION(:,:)::MINPSI
                 REAL, ALLOCATABLE, DIMENSION(:,:)::MAXPSI
@@ -6827,9 +6825,8 @@ contains
                 !    REAL, INTENT(INOUT) :: MINPSI(TOTELE*NFIELD),MAXPSI(TOTELE*NFIELD)
                 REAL, DIMENSION(:,:), INTENT(INOUT) :: MINPSI,MAXPSI
                 !  LOCAL VARIABLES...
-                INTEGER NOD,COUNT,ELEWIC,ILOC,INOD,IFIELD
+                INTEGER ELEWIC,ILOC
                 INTEGER KNOD,COUNT2,JNOD
-                REAL RMATPSI
 
                 MINPSI   =1.E+20
                 MAXPSI   =-1.E+20
@@ -6902,7 +6899,7 @@ contains
                 ! LOCCORDSK contains the weights.
                 !     Local variables...
                 INTEGER NOD,COUNT,NODI,NODJ,ILOC,GI,ELE
-                INTEGER ELEWIC,XNOD,XNODJ,IFIELD
+                INTEGER ELEWIC,XNOD,XNODJ
                 REAL LOCCORDSK(NLOC)
                 REAL INVH,LENG
                 !     work space...
@@ -7001,7 +6998,6 @@ contains
                             CALL MATPTSSTORE(MATPSI_ALL,COUNT,NFIELD,NOD,XNOD,&
                                 PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
                                 NLOC,TOTELE,X_NDGLN,NDGLNO,&
-                                NCOLM,&
                                 X1_ALL,&
                                 X2_ALL,&
                                 NORMX1_ALL,&
@@ -7030,7 +7026,6 @@ contains
             SUBROUTINE MATPTSSTORE(MATPSI_ALL,COUNT,NFIELD,NOD,XNOD,&
                 PSI_ALL,FEMPSI_ALL,USE_FEMPSI,NONODS,X_NONODS,&
                 NLOC,TOTELE,X_NDGLN,NDGLNO,&
-                NCOLM,&
                 X1_ALL,&
                 X2_ALL,&
                 NORMX1_ALL,&
@@ -7056,7 +7051,6 @@ contains
                 LOGICAL, intent(in) :: USE_FEMPSI
                 REAL, dimension(:,:), intent(inout) :: MATPSI_ALL
                 INTEGER, intent(in) :: X_NDGLN(NLOC*TOTELE),NDGLNO(NLOC*TOTELE)
-                INTEGER, intent(in) :: NCOLM
                 !      REAL, intent(in) :: X1,Y1,Z1,X2,Y2,Z2,NORMX1,NORMY1,NORMZ1
                 real, dimension(:) :: X1_ALL, X2_ALL, NORMX1_ALL!dimension(NDIM)
                 REAL, dimension(:,:), intent(in) :: X_ALL
@@ -7071,7 +7065,7 @@ contains
                 REAL, dimension(4):: LOCCORDS
                 INTEGER , dimension(4) :: LOCNODS,LOCNODSK
                 INTEGER, dimension(4) :: NLOCNODS,NLOCNODSK
-                INTEGER :: ELE,ILOC,KNOD,JNOD,IFIELD, COUNT2
+                INTEGER :: ELE,ILOC,IFIELD,COUNT2
                 REAL :: MINCOR,MINCORK,RSUM
                 REAL :: DIST12,RN,RMATPSI
                 REAL :: FRALINE
