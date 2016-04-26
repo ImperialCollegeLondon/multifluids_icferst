@@ -1130,23 +1130,23 @@ contains
                 CV_NODK = ndgln%cv( ( ELE - 1 ) * Mdims%cv_nloc + CV_KLOC )
                 ! loc_f
                 IPT=1
-                CALL PACK_LOC( LOC_F(:, CV_KLOC), T_ALL( :, CV_NODK ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) )
-                CALL PACK_LOC( LOC_F(:, CV_KLOC), TOLD_ALL( :, CV_NODK ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,2) )
-                CALL PACK_LOC( LOC_F(:, CV_KLOC), DEN_ALL( :, CV_NODK ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,3) )
-                CALL PACK_LOC( LOC_F(:, CV_KLOC), DENOLD_ALL( :, CV_NODK ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,4) )
+                CALL PACK_LOC( LOC_F(:, CV_KLOC), T_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
+                CALL PACK_LOC( LOC_F(:, CV_KLOC), TOLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
+                CALL PACK_LOC( LOC_F(:, CV_KLOC), DEN_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
+                CALL PACK_LOC( LOC_F(:, CV_KLOC), DENOLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
                 IF(use_volume_frac_T2) THEN
-                    CALL PACK_LOC( LOC_F(:, CV_KLOC), T2_ALL( :, CV_NODK ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,5) )
-                    CALL PACK_LOC( LOC_F(:, CV_KLOC), T2OLD_ALL( :, CV_NODK ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,6) )
+                    CALL PACK_LOC( LOC_F(:, CV_KLOC), T2_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
+                    CALL PACK_LOC( LOC_F(:, CV_KLOC), T2OLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
                 ENDIF
                 ! for FEM variables...
                 IPT=1
-                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT_ALL( :, CV_NODK ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) )
-                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMTOLD_ALL( :, CV_NODK ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,2) )
-                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMDEN_ALL( :, CV_NODK ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,3) )
-                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMDENOLD_ALL( :, CV_NODK ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,4) )
+                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
+                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMTOLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
+                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMDEN_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
+                CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMDENOLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
                 IF(use_volume_frac_T2) THEN
-                    CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT2_ALL( :, CV_NODK ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,5) )
-                    CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT2OLD_ALL( :, CV_NODK ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,6) )
+                    CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT2_ALL( :, CV_NODK ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
+                    CALL PACK_LOC( LOC_FEMF(:, CV_KLOC), FEMT2OLD_ALL( :, CV_NODK ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
                 ENDIF
                 ! loc_femt:
                 LOC_FEMT(:, CV_KLOC) = FEMT_ALL(:, CV_NODK)
@@ -1401,13 +1401,13 @@ contains
                             END DO
                             ! Generate some local F variables ***************
                             IPT=1
-                            CALL PACK_LOC( F_CV_NODJ(:), T_ALL( :, CV_NODJ ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) )
-                            CALL PACK_LOC( F_CV_NODJ(:), TOLD_ALL( :, CV_NODJ ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,2) )
-                            CALL PACK_LOC( F_CV_NODJ(:), DEN_ALL( :, CV_NODJ ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,3) )
-                            CALL PACK_LOC( F_CV_NODJ(:), DENOLD_ALL( :, CV_NODJ ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,4) )
+                            CALL PACK_LOC( F_CV_NODJ(:), T_ALL( :, CV_NODJ ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
+                            CALL PACK_LOC( F_CV_NODJ(:), TOLD_ALL( :, CV_NODJ ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
+                            CALL PACK_LOC( F_CV_NODJ(:), DEN_ALL( :, CV_NODJ ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
+                            CALL PACK_LOC( F_CV_NODJ(:), DENOLD_ALL( :, CV_NODJ ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
                             IF(use_volume_frac_T2) THEN
-                                CALL PACK_LOC( F_CV_NODJ(:), T2_ALL( :, CV_NODJ ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,5) )
-                                CALL PACK_LOC( F_CV_NODJ(:), T2OLD_ALL( :, CV_NODJ ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,6) )
+                                CALL PACK_LOC( F_CV_NODJ(:), T2_ALL( :, CV_NODJ ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
+                                CALL PACK_LOC( F_CV_NODJ(:), T2OLD_ALL( :, CV_NODJ ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
                             ENDIF
                             ! Generate some local F variables ***************
                             ! local surface information***********
@@ -1421,23 +1421,23 @@ contains
                                         CV_KLOC2 = CV_OTHER_LOC( CV_KLOC )
                                         CV_NODK2 = ndgln%cv( ( ELE2 - 1 ) * Mdims%cv_nloc + CV_KLOC2 )
                                         IPT=1
-                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T_ALL( :, CV_NODK2 ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) )
-                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), TOLD_ALL( :, CV_NODK2 ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,2) )
-                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), DEN_ALL( :, CV_NODK2 ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,3) )
-                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), DENOLD_ALL( :, CV_NODK2 ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,4) )
+                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
+                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), TOLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
+                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), DEN_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
+                                        CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), DENOLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
                                         IF(use_volume_frac_T2) THEN
-                                            CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T2_ALL( :, CV_NODK2 ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,5) )
-                                            CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T2OLD_ALL( :, CV_NODK2 ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,6) )
+                                            CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T2_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
+                                            CALL PACK_LOC( SLOC2_F(:, CV_SKLOC), T2OLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
                                         ENDIF
                                         ! femf:
                                         IPT=1
-                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT_ALL( :, CV_NODK2 ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) )
-                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMTOLD_ALL( :, CV_NODK2 ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,2) )
-                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMDEN_ALL( :, CV_NODK2 ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,3) )
-                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMDENOLD_ALL( :, CV_NODK2 ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,4) )
+                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
+                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMTOLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
+                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMDEN_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
+                                        CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMDENOLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
                                         IF(use_volume_frac_T2) THEN
-                                            CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT2_ALL( :, CV_NODK2 ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,5) )
-                                            CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT2OLD_ALL( :, CV_NODK2 ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,6) )
+                                            CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT2_ALL( :, CV_NODK2 ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
+                                            CALL PACK_LOC( SLOC2_FEMF(:, CV_SKLOC), FEMT2OLD_ALL( :, CV_NODK2 ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
                                         ENDIF
                                     ELSE
                                         SLOC2_F(:, CV_SKLOC)    = SLOC_F(:, CV_SKLOC)
@@ -1452,29 +1452,29 @@ contains
                                 ! What type of b.c's -integer
                                 IPT=1
                                 CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T_BC_ALL( : , : , SELE ),&
-                                    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK( :,1) )
+                                    Mdims%nphase, IPT, IGOT_T_PACK( :,1) )
                                 CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T_BC_ALL( : , :, SELE ),&
-                                    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK( :,2) )
+                                    Mdims%nphase, IPT, IGOT_T_PACK( :,2) )
                                 CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_D_BC_ALL( :,:, SELE ),&
-                                    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK( :,3) )
+                                    Mdims%nphase, IPT, IGOT_T_PACK( :,3) )
                                 CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_D_BC_ALL( :,:, SELE ),&
-                                    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK( :,4) )
+                                    Mdims%nphase, IPT, IGOT_T_PACK( :,4) )
                                 IF(use_volume_frac_T2) THEN
                                     CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T2_BC_ALL( : , :, SELE ),&
-                                        Mdims%nphase, NFIELD, IPT, IGOT_T_PACK( :,5) )
+                                        Mdims%nphase, IPT, IGOT_T_PACK( :,5) )
                                     CALL I_PACK_LOC( SELE_LOC_WIC_F_BC( : ),WIC_T2_BC_ALL( : , : , SELE ),&
-                                        Mdims%nphase, NFIELD, IPT, IGOT_T_PACK( :,6) )
+                                        Mdims%nphase, IPT, IGOT_T_PACK( :,6) )
                                 ENDIF
                                 ! The b.c's values:
                                 DO CV_SKLOC=1,Mdims%cv_snloc
                                     IPT=1
-                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) )
-                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1 ) ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,2) )
-                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_D_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,3) )
-                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_D_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,4) )
+                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) )
+                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1 ) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,2) )
+                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_D_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )
+                                    CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_D_BC_ALL( 1, :, CV_SKLOC+ Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,4) )
                                     IF(use_volume_frac_T2) THEN
-                                        CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T2_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,5) )
-                                        CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T2_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,6) )
+                                        CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T2_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )
+                                        CALL PACK_LOC( SLOC_SUF_F_BC( :, CV_SKLOC ), SUF_T2_BC_ALL( 1, :, CV_SKLOC + Mdims%cv_snloc*( SELE- 1) ),    Mdims%nphase, IPT, IGOT_T_PACK(:,6) )
                                     ENDIF
                                 END DO
                             ENDIF ! IF( on_domain_boundary ) THEN
@@ -1482,19 +1482,19 @@ contains
                             ! limiting VALUES*************:
                             IPT_IN =1
                             IPT_OUT=1
-                            CALL PACK_LOC( FUPWIND_IN( : ),  TUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, NFIELD, IPT_IN, IGOT_T_PACK(:,1) )
-                            CALL PACK_LOC( FUPWIND_OUT( : ), TUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, NFIELD, IPT_OUT, IGOT_T_PACK(:,1) )
-                            CALL PACK_LOC( FUPWIND_IN( : ),  TOLDUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, NFIELD, IPT_IN, IGOT_T_PACK(:,2) )
-                            CALL PACK_LOC( FUPWIND_OUT( : ), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, NFIELD, IPT_OUT, IGOT_T_PACK(:,2) )
-                            CALL PACK_LOC( FUPWIND_IN( : ),  DENUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, NFIELD, IPT_IN, IGOT_T_PACK(:,3) )
-                            CALL PACK_LOC( FUPWIND_OUT( : ), DENUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, NFIELD, IPT_OUT, IGOT_T_PACK(:,3) )
-                            CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, NFIELD, IPT_IN, IGOT_T_PACK(:,4) )
-                            CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, NFIELD, IPT_OUT, IGOT_T_PACK(:,4) )
+                            CALL PACK_LOC( FUPWIND_IN( : ),  TUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,1) )
+                            CALL PACK_LOC( FUPWIND_OUT( : ), TUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,1) )
+                            CALL PACK_LOC( FUPWIND_IN( : ),  TOLDUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,2) )
+                            CALL PACK_LOC( FUPWIND_OUT( : ), TOLDUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,2) )
+                            CALL PACK_LOC( FUPWIND_IN( : ),  DENUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,3) )
+                            CALL PACK_LOC( FUPWIND_OUT( : ), DENUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,3) )
+                            CALL PACK_LOC( FUPWIND_IN( : ),  DENOLDUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,4) )
+                            CALL PACK_LOC( FUPWIND_OUT( : ), DENOLDUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,4) )
                             IF(use_volume_frac_T2) THEN
-                                CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, NFIELD, IPT_IN, IGOT_T_PACK(:,5) )
-                                CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, NFIELD, IPT_OUT, IGOT_T_PACK(:,5) )
-                                CALL PACK_LOC( FUPWIND_IN( : ),  T2OLDUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, NFIELD, IPT_IN, IGOT_T_PACK(:,6) )
-                                CALL PACK_LOC( FUPWIND_OUT( : ), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, NFIELD, IPT_OUT, IGOT_T_PACK(:,6) )
+                                CALL PACK_LOC( FUPWIND_IN( : ),  T2UPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,5) )
+                                CALL PACK_LOC( FUPWIND_OUT( : ), T2UPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,5) )
+                                CALL PACK_LOC( FUPWIND_IN( : ),  T2OLDUPWIND_MAT_ALL( :, COUNT_IN),    Mdims%nphase, IPT_IN, IGOT_T_PACK(:,6) )
+                                CALL PACK_LOC( FUPWIND_OUT( : ), T2OLDUPWIND_MAT_ALL( :, COUNT_OUT),    Mdims%nphase, IPT_OUT, IGOT_T_PACK(:,6) )
                             ENDIF
                             ! limiting VALUES*************:
                             !     endif ! endof if(.false.) then
@@ -1673,22 +1673,22 @@ contains
                             END IF If_GOT_CAPDIFFUS
                             ! Pack ndotq information:
                             IPT=1
-                            CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) ) ! t
-                            CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,2) ) ! TOLD
-                            CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,3) )  ! d
-                            CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,4) )  ! DOLD
+                            CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) ) ! t
+                            CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) ) ! TOLD
+                            CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )  ! d
+                            CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )  ! DOLD
                             IF ( use_volume_frac_T2 ) THEN
-                                CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,5) )  ! T2
-                                CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
+                                CALL PACK_LOC( F_INCOME(:), INCOME( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )  ! T2
+                                CALL PACK_LOC( F_INCOME(:), INCOMEOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
                             ENDIF
                             IPT=1
-                            CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,1) ) ! t
-                            CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,2) ) ! TOLD
-                            CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,3) )  ! d
-                            CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,4) )  ! DOLD
+                            CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,1) ) ! t
+                            CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,2) ) ! TOLD
+                            CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,3) )  ! d
+                            CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,4) )  ! DOLD
                             IF ( use_volume_frac_T2 ) THEN
-                                CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,5) )  ! T2
-                                CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), Mdims%nphase, NFIELD, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
+                                CALL PACK_LOC( F_NDOTQ(:), NDOTQ( : ),    Mdims%nphase, IPT, IGOT_T_PACK(:,5) )  ! T2
+                                CALL PACK_LOC( F_NDOTQ(:), NDOTQOLD( : ), Mdims%nphase, IPT, IGOT_T_PACK(:,6) )  ! T2OLD
                             ENDIF
                                   !================= ESTIMATE THE FACE VALUE OF THE SUB-CV ===============
                                   ! Calculate T and DEN on the CV face at quadrature point GI.
@@ -1713,13 +1713,13 @@ contains
                             ! Generate some local F variables ***************
                             ! loc_f - Unpack into the limiting variables LIMT and may be store them in the cache.
                             IPT=1
-                            CALL UNPACK_LOC( LIMF(:), LIMT( : ),    Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,1), GLOBAL_FACE, IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1))
-                            CALL UNPACK_LOC( LIMF(:), LIMTOLD( : ), Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,2), GLOBAL_FACE, IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2))
-                            CALL UNPACK_LOC( LIMF(:), LIMD( : ),    Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,3), GLOBAL_FACE, IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3))
-                            CALL UNPACK_LOC( LIMF(:), LIMDOLD( : ), Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,4), GLOBAL_FACE, IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4))
+                            CALL UNPACK_LOC( LIMF(:), LIMT( : ),    Mdims%nphase, IPT, STORE, IGOT_T_PACK(:,1), GLOBAL_FACE, IGOT_T_CONST(:,1), IGOT_T_CONST_VALUE(:,1))
+                            CALL UNPACK_LOC( LIMF(:), LIMTOLD( : ), Mdims%nphase, IPT, STORE, IGOT_T_PACK(:,2), GLOBAL_FACE, IGOT_T_CONST(:,2), IGOT_T_CONST_VALUE(:,2))
+                            CALL UNPACK_LOC( LIMF(:), LIMD( : ),    Mdims%nphase, IPT, STORE, IGOT_T_PACK(:,3), GLOBAL_FACE, IGOT_T_CONST(:,3), IGOT_T_CONST_VALUE(:,3))
+                            CALL UNPACK_LOC( LIMF(:), LIMDOLD( : ), Mdims%nphase, IPT, STORE, IGOT_T_PACK(:,4), GLOBAL_FACE, IGOT_T_CONST(:,4), IGOT_T_CONST_VALUE(:,4))
                             IF ( use_volume_frac_T2 ) THEN
-                                CALL UNPACK_LOC( LIMF(:), LIMT2( : ),    Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,5), GLOBAL_FACE, IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5))
-                                CALL UNPACK_LOC( LIMF(:), LIMT2OLD( : ), Mdims%nphase, NFIELD, IPT, STORE, IGOT_T_PACK(:,6), GLOBAL_FACE, IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6))
+                                CALL UNPACK_LOC( LIMF(:), LIMT2( : ),    Mdims%nphase, IPT, STORE, IGOT_T_PACK(:,5), GLOBAL_FACE, IGOT_T_CONST(:,5), IGOT_T_CONST_VALUE(:,5))
+                                CALL UNPACK_LOC( LIMF(:), LIMT2OLD( : ), Mdims%nphase, IPT, STORE, IGOT_T_PACK(:,6), GLOBAL_FACE, IGOT_T_CONST(:,6), IGOT_T_CONST_VALUE(:,6))
                             else
                                 LIMT2( : )=1.0; LIMT2OLD( : )=1.0
                             ENDIF
@@ -3581,10 +3581,8 @@ contains
 
 
             IPT=1
-            CALL PACK_LOC( LIMF(:), TGI_ele( 1:NPHASE ),    NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,1) ) ! t
-            CALL PACK_LOC( LIMF(:), TGI_ele( 1+NPHASE:2*NPHASE ), NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,2) ) ! TOLD_ALL
-            ! CALL PACK_LOC( LIMF(:), TGI( 1:NPHASE ),    NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,1) ) ! t
-            ! CALL PACK_LOC( LIMF(:), TGI( 1+NPHASE:2*NPHASE ), NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,2) ) ! TOLD_ALL
+            CALL PACK_LOC( LIMF(:), TGI_ele( 1:NPHASE ),    NPHASE, IPT, IGOT_T_PACK(:,1) ) ! T
+            CALL PACK_LOC( LIMF(:), TGI_ele( 1+NPHASE:2*NPHASE ), NPHASE, IPT, IGOT_T_PACK(:,2) ) ! TOLD_ALL
             return
         end if
 
@@ -3838,8 +3836,8 @@ contains
         ENDIF ! ENDOF IF(DISTCONTINUOUS_METHOD.AND.(.NOT.BETWEEN_ELEMENTS).AND.FOR_DG_ONLY_BETWEEN_ELE) THEN else
 
         IPT=1
-        CALL PACK_LOC( LIMF(:), TGI( 1:NPHASE ),    NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,1) ) ! t
-        CALL PACK_LOC( LIMF(:), TGI( 1+NPHASE:2*NPHASE ), NPHASE, NPHASE2, IPT, IGOT_T_PACK(:,2) ) ! TOLD_ALL
+        CALL PACK_LOC( LIMF(:), TGI( 1:NPHASE ),    NPHASE, IPT, IGOT_T_PACK(:,1) ) ! T
+        CALL PACK_LOC( LIMF(:), TGI( 1+NPHASE:2*NPHASE ), NPHASE, IPT, IGOT_T_PACK(:,2) ) ! TOLD_ALL
 
         contains
 
@@ -3906,10 +3904,10 @@ contains
 
 
 
-    SUBROUTINE PACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, IGOT_T_PACK )
+    SUBROUTINE PACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK )
         ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
         IMPLICIT NONE
-        INTEGER, intent( in ) :: NPHASE, NFIELD
+        INTEGER, intent( in ) :: NPHASE
         ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
         INTEGER, intent( inout ) :: IPT
         LOGICAL, DIMENSION(:), intent( in ) :: IGOT_T_PACK
@@ -3931,10 +3929,10 @@ contains
 
 
 
-    SUBROUTINE I_PACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, IGOT_T_PACK )
+    SUBROUTINE I_PACK_LOC( LOC_F, T_ALL, NPHASE, IPT, IGOT_T_PACK )
         ! If PACK then pack T_ALL into LOC_F as long at IGOT_T==1 and STORE and not already in storage.
         IMPLICIT NONE
-        INTEGER, intent( in ) :: NPHASE, NFIELD
+        INTEGER, intent( in ) :: NPHASE
         ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
         INTEGER, intent( inout ) :: IPT
         LOGICAL, DIMENSION(NPHASE), intent( in ) :: IGOT_T_PACK
@@ -3954,11 +3952,11 @@ contains
     END SUBROUTINE I_PACK_LOC
 
 
-    SUBROUTINE UNPACK_LOC( LOC_F, T_ALL, NPHASE, NFIELD, IPT, STORE, IGOT_T_PACK, GLOBAL_FACE, IGOT_T_CONST, IGOT_T_CONST_VALUE)
+    SUBROUTINE UNPACK_LOC( LOC_F, T_ALL, NPHASE, IPT, STORE, IGOT_T_PACK, GLOBAL_FACE, IGOT_T_CONST, IGOT_T_CONST_VALUE)
         ! If PACK then UNpack loc_f into T_ALL  as long at IGOT_T==1 and STORE and not already in storage.
         IMPLICIT NONE
         LOGICAL, intent( in ) :: STORE
-        INTEGER, intent( in ) :: NPHASE,NFIELD
+        INTEGER, intent( in ) :: NPHASE
         INTEGER, intent( in ) :: GLOBAL_FACE
         ! GLOBAL_FACE is the quadrature point which helps point into the storage memory
         INTEGER, intent( inout ) :: IPT
@@ -5098,7 +5096,7 @@ contains
         !    REAL, DIMENSION(NDIM,Ndim) :: two_dim
         !    REAL, DIMENSION(NDIM) :: one_dim
 
-        INTEGER :: CV_KLOC,CV_KLOC2,MAT_KLOC,MAT_KLOC2,MAT_NODK,MAT_NODK2,IDIM,JDIM,CV_SKLOC
+        INTEGER :: MAT_KLOC,MAT_KLOC2,MAT_NODK,MAT_NODK2,IDIM,JDIM,CV_SKLOC
         INTEGER :: SGI,IPHASE,U_ILOC_EXT,U_JLOC12,I,U_SILOC,U_SJLOC
         REAL :: RDUM
 
@@ -5730,7 +5728,7 @@ contains
                 INTEGER, DIMENSION( :, : ), intent( inout ) :: T2MIN_NOD_ALL, T2MAX_NOD_ALL, T2OLDMIN_NOD_ALL, &
                     T2OLDMAX_NOD_ALL
                 ! Local variables
-                INTEGER :: CV_NODI, CV_NODJ, IPHASE, COUNT, CV_SILOC, SELE, CV_INOD
+                INTEGER :: CV_NODI, IPHASE, CV_SILOC, SELE, CV_INOD
                 integer, dimension(:), pointer :: cv_neigh_ptr
 
                 Loop_CV_NODI: DO CV_NODI = 1, CV_NONODS
