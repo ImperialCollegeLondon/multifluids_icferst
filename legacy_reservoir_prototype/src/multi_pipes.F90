@@ -1030,7 +1030,9 @@ contains
         type(multi_dimensions), intent(in) :: Mdims
         type (multi_sparsities), intent(in) :: Mspars
         REAL, DIMENSION( :, :, : ), INTENT( INOUT ) :: U_RHS, C, pivit_mat
-        REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL, U_SOURCE, U_SOURCE_CV
+        !REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL, U_SOURCE, U_SOURCE_CV
+        REAL, DIMENSION( :, :, : ), INTENT( IN ) :: SUF_P_BC_ALL, U_SOURCE_CV
+        type( multi_field ), INTENT( IN ) :: U_SOURCE
         REAL, DIMENSION( :, : ), INTENT( IN ) :: SIGMA
         REAL, DIMENSION( :, :, : ), INTENT( IN ) :: NU_ALL
         INTEGER, DIMENSION( : ), INTENT( IN ) :: CV_NDGLN, U_NDGLN, X_NDGLN, MAT_NDGLN, P_SNDGLN
@@ -1386,14 +1388,18 @@ contains
                                     END DO
                                 END IF ! SWITCH_PIPES_ON_AND_OFF
                             END IF ! GET_PIVIT_MAT
-                            NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
-                            DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
-                                DO IDIM = 1, Mdims%ndim
-                                    ! This is ( S \dot n ) n
-                                    U_RHS( IDIM, IPHASE, IU_NOD ) =  U_RHS( IDIM, IPHASE, IU_NOD ) + &
-                                        NN * SUM(U_SOURCE( :, IPHASE, JU_NOD ) * DIRECTION( : ) ) * DIRECTION( IDIM )
+
+                            if ( u_source%have_field ) then
+                                NN = sum( L_UFEN_REVERSED( :, U_LILOC ) * L_UFEN_REVERSED( :, U_LJLOC ) * DETWEI( : ) )
+                                DO IPHASE = Mdims%n_in_pres+1, Mdims%nphase
+                                    DO IDIM = 1, Mdims%ndim
+                                        ! This is ( S \dot n ) n
+                                        U_RHS( IDIM, IPHASE, IU_NOD ) =  U_RHS( IDIM, IPHASE, IU_NOD ) + &
+                                            NN * SUM(U_SOURCE%VAL( :, IPHASE, 1, JU_NOD ) * DIRECTION( : ) ) * DIRECTION( IDIM )
+                                    END DO
                                 END DO
-                            END DO
+                            end if
+
                         END DO ! DO U_LJLOC = 1, U_LNLOC
                     END DO ! DO U_LILOC = 1, U_LNLOC
                     ! Add pressure b.c to matrix and rhs...

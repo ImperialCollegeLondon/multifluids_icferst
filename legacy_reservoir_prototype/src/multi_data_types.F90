@@ -197,36 +197,115 @@ module multi_data_types
         real, dimension( :, :, :, : ), pointer :: adv_coef_grad => null()!Gradient of the sigmas at the boundary to calculate fluxes
     end type porous_adv_coefs
 
-    type multi_field                                            ! maybe we could arrange it like this?
-        real, dimension( :, :, :, : ), pointer :: val => null() ! ndim1           x ndim2           x ndim3  x nonods =
-                                                                ! ndim            x ndim            x nphase x nonods, or
-                                                                ! (ndim x nphase) x (ndim x nphase) x 1      x nonods, or
-                                                                ! ncomp           x nphase          x 1      x nonods, or
-                                                                ! nphase          x 1               x 1      x nonods.
+    type multi_field
+        real, dimension( :, :, :, : ), pointer :: val => null()
+
         logical :: have_field = .false. ! do we need this field for this simulation?
-        logical :: is_constant = .false. ! spatially
-        integer :: values_to_store = 0 ! how many values per node should we store?
+        logical :: is_constant = .false. ! if ( .true. ) nonods = 1 for what follows     -   DELETE THIS MAYBE ???
+
+        integer :: memory_type = -1 ! 0 Isotropic tensor - ( 1, 1, nphase, nonods ) - this is unrolled as ( ndim, ndim, nphase, nonods )
+                                    ! 1 Isotropic - ( 1, 1, nphase, nonods ) - diagonal
+                                    ! 2 Anisotropic - ( ndim, ndim, nphase, nonods )
+                                    ! 3 Isotropic coupled - ( 1, nphase, nphase, nonods )
+                                    ! 4 Anisotropic coupled (aka Full Metal Jacket) - ( 1, ndim x nphase, ndim x nphase, nonods )
+
         integer :: ndim1 = -1, ndim2 = -1, ndim3 = -1 ! dimensions of field
+
     end type multi_field
+
+    ! TO DO for multi_field work:
+    !
+    ! subs: set, get, add, mult, mult_scalar_add
+    ! allocate, deallocate(?), ...
+    !
+
 
 
     private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3
 
 contains
 
-    subroutine allocate_multi_field( state, sfield, mfield )
+    subroutine allocate_multi_field( state, Mdims, field_name, mfield )
         implicit none
 
-        type( state_type ), intent( in ) :: state
-        type( scalar_field ), intent( in ) :: sfield
+        type( state_type ), dimension( : ), intent( in ) :: state
+        type( multi_dimensions ), intent(in) :: Mdims
+
         type( multi_field ), intent( inout ) :: mfield
+        character( len = FIELD_NAME_LEN ), intent( in ) :: field_name
+
+        type( scalar_field ), pointer :: sfield
+        type( vector_field ), pointer :: vfield
+        type( tensor_field ), pointer :: tfield
+
+        integer, dimension( 3 ) :: stat
+        integer :: ndim, nphase, nonods
+        character( len = OPTION_PATH_LEN ) :: option_path
+
 
         mfield%have_field = .true.
-        if ( sfield%field_type == FIELD_TYPE_CONSTANT ) mfield%is_constant = .true.
+
+        sfield => extract_scalar_field( state( 1 ), trim( field_name ), stat( 1 ) )
+        vfield => extract_vector_field( state( 1 ), trim( field_name ), stat( 2 ) )
+        tfield => extract_tensor_field( state( 1 ), trim( field_name ), stat( 3 ) )
+
+        ndim = Mdims%ndim ; nphase = Mdims%nphase
+
+        if ( sum( stat ) /= 2 ) FLAbort( "Cannot determine multi_field source." )
+        if (   stat( 2 ) == 0 ) FLAbort( "multi_field source should not be a vector_field." )
+
+        if ( stat( 1 ) == 0 ) then
+
+           ! Scalar field source - this is only for isotropic fields
+           ! mfield%memory_type = [0 1 3]
+
+           if ( sfield%field_type == FIELD_TYPE_CONSTANT ) mfield%is_constant = .true.
+           option_path = sfield%option_path
+
+           nonods = size( sfield%val )
+
+           ! Phases not coupled
+           !mfield%memory_type = [0 1]
+           !mfield%val( 1:1, 1:1, iphase:iphase, 1:nonods ) => sfield%val
+
+           ! Phases coupled
+           !mfield%memory_type = 3
+           !mfield%val( 1:1, iphase:iphase, jphase:jphase, 1:nonods ) => sfield%val
+
+        else if ( stat( 3 ) == 0 ) then
+
+           ! Tensor field source - this is only for anisotropic fields
+           ! mfield%memory_type = [2 4]
+
+           if ( tfield%field_type == FIELD_TYPE_CONSTANT ) mfield%is_constant = .true.
+           option_path = tfield%option_path
+
+           nonods = size( tfield%val, 3 )
+
+           ! Phases not coupled
+           !mfield%memory_type = 2
+           !mfield%val( 1:ndim, 1:ndim, iphase:iphase, 1:nonods ) => tfield%val
+
+           ! Phases coupled
+           !mfield%memory_type = 4
+           !mfield%val( 1:1, 1:ndim*nphase, 1:ndim*nphase, 1:nonods ) => tfield%val
+           !mfield%val( 1:1, ndim*(iphase-1)+1:ndim*iphase, ndim*(jphase-1)+1:ndim*jphase, 1:nonods ) => tfield%val
 
 
+        end if
 
-
+        select case ( mfield%memory_type )
+        case( 0, 1 ) ! Isotropic ( full and diagonal )
+           mfield%ndim1 = 1    ; mfield%ndim2 = 1           ; mfield%ndim3 = nphase
+        case( 2 )    ! Anisotropic
+           mfield%ndim1 = ndim ; mfield%ndim2 = ndim        ; mfield%ndim3 = nphase
+        case( 3 )    ! Isotropic coupled
+           mfield%ndim1 = 1    ; mfield%ndim2 = nphase      ; mfield%ndim3 = nphase
+        case( 4 )    ! Anisotropic coupled
+           mfield%ndim1 = 1    ; mfield%ndim2 = ndim*nphase ; mfield%ndim3 = ndim*nphase
+        case default
+           FLAbort( "Cannot determine multi_field memrory_type." )
+        end select
 
         return
     end subroutine allocate_multi_field

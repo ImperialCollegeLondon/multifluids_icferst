@@ -50,27 +50,13 @@ module multi_surface_tension
 
 contains
 
- SUBROUTINE CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, nphase, ncomp, &
-     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU, &
-     !U_SOURCE_CV, U_SOURCE, &
-     NCOLACV, FINACV, COLACV, MIDACV, &
-     SMALL_FINACV, SMALL_COLACV, SMALL_MIDACV, &
-     NCOLCT, FINDCT, COLCT, &
-     CV_NONODS, U_NONODS, X_NONODS, TOTELE, STOTEL, &
-     CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
-     CV_NLOC, U_NLOC, X_NLOC, CV_SNLOC, U_SNLOC, &
-     CV_NDGLN, CV_SNDGLN, X_NDGLN, U_NDGLN, U_SNDGLN, &
-     MAT_NLOC, MAT_NDGLN, MAT_NONODS,  &
-     NDIM,  &
-     NCOLM, FINDM, COLM, MIDM, &
-     XU_NLOC, XU_NDGLN, FINELE, COLELE, NCOLELE)
+ SUBROUTINE CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, &
+     PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, IPLIKE_GRAD_SOU)
 
      IMPLICIT NONE
 
      real, dimension( :, :, : ), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
      integer, intent( inout ) :: IPLIKE_GRAD_SOU
-     !real, dimension( cv_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE_CV
-     !real, dimension( u_nonods * nphase * ndim ), intent( inout ) :: U_SOURCE
 
      type(state_type), dimension( : ), intent( inout ) :: state
      type(state_type), intent( inout ) :: packed_state
@@ -78,36 +64,9 @@ contains
      type(multi_sparsities), intent(in) :: Mspars
      type(multi_ndgln), intent(in) :: ndgln
      type(multi_discretization_opts), intent(in) :: Mdisopt
-     integer, intent( in ) :: nphase, ncomp, cv_nonods, U_NONODS, X_NONODS, MAT_NONODS, &
-         NCOLACV, NCOLCT, TOTELE, CV_ELE_TYPE, CV_SELE_TYPE, U_ELE_TYPE, &
-         CV_NLOC, U_NLOC, X_NLOC, MAT_NLOC, CV_SNLOC, U_SNLOC, NDIM, &
-         NCOLM, XU_NLOC, NCOLELE, STOTEL
-     integer, dimension( : ), intent( in ) :: CV_NDGLN
-     integer, dimension( :), intent( in )  :: CV_SNDGLN
-     integer, dimension( : ), intent( in ) ::  X_NDGLN
-     integer, dimension( : ), intent( in ) :: U_NDGLN
-     integer, dimension( : ), intent( in ) :: U_SNDGLN
-     integer, dimension( : ), intent( in ) :: XU_NDGLN
-     integer, dimension( : ), intent( in ) :: MAT_NDGLN
-     integer, dimension( : ), intent( in ) :: FINACV
-     integer, dimension( : ), intent( in ) :: COLACV
-     integer, dimension( : ), intent( in ) :: MIDACV
-     integer, dimension(:), intent(in) :: small_finacv,small_colacv,small_midacv
-     integer, dimension( : ), intent( in ) :: FINDCT
-     integer, dimension( : ), intent( in ) :: COLCT
-
-     real, dimension( : ), allocatable :: COMP
-
-     integer, dimension( : ), intent( in ) :: FINDM
-     integer, dimension( : ), intent( in ) :: COLM
-     integer, dimension( : ), intent( in ) :: MIDM
-     integer, dimension( : ), intent( in ) :: FINELE
-     integer, dimension( : ), intent( in ) :: COLELE
+     
      !Local variables
-     real, dimension( : ), allocatable :: U_FORCE_X_SUF_TEN, U_FORCE_Y_SUF_TEN, U_FORCE_Z_SUF_TEN, &
-         CV_U_FORCE_X_SUF_TEN, CV_U_FORCE_Y_SUF_TEN, CV_U_FORCE_Z_SUF_TEN, X, Y, Z
-     real, dimension( STOTEL * CV_SNLOC ) :: DUMMY_SUF_COMP_BC
-     integer, dimension( STOTEL ) :: DUMMY_WIC_COMP_BC
+     real, dimension( : ), allocatable :: X, Y, Z
 
      integer :: iphase, icomp
      real :: coefficient
@@ -117,15 +76,15 @@ contains
      type( tensor_field ), pointer :: MFC_s
 
 
-     allocate( X(  X_NONODS ) ) ; X = 0.0
-     allocate( Y(  X_NONODS ) ) ; Y = 0.0
-     allocate( Z(  X_NONODS ) ) ; Z = 0.0
+     allocate( X(  Mdims%x_nonods ) ) ; X = 0.0
+     allocate( Y(  Mdims%x_nonods ) ) ; Y = 0.0
+     allocate( Z(  Mdims%x_nonods ) ) ; Z = 0.0
 
 
      x_all => extract_vector_field( packed_state, "PressureCoordinate" )
      x = x_all % val( 1, : )
-     if (ndim >=2 ) y = x_all % val( 2, : )
-     if (ndim >=3 ) z = x_all % val( 3, : )
+     if (Mdims%ndim >=2 ) y = x_all % val( 2, : )
+     if (Mdims%ndim >=3 ) z = x_all % val( 3, : )
 
 
      ! Initialise...
@@ -134,9 +93,9 @@ contains
      PLIKE_GRAD_SOU_GRAD = 0.0
 
 
-     do icomp = 1, ncomp
+     do icomp = 1, Mdims%ncomp
 
-         surface_tension = have_option( '/material_phase[' // int2str( nphase - 1 + icomp ) // &
+         surface_tension = have_option( '/material_phase[' // int2str( Mdims%nphase - 1 + icomp ) // &
              ']/is_multiphase_component/surface_tension' )
 
          if ( surface_tension ) then
@@ -145,10 +104,10 @@ contains
 
              ewrite(3,*) 'Calculating surface tension for component ', icomp
 
-             call get_option( '/material_phase[' // int2str( nphase - 1 + icomp ) // &
+             call get_option( '/material_phase[' // int2str( Mdims%nphase - 1 + icomp ) // &
                  ']/is_multiphase_component/surface_tension/coefficient', coefficient )
 
-             use_smoothing = have_option( '/material_phase[' // int2str( nphase - 1 + icomp ) // &
+             use_smoothing = have_option( '/material_phase[' // int2str( Mdims%nphase - 1 + icomp ) // &
                  ']/is_multiphase_component/surface_tension/smooth' )
 
              USE_PRESSURE_FORCE = .TRUE.
@@ -159,7 +118,7 @@ contains
                  IPLIKE_GRAD_SOU = 0
              end if
 
-             do iphase = 1, nphase
+             do iphase = 1, Mdims%nphase
 
                  CALL SURFACE_TENSION_WRAPPER_NEW( state, packed_state, &
                      PLIKE_GRAD_SOU_COEF( icomp, iphase, :), PLIKE_GRAD_SOU_GRAD( icomp, iphase, :), &
@@ -212,24 +171,13 @@ contains
         ! Local variables
      
         INTEGER, DIMENSION( : ), allocatable :: CV_OTHER_LOC, CV_SLOC2LOC
-        INTEGER, DIMENSION( : , : ), allocatable :: CV_SLOCLIST, FACE_ELE
+        INTEGER, DIMENSION( : , : ), allocatable :: FACE_ELE
         REAL, DIMENSION( : ), allocatable :: MASS_CV, MASS_ELE, CURVATURE
         !        ===> INTEGERS <===
-        INTEGER :: CV_NGI, CV_NGI_SHORT, SCVNGI, SBCVNGI, COUNT, JCOUNT, &
-        ELE, ELE2, GI, GCOUNT, SELE, &
-        NCOLGPTS, &
-        CV_SILOC, U_ILOC, U_JLOC, U_KLOC, &
-        CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
-        CV_NODJ, CV_NODJ_IPHA, &
-        CV_NODI, CV_NODI_IPHA, CV_NODI_JPHA, U_NODK, TIMOPT, &
-        JCOUNT_IPHA, IMID_IPHA, &
-        NFACE, X_NODI,  U_INOD, U_NOD, &
-        CV_INOD, CV_JNOD, MAT_NODI, FACE_ITS, NFACE_ITS, &
-        CVNOD, XNOD, CV_NOD, DG_CV_NOD, IDIM
+        INTEGER :: ELE, ELE2, GI, SELE, CV_SILOC, CV_ILOC, CV_JLOC, CV_JNOD, CV_NOD
         !        ===>  REALS  <===
-        REAL :: HDC, NN, DT, RR, RSUM, RRSUM
+        REAL :: HDC, NN, RR
         REAL, PARAMETER :: TOLER=1.0E-10
-        integer :: SMOOTH_ITS
         !        ===>  LOGICALS  <===
         LOGICAL :: QUAD_OVER_WHOLE_ELE, GOTDEC
         ! Approaches to calculate the curvature using Diffused Interface Approach or Distance Function Approach
@@ -244,15 +192,13 @@ contains
                RHS_CV_SHORT,CV_SOL, XSL, YSL, ZSL, & 
                S_INCOME, SDETWE, N_DOT_SQ,  &
                NORMALIZATION, CURV, ST, DIFF_COEF
-      INTEGER :: CV_ILOC2, CV_JLOC2, CV_KLOC, CV_NODK, CV_SJLOC, CV_SKLOC, &
-                 CV_INOD2, DG_NOD, DG_NODK, DG_JNOD, DG_JNOD2, DG_INOD, DG_INOD2, ITIME, &
-                 INTERAT_FACE, IFACE, SGI, SELE2, X_INOD, DG_NONODS, X_INOD2, OUTER_ITS, INNER_ITS, ITER
+      INTEGER :: CV_ILOC2, CV_JLOC2, CV_SJLOC, &
+                 DG_NOD, DG_JNOD, DG_JNOD2, DG_INOD2, ITIME, &
+                 INTERAT_FACE, IFACE, SGI, SELE2, X_INOD, DG_NONODS, X_INOD2, OUTER_ITS, INNER_ITS
       REAL :: EH, PSI_GI,PSI_SGI, SUR_DT, &
-              SN, VLN, SVLN_IN, SVLN_OUT, &
+              VLN, SVLN_IN, SVLN_OUT, &
               SAREA, &
-              SQRT_RR, SNN, RNN, DNN, &
-              A_STAR_X, A_STAR_Y, A_STAR_Z, P_STAR, RESIDGI, COEF, &
-              SXNN, SYNN, SZNN, RDISTX, RDISTY, RDISTZ
+              SQRT_RR, SNN, RNN, DNN
       LOGICAL :: GTHALF, LTHALF
       LOGICAL, DIMENSION(:), allocatable :: INTERFACE_ELE, INTERFACE_ELE2
       INTEGER :: IPIV(Mdims%cv_nloc)
@@ -467,12 +413,12 @@ contains
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
  
                CALL LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
-                                           Mdims%ndim,  Mdims%cv_nonods, Mdims%totele, ndgln%cv, &
+                                           Mdims%ndim,  Mdims%totele, ndgln%cv, &
                                            Mdims%x_nloc, ndgln%x, &
-                                           CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%cvweight, &
+                                           CV_GIdims%cv_ngi, Mdims%cv_nloc, &
                                            CV_funs%CVFEN, DevFuns%CVFENX_ALL(1,:,:), DevFuns%CVFENX_ALL(2,:,:), DevFuns%CVFENX_ALL(3,:,:), &
                                            Mdims%x_nonods, X, Y, Z, &
-                                           CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%stotel, Mdims%cv_snloc, &
+                                           CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%cv_snloc, &
                                            CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
                                            ELE, DevFuns%DETWEI, 1)
                                   
@@ -710,12 +656,12 @@ contains
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
  
             CALL LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
-                                           Mdims%ndim,  Mdims%cv_nonods, Mdims%totele, ndgln%cv, &
+                                           Mdims%ndim,  Mdims%totele, ndgln%cv, &
                                            Mdims%x_nloc, ndgln%x, &
-                                           CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%cvweight, &
+                                           CV_GIdims%cv_ngi, Mdims%cv_nloc, &
                                            CV_funs%CVFEN, DevFuns%CVFENX_ALL(1,:,:), DevFuns%CVFENX_ALL(2,:,:), DevFuns%CVFENX_ALL(3,:,:), &
                                            Mdims%x_nonods, X, Y, Z, &
-                                           CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%stotel, Mdims%cv_snloc, &
+                                           CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%cv_snloc, &
                                            CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
                                            ELE, DevFuns%DETWEI, 1)
             
@@ -785,12 +731,12 @@ contains
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
 ! calculate curvature:
             CALL LOC_1ST_DERIV_XYZ_DG_CURV(CURV, DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
-                         Mdims%ndim,  Mdims%cv_nonods, Mdims%totele, ndgln%cv, &
+                         Mdims%ndim,  Mdims%totele, ndgln%cv, &
                          Mdims%x_nloc, ndgln%x,&
-                         CV_GIdims%cv_ngi, Mdims%cv_nloc, CV_funs%cvweight, &
+                         CV_GIdims%cv_ngi, Mdims%cv_nloc, &
                          CV_funs%CVFEN, DevFuns%CVFENX_ALL(1,:,:), DevFuns%CVFENX_ALL(2,:,:), DevFuns%CVFENX_ALL(3,:,:), &
                          Mdims%x_nonods, X, Y, Z, &
-                         CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%stotel, Mdims%cv_snloc, &
+                         CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%cv_snloc, &
                          CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
                          ELE, DevFuns%DETWEI)
          END IF
@@ -847,18 +793,18 @@ contains
 contains
 
       SUBROUTINE LOC_1ST_DERIV_XYZ_DG_CURV(CURV, DISTANCE_FUN, SOL_DERIV_X, SOL_DERIV_Y, SOL_DERIV_Z, &
-                                           NDIM, CV_NONODS, TOTELE, CV_NDGLN, &
+                                           NDIM, TOTELE, CV_NDGLN, &
                                            X_NLOC, X_NDGLN, &
-                                           CV_NGI, CV_NLOC, CVWEIGHT, &
+                                           CV_NGI, CV_NLOC, &
                                            CVFEN, CVFENX, CVFENY, CVFENZ, &
                                            X_NONODS, X, Y, Z, &
-                                           NFACE, FACE_ELE, CV_SLOCLIST,STOTEL, CV_SNLOC, &
+                                           NFACE, FACE_ELE, CV_SLOCLIST, CV_SNLOC, &
                                            SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                                            ELE, DETWEI) 
 
       IMPLICIT NONE
-      INTEGER, intent( in ) :: NDIM,  CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
-           X_NONODS, STOTEL, CV_SNLOC, SBCVNGI, NFACE, ELE
+      INTEGER, intent( in ) :: NDIM,  TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
+           X_NONODS, CV_SNLOC, SBCVNGI, NFACE, ELE
       REAL, DIMENSION( :), intent( inout ) :: CURV
       REAL, DIMENSION( : ), intent( in ) :: DISTANCE_FUN
       REAL, DIMENSION( :), intent( in ) :: SOL_DERIV_X, SOL_DERIV_Y, SOL_DERIV_Z
@@ -866,7 +812,6 @@ contains
       INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
       INTEGER, DIMENSION( :,: ), intent( in ) ::  CV_SLOCLIST
       INTEGER, DIMENSION( :,: ), intent( in ) ::  FACE_ELE
-      REAL, DIMENSION( : ), intent( inout ) :: CVWEIGHT
       REAL, DIMENSION( :, : ), intent( in ) :: CVFEN, CVFENX, CVFENY, CVFENZ
       REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
       REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
@@ -883,7 +828,7 @@ contains
       REAL  :: VLNN, VLNX, VLNY, VLNZ, VLNX2, VLNY2, VLNZ2, &
                RR, SXNN, SYNN, SZNN, RDISTX, RDISTY, RDISTZ
       INTEGER :: CV_ILOC, CV_JLOC, DG_JNOD, CV_INOD, X_INOD, &
-                     CV_ILOC2, CV_JLOC2,DG_JNOD2, CV_INOD2, &  
+                     CV_ILOC2, CV_JLOC2,DG_JNOD2, &  
                      CV_SILOC, CV_SJLOC, &
                      ELE2, SELE, SELE2, &
                      GI, SGI, IFACE, X_INOD2, DG_NOD
@@ -891,7 +836,7 @@ contains
       REAL, DIMENSION( : ), allocatable :: XSL, YSL, ZSL, SNORMXN, SNORMYN, SNORMZN, SDETWE
       REAL ::  NORMX, NORMY, NORMZ, SAREA
       INTEGER :: IPIV(CV_NLOC)
-      REAL :: DGI_X, DGI_Y, DGI_Z, SQRT_RR, DN, SDGI_X, SDGI_Y, SDGI_Z, SDN
+      REAL :: DGI_X, DGI_Y, DGI_Z, SQRT_RR, DN!, SDGI_X, SDGI_Y, SDGI_Z, SDN
   
       ALLOCATE(SOL(CV_NLOC))
       ALLOCATE(RHS_DG(CV_NLOC))
@@ -997,7 +942,7 @@ contains
             ! The surface nodes on element face IFACE. 
          CV_SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
 
-         CV_OTHER_LOC = 0.0
+         CV_OTHER_LOC = 0
          IF(SELE2 == 0) THEN
             DO CV_SILOC = 1, CV_SNLOC
                CV_ILOC = CV_SLOC2LOC( CV_SILOC )
@@ -1186,30 +1131,29 @@ contains
       END SUBROUTINE LOC_1ST_DERIV_XYZ_DG_CURV
 
       SUBROUTINE LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X, SOL_DERIV_Y, SOL_DERIV_Z, &
-                                           NDIM, CV_NONODS, TOTELE, CV_NDGLN, &
+                                           NDIM, TOTELE, CV_NDGLN, &
                                            X_NLOC, X_NDGLN, &
-                                           CV_NGI, CV_NLOC, CVWEIGHT, &
+                                           CV_NGI, CV_NLOC, &
                                            CVFEN, CVFENX, CVFENY, CVFENZ, &
                                            X_NONODS, X, Y, Z, &
-                                           NFACE, FACE_ELE, CV_SLOCLIST,STOTEL, CV_SNLOC, &
+                                           NFACE, FACE_ELE, CV_SLOCLIST, CV_SNLOC, &
                                            SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                                            ELE, DETWEI, factor) 
 
       IMPLICIT NONE
-      INTEGER, intent( in ) :: NDIM,  CV_NONODS, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
-           X_NONODS, STOTEL, CV_SNLOC, SBCVNGI, NFACE, ELE, factor
+      INTEGER, intent( in ) :: NDIM,  TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
+           X_NONODS, CV_SNLOC, SBCVNGI, NFACE, ELE, factor
       REAL, DIMENSION( : ), intent( in ) :: DISTANCE_FUN
       REAL, DIMENSION( : ), intent( inout ) :: SOL_DERIV_X, SOL_DERIV_Y, SOL_DERIV_Z
       INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
       INTEGER, DIMENSION( : ), intent( in ) ::  X_NDGLN
       INTEGER, DIMENSION( :,: ), intent( in ) ::  CV_SLOCLIST
       INTEGER, DIMENSION( :,: ), intent( in ) ::  FACE_ELE
-      REAL, DIMENSION( : ), intent( inout ) :: CVWEIGHT
       REAL, DIMENSION( :, :), intent( in ) :: CVFEN, CVFENX, CVFENY, CVFENZ
       REAL, DIMENSION( : ), intent( in ) :: X, Y, Z
       REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN, SBCVFENSLX, SBCVFENSLY
       REAL, DIMENSION( : ), intent( in ) :: SBCVFEWEIGH
-	  REAL, DIMENSION( : ), intent( in ) :: DETWEI
+      REAL, DIMENSION( : ), intent( in ) :: DETWEI
       ! Local variables
  
   
@@ -1220,13 +1164,13 @@ contains
       REAL  :: VLNN, VLNX, VLNY, VLNZ, &
            RR, RDIST, SXNN, SYNN, SZNN, SXTT, SYTT, SZTT
       INTEGER :: CV_ILOC, CV_JLOC, DG_JNOD, CV_INOD, X_INOD, &
-                     CV_ILOC2, CV_JLOC2,DG_JNOD2, CV_INOD2, &  
+                     CV_ILOC2, CV_JLOC2,DG_JNOD2, &  
                      CV_SILOC, CV_SJLOC, &
                      ELE2, SELE, SELE2, &
-                     GI, SGI, IFACE, X_INOD2, DG_INOD, DG_INOD2
+                     GI, SGI, IFACE, X_INOD2, DG_INOD
       LOGICAL :: GOTDEC
       REAL, DIMENSION( : ), allocatable :: XSL, YSL, ZSL, SNORMXN, SNORMYN, SNORMZN, SDETWE
-      REAL ::  NORMX, NORMY, NORMZ, SAREA, VLNX2, VLNY2, VLNZ2, SXNN_DIST, SYNN_DIST, SZNN_DIST
+      REAL ::  NORMX, NORMY, NORMZ, SAREA
       INTEGER :: IPIV(CV_NLOC)
       REAL, PARAMETER :: PI=3.14159265359
   
@@ -1283,7 +1227,7 @@ contains
             ! The surface nodes on element face IFACE. 
          CV_SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
 
-         CV_OTHER_LOC = 0.0
+         CV_OTHER_LOC = 0
          IF(SELE2 == 0) THEN
             DO CV_SILOC = 1, CV_SNLOC
                CV_ILOC = CV_SLOC2LOC( CV_SILOC )
