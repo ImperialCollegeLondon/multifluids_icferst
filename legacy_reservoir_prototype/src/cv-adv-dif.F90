@@ -365,14 +365,12 @@ contains
         !Logical to check if we using a conservative method or not, to save cpu time
         logical :: conservative_advection
         !        ===> INTEGERS <===
-!!$        INTEGER :: CV_GIdims%cv_ngi, CV_NGI_SHORT, CV_GIdims%scvngi, CV_GIdims%sbcvngi, COUNT, ICOUNT, JCOUNT, &
         INTEGER :: COUNT, ICOUNT, JCOUNT, &
             ELE, ELE2, GI, GCOUNT, SELE,   &
             CV_SILOC, U_KLOC, &
             CV_ILOC, CV_JLOC, IPHASE, JPHASE, &
             CV_NODJ, &
             CV_NODI, U_NODK, TIMOPT, &
-!!$            CV_GIdims%nface, X_NODI,  X_NODJ, &
             X_NODI,  X_NODJ, &
             CV_INOD, MAT_NODI,  MAT_NODJ, FACE_ITS, NFACE_ITS
         !        ===>  REALS  <===
@@ -1562,7 +1560,7 @@ contains
                                     TOLD_ALL_J( : ), TOLD_ALL(:, CV_NODI), &
                                     ELE, ELE2, CVNORMX_ALL( :, GI ), &
                                     DTX_ELE_ALL(:,:,:,ELE), DTOLDX_ELE_ALL(:,:,:,ELE),  DTX_ELE_ALL(:,:,:,MAX(1,ELE2)), DTOLDX_ELE_ALL(:,:,:,MAX(ELE2,1)), &
-                                    SELE, Mdims%stotel, LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
+                                    LOC_WIC_T_BC_ALL, CV_OTHER_LOC, MAT_OTHER_LOC, Mdims%cv_snloc, CV_SLOC2LOC, &
                                     on_domain_boundary, between_elements )
                             ELSE
                                 DIFF_COEF_DIVDX = 0.0
@@ -4899,14 +4897,14 @@ contains
         TOLD_CV_NODJ, TOLD_CV_NODI, &
         ELE, ELE2, CVNORMX_ALL,  &
         LOC_DTX_ELE_ALL, LOC_DTOLDX_ELE_ALL, LOC2_DTX_ELE_ALL, LOC2_DTOLDX_ELE_ALL, &
-        SELE, STOTEL, LOC_WIC_T_BC, CV_OTHER_LOC, MAT_OTHER_LOC, CV_SNLOC, CV_SLOC2LOC, &
+        LOC_WIC_T_BC, CV_OTHER_LOC, MAT_OTHER_LOC, CV_SNLOC, CV_SLOC2LOC, &
         on_domain_boundary, between_elements )
         ! This sub calculates the effective diffusion coefficientd DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX
         ! based on a non-linear method and a non-oscillating scheme.
         IMPLICIT NONE
         INTEGER, intent( in ) :: CV_NLOC, MAT_NLOC, CV_NONODS,NPHASE, TOTELE, MAT_NONODS, &
-            &                   SCVNGI, GI, NDIM, ELE, ELE2, &
-            &                   SELE, STOTEL, CV_SNLOC
+            &                    SCVNGI, GI, NDIM, ELE, ELE2, &
+            &                    CV_SNLOC
         REAL, intent( in ) :: HDC
         LOGICAL, intent( in ) :: on_domain_boundary, between_elements
         REAL, DIMENSION( NPHASE ), intent( in ) :: T_CV_NODJ, T_CV_NODI, &
