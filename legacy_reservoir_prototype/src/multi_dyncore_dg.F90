@@ -489,35 +489,7 @@ contains
                      !If using ADAPTIVE FPI with backtracking
                      if (backtrack_par_factor < 0) then
                          if (Auto_max_backtrack) then!The maximum backtracking factor depends on the Courant number
-                            physics_adjustment = 1.!If there are physics, the problem is more complex
-                            if (have_option("/physical_parameters/gravity")) physics_adjustment = physics_adjustment * 1.5
-                            if (have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)) &
-                                                physics_adjustment = physics_adjustment * 2.0
-                            if (Mdims%ncomp > 0 ) physics_adjustment = physics_adjustment * 1.5
-
-                            if (have_option_for_any_phase("/multiphase_properties/Sat_overRelax", Mdims%nphase)) &
-                                                physics_adjustment = physics_adjustment * 0.8
-
-                             !For the time being, it is based on this simple table
-                             if (Courant_number * physics_adjustment > 40.) then
-                                 backtrack_par_factor = -0.1
-                             else if (Courant_number * physics_adjustment > 25.) then
-                                 backtrack_par_factor = -0.15
-                             else if (Courant_number * physics_adjustment > 15.) then
-                                 backtrack_par_factor = -0.2
-                             else if (Courant_number * physics_adjustment > 8.) then
-                                 backtrack_par_factor = -0.33
-                             else if (Courant_number * physics_adjustment > 5.) then
-                                backtrack_par_factor = -0.5
-                             else if (Courant_number * physics_adjustment > 1) then
-                                backtrack_par_factor = -0.8
-                             else
-                                backtrack_par_factor = -1.
-                            end if
-                            !For the first calculation, the Courant number is usually zero, hence we force a safe value here
-                            if (first_time_step .and. nonlinear_iteration == 1) backtrack_par_factor = -0.05
-                            !Use the most restrictive value across all the processors
-                            if (IsParallel()) call allmin(backtrack_par_factor)
+                           call auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
                          end if
 
                          !Calculate the actual residual using a previous backtrack_par
@@ -602,6 +574,56 @@ contains
              end if
              nullify(DEN_ALL); nullify(DENOLD_ALL)
              ewrite(3,*) 'Leaving VOLFRA_ASSEM_SOLVE'
+
+         contains
+
+         subroutine auto_backtracking(backtrack_par_factor, courant_number, first_time_step, nonlinear_iteration)
+            !The maximum backtracking factor is calculated based on the Courant number and physical effects ocurring in the domain
+            implicit none
+            real, intent(inout) :: backtrack_par_factor
+            real, intent(in) :: courant_number
+            logical, intent(in) :: first_time_step
+            integer, intent(in) :: nonlinear_iteration
+            !Local variables
+            real :: physics_adjustment
+
+            physics_adjustment = 1.!If there are physics, the problem is more complex
+            if (have_option("/physical_parameters/gravity")) physics_adjustment = physics_adjustment * 1.5
+            if (have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)) &
+                physics_adjustment = physics_adjustment * 2.0
+            if (Mdims%ncomp > 0 ) physics_adjustment = physics_adjustment * 1.5
+
+            if (have_option_for_any_phase("/multiphase_properties/Sat_overRelax", Mdims%nphase)) &
+                physics_adjustment = physics_adjustment * 0.8
+
+            !For the time being, it is based on this simple table
+            if (Courant_number * physics_adjustment > 40.) then
+                backtrack_par_factor = -0.1
+            else if (Courant_number * physics_adjustment > 25.) then
+                backtrack_par_factor = -0.15
+            else if (Courant_number * physics_adjustment > 15.) then
+                backtrack_par_factor = -0.2
+            else if (Courant_number * physics_adjustment > 8.) then
+                backtrack_par_factor = -0.33
+            else if (Courant_number * physics_adjustment > 5.) then
+                backtrack_par_factor = -0.5
+            else if (Courant_number * physics_adjustment > 1) then
+                backtrack_par_factor = -0.8
+            else
+                backtrack_par_factor = -1.
+            end if
+            !For the first calculation, the Courant number is usually zero, hence we force a safe value here
+            if (first_time_step .and. nonlinear_iteration == 1) backtrack_par_factor = -0.05
+            !Use the most restrictive value across all the processors
+            if (IsParallel()) call allmin(backtrack_par_factor)
+
+
+
+
+         end subroutine auto_backtracking
+
+
+
     end subroutine VolumeFraction_Assemble_Solve
 
 
@@ -883,6 +905,7 @@ contains
             end if
             allocate( Mmat%PIVIT_MAT( Mdims%ndim * Mdims%nphase * Mdims%u_nloc, Mdims%ndim * Mdims%nphase * Mdims%u_nloc, Mdims%totele ) ); Mmat%PIVIT_MAT=0.0
         end if
+
         !If it is not porous media or there are more than one pressure, PIVIT_MAT needs to be recalculated, hence we set it to zero
         if (.not.is_porous_media .or. Mdims%npres > 1) then
             !Check if it requires allocation

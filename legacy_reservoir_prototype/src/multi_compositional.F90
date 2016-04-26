@@ -61,8 +61,7 @@ contains
         real, dimension( :, :, : ), intent( inout ) :: comp_absorb
 
         ! Local Variables
-        integer :: sphase,&
-            iphase, jphase, ele, cv_iloc, cv_nod, jcomp
+        integer :: iphase, jphase, ele, cv_iloc, cv_nod, jcomp
         real :: dt, alpha_beta, max_k, min_k, alpha
         character( len = option_path_len ) :: option_path
         logical :: KComp_Sigmoid
@@ -79,10 +78,6 @@ contains
 
         tfield=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         satura => tfield%val(1,:,:)
-
-        !sphase is the starting phase
-        !if three phases, the first one is water and therefore does not take part in the compositional
-        sphase = Mdims%nphase - 1
 
         allocate( sum_nod( Mdims%cv_nonods ), volfra_pore_nod( Mdims%cv_nonods ), &
             k_comp( Mdims%ncomp, Mdims%nphase, Mdims%nphase ), k_comp2( Mdims%ncomp, Mdims%cv_nonods, Mdims%nphase, Mdims%nphase ) )
@@ -115,8 +110,6 @@ contains
         END DO
         VOLFRA_PORE_NOD = VOLFRA_PORE_NOD / SUM_NOD
 
-        !If water phase, we stablish no interchange with the other phases
-        if (sphase == 2) COMP_ABSORB(1,1,:) = 1.0
 
         MIN_K = max( 1.e-1, MINVAL( K_COMP( ICOMP, : , : )))
         MAX_K = MAXVAL( K_COMP( ICOMP, : , : ) )
@@ -125,7 +118,7 @@ contains
             K_Comp2 )
 
         DO CV_NOD = 1, Mdims%cv_nonods
-            DO IPHASE = sphase, Mdims%nphase
+            DO IPHASE = 1, Mdims%nphase
                 DO JPHASE = IPHASE + 1, Mdims%nphase, 1
 
                     ALPHA= ALPHA_BETA * VOLFRA_PORE_NOD( CV_NOD ) * &
@@ -147,8 +140,8 @@ contains
         END DO
 
         DO CV_NOD = 1, Mdims%cv_nonods
-            DO IPHASE = sphase, Mdims%nphase
-                DO JPHASE = sphase, IPHASE - 1
+            DO IPHASE = 1, Mdims%nphase
+                DO JPHASE = 1, IPHASE - 1
 
                     ALPHA= ALPHA_BETA * VOLFRA_PORE_NOD( CV_NOD ) * &
                         ( max(0.0,SATURA (IPHASE, CV_NOD ) * &
@@ -170,7 +163,7 @@ contains
 
         do cv_nod = 1, Mdims%cv_nonods
             if( satura( 1, cv_nod ) > 0.95 ) then
-              do iphase = sphase, Mdims%nphase
+              do iphase = 1, Mdims%nphase
                  do jphase = min( iphase + 1, Mdims%nphase ), Mdims%nphase
                     Comp_Absorb( iphase, jphase, cv_nod ) = &
                        Comp_Absorb( iphase, jphase, cv_nod ) * max( 0.01, &
@@ -587,7 +580,5 @@ contains
 
       RETURN
     END SUBROUTINE CAL_COMP_SUM2ONE_SOU
-
-
 
 end module Compositional_Terms

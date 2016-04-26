@@ -48,7 +48,7 @@ module multiphase_EOS
     use boundary_conditions, only: get_entire_boundary_condition
     use Field_Options, only: get_external_coordinate_field
     use initialise_fields_module, only: initialise_field_over_regions
-    use multi_tools, only: CALC_FACE_ELE, assign_val
+    use multi_tools, only: CALC_FACE_ELE, assign_val, table_quadratic_interpolation
     implicit none
 
 
@@ -73,6 +73,19 @@ contains
         integer :: icomp, iphase, ncomp, sc, ec, sp, ep, ip, stat, cv_iloc, cv_nod, ele
         logical :: boussinesq
         logical, parameter :: harmonic_average=.false.
+
+
+        !For simple Black-Oil modelling the density have to account for the disolved gas in it
+        !and the three phases are modified simultaneously. Hence other models are overwritten
+        if (have_option( "/physical_parameters/black-oil_PVT_table" ))then
+            if (Mdims%nphase == 3.and. Mdims%ncomp<1) then
+                call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 1)
+                return
+            else
+                ewrite(1,*) "WARNING: Black-Oil model activated but three phases are not present and/or there are components"
+            end if
+        end if
+
 
         ncomp_in = Mdims%ncomp ; nphase = Mdims%nphase ; ndim = Mdims%ndim
         cv_nonods = Mdims%cv_nonods ; cv_nloc = Mdims%cv_nloc ; totele = Mdims%totele
@@ -722,7 +735,7 @@ contains
     subroutine Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, Mspars, ndgln, &
                                                       upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
        implicit none
-       type( state_type ), dimension( : ), intent( in ) :: state
+       type( state_type ), dimension( : ), intent( inout ) :: state
        type( state_type ), intent( inout ) :: packed_state
        type( multi_dimensions ), intent( in ) :: Mdims
        type(multi_shape_funs), intent(inout) :: CV_funs
@@ -737,11 +750,14 @@ contains
        real, dimension(Mdims%ndim, Mdims%ndim, Mdims%totele), target:: inv_perm
        integer :: i
 
-
        perm => extract_tensor_field( packed_state, "Permeability" )
        do i = 1, size(perm%val,3)
         inv_perm( :, :, i)=inverse(perm%val( :, :, i))
        end do
+
+!       !For simple Black-Oil modelling the density have to account for the disolved gas in it
+!       if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)&
+!               call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 4)
 
        PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
        call Calculate_PorousMedia_adv_terms( state, packed_state, Mdims, ndgln, &
@@ -807,7 +823,7 @@ contains
                allocate( satura2( Mdims%n_in_pres, size(SATURA,2) ) )
                material_absorption = 0.0;material_absorption2 = 0. ; satura2 = 0.
 
-               !sprint_to_do; avoiding the inverse gives problems, probably for inconsistency reasons... think about that
+               !sprint_to_do; avoiding the inverse gives problems, probably for inconsistency reasons...
 !               allocate( inv_mat_absorp( Mdims%nphase * Mdims%ndim, Mdims%nphase * Mdims%ndim, Mdims%mat_nonods )); inv_mat_absorp = 0
 !               CALL calculate_absorption2( packed_state, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
 !                   material_absorption(1:Mdims%n_in_pres*Mdims%ndim,1:Mdims%n_in_pres*Mdims%ndim,:), PERM%val, visc_phases, IDs_ndgln, &
@@ -2357,11 +2373,215 @@ contains
 
     end function JWLdensity
 
-!!-JWL eqaution functions
+    !!-JWL eqaution functions
 
 
 
 
+
+
+
+    subroutine simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag, viscosities)
+        !In this subroutine phase change is performed based on PVT tables and locally per cell.
+        !This is the approach used in eclipse 100. The phase change only consider phaseVolumeFractions,
+        !(http://petrowiki.org/Oil_fluid_characteristics)
+        implicit none
+        type( state_type ), dimension(:), intent( inout ) :: state
+        type( state_type ), intent( inout ) :: packed_state
+        type(multi_dimensions), intent(in) :: Mdims
+        integer, intent(in) :: flash_flag!Selects which field to update 0 => All; 1 => Density; 2 => Saturation; 3 => viscosity
+        real, optional, intent(in) :: viscosities
+        !Local variables                 !4 => Saturation and viscosity;
+        type( tensor_field ), pointer :: pressure, saturation, density, visc_liquid, visc_vapour,DRhoDP
+        real :: RhoPlus, RhoMinus, liquid_fraction, aqua_sat
+        integer :: cv_inod, iphase, cv_iloc, ele, k
+        real, dimension(3) :: density_reference
+        real, dimension(:,:), allocatable :: PVT_table
+        real, dimension(:), allocatable :: perturbation_pressure
+        character( len = option_path_len ) :: PVT_table_path
+        !Phase 1 => aqua phase; no interaction with other phases.
+        !Phase 2 => liquid phase
+        !Phase 3 => vapour phase
+
+        if (Mdims%nphase /=3 ) then
+            ewrite(1,*) "WARNING: simple_standard_Black_Oil requires exactly 3 phases defined"
+            return
+        end if
+
+        !Retrieve path to the .csv file with the data
+        call get_option("/physical_parameters/black-oil_PVT_table", PVT_table_path)
+
+        !Manual table for the time being
+        if (trim(PVT_table_path)=="internal") then
+            call populate_with_Texas_Black_Oil(PVT_table, density_reference)
+        else
+            !READ FROM FILE
+            print *, "WARNING: OPTION NOT AVAILABLE YET, USING INTERNAL..."
+            call populate_with_Texas_Black_Oil(PVT_table, density_reference)
+        end if
+        pressure => extract_tensor_field(packed_state,"PackedFEPressure")
+
+        !Adjust densities based on the PVT table and reference densities
+        if (flash_flag == 0 .or. flash_flag == 1) then
+            allocate(perturbation_pressure(Mdims%cv_nonods))
+            perturbation_pressure = max( 1.e-10, 1.e-3 * abs( pressure%val(1,1,:) ) )
+            density => extract_tensor_field( packed_state,"PackedDensity" )
+            DRhoDP => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
+            do cv_inod = 1, mdims%cv_nonods
+                !Aqua density
+                density%val(1,1,cv_inod) = density_reference(1)
+                !Obtain formation densities by considering the disolution of gas in the oil and adjusted with the voluemtric factors
+                !density_liquid_formation = (density_liquid + density_vapour * disolved)/Liquid_volumetric_factor
+                density%val(1,2,cv_inod) = (density_reference(2) + density_reference(3)*&
+                    eval_table(pressure%val(1,1,cv_inod), PVT_table,4))/eval_table(pressure%val(1,1,cv_inod), PVT_table,2)
+                density%val(1,3,cv_inod) = density_reference(3)/ eval_table(pressure%val(1,1,cv_inod), PVT_table,3)
+
+                !Perturbation density
+                !Phase 1 is incompressible
+                DRhoDP%val(1,1,cv_inod) = 0
+                !Phase 2 (Change comments in this section to make phase2 incompressible and also force density_old=density)
+!                DRhoDP%val(1,2,cv_inod) = 0
+                RhoPlus = (density_reference(2) + density_reference(3)*&
+                    eval_table(pressure%val(1,1,cv_inod)+ perturbation_pressure(cv_inod), PVT_table,4))/&
+                    eval_table(pressure%val(1,1,cv_inod) + perturbation_pressure(cv_inod), PVT_table,2)
+                RhoMinus =(density_reference(2) + density_reference(3)*&
+                    eval_table(pressure%val(1,1,cv_inod)- perturbation_pressure(cv_inod), PVT_table,4))/&
+                    eval_table(pressure%val(1,1,cv_inod) - perturbation_pressure(cv_inod), PVT_table,2)
+                DRhoDP%val(1,2,cv_inod) = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure(cv_inod)
+                !Phase 3
+                RhoPlus = density_reference(3)/ eval_table(pressure%val(1,1,cv_inod) + perturbation_pressure(cv_inod), PVT_table,3)
+                RhoMinus =density_reference(3)/ eval_table(pressure%val(1,1,cv_inod) - perturbation_pressure(cv_inod), PVT_table,3)
+                DRhoDP%val(1,3,cv_inod) = 0.5 * ( RhoPlus - RhoMinus ) / perturbation_pressure(cv_inod)
+            end do
+
+            deallocate(perturbation_pressure)
+        end if
+
+        if (flash_flag == 0 .or. flash_flag == 2 .or. flash_flag == 4) then
+            saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+            !Obtain new saturations
+            !By considering the non aqueous phases as a whole we can allow the creation of vapour and the creation of liquid
+            !Since this model specifies the percentage of non aqueous phases together
+            do cv_inod = 1, mdims%cv_nonods
+                liquid_fraction = eval_table(pressure%val(1,1,cv_inod), PVT_table,7)
+                aqua_sat = saturation%val(1,1,cv_inod)
+                 saturation%val(1,2,cv_inod) = liquid_fraction * (1.-aqua_sat)
+                 saturation%val(1,3,cv_inod) = (1.-liquid_fraction)* (1.-aqua_sat)
+            end do
+        end if
+
+         !TO GET THIS WORKING WE NEED TO CHANGE THE VISCOSITY IN Calculate_PorousMedia_AbsorptionTerms
+!        if (flash_flag == 0 .or. flash_flag == 3 .or. flash_flag == 4) then
+!            if (present(viscosities)) then!Modify the introduced viscosity data, not the one in packed state
+!                do cv_inod = 1, mdims%cv_nonods
+!                    !Have to change Calculate_PorousMedia_AbsorptionTerms to consider non-homogenenous viscosities
+!                    !Obtain new viscosities(just diagonal tensor)
+!                    do k = 1, Mdims%ndim
+!                        viscosities%val(2,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,5)
+!                        viscosities%val(3,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,6)
+!                    end do
+!                end do
+!            else
+!                visc_liquid => extract_tensor_field(state(2),"Viscosity")
+!                visc_vapour => extract_tensor_field(state(3),"Viscosity")
+!                do cv_inod = 1, mdims%cv_nonods
+!                    !Have to change Calculate_PorousMedia_AbsorptionTerms to consider non-homogenenous viscosities
+!                    !Obtain new viscosities(just diagonal tensor)
+!                    do k = 1, Mdims%ndim
+!                        visc_liquid%val(k,k,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,5)
+!                        visc_vapour%val(k,k,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,6)
+!                    end do
+!                end do
+!            end if
+!        end if
+        deallocate(PVT_table)
+
+    contains
+
+        real function eval_table(input_pressure, PVT_table, prop)
+            !Quadratic interpolation
+            implicit none
+            integer, intent(in) :: prop!Which property are you interested in
+            real, intent(in) :: input_pressure
+            real, dimension(:,:), intent(in) :: PVT_table
+            !Local variables
+            integer :: i, k
+            real, dimension(3) :: P_pos, prop_pos
+            !Check position of the input pressure in the table
+            !Considering highest pressure in possition 1
+            do i = 1, size(PVT_table,2)
+                if (PVT_table(1,i)<input_pressure) exit
+            end do
+
+            if (i == 1) then
+                eval_table = PVT_table(prop,1)
+            else if (i >= size(PVT_table,2)) then
+                eval_table = PVT_table(prop,size(PVT_table,2))
+            else
+                i = max(i - 3, 0)!Shift the position to make sure we use values surrounding the input pressure
+                do k = 1, 3
+                    P_pos(k) = PVT_table(1,i+k)
+                    prop_pos(k) = PVT_table(prop,i+k)
+                end do
+                eval_table = table_quadratic_interpolation(P_pos, prop_pos, input_pressure)
+            end if
+
+        end function eval_table
+
+
+        subroutine populate_with_Texas_Black_Oil(PVT_table, density_reference)
+            implicit none!Everything in the S.I.
+            real, dimension(:,:), allocatable, intent(inout) :: PVT_table
+            real, dimension(3), intent(inout) :: density_reference
+
+            if(allocated(PVT_table)) deallocate(PVT_table)
+            allocate(PVT_table(7,12))
+            !Aqua density_reference
+            density_reference(1) = 1000;
+            !Liquid density_reference ; !Vapour density reference
+            density_reference(2) = 711; density_reference(3) = 1.3
+            !#####Pressure####        !#Volumetric factor liquid#
+            PVT_table(1,1)  = 13789520; PVT_table(2,1)  = 1.467
+            PVT_table(1,2)  = 12410568; PVT_table(2,2)  = 1.472
+            PVT_table(1,3)  = 11721092; PVT_table(2,3)  = 1.475
+            PVT_table(1,4)  = 11307406; PVT_table(2,4)  = 1.463
+            PVT_table(1,5)  = 11031616; PVT_table(2,5)  = 1.453
+            PVT_table(1,6)  = 9652664 ; PVT_table(2,6)  = 1.408
+            PVT_table(1,7)  = 8273712 ; PVT_table(2,7)  = 1.359
+            PVT_table(1,8)  = 6894760 ; PVT_table(2,8)  = 1.322
+            PVT_table(1,9)  = 5515808 ; PVT_table(2,9)  = 1.278
+            PVT_table(1,10) = 4136856 ; PVT_table(2,10) = 1.237
+            PVT_table(1,11) = 2757904 ; PVT_table(2,11) = 1.194
+            PVT_table(1,12) = 1378952 ; PVT_table(2,12) = 1.141
+            !#Volumetric factor vapour#!#####Dissolved GOR######
+            PVT_table(3,1)  = 1.920 ; PVT_table(4,1)  = 838.5
+            PVT_table(3,2)  = 1.920 ; PVT_table(4,2)  = 838.5
+            PVT_table(3,3)  = 1.920 ; PVT_table(4,3)  = 838.5
+            PVT_table(3,4)  = 1.920 ; PVT_table(4,4)  = 816.1
+            PVT_table(3,5)  = 1.977 ; PVT_table(4,5)  = 798.4
+            PVT_table(3,6)  = 2.308 ; PVT_table(4,6)  = 713.4
+            PVT_table(3,7)  = 2.730 ; PVT_table(4,7)  = 621.0
+            PVT_table(3,8)  = 3.328 ; PVT_table(4,8)  = 548.0
+            PVT_table(3,9)  = 4.163 ; PVT_table(4,9)  = 464.0
+            PVT_table(3,10) = 5.471 ; PVT_table(4,10) = 383.9
+            PVT_table(3,11) = 7.786 ; PVT_table(4,11) = 297.4
+            PVT_table(3,12) = 13.331; PVT_table(4,12) = 190.9
+            !#####Viscosity liquid####!#####Viscosity vapour###  !#####Volume liquid Fraction######
+            PVT_table(5,1)  = 3.201d-4; PVT_table(6,1)  = 1.57d-5;PVT_table(7,1)  = 1.0
+            PVT_table(5,2)  = 3.114d-4; PVT_table(6,2)  = 1.57d-5;PVT_table(7,2)  = 1.0
+            PVT_table(5,3)  = 3.071d-4; PVT_table(6,3)  = 1.57d-5;PVT_table(7,3)  = 1.0
+            PVT_table(5,4)  = 3.123d-4; PVT_table(6,4)  = 1.57d-5;PVT_table(7,4)  = 0.978
+            PVT_table(5,5)  = 3.169d-4; PVT_table(6,5)  = 1.55d-5;PVT_table(7,5)  = 0.96
+            PVT_table(5,6)  = 3.407d-4; PVT_table(6,6)  = 1.40d-5;PVT_table(7,6)  = 0.867
+            PVT_table(5,7)  = 3.714d-4; PVT_table(6,7)  = 1.38d-5;PVT_table(7,7)  = 0.754
+            PVT_table(5,8)  = 3.973d-4; PVT_table(6,8)  = 1.32d-5;PVT_table(7,8)  = 0.644
+            PVT_table(5,9)  = 4.329d-4; PVT_table(6,9)  = 1.26d-5;PVT_table(7,9)  = 0.513
+            PVT_table(5,10) = 4.712d-4; PVT_table(6,10) = 1.21d-5;PVT_table(7,10)  = 0.375
+            PVT_table(5,11) = 5.189d-4; PVT_table(6,11) = 1.16d-5;PVT_table(7,11)  = 0.232
+            PVT_table(5,12) = 5.893d-4; PVT_table(6,12) = 1.08d-5;PVT_table(7,12)  = 0.097
+        end subroutine populate_with_Texas_Black_Oil
+
+    end subroutine simple_standard_Black_Oil
 
 
 

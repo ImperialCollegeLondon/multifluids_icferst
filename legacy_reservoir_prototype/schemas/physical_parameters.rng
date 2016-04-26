@@ -9,6 +9,9 @@
         <ref name="coriolis_options"/>
       </optional>
       <optional>
+        <ref name="black_oil_options"/>
+      </optional>
+      <optional>
         <ref name="mobility_options"/>
       </optional>
     </element>
@@ -111,6 +114,16 @@ where the return value is a float.</a:documentation>
           <ref name="python_code"/>
         </element>
       </choice>
+    </element>
+  </define>
+  <define name="black_oil_options">
+    <element name="black-oil_PVT_table">
+      <a:documentation>This option enables the use of an standard Black-Oil modelling
+based on PVT tables. The phase change is performed locally to the nodes.
+
+Introduce the relative path to the .csv file.
+Introduce "internal" to use the internal table.</a:documentation>
+      <ref name="anystring"/>
     </element>
   </define>
   <define name="f_plane_options">

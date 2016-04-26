@@ -97,6 +97,7 @@ multi_compositional.o ../include/compositional_terms.mod: \
    ../../include/fldebug.mod ../../include/futils.mod \
    ../../include/shape_functions.mod ../include/copy_outof_state.mod \
    ../include/matrix_operations.mod ../include/multi_data_types.mod \
+   ../include/multiphase_eos.mod \
    ../include/shape_functions_linear_quadratic.mod \
    ../include/shape_functions_prototype.mod
 
@@ -104,10 +105,11 @@ multi_compositional.o ../include/compositional_terms.mod: \
 	@true
 
 multi_data_types.o ../include/multi_data_types.mod: multi_data_types.F90 \
-   ../../include/confdefs.h ../../include/fdebug.h \
+   ../../include/confdefs.h ../../include/fdebug.h ../../include/fields.mod \
    ../../include/fields_allocates.mod ../../include/fields_data_types.mod \
    ../../include/fldebug.mod ../../include/global_parameters.mod \
-   ../../include/sparse_tools.mod ../../include/sparse_tools_petsc.mod
+   ../../include/sparse_tools.mod ../../include/sparse_tools_petsc.mod \
+   ../../include/state_module.mod
 
 ../include/multiphase_1d_engine.mod: multi_dyncore_dg.o
 	@true
@@ -142,8 +144,7 @@ multi_eos.o ../include/multiphase_eos.mod: multi_eos.F90 \
    ../../include/sparse_tools.mod ../../include/sparsity_patterns_meshes.mod \
    ../../include/spud.mod ../../include/state_module.mod \
    ../../include/vector_tools.mod ../include/copy_outof_state.mod \
-   ../include/matrix_operations.mod ../include/multi_tools.mod \
-   ../include/shape_functions_linear_quadratic.mod
+   ../include/multi_tools.mod ../include/shape_functions_linear_quadratic.mod
 
 ../include/multiphase_fractures.mod: multi_fracture.o
 	@true

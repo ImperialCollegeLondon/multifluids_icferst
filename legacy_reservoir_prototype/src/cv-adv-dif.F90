@@ -1851,7 +1851,7 @@ contains
                                     UGI_COEF_ELE_ALL, UGI_COEF_ELE2_ALL,  &
                                     NDOTQNEW, NDOTQOLD, LIMD, LIMT, LIMTOLD, LIMDT, LIMDTOLD, LIMT_HAT, NDOTQ_HAT, &
                                     FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
-                                    RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, loc2_u, THETA_VEL, &
+                                    RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, loc2_u, THETA_VEL,&
                                     rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
                                     SUF_INT_MASS_MATRIX2, recal_c_cv_rhs)
                                 do ipres=1,Mdims%npres
@@ -4363,7 +4363,6 @@ contains
                 call halo_update(psi_int(it)%ptr)
             end do
         end if
-
         ! solve the petsc matrix
         if(do_not_project) then
             do it = 1, size(fempsi)
@@ -6100,7 +6099,7 @@ contains
         NDOTQ_HAT, &
         FTHETA_T2, ONE_M_FTHETA_T2OLD, FTHETA_T2_J, ONE_M_FTHETA_T2OLD_J, integrate_other_side_and_not_boundary, &
         RETRIEVE_SOLID_CTY,theta_cty_solid, &
-        loc_u, loc2_u, THETA_VEL,&
+        loc_u, loc2_u, THETA_VEL, &
         ! local memory sent down for speed...
         UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, rcon_in_ct, rcon_j_in_ct,    UDGI_ALL, UOLDDGI_ALL, UDGI_HAT_ALL, &
         CAP_DIFF_COEF_DIVDX, SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS)
@@ -6186,9 +6185,26 @@ contains
                         !This is to perform the average between two DG pressures (same mass => 0.5)
                         Mass_corrector = (MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
 
+                        !WORSE THAN THE SIMPLE MASS_CORRECTION
+!                        !Mass correction also considering permeabilities (Harmonic average)
+!                        if (iphase == 1) then
+!                            perm_corrector = (perm%val(:,:, ele)*MASS_ELE( ELE )+perm%val(:,:, ele2)*MASS_ELE( ELE2 ))
+!                            call invert(perm_corrector)
+!                            perm_corrector = matmul(perm_corrector, perm%val(:,:, ele)*MASS_ELE( ELE ))
+!                            Mass_corrector = dot_product(CVNORMX_ALL(:, GI),matmul(perm_corrector, CVNORMX_ALL(:, GI)))
+!                        end if
+
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Mass_corrector
+                        !WORSE THAN THE SIMPLE MASS_CORRECTION
+!                        absorp_corrector(:,:, iphase) = I_adv_coef(:,:, iphase)*MASS_ELE( ELE )+J_adv_coef(:,:, iphase)*MASS_ELE( ELE2 )
+!                        call invert(absorp_corrector(:,:, iphase))
+!                        absorp_corrector(:,:, iphase) = matmul(absorp_corrector(:,:, iphase), J_adv_coef(:,:,IPHASE)*MASS_ELE( ELE2 ))
+!
+!                        Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+!                            = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
+!                            + matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* rcon(IPHASE))
                     else
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
@@ -6227,6 +6243,11 @@ contains
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector!(1.- Mass_corrector)
+
+
+!                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+!                                = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
+!                                - matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* RCON_J(IPHASE))
                         else
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
@@ -6299,6 +6320,13 @@ contains
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             + RCON(IPHASE) * CVNORMX_ALL( :, GI )* (1.- Mass_corrector)
+
+!                        absorp_corrector(:,:, iphase) = I_adv_coef(:,:, iphase)*MASS_ELE( ELE )+J_adv_coef(:,:, iphase)*MASS_ELE( ELE2 )
+!                        call invert(absorp_corrector(:,:, iphase))
+!                        absorp_corrector(:,:, iphase) = matmul(absorp_corrector(:,:, iphase), I_adv_coef(:,:,IPHASE)*MASS_ELE( ELE ))
+!                        Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
+!                            = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
+!                            + matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* rcon(IPHASE))
                         !Calculate mass matrix
                         if (SUF_INT_MASS_MATRIX) then
                             do IDIM = 1, Mdims%ndim
@@ -6332,6 +6360,12 @@ contains
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* (1.-Mass_corrector)!Mass_corrector
+
+
+!                            Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
+!                                = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
+!                                - matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* RCON_J(IPHASE))
+
                             !Calculate mass matrix
                             if (SUF_INT_MASS_MATRIX) then
                                 do IDIM = 1, Mdims%ndim

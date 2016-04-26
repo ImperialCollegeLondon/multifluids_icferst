@@ -576,6 +576,31 @@ contains
         end if
     end subroutine assign_val
 
+
+    real function table_quadratic_interpolation(X_points, Y_points, input_X)
+        !This function returns the value at position input_X using
+        !X_points, Y_points to form a quadratic interpolation
+        implicit none
+        real, intent(in) :: input_X
+        real, dimension(3), intent(in) :: X_points, Y_points
+        !Local variables
+        integer :: k, j
+        real, dimension(3,3) :: A
+        real, dimension(3) :: b
+
+        do k = 1, 3
+            do j = 1, 3!Fill columns
+                A(j,k) = X_points(j)**real(3-k)
+                if (j==k) A(j,k) = A(j,k) + A(j,k)*(1d-7*real(rand(j)))!to avoid non-invertible matrices
+            end do
+            b(k) = Y_points(k)
+        end do
+        !Solve system
+        call invert(A); b = matmul(A, b)
+        table_quadratic_interpolation = b(1) * input_X**2. + b(2) * input_X + b(3)
+
+    end function table_quadratic_interpolation
+
 end module multi_tools
 
 

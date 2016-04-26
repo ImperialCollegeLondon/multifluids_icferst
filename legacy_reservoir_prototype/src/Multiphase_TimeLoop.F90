@@ -118,7 +118,7 @@ contains
         real :: acctim, finish_time
         !!$ Defining problem that will be solved
         logical :: have_temperature_field, have_component_field, have_extra_DiffusionLikeTerm, &
-            solve_force_balance, solve_PhaseVolumeFraction
+            solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
         !!$ Defining solver options
         integer :: velocity_max_iterations, PhaseVolumeFraction_max_iterations
         !!$ Shape function related fields:
@@ -279,10 +279,6 @@ contains
         ScalarField_Source_Store=0.
         !!$ Defining discretisation options
         call Get_Discretisation_Options( state, Mdims, Mdisopt )
-        !!$ Option not currently set up in the schema and zeroed from the begining. It is used to control
-        !!$ the upwinding rate (in the absorption term) during advection/assembling.
-!        allocate(opt_vel_upwind_coefs_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_coefs_new =0.!sprint_to_do removed this
-!        allocate(opt_vel_upwind_grad_new(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods)); opt_vel_upwind_grad_new =0.!sprint_to_do removed this
         !!$ Defining problem to be solved:
         call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/solver/max_iterations', &
             velocity_max_iterations,  default =  500 )
@@ -313,6 +309,14 @@ contains
                     '/number_advection_iterations', NonLinearIteration_Components, default = 3 )
             end if
         end do
+        simple_black_oil_model = .false.
+        if (have_option( "/physical_parameters/black-oil_PVT_table" )) then
+            simple_black_oil_model = is_porous_media .and..not.have_component_field .and. Mdims%nphase == 3
+            if (.not. simple_black_oil_model) then
+                ewrite(0,*) "WARNING: Black-oil modelling based on PVT tables requires porous media, 3 phases and no components"
+            end if
+        end if
+
         if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) ) &
             have_extra_DiffusionLikeTerm = .true.
         if ( have_option( '/mesh_adaptivity/hr_adaptivity' ) ) then
@@ -435,6 +439,7 @@ contains
                 call Adaptive_NonLinear(packed_state, reference_field, its, &
                     Repeat_time_step, ExitNonLinearLoop,nonLinearAdaptTs,2)
                 call Calculate_All_Rhos( state, packed_state, Mdims )
+
                 if( solve_force_balance .and. is_porous_media ) then
                     call Calculate_PorousMedia_AbsorptionTerms( state, packed_state, Mdims, CV_funs, CV_GIdims, &
                        Mspars, ndgln, upwnd, suf_sig_diagten_bc, ids_ndgln, IDs2CV_ndgln )
@@ -572,8 +577,8 @@ contains
                 end if
                 PhaseVolumeFractionSource => extract_tensor_field(packed_state,"PackedPhaseVolumeFractionSource", stat)
                 if ( stat == 0 ) ScalarField_Source_Store = ScalarField_Source_Store + PhaseVolumeFractionSource%val(1,:,:)
-
                 Mdisopt%volfra_use_theta_flux = Mdims%ncomp > 1
+
                 !!$ Now solving the Momentum Equation ( = Force Balance Equation )
                 Conditional_ForceBalanceEquation: if ( solve_force_balance ) then
 
@@ -594,6 +599,7 @@ contains
 
                     !!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
+
                 end if Conditional_ForceBalanceEquation
 
 
@@ -613,6 +619,8 @@ contains
 
                 if ( have_component_field ) call calc_components()
 
+                !Flash calculations for simple Black-Oil modelling
+                if (simple_black_oil_model) call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
