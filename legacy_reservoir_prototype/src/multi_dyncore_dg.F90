@@ -673,13 +673,13 @@ contains
         REAL, DIMENSION( :, :, : ), allocatable :: DU_VEL, U_RHS_CDP2
         INTEGER :: CV_NOD, COUNT, CV_JNOD, IPHASE, JPHASE, ndpset, i
         LOGICAL :: JUST_BL_DIAG_MAT, LINEARISE_DENSITY, diag, RECALC_C_CV, SUF_INT_MASS_MATRIX
-        INTEGER :: IDIM, stat
+        INTEGER :: stat
         !Re-scale parameter can be re-used
         real, save :: rescaleVal = -1.0
         !CMC using petsc format
         type(petsc_csr_matrix)::  CMC_petsc
         !TEMPORARY VARIABLES, ADAPT FROM OLD VARIABLES TO NEW
-        INTEGER :: MAT_INOD, IPRES, JPRES, iphase_real, jphase_real
+        INTEGER :: IPRES, JPRES, iphase_real, jphase_real
         REAL, DIMENSION( :, : ), allocatable :: UDEN_ALL, UDENOLD_ALL, UDEN3
         REAL, DIMENSION( :, : ), allocatable :: rhs_p2, sigma
         REAL, DIMENSION( :, : ), pointer :: DEN_ALL, DENOLD_ALL
@@ -1010,7 +1010,7 @@ contains
                   allocate (U_ABSORBIN(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
                   call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
                   call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, U_ABSORBIN )
-                  call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, Mdisopt%cv_ele_type, Mdims%nphase, U_ABSORBIN )
+                  call high_order_pressure_solve( Mdims, Mmat%u_rhs, state, packed_state, Mdims%nphase, U_ABSORBIN )
                   deallocate(U_ABSORBIN)
                end if
             end if
@@ -4289,7 +4289,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         IF(.NOT.Mmat%NO_MATRIX_STORE) THEN
             CALL COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
                 Mmat%DGM_petsc, &
-                Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%u_nonods, Mdims%totele, velocity, position, pressure)  ! Element connectivity.
+                Mspars%ELE%fin, Mspars%ELE%col, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele, velocity, pressure)  ! Element connectivity.
             DEALLOCATE( DIAG_BIGM_CON )
             DEALLOCATE( BIGM_CON)
         ENDIF
@@ -4860,7 +4860,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     !     Make sure the eigen-values are positive...
                     AA(:,:)=TENSXX_ALL(:,:,1)
 
-                    CALL JACDIA(AA,V,D,NDIM,A,.FALSE.)
+                    CALL JACDIA(AA,V,D,NDIM,A)
 
 
                     IF(ONE_OVER_H2) THEN
@@ -4924,7 +4924,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             !!sprint_to_do!!!!MOVE TO FORTRAN 90
             SUBROUTINE JACDIA(AA,V,D,N, &
                 ! Working arrays...
-                A,PRISCR)
+                A)
                 ! This sub performs Jacobi rotations of a symmetric matrix in order to
                 ! find the eigen-vectors V and the eigen values A so
                 ! that AA=V^T D V & D is diagonal.
@@ -4934,7 +4934,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 PARAMETER(TOLER=1.E-14,CONVEG=1.E-7)
                 INTEGER N
                 REAL AA(N,N),V(N,N),D(N), A(N,N)
-                LOGICAL PRISCR
                 ! Local variables...
                 REAL R,ABSA,MAXA,COSAL2,COSALF,SINAL2,SINALF,MAXEIG
                 INTEGER ITS,NITS,Q,P,QQ,PP
@@ -5089,11 +5088,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
  SUBROUTINE COMB_VEL_MATRIX_DIAG_DIST(DIAG_BIGM_CON, BIGM_CON, &
      DGM_PETSC, &
-     NCOLELE, FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, U_NONODS, TOTELE, velocity, position, pressure)  ! Element connectivity.
+     FINELE, COLELE,  NDIM_VEL, NPHASE, U_NLOC, TOTELE, velocity, pressure)  ! Element connectivity.
      ! This subroutine combines the distributed and block diagonal for an element
      ! into the matrix DGM_PHA.
      IMPLICIT NONE
-     INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, U_NONODS, TOTELE, NCOLELE
+     INTEGER, intent( in ) :: NDIM_VEL, NPHASE, U_NLOC, TOTELE
      !
      REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: DIAG_BIGM_CON
      REAL, DIMENSION( :,:,:, :,:,:, : ), intent( in ) :: BIGM_CON
@@ -5101,7 +5100,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      INTEGER, DIMENSION(: ), intent( in ) :: FINELE
      INTEGER, DIMENSION( : ), intent( in ) :: COLELE
      type( tensor_field ) :: velocity
-     type( vector_field ) :: position
      type( tensor_field ) :: pressure
 
      INTEGER :: ELE,ELE_ROW_START,ELE_ROW_START_NEXT,ELE_IN_ROW
@@ -5441,7 +5439,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
      !Local variables
      real, save :: domain_length = -1
      integer :: iphase, nphase, cv_nodi, cv_nonods, u_inod, cv_iloc, ele, u_iloc
-     real :: Pe_aux, aux2
+     real :: Pe_aux
      real, dimension(:), pointer ::Pe, Cap_exp
      logical :: Artificial_Pe, Diffusive_cap_only
      real, dimension(:,:,:), pointer :: p
@@ -5555,7 +5553,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
-subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, cv_ele_type, nphase, u_absorbin )
+subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase, u_absorbin )
 
       implicit none
 
@@ -5563,7 +5561,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, cv_ele_
       real, dimension( :, :, : ), intent( inout ) :: u_rhs
       type( state_type ), dimension( : ), intent( inout ) :: state
       type( state_type ), intent( inout ) :: packed_state
-      integer, intent( in ) :: cv_ele_type, nphase
+      integer, intent( in ) :: nphase
 
       real, dimension( :, :, : ), intent( in ) :: u_absorbin
 
@@ -5613,7 +5611,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, cv_ele_
 
       type( tensor_field ), pointer :: rho, pfield
       type( scalar_field ), pointer :: printf
-      type( vector_field ), pointer :: printu, x_p2, gravity_direction
+      type( vector_field ), pointer :: printu, gravity_direction
 
       logical :: boussinesq, got_free_surf
       integer :: inod, ph_jnod2, ierr, count, count2, i, j, mat_inod
@@ -6101,7 +6099,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, cv_ele_
             DIFF_COEF_DIVDX_U, DIFF_COEFOLD_DIVDX_U
         REAL, DIMENSION( :, : ), allocatable :: IDENT, RZER_DIFF_ALL
         REAL :: COEF
-        INTEGER :: MAT_NODK2,IDIM,JDIM,CV_SKLOC
+        INTEGER :: IDIM,JDIM,CV_SKLOC
         INTEGER :: SGI,IPHASE
         LOGICAL :: ZER_DIFF
         !    SIMPLE_DIFF_CALC=SIMPLE_DIFF_CALC2
@@ -6301,9 +6299,8 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, cv_ele_
                 REAL, DIMENSION( :, :, :, : ), allocatable :: DUDX_ALL_GI, DUOLDDX_ALL_GI
                 REAL, DIMENSION( :, : ), allocatable :: IDENT
                 REAL :: DIVU, DIVUOLD
-                INTEGER :: U_KLOC,U_KLOC2,MAT_KLOC,MAT_KLOC2,IDIM,JDIM,IDIM_VEL,U_SKLOC,CV_SKLOC
+                INTEGER :: IDIM,JDIM,IDIM_VEL,U_SKLOC,CV_SKLOC
                 INTEGER :: SGI,IPHASE
-                LOGICAL :: ZER_DIFF,SIMPLE_DIFF_CALC
 
 
                 ALLOCATE( DIFF_GI(NDIM,NDIM,NPHASE,SBCVNGI) )

@@ -99,7 +99,6 @@ contains
         !!$ Primary scalars
         type(multi_dimensions) :: Mdims
         type(multi_gi_dimensions) :: CV_GIdims, FE_GIdims
-        integer :: ntsol
         !!$ Node global numbers
         type(multi_ndgln) :: ndgln
         !!$ Sparsity patterns
@@ -148,7 +147,6 @@ contains
         real, dimension(:,:,:), allocatable  :: reference_field
         type( tensor_field ), pointer :: D_s, DC_s, DCOLD_s
         type( tensor_field ), pointer :: MFC_s, MFCOLD_s
-        type( mesh_type ), pointer :: ph_mesh
         !! face value storage
         integer :: ncv_faces
         !Courant number for porous media
@@ -173,11 +171,12 @@ contains
         logical :: calculate_flux
         ! Variables used in the CVGalerkin interpolation calculation
         integer :: numberfields
-        logical :: new_ntsol_loop
-        character(len=OPTION_PATH_LEN) :: option_buffer
-        character(len=FIELD_NAME_LEN) :: tmp_name
-        logical :: use_advdif, multiphase_scalar
-        integer :: it, it2, nphase_scalar
+        !integer :: ntsol
+        !logical :: new_ntsol_loop
+        !character(len=OPTION_PATH_LEN) :: option_buffer
+        !character(len=FIELD_NAME_LEN) :: tmp_name
+        !logical :: use_advdif, multiphase_scalar
+        !integer :: it, it2, nphase_scalar
 #ifdef HAVE_ZOLTAN
       real(zoltan_float) :: ver
       integer(zoltan_int) :: ierr
