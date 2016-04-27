@@ -296,7 +296,18 @@ prognostic_scalar_field =
       element tensor_field {
          attribute name { "Absorption" },
          attribute rank { "0" },
-         element nphase { integer }?,
+         ##TO BE DELETED
+         element nphase { integer },
+         ## Selects the memory type based on the coupling of the system.
+         ## If unsure, select Anisotropic_coupled (very high memory consumption).
+         element type { 
+         element dimensions { integer },
+         (element Anisotropic_coupled { empty }|
+         element Anisotropic { empty }|
+         element Isotropic_coupled { empty }|
+         element Isotropic { empty })
+         
+         },
          (
             element diagnostic {
                (

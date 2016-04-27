@@ -37,6 +37,7 @@ module multi_data_types
     use global_parameters, only: option_path_len, is_porous_media
     use state_module
     use fields
+    use spud
 
 
     interface allocate_multi_dev_shape_funs
@@ -226,6 +227,7 @@ module multi_data_types
 contains
 
     subroutine allocate_multi_field( state, Mdims, field_name, mfield )
+        !*********UNTESTED*********
         implicit none
 
         type( state_type ), dimension( : ), intent( in ) :: state
@@ -234,53 +236,70 @@ contains
         type( multi_field ), intent( inout ) :: mfield
         character( len = FIELD_NAME_LEN ), intent( in ) :: field_name
 
-        type( scalar_field ), pointer :: sfield
-        type( vector_field ), pointer :: vfield
         type( tensor_field ), pointer :: tfield
 
-        integer, dimension( 3 ) :: stat
-        integer :: ndim, nphase, nonods
-        character( len = OPTION_PATH_LEN ) :: option_path
+        integer :: ndim, nphase, nonods, stat, dimensions
 
 
         mfield%have_field = .true.
 
-        sfield => extract_scalar_field( state( 1 ), trim( field_name ), stat( 1 ) )
-        vfield => extract_vector_field( state( 1 ), trim( field_name ), stat( 2 ) )
-        tfield => extract_tensor_field( state( 1 ), trim( field_name ), stat( 3 ) )
+        tfield => extract_tensor_field( state( 1 ), trim( field_name ), stat )
 
         ndim = Mdims%ndim ; nphase = Mdims%nphase
 
-        if ( sum( stat ) /= 2 ) FLAbort( "Cannot determine multi_field source." )
-        if (   stat( 2 ) == 0 ) FLAbort( "multi_field source should not be a vector_field." )
+        if ( stat /= 0 ) FLAbort( "Cannot determine multi_field source." )
 
-        if ( stat( 1 ) == 0 ) then
 
-           ! Scalar field source - this is only for isotropic fields
-           ! mfield%memory_type = [0 1 3]
+        ! Scalar field source - this is only for isotropic fields
+        ! mfield%memory_type = [0 1 3]
 
-           if ( sfield%field_type == FIELD_TYPE_CONSTANT ) mfield%is_constant = .true.
-           option_path = sfield%option_path
 
-           nonods = size( sfield%val )
+        ! Phases not coupled
+        !mfield%memory_type = [0 1]
+        !mfield%val( 1:1, 1:1, iphase:iphase, 1:nonods ) => sfield%val
 
-           ! Phases not coupled
-           !mfield%memory_type = [0 1]
-           !mfield%val( 1:1, 1:1, iphase:iphase, 1:nonods ) => sfield%val
 
-           ! Phases coupled
-           !mfield%memory_type = 3
-           !mfield%val( 1:1, iphase:iphase, jphase:jphase, 1:nonods ) => sfield%val
 
-        else if ( stat( 3 ) == 0 ) then
 
-           ! Tensor field source - this is only for anisotropic fields
-           ! mfield%memory_type = [2 4]
+        ! Tensor field source - this is only for anisotropic fields
+        ! mfield%memory_type = [2 4]
 
-           if ( tfield%field_type == FIELD_TYPE_CONSTANT ) mfield%is_constant = .true.
-           option_path = tfield%option_path
+        !Decide whether the field is constant throught the domain or not
+        if ( have_option(trim(tfield%option_path)//"prescribed") ) mfield%is_constant = .true.
+        !Number of nodes of the field
+        nonods = size( tfield%val, 3 )
+        !Number of dimensions of the coupling, for example ndim*ndim*nphase
+        call get_option(trim(tfield%option_path)//"type/dimensions", dimensions, default = -1)
+        if ( dimensions <= 0 ) FLAbort( "Wrong input for dimensions" )
 
-           nonods = size( tfield%val, 3 )
+        !Select the element type
+        if (have_option(trim(tfield%option_path)//"type/Anisotropic_coupled")) then
+            mfield%memory_type = 4
+        else if (have_option(trim(tfield%option_path)//"type/Anisotropic")) then
+            mfield%memory_type = 2
+        else if (have_option(trim(tfield%option_path)//"type/Isotropic_coupled")) then
+            mfield%memory_type = 3
+        else if (have_option(trim(tfield%option_path)//"type/Isotropic")) then
+            mfield%memory_type = 1
+            if (trim(tfield%name)=="Viscosity" ) mfield%memory_type = 0
+        else
+            FLAbort( "Wrong memory type selected" )
+        end if
+
+        select case ( mfield%memory_type )
+            case( 0, 1 ) ! Isotropic ( full and diagonal )
+                mfield%ndim1 = 1    ; mfield%ndim2 = 1           ; mfield%ndim3 = nphase
+            case( 2 )    ! Anisotropic
+                mfield%ndim1 = ndim ; mfield%ndim2 = ndim        ; mfield%ndim3 = nphase
+            case( 3 )    ! Isotropic coupled
+                mfield%ndim1 = 1    ; mfield%ndim2 = nphase      ; mfield%ndim3 = nphase
+            case( 4 )    ! Anisotropic coupled
+                mfield%ndim1 = 1    ; mfield%ndim2 = ndim*nphase ; mfield%ndim3 = ndim*nphase
+            case default
+                FLAbort( "Cannot determine multi_field memrory_type." )
+        end select
+
+        mfield%val(1:mfield%ndim1, 1:mfield%ndim2, 1:mfield%ndim3, 1:nonods) => tfield%val
 
            ! Phases not coupled
            !mfield%memory_type = 2
@@ -291,34 +310,214 @@ contains
            !mfield%val( 1:1, 1:ndim*nphase, 1:ndim*nphase, 1:nonods ) => tfield%val
            !mfield%val( 1:1, ndim*(iphase-1)+1:ndim*iphase, ndim*(jphase-1)+1:ndim*jphase, 1:nonods ) => tfield%val
 
-
-        end if
-
-        select case ( mfield%memory_type )
-        case( 0, 1 ) ! Isotropic ( full and diagonal )
-           mfield%ndim1 = 1    ; mfield%ndim2 = 1           ; mfield%ndim3 = nphase
-        case( 2 )    ! Anisotropic
-           mfield%ndim1 = ndim ; mfield%ndim2 = ndim        ; mfield%ndim3 = nphase
-        case( 3 )    ! Isotropic coupled
-           mfield%ndim1 = 1    ; mfield%ndim2 = nphase      ; mfield%ndim3 = nphase
-        case( 4 )    ! Anisotropic coupled
-           mfield%ndim1 = 1    ; mfield%ndim2 = ndim*nphase ; mfield%ndim3 = ndim*nphase
-        case default
-           FLAbort( "Cannot determine multi_field memrory_type." )
-        end select
-
+           ! Phases coupled
+           !mfield%memory_type = 3
+           !mfield%val( 1:1, iphase:iphase, jphase:jphase, 1:nonods ) => sfield%val
         return
     end subroutine allocate_multi_field
 
+    subroutine deallocate_multi_field(mfield)
+        !*********UNTESTED*********
+        implicit none
+        type( multi_field ), intent( inout ) :: mfield
+
+        mfield%val => null()
+        mfield%memory_type = 0
+        mfield%have_field = .false.
+        mfield%is_constant = .false.
+        mfield%memory_type = -1
+        mfield%ndim1 = -1; mfield%ndim2 = -1; mfield%ndim3 = -1
+
+    end subroutine deallocate_multi_field
+
+
+    subroutine get_multi_field(mfield, inode_in, output)
+        !*********UNTESTED*********
+        implicit none
+        integer, intent(in) :: inode_in
+        type( multi_field ), intent( inout ) :: mfield
+        real, dimension(:,:),intent( inout ) :: output!must have size(ndim*nphase, ndim*nphase)
+        !local variables
+        integer :: iphase, jphase, idim, jdim, ndim, nphase, inode
+
+        inode = inode_in
+        if (mfield%is_constant) inode = 1
+
+        select case (mfield%memory_type)
+            case (0)!Isotropic full
+                output = mfield%val(1,1,1,inode)
+            case (1)!Isotropic
+                output = 0.;ndim = size(output,2)/mfield%ndim3
+                do iphase = 1, mfield%ndim3!nphase
+                    do idim = 1, ndim
+                        output(idim+(iphase-1)*ndim, idim+(iphase-1)*ndim) = mfield%val(1,1,iphase,inode)
+                    end do
+                end do
+            case (2)!Anisotropic
+                output = 0.
+                do iphase = 1, mfield%ndim3!nphase
+                    do jdim = 1, mfield%ndim2!ndim
+                        do idim = 1, mfield%ndim2!ndim
+                            output(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2) = mfield%val(idim,jdim,iphase,inode)
+                        end do
+                    end do
+                end do
+            case (3)!isotropic coupled
+                output = 0.;ndim = size(output,2)/mfield%ndim3
+                do iphase = 1, mfield%ndim3
+                    do jphase = 1, mfield%ndim3
+                        do idim = 1, ndim
+                            output(idim+(iphase-1)*ndim ,idim+(jphase-1)*ndim) = mfield%val(1,iphase,jphase,inode)
+                        end do
+                    end do
+                end do
+            case default !Anisotropic coupled
+                output = mfield%val(1,:,:,inode)
+        end select
+
+    end subroutine get_multi_field
+
+
+    subroutine add_array_to_multi_field(mfield, b, xpos, ypos, inode)
+        !*********UNTESTED*********
+        !mfield = mfield + b
+        implicit none
+        integer, intent(in) :: inode
+        integer, intent(in) :: xpos, ypos
+        type( multi_field ), intent( inout ) :: mfield
+        real, dimension(:,:), intent(in) :: b
+        !Local variables
+        integer :: fxpos, fypos, idim, jdim, iphase, ndim, jphase
+
+        fxpos = xpos + size(b,1)
+        fypos = ypos + size(b,2)
+
+        select case (mfield%memory_type)
+            case (0,1)!Isotropic
+                mfield%val(1,1,1,inode) = b(1,1) + mfield%val(1,1,1,inode)
+            case (2)!Anisotropic
+                ndim = size(b,2)/mfield%ndim3
+                !Work out the involved phases from the position
+                do iphase = 1 + xpos/ndim, 1 + fxpos/ndim!!do iphase =1,mfield%ndim3
+                    do idim = xpos, fxpos!jdim = 1, mfield%ndim2!ndim
+                        do jdim = ypos, fypos!idim = 1, mfield%ndim2!ndim
+                            mfield%val(idim,jdim,iphase,inode) = mfield%val(idim,jdim,iphase,inode) +&
+                                 b(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2)
+                        end do
+                    end do
+                end do
+            case (3)!isotropic coupled
+                ndim = size(b,2)/mfield%ndim3
+                do iphase = xpos, fxpos!1, mfield%ndim3
+                    do jphase = ypos, fypos!1, mfield%ndim3
+                        mfield%val(1,iphase,jphase,inode) = mfield%val(1,iphase,jphase,inode) +&
+                         b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim)
+                    end do
+                end do
+            case default !Anisotropic coupled
+                mfield%val(1,xpos:fxpos,ypos:fypos,inode) = mfield%val(1,xpos:fxpos,ypos:fypos,inode) + b
+        end select
+
+    end subroutine add_array_to_multi_field
 
 
 
 
 
+    subroutine add_multi_field_to_array(mfield, b, xpos, ypos, inode)
+        !*********UNTESTED*********
+        !b = b + mfield
+        implicit none
+        integer, intent(in) :: inode
+        integer, intent(in) :: xpos, ypos
+        type( multi_field ), intent( in ) :: mfield
+        real, dimension(:,:), intent(inout) :: b
+        !Local variables
+        integer :: fxpos, fypos, idim, jdim, iphase, ndim, jphase
+
+        fxpos = xpos + size(b,1)
+        fypos = ypos + size(b,2)
+
+        select case (mfield%memory_type)
+            case (0,1)!Isotropic
+                b(1,1) = b(1,1) + mfield%val(1,1,1,inode)
+            case (2)!Anisotropic
+                ndim = size(b,2)/mfield%ndim3
+                !Work out the involved phases from the position
+                do iphase = 1 + xpos/ndim, 1 + fxpos/ndim!!do iphase =1,mfield%ndim3
+                    do idim = xpos, fxpos!jdim = 1, mfield%ndim2!ndim
+                        do jdim = ypos, fypos!idim = 1, mfield%ndim2!ndim
+                            b(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2) = &
+                                b(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2) +mfield%val(idim,jdim,iphase,inode)
+                        end do
+                    end do
+                end do
+            case (3)!isotropic coupled
+                ndim = size(b,2)/mfield%ndim3
+                do iphase = xpos, fxpos!1, mfield%ndim3
+                    do jphase = ypos, fypos!1, mfield%ndim3
+                        b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim) = &
+                            b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim) + mfield%val(1,iphase,jphase,inode)
+                    end do
+                end do
+            case default !Anisotropic coupled
+                b = b + mfield%val(1,xpos:fxpos,ypos:fypos,inode)
+        end select
+
+    end subroutine add_multi_field_to_array
 
 
 
 
+    subroutine mult_multi_field_by_array(mfield, b, inode)
+        !*********UNTESTED*********
+        !mfield = mfield * b
+        implicit none
+        integer, intent(in) :: inode
+        type( multi_field ), intent( inout ) :: mfield
+        real, dimension(:,:), intent(in) :: b
+        !Local variables
+        integer :: idim, jdim, iphase, ndim, jphase
+        real, dimension(:,:), allocatable :: miniB
+
+
+        select case (mfield%memory_type)
+            case (0,1)!Isotropic
+                mfield%val(1,1,1,inode) = b(1,1) * mfield%val(1,1,1,inode)
+            case (2)!Anisotropic
+                ndim = size(b,2)/mfield%ndim3
+                !Work out the involved phases from the position
+                do iphase =1,mfield%ndim3
+                    mfield%val(:,:,iphase,inode) = matmul(mfield%val(:,:,iphase,inode), &
+                            b(1+(iphase-1)*mfield%ndim2:iphase*mfield%ndim2 ,1+(iphase-1)*mfield%ndim2:iphase*mfield%ndim2))
+                end do
+            case (3)!isotropic coupled
+                ndim = size(b,2)/mfield%ndim3
+                allocate(miniB(mfield%ndim3,mfield%ndim3))!(nphase,nphase)
+                do iphase = 1, mfield%ndim3!nphase
+                    do jphase = 1, mfield%ndim3!nphase
+                        miniB(iphase, jphase) = b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim)
+                    end do
+                end do
+                mfield%val(1,:,:,inode) = matmul(mfield%val(1,:,:,inode),miniB)
+                deallocate(miniB)
+            case default !Anisotropic coupled
+                mfield%val(1,:,:,inode) = matmul(mfield%val(1,:,:,inode),b)
+        end select
+
+    end subroutine mult_multi_field_by_array
+
+    subroutine scale_multi_field(mfield, a, inode)
+        !*********UNTESTED*********
+        !mfield = a * mfield
+        implicit none
+        integer, intent(in) :: inode
+        type( multi_field ), intent( inout ) :: mfield
+        real, intent(in) :: a
+
+        mfield%val(:,:,:,inode) = a * mfield%val(:,:,:,inode)
+
+    end subroutine scale_multi_field
 
 
     subroutine allocate_multi_shape_funs(shape_fun,  Mdims, GIdims)
@@ -774,6 +973,12 @@ contains
 
         nullify(upwnd%adv_coef); nullify(upwnd%inv_adv_coef);nullify(upwnd%adv_coef_grad)
     end subroutine deallocate_porous_adv_coefs
+
+
+
+
+
+
 
 end module multi_data_types
 
