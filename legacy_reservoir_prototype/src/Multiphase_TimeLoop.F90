@@ -1205,7 +1205,7 @@ contains
 
                 Component_Absorption => extract_tensor_field( multicomponent_state(icomp), "ComponentAbsorption")
 
-                call Calculate_ComponentAbsorptionTerm( state, packed_state, icomp, ndgln%cv, &
+                call Calculate_ComponentAbsorptionTerm( packed_state, icomp, ndgln%cv, &
                      Mdims, D_s%val, Porosity_field%val, mass_ele, Component_Absorption%val )
 
             end if
@@ -1259,7 +1259,7 @@ contains
             if ( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
                 ']/is_multiphase_component/KComp_Sigmoid' ) .and. Mdims%nphase > 1 ) then
 
-                call Calculate_ComponentAbsorptionTerm( state, packed_state, icomp, ndgln%cv, &
+                call Calculate_ComponentAbsorptionTerm( packed_state, icomp, ndgln%cv, &
                      Mdims, D_s%val, Porosity_field%val, mass_ele, Component_Absorption%val )
 
                 do cv_nodi = 1, Mdims%cv_nonods

@@ -42,7 +42,7 @@ module Compositional_Terms
 
 contains
 
-    subroutine Calculate_ComponentAbsorptionTerm( state, packed_state, icomp, cv_ndgln, &
+    subroutine Calculate_ComponentAbsorptionTerm( packed_state, icomp, cv_ndgln, &
                                                   Mdims, denold, volfra_pore, mass_ele, comp_absorb )
 
         !!$ Calculate compositional model linkage between the phase expressed in COMP_ABSORB.
@@ -50,7 +50,6 @@ contains
         !!$ ALPHA_BETA is the scaling coeff. of the compositional model e.g. =1.0
 
         implicit none
-        type( state_type ), dimension( : ), intent( in ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent( in ) :: Mdims
         integer, intent( in ) :: icomp
@@ -113,7 +112,7 @@ contains
 
         MIN_K = max( 1.e-1, MINVAL( K_COMP( ICOMP, : , : )))
         MAX_K = MAXVAL( K_COMP( ICOMP, : , : ) )
-        CALL Calc_KComp2( Mdims%cv_nonods, Mdims%nphase, Mdims%ncomp, icomp, KComp_Sigmoid, &
+        CALL Calc_KComp2( Mdims%cv_nonods, Mdims%nphase, icomp, KComp_Sigmoid, &
             min( 1., max( 0., satura )), K_Comp, max_k, min_k, &
             K_Comp2 )
 
@@ -181,7 +180,7 @@ contains
     end subroutine Calculate_ComponentAbsorptionTerm
 
 
-    subroutine Calculate_ComponentDiffusionTerm( state, packed_state, &
+    subroutine Calculate_ComponentDiffusionTerm( packed_state, &
         Mdims, CV_GIdims, CV_funs,&
         mat_ndgln, u_ndgln, x_ndgln, &
         ncomp_diff_coef, comp_diffusion_opt, &
@@ -193,7 +192,6 @@ contains
         !!$ NCOMP_DIFF_COEF,  integer defining how many coeff's are needed to define the diffusion
         !!$ COMP_DIFF_COEF( Mdims%ncomp,  NCOMP_DIFF_COEF, Mdims%nphase  )
         implicit none
-        type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: CV_GIdims
@@ -203,7 +201,7 @@ contains
         real, dimension( :, : ), intent( in ) :: comp_diff_coef
         real, dimension( :, :, :, : ),intent( inout ) :: comp_diffusion
         !!$ Local variables:
-        integer :: ele, cv_nod, mat_nod, iphase, idim, u_iloc, u_inod
+        integer :: ele, mat_nod, iphase, idim, u_iloc, u_inod
         real :: diff_molecular, diff_longitudinal, diff_transverse
         real, dimension( : ), allocatable :: ud, mat_u, nu, nv, nw
         type( vector_field ), pointer :: x_all
@@ -283,8 +281,8 @@ contains
         ! Local variables
         REAL, DIMENSION( :, : ), ALLOCATABLE :: MASS, INV_MASS, MASS2U, INV_MASS_NM
         INTEGER :: &
-            ELE, MAT_ILOC, MAT_JLOC, CV_GI, U_JLOC, MAT_KLOC, MAT_NODI, MAT_NOD, &
-            U_NODJ, IPHASE, U_NODJ_IP, IDIM, JDIM, MAT_NOD_ID_IP, CV_GI_SHORT
+            ELE, MAT_ILOC, MAT_JLOC, CV_GI, U_JLOC, MAT_KLOC, MAT_NOD, &
+            U_NODJ, IPHASE, U_NODJ_IP, IDIM, MAT_NOD_ID_IP, CV_GI_SHORT
         REAL :: NN, NFEMU, MASELE
         type(multi_dev_shape_funs) :: Devfuns
 
@@ -423,11 +421,11 @@ contains
     END SUBROUTINE CALC_COMP_DIF_TEN
 
 
-    subroutine Calc_KComp2( cv_nonods, nphase, ncomp, icomp, KComp_Sigmoid, &
+    subroutine Calc_KComp2( cv_nonods, nphase, icomp, KComp_Sigmoid, &
         Satura, K_Comp, max_k, min_k, &
         K_Comp2 )
         implicit none
-        integer, intent( in ) :: cv_nonods, nphase, ncomp, icomp
+        integer, intent( in ) :: cv_nonods, nphase, icomp
         logical, intent( in ) :: KComp_Sigmoid
         real, dimension( :, : ), intent( in ) :: Satura
         real, dimension( :, :, : ), intent( in ) :: K_Comp
@@ -529,8 +527,8 @@ contains
       ! =1 is full adjustment to make sure we have sum to 1.
       ! =0 is no adjustment.
       real :: dt, sum2one_relax, comp_sum
-      integer :: cv_nonods, nphase, ncomp2, iphase, cv_nodi, icomp
-      logical :: ensure_positive, use_comp_sum2one_sou
+      integer :: cv_nonods, nphase, ncomp2, iphase, cv_nodi
+      logical :: ensure_positive
       !Working pointer
       real, dimension(:,:), pointer ::satura
       type( vector_field ), pointer :: MeanPoreCV

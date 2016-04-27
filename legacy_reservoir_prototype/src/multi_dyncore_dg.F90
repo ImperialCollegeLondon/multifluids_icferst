@@ -219,7 +219,7 @@ contains
               ncomp_diff_coef = 0 ; comp_diffusion_opt = 0
               allocate( Component_Diffusion_Operator_Coefficient( Mdims%ncomp, ncomp_diff_coef, Mdims%nphase ) )
               Component_Diffusion_Operator_Coefficient = 0.0
-              call Calculate_ComponentDiffusionTerm( state, packed_state, &
+              call Calculate_ComponentDiffusionTerm( packed_state, &
                  Mdims, CV_GIdims, CV_funs, &
                  ndgln%mat, ndgln%u, ndgln%x, &
                  ncomp_diff_coef, comp_diffusion_opt, &
