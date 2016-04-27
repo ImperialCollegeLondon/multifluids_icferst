@@ -48,7 +48,7 @@ module multiphase_EOS
     use boundary_conditions, only: get_entire_boundary_condition
     use Field_Options, only: get_external_coordinate_field
     use initialise_fields_module, only: initialise_field_over_regions
-    use multi_tools, only: CALC_FACE_ELE, assign_val, table_quadratic_interpolation
+    use multi_tools, only: CALC_FACE_ELE, assign_val, table_quadratic_interpolation, read_csv_table
     implicit none
 
 
@@ -2422,6 +2422,7 @@ contains
             call populate_with_Texas_Black_Oil(PVT_table, density_reference)
         else
             !READ FROM FILE
+!            call read_csv_table(PVT_table, PVT_table_path)
             print *, "WARNING: OPTION NOT AVAILABLE YET, USING INTERNAL..."
             call populate_with_Texas_Black_Oil(PVT_table, density_reference)
         end if

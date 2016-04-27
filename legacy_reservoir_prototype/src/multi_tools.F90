@@ -31,6 +31,7 @@
 module multi_tools
     use fldebug
     use fields
+    use global_parameters, only: OPTION_PATH_LEN, PYTHON_FUNC_LEN, PI, is_porous_media
 
     implicit none
 
@@ -600,6 +601,68 @@ contains
         table_quadratic_interpolation = b(1) * input_X**2. + b(2) * input_X + b(3)
 
     end function table_quadratic_interpolation
+
+    subroutine read_csv_table(data_array, path_to_table)
+        !Template of csv table
+        !colums,rows
+        !2,3
+        !Pressure,Saturation
+        !1000,0.9
+        !250,0.5
+        !100,0.1
+        implicit none
+        real, dimension(:,:), allocatable, intent(inout) :: data_array
+        character( len = option_path_len ), intent(in) :: path_to_table
+        !Local variables
+        integer :: i, ierr
+        integer, dimension(2) :: table_size
+        !Open file
+        open(unit= 89, file=trim(path_to_table)//".csv", status='old', action='read')
+        !CSV table must start with the number of columns by rows
+        read(89,*) table_size
+        allocate(data_array(table_size(1), table_size(2)))
+        !Skip the headers
+        read(89,*);
+        !Read the table
+        do i = 1, table_size(2)
+            read(89,*, IOSTAT=ierr) data_array(1:table_size(1), i)
+            if (ierr<0) exit
+        end do
+        close(89)
+    end subroutine read_csv_table
+
+    !Subroutine to print Arrays by (columns,rows)
+    !Matrix = 2D Array
+    subroutine printMatrix(Matrix)
+        implicit none
+
+        Integer :: length,i,j, k
+        character (len=1000000) :: cadena
+        character (len=100) :: aux
+        real, intent(in), dimension(:,:):: Matrix
+        !Local
+        real, dimension(size(matrix,2),size(matrix,1)) :: auxMatrix
+
+        auxMatrix = transpose(Matrix)
+
+        length = size(auxMatrix,2);
+        do i = 1,size(auxMatrix,1)
+            print *,""
+            cadena = ""
+            do j = 1 , length
+                write(aux,*), auxMatrix(i,j)
+                k = index(trim(aux),"E",.true.)
+                if (k/=0) then
+                    aux = aux(1:k-6)//trim(aux(k:))
+                end if
+
+                cadena = trim(cadena)//' '//trim(aux)
+            end do
+            print '(A $)', trim(cadena)
+        end do
+
+        print *,"";
+    end subroutine PrintMatrix
 
 end module multi_tools
 

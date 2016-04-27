@@ -2518,39 +2518,6 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
 end subroutine get_var_from_packed_state
 
 
-!Subroutine to print Arrays by (columns,rows)
-!Matrix = 2D Array
-subroutine printMatrix(Matrix)
-    implicit none
-
-    Integer :: length,i,j, k
-    character (len=1000000) :: cadena
-    character (len=100) :: aux
-    real, intent(in), dimension(:,:):: Matrix
-    !Local
-    real, dimension(size(matrix,2),size(matrix,1)) :: auxMatrix
-
-    auxMatrix = transpose(Matrix)
-
-    length = size(auxMatrix,2);
-    do i = 1,size(auxMatrix,1)
-        print *,""
-        cadena = ""
-        do j = 1 , length
-            write(aux,*), auxMatrix(i,j)
-            k = index(trim(aux),"E",.true.)
-            if (k/=0) then
-                aux = aux(1:k-6)//trim(aux(k:))
-            end if
-
-            cadena = trim(cadena)//' '//trim(aux)
-        end do
-        print '(A $)', trim(cadena)
-    end do
-
-    print *,"";
-end subroutine PrintMatrix
-
 !Subroutine to print CSR matrix by (row, column)
 !Dimensions and phases are printed in different rows
 !So for example Matrix(2,2,10) with two rows would be presented as
