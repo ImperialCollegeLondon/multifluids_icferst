@@ -48,7 +48,7 @@ module multiphase_EOS
     use boundary_conditions, only: get_entire_boundary_condition
     use Field_Options, only: get_external_coordinate_field
     use initialise_fields_module, only: initialise_field_over_regions
-    use multi_tools, only: CALC_FACE_ELE, assign_val, table_quadratic_interpolation, read_csv_table
+    use multi_tools, only: CALC_FACE_ELE, assign_val, table_interpolation, read_csv_table
     implicit none
 
 
@@ -2512,12 +2512,25 @@ contains
             real, intent(in) :: input_pressure
             real, dimension(:,:), intent(in) :: PVT_table
             !Local variables
+            real, parameter :: tol = 1e-5
             integer :: i, k
-            real, dimension(3) :: P_pos, prop_pos
+            real :: tang
+            integer, parameter :: interpolation_order = 1!Either linear (1) or quadratic (2)
+            real, dimension((interpolation_order + 1)) :: P_pos, prop_pos
+            integer, save :: bubble_point_pos = -1
+
+            if (bubble_point_pos < 0) then
+                !detect and store bubble point position
+                do bubble_point_pos = 1, size(PVT_table,2)
+                    if (PVT_table(bubble_point_pos,7) < 0.999999) exit
+                end do
+                bubble_point_pos = bubble_point_pos - 1
+            end if
+
             !Check position of the input pressure in the table
             !Considering highest pressure in possition 1
             do i = 1, size(PVT_table,2)
-                if (PVT_table(1,i)<input_pressure) exit
+                if (PVT_table(1,i) + tol <= input_pressure) exit
             end do
 
             if (i == 1) then
@@ -2525,12 +2538,23 @@ contains
             else if (i >= size(PVT_table,2)) then
                 eval_table = PVT_table(prop,size(PVT_table,2))
             else
-                i = max(i - 3, 0)!Shift the position to make sure we use values surrounding the input pressure
-                do k = 1, 3
-                    P_pos(k) = PVT_table(1,i+k)
-                    prop_pos(k) = PVT_table(prop,i+k)
+                !Detect if we are in bubble point
+                if (i-1 == bubble_point_pos) then
+                    !Shift the position ensuring that all the values lie after the bubble point
+                    i = max(bubble_point_pos, 1)
+                else if (i <= bubble_point_pos) then
+                    !Shift the position ensuring that all the values lie before the bubble point
+                    i = max(i - (interpolation_order + 1), 1)
+                else
+                    !Shift the position to make sure we use values surrounding the input pressure
+                    i = max(i - interpolation_order, 1)
+                end if
+
+                do k = 0, interpolation_order
+                    P_pos(k+1) = PVT_table(1,i+k)
+                    prop_pos(k+1) = PVT_table(prop,i+k)
                 end do
-                eval_table = table_quadratic_interpolation(P_pos, prop_pos, input_pressure)
+                eval_table = table_interpolation(P_pos, prop_pos, input_pressure)
             end if
 
         end function eval_table

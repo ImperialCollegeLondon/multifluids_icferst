@@ -576,29 +576,34 @@ contains
     end subroutine assign_val
 
 
-    real function table_quadratic_interpolation(X_points, Y_points, input_X)
+    real function table_interpolation(X_points, Y_points, input_X)
         !This function returns the value at position input_X using
-        !X_points, Y_points to form a quadratic interpolation
+        !X_points, Y_points to form a linear (size == 2) or quadratic (size == 3) interpolation
         implicit none
         real, intent(in) :: input_X
-        real, dimension(3), intent(in) :: X_points, Y_points
+        real, dimension(:), intent(in) :: X_points, Y_points
         !Local variables
-        integer :: k, j
-        real, dimension(3,3) :: A
-        real, dimension(3) :: b
+        integer :: k, j, siz
+        real, dimension(size(X_points),size(X_points)) :: A
+        real, dimension(size(X_points)) :: b
 
-        do k = 1, 3
-            do j = 1, 3!Fill columns
-                A(j,k) = X_points(j)**real(3-k)
+        siz = size(X_points)
+
+        do k = 1, siz
+            do j = 1, siz!Fill columns
+                A(j,k) = X_points(j)**real(siz-k)
                 if (j==k) A(j,k) = A(j,k) + A(j,k)*(1d-7*real(rand(j)))!to avoid non-invertible matrices
             end do
             b(k) = Y_points(k)
         end do
         !Solve system
         call invert(A); b = matmul(A, b)
-        table_quadratic_interpolation = b(1) * input_X**2. + b(2) * input_X + b(3)
-
-    end function table_quadratic_interpolation
+        if (siz == 2) then!Linear approximation
+            table_interpolation = b(1) * input_X + b(2)
+        else!quadratic approximation
+            table_interpolation = b(1) * input_X**2. + b(2) * input_X + b(3)
+        end if
+    end function table_interpolation
 
     subroutine read_csv_table(data_array, path_to_table)
         !Template of csv table
