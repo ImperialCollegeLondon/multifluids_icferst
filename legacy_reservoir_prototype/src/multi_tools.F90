@@ -39,15 +39,15 @@ contains
 
     !sprint_to_do!update to use new memory, or remove it since it is unused
     SUBROUTINE SIMPNORM( NORMX, NORMY, NORMZ, D3, &
-        SNDGLN, STOTEL, SNLOC, X_NONODS, NONODS, ELE, &
+        SNDGLN, SNLOC, NONODS, ELE, &
         X, Y, Z, &
-        NCOLM, FINDRM, COLM)
+        FINDRM, COLM)
         ! Calculate an approx normal (normx,normy,normz)
         IMPLICIT NONE
 
         REAL, intent( inout ) :: NORMX, NORMY, NORMZ
         LOGICAL, intent( in ) :: D3
-        INTEGER, intent( in ) :: STOTEL, SNLOC, X_NONODS, NONODS, ELE, NCOLM
+        INTEGER, intent( in ) :: SNLOC, NONODS, ELE
         INTEGER, DIMENSION( : ), intent( in ) :: SNDGLN
         REAL, DIMENSION( :), intent( in ) :: X, Y, Z
         INTEGER, DIMENSION( : ), intent( in ) :: FINDRM
@@ -136,8 +136,6 @@ contains
         INTEGER :: NVEC
         REAL, DIMENSION( NVEC ) :: VEC
         ! Local variables
-        INTEGER :: I
-        REAL :: RSUM
 
         R2NORM = SQRT( SUM( VEC**2 ) )
 
@@ -394,12 +392,12 @@ contains
 
 
     SUBROUTINE CALC_FACE_ELE( FACE_ELE, TOTELE, STOTEL, NFACE, &
-        NCOLELE, FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN, CV_SNDGLN, &
+        FINELE, COLELE, CV_NLOC, CV_SNLOC, CV_NONODS, CV_NDGLN, CV_SNDGLN, &
         CV_SLOCLIST, X_NLOC, X_NDGLN)
         ! Calculate FACE_ELE - the list of elements surrounding an
         ! element and referenced with a face -ve values correspond to surface elements.
         IMPLICIT NONE
-        INTEGER, intent( in ) :: TOTELE, STOTEL, NFACE, NCOLELE, CV_NLOC, CV_SNLOC, CV_NONODS, &
+        INTEGER, intent( in ) :: TOTELE, STOTEL, NFACE, CV_NLOC, CV_SNLOC, CV_NONODS, &
             X_NLOC
         INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
         INTEGER, DIMENSION( : ), intent( in ) :: X_NDGLN

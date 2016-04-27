@@ -1032,7 +1032,7 @@ contains
         END IF ! endof IF ( IANISOLIM == 0 ) THEN ELSE
         ALLOCATE( FACE_ELE( CV_GIdims%nface, Mdims%totele ) ) ; FACE_ELE = 0
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-            Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+            Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
         IF ( GOT_DIFFUS ) THEN
             CALL DG_DERIVS_ALL( FEMT_ALL, FEMTOLD_ALL, &

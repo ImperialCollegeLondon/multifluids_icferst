@@ -42,7 +42,7 @@ module multi_surface_tension
     use shape_functions_NDim
     use shape_functions_prototype
     use fields
-    use cv_advection, only : calc_face_ele, dgsimplnorm
+    use cv_advection, only : dgsimplnorm
     use matrix_operations, only : smlinngot
     use multi_tools, only: CALC_FACE_ELE
 
@@ -242,7 +242,7 @@ contains
  
       ALLOCATE( FACE_ELE( CV_GIdims%nface, Mdims%totele ) ) ; FACE_ELE = 0
       CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-           Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+           Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
            CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
       ALLOCATE( MASS_ELE( Mdims%totele )); MASS_ELE=0.0
       

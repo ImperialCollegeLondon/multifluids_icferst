@@ -73,7 +73,7 @@ contains
        tracer, velocity, density,  DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
-       THETA_GDIFF, IDs_ndgln, IDs2CV_ndgln, &
+       THETA_GDIFF, IDs_ndgln, &
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -95,7 +95,7 @@ contains
            INTEGER, intent( in ) :: IGOT_T2, igot_theta_flux
            LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
            LOGICAL, intent( in ), optional ::THERMAL
-           INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
+           INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
            REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
            REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
            REAL, intent( in ) :: DT
@@ -358,7 +358,6 @@ contains
              type(scalar_field), pointer :: gamma
              !Variable to assign an automatic maximum backtracking parameter based on the Courant number
              logical :: Auto_max_backtrack
-             real :: physics_adjustment
              !Variables for global convergence method
              real :: backtrack_par_factor
              type(vector_field)  :: vtracer, residual
@@ -636,7 +635,7 @@ contains
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IDs_ndgln, IDs2CV_ndgln )
+        IDs_ndgln )
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -652,7 +651,7 @@ contains
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY
-        INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
+        INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
@@ -940,13 +939,13 @@ contains
             SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, VOLFRA_PORE, &
             MCY_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
-            NLENMCY, MCY, JUST_BL_DIAG_MAT, &
+            MCY, JUST_BL_DIAG_MAT, &
             UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
             IGOT_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU,&
-            symmetric_P, boussinesq, IDs_ndgln, IDs2CV_ndgln, RECALC_C_CV)
+            symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
 
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -1250,13 +1249,13 @@ END IF
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
         MCY_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
-        NLENMCY, MCY, JUST_BL_DIAG_MAT, &
+        MCY, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        symmetric_P, boussinesq, IDs_ndgln, IDs2CV_ndgln, RECALC_C_CV)
+        symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1272,9 +1271,9 @@ END IF
         type (porous_adv_coefs), intent(inout) :: upwnd
         type( tensor_field ), intent(in) :: velocity
         type( tensor_field ), intent(in) :: pressure
-        INTEGER, intent( in ) :: NLENMCY, IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
+        INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
-        INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
+        INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
         real, dimension(:,:), intent(in) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: velocity_absorption
         type( multi_field ), intent( in ) :: U_SOURCE_ALL
@@ -2145,7 +2144,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( FACE_ELE( FE_GIdims%nface, Mdims%totele ) )
         ! Calculate FACE_ELE
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, FE_GIdims%nface, &
-            Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+            Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
         IF( GOT_DIFFUS ) THEN
             CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &

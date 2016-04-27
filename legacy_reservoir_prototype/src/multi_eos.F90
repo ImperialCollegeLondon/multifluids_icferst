@@ -964,7 +964,7 @@ contains
                suf_sig_diagten_bc = 1.
                idone=0; face_ele = 0
                call calc_face_ele( face_ele, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-                   Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+                   Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
                    CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
 
                do iphase = 1, Mdims%n_in_pres
