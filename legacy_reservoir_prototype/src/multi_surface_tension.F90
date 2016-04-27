@@ -42,7 +42,7 @@ module multi_surface_tension
     use shape_functions_NDim
     use shape_functions_prototype
     use fields
-    use cv_advection, only : calc_face_ele, dgsimplnorm
+    use cv_advection, only : dgsimplnorm
     use matrix_operations, only : smlinngot
     use multi_tools, only: CALC_FACE_ELE
 
@@ -242,7 +242,7 @@ contains
  
       ALLOCATE( FACE_ELE( CV_GIdims%nface, Mdims%totele ) ) ; FACE_ELE = 0
       CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
-           Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+           Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
            CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
       ALLOCATE( MASS_ELE( Mdims%totele )); MASS_ELE=0.0
       
@@ -413,11 +413,11 @@ contains
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
  
                CALL LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
-                                           Mdims%ndim,  Mdims%totele, ndgln%cv, &
+                                           Mdims%ndim,  ndgln%cv, &
                                            Mdims%x_nloc, ndgln%x, &
                                            CV_GIdims%cv_ngi, Mdims%cv_nloc, &
                                            CV_funs%CVFEN, DevFuns%CVFENX_ALL(1,:,:), DevFuns%CVFENX_ALL(2,:,:), DevFuns%CVFENX_ALL(3,:,:), &
-                                           Mdims%x_nonods, X, Y, Z, &
+                                           X, Y, Z, &
                                            CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%cv_snloc, &
                                            CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
                                            ELE, DevFuns%DETWEI, 1)
@@ -529,8 +529,8 @@ contains
                         END DO
                      END DO
                 ! Form approximate surface normal (NORMX,NORMY,NORMZ)
-                     CALL DGSIMPLNORM( ELE, CV_SLOC2LOC, Mdims%totele, Mdims%cv_nloc, Mdims%cv_snloc, ndgln%x, &
-                     X, Y, Z, Mdims%x_nonods, NORMX(1), NORMX(2), NORMX(3) )
+                     CALL DGSIMPLNORM( ELE, CV_SLOC2LOC, Mdims%cv_nloc, Mdims%cv_snloc, ndgln%x, &
+                     X, Y, Z, NORMX(1), NORMX(2), NORMX(3) )
                 ! Recalculate the normal...
                      XSL=0. ; YSL=0. ; ZSL=0.
                      DO CV_SILOC=1,Mdims%cv_snloc
@@ -656,11 +656,11 @@ contains
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
  
             CALL LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
-                                           Mdims%ndim,  Mdims%totele, ndgln%cv, &
+                                           Mdims%ndim,  ndgln%cv, &
                                            Mdims%x_nloc, ndgln%x, &
                                            CV_GIdims%cv_ngi, Mdims%cv_nloc, &
                                            CV_funs%CVFEN, DevFuns%CVFENX_ALL(1,:,:), DevFuns%CVFENX_ALL(2,:,:), DevFuns%CVFENX_ALL(3,:,:), &
-                                           Mdims%x_nonods, X, Y, Z, &
+                                           X, Y, Z, &
                                            CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%cv_snloc, &
                                            CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
                                            ELE, DevFuns%DETWEI, 1)
@@ -731,11 +731,11 @@ contains
                        CV_funs%cvfen, CV_funs%cvfenlx_all, CV_funs%ufenlx_all, Devfuns)
 ! calculate curvature:
             CALL LOC_1ST_DERIV_XYZ_DG_CURV(CURV, DISTANCE_FUN, SOL_DERIV_X(1,:), SOL_DERIV_X(2,:), SOL_DERIV_X(3,:), &
-                         Mdims%ndim,  Mdims%totele, ndgln%cv, &
+                         Mdims%ndim,  ndgln%cv, &
                          Mdims%x_nloc, ndgln%x,&
                          CV_GIdims%cv_ngi, Mdims%cv_nloc, &
                          CV_funs%CVFEN, DevFuns%CVFENX_ALL(1,:,:), DevFuns%CVFENX_ALL(2,:,:), DevFuns%CVFENX_ALL(3,:,:), &
-                         Mdims%x_nonods, X, Y, Z, &
+                         X, Y, Z, &
                          CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%cv_snloc, &
                          CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
                          ELE, DevFuns%DETWEI)
@@ -793,18 +793,18 @@ contains
 contains
 
       SUBROUTINE LOC_1ST_DERIV_XYZ_DG_CURV(CURV, DISTANCE_FUN, SOL_DERIV_X, SOL_DERIV_Y, SOL_DERIV_Z, &
-                                           NDIM, TOTELE, CV_NDGLN, &
+                                           NDIM, CV_NDGLN, &
                                            X_NLOC, X_NDGLN, &
                                            CV_NGI, CV_NLOC, &
                                            CVFEN, CVFENX, CVFENY, CVFENZ, &
-                                           X_NONODS, X, Y, Z, &
+                                           X, Y, Z, &
                                            NFACE, FACE_ELE, CV_SLOCLIST, CV_SNLOC, &
                                            SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                                            ELE, DETWEI) 
 
       IMPLICIT NONE
-      INTEGER, intent( in ) :: NDIM,  TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
-           X_NONODS, CV_SNLOC, SBCVNGI, NFACE, ELE
+      INTEGER, intent( in ) :: NDIM,  X_NLOC, CV_NGI, CV_NLOC, &
+           CV_SNLOC, SBCVNGI, NFACE, ELE
       REAL, DIMENSION( :), intent( inout ) :: CURV
       REAL, DIMENSION( : ), intent( in ) :: DISTANCE_FUN
       REAL, DIMENSION( :), intent( in ) :: SOL_DERIV_X, SOL_DERIV_Y, SOL_DERIV_Z
@@ -957,8 +957,8 @@ contains
          END IF
 
             ! Form approximate surface normal (NORMX,NORMY,NORMZ)
-         CALL DGSIMPLNORM( ELE, CV_SLOC2LOC, TOTELE, CV_NLOC, CV_SNLOC, X_NDGLN, &
-                 X, Y, Z, X_NONODS, NORMX, NORMY, NORMZ )
+         CALL DGSIMPLNORM( ELE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, X_NDGLN, &
+                 X, Y, Z, NORMX, NORMY, NORMZ )
 
             ! Recalculate the normal...
          DO CV_SILOC=1,CV_SNLOC
@@ -1131,18 +1131,18 @@ contains
       END SUBROUTINE LOC_1ST_DERIV_XYZ_DG_CURV
 
       SUBROUTINE LOC_1ST_DERIV_XYZ_DG_DERIV(DISTANCE_FUN, SOL_DERIV_X, SOL_DERIV_Y, SOL_DERIV_Z, &
-                                           NDIM, TOTELE, CV_NDGLN, &
+                                           NDIM, CV_NDGLN, &
                                            X_NLOC, X_NDGLN, &
                                            CV_NGI, CV_NLOC, &
                                            CVFEN, CVFENX, CVFENY, CVFENZ, &
-                                           X_NONODS, X, Y, Z, &
+                                           X, Y, Z, &
                                            NFACE, FACE_ELE, CV_SLOCLIST, CV_SNLOC, &
                                            SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
                                            ELE, DETWEI, factor) 
 
       IMPLICIT NONE
-      INTEGER, intent( in ) :: NDIM,  TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
-           X_NONODS, CV_SNLOC, SBCVNGI, NFACE, ELE, factor
+      INTEGER, intent( in ) :: NDIM,  X_NLOC, CV_NGI, CV_NLOC, &
+           CV_SNLOC, SBCVNGI, NFACE, ELE, factor
       REAL, DIMENSION( : ), intent( in ) :: DISTANCE_FUN
       REAL, DIMENSION( : ), intent( inout ) :: SOL_DERIV_X, SOL_DERIV_Y, SOL_DERIV_Z
       INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
@@ -1242,8 +1242,8 @@ contains
          END IF
 
             ! Form approximate surface normal (NORMX,NORMY,NORMZ)
-         CALL DGSIMPLNORM( ELE, CV_SLOC2LOC, TOTELE, CV_NLOC, CV_SNLOC, X_NDGLN, &
-                 X, Y, Z, X_NONODS, NORMX, NORMY, NORMZ )
+         CALL DGSIMPLNORM( ELE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, X_NDGLN, &
+                 X, Y, Z, NORMX, NORMY, NORMZ )
 
             ! Recalculate the normal...
          DO CV_SILOC=1,CV_SNLOC
@@ -1321,8 +1321,8 @@ contains
          CV_SLOC2LOC( : ) = CV_SLOCLIST( IFACE, : )
 
             ! Form approximate surface normal (NORMX,NORMY,NORMZ)
-         CALL DGSIMPLNORM( ELE, CV_SLOC2LOC, TOTELE, CV_NLOC, CV_SNLOC, X_NDGLN, &
-                 X, Y, Z, X_NONODS, NORMX, NORMY, NORMZ )
+         CALL DGSIMPLNORM( ELE, CV_SLOC2LOC, CV_NLOC, CV_SNLOC, X_NDGLN, &
+                 X, Y, Z, NORMX, NORMY, NORMZ )
 
             ! Recalculate the normal...
          DO CV_SILOC=1,CV_SNLOC

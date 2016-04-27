@@ -73,7 +73,7 @@ contains
        tracer, velocity, density,  DT, &
        SUF_SIG_DIAGTEN_BC,  VOLFRA_PORE, &
        IGOT_T2, igot_theta_flux,GET_THETA_FLUX, USE_THETA_FLUX,  &
-       THETA_GDIFF, IDs_ndgln, IDs2CV_ndgln, &
+       THETA_GDIFF, IDs_ndgln, &
        option_path, &
        mass_ele_transp, &
        thermal, THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
@@ -95,7 +95,7 @@ contains
            INTEGER, intent( in ) :: IGOT_T2, igot_theta_flux
            LOGICAL, intent( in ) :: GET_THETA_FLUX, USE_THETA_FLUX
            LOGICAL, intent( in ), optional ::THERMAL
-           INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
+           INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
            REAL, DIMENSION( :, : ), intent( inout ) :: THETA_GDIFF
            REAL, DIMENSION( :,: ), intent( inout ), optional :: THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J
            REAL, intent( in ) :: DT
@@ -219,7 +219,7 @@ contains
               ncomp_diff_coef = 0 ; comp_diffusion_opt = 0
               allocate( Component_Diffusion_Operator_Coefficient( Mdims%ncomp, ncomp_diff_coef, Mdims%nphase ) )
               Component_Diffusion_Operator_Coefficient = 0.0
-              call Calculate_ComponentDiffusionTerm( state, packed_state, &
+              call Calculate_ComponentDiffusionTerm( packed_state, &
                  Mdims, CV_GIdims, CV_funs, &
                  ndgln%mat, ndgln%u, ndgln%x, &
                  ncomp_diff_coef, comp_diffusion_opt, &
@@ -260,7 +260,7 @@ contains
                    MeanPoreCV%val, &
                    mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                    .false.,  mass_Mn_pres, &
-                   mass_ele_transp, IDs_ndgln, IDs2CV_ndgln, &
+                   mass_ele_transp, IDs_ndgln, &
                    saturation=saturation, Permeability_tensor_field = perm)
                Conditional_Lumping: IF ( LUMP_EQNS ) THEN
                    ! Lump the multi-phase flow eqns together
@@ -358,7 +358,6 @@ contains
              type(scalar_field), pointer :: gamma
              !Variable to assign an automatic maximum backtracking parameter based on the Courant number
              logical :: Auto_max_backtrack
-             real :: physics_adjustment
              !Variables for global convergence method
              real :: backtrack_par_factor
              type(vector_field)  :: vtracer, residual
@@ -477,7 +476,7 @@ contains
                      MEAN_PORE_CV, &
                      mass_Mn_pres, THERMAL, RETRIEVE_SOLID_CTY, &
                      .false.,  mass_Mn_pres, &
-                     mass_ele_transp,IDs_ndgln, IDs2CV_ndgln, &          !Capillary variables
+                     mass_ele_transp,IDs_ndgln, &          !Capillary variables
                      OvRelax_param = OvRelax_param, Phase_with_Pc = Phase_with_Pc,&
                      Courant_number = Courant_number)
                  !Solve the system
@@ -636,7 +635,7 @@ contains
         !THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
-        IDs_ndgln, IDs2CV_ndgln )
+        IDs_ndgln )
         IMPLICIT NONE
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
@@ -652,7 +651,7 @@ contains
         type( tensor_field ), intent(inout) :: velocity
         type( tensor_field ), intent(inout) :: pressure
         INTEGER, intent( in ) :: IGOT_THETA_FLUX, NLENMCY
-        INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
+        INTEGER, DIMENSION(  :  ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION(  : , :  ), intent( in ) :: SUF_SIG_DIAGTEN_BC
         REAL, intent( in ) :: DT
         REAL, DIMENSION(  :, :  ), intent( in ) :: V_SOURCE
@@ -940,13 +939,13 @@ contains
             SUF_SIG_DIAGTEN_BC, &
             V_SOURCE, VOLFRA_PORE, &
             MCY_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
-            NLENMCY, MCY, JUST_BL_DIAG_MAT, &
+            MCY, JUST_BL_DIAG_MAT, &
             UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL,  UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
             IGOT_THETA_FLUX, &
             THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU,&
-            symmetric_P, boussinesq, IDs_ndgln, IDs2CV_ndgln, RECALC_C_CV)
+            symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
 
 
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
@@ -1250,13 +1249,13 @@ END IF
         SUF_SIG_DIAGTEN_BC, &
         V_SOURCE, VOLFRA_PORE, &
         MCY_RHS, DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, GLOBAL_SOLVE, &
-        NLENMCY, MCY, JUST_BL_DIAG_MAT, &
+        MCY, JUST_BL_DIAG_MAT, &
         UDEN_ALL, UDENOLD_ALL, UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, &
         IGOT_THETA_FLUX, &
         THETA_FLUX, ONE_M_THETA_FLUX, THETA_FLUX_J, ONE_M_THETA_FLUX_J, &
         RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
-        symmetric_P, boussinesq, IDs_ndgln, IDs2CV_ndgln, RECALC_C_CV)
+        symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
         implicit none
         ! Form the global CTY and momentum eqns and combine to form one large matrix eqn.
         type( state_type ), dimension( : ), intent( inout ) :: state
@@ -1272,9 +1271,9 @@ END IF
         type (porous_adv_coefs), intent(inout) :: upwnd
         type( tensor_field ), intent(in) :: velocity
         type( tensor_field ), intent(in) :: pressure
-        INTEGER, intent( in ) :: NLENMCY, IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
+        INTEGER, intent( in ) :: IGOT_THETA_FLUX, IPLIKE_GRAD_SOU
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY,got_free_surf,symmetric_P,boussinesq
-        INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
+        INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
         real, dimension(:,:), intent(in) :: X_ALL
         REAL, DIMENSION( :, :, : ), intent( in ) :: velocity_absorption
         type( multi_field ), intent( in ) :: U_SOURCE_ALL
@@ -1330,7 +1329,7 @@ END IF
         TDIFFUSION = 0.0
         IF( GLOBAL_SOLVE ) MCY = 0.0
         ! Obtain the momentum and Mmat%C matricies
-        CALL ASSEMB_FORCE_CTY( state, packed_state, &
+        CALL ASSEMB_FORCE_CTY( packed_state, &
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
             velocity, pressure, &
             X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
@@ -1339,7 +1338,7 @@ END IF
             UDEN_ALL, UDENOLD_ALL, DERIV, &
             DT, &
             JUST_BL_DIAG_MAT, &
-            UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, DENOLD_ALL, RETRIEVE_SOLID_CTY, &
+            UDIFFUSION_ALL, UDIFFUSION_VOL_ALL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU, &
             P, GOT_FREE_SURF=got_free_surf, MASS_SUF=MASS_SUF, SYMMETRIC_P=symmetric_P)
         ! scale the momentum equations by the volume fraction / saturation for the matrix and rhs
@@ -1398,7 +1397,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             MEAN_PORE_CV, &
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
-            dummy_transp, IDs_ndgln, IDs2CV_ndgln, &                                                 !sprint_to_do; remove SUF_INT_MASS_MATRIX?
+            dummy_transp, IDs_ndgln, &                                                 !sprint_to_do; remove SUF_INT_MASS_MATRIX?
             RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false.)
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
@@ -1454,7 +1453,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
-    SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state, &
+    SUBROUTINE ASSEMB_FORCE_CTY( packed_state, &
         Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
         velocity, pressure, &
         X_ALL, U_ABSORB, U_SOURCE, U_SOURCE_CV, &
@@ -1462,12 +1461,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         NU_ALL, NUOLD_ALL, &
         UDEN, UDENOLD, DERIV, &
         DT, JUST_BL_DIAG_MAT,  &
-        UDIFFUSION, UDIFFUSION_VOL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, DENOLD_ALL, RETRIEVE_SOLID_CTY, &
+        UDIFFUSION, UDIFFUSION_VOL, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL, DEN_ALL, RETRIEVE_SOLID_CTY, &
         IPLIKE_GRAD_SOU, &
         P,&
         got_free_surf, mass_suf, symmetric_P )
         implicit none
-        type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: FE_GIdims
@@ -1493,7 +1491,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         REAL, DIMENSION( :, : ), intent( inout ) :: THERM_U_DIFFUSION_VOL
         LOGICAL, intent( inout ) :: JUST_BL_DIAG_MAT
         REAL, DIMENSION( :, :, : ), intent( in ) :: P
-        REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL, DENOLD_ALL
+        REAL, DIMENSION(  :, :  ), intent( in ) :: DEN_ALL
         LOGICAL, intent( in ) :: RETRIEVE_SOLID_CTY, got_free_surf, symmetric_P
         REAL, DIMENSION( : ), intent( inout ) :: MASS_SUF
         ! Local Variables
@@ -2146,19 +2144,19 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( FACE_ELE( FE_GIdims%nface, Mdims%totele ) )
         ! Calculate FACE_ELE
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, FE_GIdims%nface, &
-            Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
+            Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
         IF( GOT_DIFFUS ) THEN
             CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &
                 DUX_ELE_ALL, DUOLDX_ELE_ALL, &
-                Mdims%ndim, Mdims%nphase, Mdims%ndim, Mdims%u_nonods, Mdims%totele, ndgln%u, &
+                Mdims%ndim, Mdims%nphase, Mdims%ndim, Mdims%totele, ndgln%u, &
                 ndgln%xu, Mdims%x_nloc, ndgln%x, &
                 FE_GIdims%cv_ngi, Mdims%u_nloc, FE_funs%cvweight, &
                 FE_funs%ufen, FE_funs%ufenlx_all(1,:,:), FE_funs%ufenlx_all(2,:,:), FE_funs%ufenlx_all(3,:,:), &
                 FE_funs%cvfen, FE_funs%cvfenlx_all(1,:,:), FE_funs%cvfenlx_all(2,:,:), FE_funs%cvfenlx_all(3,:,:), &
                 Mdims%x_nonods, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), &
-                FE_GIdims%nface, FACE_ELE, FE_funs%u_sloclist, FE_funs%cv_sloclist, Mdims%stotel, Mdims%u_snloc, Mdims%cv_snloc, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
-                FE_GIdims%sbcvngi, FE_funs%sbufen, FE_funs%sbufenslx, FE_funs%sbufensly, FE_funs%sbcvfeweigh, &
+                FE_GIdims%nface, FACE_ELE, FE_funs%u_sloclist, FE_funs%cv_sloclist, Mdims%u_snloc, Mdims%cv_snloc, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
+                FE_GIdims%sbcvngi, FE_funs%sbufen, FE_funs%sbcvfeweigh, &
                 FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly )
         ENDIF
         ! LES VISCOCITY CALC.
@@ -3851,7 +3849,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                         !                        STRESS_IJ_ELE_EXT=0.0
                         CALL LINEAR_HIGH_DIFFUS_CAL_COEFF_STRESS_OR_TENSOR( STRESS_IJ_ELE_EXT, S_INV_NNX_MAT12,  &
                             STRESS_FORM, STRESS_FORM_STAB, ZERO_OR_TWO_THIRDS, &
-                            Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%cv_nloc, Mdims%mat_nloc, Mdims%nphase, &
+                            Mdims%u_snloc, Mdims%u_nloc, Mdims%cv_snloc, Mdims%nphase, &
                             SBUFEN_REVERSED,SBCVFEN_REVERSED,SDETWE, FE_GIdims%sbcvngi, Mdims%ndim, SLOC_UDIFFUSION, SLOC_UDIFFUSION_VOL, SLOC2_UDIFFUSION, SLOC2_UDIFFUSION_VOL, UDIFF_SUF_STAB, &
                             (ELE2.LE.0), SNORMXN_ALL  )
                         !                        STRESS_IJ_ELE_EXT=0.0

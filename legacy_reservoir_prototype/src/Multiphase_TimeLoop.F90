@@ -463,7 +463,7 @@ contains
                         !!$
                         0, igot_theta_flux, &
                         Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-                        THETA_GDIFF, IDs_ndgln, IDs2CV_ndgln, &
+                        THETA_GDIFF, IDs_ndgln, &
                         option_path = '/material_phase[0]/scalar_field::Temperature', &
                         thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
                         saturation=saturation_field)
@@ -540,7 +540,7 @@ contains
 !                        !!$
 !                        0, igot_theta_flux, &
 !                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-!                        THETA_GDIFF, IDs_ndgln, IDs2CV_ndgln, &
+!                        THETA_GDIFF, IDs_ndgln, &
 !                        option_path = '/material_phase[0]/scalar_field::Temperature', &
 !                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
 !                        saturation=saturation_field )
@@ -555,7 +555,7 @@ contains
 !                        suf_sig_diagten_bc,  Porosity_field%val, &
 !                        0, igot_theta_flux, &
 !                        Mdisopt%t_get_theta_flux, Mdisopt%t_use_theta_flux, &
-!                        THETA_GDIFF, IDs_ndgln, IDs2CV_ndgln, &
+!                        THETA_GDIFF, IDs_ndgln, &
 !                        option_path = '/material_phase[0]/scalar_field::Temperature', &
 !                        thermal = have_option( '/material_phase[0]/scalar_field::Temperature/prognostic/equation::InternalEnergy'),&
 !                        saturation=saturation_field)
@@ -594,7 +594,7 @@ contains
                         ScalarField_Source_Store, Porosity_field%val, &
                         igot_theta_flux, &
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
-                        IDs_ndgln, IDs2CV_ndgln )
+                        IDs_ndgln )
 
                     !!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
@@ -1205,7 +1205,7 @@ contains
 
                 Component_Absorption => extract_tensor_field( multicomponent_state(icomp), "ComponentAbsorption")
 
-                call Calculate_ComponentAbsorptionTerm( state, packed_state, icomp, ndgln%cv, &
+                call Calculate_ComponentAbsorptionTerm( packed_state, icomp, ndgln%cv, &
                      Mdims, D_s%val, Porosity_field%val, mass_ele, Component_Absorption%val )
 
             end if
@@ -1219,7 +1219,7 @@ contains
                     SUF_SIG_DIAGTEN_BC, Porosity_field%val, &
                     igot_t2, igot_theta_flux, &
                     Mdisopt%comp_get_theta_flux, Mdisopt%comp_use_theta_flux, &
-                    theta_gdiff, IDs_ndgln, IDs2CV_ndgln, &
+                    theta_gdiff, IDs_ndgln, &
                     thermal = .false.,& ! the false means that we don't add an extra source term
                     theta_flux=theta_flux, one_m_theta_flux=one_m_theta_flux, theta_flux_j=theta_flux_j, one_m_theta_flux_j=one_m_theta_flux_j,&
                     icomp=icomp, saturation=saturation_field, Permeability_tensor_field = perm_field)
@@ -1259,7 +1259,7 @@ contains
             if ( have_option( '/material_phase[' // int2str( Mdims%nstate - Mdims%ncomp ) // &
                 ']/is_multiphase_component/KComp_Sigmoid' ) .and. Mdims%nphase > 1 ) then
 
-                call Calculate_ComponentAbsorptionTerm( state, packed_state, icomp, ndgln%cv, &
+                call Calculate_ComponentAbsorptionTerm( packed_state, icomp, ndgln%cv, &
                      Mdims, D_s%val, Porosity_field%val, mass_ele, Component_Absorption%val )
 
                 do cv_nodi = 1, Mdims%cv_nonods
