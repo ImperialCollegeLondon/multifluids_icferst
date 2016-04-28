@@ -46,6 +46,11 @@ module multi_data_types
         module procedure allocate_multi_dev_shape_funs3
     end interface
 
+    interface allocate_multi_field
+        module procedure allocate_multi_field1
+        module procedure allocate_multi_field2
+    end interface
+
     type multi_dimensions
         integer :: ndim       !Number of dimensions
         integer :: cv_nloc    !Number of local control volumes
@@ -222,11 +227,12 @@ module multi_data_types
 
 
 
-    private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3
+    private :: allocate_multi_dev_shape_funs1, allocate_multi_dev_shape_funs2, allocate_multi_dev_shape_funs3,&
+         allocate_multi_field1,allocate_multi_field2
 
 contains
 
-    subroutine allocate_multi_field( state, Mdims, field_name, mfield )
+    subroutine allocate_multi_field1( state, Mdims, field_name, mfield )
         !*********UNTESTED*********
         implicit none
 
@@ -314,7 +320,72 @@ contains
            !mfield%memory_type = 3
            !mfield%val( 1:1, iphase:iphase, jphase:jphase, 1:nonods ) => sfield%val
         return
-    end subroutine allocate_multi_field
+    end subroutine allocate_multi_field1
+
+    subroutine allocate_multi_field2( packed_state, Mdims, tfield, field_name, mfield )
+        !*********UNTESTED*********
+        implicit none
+
+        type( state_type ), intent( in ) :: packed_state
+        type( multi_dimensions ), intent(in) :: Mdims
+        type( tensor_field ), intent(in) :: tfield
+        type( multi_field ), intent( inout ) :: mfield
+        character( len = FIELD_NAME_LEN ), intent( in ) :: field_name
+
+        integer :: ndim, nphase, nonods, stat, dimensions
+        character( len = option_path_len ) :: path_option
+
+        mfield%have_field = .true.
+
+        ndim = Mdims%ndim ; nphase = Mdims%nphase
+
+        !Decide whether the field is constant throught the domain or not
+        mfield%is_constant = (size(tfield%val,3) == 1)
+        !Number of nodes of the field
+        nonods = size( tfield%val, 3 )
+
+        !Number of dimensions of the coupling, for example ndim*ndim*nphase
+        dimensions = size( tfield%val, 2 )
+        if ( dimensions <= 0 ) FLAbort( "Wrong input for dimensions" )
+        !Depending on the field, different possibilities
+        if (trim(field_name)=="PorousMedia_AbsorptionTerm") then
+            !For this field rigth now there is no coupling between phases, so is either type 1 or type 2
+            if (have_option('porous_media/scalar_field::Permeability')) then
+                mfield%memory_type = 1
+            else
+                path_option = 'porous_media/tensor_field::Permeability'
+                if (have_option(path_option//"value/isotropic")) then
+                    mfield%memory_type = 1
+                else
+                    mfield%memory_type = 2
+                end if
+            end if
+        end if
+
+        if (trim(field_name)=="ComponentAbsorption") then
+             mfield%memory_type = 4
+        end if
+
+
+        select case ( mfield%memory_type )
+            case( 0, 1 ) ! Isotropic ( full and diagonal )
+                mfield%ndim1 = 1    ; mfield%ndim2 = 1           ; mfield%ndim3 = nphase
+            case( 2 )    ! Anisotropic
+                mfield%ndim1 = ndim ; mfield%ndim2 = ndim        ; mfield%ndim3 = nphase
+            case( 3 )    ! Isotropic coupled
+                mfield%ndim1 = 1    ; mfield%ndim2 = nphase      ; mfield%ndim3 = nphase
+            case( 4 )    ! Anisotropic coupled
+                mfield%ndim1 = 1    ; mfield%ndim2 = ndim*nphase ; mfield%ndim3 = ndim*nphase
+            case default
+                FLAbort( "Cannot determine multi_field memrory_type." )
+        end select
+
+        mfield%val(1:mfield%ndim1, 1:mfield%ndim2, 1:mfield%ndim3, 1:nonods) => tfield%val
+
+        return
+    end subroutine allocate_multi_field2
+
+
 
     subroutine deallocate_multi_field(mfield)
         !*********UNTESTED*********
