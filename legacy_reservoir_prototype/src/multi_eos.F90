@@ -2422,9 +2422,11 @@ contains
             call populate_with_Texas_Black_Oil(PVT_table, density_reference)
         else
             !READ FROM FILE
-!            call read_csv_table(PVT_table, PVT_table_path)
-            print *, "WARNING: OPTION NOT AVAILABLE YET, USING INTERNAL..."
-            call populate_with_Texas_Black_Oil(PVT_table, density_reference)
+            call read_csv_table(PVT_table, PVT_table_path, density_reference)
+            !If it has 8 entries, means that the volatize-oil/gas ratio is significant (it is in posiiton 8), otherwise ignored
+
+!            print *, "WARNING: OPTION NOT AVAILABLE YET, USING INTERNAL..."
+!            call populate_with_Texas_Black_Oil(PVT_table, density_reference)
         end if
         pressure => extract_tensor_field(packed_state,"PackedFEPressure")
 
@@ -2472,8 +2474,8 @@ contains
             do cv_inod = 1, mdims%cv_nonods
                 liquid_fraction = eval_table(pressure%val(1,1,cv_inod), PVT_table,7)
                 aqua_sat = saturation%val(1,1,cv_inod)
-                 saturation%val(1,2,cv_inod) = liquid_fraction * (1.-aqua_sat)
-                 saturation%val(1,3,cv_inod) = (1.-liquid_fraction)* (1.-aqua_sat)
+                saturation%val(1,2,cv_inod) = liquid_fraction * (1.-aqua_sat)
+                saturation%val(1,3,cv_inod) = (1.-liquid_fraction)* (1.-aqua_sat)
             end do
         end if
 
