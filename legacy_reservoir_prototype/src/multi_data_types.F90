@@ -600,9 +600,9 @@ contains
       integer, dimension( : ), pointer :: nodes
       integer :: ndim, nloc, ele
 
-      ndim = Mdims%ndim ; nloc = Mdims%Mat_nloc
+      ndim = Mdims%ndim ; nloc = Mdims%Mat_nloc ! This nloc should be improved in the future
 
-      if ( nloc /=6 .or. nloc/=10 ) FLAbort( "I can only linearise P2 fields..." )
+      if ( nloc/=6 .or. nloc/=10 ) FLAbort( "I can only linearise P2 fields..." )
 
       do ele = 1, Mdims%totele
          nodes => ndgln( (ele-1)*nloc+1 : ele*nloc )
