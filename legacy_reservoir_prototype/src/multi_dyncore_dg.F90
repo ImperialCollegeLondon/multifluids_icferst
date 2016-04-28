@@ -687,6 +687,10 @@ contains
 
         type( multi_field ) :: UDIFFUSION_VOL_ALL, U_SOURCE_ALL   ! NEED TO ALLOCATE THESE - SUBS TO DO THIS ARE MISSING... - SO SET 0.0 FOR NOW
 
+        type( multi_field ) :: UDIFFUSION_ALL2
+
+
+
 
         REAL, DIMENSION(  :, :, :  ), allocatable :: temperature_absorption, U_ABSORBIN
         REAL, DIMENSION( :, :, : ), allocatable :: DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B, CMC_PRECON
@@ -862,7 +866,7 @@ contains
         ENDIF
 
         ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
-        call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL )
+        call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_ALL2 )
         !UDIFFUSION_VOL_ALL = 0.
 
         ! define velocity_absorption here...

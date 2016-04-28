@@ -1403,12 +1403,14 @@ contains
       return
     end subroutine calculate_diffusivity
 
-    subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion )
+    subroutine calculate_viscosity( state, Mdims, ndgln, Momentum_Diffusion, Momentum_Diffusion2 )
       implicit none
-      type(multi_dimensions), intent(in) :: Mdims
-      type(multi_ndgln), intent(in) :: ndgln
+      type( multi_dimensions ), intent( in ) :: Mdims
+      type( multi_ndgln ), intent( in ) :: ndgln
       type( state_type ), dimension( : ), intent( in ) :: state
       real, dimension( :, :, :, : ), intent( inout ) :: Momentum_Diffusion
+      type( multi_field ), intent( inout ) :: Momentum_Diffusion2
+
       !Local variables
       type( tensor_field ), pointer :: t_field, tp_field, tc_field
       integer :: iphase, icomp, stat, mat_nod, ele
@@ -1424,7 +1426,6 @@ contains
          momentum_diffusion=0.0
          t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
          if ( stat == 0 ) then
-!            Mdims%cv_nloc = ele_loc( t_field, ele )
             linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
             allocate( component_tmp( Mdims%cv_nloc ), mu_tmp( Mdims%ndim, Mdims%ndim, Mdims%cv_nloc ) )
             if ( Mdims%ncomp > 1 ) then
@@ -1487,10 +1488,34 @@ contains
                      end do
                   end do
                end do
-            end if
+             end if
             deallocate( component_tmp, mu_tmp )
          end if
       end if
+
+
+
+      !!! NEW CODE HERE !!!
+
+      if ( is_porous_media ) then
+         return
+      else
+
+         ! deal with Momentum_Diffusion2
+         ! if it exists...
+
+         t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
+         if ( stat == 0 ) then
+            linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
+
+
+         end if
+
+
+      end if
+
+      !!!!!!!!!!!!!!!!!!!!!
+
       return
     end subroutine calculate_viscosity
 
