@@ -66,7 +66,7 @@ module multi_data_types
         integer :: x_nonods_p1!???
         integer :: p_nloc     !Number of local pressure nodes
         integer :: p_snloc    !Number of local pressure nodes on the surface?
-        integer :: mat_nloc   !??
+        integer :: mat_nloc   !Number of local material nodes
         integer :: totele     !Total number of elements
         integer :: stotel     !Total number of surface elements?
         integer :: cv_nonods  !Total number of control volumes
@@ -589,6 +589,52 @@ contains
         mfield%val(:,:,:,inode) = a * mfield%val(:,:,:,inode)
 
     end subroutine scale_multi_field
+
+    subroutine linearise_multi_field( mfield, Mdims, ndgln )
+      !*********UNTESTED*********
+      implicit none
+      type( multi_field ), intent( inout ) :: mfield
+      type( multi_dimensions ), intent( in ) :: Mdims
+      integer, dimension( : ), pointer, intent( in ) :: ndgln
+
+      integer, dimension( : ), pointer :: nodes
+      integer :: ndim, nloc, ele
+
+      ndim = Mdims%ndim ; nloc = Mdims%Mat_nloc
+
+      if ( nloc /=6 .or. nloc/=10 ) FLAbort( "I can only linearise P2 fields..." )
+
+      do ele = 1, Mdims%totele
+         nodes => ndgln( (ele-1)*nloc+1 : ele*nloc )
+
+         mfield%val(:,:,:,nodes(2))=0.5*(mfield%val(:,:,:,nodes(1))+mfield%val(:,:,:,nodes(3)))
+         mfield%val(:,:,:,nodes(4))=0.5*(mfield%val(:,:,:,nodes(1))+mfield%val(:,:,:,nodes(6)))
+         mfield%val(:,:,:,nodes(5))=0.5*(mfield%val(:,:,:,nodes(3))+mfield%val(:,:,:,nodes(6)))
+
+         if ( ndim > 2 ) then
+            mfield%val(:,:,:,nodes(7))=0.5*(mfield%val(:,:,:,nodes(1))+mfield%val(:,:,:,nodes(10)))
+            mfield%val(:,:,:,nodes(8))=0.5*(mfield%val(:,:,:,nodes(3))+mfield%val(:,:,:,nodes(10)))
+            mfield%val(:,:,:,nodes(9))=0.5*(mfield%val(:,:,:,nodes(6))+mfield%val(:,:,:,nodes(10)))
+         end if
+      end do
+
+      return
+    end subroutine linearise_multi_field
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
     subroutine allocate_multi_shape_funs(shape_fun,  Mdims, GIdims)

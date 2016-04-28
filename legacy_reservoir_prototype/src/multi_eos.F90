@@ -1504,15 +1504,15 @@ contains
          ! deal with Momentum_Diffusion2
          ! if it exists...
 
-         t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
-         if ( stat == 0 ) then
-            ! call allocate_multi_field( state,  Momentum_Diffusion2    )
-            linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
-
-
-
-
-         end if
+   !      t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
+   !      if ( stat == 0 ) then
+   !         ! call allocate_multi_field( state,  Momentum_Diffusion2    )
+   !         linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
+   !         if ( linearise_viscosity ) then
+   !            call linearise_multi_field( mfield, Mdims, ndgln%mat )
+   !         end if
+   !
+   !      end if
 
 
       end if
