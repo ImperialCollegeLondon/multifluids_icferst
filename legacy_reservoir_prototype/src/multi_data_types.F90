@@ -489,7 +489,6 @@ contains
 
     subroutine add_array_to_multi_field(mfield, b, xpos, ypos, inode)
         !*********UNTESTED*********
-        !TYPE 2 TESTED
         !mfield = mfield + b
         !xpos and ypos are the starting positions
         !for a full matrix they have to be one
@@ -503,25 +502,31 @@ contains
 
         fxpos = xpos + size(b,1) - 1
         fypos = ypos + size(b,2) - 1
-
+        ndim = size(b,2)/mfield%ndim3
         select case (mfield%memory_type)
-            case (0,1)!Isotropic
-                mfield%val(1,1,1,inode) = b(1,1) + mfield%val(1,1,1,inode)
+            case (0)!Isotropic viscosity
+                do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!1, mfield%ndim3
+                    mfield%val(1,1,iphase,inode) = mfield%val(1,1,iphase,inode) + &
+                    b(1+(xpos-1)/ndim+(iphase-1)*ndim,1+(ypos-1)/ndim+(iphase-1)*ndim)
+                end do
+            case (1)!Isotropic
+                do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!1, mfield%ndim3
+                    mfield%val(1,1,iphase,inode) = mfield%val(1,1,iphase,inode) + &
+                        b(1+(iphase-1)*ndim ,1+(iphase-1)*ndim)
+                end do
             case (2)!Anisotropic
-                ndim = size(b,2)/mfield%ndim3
                 !Work out the involved phases from the position
                 do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!!do iphase =1,mfield%ndim3
-                    do idim = xpos, fxpos/mfield%ndim3!jdim = 1, mfield%ndim2!ndim
-                        do jdim = ypos, fypos/mfield%ndim3!idim = 1, mfield%ndim2!ndim
+                    do idim = 1 + (xpos-1)/iphase, fxpos/mfield%ndim3!jdim = 1, mfield%ndim2!ndim
+                        do jdim = 1 + (xpos-1)/iphase, fypos/mfield%ndim3!idim = 1, mfield%ndim2!ndim
                             mfield%val(idim,jdim,iphase,inode) = mfield%val(idim,jdim,iphase,inode) +&
                                  b(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2)
                         end do
                     end do
                 end do
             case (3)!isotropic coupled
-                ndim = size(b,2)/mfield%ndim3
-                do iphase = xpos, fxpos/ndim!1, mfield%ndim3
-                    do jphase = ypos, fypos/ndim!1, mfield%ndim3
+                do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!1, mfield%ndim3
+                    do jphase = 1 + (ypos-1)/ndim, fypos/ndim!1, mfield%ndim3
                         mfield%val(1,iphase,jphase,inode) = mfield%val(1,iphase,jphase,inode) +&
                          b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim)
                     end do
@@ -534,7 +539,6 @@ contains
 
     subroutine add_multi_field_to_array(mfield, b, xpos, ypos, inode, a_in)
         !*********UNTESTED*********
-        !TYPE 2 TESTED
         !b = b + a * mfield
         !xpos and ypos are the starting positions
         !for a full matrix they have to be one
@@ -555,25 +559,34 @@ contains
         end if
         fxpos = xpos + size(b,1) - 1
         fypos = ypos + size(b,2) - 1
-
+        ndim = size(b,2)/mfield%ndim3
         select case (mfield%memory_type)
-            case (0,1)!Isotropic
-                b(1,1) = b(1,1) + a * mfield%val(1,1,1,inode)
+            case (0)!Isotropic viscosity
+                do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!1, mfield%ndim3
+                    b(1+(xpos-1)/ndim+(iphase-1)*ndim: fxpos/mfield%ndim3 +(iphase-1)*ndim,1+(ypos-1)/ndim+(iphase-1)*ndim:fxpos/mfield%ndim3 +(iphase-1)*ndim)=&
+                    b(1+(xpos-1)/ndim+(iphase-1)*ndim: fxpos/mfield%ndim3 +(iphase-1)*ndim,1+(ypos-1)/ndim+(iphase-1)*ndim:fxpos/mfield%ndim3 +(iphase-1)*ndim)+&
+                        + a * mfield%val(1,1,iphase,inode)
+                end do
+            case (1)!Isotropic
+                do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!1, mfield%ndim3
+                    do idim = 1 + (xpos-1)/iphase, fxpos/mfield%ndim3
+                        b(idim+(iphase-1)*ndim ,idim+(iphase-1)*ndim) = &
+                            b(idim+(iphase-1)*ndim ,idim+(iphase-1)*ndim) + a * mfield%val(1,1,iphase,inode)
+                    end do
+                end do
             case (2)!Anisotropic
-                ndim = size(b,2)/mfield%ndim3
                 !Work out the involved phases from the position
                 do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!!do iphase =1,mfield%ndim3
-                    do idim = xpos, fxpos/mfield%ndim3!jdim = 1, mfield%ndim2!ndim
-                        do jdim = ypos, fypos/mfield%ndim3!idim = 1, mfield%ndim2!ndim
+                    do idim = 1 + (xpos-1)/iphase, fxpos/mfield%ndim3!jdim = 1, mfield%ndim2!ndim
+                        do jdim = 1 + (ypos-1)/iphase, fypos/mfield%ndim3!idim = 1, mfield%ndim2!ndim
                             b(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2) = &
                                 b(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2) +a * mfield%val(idim,jdim,iphase,inode)
                         end do
                     end do
                 end do
             case (3)!isotropic coupled
-                ndim = size(b,2)/mfield%ndim3
-                do iphase = xpos, fxpos/ndim!1, mfield%ndim3
-                    do jphase = ypos, fypos/ndim!1, mfield%ndim3
+                do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!1, mfield%ndim3
+                    do jphase = 1 + (ypos-1)/ndim, fypos/ndim!1, mfield%ndim3
                         b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim) = &
                             b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim) + a * mfield%val(1,iphase,jphase,inode)
                     end do
@@ -586,7 +599,6 @@ contains
 
     subroutine mult_multi_field_by_array(mfield, b, inode)
         !*********UNTESTED*********
-        !TYPE 2 TESTED
         !mfield = mfield * b
         implicit none
         integer, intent(in) :: inode
@@ -596,19 +608,25 @@ contains
         integer :: idim, jdim, iphase, ndim, jphase
         real, dimension(:,:), allocatable :: miniB
 
-
+        ndim = size(b,2)/mfield%ndim3
         select case (mfield%memory_type)
-            case (0,1)!Isotropic
-                mfield%val(1,1,1,inode) = b(1,1) * mfield%val(1,1,1,inode)
+!            case (0)!Isotropic viscosity
+!                do iphase = 1, mfield%ndim3
+!                    mfield%val(1,1,iphase,inode) = mfield%val(1,1,iphase,inode) * &
+!                        b(1+(iphase-1)*ndim,1+(iphase-1)*ndim)
+!                end do
+            case (1)!Isotropic
+                do iphase = 1, mfield%ndim3
+                    mfield%val(1,1,iphase,inode) = mfield%val(1,1,iphase,inode) * &
+                        b(1+(iphase-1)*ndim ,1+(iphase-1)*ndim)
+                end do
             case (2)!Anisotropic
-                ndim = size(b,2)/mfield%ndim3
                 !Work out the involved phases from the position
                 do iphase =1,mfield%ndim3
                     mfield%val(:,:,iphase,inode) = matmul(mfield%val(:,:,iphase,inode), &
                             b(1+(iphase-1)*mfield%ndim2:iphase*mfield%ndim2 ,1+(iphase-1)*mfield%ndim2:iphase*mfield%ndim2))
                 end do
             case (3)!isotropic coupled
-                ndim = size(b,2)/mfield%ndim3
                 allocate(miniB(mfield%ndim3,mfield%ndim3))!(nphase,nphase)
                 do iphase = 1, mfield%ndim3!nphase
                     do jphase = 1, mfield%ndim3!nphase
@@ -626,7 +644,6 @@ contains
 
     subroutine mult_multi_field_by_array_on_array(mfield, b, inode)
         !*********UNTESTED*********
-        !TYPE 2 TESTED
         !b = mfield * b
         implicit none
         integer, intent(in) :: inode
@@ -636,9 +653,20 @@ contains
         integer :: idim, jdim, iphase, ndim, jphase
         real, dimension(:,:), allocatable :: miniB
 
+        ndim = size(b,2)/mfield%ndim3
         select case (mfield%memory_type)
-            case (0,1)!Isotropic
-                b = b * mfield%val(1,1,1,inode)
+!            case (0)!Isotropic viscosity
+!                do iphase = xpos, fxpos/ndim!1, mfield%ndim3
+!                    b(1+(iphase-1)*ndim:mfield%ndim3*ndim,1+(iphase-1)*ndim:mfield%ndim3) = &
+!                        b(1+(iphase-1)*ndim:mfield%ndim3,1+(iphase-1)*ndim:mfield%ndim3) * mfield%val(1,1,iphase,inode)
+!                end do
+            case (1)!Isotropic
+                do iphase = 1, mfield%ndim3
+                    do idim = 1, ndim
+                        b(idim+(iphase-1)*ndim ,idim+(iphase-1)*ndim) = &
+                            b(idim+(iphase-1)*ndim ,idim+(iphase-1)*ndim) * mfield%val(1,1,iphase,inode)
+                    end do
+                end do
             case (2)!Anisotropic
                 ndim = size(b,2)/mfield%ndim3
                 !Work out the involved phases from the position
