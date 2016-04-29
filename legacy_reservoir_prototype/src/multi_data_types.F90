@@ -219,11 +219,14 @@ module multi_data_types
 
     end type multi_field
 
-    ! TO DO for multi_field work:
-    !
-    ! subs: set, get, add, mult, mult_scalar_add
-    ! allocate, deallocate(?), ...
-    !
+
+    type multi_absorption
+        !Comprises all the absorption terms that migth be required
+        type (multi_field) :: PorousMedia
+        type (multi_field) :: Components
+        type (multi_field) :: Temperature
+        type (multi_field) :: Velocity
+    end type multi_absorption
 
 
 
@@ -391,6 +394,8 @@ contains
 
             if (trim(field_name)=="ComponentAbsorption") then
                 mfield%memory_type = 4
+                nonods = Mdims%cv_nonods
+                mfield%is_constant = .false.
             end if
         end if
         select case ( mfield%memory_type )
