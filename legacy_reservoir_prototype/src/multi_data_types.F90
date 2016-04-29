@@ -71,7 +71,7 @@ module multi_data_types
         integer :: stotel     !Total number of surface elements?
         integer :: cv_nonods  !Total number of control volumes
         integer :: p_nonods   !Total number of pressure nodes
-        integer :: mat_nonods !Total number of ???
+        integer :: mat_nonods !Total number of sub-control volumes
         integer :: u_nonods   !Total number of velocity nodes
         integer :: xu_nonods  !Total number of velocity nodes of the Continuous mesh
         integer :: x_nonods   !Total number of control volumes of the Continuous mesh
@@ -264,9 +264,6 @@ contains
         !mfield%memory_type = [0 1]
         !mfield%val( 1:1, 1:1, iphase:iphase, 1:nonods ) => sfield%val
 
-
-
-
         ! Tensor field source - this is only for anisotropic fields
         ! mfield%memory_type = [2 4]
 
@@ -322,51 +319,80 @@ contains
         return
     end subroutine allocate_multi_field1
 
-    subroutine allocate_multi_field2( packed_state, Mdims, tfield, field_name, mfield )
+    subroutine allocate_multi_field2( Mdims, mfield, nonods_in, field_name)
         !*********UNTESTED*********
+        !PorousMedia_AbsorptionTerm tested
         implicit none
-
-        type( state_type ), intent( in ) :: packed_state
+        integer, intent(in) :: nonods_in!Number of nodes of the field.
         type( multi_dimensions ), intent(in) :: Mdims
-        type( tensor_field ), intent(in) :: tfield
         type( multi_field ), intent( inout ) :: mfield
-        character( len = FIELD_NAME_LEN ), intent( in ) :: field_name
-
-        integer :: ndim, nphase, nonods, stat, dimensions
-        character( len = option_path_len ) :: path_option
+        character( len = * ), optional, intent( in ) :: field_name
+        !Local variables
+        integer :: ndim, nphase, nonods, stat, k, i
+        character( len = option_path_len ) :: path_option, root_path
 
         mfield%have_field = .true.
 
         ndim = Mdims%ndim ; nphase = Mdims%nphase
 
-        !Decide whether the field is constant throught the domain or not
-        mfield%is_constant = (size(tfield%val,3) == 1)
         !Number of nodes of the field
-        nonods = size( tfield%val, 3 )
+        nonods = nonods_in
+        !Decide whether the field is constant throught the domain or not
+        mfield%is_constant = (nonods == 1)
 
-        !Number of dimensions of the coupling, for example ndim*ndim*nphase
-        dimensions = size( tfield%val, 2 )
-        if ( dimensions <= 0 ) FLAbort( "Wrong input for dimensions" )
-        !Depending on the field, different possibilities
-        if (trim(field_name)=="PorousMedia_AbsorptionTerm") then
-            !For this field rigth now there is no coupling between phases, so is either type 1 or type 2
-            if (have_option('porous_media/scalar_field::Permeability')) then
-                mfield%memory_type = 1
-            else
-                path_option = 'porous_media/tensor_field::Permeability'
-                if (have_option(path_option//"value/isotropic")) then
-                    mfield%memory_type = 1
+        if (present(field_name)) then
+            !Depending on the field, different possibilities
+            if (trim(field_name)=="PorousMedia_AbsorptionTerm") then
+                mfield%memory_type = 0
+                mfield%is_constant = .false.
+                !For this field rigth now there is no coupling between phases, so is either type 1 or type 2
+                if (have_option('porous_media/scalar_field::Permeability')) then
+                    mfield%memory_type = max(mfield%memory_type, 1)
+                    root_path = 'porous_media/scalar_field::Permeability/prescribed/value'
+                    k = option_count(trim(root_path))
+                    !Check if field is constant
+                    mfield%is_constant = (k == 1)
+                    if (mfield%is_constant) then
+                        !Check that it is not a python field
+                        do i = 0, k-1
+                            path_option = trim(root_path)//'['//int2str(i)//']/python'
+                            if (have_option(trim(path_option))) mfield%is_constant = .false.
+                        end do
+                    end if
                 else
-                    mfield%memory_type = 2
+                    root_path = 'porous_media/tensor_field::Permeability/prescribed/value'
+                    k = option_count(trim(root_path))
+                    if (k == 1) nonods = 1
+                    do i = 0, k-1
+                        path_option = trim(root_path)//'['//int2str(i)//']/isotropic'
+                        if (have_option(path_option//"/isotropic")) then
+                            mfield%memory_type = max(mfield%memory_type, 1)
+                        else
+                            mfield%memory_type = max(mfield%memory_type, 2)
+                        end if
+                    end do
+                end if
+                !Check if field is constant
+                mfield%is_constant = (k == 1)
+                if (mfield%is_constant) then
+                    !Check that it is not a python field
+                    do i = 0, k-1
+                        path_option = trim(root_path)//'['//int2str(i)//']/isotropic/python'
+                        if (have_option(trim(path_option))) mfield%is_constant = .false.
+                        path_option = trim(root_path)//'['//int2str(i)//']/diagonal/python'
+                        if (have_option(trim(path_option))) mfield%is_constant = .false.
+                        path_option = trim(root_path)//'['//int2str(i)//']/anisotropic_symmetric/python'
+                        if (have_option(trim(path_option))) mfield%is_constant = .false.
+                        path_option = trim(root_path)//'['//int2str(i)//']/anisotropic_asymmetric/python'
+                        if (have_option(trim(path_option))) mfield%is_constant = .false.
+                    end do
                 end if
             end if
+
+            if (trim(field_name)=="ComponentAbsorption") then
+                mfield%memory_type = 4
+            end if
         end if
-
-        if (trim(field_name)=="ComponentAbsorption") then
-             mfield%memory_type = 4
-        end if
-
-
         select case ( mfield%memory_type )
             case( 0, 1 ) ! Isotropic ( full and diagonal )
                 mfield%ndim1 = 1    ; mfield%ndim2 = 1           ; mfield%ndim3 = nphase
@@ -380,19 +406,25 @@ contains
                 FLAbort( "Cannot determine multi_field memrory_type." )
         end select
 
-        mfield%val(1:mfield%ndim1, 1:mfield%ndim2, 1:mfield%ndim3, 1:nonods) => tfield%val
+        !Allocate and initialize memory
+        allocate(mfield%val(1:mfield%ndim1, 1:mfield%ndim2, 1:mfield%ndim3, 1:nonods)); mfield%val = 0.
 
         return
     end subroutine allocate_multi_field2
 
 
 
-    subroutine deallocate_multi_field(mfield)
+    subroutine deallocate_multi_field(mfield, and_destroy)
         !*********UNTESTED*********
         implicit none
         type( multi_field ), intent( inout ) :: mfield
+        logical, optional, intent(in) :: and_destroy
 
-        mfield%val => null()
+        if(present_and_true(and_destroy)) then
+            deallocate(mfield%val)
+        end if
+
+        nullify(mfield%val)
         mfield%memory_type = 0
         mfield%have_field = .false.
         mfield%is_constant = .false.
@@ -404,6 +436,7 @@ contains
 
     subroutine get_multi_field(mfield, inode_in, output)
         !*********UNTESTED*********
+        !TYPE 2 TESTED
         implicit none
         integer, intent(in) :: inode_in
         type( multi_field ), intent( inout ) :: mfield
@@ -451,7 +484,10 @@ contains
 
     subroutine add_array_to_multi_field(mfield, b, xpos, ypos, inode)
         !*********UNTESTED*********
+        !TYPE 2 TESTED
         !mfield = mfield + b
+        !xpos and ypos are the starting positions
+        !for a full matrix they have to be one
         implicit none
         integer, intent(in) :: inode
         integer, intent(in) :: xpos, ypos
@@ -460,8 +496,8 @@ contains
         !Local variables
         integer :: fxpos, fypos, idim, jdim, iphase, ndim, jphase
 
-        fxpos = xpos + size(b,1)
-        fypos = ypos + size(b,2)
+        fxpos = xpos + size(b,1) - 1
+        fypos = ypos + size(b,2) - 1
 
         select case (mfield%memory_type)
             case (0,1)!Isotropic
@@ -469,9 +505,9 @@ contains
             case (2)!Anisotropic
                 ndim = size(b,2)/mfield%ndim3
                 !Work out the involved phases from the position
-                do iphase = 1 + xpos/ndim, 1 + fxpos/ndim!!do iphase =1,mfield%ndim3
-                    do idim = xpos, fxpos!jdim = 1, mfield%ndim2!ndim
-                        do jdim = ypos, fypos!idim = 1, mfield%ndim2!ndim
+                do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!!do iphase =1,mfield%ndim3
+                    do idim = xpos, fxpos/mfield%ndim3!jdim = 1, mfield%ndim2!ndim
+                        do jdim = ypos, fypos/mfield%ndim3!idim = 1, mfield%ndim2!ndim
                             mfield%val(idim,jdim,iphase,inode) = mfield%val(idim,jdim,iphase,inode) +&
                                  b(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2)
                         end do
@@ -479,8 +515,8 @@ contains
                 end do
             case (3)!isotropic coupled
                 ndim = size(b,2)/mfield%ndim3
-                do iphase = xpos, fxpos!1, mfield%ndim3
-                    do jphase = ypos, fypos!1, mfield%ndim3
+                do iphase = xpos, fxpos/ndim!1, mfield%ndim3
+                    do jphase = ypos, fypos/ndim!1, mfield%ndim3
                         mfield%val(1,iphase,jphase,inode) = mfield%val(1,iphase,jphase,inode) +&
                          b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim)
                     end do
@@ -491,57 +527,61 @@ contains
 
     end subroutine add_array_to_multi_field
 
-
-
-
-
-    subroutine add_multi_field_to_array(mfield, b, xpos, ypos, inode)
+    subroutine add_multi_field_to_array(mfield, b, xpos, ypos, inode, a_in)
         !*********UNTESTED*********
-        !b = b + mfield
+        !TYPE 2 TESTED
+        !b = b + a * mfield
+        !xpos and ypos are the starting positions
+        !for a full matrix they have to be one
         implicit none
         integer, intent(in) :: inode
         integer, intent(in) :: xpos, ypos
         type( multi_field ), intent( in ) :: mfield
         real, dimension(:,:), intent(inout) :: b
+        real, optional, intent(in) :: a_in
         !Local variables
         integer :: fxpos, fypos, idim, jdim, iphase, ndim, jphase
+        real :: a
 
-        fxpos = xpos + size(b,1)
-        fypos = ypos + size(b,2)
+        if(present(a_in)) then
+            a = a_in
+        else
+            a = 1.0
+        end if
+        fxpos = xpos + size(b,1) - 1
+        fypos = ypos + size(b,2) - 1
 
         select case (mfield%memory_type)
             case (0,1)!Isotropic
-                b(1,1) = b(1,1) + mfield%val(1,1,1,inode)
+                b(1,1) = b(1,1) + a * mfield%val(1,1,1,inode)
             case (2)!Anisotropic
                 ndim = size(b,2)/mfield%ndim3
                 !Work out the involved phases from the position
-                do iphase = 1 + xpos/ndim, 1 + fxpos/ndim!!do iphase =1,mfield%ndim3
-                    do idim = xpos, fxpos!jdim = 1, mfield%ndim2!ndim
-                        do jdim = ypos, fypos!idim = 1, mfield%ndim2!ndim
+                do iphase = 1 + (xpos-1)/ndim, fxpos/ndim!!do iphase =1,mfield%ndim3
+                    do idim = xpos, fxpos/mfield%ndim3!jdim = 1, mfield%ndim2!ndim
+                        do jdim = ypos, fypos/mfield%ndim3!idim = 1, mfield%ndim2!ndim
                             b(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2) = &
-                                b(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2) +mfield%val(idim,jdim,iphase,inode)
+                                b(idim+(iphase-1)*mfield%ndim2,jdim+(iphase-1)*mfield%ndim2) +a * mfield%val(idim,jdim,iphase,inode)
                         end do
                     end do
                 end do
             case (3)!isotropic coupled
                 ndim = size(b,2)/mfield%ndim3
-                do iphase = xpos, fxpos!1, mfield%ndim3
-                    do jphase = ypos, fypos!1, mfield%ndim3
+                do iphase = xpos, fxpos/ndim!1, mfield%ndim3
+                    do jphase = ypos, fypos/ndim!1, mfield%ndim3
                         b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim) = &
-                            b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim) + mfield%val(1,iphase,jphase,inode)
+                            b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim) + a * mfield%val(1,iphase,jphase,inode)
                     end do
                 end do
             case default !Anisotropic coupled
-                b = b + mfield%val(1,xpos:fxpos,ypos:fypos,inode)
+                b = b + a * mfield%val(1,xpos:fxpos,ypos:fypos,inode)
         end select
 
     end subroutine add_multi_field_to_array
 
-
-
-
     subroutine mult_multi_field_by_array(mfield, b, inode)
         !*********UNTESTED*********
+        !TYPE 2 TESTED
         !mfield = mfield * b
         implicit none
         integer, intent(in) :: inode
@@ -578,8 +618,53 @@ contains
 
     end subroutine mult_multi_field_by_array
 
-    subroutine scale_multi_field(mfield, a, inode)
+
+    subroutine mult_multi_field_by_array_on_array(mfield, b, inode)
         !*********UNTESTED*********
+        !TYPE 2 TESTED
+        !b = mfield * b
+        implicit none
+        integer, intent(in) :: inode
+        type( multi_field ), intent( in ) :: mfield
+        real, dimension(:,:), intent(inout) :: b
+        !Local variables
+        integer :: idim, jdim, iphase, ndim, jphase
+        real, dimension(:,:), allocatable :: miniB
+
+        select case (mfield%memory_type)
+            case (0,1)!Isotropic
+                b = b * mfield%val(1,1,1,inode)
+            case (2)!Anisotropic
+                ndim = size(b,2)/mfield%ndim3
+                !Work out the involved phases from the position
+                do iphase =1,mfield%ndim3
+                    b(1+(iphase-1)*mfield%ndim2:iphase*mfield%ndim2 ,1+(iphase-1)*mfield%ndim2:iphase*mfield%ndim2) = &
+                    matmul(mfield%val(:,:,iphase,inode), b(1+(iphase-1)*mfield%ndim2:iphase*mfield%ndim2 ,1+(iphase-1)*mfield%ndim2:iphase*mfield%ndim2))
+                end do
+            case (3)!Isotropic coupled
+                ndim = size(b,2)/mfield%ndim3
+                allocate(miniB(mfield%ndim3,mfield%ndim3))!(nphase,nphase)
+                do iphase = 1, mfield%ndim3!nphase
+                    do jphase = 1, mfield%ndim3!nphase
+                        miniB(iphase, jphase) = b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim)
+                    end do
+                end do
+                miniB = matmul(mfield%val(1,:,:,inode),miniB)
+                do iphase = 1, mfield%ndim3!nphase
+                    do jphase = 1, mfield%ndim3!nphase
+                        b(1+(iphase-1)*ndim ,1+(jphase-1)*ndim) = miniB(iphase, jphase)
+                    end do
+                end do
+                deallocate(miniB)
+            case default !Anisotropic coupled
+                b = matmul(mfield%val(1,:,:,inode),b)
+        end select
+
+    end subroutine mult_multi_field_by_array_on_array
+
+
+
+    subroutine scale_multi_field(mfield, a, inode)
         !mfield = a * mfield
         implicit none
         integer, intent(in) :: inode
