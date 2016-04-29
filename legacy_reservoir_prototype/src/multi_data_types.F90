@@ -369,7 +369,7 @@ contains
                     do i = 0, k-1
                         path_option = trim(root_path)//'['//int2str(i)//']/isotropic'
                         if (have_option(path_option//"/isotropic")) then
-                            mfield%memory_type = max(mfield%memory_type, 1)
+                            mfield%memory_type = max(mfield%memory_type, 0)
                         else
                             mfield%memory_type = max(mfield%memory_type, 2)
                         end if
@@ -451,7 +451,11 @@ contains
 
         select case (mfield%memory_type)
             case (0)!Isotropic full
-                output = mfield%val(1,1,1,inode)
+                ndim = size(output,2)/mfield%ndim3
+                do iphase = 1, mfield%ndim3!nphase
+                    output(1 + (iphase-1)*ndim:ndim + (iphase-1)*ndim, 1 + (iphase-1)*ndim:ndim + (iphase-1)*ndim) =&
+                         mfield%val(1,1,iphase,inode)
+                end do
             case (1)!Isotropic
                 output = 0.;ndim = size(output,2)/mfield%ndim3
                 do iphase = 1, mfield%ndim3!nphase
