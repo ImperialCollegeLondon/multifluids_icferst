@@ -596,7 +596,16 @@ contains
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
                         IDs_ndgln )
 
-                    !!$ Calculate Density_Component for compositional
+                    !!$ Calculate Darcy velocity
+                    if(is_porous_media) then
+                        ! temporarily not working for adaptivity -- will be updated soon
+                        if((.not.have_option('/io/not_output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
+                            call get_DarcyVelocity( Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, Mdims%mat_nloc, &
+                                ndgln%cv, ndgln%u, ndgln%mat, state, packed_state )
+                        end if
+                    end if
+
+					!!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
 
                 end if Conditional_ForceBalanceEquation

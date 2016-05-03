@@ -130,6 +130,12 @@ interpolated for VTK output.</a:documentation>
           </element>
         </optional>
         <optional>
+          <element name="not_output_darcy_vel">
+            <a:documentation>Output the absorption velocity (internally used) instead of the Darcy velocity.</a:documentation>
+            <empty/>
+          </element>
+        </optional>
+        <optional>
           <element name="dump_boundaryflux">
             <a:documentation>Surface to Integrate Over</a:documentation>
             <attribute name="name">

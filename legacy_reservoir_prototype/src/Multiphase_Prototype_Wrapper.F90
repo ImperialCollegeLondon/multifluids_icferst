@@ -45,7 +45,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use global_parameters, only: current_time, dt, timestep, option_path_len, &
         simulation_start_time, &
         simulation_start_cpu_time, &
-        simulation_start_wall_time
+        simulation_start_wall_time, is_porous_media
     use diagnostic_fields_new_multiphase, only : &
         & calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
         & check_diagnostic_dependencies
@@ -79,12 +79,12 @@ subroutine multiphase_prototype_wrapper() bind(C)
     character(len = option_path_len) :: simulation_name, dump_format
 
     real :: finish_time, nonlinear_iteration_tolerance
-    
+
     ! Establish signal handlers
     call initialise_signals()
 
     call get_option("/simulation_name",filename)
-    
+
     call set_simulation_start_times()
     call initialise_walltime
     timestep = 0
@@ -95,6 +95,10 @@ subroutine multiphase_prototype_wrapper() bind(C)
 #endif
 
     call initialise_write_state
+
+    ! Check if porous media model
+    is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
+
     ! Read state from .flml file
     call populate_state(state)
 
@@ -130,7 +134,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     ! For multiphase simulations, we have to call calculate_diagnostic_phase_volume_fraction *before*
     ! copy_to_stored(state,"Old") is called below. Otherwise, OldPhaseVolumeFraction (in the phase
-    ! containing the diagnostic PhaseVolumeFraction) will be zero and 
+    ! containing the diagnostic PhaseVolumeFraction) will be zero and
     ! NonlinearPhaseVolumeFraction will be calculated incorrectly at t=0.
     if(option_count("/material_phase/vector_field::Velocity/prognostic") > 1) then
         call calculate_diagnostic_phase_volume_fraction(state)
@@ -164,7 +168,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     call calculate_diagnostic_variables(state)
     call calculate_diagnostic_variables_new(state)
-    
+
     call tictoc_reset()
     call tic(TICTOC_ID_SIMULATION)
 
@@ -192,7 +196,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call MultiFluids_SolveTimeLoop( state, &
         dt, nonlinear_iterations, dump_no )
 
-   
+
 
 
     call close_diagnostic_files()
@@ -206,7 +210,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     call deallocate_reserve_state()
 
     ! Clean up registered diagnostics
-    call destroy_registered_diagnostics() 
+    call destroy_registered_diagnostics()
 
     ! Delete the transform_elements cache.
     call deallocate_transform_cache()
