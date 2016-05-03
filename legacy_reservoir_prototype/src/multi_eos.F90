@@ -748,6 +748,7 @@ contains
        !Local variables
        type( tensor_field ), pointer :: PorousMedia_AbsorptionTerm, perm
        real, dimension(Mdims%ndim, Mdims%ndim, Mdims%totele), target:: inv_perm
+       real, dimension(:,:), allocatable :: viscosities
        integer :: i
 
        perm => extract_tensor_field( packed_state, "Permeability" )
@@ -755,24 +756,29 @@ contains
         inv_perm( :, :, i)=inverse(perm%val( :, :, i))
        end do
 
-!       !For simple Black-Oil modelling the density have to account for the disolved gas in it
-!       if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)&
-!               call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 4)
-
+       !For simple Black-Oil modelling the viscosity is calculated using the PVT tables
+       if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)then
+           allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
+           call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 3, viscosities = viscosities)
+       else
+            allocate(viscosities(Mdims%nphase, 1))
+            call set_viscosity(state, Mdims, viscosities(:,1))
+       end if
        PorousMedia_AbsorptionTerm => extract_tensor_field( packed_state, "PorousMedia_AbsorptionTerm" )
        call Calculate_PorousMedia_adv_terms( state, packed_state, Mdims, ndgln, &
-              PorousMedia_AbsorptionTerm%val, upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm)
+              PorousMedia_AbsorptionTerm%val, upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm, viscosities)
 
        ! calculate SUF_SIG_DIAGTEN_BC this is \sigma_in^{-1} \sigma_out
        ! \sigma_in and \sigma_out have the same anisotropy so SUF_SIG_DIAGTEN_BC
        ! is diagonal
        call calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
-                                          Mspars, ndgln, PorousMedia_AbsorptionTerm%val, state, ids_ndgln, inv_perm)
+                              Mspars, ndgln, PorousMedia_AbsorptionTerm%val, state, ids_ndgln, inv_perm, viscosities)
 
+       deallocate(viscosities)
        contains
 
            subroutine Calculate_PorousMedia_adv_terms( state, packed_state, Mdims, ndgln, &
-               material_absorption, upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm )
+               material_absorption, upwnd, ids_ndgln, IDs2CV_ndgln, inv_perm, viscosities )
 
                implicit none
                type( state_type ), dimension( : ), intent( in ) :: state
@@ -783,14 +789,13 @@ contains
                integer, dimension( : ), intent( in ) :: IDs_ndgln, IDs2CV_ndgln
                real, dimension( :, :, : ), intent(inout) :: material_absorption
                real, dimension(:, :, :), target, intent(in):: inv_perm
+               real, dimension(:,:), intent(in) :: viscosities
                !!$ Local variables:
-               type( tensor_field ), pointer :: viscosity_ph
                integer :: ele, imat, icv, iphase, cv_iloc, idim, jdim, ipres, loc
                real :: Mobility, pert
                real, dimension(:), allocatable :: Max_sat
                real, dimension( :, :, : ), allocatable :: material_absorption2
                real, dimension( :, : ), allocatable :: satura2
-               real, dimension(size(state,1)) :: visc_phases
                !Working pointers
                real, dimension(:,:), pointer :: Satura, OldSatura, Immobile_fraction
                type( tensor_field ), pointer :: perm
@@ -802,22 +807,8 @@ contains
                call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura,&
                    OldPhaseVolumeFraction = OldSatura, Immobile_fraction = Immobile_fraction)
                perm=>extract_tensor_field(packed_state,"Permeability")
-               if( have_option( '/physical_parameters/mobility' ) )then!This option is misleading, it should be removed
-                   call get_option( '/physical_parameters/mobility', mobility )
-                   visc_phases(1) = 1
-                   visc_phases(2) = mobility
-               elseif( have_option( '/material_phase[1]/vector_field::Velocity/prognostic/tensor_field::Viscosity' // &
-                   '/prescribed/value::WholeMesh/isotropic' ) ) then
-                   DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
-                       viscosity_ph => extract_tensor_field( state( iphase ), 'Viscosity' )
-                       visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
-                   end do
-                   mobility = visc_phases(2) / visc_phases(1)!For backwards compatibility only
-               elseif( Mdims%nphase == 1 ) then
-                   viscosity_ph => extract_tensor_field( state( 1 ), 'Viscosity' )
-                   visc_phases(1) = viscosity_ph%val( 1, 1, 1 )
-                   mobility = visc_phases(1)
-               end if
+
+
                !sprint_to_do get directly upwnd%adv_coef, upwnd%inv_adv_coef without requiring material_absorption
                allocate( material_absorption2( Mdims%nphase * Mdims%ndim, Mdims%nphase * Mdims%ndim, Mdims%mat_nonods ))
                allocate( satura2( Mdims%n_in_pres, size(SATURA,2) ) )
@@ -831,7 +822,7 @@ contains
 
                CALL calculate_absorption2( packed_state, Mdims, ndgln, SATURA(1:Mdims%n_in_pres,:), &
                    material_absorption(1:Mdims%n_in_pres*Mdims%ndim,1:Mdims%n_in_pres*Mdims%ndim,:), PERM%val, &
-                   visc_phases, IDs_ndgln, inv_perm1=inv_perm)
+                   viscosities, IDs_ndgln, inv_perm1=inv_perm)
 
                !Introduce perturbation, positive for the increasing and negative for decreasing phase
                !Make sure that the perturbation is between bounds
@@ -848,7 +839,7 @@ contains
                    end do
                end do
                CALL calculate_absorption2( packed_state, Mdims, ndgln, SATURA2, &
-                   material_absorption2, PERM%val, visc_phases, IDs_ndgln, inv_perm1=inv_perm)
+                   material_absorption2, PERM%val, viscosities, IDs_ndgln, inv_perm1=inv_perm)
                do ipres = 2, Mdims%npres
                    Spipe => extract_scalar_field( state(1), "Sigma1" )
                    do iphase = 1, Mdims%n_in_pres
@@ -892,7 +883,7 @@ contains
 
 
            subroutine calculate_SUF_SIG_DIAGTEN_BC( packed_state, suf_sig_diagten_bc, Mdims, CV_funs, CV_GIdims, &
-               Mspars, ndgln, material_absorption, state, IDs_ndgln, inv_perm)
+               Mspars, ndgln, material_absorption, state, IDs_ndgln, inv_perm, viscosities)
                implicit none
                type( state_type ), intent( inout ) :: packed_state
                type(multi_dimensions), intent(in) :: Mdims
@@ -905,13 +896,13 @@ contains
                type(state_type), dimension( : ), intent(in) :: state
                real, dimension( Mdims%stotel * Mdims%cv_snloc * Mdims%nphase, Mdims%ndim ), intent( inout ) :: suf_sig_diagten_bc
                real, dimension(:, :, :), target, intent(in):: inv_perm
+               real, dimension(:,:), intent(in) :: viscosities
                ! local variables
-               type(tensor_field), pointer :: viscosity_ph, RockFluidProp
+               type(tensor_field), pointer :: RockFluidProp
                real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
-               real, dimension(Mdims%n_in_pres) :: visc_phases
                integer :: iphase, ele, sele, cv_siloc, cv_snodi, cv_snodi_ipha, iface, s, e, &
                    ele2, sele2, cv_iloc, idim, jdim, i, mat_nod, cv_nodi
-               real :: mobility, satura_bc
+               real :: satura_bc
                real, dimension( Mdims%ndim, Mdims%ndim ) :: sigma_out, sigma_in, mat, mat_inv
                integer, dimension( CV_GIdims%nface, Mdims%totele) :: face_ele
                integer, dimension( Mdims%mat_nonods*Mdims%n_in_pres ) :: idone
@@ -925,7 +916,9 @@ contains
                logical, parameter :: mat_perm_bc_dg = .true.
                type(tensor_field), pointer :: velocity, volfrac, perm
                type(tensor_field) :: velocity_BCs, volfrac_BCs
-
+               integer :: one_or_zero, visc_node
+               !Prepapre index for viscosity
+               one_or_zero = (size(viscosities,2)==Mdims%cv_nonods)
 
                !Get from packed_state
                volfrac=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
@@ -943,29 +936,12 @@ contains
                call get_entire_boundary_condition(volfrac,&
                    ['weakdirichlet'],volfrac_BCs,WIC_vol_BC)
 
-
-               if( Mdims%n_in_pres == 1 ) then
-                   viscosity_ph => extract_tensor_field( state( 1 ), 'Viscosity' )
-                   visc_phases(1) = viscosity_ph%val( 1, 1, 1 )
-                   mobility = visc_phases(1)
-               elseif( have_option( '/physical_parameters/mobility' ) )then
-                   call get_option( '/physical_parameters/mobility', mobility )
-                   visc_phases(1) = 1
-                   visc_phases(2) = mobility
-               elseif( have_option( '/material_phase[1]/vector_field::Velocity/prognostic/tensor_field::Viscosity' // &
-                   '/prescribed/value::WholeMesh/isotropic' ) ) then
-                   DO IPHASE = 1, Mdims%n_in_pres ! Get viscosity for all the phases
-                       viscosity_ph => extract_tensor_field( state( iphase ), 'Viscosity' )
-                       visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 ) ! So far we only consider scalar viscosity
-                   end do
-                   mobility = visc_phases(2) / visc_phases(1)
-               end if
-
                suf_sig_diagten_bc = 1.
                idone=0; face_ele = 0
                call calc_face_ele( face_ele, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
                    Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
                    CV_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
+
 
                do iphase = 1, Mdims%n_in_pres
                    s = ( iphase - 1 ) * Mdims%ndim + 1
@@ -988,6 +964,7 @@ contains
                                        cv_iloc = cv_sloc2loc( cv_siloc )
                                        cv_snodi = ( sele - 1 ) * Mdims%cv_snloc + cv_siloc
                                        cv_nodi = ndgln%suf_cv(cv_snodi)
+                                       visc_node = (cv_nodi-1)*one_or_zero + 1
                                        cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
                                        mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
                                        ! this is the boundary condition
@@ -995,7 +972,7 @@ contains
                                        do idim = 1, Mdims%ndim
                                            do jdim = 1, Mdims%ndim
                                                call get_relperm(Mdims%n_in_pres, iphase, sigma_out( idim, jdim ),&
-                                                   volfrac_BCs%val(1,:,cv_snodi), visc_phases, inv_perm( idim, jdim, ele ),&
+                                                   volfrac_BCs%val(1,:,cv_snodi), viscosities(:,visc_node), inv_perm( idim, jdim, ele ),&
                                                    Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                            end do
                                        end do
@@ -1032,6 +1009,36 @@ contains
                return
            end subroutine calculate_SUF_SIG_DIAGTEN_BC
 
+
+        subroutine set_viscosity(state, Mdims, visc_phases)
+            implicit none
+            type( state_type ), dimension( : ), intent( in ) :: state
+            type(multi_dimensions), intent(in) :: Mdims
+            real, dimension(:), intent(inout) :: visc_phases
+            !Local variables
+            integer :: iphase
+            real :: mobility
+            type(tensor_field), pointer :: viscosity_ph
+
+            if( have_option( '/physical_parameters/mobility' ) )then!This option is misleading, it should be removed
+                call get_option( '/physical_parameters/mobility', mobility )
+                visc_phases(1) = 1
+                visc_phases(2) = mobility
+            elseif( have_option( '/material_phase[1]/vector_field::Velocity/prognostic/tensor_field::Viscosity' // &
+                '/prescribed/value::WholeMesh/isotropic' ) ) then
+                DO IPHASE = 1, Mdims%nphase!Get viscosity for all the phases
+                    viscosity_ph => extract_tensor_field( state( iphase ), 'Viscosity' )
+                    visc_phases(iphase) = viscosity_ph%val( 1, 1, 1 )!So far we only consider scalar viscosity
+                end do
+            elseif( Mdims%n_in_pres == 1 ) then
+                viscosity_ph => extract_tensor_field( state( 1 ), 'Viscosity' )
+                visc_phases(1) = viscosity_ph%val( 1, 1, 1 )
+            end if
+
+
+        end subroutine set_viscosity
+
+
     end subroutine Calculate_PorousMedia_AbsorptionTerms
 
 
@@ -1039,7 +1046,7 @@ contains
 
 
     SUBROUTINE calculate_absorption2( packed_state, Mdims, ndgln, SATURA, &
-        material_absorption, PERM, visc_phases, IDs_ndgln, inv_mat_absorp, inv_perm1)
+        material_absorption, PERM, viscosities, IDs_ndgln, inv_mat_absorp, inv_perm1)
         ! Calculate absorption for momentum eqns
         implicit none
         type( state_type ), intent( inout ) :: packed_state
@@ -1049,7 +1056,7 @@ contains
         INTEGER, DIMENSION( : ), intent( in ) :: IDs_ndgln
         REAL, DIMENSION( :, :, : ), intent( inout ) :: material_absorption
         REAL, DIMENSION( :, :, : ), intent( in ) :: PERM
-        real, intent(in), dimension(:) :: visc_phases
+        real, intent(in), dimension(:,:) :: viscosities
         REAL, DIMENSION( :, :, : ), optional, intent( inout ) :: inv_mat_absorp
         real, dimension(:,:,:), target, optional ::inv_perm1
         ! Local variable
@@ -1059,6 +1066,10 @@ contains
         INTEGER :: ELE, CV_ILOC, CV_NOD, CV_PHA_NOD, MAT_NOD, JPHA_JDIM, &
             IPHA_IDIM, IDIM, JDIM, IPHASE, id_reg
         REAL, DIMENSION( :, :, :), pointer :: INV_PERM
+        integer :: one_or_zero, visc_node
+        !Prepapre index for viscosity
+        one_or_zero = (size(viscosities,2)==Mdims%cv_nonods)
+
         RockFluidProp=>extract_tensor_field(packed_state,"PackedRockFluidProp")
         ewrite(3,*) 'In calculate_absorption2'
 
@@ -1079,6 +1090,7 @@ contains
                 Loop_CVNLOC: DO CV_ILOC = 1, Mdims%cv_nloc
                     MAT_NOD = ndgln%mat(( ELE - 1 ) * Mdims%mat_nloc + CV_ILOC)
                     CV_NOD = ndgln%cv(( ELE - 1) * Mdims%cv_nloc + CV_ILOC )
+                    visc_node = (CV_NOD-1)*one_or_zero + 1
                     Loop_DimensionsI: DO IDIM = 1, Mdims%ndim
                         Loop_DimensionsJ: DO JDIM = 1, Mdims%ndim
                             CV_PHA_NOD = CV_NOD + ( IPHASE - 1 ) * Mdims%cv_nonods
@@ -1086,13 +1098,13 @@ contains
                             JPHA_JDIM = ( IPHASE - 1 ) * Mdims%ndim + JDIM
                             if (present(inv_mat_absorp)) then
                                 call get_relperm(Mdims%nphase, iphase, material_absorption( IPHA_IDIM, JPHA_JDIM, MAT_NOD ),&
-                                    SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, ELE),&
+                                    SATURA(:, CV_NOD), viscosities(:,visc_node), INV_PERM( IDIM, JDIM, ELE),&
                                     Immobile_fraction, Corey_exponent, Endpoint_relperm, perm( IDIM, JDIM, ELE), inv_mat_absorp( IPHA_IDIM, JPHA_JDIM, MAT_NOD ))
                                !Temporary fix, the inverse requires to be bounded for consistency reasons, specially for wells(the commentd value is precise for epsilon 1e-10 for wells)
 !                               if (IPHA_IDIM==JPHA_JDIM) inv_mat_absorp( IPHA_IDIM, JPHA_JDIM, MAT_NOD ) = max(inv_mat_absorp( IPHA_IDIM, JPHA_JDIM, MAT_NOD ) ,1e-10)!, 9.869223000e-11)
                             else
                                 call get_relperm(Mdims%nphase, iphase, material_absorption( IPHA_IDIM, JPHA_JDIM, MAT_NOD ),&
-                                    SATURA(:, CV_NOD), visc_phases, INV_PERM( IDIM, JDIM, ELE),&
+                                    SATURA(:, CV_NOD), viscosities(:,visc_node), INV_PERM( IDIM, JDIM, ELE),&
                                     Immobile_fraction, Corey_exponent, Endpoint_relperm)
                             end if
                         END DO Loop_DimensionsJ
@@ -2446,9 +2458,9 @@ contains
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         integer, intent(in) :: flash_flag!Selects which field to update 0 => All; 1 => Density; 2 => Saturation; 3 => viscosity
-        real, optional, intent(in) :: viscosities
+        real, optional, dimension(:,:), intent(inout) :: viscosities
         !Local variables                 !4 => Saturation and viscosity;
-        type( tensor_field ), pointer :: pressure, saturation, density, visc_liquid, visc_vapour,DRhoDP
+        type( tensor_field ), pointer :: pressure, saturation, density, visc_liquid, visc_vapour,DRhoDP, visc_aqua
         real :: RhoPlus, RhoMinus, liquid_fraction, aqua_sat
         integer :: cv_inod, iphase, cv_iloc, ele, k
         real, dimension(3) :: density_reference
@@ -2529,30 +2541,33 @@ contains
             end do
         end if
 
-         !TO GET THIS WORKING WE NEED TO CHANGE THE VISCOSITY IN Calculate_PorousMedia_AbsorptionTerms
-!        if (flash_flag == 0 .or. flash_flag == 3 .or. flash_flag == 4) then
-!            if (present(viscosities)) then!Modify the introduced viscosity data, not the one in packed state
-!                do cv_inod = 1, mdims%cv_nonods
-!                    !Have to change Calculate_PorousMedia_AbsorptionTerms to consider non-homogenenous viscosities
-!                    !Obtain new viscosities(just diagonal tensor)
-!                    do k = 1, Mdims%ndim
-!                        viscosities%val(2,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,5)
-!                        viscosities%val(3,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,6)
-!                    end do
-!                end do
-!            else
-!                visc_liquid => extract_tensor_field(state(2),"Viscosity")
-!                visc_vapour => extract_tensor_field(state(3),"Viscosity")
-!                do cv_inod = 1, mdims%cv_nonods
-!                    !Have to change Calculate_PorousMedia_AbsorptionTerms to consider non-homogenenous viscosities
-!                    !Obtain new viscosities(just diagonal tensor)
-!                    do k = 1, Mdims%ndim
-!                        visc_liquid%val(k,k,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,5)
-!                        visc_vapour%val(k,k,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,6)
-!                    end do
-!                end do
-!            end if
-!        end if
+        if (flash_flag == 0 .or. flash_flag == 3 .or. flash_flag == 4) then
+            if (present(viscosities)) then!Modify the introduced viscosity data, not the one in packed state
+                !Aqua phase set from mpml
+                visc_aqua => extract_tensor_field(state(1),"Viscosity")
+                viscosities(1,:) = visc_aqua%val(1,1,1)!Only isotropic viscosity
+                do cv_inod = 1, mdims%cv_nonods
+                    !Obtain new viscosities(just diagonal tensor)
+                    do k = 1, Mdims%ndim
+                        viscosities(2,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,5)
+                        viscosities(3,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,6)
+                    end do
+                end do
+            else
+                visc_liquid => extract_tensor_field(state(2),"Viscosity")
+                if (size(visc_liquid%val,3) > 1) then!Update only if viscosity is defined per CV, not homogenenous
+                    visc_vapour => extract_tensor_field(state(3),"Viscosity")
+                    do cv_inod = 1, mdims%cv_nonods
+                        !Have to change Calculate_PorousMedia_AbsorptionTerms to consider non-homogenenous viscosities
+                        !Obtain new viscosities(just diagonal tensor)
+                        do k = 1, Mdims%ndim
+                            visc_liquid%val(k,k,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,5)
+                            visc_vapour%val(k,k,cv_inod) = eval_table(pressure%val(1,1,cv_inod), PVT_table,6)
+                        end do
+                    end do
+                end if
+            end if
+        end if
         deallocate(PVT_table)
 
     contains

@@ -587,13 +587,17 @@ contains
             real :: physics_adjustment
 
             physics_adjustment = 1.!If there are physics, the problem is more complex
+            !Negative effects on the convergence
             if (have_option("/physical_parameters/gravity")) physics_adjustment = physics_adjustment * 1.5
             if (have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)) &
                 physics_adjustment = physics_adjustment * 2.0
             if (Mdims%ncomp > 0 ) physics_adjustment = physics_adjustment * 1.5
-
+            if (Mdims%n_in_pres > 2) physics_adjustment = physics_adjustment * 1.2
+            !Positive effects on the convergence !Need to check for shock fronts...
             if (have_option_for_any_phase("/multiphase_properties/Sat_overRelax", Mdims%nphase)) &
                 physics_adjustment = physics_adjustment * 0.8
+            if (Mdims%n_in_pres == 1) physics_adjustment = physics_adjustment * 0.5
+
 
             !For the time being, it is based on this simple table
             if (Courant_number * physics_adjustment > 40.) then

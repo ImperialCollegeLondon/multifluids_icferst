@@ -81,16 +81,15 @@
       <comment>864000000</comment>
     </timestep>
     <finish_time>
-      <real_value rank="0">2.9e12</real_value>
+      <real_value rank="0">2.e10</real_value>
     </finish_time>
     <nonlinear_iterations>
       <integer_value rank="0">100</integer_value>
       <Fixed_Point_Iteration>
         <real_value rank="0">5e-2</real_value>
         <Backtracking_factor>
-          <real_value rank="0">-0.15</real_value>
+          <real_value rank="0">-10</real_value>
         </Backtracking_factor>
-        <Show_Convergence/>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>

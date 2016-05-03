@@ -627,7 +627,7 @@ contains
                 if ( have_component_field ) call calc_components()
 
                 !Flash calculations for simple Black-Oil modelling
-                if (simple_black_oil_model) call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
+                if (simple_black_oil_model) call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 2)
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"

@@ -94,13 +94,14 @@ coriolis_options =
 black_oil_options =
    ## This option enables the use of an standard Black-Oil modelling
    ## based on PVT tables. The phase change is performed locally to the nodes.
-   ##
-   ## The data introduced here, overrides another parameters set in Diamond.
-   ##
    ## Introduce the relative path to the .csv file.
    ## Introduce "internal" to use the internal table.
    ##
    ## For an example of a csv table check the test case table
+   ##
+   ## The data introduced here overrides another parameters set in diamond.
+   ## The viscosity of the first phase is retrieved from diamond, NOTE
+   ## that the viscosities in the vtus are the diamond viscosities.
    element black-oil_PVT_table {
       anystring
    }
