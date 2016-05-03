@@ -609,7 +609,8 @@ contains
         !Template of csv table
         !OPTIONAL section (header)
         !real1,real2,real3,..., size(extra_data)
-        !2,3                 !<= this are the columns and rows
+        !rows,columns
+        !2,3
         !Pressure,Saturation
         !1000,0.9
         !250,0.5
@@ -628,7 +629,7 @@ contains
             read(89,*)!skip header
             read(89,*) extra_data
         end if
-
+        read(89,*)!skip header
         !CSV table must start with the number of columns by rows
         read(89,*) table_size
         allocate(data_array(table_size(1), table_size(2)))

@@ -95,8 +95,12 @@ black_oil_options =
    ## This option enables the use of an standard Black-Oil modelling
    ## based on PVT tables. The phase change is performed locally to the nodes.
    ##
+   ## The data introduced here, overrides another parameters set in Diamond.
+   ##
    ## Introduce the relative path to the .csv file.
    ## Introduce "internal" to use the internal table.
+   ##
+   ## For an example of a csv table check the test case table
    element black-oil_PVT_table {
       anystring
    }

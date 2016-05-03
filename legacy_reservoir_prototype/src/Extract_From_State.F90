@@ -1179,13 +1179,14 @@ contains
         if(is_porous_media) then
             if((.not.have_option('/io/not_output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
                 ! allocate darcy velocity[in packed_state]
-                call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity")
+                call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity", dim=[ndim,nphase])
                 call zero(ten_field)
                 call insert(packed_state,ten_field,"PackedDarcyVelocity")
                 call deallocate(ten_field)
 
                 ! let velocity[in state] point to darcy velocity[packed_state]
                 tfield=>extract_tensor_field(packed_state,"PackedDarcyVelocity")
+
                 do iphase=1,size(state)
                     vfield=>extract_vector_field(state(iphase),"Velocity")
                     vfield%val=>tfield%val(:,iphase,:)
