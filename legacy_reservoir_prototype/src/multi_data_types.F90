@@ -257,38 +257,28 @@ contains
 
         if ( stat /= 0 ) FLAbort( "Cannot determine multi_field source." )
 
+        ! Decide whether the field is constant throught the domain or not
+        if ( have_option(trim(tfield%option_path)//"prescribed") ) mfield%is_constant = .true.  ! This logic is not correct
 
-        ! Scalar field source - this is only for isotropic fields
-        ! mfield%memory_type = [0 1 3]
-
-
-        ! Phases not coupled
-        !mfield%memory_type = [0 1]
-        !mfield%val( 1:1, 1:1, iphase:iphase, 1:nonods ) => sfield%val
-
-        ! Tensor field source - this is only for anisotropic fields
-        ! mfield%memory_type = [2 4]
-
-        !Decide whether the field is constant throught the domain or not
-        if ( have_option(trim(tfield%option_path)//"prescribed") ) mfield%is_constant = .true.
-        !Number of nodes of the field
+        ! Number of nodes of the field
         nonods = size( tfield%val, 3 )
-        !Number of dimensions of the coupling, for example ndim*ndim*nphase
-        call get_option(trim(tfield%option_path)//"type/dimensions", dimensions, default = -1)
-        if ( dimensions <= 0 ) FLAbort( "Wrong input for dimensions" )
 
-        !Select the element type
-        if (have_option(trim(tfield%option_path)//"type/Anisotropic_coupled")) then
+        ! Number of dimensions of the coupling, for example ndim*ndim*nphase
+        call get_option( trim(tfield%option_path) // "/type/dimensions", dimensions, default = -1)
+        if ( dimensions < 1 ) FLAbort( "Wrong input for dimensions." )
+
+        ! Select memory type
+        if ( have_option(trim(tfield%option_path) // "/type/Anisotropic_coupled" ) ) then
             mfield%memory_type = 4
-        else if (have_option(trim(tfield%option_path)//"type/Anisotropic")) then
+        else if ( have_option(trim(tfield%option_path) // "/type/Anisotropic" ) ) then
             mfield%memory_type = 2
-        else if (have_option(trim(tfield%option_path)//"type/Isotropic_coupled")) then
+        else if ( have_option(trim(tfield%option_path) // "/type/Isotropic_coupled" ) ) then
             mfield%memory_type = 3
-        else if (have_option(trim(tfield%option_path)//"type/Isotropic")) then
+        else if ( have_option(trim(tfield%option_path) // "/type/Isotropic" ) ) then
             mfield%memory_type = 1
-            if (trim(tfield%name)=="Viscosity" ) mfield%memory_type = 0
+            if ( trim( tfield%name ) == "Viscosity" ) mfield%memory_type = 0
         else
-            FLAbort( "Wrong memory type selected" )
+            FLAbort( "Wrong memory type selected." )
         end if
 
         select case ( mfield%memory_type )
@@ -306,18 +296,6 @@ contains
 
         mfield%val(1:mfield%ndim1, 1:mfield%ndim2, 1:mfield%ndim3, 1:nonods) => tfield%val
 
-           ! Phases not coupled
-           !mfield%memory_type = 2
-           !mfield%val( 1:ndim, 1:ndim, iphase:iphase, 1:nonods ) => tfield%val
-
-           ! Phases coupled
-           !mfield%memory_type = 4
-           !mfield%val( 1:1, 1:ndim*nphase, 1:ndim*nphase, 1:nonods ) => tfield%val
-           !mfield%val( 1:1, ndim*(iphase-1)+1:ndim*iphase, ndim*(jphase-1)+1:ndim*jphase, 1:nonods ) => tfield%val
-
-           ! Phases coupled
-           !mfield%memory_type = 3
-           !mfield%val( 1:1, iphase:iphase, jphase:jphase, 1:nonods ) => sfield%val
         return
     end subroutine allocate_multi_field1
 
