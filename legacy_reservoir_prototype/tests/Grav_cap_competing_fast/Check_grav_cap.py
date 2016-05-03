@@ -233,7 +233,8 @@ if (Passed):
     print 'Grav-cap works OK'
 else:
     print 'Grav-cap does NOT work'
-
+#Check the experiment has finished
+if (AutoNumber < 6): Passed = False
 if (showPlot):
     fig, ax = plt.subplots()
     x = []
