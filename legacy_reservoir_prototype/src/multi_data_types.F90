@@ -258,14 +258,14 @@ contains
         if ( stat /= 0 ) FLAbort( "Cannot determine multi_field source." )
 
         ! Decide whether the field is constant throught the domain or not
-        if ( have_option(trim(tfield%option_path)//"prescribed") ) mfield%is_constant = .true.
+        if ( have_option(trim(tfield%option_path)//"prescribed") ) mfield%is_constant = .true.  ! This logic is not correct
 
         ! Number of nodes of the field
         nonods = size( tfield%val, 3 )
 
         ! Number of dimensions of the coupling, for example ndim*ndim*nphase
         call get_option( trim(tfield%option_path) // "/type/dimensions", dimensions, default = -1)
-        if ( dimensions <= 0 ) FLAbort( "Wrong input for dimensions" )
+        if ( dimensions < 1 ) FLAbort( "Wrong input for dimensions." )
 
         ! Select memory type
         if ( have_option(trim(tfield%option_path) // "/type/Anisotropic_coupled" ) ) then

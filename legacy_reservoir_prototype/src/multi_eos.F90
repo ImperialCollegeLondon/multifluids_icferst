@@ -1487,7 +1487,7 @@ contains
          end if
       end if
 
-
+      !print *, 'P1=', t_field%val( 1, 1, : )
 
       !!! NEW CODE HERE !!!
       !!! deal with Momentum_Diffusion2
@@ -1532,6 +1532,9 @@ contains
 
          end if
       end if
+
+      !print *, 'P2=', t_field%val( 1, 1, : )
+      !stop 666
 
       !!!!!!!!!!!!!!!!!!!!!
 
