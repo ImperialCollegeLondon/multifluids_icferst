@@ -1061,6 +1061,7 @@ contains
             call deallocate(permeability)
         end if
 
+        !!$ pack multi_state information
         has_density=has_scalar_field(state(1),"Density")
         has_phase_volume_fraction=has_scalar_field(state(1),"PhaseVolumeFraction")
         iphase=1; icomp=1
@@ -1173,6 +1174,38 @@ contains
             deallocate(multi_state)
         end if
 
+        !!$ memory allocation for darcy velocity
+        ! temporarily only work for adaptivity is switched off -- the last condition will soon be removed
+        if(is_porous_media) then
+            if((.not.have_option('/io/not_output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
+                ! allocate darcy velocity[in packed_state]
+                call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity")
+                call zero(ten_field)
+                call insert(packed_state,ten_field,"PackedDarcyVelocity")
+                call deallocate(ten_field)
+
+                ! let velocity[in state] point to darcy velocity[packed_state]
+                tfield=>extract_tensor_field(packed_state,"PackedDarcyVelocity")
+                do iphase=1,size(state)
+                    vfield=>extract_vector_field(state(iphase),"Velocity")
+                    vfield%val=>tfield%val(:,iphase,:)
+                end do
+
+                !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+                ! unfinished part -- still working on the field copy for when adaptivity is switched on
+                ! 3 places to be changed: here, Populate_State, Multiphase_TimeLoop
+                !
+                ! add velocity_int[in state] and point it to internal velocity[packed_state]
+                ! tfield=>extract_tensor_field(packed_state,"PackedVelocity")
+                !do iphase=1,size(state)
+                    ! call allocate_and_insert_vector_field('/material_phase['//int2str(size(state)-1)//']/vector_field::Velocity', &
+                    !   state(iphase), field_name = "Velocity_int", parent_mesh = "VelocityMesh", dont_assign_boundary_condition = .true.)
+                    !vfield=>extract_vector_field(state(iphase),"Velocity_bak")
+                    !vfield%val=>tfield%val(:,iphase,:)
+                !end do
+            end if
+        end if
+
         !! // How to add density as a dependant of olddensity,  as an example
         !! // Suppose we have a previous declaration
         !! type(tensor_field), pointer :: old_density, density
@@ -1185,24 +1218,6 @@ contains
         !! // If we then make a  call
         !! call mark_as_updated(old_density)
         !! // then is_updated(old_density) is now .true. and is_updated(density) is .false.
-
-        ! !Add memory for the DarcyVelocity
-        ! call allocate(ten_field,velocity%mesh,"PackedDarcyVelocity")
-        ! call zero(ten_field)
-        ! call insert(packed_state,ten_field,"PackedDarcyVelocity")
-        ! call deallocate(ten_field)
-        ! !Insert into state and merge memories
-        ! do iphase = 1, size(state)
-        !     call allocate(vec_field, ndim, velocity%mesh, "DarcyVelocity")
-        !     call zero(vec_field)
-        !     call insert(state(iphase),vec_field,"DarcyVelocity")
-        !     call deallocate(vec_field)
-        ! end do
-        ! do iphase = 1, size(state)
-        !     call unpack_vfield(state(iphase),packed_state,"DarcyVelocity",iphase,&
-        !     check_vpaired(extract_vector_field(state(iphase),"DarcyVelocity"),&
-        !     extract_vector_field(state(iphase),"DarcyVelocity")))
-        ! end do
 
     contains
 
@@ -3044,69 +3059,74 @@ size(t_field%val,1)*size(t_field%val,2)*size(t_field%val,3), t_field%name)
 
 end subroutine get_regionIDs2nodes
 
-!sprint_to_do!finish during of after the sprint
-subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, MAT_NDGLN, U_NDGLN, CV_NDGLN, &
-    state, packed_state, Material_Absorption)
-    !This subroutine calculates the actual Darcy velocity, unfinished
+!!$ This subroutine calculates the actual Darcy velocity
+subroutine get_DarcyVelocity(totele, cv_nloc, u_nloc, mat_nloc, cv_ndgln, u_ndgln, mat_ndgln, &
+    state, packed_state)
+
     implicit none
+
+    ! I/O variables
     integer, intent(in) :: totele, cv_nloc, u_nloc, mat_nloc
-    integer, dimension(:) :: MAT_NDGLN, U_NDGLN, CV_NDGLN
-    type(state_type) , intent(in):: packed_state
-    type( state_type ), dimension( : ), intent( inout ) :: state
-    real, dimension(:,:,:), intent(in):: Material_Absorption
-    !Local variables
-    type(tensor_field), pointer :: DarcyVelocity, Velocity, saturation, oldsaturation, perm
+    integer, dimension(:) :: cv_ndgln, u_ndgln, mat_ndgln
+    type(state_type), intent(in) :: packed_state
+    type(state_type), dimension(:), intent(inout) :: state
+
+    ! Local variables
+    type(tensor_field), pointer :: darcy_velocity, velocity, saturation, oldsaturation, &
+        permeability, absorption_term
     type(scalar_field), pointer :: porosity
-    real, dimension(:,:), allocatable :: matrix
+    real, dimension(:,:), allocatable :: loc_absorp_matrix
+    real, dimension(:), allocatable :: sat_weight_velocity
     integer :: cv_iloc, u_iloc, ele, iphase, ndim, nphase, imat, u_inod, cv_loc, idim
-    real, allocatable, dimension(:) :: aux
-    real :: aux2
 
+    ! Initialisation
+    darcy_velocity => extract_tensor_field(packed_state,"PackedDarcyVelocity")
+    velocity => extract_tensor_field(packed_state,"PackedVelocity")
+    saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
+    oldsaturation => extract_tensor_field( packed_state,"PackedOldPhaseVolumeFraction")
+    porosity => extract_scalar_field(state(1),"Porosity")
+    permeability => extract_tensor_field(packed_state,"Permeability")
+    absorption_term => extract_tensor_field(packed_state,"PorousMedia_AbsorptionTerm")
 
-    DarcyVelocity => extract_tensor_field(packed_state, "PackedDarcyVelocity")
-    Velocity => extract_tensor_field( packed_state, "PackedVelocity" )
-    saturation => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
-    oldsaturation => extract_tensor_field( packed_state, "PackedOldPhaseVolumeFraction" )
-    porosity => extract_scalar_field(state(1), "Porosity")
-    perm=>extract_tensor_field(packed_state,"Permeability")
+    call zero(darcy_velocity)
+    allocate(loc_absorp_matrix(size(absorption_term%val,1),size(absorption_term%val,2)))
+    nphase = size(velocity%val,2)
+    ndim = size(velocity%val,1)
+    allocate(sat_weight_velocity(ndim))
 
-
-    call zero(DarcyVelocity)
-
-    allocate(matrix(size(Material_Absorption,2), size(Material_Absorption,3)))
-    nphase = size(Velocity%val, 2)
-    ndim  = size(Velocity%val, 1)
-    allocate(aux(ndim))
-
+    ! Calculation
     do ele = 1, totele
         do u_iloc = 1, u_nloc
-            u_inod = U_NDGLN(( ELE - 1 ) * u_nloc +u_iloc )
+            u_inod = u_ndgln((ele-1)*u_nloc+u_iloc)
             do cv_iloc = 1, cv_nloc
-                imat = MAT_NDGLN(( ELE - 1 ) * MAT_NLOC +CV_ILOC )
-                cv_loc = CV_NDGLN(( ELE - 1 ) * cv_nloc +CV_ILOC )
+                imat = mat_ndgln((ele-1)*mat_nloc+cv_iloc)
+                cv_loc = cv_ndgln((ele-1)*cv_nloc+cv_iloc)
                 !This is not optimal, maybe just perform when CVN(U_ILOC, CV_INOD) =/ 0
-                !                    matrix = Material_Absorption(imat,:,:)
-                !                    call invert(matrix)
+                loc_absorp_matrix = absorption_term%val(:,:,imat)
+                call invert(loc_absorp_matrix)
                 do iphase = 1, nphase
                     !Inverse of sigma avoiding inversion
-                    matrix(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim) = matmul(perm%val(:,:,ele),&
-                        Material_Absorption(imat,ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim))
+                    !loc_absorp_matrix(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim) = matmul(permeability%val(:,:,ele),&
+                    !    absorption_term%val(imat,ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim))
                     !All the elements should be equal in the diagonal now
-                    matrix(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim) = perm%val(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim,ele)/&
-                        matrix(ndim*(iphase-1)+1,ndim*(iphase-1)+1)!Inverse
+                    !loc_absorp_matrix(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim) = &
+                    !    permeability%val(ndim*(iphase-1)+1:iphase*ndim,ndim*(iphase-1)+1:iphase*ndim,ele)/&
+                    !    loc_absorp_matrix(ndim*(iphase-1)+1,ndim*(iphase-1)+1)!Inverse
 
-                    aux = matmul(matrix(ndim*(iphase-1)+1:iphase*ndim, ndim*(iphase-1)+1:iphase*ndim), &
-                        Velocity % val( :, iphase , u_inod) )
+                    sat_weight_velocity = matmul(loc_absorp_matrix((iphase-1)*ndim+1:iphase*ndim, &
+                        (iphase-1)*ndim+1:iphase*ndim),velocity%val(:,iphase,u_inod))
                     !P0 darcy velocities per element
-                    DarcyVelocity % val ( :, iphase , u_inod) = DarcyVelocity% val ( :, iphase , u_inod)+ &
-                        aux(:)*saturation%val(1,iphase, cv_loc)/ real(cv_nloc)
+                    darcy_velocity%val(:,iphase,u_inod) = darcy_velocity%val(:,iphase,u_inod)+ &
+                        sat_weight_velocity(:)*saturation%val(1,iphase,cv_loc)/real(cv_nloc)
                 end do
             end do
         end do
     end do
 
-    deallocate(matrix)
-    deallocate(aux)
+    ! Deallocation
+    deallocate(loc_absorp_matrix)
+    deallocate(sat_weight_velocity)
+
 end subroutine get_DarcyVelocity
 
     subroutine Get_Scalar_SNdgln( sndgln, field, cv_nloc  )

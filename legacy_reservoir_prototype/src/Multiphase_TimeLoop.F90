@@ -322,7 +322,6 @@ contains
             call allocate( metric_tensor, extract_mesh(state(1), topology_mesh_name), 'ErrorMetric' )
         end if
         adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
-        if (adapt_mesh_in_FPI) call adapt_mesh_within_FPI(1, ExitNonLinearLoop, adapt_mesh_in_FPI, its)
 
         if (is_porous_media) then
             !Get into packed state relative permeability, immobile fractions, ...
@@ -596,7 +595,16 @@ contains
                         sum_theta_flux, sum_one_m_theta_flux, sum_theta_flux_j, sum_one_m_theta_flux_j, &
                         IDs_ndgln )
 
-                    !!$ Calculate Density_Component for compositional
+                    !!$ Calculate Darcy velocity
+                    if(is_porous_media) then
+                        ! temporarily not working for adaptivity -- will be updated soon
+                        if((.not.have_option('/io/not_output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
+                            call get_DarcyVelocity( Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, Mdims%mat_nloc, &
+                                ndgln%cv, ndgln%u, ndgln%mat, state, packed_state )
+                        end if
+                    end if
+
+					!!$ Calculate Density_Component for compositional
                     if ( have_component_field ) call Calculate_Component_Rho( state, packed_state, Mdims )
 
                 end if Conditional_ForceBalanceEquation
@@ -633,7 +641,7 @@ contains
 
                 if (ExitNonLinearLoop) then
                     if (adapt_mesh_in_FPI) then
-                        call adapt_mesh_within_FPI(2, ExitNonLinearLoop, adapt_mesh_in_FPI, its)
+                        call adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its)
                     else
                         exit Loop_NonLinearIteration
                     end if
@@ -1299,9 +1307,8 @@ contains
     end subroutine calc_components
 
 
-    subroutine adapt_mesh_within_FPI(flag, ExitNonLinearLoop, adapt_mesh_in_FPI, its)
+    subroutine adapt_mesh_within_FPI(ExitNonLinearLoop, adapt_mesh_in_FPI, its)
         implicit none
-        integer, intent(in) :: flag
         logical, intent(inout) :: ExitNonLinearLoop, adapt_mesh_in_FPI
         integer, intent(inout) :: its
         !Local variables
@@ -1324,48 +1331,39 @@ contains
             end if
         end if
 
-        select case (flag)
-            case (1)!Complementary part of the code in Populate_State.F90. Line: 1300
-                !Prepare state by adding two extra fields for backups
-                do iphase = 1, Mdims%nphase!Set name and option_path (this latter to impose projection method)
-                    call allocate_and_insert_scalar_field('/material_phase['//int2str(Mdims%nphase-1)//']/scalar_field::PhaseVolumeFraction', &
-                        state(iphase), field_name = "Saturation_bak", parent_mesh = "PressureMesh")
-                end do
-            case default!Reordering of the fields to adapt to a combination of new and old
-                !Four steps
-                !1. Store OldPhaseVolumeFraction
-                do iphase = 1, Mdims%nphase
-                    sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-                    sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
-                    sat2%val = sat1%val
-                end do
-                !2.Prognostic field to adapt the mesh to, has to be a convolution of old a new saturations
-                sat2  => extract_scalar_field( state(phaseToAdapt), "OldPhaseVolumeFraction" )
-                sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
-                !It is important that the average keep the sharpness of the interfaces
-                sat1%val = abs(sat1%val - sat2%val)**0.8
-                call adapt_mesh_mp()
-                !3.Reconstruct the Saturation of the first phase
-                sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
-                sat1%val = 1.0
-                do iphase = 1, Mdims%nphase
-                    if (iphase /= phaseToAdapt) then
-                        sat2  => extract_scalar_field( state(iphase), "PhaseVolumeFraction" )
-                        sat1%val = sat1%val - sat2%val
-                    end if
-                end do
-                !4. Copy back to OldPhaseVolumeFraction
-                do iphase = 1, Mdims%nphase
-                    sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
-                    sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
-                    sat1%val = sat2%val
-                end do
-                !Pointing to porosity again is required
-                porosity_field=>extract_vector_field(packed_state,"Porosity")
-                !Now we have to converge again within the same time-step
-                ExitNonLinearLoop = .false.; its = 1
-                adapt_mesh_in_FPI = .false.
-        end select
+        !Four steps
+        !1. Store OldPhaseVolumeFraction
+        do iphase = 1, Mdims%nphase
+            sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
+            sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
+            sat2%val = sat1%val
+        end do
+        !2.Prognostic field to adapt the mesh to, has to be a convolution of old a new saturations
+        sat2  => extract_scalar_field( state(phaseToAdapt), "OldPhaseVolumeFraction" )
+        sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
+        !It is important that the average keep the sharpness of the interfaces
+        sat1%val = abs(sat1%val - sat2%val)**0.8
+        call adapt_mesh_mp()
+        !3.Reconstruct the Saturation of the first phase
+        sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
+        sat1%val = 1.0
+        do iphase = 1, Mdims%nphase
+            if (iphase /= phaseToAdapt) then
+                sat2  => extract_scalar_field( state(iphase), "PhaseVolumeFraction" )
+                sat1%val = sat1%val - sat2%val
+            end if
+        end do
+        !4. Copy back to OldPhaseVolumeFraction
+        do iphase = 1, Mdims%nphase
+            sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
+            sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
+            sat1%val = sat2%val
+        end do
+        !Pointing to porosity again is required
+        porosity_field=>extract_vector_field(packed_state,"Porosity")
+        !Now we have to converge again within the same time-step
+        ExitNonLinearLoop = .false.; its = 1
+        adapt_mesh_in_FPI = .false.
 
     end subroutine adapt_mesh_within_FPI
 

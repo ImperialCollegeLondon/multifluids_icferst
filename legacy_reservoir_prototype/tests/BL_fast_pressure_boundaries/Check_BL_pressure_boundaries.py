@@ -237,6 +237,8 @@ if (Passed):
     print 'BL works OK'
 else:
     print 'BL does NOT work'
+#Check the experiment has finished
+if (AutoNumber < 20): Passed = False
 
 if (showPlot):
     fig, ax = plt.subplots()

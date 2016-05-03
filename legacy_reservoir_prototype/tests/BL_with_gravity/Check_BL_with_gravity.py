@@ -232,7 +232,8 @@ if (Passed):
     print 'BL with gravity works OK'
 else:
     print 'BL with gravity does NOT work'
-
+#Check the experiment has finished
+if (AutoNumber < 20): Passed = False
 if (showPlot):
     fig, ax = plt.subplots()
     x = []
