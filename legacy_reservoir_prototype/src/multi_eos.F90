@@ -759,7 +759,7 @@ contains
        !For simple Black-Oil modelling the viscosity is calculated using the PVT tables
        if (have_option( "/physical_parameters/black-oil_PVT_table" ) .and. Mdims%ncomp<1)then
            allocate(viscosities(Mdims%nphase, Mdims%cv_nonods))
-           call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 3, viscosities = viscosities)
+           call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 4, viscosities = viscosities)
        else
             allocate(viscosities(Mdims%nphase, 1))
             call set_viscosity(state, Mdims, viscosities(:,1))
