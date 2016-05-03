@@ -1418,7 +1418,7 @@ contains
       logical :: linearise_viscosity
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
-      integer :: iloc
+      integer :: iloc, ndim1, ndim2, idim, jdim
 
       if ( is_porous_media .or. have_option('boiling')) then
          momentum_diffusion=0.0
@@ -1496,25 +1496,47 @@ contains
 
 
       !!! NEW CODE HERE !!!
+      !!! deal with Momentum_Diffusion2
 
       if ( is_porous_media ) then
          return
       else
 
-         ! deal with Momentum_Diffusion2
-         ! if it exists...
+         ! return here as code below untested
+         return
 
-   !      t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
-   !      if ( stat == 0 ) then
-   !         ! call allocate_multi_field( state,  Momentum_Diffusion2    )
-   !         linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
-   !         if ( linearise_viscosity ) then
-   !            call linearise_multi_field( mfield, Mdims, ndgln%mat )
-   !         end if
-   !
-   !      end if
+         t_field => extract_tensor_field( state( 1 ), "Viscosity", stat ) ! need to set dimensions in diamond - Populate_State.F90:2164
+         if ( stat == 0 ) then
 
+            do iphase = 1, Mdims%nphase
 
+               !call allocate_multi_field( state, Mdims, iphase, "Viscosity", Momentum_Diffusion2 )
+
+               if ( Mdims%ncomp > 1 ) then
+
+                  tp_field => extract_tensor_field( state( iphase ), "Viscosity" )
+                  call zero( tp_field )
+                  ndim1 = size( tp_field%val, 1 ) ; ndim2 = size( tp_field%val, 2 ) 
+
+                  do icomp = 1, Mdims%ncomp
+
+                     component => extract_scalar_field( state( Mdims%nphase + icomp ), "ComponentMassFractionPhase" // int2str( iphase ) )
+                     tc_field => extract_tensor_field( state( Mdims%nphase + icomp ), "Viscosity" )
+
+                     forall ( idim=1:ndim1, jdim=1:ndim2 ) tp_field%val( idim, jdim, : ) = tp_field%val( idim, jdim, : ) + &
+                        &                                                                  component%val * tc_field%val( idim, jdim, : )
+
+                  end do
+
+               end if
+
+            end do
+
+            if ( have_option( "/material_phase[0]/linearise_viscosity" ) ) then
+               call linearise_multi_field( Momentum_Diffusion2, Mdims, ndgln%mat )
+            end if
+
+         end if
       end if
 
       !!!!!!!!!!!!!!!!!!!!!
