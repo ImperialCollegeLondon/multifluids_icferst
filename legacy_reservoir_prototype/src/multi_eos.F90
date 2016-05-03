@@ -1440,13 +1440,7 @@ contains
                         component_tmp = ele_val( component, ele )
                         mu_tmp = ele_val( tc_field, ele )
                         do iloc = 1, Mdims%cv_nloc
-!                           if ( .true. ) then
-                              mu_tmp( :, :, iloc ) = mu_tmp( :, :, iloc ) * component_tmp( iloc )
-!                           else
-!                              mu_tmp( :, :, iloc ) = 0.0
-!                              if ( component_tmp( iloc ) > 0.0 ) mu_tmp( :, :, iloc ) = &
-!                                   1.0 / ( component_tmp( iloc ) / mu_tmp( :, :, iloc ) )
-!                           end if
+                           mu_tmp( :, :, iloc ) = mu_tmp( :, :, iloc ) * component_tmp( iloc )
                         end do
                         if ( linearise_viscosity ) then
                            mu_tmp( :, :, 2 ) = 0.5 * ( mu_tmp( :, :, 1 ) + mu_tmp( :, :, 3 ) )
@@ -1510,7 +1504,7 @@ contains
 
             do iphase = 1, Mdims%nphase
 
-               !call allocate_multi_field( state, Mdims, iphase, "Viscosity", Momentum_Diffusion2 )
+               call allocate_multi_field( state, Mdims, iphase, "Viscosity", Momentum_Diffusion2 )
 
                if ( Mdims%ncomp > 1 ) then
 
