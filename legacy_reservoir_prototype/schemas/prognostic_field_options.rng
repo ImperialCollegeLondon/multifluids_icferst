@@ -281,6 +281,31 @@ requires a distinct name for the options dictionary.</a:documentation>
           <attribute name="rank">
             <value>2</value>
           </attribute>
+          <element name="nphase">
+            <a:documentation>TO BE DELETED</a:documentation>
+            <ref name="integer"/>
+          </element>
+          <element name="type">
+            <a:documentation>Selects the memory type based on the coupling of the system.
+If unsure, select Anisotropic_coupled (very high memory consumption).</a:documentation>
+            <element name="dimensions">
+              <ref name="integer"/>
+            </element>
+            <choice>
+              <element name="Anisotropic_coupled">
+                <empty/>
+              </element>
+              <element name="Anisotropic">
+                <empty/>
+              </element>
+              <element name="Isotropic_coupled">
+                <empty/>
+              </element>
+              <element name="Isotropic">
+                <empty/>
+              </element>
+            </choice>
+          </element>
           <choice>
             <element name="prescribed">
               <optional>
