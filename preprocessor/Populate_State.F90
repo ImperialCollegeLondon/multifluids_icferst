@@ -1298,28 +1298,6 @@ contains
        end do
     end if
 
-
-    ! insert auxiliary fields if is_porous_media and adapting the mesh within the non-linear solver
-    if (is_porous_media) then
-        if (have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
-            do i=1, nstates!We consider that the last phase is not the one adapting to
-                call allocate_and_insert_scalar_field('/material_phase['//int2str(nstates-1)//']/scalar_field::PhaseVolumeFraction', &
-                 states(i), field_name = "Saturation_bak", parent_mesh = "PressureMesh")
-            end do
-        end if
-    end if
-
-    ! insert internal velocity field into state if is_porous_media and output darcy velocity
-!    if (is_porous_media) then
-!        ! the second condition of adaptivity will be removed later
-!        if ((.not.have_option('/io/not_output_darcy_vel')).and.(.not.have_option('/mesh_adaptivity'))) then
-!            do i=1, nstates
-!                call allocate_and_insert_vector_field('/material_phase['//int2str(nstates-1)//']/vector_field::Velocity', &
-!                    states(i), field_name = "Velocity_int", parent_mesh = "VelocityMesh")
-!            end do
-!        end if
-!    end if
-
     ! insert electrical property fields
     do i=1,nstates
       tmp = '/material_phase['//int2str(i-1)//']/electrical_properties/coupling_coefficients/'

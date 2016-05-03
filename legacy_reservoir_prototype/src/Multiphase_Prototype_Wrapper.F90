@@ -99,8 +99,9 @@ subroutine multiphase_prototype_wrapper() bind(C)
     ! Check if porous media model
     is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
 
-    ! Read state from .flml file
-    call populate_state(state)
+    ! Read state from .mpml file
+    call populate_multi_state(state)
+!    call populate_state(state)
 
     ! Check the diagnostic field dependencies for circular dependencies
     call check_diagnostic_dependencies(state)
@@ -239,5 +240,64 @@ contains
         call allmax(simulation_start_wall_time)
 
     end subroutine set_simulation_start_times
+
+
+    subroutine populate_multi_state(state)
+        implicit none
+        type(state_type), dimension(:), pointer, intent(inout) :: state
+        !Local variables
+        integer :: i, nphase
+        character( len = option_path_len ) :: option_path
+        nphase = option_count("/material_phase")
+
+        !Prepare some specific modifications prior to populating state
+        !If the extra mesh have not been created, create them here
+        if (.not. have_option("/geometry/mesh::VelocityMesh_Continuous")) then
+            call copy_option("/geometry/mesh::VelocityMesh", "/geometry/mesh::VelocityMesh_Continuous")
+            call set_option("/geometry/mesh::VelocityMesh_Continuous/from_mesh/mesh_continuity", "continuous")
+        end if
+
+        if (.not. have_option("/geometry/mesh::PressureMesh_Continuous")) then
+            call copy_option("/geometry/mesh::PressureMesh", "/geometry/mesh::PressureMesh_Continuous")
+            call set_option("/geometry/mesh::PressureMesh_Continuous/from_mesh/mesh_continuity", "continuous")
+        end if
+
+        if (.not. have_option("/geometry/mesh::PressureMesh_Discontinuous")) then
+            call copy_option("/geometry/mesh::PressureMesh", "/geometry/mesh::PressureMesh_Discontinuous")
+            call set_option("/geometry/mesh::PressureMesh_Discontinuous/from_mesh/mesh_continuity", "discontinuous")
+        end if
+
+        if (.not. have_option("/geometry/mesh::P0DG")) then
+            call copy_option("/geometry/mesh::PressureMesh", "/geometry/mesh::P0DG")
+            call set_option("/geometry/mesh::P0DG/from_mesh/mesh_shape/polynomial_degree", 0)
+            call set_option("/geometry/mesh::P0DG/from_mesh/mesh_continuity", "discontinuous")
+        end if
+
+
+        if (have_option('/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')) then
+            !Create necessary backups for storing the saturation (in a way that it is also adapted)
+            do i = 1, nphase
+                option_path = "/material_phase["// int2str( i - 1 )//"]/scalar_field::Saturation_bak"
+                call copy_option("/material_phase["// int2str( i - 1 )//"]/scalar_field::PhaseVolumeFraction",&
+                     trim(option_path))
+                !Make sure the field is not shown
+                if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
+                    !Don't know how to set exclude_from_vtu to true from the spud options, hence,
+                    !since Porous_media HAS to be true I copy it to obtain the same effect
+                    call copy_option("/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media",&
+                     trim(option_path)//"/prognostic/output/exclude_from_vtu")
+                end if
+                !Make sure that this field is not the objective of adaptivity
+                if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
+                    call delete_option(trim(option_path)//"/prognostic/adaptivity_options")
+                end if
+            end do
+        end if
+
+        !Call fluidity to populate state
+        call populate_state(state)
+
+    end subroutine populate_multi_state
+
 
 end subroutine multiphase_prototype_wrapper
