@@ -561,34 +561,34 @@ contains
                     END DO
                 end if
             END DO
-            if ( .false. ) then
-                cv_nod = 226
-                IPRES = 2
-                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
-                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CV_JNOD = Mspars%CMC%col( COUNT )
-                    jpres = ipres
-                    j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod,jpres)
-                    IF ( CV_JNOD /= CV_NOD ) THEN
-                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr)
-                    ELSE
-                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0,INSERT_VALUES, ierr)
-                    END IF
-                END DO
-                cv_nod = 151
-                IPRES = 2
-                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
-                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
-                    CV_JNOD = Mspars%CMC%col( COUNT )
-                    jpres = ipres
-                    j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod,jpres)
-                    IF ( CV_JNOD /= CV_NOD ) THEN
-                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr)
-                    ELSE
-                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0,INSERT_VALUES, ierr)
-                    END IF
-                END DO
-            end if
+!            if ( .false. ) then
+!                cv_nod = 226
+!                IPRES = 2
+!                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
+!                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+!                    CV_JNOD = Mspars%CMC%col( COUNT )
+!                    jpres = ipres
+!                    j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod,jpres)
+!                    IF ( CV_JNOD /= CV_NOD ) THEN
+!                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr)
+!                    ELSE
+!                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0,INSERT_VALUES, ierr)
+!                    END IF
+!                END DO
+!                cv_nod = 151
+!                IPRES = 2
+!                i_indx = CMC_petsc%row_numbering%gnn2unn( cv_nod,ipres)
+!                DO COUNT = Mspars%CMC%fin( CV_NOD ), Mspars%CMC%fin( CV_NOD + 1 ) - 1
+!                    CV_JNOD = Mspars%CMC%col( COUNT )
+!                    jpres = ipres
+!                    j_indx = CMC_petsc%column_numbering%gnn2unn( cv_jnod,jpres)
+!                    IF ( CV_JNOD /= CV_NOD ) THEN
+!                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 0.0,INSERT_VALUES, ierr)
+!                    ELSE
+!                        call MatSetValue(CMC_petsc%M, i_indx, j_indx, 1.0,INSERT_VALUES, ierr)
+!                    END IF
+!                END DO
+!            end if
             CMC_petsc%is_assembled = .false.
             call assemble( CMC_petsc )
 
