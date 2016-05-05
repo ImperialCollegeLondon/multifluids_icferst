@@ -2664,18 +2664,18 @@ contains
             PVT_table(3,11) = 7.786 ; PVT_table(4,11) = 297.4
             PVT_table(3,12) = 13.331; PVT_table(4,12) = 190.9
             !#####Viscosity liquid####!#####Viscosity vapour###  !#####Volume liquid Fraction######
-            PVT_table(5,1)  = 3.201d-3; PVT_table(6,1)  = 1.57d-4;PVT_table(7,1)  = 1.0
-            PVT_table(5,2)  = 3.114d-3; PVT_table(6,2)  = 1.57d-4;PVT_table(7,2)  = 1.0
-            PVT_table(5,3)  = 3.071d-3; PVT_table(6,3)  = 1.57d-4;PVT_table(7,3)  = 1.0
-            PVT_table(5,4)  = 3.123d-3; PVT_table(6,4)  = 1.57d-4;PVT_table(7,4)  = 0.978
-            PVT_table(5,5)  = 3.169d-3; PVT_table(6,5)  = 1.55d-4;PVT_table(7,5)  = 0.96
-            PVT_table(5,6)  = 3.407d-3; PVT_table(6,6)  = 1.40d-4;PVT_table(7,6)  = 0.867
-            PVT_table(5,7)  = 3.714d-3; PVT_table(6,7)  = 1.38d-4;PVT_table(7,7)  = 0.754
-            PVT_table(5,8)  = 3.973d-3; PVT_table(6,8)  = 1.32d-4;PVT_table(7,8)  = 0.644
-            PVT_table(5,9)  = 4.329d-3; PVT_table(6,9)  = 1.26d-4;PVT_table(7,9)  = 0.513
-            PVT_table(5,10) = 4.712d-3; PVT_table(6,10) = 1.21d-4;PVT_table(7,10)  = 0.375
-            PVT_table(5,11) = 5.189d-3; PVT_table(6,11) = 1.16d-4;PVT_table(7,11)  = 0.232
-            PVT_table(5,12) = 5.893d-3; PVT_table(6,12) = 1.08d-4;PVT_table(7,12)  = 0.097
+            PVT_table(5,1)  = 3.201d-4; PVT_table(6,1)  = 1.57d-5;PVT_table(7,1)  = 1.0
+            PVT_table(5,2)  = 3.114d-4; PVT_table(6,2)  = 1.57d-5;PVT_table(7,2)  = 1.0
+            PVT_table(5,3)  = 3.071d-4; PVT_table(6,3)  = 1.57d-5;PVT_table(7,3)  = 1.0
+            PVT_table(5,4)  = 3.123d-4; PVT_table(6,4)  = 1.57d-5;PVT_table(7,4)  = 0.978
+            PVT_table(5,5)  = 3.169d-4; PVT_table(6,5)  = 1.55d-5;PVT_table(7,5)  = 0.96
+            PVT_table(5,6)  = 3.407d-4; PVT_table(6,6)  = 1.40d-5;PVT_table(7,6)  = 0.867
+            PVT_table(5,7)  = 3.714d-4; PVT_table(6,7)  = 1.38d-5;PVT_table(7,7)  = 0.754
+            PVT_table(5,8)  = 3.973d-4; PVT_table(6,8)  = 1.32d-5;PVT_table(7,8)  = 0.644
+            PVT_table(5,9)  = 4.329d-4; PVT_table(6,9)  = 1.26d-5;PVT_table(7,9)  = 0.513
+            PVT_table(5,10) = 4.712d-4; PVT_table(6,10) = 1.21d-5;PVT_table(7,10)  = 0.375
+            PVT_table(5,11) = 5.189d-4; PVT_table(6,11) = 1.16d-5;PVT_table(7,11)  = 0.232
+            PVT_table(5,12) = 5.893d-4; PVT_table(6,12) = 1.08d-5;PVT_table(7,12)  = 0.097
         end subroutine populate_with_Texas_Black_Oil
 
     end subroutine simple_standard_Black_Oil

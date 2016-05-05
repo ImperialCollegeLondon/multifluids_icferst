@@ -314,6 +314,8 @@ contains
             if (.not. simple_black_oil_model) then
                 ewrite(0,*) "WARNING: Black-oil modelling based on PVT tables requires porous media, 3 phases and no components"
             end if
+            !Initialize domain saturation according to initial pressure
+            if (simple_black_oil_model) call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
         end if
 
         if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) ) &

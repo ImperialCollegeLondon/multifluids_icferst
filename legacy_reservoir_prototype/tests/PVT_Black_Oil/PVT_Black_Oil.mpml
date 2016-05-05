@@ -77,19 +77,20 @@
       <real_value rank="0">0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">864000000</real_value>
+      <real_value rank="0">8.64e7</real_value>
       <comment>864000000</comment>
     </timestep>
     <finish_time>
-      <real_value rank="0">2.e10</real_value>
+      <real_value rank="0">1.72e10</real_value>
     </finish_time>
     <nonlinear_iterations>
       <integer_value rank="0">100</integer_value>
       <Fixed_Point_Iteration>
-        <real_value rank="0">5e-2</real_value>
+        <real_value rank="0">1e-2</real_value>
         <Backtracking_factor>
           <real_value rank="0">-10</real_value>
         </Backtracking_factor>
+        <Show_Convergence/>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
@@ -117,7 +118,6 @@
         <spatial_discretisation>
           <continuous_galerkin/>
         </spatial_discretisation>
-        <CV_P_matrix/>
         <solver>
           <iterative_method name="gmres">
             <restart>
@@ -143,7 +143,7 @@
         </solver>
         <initial_condition name="WholeMesh">
           <constant>
-            <real_value rank="0">8e6</real_value>
+            <real_value rank="0">2.8e7</real_value>
           </constant>
         </initial_condition>
         <boundary_conditions name="outlet">
@@ -153,7 +153,18 @@
           <type name="dirichlet">
             <apply_weakly/>
             <constant>
-              <real_value rank="0">15154682</real_value>
+              <real_value rank="0">2.2e7</real_value>
+            </constant>
+          </type>
+        </boundary_conditions>
+        <boundary_conditions name="inlet">
+          <surface_ids>
+            <integer_value shape="1" rank="1">7</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <constant>
+              <real_value rank="0">3.5e7</real_value>
             </constant>
           </type>
         </boundary_conditions>
@@ -284,27 +295,16 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <boundary_conditions name="inlet">
-          <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">1e-8</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
@@ -579,27 +579,16 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <boundary_conditions name="inlet">
-          <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
@@ -875,27 +864,16 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <boundary_conditions name="inlet">
-          <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <value name="WholeMesh">
               <isotropic>

@@ -988,21 +988,13 @@ contains
             else
                nullify(halo)
             end if
-            if (Mmat%CV_pressure) then
-                !Use Mmat%C_CV to form the CMC matrix
-                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
-                DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-                MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
-                got_free_surf,  MASS_SUF, symmetric_P )
-            else
-                CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
-                DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
-                CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
-                MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
-                got_free_surf,  MASS_SUF, &
-                symmetric_P )
-            end if
+            !Form pressure matrix
+            CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
+            DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
+            CMC_petsc, CMC_PRECON, IGOT_CMC_PRECON, MASS_MN_PRES, &
+            MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE, &
+            got_free_surf,  MASS_SUF, symmetric_P )
+
         END IF
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
         IF ( GLOBAL_SOLVE ) THEN
@@ -1034,6 +1026,7 @@ contains
                end if
             end if
             IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
+
                 !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
                 U_RHS_CDP2 = Mmat%U_RHS + CDP_tensor%val
                 ! DU = BLOCK_MAT * CDP
@@ -1056,8 +1049,8 @@ contains
                UP_VEL=[velocity%val]
                call deallocate(Mmat%DGM_PETSC)
                call deallocate(rhs)
+               U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             END IF
-            U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
 IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
             if ( .not.symmetric_P ) then ! original
                ALLOCATE ( rhs_p2(Mdims%nphase,Mdims%cv_nonods) ) ; rhs_p2=0.0
