@@ -593,7 +593,7 @@ contains
     type(tensor_field) :: tempfield
     integer :: value, nvalues
 
-    call allocate(tempfield, field%mesh, field%name, field_type=field%field_type)
+    call allocate(tempfield, field%mesh, field%name, field_type=field%field_type, dim=field%dim)
 
     nvalues = option_count(trim(path))
 
