@@ -2248,11 +2248,18 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     if (Porous_media_PIVIT_not_stored_yet) then
                         if (skip) then
                             Mmat%PIVIT_MAT(:,:,ELE)=0.0
-                            do i=1,size(Mmat%PIVIT_MAT,1)
-                                Mmat%PIVIT_MAT(I,I,ELE)=1.0
+                            do i=1,size(Mmat%PIVIT_MAT,1)!sprint_to_do; why DevFuns%VOLUME/dble(Mdims%cv_nloc) instead of 1.0?
+                                Mmat%PIVIT_MAT(I,I,ELE)=DevFuns%VOLUME/dble(Mdims%cv_nloc)!1.0
                             END DO
                         end if
                     end if
+                end if
+            else
+                if (Porous_media_PIVIT_not_stored_yet) then
+                    Mmat%PIVIT_MAT(:,:,ELE)=0.0
+                    do i=1,size(Mmat%PIVIT_MAT,1)!sprint_to_do; why DevFuns%VOLUME/dble(Mdims%cv_nloc) instead of 1.0?
+                        Mmat%PIVIT_MAT(I,I,ELE)=DevFuns%VOLUME/dble(Mdims%cv_nloc)!1.0
+                    END DO
                 end if
             end if
             ! *********subroutine Determine local vectors...
@@ -2559,7 +2566,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     END DO
                 END DO
             END IF
-            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
+!            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
+            if (.not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO GI = 1, FE_GIdims%cv_ngi

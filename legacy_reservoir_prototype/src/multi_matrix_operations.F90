@@ -242,6 +242,7 @@ contains
         REAL, DIMENSION( : ), intent( in ) :: MASS_SUF
         REAL, DIMENSION( : ), intent( in ) :: MASS_PIPE, MASS_CVFEM2PIPE, MASS_CVFEM2PIPE_TRUE
         ! Local variables
+        logical :: use_fast_method = .false.
         REAL, PARAMETER :: INFINY = 1.0E+10
         INTEGER, DIMENSION( : ), allocatable :: ndpset
         !Initialize CMC_petsc
@@ -255,8 +256,8 @@ contains
         if (isparallel()) then
             if (GetProcNo()>1) ndpset=0
         end if
-        !Currently this is false, since it is very memory hungry, unless the number of CVs is not too big
-        IF ( ( is_porous_media ) .and. Mdims%npres==1 .and. Mdims%cv_nonods < 50000) THEN
+        !COLOR_GET_CMC_PHA_FAST is very memory hungry, so we will let the user decide
+        IF ( use_fast_method ) THEN
             ! Fast but memory intensive...
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &

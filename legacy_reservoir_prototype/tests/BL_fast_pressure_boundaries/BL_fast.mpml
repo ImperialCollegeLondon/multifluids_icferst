@@ -380,6 +380,15 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
@@ -652,27 +661,16 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <boundary_conditions name="inlet">
-          <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
