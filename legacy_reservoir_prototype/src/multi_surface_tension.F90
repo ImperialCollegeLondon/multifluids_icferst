@@ -1369,7 +1369,7 @@ contains
                SOL_Z(CV_ILOC)=SZNN*cos(pi*angle/180.0)+sign(SZTT,SOL_Z(CV_ILOC))*sin(pi*angle/180.0)
             ENDIF
          END DO
-print*, angle
+
       END DO Between_Elements_And_Boundary1 
       end if
 
