@@ -955,7 +955,6 @@ contains
             IPLIKE_GRAD_SOU,&
             symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
 
-
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
         if ( Mdims%npres > 1 ) then
@@ -975,6 +974,7 @@ contains
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
+
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
             if (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1))  CALL PHA_BLOCK_INV(&
@@ -996,6 +996,7 @@ contains
             got_free_surf,  MASS_SUF, symmetric_P )
 
         END IF
+
         Mmat%NO_MATRIX_STORE = ( Mspars%DGM_PHA%ncol <= 1 )
         IF ( GLOBAL_SOLVE ) THEN
             ! Global solve
@@ -1010,6 +1011,7 @@ contains
             U_ALL2 % val = reshape( UP( 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase ), (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             P_ALL % val( 1, 1, : ) = UP( Mdims%u_nonods * Mdims%ndim * Mdims%nphase + 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase + Mdims%cv_nonods )
         ELSE ! solve using a projection method
+
             ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
 !            CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%C, NCOLC, FINDC, COLC)
             DO IPRES = 1, Mdims%npres
@@ -1148,6 +1150,7 @@ END IF
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
+
             call halo_update(p_all)
             deallocate( UP_VEL )
             deallocate(U_RHS_CDP2)

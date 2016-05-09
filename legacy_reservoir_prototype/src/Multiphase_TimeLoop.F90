@@ -685,6 +685,7 @@ contains
             call calculate_diagnostic_variables( state, exclude_nonrecalculated = .true. )
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime ) ! Write stat file
+
             Conditional_TimeDump: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
                 dtime=dtime+1
                 if (do_checkpoint_simulation(dtime)) then
@@ -701,6 +702,7 @@ contains
                 not_to_move_det_yet = .false. ; dump_no = itime/dump_period_in_timesteps ! Sync dump_no with itime
                 call write_state( dump_no, state ) ! Now writing into the vtu files
             end if Conditional_TimeDump
+
             ! CALL INITIAL MESH TO MESH INTERPOLATION ROUTINE (Before adapting the mesh)
             numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
             if (numberfields > 0) then ! If there is at least one instance of CVgalerkin then apply the method

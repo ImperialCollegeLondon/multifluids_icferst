@@ -255,8 +255,8 @@ contains
         if (isparallel()) then
             if (GetProcNo()>1) ndpset=0
         end if
-           !Currently this is false, over-ride switch for porous media since it is slower than memory hungry
-        IF ( ( is_porous_media ) .and. Mdims%npres==1) THEN
+        !Currently this is false, since it is very memory hungry, unless the number of CVs is not too big
+        IF ( ( is_porous_media ) .and. Mdims%npres==1 .and. Mdims%cv_nonods < 50000) THEN
             ! Fast but memory intensive...
             CALL COLOR_GET_CMC_PHA_FAST( Mdims,Mspars, ndgln, Mmat,  &
                 DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
@@ -628,10 +628,11 @@ contains
             INTEGER, PARAMETER :: MX_NCOLOR = 1000
             REAL, PARAMETER :: INFINY = 1.0E+10
             LOGICAL :: EXPLICIT_PIPES2
-            LOGICAL, DIMENSION( Mdims%cv_nonods ) :: COLOR_LOGICAL
-            INTEGER, DIMENSION( : ), allocatable :: COLOR_IN_ROW, COLOR_IN_ROW2
+            LOGICAL, DIMENSION( : ), allocatable :: COLOR_LOGICAL
+            INTEGER, DIMENSION( : ), allocatable :: COLOR_IN_ROW
             REAL, DIMENSION( :, : ), allocatable :: COLOR_VEC_MANY
-            REAL, DIMENSION( :, :, :, : ), allocatable :: CDP_MANY, DU_LONG_MANY
+            REAL, DIMENSION( :, :, :, : ), allocatable, target :: CDP_MANY
+            real, DIMENSION( :, :, :, : ), pointer :: DU_LONG_MANY
             REAL, DIMENSION( :, :, : ), allocatable :: CMC_COLOR_VEC_MANY, CMC_COLOR_VEC2_MANY, &
                 CMC_COLOR_VEC_MANY_PHASE, CMC_COLOR_VEC2_MANY_PHASE
             REAL, DIMENSION( : ), allocatable :: CMC_COLOR_VEC_MANY_PHASE_SHORT
@@ -646,12 +647,11 @@ contains
             DO CV_NOD = 1, Mdims%cv_nonods
                 MAX_COLOR_IN_ROW = MAX( MAX_COLOR_IN_ROW, Mspars%CMC%fin( CV_NOD + 1 ) - Mspars%CMC%fin( CV_NOD ) )
             END DO
-            ALLOCATE( COLOR_IN_ROW( MAX_COLOR_IN_ROW**2 ) )
-            ALLOCATE( COLOR_IN_ROW2( MAX_COLOR_IN_ROW**2 ) )
 
             !Calculate coloring if it is not in memory already
             IF ( .not.Mmat%Stored ) THEN
                 allocate(Mmat%ICOLOR(Mdims%cv_nonods)); Mmat%ICOLOR = 0
+                allocate(COLOR_LOGICAL(Mdims%cv_nonods))
                 Mmat%NCOLOR = 0
 
                 COLOR_LOGICAL = .FALSE.
@@ -692,6 +692,7 @@ contains
                     EWRITE(-1, *) 'NOT ENOUGH COLOURS STOPPING - NEED TO MAKE MX_COLOR BIGGER'
                     STOP 281
                 END IF
+                deallocate(COLOR_LOGICAL)
             END IF ! SAVED_CMC_COLOR
 
 
@@ -707,20 +708,26 @@ contains
                 Mmat%C, Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
 
             ! DU_LONG = Mmat%PIVIT_MAT * CDP
-            ALLOCATE( DU_LONG_MANY( Mmat%NCOLOR, Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
-            CALL PHA_BLOCK_MAT_VEC_MANY( DU_LONG_MANY, Mmat%PIVIT_MAT, CDP_MANY, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
+!            ALLOCATE( DU_LONG_MANY( Mmat%NCOLOR, Mdims%ndim, Mdims%nphase, Mdims%u_nonods ) )
+!            CALL PHA_BLOCK_MAT_VEC_MANY( DU_LONG_MANY, Mmat%PIVIT_MAT, CDP_MANY, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
+!                Mdims%totele, Mdims%u_nloc, ndgln%u )
+!            deallocate(CDP_MANY)
+!
+            CALL PHA_BLOCK_MAT_VEC_MANY_REUSING( Mmat%PIVIT_MAT, CDP_MANY, Mdims%ndim, Mdims%nphase, Mmat%NCOLOR, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
+            DU_LONG_MANY(1:Mmat%NCOLOR, 1:Mdims%ndim, 1:Mdims%nphase, 1:Mdims%u_nonods) => CDP_MANY
+
                      ! NB. P_RHS = Mmat%CT * U + CV_RHS
                      ! DU_LONG = CDP
             IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
                 ALLOCATE( CMC_COLOR_VEC_MANY_PHASE( Mmat%NCOLOR, Mdims%nphase, Mdims%cv_nonods ) )
-                ALLOCATE( CMC_COLOR_VEC_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
                 DO IPHASE = 1, Mdims%nphase
                     CALL CT_MULT_MANY( CMC_COLOR_VEC_MANY_PHASE(:,IPHASE,:), &
                         DU_LONG_MANY(:,:,IPHASE:IPHASE,:), &
                         Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, 1, Mmat%NCOLOR, &
                         Mmat%CT(:,IPHASE:IPHASE,:), Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
                 END DO
+                if (IGOT_CMC_PRECON==0) deallocate(CDP_MANY)!deallocate memory, not pointer
                 ALLOCATE( RINV_B_COLNS_ZEROED(Mdims%nphase,Mdims%nphase) )
                 ALLOCATE( CMC_COLOR_VEC_MANY_PHASE_SHORT(Mdims%nphase) )
                 ALLOCATE( CMC_COLOR_VEC_PRES_MANY_SHORT(Mmat%NCOLOR,Mdims%npres) )
@@ -744,15 +751,16 @@ contains
                         END DO
                     END DO
                 END DO ! ENDOF DO JPRES=1,Mdims%npres
+                deallocate(CMC_COLOR_VEC_MANY_PHASE)
                 IF ( IGOT_CMC_PRECON /= 0 ) THEN
                     ALLOCATE( CMC_COLOR_VEC2_MANY_PHASE( Mmat%NCOLOR, Mdims%nphase, Mdims%cv_nonods ) )
-                    ALLOCATE( CMC_COLOR_VEC2_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
                     DO IPHASE = 1, Mdims%nphase
                         CALL CT_MULT_WITH_C_MANY( CMC_COLOR_VEC2_MANY_PHASE(:,IPHASE,:), &
                             DU_LONG_MANY(:,:,IPHASE:IPHASE,:), &
                             Mdims%u_nonods, Mdims%ndim, 1,&
                             Mmat%C(:,IPHASE:IPHASE,:), Mspars%C%fin, Mspars%C%col )
                     END DO
+                    deallocate(CDP_MANY)!deallocate memory, not pointer
                     DO JPRES=1,Mdims%npres
                         DO CV_NOD = 1, Mdims%cv_nonods
                             RINV_B_COLNS_ZEROED(:,:) = 0.0
@@ -773,11 +781,14 @@ contains
                             END DO
                         END DO
                     END DO ! ENDOF DO JPRES=1,Mdims%npres
-                    CMC_COLOR_VEC2_MANY=0.0
+                    deallocate(CMC_COLOR_VEC2_MANY_PHASE)
                 END IF
                 ! Re-set CMC_COLOR_VEC_MANY & CMC_COLOR_VEC_MANY2 as we have already added the
                 ! contributions up to this point into the matrix.
-                CMC_COLOR_VEC_MANY=0.0
+
+                deallocate(CMC_COLOR_VEC_PRES_MANY_SHORT, RINV_B_COLNS_ZEROED, CMC_COLOR_VEC_MANY_PHASE_SHORT)
+
+
             ELSE
                 ALLOCATE( CMC_COLOR_VEC_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
                 DO IPRES = 1, Mdims%npres
@@ -795,8 +806,10 @@ contains
                             Mmat%C(:,1+(IPRES-1)*Mdims%n_in_pres:IPRES*Mdims%n_in_pres,:), Mspars%C%fin, Mspars%C%col )
                     END DO
                 END IF
+                deallocate(CDP_MANY)!deallocate memory, not pointer
             END IF
             ! Matrix vector involving the mass diagonal term
+            if (.not.allocated(CMC_COLOR_VEC_MANY)) ALLOCATE( CMC_COLOR_VEC_MANY( Mmat%NCOLOR, Mdims%npres, Mdims%cv_nonods ) )
             DO CV_NOD = 1, Mdims%cv_nonods
                 RSUM = 0.0
                 RSUM_SUF = 0.0
@@ -858,7 +871,7 @@ contains
                         DO IPRES = 1, Mdims%npres
                             JPRES = IPRES ! Add contributions to the block diagonal only.
                             call addto( CMC_petsc, blocki = IPRES, blockj = JPRES, i = cv_nod, j = CV_JNOD, &
-                                val = dot_product(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))
+                                val = dot_product(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ), COLOR_VEC_MANY( :, CV_JNOD ) ))!this looks like a bug, CMC_COLOR_VEC2_MANY is not defined for not IGOT_CMC_PRECON
                             !CMC( COUNT ) = CMC( COUNT ) + sum(CMC_COLOR_VEC_MANY( :, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
                             IF ( IGOT_CMC_PRECON /= 0 ) CMC_PRECON( IPRES, JPRES, COUNT ) = CMC_PRECON( IPRES, JPRES, COUNT ) + &
                                 sum(CMC_COLOR_VEC2_MANY( :, IPRES, CV_NOD ) * COLOR_VEC_MANY( :, CV_JNOD ))
@@ -866,6 +879,7 @@ contains
                     END DO
                 END DO
             end if
+            deallocate(CMC_COLOR_VEC_MANY, COLOR_VEC_MANY)
             ! the matrix coupling term place immediately into matrix and not through colouring...
             ! Matrix vector involving the mass diagonal term
             IF ( Mdims%npres > 1) THEN
@@ -929,8 +943,7 @@ contains
             CMC_petsc%is_assembled=.false.
             call assemble( CMC_petsc )
             IF ( IGOT_CMC_PRECON /= 0 ) deallocate(CMC_COLOR_VEC2_MANY)
-            deallocate(COLOR_IN_ROW, COLOR_IN_ROW2 )
-            deallocate(COLOR_VEC_MANY,CMC_COLOR_VEC_MANY, CDP_MANY, DU_LONG_MANY)
+            nullify(DU_LONG_MANY)
             RETURN
         END SUBROUTINE COLOR_GET_CMC_PHA_FAST
 
@@ -1219,6 +1232,48 @@ contains
 
     END SUBROUTINE PHA_BLOCK_MAT_VEC_MANY
 
+    SUBROUTINE PHA_BLOCK_MAT_VEC_MANY_REUSING( BLOCK_MAT, CDP, NDIM, NPHASE, NBLOCK, &
+        TOTELE, U_NLOC, U_NDGLN )
+        implicit none
+        ! U = BLOCK_MAT * CDP
+        !The difference with PHA_BLOCK_MAT_VEC_MANY is that the input CDP is overwritten with the output
+        INTEGER, intent( in )  :: NDIM, NPHASE, TOTELE, U_NLOC, NBLOCK
+        INTEGER, DIMENSION( : ), intent( in ) ::  U_NDGLN
+        REAL, DIMENSION( :, : , : ), intent( in ), contiguous :: BLOCK_MAT
+        REAL, DIMENSION( :, : , :, : ), intent( inout ), contiguous, target :: CDP
+        ! Local
+        INTEGER :: ELE
+
+        real, dimension(:,:,:,:), pointer, contiguous :: lcdp, lu
+        integer :: N
+
+
+        interface
+            subroutine dgemm(TA,TB,M,N,K,alpha,A,LDA,B,LDB,beta,C,LDC)
+                implicit none
+                character(len=1) :: TA,TB
+                integer :: m,n,k,lda,ldb,ldc
+                real ::  alpha, beta
+                real, dimension(lda,*) :: A
+                real, dimension(ldb,*) :: B
+                real, dimension(ldc,*) :: C
+            end subroutine dgemm
+        end interface
+
+
+        N=ndim*nphase*u_nloc
+        allocate(lu(size(CDP,1), size(CDP,2), size(CDP,3),U_NLOC))
+        Loop_Elements: DO ELE = 1, TOTELE
+            lu = 0.!Initialize memory
+            lcdp=>cdp(:,:,:,U_NDGLN( (ELE-1)*U_NLOC + 1):U_NDGLN(ELE * U_NLOC))
+            call dgemm('N','T',NBLOCK,N,N,1.0,LCDP,NBLOCK,Block_mat(:,:,ele),N,1.0,LU,NBLOCK)
+            lcdp = lu!copy to original array
+        END DO Loop_Elements
+        deallocate(lu)
+        RETURN
+
+    END SUBROUTINE PHA_BLOCK_MAT_VEC_MANY_REUSING
+
     !sprint_to_do!have a look at this one
     SUBROUTINE CT_MULT( CV_RHS, U, V, W, CV_NONODS, U_NONODS, NDIM, NPHASE, &
         CT, NCOLCT, FINDCT, COLCT )
@@ -1295,11 +1350,11 @@ contains
         ! CV_RHS = CT * U
         implicit none
         INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLCT, NBLOCK
-        REAL, DIMENSION( NBLOCK, CV_NONODS ), intent( inout) :: CV_RHS
-        REAL, DIMENSION( NBLOCK, NDIM, NPHASE, U_NONODS ), intent( in ) :: U
-        INTEGER, DIMENSION( CV_NONODS + 1 ), intent( in ) :: FINDCT
-        INTEGER, DIMENSION( NCOLCT ), intent( in ) :: COLCT
-        REAL, DIMENSION( NDIM, NPHASE, NCOLCT ), intent( in ) :: CT
+        REAL, DIMENSION( :, : ), intent( inout) :: CV_RHS!NBLOCK, CV_NONODS
+        REAL, DIMENSION( :, :, :, : ), intent( in ) :: U!NBLOCK, NDIM, NPHASE, U_NONODS
+        INTEGER, DIMENSION( : ), intent( in ) :: FINDCT!CV_NONODS + 1
+        INTEGER, DIMENSION( : ), intent( in ) :: COLCT!NCOLCT
+        REAL, DIMENSION( :, :, : ), intent( in ) :: CT!NDIM, NPHASE, NCOLCT
 
         ! Local variables
         INTEGER :: CV_INOD, COUNT, U_JNOD
@@ -1337,11 +1392,11 @@ contains
         implicit none
         ! CDP=C*DP
         INTEGER, intent( in ) :: CV_NONODS, U_NONODS, NDIM, NPHASE, NCOLC, NBLOCK
-        REAL, DIMENSION( NBLOCK, NDIM, NPHASE, U_NONODS ), intent( inout ) :: CDP
-        REAL, DIMENSION( NBLOCK, CV_NONODS ), intent( in )  :: DP
-        REAL, DIMENSION( NDIM, NPHASE, NCOLC ), intent( in ) :: C
-        INTEGER, DIMENSION( U_NONODS + 1 ), intent( in ) ::FINDC
-        INTEGER, DIMENSION( NCOLC ), intent( in ) :: COLC
+        REAL, DIMENSION( :, :, :, : ), intent( inout ) :: CDP!NBLOCK, NDIM, NPHASE, U_NONODS
+        REAL, DIMENSION( :, : ), intent( in )  :: DP!NBLOCK, CV_NONODS
+        REAL, DIMENSION( :, :, : ), intent( in ) :: C!NDIM, NPHASE, NCOLC
+        INTEGER, DIMENSION( : ), intent( in ) ::FINDC!U_NONODS + 1
+        INTEGER, DIMENSION( : ), intent( in ) :: COLC!NCOLC
         ! Local variables
         INTEGER :: U_INOD, COUNT, P_JNOD, IPHASE, IDIM
 
