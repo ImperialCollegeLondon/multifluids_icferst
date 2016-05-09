@@ -6658,7 +6658,7 @@ contains
                 REAL, DIMENSION( :  ), ALLOCATABLE, SAVE :: ELEMATWEI
                 LOGICAL, SAVE :: STORE_ELE=.TRUE., RET_STORE_ELE=.FALSE.
                 ! Allocate memory for the interpolated upwind values
-                LOGICAL, PARAMETER :: BOUND  = .TRUE., REFLECT = .FALSE. ! limiting options
+                LOGICAL, PARAMETER :: BOUND  = .TRUE., REFLECT = .TRUE. ! limiting options
                 INTEGER, DIMENSION( : ), allocatable :: NOD_FINDELE,NOD_COLELE, NLIST, INLIST, DUMMYINT
                 REAL, DIMENSION( : ), allocatable :: DUMMYREAL
                 INTEGER MXNCOLEL,NCOLEL,adapt_time_steps
@@ -6669,7 +6669,6 @@ contains
 
                 ALLOCATE( NOD_FINDELE(X_NONODS+1) )
                 ALLOCATE( NOD_COLELE(MXNCOLEL) )
-
                 ALLOCATE( NLIST(X_NONODS) )
                 ALLOCATE( INLIST(X_NONODS) )
 
@@ -6912,10 +6911,13 @@ contains
                 REAL LOCCORDSK(NLOC)
                 REAL INVH,LENG
                 !     work space...
-                real, pointer :: volume
-                REAL,  dimension(:), pointer :: DETWEI,RA!dimension(NGI)
+                real, pointer :: VOLUME
+                real, target :: VOLUME2
+                real, dimension(:), pointer :: DETWEI, RA !dimension(NGI)
+                real, dimension(:), allocatable, target :: DETWEI2, RA2
                 real, dimension (size(X_ALL,1)) :: NORMX1_ALL
-                real, dimension (:, :, :), pointer :: NX_ALL ! dimension (size(X_ALL,1), NLOC, NGI)
+                real, dimension(:, :, :), pointer :: NX_ALL ! dimension (size(X_ALL,1), NLOC, NGI)
+                real, dimension(:,:,:), allocatable, target :: NX_ALL2
                 real, dimension (size(X_ALL,1), NONODS) :: NORMX_ALL
                 REAL, ALLOCATABLE, DIMENSION(:)::MLUM
                 !    REAL, ALLOCATABLE, DIMENSION(:)::MINPSI
@@ -6925,6 +6927,14 @@ contains
                 INTEGER, ALLOCATABLE, DIMENSION(:)::NOD2XNOD
                 real, dimension(size(X_ALL,1)) :: X1_ALL, X2_ALL
 
+                ! Initialisation
+                ELEMATPSI = 0
+                ELEMATWEI = 0.0
+                allocate(DETWEI2(NGI))
+                allocate(RA2(NGI))
+                allocate(NX_ALL2(size(X_ALL,1), NLOC, NGI))
+                VOLUME=>VOLUME2; DETWEI=>DETWEI2;
+                RA=>RA2; NX_ALL=>NX_ALL2
 
                 NORMX1_ALL=0.0
                 IF(REFLECT) THEN
@@ -6934,7 +6944,7 @@ contains
                     MLUM(1:NONODS) = 0.0
                     DO ELE=1,TOTELE! Was loop
                         call DETNLXR( ELE, X_ALL, X_NDGLN, NLOC, NGI, &
-                            N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, .false., NX_ALL)
+                            N, NLX_ALL, WEIGHT, DETWEI, RA2, VOLUME2, .false., NX_ALL2)
                         DO ILOC=1,NLOC! Was loop
                             NODI=NDGLNO((ELE-1)*NLOC+ILOC)
                             DO GI=1,NGI! Was loop
@@ -7025,7 +7035,11 @@ contains
 
                     END DO ! Was loop 20
                 END DO ! Was loop 10
-                !    stop 67
+
+                deallocate(DETWEI2)
+                deallocate(RA2)
+                deallocate(NX_ALL2)
+
                 RETURN
 
             end subroutine finptsstore
@@ -7138,7 +7152,7 @@ contains
                                 REFX_ALL(3) =  NORMX1_ALL(3) * REFX2_ALL(1) + T1X_ALL(3) * REFX2_ALL(2)+ T2X_ALL(3) * REFX2_ALL(3)
                             END IF
 
-                            XC_ALL(1:NDIM) = X_ALL(:,1) + REFX_ALL(1:NDIM)*FRALINE
+                            XC_ALL(1:NDIM) = X1_ALL(1:NDIM) + REFX_ALL(1:NDIM)*FRALINE
                         ENDIF
 
                     ENDIF
@@ -7220,11 +7234,8 @@ contains
                         ELSE
                             RMATPSI   =RMATPSI  +LOCCORDSK(ILOC)*PSI_ALL(IFIELD, NLOCNODSK(ILOC))
                         ENDIF
-                    !         XC=XC+LOCCORDSK(ILOC)*X(LOCNODSK(ILOC))
-                    !         YC=YC+LOCCORDSK(ILOC)*Y(LOCNODSK(ILOC))
-                    !         ZC=ZC+LOCCORDSK(ILOC)*Z(LOCNODSK(ILOC))
                     END DO
-                    !     Exaduate difference by a factor of 100.
+                    !     Exaduate difference by a factor of 1/FRALINE.
                     IF(USE_FEMPSI) THEN
                         RMATPSI   = FEMPSI_ALL(IFIELD,  NOD )  &
                             + (1./FRALINE) * ( RMATPSI - FEMPSI_ALL( IFIELD, NOD) )
@@ -7285,9 +7296,12 @@ contains
                 integer, dimension( : ), intent( inout ) :: NLIST,INLIST
                 !     Local variables...
                 INTEGER NOD,ELE,ILOC,COUNT, INOD
-                !
-                NLIST=0
-                INLIST=0
+
+                ! Initialisation
+                NLIST = 0
+                INLIST = 0
+                FINDELE = 0
+                COLELE = 0
 
                 ! NLIST is the number of elements each node belongs to...
                 !  print *,'NONODS,totele,MXNCOLEL:',NONODS,totele,MXNCOLEL

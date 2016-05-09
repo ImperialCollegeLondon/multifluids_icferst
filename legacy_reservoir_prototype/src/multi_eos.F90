@@ -1425,12 +1425,16 @@ contains
 
       !Local variables
       type( tensor_field ), pointer :: t_field, tp_field, tc_field
-      integer :: iphase, icomp, stat, mat_nod, ele
+      integer :: iphase, icomp, stat, mat_nod, cv_nod, ele
       type( scalar_field ), pointer :: component
       logical :: linearise_viscosity
       real, dimension( : ), allocatable :: component_tmp
       real, dimension( :, :, : ), allocatable :: mu_tmp
       integer :: iloc, ndim1, ndim2, idim, jdim
+
+
+
+  ! DELETE Momentum_Diffusion - START USING THE NEW MEMORY ---
 
       if ( is_porous_media .or. have_option('boiling')) then
          momentum_diffusion=0.0
@@ -1439,7 +1443,7 @@ contains
          t_field => extract_tensor_field( state( 1 ), 'Viscosity', stat )
          if ( stat == 0 ) then
             linearise_viscosity = have_option( '/material_phase[0]/linearise_viscosity' )
-            allocate( component_tmp( Mdims%cv_nloc ), mu_tmp( Mdims%ndim, Mdims%ndim, Mdims%cv_nloc ) )
+            allocate( component_tmp( Mdims%cv_nloc ), mu_tmp( t_field%dim(1), t_field%dim(2), Mdims%cv_nloc ) )
             if ( Mdims%ncomp > 1 ) then
                t_field%val=0.0
                do icomp = 1, Mdims%ncomp
@@ -1466,7 +1470,7 @@ contains
                         end if
                         do iloc = 1, Mdims%cv_nloc
                            mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
-                           momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion(  :, :, iphase, mat_nod ) + mu_tmp( :, :, iloc )
+                           momentum_diffusion( :, :, iphase, mat_nod ) = momentum_diffusion(  :, :, iphase, mat_nod ) + mu_tmp( 1, 1, iloc ) ! isotropic only - to be deleted...
                            t_field%val( :, :, mat_nod ) = t_field%val( :, :, mat_nod ) + mu_tmp( :, :, iloc )
                         end do
                      end do
@@ -1499,7 +1503,6 @@ contains
          end if
       end if
 
-      !print *, 'P1=', t_field%val( 1, 1, : )
 
       !!! NEW CODE HERE !!!
       !!! deal with Momentum_Diffusion2
@@ -1516,7 +1519,7 @@ contains
 
             do iphase = 1, Mdims%nphase
 
-               call allocate_multi_field( state, Mdims, iphase, "Viscosity", Momentum_Diffusion2 )
+               call allocate_multi_field( state( iphase ), Mdims, "Viscosity", Momentum_Diffusion2 )
 
                if ( Mdims%ncomp > 1 ) then
 
@@ -1525,13 +1528,15 @@ contains
                   ndim1 = size( tp_field%val, 1 ) ; ndim2 = size( tp_field%val, 2 ) 
 
                   do icomp = 1, Mdims%ncomp
-
                      component => extract_scalar_field( state( Mdims%nphase + icomp ), "ComponentMassFractionPhase" // int2str( iphase ) )
                      tc_field => extract_tensor_field( state( Mdims%nphase + icomp ), "Viscosity" )
-
-                     forall ( idim=1:ndim1, jdim=1:ndim2 ) tp_field%val( idim, jdim, : ) = tp_field%val( idim, jdim, : ) + &
-                        &                                                                  component%val * tc_field%val( idim, jdim, : )
-
+                     do ele = 1, Mdims%totele
+                        do iloc = 1, Mdims%mat_nloc
+                           mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
+                           cv_nod = ndgln%cv( (ele-1)*Mdims%cv_nloc + iloc )
+                           call addto( tp_field, mat_nod, node_val( component, cv_nod ) * node_val( tc_field, mat_nod ) )
+                        end do
+                     end do
                   end do
 
                end if
@@ -1544,9 +1549,6 @@ contains
 
          end if
       end if
-
-      !print *, 'P2=', t_field%val( 1, 1, : )
-      !stop 666
 
       !!!!!!!!!!!!!!!!!!!!!
 

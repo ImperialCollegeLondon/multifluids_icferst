@@ -117,8 +117,7 @@ contains
            real, dimension( size(Mspars%small_acv%col )) ::  mass_mn_pres
            REAL, DIMENSION( : , : ), allocatable :: den_all, denold_all, t_source
            REAL, DIMENSION( : ), allocatable :: CV_RHS_SUB
-           type( tensor_field ), pointer :: P
-           type( tensor_field ), pointer :: Q
+           type( tensor_field ), pointer :: P, Q
            INTEGER :: IPHASE
            REAL, PARAMETER :: SECOND_THETA = 1.0
            LOGICAL :: RETRIEVE_SOLID_CTY
@@ -135,6 +134,8 @@ contains
            integer :: ncomp_diff_coef, comp_diffusion_opt
            real, dimension(:,:,:), allocatable :: Component_Diffusion_Operator_Coefficient
            type( tensor_field ), pointer :: perm
+           integer :: cv_disopt, cv_dg_vel_int_opt
+           real :: cv_theta, cv_beta
 
             if (present(Permeability_tensor_field)) then
                 perm => Permeability_tensor_field
@@ -195,11 +196,19 @@ contains
                Field_selector = 1
                Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
                T_source( :, : ) = Q % val( 1, :, : )
+               cv_disopt = Mdisopt%t_disopt
+               cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
+               cv_theta = Mdisopt%t_theta
+               cv_beta = Mdisopt%t_beta
            else ! solving for Composition
                call get_option( '/material_phase[' // int2str( Mdims%nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
                    'prognostic/temporal_discretisation/control_volumes/number_advection_iterations', nits_flux_lim, default = 1 )
                Field_selector = 2
                IGOT_T2_loc = IGOT_T2
+               cv_disopt = Mdisopt%v_disopt
+               cv_dg_vel_int_opt = Mdisopt%v_dg_vel_int_opt
+               cv_theta = Mdisopt%v_theta
+               cv_beta = Mdisopt%v_beta
            end if
 
            lump_eqns = have_option( '/material_phase[0]/scalar_field::PhaseVolumeFraction/prognostic/' // &
@@ -250,7 +259,7 @@ contains
                    INV_B, MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE, &
                    DEN_ALL, DENOLD_ALL, &
                    TDIFFUSION, IGOT_THERM_VIS, THERM_U_DIFFUSION, THERM_U_DIFFUSION_VOL,&
-                   Mdisopt%t_disopt, Mdisopt%t_dg_vel_int_opt, DT, Mdisopt%t_theta, SECOND_THETA, Mdisopt%t_beta, &
+                   cv_disopt, cv_dg_vel_int_opt, DT, cv_theta, SECOND_THETA, cv_beta, &
                    SUF_SIG_DIAGTEN_BC, &
                    DERIV%val(1,:,:), P%val, &
                    T_SOURCE, T_ABSORB, VOLFRA_PORE, &
