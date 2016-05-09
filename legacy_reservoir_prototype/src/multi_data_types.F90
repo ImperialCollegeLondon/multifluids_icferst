@@ -235,13 +235,12 @@ module multi_data_types
 
 contains
 
-    subroutine allocate_multi_field1( state, Mdims, iphase, field_name, mfield )
+    subroutine allocate_multi_field1( state, Mdims, field_name, mfield )
         !*********UNTESTED*********
         implicit none
 
-        type( state_type ), dimension( : ), intent( in ) :: state
+        type( state_type ), intent( in ) :: state
         type( multi_dimensions ), intent(in) :: Mdims
-        integer, intent( in ) :: iphase
         character( len = * ), intent( in ) :: field_name
 
         type( multi_field ), intent( inout ) :: mfield
@@ -251,7 +250,7 @@ contains
 
         mfield%have_field = .true.
 
-        tfield => extract_tensor_field( state( iphase ), trim( field_name ), stat )
+        tfield => extract_tensor_field( state, trim( field_name ), stat )
 
         ndim = Mdims%ndim ; nphase = Mdims%nphase
 

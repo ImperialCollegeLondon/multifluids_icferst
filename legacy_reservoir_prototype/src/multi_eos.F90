@@ -1519,7 +1519,7 @@ contains
 
             do iphase = 1, Mdims%nphase
 
-               call allocate_multi_field( state, Mdims, iphase, "Viscosity", Momentum_Diffusion2 )
+               call allocate_multi_field( state( iphase ), Mdims, "Viscosity", Momentum_Diffusion2 )
 
                if ( Mdims%ncomp > 1 ) then
 
