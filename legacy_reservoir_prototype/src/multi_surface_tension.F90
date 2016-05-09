@@ -69,7 +69,7 @@ contains
      real, dimension( : ), allocatable :: X, Y, Z
 
      integer :: iphase, icomp
-     real :: coefficient
+     real :: coefficient, angle
      logical :: surface_tension, use_pressure_force, use_smoothing
 
      type( vector_field ), pointer :: x_all
@@ -110,6 +110,9 @@ contains
              use_smoothing = have_option( '/material_phase[' // int2str( Mdims%nphase - 1 + icomp ) // &
                  ']/is_multiphase_component/surface_tension/smooth' )
 
+             call get_option( '/material_phase[' // int2str( Mdims%nphase - 1 + icomp ) // &
+                 ']/is_multiphase_component/surface_tension/angle', angle, default = -1.0 )
+
              USE_PRESSURE_FORCE = .TRUE.
 
              if ( USE_PRESSURE_FORCE ) then
@@ -123,7 +126,7 @@ contains
                  CALL SURFACE_TENSION_WRAPPER_NEW( state, packed_state, &
                      PLIKE_GRAD_SOU_COEF( icomp, iphase, :), PLIKE_GRAD_SOU_GRAD( icomp, iphase, :), &
                      !PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
-                     COEFFICIENT, &
+                     COEFFICIENT, ANGLE, &
                      MFC_s%val( icomp, iphase, :), &
                      Mdims, Mspars, ndgln, Mdisopt )
 
@@ -147,7 +150,7 @@ contains
 
  SUBROUTINE SURFACE_TENSION_WRAPPER_NEW( state, packed_state, &
      PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD, &
-     SUF_TENSION_COEF, VOLUME_FRAC, &
+     SUF_TENSION_COEF, ANGLE, VOLUME_FRAC, &
      Mdims, Mspars, ndgln, Mdisopt )
      ! Calculate the surface tension force as a pressure force term:
      ! PLIKE_GRAD_SOU_COEF and PLIKE_GRAD_SOU_GRAD 
@@ -166,7 +169,7 @@ contains
      type(multi_gi_dimensions) :: CV_GIdims
      type(multi_shape_funs) :: CV_funs
      REAL, DIMENSION( :), intent( inout ) :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
-     REAL, intent( in ) ::  SUF_TENSION_COEF
+     REAL, intent( in ) ::  SUF_TENSION_COEF, ANGLE
      REAL, DIMENSION( : ), intent( in ) :: VOLUME_FRAC
         ! Local variables
      
@@ -420,7 +423,7 @@ contains
                                            X, Y, Z, &
                                            CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%cv_snloc, &
                                            CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
-                                           ELE, DevFuns%DETWEI, 1)
+                                           ELE, DevFuns%DETWEI, 1, angle)
                                   
                END IF
             END DO ! ELE loop 1
@@ -663,7 +666,7 @@ contains
                                            X, Y, Z, &
                                            CV_GIdims%nface, FACE_ELE, CV_funs%cv_sloclist, Mdims%cv_snloc, &
                                            CV_GIdims%sbcvngi, CV_funs%sbcvfen, CV_funs%sbcvfenslx, CV_funs%sbcvfensly, CV_funs%sbcvfeweigh, &
-                                           ELE, DevFuns%DETWEI, 1)
+                                           ELE, DevFuns%DETWEI, 2, angle)
             
          END IF
       END DO ! ELE loop 7
@@ -1138,11 +1141,12 @@ contains
                                            X, Y, Z, &
                                            NFACE, FACE_ELE, CV_SLOCLIST, CV_SNLOC, &
                                            SBCVNGI, SBCVFEN, SBCVFENSLX, SBCVFENSLY, SBCVFEWEIGH, &
-                                           ELE, DETWEI, factor) 
+                                           ELE, DETWEI, factor, angle) 
 
       IMPLICIT NONE
       INTEGER, intent( in ) :: NDIM,  X_NLOC, CV_NGI, CV_NLOC, &
            CV_SNLOC, SBCVNGI, NFACE, ELE, factor
+      REAL, intent( in ) :: angle
       REAL, DIMENSION( : ), intent( in ) :: DISTANCE_FUN
       REAL, DIMENSION( : ), intent( inout ) :: SOL_DERIV_X, SOL_DERIV_Y, SOL_DERIV_Z
       INTEGER, DIMENSION( : ), intent( in ) :: CV_NDGLN
@@ -1311,7 +1315,7 @@ contains
 !            SOL_Z(CV_ILOC)=SOL_Z(CV_ILOC) +INV_MASS(CV_ILOC,CV_JLOC)*RHS_DG_Z(CV_JLOC)
 !         END DO
 !       END DO
-      if (factor==2) then
+      if (factor==2 .and. angle>0) then
       Between_Elements_And_Boundary1: DO IFACE = 1, NFACE
          ELE2  = FACE_ELE( IFACE, ELE )
          SELE2 = MAX( 0, - ELE2 )
@@ -1349,9 +1353,9 @@ contains
             SZNN=SZNN+SNORMZN(SGI)/SBCVNGI
          END DO
 
-         !IF (ABS(SXNN).LT.1.0E-6) SXNN=0.0
-         !IF (ABS(SYNN).LT.1.0E-6) SYNN=0.0
-         !IF (ABS(SZNN).LT.1.0E-6) SZNN=0.0
+         IF (ABS(SXNN).LT.1.0E-6) SXNN=0.0
+         IF (ABS(SYNN).LT.1.0E-6) SYNN=0.0
+         IF (ABS(SZNN).LT.1.0E-6) SZNN=0.0
 
          SXTT=SXNN*cos(0.5*pi)-SYNN*sin(0.5*pi)
          SYTT=SXNN*sin(0.5*pi)+SYNN*cos(0.5*pi)
@@ -1360,12 +1364,12 @@ contains
          DO CV_SILOC=1,CV_SNLOC
             CV_ILOC=CV_SLOC2LOC( CV_SILOC )
             IF(SELE.GT.0) THEN
-               SOL_X(CV_ILOC)=0.0!SXNN*cos(pi*150.0/180)+sign(SXTT,SOL_X(CV_ILOC))*sin(pi*150.0/180)
-               SOL_Y(CV_ILOC)=-1.0!SYNN*cos(pi*150.0/180)+sign(SYTT,SOL_Y(CV_ILOC))*sin(pi*150.0/180)
-               SOL_Z(CV_ILOC)=0.0!SZNN*cos(pi*150.0/180)+sign(SZTT,SOL_Z(CV_ILOC))*sin(pi*150.0/180)
+               SOL_X(CV_ILOC)=SXNN*cos(pi*angle/180.0)+sign(SXTT,SOL_X(CV_ILOC))*sin(pi*angle/180.0)
+               SOL_Y(CV_ILOC)=SYNN*cos(pi*angle/180.0)+sign(SYTT,SOL_Y(CV_ILOC))*sin(pi*angle/180.0)
+               SOL_Z(CV_ILOC)=SZNN*cos(pi*angle/180.0)+sign(SZTT,SOL_Z(CV_ILOC))*sin(pi*angle/180.0)
             ENDIF
          END DO
-
+print*, angle
       END DO Between_Elements_And_Boundary1 
       end if
 

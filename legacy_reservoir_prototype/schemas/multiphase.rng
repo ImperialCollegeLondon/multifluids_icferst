@@ -772,6 +772,12 @@ to sum to 1 by adding constraint into compositional source term.</a:documentatio
                     <ref name="real"/>
                   </element>
                   <optional>
+                    <element name="angle">
+                      <a:documentation>Contact angle. </a:documentation>
+                      <ref name="real"/>
+                    </element>
+                  </optional>
+                  <optional>
                     <element name="smooth">
                       <a:documentation> Smoothing.</a:documentation>
                       <empty/>
