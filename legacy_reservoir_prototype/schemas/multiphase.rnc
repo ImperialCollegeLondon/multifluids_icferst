@@ -637,6 +637,8 @@ start =
                      (
                         ## Surface tension coefficient. 
                         element coefficient { real },
+                        ## Contact angle. 
+                        element angle { real } ?,
                         ##  Smoothing.
                        element smooth { empty } ?
                      )
