@@ -781,7 +781,6 @@ contains
            ALLOCATE( MASS_SUF( 1 )) ; MASS_SUF=0.
         ENDIF
         ALLOCATE( MASS_CV( Mdims%cv_nonods )) ; MASS_CV=0.
-        ALLOCATE( UP_VEL( Mdims%ndim * Mdims%nphase * Mdims%u_nonods )) ; UP_VEL = 0.
         gamma=>extract_scalar_field(state(1),"Gamma1",stat)
         GAMMA_PRES_ABS = 0.0
         do ipres = 1, Mdims%npres
@@ -1034,6 +1033,7 @@ contains
                   deallocate(U_ABSORBIN)
                end if
             end if
+            ALLOCATE( UP_VEL( Mdims%ndim * Mdims%nphase * Mdims%u_nonods )) ; UP_VEL = 0.
             IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
                 ALLOCATE( U_RHS_CDP2( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ))
                 !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
@@ -1061,6 +1061,7 @@ contains
                call deallocate(rhs)
                U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             END IF
+            deallocate( UP_VEL )
 IF ( Mdims%npres > 1 .AND. .NOT.EXPLICIT_PIPES2 ) THEN
             if ( .not.symmetric_P ) then ! original
                ALLOCATE ( rhs_p2(Mdims%nphase,Mdims%cv_nonods) ) ; rhs_p2=0.0
@@ -1160,7 +1161,6 @@ END IF
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
 
             call halo_update(p_all)
-            deallocate( UP_VEL )
             call deallocate(rhs_p)
             call deallocate(cmc_petsc)
             ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
