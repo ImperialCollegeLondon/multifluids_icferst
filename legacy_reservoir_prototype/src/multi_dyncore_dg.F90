@@ -983,7 +983,6 @@ contains
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
-
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
             if (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1))  CALL PHA_BLOCK_INV(&
@@ -2245,20 +2244,22 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             exit
                         end if
                     end do
-                    if (Porous_media_PIVIT_not_stored_yet) then
+                    if (Porous_media_PIVIT_not_stored_yet.and. Mmat%CV_pressure) then
                         if (skip) then
                             Mmat%PIVIT_MAT(:,:,ELE)=0.0
-                            do i=1,size(Mmat%PIVIT_MAT,1)!sprint_to_do; why DevFuns%VOLUME/dble(Mdims%cv_nloc) instead of 1.0?
-                                Mmat%PIVIT_MAT(I,I,ELE)=DevFuns%VOLUME/dble(Mdims%cv_nloc)!1.0
+                            do i=1,size(Mmat%PIVIT_MAT,1)
+!                               Mmat%PIVIT_MAT(I,I,ELE)= 1.0
+                                Mmat%PIVIT_MAT(I,I,ELE)= 2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
                             END DO
                         end if
                     end if
                 end if
             else
-                if (Porous_media_PIVIT_not_stored_yet) then
+                if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure) then
                     Mmat%PIVIT_MAT(:,:,ELE)=0.0
-                    do i=1,size(Mmat%PIVIT_MAT,1)!sprint_to_do; why DevFuns%VOLUME/dble(Mdims%cv_nloc) instead of 1.0?
-                        Mmat%PIVIT_MAT(I,I,ELE)=DevFuns%VOLUME/dble(Mdims%cv_nloc)!1.0
+                    do i=1,size(Mmat%PIVIT_MAT,1)
+!                        Mmat%PIVIT_MAT(I,I,ELE)= 1.0
+                        Mmat%PIVIT_MAT(I,I,ELE) = 2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
                     END DO
                 end if
             end if
@@ -2566,7 +2567,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                     END DO
                 END DO
             END IF
-            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
+            if (Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure) then!sprint_to_do; Internal subroutine for this?
 !            if (.not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
@@ -2581,6 +2582,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                             end if
                             NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) = &
                                 NN_SIGMAGI_STAB_ELE(:, :, U_ILOC, U_JLOC ) + RNN *SIGMAGI_STAB( :, :, GI )
+
                             ! Chris change ordering of NN_SIGMAGI_STAB_SOLID_RHS_ELE
                             IF(RETRIEVE_SOLID_CTY) NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, :, U_ILOC, U_JLOC ) =&
                                 NN_SIGMAGI_STAB_SOLID_RHS_ELE(:, :, U_ILOC, U_JLOC ) + RNN * SIGMAGI_STAB_SOLID_RHS( :, :, GI )
