@@ -639,7 +639,7 @@ contains
     end subroutine VolumeFraction_Assemble_Solve
 
 
-    SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
+   SUBROUTINE FORCE_BAL_CTY_ASSEM_SOLVE( state, packed_state,  &
         Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
         velocity, pressure, &
         DT, NLENMCY, &!sprint_to_do NLENMCY in Mdims?
@@ -773,8 +773,6 @@ contains
         ALLOCATE(DIAG_SCALE_PRES_COUP(Mdims%npres,Mdims%npres,Mdims%cv_nonods),GAMMA_PRES_ABS(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods), &
             GAMMA_PRES_ABS_NANO(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods),INV_B(Mdims%nphase,Mdims%nphase,Mdims%cv_nonods))
         allocate(MASS_PIPE(Mdims%cv_nonods), MASS_CVFEM2PIPE(Mspars%CMC%ncol), MASS_PIPE2CVFEM(Mspars%CMC%ncol), MASS_CVFEM2PIPE_TRUE(Mspars%CMC%ncol))
-        ALLOCATE( MCY_RHS( Mdims%ndim * Mdims%nphase * Mdims%u_nonods + Mdims%cv_nonods )) ; MCY_RHS=0.
-        ALLOCATE( MCY( Mspars%MCY%ncol )) ; MCY=0.
         ALLOCATE( CMC_PRECON( Mdims%npres, Mdims%npres, Mspars%CMC%ncol*IGOT_CMC_PRECON)) ; IF(IGOT_CMC_PRECON.NE.0) CMC_PRECON=0.
         ALLOCATE( MASS_MN_PRES( Mspars%CMC%ncol )) ; MASS_MN_PRES=0.
         IF(got_free_surf) THEN
@@ -783,11 +781,6 @@ contains
            ALLOCATE( MASS_SUF( 1 )) ; MASS_SUF=0.
         ENDIF
         ALLOCATE( MASS_CV( Mdims%cv_nonods )) ; MASS_CV=0.
-        ALLOCATE( UP( NLENMCY )) ; UP=0.
-        ALLOCATE( U_RHS_CDP2( Mdims%ndim, Mdims%nphase, Mdims%u_nonods )) ; U_RHS_CDP2=0.
-        call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim)
-        call zero(cdp_tensor)
-        ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
         ALLOCATE( UP_VEL( Mdims%ndim * Mdims%nphase * Mdims%u_nonods )) ; UP_VEL = 0.
         gamma=>extract_scalar_field(state(1),"Gamma1",stat)
         GAMMA_PRES_ABS = 0.0
@@ -943,7 +936,12 @@ contains
             CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, &
                 PLIKE_GRAD_SOU_COEF%val, PLIKE_GRAD_SOU_GRAD%val, IPLIKE_GRAD_SOU)
         end if
-
+        IF ( GLOBAL_SOLVE ) then
+            !Prepare memory specific for this
+            ALLOCATE( MCY_RHS( Mdims%ndim * Mdims%nphase * Mdims%u_nonods + Mdims%cv_nonods )) ; MCY_RHS=0.
+            ALLOCATE( MCY( Mspars%MCY%ncol )) ; MCY=0.
+            ALLOCATE( UP( NLENMCY )) ; UP=0.
+        end if
         CALL CV_ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, CV_GIdims, FE_GIdims, CV_funs, FE_funs, Mspars, ndgln, Mdisopt, Mmat,upwnd, &
              velocity, pressure, &
@@ -963,7 +961,7 @@ contains
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU,&
             symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
-
+        deallocate(GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
         if ( Mdims%npres > 1 ) then
@@ -1018,8 +1016,9 @@ contains
             option_path = '/material_phase[0]/vector_field::Velocity')
             U_ALL2 % val = reshape( UP( 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase ), (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
             P_ALL % val( 1, 1, : ) = UP( Mdims%u_nonods * Mdims%ndim * Mdims%nphase + 1 : Mdims%u_nonods * Mdims%ndim * Mdims%nphase + Mdims%cv_nonods )
+            DEALLOCATE( MCY_RHS ); DEALLOCATE( MCY ); DEALLOCATE( UP )
         ELSE ! solve using a projection method
-
+            call allocate(cdp_tensor,velocity%mesh,"CDP",dim=velocity%dim); call zero(cdp_tensor)
             ! Put pressure in rhs of force balance eqn: CDP = Mmat%C * P
 !            CALL C_MULT2( CDP_TENSOR%VAL, P_ALL%val , Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%nphase, Mmat%C, NCOLC, FINDC, COLC)
             DO IPRES = 1, Mdims%npres
@@ -1036,13 +1035,14 @@ contains
                end if
             end if
             IF ( JUST_BL_DIAG_MAT .OR. Mmat%NO_MATRIX_STORE ) THEN
-
+                ALLOCATE( U_RHS_CDP2( Mdims%ndim, Mdims%nphase, Mdims%u_nonods ))
                 !For porous media we calculate the velocity as M^-1 * CDP, no solver is needed
                 U_RHS_CDP2 = Mmat%U_RHS + CDP_tensor%val
                 ! DU = BLOCK_MAT * CDP
                 CALL PHA_BLOCK_MAT_VEC_old( UP_VEL, Mmat%PIVIT_MAT, U_RHS_CDP2, Mdims%ndim, Mdims%nphase, &
                 Mdims%totele, Mdims%u_nloc, ndgln%u )
                 U_ALL2 % VAL = RESHAPE( UP_VEL, (/ Mdims%ndim, Mdims%nphase, Mdims%u_nonods /) )
+                deallocate(U_RHS_CDP2)
             ELSE
                call allocate(rhs,product(velocity%dim),velocity%mesh,"RHS")
                rhs%val=RESHAPE( Mmat%U_RHS + CDP_tensor%val, (/ Mdims%ndim * Mdims%nphase , Mdims%u_nonods /) )
@@ -1161,7 +1161,6 @@ END IF
 
             call halo_update(p_all)
             deallocate( UP_VEL )
-            deallocate(U_RHS_CDP2)
             call deallocate(rhs_p)
             call deallocate(cmc_petsc)
             ewrite(3,*) 'after pressure solve DP:', minval(deltap%val), maxval(deltap%val)
@@ -1176,11 +1175,14 @@ END IF
             call halo_update(cdp_tensor)
             ! Correct velocity...
             ! DU = BLOCK_MAT * CDP
+            ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
             CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
             Mdims%totele, Mdims%u_nloc, ndgln%u )
             U_ALL2 % VAL = U_ALL2 % VAL + DU_VEL
+            DEALLOCATE( DU_VEL )
             if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
             call halo_update(u_all2)
+            call DEALLOCATE( CDP_tensor )
         END if
         ! Calculate control volume averaged pressure CV_P from fem pressure P
         CVP_ALL%VAL = 0.0
@@ -1230,16 +1232,11 @@ END IF
         ENDIF
         call halo_update(CVP_all)
         DEALLOCATE( Mmat%CT )
-        DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, INV_B )
+        DEALLOCATE( DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B )
         DEALLOCATE( MASS_PIPE, MASS_CVFEM2PIPE, MASS_PIPE2CVFEM, MASS_CVFEM2PIPE_TRUE )
         DEALLOCATE( Mmat%U_RHS )
-        DEALLOCATE( MCY_RHS )
-        DEALLOCATE( MCY )
         DEALLOCATE( MASS_MN_PRES )
-        DEALLOCATE( UP )
         call deallocate(Mmat%CT_RHS)
-        call DEALLOCATE( CDP_tensor )
-        DEALLOCATE( DU_VEL )
         if (.not.is_porous_media) then
             DEALLOCATE( Mmat%PIVIT_MAT )
             nullify(Mmat%PIVIT_MAT)
