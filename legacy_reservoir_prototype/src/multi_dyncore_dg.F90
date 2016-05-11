@@ -689,14 +689,8 @@ contains
         MASS_MN_PRES, MASS_SUF, MASS_CV, UP, &
         UP_VEL
         REAL, DIMENSION( :, : ), allocatable :: DIAG_SCALE_PRES
-
-!!! THIS IS CRIMINAL!!! REMOVE ASAP !!!
-
-        real, dimension(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods) :: velocity_absorption
-        real, dimension(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods) :: U_SOURCE_CV_ALL
-        real, dimension(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods) :: UDIFFUSION_ALL
-
-!!!
+        real, dimension(:,:,:), allocatable :: velocity_absorption, U_SOURCE_CV_ALL
+        real, dimension(:,:,:,:), allocatable :: UDIFFUSION_ALL
 
         type( multi_field ) :: UDIFFUSION_VOL_ALL, U_SOURCE_ALL   ! NEED TO ALLOCATE THESE - SUBS TO DO THIS ARE MISSING... - SO SET 0.0 FOR NOW
 
@@ -825,6 +819,7 @@ contains
         end IF
 
         !Calculate gravity source terms
+        allocate(U_SOURCE_CV_ALL(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
         U_SOURCE_CV_ALL=0.0
         if ( is_porous_media )then
            UDEN_ALL=0.0; UDENOLD_ALL=0.0
@@ -869,11 +864,12 @@ contains
               END DO
            ENDIF
         ENDIF
-
+        allocate(UDIFFUSION_ALL(Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%mat_nonods))
         ! calculate the viscosity for the momentum equation... (uDiffusion is initialized inside)
         call calculate_viscosity( state, Mdims, ndgln, UDIFFUSION_ALL, UDIFFUSION_ALL2 )
         !UDIFFUSION_VOL_ALL = 0.
 
+        allocate(velocity_absorption(Mdims%ndim * Mdims%nphase, Mdims%ndim * Mdims%nphase, Mdims%mat_nonods))
         ! define velocity_absorption here...
         velocity_absorption=0.0
         ! update velocity absorption
@@ -960,7 +956,7 @@ contains
             RETRIEVE_SOLID_CTY, &
             IPLIKE_GRAD_SOU,&
             symmetric_P, boussinesq, IDs_ndgln, RECALC_C_CV)
-        deallocate(GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO)
+        deallocate(GAMMA_PRES_ABS, GAMMA_PRES_ABS_NANO, UDIFFUSION_ALL)
         !If pressure in CV then point the FE matrix Mmat%C to Mmat%C_CV
         if ( Mmat%CV_pressure ) Mmat%C => Mmat%C_CV
         if ( Mdims%npres > 1 ) then
@@ -980,6 +976,7 @@ contains
            call deallocate( pressure_BCs )
            DEALLOCATE( SIGMA )
         end if
+        deallocate(velocity_absorption, U_SOURCE_CV_ALL)
         IF ( .NOT.GLOBAL_SOLVE ) THEN
             ! form pres eqn.
             if (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1))  CALL PHA_BLOCK_INV(&
