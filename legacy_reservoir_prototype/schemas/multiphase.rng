@@ -1393,6 +1393,29 @@ Recommended value: [0.5,1.0]. Default =1.</a:documentation>
           <empty/>
         </element>
       </optional>
+      <optional>
+        <element name="numerical_methods">
+          <a:documentation>numerical_methods options</a:documentation>
+          <optional>
+            <element name="use_reflect_method">
+              <a:documentation>Use a method to avoid distortion due to boundaries</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="DG_advection">
+              <a:documentation>The method to calculate the flux between CV not sharing element is also used for fluxes within an element</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+          <optional>
+            <element name="create_P_mat_fast">
+              <a:documentation>Use the fast method to create the pressure matrix. Be aware that some me</a:documentation>
+              <empty/>
+            </element>
+          </optional>
+        </element>
+      </optional>
     </element>
   </start>
   <define name="prognostic_density_field">

@@ -847,11 +847,6 @@ prognostic_velocity_field =
                         empty
                      }|
 
-                     ## DG_weighting - The method to calculate the flux between CV not sharing element is also used for fluxes within an element
-                     element DG_weighting {
-                        empty
-                     }|
-
                      ## Disable advection
                      element none {
                         empty

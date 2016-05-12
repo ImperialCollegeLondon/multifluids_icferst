@@ -1191,11 +1191,9 @@ contains
                     Norm_sat(3) = ( sat(3) - Immobile_fraction(3)) /(1. - Immobile_fraction(2) - Immobile_fraction(1))!Gas
                     !For phase 1 and 3 (water and gas respectively) we can use the Brooks Corey model
                     relperm(3) = Endpoint_relperm(3)* Norm_sat(3) ** Corey_exponent(3)!Gas, Krg
-
                 end if
                 !Oil relperm is obtained as a combination
                 if (iphase == 2 ) then
-
                     Krow = Endpoint_relperm(2)* (1.0 - Norm_sat(1)) ** Corey_exponent(2)!Oil, Krow
                     Krog = Endpoint_relperm(2)* (1.0 - Norm_sat(3)) ** Corey_exponent(2)!Oil, Krog
                     !For the second phase, oil, we need to recalculate the real value(Stone model 2)

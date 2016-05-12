@@ -1031,6 +1031,21 @@ start =
          ## boiling options
          element boiling {
             empty           
+         }?,
+         ## numerical_methods options
+         element numerical_methods {
+            ## Use a method to avoid distortion due to boundaries
+            element use_reflect_method {
+               empty
+            }?,      
+            ## The method to calculate the flux between CV not sharing element is also used for fluxes within an element
+            element DG_advection {
+               empty
+            }?,  
+            ## Use the fast method to create the pressure matrix. Be aware that some me
+            element create_P_mat_fast {
+               empty
+            }?   
          }?
       }
    )

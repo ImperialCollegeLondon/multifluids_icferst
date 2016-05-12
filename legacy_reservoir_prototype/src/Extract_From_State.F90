@@ -537,9 +537,7 @@ contains
         !!$ Options below are hardcoded and need to be added into the schema
         Mdisopt%t_dg_vel_int_opt = 1 ; Mdisopt%u_dg_vel_int_opt = 4 ; Mdisopt%v_dg_vel_int_opt = 4 ; Mdisopt%w_dg_vel_int_opt = 0
         if(is_porous_media) then
-            if ( have_option( &
-                '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/DG_weighting') &
-                ) Mdisopt%v_dg_vel_int_opt = 10
+            if ( have_option("/numerical_methods/DG_advection")) Mdisopt%v_dg_vel_int_opt = 10
         else
             Mdisopt%v_dg_vel_int_opt = 1
         end if

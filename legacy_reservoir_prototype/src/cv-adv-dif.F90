@@ -361,7 +361,7 @@ contains
             LIMDOLD, LIMDTT2OLD,&
             FVT, FVT2, FVD, LIMD,  &
             LIMDT, LIMDTT2
-        LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS
+        LOGICAL :: DISTCONTINUOUS_METHOD, QUAD_ELEMENTS, use_reflect
         !Logical to check if we using a conservative method or not, to save cpu time
         logical :: conservative_advection
         !        ===> INTEGERS <===
@@ -1017,6 +1017,7 @@ contains
                 TOLDUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL, &
                 TUPWIND_MAT_ALL, DENUPWIND_MAT_ALL, T2UPWIND_MAT_ALL )
         ELSE ! endof IF ( IANISOLIM == 0 ) THEN
+            use_reflect = have_option("/numerical_methods/use_reflect_method")
             CALL CALC_ANISOTROP_LIM( &
                 ! Caculate the upwind values stored in matrix form...
                 T_ALL,TOLD_ALL,DEN_ALL,DENOLD_ALL,T2_ALL,T2OLD_ALL, &
@@ -1028,7 +1029,7 @@ contains
                 i_use_volume_frac_t2,Mdims%nphase,Mdims%cv_nonods,Mdims%cv_nloc,Mdims%totele,ndgln%cv, &
                 Mspars%small_acv%fin,Mspars%small_acv%mid,Mspars%small_acv%col,Mspars%small_acv%ncol, &
                 ndgln%x,Mdims%x_nonods,Mdims%ndim, &
-                X_ALL, XC_CV_ALL)
+                X_ALL, XC_CV_ALL, use_reflect)
         END IF ! endof IF ( IANISOLIM == 0 ) THEN ELSE
         ALLOCATE( FACE_ELE( CV_GIdims%nface, Mdims%totele ) ) ; FACE_ELE = 0
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, CV_GIdims%nface, &
@@ -6420,7 +6421,7 @@ contains
         IGOT_T2, NPHASE, CV_NONODS,CV_NLOC, TOTELE, CV_NDGLN, &
         SMALL_FINDRM, SMALL_CENTRM, SMALL_COLM,NSMALL_COLM, &
         X_NDGLN, X_NONODS, NDIM, &
-        X_ALL, XC_CV_ALL)
+        X_ALL, XC_CV_ALL, use_reflect)
         ! For the anisotropic limiting scheme we find the upwind values
         ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
         ! value for each node pair is stored in the matrices TUPWIND AND
@@ -6431,7 +6432,7 @@ contains
         REAL, DIMENSION( :,:), intent( in ), pointer :: T2_ALL,T2OLD_ALL
         REAL, DIMENSION( :, :), intent( in ) :: FEMT_ALL,FEMTOLD_ALL,FEMDEN_ALL,FEMDENOLD_ALL
         REAL, DIMENSION( :, :), intent( in ) :: FEMT2_ALL,FEMT2OLD_ALL
-        LOGICAL, intent( in ) :: USE_FEMT ! Use the FEM solns rather than CV's when interpolating soln
+        LOGICAL, intent( in ) :: USE_FEMT, use_reflect ! Use the FEM solns rather than CV's when interpolating soln
         REAL, DIMENSION( :, : ), intent( inout ) :: TUPWIND_MAT_ALL, TOLDUPWIND_MAT_ALL, &
             DENUPWIND_MAT_ALL, DENOLDUPWIND_MAT_ALL
         REAL, DIMENSION( :, : ), intent( inout ) :: T2UPWIND_MAT_ALL, T2OLDUPWIND_MAT_ALL
@@ -6477,7 +6478,7 @@ contains
         !Find upwind field values for limiting
         CALL CALC_ANISOTROP_LIM_VALS( F_ALL, FEMF_ALL, USE_FEMT, FUPWIND_MAT_ALL,  &
             NFIELD,CV_NONODS,CV_NLOC,TOTELE,CV_NDGLN, SMALL_FINDRM,&
-            SMALL_COLM,NSMALL_COLM, X_NDGLN,X_NONODS,NDIM, X_ALL, XC_CV_ALL)
+            SMALL_COLM,NSMALL_COLM, X_NDGLN,X_NONODS,NDIM, X_ALL, XC_CV_ALL, use_reflect)
 
         ! make sure the diagonal is equal to the value:
         DO NOD=1,CV_NONODS
@@ -6508,7 +6509,7 @@ contains
                 NFIELD,NONODS,CV_NLOC,TOTELE,CV_NDGLN, &
                 SMALL_FINDRM,SMALL_COLM,NSMALL_COLM, &
                 X_NDGLN,X_NONODS,NDIM, &
-                X_ALL, XC_CV_ALL)
+                X_ALL, XC_CV_ALL, use_reflect)
                 ! For the anisotropic limiting scheme we find the upwind values
                 ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
                 ! value for each node pair is stored in the matrices TUPWIND AND
@@ -6516,7 +6517,7 @@ contains
                 INTEGER, intent(in) :: NONODS,X_NONODS,TOTELE,CV_NLOC,NSMALL_COLM,NFIELD,NDIM
                 REAL, DIMENSION( :, : ), intent( in ) :: T_ALL
                 REAL, DIMENSION( :, : ), intent( in ) :: FEMT_ALL
-                LOGICAL, intent( in ) :: USE_FEMT
+                LOGICAL, intent( in ) :: USE_FEMT, use_reflect
                 REAL, DIMENSION( :, : ), intent( inout ) :: TUPWIND_ALL
                 INTEGER, DIMENSION( :  ), intent( in ) :: X_NDGLN
                 INTEGER, DIMENSION( :  ), intent( in ) :: CV_NDGLN
@@ -6614,7 +6615,7 @@ contains
                     SMALL_FINDRM,SMALL_COLM, NSMALL_COLM, &
                     SUB_XNDGLNO, X_NONODS, NDIM, &
                     X_ALL, XC_CV_ALL, &
-                    N, NLX_ALL, WEIGHT)
+                    N, NLX_ALL, WEIGHT, use_reflect)
 
 
                 !    DEALLOCATE( N, NLX, NLY, NLZ, L1, L2, L3, L4, &
@@ -6634,7 +6635,7 @@ contains
                 FINDRM,COLM,NCOLM, &
                 X_NDGLN,X_NONODS,NDIM, &
                 X_ALL, XC_CV_ALL,  &
-                N,NLX_ALL, WEIGHT)
+                N,NLX_ALL, WEIGHT, use_reflect)
                 ! For the anisotropic limiting scheme we find the upwind values
                 ! by interpolation using the subroutine FINPTS or IFINPTS; the upwind
                 ! value for each node pair is stored in the matrices TUPWIND AND
@@ -6642,7 +6643,7 @@ contains
                 INTEGER, intent(in) :: NONODS,X_NONODS,TOTELE,NLOC,NGI,NCOLM,NFIELD,NDIM
                 REAL, DIMENSION( :,: ), intent( in ) :: T_ALL
                 REAL, DIMENSION(  :,: ), intent( in ) :: FEMT_ALL
-                LOGICAL, intent( in ) :: USE_FEMT
+                LOGICAL, intent( in ) :: USE_FEMT, use_reflect
                 REAL, DIMENSION( :,:  ), intent( inout ) :: TUPWIND_ALL
                 INTEGER, DIMENSION( : ), INTENT(IN) :: NDGLNO,X_NDGLN
                 INTEGER, DIMENSION( : ), INTENT(IN) :: FINDRM,COLM
@@ -6658,12 +6659,14 @@ contains
                 REAL, DIMENSION( :  ), ALLOCATABLE, SAVE :: ELEMATWEI
                 LOGICAL, SAVE :: STORE_ELE=.TRUE., RET_STORE_ELE=.FALSE.
                 ! Allocate memory for the interpolated upwind values
-                LOGICAL, PARAMETER :: BOUND  = .TRUE., REFLECT = .TRUE. ! limiting options
+                LOGICAL, PARAMETER :: BOUND  = .TRUE.! limiting options
+                logical:: REFLECT ! limiting options
                 INTEGER, DIMENSION( : ), allocatable :: NOD_FINDELE,NOD_COLELE, NLIST, INLIST, DUMMYINT
                 REAL, DIMENSION( : ), allocatable :: DUMMYREAL
                 INTEGER MXNCOLEL,NCOLEL,adapt_time_steps
                 REAL current_time
-
+                !Reflect option defined from diamond
+                REFLECT = use_reflect
                 ! Over-estimate the size of the COLELE array
                 MXNCOLEL=20*TOTELE+500
 
