@@ -7296,7 +7296,7 @@ subroutine high_order_pressure_solve( u_rhs, state, packed_state, storage_state,
             pfield => extract_tensor_field( packed_state, "PackedFEPressure" )
             do i = 1, get_boundary_condition_count( pfield )
                call get_boundary_condition( pfield, i, type=bc_type, surface_node_list=surface_node_list )
-               if ( trim( bc_type ) == "freesurface" ) then
+               if ( trim( bc_type ) == "freesurface" .or.  trim( bc_type ) == "top" ) then
                   got_free_surf = .true.
                   exit
                end if

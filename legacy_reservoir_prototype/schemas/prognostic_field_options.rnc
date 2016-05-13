@@ -1529,6 +1529,10 @@ prognostic_pressure_field =
             element type {
                attribute name { "freesurface" },
                input_choice_real
+            }|
+            element type {
+               attribute name { "top" },
+               input_choice_real
             }
          )
       }*,
