@@ -114,6 +114,10 @@ start =
             element output_scalars_fem {
                empty
             }?,
+            ## Output the absorption velocity (internally used) instead of the Darcy velocity.
+            element not_output_darcy_vel {
+               empty
+            }?,
             ## Surface to Integrate Over
             element dump_boundaryflux {
             attribute name { string },
@@ -419,46 +423,50 @@ start =
                element nonlinear_iterations_at_adapt {
                   integer
                }?,
-               ## This is the convergence criteria for the Fixed Point Iteration solver.
+               ## This is the convergence criterion for the Fixed Point Iteration solver.
                ## The functional to compare is: 
                ##
-               ## f = sum(average(dSat/dumping_parameter))^2;
-               ## dSat is the difference in saturation between FPI
+               ## f = L2norm(S*-So)/L2norm(S1-So)
                ##
-               ## 
-               ## Recommended values: from 1e-9 to 1e-10
+               ## S* is the latest saturation; So is the saturation at the previous FPI
+               ## S1 is the saturation after the first FPI. Hence, the reduction of the difference
+               ## of saturation is tested
+               ##
+               ## Recommended value: 5e-2
                element Fixed_Point_Iteration{
                   real,
                   (
                     ## dSat obtained from the Saturation equation is backtracked by this factor
                     ##
-                    ## Sat = Sat(Previous FPI) + dumping_parameter * dSat
+                    ## Sat = Sat(Previous FPI) + Backtracking_parameter * dSat
                     ##
-                    ## Defined as: 0 < dumping_parameter < 1. Negative values => automatically 
+                    ## Defined as: 0.01 < Backtracking_parameter < 1. Negative values => automatically 
                     ##
                     ## Default value is 1.
                     ##
-                    ## For FIXED dumping parameters:
+                    ## For FIXED backtracking parameters:
                     ## Recommended settings: Non-linear iterations >= 100
                     ##
-                    ## Recommended settings: Courant < 1 => dumping_parameter = 1;
-                    ## Courant > 1 => dumping_parameter from 1.0 to 0.1;
+                    ## Recommended settings: Courant < 1 => Backtracking_parameter = 1;
+                    ## Courant > 1 => Backtracking_parameter from 1.0 to 0.01;
                     ##
                     ## For DYNAMIC dumping parameters:
                     ##
                     ## Recommended settings: Non-linear iterations >= 30
-                    ## The Dumping value introduced is used as reference, so it may have a big impact on the convergence
+                    ## The Backtracking value introduced is used as reference, so it may have a big impact on the convergence
                     ##
-                    ## Recommended settings: dumping_parameter = -0.33 or -0.5 or -0.8; 
+                    ## Recommended settings: Backtracking_parameter = -0.33 or -0.5 or -0.8; 
                     ## Note: Dynamic dumping loops over the Saturation solver up to 9 times and also uses techniques to accelerate the FPI convergence
                     ##
+                    ## Backtracking_parameter = -10 automatically selection based on the Courant number and the physics of the problem
+                    ##
                     ## The more complex the problem is (i.e. bigger time-steps, gravity, capillary, etc) the smaller the value should be
-                    element Dumping_factor{
+                    element Backtracking_factor{
                     real
                     }?
                   ),
                   (
-                    ## THIS ONLY WORKS with automatics dumpings factor, i.e. Dumping_factor < 0
+                    ## THIS ONLY WORKS with automatics dumpings factor, i.e. Backtracking_factor < 0
                     ##
                     ## This parameter change the weight ratio used between the old Saturation and the older Saturation to calculate the new Saturation inside an SFPI
                     ## 
@@ -572,25 +580,6 @@ start =
                }?
             }?
          },
-	 element caching {
-        ## Activate this to store the shape functions for every element.
-	    element cache_shape_functions {
-	    empty
-	    }?
-	 },
-     ## Options applicable to the the fix to bad elements (elements with angles bigger than 105 degrees)
-     ##
-     ## An artificial compressible-like term is introduced in the bad angle
-	 element Fix_bad_elements {
-	    ## Scaling factor of the introduced term. 
-        ##
-        ## If this term is too big the system is easier to solve but the solutions may be wrong.
-        ## 
-        ## Default valued 0.5e-4.
-	    element Bad_ele_scale {
-            real
-        }?
-	 }?,
 	 element projections {
 	    ## Options applicable to the projections used in
 	    ## the multiphase prototype code
@@ -648,6 +637,8 @@ start =
                      (
                         ## Surface tension coefficient. 
                         element coefficient { real },
+                        ## Contact angle. 
+                        element angle { real } ?,
                         ##  Smoothing.
                        element smooth { empty } ?
                      )
@@ -925,20 +916,17 @@ start =
                     }
                }?,
                ## Introduce over-relaxation in the saturation equation that diminishes as the FPI converges. 
-               ## The input value is the entry pressure.
-               ##
-               ## Recommended fixed value: Maximum Pressure of the system * 10-2
-               ##
-               ## Negative values create Pe_stab as: max(Pressure) * 1e-3
-               ##
-               ## Recommended automatic value.
-               ##
+               ## This helps to increase the convergence rate of the FPI solver.
                ## You should specify this ONLY for the wetting phase.
-               ## 
-               ## Tip: You may need to disable this option if the capillary pressure is enabled.
+               ##
+               ## If positive, the input value is the entry pressure.
+               ##
+               ## If negative, the input value is Peclet number desired.
+               ##
+               ## Recommended values: from -1e2 to -1e1
                ##
                ## Tip: if Diffusive_cap_only is activated Pe is ignored.
-               element Pe_stab {real}?
+               element Sat_overRelax {real}?
             }?
          }+,
          mesh_adaptivity_options?,
@@ -1043,6 +1031,21 @@ start =
          ## boiling options
          element boiling {
             empty           
+         }?,
+         ## numerical_methods options
+         element numerical_methods {
+            ## Use a method to avoid distortion due to boundaries
+            element use_reflect_method {
+               empty
+            }?,      
+            ## The method to calculate the flux between CV not sharing element is also used for fluxes within an element
+            element DG_advection {
+               empty
+            }?,  
+            ## Use the fast method to create the pressure matrix. Be aware that some me
+            element create_P_mat_fast {
+               empty
+            }?   
          }?
       }
    )

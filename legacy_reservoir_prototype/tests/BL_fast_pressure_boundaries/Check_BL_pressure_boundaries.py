@@ -29,7 +29,7 @@ os.system(binpath + ' ' + path + '/BL_fast.mpml')
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
 #SINCE THIS IS NOT AN ANALYTICAL SOLUTION THE TOLERANCES ARE BIGGER
-Tolerance_L1_NORM = 0.0216
+Tolerance_L1_NORM = 0.0217
 Tolerance_L2_NORM = 0.0009
 
 AutomaticLine = 0
@@ -237,6 +237,8 @@ if (Passed):
     print 'BL works OK'
 else:
     print 'BL does NOT work'
+#Check the experiment has finished
+if (AutoNumber < 20): Passed = False
 
 if (showPlot):
     fig, ax = plt.subplots()

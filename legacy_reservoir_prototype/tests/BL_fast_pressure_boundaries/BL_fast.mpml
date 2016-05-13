@@ -20,7 +20,7 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
+            <integer_value rank="0">1</integer_value>
           </polynomial_degree>
           <element_type>
             <string_value>lagrangian</string_value>
@@ -48,82 +48,6 @@
         </mesh_shape>
         <mesh_continuity>
           <string_value>continuous</string_value>
-        </mesh_continuity>
-        <stat>
-          <exclude_from_stat/>
-        </stat>
-      </from_mesh>
-    </mesh>
-    <mesh name="P0DG">
-      <from_mesh>
-        <mesh name="CoordinateMesh"/>
-        <mesh_shape>
-          <polynomial_degree>
-            <integer_value rank="0">0</integer_value>
-          </polynomial_degree>
-          <element_type>
-            <string_value>lagrangian</string_value>
-          </element_type>
-        </mesh_shape>
-        <mesh_continuity>
-          <string_value>discontinuous</string_value>
-        </mesh_continuity>
-        <stat>
-          <exclude_from_stat/>
-        </stat>
-      </from_mesh>
-    </mesh>
-    <mesh name="VelocityMesh_Continuous">
-      <from_mesh>
-        <mesh name="CoordinateMesh"/>
-        <mesh_shape>
-          <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
-          </polynomial_degree>
-          <element_type>
-            <string_value>lagrangian</string_value>
-          </element_type>
-        </mesh_shape>
-        <mesh_continuity>
-          <string_value>continuous</string_value>
-        </mesh_continuity>
-        <stat>
-          <exclude_from_stat/>
-        </stat>
-      </from_mesh>
-    </mesh>
-    <mesh name="PressureMesh_Continuous">
-      <from_mesh>
-        <mesh name="CoordinateMesh"/>
-        <mesh_shape>
-          <polynomial_degree>
-            <integer_value rank="0">1</integer_value>
-          </polynomial_degree>
-          <element_type>
-            <string_value>lagrangian</string_value>
-          </element_type>
-        </mesh_shape>
-        <mesh_continuity>
-          <string_value>continuous</string_value>
-        </mesh_continuity>
-        <stat>
-          <exclude_from_stat/>
-        </stat>
-      </from_mesh>
-    </mesh>
-    <mesh name="PressureMesh_Discontinuous">
-      <from_mesh>
-        <mesh name="CoordinateMesh"/>
-        <mesh_shape>
-          <polynomial_degree>
-            <integer_value rank="0">1</integer_value>
-          </polynomial_degree>
-          <element_type>
-            <string_value>lagrangian</string_value>
-          </element_type>
-        </mesh_shape>
-        <mesh_continuity>
-          <string_value>discontinuous</string_value>
         </mesh_continuity>
         <stat>
           <exclude_from_stat/>
@@ -161,14 +85,13 @@
     <nonlinear_iterations>
       <integer_value rank="0">30</integer_value>
       <Fixed_Point_Iteration>
-        <real_value rank="0">5e-9</real_value>
-        <Dumping_factor>
+        <real_value rank="0">5e-2</real_value>
+        <Backtracking_factor>
           <real_value rank="0">-1</real_value>
-        </Dumping_factor>
+        </Backtracking_factor>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <material_phase name="phase1">
     <equation_of_state>
       <incompressible>
@@ -381,6 +304,15 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
@@ -525,9 +457,9 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
-      <Pe_stab>
-        <real_value rank="0">0.25e-2</real_value>
-      </Pe_stab>
+      <Sat_overRelax>
+        <real_value rank="0">0.1e-3</real_value>
+      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">
@@ -653,27 +585,16 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <boundary_conditions name="inlet">
-          <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">

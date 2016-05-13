@@ -65,7 +65,6 @@ module sparse_tools_petsc
   type petsc_csr_matrix_pointer
     type(petsc_csr_matrix), pointer :: ptr => null()
   end type petsc_csr_matrix_pointer
-  
     
   interface allocate
      module procedure allocate_petsc_csr_matrix_from_sparsity, &

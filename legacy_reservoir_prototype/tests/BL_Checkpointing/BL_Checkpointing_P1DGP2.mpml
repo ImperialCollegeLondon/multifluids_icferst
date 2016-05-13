@@ -166,14 +166,13 @@
     <nonlinear_iterations>
       <integer_value rank="0">30</integer_value>
       <Fixed_Point_Iteration>
-        <real_value rank="0">5e-8</real_value>
-        <Dumping_factor>
+        <real_value rank="0">5e-2</real_value>
+        <Backtracking_factor>
           <real_value rank="0">0.3334</real_value>
-        </Dumping_factor>
+        </Backtracking_factor>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <material_phase name="phase1">
     <equation_of_state>
       <incompressible>
@@ -539,9 +538,9 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
-      <Pe_stab>
+      <Sat_overRelax>
         <real_value rank="0">0.25e-2</real_value>
-      </Pe_stab>
+      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">

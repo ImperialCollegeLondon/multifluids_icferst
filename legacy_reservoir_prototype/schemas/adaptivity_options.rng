@@ -478,7 +478,9 @@ Usually set to 10-20 times the timestep.</a:documentation>
           <ref name="integer"/>
         </element>
         <element name="adapt_mesh_within_FPI">
-          <a:documentation>Adapt within the non-linear solver</a:documentation>
+          <a:documentation>This option enables the ability to adapt the mesh inside the FPI.
+It only works for porous media and requires adapting the mesh for PhaseVolumeFraction
+but not to the last phase.</a:documentation>
           <empty/>
         </element>
       </choice>

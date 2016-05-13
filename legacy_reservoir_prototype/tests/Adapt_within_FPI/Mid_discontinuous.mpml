@@ -8,7 +8,7 @@
       <integer_value rank="0">2</integer_value>
     </dimension>
     <mesh name="CoordinateMesh">
-      <from_file file_name="square">
+      <from_file file_name="midregion">
         <format name="gmsh"/>
         <stat>
           <include_in_stat/>
@@ -40,44 +40,6 @@
         <mesh name="CoordinateMesh"/>
         <mesh_shape>
           <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
-          </polynomial_degree>
-          <element_type>
-            <string_value>lagrangian</string_value>
-          </element_type>
-        </mesh_shape>
-        <mesh_continuity>
-          <string_value>continuous</string_value>
-        </mesh_continuity>
-        <stat>
-          <exclude_from_stat/>
-        </stat>
-      </from_mesh>
-    </mesh>
-    <mesh name="P0DG">
-      <from_mesh>
-        <mesh name="CoordinateMesh"/>
-        <mesh_shape>
-          <polynomial_degree>
-            <integer_value rank="0">0</integer_value>
-          </polynomial_degree>
-          <element_type>
-            <string_value>lagrangian</string_value>
-          </element_type>
-        </mesh_shape>
-        <mesh_continuity>
-          <string_value>discontinuous</string_value>
-        </mesh_continuity>
-        <stat>
-          <exclude_from_stat/>
-        </stat>
-      </from_mesh>
-    </mesh>
-    <mesh name="VelocityMesh_Continuous">
-      <from_mesh>
-        <mesh name="CoordinateMesh"/>
-        <mesh_shape>
-          <polynomial_degree>
             <integer_value rank="0">1</integer_value>
           </polynomial_degree>
           <element_type>
@@ -86,44 +48,6 @@
         </mesh_shape>
         <mesh_continuity>
           <string_value>continuous</string_value>
-        </mesh_continuity>
-        <stat>
-          <exclude_from_stat/>
-        </stat>
-      </from_mesh>
-    </mesh>
-    <mesh name="PressureMesh_Continuous">
-      <from_mesh>
-        <mesh name="CoordinateMesh"/>
-        <mesh_shape>
-          <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
-          </polynomial_degree>
-          <element_type>
-            <string_value>lagrangian</string_value>
-          </element_type>
-        </mesh_shape>
-        <mesh_continuity>
-          <string_value>continuous</string_value>
-        </mesh_continuity>
-        <stat>
-          <exclude_from_stat/>
-        </stat>
-      </from_mesh>
-    </mesh>
-    <mesh name="PressureMesh_Discontinuous">
-      <from_mesh>
-        <mesh name="CoordinateMesh"/>
-        <mesh_shape>
-          <polynomial_degree>
-            <integer_value rank="0">2</integer_value>
-          </polynomial_degree>
-          <element_type>
-            <string_value>lagrangian</string_value>
-          </element_type>
-        </mesh_shape>
-        <mesh_continuity>
-          <string_value>discontinuous</string_value>
         </mesh_continuity>
         <stat>
           <exclude_from_stat/>
@@ -142,10 +66,10 @@
     </dump_format>
     <dump_period_in_timesteps>
       <constant>
-        <integer_value rank="0">1</integer_value>
+        <integer_value rank="0">2</integer_value>
       </constant>
     </dump_period_in_timesteps>
-    <output_mesh name="P0DG"/>
+    <output_mesh name="PressureMesh"/>
     <stat/>
   </io>
   <timestepping>
@@ -153,22 +77,24 @@
       <real_value rank="0">0</real_value>
     </current_time>
     <timestep>
-      <real_value rank="0">1e-2</real_value>
+      <real_value rank="0">0.5e-2</real_value>
     </timestep>
     <finish_time>
-      <real_value rank="0">2e-1</real_value>
+      <real_value rank="0">0.01</real_value>
     </finish_time>
     <nonlinear_iterations>
-      <integer_value rank="0">100</integer_value>
+      <integer_value rank="0">50</integer_value>
       <Fixed_Point_Iteration>
-        <real_value rank="0">0.04</real_value>
-        <Dumping_factor>
-          <real_value rank="0">0.3334</real_value>
-        </Dumping_factor>
+        <real_value rank="0">5e-2</real_value>
+        <Backtracking_factor>
+          <real_value rank="0">-0.10</real_value>
+        </Backtracking_factor>
+        <Inifinite_norm_tol>
+          <real_value rank="0">0.01</real_value>
+        </Inifinite_norm_tol>
       </Fixed_Point_Iteration>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <material_phase name="phase1">
     <equation_of_state>
       <incompressible>
@@ -186,13 +112,9 @@
           <continuous_galerkin/>
         </spatial_discretisation>
         <solver>
-          <iterative_method name="gmres">
-            <restart>
-              <integer_value rank="0">30</integer_value>
-            </restart>
-          </iterative_method>
-          <preconditioner name="hypre">
-            <hypre_type name="boomeramg"/>
+          <iterative_method name="preonly"/>
+          <preconditioner name="lu">
+            <factorization_package name="petsc"/>
           </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
@@ -215,7 +137,7 @@
         </initial_condition>
         <boundary_conditions name="right">
           <surface_ids>
-            <integer_value shape="1" rank="1">8</integer_value>
+            <integer_value shape="1" rank="1">22</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -235,7 +157,7 @@
         <steady_state>
           <include_in_steady_state/>
         </steady_state>
-        <no_interpolation/>
+        <consistent_interpolation/>
       </prognostic>
     </scalar_field>
     <scalar_field name="Density" rank="0">
@@ -304,12 +226,10 @@
           </relaxation>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="gmres">
-            <restart>
-              <integer_value rank="0">30</integer_value>
-            </restart>
-          </iterative_method>
-          <preconditioner name="sor"/>
+          <iterative_method name="preonly"/>
+          <preconditioner name="lu">
+            <factorization_package name="petsc"/>
+          </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
           </relative_error>
@@ -329,29 +249,9 @@
             <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
           </constant>
         </initial_condition>
-        <boundary_conditions name="bottom_top">
-          <surface_ids>
-            <integer_value shape="2" rank="1">9 10</integer_value>
-          </surface_ids>
-          <type name="dirichlet">
-            <apply_weakly/>
-            <align_bc_with_cartesian>
-              <x_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </x_component>
-              <y_component>
-                <constant>
-                  <real_value rank="0">0</real_value>
-                </constant>
-              </y_component>
-            </align_bc_with_cartesian>
-          </type>
-        </boundary_conditions>
         <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value shape="1" rank="1">21</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -369,7 +269,36 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
+        <boundary_conditions name="bottom_top">
+          <surface_ids>
+            <integer_value shape="1" rank="1">23</integer_value>
+          </surface_ids>
+          <type name="dirichlet">
+            <apply_weakly/>
+            <align_bc_with_cartesian>
+              <x_component>
+                <constant>
+                  <real_value rank="0">0</real_value>
+                </constant>
+              </x_component>
+              <y_component>
+                <constant>
+                  <real_value rank="0">0</real_value>
+                </constant>
+              </y_component>
+            </align_bc_with_cartesian>
+          </type>
+        </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
@@ -447,12 +376,10 @@
           </theta>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="gmres">
-            <restart>
-              <integer_value rank="0">30</integer_value>
-            </restart>
-          </iterative_method>
-          <preconditioner name="sor"/>
+          <iterative_method name="preonly"/>
+          <preconditioner name="lu">
+            <factorization_package name="petsc"/>
+          </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
           </relative_error>
@@ -474,7 +401,7 @@
         </initial_condition>
         <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value shape="1" rank="1">21</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -491,7 +418,42 @@
         <detectors>
           <include_in_detectors/>
         </detectors>
-        <consistent_interpolation/>
+        <adaptivity_options>
+          <absolute_measure>
+            <scalar_field name="InterpolationErrorBound" rank="0">
+              <prescribed>
+                <value name="WholeMesh">
+                  <constant>
+                    <real_value rank="0">0.002</real_value>
+                  </constant>
+                </value>
+                <output/>
+                <stat/>
+                <detectors>
+                  <exclude_from_detectors/>
+                </detectors>
+              </prescribed>
+            </scalar_field>
+          </absolute_measure>
+        </adaptivity_options>
+        <galerkin_projection>
+          <continuous>
+            <solver>
+              <iterative_method name="cg"/>
+              <preconditioner name="sor"/>
+              <relative_error>
+                <real_value rank="0">1e-10</real_value>
+              </relative_error>
+              <max_iterations>
+                <integer_value rank="0">300</integer_value>
+              </max_iterations>
+              <never_ignore_solver_failures/>
+              <diagnostics>
+                <monitors/>
+              </diagnostics>
+            </solver>
+          </continuous>
+        </galerkin_projection>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
@@ -592,12 +554,10 @@
           </relaxation>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="gmres">
-            <restart>
-              <integer_value rank="0">30</integer_value>
-            </restart>
-          </iterative_method>
-          <preconditioner name="sor"/>
+          <iterative_method name="preonly"/>
+          <preconditioner name="lu">
+            <factorization_package name="petsc"/>
+          </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
           </relative_error>
@@ -617,9 +577,9 @@
             <real_value shape="2" dim1="dim" rank="1">0 0</real_value>
           </constant>
         </initial_condition>
-        <boundary_conditions name="bottom_top">
+        <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="2" rank="1">9 10</integer_value>
+            <integer_value shape="1" rank="1">21</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -637,9 +597,9 @@
             </align_bc_with_cartesian>
           </type>
         </boundary_conditions>
-        <boundary_conditions name="left">
+        <boundary_conditions name="bottom_top">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value shape="1" rank="1">23</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -658,6 +618,15 @@
           </type>
         </boundary_conditions>
         <tensor_field name="Viscosity" rank="2">
+          <nphase>
+            <integer_value rank="0"/>
+          </nphase>
+          <type>
+            <dimensions>
+              <integer_value rank="0"/>
+            </dimensions>
+            <Anisotropic_coupled/>
+          </type>
           <prescribed>
             <mesh name="PressureMesh"/>
             <value name="WholeMesh">
@@ -735,12 +704,10 @@
           </theta>
         </temporal_discretisation>
         <solver>
-          <iterative_method name="gmres">
-            <restart>
-              <integer_value rank="0">30</integer_value>
-            </restart>
-          </iterative_method>
-          <preconditioner name="sor"/>
+          <iterative_method name="preonly"/>
+          <preconditioner name="lu">
+            <factorization_package name="petsc"/>
+          </preconditioner>
           <relative_error>
             <real_value rank="0">1e-10</real_value>
           </relative_error>
@@ -762,7 +729,7 @@
         </initial_condition>
         <boundary_conditions name="left">
           <surface_ids>
-            <integer_value shape="1" rank="1">7</integer_value>
+            <integer_value shape="1" rank="1">21</integer_value>
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
@@ -779,7 +746,24 @@
         <detectors>
           <include_in_detectors/>
         </detectors>
-        <consistent_interpolation/>
+        <galerkin_projection>
+          <continuous>
+            <solver>
+              <iterative_method name="cg"/>
+              <preconditioner name="sor"/>
+              <relative_error>
+                <real_value rank="0">1e-10</real_value>
+              </relative_error>
+              <max_iterations>
+                <integer_value rank="0">300</integer_value>
+              </max_iterations>
+              <never_ignore_solver_failures/>
+              <diagnostics>
+                <monitors/>
+              </diagnostics>
+            </solver>
+          </continuous>
+        </galerkin_projection>
       </prognostic>
     </scalar_field>
     <multiphase_properties>
@@ -802,13 +786,37 @@
       </immobile_fraction>
     </multiphase_properties>
   </material_phase>
+  <mesh_adaptivity>
+    <hr_adaptivity>
+      <adapt_mesh_within_FPI/>
+      <maximum_number_of_nodes>
+        <integer_value rank="0">100000</integer_value>
+      </maximum_number_of_nodes>
+      <disable_gradation/>
+      <tensor_field name="MinimumEdgeLengths">
+        <anisotropic_symmetric>
+          <constant>
+            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">0.005 0 0 0.005</real_value>
+          </constant>
+        </anisotropic_symmetric>
+      </tensor_field>
+      <tensor_field name="MaximumEdgeLengths">
+        <anisotropic_symmetric>
+          <constant>
+            <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">10 0 0 10</real_value>
+          </constant>
+        </anisotropic_symmetric>
+      </tensor_field>
+      <preserve_mesh_regions/>
+    </hr_adaptivity>
+  </mesh_adaptivity>
   <porous_media>
     <scalar_field name="Porosity">
       <prescribed>
         <mesh name="P0DG"/>
         <value name="WholeMesh">
           <constant>
-            <real_value rank="0">0.25</real_value>
+            <real_value rank="0">0.2</real_value>
           </constant>
         </value>
         <output/>
@@ -818,18 +826,32 @@
         </detectors>
       </prescribed>
     </scalar_field>
-    <tensor_field name="Permeability">
+    <scalar_field name="Permeability">
       <prescribed>
-        <mesh name="VelocityMesh"/>
-        <value name="WholeMesh">
-          <anisotropic_symmetric>
-            <constant>
-              <real_value symmetric="true" dim2="dim" shape="2 2" dim1="dim" rank="2">5.5 4.5 4.5 5.5</real_value>
-            </constant>
-          </anisotropic_symmetric>
+        <mesh name="P0DG"/>
+        <value name="inner_region">
+          <region_ids>
+            <integer_value shape="1" rank="1">25</integer_value>
+          </region_ids>
+          <constant>
+            <real_value rank="0">10</real_value>
+          </constant>
+        </value>
+        <value name="outer">
+          <region_ids>
+            <integer_value shape="1" rank="1">24</integer_value>
+          </region_ids>
+          <constant>
+            <real_value rank="0">1</real_value>
+          </constant>
         </value>
         <output/>
+        <stat/>
+        <detectors>
+          <exclude_from_detectors/>
+        </detectors>
       </prescribed>
-    </tensor_field>
+    </scalar_field>
   </porous_media>
+  <numerical_methods/>
 </multiphase_options>

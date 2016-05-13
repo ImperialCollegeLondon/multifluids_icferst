@@ -367,7 +367,7 @@ contains
     ! Surface IDs
     allocate(surfid(nselm))
     call interleave_surface_ids(input_positions%mesh, surfid, max_coplanar_id)
-    
+
     ! Node locking
     if(present(lock_faces)) then
       call get_locked_nodes_and_faces(input_positions, lock_faces, prdnds)

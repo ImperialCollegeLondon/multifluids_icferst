@@ -237,28 +237,6 @@ contains
         RETURN
     END SUBROUTINE DEF_SPAR_CT_DG
 
-    !sprint_to_do!change for quicksort
-    subroutine ibubble(ivec)
-        ! sort ivec in increasing order
-        implicit none
-        integer, dimension( : ), intent( inout ) :: ivec
-        ! Local variables
-        integer :: nvec, i, j, itemp
-
-        nvec = size(ivec)
-
-        do j = 1, nvec
-            do i = 1, nvec - 1
-                if ( ivec( i ) > ivec( i + 1 ) ) then
-                    itemp = ivec( i + 1 )
-                    ivec( i + 1 ) = ivec( i )
-                    ivec( i ) = itemp
-                end if
-            end do
-        end do
-        return
-    end subroutine ibubble
-
 end module sparsity_1D
 
 module sparsity_ND
@@ -268,7 +246,7 @@ module sparsity_ND
     use shape_functions_Linear_Quadratic
     use cv_advection
     use multi_data_types
-
+    use multi_tools
 contains
 
     subroutine getfinele( totele, nloc, snloc, nonods, ndglno, mx_nface_p1, &
@@ -695,13 +673,12 @@ contains
 
         ! perform a bubble sort to order the row in ioncreasing order
         do irow = 1, u_pha_nonods
-            call ibubble( coldgm_pha( findgm_pha( irow ) : findgm_pha( irow + 1 ) - 1 ) )
+            call quicksort( coldgm_pha( findgm_pha( irow ) : findgm_pha( irow + 1 ) - 1 ) , 1)
             do count = findgm_pha( irow ), findgm_pha( irow + 1 ) - 1
                 jrow = coldgm_pha( count )
                 if( irow == jrow ) middgm_pha( irow ) = count
             end do
         end do
-
 
         if( ncoldgm_pha > mx_ncoldgm_pha ) &
             FLAbort(" Incorrect number of dimension of sparsity matrix - ncoldgm_pha ")
@@ -710,89 +687,6 @@ contains
 
         return
     end subroutine form_dgm_pha_sparsity
-
-
-
-
-
-
-
-
-
-
-
-
-    subroutine form_dgm_pha_sparsity_old( totele, nphase, u_nloc, u_pha_nonods, &
-        ndim, mx_ncoldgm_pha, ncoldgm_pha, &
-        coldgm_pha, findgm_pha, middgm_pha, &
-        finele, colele, ncolele )
-        ! Form the sparsity of the phase coupled DG discretised matrix
-        ! from the element-wise multi-phase sparsity matrix.
-        implicit none
-        integer, intent( in ) :: totele, nphase, u_nloc, u_pha_nonods, &
-            mx_ncoldgm_pha, ndim, ncolele
-        integer, intent( inout ) :: ncoldgm_pha
-        integer, dimension( mx_ncoldgm_pha ), intent( inout ) :: coldgm_pha
-        integer, dimension( u_pha_nonods + 1 ), intent( inout ) :: findgm_pha
-        integer, dimension( u_pha_nonods ), intent( inout ) :: middgm_pha
-        integer, dimension( totele + 1 ), intent( in ) :: finele
-        integer, dimension( ncolele ), intent( in ) :: colele
-
-        ! Local variables
-        integer :: count, count2, iloc, jloc, irow, jrow
-        integer :: ele, ele2, idim, jdim, iphase, jphase, u_nonods
-
-
-        ewrite(3,*) 'In form_dgm_pha_sparsity subrt.'
-
-        u_nonods = u_pha_nonods / ( nphase * ndim )
-
-        count2 = 0
-        Loop_Phase1: do iphase = 1, nphase
-            Loop_Dim1: do idim = 1, ndim
-                Loop_Element: do ele = 1, totele
-                    Loop_Loc1: do iloc = 1, u_nloc
-                        irow = ( ele - 1 ) * u_nloc + iloc  + ( idim - 1 ) * u_nonods + (iphase-1)*u_nonods*ndim
-                        !ewrite(3,*)'irow, ele, u_nloc, iloc, idim, u_nonods, iphase, count2:', &
-                        !     irow, ele, u_nloc, iloc, idim, u_nonods, iphase, count2+1
-                        findgm_pha( irow ) = count2 + 1
-                        Loop_Phase2: do jphase = 1, nphase
-                            Loop_Dim2: do jdim = 1, ndim
-                                Loop_Count: do count = finele( ele ), finele( ele + 1 ) - 1
-                                    ele2 = colele( count )
-                                    Loop_Loc2: do jloc = 1, u_nloc
-                                        jrow = ( ele2 - 1 ) * u_nloc + jloc  + ( jdim - 1 ) * u_nonods + (jphase-1)*u_nonods*ndim
-                                        count2 = count2 + 1
-                                        coldgm_pha( count2 ) = jrow
-                                        if( irow == jrow ) middgm_pha( irow ) = count2
-                                    end do Loop_Loc2
-                                end do Loop_Count
-                            end do Loop_Dim2
-                        end do Loop_Phase2
-                    end do Loop_Loc1
-                end do Loop_Element
-            end do Loop_Dim1
-        end do Loop_Phase1
-        findgm_pha( u_pha_nonods + 1 ) = count2 + 1
-        ncoldgm_pha = count2
-
-        ! perform a bubble sort to order the row in ioncreasing order
-        do irow = 1, u_pha_nonods
-            call ibubble( coldgm_pha( findgm_pha( irow ) : findgm_pha( irow + 1 ) - 1 ) )
-            do count = findgm_pha( irow ), findgm_pha( irow + 1 ) - 1
-                jrow = coldgm_pha( count )
-                if( irow == jrow ) middgm_pha( irow ) = count
-            end do
-        end do
-
-
-        if( ncoldgm_pha > mx_ncoldgm_pha ) &
-            FLAbort(" Incorrect number of dimension of sparsity matrix - ncoldgm_pha ")
-
-        ewrite(3,*) 'Leaving form_dgm_pha_sparsity subrt. '
-
-        return
-    end subroutine form_dgm_pha_sparsity_old
 
 
     subroutine pousinmc2( totele, nloc1, nonods2, nloc2, &
@@ -1233,7 +1127,7 @@ contains
       ! Computing Gauss points and array containing node points on neighboors elements
       call retrieve_ngi( GIdims, Mdims, cv_ele_type, .false. )
       call allocate_multi_shape_funs( CV_funs, Mdims, GIdims )
-      call cv_fem_shape_funs_new( CV_funs, Mdims, GIdims, cv_ele_type, quad_over_whole_ele = .false. )
+      call cv_fem_shape_funs( CV_funs, Mdims, GIdims, cv_ele_type, quad_over_whole_ele = .false. )
 
       ! Allocating space
       found = .false.
@@ -1318,7 +1212,7 @@ module spact
     use shape_functions_prototype
     use Copy_Outof_State
     use multi_data_types
-
+    use multi_tools
 contains
 
 
@@ -1369,261 +1263,7 @@ contains
         return
     end subroutine Defining_MaxLengths_for_Sparsity_Matrices
 
-    !sprint_to_do!remove this subroutine when everything uses the new structure type
-    subroutine Get_Sparsity_Patterns( state, Mdims, &
-        !!$ CV multi-phase eqns (e.g. vol frac, temp)
-        mx_ncolacv, ncolacv, finacv, colacv, midacv, &
-        finacv_loc, colacv_loc, midacv_loc, &
-        !!$ Force balance plus cty multi-phase eqns
-        nlenmcy, mx_ncolmcy, ncolmcy, finmcy, colmcy, midmcy, &
-        !!$ Element connectivity
-        ncolele, midele, finele, colele, &
-        !!$ Force balance sparsity
-        mx_ncoldgm_pha, ncoldgm_pha, coldgm_pha, findgm_pha, middgm_pha, &
-        !!$ CT sparsity - global continuity eqn
-        mx_nct, ncolct, findct, colct, &
-        !!$ C sparsity operating on pressure in force balance
-        mx_nc, ncolc, findc, colc, &
-        !!$ pressure matrix for projection method
-        mx_ncolcmc, ncolcmc, findcmc, colcmc, midcmc, &
-        !!$ CV-FEM matrix
-        mx_ncolm, ncolm, findm, colm, midm, &
-        !!$ ph matrix
-        mx_ncolph, ncolph, findph, colph, &
-        !!$ misc
-        mx_nface_p1 )
-        !!$ Obtain the sparsity patterns of the two types of matricies for
-        !!$ (momentum + cty) and for energy
-        implicit none
-        type( state_type ), dimension( : ), intent( inout ) :: state
-        type(multi_dimensions), intent(inout) :: Mdims
-        integer, intent( in ) :: mx_ncolacv, nlenmcy, mx_ncolmcy, mx_ncoldgm_pha, &
-            mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1
-        integer, intent( inout ) :: ncolacv, ncolmcy, ncolele, ncoldgm_pha, ncolct, ncolc, &
-            ncolcmc, ncolm, ncolph
-        integer, dimension(:), pointer, intent(inout) :: finele, colele, midele
-        integer, dimension( : ), intent( inout ) :: finacv, midacv
-        integer, dimension(:), pointer :: midacv_loc, finacv_loc, colacv_loc
-        integer, dimension( : ), intent( inout ) ::  finmcy, midmcy, &
-            findgm_pha, middgm_pha, findct, &
-            findc, findcmc, midcmc, findm, midm, findph
-        integer, dimension(:), pointer ::  colcmc, colm, colmcy, colct, colc, coldgm_pha, colacv, colph
-        !!$ Local variables
-        integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, mat_ndgln, u_ndgln, &
-            xu_ndgln, ph_ndgln, cv_sndgln, p_sndgln, u_sndgln, &
-            colele_pha, finele_pha, midele_pha, centct, dummyvec, midph
-        integer :: mx_ncolacv_loc, count, cv_inod, mx_ncolele_pha, nacv_loc, nacv_loc2, &
-            cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, &
-            cv_sele_type, stat
-        logical :: presym
-        type(csr_sparsity), pointer :: sparsity
-        type(mesh_type), pointer :: element_mesh, ph_mesh
-        ewrite(3,*)'In Get_Sparsity_Patterns'
-
-        !!$ Calculating Global Node Numbers
-        allocate(  cv_sndgln( Mdims%stotel * Mdims%cv_snloc ), p_sndgln( Mdims%stotel * Mdims%p_snloc ), &
-            u_sndgln( Mdims%stotel * Mdims%u_snloc ) )
-        !      x_ndgln_p1 = 0 ; x_ndgln = 0 ; cv_ndgln = 0 ; p_ndgln = 0 ; mat_ndgln = 0 ; u_ndgln = 0 ; xu_ndgln = 0 ; &
-        cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
-        call Compute_Node_Global_Numbers( state, &
-            Mdims%totele, Mdims%stotel, Mdims%x_nloc, Mdims%x_nloc_p1, Mdims%cv_nloc, Mdims%p_nloc, Mdims%u_nloc, Mdims%xu_nloc, &
-            Mdims%cv_snloc, Mdims%p_snloc, Mdims%u_snloc, &
-            cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
-            cv_sndgln, p_sndgln, u_sndgln )
-
-        !sprint_to_do (this should be passed down)
-        call Get_Ele_Type( Mdims%x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
-            mat_ele_type, u_sele_type, cv_sele_type )
-        !-
-        !- Computing sparsity for element connectivity
-        !-
-        element_mesh=> extract_mesh(state(1),"P0DG")
-        allocate(sparsity)
-        sparsity = make_sparsity_compactdgdouble(element_mesh,&
-            name="ElementConnectivity")
-        call insert(state(1),sparsity,name="ElementConnectivity")
-        call deallocate(sparsity)
-        deallocate(sparsity)
-        sparsity=> extract_csr_sparsity(state(1),name="ElementConnectivity")
-        finele => sparsity%findrm
-        midele => sparsity%centrm
-        colele => sparsity%colm
-        ncolele=size(colele)
-        if(.not.(is_porous_media)) then
-            !-
-            !- Computing sparsity for force balance
-            !-
-            mx_ncolele_pha = Mdims%nphase * ncolele + ( Mdims%nphase - 1 ) * Mdims%nphase * Mdims%totele
-            allocate( colele_pha( mx_ncolele_pha ) )
-            allocate( finele_pha( Mdims%totele * Mdims%nphase + 1 ) )
-            allocate( midele_pha( Mdims%totele * Mdims%nphase ) )
-            colele_pha = 0 ; finele_pha = 0 ; midele_pha = 0
-            call exten_sparse_multi_phase_old( Mdims%totele, ncolele, finele, colele, &
-                Mdims%nphase, Mdims%totele * Mdims%nphase, mx_ncolele_pha, &
-                finele_pha, colele_pha, midele_pha )
-
-            findgm_pha = 0 ; coldgm_pha = 0 ; middgm_pha = 0
-            call form_dgm_pha_sparsity( Mdims%totele, Mdims%nphase, Mdims%u_nloc, Mdims%nphase * Mdims%u_nonods * Mdims%ndim, &
-                Mdims%ndim, mx_ncoldgm_pha, ncoldgm_pha, &
-                coldgm_pha, findgm_pha, middgm_pha, &
-                finele, colele, ncolele )
-            ! dealocate colele_pha...
-            deallocate( colele_pha ) ; deallocate( finele_pha ) ; deallocate( midele_pha )
-        else
-            ncoldgm_pha=0
-        end if
-        call resize(coldgm_pha,ncoldgm_pha)
-        !-
-        !- Now form the global matrix: FINMCY, COLMCY and MIDMCY for the
-        !- momentum and continuity eqns
-        !-
-        allocate( centct( Mdims%cv_nonods ) )
-        findct = 0 ; colct = 0 ; centct = 0
-        Conditional_Dimensional_2: if ( ( Mdims%ndim == 1 ) .and. .false. ) then
-            call def_spar_ct_dg( Mdims%cv_nonods, mx_nct, ncolct, findct, colct, &
-                Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, u_ndgln, cv_ndgln )
-        else
-            if( Mdims%cv_nonods == Mdims%x_nonods ) then ! a continuous pressure mesh
-                call pousinmc2( Mdims%totele, Mdims%u_nloc, Mdims%cv_nonods, Mdims%cv_nloc, &
-                    mx_nct, u_ndgln, cv_ndgln, &
-                    ncolct, findct, colct, centct )
-            else ! use finele to determine COLCT
-                call CT_DG_Sparsity( mx_nface_p1,  &
-                    Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc,  &
-                    Mdims%cv_nonods, &
-                    cv_ndgln, u_ndgln,  &
-                    ncolele, finele, colele, &
-                    mx_nct, ncolct, findct, colct )
-            endif
-            call resize(colct,ncolct)
-        end if Conditional_Dimensional_2
-        ncolc = ncolct
-        !-
-        !- Convert CT sparsity to C sparsity
-        !-
-        call conv_ct2c( Mdims%cv_nonods, ncolct, findct, colct, Mdims%u_nonods, &
-            mx_nc, findc, colc )
-        call resize(colc,ncolc)
-        !-
-        !- Computing sparsity for pressure matrix of projection method
-        !-
-        Conditional_Dimensional_3: if ( ( Mdims%ndim == 1 ) .and. .false. ) then
-            Conditional_ContinuousPressure_3: if ( Mdims%cv_nonods /= Mdims%totele * Mdims%cv_nloc ) then
-                call def_spar( Mdims%cv_nloc - 1, Mdims%cv_nonods, mx_ncolcmc, ncolcmc, &
-                    midcmc, findcmc, colcmc )
-            else ! Discontinuous pressure mesh
-                call def_spar( Mdims%cv_nloc + 2, Mdims%cv_nonods, mx_ncolcmc, ncolcmc, &
-                    midcmc, findcmc, colcmc )
-            end if Conditional_ContinuousPressure_3
-        else
-            allocate( dummyvec( Mdims%u_nonods ))
-            dummyvec = 0
-            presym = .false.
-            call poscmc( Mdims%cv_nonods, Mdims%u_nonods, mx_ncolcmc, ncolct, &
-                findct, colct, &
-                ncolcmc, findcmc, colcmc, midcmc, dummyvec, presym )
-            deallocate( dummyvec )
-        end if Conditional_Dimensional_3
-        if( ncolcmc<1 ) FLAbort("Incorrect number of dimension of CMC sparsity matrix")
-          !-
-          !- Computing the sparsity for the force balance plus cty multi-phase eqns
-          !-
-        if(.not.(is_porous_media .or. mx_ncolmcy==0)) then
-            finmcy = 0 ; colmcy = 0 ; midmcy = 0
-            call exten_sparse_mom_cty( Mdims%ndim, findgm_pha, coldgm_pha, Mdims%nphase * Mdims%u_nonods * Mdims%ndim,&
-                Mdims%cv_nonods, findct, colct, &
-                Mdims%u_nonods, &
-                findc, colc, finmcy, colmcy, midmcy, nlenmcy, &
-                ncolmcy, Mdims%nphase, ncolcmc, findcmc, colcmc )
-        else
-            ncolmcy=0
-        endif
-        call resize(colmcy,ncolmcy)
-        call resize(colcmc,ncolcmc)
-        !-
-        !- Computing sparsity CV-FEM
-        !-
-        findm = 0 ; colm = 0 ; midm = 0
-        Conditional_Dimensional_4: if ( ( Mdims%ndim == 1 ) .and. .false. ) then
-            call def_spar( Mdims%cv_nloc - 1, Mdims%cv_nonods, mx_ncolm, ncolm, &
-                midm, findm, colm )
-        else
-            if(Mdims%cv_nonods==Mdims%x_nonods) then ! a continuous pressure mesh
-                call pousinmc2( Mdims%totele, Mdims%cv_nloc, Mdims%cv_nonods, Mdims%cv_nloc, mx_ncolm, cv_ndgln, cv_ndgln, &
-                    ncolm, findm, colm, midm )
-            else ! a DG pressure field mesh
-                call CT_DG_Sparsity( mx_nface_p1, &
-                    Mdims%totele, Mdims%cv_nloc, Mdims%cv_nloc, &
-                    Mdims%cv_nonods, &
-                    cv_ndgln, cv_ndgln, &
-                    ncolele, finele, colele, &
-                    mx_ncolm, ncolm, findm, colm )
-                ! Determining MIDM:
-                do cv_inod = 1, Mdims%cv_nonods
-                    do count = findm( cv_inod ), findm( cv_inod + 1 ) - 1
-                        if( colm( count ) == cv_inod ) midm( cv_inod ) = count
-                    end do
-                end do
-            end if
-        end if Conditional_Dimensional_4
-        call resize(colm,ncolm)
-        !-
-        !- Computing sparsity for CV multiphase eqns (e.g. vol frac, temp)
-        !-
-        mx_ncolacv_loc=mx_ncolacv/Mdims%nphase
-        allocate( midacv_loc( Mdims%cv_nonods ) )
-        allocate( finacv_loc( Mdims%cv_nonods + 1 ) )
-        allocate( colacv_loc( mx_ncolacv_loc ) )
-        midacv_loc = 0 ; finacv_loc = 0 ; colacv_loc = 0
-        Conditional_Dimensional_5: if ( ( Mdims%ndim == 1 ) .and. .false. ) then
-            call def_spar( 1, Mdims%cv_nonods, 3 * Mdims%cv_nonods, nacv_loc, &
-                midacv_loc, finacv_loc, colacv_loc )
-        else
-            call CV_Neighboor_Sparsity( Mdims, cv_ele_type, &
-                cv_ndgln, x_ndgln, &
-                ncolele, finele, colele, &
-                ncolm, mx_ncolacv_loc, findm, colm, &
-                nacv_loc, finacv_loc, colacv_loc, midacv_loc )
-        end if Conditional_Dimensional_5
-        nacv_loc2 = nacv_loc
-        call resize(colacv_loc,nacv_loc)
-        ncolacv =  Mdims%nphase * nacv_loc + ( Mdims%nphase - 1 ) * Mdims%nphase * Mdims%cv_nonods
-        nacv_loc = ncolacv
-        finacv = 0 ; colacv = 0 ; midacv = 0
-        call exten_sparse_multi_phase( Mdims%cv_nonods, nacv_loc2, finacv_loc, colacv_loc, &
-            Mdims%nphase, Mdims%nphase * Mdims%cv_nonods, ncolacv, &
-            finacv, colacv, midacv)
-        call resize(colacv,ncolacv)
-        !-
-        !- Computing sparsity for ph (hydrostatic pressure)
-        !-
-        ph_mesh => extract_mesh( state( 1 ), "ph", stat )
-        if ( stat == 0 ) then
-            Mdims%ph_nonods = node_count( ph_mesh )
-            Mdims%ph_nloc = ele_loc( ph_mesh, 1 )
-            ph_ndgln => get_ndglno( ph_mesh )
-            allocate( midph( Mdims%ph_nonods ) )
-            findph = 0 ; colph = 0 ; midph = 0
-            if ( Mdims%cv_nonods == Mdims%x_nonods ) then ! a continuous pressure mesh
-                call pousinmc2( Mdims%totele, Mdims%ph_nloc, Mdims%ph_nonods, Mdims%ph_nloc, &
-                    mx_ncolph, ph_ndgln, ph_ndgln, ncolph, findph, colph, midph )
-            else ! a DG pressure field mesh
-                call CT_DG_Sparsity( mx_nface_p1, Mdims%totele, Mdims%ph_nloc, Mdims%ph_nloc, &
-                    Mdims%ph_nonods, ph_ndgln, ph_ndgln, ncolele, finele, colele, &
-                    mx_ncolph, ncolph, findph, colph )
-            end if
-            deallocate( midph )
-            call resize( colph, ncolph )
-        end if
-        !-
-        !- Deallocating temporary arrays
-        !-
-        deallocate( cv_sndgln, p_sndgln, u_sndgln, centct )
-        return
-
-    end subroutine Get_Sparsity_Patterns
-
-    subroutine Get_Sparsity_Patterns_new( state, Mdims, Mspars, mx_ncolacv, nlenmcy, mx_ncolmcy, &
+    subroutine Get_Sparsity_Patterns( state, Mdims, Mspars, ndgln, Mdisopt, mx_ncolacv, nlenmcy, mx_ncolmcy, &
                 mx_ncoldgm_pha, mx_nct,mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1 )
         !!$ Allocate and obtain the sparsity patterns of the two types of matricies for
         !!$ (momentum + cty) and for energy
@@ -1631,37 +1271,22 @@ contains
         type( state_type ), dimension( : ), intent( inout ) :: state
         type(multi_dimensions), intent(inout) :: Mdims
         type (multi_sparsities), intent(inout) :: Mspars
+        type(multi_ndgln), intent(in) :: ndgln
+        type (multi_discretization_opts) :: Mdisopt
         integer, intent( in ) :: mx_ncolacv, nlenmcy, mx_ncolmcy, mx_ncoldgm_pha, &
             mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph, mx_nface_p1
         !!$ Local variables
-        integer, dimension( : ), pointer :: x_ndgln_p1, x_ndgln, cv_ndgln, p_ndgln, mat_ndgln, u_ndgln, &
-            xu_ndgln, ph_ndgln, cv_sndgln, p_sndgln, u_sndgln, &
-            colele_pha, finele_pha, midele_pha, centct, dummyvec
-        integer :: mx_ncolsmall_acv, count, cv_inod, mx_ncolele_pha, nsmall_acv, nsmall_acv2, &
-            cv_ele_type, p_ele_type, u_ele_type, mat_ele_type, u_sele_type, &
-            cv_sele_type, stat
+        integer, dimension( : ), pointer :: ph_ndgln, colele_pha, finele_pha, midele_pha, centct, dummyvec
+        integer :: mx_ncolsmall_acv, count, cv_inod, mx_ncolele_pha, nsmall_acv, nsmall_acv2, stat
         logical :: presym
         type(csr_sparsity), pointer :: sparsity
         type(mesh_type), pointer :: element_mesh, ph_mesh
         ewrite(3,*)'In Get_Sparsity_Patterns'
-        !!$ Calculating Global Node Numbers
-        allocate(  cv_sndgln( Mdims%stotel * Mdims%cv_snloc ), p_sndgln( Mdims%stotel * Mdims%p_snloc ), &
-            u_sndgln( Mdims%stotel * Mdims%u_snloc ) )
-        cv_sndgln = 0 ; p_sndgln = 0 ; u_sndgln = 0
-        call Compute_Node_Global_Numbers( state, &
-            Mdims%totele, Mdims%stotel, Mdims%x_nloc, Mdims%x_nloc_p1, Mdims%cv_nloc, Mdims%p_nloc, Mdims%u_nloc, Mdims%xu_nloc, &
-            Mdims%cv_snloc, Mdims%p_snloc, Mdims%u_snloc, &
-            cv_ndgln, u_ndgln, p_ndgln, x_ndgln, x_ndgln_p1, xu_ndgln, mat_ndgln, &
-            cv_sndgln, p_sndgln, u_sndgln )
-        !sprint_to_do (this should be passed down)
-        call Get_Ele_Type( Mdims%x_nloc, cv_ele_type, p_ele_type, u_ele_type, &
-            mat_ele_type, u_sele_type, cv_sele_type )
         !Check if sparsities have been associated (allocated), if not, allocate
         if (.not.associated(Mspars%ACV%fin)) then
             call allocate_multi_sparsities(Mspars, Mdims, mx_ncolacv, &
                     mx_ncolmcy, nlenmcy, mx_ncoldgm_pha, mx_nct, mx_nc, mx_ncolm, mx_ncolph)
         end if
-
         !-
         !- Computing sparsity for element connectivity
         !-
@@ -1676,7 +1301,6 @@ contains
         Mspars%ELE%fin => sparsity%findrm
         Mspars%ELE%mid => sparsity%centrm
         Mspars%ELE%col => sparsity%colm
-
         Mspars%ELE%ncol=size(Mspars%ELE%col)
         if(.not.(is_porous_media)) then
             !-
@@ -1690,7 +1314,6 @@ contains
             call exten_sparse_multi_phase_old( Mdims%totele, Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
                 Mdims%nphase, Mdims%totele * Mdims%nphase, mx_ncolele_pha, &
                 finele_pha, colele_pha, midele_pha )
-
             Mspars%DGM_PHA%fin = 0 ; Mspars%DGM_PHA%col = 0 ; Mspars%DGM_PHA%mid = 0
             call form_dgm_pha_sparsity( Mdims%totele, Mdims%nphase, Mdims%u_nloc, Mdims%nphase * Mdims%u_nonods * Mdims%ndim, &
                 Mdims%ndim, mx_ncoldgm_pha, Mspars%DGM_PHA%ncol, &
@@ -1710,17 +1333,17 @@ contains
         Mspars%CT%fin = 0 ; Mspars%CT%col = 0 ; centct = 0
         Conditional_Dimensional_2: if ( ( Mdims%ndim == 1 ) .and. .false. ) then
             call def_spar_ct_dg( Mdims%cv_nonods, mx_nct, Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, &
-                Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, u_ndgln, cv_ndgln )
+                Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc, ndgln%u, ndgln%cv )
         else
             if( Mdims%cv_nonods == Mdims%x_nonods ) then ! a continuous pressure mesh
                 call pousinmc2( Mdims%totele, Mdims%u_nloc, Mdims%cv_nonods, Mdims%cv_nloc, &
-                    mx_nct, u_ndgln, cv_ndgln, &
+                    mx_nct, ndgln%u, ndgln%cv, &
                     Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col, centct )
             else ! use Mspars%ELE%fin to determine Mspars%CT%col
                 call CT_DG_Sparsity( mx_nface_p1,  &
                     Mdims%totele, Mdims%cv_nloc, Mdims%u_nloc,  &
                     Mdims%cv_nonods, &
-                    cv_ndgln, u_ndgln,  &
+                    ndgln%cv, ndgln%u,  &
                     Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
                     mx_nct, Mspars%CT%ncol, Mspars%CT%fin, Mspars%CT%col )
             endif
@@ -1778,13 +1401,13 @@ contains
                 Mspars%M%mid, Mspars%M%fin, Mspars%M%col )
         else
             if(Mdims%cv_nonods==Mdims%x_nonods) then ! a continuous pressure mesh
-                call pousinmc2( Mdims%totele, Mdims%cv_nloc, Mdims%cv_nonods, Mdims%cv_nloc, mx_ncolm, cv_ndgln, cv_ndgln, &
+                call pousinmc2( Mdims%totele, Mdims%cv_nloc, Mdims%cv_nonods, Mdims%cv_nloc, mx_ncolm, ndgln%cv, ndgln%cv, &
                     Mspars%M%ncol, Mspars%M%fin, Mspars%M%col, Mspars%M%mid )
             else ! a DG pressure field mesh
                 call CT_DG_Sparsity( mx_nface_p1, &
                     Mdims%totele, Mdims%cv_nloc, Mdims%cv_nloc, &
                     Mdims%cv_nonods, &
-                    cv_ndgln, cv_ndgln, &
+                    ndgln%cv, ndgln%cv, &
                     Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
                     mx_ncolm, Mspars%M%ncol, Mspars%M%fin, Mspars%M%col )
                 ! Determining Mspars%M%mid:
@@ -1805,8 +1428,8 @@ contains
         allocate( Mspars%small_acv%col( mx_ncolsmall_acv ) )
         Mspars%small_acv%ncol = mx_ncolsmall_acv
         Mspars%small_acv%mid = 0 ; Mspars%small_acv%fin = 0 ; Mspars%small_acv%col = 0
-        call CV_Neighboor_Sparsity( Mdims, cv_ele_type, &
-            cv_ndgln, x_ndgln, &
+        call CV_Neighboor_Sparsity( Mdims, Mdisopt%cv_ele_type, &
+            ndgln%cv, ndgln%x, &
             Mspars%ELE%ncol, Mspars%ELE%fin, Mspars%ELE%col, &
             Mspars%M%ncol, mx_ncolsmall_acv, Mspars%M%fin, Mspars%M%col, &
             nsmall_acv, Mspars%small_acv%fin, Mspars%small_acv%col, Mspars%small_acv%mid )
@@ -1814,7 +1437,7 @@ contains
         call resize(Mspars%small_acv%col,nsmall_acv)
         Mspars%ACV%ncol =  Mdims%nphase * nsmall_acv + ( Mdims%nphase - 1 ) * Mdims%nphase * Mdims%cv_nonods
         nsmall_acv = Mspars%ACV%ncol
-        Mspars%small_acv%ncol = Mspars%ACV%ncol!<== Not sure about this (sprint_to_do)
+        Mspars%small_acv%ncol = Mspars%ACV%ncol!<== Not sure about this (but it is working...)
         Mspars%ACV%fin = 0 ; Mspars%ACV%col = 0 ; Mspars%ACV%mid = 0
         call exten_sparse_multi_phase( Mdims%cv_nonods, nsmall_acv2, Mspars%small_acv%fin, Mspars%small_acv%col, &
             Mdims%nphase, Mdims%nphase * Mdims%cv_nonods, Mspars%ACV%ncol, &
@@ -1844,10 +1467,9 @@ contains
         !-
         !- Deallocating temporary arrays
         !-
-        deallocate( cv_sndgln, p_sndgln, u_sndgln, centct )
+        deallocate( centct )
         return
-
-    end subroutine Get_Sparsity_Patterns_new
+    end subroutine Get_Sparsity_Patterns
 
     subroutine CT_DG_Sparsity( mx_nface_p1, &
         totele, cv_nloc, u_nloc, &
@@ -1927,9 +1549,7 @@ contains
 
         ! sort colct in increasing order
         do cv_nodi = 1, cv_nonods
-            call ibubble( colct( findct( cv_nodi ) : findct( cv_nodi + 1 ) -1 ) )
-           !ewrite(3,*) 'cv_nodi, colct:', &
-           !     cv_nodi, colct( findct( cv_nodi ) : findct( cv_nodi + 1 ) -1 )
+            call quicksort( colct( findct( cv_nodi ) : findct( cv_nodi + 1 ) -1 ) , 1)
         end do
 
         return

@@ -38,7 +38,7 @@ module multi_interpolation
     use diagnostic_variables
     use diagnostic_fields
     use diagnostic_fields_wrapper
-    use global_parameters, only: option_path_len, is_porous_media, dumping_in_sat, is_multifracture
+    use global_parameters, only: option_path_len, is_porous_media, is_multifracture
     use diagnostic_fields_wrapper_new
     use element_numbering
     use shape_functions
@@ -215,6 +215,7 @@ contains
        Long_EleRHS = 0.0
        mass_diag = 0.0
     endif
+
     do  ele = 1, Mdims%totele
        ! Calculate detwei related quantities
        call detnlxr_plus_u( ele, x%val(1,:), x%val(2,:), x%val(3,:), &
@@ -287,10 +288,9 @@ contains
     ! This section needs to be generalised to work for multi-fields (I think the boundedness subroutine may need generalisation)
     !print *, nfields
     if (have_option('/material_phase::phase1/scalar_field::Temperature/prognostic/CVgalerkin_interpolation')) then
-       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, small_colacv)
+       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, small_finacv, small_colacv)
     else if(have_option('/material_phase::phase1/scalar_field::PhaseVolumeFraction/prognostic/CVgalerkin_interpolation')) then
-       if(flag == 1)  call BoundedSolutionCorrections(state, packed_state, Mdims, CV_GIdims, CV_funs, small_finacv, small_colacv,&
-                                                        .true., IDs2CV_ndgln)
+       if(flag == 1) call BoundedSolutionCorrections(state, packed_state, Mdims, CV_funs, small_finacv, small_colacv,.true., IDs2CV_ndgln)
     endif
     ! DEALLOCATIONS
     deallocate(EleLHS, EleRHS, MMatrix, MNatrix, ipiv)

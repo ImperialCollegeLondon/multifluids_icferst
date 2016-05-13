@@ -34,7 +34,7 @@ module solvers_module
     use Petsc_tools
     use sparse_tools_petsc
     use solvers
-    use global_parameters, only: OPTION_PATH_LEN, dumping_in_sat, FPI_have_converged
+    use global_parameters, only: OPTION_PATH_LEN, FPI_have_converged
     use spud
 
     use state_module
@@ -59,16 +59,15 @@ module solvers_module
 
     private
 
-    public :: solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one
+    public :: multi_solver, BoundedSolutionCorrections, FPI_backtracking, Set_Saturation_to_sum_one
 
-    interface solver
+    interface multi_solver
         module procedure solve_via_copy_to_petsc_csr_matrix
     end interface
   
 contains
 
     ! -----------------------------------------------------------------------------
-    !sprint_to_do!see if this is still being used
     subroutine solve_via_copy_to_petsc_csr_matrix( A, &
         x, b, findfe, colfe, option_path, block_size )
 
@@ -202,7 +201,7 @@ contains
 
 
     subroutine BoundedSolutionCorrections( state, packed_state, &
-        Mdims, CV_GIdims, CV_funs, small_findrm, small_colm, &
+        Mdims, CV_funs, small_findrm, small_colm, &
         for_sat, IDs2CV_ndgln)
         implicit none
         ! This subroutine adjusts field_val so that it is bounded between field_min, field_max in a local way.
@@ -220,12 +219,12 @@ contains
         type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
-        type(multi_GI_dimensions), intent(in) :: CV_GIdims
         type(multi_shape_funs), intent(in) :: CV_funs
         integer, dimension( : ), intent( in ) :: small_findrm, small_colm
         logical, optional, intent(in) :: for_sat
         integer, optional, dimension(:) :: IDs2CV_ndgln
         ! local variables...
+        type (multi_dev_shape_funs) :: DevFuns
         type ( tensor_field ), pointer :: field, ufield
         real, dimension( :, :, : ), allocatable :: field_dev_val, field_alt_val, field_min, field_max
         real, dimension( :, : ), allocatable :: scalar_field_dev_max, scalar_field_dev_min
@@ -237,14 +236,9 @@ contains
         real :: max_change, error_changed, max_max_error, scalar_field_dev, mass_off, alt_max, alt_min
         integer :: ele, iloc, jloc
         real :: mm
-        real, dimension( : ), pointer :: detwei
         integer, dimension( : ), pointer ::  x_ndgln, cv_ndgln
-        logical :: d1, d3, dcyl
         type(scalar_field) :: mass_cv_sur_halo
         type( vector_field ), pointer :: x
-        real, dimension( : ), allocatable, target :: detwei2, ra2
-        real, dimension( :, : , :), allocatable, target :: nx_all2
-        real, target :: volume2
         real, dimension(:,:), pointer :: Immobile_fraction
         if (present_and_true(for_sat)) then
             field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
@@ -270,21 +264,16 @@ contains
         x_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh_Continuous" ) )
         cv_ndgln => get_ndglno( extract_mesh( state( 1 ), "PressureMesh" ) )
         x => extract_vector_field( packed_state, "PressureCoordinate" )
-        d1 = ( Mdims%ndim == 1 ) ; d3 = ( Mdims%ndim == 3 ) ; dcyl = .false.
-        allocate( detwei2( CV_GIdims%cv_ngi ), ra2( CV_GIdims%cv_ngi ), nx_all2( Mdims%ndim, Mdims%cv_nloc, CV_GIdims%cv_ngi ) )
         mass_cv = 0.0
+        call allocate_multi_dev_shape_funs(CV_funs, DevFuns)
         do  ele = 1, Mdims%totele
-            call detnlxr( ele, x%val( 1, : ), x%val( 2, : ), x%val( 3, : ), &
-                &        x_ndgln, Mdims%totele, Mdims%x_nonods, Mdims%cv_nloc, CV_GIdims%cv_ngi, CV_funs%cvfen, &
-                &        CV_funs%cvfenlx_all( 1, :, : ), CV_funs%cvfenlx_all( 2, :, : ), &
-                &        CV_funs%cvfenlx_all( 3, :, : ), &
-                &        CV_funs%cvweight, detwei2, ra2, volume2, d1, d3, dcyl, &
-                &        nx_all2( 1, :, : ), nx_all2( 2, :, : ), nx_all2( 3, :, : ) )
-            detwei => detwei2
+            !Retrieve DevFuns%detwei
+            call DETNLXR(ele, X%val, x_ndgln, CV_funs%cvweight, CV_funs%CVFEN, CV_funs%CVFENLX_ALL, DevFuns)
+
             do iloc = 1, Mdims%cv_nloc
                 inod = cv_ndgln( ( ele - 1 ) * Mdims%cv_nloc + iloc )
                 do jloc = 1, Mdims%cv_nloc
-                    mm = sum( CV_funs%cvn( iloc, : ) * CV_funs%cvn( jloc, : ) * detwei( : ) )
+                    mm = sum( CV_funs%cvn( iloc, : ) * CV_funs%cvn( jloc, : ) * DevFuns%detwei )
                     mass_cv( inod ) = mass_cv( inod ) + mm
                 end do
             end do
@@ -441,16 +430,16 @@ contains
         deallocate( r_min, r_max )
         deallocate( ii_min, ii_max )
         deallocate( mass_cv, mass_cv_sur )
-        deallocate( detwei2, ra2, nx_all2 )
         call deallocate(mass_cv_sur_halo)
+        call deallocate_multi_dev_shape_funs(DevFuns)
         return
     end subroutine BoundedSolutionCorrections
 
     !sprint_to_do!not use one global variable
-    subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, Dumping_from_schema, IDs2CV_ndgln,&
-        Previous_convergence, satisfactory_convergence, new_dumping, its, nonlinear_iteration, useful_sats, res, &
+    subroutine FPI_backtracking(packed_state, sat_bak, backtrack_sat, backtrack_par_from_schema, IDs2CV_ndgln,&
+        Previous_convergence, satisfactory_convergence, new_backtrack_par, its, nonlinear_iteration, useful_sats, res, &
         res_ratio, first_res, npres)
-        !In this subroutine we applied some corrections and dumping on the saturations obtained from the saturation equation
+        !In this subroutine we applied some corrections and backtrack_par on the saturations obtained from the saturation equation
         !this idea is based on the paper SPE-173267-MS.
         !The method ensures convergence "independent" of the time step.
         implicit none
@@ -458,9 +447,9 @@ contains
         type( state_type ), intent(inout) :: packed_state
         integer, dimension(:) :: IDs2CV_ndgln
         real, dimension(:, :), intent(in) :: sat_bak, backtrack_sat
-        real, intent(in) :: Dumping_from_schema, res, res_ratio, first_res
+        real, intent(in) :: backtrack_par_from_schema, res, res_ratio, first_res
         logical, intent(inout) :: satisfactory_convergence
-        real, intent(inout) :: new_dumping, Previous_convergence
+        real, intent(inout) :: new_backtrack_par, Previous_convergence
         integer, intent(in) :: its, nonlinear_iteration, npres
         integer, intent(inout) :: useful_sats
         !Local parameters
@@ -472,10 +461,11 @@ contains
         logical :: new_time_step, new_FPI
         real :: aux
         integer :: i
-        !Parameters for the automatic dumping
-        !        integer, parameter :: History_order = 4!<= Cubic
+        !Parameters for the automatic backtrack_par
+!        integer, parameter :: History_order = 4!<= Cubic
         integer, parameter :: History_order = 3!<= Quadratic
-        real, dimension(History_order+1), save :: Dumpings = -1
+        real, parameter :: min_backtrack = 1d-2
+        real, dimension(History_order+1), save :: backtrack_pars = -1
         real, dimension(History_order), save :: Convergences = -1
         real, dimension(History_order) :: Coefficients
         logical, save :: allow_undo = .true.
@@ -483,29 +473,26 @@ contains
         real, save :: Inifinite_norm_tol
         type (tensor_field), pointer :: sat_field
         !Initialize variables
-        new_dumping = 1.0
+        new_backtrack_par = 1.0
         new_FPI = (its == 1); new_time_step = (nonlinear_iteration == 1)
         !First, impose physical constrains
         call Set_Saturation_to_sum_one(packed_state, IDs2CV_ndgln, npres)
 
-        !Retrieve Saturation
-        !        call get_var_from_packed_state(packed_state,PhaseVolumeFraction = Satura)
-
         sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         Satura =>  sat_field%val(1,:,:)
         !Automatic method based on the history of convergence
-        if (Dumping_from_schema < 0.0) then
+        if (backtrack_par_from_schema < 0.0) then
 
             !Retrieve convergence factor, to make sure that if between time steps things are going great, we do not reduce the
-            !dumping_parameter
-            if (Dumpings(1) < 0) then!retrieve it just once
+            !backtrack_par_parameter
+            if (backtrack_pars(1) < 0) then!retrieve it just once
                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration',&
                     convergence_tol, default = 0. )
                 convergence_tol =  convergence_tol
                 !Tolerance for the infinite norm
                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Inifinite_norm_tol',&
                     Inifinite_norm_tol, default = 0.03 )
-                Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-2)
+                backtrack_pars(1) = max(min(abs(backtrack_par_from_schema), 1.0), min_backtrack)
                 !Retrieve the shape of the function to use to weight the importance of previous saturations
                 call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration/Acceleration_exp',&
                     anders_exp, default = 0.4 )!0.4 the best option, based on experience
@@ -517,22 +504,22 @@ contains
                 !Store last convergence to use it as a reference
                 Previous_convergence = Convergences(1)
                 !restart all the storage
-                Dumpings(2:) = -1; Convergences = -1
+                backtrack_pars(2:) = -1; Convergences = -1
                 !###New time step###
                 !First FPI with the parameter introduced by the user
-                Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-2)
+                backtrack_pars(1) = max(min(abs(backtrack_par_from_schema), 1.0), min_backtrack)
                 satisfactory_convergence = .true.
             else
-                !Store convergence obtained with the previous dumping parameter
+                !Store convergence obtained with the previous backtrack_par parameter
                 Convergences(1) = res_ratio!<=Actual residual ratio
-                !Compare with the Convergence using the first dumping parameter
+                !Compare with the Convergence using the first backtrack_par parameter
                 if (new_FPI) Previous_convergence = Convergences(1)
 
                 !####Check convergence of the method####
                 satisfactory_convergence = (its > Max_sat_its) .or. (first_res / res > Conv_to_achiv) &
-                    .or. (get_Convergence_Functional(Satura, Sat_bak, Dumpings(2)) < convergence_tol .and.&
-                    maxval(abs(Sat_bak-Satura))/Dumpings(2) < Inifinite_norm_tol)!<= exit if final convergence is achieved
-                !If a dumping parameter turns out not to be useful, then undo that iteration
+                    .or. (get_Convergence_Functional(Satura, Sat_bak, backtrack_pars(2)) < convergence_tol .and.&
+                    maxval(abs(Sat_bak-Satura))/backtrack_pars(2) < Inifinite_norm_tol)!<= exit if final convergence is achieved
+                !If a backtrack_par parameter turns out not to be useful, then undo that iteration
                 if (its > 2 .and. Convergences(2) > 0 .and. allow_undo .and. Convergences(1)>5.) then
                     Satura = backtrack_sat
                     !We do not allow two consecutive undos
@@ -540,29 +527,29 @@ contains
                     !restart the counter of useful saturations, this is to not use Anderson acceleration
                     !with values that were rejected
                     useful_sats = 1
-                    !Undo de accumulation of dumping parameters
-                    new_dumping = - Dumpings(1)
+                    !Undo de accumulation of backtrack_par parameters
+                    new_backtrack_par = - backtrack_pars(1)
                     return
                 else
                     allow_undo = .true.
                 end if
 
-                !Select different dumping parameter for the first Saturation iteration (SFPI)
+                !Select different backtrack_par parameter for the first Saturation iteration (SFPI)
                 select case (its)
                     case (1)
                         !First, use the one introduced by the user, this is necessary since the algorithm tends to small
                         !values of alphas
-                        Dumpings(1) = max(min(abs(Dumping_from_schema), 1.0), 1d-3)
+                        backtrack_pars(1) = max(min(abs(backtrack_par_from_schema), 1.0), min_backtrack)
                     case default
                         !Calculate a curve that fits the historical data
-                        call Cubic_fitting(Dumpings(2:), Convergences, Coefficients)
-                        !Calculate the new optimal dumping parameter
-                        Dumpings(1) = get_optimal_dumping(Dumpings(2:), Convergences, Coefficients)
+                        call Cubic_fitting(backtrack_pars(2:), Convergences, Coefficients)
+                        !Calculate the new optimal backtrack_par parameter
+                        backtrack_pars(1) = get_optimal_backtrack_par(backtrack_pars(2:), Convergences, Coefficients)
                 end select
 
                 !Update history, 1 => newest
-                do i = size(Dumpings), 2, -1
-                    Dumpings(i) = Dumpings(i-1)
+                do i = size(backtrack_pars), 2, -1
+                    backtrack_pars(i) = backtrack_pars(i-1)
                 end do
                 do i = size(Convergences), 2, -1
                     Convergences(i) = Convergences(i-1)
@@ -570,44 +557,44 @@ contains
 
             end if
         else!Use the value introduced by the user
-            Dumpings(1) = Dumping_from_schema
+            backtrack_pars(1) = backtrack_par_from_schema
             !Just one local saturation iteration
             satisfactory_convergence = .true.
         end if
 
-        ewrite(1,*) "Dumping factor",Dumpings(1)
+        ewrite(1,*) "backtrack_par factor",backtrack_pars(1)
 
         !If it is parallel then we want to be consistent between cpus
         !we use the smallest value, since it is more conservative
         if (IsParallel()) then
-            call allmin(Dumpings(1))
+            call allmin(backtrack_pars(1))
             call allmin(Convergences(1))
         end if
         !***Calculate new saturation***
         !Obtain new saturation using the backtracking method
         if (useful_sats < 2 .or. satisfactory_convergence) then
             !Since Anderson's acceleration is unstable, when it has converged, we use the stable form of backtracking
-            Satura = sat_bak * (1.0 - Dumpings(1)) + Dumpings(1) * Satura
+            Satura = sat_bak * (1.0 - backtrack_pars(1)) + backtrack_pars(1) * Satura
         else !Use Anderson acceleration, idea from "AN ACCELERATED FIXED-POINT ITERATION FOR SOLUTION OF VARIABLY SATURATED FLOW"
 
-            !Based on making backtrack_sat small when Dumpings(1) is high and backtrack_sat small when Dumpings(1) is small
+            !Based on making backtrack_sat small when backtrack_pars(1) is high and backtrack_sat small when backtrack_pars(1) is small
             !The highest value of backtrack_sat is displaced to low values of alpha
-            aux = 1.0 - Dumpings(1)
-            Satura = Dumpings(1) * Satura + aux * ( (1.-(aux**anders_exp *Dumpings(1)) ) * sat_bak + &
-                aux**anders_exp *Dumpings(1) * backtrack_sat)!<=The best option so far
+            aux = 1.0 - backtrack_pars(1)
+            Satura = backtrack_pars(1) * Satura + aux * ( (1.-(aux**anders_exp *backtrack_pars(1)) ) * sat_bak + &
+                aux**anders_exp *backtrack_pars(1) * backtrack_sat)!<=The best option so far
 
         end if
-        !Inform of the new dumping parameter used
-        new_dumping = Dumpings(1)
+        !Inform of the new backtrack_par parameter used
+        new_backtrack_par = backtrack_pars(1)
 
         !Update halos with the new values
         if (IsParallel()) call halo_update(sat_field)
 
     contains
 
-        real function get_optimal_dumping(Dumpings, Convergences, Coefficients)
+        real function get_optimal_backtrack_par(backtrack_pars, Convergences, Coefficients)
             implicit none
-            real, dimension(:), intent(in) ::Dumpings, Convergences
+            real, dimension(:), intent(in) ::backtrack_pars, Convergences
             real, dimension(:), intent(inout) :: Coefficients
             !Local variables
             integer, dimension(1) :: i
@@ -618,12 +605,12 @@ contains
 
 
             Basic_method = .false.
-            get_optimal_dumping = Dumpings(1)
+            get_optimal_backtrack_par = backtrack_pars(1)
 
 
             !Check how much data we have
-            do n = 1, size(Dumpings)
-                if (Dumpings(n) < 0) exit
+            do n = 1, size(backtrack_pars)
+                if (backtrack_pars(n) < 0) exit
             end do
             n = n - 1
 
@@ -633,7 +620,7 @@ contains
             if (.not. Basic_method) then
                 select case (n)!quadratic
                     case (3)!Quadratic
-                        get_optimal_dumping = abs(-Coefficients(2)/(2.0*Coefficients(1)))
+                        get_optimal_backtrack_par = abs(-Coefficients(2)/(2.0*Coefficients(1)))
                         !If it is a maximum then go to the basic method
                         if (Coefficients(1) > 0) Basic_method = .true.
 
@@ -653,23 +640,23 @@ contains
                             !Get the optimal value
                             i = minloc(Y2, MASK = Y2>0)
                             i(1) = max(i(1),1)
-                            get_optimal_dumping = X(i(1))
+                            get_optimal_backtrack_par = X(i(1))
                         else if (Y2(1) > 0) then
-                            get_optimal_dumping = X(1)
+                            get_optimal_backtrack_par = X(1)
                         else if(Y2(2) > 0) then
-                            get_optimal_dumping = X(2)
+                            get_optimal_backtrack_par = X(2)
                         else!No minimums, hence go for the basic method
                             Basic_method = .true.
                         end if
                         !This method tend to be unstable, if we get something out
                         !of bounds, go back to the simple method
-                        if (get_optimal_dumping < 0 .or. get_optimal_dumping > 1) Basic_method = .true.
+                        if (get_optimal_backtrack_par < 0 .or. get_optimal_backtrack_par > 1) Basic_method = .true.
                         !Test positive value
                         if (.not. Basic_method) then
-                            aux = get_optimal_dumping
+                            aux = get_optimal_backtrack_par
                             aux = Coefficients(1) * aux**3  + Coefficients(2) * aux**2 + Coefficients(3) * aux + Coefficients(4)
                             if (aux < 0) then!Just for testing purposes
-                                get_optimal_dumping = get_optimal_dumping/2.0
+                                get_optimal_backtrack_par = get_optimal_backtrack_par/2.0
                             end if
                         end if
 
@@ -679,66 +666,66 @@ contains
             end if
 
             !If results obtained are not within range, use the basic method
-            if (get_optimal_dumping > 1.0 .or. get_optimal_dumping < 0) Basic_method = .true.
+            if (get_optimal_backtrack_par > 1.0 .or. get_optimal_backtrack_par < 0) Basic_method = .true.
 
             !If not possible to get a good value, then just a simple method based on the history
             if (basic_method) then
-                if (Dumpings(3) < 0 .or..true.) then!SIMPLE METHOD
+                if (backtrack_pars(3) < 0 .or..true.) then!SIMPLE METHOD
                     if (Convergences(1)-Convergences(2) < 0) then!Converging
-                        get_optimal_dumping = Dumpings(1) * 1.1
+                        get_optimal_backtrack_par = backtrack_pars(1) * 1.1
                     else!Diverging, the reduce with a minimum value that will mean performing all the non-linear iterations
-                        get_optimal_dumping = Dumpings(1) / 2.0!1.5
+                        get_optimal_backtrack_par = backtrack_pars(1) / 2.0!1.5
                     end if
                 else
-                    X = (/Dumpings(1), Convergences(1) /) - (/Dumpings(2), Convergences(2) /)
-                    Y2 = (/Dumpings(2), Convergences(2) /) - (/Dumpings(3), Convergences(3) /)
+                    X = (/backtrack_pars(1), Convergences(1) /) - (/backtrack_pars(2), Convergences(2) /)
+                    Y2 = (/backtrack_pars(2), Convergences(2) /) - (/backtrack_pars(3), Convergences(3) /)
                     if (X(2)/X(1) < 0) then!Negative slope => Converging
                         if (Y2(2)/Y2(1) < 0) then!It was converging already
                             if (abs(X(2)/X(1)) > abs(Y2(2)/Y2(1))) then!New slope is steeper => Optimal still to be reached
                                 !New value is previous value + the vector divided by the tangent, if it is very steep then
                                 !the optimal is very close
 
-                                get_optimal_dumping = Dumpings(1) * max(1.2, 2.0 * X(1))
+                                get_optimal_backtrack_par = backtrack_pars(1) * max(1.2, 2.0 * X(1))
 
-                            else!Old slope was steeper => Optimal value in between the previous Dumping parameters
-                                get_optimal_dumping = min(Dumpings(1) / 2, 0.5 * (Dumpings(2) + Dumpings(3)))
+                            else!Old slope was steeper => Optimal value in between the previous backtrack_par parameters
+                                get_optimal_backtrack_par = min(backtrack_pars(1) / 2, 0.5 * (backtrack_pars(2) + backtrack_pars(3)))
 
                             end if
                         else!It started to converge now, so we encourage to get away from the bad convergence value
-                            get_optimal_dumping = Dumpings(1) * max(1.2, 2.0 * X(1))
+                            get_optimal_backtrack_par = backtrack_pars(1) * max(1.2, 2.0 * X(1))
                         end if
                     else!It is NOT converging now
                         if (Y2(2)/Y2(1) < 0) then!It was converging before
-                            !                            get_optimal_dumping = 0.5 * (Dumpings(2) + Dumpings(3))!So we use previous convergence factors
-                            get_optimal_dumping = min(Dumpings(1) / 2, 0.5 * (Dumpings(2) + Dumpings(3)))
+                            !                            get_optimal_backtrack_par = 0.5 * (backtrack_pars(2) + backtrack_pars(3))!So we use previous convergence factors
+                            get_optimal_backtrack_par = min(backtrack_pars(1) / 2, 0.5 * (backtrack_pars(2) + backtrack_pars(3)))
                         else!It was diverging as well before
-                            get_optimal_dumping = Dumpings(1) * 0.5!We halve the Dumping parameter to return to convergence fast
+                            get_optimal_backtrack_par = backtrack_pars(1) * 0.5!We halve the backtrack_par parameter to return to convergence fast
                         end if
                     end if
                 end if
             end if
             !Make sure it is bounded
-            get_optimal_dumping = max(min(get_optimal_dumping, 1.0), 1d-1)
+            get_optimal_backtrack_par = max(min(get_optimal_backtrack_par, 1.0), 1d-1)
 
             !If we are stuck with the same values force a change
-            if (abs(sum(Dumpings)/size(Dumpings)-get_optimal_dumping)  &
-                < 1d-5 .and. get_optimal_dumping < 0.2 )  get_optimal_dumping = max(min(2.0 * get_optimal_dumping, 1.0), 1d-1)
+            if (abs(sum(backtrack_pars)/size(backtrack_pars)-get_optimal_backtrack_par)  &
+                < 1d-5 .and. get_optimal_backtrack_par < 0.2 )  get_optimal_backtrack_par = max(min(2.0 * get_optimal_backtrack_par, 1.0), 1d-1)
 
-        !            !Avoid exactly the same dumping parameter as before
-        !            if (abs(Dumpings(1)-get_optimal_dumping) < 1d-3 ) get_optimal_dumping = min(get_optimal_dumping*1.01,1.0)
+        !            !Avoid exactly the same backtrack_par parameter as before
+        !            if (abs(backtrack_pars(1)-get_optimal_backtrack_par) < 1d-3 ) get_optimal_backtrack_par = min(get_optimal_backtrack_par*1.01,1.0)
         end function
 
-        subroutine Cubic_fitting(Dumpings, Convergences, Coefficients)
+        subroutine Cubic_fitting(backtrack_pars, Convergences, Coefficients)
             implicit none
-            real, dimension(:), intent(in) ::Dumpings, Convergences
+            real, dimension(:), intent(in) ::backtrack_pars, Convergences
             real, dimension(:), intent(inout) :: Coefficients
             !Local variables
             integer :: n, i, j, m
             real, dimension(:,:), allocatable :: A, A_inv
 
             !Check how much data we have
-            do n = 1, size(Dumpings)
-                if (Dumpings(n) < 0) exit
+            do n = 1, size(backtrack_pars)
+                if (backtrack_pars(n) < 0) exit
             end do
             n = n - 1
             !Not linear so far
@@ -755,7 +742,7 @@ contains
             !Construct matrix
             do i = 1, m
                 do j = 1, n!Fill columns
-                    A(j,i) = Dumpings(j)**real(m-i)
+                    A(j,i) = backtrack_pars(j)**real(m-i)
                     if (j==i) A(j,i) = A(j,i) + A(j,i)*(1d-7*real(rand(j)))
                 end do
             end do
@@ -803,8 +790,8 @@ contains
         do ipres = 1, npres
             i_start = 1 + (ipres-1) * nphase/npres
             i_end = ipres * nphase/npres
-            !Set saturation to be between bounds
-            do cv_nod = 1, size(satura,2 )
+            !Set saturation to be between bounds (FOR BLACK-OIL maybe the limits have to be based on the previous saturation to allow
+            do cv_nod = 1, size(satura,2 )!to have saturations below the immobile fractions, and the same for BoundedSolutionCorrection )
                 moveable_sat = 1.0 - sum(Immobile_fraction(i_start:i_end, IDs2CV_ndgln(cv_nod)))
                 !Work in normalize saturation here
                 Normalized_sat(i_start:i_end) = (satura(i_start:i_end,cv_nod) - &

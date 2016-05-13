@@ -25,6 +25,7 @@
           <element_type>
             <string_value>lagrangian</string_value>
           </element_type>
+          <Porous_media/>
         </mesh_shape>
         <mesh_continuity>
           <string_value>discontinuous</string_value>
@@ -161,7 +162,6 @@
       <integer_value rank="0">3</integer_value>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <physical_parameters/>
   <material_phase name="phase1">
     <scalar_field name="Pressure" rank="0">
@@ -1076,7 +1076,7 @@ for i in range( field.node_count ):
       </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">1.0</real_value>
+          <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
       </Comp_Sum2One>
     </is_multiphase_component>
@@ -1244,7 +1244,7 @@ for i in range( field.node_count ):
       </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">1.0</real_value>
+          <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
       </Comp_Sum2One>
     </is_multiphase_component>
@@ -1412,7 +1412,7 @@ for i in range( field.node_count ):
       </KComp_Sigmoid>
       <Comp_Sum2One>
         <Relaxation_Coefficient>
-          <real_value rank="0">1.0</real_value>
+          <real_value rank="0">0.1</real_value>
         </Relaxation_Coefficient>
       </Comp_Sum2One>
     </is_multiphase_component>
@@ -1584,20 +1584,18 @@ for i in range( field.node_count ):
         </detectors>
       </prescribed>
     </scalar_field>
-    <scalar_field name="Permeability">
+    <tensor_field name="Permeability">
       <prescribed>
         <mesh name="P0DG"/>
         <value name="WholeMesh">
-          <constant>
-            <real_value rank="0">1.0</real_value>
-          </constant>
+          <anisotropic_asymmetric>
+            <constant>
+              <real_value symmetric="false" dim2="dim" shape="2 2" dim1="dim" rank="2">1 0 0 1</real_value>
+            </constant>
+          </anisotropic_asymmetric>
         </value>
         <output/>
-        <stat/>
-        <detectors>
-          <exclude_from_detectors/>
-        </detectors>
       </prescribed>
-    </scalar_field>
+    </tensor_field>
   </porous_media>
 </multiphase_options>

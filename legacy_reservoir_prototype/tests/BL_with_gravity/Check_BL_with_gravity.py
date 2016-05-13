@@ -25,8 +25,8 @@ os.system(binpath + ' ' + path + '/*mpml')
 
 #TOLERANCE OF THE CHECKING
 #The present values are just above the values I got when writing the script
-Tolerance_L1_NORM = 0.01
-Tolerance_L2_NORM = 0.001
+Tolerance_L1_NORM = 0.011
+Tolerance_L2_NORM = 0.0014
 
 AutomaticLine = 1
 
@@ -232,7 +232,8 @@ if (Passed):
     print 'BL with gravity works OK'
 else:
     print 'BL with gravity does NOT work'
-
+#Check the experiment has finished
+if (AutoNumber < 20): Passed = False
 if (showPlot):
     fig, ax = plt.subplots()
     x = []

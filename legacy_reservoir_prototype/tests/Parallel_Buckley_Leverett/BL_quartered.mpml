@@ -163,7 +163,6 @@
       <integer_value rank="0">3</integer_value>
     </nonlinear_iterations>
   </timestepping>
-  <caching/>
   <projections/>
   <material_phase name="phase1">
     <equation_of_state>
@@ -563,9 +562,9 @@
           </prescribed>
         </scalar_field>
       </immobile_fraction>
-      <Pe_stab>
-        <real_value rank="0">-0.5e-2</real_value>
-      </Pe_stab>
+      <Sat_overRelax>
+        <real_value rank="0">0.05e-3</real_value>
+      </Sat_overRelax>
     </multiphase_properties>
   </material_phase>
   <material_phase name="phase2">

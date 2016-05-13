@@ -175,13 +175,11 @@ module global_parameters
   !! Checking multifracture
   logical :: is_multifracture = .false.
 
-  !! Check whether it is the first time step
-  logical :: is_first_time_step = .true.
-
   !!Public variable to be used in Adaptive_NonLinear to re-scale the effective convergence
-  real :: dumping_in_sat
+  real :: backtrack_or_convergence
   logical :: FPI_have_converged = .false.
   logical :: after_adapt = .false.
+  logical :: first_time_step = .false.
 
 contains
 

@@ -42,13 +42,24 @@ module shape_functions_Linear_Quadratic
   use spud
   use Fields_Allocates, only : allocate, make_mesh
   use fields_data_types, only: mesh_type, scalar_field
-  use multiphase_caching, only: cache_level, reshape_vector2pointer
   use multi_data_types
 
   logical :: NEW_HIGH_ORDER_VOL_QUADRATIC_ELE_QUADRATURE = .false.
   !    logical :: NEW_QUADRATIC_ELE_QUADRATURE = .true.
   logical :: NEW_QUADRATIC_ELE_QUADRATURE = .false.
 
+    interface DETNLXR
+        module procedure DETNLXR1
+        module procedure DETNLXR2
+        module procedure DETNLXR3
+    end interface DETNLXR
+
+    interface DETNLXR_INVJAC
+        module procedure DETNLXR_INVJAC1
+        module procedure DETNLXR_INVJAC2
+        module procedure DETNLXR_INVJAC3
+    end interface DETNLXR_INVJAC
+    private :: DETNLXR1, DETNLXR2, DETNLXR3, DETNLXR_INVJAC1, DETNLXR_INVJAC2, DETNLXR_INVJAC3
 contains
 
 
@@ -1622,129 +1633,56 @@ contains
     return
   end subroutine lagrot
 
-  SUBROUTINE DETNLXR_plus_storage( ELE, X_ALL, XONDGL, TOTELE, NONODS, NLOC, NGI, &
-       N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
-       NX_ALL, storage_state, StorName , indx)
-    IMPLICIT NONE
-    INTEGER, intent( in ) :: ELE, TOTELE, NONODS, NLOC, NGI
-    INTEGER, DIMENSION( : ) :: XONDGL
-    REAL, DIMENSION( :, : ), intent( in ) :: X_ALL!(NDIM, size(XONDGL))
-    REAL, DIMENSION( :, : ), intent( in ) :: N
-    REAL, DIMENSION( :, :, : ), intent( in ) :: NLX_ALL!(NDIM,NLOC, NGI )
-    REAL, DIMENSION( : ), intent( in ) :: WEIGHT
-    REAL, DIMENSION( : ), pointer, intent( inout ) :: DETWEI, RA
-    REAL, pointer, intent( inout ) :: VOLUME
-    LOGICAL, intent( in ) ::DCYL
-    REAL, DIMENSION( :, : ,:), pointer, intent( inout ) :: NX_ALL!dimension(ndim, NLOC, NGI)
-    type( state_type ), intent( inout ) :: storage_state
-    character(len=*), intent(in) :: StorName
-    integer, intent(inout) :: indx
-    !Local variables
-    logical :: D1, D3
-    integer :: ndim, Pos1, Pos2, lele
-    !Variables to store things in state
-    type(mesh_type), pointer :: fl_mesh
-    type(mesh_type) :: Auxmesh
-    type(scalar_field), target :: targ_Store
-    !Prepare variables
-    NDIM = size(X_ALL,1)
 
-    !#########Storing area#################################
-    !If new mesh or mesh moved indx will be zero (set in Multiphase_TimeLoop)
-    if (indx<=0) then!Everything has to be calculated
-       if (ELE==1) then !The first time we need to introduce the targets in state
-          if (has_scalar_field(storage_state, StorName)) then
-             !If we are recalculating due to a mesh modification then
-             !we return to the original situation
-             call remove_scalar_field(storage_state, StorName)
-          end if
+  subroutine DETNLXR1(ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)
+      !Calculates the derivatives of the shape functions, which are stored into DevFuns%NX_ALL
+      !and also DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME
+      implicit none
+      integer, intent(in) :: ELE
+      real, dimension(:,:), intent( in ) :: X_ALL
+      integer, dimension( : ), intent( in ) :: XONDGL
+      real, dimension(:), intent( in ) :: weight
+      real, dimension(:,:), intent( in ) :: nshape
+      real, dimension(:,:,:), intent( in ) :: nshapelx
+      type (multi_dev_shape_funs) :: DevFuns
 
-          !Get mesh file just to be able to allocate the fields we want to store
-          fl_mesh => extract_mesh( storage_state, "FakeMesh" )
-          Auxmesh = fl_mesh
-          !The number of nodes I want does not coincide
-          Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*(NLOC*NGI*NDIM + NGI*2 + 1)
-          call allocate (targ_Store, Auxmesh)
-          !Now we insert them in state and store the indexes
-          call insert(storage_state, targ_Store, StorName)
-          call deallocate (targ_Store)
-          !              call deallocate (Auxmesh)
-          !Store index with a negative value, because if the index is
-          !zero or negative then we have to calculate stuff
-          indx = -size(storage_state%scalar_fields)
-       end if
-       LELE=merge(ele,1,btest(cache_level,0))
-       !Get from state, indx is an input
-       Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
-       call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2),&
-            NX_ALL, NDIM, NLOC, NGI)
-       Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-       DETWEI => storage_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
-       Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-       RA => storage_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
-       Pos1 = Pos2 + 1
-       VOLUME => storage_state%scalar_fields(abs(indx))%ptr%val(Pos1)
-    else  !If the index is bigger than zero then everything is in storage
-       !Get from state, indx is an input
-       LELE=merge(ele,1,btest(cache_level,0))
-       Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
-       call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2),&
-            NX_ALL, NDIM, NLOC, NGI)
-       Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-       DETWEI => storage_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
-       Pos1 = Pos2 + 1; Pos2 = Pos2 + NGI*LELE
-       RA => storage_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)
-       Pos1 = Pos2 + 1
-       VOLUME => storage_state%scalar_fields(abs(indx))%ptr%val(Pos1)
-       return
-    end if
-    !When all the values are obtained, the index is set to a positive value
-    if (ELE == totele) indx = abs(indx)
-    !#########Storing area finished########################
+      integer :: dummy
 
-    D1 = (NDIM == 1); D3 = (NDIM == 3)
-    call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, TOTELE, NONODS, NLOC, NGI, &
-         N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
-         NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
+      call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, dummy, dummy, size(nshapelx,2), size(nshapelx,3), &
+         nshape, nshapelx(1,:,:), nshapelx(2,:,:), nshapelx(3,:,:), WEIGHT, DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME, &
+         size(X_ALL,1) == 1, size(X_ALL,1) == 3, .false., &
+         DevFuns%nx_all(1, :,:),DevFuns%nx_all(2, :,:),DevFuns%nx_all(3, :,:) )
 
-    !Store data into state
-    LELE=merge(ele,1,btest(cache_level,0))
-    !Get from state, indx is an input
-    Pos1 = 1+NDIM*NLOC*NGI*(LELE-1) ; Pos2 = NDIM*NLOC*NGI*LELE
-    storage_state%scalar_fields(abs(indx))%ptr%val(Pos1:Pos2)=&
-         reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI), [NDIM*NLOC*NGI])
+  end subroutine DETNLXR1
 
 
-  end subroutine DETNLXR_plus_storage
-
-
-  SUBROUTINE DETNLXR_new( ELE, X_ALL, XONDGL, TOTELE, NONODS, NLOC, NGI, &
+  SUBROUTINE DETNLXR2( ELE, X_ALL, XONDGL, NLOC, NGI, &
        N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
        NX_ALL)
     IMPLICIT NONE
-    INTEGER, intent( in ) :: ELE, TOTELE, NONODS, NLOC, NGI
+    INTEGER, intent( in ) :: ELE, NLOC, NGI
     INTEGER, DIMENSION( : ) :: XONDGL
     REAL, DIMENSION( :, : ), intent( in ) :: X_ALL!(NDIM, size(XONDGL))
     REAL, DIMENSION( :, : ), intent( in ) :: N
     REAL, DIMENSION( :, :, : ), intent( in ) :: NLX_ALL!(NDIM,NLOC, NGI )
     REAL, DIMENSION( : ), intent( in ) :: WEIGHT
-    REAL, DIMENSION( : ), pointer, intent( inout ) :: DETWEI, RA
-    REAL, pointer, intent( inout ) :: VOLUME
+    REAL, DIMENSION( : ), intent( inout ) :: DETWEI, RA
+    REAL, intent( inout ) :: VOLUME
     LOGICAL, intent( in ) ::DCYL
-    REAL, DIMENSION( :, : ,:), pointer, intent( inout ) :: NX_ALL!dimension(ndim, NLOC, NGI)
+    REAL, DIMENSION( :, : ,:), intent( inout ) :: NX_ALL!dimension(ndim, NLOC, NGI)
     !Local variables
     logical :: D1, D3
-
+    integer :: dummy
 
     D1 = (size(X_ALL,1) == 1); D3 = (size(X_ALL,1) == 3)
 
-    call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, TOTELE, NONODS, NLOC, NGI, &
+    call DETNLXR( ELE, X_ALL(1,:),X_ALL(2,:),X_ALL(3,:), XONDGL, dummy, dummy, NLOC, NGI, &
          N, NLX_ALL(1,:,:), NLX_ALL(2,:,:), NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
          NX_ALL(1, :,:),NX_ALL(2, :,:),NX_ALL(3, :,:) )
 
-  end subroutine DETNLXR_new
+  end subroutine DETNLXR2
 
-  SUBROUTINE DETNLXR( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
+  SUBROUTINE DETNLXR3( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
        NX, NY, NZ)
     IMPLICIT NONE
@@ -1898,9 +1836,34 @@ contains
     ENDIF
     !
     RETURN
-  END SUBROUTINE DETNLXR
+  END SUBROUTINE DETNLXR3
 
-  SUBROUTINE DETNLXR_INVJAC_new( ELE, X_ALL,  Mdims, XONDGL,&
+
+
+
+  SUBROUTINE DETNLXR_INVJAC1( ELE, X_ALL, XONDGL, weight, nshape, nshapelx, DevFuns)
+    implicit none
+    integer, intent(in) :: ELE
+    real, dimension(:,:), intent( in ) :: X_ALL
+    integer, dimension( : ), intent( in ) :: XONDGL
+    real, dimension(:), intent( in ) :: weight
+    real, dimension(:,:), intent( in ) :: nshape
+    real, dimension(:,:,:), intent( in ) :: nshapelx
+    type (multi_dev_shape_funs) :: DevFuns
+
+    integer :: dummy
+
+    call DETNLXR_INVJAC( ELE, X_ALL(1,:), X_ALL(2,:),X_ALL(3,:), XONDGL, dummy, dummy, &
+         size(nshapelx,2), size(nshapelx,3), nshape, nshapelx(1,:,:),nshapelx(2,:,:),&
+         nshapelx(3,:,:), WEIGHT, DevFuns%DETWEI, DevFuns%RA, DevFuns%VOLUME, size(nshapelx,1) == 1, &
+         size(nshapelx,1)==3, .false., DevFuns%NX_ALL(1,:,:),DevFuns%NX_ALL(2,:,:),&
+         DevFuns%NX_ALL(3,:,:), dummy, DevFuns%INV_JAC)
+
+  END SUBROUTINE DETNLXR_INVJAC1
+
+
+
+  SUBROUTINE DETNLXR_INVJAC2( ELE, X_ALL,  Mdims, XONDGL,&
        N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
        NX_ALL,INV_JAC)
     IMPLICIT NONE
@@ -1917,144 +1880,19 @@ contains
     REAL, DIMENSION( :, :, : ), intent( inout ) :: NX_ALL
     REAL, DIMENSION( :,:, : ), intent( inout ):: INV_JAC
 
-    call DETNLXR_INVJAC( ELE, X_ALL(1,:), X_ALL(2,:),X_ALL(3,:) , XONDGL, Mdims%TOTELE, size(X_all,2), size(NX_ALL,2), size(RA), &
+    integer :: dummy
+
+    call DETNLXR_INVJAC( ELE, X_ALL(1,:), X_ALL(2,:),X_ALL(3,:) , XONDGL, dummy, dummy, size(NX_ALL,2), size(RA), &
          N, NLX_ALL(1,:,:),NLX_ALL(2,:,:),NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, Mdims%Ndim == 1, &
          Mdims%Ndim==3, DCYL, NX_ALL(1,:,:),NX_ALL(2,:,:),NX_ALL(3,:,:), Mdims%Ndim, INV_JAC)
 
-  END SUBROUTINE DETNLXR_INVJAC_new
-
-
-  SUBROUTINE DETNLXR_INVJAC_plus_storage( ELE, X_ALL, XONDGL, TOTELE, NONODS, NLOC, NGI, &
-       N, NLX_ALL, WEIGHT, DETWEI, RA, VOLUME, DCYL, &
-       NX_ALL,&
-       NDIM, INV_JAC, storage_state, StorName, indx )
-    IMPLICIT NONE
-    INTEGER, intent( in ) :: ELE, TOTELE, NONODS, NLOC, NGI, NDIM
-    INTEGER, DIMENSION( : ) :: XONDGL
-    REAL, DIMENSION( :, : ), intent( in ) :: X_ALL!dimension(NDIM,size(XONDGL) )
-    REAL, DIMENSION( :, : ), intent( in ) :: N
-    REAL, DIMENSION( :, :, : ), intent( in ) :: NLX_ALL
-    REAL, DIMENSION( : ), intent( in ) :: WEIGHT
-    LOGICAL, intent( in ) :: DCYL
-    REAL,pointer,  intent( inout ) :: VOLUME
-    REAL, pointer,  DIMENSION( : ), intent( inout ):: DETWEI, RA
-    REAL, pointer, DIMENSION( :, :, : ), intent( inout ) :: NX_ALL
-    REAL, pointer, DIMENSION( :,:, : ), intent( inout ):: INV_JAC
-    type( state_type ), intent( inout ):: storage_state
-    character(len=*), intent(in) :: StorName
-    integer, intent(inout) :: indx
-    ! Local variables
-    integer :: from, to, jump
-    !Variables to store things in state
-    type(mesh_type), pointer :: fl_mesh
-    type(mesh_type) :: Auxmesh
-    type(scalar_field), target :: targ_NX_ALL
-    !#########Storing area#################################
-    !If new mesh or mesh moved indx will be zero (set in Multiphase_TimeLoop)
-
-
-    if (indx==0 .and. ELE==1) then !The first time we need to introduce the targets in state
-       if (has_scalar_field(storage_state, trim(Storname))) then
-          !If we are recalculating due to a mesh modification then
-          !we return to the original situation
-          call remove_scalar_field(storage_state, trim(Storname))
-       end if
-
-       !Get mesh file just to be able to allocate the fields we want to store
-       fl_mesh => extract_mesh( storage_state, "FakeMesh" )
-
-       Auxmesh = make_mesh(fl_mesh,name=trim(Storname))
-       !The number of nodes I want does not coincide
-
-       Auxmesh%nodes = merge(totele,1,btest(cache_level,0))*NLOC*NGI*NDIM &
-            +merge(totele,1,btest(cache_level,1))*NDIM*NDIM*NGI &
-            +merge(totele,1,btest(cache_level,2))*NGI*2 + totele
-
-       call allocate (Targ_NX_ALL, Auxmesh, trim(Storname))
-       !Now we insert them in state and store the indexes
-       call insert(storage_state, Auxmesh, trim(Storname))
-       call insert(storage_state, Targ_NX_ALL, trim(Storname))
-       !         call deallocate (Auxmesh)
-       !Store index with a negative value, because if the index is
-       !zero or negative then we have to calculate stuff
-       indx = -size(storage_state%scalar_fields)
-       call deallocate (Targ_NX_ALL)
-       call deallocate (Auxmesh)
-    end if
-    !Get from state, indx is an input
-    if (btest(cache_level,0)) then
-       from = 1+NDIM*NLOC*NGI*(ELE-1); to = NDIM*NLOC*NGI*ELE
-       call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
-            NX_ALL, NDIM, NLOC, NGI)
-       !         NX_ALL(1:NDIM,1:NLOC,1:NGI) => &
-       !              storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
-       jump = NDIM*NLOC*NGI*totele
-       from = jump + 1+(ELE-1)*(NGI+NDIM*NDIM); to = jump + ELE*(NGI*NDIM*NDIM)
-       call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
-            INV_JAC, NDIM, NDIM, NGI)
-       jump = jump + totele*(NGI*NDIM*NDIM)
-       from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-       DETWEI => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
-       jump = jump + NGI*totele
-       from = jump + 1+NGI*(ELE-1); to = jump + NGI*ELE
-       RA => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
-       jump = jump + NGI*totele
-       VOLUME => storage_state%scalar_fields(abs(indx))%ptr%val(jump + ELE)
-    else
-       from = 1; to = NDIM*NLOC*NGI
-       call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
-            NX_ALL, NDIM, NLOC, NGI)
-       jump = NDIM*NLOC*NGI
-       from = jump + 1; to = jump + NGI*NDIM*NDIM
-       call reshape_vector2pointer(storage_state%scalar_fields(abs(indx))%ptr%val(from:to),&
-            INV_JAC, NDIM, NDIM, NGI)
-       jump = jump + NGI*NDIM*NDIM
-       from = jump + 1; to = jump + NGI
-       DETWEI => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
-       jump = jump + NGI
-       from = jump + 1; to = jump + NGI
-       RA => storage_state%scalar_fields(abs(indx))%ptr%val(from:to)
-       jump = jump + NGI
-       VOLUME => storage_state%scalar_fields(abs(indx))%ptr%val(jump + ELE)
-    end if
-
-
-    IF (indx>0 .and. not(cache_level)==0) return
-    !When all the values are obtained, the index is set to a positive value
-    if (ELE == totele) indx = abs(indx)
-    !#########Storing area finished########################
-    !
-
-    call DETNLXR_INVJAC( ELE, X_ALL(1,:), X_ALL(2,:),X_ALL(3,:) , XONDGL, TOTELE, NONODS, NLOC, NGI, &
-         N, NLX_ALL(1,:,:),NLX_ALL(2,:,:),NLX_ALL(3,:,:), WEIGHT, DETWEI, RA, VOLUME, NDIM ==1, NDIM ==3, DCYL, &
-         NX_ALL(1,:,:),NX_ALL(2,:,:),NX_ALL(3,:,:),&
-         NDIM, INV_JAC)
-
-    !Store data
-    if (btest(cache_level,0)) then
-       from = 1+NDIM*NLOC*NGI*(ELE-1); to = NDIM*NLOC*NGI*ELE
-       storage_state%scalar_fields(abs(indx))%ptr%val(from:to)=&
-            reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI),[NDIM*NLOC*NGI])
-       jump = NDIM*NLOC*NGI*totele
-       from = jump + 1+(ELE-1)*(NGI+NDIM*NDIM); to = jump + ELE*(NGI*NDIM*NDIM)
-       storage_state%scalar_fields(abs(indx))%ptr%val(from:to)=&
-            reshape(INV_JAC(1:NDIM,1:NDIM,1:NGI),[NDIM*NDIM*NGI])
-    else
-       from = 1; to = NDIM*NLOC*NGI
-       storage_state%scalar_fields(abs(indx))%ptr%val(from:to)=&
-            reshape(NX_ALL(1:NDIM,1:NLOC,1:NGI),[NDIM*NLOC*NGI])
-       jump = NDIM*NLOC*NGI
-       from = jump + 1; to = jump + NGI*NDIM*NDIM
-       storage_state%scalar_fields(abs(indx))%ptr%val(from:to)=&
-            reshape(INV_JAC(1:NDIM,1:NDIM,1:NGI),[NDIM*NDIM*NGI])
-    end if
-
-
-  END SUBROUTINE DETNLXR_INVJAC_plus_storage
+  END SUBROUTINE DETNLXR_INVJAC2
 
 
 
-  SUBROUTINE DETNLXR_INVJAC( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
+
+
+  SUBROUTINE DETNLXR_INVJAC3( ELE, X,Y,Z, XONDGL, TOTELE, NONODS, NLOC, NGI, &
        N, NLX, NLY, NLZ, WEIGHT, DETWEI, RA, VOLUME, D1, D3, DCYL, &
        NX, NY, NZ,&
        NDIM, INV_JAC  )
@@ -2229,7 +2067,7 @@ contains
     ENDIF
     !
     RETURN
-  END SUBROUTINE DETNLXR_INVJAC
+  END SUBROUTINE DETNLXR_INVJAC3
 
 
 

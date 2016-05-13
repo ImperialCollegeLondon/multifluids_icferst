@@ -915,7 +915,8 @@ contains
       call adapt_mesh_periodic(old_positions, metric, new_positions, force_preserve_regions=force_preserve_regions)
     ! Nonperiodic case
     else
-      call adapt_mesh_simple(old_positions, metric, new_positions, node_ownership=node_ownership, force_preserve_regions=force_preserve_regions)
+      call adapt_mesh_simple(old_positions, metric, new_positions, node_ownership=node_ownership, &
+            force_preserve_regions=force_preserve_regions)
     end if
   end subroutine adapt_mesh
 
@@ -1063,6 +1064,9 @@ contains
     integer :: ierr
     type(detector_list_ptr), dimension(:), pointer :: detector_list_array => null()
     type(detector_type), pointer :: detector => null()
+
+    ! Node locking variable
+    type(integer_set) :: lock_faces
 
     real :: global_min_quality, quality_tolerance
 
