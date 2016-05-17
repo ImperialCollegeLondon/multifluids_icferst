@@ -1032,6 +1032,12 @@ start =
          element boiling {
             empty           
          }?,
+
+         ## is this a magma run?
+         element magma {
+            empty
+         }?,
+
          ## numerical_methods options
          element numerical_methods {
             ## Use a method to avoid distortion due to boundaries

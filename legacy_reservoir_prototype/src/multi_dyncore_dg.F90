@@ -136,6 +136,7 @@ contains
            type( tensor_field ), pointer :: perm
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
+           type( scalar_field ), pointer :: sfield
 
             if (present(Permeability_tensor_field)) then
                 perm => Permeability_tensor_field
@@ -247,6 +248,14 @@ contains
                    velocity_absorption, T_AbsorB )
               deallocate ( Velocity_Absorption )
            end if
+
+           if ( have_option( "/magma" ) ) then
+
+              ! set the absorption for magma sims here
+              sfield => extract_scalar_field( state(1), "TemperatureAbsorption")
+              T_ABSORB(1:1,1:1,1:Mdims%cv_nonods) => sfield%val ! only phase 1
+           end if
+
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
