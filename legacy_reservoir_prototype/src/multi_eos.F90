@@ -1496,7 +1496,7 @@ contains
                      end do
                   end do
                end do
-             end if
+            end if
             deallocate( component_tmp, mu_tmp )
          end if
       end if
