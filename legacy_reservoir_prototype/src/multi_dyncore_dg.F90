@@ -897,7 +897,7 @@ contains
         if ( have_option( "/magma" ) ) then
            ndim = Mdims%ndim
 
-           beta = 1.0
+           beta = 1.0 ! this needs to be on a material mesh.
 
            iphase=1 ; jphase=1
            do idim = 1, ndim
