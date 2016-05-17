@@ -744,6 +744,14 @@ contains
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
         type( tensor_field ), pointer :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         INTEGER :: IPLIKE_GRAD_SOU
+
+
+        !!$ magma stuff -- to be deleted shortly
+        integer :: idim, idx1, idx2, ndim
+        real :: beta
+        !!$ end of magma stuff
+
+
         ! if q scheme allocate a field in state and use pointers..
         IGOT_THERM_VIS=0
         ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
@@ -884,6 +892,39 @@ contains
         ! update velocity absorption
         call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
         call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
+
+
+        if ( have_option( "/magma" ) ) then
+           ndim = Mdims%ndim
+
+           beta = 1.0
+
+           iphase=1 ; jphase=1
+           do idim = 1, ndim
+              idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
+              velocity_absorption( idx1, idx2, : ) = beta
+           end do
+
+           iphase=1 ; jphase=2
+           do idim = 1, ndim
+              idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
+              velocity_absorption( idx1, idx2, : ) = -beta
+           end do
+
+           iphase=2 ; jphase=1
+           do idim = 1, ndim
+              idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
+              velocity_absorption( idx1, idx2, : ) = -beta
+           end do
+
+           iphase=2 ; jphase=2
+           do idim = 1, ndim
+              idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
+              velocity_absorption( idx1, idx2, : ) = beta
+           end do
+
+        end if
+
 
         ! open the boiling test for two phases-gas and liquid
         if (have_option('/boiling')) then
