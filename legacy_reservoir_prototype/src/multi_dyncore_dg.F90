@@ -1781,6 +1781,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! account dividing through by DevFuns%VOLUME fraction.
         integer, parameter :: IDIVID_BY_VOL_FRAC = 0
 
+        ! gradU
+        logical :: get_gradU
+        type(tensor_field), pointer :: gradU
 
         fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
@@ -2143,7 +2146,17 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ALLOCATE( RCOUNT_NODS(Mdims%mat_nonods) )
             END IF
         END IF
-        IF ( GOT_DIFFUS ) THEN
+
+        get_gradU = .false.
+        do iphase = 1, Mdims%nphase
+           gradU => extract_tensor_field( state( iphase ), "gradU", stat )
+           if ( stat == 0 ) then
+              get_gradU = .true.
+              exit
+           end if
+        end do
+
+        IF ( GOT_DIFFUS .or. get_gradU ) THEN
             ALLOCATE( DUX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
             ALLOCATE( DUOLDX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
         ENDIF
@@ -2205,7 +2218,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, FE_GIdims%nface, &
             Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
-        IF( GOT_DIFFUS ) THEN
+
+       IF( GOT_DIFFUS .or. get_gradU ) THEN
             CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &
                 DUX_ELE_ALL, DUOLDX_ELE_ALL, &
                 Mdims%ndim, Mdims%nphase, Mdims%ndim, Mdims%totele, ndgln%u, &
@@ -2216,7 +2230,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 Mdims%x_nonods, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), &
                 FE_GIdims%nface, FACE_ELE, FE_funs%u_sloclist, FE_funs%cv_sloclist, Mdims%u_snloc, Mdims%cv_snloc, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
                 FE_GIdims%sbcvngi, FE_funs%sbufen, FE_funs%sbcvfeweigh, &
-                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly )
+                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly, get_gradU, state )
         ENDIF
         ! LES VISCOCITY CALC.
         IF ( GOT_DIFFUS ) THEN

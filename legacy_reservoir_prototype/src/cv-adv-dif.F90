@@ -4388,7 +4388,7 @@ contains
 
     SUBROUTINE DG_DERIVS_ALL1( FEMT, FEMTOLD, &
         DTX_ELE, DTOLDX_ELE, &
-        NDIM, NPHASE, NCOMP, TOTELE, CV_NDGLN, &
+        NDIM, NPHASE, NCOMP, TOTELE, CV_NDGLN, & ! ncomp = ndim here
         XCV_NDGLN, X_NLOC, X_NDGLN,&
         CV_NGI, CV_NLOC, CVWEIGHT, &
         N, NLX, NLY, NLZ, &
@@ -4396,9 +4396,9 @@ contains
         X_NONODS, X, Y, Z, &
         NFACE, FACE_ELE, CV_SLOCLIST, X_SLOCLIST, CV_SNLOC, X_SNLOC, WIC_T_BC, SUF_T_BC, &
         SBCVNGI, SBCVFEN, SBWEIGH, &
-        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY)
+        X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, get_gradU, state )
 
-        ! determine FEMT (finite element wise) etc from T (control volume wise)
+        ! calculates derivatives of vector fields
         IMPLICIT NONE
 
         INTEGER, intent( in ) :: NDIM, NPHASE, NCOMP, TOTELE, X_NLOC, CV_NGI, CV_NLOC, &
@@ -4420,6 +4420,8 @@ contains
         REAL, DIMENSION( :, : ), intent( in ) :: SBCVFEN
         REAL, DIMENSION( :, : ), intent( in ) :: X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY
         REAL, DIMENSION( : ), intent( in ) :: SBWEIGH
+        LOGICAL, intent( in ) :: get_gradU
+        TYPE( STATE_TYPE), DIMENSION( : ), intent( inout ) :: state
         ! Local variables
         REAL, DIMENSION( :, :, : ), ALLOCATABLE :: MASELE
         REAL, DIMENSION( :, :, :, :, : ), ALLOCATABLE :: VTX_ELE, VTOLDX_ELE
@@ -4436,8 +4438,9 @@ contains
         INTEGER :: ELE, CV_ILOC, CV_JLOC, CV_NODI, CV_NODJ, CV_ILOC2, &
             CV_INOD, CV_INOD2, CV_JLOC2, CV_NODJ2, &
             CV_SILOC, CV_SJLOC, CV_SJLOC2, ELE2, IFACE, IPHASE, SELE2, SUF_CV_SJ2, &
-            X_INOD, X_SILOC, X_ILOC, ICOMP, IDIM
+            X_INOD, X_SILOC, X_ILOC, ICOMP, IDIM, STAT
         INTEGER, PARAMETER :: WIC_T_BC_DIRICHLET = 1
+        TYPE( TENSOR_FIELD ), POINTER :: GRADU
 
         ewrite(3,*)'in DG_DERIVS'
 
@@ -4622,6 +4625,22 @@ contains
             END FORALL
 
         END DO Loop_Elements3
+
+        ! set gradU
+        if ( get_gradU ) then
+           do iphase = 1, nphase
+              gradU => extract_tensor_field( state( iphase ), "gradU", stat )
+              if ( stat == 0 ) then
+                 do ele = 1, totele
+                    do cv_iloc = 1, cv_nloc
+                       cv_nodi = cv_ndgln( ( ele - 1 ) * cv_nloc + cv_iloc )
+                       gradU%val( :, :, cv_nodi ) = dtx_ele( :, :, iphase, cv_iloc, ele )
+                    end do
+                 end do
+              end if
+           end do
+        end if
+
 
         DEALLOCATE( MASELE, VTX_ELE, VTOLDX_ELE )
 
