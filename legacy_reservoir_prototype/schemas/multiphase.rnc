@@ -1032,6 +1032,12 @@ start =
          element boiling {
             empty           
          }?,
+
+         ## is this a magma run?
+         element magma {
+            empty
+         }?,
+
          ## numerical_methods options
          element numerical_methods {
             ## Use a method to avoid distortion due to boundaries
@@ -3593,6 +3599,20 @@ tensor_field_choice =
         }|
         element tensor_field {
             attribute name { "a_xx" },
+            (
+               element diagnostic {
+                  internal_algorithm,
+                  mesh_choice,
+                  diagnostic_tensor_field
+               }|
+               element aliased {
+                  generic_aliased_field
+        }
+            )
+        }|
+        ## This is the gradient of the velocity field - calculated in the dynamic core.
+        element tensor_field {
+            attribute name { "grad_U" },
             (
                element diagnostic {
                   internal_algorithm,

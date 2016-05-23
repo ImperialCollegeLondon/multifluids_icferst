@@ -1394,6 +1394,12 @@ Recommended value: [0.5,1.0]. Default =1.</a:documentation>
         </element>
       </optional>
       <optional>
+        <element name="magma">
+          <a:documentation>is this a magma run?</a:documentation>
+          <empty/>
+        </element>
+      </optional>
+      <optional>
         <element name="numerical_methods">
           <a:documentation>numerical_methods options</a:documentation>
           <optional>
@@ -4523,6 +4529,22 @@ less accurate but faster and might give smoother result.                  </a:do
       <element name="tensor_field">
         <attribute name="name">
           <value>a_xx</value>
+        </attribute>
+        <choice>
+          <element name="diagnostic">
+            <ref name="internal_algorithm"/>
+            <ref name="mesh_choice"/>
+            <ref name="diagnostic_tensor_field"/>
+          </element>
+          <element name="aliased">
+            <ref name="generic_aliased_field"/>
+          </element>
+        </choice>
+      </element>
+      <element name="tensor_field">
+        <a:documentation>This is the gradient of the velocity field - calculated in the dynamic core.</a:documentation>
+        <attribute name="name">
+          <value>grad_U</value>
         </attribute>
         <choice>
           <element name="diagnostic">

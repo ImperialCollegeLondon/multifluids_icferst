@@ -136,6 +136,7 @@ contains
            type( tensor_field ), pointer :: perm
            integer :: cv_disopt, cv_dg_vel_int_opt
            real :: cv_theta, cv_beta
+           type( scalar_field ), pointer :: sfield
 
             if (present(Permeability_tensor_field)) then
                 perm => Permeability_tensor_field
@@ -247,6 +248,14 @@ contains
                    velocity_absorption, T_AbsorB )
               deallocate ( Velocity_Absorption )
            end if
+
+           if ( have_option( "/magma" ) ) then
+
+              ! set the absorption for magma sims here
+              sfield => extract_scalar_field( state(1), "TemperatureAbsorption")
+              T_ABSORB(1:1,1:1,1:Mdims%cv_nonods) => sfield%val ! only phase 1
+           end if
+
 
            MeanPoreCV=>extract_vector_field(packed_state,"MeanPoreCV")
 
@@ -760,6 +769,14 @@ contains
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
         type( tensor_field ), pointer :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         INTEGER :: IPLIKE_GRAD_SOU
+
+
+        !!$ magma stuff -- to be deleted shortly
+        integer :: idim, idx1, idx2, ndim
+        real :: beta
+        !!$ end of magma stuff
+
+
         ! if q scheme allocate a field in state and use pointers..
         IGOT_THERM_VIS=0
         ALLOCATE( THERM_U_DIFFUSION(Mdims%ndim,Mdims%ndim,Mdims%nphase,Mdims%mat_nonods*IGOT_THERM_VIS ) )
@@ -900,6 +917,39 @@ contains
         ! update velocity absorption
         call update_velocity_absorption( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
         call update_velocity_absorption_coriolis( state, Mdims%ndim, Mdims%nphase, velocity_absorption )
+
+
+        if ( have_option( "/magma" ) ) then
+           ndim = Mdims%ndim
+
+           beta = 1.0 ! this needs to be on a material mesh.
+
+           iphase=1 ; jphase=1
+           do idim = 1, ndim
+              idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
+              velocity_absorption( idx1, idx2, : ) = beta
+           end do
+
+           iphase=1 ; jphase=2
+           do idim = 1, ndim
+              idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
+              velocity_absorption( idx1, idx2, : ) = -beta
+           end do
+
+           iphase=2 ; jphase=1
+           do idim = 1, ndim
+              idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
+              velocity_absorption( idx1, idx2, : ) = -beta
+           end do
+
+           iphase=2 ; jphase=2
+           do idim = 1, ndim
+              idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
+              velocity_absorption( idx1, idx2, : ) = beta
+           end do
+
+        end if
+
 
         ! open the boiling test for two phases-gas and liquid
         if (have_option('/boiling')) then
@@ -1360,7 +1410,7 @@ END IF
         TDIFFUSION = 0.0
         IF( GLOBAL_SOLVE ) MCY = 0.0
         ! Obtain the momentum and Mmat%C matricies
-        CALL ASSEMB_FORCE_CTY( packed_state, &
+        CALL ASSEMB_FORCE_CTY( state, packed_state, &
             Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
             velocity, pressure, &
             X_ALL, velocity_absorption, U_SOURCE_ALL, U_SOURCE_CV_ALL, &
@@ -1484,7 +1534,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 
 
 
-    SUBROUTINE ASSEMB_FORCE_CTY( packed_state, &
+    SUBROUTINE ASSEMB_FORCE_CTY( state, packed_state, &
         Mdims, FE_GIdims, FE_funs, Mspars, ndgln, Mmat, &
         velocity, pressure, &
         X_ALL, U_ABSORB, U_SOURCE, U_SOURCE_CV, &
@@ -1497,6 +1547,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         P,&
         got_free_surf, mass_suf, symmetric_P )
         implicit none
+        type( state_type ), dimension( : ), intent( inout ) :: state
         type( state_type ), intent( inout ) :: packed_state
         type(multi_dimensions), intent(in) :: Mdims
         type(multi_GI_dimensions), intent(in) :: FE_GIdims
@@ -1724,7 +1775,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         logical :: capillary_pressure_activated, Diffusive_cap_only
         !! femdem
         type( vector_field ), pointer :: delta_u_all, us_all
-        type( scalar_field ), pointer :: sf
+        type( scalar_field ), pointer :: sf, sfield
         real, dimension( : ), allocatable :: vol_s_gi
         !! Boundary_conditions
         INTEGER, DIMENSION ( Mdims%ndim , Mdims%nphase , surface_element_count(velocity) )  :: WIC_U_BC_ALL, WIC_U_BC_ALL_VISC, &
@@ -1754,6 +1805,11 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ! If =1 then modify the stress term to take into
         ! account dividing through by DevFuns%VOLUME fraction.
         integer, parameter :: IDIVID_BY_VOL_FRAC = 0
+
+        ! gradU
+        logical :: get_gradU
+        type(tensor_field), pointer :: gradU
+
         fem_vol_frac_f => extract_tensor_field( packed_state, "PackedFEPhaseVolumeFraction" )
         fem_vol_frac => fem_vol_frac_f%val( 1, :, : )
         ! open the boiling test for two phases-gas and liquid
@@ -2115,7 +2171,17 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ALLOCATE( RCOUNT_NODS(Mdims%mat_nonods) )
             END IF
         END IF
-        IF ( GOT_DIFFUS ) THEN
+
+        get_gradU = .false.
+        do iphase = 1, Mdims%nphase
+           gradU => extract_tensor_field( state( iphase ), "gradU", stat )
+           if ( stat == 0 ) then
+              get_gradU = .true.
+              exit
+           end if
+        end do
+
+        IF ( GOT_DIFFUS .or. get_gradU ) THEN
             ALLOCATE( DUX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
             ALLOCATE( DUOLDX_ELE_ALL( Mdims%ndim, Mdims%ndim, Mdims%nphase, Mdims%u_nloc, Mdims%totele ) )
         ENDIF
@@ -2177,7 +2243,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         CALL CALC_FACE_ELE( FACE_ELE, Mdims%totele, Mdims%stotel, FE_GIdims%nface, &
             Mspars%ELE%fin, Mspars%ELE%col, Mdims%cv_nloc, Mdims%cv_snloc, Mdims%cv_nonods, ndgln%cv, ndgln%suf_cv, &
             FE_funs%cv_sloclist, Mdims%x_nloc, ndgln%x )
-        IF( GOT_DIFFUS ) THEN
+
+       IF( GOT_DIFFUS .or. get_gradU ) THEN
             CALL DG_DERIVS_ALL( U_ALL, UOLD_ALL, &
                 DUX_ELE_ALL, DUOLDX_ELE_ALL, &
                 Mdims%ndim, Mdims%nphase, Mdims%ndim, Mdims%totele, ndgln%u, &
@@ -2188,7 +2255,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 Mdims%x_nonods, X_ALL(1,:), X_ALL(2,:), X_ALL(3,:), &
                 FE_GIdims%nface, FACE_ELE, FE_funs%u_sloclist, FE_funs%cv_sloclist, Mdims%u_snloc, Mdims%cv_snloc, WIC_U_BC_ALL_VISC, SUF_U_BC_ALL_VISC, &
                 FE_GIdims%sbcvngi, FE_funs%sbufen, FE_funs%sbcvfeweigh, &
-                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly )
+                FE_funs%sbcvfen, FE_funs%sbcvfenslx, FE_funs%sbcvfensly, get_gradU, state )
         ENDIF
         ! LES VISCOCITY CALC.
         IF ( GOT_DIFFUS ) THEN
@@ -2212,10 +2279,18 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ENDIF
                 !UDIFFUSION_VOL_ALL=UDIFFUSION_VOL + LES_UDIFFUSION_VOL
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
+if ( have_option( "/magma" ) ) then
+   sfield => extract_scalar_field( state(1), "VolumetricViscosity" ) ! this should be on a material mesh
+   UDIFFUSION_VOL_ALL(2,:) = sfield%val
+end if
                 UDIFFUSION_VOL_ALL = UDIFFUSION_VOL_ALL + LES_UDIFFUSION_VOL
             ELSE
                 UDIFFUSION_ALL=UDIFFUSION
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
+if ( have_option( "/magma" ) ) then
+   sfield => extract_scalar_field( state(1), "VolumetricViscosity" ) ! this should be on a material mesh
+   UDIFFUSION_VOL_ALL(2,:) = sfield%val
+end if
             ENDIF
         ENDIF
         if( RETRIEVE_SOLID_CTY ) THEN
@@ -5945,7 +6020,7 @@ subroutine high_order_pressure_solve( Mdims, u_rhs, state, packed_state, nphase,
             pfield => extract_tensor_field( packed_state, "PackedFEPressure" )
             do i = 1, get_boundary_condition_count( pfield )
                call get_boundary_condition( pfield, i, type=bc_type, surface_node_list=surface_node_list )
-               if ( trim( bc_type ) == "freesurface" ) then
+               if ( trim( bc_type ) == "freesurface" .or.  trim( bc_type ) == "top" ) then
                   got_free_surf = .true.
                   exit
                end if

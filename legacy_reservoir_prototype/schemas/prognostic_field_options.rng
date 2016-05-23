@@ -1817,6 +1817,12 @@ want this.</a:documentation>
             </attribute>
             <ref name="input_choice_real"/>
           </element>
+          <element name="type">
+            <attribute name="name">
+              <value>top</value>
+            </attribute>
+            <ref name="input_choice_real"/>
+          </element>
         </choice>
       </element>
     </zeroOrMore>
