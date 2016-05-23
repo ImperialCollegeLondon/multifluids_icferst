@@ -45,7 +45,7 @@ subroutine multiphase_prototype_wrapper() bind(C)
     use global_parameters, only: current_time, dt, timestep, option_path_len, &
         simulation_start_time, &
         simulation_start_cpu_time, &
-        simulation_start_wall_time, is_porous_media
+        simulation_start_wall_time, is_porous_media, first_time_step
     use diagnostic_fields_new_multiphase, only : &
         & calculate_diagnostic_variables_new => calculate_diagnostic_variables, &
         & check_diagnostic_dependencies
@@ -98,7 +98,8 @@ subroutine multiphase_prototype_wrapper() bind(C)
 
     ! Check if porous media model
     is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
-
+    !Flag the first time step
+    first_time_step = .true.
     ! Read state from .mpml file
     call populate_multi_state(state)
 !    call populate_state(state)
@@ -246,9 +247,12 @@ contains
         implicit none
         type(state_type), dimension(:), pointer, intent(inout) :: state
         !Local variables
-        integer :: i, nphase
+        integer :: i, nphase, npres
         character( len = option_path_len ) :: option_path
         nphase = option_count("/material_phase")
+        npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
+        !Adjust nphase to not account for the extra phases added by the wells
+        nphase = nphase/npres
 
         !Prepare some specific modifications prior to populating state
         !If the extra mesh have not been created, create them here
@@ -293,6 +297,33 @@ contains
                 end if
             end do
         end if
+
+
+        if (have_option('/physical_parameters/black-oil_PVT_table')) then
+
+        !Maybe no need for a field in state? and just calculate using required conditions????
+
+            !Create necessary memory to store the mass fraction of one of the pseudo-components (in a way that it is also adapted)
+            if (nphase /= 3)then
+                FLAbort('Black-Oil modelling requires three phases. Phase 1 Aqua, phase 2 liquid, phase 3 vapour')
+            end if
+
+            option_path = "/material_phase["// int2str( nphase -1 )//"]/scalar_field::VapourMassFraction"
+            call copy_option("/material_phase["// int2str( nphase - 1 )//"]/scalar_field::PhaseVolumeFraction",&
+                 trim(option_path))
+            !Make sure the field is not shown
+            if (.not.have_option(trim(option_path)//"/prognostic/output/exclude_from_vtu")) then
+                !Don't know how to set exclude_from_vtu to true from the spud options, hence,
+                !since Porous_media HAS to be true I copy it to obtain the same effect
+                call copy_option("/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media",&
+                 trim(option_path)//"/prognostic/output/exclude_from_vtu")
+            end if
+            !Make sure that this field is not the objective of adaptivity
+            if (have_option(trim(option_path)//"/prognostic/adaptivity_options")) then
+                call delete_option(trim(option_path)//"/prognostic/adaptivity_options")
+            end if
+        end if
+
 
         !Call fluidity to populate state
         call populate_state(state)

@@ -103,8 +103,18 @@ black_oil_options =
    ## The viscosity of the first phase is retrieved from diamond, NOTE
    ## that the viscosities in the vtus are the diamond viscosities.
    element black-oil_PVT_table {
-      anystring
+      anystring,
+    (
+       ## Constant density, taken from the Black-Oil model at referent state
+       ## However, the phase change is based on change of densities, so mass conservation is not guaranteed
+       element incompressible { empty }?,
+       ## Constant viscosity, taken from the diamond input
+       element constant_visc { empty }?
+    )
    }
+
+
+
 
 f_plane_options =
    ## f-plane approximation

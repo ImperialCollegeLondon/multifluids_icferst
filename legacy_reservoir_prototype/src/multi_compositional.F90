@@ -37,7 +37,6 @@ module Compositional_Terms
     use Copy_Outof_State
     use multi_data_types
     use futils, only: int2str
-
     implicit none
 
 contains
@@ -60,7 +59,8 @@ contains
         real, dimension( :, :, : ), intent( inout ) :: comp_absorb
 
         ! Local Variables
-        integer :: iphase, jphase, ele, cv_iloc, cv_nod, jcomp
+        integer :: &
+            iphase, jphase, ele, cv_iloc, cv_nod, jcomp
         real :: dt, alpha_beta, max_k, min_k, alpha
         character( len = option_path_len ) :: option_path
         logical :: KComp_Sigmoid
@@ -72,8 +72,8 @@ contains
         real, dimension(:,:), pointer :: satura
         !Initialize comp_absorb
         comp_absorb = 0.0
-        !Only two or three phases. if three, the first one is inert
-        if ( Mdims%nphase < 2 .or. Mdims%nphase > 4) return
+
+        if ( Mdims%nphase < 2 ) return
 
         tfield=>extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
         satura => tfield%val(1,:,:)
@@ -109,17 +109,16 @@ contains
         END DO
         VOLFRA_PORE_NOD = VOLFRA_PORE_NOD / SUM_NOD
 
-
         MIN_K = max( 1.e-1, MINVAL( K_COMP( ICOMP, : , : )))
         MAX_K = MAXVAL( K_COMP( ICOMP, : , : ) )
         CALL Calc_KComp2( Mdims%cv_nonods, Mdims%nphase, icomp, KComp_Sigmoid, &
             min( 1., max( 0., satura )), K_Comp, max_k, min_k, &
             K_Comp2 )
 
+
         DO CV_NOD = 1, Mdims%cv_nonods
             DO IPHASE = 1, Mdims%nphase
-                DO JPHASE = IPHASE + 1, Mdims%nphase, 1
-
+                DO JPHASE = IPHASE + 1, Mdims%nphase
                     ALPHA= ALPHA_BETA * VOLFRA_PORE_NOD( CV_NOD ) * &
                         ( max( 0.0, SATURA( IPHASE, CV_NOD ) * &
                         DENOLD( 1, IPHASE, CV_NOD ) ) / &
@@ -133,7 +132,6 @@ contains
 
                     COMP_ABSORB( IPHASE, JPHASE, CV_NOD ) = &
                         - ALPHA
-
                 END DO
             END DO
         END DO

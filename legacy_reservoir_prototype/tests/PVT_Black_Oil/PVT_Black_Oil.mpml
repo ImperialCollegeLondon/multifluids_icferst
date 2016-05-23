@@ -152,9 +152,13 @@
           </surface_ids>
           <type name="dirichlet">
             <apply_weakly/>
-            <constant>
-              <real_value rank="0">2.2e7</real_value>
-            </constant>
+            <python>
+              <string_value lines="20" type="code" language="python">def val(X, t):
+  val = 2.2e6
+  if (t &gt; 8.64e8): 
+   val = 0.5e5
+  return val</string_value>
+            </python>
           </type>
         </boundary_conditions>
         <boundary_conditions name="inlet">

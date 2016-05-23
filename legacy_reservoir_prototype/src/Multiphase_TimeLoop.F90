@@ -314,8 +314,8 @@ contains
             if (.not. simple_black_oil_model) then
                 ewrite(0,*) "WARNING: Black-oil modelling based on PVT tables requires porous media, 3 phases and no components"
             end if
-            !Initialize domain saturation according to initial pressure
-            if (simple_black_oil_model) call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
+            !Initialize Stock tank oil conditions. sprint_to_do. Is this necessary?
+            if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 10)
         end if
 
         if( have_option( '/material_phase[0]/multiphase_properties/capillary_pressure' ) ) &
@@ -361,7 +361,6 @@ contains
             enddo
         endif
         checkpoint_number=1
-        first_time_step = .true.
 !!$ Time loop
         Loop_Time: do
             ewrite(2,*) '    NEW DT', itime+1
@@ -413,6 +412,10 @@ contains
                 exclude_nonreprescribed = .true., time = acctim )
             !! Update all fields from time-step 'N - 1'
             call copy_packed_new_to_old( packed_state )
+            !Initialize gas molar fraction, this has to occur after copy_packed_new_to_old
+            !since for consistency, (later it is called as well) it uses the old values of pressure,
+            !however, they have to be the most updated at this point
+            if (simple_black_oil_model) call extended_Black_Oil(state, packed_state, Mdims, flash_flag = 0)
             !!$ FEMDEM...
 #ifdef USING_FEMDEM
             if ( is_multifracture ) then
@@ -628,8 +631,6 @@ contains
 
                 if ( have_component_field ) call calc_components()
 
-                !Flash calculations for simple Black-Oil modelling
-                if (simple_black_oil_model) call simple_standard_Black_Oil(state, packed_state, Mdims, flash_flag = 2)
                 !Check if the results are good so far and act in consequence, only does something if requested by the user
                 if (sig_hup .or. sig_int) then
                     ewrite(1,*) "Caught signal, exiting nonlinear loop"
@@ -651,6 +652,7 @@ contains
                 after_adapt=.false.
                 its = its + 1
             end do Loop_NonLinearIteration
+
             ! If calculating boundary fluxes, add up contributions to \int{totout} at each time step
             if(calculate_flux) then
                 ! We will output totout normalised as f1/(f1+f2). 29/01/2016 - corrected the normalisation (was incorrect for n_outlets > 1)

@@ -594,19 +594,44 @@ contains
             integer, intent(in) :: nonlinear_iteration
             !Local variables
             real :: physics_adjustment
+            logical, save :: Readed_options = .false.
+            logical, save :: gravity, cap_pressure, compositional, many_phases, black_oil, ov_relaxation, one_phase
 
-            physics_adjustment = 1.!If there are physics, the problem is more complex
+
+            if (.not.readed_options) then
+                !We read the options just once, and then they are stored as logicals
+                gravity = have_option("/physical_parameters/gravity")
+                if (have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)) then
+                    cap_pressure = .true.
+                else
+                    cap_pressure = .false.
+                end if
+                compositional = Mdims%ncomp > 0
+                many_phases = Mdims%n_in_pres > 2
+                black_oil = have_option( "/physical_parameters/black-oil_PVT_table")
+                !Positive effects on the convergence !Need to check for shock fronts...
+                if (have_option_for_any_phase("/multiphase_properties/Sat_overRelax", Mdims%nphase)) then
+                    ov_relaxation = .true.
+                else
+                    ov_relaxation = .false.
+                end if
+                one_phase = (Mdims%n_in_pres == 1)
+                readed_options = .true.
+            end if
+
+            !Depending on the active physics, the problem is more complex and requires more relaxation
+            physics_adjustment = 1.
             !Negative effects on the convergence
-            if (have_option("/physical_parameters/gravity")) physics_adjustment = physics_adjustment * 1.5
-            if (have_option_for_any_phase("/multiphase_properties/capillary_pressure", Mdims%nphase)) &
-                physics_adjustment = physics_adjustment * 2.0
-            if (Mdims%ncomp > 0 ) physics_adjustment = physics_adjustment * 1.5
-            if (Mdims%n_in_pres > 2) physics_adjustment = physics_adjustment * 1.2
-            !Positive effects on the convergence !Need to check for shock fronts...
-            if (have_option_for_any_phase("/multiphase_properties/Sat_overRelax", Mdims%nphase)) &
-                physics_adjustment = physics_adjustment * 0.8
-            if (Mdims%n_in_pres == 1) physics_adjustment = physics_adjustment * 0.5
+            if (gravity) physics_adjustment = physics_adjustment * 1.5
+            if (cap_pressure) physics_adjustment = physics_adjustment * 2.0
+            if (compositional) physics_adjustment = physics_adjustment * 1.5
+            if (many_phases) physics_adjustment = physics_adjustment * 1.2
+            !For the first two non-linear iterations, it has to re-adjust, as the gas and oil are again mixed
+            if (black_oil .and. nonlinear_iteration <= 2) physics_adjustment = physics_adjustment * 2.
 
+            !Positive effects on the convergence !Need to check for shock fronts...
+            if (ov_relaxation) physics_adjustment = physics_adjustment * 0.8
+            if (one_phase) physics_adjustment = physics_adjustment * 0.5
 
             !For the time being, it is based on this simple table
             if (Courant_number * physics_adjustment > 40.) then
@@ -2252,7 +2277,6 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure) then
                     Mmat%PIVIT_MAT(:,:,ELE)=0.0
                     do i=1,size(Mmat%PIVIT_MAT,1)
-!                        Mmat%PIVIT_MAT(I,I,ELE)= 1.0
                         Mmat%PIVIT_MAT(I,I,ELE) = 2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
                     END DO
                 end if
