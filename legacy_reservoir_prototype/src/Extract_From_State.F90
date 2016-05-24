@@ -126,11 +126,19 @@ contains
         Mdims%nphase = Mdims%nstate - Mdims%ncomp
         assert( Mdims%nphase > 0 ) ! Check if there is more than 0 phases
 
+        ! Number of pressures to solve for
+        Mdims%npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
+        Mdims%n_in_pres = Mdims%nphase / Mdims%npres
+
         !!$ Get the vel element type.
         is_porous_media = have_option('/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media')
         if (is_porous_media) then!Check that the FPI method is on
-            if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration')) then
+            if (.not. have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres > 1) then
                 ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> is HIGHLY recommended for multiphase porous media flow"
+            end if
+            !Don;'t use for single phase porous media flows
+            if (have_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration') .and. Mdims%n_in_pres < 2) then
+                ewrite(0,*) "WARNING: The option <Fixed_Point_Iteration> SHOULD NOT be used for single phase porous media flows"
             end if
         end if
         is_multifracture = have_option( '/femdem_fracture' )
@@ -183,10 +191,6 @@ contains
             Mdims%ph_nloc = 0
             Mdims%ph_nonods = 0
         end if
-
-        ! Number of pressures to solve for
-        Mdims%npres = option_count("/material_phase/scalar_field::Pressure/prognostic")
-        Mdims%n_in_pres = Mdims%nphase / Mdims%npres
 
         return
     end subroutine Get_Primary_Scalars_new
