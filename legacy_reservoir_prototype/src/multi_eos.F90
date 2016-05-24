@@ -2480,7 +2480,7 @@ contains
         character( len = option_path_len ), parameter :: option_path = "/physical_parameters/black-oil_PVT_table"
         real, pointer :: Zg
         real :: Yg,Yo,Xg,Xo, Zo, rho_stc_ratio, rho_ratio,Sg,&
-            Kg, Ko, aux, aux2, fv, ro_cap, Mix_o, Mix_g
+            Kg, Ko, aux, aux2, fv, ro_cap, Mix_o, Mix_g, ro_min_cap
 
         !Default molecular weights for gas and oil respectively, just in case they are not defined elsewhere
         real :: Mg = 22.9395, Mo = 190.0
@@ -2534,7 +2534,7 @@ contains
                 else
                     Sg = min(max(saturation%val(1,3,cv_inod)/(1.0-saturation%val(1,1,cv_inod))  ,0.),1.)
                     !Calculate the component phase change K constants and the partial mass fractions
-                    call calculate_K_comp(ko,kg, xg,xo,yg,yo,ro_cap, pressure%val(1,1,cv_inod))
+                    call calculate_K_comp(ko,kg, xg,xo,yg,yo, pressure%val(1,1,cv_inod))
                     !Calculate mix molecular weights
                     Mix_o = xg * Mg + xo * Mo; Mix_g = yo * Mo + yg * Mg
                     !Calculate rho_ratio_molecular(rho_gas/rho_oil)
@@ -2591,7 +2591,7 @@ contains
                 Zg => VapourMassFraction%val(cv_inod);Zo = 1- Zg
                 !Original paper, for Black-Oil only
                 !Calculate the K components and the partial mass fractions
-                call calculate_K_comp(ko,kg, xg,xo,yg,yo,ro_cap, pressure%val(1,1,cv_inod))
+                call calculate_K_comp(ko,kg, xg,xo,yg,yo, pressure%val(1,1,cv_inod))
                 !Check if gas phase exists
                 if (ko*Zo + Kg*Zg /= 1.) then
                     fv = min(max(Zo / (1. - Kg)  + Zg/(1 - Ko),0.),1.)
@@ -2661,7 +2661,7 @@ contains
             do cv_inod = 1, mdims%cv_nonods
                 !Original paper, for Black-Oil only
                 !Calculate the K components and the partial mass fractions
-                call calculate_K_comp(ko,kg, xg,xo,yg,yo,ro_cap, pressure%val(1,1,cv_inod))
+                call calculate_K_comp(ko,kg, xg,xo,yg,yo, pressure%val(1,1,cv_inod))
                 !Store K component for the compositional
                 select case (icomp)
                     case (1)
@@ -2689,17 +2689,19 @@ contains
 
         end function gas_mass_fraction_from_gas_saturation
 
-        subroutine calculate_K_comp(ko,kg, xg,xo,yg,yo,ro_cap, Pres)
+        subroutine calculate_K_comp(ko,kg, xg,xo,yg,yo, Pres)
             !Calculates the K between the pseudo components
             !Requires rho_stc_ratio to have been defined before
             implicit none
-            real, intent(inout) :: ko,kg, xg,xo,yg,yo,ro_cap, Pres
+            real, intent(inout) :: ko,kg, xg,xo,yg,yo, Pres
+            !Local variables
+            real ::ro_min_cap, RO_CAP
 
             RO_CAP = 0.178108 * eval_table(Pres, PVT_table,4) / rho_stc_ratio
-            !At present, only Black oil, needs to be amended to allow, volatile and condensates
+            ro_min_cap = 5.61458d-6 * eval_table(Pres, PVT_table,8) * rho_stc_ratio
+            !Calculate partial compositions of the phases(X is for liquid, and x for vapour)
             Xg = RO_CAP/(1+RO_CAP); Xo = 1. - Xg
-            Yg = 1; Yo = 1. - Yg
-
+            Yg = 1./(1+ro_min_cap); Yo = 1. - Yg
             !Calculate K component
             Kg = Yg/max(Xg, 1e-10)
             Ko = Yo/max(Xo, 1e-10)
@@ -2830,7 +2832,7 @@ contains
             PVT_table(5,8)  = 9.10d-1; PVT_table(6,8)  = 1.12d-2
             PVT_table(5,9)  = 9.75d-1; PVT_table(6,9)  = 0.96d-2
             !#####Dissolved GOR (Oil disolved in gas -Rv-)######
-            PVT_table(8,:)  = 1e-15
+            PVT_table(8,:)  = 0.
 
         end subroutine
 
@@ -2891,7 +2893,7 @@ contains
             PVT_table(5,11) = 5.189d-1; PVT_table(6,11) = 1.16d-2;PVT_table(7,11)  = 0.232
             PVT_table(5,12) = 5.893d-1; PVT_table(6,12) = 1.08d-2;PVT_table(7,12)  = 0.097
             !#####Dissolved GOR (Oil disolved in gas -Rv-)######
-            PVT_table(8,:)  = 1e-5
+            PVT_table(8,:)  = 0.
         end subroutine populate_with_Texas_Black_Oil
 
     end subroutine extended_Black_Oil
