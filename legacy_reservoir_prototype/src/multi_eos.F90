@@ -2519,14 +2519,13 @@ contains
         end if
 
         pressure => extract_tensor_field(packed_state,"PackedFEPressure")
-
+        !Calculate the molecular density ratio (oil/gas)
+        rho_stc_ratio = density_reference(2)/density_reference(3)* (Mg/Mo)
 
         if (flash_flag == 10) then
             !Initialize the MassFraction of the Gas component
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             VapourMassFraction => extract_scalar_field(state(3),"VapourMassFraction")
-            !Conversion from PVT data to compositional
-            rho_stc_ratio = density_reference(2)/density_reference(3)* (Mg/Mo)
             do cv_inod = 1, mdims%cv_nonods
                 Zg => VapourMassFraction%val(cv_inod)
                 if (saturation%val(1,1,cv_inod)==1.) then
@@ -2585,8 +2584,6 @@ contains
             saturation => extract_tensor_field(packed_state,"PackedPhaseVolumeFraction")
             VapourMassFraction => extract_scalar_field(state(3),"VapourMassFraction")
 
-            !Conversion from PVT data to compositional
-            rho_stc_ratio = density_reference(2)/density_reference(3)* (Mg/Mo)
             do cv_inod = 1, mdims%cv_nonods
                 Zg => VapourMassFraction%val(cv_inod);Zo = 1- Zg
                 !Original paper, for Black-Oil only
@@ -2657,7 +2654,7 @@ contains
             VapourMassFraction => extract_scalar_field(state(3),"VapourMassFraction")
 
             !Conversion from PVT data to compositional
-            rho_stc_ratio = density_reference(2)/density_reference(3)* (Mg/Mo)
+
             do cv_inod = 1, mdims%cv_nonods
                 !Original paper, for Black-Oil only
                 !Calculate the K components and the partial mass fractions
