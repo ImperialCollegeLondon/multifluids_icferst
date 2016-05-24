@@ -773,7 +773,7 @@ contains
 
         !!$ magma stuff -- to be deleted shortly
         integer :: idim, idx1, idx2, ndim
-        real :: beta
+        type( scalar_field ), pointer :: beta
         !!$ end of magma stuff
 
 
@@ -922,30 +922,30 @@ contains
         if ( have_option( "/magma" ) ) then
            ndim = Mdims%ndim
 
-           beta = 1.0 ! this needs to be on a material mesh.
+           beta => extract_scalar_field( state( 1 ), "beta" )
 
            iphase=1 ; jphase=1
            do idim = 1, ndim
               idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-              velocity_absorption( idx1, idx2, : ) = beta
+              velocity_absorption( idx1, idx2, : ) = beta%val
            end do
 
            iphase=1 ; jphase=2
            do idim = 1, ndim
               idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-              velocity_absorption( idx1, idx2, : ) = -beta
+              velocity_absorption( idx1, idx2, : ) = -beta%val
            end do
 
            iphase=2 ; jphase=1
            do idim = 1, ndim
               idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-              velocity_absorption( idx1, idx2, : ) = -beta
+              velocity_absorption( idx1, idx2, : ) = -beta%val
            end do
 
            iphase=2 ; jphase=2
            do idim = 1, ndim
               idx1=idim+(iphase-1)*ndim ; idx2=idim+(jphase-1)*ndim
-              velocity_absorption( idx1, idx2, : ) = beta
+              velocity_absorption( idx1, idx2, : ) = beta%val
            end do
 
         end if
@@ -1006,6 +1006,15 @@ contains
             CALL CALCULATE_SURFACE_TENSION_NEW( state, packed_state, Mdims, Mspars, ndgln, Mdisopt, &
                 PLIKE_GRAD_SOU_COEF%val, PLIKE_GRAD_SOU_GRAD%val, IPLIKE_GRAD_SOU)
         end if
+
+        if ( have_option( "/magma" ) ) then
+
+           ! solid pressure term - use the surface tension code
+
+
+        end if
+
+
         IF ( GLOBAL_SOLVE ) then
             !Prepare memory specific for this
             ALLOCATE( MCY_RHS( Mdims%ndim * Mdims%nphase * Mdims%u_nonods + Mdims%cv_nonods )) ; MCY_RHS=0.
@@ -2288,8 +2297,9 @@ end if
                 UDIFFUSION_ALL=UDIFFUSION
                 if ( UDIFFUSION_VOL%have_field ) UDIFFUSION_VOL_ALL = UDIFFUSION_VOL%val(:,1,1,:)
 if ( have_option( "/magma" ) ) then
-   sfield => extract_scalar_field( state(1), "VolumetricViscosity" ) ! this should be on a material mesh
-   UDIFFUSION_VOL_ALL(2,:) = sfield%val
+   sfield => extract_scalar_field( state(1), "Ksi_s" ) ! this is the volumetric viscosity
+   UDIFFUSION_VOL_ALL(2,:) = sfield%val                ! and it should be on a material mesh
+
 end if
             ENDIF
         ENDIF
