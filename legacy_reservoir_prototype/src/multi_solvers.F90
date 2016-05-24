@@ -480,6 +480,8 @@ contains
 
         sat_field => extract_tensor_field( packed_state, "PackedPhaseVolumeFraction" )
         Satura =>  sat_field%val(1,:,:)
+
+
         !Automatic method based on the history of convergence
         if (backtrack_par_from_schema < 0.0) then
 
