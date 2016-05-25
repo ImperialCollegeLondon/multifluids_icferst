@@ -1339,7 +1339,7 @@ contains
 
         !Four steps
         !1. Store OldPhaseVolumeFraction
-        do iphase = 1, Mdims%nphase
+        do iphase = 1, Mdims%n_in_pres
             sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
             sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
             sat2%val = sat1%val
@@ -1353,14 +1353,14 @@ contains
         !3.Reconstruct the Saturation of the first phase
         sat1  => extract_scalar_field( state(phaseToAdapt), "PhaseVolumeFraction" )
         sat1%val = 1.0
-        do iphase = 1, Mdims%nphase
+        do iphase = 1, Mdims%n_in_pres
             if (iphase /= phaseToAdapt) then
                 sat2  => extract_scalar_field( state(iphase), "PhaseVolumeFraction" )
                 sat1%val = sat1%val - sat2%val
             end if
         end do
         !4. Copy back to OldPhaseVolumeFraction
-        do iphase = 1, Mdims%nphase
+        do iphase = 1, Mdims%n_in_pres
             sat1 => extract_scalar_field( state(iphase), "OldPhaseVolumeFraction" )
             sat2  => extract_scalar_field( state(iphase), "Saturation_bak" )
             sat1%val = sat2%val
