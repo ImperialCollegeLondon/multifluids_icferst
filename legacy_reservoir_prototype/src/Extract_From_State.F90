@@ -1923,7 +1923,7 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
     !how the nonlinear iterations are going and depending on that increase the timestep
     !or decreases the timestep and repeats that timestep
     Implicit none
-    type(state_type), intent(inout) :: packed_state!, backup_state
+    type(state_type), intent(inout) :: packed_state
     real, dimension(:,:,:), allocatable, intent(inout) :: reference_field
     logical, intent(inout) :: Repeat_time_step, ExitNonLinearLoop
     logical, intent(in) :: nonLinearAdaptTs
@@ -2067,7 +2067,6 @@ subroutine Adaptive_NonLinear(packed_state, reference_field, its,&
                 !information about convergence to the trust_region_method
 !                backtrack_or_convergence = ts_ref_val
                 ewrite(1,*) "FPI convergence: ",ts_ref_val,";L_inf:", inf_norm_val, ";Total iterations:", its
-
                 !If only non-linear iterations
                 if (.not.nonLinearAdaptTs) then
                     !Automatic non-linear iteration checking

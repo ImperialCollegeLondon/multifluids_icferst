@@ -325,6 +325,16 @@ contains
         end if
 
 
+        if (is_porous_media .and. have_option('/mesh_adaptivity/hr_adaptivity')) then
+            !Ensure that preserve_mesh_regions is on, since otherwise it does not work
+            !Don't know how to set exclude_from_vtu to true from the spud options, hence,
+            !since Porous_media HAS to be true I copy it to obtain the same effect
+            if (.not.have_option("/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")) then
+                call copy_option("/geometry/mesh::VelocityMesh/from_mesh/mesh_shape/Porous_media",&
+                 "/mesh_adaptivity/hr_adaptivity/preserve_mesh_regions")
+            end if
+        end if
+
         !Call fluidity to populate state
         call populate_state(state)
 

@@ -1867,7 +1867,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/viscosity_scheme/nonlinear_scheme/beta_viscosity_max', DIFF_MAX_FRAC, default=100. )
         end if
         !If we have calculated already the Mmat%PIVIT_MAT and stored then we don't need to calculate it again
-        Porous_media_PIVIT_not_stored_yet = (.not.is_porous_media .or. (.not.is_porous_media .or. Mdims%npres > 1))
+        Porous_media_PIVIT_not_stored_yet = (.not.Mmat%Stored .or. (.not.is_porous_media .or. Mdims%npres > 1))
         !If we do not have an index where we have stored Mmat%C, then we need to calculate it
         got_c_matrix  = Mmat%stored .or. Mmat%CV_pressure
         ewrite(3,*) 'In ASSEMB_FORCE_CTY'
