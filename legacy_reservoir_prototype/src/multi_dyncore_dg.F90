@@ -1007,12 +1007,8 @@ contains
                 PLIKE_GRAD_SOU_COEF%val, PLIKE_GRAD_SOU_GRAD%val, IPLIKE_GRAD_SOU)
         end if
 
-        if ( have_option( "/magma" ) ) then
-
-           ! solid pressure term - use the surface tension code
-
-
-        end if
+        ! solid pressure term - use the surface tension code
+        if ( have_option( "/magma" ) ) IPLIKE_GRAD_SOU = 2
 
 
         IF ( GLOBAL_SOLVE ) then
@@ -1610,7 +1606,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         SDETWE, VLN,VLN_OLD, &
         MASS_ELE
         REAL, DIMENSION( :, : ),    ALLOCATABLE :: XL_ALL, XL2_ALL, XSL_ALL, SNORMXN_ALL
-        REAL, DIMENSION ( : , :,  : ), allocatable :: GRAD_SOU_GI_NMX, GRAD_SOU_GI
+        REAL, DIMENSION ( : , :,  : ), allocatable :: GRAD_SOU_GI_NMX, GRAD_SOU_GI, GRAD_SOU2_GI_NMX, GRAD_SOU2_GI
+        REAL, DIMENSION ( : , :,  : ), allocatable :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         REAL, DIMENSION( : ),    ALLOCATABLE :: NORMX_ALL
         REAL, DIMENSION ( : , :,  : ), allocatable :: SIGMAGI, SIGMAGI_STAB, SIGMAGI_STAB_SOLID_RHS, &
         DIFF_COEF_DIVDX, DIFF_COEFOLD_DIVDX, FTHETA, SNDOTQ_IN, SNDOTQ_OUT, &
@@ -1736,7 +1733,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             CV_SILOC, JDIM, JPHASE, &
             cv_inod, COUNT_ELE, CV_ILOC2, CV_INOD2, IDIMSF,JDIMSF, &
             IPRES, ICOMP
-        REAL    :: NN, NM, SAREA,R
+        REAL    :: NN, NM, SAREA, R, RR
         REAL    :: HDC, VLM, VLM_NEW,VLM_OLD, NN_SNDOTQ_IN,NN_SNDOTQ_OUT, &
             NN_SNDOTQOLD_IN,NN_SNDOTQOLD_OUT, RNN, c1(Mdims%ndim), c2(Mdims%ndim)
         REAL    :: MASSE, MASSE2
@@ -1798,7 +1795,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         type(tensor_field) :: momentum_BCs
         INTEGER, DIMENSION( 4 ), PARAMETER :: ELEMENT_CORNERS=(/1,3,6,10/)
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
-        type( tensor_field ), pointer :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
+        type( tensor_field ), pointer :: PLIKE_GRAD_SOU_COEF_F, PLIKE_GRAD_SOU_GRAD_F, a_s
+        type( scalar_field ), pointer :: P_s_hat
         ! GRAVTY is used in the free surface method only...
         REAL :: GRAVTY
         REAL :: MM_GRAVTY
@@ -1967,6 +1965,7 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( DENGI( Mdims%nphase, FE_GIdims%cv_ngi ))
         ALLOCATE( DENGIOLD( Mdims%nphase, FE_GIdims%cv_ngi ))
         ALLOCATE( GRAD_SOU_GI( Mdims%ncomp, Mdims%nphase, FE_GIdims%cv_ngi ))
+        ALLOCATE( GRAD_SOU2_GI( Mdims%ncomp, Mdims%nphase, FE_GIdims%cv_ngi ))
         ALLOCATE( RHS_U_CV( Mdims%nphase, Mdims%u_nloc ))
         ALLOCATE( RHS_U_CV_OLD( Mdims%nphase, Mdims%u_nloc ))
         ALLOCATE( UDEN_VFILT( Mdims%nphase, Mdims%u_nloc ))
@@ -2056,9 +2055,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
         ALLOCATE( SNDOTQOLD_IN(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( SNDOTQOLD_OUT(Mdims%ndim,Mdims%nphase,FE_GIdims%sbcvngi) )
         ALLOCATE( GRAD_SOU_GI_NMX( Mdims%ndim, Mdims%ncomp, Mdims%nphase ))
-        GRAD_SOU_GI_NMX = 0.
-        ALLOCATE( MASS_ELE( Mdims%totele ))
-        MASS_ELE=0.0
+        ALLOCATE( GRAD_SOU2_GI_NMX( Mdims%ndim, Mdims%ncomp, Mdims%nphase ))
+        GRAD_SOU_GI_NMX=0.0 ; GRAD_SOU2_GI_NMX=0.0
+        ALLOCATE( MASS_ELE( Mdims%totele )) ; MASS_ELE=0.0
         ! Allocating for non-linear Petrov-Galerkin diffusion stabilization...
         ALLOCATE( LOC_MASS_INV(Mdims%u_nloc, Mdims%u_nloc) )
         ALLOCATE( LOC_MASS(Mdims%u_nloc, Mdims%u_nloc) )
@@ -2322,11 +2321,26 @@ end if
             allocate( vol_s_gi( FE_GIdims%cv_ngi ) )
             allocate( cv_dengi( Mdims%nphase, FE_GIdims%cv_ngi ) )
         endif
-        ! surface tension terms
-        IF ( IPLIKE_GRAD_SOU /= 0) THEN
-            PLIKE_GRAD_SOU_GRAD => EXTRACT_TENSOR_FIELD( PACKED_STATE, "SurfaceTensionGrad" )
-            PLIKE_GRAD_SOU_COEF => EXTRACT_TENSOR_FIELD( PACKED_STATE, "SurfaceTensionCoef" )
+
+        ! surface tension-like terms
+        IF ( IPLIKE_GRAD_SOU /= 0 ) THEN
+
+            ALLOCATE( PLIKE_GRAD_SOU_GRAD(Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ) ) ; PLIKE_GRAD_SOU_GRAD=0.0
+            ALLOCATE( PLIKE_GRAD_SOU_COEF(Mdims%ncomp, Mdims%nphase, Mdims%cv_nonods ) ) ; PLIKE_GRAD_SOU_COEF=0.0
+
+            IF ( IPLIKE_GRAD_SOU == 1 ) THEN
+                PLIKE_GRAD_SOU_GRAD_F => EXTRACT_TENSOR_FIELD( PACKED_STATE, "SurfaceTensionGrad" )
+                PLIKE_GRAD_SOU_COEF_F => EXTRACT_TENSOR_FIELD( PACKED_STATE, "SurfaceTensionCoef" )
+                PLIKE_GRAD_SOU_GRAD = PLIKE_GRAD_SOU_GRAD_F%val ; PLIKE_GRAD_SOU_COEF = PLIKE_GRAD_SOU_COEF_F%val
+            ELSE IF ( IPLIKE_GRAD_SOU == 2 ) THEN
+                ! this is for magma runs only at this point - need to generalise
+                P_s_hat => EXTRACT_SCALAR_FIELD( STATE(1), "P_s_hat" ) ! PLIKE_GRAD_SOU_GRAD_F
+                a_s => EXTRACT_TENSOR_FIELD( PACKED_STATE, "PackedPhaseVolumeFraction" ) ! PLIKE_GRAD_SOU_COEF_F
+                PLIKE_GRAD_SOU_GRAD(1,2,:) = P_s_hat%val ; PLIKE_GRAD_SOU_COEF(1,2,:) = a_s%val(1,1,:)
+            END IF
         END IF
+
+
         Loop_Elements: DO ELE = 1, Mdims%totele ! VOLUME integral
             ! Calculate DevFuns%DETWEI,DevFuns%RA,NX,NY,NZ for element ELE
              call DETNLXR_PLUS_U(ELE, X_ALL, ndgln%x, FE_funs%cvweight, &
@@ -2404,10 +2418,9 @@ end if
                     LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )     = VIRTUAL_MASS_OLD( :,:, CV_INOD )
                 ENDIF
                 DO IPHASE = 1, Mdims%nphase
-                    IF ( IPLIKE_GRAD_SOU /= 0) THEN
-
-                        LOC_PLIKE_GRAD_SOU_COEF( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_COEF%val( :, IPHASE, CV_INOD )
-                        LOC_PLIKE_GRAD_SOU_GRAD( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_GRAD%val( :, IPHASE, CV_INOD )
+                    IF ( IPLIKE_GRAD_SOU >= 1) THEN
+                        LOC_PLIKE_GRAD_SOU_COEF( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_COEF( :, IPHASE, CV_INOD )
+                        LOC_PLIKE_GRAD_SOU_GRAD( :, IPHASE, CV_ILOC ) = PLIKE_GRAD_SOU_GRAD( :, IPHASE, CV_INOD )
                     END IF
                     DO IDIM = 1, Mdims%ndim
                         LOC_U_SOURCE_CV( IDIM, IPHASE, CV_ILOC ) = U_SOURCE_CV( IDIM, IPHASE, CV_INOD )
@@ -2508,10 +2521,10 @@ end if
                 VOL_FRA_GI=MAX(VOL_FRA_GI, 0.0)
             ENDIF
             DENGI = 0.0 ; DENGIOLD = 0.0
-            GRAD_SOU_GI = 0.0
+            GRAD_SOU_GI = 0.0 ; GRAD_SOU2_GI = 0.0
             IF(GOT_VIRTUAL_MASS) THEN
-                VIRTUAL_MASS_GI         = 0.0
-                VIRTUAL_MASS_OLD_GI         = 0.0
+                VIRTUAL_MASS_GI = 0.0
+                VIRTUAL_MASS_OLD_GI = 0.0
             ENDIF
             DO CV_ILOC = 1, Mdims%cv_nloc
                 DO GI = 1, FE_GIdims%CV_NGI
@@ -2533,9 +2546,13 @@ end if
                             VIRTUAL_MASS_OLD_GI( :,:, GI )     = VIRTUAL_MASS_OLD_GI( :,:, GI )     + CVN_REVERSED( GI, CV_ILOC ) * LOC_VIRTUAL_MASS_OLD( :,:, CV_ILOC )
                         ENDIF
                     ENDIF
-                    IF ( IPLIKE_GRAD_SOU == 1 ) THEN
+                    IF ( IPLIKE_GRAD_SOU >= 1 ) THEN
                         GRAD_SOU_GI( :, :, GI ) = GRAD_SOU_GI( :, :, GI ) &
                             + CVFEN_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_COEF( :, :, CV_ILOC )
+                        IF ( IPLIKE_GRAD_SOU == 2 ) then
+                           GRAD_SOU2_GI( :, :, GI ) = GRAD_SOU2_GI( :, :, GI ) &
+                            + 2.*CVFEN_REVERSED( GI, CV_ILOC ) * LOC_PLIKE_GRAD_SOU_GRAD( :, :, CV_ILOC )
+                        END IF
                     END IF
                 END DO
             END DO
@@ -3016,13 +3033,18 @@ end if
                     if(.not.got_c_matrix) JCV_NOD = ndgln%p( ( ELE - 1 ) * Mdims%p_nloc + P_JLOC )
                     !In this section we multiply the shape functions over the GI points. I.E: We perform the integration
                     !over the element of the pressure like source term.
-                    if ( IPLIKE_GRAD_SOU == 1) then
+                    if ( IPLIKE_GRAD_SOU >= 1 ) then
                         !In this section of the assembly we add the volumetric part.
                         ! Coeff * Integral(N grad FE_funs%cvfen PLIKE_GRAD_SOU dV)
                         DO ICOMP= 1, Mdims%ncomp
                             GRAD_SOU_GI_NMX( :, ICOMP, :) = matmul(CVFENX_ALL_REVERSED(:, :, P_JLOC),&
                                 SPREAD(DevFuns%DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ), DIM=2, NCOPIES=Mdims%nphase)*&
                                 transpose(GRAD_SOU_GI(ICOMP, :, :)))
+                            IF ( IPLIKE_GRAD_SOU == 2 ) THEN
+                               GRAD_SOU2_GI_NMX( :, ICOMP, :) = matmul(CVFENX_ALL_REVERSED(:, :, P_JLOC),&
+                                   SPREAD(DevFuns%DETWEI( : ) *UFEN_REVERSED( :, U_ILOC ), DIM=2, NCOPIES=Mdims%nphase)*&
+                                   transpose(GRAD_SOU2_GI(ICOMP, :, :)))
+                            END IF
                         END DO
                     end if
                     ! Coeff * Integral(N grad FE_funs%cvfen VOL_FRA dV)
@@ -3051,11 +3073,15 @@ end if
                                 END DO
                             ENDIF
                         END IF
-                        IF ( IPLIKE_GRAD_SOU == 1) THEN ! Pressure like term
+                        IF ( IPLIKE_GRAD_SOU >= 1 ) THEN ! Pressure like term
                             DO IDIM = 1, Mdims%ndim
                                 DO ICOMP = 1, Mdims%ncomp
                                     LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
                                         - GRAD_SOU_GI_NMX( IDIM, ICOMP, IPHASE ) * LOC_PLIKE_GRAD_SOU_GRAD( ICOMP, IPHASE, P_JLOC )
+                                    IF ( IPLIKE_GRAD_SOU == 2 ) THEN
+                                       LOC_U_RHS( IDIM, IPHASE, U_ILOC ) = LOC_U_RHS( IDIM, IPHASE, U_ILOC ) &
+                                           - GRAD_SOU2_GI_NMX( IDIM, ICOMP, IPHASE ) * LOC_PLIKE_GRAD_SOU_COEF( ICOMP, IPHASE, P_JLOC )
+                                    END IF
                                 END DO
                             END DO
                         END IF
@@ -3121,15 +3147,18 @@ end if
                     END DO
                 END DO
                 P_DX = 0.0
+                RR = 0.0
                 DO P_ILOC = 1, Mdims%p_nloc
                     DO GI = 1, FE_GIdims%cv_ngi
                         P_DX( :, GI ) = P_DX( :, GI ) + CVFENX_ALL_REVERSED(1:Mdims%ndim, GI, P_ILOC ) * LOC_P( P_ILOC )
-                        IF ( IPLIKE_GRAD_SOU == 1 ) THEN ! Pressure like terms...
+                        IF ( IPLIKE_GRAD_SOU >= 1 ) THEN ! Pressure like terms...
                             DO IPHASE = 1, Mdims%nphase
                                 DO ICOMP = 1, Mdims%ncomp
                                     R = GRAD_SOU_GI( ICOMP, IPHASE, GI ) * LOC_PLIKE_GRAD_SOU_GRAD( ICOMP, IPHASE, P_ILOC )
+                                    IF ( IPLIKE_GRAD_SOU == 2 ) & ! Other part of solid pressure
+                                        RR = GRAD_SOU2_GI( ICOMP, IPHASE, GI ) * LOC_PLIKE_GRAD_SOU_COEF( ICOMP, IPHASE, P_ILOC )
                                     DO IDIM = 1, Mdims%ndim
-                                        RESID_U( IDIM, IPHASE, GI ) = RESID_U( IDIM, IPHASE, GI ) + R * CVFENX_ALL_REVERSED( IDIM, GI, P_ILOC )
+                                        RESID_U( IDIM, IPHASE, GI ) = RESID_U( IDIM, IPHASE, GI ) + (R + RR) * CVFENX_ALL_REVERSED( IDIM, GI, P_ILOC )
                                     END DO
                                 END DO
                             END DO
