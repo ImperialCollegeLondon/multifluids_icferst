@@ -1492,7 +1492,9 @@ contains
                      do iloc = 1, Mdims%cv_nloc
                         mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + iloc )
                         momentum_diffusion( :, :, iphase, mat_nod ) = mu_tmp( :, :, iloc )
-                        t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
+                        !!-PY: changed it for the index problem
+                        !!t_field%val( :, :, mat_nod ) = mu_tmp( :, :, iloc )
+                        t_field%val( :, :, 1 ) = mu_tmp( :, :, iloc )
                      end do
                   end do
                end do
