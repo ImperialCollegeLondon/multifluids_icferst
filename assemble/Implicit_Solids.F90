@@ -1818,7 +1818,8 @@ contains
    end do ! nintersection loop, i.e. ele_A loop 
 
    if (.not.femdem_out) then
-     ele_B_nodes => ele_nodes(new_position, ele_B)
+!!-PY changed it for correct the solidconcentration
+     ele_B_nodes => ele_nodes(solid, ele_B)
      do loc = 1, size(ele_B_nodes)
        call addto(solid, ele_B_nodes(loc), all_vols_C / vol_B)
      end do
