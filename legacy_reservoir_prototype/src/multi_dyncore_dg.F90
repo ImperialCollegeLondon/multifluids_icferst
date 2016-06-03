@@ -1647,7 +1647,9 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
 ! LES_THETA =1 is backward Euler for the LES viscocity.
 ! COEFF_SOLID_FLUID is the coeffficient that determins the magnitude of the relaxation to the solid vel...
 ! min_den_for_solid_fluid is the minimum density that is used in the solid-fluid coupling term.
-            REAL, PARAMETER :: min_den_for_solid_fluid = 1.0, COEFF_SOLID_FLUID_stab=1.0, COEFF_SOLID_FLUID_relax=1.0
+!!-PY: COEFF_SOLID_FLUID_stab=1.0 means there is relaxation in the shell by using the immersed-shell method.
+!!-PY: COEFF_SOLID_FLUID_relax=0.0 means there is no relaxtion inside the solid. If switch to COEFF_SOLID_FLUID_relax=1.0, that means there is relaxtion inside the solid.
+            REAL, PARAMETER :: min_den_for_solid_fluid = 1.0, COEFF_SOLID_FLUID_stab=1.0, COEFF_SOLID_FLUID_relax=0.0
 ! include_viscous_solid_fluid_drag_force switches on the solid-fluid coupling viscocity boundary conditions...
 !            LOGICAL, PARAMETER :: include_viscous_solid_fluid_drag_force = .FALSE.
             LOGICAL :: include_viscous_solid_fluid_drag_force
@@ -2149,12 +2151,12 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
                 ALLOCATE(FOURCE_SOLID_FLUID_COUP(Mdims%ndim, Mdims%nphase, Mdims%cv_nonods))
                 f_x => extract_vector_field( packed_state, "f_x" )
                 do IDIMSF= 1, Mdims%ndim
-                    FOURCE_SOLID_FLUID_COUP( IDIMSF, 1, : ) = f_x%val(IDIMSF, : ) !f_x do not include Mdims%nphase
+                    FOURCE_SOLID_FLUID_COUP( IDIMSF, 1, : ) = 7.5*f_x%val(IDIMSF, : ) !f_x do not include Mdims%nphase
                 end do
                 a_xx => extract_tensor_field( packed_state, "a_xx")
                 do IDIMSF=1, Mdims%ndim
                     do JDIMSF=1, Mdims%ndim
-                        ABS_SOLID_FLUID_COUP(IDIMSF, JDIMSF, 1, :)=a_xx%val(IDIMSF, JDIMSF, :) ! a_xx do not include Mdims%nphase
+                        ABS_SOLID_FLUID_COUP(IDIMSF, JDIMSF, 1, :)=7.5*a_xx%val(IDIMSF, JDIMSF, :) ! a_xx do not include Mdims%nphase
                     end do
                 end do
             ENDIF
