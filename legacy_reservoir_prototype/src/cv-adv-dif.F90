@@ -644,7 +644,12 @@ contains
             SUF_T2_BC_ROB1_ALL=>saturation_BCs%val ! re-using memory from dirichlet bc.s for Robin bc
             SUF_T2_BC_ROB2_ALL=>saturation_BCs_robin2%val
         end if
-        if (tracer%name == "PackedTemperature")  then
+
+!!-PY changed it for k_epsilon model
+        if (tracer%name == "PackedTemperature" .or. tracer%name == "PackedTurbulentKineticEnergy" .or. tracer%name == "PackedTurbulentDissipation")  then
+!         if (tracer%name == "PackedTemperature" )  then
+
+
             allocate( suf_t_bc( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), suf_t_bc_rob1( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ), &
                 suf_t_bc_rob2( 1,Mdims%nphase,Mdims%cv_snloc*Mdims%stotel ) )
             call update_boundary_conditions( state, Mdims%stotel, Mdims%cv_snloc, Mdims%nphase, &
@@ -2510,7 +2515,10 @@ contains
         !      deallocate( T_ALL_TARGET, TOLD_ALL_TARGET, FEMT_ALL_TARGET, FEMTOLD_ALL_TARGET)
         !end if
         !      if ( Field_selector == 1 ) then ! Temperature
-        if (tracer%name == "PackedTemperature")  then
+
+!!-PY changed it for k_epsilon model
+        if (tracer%name == "PackedTemperature" .or. tracer%name == "PackedTurbulentKineticEnergy" .or. tracer%name == "PackedTurbulentDissipation")  then
+!         if (tracer%name == "PackedTemperature" )  then
             deallocate( suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
         end if
         if (capillary_pressure_activated) deallocate(CAP_DIFFUSION)
@@ -4358,6 +4366,17 @@ contains
                     option_path=trim(psi(1)%ptr%option_path)//"/prognostic"
                 end if
             end if
+!!-PY add it for k_epsilon model
+            if (tracer%name == "PackedTurbulentKineticEnergy") then
+                option_path="/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy"
+            else if (tracer%name == "PackedTurbulentDissipation") then
+                option_path="/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation"
+            !else if (tracer%name == "PackedTemperature") then
+            !    option_path="/material_phase[0]/scalar_field::Temperature"
+
+            end if
+
+
             do it = 1, size(fempsi)
                 call zero_non_owned(fempsi_rhs(it))
                 call petsc_solve(fempsi(it)%ptr,CV_funs%CV2FE,fempsi_rhs(it),option_path = option_path)
@@ -4782,12 +4801,16 @@ contains
                     if (NDIM >= 3) XSL( 3, X_SILOC ) = Z( X_INOD )
                 END DO
 
+!!-PY this is the problem
+if ( .not. (have_option("/material_phase["//&
+                  int2str(0)//"]/subgridscale_parameterisations/k-epsilon") )) then
                 CALL DGSDETNXLOC2(X_SNLOC, SBCVNGI, &
                     XSL( 1, : ), XSL( 2, : ), XSL( 3, : ), &
                     X_SBCVFEN, X_SBCVFENSLX, X_SBCVFENSLY, SBWEIGH, SDETWE, SAREA, &
                     (NDIM==1), (NDIM==3), (NDIM==-2), &
                     SNORMXN( 1, : ), SNORMXN( 2, : ), SNORMXN( 3, : ), &
                     NORMX( 1 ), NORMX( 2 ), NORMX( 3 ) )
+end if
 
                 IF ( SELE2 == 0 ) THEN
                     ! Calculate the nodes on the other side of the face:
