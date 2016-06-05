@@ -163,7 +163,13 @@ contains
 
            IGOT_T2_loc = 0
 
-           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
+!!-PY changed it for k_epsilon model
+           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' &
+                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy' &
+                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation' ) then
+!            if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
+
+
                p => extract_tensor_field( packed_state, "PackedCVPressure" )
                den_all2 => extract_tensor_field( packed_state, "PackedDensityHeatCapacity" )
                denold_all2 => extract_tensor_field( packed_state, "PackedOldDensityHeatCapacity" )
@@ -188,19 +194,51 @@ contains
                den_all=1.0
                denold_all=1.0
            end if
+           if( present( option_path ) ) then ! solving for Temperature or Internal Energy or k_epsilon model
 
-           if( present( option_path ) ) then ! solving for Temperature or Internal Energy
+!!-PY this part need work for k_epsilon model
                if( trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
                    call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/' // &
                        'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+                   Field_selector = 1
+                   Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
+                   T_source( :, : ) = Q % val( 1, :, : )
+
                end if
-               Field_selector = 1
-               Q => extract_tensor_field( packed_state, "PackedTemperatureSource" )
-               T_source( :, : ) = Q % val( 1, :, : )
+             
+
+
+               if( trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy' ) then
+                   call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy/prognostic/temporal_discretisation/' // &
+                       'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+
+
+                   Field_selector = 1
+                   Q => extract_tensor_field( packed_state, "PackedTurbulentKineticEnergySource" )
+                   T_source( :, : ) = Q % val( 1, :, : )
+                   
+              
+
+
+
+
+               else if( trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation' ) then
+                   call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation/prognostic/temporal_discretisation/' // &
+                       'control_volumes/number_advection_iterations', nits_flux_lim, default = 3 )
+
+
+                   Field_selector = 1
+                   Q => extract_tensor_field( packed_state, "PackedTurbulentDissipationSource" )
+                   T_source( :, : ) = Q % val( 1, :, : )
+                   
+               end if
+
+
                cv_disopt = Mdisopt%t_disopt
                cv_dg_vel_int_opt = Mdisopt%t_dg_vel_int_opt
                cv_theta = Mdisopt%t_theta
                cv_beta = Mdisopt%t_beta
+
            else ! solving for Composition
                call get_option( '/material_phase[' // int2str( Mdims%nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
                    'prognostic/temporal_discretisation/control_volumes/number_advection_iterations', nits_flux_lim, default = 1 )
