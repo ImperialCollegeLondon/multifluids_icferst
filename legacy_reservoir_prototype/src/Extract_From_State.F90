@@ -64,7 +64,7 @@ module Copy_Outof_State
     private
 
     public :: Get_Primary_Scalars_new, Compute_Node_Global_Numbers, &
-        Get_Ele_Type, Get_Discretisation_Options, &
+        Get_Ele_Type, Get_Discretisation_Options, Get_Discretisation_Options_k_epsilon, &
         update_boundary_conditions, pack_multistate, finalise_multistate, get_ndglno, Adaptive_NonLinear,&
         get_var_from_packed_state, as_vector, as_packed_vector, is_constant, GetOldName, GetFEMName, PrintMatrix,&
         calculate_outflux, outlet_id, have_option_for_any_phase, get_regionIDs2nodes,Get_Ele_Type_new,&
@@ -554,8 +554,150 @@ contains
         return
     end subroutine Get_Discretisation_Options
 
+
+
+!!-PY changed it for k_epsilon model
+
+
+ subroutine Get_Discretisation_Options_k_epsilon( state, Mdims, Mdisopt, tracer )
+        !!$ This subroutine extract all discretisation options from the schema
+        implicit none
+        type( state_type ), dimension( : ), intent( in ) :: state
+        type(multi_dimensions), intent(in) :: Mdims
+        type (multi_discretization_opts) :: Mdisopt
+        type(tensor_field), pointer :: tracer
+
+        !!$ Local variables:
+        integer :: iphase
+        character( len = option_path_len ) :: option_path, option_path2, option_path3
+        !!$ DISOPT Options:
+        !!$ =0      1st order in space          Theta=specified    UNIVERSAL
+        !!$ =1      1st order in space          Theta=non-linear   UNIVERSAL
+        !!$ =2      Trapezoidal rule in space   Theta=specified    UNIVERSAL
+        !!$ =2      if isotropic limiter then FEM-quadratic & stratification adjust. Theta=non-linear
+        !!$ =3      Trapezoidal rule in space   Theta=non-linear   UNIVERSAL
+        !!$ =4      Finite elements in space    Theta=specified    UNIVERSAL
+        !!$ =5      Finite elements in space    Theta=non-linear   UNIVERSAL
+        !!$ =6      Finite elements in space    Theta=specified    NONE
+        !!$ =7      Finite elements in space    Theta=non-linear   NONE
+        !!$ =8      Finite elements in space    Theta=specified    DOWNWIND+INTERFACE TRACKING
+        !!$ =9      Finite elements in space    Theta=non-linear   DOWNWIND+INTERFACE TRACKING
+        !!$ Solving Advection Field: Temperature
+
+!!-PY changed it for k_epsilon model
+        if (tracer%name== "PackedTurbulentKineticEnergy") then 
+             option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy'
+        else if (tracer%name == "PackedTurbulentDissipation") then
+             option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation'
+        end if 
+
+!        option_path = '/material_phase[0]/scalar_field::Temperature'
+
+
+!        if (have_option( "/material_phase[0]/scalar_field::Temperature") ) then
+!            option_path = '/material_phase[0]/scalar_field::Temperature'
+!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy"))  then
+!            option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy'
+!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation")) then
+!            option_path = '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation'
+!        end if 
+
+
+        option_path2 = trim( option_path ) //  '/prognostic/spatial_discretisation'
+        option_path3 = trim( option_path ) //  '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
+        Mdisopt%t_disopt = 1
+        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_t, default = 3 )
+        Conditional_TDISOPT: if( have_option( trim( option_path2 ) ) ) then
+            if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value/' // &
+                'limiter::CompressiveAdvection' ) ) then
+                Mdisopt%t_disopt = 9
+            else
+                if( have_option( trim( option_path2 ) // '/control_volumes/face_value::FiniteElement/limit_face_value' ) ) &
+                    Mdisopt%t_disopt = 5
+            end if
+        end if Conditional_TDISOPT
+        call get_option( trim( option_path2 ) // '/conservative_advection', Mdisopt%t_beta, default = 0.0 )
+        
+!!-PY changed it for k_epsilon model
+
+       call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/theta', &
+            Mdisopt%t_theta, default = 1. )
+
+
+!        if (have_option( "/material_phase[0]/scalar_field::Temperature") ) then
+!            call get_option( '/material_phase[0]/scalar_field::Temperature/prognostic/temporal_discretisation/theta', &
+!                Mdisopt%t_theta, default = 1. )
+!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy"))  then
+!            call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy/prognostic/temporal_discretisation/theta', &
+!                Mdisopt%t_theta, default = 1. )
+!        else if (have_option( "/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation")) then
+!            call get_option( '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation/prognostic/temporal_discretisation/theta', &
+!                Mdisopt%t_theta, default = 1. )
+!        end if 
+
+
+
+
+
+        !!$ Solving Advection Field: Volume fraction
+        option_path = '/material_phase[0]/scalar_field::PhaseVolumeFraction'
+        option_path2 = trim( option_path ) // '/prognostic/spatial_discretisation/control_volumes/face_value'
+        option_path3 = trim( option_path ) // '/prognostic/temporal_discretisation/control_volumes/number_advection_iterations'
+        Mdisopt%v_disopt = 8
+        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_volfra, default = 3 )
+        Conditional_VDISOPT: if( have_option( trim( option_path ) ) ) then
+            if( have_option( trim( option_path2 ) // '::FirstOrderUpwind' ) ) Mdisopt%v_disopt = 0
+            if( have_option( trim( option_path2 ) // '::Trapezoidal' ) ) Mdisopt%v_disopt = 2
+            if( have_option( trim( option_path2 ) // '::FiniteElement/do_not_limit_face_value' ) ) Mdisopt%v_disopt = 6
+            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::Sweby' ) ) Mdisopt%v_disopt = 5
+            if( have_option( trim( option_path2 ) // '::FiniteElement/limit_face_value/limiter::CompressiveAdvection' ) ) Mdisopt%v_disopt = 9
+        end if Conditional_VDISOPT
+        call get_option( trim( option_path ) // '/prognostic/spatial_discretisation/conservative_advection', Mdisopt%v_beta )
+        call get_option( trim( option_path ) // '/prognostic/temporal_discretisation/theta', Mdisopt%v_theta )
+        !!$ Solving Velocity Field
+        call get_option( '/material_phase[0]/vector_field::Velocity/prognostic/temporal_discretisation/theta', Mdisopt%u_theta )
+        !!$ Solving Component Field
+        option_path3 = '/material_phase[' // int2str( Mdims%nphase ) // ']/scalar_field::ComponentMassFractionPhase1/' // &
+            'temporal_discretisation/control_volumes/number_advection_iterations'
+        call get_option( trim( option_path3 ), Mdisopt%nits_flux_lim_comp, default = 3 )
+        !!$ Scaling factor for the momentum equation
+        Mdisopt%scale_momentum_by_volume_fraction = .false.
+        do iphase = 1, Mdims%nphase
+            option_path = '/material_phase[' // int2str( iphase - 1 ) // ']/Mdisopt%scale_momentum_by_volume_fraction'
+            if( have_option( trim( option_path ) ) ) Mdisopt%scale_momentum_by_volume_fraction = .true.
+        end do
+        !!$ Options below are hardcoded and need to be added into the schema
+        Mdisopt%t_dg_vel_int_opt = 1 ; Mdisopt%u_dg_vel_int_opt = 4 ; Mdisopt%v_dg_vel_int_opt = 4 ; Mdisopt%w_dg_vel_int_opt = 0
+        if(is_porous_media) then
+            if ( have_option( &
+                '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/advection_scheme/DG_weighting') &
+                ) Mdisopt%v_dg_vel_int_opt = 10
+        else
+            Mdisopt%v_dg_vel_int_opt = 1
+        end if
+        Mdisopt%volfra_use_theta_flux = .false. ; Mdisopt%volfra_get_theta_flux = .true.
+        Mdisopt%comp_use_theta_flux = .false. ; Mdisopt%comp_get_theta_flux = .true.
+        Mdisopt%t_use_theta_flux = .false. ; Mdisopt%t_get_theta_flux = .false.
+        !!$ IN/Mdisopt%dg_ele_upwind are options for optimisation of upwinding across faces in the compact_overlapping
+        !!$ formulation. The data structure and options for this formulation need to be added later.
+        Mdisopt%in_ele_upwind = 3 ; Mdisopt%dg_ele_upwind = 3
+        return
+    end subroutine Get_Discretisation_Options_k_epsilon
+
+
+
+
+
+
+
+
+
+
+
+
+!!-PY changed it for k_epsilon model
     subroutine update_boundary_conditions( state, stotel, cv_snloc, nphase, &
-        &                                 suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2 )
+        &                                 suf_t_bc, suf_t_bc_rob1, suf_t_bc_rob2, tracer )
         implicit none
         type( state_type ), dimension( : ), intent( in ) :: state
         integer, intent( in ) :: stotel, cv_snloc, nphase
@@ -565,6 +707,7 @@ contains
         integer :: shape_option(2), iphase, nobcs, kk, k, j , sele, stat
         integer, dimension( : ), allocatable :: SufID_BC
         integer, dimension( : ), pointer:: surface_element_list, face_nodes
+        type(tensor_field), intent(inout), target :: tracer
 
         type( scalar_field ), pointer :: field, field_prot_bc, field_prot1, field_prot2
         type( scalar_field ), pointer :: field_prot_bc1, field_prot_bc2
@@ -579,10 +722,47 @@ contains
 
         do iphase = 1, nphase
 
-            field_name = 'Temperature'
+!!-Py changed it for k_epsilon model
+            if (tracer%name == "PackedTemperature") then 
+                field_name = 'Temperature'
+            else if (tracer%name == "PackedTurbulentKineticEnergy") then
+                field_name = 'TurbulentKineticEnergy'
+            else if (tracer%name == "PackedTurbulentDissipation" ) then
+                field_name = 'TurbulentDissipation'
+            end if
+
+ !.or. tracer%name == "PackedTurbulentKineticEnergy" .or. tracer%name == "PackedTurbulentDissipation"            
+ 
+
+
+
+ !          field_name = 'Temperature'
             field => extract_scalar_field( state( iphase ), trim( field_name ) )
 
-            option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
+
+
+
+
+
+
+!!-Py changed it for k_epsilon model
+            if (tracer%name == "PackedTemperature") then 
+                option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
+            else if (tracer%name == "PackedTurbulentKineticEnergy") then
+                option_path = '/material_phase['//int2str( iphase - 1 )//']/subgridscale_parameterisations/k-epsilon/scalar_field::'//trim( field_name )
+            else if (tracer%name == "PackedTurbulentDissipation" ) then
+                option_path = '/material_phase['//int2str( iphase - 1 )//']/subgridscale_parameterisations/k-epsilon/scalar_field::'//trim( field_name )
+            end if
+
+
+
+
+!            option_path = '/material_phase['//int2str( iphase - 1 )//']/scalar_field::'//trim( field_name )
+
+
+
+
+
             option_path2 = trim( option_path ) // '/prognostic/boundary_conditions['
 
             nobcs = get_boundary_condition_count( field )
@@ -883,6 +1063,26 @@ contains
             call insert_sfield(packed_state,"FETemperature",1,nphase)
         end if
 
+!!-PY add it for k_epsilon model
+       if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then
+            call insert_sfield(packed_state,"TurbulentKineticEnergy",1,nphase,&
+                add_source=.true.,add_absorption=.true.)
+            call insert_sfield(packed_state,"FETurbulentKineticEnergy",1,nphase)
+
+            call insert_sfield(packed_state,"TurbulentDissipation",1,nphase,&
+                add_source=.true.,add_absorption=.true.)
+            call insert_sfield(packed_state,"FETurbulentDissipation",1,nphase)
+            
+        end if
+
+
+        
+        
+
+
+
+
+
         call insert_sfield(packed_state,"PhaseVolumeFraction",1,nphase,&
             add_source=.true.)
         call insert_sfield(packed_state,"FEPhaseVolumeFraction",1,nphase)
@@ -1120,6 +1320,48 @@ contains
                     call insert(multi_state(1,iphase),extract_scalar_field(state(i),"Temperature"),"Temperature")
                 end if
 
+!!-PY add it for k_epsilon model
+               if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then
+ print *, 'copy memory from state to packed_state'
+                    call unpack_sfield(state(i),packed_state,"OldTurbulentKineticEnergy",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"TurbulentKineticEnergy"),&
+                        extract_scalar_field(state(i),"OldTurbulentKineticEnergy")))
+                    call unpack_sfield(state(i),packed_state,"IteratedTurbulentKineticEnergy",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"TurbulentKineticEnergy"),&
+                        extract_scalar_field(state(i),"IteratedTurbulentKineticEnergy")))
+                    call unpack_sfield(state(i),packed_state,"TurbulentKineticEnergySource",1,iphase)
+                    call unpack_sfield(state(i),packed_state,"TurbulentKineticEnergyAbsorption",1,iphase)
+                    call unpack_sfield(state(i),packed_state,"TurbulentKineticEnergy",1,iphase)
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"TurbulentKineticEnergy"),"TurbulentKineticEnergy")
+
+
+
+
+                    call unpack_sfield(state(i),packed_state,"OldTurbulentDissipation",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"TurbulentDissipation"),&
+                        extract_scalar_field(state(i),"OldTurbulentDissipation")))
+                    call unpack_sfield(state(i),packed_state,"IteratedTurbulentDissipation",1,iphase,&
+                        check_paired(extract_scalar_field(state(i),"TurbulentDissipation"),&
+                        extract_scalar_field(state(i),"IteratedTurbulentDissipation")))
+                    call unpack_sfield(state(i),packed_state,"TurbulentDissipationSource",1,iphase)
+                    call unpack_sfield(state(i),packed_state,"TurbulentDissipationAbsorption",1,iphase)
+                    call unpack_sfield(state(i),packed_state,"TurbulentDissipation",1,iphase)
+                    call insert(multi_state(1,iphase),extract_scalar_field(state(i),"TurbulentDissipation"),"TurbulentDissipation")
+
+
+                end if
+
+
+
+
+
+
+
+
+
+
+
+
                 if(has_phase_volume_fraction) then
                     call unpack_sfield(state(i),packed_state,"IteratedPhaseVolumeFraction",1,iphase,&
                         check_paired(extract_scalar_field(state(i),"IteratedPhaseVolumeFraction"),&
@@ -1155,9 +1397,21 @@ contains
             call insert(multi_state(1,ipres),extract_scalar_field(state(i),"Pressure"),"FEPressure")
         end do
 
+!!-PY add it for k_epsilon model
         if (option_count("/material_phase/scalar_field::Temperature")>0) then
             call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Temperature")
         end if
+
+        if(have_option("/material_phase[0]/subgridscale_parameterisations/k-epsilon")) then
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"TurbulentKineticEnergy")
+            call allocate_multiphase_scalar_bcs(packed_state,multi_state,"TurbulentDissipation")
+        end if
+
+
+
+
+
+
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"Density")
         call allocate_multiphase_scalar_bcs(packed_state,multi_state,"PhaseVolumeFraction")
         call allocate_multiphase_vector_bcs(packed_state,multi_state,"Velocity")
@@ -2289,6 +2543,9 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     NonlinearVelocity, OldNonlinearVelocity,IteratedNonlinearVelocity, ComponentDensity, &
     OldComponentDensity, IteratedComponentDensity,ComponentMassFraction, OldComponentMassFraction,&
     Temperature,OldTemperature, IteratedTemperature,FETemperature, OldFETemperature, IteratedFETemperature,&
+!!-PY add it for k_epsilon model
+    TurbulentKineticEnergy,OldTurbulentKineticEnergy, IteratedTurbulentKineticEnergy,FETurbulentKineticEnergy, OldFETurbulentKineticEnergy, IteratedFETurbulentKineticEnergy,&
+    TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
     IteratedComponentMassFraction, FEComponentDensity, OldFEComponentDensity, IteratedFEComponentDensity,&
     FEComponentMassFraction, OldFEComponentMassFraction, IteratedFEComponentMassFraction,&
     Pressure,FEPressure, OldFEPressure, CVPressure,OldCVPressure,&
@@ -2316,6 +2573,9 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
     real, optional, dimension(:,:), pointer :: FEDensity, OldFEDensity, IteratedFEDensity, Density,&
         OldDensity,IteratedDensity,PhaseVolumeFraction,OldPhaseVolumeFraction,IteratedPhaseVolumeFraction,&
         Temperature, OldTemperature, IteratedTemperature, FETemperature, OldFETemperature, IteratedFETemperature,&
+!!-PY add it for k_epsilon model
+    TurbulentKineticEnergy,OldTurbulentKineticEnergy, IteratedTurbulentKineticEnergy,FETurbulentKineticEnergy, OldFETurbulentKineticEnergy, IteratedFETurbulentKineticEnergy,&
+    TurbulentDissipation,OldTurbulentDissipation, IteratedTurbulentDissipation,FETurbulentDissipation, OldFETurbulentDissipation, IteratedFETurbulentDissipation,&
         Coordinate, VelocityCoordinate,PressureCoordinate,MaterialCoordinate, &
         FEPhaseVolumeFraction, OldFEPhaseVolumeFraction, IteratedFEPhaseVolumeFraction, CapPressure,&
         Immobile_fraction, EndPointRelperm, RelpermExponent, Cap_entry_pressure, Cap_exponent
@@ -2438,6 +2698,73 @@ subroutine get_var_from_packed_state(packed_state,FEDensity,&
         tfield => extract_tensor_field( packed_state, "PackedIteratedFETemperature" )
         IteratedFETemperature =>  tfield%val(1,:,:)
     end if
+
+!!-PY add it for k_epsilon model
+    if (present(TurbulentKineticEnergy)) then
+        tfield => extract_tensor_field( packed_state, "PackedTurbulentKineticEnergy" )
+        TurbulentKineticEnergy =>  tfield%val(1,:,:)
+    end if
+    if (present(OldTurbulentKineticEnergy)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldTurbulentKineticEnergy" )
+        OldTurbulentKineticEnergy =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedTurbulentKineticEnergy)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedTurbulentKineticEnergy" )
+        IteratedTurbulentKineticEnergy =>  tfield%val(1,:,:)
+    end if
+    if (present(FETurbulentKineticEnergy)) then
+        tfield => extract_tensor_field( packed_state, "PackedFETurbulentKineticEnergy" )
+        FETurbulentKineticEnergy =>  tfield%val(1,:,:)
+    end if
+    if (present(OldFETurbulentKineticEnergy)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldFETurbulentKineticEnergy" )
+        OldFETurbulentKineticEnergy =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedFETurbulentKineticEnergy)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedFETurbulentKineticEnergy" )
+        IteratedFETurbulentKineticEnergy =>  tfield%val(1,:,:)
+    end if
+
+
+
+
+    if (present(TurbulentDissipation)) then
+        tfield => extract_tensor_field( packed_state, "PackedTurbulentDissipation" )
+        TurbulentDissipation =>  tfield%val(1,:,:)
+    end if
+    if (present(OldTurbulentDissipation)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldTurbulentDissipation" )
+        OldTurbulentDissipation =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedTurbulentDissipation)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedTurbulentDissipation" )
+        IteratedTurbulentDissipation =>  tfield%val(1,:,:)
+    end if
+    if (present(FETurbulentDissipation)) then
+        tfield => extract_tensor_field( packed_state, "PackedFETurbulentDissipation" )
+        FETurbulentDissipation =>  tfield%val(1,:,:)
+    end if
+    if (present(OldFETurbulentDissipation)) then
+        tfield => extract_tensor_field( packed_state, "PackedOldFETurbulentDissipation" )
+        OldFETurbulentDissipation =>  tfield%val(1,:,:)
+    end if
+    if (present(IteratedFETurbulentDissipation)) then
+        tfield => extract_tensor_field( packed_state, "PackedIteratedFETurbulentDissipation" )
+        IteratedFETurbulentDissipation =>  tfield%val(1,:,:)
+    end if
+
+
+
+
+
+
+
+
+
+
+
+
+
     if (present(Velocity)) then
         tfield => extract_tensor_field( packed_state, "PackedVelocity" )
         Velocity => tfield%val(:,:,:)
