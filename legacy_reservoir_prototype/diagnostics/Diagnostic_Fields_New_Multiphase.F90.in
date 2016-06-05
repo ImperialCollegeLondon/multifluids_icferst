@@ -36,6 +36,7 @@ module diagnostic_fields_new_multiphase
   use global_parameters, only : FIELD_NAME_LEN, OPTION_PATH_LEN
   use spud
   use state_module
+  use k_epsilon
 
 USE_MODULES
   
@@ -284,6 +285,28 @@ contains
     type(vector_field), pointer :: v_field
     
     ewrite(1, *) "In calculate_diagnostic_variables MP"
+
+
+
+!!!-PY add it for k_epsilon model
+
+
+! k-epsilon momentum diagnostics (reynolds stress tensor)
+    
+    if(have_option(trim(states(1)%option_path)//&
+         "/subgridscale_parameterisations/k-epsilon")) then
+       call keps_momentum_diagnostics(states(1))
+       print *, 'k-epsilon momentum diagnostics'
+    end if
+
+    ewrite(1,*) 'Exiting calculate_momentum_diagnostics'
+
+
+
+
+
+
+
     
     do i = 1, size(states)
       do j = 1, scalar_field_count(states(i))
