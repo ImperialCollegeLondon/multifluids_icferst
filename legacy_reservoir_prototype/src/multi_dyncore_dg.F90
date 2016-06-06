@@ -258,8 +258,18 @@ contains
 
            deriv => extract_tensor_field( packed_state, "PackedDRhoDPressure" )
            allocate( TDIFFUSION( Mdims%mat_nonods, Mdims%ndim, Mdims%ndim, Mdims%nphase ) ) ; TDIFFUSION=0.0
-           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' ) then
-              call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION )
+
+
+
+
+
+!!-PY changed it for k_epsilon model
+           if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature' &
+                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentKineticEnergy' &
+                .or. trim( option_path ) == '/material_phase[0]/subgridscale_parameterisations/k-epsilon/scalar_field::TurbulentDissipation') then
+ !          if ( thermal .or. trim( option_path ) == '/material_phase[0]/scalar_field::Temperature') then
+ 
+              call calculate_diffusivity( state, Mdims, ndgln, TDIFFUSION, tracer )
            end if
 
            ! get diffusivity for compositional
