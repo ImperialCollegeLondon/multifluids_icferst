@@ -132,8 +132,8 @@ contains
             mx_ncolmcy, mx_nct, mx_nc, mx_ncolcmc, mx_ncolm, mx_ncolph
         !!$ Defining time- and nonlinear interations-loops variables
         integer :: itime, dump_period_in_timesteps, final_timestep, &
-            NonLinearIteration, NonLinearIteration_Components, dtime
-        real :: acctim, finish_time
+            NonLinearIteration, NonLinearIteration_Components
+        real :: acctim, finish_time, dump_period
         !!$ Defining problem that will be solved
         logical :: have_temperature_field, have_component_field, have_extra_DiffusionLikeTerm, &
             solve_force_balance, solve_PhaseVolumeFraction, simple_black_oil_model
@@ -312,7 +312,11 @@ contains
         call get_option( '/timestepping/current_time', acctim )
         call get_option( '/timestepping/timestep', dt )
         call get_option( '/timestepping/finish_time', finish_time )
-        call get_option( '/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1 )
+        if ( have_option('/io/dump_period_in_timesteps') ) then
+            call get_option('/io/dump_period_in_timesteps/constant', dump_period_in_timesteps, default = 1)
+        elseif ( have_option('/io/dump_period') ) then
+            call get_option('/io/dump_period/constant', dump_period, default = 0.01)
+        end if
         call get_option( '/timestepping/nonlinear_iterations', NonLinearIteration, default = 3 )
         !call get_option( '/timestepping/nonlinear_iterations/Fixed_Point_Iteration', tolerance_between_non_linear, default = -1. )
         !!$
@@ -358,7 +362,6 @@ contains
         end if
         !!$ Starting Time Loop
         itime = 0
-        dtime = 0
         if( &
              ! if this is not a zero timestep simulation (otherwise, there would
              ! be two identical dump files)
@@ -389,13 +392,6 @@ contains
 
             !Check first time step
             sum_theta_flux_j = 1. ; sum_one_m_theta_flux_j = 0.
-
-            if ( do_checkpoint_simulation( dtime ) ) then
-               call checkpoint_simulation( state, cp_no=checkpoint_number, &
-                    protect_simulation_name=.true., file_type='.mpml' )
-               checkpoint_number=checkpoint_number+1
-            end if
-            dtime = dtime + 1
 
             ! Adapt mesh within the FPI?
             adapt_mesh_in_FPI = have_option( '/mesh_adaptivity/hr_adaptivity/adapt_mesh_within_FPI')
@@ -857,22 +853,41 @@ end if
             call calculate_diagnostic_variables_new( state, exclude_nonrecalculated = .true. )
             if (write_all_stats) call write_diagnostics( state, current_time, dt, itime ) ! Write stat file
 
-            Conditional_TimeDump: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
-                dtime=dtime+1
-                if (do_checkpoint_simulation(dtime)) then
-                    CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
-                    FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
-                    call set(pressure_field,FE_Pressure)
-                    call checkpoint_simulation(state,cp_no=checkpoint_number,&
-                        protect_simulation_name=.true.,file_type='.mpml')
-                    checkpoint_number=checkpoint_number+1
-                    call set(pressure_field,CV_Pressure)
-                end if
-                call get_option( '/timestepping/current_time', current_time ) ! Find the current time
-                if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
-                not_to_move_det_yet = .false. ; dump_no = itime/dump_period_in_timesteps ! Sync dump_no with itime
-                call write_state( dump_no, state ) ! Now writing into the vtu files
-            end if Conditional_TimeDump
+            !!$ Write outputs (vtu and checkpoint files)
+            if (have_option('/io/dump_period_in_timesteps')) then
+                ! dump based on the prescribed period of time steps
+                Conditional_Dump_TimeStep: if( ( mod( itime, dump_period_in_timesteps ) == 0 ) ) then
+                    if (do_checkpoint_simulation(dump_no)) then
+                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+                        call set(pressure_field,FE_Pressure)
+                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                            protect_simulation_name=.true.,file_type='.mpml')
+                        checkpoint_number=checkpoint_number+1
+                        call set(pressure_field,CV_Pressure)
+                    end if
+                    call get_option( '/timestepping/current_time', current_time ) ! Find the current time
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                    not_to_move_det_yet = .false. ;
+                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                end if Conditional_Dump_TimeStep
+            else if (have_option('/io/dump_period')) then
+                ! dump based on the prescribed period of real time
+                Conditional_Dump_RealTime: if( current_time>=dump_period*dump_no .and. current_time/=finish_time) then
+                    if (do_checkpoint_simulation(dump_no)) then
+                        CV_Pressure=>extract_tensor_field(packed_state,"PackedCVPressure")
+                        FE_Pressure=>extract_tensor_field(packed_state,"PackedFEPressure")
+                        call set(pressure_field,FE_Pressure)
+                        call checkpoint_simulation(state,cp_no=checkpoint_number,&
+                            protect_simulation_name=.true.,file_type='.mpml')
+                        checkpoint_number=checkpoint_number+1
+                        call set(pressure_field,CV_Pressure)
+                    end if
+                    if (.not. write_all_stats)call write_diagnostics( state, current_time, dt, itime/dump_period_in_timesteps )  ! Write stat file
+                    not_to_move_det_yet = .false. ;
+                    call write_state( dump_no, state ) ! Now writing into the vtu files
+                end if Conditional_Dump_RealTime
+            end if
 
             ! CALL INITIAL MESH TO MESH INTERPOLATION ROUTINE (Before adapting the mesh)
             numberfields=option_count('/material_phase/scalar_field/prognostic/CVgalerkin_interpolation') ! Count # instances of CVGalerkin in the input file
