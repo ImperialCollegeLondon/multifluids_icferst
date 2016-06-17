@@ -2928,6 +2928,7 @@ contains
                         !(vel * shape_functions)/sigma
                         UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
+
                         ! Here we assume that sigma_out/sigma_in is a diagonal matrix
                         ! which effectively assumes that the anisotropy just inside the domain
                         ! is the same as just outside the domain.
@@ -6245,14 +6246,14 @@ end if
                         else
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Bound_ele_correct(:, IPHASE, U_KLOC)
+                                - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Bound_ele_correct(:, IPHASE, U_KLOC)!Bound_ele_correct unnecessary here?
                             !Calculate mass matrix
                             if (SUF_INT_MASS_MATRIX) then
                                 do IDIM = 1, Mdims%ndim
                                     do u_kkloc=1,Mdims%u_nloc
                                         I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC-1) * Mdims%ndim * Mdims%nphase
                                         J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
-                                        Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) &
+                                        Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) &!Bound_ele_correct unnecessary here?
                                             + CV_funs%sufen( U_KLOC, GI )*CV_funs%sufen( U_KKLOC, GI )*Bound_ele_correct(idim, IPHASE, U_KLOC)&
                                             * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
                                     end do
@@ -6400,13 +6401,17 @@ end if
                                 DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
                                     !We give priority to velocity boundary conditions
                                     if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET ) then
-                                        IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) then
-                                            Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_ILOC ) ) &
-                                                = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_ILOC ) ) &
-                                                + CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI ) * handmade_sbcvn
-                                        end if
+                                        !The surface integral of the matrix should not include the boundaries?
+                                        !however we are doing anyway so we can remove it from here
+                                        !as doing it outside its more efficient, one less if statement
+!                                        IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) then
+!                                            Bound_ele_correct( :, IPHASE, U_ILOC ) = 0.
+!                                            Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_ILOC ) ) &
+!                                                = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_ILOC ) ) &
+!                                                + CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI ) * handmade_sbcvn
+!                                        end if
                                         Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                            - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI ) * handmade_sbcvn&
+                                            - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI )  *handmade_sbcvn * CV_funs%sufen( U_ILOC, GI )&
                                             * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )
                                     else
                                         if (show_warn_msg) then

@@ -1296,6 +1296,7 @@ END IF
                CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), deltap%val( IPRES, : ), &
                     Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
             END DO
+
             call deallocate(deltaP)
             call halo_update(cdp_tensor)
             ! Correct velocity...
@@ -1303,6 +1304,7 @@ END IF
             ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
             CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
             Mdims%totele, Mdims%u_nloc, ndgln%u )
+
             U_ALL2 % VAL = U_ALL2 % VAL + DU_VEL
             DEALLOCATE( DU_VEL )
             if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
@@ -2416,16 +2418,17 @@ end if
                         if (skip) then
                             Mmat%PIVIT_MAT(:,:,ELE)=0.0
                             do i=1,size(Mmat%PIVIT_MAT,1)
-                                Mmat%PIVIT_MAT(I,I,ELE)= DevFuns%VOLUME/dble(Mdims%u_nloc)
+                                Mmat%PIVIT_MAT(I,I,ELE)= DevFuns%VOLUME/dble(Mdims%u_nloc)!2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
                             END DO
                         end if
                     end if
                 end if
             else
                 if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure) then
+!                if (Porous_media_PIVIT_not_stored_yet .and. .false.) then
                     Mmat%PIVIT_MAT(:,:,ELE)=0.0
                     do i=1,size(Mmat%PIVIT_MAT,1)
-                        Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/dble(Mdims%u_nloc)
+                        Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/dble(Mdims%u_nloc)!2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
                     END DO
                 end if
             end if
@@ -2737,6 +2740,7 @@ end if
                 END DO
             END IF
             if (Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure) then!sprint_to_do; Internal subroutine for this?
+!            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO GI = 1, FE_GIdims%cv_ngi
