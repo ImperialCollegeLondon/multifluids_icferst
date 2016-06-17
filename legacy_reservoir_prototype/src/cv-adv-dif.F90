@@ -6200,27 +6200,11 @@ end if
                         !This is to perform the average between two DG pressures (same mass => 0.5)
                         Mass_corrector = (MASS_ELE( ELE2 ) + 0.25 * MASS_ELE( ELE ))/(1.25*(MASS_ELE( ELE ) + MASS_ELE( ELE2 )))
 
-                        !WORSE THAN THE SIMPLE MASS_CORRECTION
-!                        !Mass correction also considering permeabilities (Harmonic average)
-!                        if (iphase == 1) then
-!                            perm_corrector = (perm%val(:,:, ele)*MASS_ELE( ELE )+perm%val(:,:, ele2)*MASS_ELE( ELE2 ))
-!                            call invert(perm_corrector)
-!                            perm_corrector = matmul(perm_corrector, perm%val(:,:, ele)*MASS_ELE( ELE ))
-!                            Mass_corrector = dot_product(CVNORMX_ALL(:, GI),matmul(perm_corrector, CVNORMX_ALL(:, GI)))
-!                        end if
-
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Mass_corrector
-                        !WORSE THAN THE SIMPLE MASS_CORRECTION
-!                        absorp_corrector(:,:, iphase) = I_adv_coef(:,:, iphase)*MASS_ELE( ELE )+J_adv_coef(:,:, iphase)*MASS_ELE( ELE2 )
-!                        call invert(absorp_corrector(:,:, iphase))
-!                        absorp_corrector(:,:, iphase) = matmul(absorp_corrector(:,:, iphase), J_adv_coef(:,:,IPHASE)*MASS_ELE( ELE2 ))
-!
-!                        Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-!                            = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
-!                            + matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* rcon(IPHASE))
                     else
+
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Bound_ele_correct(:, IPHASE, U_KLOC)
@@ -6258,11 +6242,6 @@ end if
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Mass_corrector!(1.- Mass_corrector)
-
-
-!                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-!                                = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
-!                                - matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* RCON_J(IPHASE))
                         else
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
@@ -6335,13 +6314,6 @@ end if
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             + RCON(IPHASE) * CVNORMX_ALL( :, GI )* (1.- Mass_corrector)
-
-!                        absorp_corrector(:,:, iphase) = I_adv_coef(:,:, iphase)*MASS_ELE( ELE )+J_adv_coef(:,:, iphase)*MASS_ELE( ELE2 )
-!                        call invert(absorp_corrector(:,:, iphase))
-!                        absorp_corrector(:,:, iphase) = matmul(absorp_corrector(:,:, iphase), I_adv_coef(:,:,IPHASE)*MASS_ELE( ELE ))
-!                        Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
-!                            = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
-!                            + matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* rcon(IPHASE))
                         !Calculate mass matrix
                         if (SUF_INT_MASS_MATRIX) then
                             do IDIM = 1, Mdims%ndim
@@ -6375,12 +6347,6 @@ end if
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* (1.-Mass_corrector)!Mass_corrector
-
-
-!                            Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
-!                                = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
-!                                - matmul(absorp_corrector(:,:, iphase), CVNORMX_ALL(:, GI)* RCON_J(IPHASE))
-
                             !Calculate mass matrix
                             if (SUF_INT_MASS_MATRIX) then
                                 do IDIM = 1, Mdims%ndim
@@ -6406,8 +6372,8 @@ end if
             implicit none
             real, dimension(:,:,:), intent(out) :: Bound_ele_correct
             !Local variables
-            integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC
-            real :: corrector
+            integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC, P_ILOC
+            real :: handmade_sbcvn
             logical, save :: show_warn_msg = .true.
             !By default no modification is required
             Bound_ele_correct = 1.0
@@ -6424,20 +6390,24 @@ end if
                 !If Mmat%C_CV formulation, apply weak pressure boundary conditions if any
                 DO IPRES = 1, Mdims%npres
                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
-                        corrector = dble(Mdims%cv_snloc)/dble(Mdims%u_snloc)
                         DO U_SILOC = 1, Mdims%u_snloc
                             U_ILOC = U_SLOC2LOC( U_SILOC )
-                            Bound_ele_correct( :, :, U_ILOC ) = 0.
                             U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
                             DO P_SJLOC = 1, Mdims%cv_snloc
-                                CV_KLOC = CV_SLOC2LOC( P_SJLOC )
+                                P_ILOC = CV_SLOC2LOC( P_SJLOC )
+                                !This is to create cvn for boundaries consistent with scvngi and not sbcvngi
+                                handmade_sbcvn = min(1e5 * max((CV_funs%scvfen( P_ILOC, GI ) - 0.501), 0.0),1.)
                                 DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
                                     !We give priority to velocity boundary conditions
-                                    if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET) then
-                                        Bound_ele_correct( :, IPHASE, U_ILOC ) = Bound_ele_correct( :, IPHASE, U_ILOC ) + corrector
+                                    if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET ) then
+                                        IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) then
+                                            Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_ILOC ) ) &
+                                                = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_ILOC ) ) &
+                                                + CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI ) * handmade_sbcvn
+                                        end if
                                         Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                            - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI )&
-                                            * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )*corrector
+                                            - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI ) * handmade_sbcvn&
+                                            * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )
                                     else
                                         if (show_warn_msg) then
                                             ewrite(0,*) "WARNING: One or more boundaries have velocity and pressure boundary conditions."

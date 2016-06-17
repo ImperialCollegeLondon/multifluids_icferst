@@ -2416,8 +2416,7 @@ end if
                         if (skip) then
                             Mmat%PIVIT_MAT(:,:,ELE)=0.0
                             do i=1,size(Mmat%PIVIT_MAT,1)
-!                               Mmat%PIVIT_MAT(I,I,ELE)= 1.0
-                                Mmat%PIVIT_MAT(I,I,ELE)= 2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
+                                Mmat%PIVIT_MAT(I,I,ELE)= DevFuns%VOLUME/dble(Mdims%u_nloc)
                             END DO
                         end if
                     end if
@@ -2426,7 +2425,7 @@ end if
                 if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure) then
                     Mmat%PIVIT_MAT(:,:,ELE)=0.0
                     do i=1,size(Mmat%PIVIT_MAT,1)
-                        Mmat%PIVIT_MAT(I,I,ELE) = 2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
+                        Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/dble(Mdims%u_nloc)
                     END DO
                 end if
             end if
@@ -2738,7 +2737,6 @@ end if
                 END DO
             END IF
             if (Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure) then!sprint_to_do; Internal subroutine for this?
-!            if (.not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO GI = 1, FE_GIdims%cv_ngi
@@ -3760,6 +3758,7 @@ end if
                             if(.not.got_c_matrix) JCV_NOD = ndgln%suf_p(( SELE - 1 ) * Mdims%p_snloc + P_SJLOC )
                             !Calculate aid variable NMX_ALL
                             NMX_ALL = matmul(SNORMXN_ALL( :, : ), SBUFEN_REVERSED( :, U_SILOC ) * SBCVFEN_REVERSED( :, P_SJLOC ) * SDETWE( : ))
+
                             IF(IGOT_VOL_X_PRESSURE==1) THEN
                                 DO IPHASE = 1, Mdims%nphase
                                     VOL_FRA_NMX_ALL( :, IPHASE ) = VOL_FRA_NMX_ALL( :, IPHASE ) + sum(SVOL_FRA( IPHASE, : )) * NMX_ALL( : )
