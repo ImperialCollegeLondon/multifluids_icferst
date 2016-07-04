@@ -117,7 +117,7 @@ contains
         got_free_surf,  MASS_SUF, &
         MASS_ELE_TRANSP, IDs_ndgln, &
         saturation,OvRelax_param, Phase_with_Pc, Courant_number,&
-        RECALC_C_CV, SUF_INT_MASS_MATRIX, Permeability_tensor_field)
+        RECALC_C_CV, Permeability_tensor_field)
         !  =====================================================================
         !     In this subroutine the advection terms in the advection-diffusion
         !     equation (in the matrix and RHS) are calculated as ACV and CV_RHS.
@@ -284,7 +284,7 @@ contains
         integer, optional, intent(in) :: Phase_with_Pc
         !Variables to cache get_int_vel OLD
         real, optional, intent(inout) :: Courant_number
-        logical, optional, intent(in) :: RECALC_C_CV, SUF_INT_MASS_MATRIX
+        logical, optional, intent(in) :: RECALC_C_CV
         type( tensor_field ), optional, pointer, intent(in) :: Permeability_tensor_field
         ! Local variables
         REAL :: ZERO_OR_TWO_THIRDS
@@ -471,8 +471,6 @@ contains
         real :: Diffusive_cap_only_real
         !Variables for get_int_vel_porous_vel
         logical :: anisotropic_and_frontier, anisotropic_perm, not_use_DG_within_ele
-        !Logical to do a surface integral for the Mass matrix
-        logical :: SUF_INT_MASS_MATRIX2
         real, dimension(Mdims%nphase):: rsum_nodi, rsum_nodj
         integer :: COUNT_SUF, P_JLOC, P_JNOD, stat, ipres, jpres
         REAL :: MM_GRAVTY
@@ -525,13 +523,11 @@ contains
         end if
         !Check pressure matrix based on Control Volumes
         !If we do not have an index where we have stored Mmat%C_CV, then we need to calculate it
-        SUF_INT_MASS_MATRIX2 = .false.
         RECAL_C_CV_RHS = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         if (present_and_true(RECALC_C_CV)) then
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .not.Mmat%stored !.true.
             if (present_and_true(SUF_INT_MASS_MATRIX)) then
                 Mmat%PIVIT_MAT = 0.
-                SUF_INT_MASS_MATRIX2 = .true.
             end if
         else
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
@@ -1853,7 +1849,7 @@ contains
                                     RETRIEVE_SOLID_CTY,theta_cty_solid, loc_u, THETA_VEL, &
                                     rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, &
                                     !rdum_ndim_nphase_1, rdum_nphase_1, rdum_nphase_2, rdum_nphase_3, rdum_nphase_4, rdum_nphase_5, rdum_ndim_1, rdum_ndim_2, rdum_ndim_3, CAP_DIFF_COEF_DIVDX,&
-                                    SUF_INT_MASS_MATRIX2, recal_c_cv_rhs)
+                                    recal_c_cv_rhs)
                                 do ipres=1,Mdims%npres
                                     call addto(Mmat%CT_RHS,ipres,cv_nodi,sum(ct_rhs_phase_cv_nodi(1+(ipres-1)*Mdims%n_in_pres:ipres*Mdims%n_in_pres) ))
                                     if ( integrate_other_side_and_not_boundary ) then
@@ -6125,7 +6121,7 @@ end if
         loc_u, THETA_VEL,&
         ! local memory sent down for speed...
         UDGI_IMP_ALL, RCON, RCON_J, NDOTQ_IMP, &
-        SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS)
+        RECAL_C_CV_RHS)
         ! This subroutine caculates the discretised cty eqn acting on the velocities i.e. Mmat%CT, Mmat%CT_RHS
         IMPLICIT NONE
         ! IF more_in_ct THEN PUT AS MUCH AS POSSIBLE INTO Mmat%CT MATRIX
@@ -6138,7 +6134,7 @@ end if
         type (multi_matrices), intent(inout) :: Mmat
         REAL, DIMENSION( :, :, : ), intent( in ) :: loc_u
         LOGICAL, intent( in ) :: integrate_other_side_and_not_boundary, RETRIEVE_SOLID_CTY, between_elements, on_domain_boundary,&
-            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, SUF_INT_MASS_MATRIX, RECAL_C_CV_RHS
+            GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, RECAL_C_CV_RHS
         INTEGER, DIMENSION( : ), intent( in ) :: JCOUNT_KLOC, JCOUNT_KLOC2, ICOUNT_KLOC, ICOUNT_KLOC2, U_OTHER_LOC
         INTEGER, DIMENSION( : ), intent( in ) :: C_JCOUNT_KLOC, C_JCOUNT_KLOC2, C_ICOUNT_KLOC, C_ICOUNT_KLOC2
         INTEGER, DIMENSION( : ), intent( in ) :: U_SLOC2LOC, CV_SLOC2LOC
@@ -6213,18 +6209,6 @@ end if
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Bound_ele_correct(:, IPHASE, U_KLOC)
-                        !Calculate mass matrix
-                        if (SUF_INT_MASS_MATRIX) then
-                            do IDIM = 1, Mdims%ndim
-                                do u_kkloc=1,Mdims%u_nloc
-                                    I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC-1) * Mdims%ndim * Mdims%nphase
-                                    J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
-                                    Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) &
-                                        + CV_funs%sufen( U_KLOC, GI )*CV_funs%sufen( U_KKLOC, GI )*Bound_ele_correct(IDIM, IPHASE, U_KLOC)&
-                                        * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
-                                end do
-                            end do
-                        end if
                     endif
                 END DO
             ENDIF
@@ -6251,18 +6235,6 @@ end if
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC( U_KLOC ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* Bound_ele_correct(:, IPHASE, U_KLOC)!Bound_ele_correct unnecessary here?
-                            !Calculate mass matrix
-                            if (SUF_INT_MASS_MATRIX) then
-                                do IDIM = 1, Mdims%ndim
-                                    do u_kkloc=1,Mdims%u_nloc
-                                        I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC-1) * Mdims%ndim * Mdims%nphase
-                                        J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
-                                        Mmat%PIVIT_MAT( I, J, ELE ) = Mmat%PIVIT_MAT( I, J, ELE ) &!Bound_ele_correct unnecessary here?
-                                            + CV_funs%sufen( U_KLOC, GI )*CV_funs%sufen( U_KKLOC, GI )*Bound_ele_correct(idim, IPHASE, U_KLOC)&
-                                            * HDC * 0.5* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
-                                    end do
-                                end do
-                            end if
                         endif
                     END DO
                 ENDIF
@@ -6319,18 +6291,6 @@ end if
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC2( U_KLOC2 ) ) &
                             + RCON(IPHASE) * CVNORMX_ALL( :, GI )* (1.- Mass_corrector)
-                        !Calculate mass matrix
-                        if (SUF_INT_MASS_MATRIX) then
-                            do IDIM = 1, Mdims%ndim
-                                do u_kkloc=1,Mdims%u_nloc
-                                    I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC2-1) * Mdims%ndim * Mdims%nphase
-                                    J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
-                                    Mmat%PIVIT_MAT( I, J, ELE2 ) = Mmat%PIVIT_MAT( I, J, ELE2 ) &
-                                        + CV_funs%sufen( U_KLOC2, GI )*CV_funs%sufen( U_KKLOC, GI )&
-                                        * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
-                                end do
-                            end do
-                        end if
                     END DO
                 ENDIF
                 ! flux from the other side (change of sign because normal is -ve)...
@@ -6352,18 +6312,6 @@ end if
                             Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 = Mmat%C_CV( :, IPHASE, C_ICOUNT_KLOC2( U_KLOC2 ) ) &
                                 - RCON_J(IPHASE) * CVNORMX_ALL( :, GI )* (1.-Mass_corrector)!Mass_corrector
-                            !Calculate mass matrix
-                            if (SUF_INT_MASS_MATRIX) then
-                                do IDIM = 1, Mdims%ndim
-                                    do u_kkloc=1,Mdims%u_nloc
-                                        I = IDIM+(IPHASE-1)*Mdims%ndim+(U_KLOC2-1) * Mdims%ndim * Mdims%nphase
-                                        J = IDIM+(IPHASE-1)*Mdims%ndim+(U_KKLOC-1) * Mdims%ndim * Mdims%nphase
-                                        Mmat%PIVIT_MAT( I, J, ELE2 ) = Mmat%PIVIT_MAT( I, J, ELE2 ) &
-                                            + CV_funs%sufen( U_KLOC2, GI )*CV_funs%sufen( U_KKLOC, GI )&
-                                            * HDC* SCVDETWEI( GI )* abs(CVNORMX_ALL( IDIM, GI ))
-                                    end do
-                                end do
-                            end if
                         END DO
                     ENDIF
                 end if  ! endof if ( integrate_other_side_and_not_boundary ) then
