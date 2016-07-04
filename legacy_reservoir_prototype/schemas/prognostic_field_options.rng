@@ -899,14 +899,7 @@ a discontinuous velocity field for this to work!</a:documentation>
             <optional>
               <element name="lump_mass_matrix">
                 <a:documentation>Lump the mass matrix</a:documentation>
-                <optional>
-                  <element name="lump_weight">
-                    <a:documentation>Weighting used to homogenize the Mass matrix.
-Only valid for PnDGPn(DG). 
-Recommended: For CG pressure =&gt; 100; For DG pressure =&gt; 15           </a:documentation>
-                    <ref name="real"/>
-                  </element>
-                </optional>
+                <empty/>
               </element>
             </optional>
             <optional>

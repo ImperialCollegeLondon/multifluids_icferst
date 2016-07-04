@@ -1529,8 +1529,8 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             MEAN_PORE_CV, &
             MASS_MN_PRES, THERMAL,  RETRIEVE_SOLID_CTY,&
             got_free_surf,  MASS_SUF, &
-            dummy_transp, IDs_ndgln, &                                                 !sprint_to_do; remove SUF_INT_MASS_MATRIX?
-            RECALC_C_CV = RECALC_C_CV, SUF_INT_MASS_MATRIX =  .false.)
+            dummy_transp, IDs_ndgln, &
+            RECALC_C_CV = RECALC_C_CV)
         ewrite(3,*)'Back from cv_assemb'
         IF ( GLOBAL_SOLVE ) THEN
             ! Put Mmat%CT into global matrix MCY...
