@@ -526,9 +526,6 @@ contains
         RECAL_C_CV_RHS = have_option( '/material_phase[0]/scalar_field::Pressure/prognostic/CV_P_matrix' )
         if (present_and_true(RECALC_C_CV)) then
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .not.Mmat%stored !.true.
-            if (present_and_true(SUF_INT_MASS_MATRIX)) then
-                Mmat%PIVIT_MAT = 0.
-            end if
         else
             GET_C_IN_CV_ADVDIF_AND_CALC_C_CV = .false.
         end if
@@ -2083,36 +2080,6 @@ contains
             deallocate(dens)
         endif
         !#########################
-        !Adjust the value introduced in Mmat%PIVIT_MAT to compensate the fact that we are doing a
-        !surface integral of what should be a volume integral
-        if (SUF_INT_MASS_MATRIX2) then
-            do ele =1, Mdims%totele
-                ! Calculate DETWEI, RA, NX, NY, NZ for element ELE
-                call DETNLXR_INVJAC( ELE, X_ALL, ndgln%x, CV_funs%scvfeweigh, CV_funs%scvfen, CV_funs%scvfenlx_all, SdevFuns)
-
-                DO IPHASE = 1, Mdims%nphase
-                    DO IDIM = 1, Mdims%ndim
-                        JPHASE = IPHASE
-                        JDIM = IDIM
-                        rsum=0.0
-                        DO U_JLOC = 1, Mdims%u_nloc
-                            DO U_ILOC = 1, Mdims%u_nloc
-                                I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
-                                J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                rsum = rsum +Mmat%PIVIT_MAT(i,j,ele)
-                            end do
-                        end do
-                        DO U_JLOC = 1, Mdims%u_nloc
-                            DO U_ILOC = 1, Mdims%u_nloc
-                                I = IDIM+(IPHASE-1)*Mdims%ndim+(U_ILOC-1)*Mdims%ndim*Mdims%nphase
-                                J = JDIM+(JPHASE-1)*Mdims%ndim+(U_JLOC-1)*Mdims%ndim*Mdims%nphase
-                                Mmat%PIVIT_MAT(i,j,ele) =Mmat%PIVIT_MAT(i,j,ele)* SdevFuns%volume/rsum
-                            end do
-                        end do
-                    end do
-                end do
-            end do
-        end if
         IF(GET_GTHETA) THEN
             DO CV_NODI = 1, Mdims%cv_nonods
                 THETA_GDIFF(:, CV_NODI) = THETA_GDIFF(:, CV_NODI) / MASS_CV(CV_NODI)
