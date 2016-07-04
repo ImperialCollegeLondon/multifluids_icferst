@@ -433,7 +433,7 @@ contains
         INTEGER, DIMENSION( 1 , Mdims%nphase , surface_element_count(tracer) ) :: WIC_T_BC_ALL, WIC_D_BC_ALL, WIC_T2_BC_ALL
         INTEGER, DIMENSION( Mdims%ndim , Mdims%nphase , surface_element_count(tracer) ) :: WIC_U_BC_ALL
         type( tensor_field ), pointer ::  pressure
-        INTEGER, DIMENSION ( 1,1,surface_element_count(tracer) ) :: WIC_P_BC_ALL
+        INTEGER, DIMENSION ( 1,Mdims%npres,surface_element_count(tracer) ) :: WIC_P_BC_ALL
         REAL, DIMENSION( :,:,: ), pointer :: SUF_T_BC_ALL,&
             SUF_T_BC_ROB1_ALL, SUF_T_BC_ROB2_ALL
         REAL, DIMENSION(:,:,: ), pointer :: SUF_D_BC_ALL,&
@@ -2929,6 +2929,9 @@ contains
                         UDGI_ALL(:, IPHASE) = matmul(I_inv_adv_coef(:,:,IPHASE),&
                             matmul(LOC_NU( :, IPHASE, : ), CV_funs%sufen( :, GI )))
 
+
+
+
                         ! Here we assume that sigma_out/sigma_in is a diagonal matrix
                         ! which effectively assumes that the anisotropy just inside the domain
                         ! is the same as just outside the domain.
@@ -2976,6 +2979,7 @@ contains
                             ELSE
                                 UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE) + CV_funs%sufen( U_KLOC, GI )*SUF_U_BC_ALL(:, IPHASE, Mdims%u_snloc* (SELE-1) +U_SKLOC)
                             END IF
+
                         END DO
                         UDGI_ALL(:, IPHASE) = UDGI_ALL(:, IPHASE)  + matmul(I_inv_adv_coef(:,:,IPHASE),UDGI_ALL_FOR_INV(:, IPHASE))
                     END IF
@@ -6161,6 +6165,7 @@ end if
             IPHASE, U_SKLOC, I, J, U_KKLOC, &
             u_iloc, u_siloc
         real :: Mass_corrector
+
         !If using Mmat%C_CV prepare Bound_ele_correct and Bound_ele2_correct to correctly apply the BCs
         if (RECAL_C_CV_RHS) call introduce_C_CV_boundary_conditions(Bound_ele_correct)
                ! Need to correctly add capillary diffusion to the RHS of the continuity equation FOR BOTH PHASES
@@ -6205,7 +6210,6 @@ end if
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Mass_corrector
                     else
-
                         Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_KLOC ) ) &
                             + rcon(IPHASE) * CVNORMX_ALL( :, GI ) * Bound_ele_correct(:, IPHASE, U_KLOC)
@@ -6379,47 +6383,30 @@ end if
             !By default no modification is required
             Bound_ele_correct = 1.0
             IF ( on_domain_boundary ) THEN
-                !Prepare to apply the boundary conditions
-                DO IPHASE=1,size(Bound_ele_correct,2)
-                    if (WIC_U_BC_ALL( 1, IPHASE, SELE ) == WIC_U_BC_DIRICHLET) then
-                        DO U_SKLOC = 1, Mdims%u_snloc
-                            U_KLOC = U_SLOC2LOC( U_SKLOC )
-                            Bound_ele_correct( :, IPHASE, U_KLOC ) = 0.
-                        end do
-                    end if
-                end do
+                !By default the position must not be added to the matrix
+                Bound_ele_correct = 0.!<= P in the CV == P in the BC, it is done this way
                 !If Mmat%C_CV formulation, apply weak pressure boundary conditions if any
-                DO IPRES = 1, Mdims%npres
+                DO IPRES = 1, 1!Mdims%npres
                     IF( WIC_P_BC_ALL( 1,IPRES,SELE ) == WIC_P_BC_DIRICHLET ) THEN
                         DO U_SILOC = 1, Mdims%u_snloc
                             U_ILOC = U_SLOC2LOC( U_SILOC )
                             U_INOD = ndgln%u( ( ELE - 1 ) * Mdims%u_nloc + U_ILOC )
-                            DO P_SJLOC = 1, Mdims%cv_snloc
-                                P_ILOC = CV_SLOC2LOC( P_SJLOC )
-                                !This is to create cvn for boundaries consistent with scvngi and not sbcvngi
-                                handmade_sbcvn = min(1e5 * max((CV_funs%scvfen( P_ILOC, GI ) - 0.501), 0.0),1.)
-                                DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
-                                    !We give priority to velocity boundary conditions
-                                    if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET ) then
-                                        !The surface integral of the matrix should not include the boundaries?
-                                        !however we are doing anyway so we can remove it from here
-                                        !as doing it outside its more efficient, one less if statement
-!                                        IF(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV) then
-!                                            Bound_ele_correct( :, IPHASE, U_ILOC ) = 0.
-!                                            Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_ILOC ) ) &
-!                                                = Mmat%C_CV( :, IPHASE, C_JCOUNT_KLOC( U_ILOC ) ) &
-!                                                + CVNORMX_ALL( :, GI ) *SCVDETWEI( GI ) * CV_funs%sufen( U_ILOC, GI ) * handmade_sbcvn
-!                                        end if
-                                        Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                            - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI )  *handmade_sbcvn * CV_funs%sufen( U_ILOC, GI )&
-                                            * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )
-                                    else
-                                        if (show_warn_msg) then
-                                            ewrite(0,*) "WARNING: One or more boundaries have velocity and pressure boundary conditions."
-                                            show_warn_msg = .false.
-                                        end if
+                            DO IPHASE =  1+(IPRES-1)*Mdims%n_in_pres, IPRES*Mdims%n_in_pres
+                                !We give priority to velocity boundary conditions
+                                if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET ) then
+                                    !Only in the boundaries with a defined pressure it needs to be added into
+                                    !the matrix and into the RHS
+                                    Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.0
+                                    P_SJLOC = 1!<=FIXME
+                                    Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
+                                        - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI )  * CV_funs%sufen( U_ILOC, GI )&
+                                        * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )
+                                else
+                                    if (show_warn_msg) then
+                                        ewrite(0,*) "WARNING: One or more boundaries have velocity and pressure boundary conditions."
+                                        show_warn_msg = .false.
                                     end if
-                                end do
+                                end if
                             end do
                         end do
                     end if

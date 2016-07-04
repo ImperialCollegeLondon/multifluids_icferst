@@ -817,8 +817,6 @@ contains
         !!$ Variables used in the diffusion-like term: capilarity and surface tension:
         type( tensor_field ), pointer :: PLIKE_GRAD_SOU_COEF, PLIKE_GRAD_SOU_GRAD
         INTEGER :: IPLIKE_GRAD_SOU
-
-
         !!$ magma stuff -- to be deleted shortly
         integer :: idim, idx1, idx2, ndim
         type( scalar_field ), pointer :: beta
@@ -1025,7 +1023,6 @@ contains
              if (Mmat%CV_pressure) then
                 allocate(Mmat%C_CV(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C_CV = 0.
                 RECALC_C_CV = .true.!sprint_to_do; we may not need this logical
-                !Check if use Mmat%C_CV to get velocities or use Mmat%C
             else!allocate C
                 allocate(Mmat%C(Mdims%ndim, Mdims%nphase, Mspars%C%ncol)); Mmat%C = 0.
             end if
@@ -1118,6 +1115,7 @@ contains
             else
                nullify(halo)
             end if
+
             !Form pressure matrix
             CALL COLOR_GET_CMC_PHA( Mdims, Mspars, ndgln, Mmat,&
             DIAG_SCALE_PRES, DIAG_SCALE_PRES_COUP, INV_B, &
@@ -1284,7 +1282,6 @@ END IF
             !Solve the system to obtain dP (difference of pressure)
             call petsc_solve(deltap,cmc_petsc,rhs_p,trim(pressure%option_path))
             P_all % val(1,:,:) = P_all % val(1,:,:) + deltap%val
-
             call halo_update(p_all)
             call deallocate(rhs_p)
             call deallocate(cmc_petsc)
@@ -1296,15 +1293,14 @@ END IF
                CALL C_MULT2( CDP_tensor%val( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), deltap%val( IPRES, : ), &
                     Mdims%cv_nonods, Mdims%u_nonods, Mdims%ndim, Mdims%n_in_pres, Mmat%C( :, 1+(ipres-1)*Mdims%n_in_pres : ipres*Mdims%n_in_pres, : ), Mspars%C%ncol, Mspars%C%fin, Mspars%C%col )
             END DO
-
             call deallocate(deltaP)
             call halo_update(cdp_tensor)
             ! Correct velocity...
             ! DU = BLOCK_MAT * CDP
+
             ALLOCATE( DU_VEL( Mdims%ndim,  Mdims%nphase, Mdims%u_nonods )) ; DU_VEL = 0.
             CALL PHA_BLOCK_MAT_VEC2( DU_VEL, Mmat%PIVIT_MAT, CDP_tensor%val, Mdims%ndim, Mdims%nphase, &
             Mdims%totele, Mdims%u_nloc, ndgln%u )
-
             U_ALL2 % VAL = U_ALL2 % VAL + DU_VEL
             DEALLOCATE( DU_VEL )
             if ( after_adapt .and. cty_proj_after_adapt ) UOLD_ALL2 % VAL = U_ALL2 % VAL
@@ -2414,21 +2410,20 @@ end if
                             exit
                         end if
                     end do
-                    if (Porous_media_PIVIT_not_stored_yet.and. Mmat%CV_pressure) then
+                    if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure .and.is_porous_media) then
+!                    if (.false.) then
                         if (skip) then
-                            Mmat%PIVIT_MAT(:,:,ELE)=0.0
                             do i=1,size(Mmat%PIVIT_MAT,1)
-                                Mmat%PIVIT_MAT(I,I,ELE)= DevFuns%VOLUME/dble(Mdims%u_nloc)!2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
+                                Mmat%PIVIT_MAT(I,I,ELE)= DevFuns%VOLUME/dble(Mdims%u_nloc)
                             END DO
                         end if
                     end if
                 end if
             else
-                if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure) then
-!                if (Porous_media_PIVIT_not_stored_yet .and. .false.) then
-                    Mmat%PIVIT_MAT(:,:,ELE)=0.0
+                if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure.and.is_porous_media) then
+!                if (.false.) then
                     do i=1,size(Mmat%PIVIT_MAT,1)
-                        Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/dble(Mdims%u_nloc)!2.0 * DevFuns%VOLUME/(dble(Mdims%cv_nloc)+dble(Mdims%u_nloc))
+                        Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/dble(Mdims%u_nloc)
                     END DO
                 end if
             end if
@@ -2739,7 +2734,7 @@ end if
                     END DO
                 END DO
             END IF
-            if (Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure) then!sprint_to_do; Internal subroutine for this?
+            if ((Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure).or..not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
 !            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc

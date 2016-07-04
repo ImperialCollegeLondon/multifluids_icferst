@@ -902,7 +902,6 @@ contains
                real, dimension(:), pointer :: Immobile_fraction, Corey_exponent, Endpoint_relperm
                integer :: iphase, ele, sele, cv_siloc, cv_snodi, cv_snodi_ipha, iface, s, e, &
                    ele2, sele2, cv_iloc, idim, jdim, i, mat_nod, cv_nodi
-               real :: satura_bc
                real, dimension( Mdims%ndim, Mdims%ndim ) :: sigma_out, sigma_in, mat, mat_inv
                integer, dimension( CV_GIdims%nface, Mdims%totele) :: face_ele
                integer, dimension( Mdims%mat_nonods*Mdims%n_in_pres ) :: idone
@@ -967,11 +966,10 @@ contains
                                        visc_node = (cv_nodi-1)*one_or_zero + 1
                                        cv_snodi_ipha = cv_snodi + ( iphase - 1 ) * Mdims%stotel * Mdims%cv_snloc
                                        mat_nod = ndgln%mat( (ele-1)*Mdims%cv_nloc + cv_iloc  )
-                                       ! this is the boundary condition
-                                       satura_bc = volfrac_BCs%val(1,iphase,cv_snodi)
                                        do idim = 1, Mdims%ndim
                                            do jdim = 1, Mdims%ndim
                                                call get_relperm(Mdims%n_in_pres, iphase, sigma_out( idim, jdim ),&
+                                                   ! this is the boundary condition
                                                    volfrac_BCs%val(1,:,cv_snodi), viscosities(:,visc_node), inv_perm( idim, jdim, ele ),&
                                                    Immobile_fraction, Corey_exponent, Endpoint_relperm)
                                            end do
@@ -983,9 +981,9 @@ contains
                                            mat = sigma_out  +  matmul(  sigma_in,  matmul( inverse( sigma_out ), sigma_in ) )
                                            mat_inv = matmul( inverse( sigma_in+sigma_out ), mat )
                                            suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = (/ (mat_inv(i, i), i = 1, Mdims%ndim) /)
-                                          !suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = 1.
+!                                          suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = 1.
                                        else
-                                           mat = matmul( sigma_out, inverse( material_absorption( mat_nod, s : e, s : e ) ) )
+                                           mat = matmul( sigma_out, inverse( material_absorption( s : e, s : e, mat_nod ) ) )
                                            mat_inv = inverse( mat )
                                            suf_sig_diagten_bc( cv_snodi_ipha, 1 : Mdims%ndim ) = (/ (mat_inv(i, i), i = 1, Mdims%ndim) /)
                                        end if
