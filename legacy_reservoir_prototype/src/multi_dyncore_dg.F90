@@ -1949,16 +1949,28 @@ FLAbort('Global solve for pressure-mommentum is broken until nested matrices get
             beta )
         if (beta>=.999) mom_conserv=.true.
         ewrite(3,*) 'mom_conserv:', mom_conserv
-        lump_mass = .false.
-        if ( have_option( &
-            '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix') &
-            ) lump_mass = .true.
+
+        lump_mass = have_option( &
+            '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix')
         !retrieve lump_weight parameter
         call get_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/spatial_discretisation/discontinuous_galerkin/mass_terms/lump_mass_matrix/lump_weight', &
             lump_weight, default = -1. )
         !Act only if the parameter is above zero
         homogenize_mass_matrix = (lump_weight > 0)
+
+
+        !For P1DGP1 or P1DGP2 using the new formulation this solves the problem with pressure boundary conditions
+        !also, this requires to use the old way to get the Pivit Matrix
+        if (Mmat%CV_pressure) then
+            lump_mass = .true.
+            homogenize_mass_matrix = .true.
+            call get_option( &
+            '/geometry/mesh::PressureMesh/from_mesh/mesh_shape/polynomial_degree', j )
+            !For P1DGP1 the correct value is 100 and for P1DGP2 the correct value seems to be 10.
+            lump_weight = 100.**(1./j)
+        end if
+
         lump_absorption = .false.
         if ( have_option( &
             '/material_phase[0]/vector_field::Velocity/prognostic/vector_field::Absorption/lump_absorption') &
@@ -2410,8 +2422,8 @@ end if
                             exit
                         end if
                     end do
-                    if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure .and.is_porous_media) then
-!                    if (.false.) then
+!                    if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure .and.is_porous_media) then
+                    if (.false.) then
                         if (skip) then
                             do i=1,size(Mmat%PIVIT_MAT,1)
                                 Mmat%PIVIT_MAT(I,I,ELE)= DevFuns%VOLUME/dble(Mdims%u_nloc)
@@ -2420,8 +2432,9 @@ end if
                     end if
                 end if
             else
-                if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure.and.is_porous_media) then
-!                if (.false.) then
+!                if (Porous_media_PIVIT_not_stored_yet .and. Mmat%CV_pressure.and.is_porous_media) then
+                !FOR P2DGP1DG THE PIVIT MATRIX HAVE TO BE DIAGONAL!! OTHERWISE IT DOES NOT WORK
+                if (.false.) then
                     do i=1,size(Mmat%PIVIT_MAT,1)
                         Mmat%PIVIT_MAT(I,I,ELE) = DevFuns%VOLUME/dble(Mdims%u_nloc)
                     END DO
@@ -2734,8 +2747,8 @@ end if
                     END DO
                 END DO
             END IF
-            if ((Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure).or..not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
-!            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
+!            if ((Porous_media_PIVIT_not_stored_yet .and..not. Mmat%CV_pressure).or..not.is_porous_media) then!sprint_to_do; Internal subroutine for this?
+            if (Porous_media_PIVIT_not_stored_yet) then!sprint_to_do; Internal subroutine for this?
                 DO U_JLOC = 1, Mdims%u_nloc
                     DO U_ILOC = 1, Mdims%u_nloc
                         DO GI = 1, FE_GIdims%cv_ngi

@@ -989,6 +989,7 @@ contains
         DO IPRES = 1, Mdims%npres
             MEAN_PORE_CV(IPRES,:) = MEAN_PORE_CV(IPRES,:) / SUM_CV
         END DO
+
         ! Scale effectively the time step size used within the pipes...
         ! dt_pipe_factor is the factor by which to reduce the pipe eqns time step size e.g. 10^{-3}
         DO IPRES = 2, Mdims%npres
@@ -1833,7 +1834,6 @@ contains
                                     END IF
                                 END IF
                                 ct_rhs_phase_cv_nodi=0.0; ct_rhs_phase_cv_nodj=0.0
-
                                 CALL PUT_IN_CT_RHS(GET_C_IN_CV_ADVDIF_AND_CALC_C_CV, ct_rhs_phase_cv_nodi, ct_rhs_phase_cv_nodj, &
                                     Mdims, CV_funs, ndgln, Mmat, GI,  &
                                     between_elements, on_domain_boundary, ELE, ELE2, SELE, HDC, MASS_ELE, &
@@ -6293,7 +6293,6 @@ end if
             real, dimension(:,:,:), intent(out) :: Bound_ele_correct
             !Local variables
             integer :: U_KLOC, IPHASE, P_SJLOC, U_INOD, ipres, CV_KLOC, P_ILOC
-            real :: handmade_sbcvn
             logical, save :: show_warn_msg = .true.
             !By default no modification is required
             Bound_ele_correct = 1.0
@@ -6311,11 +6310,10 @@ end if
                                 if (WIC_U_BC_ALL( 1, IPHASE, SELE ) /= WIC_U_BC_DIRICHLET ) then
                                     !Only in the boundaries with a defined pressure it needs to be added into
                                     !the matrix and into the RHS
-                                    Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.0
-                                    P_SJLOC = 1!<=FIXME
+                                    Bound_ele_correct( :, IPHASE, U_ILOC ) = 1.
                                     Mmat%U_RHS( :, IPHASE, U_INOD ) = Mmat%U_RHS( :, IPHASE, U_INOD ) &
-                                        - CVNORMX_ALL( :, GI ) *SCVDETWEI( GI )  * CV_funs%sufen( U_ILOC, GI )&
-                                        * SUF_P_BC_ALL( 1,1,P_SJLOC + Mdims%cv_snloc* ( SELE - 1 ) )
+                                        - CVNORMX_ALL( :, GI )* CV_funs%sufen( U_ILOC, GI )*SCVDETWEI( GI )&
+                                        * SUF_P_BC_ALL( 1,1,1 + Mdims%cv_snloc* ( SELE - 1 ) )
                                 else
                                     if (show_warn_msg) then
                                         ewrite(0,*) "WARNING: One or more boundaries have velocity and pressure boundary conditions."
